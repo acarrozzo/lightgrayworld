@@ -144,4 +144,4 @@ This is a personal project, but suggestions and improvements are welcome!
 
 ---
 
-**Note**: This is a modern rebuild of the original Light Gray RPG, designed to be truly multiplayer with real-time features and a modern tech stack.
+**Note**: This is a modern rebuild of the original Light Gray RPG, designed to be truly multiplayer with real-time features and a modern tech stack.# Database connection test
