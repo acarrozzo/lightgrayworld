@@ -31,25 +31,22 @@ async function handleNavigate(request: AuthenticatedRequest) {
       )
     }
 
-    // Get current room data
+    // Get current room data (minimal query for navigation check)
     const currentRoom = await prisma.room.findUnique({
       where: { roomId: request.user.currentRoom },
-      include: {
-        players: {
-          select: {
-            id: true,
-            username: true,
-            level: true,
-            hp: true,
-            hpMax: true,
-            mp: true,
-            mpMax: true,
-            currentRoom: true,
-            isActive: true
-          }
-        },
-        items: true,
-        npcs: true
+      select: {
+        roomId: true,
+        name: true,
+        north: true,
+        northeast: true,
+        east: true,
+        southeast: true,
+        south: true,
+        southwest: true,
+        west: true,
+        northwest: true,
+        up: true,
+        down: true
       }
     })
 
@@ -83,7 +80,7 @@ async function handleNavigate(request: AuthenticatedRequest) {
       )
     }
 
-    // Get target room data
+    // Get target room data (full query for new room)
     const targetRoom = await prisma.room.findUnique({
       where: { roomId: targetRoomId },
       include: {
@@ -124,8 +121,7 @@ async function handleNavigate(request: AuthenticatedRequest) {
       data: { currentRoom: targetRoomId }
     })
 
-    // Filter active players for both rooms
-    const currentRoomActivePlayers = currentRoom.players?.filter((player: any) => player.isActive) || []
+    // Filter active players for target room only (current room not needed)
     const targetRoomActivePlayers = targetRoom.players?.filter((player: any) => player.isActive) || []
 
     const result = {

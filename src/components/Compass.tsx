@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import Icon from './Icon'
 import RoomDisplay from './RoomDisplay'
 
@@ -38,6 +38,33 @@ const getRoomMapPosition = (roomId: string | undefined) => {
 
 export default function Compass({ room, onAction }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
+  const [currentPosition, setCurrentPosition] = useState<string>('')
+  const [targetPosition, setTargetPosition] = useState<string>('')
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  // Initialize position when room changes
+  React.useEffect(() => {
+    if (room?.roomId) {
+      const newPosition = getRoomMapPosition(room.roomId)
+      if (!currentPosition) {
+        // First load - set immediately
+        setCurrentPosition(newPosition)
+        setTargetPosition(newPosition)
+      } else {
+        // Room change - start transition
+        setTargetPosition(newPosition)
+        setIsTransitioning(true)
+        
+        // Complete transition after animation
+        const timer = setTimeout(() => {
+          setCurrentPosition(newPosition)
+          setIsTransitioning(false)
+        }, 500) // Match CSS transition duration
+        
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [room?.roomId])
 
   const handleNavigate = async (direction: string) => {
     if (isNavigating || !room?.[direction] || !onAction) return
@@ -80,10 +107,12 @@ export default function Compass({ room, onAction }: CompassProps) {
           {/* Map circle in center */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div 
-              className="w-[140px] h-[140px] rounded-full bg-no-repeat"
+              className={`w-[140px] h-[140px] rounded-full bg-no-repeat ${
+                isTransitioning ? 'transition-all duration-500 ease-in-out' : ''
+              }`}
               style={{
                 backgroundImage: `url('/icons/lightgray_map_grassyfield_main.jpg')`,
-                backgroundPosition: getRoomMapPosition(room?.roomId),
+                backgroundPosition: isTransitioning ? targetPosition : currentPosition,
                 border: '20px solid rgba(250, 250, 250, 0)'
               }}
             />
@@ -150,8 +179,8 @@ export default function Compass({ room, onAction }: CompassProps) {
           })}
         </div>
 
-        {/* Loading indicator */}
-        {isNavigating && (
+        {/* Loading indicator - show during navigation or transition */}
+        {(isNavigating || isTransitioning) && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
           </div>

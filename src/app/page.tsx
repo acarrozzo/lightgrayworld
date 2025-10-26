@@ -9,14 +9,29 @@ import { isTokenValid, validateAndRefreshUser } from '@/lib/token-validation'
 export default function Home() {
   const { isLoggedIn, isLoading, token, player, login, logout, setLoading } = useGameStore()
   const [isInitializing, setIsInitializing] = useState(true)
+  const [isHydrated, setIsHydrated] = useState(false)
 
-  // Validate stored token on app load
+  // Wait for Zustand hydration to complete
   useEffect(() => {
+    // Use requestAnimationFrame for faster hydration
+    requestAnimationFrame(() => {
+      setIsHydrated(true)
+    })
+  }, [])
+
+  // Validate stored token on app load - only after hydration
+  useEffect(() => {
+    if (!isHydrated) return
+
     const initializeAuth = async () => {
-      console.log('Initializing auth...', { token: !!token, isLoggedIn })
-      
       if (!token) {
-        console.log('No token found, showing login form')
+        setIsInitializing(false)
+        return
+      }
+
+      // Skip server validation if token is still valid locally
+      if (isTokenValid(token)) {
+        console.log('Token valid locally, skipping server validation')
         setIsInitializing(false)
         return
       }
@@ -24,27 +39,14 @@ export default function Home() {
       setLoading(true)
       
       try {
-        // Check if token is valid
-        if (!isTokenValid(token)) {
-          console.log('Stored token is invalid, logging out')
-          logout()
-          setIsInitializing(false)
-          return
-        }
-
-        console.log('Token is valid, validating with server...')
-        
-        // Validate token with server and get fresh user data
+        // Only validate with server if token is expired/invalid
         const result = await validateAndRefreshUser(token)
         
         if (result.isValid && result.user) {
-          console.log('Token validated, user logged in:', result.user.username)
-          // User is already logged in via persistence, just ensure state is correct
           if (!isLoggedIn) {
-            login(result.user, token)
+            login(result.user, result.newToken || token)
           }
         } else {
-          console.log('Token validation failed, logging out')
           logout()
         }
       } catch (error) {
@@ -57,9 +59,9 @@ export default function Home() {
     }
 
     initializeAuth()
-  }, []) // Only run once on mount
+  }, [isHydrated]) // Run after hydration
 
-  if (isInitializing || isLoading) {
+  if (isInitializing || isLoading || !isHydrated) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>

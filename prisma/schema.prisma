@@ -1,341 +1,257 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("POSTGRES_PRISMA_URL")
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
-// User model - core player data
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  email     String?
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Character info
-  characterClass String @default("Scout")
-  characterRace  String @default("Human")
-  
-  // Location
-  currentRoom String @default("001")
-  recallRoom  String @default("001")
-  
-  // Activity tracking
-  lastActive DateTime @default(now())
-  isActive   Boolean  @default(true)
-  clicks     Int      @default(0)
-  deaths     Int      @default(0)
-  
-  // Progression
-  level Int @default(0)
-  xp    Int @default(0)
-  cp    Int @default(0) // Combat Points
-  tp    Int @default(0) // Training Points  
-  sp    Int @default(0) // Skill Points
-  currency Int @default(7)
-  
-  // Stats
-  str Int @default(0)
-  dex Int @default(0)
-  mag Int @default(0)
-  def Int @default(0)
-  
-  // Modified stats (with equipment bonuses)
-  strMod Int @default(0)
-  dexMod Int @default(0)
-  magMod Int @default(0)
-  defMod Int @default(0)
-  
-  // Training
-  physicalTraining Int @default(0)
-  mentalTraining   Int @default(0)
-  
-  // Skills
-  oneHanded Int @default(0)
-  twoHanded Int @default(0)
-  ranged    Int @default(0)
-  warcraft  Int @default(0)
-  toughness Int @default(0)
-  block     Int @default(0)
-  dodge     Int @default(0)
-  
-  // Combat skills
-  slice       Int @default(0)
-  smash       Int @default(0)
-  aim         Int @default(0)
-  magicStrike Int @default(0)
-  multiArrow  Int @default(0)
-  boltUpgrade Int @default(0)
-  throwDagger Int @default(0)
-  crafting    Int @default(0)
-  
-  // Spells
-  magicMissile Int @default(0)
-  fireball     Int @default(0)
-  poisonDart   Int @default(0)
-  magicArrow   Int @default(0)
-  atomicBlast  Int @default(0)
-  meteor       Int @default(0)
-  heal         Int @default(0)
-  regenerate   Int @default(0)
-  antidote     Int @default(0)
-  unlock       Int @default(0)
-  ironSkin     Int @default(0)
-  magicArmor   Int @default(0)
-  wings        Int @default(0)
-  gills        Int @default(0)
-  
-  // Health & Mana
-  hp     Int @default(10)
-  hpMax  Int @default(10)
-  mp     Int @default(2)
-  mpMax  Int @default(2)
-  
-  // Combat state
-  inFight    Boolean @default(false)
-  endFight   Boolean @default(false)
-  weaponType Int     @default(0)
-  
-  // Icons
-  uIcon        String @default("char-commander")
-  uIconWeapon  String @default("fists")
-  eIcon        String @default("question")
-  
-  // Chest flags
-  chest1  Boolean @default(false)
-  chest2  Boolean @default(false)
-  chest3  Boolean @default(false)
-  chest4  Boolean @default(false)
-  chest5  Boolean @default(false)
-  chest6  Boolean @default(false)
-  chest7  Boolean @default(false)
-  chest8  Boolean @default(false)
-  chest9  Boolean @default(false)
-  chest10 Boolean @default(false)
-  
-  // Map flags
-  roomZeroMap              Boolean @default(false)
-  grassyFieldMap           Boolean @default(false)
-  grassyFieldUndergroundMap Boolean @default(false)
-  forestMap                Boolean @default(false)
-  forestUndergroundMap     Boolean @default(false)
-  redTownMap               Boolean @default(false)
-  redTownSewersMap         Boolean @default(false)
-  rockyFlatsMap            Boolean @default(false)
-  neverEndingMineMap       Boolean @default(false)
-  oceanMap                 Boolean @default(false)
-  darkForestMap            Boolean @default(false)
-  worldMapV1               Boolean @default(false)
-  worldMapV2               Boolean @default(false)
-  worldMapV3               Boolean @default(false)
-  worldMapV4               Boolean @default(false)
-  worldMapV5               Boolean @default(false)
-  worldMapFull             Boolean @default(false)
-  
-  // Quest flags
-  pajamaShamanFlag      Boolean @default(false)
-  youngSoldierFlag      Boolean @default(false)
-  jackLumberFlag        Boolean @default(false)
-  hunterBillFlag        Boolean @default(false)
-  travelingWarriorFlag  Boolean @default(false)
-  travelingWizardFlag   Boolean @default(false)
-  warriorSkillFlag      Boolean @default(false)
-  wizardSkillFlag       Boolean @default(false)
-  miningSkillFlag       Boolean @default(false)
-  rangerSkillFlag       Boolean @default(false)
-  masterTrainerFlag     Boolean @default(false)
-  starCitySkillsFlag    Boolean @default(false)
-  starCitySpellsFlag    Boolean @default(false)
-  
-  // Daily chest
-  dailyChestLast           Int @default(0)
-  dailyChestNextAvailable  Int @default(0)
-  dailyChestCount          Int @default(0)
-  
-  // Relations
-  equipment     Equipment?
-  inventory     InventoryItem[]
-  killList      KillList[]
-  quests        QuestProgress[]
-  chatMessages  ChatMessage[]
-  actionHistory ActionHistory[]
-  sessions      Session[]
-  accounts      Account[]
-  room          Room?   @relation("RoomPlayers", fields: [currentRoom], references: [roomId])
+  id                        String          @id @default(cuid())
+  username                  String          @unique
+  email                     String?
+  password                  String
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+  characterClass            String          @default("Scout")
+  characterRace             String          @default("Human")
+  currentRoom               String          @default("001")
+  recallRoom                String          @default("001")
+  lastActive                DateTime        @default(now())
+  isActive                  Boolean         @default(true)
+  clicks                    Int             @default(0)
+  deaths                    Int             @default(0)
+  level                     Int             @default(0)
+  xp                        Int             @default(0)
+  cp                        Int             @default(0)
+  tp                        Int             @default(0)
+  sp                        Int             @default(0)
+  currency                  Int             @default(7)
+  str                       Int             @default(0)
+  dex                       Int             @default(0)
+  mag                       Int             @default(0)
+  def                       Int             @default(0)
+  strMod                    Int             @default(0)
+  dexMod                    Int             @default(0)
+  magMod                    Int             @default(0)
+  defMod                    Int             @default(0)
+  physicalTraining          Int             @default(0)
+  mentalTraining            Int             @default(0)
+  oneHanded                 Int             @default(0)
+  twoHanded                 Int             @default(0)
+  ranged                    Int             @default(0)
+  warcraft                  Int             @default(0)
+  toughness                 Int             @default(0)
+  block                     Int             @default(0)
+  dodge                     Int             @default(0)
+  slice                     Int             @default(0)
+  smash                     Int             @default(0)
+  aim                       Int             @default(0)
+  magicStrike               Int             @default(0)
+  multiArrow                Int             @default(0)
+  boltUpgrade               Int             @default(0)
+  throwDagger               Int             @default(0)
+  crafting                  Int             @default(0)
+  magicMissile              Int             @default(0)
+  fireball                  Int             @default(0)
+  poisonDart                Int             @default(0)
+  magicArrow                Int             @default(0)
+  atomicBlast               Int             @default(0)
+  meteor                    Int             @default(0)
+  heal                      Int             @default(0)
+  regenerate                Int             @default(0)
+  antidote                  Int             @default(0)
+  unlock                    Int             @default(0)
+  ironSkin                  Int             @default(0)
+  magicArmor                Int             @default(0)
+  wings                     Int             @default(0)
+  gills                     Int             @default(0)
+  hp                        Int             @default(10)
+  hpMax                     Int             @default(10)
+  mp                        Int             @default(2)
+  mpMax                     Int             @default(2)
+  inFight                   Boolean         @default(false)
+  endFight                  Boolean         @default(false)
+  weaponType                Int             @default(0)
+  uIcon                     String          @default("char-commander")
+  uIconWeapon               String          @default("fists")
+  eIcon                     String          @default("question")
+  chest1                    Boolean         @default(false)
+  chest2                    Boolean         @default(false)
+  chest3                    Boolean         @default(false)
+  chest4                    Boolean         @default(false)
+  chest5                    Boolean         @default(false)
+  chest6                    Boolean         @default(false)
+  chest7                    Boolean         @default(false)
+  chest8                    Boolean         @default(false)
+  chest9                    Boolean         @default(false)
+  chest10                   Boolean         @default(false)
+  roomZeroMap               Boolean         @default(false)
+  grassyFieldMap            Boolean         @default(false)
+  grassyFieldUndergroundMap Boolean         @default(false)
+  forestMap                 Boolean         @default(false)
+  forestUndergroundMap      Boolean         @default(false)
+  redTownMap                Boolean         @default(false)
+  redTownSewersMap          Boolean         @default(false)
+  rockyFlatsMap             Boolean         @default(false)
+  neverEndingMineMap        Boolean         @default(false)
+  oceanMap                  Boolean         @default(false)
+  darkForestMap             Boolean         @default(false)
+  worldMapV1                Boolean         @default(false)
+  worldMapV2                Boolean         @default(false)
+  worldMapV3                Boolean         @default(false)
+  worldMapV4                Boolean         @default(false)
+  worldMapV5                Boolean         @default(false)
+  worldMapFull              Boolean         @default(false)
+  pajamaShamanFlag          Boolean         @default(false)
+  youngSoldierFlag          Boolean         @default(false)
+  jackLumberFlag            Boolean         @default(false)
+  hunterBillFlag            Boolean         @default(false)
+  travelingWarriorFlag      Boolean         @default(false)
+  travelingWizardFlag       Boolean         @default(false)
+  warriorSkillFlag          Boolean         @default(false)
+  wizardSkillFlag           Boolean         @default(false)
+  miningSkillFlag           Boolean         @default(false)
+  rangerSkillFlag           Boolean         @default(false)
+  masterTrainerFlag         Boolean         @default(false)
+  starCitySkillsFlag        Boolean         @default(false)
+  starCitySpellsFlag        Boolean         @default(false)
+  dailyChestLast            Int             @default(0)
+  dailyChestNextAvailable   Int             @default(0)
+  dailyChestCount           Int             @default(0)
+  accounts                  Account[]
+  actionHistory             ActionHistory[]
+  chatMessages              ChatMessage[]
+  equipment                 Equipment?
+  inventory                 InventoryItem[]
+  killList                  KillList[]
+  quests                    QuestProgress[]
+  sessions                  Session[]
+  room                      Room            @relation("RoomPlayers", fields: [currentRoom], references: [roomId])
 }
 
-// Equipment model - what the player is wearing
 model Equipment {
-  id     String @id @default(cuid())
-  userId String @unique
-  
-  // Weapon slots
+  id        String @id @default(cuid())
+  userId    String @unique
   rightHand String @default("fists")
   leftHand  String @default("- - -")
-  
-  // Armor slots
-  head    String @default("- - -")
-  body    String @default("- - -")
-  hands   String @default("- - -")
-  feet    String @default("- - -")
-  
-  // Accessory slots
-  ring1    String @default("- - -")
-  ring2    String @default("- - -")
-  neck     String @default("- - -")
-  artifact String @default("- - -")
-  tech     String @default("- - -")
-  
-  // Special slots
+  head      String @default("- - -")
+  body      String @default("- - -")
+  hands     String @default("- - -")
+  feet      String @default("- - -")
+  ring1     String @default("- - -")
+  ring2     String @default("- - -")
+  neck      String @default("- - -")
+  artifact  String @default("- - -")
+  tech      String @default("- - -")
   companion String @default("- - -")
   pet       String @default("- - -")
   mount     String @default("- - -")
   robot     String @default("- - -")
   aura      String @default("- - -")
-  
-  // Ammo
-  arrows Int @default(0)
-  bolts  Int @default(0)
-  
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  arrows    Int    @default(0)
+  bolts     Int    @default(0)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Inventory model - items in player's bag
 model InventoryItem {
   id       String @id @default(cuid())
   userId   String
   itemName String
   quantity Int    @default(1)
-  
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, itemName])
 }
 
-// Kill List model - track monster kills
 model KillList {
-  id       String @id @default(cuid())
-  userId   String
-  monster  String
-  kills    Int    @default(0)
-  
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id      String @id @default(cuid())
+  userId  String
+  monster String
+  kills   Int    @default(0)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, monster])
 }
 
-// Quest Progress model
 model QuestProgress {
-  id       String @id @default(cuid())
-  userId   String
-  questId  String
-  progress Int    @default(0)
+  id        String  @id @default(cuid())
+  userId    String
+  questId   String
+  progress  Int     @default(0)
   completed Boolean @default(false)
-  
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, questId])
 }
 
-// Room model - game locations
 model Room {
-  id          String @id @default(cuid())
-  roomId      String @unique // e.g., "001", "002"
-  name        String
-  description String
-  lookDesc    String?
-  
-  // Room properties
-  dangerLevel Int @default(0)
-  isSafe      Boolean @default(true)
-  
-  // Connections
-  north     String?
-  northeast String?
-  east      String?
-  southeast String?
-  south     String?
-  southwest String?
-  west      String?
-  northwest String?
-  up        String?
-  down      String?
-  
-  // Room features
-  hasFire        Boolean @default(false)
-  hasCraftingTable Boolean @default(false)
-  
-  // Relations
-  players User[] @relation("RoomPlayers")
-  items   RoomItem[]
-  npcs    NPC[]
+  id               String     @id @default(cuid())
+  roomId           String     @unique
+  name             String
+  description      String
+  lookDesc         String?
+  dangerLevel      Int        @default(0)
+  isSafe           Boolean    @default(true)
+  north            String?
+  northeast        String?
+  east             String?
+  southeast        String?
+  south            String?
+  southwest        String?
+  west             String?
+  northwest        String?
+  up               String?
+  down             String?
+  hasFire          Boolean    @default(false)
+  hasCraftingTable Boolean    @default(false)
+  npcs             NPC[]
+  items            RoomItem[]
+  players          User[]     @relation("RoomPlayers")
 }
 
-// Room Items model - items that can be found in rooms
 model RoomItem {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   roomId   String
   itemName String
-  quantity Int    @default(1)
+  quantity Int     @default(1)
   isHidden Boolean @default(false)
-  
-  // Relations
-  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room     Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
 
-// NPC model - non-player characters
 model NPC {
   id          String @id @default(cuid())
   roomId      String
   name        String
   description String
-  type        String // "merchant", "trainer", "quest_giver", etc.
-  
-  // Relations
-  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  type        String
+  room        Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }
 
-// Chat Message model
 model ChatMessage {
   id        String   @id @default(cuid())
   userId    String
   message   String
   timestamp DateTime @default(now())
   roomId    String?
-  
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Action History model - tracks player actions for feed
 model ActionHistory {
   id        String   @id @default(cuid())
   userId    String
-  action    String   // "look", "attack", "search", "rest", etc.
-  message   String   // The action result message
+  action    String
+  message   String
   timestamp DateTime @default(now())
-  roomId    String?  // Room where action occurred
-  metadata  String?  // JSON string for additional data
-  
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  roomId    String?
+  metadata  String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, timestamp])
 }
 
-// NextAuth.js models
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -349,8 +265,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }

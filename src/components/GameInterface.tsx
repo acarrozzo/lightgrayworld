@@ -9,10 +9,11 @@ import GameFeed from './GameFeed'
 import Icon from './Icon'
 
 export default function GameInterface() {
-  const { player, currentRoom, setCurrentRoom, setRoomPlayers, getAuthHeaders } = useGameStore()
+  const { player, currentRoom, setCurrentRoom, setRoomPlayers, getAuthHeaders, isLoggedIn, cacheRoom, getCachedRoom } = useGameStore()
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingRoom, setIsLoadingRoom] = useState(false)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
 
@@ -116,16 +117,14 @@ export default function GameInterface() {
   }, [])
 
   useEffect(() => {
-    if (player) {
-      // Clear any stale currentRoom data from localStorage
-      setCurrentRoom(null)
-      
-      // Load initial room data - API will use authenticated user's current room
+    if (player && isLoggedIn && !currentRoom) {
+      // Only load room data if we don't already have it
       loadRoomData()
     }
-  }, [player])
+  }, [player, isLoggedIn, currentRoom])
 
   const loadRoomData = async () => {
+    setIsLoadingRoom(true)
     try {
       const response = await fetch('/api/game/room/current', {
         headers: {
@@ -152,6 +151,8 @@ export default function GameInterface() {
           down: roomData.room.down
         }
         
+        // Cache the room data for future navigation
+        cacheRoom(roomWithDirections)
         setCurrentRoom(roomWithDirections)
         setRoomPlayers(roomData.players)
       } else {
@@ -160,6 +161,8 @@ export default function GameInterface() {
       }
     } catch (error) {
       console.error('Failed to load room data:', error)
+    } finally {
+      setIsLoadingRoom(false)
     }
   }
 
@@ -167,6 +170,28 @@ export default function GameInterface() {
     setAction(actionType)
     setIsLoading(true)
     setActionResult(null)
+    
+    // Check if this is a navigation action for optimistic updates
+    const travelActions = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down', 'move', 'navigate']
+    const isNavigationAction = travelActions.includes(actionType.toLowerCase())
+    
+    // Store current room for rollback if needed
+    const previousRoom = currentRoom
+    const previousPlayers = useGameStore.getState().roomPlayers
+    
+    // OPTIMISTIC UPDATE: Immediately update UI for navigation
+    if (isNavigationAction && currentRoom && currentRoom[actionType as keyof typeof currentRoom]) {
+      const targetRoomId = currentRoom[actionType as keyof typeof currentRoom] as string
+      const cachedRoom = getCachedRoom(targetRoomId)
+      
+      if (cachedRoom) {
+        console.log('Using cached room for instant navigation:', cachedRoom.name)
+        setCurrentRoom(cachedRoom)
+        setRoomPlayers(cachedRoom.players || [])
+      } else {
+        console.log('No cached room found, will wait for API response')
+      }
+    }
     
     try {
       const response = await fetch('/api/game/action', {
@@ -184,8 +209,9 @@ export default function GameInterface() {
         setActionResult(result)
         
         // If this was a navigation/travel action, update the room data
-        const travelActions = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down', 'move', 'navigate']
-        if (travelActions.includes(actionType.toLowerCase()) && result.success && result.roomData) {
+        if (isNavigationAction && result.success && result.roomData) {
+          // Cache the new room data
+          cacheRoom(result.roomData)
           setCurrentRoom(result.roomData)
           setRoomPlayers(result.roomData.players || [])
         }
@@ -197,6 +223,13 @@ export default function GameInterface() {
           player: 'Unknown',
           timestamp: new Date().toISOString()
         })
+        
+        // Rollback optimistic update on failure
+        if (isNavigationAction) {
+          console.log('Navigation failed, rolling back to previous room')
+          setCurrentRoom(previousRoom)
+          setRoomPlayers(previousPlayers)
+        }
       }
     } catch (error) {
       console.error('Action failed:', error)
@@ -207,16 +240,23 @@ export default function GameInterface() {
         player: 'Unknown',
         timestamp: new Date().toISOString()
       })
+      
+      // Rollback optimistic update on error
+      if (isNavigationAction) {
+        console.log('Navigation error, rolling back to previous room')
+        setCurrentRoom(previousRoom)
+        setRoomPlayers(previousPlayers)
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (!player) {
+  if (!player || !isLoggedIn) {
     return <div>Loading...</div>
   }
 
-  if (!currentRoom) {
+  if (!currentRoom || isLoadingRoom) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-center">

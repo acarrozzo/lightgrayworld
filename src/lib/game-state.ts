@@ -46,6 +46,7 @@ export interface GameState {
   // Room state
   currentRoom: Room | null
   roomPlayers: Player[]
+  roomCache: Record<string, Room> // Cache for visited rooms
   
   // UI state
   isLoading: boolean
@@ -60,6 +61,8 @@ export interface GameState {
   login: (player: Player, token: string) => void
   logout: () => void
   getAuthHeaders: () => Record<string, string>
+  cacheRoom: (room: Room) => void
+  getCachedRoom: (roomId: string) => Room | null
 }
 
 export const useGameStore = create<GameState>()(
@@ -71,6 +74,7 @@ export const useGameStore = create<GameState>()(
       token: null,
       currentRoom: null,
       roomPlayers: [],
+      roomCache: {},
       isLoading: false,
       error: null,
       
@@ -93,12 +97,32 @@ export const useGameStore = create<GameState>()(
         token: null,
         isLoggedIn: false,
         currentRoom: null,
-        roomPlayers: []
+        roomPlayers: [],
+        roomCache: {},
+        error: null 
       }),
 
       getAuthHeaders: () => {
         const { token } = get()
         return token ? { Authorization: `Bearer ${token}` } : { Authorization: '' }
+      },
+      
+      cacheRoom: (room) => {
+        const { roomCache } = get()
+        console.log('Caching room:', room.name, 'ID:', room.roomId)
+        set({ 
+          roomCache: { 
+            ...roomCache, 
+            [room.roomId]: room 
+          } 
+        })
+      },
+      
+      getCachedRoom: (roomId) => {
+        const { roomCache } = get()
+        const cached = roomCache[roomId]
+        console.log('Getting cached room for ID:', roomId, 'Found:', cached ? cached.name : 'None')
+        return cached || null
       },
     }),
     {
