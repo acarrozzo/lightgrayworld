@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Generate sprite sheet before committing
+echo "🎨 Generating sprite sheet..."
+npm run generate-icons
+
+# Add generated files to commit
+git add public/sprite-sheet.svg src/lib/icon-mappings.ts

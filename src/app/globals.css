@@ -24,3 +24,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Icon styling for sprite sheet */
+.icon-svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.icon-svg use {
+  fill: currentColor;
+  stroke: currentColor;
+}

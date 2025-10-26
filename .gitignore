@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated files (to prevent file watching conflicts)
+/public/sprite-sheet.svg
+/src/lib/icon-mappings.ts
+
+/src/generated/prisma
