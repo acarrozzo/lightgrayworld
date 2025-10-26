@@ -4,7 +4,7 @@ import { SOCKET_EVENTS, PlayerData, ChatMessage, ActionData } from './socket'
 // Centralized socket event handlers to reduce duplication
 export class SocketEventHandlers {
   private socket: Socket | null = null
-  private eventListeners: Map<string, Function[]> = new Map()
+  private eventListeners: Map<string, ((...args: any[]) => void)[]> = new Map()
 
   constructor(socket: Socket | null) {
     this.socket = socket
@@ -62,7 +62,7 @@ export class SocketEventHandlers {
 
   // Send chat message
   sendChatMessage(message: string): boolean {
-    return this.emit(SOCKET_EVENTS.CHAT_MESSAGE, { message })
+    return this.emit(SOCKET_EVENTS.SEND_CHAT_MESSAGE, { message })
   }
 
   // Send game action

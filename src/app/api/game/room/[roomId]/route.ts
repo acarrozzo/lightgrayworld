@@ -3,12 +3,12 @@ import { prisma } from '@/lib/prisma'
 import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 
-async function handleGetRoom(
-  request: AuthenticatedRequest,
-  { params }: { params: Promise<{ roomId: string }> }
-) {
+async function handleGetRoom(request: AuthenticatedRequest) {
   try {
-    const { roomId } = await params
+    // Extract roomId from URL path
+    const url = new URL(request.url)
+    const pathSegments = url.pathname.split('/')
+    const roomId = pathSegments[pathSegments.length - 1]
 
     // Use the authenticated user's current room, not the provided roomId
     const actualRoomId = request.user.currentRoom || '000'

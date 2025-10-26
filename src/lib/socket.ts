@@ -4,7 +4,7 @@ import { Server } from 'socket.io'
 export interface SocketEvents {
   // Client to server events
   'player-login': (playerData: PlayerData) => void
-  'chat-message': (data: { message: string }) => void
+  'send-chat-message': (data: { message: string }) => void
   'game-action': (data: { action: string }) => void
   
   // Server to client events
@@ -71,12 +71,13 @@ export interface PlayerAction {
 export const SOCKET_EVENTS = {
   // Client to server
   PLAYER_LOGIN: 'player-login',
-  CHAT_MESSAGE: 'chat-message',
+  SEND_CHAT_MESSAGE: 'send-chat-message',
   GAME_ACTION: 'game-action',
   
   // Server to client
   PLAYER_JOINED: 'player-joined',
   PLAYER_LEFT: 'player-left',
+  CHAT_MESSAGE: 'chat-message',
   ACTION_COMPLETED: 'action-completed',
   PLAYER_ACTION: 'player-action',
 } as const

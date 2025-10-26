@@ -9,6 +9,14 @@ interface CompassProps {
   onAction?: (action: string) => void
 }
 
+interface Direction {
+  key: string
+  icon: string
+  label: string
+  position: string
+  rotation?: number
+}
+
 // Function to get room-specific map position using the same coordinates as the original
 const getRoomMapPosition = (roomId: string | undefined) => {
   // Map room IDs to specific background-position coordinates (matching the original PHP implementation)
@@ -48,7 +56,7 @@ export default function Compass({ room, onAction }: CompassProps) {
 
   if (!room) return null
 
-  const directions = [
+  const directions: Direction[] = [
     { key: 'northwest', icon: 'arrow', label: 'NW', position: 'top-left', rotation: 315 },
     { key: 'north', icon: 'arrow', label: 'N', position: 'top-center', rotation: 0 },
     { key: 'northeast', icon: 'arrow', label: 'NE', position: 'top-right', rotation: 45 },
@@ -59,7 +67,7 @@ export default function Compass({ room, onAction }: CompassProps) {
     { key: 'southeast', icon: 'arrow', label: 'SE', position: 'bottom-right', rotation: 135 },
   ]
 
-  const verticalDirections = [
+  const verticalDirections: Direction[] = [
     { key: 'up', icon: 'arrow-up', label: 'UP', position: 'top' },
     { key: 'down', icon: 'arrow-down', label: 'DOWN', position: 'bottom' },
   ]

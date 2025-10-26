@@ -154,14 +154,14 @@ async function handleLookAction(request: AuthenticatedRequest) {
       })
 
       // Emit real-time action event
-      const { emitActionCompleted } = await import('../../../lib/socket')
+      const { emitActionCompleted } = await import('../../../../lib/socket')
       emitActionCompleted(request.user.currentRoom, {
         id: actionRecord.id,
         action: actionRecord.action,
         message: actionRecord.message,
         timestamp: actionRecord.timestamp,
-        roomId: actionRecord.roomId,
-        metadata: actionRecord.metadata,
+        roomId: actionRecord.roomId || '',
+        metadata: actionRecord.metadata || undefined,
         playerId: request.user.id,
         playerName: request.user.username
       })
@@ -208,14 +208,14 @@ async function handleAttackAction(request: AuthenticatedRequest) {
     })
 
     // Emit real-time action event
-    const { emitActionCompleted } = await import('../../../lib/socket')
+    const { emitActionCompleted } = await import('../../../../lib/socket')
     emitActionCompleted(request.user.currentRoom, {
       id: actionRecord.id,
       action: actionRecord.action,
       message: actionRecord.message,
       timestamp: actionRecord.timestamp,
-      roomId: actionRecord.roomId,
-      metadata: actionRecord.metadata,
+      roomId: actionRecord.roomId || '',
+      metadata: actionRecord.metadata || undefined,
       playerId: request.user.id,
       playerName: request.user.username
     })
@@ -248,14 +248,14 @@ async function handleSearchAction(request: AuthenticatedRequest) {
     })
 
     // Emit real-time action event
-    const { emitActionCompleted } = await import('../../../lib/socket')
+    const { emitActionCompleted } = await import('../../../../lib/socket')
     emitActionCompleted(request.user.currentRoom, {
       id: actionRecord.id,
       action: actionRecord.action,
       message: actionRecord.message,
       timestamp: actionRecord.timestamp,
-      roomId: actionRecord.roomId,
-      metadata: actionRecord.metadata,
+      roomId: actionRecord.roomId || '',
+      metadata: actionRecord.metadata || undefined,
       playerId: request.user.id,
       playerName: request.user.username
     })
@@ -288,14 +288,14 @@ async function handleRestAction(request: AuthenticatedRequest) {
     })
 
     // Emit real-time action event
-    const { emitActionCompleted } = await import('../../../lib/socket')
+    const { emitActionCompleted } = await import('../../../../lib/socket')
     emitActionCompleted(request.user.currentRoom, {
       id: actionRecord.id,
       action: actionRecord.action,
       message: actionRecord.message,
       timestamp: actionRecord.timestamp,
-      roomId: actionRecord.roomId,
-      metadata: actionRecord.metadata,
+      roomId: actionRecord.roomId || '',
+      metadata: actionRecord.metadata || undefined,
       playerId: request.user.id,
       playerName: request.user.username
     })
@@ -453,18 +453,16 @@ async function handleTravelAction(request: AuthenticatedRequest, direction: stri
       })
 
       // Emit real-time action event
-      const { emitActionCompleted } = await import('../../../lib/socket')
+      const { emitActionCompleted } = await import('../../../../lib/socket')
       emitActionCompleted(targetRoomId, {
         id: actionRecord.id,
         action: actionRecord.action,
         message: actionRecord.message,
         timestamp: actionRecord.timestamp,
-        roomId: actionRecord.roomId,
-        metadata: actionRecord.metadata,
+        roomId: actionRecord.roomId || '',
+        metadata: actionRecord.metadata || undefined,
         playerId: request.user.id,
         playerName: request.user.username,
-        success: result.success,
-        roomData: result.roomData
       })
     } catch (historyError) {
       console.error('Failed to record travel action:', historyError)
@@ -854,17 +852,16 @@ When you rest you will restore lost HP and MP. The amount you restore is determi
       })
 
       // Emit real-time action event
-      const { emitActionCompleted } = await import('../../../lib/socket')
+      const { emitActionCompleted } = await import('../../../../lib/socket')
       emitActionCompleted(currentRoom, {
         id: actionRecord.id,
         action: actionRecord.action,
         message: actionRecord.message,
         timestamp: actionRecord.timestamp,
-        roomId: actionRecord.roomId,
-        metadata: actionRecord.metadata,
+        roomId: actionRecord.roomId || '',
+        metadata: actionRecord.metadata || undefined,
         playerId: request.user.id,
         playerName: request.user.username,
-        success: result.success
       })
     } catch (error) {
       console.error('Failed to record room action history:', error)
