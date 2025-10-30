@@ -174,7 +174,6 @@ CREATE TABLE "Room" (
     "roomId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT NOT NULL,
-    "lookDesc" TEXT,
     "dangerLevel" INTEGER NOT NULL DEFAULT 0,
     "isSafe" BOOLEAN NOT NULL DEFAULT true,
     "north" TEXT,

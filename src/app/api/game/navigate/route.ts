@@ -135,7 +135,6 @@ async function handleNavigate(request: AuthenticatedRequest) {
         roomId: targetRoom.roomId,
         name: targetRoom.name,
         description: targetRoom.description,
-        lookDesc: targetRoom.lookDesc,
         dangerLevel: targetRoom.dangerLevel,
         isSafe: targetRoom.isSafe,
         players: targetRoomActivePlayers,

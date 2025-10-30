@@ -18,7 +18,6 @@ export interface Room {
   roomId: string
   name: string
   description: string
-  lookDesc?: string
   dangerLevel: number
   isSafe: boolean
   players: Player[]

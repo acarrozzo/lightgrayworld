@@ -45,7 +45,6 @@ async function handleGetCurrentRoom(request: AuthenticatedRequest) {
         roomId: room.roomId,
         name: room.name,
         description: room.description,
-        lookDesc: room.lookDesc,
         dangerLevel: room.dangerLevel,
         isSafe: room.isSafe,
         players: activePlayers,

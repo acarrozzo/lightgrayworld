@@ -83,6 +83,14 @@ export default function Compass({ room, onAction }: CompassProps) {
 
   if (!room) return null
 
+  const isRoomZero = room.roomId === '000'
+  const mapBackground = isRoomZero
+    ? '/icons/roomzero.svg'
+    : '/icons/lightgray_map_grassyfield_main.jpg'
+  const mapPosition = isRoomZero
+    ? 'center'
+    : (isTransitioning ? targetPosition : currentPosition)
+
   const directions: Direction[] = [
     { key: 'northwest', icon: 'arrow', label: 'NW', position: 'top-left', rotation: 315 },
     { key: 'north', icon: 'arrow', label: 'N', position: 'top-center', rotation: 0 },
@@ -111,8 +119,8 @@ export default function Compass({ room, onAction }: CompassProps) {
                 isTransitioning ? 'transition-all duration-500 ease-in-out' : ''
               }`}
               style={{
-                backgroundImage: `url('/icons/lightgray_map_grassyfield_main.jpg')`,
-                backgroundPosition: isTransitioning ? targetPosition : currentPosition,
+                backgroundImage: `url('${mapBackground}')`,
+                backgroundPosition: mapPosition,
                 border: '20px solid rgba(250, 250, 250, 0)'
               }}
             />

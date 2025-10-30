@@ -191,7 +191,6 @@ model Room {
   roomId           String     @unique
   name             String
   description      String
-  lookDesc         String?
   dangerLevel      Int        @default(0)
   isSafe           Boolean    @default(true)
   north            String?
