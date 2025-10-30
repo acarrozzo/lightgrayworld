@@ -222,6 +222,18 @@ CREATE TABLE "ChatMessage" (
 );
 
 -- CreateTable
+CREATE TABLE "ActionHistory" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "timestamp" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "roomId" TEXT,
+    "metadata" TEXT,
+    CONSTRAINT "ActionHistory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "Account" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
@@ -258,9 +270,6 @@ CREATE TABLE "VerificationToken" (
 CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Equipment_userId_key" ON "Equipment"("userId");
 
 -- CreateIndex
@@ -274,6 +283,9 @@ CREATE UNIQUE INDEX "QuestProgress_userId_questId_key" ON "QuestProgress"("userI
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Room_roomId_key" ON "Room"("roomId");
+
+-- CreateIndex
+CREATE INDEX "ActionHistory_userId_timestamp_idx" ON "ActionHistory"("userId", "timestamp");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");

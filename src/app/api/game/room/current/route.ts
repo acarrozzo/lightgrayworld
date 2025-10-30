@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
+import { COMMON_ERRORS } from '@/lib/error-handling'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 
 async function handleGetCurrentRoom(request: AuthenticatedRequest) {
   try {
-    // Use the authenticated user's current room
-    const actualRoomId = request.user.currentRoom || '000'
+    // Use the authenticated user's current room, default to 001 in dev if missing
+    const actualRoomId = request.user.currentRoom || '001'
 
     // Get room data
     const room = await prisma.room.findUnique({
@@ -31,10 +31,9 @@ async function handleGetCurrentRoom(request: AuthenticatedRequest) {
     })
 
     if (!room) {
-      return NextResponse.json(
-        COMMON_ERRORS.NOT_FOUND('Room'),
-        { status: 404 }
-      )
+      const base = COMMON_ERRORS.NOT_FOUND('Room')
+      const details = process.env.NODE_ENV !== 'production' ? { details: `roomId=${actualRoomId}` } : {}
+      return NextResponse.json({ ...base, error: { ...base.error, ...details } }, { status: 404 })
     }
 
     // Filter active players
@@ -65,11 +64,14 @@ async function handleGetCurrentRoom(request: AuthenticatedRequest) {
       players: activePlayers
     })
   } catch (error) {
-    console.error('Current room fetch error:', error)
-    return NextResponse.json(
-      COMMON_ERRORS.INTERNAL_ERROR('Failed to load current room'),
-      { status: 500 }
-    )
+    console.error('Current room fetch error:', {
+      error,
+      userId: request.user?.id,
+      currentRoom: request.user?.currentRoom,
+    })
+    const base = COMMON_ERRORS.INTERNAL_ERROR('Failed to load current room')
+    const details = process.env.NODE_ENV !== 'production' ? { details: (error as any)?.message || String(error) } : {}
+    return NextResponse.json({ ...base, error: { ...base.error, ...details } }, { status: 500 })
   }
 }
 
