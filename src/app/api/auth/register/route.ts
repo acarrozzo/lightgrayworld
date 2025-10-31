@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createAuthResponse } from '@/lib/auth'
 import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
+import { FEATURE_FLAGS } from '@/lib/config'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -9,10 +10,19 @@ export async function POST(request: NextRequest) {
     const { username, password, email } = await request.json()
 
     // Validate required fields
-    const validation = validateRequiredFields({ username, password, email }, ['username', 'password', 'email'])
+    const requiredFields: Array<'username' | 'password' | 'email'> = ['username', 'password']
+    if (FEATURE_FLAGS.REQUIRE_EMAIL_ON_REGISTRATION) {
+      requiredFields.push('email')
+    }
+
+    const validation = validateRequiredFields({ username, password, email }, requiredFields)
     if (!validation.isValid) {
+      const message = FEATURE_FLAGS.REQUIRE_EMAIL_ON_REGISTRATION
+        ? 'Username, password, and email are required'
+        : 'Username and password are required'
+
       return NextResponse.json(
-        COMMON_ERRORS.VALIDATION_ERROR('Username, password, and email are required'),
+        COMMON_ERRORS.VALIDATION_ERROR(message),
         { status: 400 }
       )
     }
@@ -37,7 +47,7 @@ export async function POST(request: NextRequest) {
       data: {
         username,
         password: hashedPassword,
-        email,
+        ...(email ? { email } : {}),
         // Create default equipment
         equipment: {
           create: {}

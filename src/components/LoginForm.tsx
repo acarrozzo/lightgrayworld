@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useGameStore } from '@/lib/game-state'
 import { inputStyles } from '@/lib/styles'
+import { FEATURE_FLAGS } from '@/lib/config'
 
 export default function LoginForm() {
   const [isLogin, setIsLogin] = useState(true)
@@ -12,6 +13,7 @@ export default function LoginForm() {
     email: ''
   })
   const { setLoading, setError, login } = useGameStore()
+  const requireEmail = FEATURE_FLAGS.REQUIRE_EMAIL_ON_REGISTRATION
 
   const handleAuth = async (e: React.FormEvent, isLogin: boolean) => {
     e.preventDefault()
@@ -20,12 +22,24 @@ export default function LoginForm() {
 
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
+      const trimmedEmail = formData.email.trim()
+      const payload: Record<string, string> = {
+        username: formData.username,
+        password: formData.password,
+      }
+
+      if (!isLogin) {
+        if (requireEmail || trimmedEmail) {
+          payload.email = trimmedEmail
+        }
+      }
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -79,25 +93,6 @@ export default function LoginForm() {
               />
             </div>
             
-            {!isLogin && (
-              <div>
-                <label htmlFor="email" className="sr-only">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className={inputStyles.login.email}
-                  placeholder="Email address"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-            )}
-            
             <div>
               <label htmlFor="password" className="sr-only">
                 Password
@@ -114,6 +109,26 @@ export default function LoginForm() {
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               />
             </div>
+            {!isLogin && (
+              <div>
+                <label htmlFor="email" className="sr-only">
+                  Email {requireEmail ? '' : '(optional)'}
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required={requireEmail}
+                  className={inputStyles.login.email}
+                  placeholder={requireEmail ? 'Email address' : 'Email address (optional)'}
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+            )}
+            
+
           </div>
 
           <div>
