@@ -6,6 +6,66 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers, GameFact } from '@/lib/socket-handlers'
 import Icon from './Icon'
 
+const DIRECTION_KEYS = [
+  'north',
+  'northeast',
+  'east',
+  'southeast',
+  'south',
+  'southwest',
+  'west',
+  'northwest',
+  'up',
+  'down',
+] as const
+
+type DirectionKey = (typeof DIRECTION_KEYS)[number]
+
+const ROOM_NAME_MAP: Record<string, string> = {
+  '000': 'Room Zero',
+  '001': 'Grassy Field Crossroads',
+  '002': 'Grassy Field South',
+  '003': 'Wood Cabin',
+  '004': 'Flower Patch',
+  '005': 'Grassy Field North',
+  '006': 'Basic Shop',
+  '007': 'Cave Entrance',
+  '020': 'Healing Springs',
+  '021': 'Pajama Shaman',
+}
+
+const findDirectionKey = (currentRoom: Room | null | undefined, targetRoomId?: string): DirectionKey | null => {
+  if (!currentRoom || !targetRoomId) {
+    return null
+  }
+
+  const roomDirections = currentRoom as Record<DirectionKey, string | undefined>
+
+  for (const key of DIRECTION_KEYS) {
+    if (roomDirections[key] === targetRoomId) {
+      return key
+    }
+  }
+
+  return null
+}
+
+const buildDirectionPhrase = (direction: DirectionKey | null, context: 'enter' | 'exit'): string => {
+  if (!direction) {
+    return 'an unknown direction'
+  }
+
+  if (direction === 'up') {
+    return context === 'enter' ? 'above' : 'upward'
+  }
+
+  if (direction === 'down') {
+    return context === 'enter' ? 'below' : 'downward'
+  }
+
+  return `the ${direction.replace(/_/g, ' ')}`
+}
+
 interface ActionHistory {
   id: string
   action: string
@@ -39,7 +99,7 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
   const feedRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
   const isClearingFeed = useRef(false)
-  const { getAuthHeaders, player, setCurrentRoom, setRoomPlayers, setRoomFactSeq } = useGameStore()
+  const { getAuthHeaders, player, setCurrentRoom, setRoomPlayers, setRoomFactSeq, getCachedRoom } = useGameStore()
   const { socket, isConnected } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
 
@@ -154,6 +214,48 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
     }
   }
 
+  const resolveRoomInfo = (roomId?: string, fallbackName?: string) => {
+    if (!roomId) {
+      return { id: '', name: 'Unknown Room' }
+    }
+
+    if (room?.roomId === roomId && room?.name) {
+      return { id: roomId, name: room.name }
+    }
+
+    if (initialRoom?.roomId === roomId && initialRoom?.name) {
+      return { id: roomId, name: initialRoom.name }
+    }
+
+    const cachedRoom = getCachedRoom(roomId)
+    if (cachedRoom?.name) {
+      return { id: roomId, name: cachedRoom.name }
+    }
+
+    const actionRoom = actions.find((entry) => entry.roomData?.roomId === roomId)
+    if (actionRoom?.roomData?.name) {
+      return { id: roomId, name: actionRoom.roomData.name }
+    }
+
+    if (ROOM_NAME_MAP[roomId]) {
+      return { id: roomId, name: ROOM_NAME_MAP[roomId] }
+    }
+
+    if (fallbackName) {
+      return { id: roomId, name: fallbackName }
+    }
+
+    return { id: roomId, name: 'Unknown Room' }
+  }
+
+  const formatRoomLabel = (roomId?: string, fallbackName?: string) => {
+    const info = resolveRoomInfo(roomId, fallbackName)
+    if (!info.id) {
+      return info.name
+    }
+    return `#${info.id} - ${info.name}`
+  }
+
   // Add current action result to the feed
   useEffect(() => {
     if (actionResult) {
@@ -208,19 +310,47 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
           metadata: JSON.stringify(fact.data),
         }
       case 'player_moved': {
-        const toRoom = fact.data.toRoom || 'unknown room'
-        const fromRoom = fact.data.fromRoom || 'unknown room'
-        const displayRoom = fact.data.toRoomName || toRoom
-        const movementMessage = isSelfMovement
-          ? `You travel from ${fromRoom} to ${displayRoom}`
-          : `${fact.data.username || fact.data.playerId} moved from ${fromRoom} to ${displayRoom}`
+        const toRoomId = (fact.data.toRoom as string) || undefined
+        const fromRoomId = (fact.data.fromRoom as string) || undefined
+        const toRoomName = (fact.data.toRoomName as string) || undefined
+        const fromRoomName = (fact.data.fromRoomName as string) || undefined
+
+        const playerLabel = isSelfMovement ? 'You' : fact.data.username || fact.data.playerId || 'Unknown player'
+        const enterVerb = isSelfMovement ? 'enter' : 'enters'
+        const exitVerb = isSelfMovement ? 'exit' : 'exits'
+        const travelVerb = isSelfMovement ? 'travel' : 'travels'
+
+        const isEnteringCurrentRoom = room?.roomId !== undefined && toRoomId === room.roomId
+        const isExitingCurrentRoom = room?.roomId !== undefined && fromRoomId === room.roomId
+
+        let message: string
+
+        if (isEnteringCurrentRoom) {
+          const directionKey = findDirectionKey(room, fromRoomId)
+          const directionPhrase = buildDirectionPhrase(directionKey, 'enter')
+          const originLabel = formatRoomLabel(fromRoomId, fromRoomName)
+          message = `${playerLabel} ${enterVerb} from ${directionPhrase} (${originLabel})`
+        } else if (isExitingCurrentRoom) {
+          const directionKey = findDirectionKey(room, toRoomId)
+          const directionPhrase = buildDirectionPhrase(directionKey, 'exit')
+          const destinationLabel = formatRoomLabel(toRoomId, toRoomName)
+          message = `${playerLabel} ${exitVerb} to ${directionPhrase} (${destinationLabel})`
+        } else {
+          const originLabel = formatRoomLabel(fromRoomId, fromRoomName)
+          const destinationLabel = formatRoomLabel(toRoomId, toRoomName)
+          message = `${playerLabel} ${travelVerb} from ${originLabel} to ${destinationLabel}`
+        }
+
+        const actionRoomId = isEnteringCurrentRoom || isExitingCurrentRoom
+          ? room?.roomId
+          : toRoomId || fromRoomId || room?.roomId
 
         return {
           id: `fact-${fact.tickId}-${fact.seq}`,
           action: 'move',
-          message: movementMessage,
+          message,
           timestamp,
-          roomId: fact.data.toRoom || room?.roomId,
+          roomId: actionRoomId,
           metadata: JSON.stringify(fact.data),
         }
       }
