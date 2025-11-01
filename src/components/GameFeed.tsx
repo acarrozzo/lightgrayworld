@@ -214,6 +214,12 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
     }
   }
 
+  // Scroll to bottom on initial mount/refresh so users land at the latest entries
+  useEffect(() => {
+    const t = setTimeout(() => scrollToBottom(), 0)
+    return () => clearTimeout(t)
+  }, [])
+
   const resolveRoomInfo = (roomId?: string, fallbackName?: string) => {
     if (!roomId) {
       return { id: '', name: 'Unknown Room' }

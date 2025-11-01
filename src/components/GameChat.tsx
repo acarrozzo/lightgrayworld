@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { useGameStore } from '@/lib/game-state'
 import { inputStyles } from '@/lib/styles'
 import { useSocket } from '@/hooks/useSocket'
@@ -35,6 +35,11 @@ export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
     }
   }
+
+  // Scroll once on first mount (page refresh / initial render)
+  useLayoutEffect(() => {
+    requestAnimationFrame(() => scrollToBottom())
+  }, [])
 
   // Only auto-scroll when new messages are added, not when messages array changes for other reasons
   useEffect(() => {

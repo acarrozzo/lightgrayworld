@@ -92,6 +92,12 @@ export default function ActionFeed({ className = '' }: ActionFeedProps) {
     }
   }
 
+  // Ensure bottom on initial load/refresh
+  useEffect(() => {
+    const t = setTimeout(() => scrollToBottom(), 0)
+    return () => clearTimeout(t)
+  }, [])
+
   useEffect(() => {
     loadActions(1, false)
   }, [])
