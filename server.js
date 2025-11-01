@@ -189,7 +189,7 @@ app.prepare().then(() => {
     })
 
     // Handle chat messages
-    socket.on(SOCKET_EVENTS.CHAT_MESSAGE, (data) => {
+    socket.on(SOCKET_EVENTS.SEND_CHAT_MESSAGE, (data) => {
       try {
         const player = activePlayers.get(socket.id)
         if (!player) return

@@ -72,31 +72,49 @@ class GameEngine {
     const facts = room.processIntents(tickId)
 
     if (facts.length > 0) {
-      this.io.to(`room-${room.roomId}`).emit('game:facts', {
-        facts,
-        tickId,
-      })
+      const chatFacts = facts.filter((fact) => fact.type === 'chat')
+      const otherFacts = facts.filter((fact) => fact.type !== 'chat')
 
-      const movementFacts = facts.filter((fact) => fact.type === 'player_moved')
-      movementFacts.forEach((fact) => {
-        const { fromRoom, toRoom } = fact.data || {}
+      if (chatFacts.length > 0) {
+        this.io.emit('game:facts', {
+          facts: chatFacts,
+          tickId,
+        })
 
-        if (toRoom && toRoom !== room.roomId) {
-          this.io.to(`room-${toRoom}`).emit('game:facts', {
-            facts: [fact],
-            tickId,
-          })
-        }
+        console.log(
+          `[GameEngine] Broadcasted ${chatFacts.length} chat facts globally on tick ${tickId}`
+        )
+      }
 
-        if (fromRoom && fromRoom !== room.roomId) {
-          this.io.to(`room-${fromRoom}`).emit('game:facts', {
-            facts: [fact],
-            tickId,
-          })
-        }
-      })
+      if (otherFacts.length > 0) {
+        this.io.to(`room-${room.roomId}`).emit('game:facts', {
+          facts: otherFacts,
+          tickId,
+        })
 
-      console.log(`[GameEngine] Broadcasted ${facts.length} facts for room ${room.roomId} on tick ${tickId}`)
+        const movementFacts = otherFacts.filter((fact) => fact.type === 'player_moved')
+        movementFacts.forEach((fact) => {
+          const { fromRoom, toRoom } = fact.data || {}
+
+          if (toRoom && toRoom !== room.roomId) {
+            this.io.to(`room-${toRoom}`).emit('game:facts', {
+              facts: [fact],
+              tickId,
+            })
+          }
+
+          if (fromRoom && fromRoom !== room.roomId) {
+            this.io.to(`room-${fromRoom}`).emit('game:facts', {
+              facts: [fact],
+              tickId,
+            })
+          }
+        })
+
+        console.log(
+          `[GameEngine] Broadcasted ${otherFacts.length} facts for room ${room.roomId} on tick ${tickId}`
+        )
+      }
     }
   }
 

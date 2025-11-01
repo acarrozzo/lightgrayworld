@@ -5,7 +5,7 @@ let io = null
 const SOCKET_EVENTS = {
   // Client to server
   PLAYER_LOGIN: 'player-login',
-  CHAT_MESSAGE: 'chat-message',
+  SEND_CHAT_MESSAGE: 'send-chat-message',
   GAME_ACTION: 'game-action',
   
   // Server to client

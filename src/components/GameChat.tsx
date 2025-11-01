@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useGameStore } from '@/lib/game-state'
 import { inputStyles } from '@/lib/styles'
 import { useSocket } from '@/hooks/useSocket'
@@ -24,81 +24,146 @@ interface GameChatProps {
 export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const hasAutoScrolledRef = useRef(false)
+  const hasLoadedHistoryRef = useRef(false)
+  const previousConnectionRef = useRef(false)
   const { getAuthHeaders, player } = useGameStore()
   const { socket, isConnected, connectionError, reconnect } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
 
-  const scrollToBottom = () => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
-    }
-  }
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const container = messagesContainerRef.current
+    if (!container) return
 
-  // Scroll once on first mount (page refresh / initial render)
-  useLayoutEffect(() => {
-    requestAnimationFrame(() => scrollToBottom())
+    container.scrollTo({ top: container.scrollHeight, behavior })
   }, [])
 
-  // Only auto-scroll when new messages are added, not when messages array changes for other reasons
+  // Scroll behavior: instant on first load, smooth only when near bottom for new messages
   useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom()
+    if (messages.length === 0) return
+
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    if (!hasAutoScrolledRef.current) {
+      scrollToBottom('auto')
+      hasAutoScrolledRef.current = true
+      return
     }
-  }, [messages.length])
 
-  useEffect(() => {
-    if (!socket || !player) return
- 
-     // Listen for authoritative facts from the engine
-     const cleanupFacts = socketHandlers.onGameFacts(({ facts }) => {
-       facts
-         .filter((fact) => fact.type === 'chat')
-         .forEach((fact) => {
-           const formattedMessage: ChatMessage = {
-             id: `${fact.tickId}-${fact.seq}`,
-             username: fact.data.username || 'Unknown',
-             message: fact.data.message || '',
-             timestamp: new Date(fact.timestamp || Date.now()),
-             level: fact.data.level ?? 0,
-           }
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    const isNearBottom = distanceFromBottom < 100
 
-           setMessages((prev) => [...prev, formattedMessage])
+    if (isNearBottom) {
+      scrollToBottom('smooth')
+    }
+  }, [messages.length, scrollToBottom])
 
-           if (onNewMessage) {
-             onNewMessage()
-           }
-         })
-     })
- 
-     // Load existing messages
-     loadMessages()
- 
-     return () => {
-       cleanupFacts()
-     }
-   }, [socket, player, socketHandlers])
+  const mergeMessages = useCallback(
+    (incoming: ChatMessage[]): boolean => {
+      if (incoming.length === 0) return false
 
-  const loadMessages = async () => {
+      let added = false
+      setMessages((prev) => {
+        const map = new Map<string, ChatMessage>()
+        prev.forEach((message) => {
+          map.set(message.id, message)
+        })
+
+        incoming.forEach((message) => {
+          if (!map.has(message.id)) {
+            added = true
+          }
+          map.set(message.id, message)
+        })
+
+        const next = Array.from(map.values()).sort(
+          (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+        )
+
+        if (next.length !== prev.length) {
+          added = true
+        }
+
+        return next
+      })
+
+      return added
+    },
+    []
+  )
+
+  const loadMessages = useCallback(async () => {
     try {
       const response = await fetch('/api/chat/messages', {
-        headers: getAuthHeaders()
+        headers: getAuthHeaders(),
       })
-      
+
       if (response.ok) {
         const data = await response.json()
-        // Convert timestamp strings back to Date objects
-        const formattedMessages = (data.messages || []).map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
+        const formattedMessages: ChatMessage[] = (data.messages || []).map((msg: any) => ({
+          id: msg.id,
+          username: msg.username,
+          message: msg.message,
+          timestamp: new Date(msg.timestamp),
+          level: msg.level,
         }))
-        setMessages(formattedMessages)
+
+        mergeMessages(formattedMessages)
+        hasLoadedHistoryRef.current = true
       }
     } catch (error) {
       console.error('Failed to load messages:', error)
     }
-  }
+  }, [getAuthHeaders, mergeMessages])
+
+  useEffect(() => {
+    if (!player?.id) return
+    if (hasLoadedHistoryRef.current) return
+
+    loadMessages()
+  }, [player?.id, loadMessages])
+
+  useEffect(() => {
+    if (!socket || !player) return
+
+    const cleanupFacts = socketHandlers.onGameFacts(({ facts }) => {
+      const chatMessages: ChatMessage[] = facts
+        .filter((fact) => fact.type === 'chat')
+        .map((fact) => ({
+          id: `${fact.tickId}-${fact.seq}`,
+          username: fact.data.username || 'Unknown',
+          message: fact.data.message || '',
+          timestamp: new Date(fact.timestamp || Date.now()),
+          level: fact.data.level ?? 0,
+        }))
+
+      if (chatMessages.length === 0) return
+
+      const added = mergeMessages(chatMessages)
+      if (added && onNewMessage) {
+        onNewMessage()
+      }
+    })
+
+    return () => {
+      cleanupFacts()
+    }
+  }, [socket, player?.id, socketHandlers, mergeMessages, onNewMessage])
+
+  useEffect(() => {
+    if (!player?.id) {
+      previousConnectionRef.current = false
+      return
+    }
+
+    if (isConnected && !previousConnectionRef.current && hasLoadedHistoryRef.current) {
+      loadMessages()
+    }
+
+    previousConnectionRef.current = isConnected
+  }, [isConnected, player?.id, loadMessages])
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -193,7 +258,6 @@ export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
             </div>
           ))
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Socket } from 'socket.io-client'
 import { SOCKET_EVENTS, PlayerData, ChatMessage, ActionData } from './socket'
 
@@ -128,5 +129,7 @@ export class SocketEventHandlers {
 
 // Hook for using socket event handlers
 export function useSocketHandlers(socket: Socket | null) {
-  return new SocketEventHandlers(socket)
+  const handlers = useMemo(() => new SocketEventHandlers(socket), [socket])
+
+  return handlers
 }
