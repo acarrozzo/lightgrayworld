@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import Icon from './Icon'
 import RoomDisplay from './RoomDisplay'
 
@@ -38,44 +38,67 @@ const getRoomMapPosition = (roomId: string | undefined) => {
 
 export default function Compass({ room, onAction }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
-  const [currentPosition, setCurrentPosition] = useState<string>('')
-  const [targetPosition, setTargetPosition] = useState<string>('')
+  const [currentPosition, setCurrentPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
+  const [targetPosition, setTargetPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const prevRoomId = useRef<string | null>(null)
 
   // Initialize position when room changes
   React.useEffect(() => {
-    if (room?.roomId) {
-      const newPosition = getRoomMapPosition(room.roomId)
-      if (!currentPosition) {
-        // First load - set immediately
-        setCurrentPosition(newPosition)
-        setTargetPosition(newPosition)
-      } else {
-        // Room change - start transition
-        setTargetPosition(newPosition)
-        setIsTransitioning(true)
-        
-        // Complete transition after animation
-        const timer = setTimeout(() => {
-          setCurrentPosition(newPosition)
-          setIsTransitioning(false)
-        }, 500) // Match CSS transition duration
-        
-        return () => clearTimeout(timer)
-      }
+    console.log('[Compass] useEffect triggered for room:', room?.roomId)
+    if (!room?.roomId) {
+      return
     }
-  }, [room?.roomId])
+
+    const newPosition = getRoomMapPosition(room.roomId)
+    const isFirstLoad = prevRoomId.current === null
+    const isSameRoom = prevRoomId.current === room.roomId
+
+    console.log('[Compass] Calculated newPosition:', newPosition, 'currentPosition:', currentPosition, 'prevRoomId:', prevRoomId.current)
+
+    if (isFirstLoad || isSameRoom || currentPosition === '') {
+      setCurrentPosition(newPosition)
+      setTargetPosition(newPosition)
+      setIsTransitioning(false)
+      prevRoomId.current = room.roomId
+      console.log('[Compass] Initial position set to:', newPosition)
+      return
+    }
+
+    setTargetPosition(newPosition)
+    setIsTransitioning(true)
+    prevRoomId.current = room.roomId
+    console.log('[Compass] Transition started to newPosition:', newPosition)
+
+    const timer = setTimeout(() => {
+      setCurrentPosition(newPosition)
+      setIsTransitioning(false)
+      console.log('[Compass] Transition complete, currentPosition updated to:', newPosition)
+    }, 500) // Match CSS transition duration
+
+    return () => {
+      console.log('[Compass] Cleaning up transition timer for room change')
+      clearTimeout(timer)
+    }
+  }, [room?.roomId, currentPosition])
 
   const handleNavigate = async (direction: string) => {
-    if (isNavigating || !room?.[direction] || !onAction) return
+    console.log('[Compass] handleNavigate called with direction:', direction)
+    console.log('[Compass] isNavigating:', isNavigating, 'room[direction]:', room?.[direction], 'onAction:', !!onAction)
+    if (isNavigating || !room?.[direction] || !onAction) {
+      console.log('[Compass] Early return - navigation blocked')
+      return
+    }
 
     setIsNavigating(true)
+    console.log('[Compass] Calling onAction with direction:', direction)
     
     try {
       // Use the unified action system
       await onAction(direction)
+      console.log('[Compass] onAction completed successfully')
     } catch (error) {
-      console.error('Navigation error:', error)
+      console.error('[Compass] Navigation error:', error)
     } finally {
       setIsNavigating(false)
     }
@@ -115,9 +138,7 @@ export default function Compass({ room, onAction }: CompassProps) {
           {/* Map circle in center */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div 
-              className={`w-[140px] h-[140px] rounded-full bg-no-repeat ${
-                isTransitioning ? 'transition-all duration-500 ease-in-out' : ''
-              }`}
+              className="w-[140px] h-[140px] rounded-full bg-no-repeat transition-all duration-500 ease-in-out"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition,

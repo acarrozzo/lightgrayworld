@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
-import { io, Socket } from 'socket.io-client'
-import { SOCKET_EVENTS } from '@/lib/socket'
+import { useEffect, useState, useCallback } from 'react'
+import type { Socket, DisconnectReason } from 'socket.io-client'
+import { getOrCreateSocket, subscribeToConnection, getSocket } from '@/lib/socket-client'
 
 interface UseSocketReturn {
   socket: Socket | null
@@ -15,88 +15,58 @@ export const useSocket = (): UseSocketReturn => {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const socketRef = useRef<Socket | null>(null)
-
-  const cleanup = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
-    if (socketRef.current) {
-      socketRef.current.removeAllListeners()
-      socketRef.current.close()
-      socketRef.current = null
-    }
-  }, [])
-
-  const createSocket = useCallback(() => {
-    cleanup()
-    
-    const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000', {
-      transports: ['websocket', 'polling'],
-      timeout: 20000,
-      forceNew: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000
-    })
-
-    socketInstance.on('connect', () => {
-      console.log('Connected to server')
-      setIsConnected(true)
-      setConnectionError(null)
-    })
-
-    socketInstance.on('disconnect', (reason) => {
-      console.log('Disconnected from server:', reason)
-      setIsConnected(false)
-    })
-
-    socketInstance.on('connect_error', (error) => {
-      console.error('Socket connection error:', error)
-      setIsConnected(false)
-      setConnectionError(error.message)
-    })
-
-    socketInstance.on('reconnect', (attemptNumber) => {
-      console.log('Reconnected to server after', attemptNumber, 'attempts')
-      setIsConnected(true)
-      setConnectionError(null)
-    })
-
-    socketInstance.on('reconnect_error', (error) => {
-      console.error('Reconnection error:', error)
-      setConnectionError(error.message)
-    })
-
-    socketInstance.on('reconnect_failed', () => {
-      console.error('Failed to reconnect to server')
-      setConnectionError('Failed to reconnect to server')
-    })
-
-    socketRef.current = socketInstance
-    setSocket(socketInstance)
-  }, [cleanup])
-
-  const reconnect = useCallback(() => {
-    console.log('Manual reconnect triggered')
-    setConnectionError(null)
-    createSocket()
-  }, [createSocket])
 
   useEffect(() => {
-    // Add a small delay to ensure the server is ready
-    const timer = setTimeout(() => {
-      createSocket()
-    }, 100)
+    console.log('[useSocket] Initializing with global socket')
+    const instance = getOrCreateSocket()
+    setSocket(instance)
+    setIsConnected(instance.connected)
+    setConnectionError(instance.connected ? null : 'Socket disconnected')
+
+    const unsubscribe = subscribeToConnection((connected) => {
+      console.log('[useSocket] Connection state changed:', connected, 'socketId:', instance.id)
+      setIsConnected(connected)
+      if (connected) {
+        setConnectionError(null)
+      }
+    })
+
+    const handleDisconnect = (reason: DisconnectReason) => {
+      console.log('[useSocket] Disconnected from server with reason:', reason)
+      setIsConnected(false)
+      if (reason !== 'io client disconnect') {
+        setConnectionError(reason)
+      }
+    }
+
+    const handleConnectError = (error: Error) => {
+      console.error('[useSocket] Connection error:', error)
+      setIsConnected(false)
+      setConnectionError(error.message)
+    }
+
+    instance.on('disconnect', handleDisconnect)
+    instance.on('connect_error', handleConnectError)
 
     return () => {
-      clearTimeout(timer)
-      cleanup()
+      console.log('[useSocket] Cleaning up global listeners for socket')
+      unsubscribe()
+      instance.off('disconnect', handleDisconnect)
+      instance.off('connect_error', handleConnectError)
     }
-  }, [createSocket, cleanup])
+    // connectionError intentionally omitted to avoid re-subscribing when message changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const reconnect = useCallback(() => {
+    console.log('[useSocket] Manual reconnect requested')
+    setConnectionError(null)
+    const instance = getSocket() || getOrCreateSocket()
+    if (!instance.connected) {
+      instance.connect()
+    }
+    setSocket(instance)
+  }, [])
 
   return { socket, isConnected, connectionError, reconnect }
 }

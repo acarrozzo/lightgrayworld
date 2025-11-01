@@ -1,21 +1,26 @@
 'use client'
 
 import { useGameStore } from '@/lib/game-state'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
 import GameRightSidebar from './GameRightSidebar'
 import GameFeed from './GameFeed'
 import Icon from './Icon'
+import { useSocket } from '@/hooks/useSocket'
+import { useSocketHandlers } from '@/lib/socket-handlers'
 
 export default function GameInterface() {
-  const { player, currentRoom, setCurrentRoom, setRoomPlayers, getAuthHeaders, isLoggedIn, cacheRoom, getCachedRoom } = useGameStore()
+  const { player, setPlayer, currentRoom, setCurrentRoom, setRoomPlayers, getAuthHeaders, isLoggedIn, cacheRoom, getCachedRoom } = useGameStore()
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const [isLoadingRoom, setIsLoadingRoom] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
+  const { socket } = useSocket()
+  const socketHandlers = useSocketHandlers(socket)
+  const lastLoginSocketId = useRef<string | null>(null)
 
   // Load sidebar state from localStorage on mount
   useEffect(() => {
@@ -116,15 +121,21 @@ export default function GameInterface() {
     }
   }, [])
 
-  useEffect(() => {
-    if (player && isLoggedIn && !currentRoom) {
-      // Only load room data if we don't already have it
-      loadRoomData()
-    }
-  }, [player, isLoggedIn, currentRoom])
+  const loadRoomData = useCallback(async (options?: { isTransition?: boolean; travel?: { toRoomId?: string } }) => {
+    const isTransition = options?.isTransition ?? false
+    const travelTarget = options?.travel?.toRoomId
 
-  const loadRoomData = async () => {
-    setIsLoadingRoom(true)
+    if (!isTransition) {
+      setIsLoadingRoom(true)
+    }
+
+    if (isTransition && travelTarget) {
+      const cachedRoom = getCachedRoom(travelTarget)
+      if (cachedRoom) {
+        setCurrentRoom(cachedRoom)
+      }
+    }
+
     try {
       const response = await fetch('/api/game/room/current', {
         headers: {
@@ -155,6 +166,21 @@ export default function GameInterface() {
         cacheRoom(roomWithDirections)
         setCurrentRoom(roomWithDirections)
         setRoomPlayers(roomData.players)
+
+        if (player && player.currentRoom !== roomWithDirections.roomId) {
+          console.log('[GameInterface] Syncing player.currentRoom to', roomWithDirections.roomId)
+          setPlayer({ ...player, currentRoom: roomWithDirections.roomId })
+        }
+
+        if (options?.travel) {
+          setActionResult({
+            action: 'move',
+            message: `You travel to ${roomWithDirections.name}`,
+            timestamp: new Date().toISOString(),
+            success: true,
+            roomData: roomWithDirections,
+          })
+        }
       } else {
         const errorText = await response.text()
         console.error('Failed to load room data:', response.status, response.statusText, errorText)
@@ -162,101 +188,146 @@ export default function GameInterface() {
     } catch (error) {
       console.error('Failed to load room data:', error)
     } finally {
-      setIsLoadingRoom(false)
+      if (!isTransition) {
+        setIsLoadingRoom(false)
+      }
+      setIsInitialLoad(false)
     }
-  }
+  }, [getAuthHeaders, cacheRoom, setCurrentRoom, setRoomPlayers, player, setPlayer, getCachedRoom])
+
+  useEffect(() => {
+    if (player && isLoggedIn && !currentRoom) {
+      // Only load room data if we don't already have it
+      loadRoomData()
+    }
+  }, [player, isLoggedIn, currentRoom, loadRoomData])
 
   const handleAction = async (actionType: string) => {
+    console.log('[handleAction] Called with action:', actionType)
     setAction(actionType)
-    setIsLoading(true)
     setActionResult(null)
     
     // Check if this is a navigation action for optimistic updates
     const travelActions = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down', 'move', 'navigate']
     const isNavigationAction = travelActions.includes(actionType.toLowerCase())
     
-    // Store current room for rollback if needed
-    const previousRoom = currentRoom
-    const previousPlayers = useGameStore.getState().roomPlayers
-    
-    // OPTIMISTIC UPDATE: Immediately update UI for navigation
-    if (isNavigationAction && currentRoom && currentRoom[actionType as keyof typeof currentRoom]) {
-      const targetRoomId = currentRoom[actionType as keyof typeof currentRoom] as string
-      const cachedRoom = getCachedRoom(targetRoomId)
-      
-      if (cachedRoom) {
-        console.log('Using cached room for instant navigation:', cachedRoom.name)
-        setCurrentRoom(cachedRoom)
-        setRoomPlayers(cachedRoom.players || [])
-      } else {
-        console.log('No cached room found, will wait for API response')
+    if (isNavigationAction) {
+      console.log('[handleAction] Navigation action detected, currentRoom:', currentRoom?.roomId)
+      if (!currentRoom) {
+        console.warn('No current room available for navigation action')
+        return
       }
-    }
-    
-    try {
-      const response = await fetch('/api/game/action', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders()
-        },
-        body: JSON.stringify({ action: actionType }),
-      })
 
-      const result = await response.json()
-      
-      if (response.ok) {
-        setActionResult(result)
-        
-        // If this was a navigation/travel action, update the room data
-        if (isNavigationAction && result.success && result.roomData) {
-          // Cache the new room data
-          cacheRoom(result.roomData)
-          setCurrentRoom(result.roomData)
-          setRoomPlayers(result.roomData.players || [])
-        }
-      } else {
-        setActionResult({
-          success: false,
-          message: result.error?.message || 'Action failed',
-          action: actionType,
-          player: 'Unknown',
-          timestamp: new Date().toISOString()
+      const targetRoomId = currentRoom[actionType as keyof typeof currentRoom]
+      console.log('[handleAction] Target room:', targetRoomId)
+      if (!targetRoomId || typeof targetRoomId !== 'string') {
+        console.warn('Navigation target not available from current room')
+        return
+      }
+
+      if (socket) {
+        console.log('[handleAction] Emitting player-move event:', { fromRoom: currentRoom.roomId, toRoom: targetRoomId })
+        socket.emit('player-move', {
+          fromRoom: currentRoom.roomId,
+          toRoom: targetRoomId,
         })
-        
-        // Rollback optimistic update on failure
-        if (isNavigationAction) {
-          console.log('Navigation failed, rolling back to previous room')
-          setCurrentRoom(previousRoom)
-          setRoomPlayers(previousPlayers)
-        }
+      } else {
+        console.warn('Socket not connected; movement intent not sent')
       }
-    } catch (error) {
-      console.error('Action failed:', error)
-      setActionResult({
-        success: false,
-        message: 'Network error',
-        action: actionType,
-        player: 'Unknown',
-        timestamp: new Date().toISOString()
-      })
-      
-      // Rollback optimistic update on error
-      if (isNavigationAction) {
-        console.log('Navigation error, rolling back to previous room')
-        setCurrentRoom(previousRoom)
-        setRoomPlayers(previousPlayers)
-      }
-    } finally {
-      setIsLoading(false)
+
+      return
+    }
+
+    console.log('[handleAction] Non-navigation action, sending via socketHandlers')
+    const result = socketHandlers.sendGameAction(actionType)
+    console.log('[handleAction] sendGameAction result:', result)
+    if (!result) {
+      console.warn('Failed to send game action via socket; action will be ignored')
     }
   }
+
+  useEffect(() => {
+    if (!socket || !player || !currentRoom) {
+      return
+    }
+
+    const cleanup = socketHandlers.onGameFacts(({ facts }) => {
+      console.log('[GameInterface] Received facts:', facts.length, facts)
+      let updatedPlayerRoom: string | null = null
+      facts.forEach((fact) => {
+        if (fact.type === 'player_moved' && fact.data.playerId === player.id) {
+          updatedPlayerRoom = fact.data.toRoom
+        }
+      })
+
+      if (updatedPlayerRoom && player.currentRoom !== updatedPlayerRoom) {
+        console.log('[GameInterface] Updating player currentRoom to:', updatedPlayerRoom)
+        setPlayer({ ...player, currentRoom: updatedPlayerRoom })
+      }
+
+      const shouldReload = facts.some((fact) => {
+        if (fact.type !== 'player_moved') return false
+        if (fact.data.playerId === player.id) return true
+        return fact.data.toRoom === currentRoom.roomId || fact.data.fromRoom === currentRoom.roomId
+      })
+
+      console.log('[GameInterface] shouldReload:', shouldReload)
+      if (shouldReload) {
+        console.log('[GameInterface] Calling loadRoomData')
+        const playerMovementFact = facts.find((fact) => fact.type === 'player_moved' && fact.data.playerId === player.id)
+        loadRoomData({
+          isTransition: true,
+          travel: playerMovementFact ? { toRoomId: playerMovementFact.data.toRoom } : undefined,
+        })
+      }
+    })
+
+    return () => {
+      cleanup()
+    }
+  }, [socket, player, setPlayer, socketHandlers, loadRoomData])
+
+  useEffect(() => {
+    console.log('[GameInterface] Socket state:', {
+      socket: !!socket,
+      player: !!player,
+      currentRoom: currentRoom?.roomId,
+      isLoggedIn,
+    })
+  }, [socket, player, currentRoom, isLoggedIn])
+
+  useEffect(() => {
+    if (!socket || !player || !isLoggedIn || !currentRoom) {
+      return
+    }
+
+    if (!socket.connected) {
+      return
+    }
+
+    if (player.currentRoom !== currentRoom.roomId) {
+      console.log('[GameInterface] Waiting for player.currentRoom sync before login:', {
+        playerRoom: player.currentRoom,
+        currentRoom: currentRoom.roomId,
+      })
+      return
+    }
+
+    if (socket.id && lastLoginSocketId.current !== socket.id) {
+      console.log('[GameInterface] Logging in player on socket:', socket.id, 'with player data:', player)
+      const loginResult = socketHandlers.loginPlayer(player)
+      console.log('[GameInterface] loginPlayer result:', loginResult)
+      if (loginResult) {
+        lastLoginSocketId.current = socket.id
+      }
+    }
+  }, [socket, player, currentRoom, isLoggedIn, socketHandlers])
 
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
   }
 
-  if (!currentRoom || isLoadingRoom) {
+  if (!currentRoom || (isLoadingRoom && isInitialLoad)) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
@@ -327,32 +398,44 @@ export default function GameInterface() {
 
                 {/* Action Buttons */}
                 <button
-                  onClick={() => handleAction('attack')}
-                  disabled={isLoading}
+                  onClick={() => {
+                    console.log('[ActionButton] Attack button clicked')
+                    handleAction('attack')
+                  }}
+                  disabled={isLoadingRoom}
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
                 >
-                  {isLoading && action === 'attack' ? '...' : 'Attack'}
+                  {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
                 </button>
                 <button
-                  onClick={() => handleAction('search')}
-                  disabled={isLoading}
+                  onClick={() => {
+                    console.log('[ActionButton] Search button clicked')
+                    handleAction('search')
+                  }}
+                  disabled={isLoadingRoom}
                   className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
                 >
-                  {isLoading && action === 'search' ? '...' : 'Search'}
+                  {isLoadingRoom && action === 'search' ? '...' : 'Search'}
                 </button>
                 <button
-                  onClick={() => handleAction('rest')}
-                  disabled={isLoading}
+                  onClick={() => {
+                    console.log('[ActionButton] Rest button clicked')
+                    handleAction('rest')
+                  }}
+                  disabled={isLoadingRoom}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
                 >
-                  {isLoading && action === 'rest' ? '...' : 'Rest'}
+                  {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
                 </button>
                 <button
-                  onClick={() => handleAction('look')}
-                  disabled={isLoading}
+                  onClick={() => {
+                    console.log('[ActionButton] Look button clicked')
+                    handleAction('look')
+                  }}
+                  disabled={isLoadingRoom}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
                 >
-                  {isLoading && action === 'look' ? '...' : 'Look'}
+                  {isLoadingRoom && action === 'look' ? '...' : 'Look'}
                 </button>
               </div>
             </div>

@@ -13,6 +13,7 @@ export interface SocketEvents {
   'chat-message': (message: ChatMessage) => void
   'action-completed': (actionData: ActionData) => void
   'player-action': (actionData: PlayerAction) => void
+  'game:facts': (payload: { tickId: number; facts: GameFact[] }) => void
 }
 
 // Data type definitions
@@ -67,6 +68,15 @@ export interface PlayerAction {
   timestamp: Date
 }
 
+export interface GameFact {
+  seq: number
+  tickId: number
+  type: string
+  data: Record<string, any>
+  affectedPlayers: string[]
+  timestamp?: number
+}
+
 // Socket event constants
 export const SOCKET_EVENTS = {
   // Client to server
@@ -80,6 +90,7 @@ export const SOCKET_EVENTS = {
   CHAT_MESSAGE: 'chat-message',
   ACTION_COMPLETED: 'action-completed',
   PLAYER_ACTION: 'player-action',
+  GAME_FACTS: 'game:facts',
 } as const
 
 let io: Server<SocketEvents> | null = null
@@ -106,14 +117,4 @@ export function emitToRoom(roomId: string, event: keyof SocketEvents, data: any)
     console.error('Failed to emit socket event:', error)
     return false
   }
-}
-
-// Helper function to emit action completed events
-export function emitActionCompleted(roomId: string, actionData: ActionData) {
-  return emitToRoom(roomId, 'action-completed', actionData)
-}
-
-// Helper function to emit chat messages
-export function emitChatMessage(roomId: string, message: ChatMessage) {
-  return emitToRoom(roomId, 'chat-message', message)
 }

@@ -46,6 +46,7 @@ export interface GameState {
   currentRoom: Room | null
   roomPlayers: Player[]
   roomCache: Record<string, Room> // Cache for visited rooms
+  roomFactSeq: Record<string, number>
   
   // UI state
   isLoading: boolean
@@ -62,6 +63,8 @@ export interface GameState {
   getAuthHeaders: () => Record<string, string>
   cacheRoom: (room: Room) => void
   getCachedRoom: (roomId: string) => Room | null
+  setRoomFactSeq: (roomId: string, seq: number) => void
+  getRoomFactSeq: (roomId: string) => number
 }
 
 export const useGameStore = create<GameState>()(
@@ -74,6 +77,7 @@ export const useGameStore = create<GameState>()(
       currentRoom: null,
       roomPlayers: [],
       roomCache: {},
+      roomFactSeq: {},
       isLoading: false,
       error: null,
       
@@ -122,6 +126,20 @@ export const useGameStore = create<GameState>()(
         const cached = roomCache[roomId]
         console.log('Getting cached room for ID:', roomId, 'Found:', cached ? cached.name : 'None')
         return cached || null
+      },
+
+      setRoomFactSeq: (roomId, seq) => {
+        set((state) => ({
+          roomFactSeq: {
+            ...state.roomFactSeq,
+            [roomId]: Math.max(state.roomFactSeq[roomId] || 0, seq),
+          },
+        }))
+      },
+
+      getRoomFactSeq: (roomId) => {
+        const { roomFactSeq } = get()
+        return roomFactSeq[roomId] || 0
       },
     }),
     {

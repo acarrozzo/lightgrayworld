@@ -3,6 +3,9 @@ const { parse } = require('url')
 const next = require('next')
 const { Server } = require('socket.io')
 const { setSocketIO, SOCKET_EVENTS } = require('./src/lib/socket-utils.js')
+const { GameEngine } = require('./src/lib/game-engine/engine.js')
+const { PrismaClient } = require('@prisma/client')
+const prisma = new PrismaClient()
 
 const dev = process.env.NODE_ENV !== 'production'
 const hostname = 'localhost'
@@ -28,43 +31,80 @@ app.prepare().then(() => {
   // Set the global Socket.io instance
   setSocketIO(io)
 
+  // Initialize the game engine
+  const gameEngine = new GameEngine(io)
+  gameEngine.start()
+  global.gameEngine = gameEngine
+
   // Store active players
   const activePlayers = new Map()
   const roomPlayers = new Map()
 
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id)
-
+    console.log('[Server] Listening for player login event:', SOCKET_EVENTS.PLAYER_LOGIN)
+ 
+    const createIntentId = () => `${socket.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+ 
     // Handle player login
     socket.on(SOCKET_EVENTS.PLAYER_LOGIN, (playerData) => {
+      console.log(`[Server] PLAYER_LOGIN received for socket ${socket.id}, player:`, playerData.username)
+      console.log('[Server] PLAYER_LOGIN payload:', playerData)
       try {
+        const previousState = activePlayers.get(socket.id)
+        const previousRoom = previousState?.currentRoom
+
         activePlayers.set(socket.id, {
           ...playerData,
           socketId: socket.id,
           lastActive: new Date()
         })
-        
-        // Join room
-        socket.join(`room-${playerData.currentRoom}`)
-        
-        // Add to room players
+        console.log(`[Server] Player ${playerData.username} registered in activePlayers for socket ${socket.id}`)
+        console.log(`[Server] activePlayers now has ${activePlayers.size} entries`)
+
+        if (previousRoom && previousRoom !== playerData.currentRoom) {
+          console.log(`[Server] Player ${playerData.username} moving socket room from ${previousRoom} to ${playerData.currentRoom}`)
+          socket.leave(`room-${previousRoom}`)
+          if (roomPlayers.has(previousRoom)) {
+            roomPlayers.get(previousRoom).delete(socket.id)
+          }
+        }
+
         if (!roomPlayers.has(playerData.currentRoom)) {
           roomPlayers.set(playerData.currentRoom, new Set())
         }
-        roomPlayers.get(playerData.currentRoom).add(socket.id)
-        
-        // Notify other players in the room
-        socket.to(`room-${playerData.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_JOINED, {
+
+        const roomSet = roomPlayers.get(playerData.currentRoom)
+        if (!roomSet.has(socket.id)) {
+          socket.join(`room-${playerData.currentRoom}`)
+          roomSet.add(socket.id)
+
+          // Notify other players in the room only when newly joining
+          socket.to(`room-${playerData.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_JOINED, {
+            id: playerData.id,
+            username: playerData.username,
+            level: playerData.level,
+            hp: playerData.hp,
+            hpMax: playerData.hpMax,
+            mp: playerData.mp,
+            mpMax: playerData.mpMax,
+            currentRoom: playerData.currentRoom,
+            isActive: true
+          })
+        }
+
+        // Register player with the game engine state
+        gameEngine.registerPlayer({
           id: playerData.id,
           username: playerData.username,
-          level: playerData.level,
+          roomId: playerData.currentRoom,
           hp: playerData.hp,
           hpMax: playerData.hpMax,
           mp: playerData.mp,
           mpMax: playerData.mpMax,
-          currentRoom: playerData.currentRoom,
-          isActive: true
+          level: playerData.level,
         })
+        console.log(`[Server] Registered ${playerData.username} with engine in room ${playerData.currentRoom}`)
         
         console.log(`Player ${playerData.username} joined room ${playerData.currentRoom}`)
       } catch (error) {
@@ -75,11 +115,47 @@ app.prepare().then(() => {
 
     // Handle player movement
     socket.on('player-move', (data) => {
+      console.log('[Server] Received player-move event:', data)
+      console.log('[Server] Current socket ID:', socket.id)
+      console.log('[Server] Active sockets:', Array.from(activePlayers.keys()))
       const player = activePlayers.get(socket.id)
-      if (!player) return
+      if (!player) {
+        console.log('[Server] No player found for socket:', socket.id)
+        console.log('[Server] Full activePlayers map:', activePlayers)
+        return
+      }
 
       const { fromRoom, toRoom } = data
-      
+      console.log('[Server] Processing movement:', { playerId: player.id, fromRoom, toRoom })
+
+      gameEngine.queueIntent({
+        roomId: fromRoom,
+        intent: {
+          id: createIntentId(),
+          playerId: player.id,
+          type: 'move',
+          data: { fromRoom, toRoom },
+          timestamp: Date.now(),
+        }
+      })
+      console.log('[Server] Movement intent queued')
+
+      gameEngine.movePlayer({
+        playerId: player.id,
+        fromRoomId: fromRoom,
+        toRoomId: toRoom,
+        playerState: {
+          id: player.id,
+          username: player.username,
+          hp: player.hp,
+          hpMax: player.hpMax,
+          mp: player.mp,
+          mpMax: player.mpMax,
+          level: player.level,
+        },
+      })
+      console.log('[Server] Player state updated in engine')
+
       // Leave old room
       socket.leave(`room-${fromRoom}`)
       if (roomPlayers.has(fromRoom)) {
@@ -89,32 +165,27 @@ app.prepare().then(() => {
           username: player.username
         })
       }
-      
+
       // Join new room
       socket.join(`room-${toRoom}`)
       if (!roomPlayers.has(toRoom)) {
         roomPlayers.set(toRoom, new Set())
       }
       roomPlayers.get(toRoom).add(socket.id)
-      
+
       // Update player data
       player.currentRoom = toRoom
       activePlayers.set(socket.id, player)
-      
-      // Notify players in new room
-      socket.to(`room-${toRoom}`).emit(SOCKET_EVENTS.PLAYER_JOINED, {
-        id: player.id,
-        username: player.username,
-        level: player.level,
-        hp: player.hp,
-        hpMax: player.hpMax,
-        mp: player.mp,
-        mpMax: player.mpMax,
-        currentRoom: toRoom,
-        isActive: true
+
+      prisma.user.update({
+        where: { id: player.id },
+        data: { currentRoom: toRoom },
+      }).catch((error) => {
+        console.error('Failed to persist player room change', error)
       })
-      
-      console.log(`Player ${player.username} moved from room ${fromRoom} to ${toRoom}`)
+
+      console.log(`[Server] Socket ${socket.id} rooms:`, Array.from(socket.rooms))
+      console.log(`Queued movement intent for player ${player.username} from ${fromRoom} to ${toRoom}`)
     })
 
     // Handle chat messages
@@ -133,19 +204,18 @@ app.prepare().then(() => {
           return
         }
 
-        const message = {
-          id: Date.now().toString(),
-          username: player.username,
-          message: sanitizedMessage,
-          timestamp: new Date(),
-          level: player.level,
-          roomId: player.currentRoom
-        }
+        gameEngine.queueIntent({
+          roomId: player.currentRoom,
+          intent: {
+            id: createIntentId(),
+            playerId: player.id,
+            type: 'chat',
+            data: { message: sanitizedMessage },
+            timestamp: Date.now(),
+          }
+        })
 
-        // Broadcast to all players in the same room
-        io.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.CHAT_MESSAGE, message)
-        
-        console.log(`Chat message from ${player.username}: ${sanitizedMessage}`)
+        console.log(`Queued chat intent from ${player.username}`)
       } catch (error) {
         console.error('Error handling chat message:', error)
         socket.emit('error', { message: 'Failed to send message' })
@@ -157,21 +227,31 @@ app.prepare().then(() => {
       const player = activePlayers.get(socket.id)
       if (!player) return
 
-      // Broadcast action to all players in the same room
-      socket.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_ACTION, {
-        playerId: player.id,
-        username: player.username,
-        action: data.action,
-        timestamp: new Date()
+      if (!data?.action) {
+        socket.emit('error', { message: 'Action is required' })
+        return
+      }
+
+      gameEngine.queueIntent({
+        roomId: player.currentRoom,
+        intent: {
+          id: createIntentId(),
+          playerId: player.id,
+          type: 'action',
+          data: { action: data.action },
+          timestamp: Date.now(),
+        }
       })
-      
-      console.log(`Player ${player.username} performed action: ${data.action}`)
+
+      console.log(`Queued action intent from ${player.username}: ${data.action}`)
     })
 
     // Handle disconnect
     socket.on('disconnect', () => {
       const player = activePlayers.get(socket.id)
       if (player) {
+        gameEngine.unregisterPlayer(player.id, player.currentRoom)
+
         // Notify other players in the room
         socket.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_LEFT, {
           id: player.id,

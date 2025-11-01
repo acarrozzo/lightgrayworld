@@ -13,6 +13,7 @@ const SOCKET_EVENTS = {
   PLAYER_LEFT: 'player-left',
   ACTION_COMPLETED: 'action-completed',
   PLAYER_ACTION: 'player-action',
+  GAME_FACTS: 'game:facts',
 }
 
 function setSocketIO(ioInstance) {
@@ -39,21 +40,9 @@ function emitToRoom(roomId, event, data) {
   }
 }
 
-// Helper function to emit action completed events
-function emitActionCompleted(roomId, actionData) {
-  return emitToRoom(roomId, 'action-completed', actionData)
-}
-
-// Helper function to emit chat messages
-function emitChatMessage(roomId, message) {
-  return emitToRoom(roomId, 'chat-message', message)
-}
-
 module.exports = { 
   setSocketIO, 
   getSocketIO, 
   SOCKET_EVENTS,
-  emitToRoom,
-  emitActionCompleted,
-  emitChatMessage
+  emitToRoom
 }

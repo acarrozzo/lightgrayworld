@@ -45,32 +45,35 @@ export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
 
   useEffect(() => {
     if (!socket || !player) return
+ 
+     // Listen for authoritative facts from the engine
+     const cleanupFacts = socketHandlers.onGameFacts(({ facts }) => {
+       facts
+         .filter((fact) => fact.type === 'chat')
+         .forEach((fact) => {
+           const formattedMessage: ChatMessage = {
+             id: `${fact.tickId}-${fact.seq}`,
+             username: fact.data.username || 'Unknown',
+             message: fact.data.message || '',
+             timestamp: new Date(fact.timestamp || Date.now()),
+             level: fact.data.level ?? 0,
+           }
 
-    // Login player to Socket.io
-    socketHandlers.loginPlayer(player)
+           setMessages((prev) => [...prev, formattedMessage])
 
-    // Listen for real-time chat messages
-    const cleanupChat = socketHandlers.onChatMessage((message: any) => {
-      // Convert timestamp to Date object for Socket.io messages
-      const formattedMessage: ChatMessage = {
-        ...message,
-        timestamp: new Date(message.timestamp)
-      }
-      setMessages(prev => [...prev, formattedMessage])
-      
-      // Notify parent component of new message
-      if (onNewMessage) {
-        onNewMessage()
-      }
-    })
-
-    // Load existing messages
-    loadMessages()
-
-    return () => {
-      cleanupChat()
-    }
-  }, [socket, player, socketHandlers])
+           if (onNewMessage) {
+             onNewMessage()
+           }
+         })
+     })
+ 
+     // Load existing messages
+     loadMessages()
+ 
+     return () => {
+       cleanupFacts()
+     }
+   }, [socket, player, socketHandlers])
 
   const loadMessages = async () => {
     try {

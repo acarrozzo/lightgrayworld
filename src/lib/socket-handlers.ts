@@ -1,6 +1,15 @@
 import { Socket } from 'socket.io-client'
 import { SOCKET_EVENTS, PlayerData, ChatMessage, ActionData } from './socket'
 
+export interface GameFact {
+  seq: number
+  tickId: number
+  type: string
+  data: Record<string, any>
+  affectedPlayers: string[]
+  timestamp?: number
+}
+
 // Centralized socket event handlers to reduce duplication
 export class SocketEventHandlers {
   private socket: Socket | null = null
@@ -40,24 +49,28 @@ export class SocketEventHandlers {
   }
 
   // Emit events with error handling
-  emit<T = any>(event: string, data: T): boolean {
+  private emit(event: (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS], data: any): boolean {
     if (!this.socket) {
-      console.warn('Socket not available for emit:', event)
+      console.warn('[SocketHandlers] Socket not initialized, cannot emit event:', event)
       return false
     }
 
     try {
+      console.log('[SocketHandlers] Emitting event:', event, 'data:', data)
       this.socket.emit(event, data)
       return true
     } catch (error) {
-      console.error('Failed to emit socket event:', error)
+      console.error('[SocketHandlers] Failed to emit socket event:', error)
       return false
     }
   }
 
   // Player login
   loginPlayer(playerData: PlayerData): boolean {
-    return this.emit(SOCKET_EVENTS.PLAYER_LOGIN, playerData)
+    console.log('[SocketHandlers] loginPlayer called with:', playerData.username, 'socket:', !!this.socket)
+    const result = this.emit(SOCKET_EVENTS.PLAYER_LOGIN, playerData)
+    console.log('[SocketHandlers] PLAYER_LOGIN emit result:', result)
+    return result
   }
 
   // Send chat message
@@ -78,6 +91,11 @@ export class SocketEventHandlers {
   // Listen for action completed events
   onActionCompleted(handler: (actionData: ActionData) => void): () => void {
     return this.on(SOCKET_EVENTS.ACTION_COMPLETED, handler)
+  }
+
+  // Listen for authoritative game facts
+  onGameFacts(handler: (payload: { tickId: number, facts: GameFact[] }) => void): () => void {
+    return this.on(SOCKET_EVENTS.GAME_FACTS, handler)
   }
 
   // Listen for player joined events

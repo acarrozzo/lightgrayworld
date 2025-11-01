@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Room, useGameStore } from '@/lib/game-state'
 import { useSocket } from '@/hooks/useSocket'
-import { useSocketHandlers } from '@/lib/socket-handlers'
+import { useSocketHandlers, GameFact } from '@/lib/socket-handlers'
 import Icon from './Icon'
 
 interface ActionHistory {
@@ -39,7 +39,7 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
   const feedRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
   const isClearingFeed = useRef(false)
-  const { getAuthHeaders, player, setCurrentRoom, setRoomPlayers } = useGameStore()
+  const { getAuthHeaders, player, setCurrentRoom, setRoomPlayers, setRoomFactSeq } = useGameStore()
   const { socket, isConnected } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
 
@@ -89,7 +89,7 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
     }
     
     hasInitialized.current = true
-  }, [room])
+  }, [])
 
   // Save actions to localStorage whenever actions change
   useEffect(() => {
@@ -194,6 +194,76 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
     }
   }, [actionResult])
 
+  const factToAction = (fact: GameFact): ActionHistory | null => {
+    const timestamp = new Date(fact.timestamp || Date.now()).toISOString()
+    const isSelfMovement = fact.type === 'player_moved' && fact.data.playerId === player?.id
+    switch (fact.type) {
+      case 'chat':
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'chat',
+          message: `${fact.data.username || 'Unknown'} says: ${fact.data.message || ''}`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      case 'player_moved': {
+        const toRoom = fact.data.toRoom || 'unknown room'
+        const fromRoom = fact.data.fromRoom || 'unknown room'
+        const displayRoom = fact.data.toRoomName || toRoom
+        const movementMessage = isSelfMovement
+          ? `You travel from ${fromRoom} to ${displayRoom}`
+          : `${fact.data.username || fact.data.playerId} moved from ${fromRoom} to ${displayRoom}`
+
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'move',
+          message: movementMessage,
+          timestamp,
+          roomId: fact.data.toRoom || room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      }
+      case 'player_action':
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: fact.data.action || 'action',
+          message: `${fact.data.playerId} performed ${fact.data.action}`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      case 'attack_intent':
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'attack',
+          message: `${fact.data.playerId} prepares an attack`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      case 'use_item':
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'use_item',
+          message: `${fact.data.playerId} used ${fact.data.itemId}`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      case 'look':
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'look',
+          message: `${fact.data.playerId} looks around`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      default:
+        return null
+    }
+  }
 
   // Listen for real-time action updates
   useEffect(() => {
@@ -201,54 +271,34 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
       return
     }
 
-    // Login player to Socket.io to receive room-based events
-    socketHandlers.loginPlayer(player)
+    const cleanupFacts = socketHandlers.onGameFacts(({ facts }) => {
+      const newActions = facts
+        .map(factToAction)
+        .filter((entry): entry is ActionHistory => entry !== null)
 
-    // Listen for new actions
-    const cleanupActions = socketHandlers.onActionCompleted((actionData: any) => {
-      const newAction: ActionHistory = {
-        id: actionData.id,
-        action: actionData.action,
-        message: actionData.message,
-        timestamp: new Date(actionData.timestamp).toISOString(),
-        roomId: actionData.roomId,
-        metadata: actionData.metadata,
-        success: actionData.success,
-        roomData: actionData.roomData
+      if (newActions.length === 0) {
+        return
       }
-      
-      // Add new action to the end of the list with deduplication
-      setActions(prev => {
-        let combined = [...prev, newAction]
-        
-        // If this action has room data, add a separate room display action
-        if (actionData.roomData) {
-          const roomDisplayAction: ActionHistory = {
-            id: `room-${actionData.id}`,
-            action: 'room-display',
-            message: `Room: ${actionData.roomData.name}`,
-            timestamp: new Date(new Date(actionData.timestamp).getTime() + 1).toISOString(), // Slightly after the main action
-            success: true,
-            roomData: actionData.roomData
-          }
-          combined = [...combined, roomDisplayAction]
-        }
-        
-        return deduplicateActions(combined)
+
+      const maxSeq = facts.reduce((max, fact) => Math.max(max, fact.seq), 0)
+      if (maxSeq > 0 && room?.roomId) {
+        setRoomFactSeq(room.roomId, maxSeq)
+      }
+
+      setActions((prev) => {
+        const combined = deduplicateActions([...prev, ...newActions])
+        return combined
       })
-      
-      // Note: We don't update the initial room display on travel - it should remain the original room
-      
-      // Auto-scroll to bottom when new action is added
+
       setTimeout(() => {
         scrollToBottom()
       }, 100)
     })
 
     return () => {
-      cleanupActions()
+      cleanupFacts()
     }
-  }, [socket, player, socketHandlers])
+  }, [socket, player, room?.roomId, socketHandlers])
 
   const getActionColor = (action: string) => {
     switch (action.toLowerCase()) {
