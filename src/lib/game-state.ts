@@ -107,7 +107,7 @@ export const useGameStore = create<GameState>()(
 
       getAuthHeaders: () => {
         const { token } = get()
-        return token ? { Authorization: `Bearer ${token}` } : {}
+        return token ? { Authorization: `Bearer ${token}` } : ({} as Record<string, string>)
       },
       
       cacheRoom: (room) => {
