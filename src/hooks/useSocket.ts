@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import type { Socket, DisconnectReason } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
 import { getOrCreateSocket, subscribeToConnection, getSocket } from '@/lib/socket-client'
 
 interface UseSocketReturn {
@@ -31,7 +31,7 @@ export const useSocket = (): UseSocketReturn => {
       }
     })
 
-    const handleDisconnect = (reason: DisconnectReason) => {
+    const handleDisconnect = (reason: string) => {
       console.log('[useSocket] Disconnected from server with reason:', reason)
       setIsConnected(false)
       if (reason !== 'io client disconnect') {
