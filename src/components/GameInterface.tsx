@@ -175,6 +175,32 @@ export default function GameInterface() {
 
         if (player && player.currentRoom !== roomWithDirections.roomId) {
           console.log('[GameInterface] Syncing player.currentRoom to', roomWithDirections.roomId)
+
+          if (shouldUseAuth) {
+            try {
+              const syncResponse = await fetch('/api/game/room/sync', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...getAuthHeaders(),
+                },
+                body: JSON.stringify({ roomId: roomWithDirections.roomId }),
+              })
+
+              if (!syncResponse.ok) {
+                const errorText = await syncResponse.text()
+                console.error(
+                  'Failed to sync player room on server:',
+                  syncResponse.status,
+                  syncResponse.statusText,
+                  errorText
+                )
+              }
+            } catch (error) {
+              console.error('Failed to sync player room on server:', error)
+            }
+          }
+
           setPlayer({ ...player, currentRoom: roomWithDirections.roomId })
         }
 
