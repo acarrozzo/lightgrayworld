@@ -6,14 +6,18 @@ const connectionListeners = new Set<(connected: boolean) => void>()
 export function getOrCreateSocket(): Socket {
   if (!globalSocket) {
     console.log('[SocketClient] Creating global socket instance')
-    globalSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000', {
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'
+    const socketPath = process.env.NEXT_PUBLIC_SOCKET_PATH || '/socket.io'
+
+    globalSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       timeout: 20000,
       forceNew: false,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000
+      reconnectionDelayMax: 5000,
+      path: socketPath
     })
 
     globalSocket.on('connect', () => {
