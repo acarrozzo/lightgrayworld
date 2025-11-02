@@ -25,7 +25,12 @@ function getClientIp(request: NextRequest): string {
     return forwardedFor.split(',')[0].trim()
   }
 
-  return request.ip || 'unknown'
+  const realIp = request.headers.get('x-real-ip')
+  if (realIp) {
+    return realIp
+  }
+
+  return 'unknown'
 }
 
 function checkRateLimit(ip: string): boolean {
