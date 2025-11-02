@@ -30,7 +30,8 @@ Reference `env.local.template` for sample values.
    - `DATABASE_URL` for your production database
    - `ALLOWED_ORIGINS` containing your Vercel production (and optional preview) URLs
 4. Deploy. After the deployment finishes, note the generated domain (e.g. `https://your-app.koyeb.app`).
-5. Optional: hit `https://your-app.koyeb.app/health` to confirm the service is awake.
+5. Configure the health check path in Koyeb to `/healthz`.
+6. Optional: hit `https://your-app.koyeb.app/healthz` to confirm the service is awake.
 
 ### Free Tier Notes
 

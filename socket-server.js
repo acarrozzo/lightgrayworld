@@ -15,9 +15,9 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   : ['http://localhost:3000']
 
 const httpServer = createServer((req, res) => {
-  if (req.url === '/health') {
+  if (req.url === '/healthz') {
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ status: 'ok' }))
+    res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }))
     return
   }
 
