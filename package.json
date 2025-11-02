@@ -12,7 +12,8 @@
     "dev:clean": "rm -rf .next && npm run generate-icons && node server.js",
     "dev:legacy": "npm run generate-icons && node server.js",
     "dev:socket": "node socket-server.js",
-    "build": "node scripts/build-with-icons.js",
+    "postinstall": "prisma generate",
+    "build": "node scripts/build-with-icons.js && next build",
     "start": "NODE_ENV=production node server.js",
     "start:socket": "NODE_ENV=production node socket-server.js",
     "lint": "eslint"
