@@ -86,36 +86,7 @@ export default function RoomDisplay({ room, onAction }: RoomDisplayProps) {
       <div className="bg-gray-800 rounded-lg">
         <div className="text-sm text-gray-400 mb-1">Room {room.roomId}</div>
         <h3 className="text-lg font-semibold text-white mb-2">{room.name}</h3>
-        <p className="text-gray-300 leading-relaxed">{room.description}</p>
       </div>
-
-      {/* Room Actions */}
-      {roomActions.length > 0 && (
-        <div className="bg-gray-800 rounded-lg">
-          <h4 className="text-md font-semibold text-green-400 mb-3 flex items-center gap-2">
-            <Icon name="inv" size={16} color="green" />
-            Room Actions
-          </h4>
-          <div className="grid grid-cols-2 gap-2">
-            {roomActions.map((action) => (
-              <button
-                key={action.action}
-                onClick={() => handleAction(action.action)}
-                disabled={isPerformingAction === action.action}
-                className={`
-                  px-3 py-2 rounded-md text-sm font-medium text-white transition-colors
-                  flex items-center gap-2 justify-center
-                  ${action.className || 'bg-gray-600 hover:bg-gray-700'}
-                  ${isPerformingAction === action.action ? 'opacity-50 cursor-not-allowed' : ''}
-                `}
-              >
-                {action.icon && <Icon name={action.icon} size={20} color="white" />}
-                {action.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

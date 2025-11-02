@@ -337,6 +337,10 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
           const originLabel = formatRoomLabel(fromRoomId, fromRoomName)
           message = `${playerLabel} ${enterVerb} from ${directionPhrase} (${originLabel})`
         } else if (isExitingCurrentRoom) {
+          // Don't show exit message for self-movement; only show when others exit
+          if (isSelfMovement) {
+            return null
+          }
           const directionKey = findDirectionKey(room, toRoomId)
           const directionPhrase = buildDirectionPhrase(directionKey, 'exit')
           const destinationLabel = formatRoomLabel(toRoomId, toRoomName)
@@ -769,7 +773,7 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
             return (
               <div
                 key={action.id}
-                className={`bg-gray-800 rounded-lg ${
+                className={`room-box bg-gray-800 rounded-lgX ${
                   isLastAction ? 'border-2 border-green-500' : 'border border-gray-600'
                 }`}
               >
@@ -782,35 +786,17 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
           return (
             <div
               key={action.id}
-              className={`bg-gray-800 rounded-lg p-4 border ${
-                isLastAction ? 'border-2 border-green-500' : 'border border-gray-600'
+              className={`action-bar rounded-lgX p-X2 border-r ${
+                isLastAction ? 'border-green-500' : 'border-gray-600'
               }`}
             >
-              <div className="flex items-start gap-3 mb-3">
-                <Icon 
-                  name={getActionIcon(action.action)} 
-                  size={24} 
-                  color="gray" 
-                  rotation={getActionRotation(action.action)}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`font-semibold ${getActionColor(action.action)}`}>
-                      {action.action.toUpperCase()}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      {new Date(action.timestamp).toLocaleTimeString()}
-                    </span>
-                    {action.roomId && (
-                      <span className="text-xs text-gray-500">
-                        Room {action.roomId}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed mb-3">
-                    {action.message}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">
+                  {new Date(action.timestamp).toLocaleTimeString()}
+                </span>
+                <p className="text-gray-300 text-sm">
+                  {action.message}
+                </p>
               </div>
             </div>
           )

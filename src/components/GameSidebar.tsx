@@ -124,7 +124,7 @@ export default function GameSidebar({ player, onClose }: GameSidebarProps) {
           </div>
         )}
       </div>
-      <div className="h-[200px] p-4 bg-gray-600 overflow-y-scroll">
+      <div className="h-[200px] p-4 bg-gray-600X overflow-y-scroll">
         <div className="text-gray-400 text-sm">
           # 🧱 LightGray World – Changelog
 
