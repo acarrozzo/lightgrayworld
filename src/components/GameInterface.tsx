@@ -121,9 +121,10 @@ export default function GameInterface() {
     }
   }, [])
 
-  const loadRoomData = useCallback(async (options?: { isTransition?: boolean; travel?: { toRoomId?: string } }) => {
+  const loadRoomData = useCallback(async (options?: { isTransition?: boolean; travel?: { toRoomId?: string }; requireAuth?: boolean }) => {
     const isTransition = options?.isTransition ?? false
     const travelTarget = options?.travel?.toRoomId
+    const shouldUseAuth = options?.requireAuth ?? isLoggedIn
 
     if (!isTransition) {
       setIsLoadingRoom(true)
@@ -137,11 +138,16 @@ export default function GameInterface() {
     }
 
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+
+      if (shouldUseAuth) {
+        Object.assign(headers, getAuthHeaders())
+      }
+
       const response = await fetch('/api/game/room/current', {
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders()
-        }
+        headers,
       })
       
       if (response.ok) {
@@ -165,7 +171,7 @@ export default function GameInterface() {
         // Cache the room data for future navigation
         cacheRoom(roomWithDirections)
         setCurrentRoom(roomWithDirections)
-        setRoomPlayers(roomData.players)
+        setRoomPlayers(Array.isArray(roomData.players) ? roomData.players : [])
 
         if (player && player.currentRoom !== roomWithDirections.roomId) {
           console.log('[GameInterface] Syncing player.currentRoom to', roomWithDirections.roomId)
@@ -193,7 +199,7 @@ export default function GameInterface() {
       }
       setIsInitialLoad(false)
     }
-  }, [getAuthHeaders, cacheRoom, setCurrentRoom, setRoomPlayers, player, setPlayer, getCachedRoom])
+  }, [getAuthHeaders, cacheRoom, setCurrentRoom, setRoomPlayers, player, setPlayer, getCachedRoom, isLoggedIn])
 
   useEffect(() => {
     if (player && isLoggedIn && !currentRoom) {
@@ -201,6 +207,12 @@ export default function GameInterface() {
       loadRoomData()
     }
   }, [player, isLoggedIn, currentRoom, loadRoomData])
+
+  useEffect(() => {
+    if (!isLoggedIn && isInitialLoad) {
+      loadRoomData({ requireAuth: false })
+    }
+  }, [isLoggedIn, isInitialLoad, loadRoomData])
 
   const handleAction = async (actionType: string) => {
     console.log('[handleAction] Called with action:', actionType)

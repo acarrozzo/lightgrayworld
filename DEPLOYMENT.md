@@ -47,6 +47,16 @@ Reference `env.local.template` for sample values.
 2. Deploy the Next.js app. Vercel will build the frontend only (`next build`).
 3. Test the deployed site and confirm the browser console shows a successful socket connection to the Koyeb URL (look for `Connected with ID:` logs).
 
+## Public Endpoints
+
+- `GET /api/game/room/current`
+  - Returns the initial room data (defaults to room `001`) without requiring authentication.
+  - Response is rate limited to 60 requests per minute per IP (429 on excessive traffic).
+  - Payload contains only non-sensitive information required to render the first screen.
+  - Responses include `Cache-Control: private, no-store, must-revalidate` headers to prevent public caching.
+
+All other game endpoints continue to require Bearer token authentication.
+
 ## Local Development
 
 1. Copy `env.local.template` to `.env.local` (ignored by Git) and adjust if needed.

@@ -29,8 +29,8 @@ export default function Home() {
         return
       }
 
-      // Skip server validation if token is still valid locally
-      if (isTokenValid(token)) {
+      // Skip server validation if token is still valid locally (development only)
+      if (process.env.NODE_ENV !== 'production' && isTokenValid(token)) {
         console.log('Token valid locally, skipping server validation')
         setIsInitializing(false)
         return
