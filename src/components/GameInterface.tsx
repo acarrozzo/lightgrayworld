@@ -462,6 +462,27 @@ export default function GameInterface() {
   }, [attemptSocketLogin])
 
   useEffect(() => {
+    if (!socket) {
+      return
+    }
+
+    const handleConnect = () => {
+      console.log('[GameInterface] Socket connect event triggered')
+      attemptSocketLogin('socket-connect-event')
+    }
+
+    socket.on('connect', handleConnect)
+
+    if (socket.connected) {
+      handleConnect()
+    }
+
+    return () => {
+      socket.off('connect', handleConnect)
+    }
+  }, [socket, attemptSocketLogin])
+
+  useEffect(() => {
     if (!socket || !player || !isLoggedIn) {
       return
     }
