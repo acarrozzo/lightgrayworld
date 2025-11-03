@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react'
 import Icon from './Icon'
 import RoomDisplay from './RoomDisplay'
+import { useGameStore } from '@/lib/game-state'
 
 interface CompassProps {
   room: any
@@ -42,6 +43,8 @@ export default function Compass({ room, onAction }: CompassProps) {
   const [targetPosition, setTargetPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
   const [isTransitioning, setIsTransitioning] = useState(false)
   const prevRoomId = useRef<string | null>(null)
+  const roomPlayers = useGameStore((state) => state.roomPlayers)
+  const currentPlayerId = useGameStore((state) => state.player?.id)
 
   // Initialize position when room changes
   React.useEffect(() => {
@@ -217,7 +220,13 @@ export default function Compass({ room, onAction }: CompassProps) {
       </div>
 
       {/* Room Display */}
-      <RoomDisplay room={room} onAction={onAction} />
+      <RoomDisplay
+        room={room}
+        onAction={onAction}
+        roomPlayers={roomPlayers}
+        currentPlayerId={currentPlayerId}
+        showPlayers={false}
+      />
     </div>
   )
 }

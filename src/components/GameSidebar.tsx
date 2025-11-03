@@ -124,51 +124,6 @@ export default function GameSidebar({ player, onClose }: GameSidebarProps) {
           </div>
         )}
       </div>
-      <div className="h-[200px] p-4 bg-gray-600X overflow-y-scroll">
-        <div className="text-gray-400 text-sm">
-          # 🧱 LightGray World – Changelog
-
-All notable changes to this project will be documented in this file.  
-This project adheres to [Semantic Versioning](https://semver.org/).
-
----
-
-## [0.1.0] – Initial Foundation Release
-**Date:** 2025-11-01  
-**Tagline:** Core multiplayer world and full-stack infrastructure established.
-
-### Overview
-This release lays the groundwork for **LightGray World**, a browser-based multiplayer RPG world engine.  
-It includes full-stack infrastructure, real-time communication, and a modular UI system ready for future expansions.
-
-### ⚙️ Core Stack
-| Layer | Technology | Description |
-|-------|-------------|-------------|
-| Frontend | **Next.js 14**, **React 18**, **TypeScript** | Hybrid rendering and typed components |
-| Styling | **Tailwind CSS** | Functional styling system and "Light Gray" theme |
-| State | **Zustand** | Lightweight global state for session and world |
-| Backend | **Next.js API routes / Node** | Game logic, actions, and auth endpoints |
-| Database | **Prisma ORM + PostgreSQL** | Structured, typed world data |
-| Realtime | **Socket.io** | Player presence, room actions, chat |
-| Auth | Custom (local) | To be replaced with Auth.js/NextAuth |
-| Hosting | Vercel (frontend) + Node server | Split deployment for static + sockets |
-
-### 🗺️ Architecture Highlights
-- Modular React components (`GameChat`, `GameFeed`, `ActionFeed`) for live world updates.
-- Prisma schema defines `User`, `Room`, `Action`, `Message`, and `Presence` entities.
-- Zustand store syncs user/session data between API and socket.
-- Socket.io broadcasts for movement, chat, and look actions.
-- Themed Tailwind UI for neutral light-gray design aesthetic.
-
-### 💾 Developer Experience
-```bash
-npm install
-npx prisma migrate dev --name init
-npx prisma db seed
-npm run dev
-        </div>
-      </div>
-   
     </div>
   )
 }

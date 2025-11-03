@@ -1,6 +1,7 @@
 'use client'
 
 import { useGameStore } from '@/lib/game-state'
+import type { Room } from '@/lib/game-state'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
@@ -9,6 +10,18 @@ import GameFeed from './GameFeed'
 import Icon from './Icon'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
+
+const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
+
+type TravelDirectionKey = (typeof TRAVEL_DIRECTION_KEYS)[number]
+
+const findTravelDirection = (fromRoom: Room | null, toRoomId: string): TravelDirectionKey | undefined => {
+  if (!fromRoom) {
+    return undefined
+  }
+
+  return TRAVEL_DIRECTION_KEYS.find((direction) => fromRoom[direction] === toRoomId)
+}
 
 export default function GameInterface() {
   const { player, setPlayer, currentRoom, setCurrentRoom, setRoomPlayers, getAuthHeaders, isLoggedIn, cacheRoom, getCachedRoom } = useGameStore()
@@ -173,7 +186,8 @@ export default function GameInterface() {
           west: roomData.room.west,
           northwest: roomData.room.northwest,
           up: roomData.room.up,
-          down: roomData.room.down
+          down: roomData.room.down,
+          players: Array.isArray(roomData.players) ? roomData.players : []
         }
         
         // Cache the room data for future navigation
@@ -213,9 +227,14 @@ export default function GameInterface() {
         }
 
         if (options?.travel) {
+          const travelDirection = findTravelDirection(currentRoom, roomWithDirections.roomId)
+          const travelMessage = travelDirection
+            ? `You travel ${travelDirection} to the ${roomWithDirections.name}`
+            : `You travel to ${roomWithDirections.name}`
+
           setActionResult({
             action: 'move',
-            message: `You travel to ${roomWithDirections.name}`,
+            message: travelMessage,
             timestamp: new Date().toISOString(),
             success: true,
             roomData: roomWithDirections,

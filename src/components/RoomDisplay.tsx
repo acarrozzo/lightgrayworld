@@ -1,9 +1,14 @@
-import { useState } from 'react'
-import Icon from './Icon'
+import { useMemo, useState } from 'react'
+import type { Player } from '@/lib/game-state'
 
 interface RoomDisplayProps {
   room: any
+  roomPlayers?: Player[]
+  currentPlayerId?: string
   onAction?: (action: string) => void
+  showHeader?: boolean
+  className?: string
+  showPlayers?: boolean
 }
 
 // Room-specific actions configuration
@@ -54,8 +59,21 @@ const getRoomActions = (roomId: string) => {
   return roomActions[roomId] || []
 }
 
-export default function RoomDisplay({ room, onAction }: RoomDisplayProps) {
+export default function RoomDisplay({
+  room,
+  onAction,
+  roomPlayers = [],
+  currentPlayerId,
+  showHeader = true,
+  className,
+  showPlayers = true,
+}: RoomDisplayProps) {
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null)
+
+  const otherUsers = useMemo(
+    () => roomPlayers.filter((player) => player.id !== currentPlayerId),
+    [roomPlayers, currentPlayerId]
+  )
   
   if (!room) {
     return (
@@ -80,13 +98,70 @@ export default function RoomDisplay({ room, onAction }: RoomDisplayProps) {
     }
   }
 
+  const handleInspectPlayer = async (player: Player) => {
+    if (!onAction || isPerformingAction) return
+
+    const inspectAction = `look at ${player.username}`
+
+    setIsPerformingAction(inspectAction)
+    try {
+      await onAction(inspectAction)
+    } catch (error) {
+      console.error('Room inspect error:', error)
+    } finally {
+      setIsPerformingAction(null)
+    }
+  }
+
+  const containerClasses = [showHeader ? 'mt-4' : '', 'space-y-4', className || ''].filter(Boolean).join(' ')
+
   return (
-    <div className="mt-4 space-y-4">
+    <div className={containerClasses}>
       {/* Room Info */}
-      <div className="bg-gray-800 rounded-lg">
-        <div className="text-sm text-gray-400 mb-1">Room {room.roomId}</div>
-        <h3 className="text-lg font-semibold text-white mb-2">{room.name}</h3>
-      </div>
+      {showHeader && (
+        <div className="bg-gray-800 rounded-lg">
+          <div className="text-sm text-gray-400 mb-1">Room {room.roomId}</div>
+          <h3 className="text-lg font-semibold text-white mb-2">{room.name}</h3>
+        </div>
+      )}
+
+      {/* Players in Room */}
+      {showPlayers && otherUsers.length > 0 && (
+        <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-300">
+              Players in Room ({otherUsers.length})
+            </h4>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {otherUsers.map((player) => (
+              <button
+                key={player.id}
+                type="button"
+                onClick={() => handleInspectPlayer(player)}
+                disabled={isPerformingAction !== null}
+                className={`group relative px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
+                  isPerformingAction !== null
+                    ? 'bg-purple-900/60 text-purple-300 cursor-not-allowed'
+                    : 'bg-purple-600 hover:bg-purple-500 text-white'
+                }`}
+              >
+                <span>{player.username}</span>
+
+                <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-56 -translate-x-1/2 rounded-md border border-gray-700 bg-gray-900/95 p-3 text-left text-xs text-gray-200 shadow-xl group-hover:block">
+                  <p className="text-sm font-semibold text-white">{player.username}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-wide text-gray-400">Level {player.level}</p>
+                  <div className="mt-2 flex flex-col gap-1 text-[11px] text-gray-300">
+                    <span>HP: {player.hp}/{player.hpMax}</span>
+                    <span>MP: {player.mp}/{player.mpMax}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Room, useGameStore } from '@/lib/game-state'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers, GameFact } from '@/lib/socket-handlers'
 import Icon from './Icon'
+import RoomDisplay from './RoomDisplay'
 
 const DIRECTION_KEYS = [
   'north',
@@ -102,6 +103,13 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
   const { getAuthHeaders, player, setCurrentRoom, setRoomPlayers, setRoomFactSeq, getCachedRoom } = useGameStore()
   const { socket, isConnected } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
+
+  const handleRoomDisplayAction = useCallback(async (action: string) => {
+    const success = socketHandlers.sendGameAction(action)
+    if (!success) {
+      throw new Error('Failed to send game action')
+    }
+  }, [socketHandlers])
 
   // Load from localStorage and set initial room on mount (only once)
   useEffect(() => {
@@ -648,26 +656,18 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
           ))}
         </div>
 
-        {/* Additional room info sections */}
-        {(roomData.players?.length > 0 || roomData.items?.length > 0 || roomData.npcs?.length > 0) && (
-          <div className="mt-6 space-y-3">
-            {/* Players in Room */}
-            {roomData.players && roomData.players.length > 0 && (
-              <div className="bg-gray-700 rounded-lg p-3">
-                <h4 className="text-sm font-semibold text-yellow-400 mb-2">Also Here:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {roomData.players.map((player: any) => (
-                    <span
-                      key={player.id}
-                      className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full"
-                    >
-                      [{player.level}] {player.username}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+        <RoomDisplay
+          room={roomData}
+          roomPlayers={Array.isArray(roomData.players) ? roomData.players : []}
+          currentPlayerId={player?.id}
+          onAction={handleRoomDisplayAction}
+          showHeader={false}
+          className="mt-6"
+        />
 
+        {/* Additional room info sections */}
+        {(roomData.items?.length > 0 || roomData.npcs?.length > 0) && (
+          <div className="mt-6 space-y-3">
             {/* Items in Room */}
             {roomData.items && roomData.items.length > 0 && (
               <div className="bg-gray-700 rounded-lg p-3">
