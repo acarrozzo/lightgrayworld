@@ -21,6 +21,10 @@ export default function GameInterface() {
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
   const lastLoginSocketId = useRef<string | null>(null)
+  const gameFactsCleanupRef = useRef<(() => void) | null>(null)
+  const isGameFactsListenerRegisteredRef = useRef(false)
+  const playerRef = useRef(player)
+  const currentRoomRef = useRef(currentRoom)
 
   // Load sidebar state from localStorage on mount
   useEffect(() => {
@@ -226,6 +230,19 @@ export default function GameInterface() {
       setIsInitialLoad(false)
     }
   }, [getAuthHeaders, cacheRoom, setCurrentRoom, setRoomPlayers, player, setPlayer, getCachedRoom, isLoggedIn])
+  const loadRoomDataRef = useRef(loadRoomData)
+
+  useEffect(() => {
+    playerRef.current = player
+  }, [player])
+
+  useEffect(() => {
+    currentRoomRef.current = currentRoom
+  }, [currentRoom])
+
+  useEffect(() => {
+    loadRoomDataRef.current = loadRoomData
+  }, [loadRoomData])
 
   useEffect(() => {
     if (player && isLoggedIn && !currentRoom) {
@@ -285,45 +302,70 @@ export default function GameInterface() {
   }
 
   useEffect(() => {
-    if (!socket || !player || !currentRoom) {
+    if (!socket) {
+      return
+    }
+
+    if (gameFactsCleanupRef.current) {
+      gameFactsCleanupRef.current()
+      gameFactsCleanupRef.current = null
+      isGameFactsListenerRegisteredRef.current = false
+    }
+
+    if (isGameFactsListenerRegisteredRef.current) {
       return
     }
 
     const cleanup = socketHandlers.onGameFacts(({ facts }) => {
       console.log('[GameInterface] Received facts:', facts.length, facts)
+      const currentPlayer = playerRef.current
+      const activeRoom = currentRoomRef.current
+
+      if (!currentPlayer) {
+        return
+      }
+
       let updatedPlayerRoom: string | null = null
       facts.forEach((fact) => {
-        if (fact.type === 'player_moved' && fact.data.playerId === player.id) {
+        if (fact.type === 'player_moved' && fact.data.playerId === currentPlayer.id) {
           updatedPlayerRoom = fact.data.toRoom
         }
       })
 
-      if (updatedPlayerRoom && player.currentRoom !== updatedPlayerRoom) {
+      if (updatedPlayerRoom && currentPlayer.currentRoom !== updatedPlayerRoom) {
         console.log('[GameInterface] Updating player currentRoom to:', updatedPlayerRoom)
-        setPlayer({ ...player, currentRoom: updatedPlayerRoom })
+        setPlayer({ ...currentPlayer, currentRoom: updatedPlayerRoom })
       }
 
       const shouldReload = facts.some((fact) => {
         if (fact.type !== 'player_moved') return false
-        if (fact.data.playerId === player.id) return true
-        return fact.data.toRoom === currentRoom.roomId || fact.data.fromRoom === currentRoom.roomId
+        if (fact.data.playerId === currentPlayer.id) return true
+        if (!activeRoom) return false
+        return fact.data.toRoom === activeRoom.roomId || fact.data.fromRoom === activeRoom.roomId
       })
 
       console.log('[GameInterface] shouldReload:', shouldReload)
       if (shouldReload) {
         console.log('[GameInterface] Calling loadRoomData')
-        const playerMovementFact = facts.find((fact) => fact.type === 'player_moved' && fact.data.playerId === player.id)
-        loadRoomData({
+        const playerMovementFact = facts.find((fact) => fact.type === 'player_moved' && fact.data.playerId === currentPlayer.id)
+        loadRoomDataRef.current?.({
           isTransition: true,
           travel: playerMovementFact ? { toRoomId: playerMovementFact.data.toRoom } : undefined,
         })
       }
     })
 
+    gameFactsCleanupRef.current = cleanup
+    isGameFactsListenerRegisteredRef.current = true
+
     return () => {
-      cleanup()
+      if (gameFactsCleanupRef.current) {
+        gameFactsCleanupRef.current()
+        gameFactsCleanupRef.current = null
+        isGameFactsListenerRegisteredRef.current = false
+      }
     }
-  }, [socket, player, setPlayer, socketHandlers, loadRoomData])
+  }, [socket, socketHandlers, setPlayer])
 
   useEffect(() => {
     console.log('[GameInterface] Socket state:', {
