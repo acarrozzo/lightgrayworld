@@ -75,7 +75,11 @@ export async function GET(request: NextRequest) {
       ? await getCurrentUser(request)
       : null
 
-    const roomId = user?.currentRoom || '001'
+    const requestedRoomIdRaw = request.nextUrl.searchParams.get('roomId')
+    const requestedRoomId = requestedRoomIdRaw?.trim()
+    const roomId = requestedRoomId && requestedRoomId.length > 0
+      ? requestedRoomId
+      : user?.currentRoom || '001'
 
     const room = await prisma.room.findUnique({
       where: { roomId },

@@ -150,7 +150,11 @@ export default function GameInterface() {
         Object.assign(headers, getAuthHeaders())
       }
 
-      const response = await fetch('/api/game/room/current', {
+      const endpoint = travelTarget
+        ? `/api/game/room/current?roomId=${encodeURIComponent(travelTarget)}`
+        : '/api/game/room/current'
+
+      const response = await fetch(endpoint, {
         headers,
       })
       
@@ -372,36 +376,112 @@ export default function GameInterface() {
       socket: !!socket,
       player: !!player,
       currentRoom: currentRoom?.roomId,
+      playerRoom: player?.currentRoom,
       isLoggedIn,
+      socketConnected: socket?.connected,
+      socketId: socket?.id,
+      lastLoginSocketId: lastLoginSocketId.current,
     })
   }, [socket, player, currentRoom, isLoggedIn])
 
-  useEffect(() => {
-    if (!socket || !player || !isLoggedIn || !currentRoom) {
-      return
-    }
+  const attemptSocketLogin = useCallback(
+    (reason: string) => {
+      if (!socket) {
+        console.log(`[GameInterface] Skipping socket login (${reason}): socket missing`)
+        return false
+      }
 
-    if (!socket.connected) {
-      return
-    }
+      if (!player) {
+        console.log(`[GameInterface] Skipping socket login (${reason}): player missing`)
+        return false
+      }
 
-    if (player.currentRoom !== currentRoom.roomId) {
-      console.log('[GameInterface] Waiting for player.currentRoom sync before login:', {
-        playerRoom: player.currentRoom,
-        currentRoom: currentRoom.roomId,
+      if (!isLoggedIn) {
+        console.log(`[GameInterface] Skipping socket login (${reason}): user not logged in`)
+        return false
+      }
+
+      if (!currentRoom) {
+        console.log(`[GameInterface] Skipping socket login (${reason}): currentRoom missing`)
+        return false
+      }
+
+      if (!socket.connected) {
+        console.log(`[GameInterface] Skipping socket login (${reason}): socket not connected`, {
+          socketId: socket.id,
+          connected: socket.connected,
+        })
+        return false
+      }
+
+      if (!socket.id) {
+        console.log(`[GameInterface] Skipping socket login (${reason}): socket lacks id`)
+        return false
+      }
+
+      const alreadyLoggedIn = lastLoginSocketId.current === socket.id
+      if (alreadyLoggedIn) {
+        console.log(`[GameInterface] Skipping socket login (${reason}): socket already logged in`, {
+          socketId: socket.id,
+        })
+        return true
+      }
+
+      const playerRoomId = player.currentRoom || currentRoom.roomId
+      if (player.currentRoom !== currentRoom.roomId) {
+        console.warn('[GameInterface] Player room mismatch during login, proceeding with fallback', {
+          reason,
+          playerRoom: player.currentRoom,
+          currentRoom: currentRoom.roomId,
+          fallbackRoom: playerRoomId,
+        })
+      }
+
+      const payload = { ...player, currentRoom: playerRoomId }
+
+      console.log('[GameInterface] Logging in player via socket', {
+        reason,
+        socketId: socket.id,
+        playerId: player.id,
+        playerRoom: payload.currentRoom,
       })
-      return
-    }
 
-    if (socket.id && lastLoginSocketId.current !== socket.id) {
-      console.log('[GameInterface] Logging in player on socket:', socket.id, 'with player data:', player)
-      const loginResult = socketHandlers.loginPlayer(player)
+      const loginResult = socketHandlers.loginPlayer(payload)
       console.log('[GameInterface] loginPlayer result:', loginResult)
       if (loginResult) {
         lastLoginSocketId.current = socket.id
       }
+
+      return loginResult
+    },
+    [socket, player, isLoggedIn, currentRoom, socketHandlers]
+  )
+
+  useEffect(() => {
+    attemptSocketLogin('effect-trigger')
+  }, [attemptSocketLogin])
+
+  useEffect(() => {
+    if (!socket || !player || !isLoggedIn) {
+      return
     }
-  }, [socket, player, currentRoom, isLoggedIn, socketHandlers])
+
+    if (!socket.connected || !socket.id) {
+      return
+    }
+
+    if (lastLoginSocketId.current === socket.id) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      attemptSocketLogin('fallback-timeout')
+    }, 2000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [attemptSocketLogin, socket, player, isLoggedIn])
 
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
