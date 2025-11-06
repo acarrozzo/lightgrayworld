@@ -6,10 +6,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
 import GameRightSidebar from './GameRightSidebar'
-import GameFeed from './GameFeed'
+import GameFeed, { FeedControlHandlers } from './GameFeed'
 import Icon from './Icon'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
+import SettingsModal from './SettingsModal'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -31,6 +32,12 @@ export default function GameInterface() {
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [feedControls, setFeedControls] = useState<FeedControlHandlers>(() => ({
+    clearFeed: () => {},
+    scrollToTop: () => {},
+    scrollToBottom: () => {},
+  }))
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
   const lastLoginSocketId = useRef<string | null>(null)
@@ -523,6 +530,10 @@ export default function GameInterface() {
     }
   }, [attemptSocketLogin, socket, player, isLoggedIn])
 
+  const handleRegisterFeedControls = useCallback((controls: FeedControlHandlers) => {
+    setFeedControls(controls)
+  }, [])
+
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
   }
@@ -540,10 +551,18 @@ export default function GameInterface() {
 
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col">
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onClearFeed={feedControls.clearFeed}
+        onScrollToTop={feedControls.scrollToTop}
+        onScrollToBottom={feedControls.scrollToBottom}
+      />
       <GameHeader 
         player={player} 
         onToggleLeftSidebar={() => setLeftSidebarOpen(!leftSidebarOpen)}
         onToggleRightSidebar={() => setRightSidebarOpen(!rightSidebarOpen)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
       
       <div className="flex flex-1 overflow-hidden relative">
@@ -575,7 +594,11 @@ export default function GameInterface() {
         {/* Main Game Area */}
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 overflow-hidden">
-            <GameFeed room={currentRoom} actionResult={actionResult} />
+            <GameFeed 
+              room={currentRoom} 
+              actionResult={actionResult} 
+              onRegisterControls={handleRegisterFeedControls}
+            />
           </div>
           
           {/* Action Controls Section */}

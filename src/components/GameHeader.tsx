@@ -8,9 +8,10 @@ interface GameHeaderProps {
   player: Player
   onToggleLeftSidebar?: () => void
   onToggleRightSidebar?: () => void
+  onOpenSettings?: () => void
 }
 
-export default function GameHeader({ player, onToggleLeftSidebar, onToggleRightSidebar }: GameHeaderProps) {
+export default function GameHeader({ player, onToggleLeftSidebar, onToggleRightSidebar, onOpenSettings }: GameHeaderProps) {
   const { logout } = useGameStore()
 
   const handleLogout = () => {
@@ -51,6 +52,14 @@ export default function GameHeader({ player, onToggleLeftSidebar, onToggleRightS
           <div className="text-sm text-gray-300">
             Level {player.level} | HP: {player.hp}/{player.hpMax} | MP: {player.mp}/{player.mpMax}
           </div>
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded"
+            >
+              Settings
+            </button>
+          )}
           
           <button
             onClick={handleLogout}

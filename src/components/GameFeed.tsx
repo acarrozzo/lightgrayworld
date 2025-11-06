@@ -88,20 +88,27 @@ interface ActionHistory {
   }
 }
 
+export interface FeedControlHandlers {
+  clearFeed: () => void
+  scrollToTop: () => void
+  scrollToBottom: () => void
+}
+
 interface GameFeedProps {
   room: Room | null
   actionResult?: any
   className?: string
+  onRegisterControls?: (handlers: FeedControlHandlers) => void
 }
 
-export default function GameFeed({ room, actionResult, className = '' }: GameFeedProps) {
+export default function GameFeed({ room, actionResult, className = '', onRegisterControls }: GameFeedProps) {
   const [actions, setActions] = useState<ActionHistory[]>([])
   const [initialRoom, setInitialRoom] = useState(room)
   const feedRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
   const isClearingFeed = useRef(false)
   const { getAuthHeaders, player, setCurrentRoom, setRoomPlayers, setRoomFactSeq, getCachedRoom } = useGameStore()
-  const { socket, isConnected } = useSocket()
+  const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
 
   const handleRoomDisplayAction = useCallback(async (action: string) => {
@@ -189,7 +196,7 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
     return unique.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
   }
 
-  const clearFeed = () => {
+  const clearFeed = useCallback(() => {
     console.log('GameFeed clearFeed - clearing everything')
     isClearingFeed.current = true // Set flag to prevent useEffect from interfering
     
@@ -208,19 +215,29 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
       isClearingFeed.current = false
       hasInitialized.current = true
     }, 100)
-  }
+  }, [room])
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (feedRef.current) {
       feedRef.current.scrollTop = feedRef.current.scrollHeight
     }
-  }
+  }, [])
 
-  const scrollToTop = () => {
+  const scrollToTop = useCallback(() => {
     if (feedRef.current) {
       feedRef.current.scrollTop = 0
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!onRegisterControls) return
+
+    onRegisterControls({
+      clearFeed,
+      scrollToTop,
+      scrollToBottom,
+    })
+  }, [onRegisterControls, clearFeed, scrollToTop, scrollToBottom])
 
   // Scroll to bottom on initial mount/refresh so users land at the latest entries
   useEffect(() => {
@@ -717,34 +734,6 @@ export default function GameFeed({ room, actionResult, className = '' }: GameFee
 
   return (
     <div className={`flex flex-col h-full bg-gray-900 ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-700">
-        <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold text-white">Game Feed</h3>
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={clearFeed}
-            className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded"
-          >
-            Clear Feed
-          </button>
-          <button
-            onClick={scrollToTop}
-            className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded"
-          >
-            ↑ Top
-          </button>
-          <button
-            onClick={scrollToBottom}
-            className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded"
-          >
-            ↓ Bottom
-          </button>
-        </div>
-      </div>
-
       {/* Feed Content */}
       <div 
         ref={feedRef}

@@ -141,13 +141,16 @@ export default function RoomDisplay({
                 type="button"
                 onClick={() => handleInspectPlayer(player)}
                 disabled={isPerformingAction !== null}
-                className={`group relative px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
+                className={`group relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
                   isPerformingAction !== null
                     ? 'bg-purple-900/60 text-purple-300 cursor-not-allowed'
                     : 'bg-purple-600 hover:bg-purple-500 text-white'
                 }`}
               >
-                <span>{player.username}</span>
+                <span className="flex items-center gap-1">
+                  <span className="font-semibold">{player.username}</span>
+                  <span className="uppercase tracking-wide text-[10px] text-purple-100/80">{player.level}</span>
+                </span>
 
                 <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-56 -translate-x-1/2 rounded-md border border-gray-700 bg-gray-900/95 p-3 text-left text-xs text-gray-200 shadow-xl group-hover:block">
                   <p className="text-sm font-semibold text-white">{player.username}</p>
