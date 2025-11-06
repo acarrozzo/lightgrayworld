@@ -11,6 +11,7 @@ import Icon from './Icon'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
+import MapModal from './MapModal'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -33,6 +34,8 @@ export default function GameInterface() {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false)
+  const [mapInfo, setMapInfo] = useState<{ src: string; title: string }>({ src: '', title: '' })
   const [feedControls, setFeedControls] = useState<FeedControlHandlers>(() => ({
     clearFeed: () => {},
     scrollToTop: () => {},
@@ -534,6 +537,11 @@ export default function GameInterface() {
     setFeedControls(controls)
   }, [])
 
+  const handleOpenMap = useCallback((src: string, title: string) => {
+    setMapInfo({ src, title })
+    setIsMapModalOpen(true)
+  }, [])
+
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
   }
@@ -557,6 +565,12 @@ export default function GameInterface() {
         onClearFeed={feedControls.clearFeed}
         onScrollToTop={feedControls.scrollToTop}
         onScrollToBottom={feedControls.scrollToBottom}
+      />
+      <MapModal
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+        mapSrc={mapInfo.src}
+        mapTitle={mapInfo.title || 'Map'}
       />
       <GameHeader 
         player={player} 
@@ -677,6 +691,7 @@ export default function GameInterface() {
             room={currentRoom} 
             onAction={handleAction}
             onClose={() => setRightSidebarOpen(false)} 
+            onOpenMap={handleOpenMap}
           />
         </div>
       </div>

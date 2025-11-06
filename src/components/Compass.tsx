@@ -8,6 +8,7 @@ import { useGameStore } from '@/lib/game-state'
 interface CompassProps {
   room: any
   onAction?: (action: string) => void
+  onOpenMap?: (src: string, title: string) => void
 }
 
 interface Direction {
@@ -37,7 +38,7 @@ const getRoomMapPosition = (roomId: string | undefined) => {
   return roomMapPositions[roomId || '000'] || '-350px -350px' // Default to center
 }
 
-export default function Compass({ room, onAction }: CompassProps) {
+export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
   const [currentPosition, setCurrentPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
   const [targetPosition, setTargetPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
@@ -116,6 +117,7 @@ export default function Compass({ room, onAction }: CompassProps) {
   const mapPosition = isRoomZero
     ? 'center'
     : (isTransitioning ? targetPosition : currentPosition)
+  const mapTitle = isRoomZero ? 'Room Zero' : 'Grassy Field'
 
   const directions: Direction[] = [
     { key: 'northwest', icon: 'arrow', label: 'NW', position: 'top-left', rotation: 315 },
@@ -140,13 +142,17 @@ export default function Compass({ room, onAction }: CompassProps) {
         <div className="relative w-64 h-64 mx-auto">
           {/* Map circle in center */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div 
-              className="w-[140px] h-[140px] rounded-full bg-no-repeat transition-all duration-500 ease-in-out"
+            <button
+              type="button"
+              onClick={() => onOpenMap?.(mapBackground, mapTitle)}
+              className="w-[140px] h-[140px] cursor-pointer rounded-full bg-no-repeat transition-all duration-500 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition,
                 border: '20px solid rgba(250, 250, 250, 0)'
               }}
+              aria-label="View full map"
+              title={mapTitle}
             />
           </div>
 

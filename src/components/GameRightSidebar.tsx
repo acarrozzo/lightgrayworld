@@ -8,9 +8,10 @@ interface GameRightSidebarProps {
   room: any
   onAction: (action: string) => void
   onClose?: () => void
+  onOpenMap?: (src: string, title: string) => void
 }
 
-export default function GameRightSidebar({ room, onAction, onClose }: GameRightSidebarProps) {
+export default function GameRightSidebar({ room, onAction, onClose, onOpenMap }: GameRightSidebarProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Mobile close button */}
@@ -28,7 +29,7 @@ export default function GameRightSidebar({ room, onAction, onClose }: GameRightS
 
       {/* Compass Navigation */}
       <div className="p-4 flex justify-center border-b border-gray-700 flex-shrink-0">
-        <Compass room={room} onAction={onAction} />
+        <Compass room={room} onAction={onAction} onOpenMap={onOpenMap} />
       </div>
       
       {/* Chat Interface */}
