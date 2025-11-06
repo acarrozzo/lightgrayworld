@@ -7,6 +7,7 @@ import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
 import GameRightSidebar from './GameRightSidebar'
 import GameFeed, { FeedControlHandlers } from './GameFeed'
+import Compass from './Compass'
 import Icon from './Icon'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
@@ -626,6 +627,11 @@ export default function GameInterface() {
               actionResult={actionResult} 
               onRegisterControls={handleRegisterFeedControls}
             />
+          </div>
+
+          {/* Mobile D-pad */}
+          <div className="lg:hidden bg-gray-800 border-t border-gray-700 p-4 flex-shrink-0">
+            <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
           </div>
           
           {/* Action Controls Section */}

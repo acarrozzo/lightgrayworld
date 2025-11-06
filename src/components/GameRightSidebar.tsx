@@ -28,7 +28,7 @@ export default function GameRightSidebar({ room, onAction, onClose, onOpenMap }:
       )}
 
       {/* Compass Navigation */}
-      <div className="p-4 flex justify-center border-b border-gray-700 flex-shrink-0">
+      <div className="hidden lg:flex p-4 justify-center border-b border-gray-700 flex-shrink-0">
         <Compass room={room} onAction={onAction} onOpenMap={onOpenMap} />
       </div>
       
