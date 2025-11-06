@@ -9,13 +9,13 @@ A modern, real-time multiplayer text-based RPG built with Next.js, TypeScript, a
 - **Character Progression**: Level up, gain stats, learn skills
 - **Modern UI**: Responsive design with Tailwind CSS
 - **Type Safety**: Full TypeScript support
-- **Database**: SQLite with Prisma ORM
+- **Database**: PostgreSQL (Supabase-compatible) with Prisma ORM
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 14, React 19, TypeScript
 - **Styling**: Tailwind CSS
-- **Database**: SQLite with Prisma ORM
+- **Database**: PostgreSQL (Supabase-compatible) with Prisma ORM
 - **Real-time**: Socket.io
 - **State Management**: Zustand
 - **Authentication**: Custom auth system
@@ -24,8 +24,9 @@ A modern, real-time multiplayer text-based RPG built with Next.js, TypeScript, a
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
+- Docker Desktop (or Docker Engine with Compose plugin)
 
 ### Installation
 
@@ -35,18 +36,28 @@ A modern, real-time multiplayer text-based RPG built with Next.js, TypeScript, a
    npm install
    ```
 
-3. Set up the database:
+3. Copy the local environment template (first run only):
+   ```bash
+   cp env.local.template .env.local
+   ```
+
+4. Start the local PostgreSQL database:
+   ```bash
+   docker compose up -d
+   ```
+
+5. Set up the database schema:
    ```bash
    npx prisma migrate dev
    npx prisma db seed
    ```
 
-4. Start the development server:
+6. Start the development server:
    ```bash
    npm run dev
    ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
+7. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ### Test Account
 
@@ -106,6 +117,15 @@ The game uses a comprehensive database schema with:
 
 ### Database Commands
 ```bash
+# Start local PostgreSQL (required before other commands)
+docker compose up -d
+
+# Stop PostgreSQL but keep data
+docker compose down
+
+# Stop PostgreSQL and delete all local data
+docker compose down -v
+
 # Generate Prisma client
 npx prisma generate
 
@@ -114,6 +134,9 @@ npx prisma migrate dev
 
 # Seed database
 npx prisma db seed
+
+# Deploy migrations to production
+npx prisma migrate deploy
 
 # View database
 npx prisma studio
