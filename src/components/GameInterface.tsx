@@ -303,13 +303,26 @@ export default function GameInterface() {
       console.log('[handleAction] Navigation action detected, currentRoom:', currentRoom?.roomId)
       if (!currentRoom) {
         console.warn('No current room available for navigation action')
+        setActionResult({
+          action: 'move',
+          message: `You don't see an exit in that direction (${actionType})`,
+          timestamp: new Date().toISOString(),
+          success: false,
+        })
         return
       }
 
       const targetRoomId = currentRoom[actionType as keyof typeof currentRoom]
       console.log('[handleAction] Target room:', targetRoomId)
+
       if (!targetRoomId || typeof targetRoomId !== 'string') {
         console.warn('Navigation target not available from current room')
+        setActionResult({
+          action: 'move',
+          message: `You don't see an exit in that direction (${actionType})`,
+          timestamp: new Date().toISOString(),
+          success: false,
+        })
         return
       }
 

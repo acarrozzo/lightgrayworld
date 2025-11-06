@@ -89,7 +89,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
   const handleNavigate = async (direction: string) => {
     console.log('[Compass] handleNavigate called with direction:', direction)
     console.log('[Compass] isNavigating:', isNavigating, 'room[direction]:', room?.[direction], 'onAction:', !!onAction)
-    if (isNavigating || !room?.[direction] || !onAction) {
+    if (isNavigating || !onAction) {
       console.log('[Compass] Early return - navigation blocked')
       return
     }
@@ -174,16 +174,18 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
               <button
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
-                disabled={!isAvailable || isNavigating}
-                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-8 h-8 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed border border-gray-600 rounded-full flex items-center justify-center transition-colors ${
-                  isAvailable ? 'hover:border-blue-400' : ''
-                }`}
-                title={isAvailable ? `Go ${dir.label}` : `Cannot go ${dir.label}`}
+                disabled={isNavigating}
+                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-8 h-8 border rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                  isAvailable
+                    ? 'bg-gray-700 hover:bg-gray-600 border-gray-600'
+                    : 'bg-gray-800 hover:bg-gray-700 border-gray-700 opacity-70'
+                } ${isAvailable ? 'hover:border-blue-400' : ''} ${isNavigating ? 'cursor-wait' : ''}`}
+                title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
                 <Icon 
                   name={dir.icon} 
                   size={14} 
-                  color={isAvailable ? 'white' : 'gray'} 
+                  color={isAvailable ? 'white' : '#9ca3af'} 
                   rotation={dir.rotation}
                 />
               </button>
@@ -200,16 +202,18 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
               <button
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
-                disabled={!isAvailable || isNavigating}
-                className={`w-8 h-8 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed border border-gray-600 rounded-full flex items-center justify-center transition-colors ${
-                  isAvailable ? 'hover:border-blue-400' : ''
-                }`}
-                title={isAvailable ? `Go ${dir.label}` : `Cannot go ${dir.label}`}
+                disabled={isNavigating}
+                className={`w-8 h-8 border rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                  isAvailable
+                    ? 'bg-gray-700 hover:bg-gray-600 border-gray-600'
+                    : 'bg-gray-800 hover:bg-gray-700 border-gray-700 opacity-70'
+                } ${isAvailable ? 'hover:border-blue-400' : ''} ${isNavigating ? 'cursor-wait' : ''}`}
+                title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
                 <Icon 
                   name={dir.icon} 
                   size={14} 
-                  color={isAvailable ? 'white' : 'gray'} 
+                  color={isAvailable ? 'white' : '#9ca3af'} 
                   rotation={dir.rotation}
                 />
               </button>
