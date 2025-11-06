@@ -1,7 +1,6 @@
 'use client'
 
-import { Player } from '@/lib/game-state'
-import { useGameStore } from '@/lib/game-state'
+import type { Player } from '@/lib/game-state'
 import Icon from './Icon'
 
 interface GameHeaderProps {
@@ -12,12 +11,6 @@ interface GameHeaderProps {
 }
 
 export default function GameHeader({ player, onToggleLeftSidebar, onToggleRightSidebar, onOpenSettings }: GameHeaderProps) {
-  const { logout } = useGameStore()
-
-  const handleLogout = () => {
-    logout()
-  }
-
   return (
     <header className="bg-gray-800 border-b border-gray-700 px-4 py-3">
       <div className="flex items-center justify-between">
@@ -60,13 +53,6 @@ export default function GameHeader({ player, onToggleLeftSidebar, onToggleRightS
               Settings
             </button>
           )}
-          
-          <button
-            onClick={handleLogout}
-            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded"
-          >
-            Logout
-          </button>
         </div>
       </div>
     </header>

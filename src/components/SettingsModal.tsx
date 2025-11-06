@@ -1,5 +1,6 @@
 'use client'
 
+import { useGameStore } from '@/lib/game-state'
 import Icon from './Icon'
 
 interface SettingsModalProps {
@@ -17,6 +18,13 @@ export default function SettingsModal({
   onScrollToTop,
   onScrollToBottom,
 }: SettingsModalProps) {
+  const { logout } = useGameStore()
+
+  const handleLogout = () => {
+    logout()
+    onClose()
+  }
+
   if (!isOpen) {
     return null
   }
@@ -76,6 +84,21 @@ export default function SettingsModal({
                 className="rounded-full bg-gray-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               >
                 ↓ Bottom
+              </button>
+            </div>
+          </section>
+
+          <section className="mb-8">
+            <h3 className="text-lg font-semibold text-white">Account</h3>
+            <p className="text-sm text-gray-400">Manage your session and access controls.</p>
+
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              >
+                Logout
               </button>
             </div>
           </section>
