@@ -6,7 +6,7 @@
 import jwt from 'jsonwebtoken'
 
 interface TokenPayload {
-  userId: string
+  id: string
   username: string
   iat: number
   exp: number
@@ -37,12 +37,12 @@ export function isTokenValid(token: string): boolean {
 export function getUserFromToken(token: string): { userId: string; username: string } | null {
   try {
     const decoded = jwt.decode(token) as TokenPayload
-    if (!decoded || !decoded.userId || !decoded.username) {
+    if (!decoded || !decoded.id || !decoded.username) {
       return null
     }
     
     return {
-      userId: decoded.userId,
+      userId: decoded.id,
       username: decoded.username
     }
   } catch (error) {
