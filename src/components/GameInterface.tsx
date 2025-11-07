@@ -597,7 +597,7 @@ export default function GameInterface() {
         {/* Overlay backdrop for mobile */}
         {(leftSidebarOpen || rightSidebarOpen) && (
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-10 lg:hidden"
+            className="fixed inset-0 bg-black/50 bg-opacity-50 backdrop-blur-sm z-10 lg:hidden"
             onClick={() => {
               setLeftSidebarOpen(false)
               setRightSidebarOpen(false)

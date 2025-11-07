@@ -1,8 +1,7 @@
 'use client'
 
 import type { Player } from '@/lib/game-state'
-import Icon from './Icon'
-import { Settings as SettingsIcon } from 'lucide-react'
+import { MessageCircle, PersonStanding, Settings as SettingsIcon } from 'lucide-react'
 
 interface GameHeaderProps {
   player: Player
@@ -18,21 +17,19 @@ export default function GameHeader({ player, onToggleLeftSidebar, onToggleRightS
         <div className="flex items-center space-x-4">
           {/* Mobile sidebar toggles */}
           <button 
-            className="xl:hidden p-2 text-gray-400 hover:text-white transition-colors relative"
+            className="xl:hidden p-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800 relative"
             onClick={onToggleLeftSidebar}
             title="Toggle Player Info (Ctrl+1 or swipe right)"
           >
-            <Icon name="character" size={20} />
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-400 rounded-full opacity-75"></div>
+            <PersonStanding className="h-5 w-5" strokeWidth={2} />
           </button>
           
           <button 
-            className="lg:hidden p-2 text-gray-400 hover:text-white transition-colors relative"
+            className="lg:hidden p-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800 relative"
             onClick={onToggleRightSidebar}
             title="Toggle Chat & Navigation (Ctrl+2 or swipe left)"
           >
-            <Icon name="question" size={20} />
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full opacity-75"></div>
+            <MessageCircle className="h-5 w-5" strokeWidth={2} />
           </button>
           <div className="flex items-center space-x-4 hidden md:flex">
             <h1 className="text-xl font-bold text-white">Light Gray RPG </h1>
@@ -56,7 +53,7 @@ export default function GameHeader({ player, onToggleLeftSidebar, onToggleRightS
               className="p-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800"
               aria-label="Open settings"
             >
-              <SettingsIcon className="h-5 w-5" strokeWidth={1.75} />
+              <SettingsIcon className="h-5 w-5" strokeWidth={2} />
             </button>
           )}
         </div>

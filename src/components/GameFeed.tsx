@@ -762,7 +762,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
             return (
               <div
                 key={action.id}
-                className={`room-box bg-gray-800 rounded-lgX ${
+                className={`room-box bg-gray-800 rounded-lg ${
                   isLastAction ? 'border-2 border-green-500' : 'border border-gray-600'
                 }`}
               >

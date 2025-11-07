@@ -219,12 +219,15 @@ export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
     <div className="flex flex-col h-full min-h-0">
       {/* Connection Status */}
       <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-            <span className="text-sm text-gray-400">
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </span>
+        <div className="w-full flex items-center justify-between">
+          <div className="flex-1 flex items-center gap-2">
+            <span className="text-sm text-gray-200">World Chat</span>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+              <span className="text-sm text-gray-400">
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
           </div>
           {/* Mobile close button */}
           {onClose && (
