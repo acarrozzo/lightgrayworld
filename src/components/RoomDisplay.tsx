@@ -116,7 +116,7 @@ export default function RoomDisplay({
   const containerClasses = [showHeader ? 'mt-4' : '', 'space-y-4', className || ''].filter(Boolean).join(' ')
 
   return (
-    <div className={containerClasses}>
+    <div className= " {containerClasses} hidden md:block">
       {/* Room Info */}
       {showHeader && (
         <div className="bg-gray-800 rounded-lg">

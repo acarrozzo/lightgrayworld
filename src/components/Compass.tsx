@@ -1,9 +1,9 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
-import Icon from './Icon'
 import RoomDisplay from './RoomDisplay'
 import { useGameStore } from '@/lib/game-state'
+import { ArrowBigUp, ArrowBigUpDash } from 'lucide-react'
 
 interface CompassProps {
   room: any
@@ -13,9 +13,14 @@ interface CompassProps {
 
 interface Direction {
   key: string
-  icon: string
   label: string
   position: string
+  rotation?: number
+}
+
+interface VerticalDirection {
+  key: string
+  label: string
   rotation?: number
 }
 
@@ -120,23 +125,23 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
   const mapTitle = isRoomZero ? 'Room Zero' : 'Grassy Field'
 
   const directions: Direction[] = [
-    { key: 'northwest', icon: 'arrow', label: 'NW', position: 'top-left', rotation: 315 },
-    { key: 'north', icon: 'arrow', label: 'N', position: 'top-center', rotation: 0 },
-    { key: 'northeast', icon: 'arrow', label: 'NE', position: 'top-right', rotation: 45 },
-    { key: 'west', icon: 'arrow', label: 'W', position: 'left', rotation: 270 },
-    { key: 'east', icon: 'arrow', label: 'E', position: 'right', rotation: 90 },
-    { key: 'southwest', icon: 'arrow', label: 'SW', position: 'bottom-left', rotation: 225 },
-    { key: 'south', icon: 'arrow', label: 'S', position: 'bottom-center', rotation: 180 },
-    { key: 'southeast', icon: 'arrow', label: 'SE', position: 'bottom-right', rotation: 135 },
+    { key: 'northwest', label: 'NW', position: 'top-left', rotation: 315 },
+    { key: 'north', label: 'N', position: 'top-center', rotation: 0 },
+    { key: 'northeast', label: 'NE', position: 'top-right', rotation: 45 },
+    { key: 'west', label: 'W', position: 'left', rotation: 270 },
+    { key: 'east', label: 'E', position: 'right', rotation: 90 },
+    { key: 'southwest', label: 'SW', position: 'bottom-left', rotation: 225 },
+    { key: 'south', label: 'S', position: 'bottom-center', rotation: 180 },
+    { key: 'southeast', label: 'SE', position: 'bottom-right', rotation: 135 },
   ]
 
-  const verticalDirections: Direction[] = [
-    { key: 'up', icon: 'arrow-up', label: 'UP', position: 'top' },
-    { key: 'down', icon: 'arrow-down', label: 'DOWN', position: 'bottom' },
+  const verticalDirections: VerticalDirection[] = [
+    { key: 'up', label: 'UP', rotation: 0 },
+    { key: 'down', label: 'DOWN', rotation: 180 },
   ]
 
   return (
-    <div className="space-y-4 w-full">
+    <div className="compass space-y-4XXX w-full px-4">
       {/* Main D-pad */}
       <div className="relative">
         <div className="relative w-64 h-64 mx-auto">
@@ -182,11 +187,11 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 } ${isAvailable ? 'hover:border-blue-400' : ''} ${isNavigating ? 'cursor-wait' : ''}`}
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
-                <Icon 
-                  name={dir.icon} 
-                  size={14} 
-                  color={isAvailable ? 'white' : '#9ca3af'} 
-                  rotation={dir.rotation}
+                <ArrowBigUpDash
+                  className={`h-4.5 w-4.5 ${isAvailable ? 'text-white' : 'text-gray-400'}`}
+                  strokeWidth={1.75}
+                  style={dir.rotation !== undefined ? { transform: `rotate(${dir.rotation}deg)` } : undefined}
+                  aria-hidden="true"
                 />
               </button>
             )
@@ -210,11 +215,11 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 } ${isAvailable ? 'hover:border-blue-400' : ''} ${isNavigating ? 'cursor-wait' : ''}`}
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
-                <Icon 
-                  name={dir.icon} 
-                  size={14} 
-                  color={isAvailable ? 'white' : '#9ca3af'} 
-                  rotation={dir.rotation}
+                <ArrowBigUp
+                  className={`h-4.5 w-4.5 ${isAvailable ? 'text-white' : 'text-gray-400'}`}
+                  strokeWidth={1.75}
+                  style={dir.rotation !== undefined ? { transform: `rotate(${dir.rotation}deg)` } : undefined}
+                  aria-hidden="true"
                 />
               </button>
             )
