@@ -683,8 +683,25 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
         />
 
         {/* Additional room info sections */}
-        {(roomData.items?.length > 0 || roomData.npcs?.length > 0) && (
-          <div className="mt-6 space-y-3">
+        {(roomData.players?.length > 0 || roomData.items?.length > 0 || roomData.npcs?.length > 0) && (          <div className="mt-6 space-y-3">
+            {/* Players in Room */}
+            {roomData.players && roomData.players.length > 0 && (
+              <div className="bg-gray-700 rounded-lg p-3">
+                <h4 className="text-sm font-semibold text-yellow-400 mb-2">Also Here:</h4>
+                <div className="flex flex-wrap gap-2">
+                  {roomData.players.map((player: any) => (
+                    <span
+                      key={player.id}
+                      className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full"
+                    >
+                      [{player.level}] {player.username}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+
             {/* Items in Room */}
             {roomData.items && roomData.items.length > 0 && (
               <div className="bg-gray-700 rounded-lg p-3">
