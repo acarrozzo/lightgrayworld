@@ -295,10 +295,12 @@ export default function GameInterface() {
     console.log('[handleAction] Called with action:', actionType)
     setAction(actionType)
     setActionResult(null)
+
+    const normalizedAction = actionType.toLowerCase()
     
     // Check if this is a navigation action for optimistic updates
     const travelActions = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down', 'move', 'navigate']
-    const isNavigationAction = travelActions.includes(actionType.toLowerCase())
+    const isNavigationAction = travelActions.includes(normalizedAction)
     
     if (isNavigationAction) {
       console.log('[handleAction] Navigation action detected, currentRoom:', currentRoom?.roomId)
@@ -337,6 +339,37 @@ export default function GameInterface() {
         console.warn('Socket not connected; movement intent not sent')
       }
 
+      return
+    }
+
+    if (normalizedAction === 'look') {
+      console.log('[handleAction] Look action detected, sending to server and updating feed')
+
+      const timestamp = new Date().toISOString()
+
+      if (currentRoom) {
+        setActionResult({
+          action: 'look',
+          message: 'You look around...',
+          timestamp,
+          success: true,
+          roomData: currentRoom,
+        })
+      } else {
+        console.warn('Look action requested but no current room is available')
+        setActionResult({
+          action: 'look',
+          message: 'You look around, but something feels off. (no current room - probably an issue)',
+          timestamp,
+          success: false,
+        })
+      }
+
+      const lookResult = socketHandlers.sendGameAction(actionType)
+      console.log('[handleAction] sendGameAction result for look:', lookResult)
+      if (!lookResult) {
+        console.warn('Failed to send look action via socket')
+      }
       return
     }
 
