@@ -11,26 +11,27 @@ export function withAuth(
 ): (request: NextRequest) => Promise<NextResponse>
 
 // Overload for handlers with params (Next.js 15 uses Promise-based params)
-export function withAuth(
+// Uses generic type parameter to support both generic and specific param types
+export function withAuth<T extends { [key: string]: string }>(
   handler: (
     request: AuthenticatedRequest,
-    context: { params: Promise<{ [key: string]: string }> }
+    context: { params: Promise<T> }
   ) => Promise<NextResponse>
 ): (
   request: NextRequest,
-  context: { params: Promise<{ [key: string]: string }> }
+  context: { params: Promise<T> }
 ) => Promise<NextResponse>
 
 // Implementation
-export function withAuth(
+export function withAuth<T extends { [key: string]: string }>(
   handler: (
     request: AuthenticatedRequest,
-    context?: { params: Promise<{ [key: string]: string }> }
+    context?: { params: Promise<T> }
   ) => Promise<NextResponse>
 ) {
   return async (
     request: NextRequest,
-    context?: { params: Promise<{ [key: string]: string }> }
+    context?: { params: Promise<T> }
   ): Promise<NextResponse> => {
     try {
       const user = await getCurrentUser(request)
