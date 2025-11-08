@@ -425,6 +425,126 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
           roomId: room?.roomId,
           metadata: JSON.stringify(fact.data),
         }
+      case 'npc_attack_intent': {
+        const name = fact.data.name || 'A hostile creature'
+        const target = fact.data.targetId === player?.id ? 'you' : fact.data.targetId || 'a target'
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'npc_attack',
+          message: `${name} prepares to strike ${target}.`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      }
+      case 'player_damaged': {
+        const npcName = fact.data.name || 'An enemy'
+        const playerId = fact.data.playerId
+        const damage = fact.data.damage ?? '?'
+        const hpRemaining = fact.data.hpRemaining ?? '?'
+        const message =
+          playerId && playerId === player?.id
+            ? `${npcName} hits you for ${damage} damage (${hpRemaining} HP remain).`
+            : `${npcName} hits ${playerId || 'a player'} for ${damage} damage.`
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'player_damaged',
+          message,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      }
+      case 'npc_damaged': {
+        const name = fact.data.name || 'Enemy'
+        const attacker = fact.data.attackerId === player?.id ? 'You' : fact.data.attackerId || 'Someone'
+        const damage = fact.data.damage ?? '?'
+        const hpRemaining = fact.data.hpRemaining ?? '?'
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'npc_damaged',
+          message: `${attacker} hit ${name} for ${damage} (${hpRemaining} HP remain).`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      }
+      case 'npc_killed': {
+        const name = fact.data.name || 'Enemy'
+        const killer =
+          fact.data.killerId && fact.data.killerId === player?.id
+            ? 'You'
+            : fact.data.killerId || 'Someone'
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'npc_killed',
+          message: `${killer} defeated ${name}.`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      }
+      case 'npc_loot': {
+        const name = fact.data.name || 'the foe'
+        const loot = fact.data.loot || {}
+        const parts: string[] = []
+        if (loot.currency) {
+          parts.push(`${loot.currency} coins`)
+        }
+        if (loot.xp) {
+          parts.push(`${loot.xp} XP`)
+        }
+        if (Array.isArray(loot.items) && loot.items.length > 0) {
+          const itemDescriptions = loot.items
+            .map((item: any) => `${item.quantity}× ${item.itemId}`)
+            .join(', ')
+          parts.push(itemDescriptions)
+        }
+        const rewards = parts.length > 0 ? parts.join(', ') : 'no loot'
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'npc_loot',
+          message: `Rewards from ${name}: ${rewards}.`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      }
+      case 'npc_bark': {
+        const name = fact.data.name || 'Someone'
+        const message = fact.data.message || ''
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'npc_bark',
+          message: `${name}: "${message}"`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      }
+      case 'npc_moved': {
+        const name = fact.data.name || 'An NPC'
+        const toRoom = fact.data.toRoom || 'another room'
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'npc_move',
+          message: `${name} leaves for ${toRoom}.`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      }
+      case 'npc_invulnerable': {
+        const name = fact.data.name || 'This NPC'
+        return {
+          id: `fact-${fact.tickId}-${fact.seq}`,
+          action: 'npc_invulnerable',
+          message: `${name} shrugs off the attack.`,
+          timestamp,
+          roomId: room?.roomId,
+          metadata: JSON.stringify(fact.data),
+        }
+      }
       default:
         return null
     }
@@ -471,6 +591,22 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
         return 'text-blue-400'
       case 'attack':
         return 'text-red-400'
+      case 'npc_attack':
+        return 'text-red-300'
+      case 'npc_damaged':
+        return 'text-amber-300'
+      case 'npc_killed':
+        return 'text-red-500'
+      case 'npc_loot':
+        return 'text-yellow-300'
+      case 'npc_bark':
+        return 'text-purple-300'
+      case 'npc_move':
+        return 'text-blue-300'
+      case 'npc_invulnerable':
+        return 'text-slate-300'
+      case 'player_damaged':
+        return 'text-red-400'
       case 'search':
         return 'text-yellow-400'
       case 'rest':
@@ -489,6 +625,22 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
       case 'look':
         return 'aim'
       case 'attack':
+        return 'attack'
+      case 'npc_attack':
+        return 'attack'
+      case 'npc_damaged':
+        return 'attack'
+      case 'npc_killed':
+        return 'skull'
+      case 'npc_loot':
+        return 'chest'
+      case 'npc_bark':
+        return 'chat'
+      case 'npc_move':
+        return 'arrow'
+      case 'npc_invulnerable':
+        return 'block'
+      case 'player_damaged':
         return 'attack'
       case 'search':
         return 'aim'

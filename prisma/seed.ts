@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, NPCDisposition, NPCMobility } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -209,6 +209,467 @@ async function main() {
     })
   }
 
+  const roomRecords = await prisma.room.findMany({
+    select: {
+      id: true,
+      roomId: true,
+    },
+  })
+  const roomIdMap = new Map(roomRecords.map((room) => [room.roomId, room.id]))
+
+  const npcDefinitions = [
+    {
+      key: 'general_vendor',
+      name: 'Mira the Merchant',
+      description: 'A friendly vendor who keeps the adventurers supplied.',
+      disposition: NPCDisposition.FRIENDLY,
+      canBeAttacked: false,
+      mobility: NPCMobility.STATIONARY,
+      mobilityConfig: {},
+      stats: {
+        hp: 40,
+        hpMax: 40,
+        damage: { min: 0, max: 0 },
+        defense: 5,
+        attackSpeedTicks: 99999,
+      },
+      attackSpeedTicks: 99999,
+      resistances: null,
+      leashDistance: 0,
+      leashTimeMs: 0,
+      dialogueTree: null,
+      questHooks: null,
+      vendorCatalog: [
+        { itemId: 'health_potion_t1', itemName: 'Minor Health Potion', price: 15, stockQuantity: 10 },
+        { itemId: 'mana_potion_t1', itemName: 'Minor Mana Potion', price: 15, stockQuantity: 10 },
+        { itemId: 'rope', itemName: 'Sturdy Rope', price: 5 },
+        { itemId: 'torch', itemName: 'Everbright Torch', price: 8 },
+      ],
+      lootTable: null,
+      respawnSeconds: 5,
+      services: ['vendor', 'persistent'],
+    },
+    {
+      key: 'forest_wolf',
+      name: 'Ravenous Wolf',
+      description: 'A hostile predator prowling the forest paths.',
+      disposition: NPCDisposition.HOSTILE,
+      canBeAttacked: true,
+      mobility: NPCMobility.WANDER,
+      mobilityConfig: {
+        wanderRooms: ['002', '003', '007'],
+        dwellTicks: 5,
+      },
+      stats: {
+        hp: 30,
+        hpMax: 30,
+        damage: { min: 3, max: 7 },
+        defense: 2,
+        attackSpeedTicks: 10,
+        resistances: {
+          cold: 0.1,
+        },
+      },
+      attackSpeedTicks: 10,
+      resistances: {
+        cold: 0.1,
+      },
+      leashDistance: 6,
+      leashTimeMs: 20000,
+      dialogueTree: null,
+      questHooks: null,
+      vendorCatalog: null,
+      lootTable: {
+        xp: 25,
+        currency: { min: 2, max: 6 },
+        drops: [
+          { itemId: 'wolf_pelt', chance: 0.45, quantity: 1 },
+          { itemId: 'wolf_fang', chance: 0.15, quantity: { min: 1, max: 2 } },
+        ],
+      },
+      respawnSeconds: 45,
+      services: [],
+    },
+    {
+      key: 'village_quest_giver',
+      name: 'Seren the Elder',
+      description: 'A wise elder who guides newcomers through their first tasks.',
+      disposition: NPCDisposition.FRIENDLY,
+      canBeAttacked: false,
+      mobility: NPCMobility.STATIONARY,
+      mobilityConfig: {},
+      stats: {
+        hp: 35,
+        hpMax: 35,
+        damage: { min: 0, max: 0 },
+        defense: 2,
+        attackSpeedTicks: 99999,
+      },
+      attackSpeedTicks: 99999,
+      resistances: null,
+      leashDistance: 0,
+      leashTimeMs: 0,
+      dialogueTree: {
+        id: 'seren_intro',
+        root: 'welcome',
+        nodes: {
+          welcome: {
+            id: 'welcome',
+            speaker: 'Seren',
+            text: 'Welcome back, traveler. Do you bring the herbs I asked for?',
+            responses: [
+              {
+                text: 'I have the herbs right here.',
+                next: 'handin',
+                conditions: [{ type: 'HAS_ITEM', itemId: 'healing_herb', quantity: 3 }],
+              },
+              {
+                text: 'Remind me what you needed again?',
+                next: 'reminder',
+              },
+              {
+                text: 'Not right now.',
+                action: { type: 'CLOSE' },
+              },
+            ],
+          },
+          reminder: {
+            id: 'reminder',
+            speaker: 'Seren',
+            text: 'Please gather three healing herbs from the forest. They grow near the old well.',
+            responses: [
+              {
+                text: 'I will return soon.',
+                action: { type: 'CLOSE' },
+              },
+            ],
+          },
+          handin: {
+            id: 'handin',
+            speaker: 'Seren',
+            text: 'Thank you, these will help many in the village. Here is the reward I promised.',
+            responses: [
+              {
+                text: 'Glad to help.',
+                action: {
+                  type: 'HAND_IN_ITEM',
+                  questId: 'seren_fetch_herbs',
+                  handInItem: 'healing_herb',
+                  handInQuantity: 3,
+                },
+              },
+              {
+                text: 'What is the next step?',
+                action: {
+                  type: 'GIVE_REWARD',
+                  rewardId: 'seren_healing_reward',
+                },
+              },
+              {
+                text: 'I will be going now.',
+                action: { type: 'CLOSE' },
+              },
+            ],
+          },
+        },
+      },
+      questHooks: [
+        {
+          questId: 'seren_fetch_herbs',
+          requiredItem: 'healing_herb',
+          requiredQuantity: 3,
+          minLevel: 1,
+          repeatable: false,
+          reward: {
+            xp: 50,
+            currency: 25,
+            items: [{ itemId: 'minor_bandage', quantity: 2 }],
+            completionFlag: 'seren_healing_complete',
+          },
+        },
+      ],
+      vendorCatalog: null,
+      lootTable: null,
+      respawnSeconds: 10,
+      services: ['quest_giver', 'persistent'],
+    },
+    {
+      key: 'town_guard',
+      name: 'Captain Avel',
+      description: 'A seasoned guard who keeps watch over the town gates.',
+      disposition: NPCDisposition.FRIENDLY,
+      canBeAttacked: true,
+      mobility: NPCMobility.PATROL,
+      mobilityConfig: {
+        patrolPath: ['001', '002', '001'],
+        dwellTicks: 6,
+      },
+      stats: {
+        hp: 120,
+        hpMax: 120,
+        damage: { min: 8, max: 14 },
+        defense: 12,
+        attackSpeedTicks: 8,
+        resistances: {
+          slash: 0.15,
+        },
+      },
+      attackSpeedTicks: 8,
+      resistances: {
+        slash: 0.15,
+      },
+      leashDistance: 6,
+      leashTimeMs: 20000,
+      dialogueTree: null,
+      questHooks: null,
+      vendorCatalog: null,
+      lootTable: {
+        xp: 80,
+        currency: { min: 10, max: 30 },
+        drops: [
+          { itemId: 'guard_token', chance: 0.25, quantity: 1 },
+          { itemId: 'iron_ingot', chance: 0.15, quantity: { min: 1, max: 2 } },
+        ],
+      },
+      respawnSeconds: 90,
+      services: [],
+    },
+  ]
+
+  const definitionIdMap: Record<string, string> = {}
+  for (const definition of npcDefinitions) {
+    const record = await prisma.nPCDefinition.upsert({
+      where: { key: definition.key },
+      update: {
+        name: definition.name,
+        description: definition.description,
+        disposition: definition.disposition,
+        canBeAttacked: definition.canBeAttacked,
+        mobility: definition.mobility,
+        mobilityConfig: definition.mobilityConfig,
+        stats: definition.stats,
+        attackSpeedTicks: definition.attackSpeedTicks,
+        resistances: definition.resistances,
+        leashDistance: definition.leashDistance,
+        leashTimeMs: definition.leashTimeMs,
+        dialogueTree: definition.dialogueTree,
+        questHooks: definition.questHooks,
+        vendorCatalog: definition.vendorCatalog,
+        lootTable: definition.lootTable,
+        respawnSeconds: definition.respawnSeconds,
+        services: definition.services,
+      },
+      create: definition,
+    })
+    definitionIdMap[definition.key] = record.id
+  }
+
+  const npcSeedEntries = [
+    {
+      id: 'npc-mira',
+      definitionKey: 'general_vendor',
+      roomCode: '006',
+      data: {
+        name: 'Mira the Merchant',
+        description: 'Mira greets every traveler with a smile and a curated selection of wares.',
+        type: 'vendor',
+        disposition: NPCDisposition.FRIENDLY,
+        canBeAttacked: false,
+        mobility: NPCMobility.STATIONARY,
+        mobilityPath: null,
+        stats: {
+          hp: 40,
+          hpMax: 40,
+          damage: { min: 0, max: 0 },
+          defense: 5,
+          attackSpeedTicks: 99999,
+        },
+        attackSpeedTicks: 99999,
+        resistances: null,
+        homeRoom: '006',
+        leashDistance: 0,
+        leashTimeMs: 0,
+        dialogueTree: null,
+        questHooks: null,
+        vendorCatalog: npcDefinitions.find((def) => def.key === 'general_vendor')?.vendorCatalog || [],
+        lootTable: null,
+        respawnSeconds: 5,
+        maxAlive: 1,
+        spawnWeight: 1,
+        persistent: true,
+      },
+    },
+    {
+      id: 'npc-wolf-001',
+      definitionKey: 'forest_wolf',
+      roomCode: '002',
+      data: {
+        name: 'Ravenous Wolf',
+        description: 'A hungry wolf prowls the tall grass, eyes locked on its next meal.',
+        type: 'beast',
+        disposition: NPCDisposition.HOSTILE,
+        canBeAttacked: true,
+        mobility: NPCMobility.WANDER,
+        mobilityPath: { wanderRooms: ['002', '003', '007'], dwellTicks: 5 },
+        stats: {
+          hp: 30,
+          hpMax: 30,
+          damage: { min: 3, max: 7 },
+          defense: 2,
+          attackSpeedTicks: 10,
+        },
+        attackSpeedTicks: 10,
+        resistances: { cold: 0.1 },
+        homeRoom: '002',
+        leashDistance: 6,
+        leashTimeMs: 20000,
+        dialogueTree: null,
+        questHooks: null,
+        vendorCatalog: null,
+        lootTable: npcDefinitions.find((def) => def.key === 'forest_wolf')?.lootTable || null,
+        respawnSeconds: 45,
+        maxAlive: 2,
+        spawnWeight: 2,
+        persistent: false,
+      },
+    },
+    {
+      id: 'npc-seren',
+      definitionKey: 'village_quest_giver',
+      roomCode: '003',
+      data: {
+        name: 'Seren the Elder',
+        description: 'Seren tends to the needs of the village and guides new adventurers.',
+        type: 'quest_giver',
+        disposition: NPCDisposition.FRIENDLY,
+        canBeAttacked: false,
+        mobility: NPCMobility.STATIONARY,
+        mobilityPath: null,
+        stats: {
+          hp: 35,
+          hpMax: 35,
+          damage: { min: 0, max: 0 },
+          defense: 2,
+          attackSpeedTicks: 99999,
+        },
+        attackSpeedTicks: 99999,
+        resistances: null,
+        homeRoom: '003',
+        leashDistance: 0,
+        leashTimeMs: 0,
+        dialogueTree: npcDefinitions.find((def) => def.key === 'village_quest_giver')?.dialogueTree || null,
+        questHooks: npcDefinitions.find((def) => def.key === 'village_quest_giver')?.questHooks || [],
+        vendorCatalog: null,
+        lootTable: null,
+        respawnSeconds: 10,
+        maxAlive: 1,
+        spawnWeight: 1,
+        persistent: true,
+      },
+    },
+    {
+      id: 'npc-avel',
+      definitionKey: 'town_guard',
+      roomCode: '001',
+      data: {
+        name: 'Captain Avel',
+        description: 'Captain Avel keeps a watchful eye on the crossroads.',
+        type: 'guard',
+        disposition: NPCDisposition.FRIENDLY,
+        canBeAttacked: true,
+        mobility: NPCMobility.PATROL,
+        mobilityPath: { patrolPath: ['001', '002', '001'], dwellTicks: 6 },
+        stats: {
+          hp: 120,
+          hpMax: 120,
+          damage: { min: 8, max: 14 },
+          defense: 12,
+          attackSpeedTicks: 8,
+        },
+        attackSpeedTicks: 8,
+        resistances: { slash: 0.15 },
+        homeRoom: '001',
+        leashDistance: 6,
+        leashTimeMs: 20000,
+        dialogueTree: null,
+        questHooks: null,
+        vendorCatalog: null,
+        lootTable: npcDefinitions.find((def) => def.key === 'town_guard')?.lootTable || null,
+        respawnSeconds: 90,
+        maxAlive: 1,
+        spawnWeight: 1,
+        persistent: false,
+      },
+    },
+  ]
+
+  const npcIdMap: Record<string, string> = {}
+  for (const npc of npcSeedEntries) {
+    const roomId = roomIdMap.get(npc.roomCode)
+    if (!roomId) {
+      console.warn(`⚠️ Skipping NPC ${npc.id} - room ${npc.roomCode} not found.`)
+      continue
+    }
+    const definitionId = definitionIdMap[npc.definitionKey]
+    if (!definitionId) {
+      console.warn(`⚠️ Skipping NPC ${npc.id} - definition ${npc.definitionKey} missing.`)
+      continue
+    }
+
+    const record = await prisma.nPC.upsert({
+      where: { id: npc.id },
+      update: {
+        ...npc.data,
+        roomId,
+        definitionId,
+      },
+      create: {
+        id: npc.id,
+        roomId,
+        definitionId,
+        ...npc.data,
+      },
+    })
+    npcIdMap[npc.id] = record.id
+  }
+
+  if (npcIdMap['npc-seren']) {
+    await prisma.quest.upsert({
+      where: { slug: 'seren-fetch-herbs' },
+      update: {
+        name: 'Seren\'s Healing Herbs',
+        description: 'Gather healing herbs for Seren the Elder.',
+        giverNpcId: npcIdMap['npc-seren'],
+        targetNpcId: npcIdMap['npc-seren'],
+        requiredItem: 'healing_herb',
+        requiredQuantity: 3,
+        minLevel: 1,
+        rewardItems: { items: [{ itemId: 'minor_bandage', quantity: 2 }] },
+        rewardCurrency: 25,
+        rewardXp: 50,
+        isRepeatable: false,
+        cooldownSeconds: null,
+        completionFlag: 'seren_healing_complete',
+      },
+      create: {
+        slug: 'seren-fetch-herbs',
+        name: 'Seren\'s Healing Herbs',
+        description: 'Gather healing herbs for Seren the Elder.',
+        giverNpcId: npcIdMap['npc-seren'],
+        targetNpcId: npcIdMap['npc-seren'],
+        requiredItem: 'healing_herb',
+        requiredQuantity: 3,
+        minLevel: 1,
+        rewardItems: { items: [{ itemId: 'minor_bandage', quantity: 2 }] },
+        rewardCurrency: 25,
+        rewardXp: 50,
+        isRepeatable: false,
+        cooldownSeconds: null,
+        completionFlag: 'seren_healing_complete',
+      },
+    })
+  }
+
   // Create a test user
   const hashedPassword = await bcrypt.hash('password123', 12)
   
@@ -238,6 +699,7 @@ async function main() {
   console.log('✅ Database seeded successfully!')
   console.log(`👤 Test user created: ${testUser.username} (password: password123)`)
   console.log(`🏠 Created ${rooms.length} rooms`)
+  console.log(`🧍 Seeded ${Object.keys(npcIdMap).length} NPCs`)
 }
 
 main()

@@ -36,7 +36,7 @@ const io = new Server(httpServer, {
 
 setSocketIO(io)
 
-const gameEngine = new GameEngine(io)
+const gameEngine = new GameEngine(io, { prisma })
 gameEngine.start()
 global.gameEngine = gameEngine
 

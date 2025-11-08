@@ -7,6 +7,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum NPCDisposition {
+  FRIENDLY
+  HOSTILE
+}
+
+enum NPCMobility {
+  STATIONARY
+  PATROL
+  WANDER
+}
+
+enum NPCState {
+  IDLE
+  PATROL
+  WANDER
+  NOTICE
+  PURSUE
+  ENGAGE
+  FLEE
+  RETURN_HOME
+  DEAD
+}
+
+enum QuestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  COOLING_DOWN
+}
+
 model User {
   id                        String          @id @default(cuid())
   username                  String          @unique
@@ -127,6 +157,7 @@ model User {
   inventory                 InventoryItem[]
   killList                  KillList[]
   quests                    QuestProgress[]
+  questInstances            QuestInstance[]
   sessions                  Session[]
   room                      Room            @relation("RoomPlayers", fields: [currentRoom], references: [roomId])
 }
@@ -182,6 +213,7 @@ model QuestProgress {
   progress  Int     @default(0)
   completed Boolean @default(false)
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest     Quest   @relation(fields: [questId], references: [id], onDelete: Cascade)
 
   @@unique([userId, questId])
 }
@@ -220,12 +252,41 @@ model RoomItem {
 }
 
 model NPC {
-  id          String @id @default(cuid())
-  roomId      String
-  name        String
-  description String
-  type        String
-  room        Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  id               String            @id @default(cuid())
+  roomId           String
+  definitionId     String?
+  name             String
+  description      String
+  type             String
+  disposition      NPCDisposition    @default(HOSTILE)
+  canBeAttacked    Boolean           @default(true)
+  mobility         NPCMobility       @default(STATIONARY)
+  mobilityPath     Json?
+  stats            Json?
+  attackSpeedTicks Int               @default(10)
+  resistances      Json?
+  homeRoom         String?
+  leashDistance    Int               @default(6)
+  leashTimeMs      Int               @default(20000)
+  dialogueTree     Json?
+  questHooks       Json?
+  vendorCatalog    Json?
+  lootTable        Json?
+  respawnSeconds   Int               @default(60)
+  maxAlive         Int               @default(1)
+  spawnWeight      Int               @default(1)
+  persistent       Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  room             Room              @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  definition       NPCDefinition?    @relation(fields: [definitionId], references: [id], onDelete: SetNull)
+  instances        NPCInstance[]
+  vendorInventory  VendorInventory[]
+  giverQuests      Quest[]           @relation("QuestGiver")
+  receiverQuests   Quest[]           @relation("QuestReceiver")
+
+  @@index([roomId])
+  @@index([definitionId])
 }
 
 model ChatMessage {
@@ -282,4 +343,115 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model NPCDefinition {
+  id               String         @id @default(cuid())
+  key              String         @unique
+  name             String
+  description      String
+  disposition      NPCDisposition @default(HOSTILE)
+  canBeAttacked    Boolean        @default(true)
+  mobility         NPCMobility    @default(STATIONARY)
+  mobilityConfig   Json?
+  stats            Json?
+  attackSpeedTicks Int            @default(10)
+  resistances      Json?
+  leashDistance    Int            @default(6)
+  leashTimeMs      Int            @default(20000)
+  dialogueTree     Json?
+  questHooks       Json?
+  vendorCatalog    Json?
+  lootTable        Json?
+  respawnSeconds   Int            @default(60)
+  services         Json?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  spawns           NPC[]
+  instances        NPCInstance[]
+
+  @@index([key])
+}
+
+model NPCInstance {
+  id              String         @id @default(cuid())
+  npcId           String
+  definitionId    String?
+  spawnKey        String?
+  currentRoom     String
+  hp              Int
+  hpMax           Int
+  state           NPCState       @default(IDLE)
+  targetId        String?
+  threat          Json?
+  cooldowns       Json?
+  isSpawned       Boolean        @default(true)
+  lastSpawnedAt   DateTime?
+  lastDespawnedAt DateTime?
+  nextRespawnAt   DateTime?
+  metadata        Json?
+  npc             NPC            @relation(fields: [npcId], references: [id], onDelete: Cascade)
+  definition      NPCDefinition? @relation(fields: [definitionId], references: [id], onDelete: SetNull)
+
+  @@unique([npcId, spawnKey])
+  @@index([npcId])
+  @@index([definitionId])
+}
+
+model Quest {
+  id               String          @id @default(cuid())
+  slug             String          @unique
+  name             String
+  description      String
+  giverNpcId       String?
+  targetNpcId      String?
+  requiredItem     String
+  requiredQuantity Int             @default(1)
+  minLevel         Int             @default(0)
+  rewardItems      Json?
+  rewardCurrency   Int             @default(0)
+  rewardXp         Int             @default(0)
+  isRepeatable     Boolean         @default(false)
+  cooldownSeconds  Int?
+  completionFlag   String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  giverNPC         NPC?            @relation("QuestGiver", fields: [giverNpcId], references: [id], onDelete: SetNull)
+  targetNPC        NPC?            @relation("QuestReceiver", fields: [targetNpcId], references: [id], onDelete: SetNull)
+  instances        QuestInstance[]
+  progress         QuestProgress[]
+
+  @@index([giverNpcId])
+  @@index([targetNpcId])
+}
+
+model QuestInstance {
+  id            String      @id @default(cuid())
+  questId       String
+  userId        String
+  status        QuestStatus @default(PENDING)
+  progress      Int         @default(0)
+  startedAt     DateTime    @default(now())
+  completedAt   DateTime?
+  cooldownUntil DateTime?
+  metadata      Json?
+  quest         Quest       @relation(fields: [questId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([questId, userId])
+  @@index([userId])
+}
+
+model VendorInventory {
+  id             String @id @default(cuid())
+  npcId          String
+  itemName       String
+  price          Int    @default(0)
+  stockQuantity  Int?
+  restockSeconds Int?
+  metadata       Json?
+  npc            NPC    @relation(fields: [npcId], references: [id], onDelete: Cascade)
+
+  @@unique([npcId, itemName])
+  @@index([npcId])
 }

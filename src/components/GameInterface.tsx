@@ -13,6 +13,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
 import MapModal from './MapModal'
+import VendorModal from './VendorModal'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -37,6 +38,11 @@ export default function GameInterface() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [mapInfo, setMapInfo] = useState<{ src: string; title: string }>({ src: '', title: '' })
+  const [vendorModal, setVendorModal] = useState<{ isOpen: boolean; vendorId: string | null; vendorName?: string }>({
+    isOpen: false,
+    vendorId: null,
+    vendorName: '',
+  })
   const [feedControls, setFeedControls] = useState<FeedControlHandlers>(() => ({
     clearFeed: () => {},
     scrollToTop: () => {},
@@ -71,6 +77,32 @@ export default function GameInterface() {
   useEffect(() => {
     localStorage.setItem('rightSidebarOpen', JSON.stringify(rightSidebarOpen))
   }, [rightSidebarOpen])
+
+  const openVendorModal = useCallback((npcId: string, name?: string) => {
+    setVendorModal({
+      isOpen: true,
+      vendorId: npcId,
+      vendorName: name,
+    })
+  }, [])
+
+  const closeVendorModal = useCallback(() => {
+    setVendorModal({
+      isOpen: false,
+      vendorId: null,
+      vendorName: '',
+    })
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    ;(window as any).openVendorModal = openVendorModal
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).openVendorModal
+      }
+    }
+  }, [openVendorModal])
 
   // Keyboard shortcuts for desktop
   useEffect(() => {
@@ -618,6 +650,13 @@ export default function GameInterface() {
         onClose={() => setIsMapModalOpen(false)}
         mapSrc={mapInfo.src}
         mapTitle={mapInfo.title || 'Map'}
+      />
+      <VendorModal
+        isOpen={vendorModal.isOpen}
+        vendorId={vendorModal.vendorId}
+        vendorName={vendorModal.vendorName}
+        getAuthHeaders={getAuthHeaders}
+        onClose={closeVendorModal}
       />
       <GameHeader 
         player={player} 
