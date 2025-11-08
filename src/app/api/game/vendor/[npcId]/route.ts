@@ -6,10 +6,10 @@ import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 
 async function handleGet(
   request: AuthenticatedRequest,
-  { params }: { params: { npcId: string } }
+  { params }: { params: Promise<{ npcId: string }> }
 ) {
   try {
-    const npcId = params.npcId
+    const { npcId } = await params
     if (!npcId) {
       return NextResponse.json({ message: 'npcId required' }, { status: 400 })
     }

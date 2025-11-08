@@ -11,16 +11,16 @@ interface VendorPurchaseBody {
 
 async function handlePost(
   request: AuthenticatedRequest,
-  { params }: { params: { npcId: string } }
+  { params }: { params: Promise<{ npcId: string }> }
 ) {
   try {
+    const { npcId } = await params
     const body = (await request.json()) as VendorPurchaseBody
     if (!body?.itemId) {
       return NextResponse.json({ message: 'itemId is required' }, { status: 400 })
     }
 
     const quantity = Math.max(1, body.quantity ?? 1)
-    const npcId = params.npcId
 
     const vendor = await prisma.nPC.findUnique({
       where: { id: npcId },

@@ -438,28 +438,40 @@ async function main() {
 
   const definitionIdMap: Record<string, string> = {}
   for (const definition of npcDefinitions) {
+    const normalizedDefinition = {
+      ...definition,
+      mobilityConfig: definition.mobilityConfig ?? undefined,
+      stats: definition.stats ?? undefined,
+      resistances: definition.resistances ?? undefined,
+      dialogueTree: definition.dialogueTree ?? undefined,
+      questHooks: definition.questHooks ?? undefined,
+      vendorCatalog: definition.vendorCatalog ?? undefined,
+      lootTable: definition.lootTable ?? undefined,
+      services: definition.services ?? undefined,
+    }
+
     const record = await prisma.nPCDefinition.upsert({
       where: { key: definition.key },
       update: {
-        name: definition.name,
-        description: definition.description,
-        disposition: definition.disposition,
-        canBeAttacked: definition.canBeAttacked,
-        mobility: definition.mobility,
-        mobilityConfig: definition.mobilityConfig,
-        stats: definition.stats,
-        attackSpeedTicks: definition.attackSpeedTicks,
-        resistances: definition.resistances,
-        leashDistance: definition.leashDistance,
-        leashTimeMs: definition.leashTimeMs,
-        dialogueTree: definition.dialogueTree,
-        questHooks: definition.questHooks,
-        vendorCatalog: definition.vendorCatalog,
-        lootTable: definition.lootTable,
-        respawnSeconds: definition.respawnSeconds,
-        services: definition.services,
+        name: normalizedDefinition.name,
+        description: normalizedDefinition.description,
+        disposition: normalizedDefinition.disposition,
+        canBeAttacked: normalizedDefinition.canBeAttacked,
+        mobility: normalizedDefinition.mobility,
+        mobilityConfig: normalizedDefinition.mobilityConfig,
+        stats: normalizedDefinition.stats,
+        attackSpeedTicks: normalizedDefinition.attackSpeedTicks,
+        resistances: normalizedDefinition.resistances,
+        leashDistance: normalizedDefinition.leashDistance,
+        leashTimeMs: normalizedDefinition.leashTimeMs,
+        dialogueTree: normalizedDefinition.dialogueTree,
+        questHooks: normalizedDefinition.questHooks,
+        vendorCatalog: normalizedDefinition.vendorCatalog,
+        lootTable: normalizedDefinition.lootTable,
+        respawnSeconds: normalizedDefinition.respawnSeconds,
+        services: normalizedDefinition.services,
       },
-      create: definition,
+      create: normalizedDefinition,
     })
     definitionIdMap[definition.key] = record.id
   }
@@ -616,10 +628,21 @@ async function main() {
       continue
     }
 
+    const normalizedNpcData = {
+      ...npc.data,
+      mobilityPath: npc.data.mobilityPath ?? undefined,
+      stats: npc.data.stats ?? undefined,
+      resistances: npc.data.resistances ?? undefined,
+      dialogueTree: npc.data.dialogueTree ?? undefined,
+      questHooks: npc.data.questHooks ?? undefined,
+      vendorCatalog: npc.data.vendorCatalog ?? undefined,
+      lootTable: npc.data.lootTable ?? undefined,
+    }
+
     const record = await prisma.nPC.upsert({
       where: { id: npc.id },
       update: {
-        ...npc.data,
+        ...normalizedNpcData,
         roomId,
         definitionId,
       },
@@ -627,7 +650,7 @@ async function main() {
         id: npc.id,
         roomId,
         definitionId,
-        ...npc.data,
+        ...normalizedNpcData,
       },
     })
     npcIdMap[npc.id] = record.id

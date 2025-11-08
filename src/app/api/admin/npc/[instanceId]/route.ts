@@ -13,10 +13,12 @@ function getNpcManager() {
   return engine.npcManager
 }
 
-async function handleGet(request: AuthenticatedRequest, { params }: { params: { instanceId: string } }) {
+async function handleGet(request: AuthenticatedRequest, { params }: { params: Promise<{ instanceId: string }> }) {
   if (!isAdminUser(request.user)) {
     return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
   }
+
+  const { instanceId } = await params
 
   const npcManager = getNpcManager()
   if (!npcManager) {
@@ -26,7 +28,7 @@ async function handleGet(request: AuthenticatedRequest, { params }: { params: { 
     )
   }
 
-  const snapshot = await npcManager.getRuntimeSnapshot(params.instanceId)
+  const snapshot = await npcManager.getRuntimeSnapshot(instanceId)
   if (!snapshot) {
     return NextResponse.json({ message: 'NPC instance not found' }, { status: 404 })
   }
@@ -53,10 +55,12 @@ async function handleGet(request: AuthenticatedRequest, { params }: { params: { 
   })
 }
 
-async function handlePost(request: AuthenticatedRequest, { params }: { params: { instanceId: string } }) {
+async function handlePost(request: AuthenticatedRequest, { params }: { params: Promise<{ instanceId: string }> }) {
   if (!isAdminUser(request.user)) {
     return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
   }
+
+  const { instanceId } = await params
 
   const npcManager = getNpcManager()
   if (!npcManager) {
@@ -77,20 +81,20 @@ async function handlePost(request: AuthenticatedRequest, { params }: { params: {
   try {
     switch (action) {
       case 'freeze':
-        await npcManager.setFrozen(params.instanceId, true)
+        await npcManager.setFrozen(instanceId, true)
         result = { frozen: true }
         break
       case 'unfreeze':
-        await npcManager.setFrozen(params.instanceId, false)
+        await npcManager.setFrozen(instanceId, false)
         result = { frozen: false }
         break
       case 'despawn':
-        result = await npcManager.despawnInstance(params.instanceId, {
+        result = await npcManager.despawnInstance(instanceId, {
           scheduleRespawn: Boolean(body.scheduleRespawn),
         })
         break
       case 'return_home':
-        await npcManager.forceReturnHome(params.instanceId)
+        await npcManager.forceReturnHome(instanceId)
         result = { returning: true }
         break
       case 'move': {
@@ -100,7 +104,7 @@ async function handlePost(request: AuthenticatedRequest, { params }: { params: {
             { status: 400 }
           )
         }
-        result = await npcManager.moveInstanceTo(params.instanceId, body.toRoomId)
+        result = await npcManager.moveInstanceTo(instanceId, body.toRoomId)
         break
       }
       default:
@@ -114,7 +118,7 @@ async function handlePost(request: AuthenticatedRequest, { params }: { params: {
     )
   }
 
-  const snapshot = await npcManager.getRuntimeSnapshot(params.instanceId)
+  const snapshot = await npcManager.getRuntimeSnapshot(instanceId)
 
   return NextResponse.json({
     success: true,

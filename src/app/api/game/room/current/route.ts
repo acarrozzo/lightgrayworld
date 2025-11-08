@@ -81,6 +81,14 @@ export async function GET(request: NextRequest) {
       ? requestedRoomId
       : user?.currentRoom || '001'
 
+    // Diagnostic logging
+    console.log('[Room API] Querying room:', {
+      requestedRoomIdRaw,
+      requestedRoomId,
+      userCurrentRoom: user?.currentRoom,
+      finalRoomId: roomId,
+    })
+
     const room = await prisma.room.findUnique({
       where: { roomId },
       select: {
@@ -103,12 +111,42 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    console.log('[Room API] Query result:', {
+      roomId,
+      found: !!room,
+      roomName: room?.name,
+    })
+
     if (!room) {
+      // Check if any rooms exist in the database
+      const roomCount = await prisma.room.count().catch(() => 0)
+      const sampleRooms = await prisma.room.findMany({
+        take: 5,
+        select: { roomId: true, name: true },
+      }).catch(() => [])
+
+      console.error('[Room API] Room not found:', {
+        requestedRoomId: roomId,
+        totalRoomsInDb: roomCount,
+        sampleRooms: sampleRooms.map(r => ({ roomId: r.roomId, name: r.name })),
+      })
+
       const base = COMMON_ERRORS.NOT_FOUND('Room')
-      const details =
-        process.env.NODE_ENV !== 'production'
-          ? { details: `roomId=${roomId}` }
-          : {}
+      const details: any = {
+        details: `roomId=${roomId}`,
+      }
+
+      // Add diagnostic info in development
+      if (process.env.NODE_ENV !== 'production') {
+        details.diagnostic = {
+          totalRoomsInDatabase: roomCount,
+          sampleRoomIds: sampleRooms.map(r => r.roomId),
+          suggestion: roomCount === 0
+            ? 'Database appears to be empty. Run: npx prisma db seed'
+            : `Room "${roomId}" not found. Available rooms: ${sampleRooms.map(r => r.roomId).join(', ')}`,
+        }
+      }
+
       return NextResponse.json(
         { ...base, error: { ...base.error, ...details } },
         { status: 404, headers: noCacheHeaders }

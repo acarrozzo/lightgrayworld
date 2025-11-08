@@ -5,10 +5,33 @@ export interface AuthenticatedRequest extends NextRequest {
   user: AuthUser
 }
 
+// Overload for handlers without params
 export function withAuth(
   handler: (request: AuthenticatedRequest) => Promise<NextResponse>
+): (request: NextRequest) => Promise<NextResponse>
+
+// Overload for handlers with params (Next.js 15 uses Promise-based params)
+export function withAuth(
+  handler: (
+    request: AuthenticatedRequest,
+    context: { params: Promise<{ [key: string]: string }> }
+  ) => Promise<NextResponse>
+): (
+  request: NextRequest,
+  context: { params: Promise<{ [key: string]: string }> }
+) => Promise<NextResponse>
+
+// Implementation
+export function withAuth(
+  handler: (
+    request: AuthenticatedRequest,
+    context?: { params: Promise<{ [key: string]: string }> }
+  ) => Promise<NextResponse>
 ) {
-  return async (request: NextRequest): Promise<NextResponse> => {
+  return async (
+    request: NextRequest,
+    context?: { params: Promise<{ [key: string]: string }> }
+  ): Promise<NextResponse> => {
     try {
       const user = await getCurrentUser(request)
       
@@ -23,7 +46,12 @@ export function withAuth(
       const authenticatedRequest = request as AuthenticatedRequest
       authenticatedRequest.user = user
 
-      return handler(authenticatedRequest)
+      // Pass through params if present
+      if (context) {
+        return handler(authenticatedRequest, context)
+      } else {
+        return handler(authenticatedRequest)
+      }
     } catch (error) {
       console.error('Middleware error:', error)
       return NextResponse.json(
