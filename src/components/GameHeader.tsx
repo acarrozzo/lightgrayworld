@@ -33,7 +33,7 @@ export default function GameHeader({ player, onToggleLeftSidebar, onToggleRightS
           </button>
           <div className="flex items-center space-x-4 hidden md:flex">
             <h1 className="text-xl font-bold text-white">Light Gray RPG </h1>
-            <span className="text-sm text-gray-400 font-normal">v0.1.01e</span>
+            <span className="text-sm text-gray-400 font-normal">v0.1.01f - npc epic</span>
             <div className="text-sm text-gray-300">
               Welcome, <span className="text-yellow-400 font-semibold">{player.username}</span>
             </div>
