@@ -14,6 +14,7 @@ interface ActionHistory {
   timestamp: string
   roomId?: string
   metadata?: string
+  success?: boolean
 }
 
 interface ActionFeedProps {
