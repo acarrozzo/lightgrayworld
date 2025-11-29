@@ -155,44 +155,6 @@ class GameEngine {
     )
   }
 
-  queueIntent({ roomId, intent }) {
-    if (!roomId || !intent) {
-      throw new Error('queueIntent requires roomId and intent')
-    }
-
-    const { playerId, type, data = {} } = intent
-    if (!playerId) {
-      throw new Error('queueIntent requires intent.playerId')
-    }
-    if (!type) {
-      throw new Error('queueIntent requires intent.type')
-    }
-
-    let resolvedType = type
-    let resolvedData = data
-
-    if (type === 'action') {
-      resolvedType = data?.action
-      if (!resolvedType) {
-        throw new Error('queueIntent action intents require data.action')
-      }
-      resolvedData = { ...data }
-    }
-
-    const action = {
-      type: resolvedType,
-      data: resolvedData,
-      intentId: intent.id,
-      timestamp: intent.timestamp,
-    }
-
-    return this.processUserAction({
-      playerId,
-      roomId,
-      action,
-    })
-  }
-
   handleActionResult({ roomId, playerId, result }) {
     if (!result) {
       return

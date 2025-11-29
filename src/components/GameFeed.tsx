@@ -87,6 +87,7 @@ interface ActionHistory {
     items: any[]
     npcs: any[]
   }
+  suppressRoomDisplay?: boolean
 }
 
 export interface FeedControlHandlers {
@@ -108,6 +109,14 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
   const feedRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
   const isClearingFeed = useRef(false)
+  const pendingRoomDisplays = useRef(
+    new Map<
+      string,
+      {
+        roomId: string
+      }
+    >()
+  )
   const { getAuthHeaders, player, setCurrentRoom, setRoomPlayers, getCachedRoom } = useGameStore()
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
@@ -285,10 +294,10 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
       setActions((prev) => {
         let nextEntries = [...prev, entry]
 
-        if (entry.roomData) {
+    if (entry.roomData && !entry.suppressRoomDisplay) {
           const timestampMs = new Date(entry.timestamp || Date.now()).getTime()
-          const roomDisplayAction: ActionHistory = {
-            id: `room-display-${entry.roomData.roomId || timestampMs}`,
+        const roomDisplayAction: ActionHistory = {
+          id: `room-display-${entry.roomData.roomId || 'unknown'}-${timestampMs}`,
             action: 'room-display',
             message: `Room: ${entry.roomData.name}`,
             timestamp: new Date(timestampMs + 1).toISOString(),
@@ -301,6 +310,15 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
 
         return deduplicateActions(nextEntries)
       })
+
+    if (
+      !entry.roomData &&
+      entry.roomId &&
+      (entry.action === 'move' || entry.action === 'look') &&
+      !entry.suppressRoomDisplay
+    ) {
+      pendingRoomDisplays.current.set(entry.id, { roomId: entry.roomId })
+    }
     },
     [setActions]
   )
@@ -312,6 +330,25 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     }
     return `#${info.id} - ${info.name}`
   }
+
+  const resolveActiveRoomData = useCallback(() => {
+    if (room) {
+      return room
+    }
+
+    if (player?.currentRoom) {
+      const cachedRoom = getCachedRoom(player.currentRoom)
+      if (cachedRoom) {
+        return cachedRoom
+      }
+    }
+
+    if (initialRoom) {
+      return initialRoom
+    }
+
+    return null
+  }, [room, player?.currentRoom, getCachedRoom, initialRoom])
 
   // Add current action result to the feed
   useEffect(() => {
@@ -361,24 +398,39 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
   }, [])
 
   const createMovementEntry = useCallback(
-    (event: RoomPlayerMovedPayload): ActionHistory => {
+    (event: RoomPlayerMovedPayload): ActionHistory | null => {
       const timestamp = new Date().toISOString()
       const isSelfMovement = event.playerId === player?.id
+      if (isSelfMovement) {
+        return null
+      }
 
-      const message = isSelfMovement
-        ? `You travel to ${event.toRoom}`
-        : `${event.username} travels to ${event.toRoom}`
+      const isEnteringCurrentRoom = room?.roomId && event.toRoom === room.roomId
+      const isLeavingCurrentRoom = room?.roomId && event.fromRoom === room.roomId
+
+      if (!isEnteringCurrentRoom && !isLeavingCurrentRoom) {
+        return null
+      }
+
+      const referenceRoom = room
+      const directionRoomId = isEnteringCurrentRoom ? event.fromRoom : event.toRoom
+      const direction = findDirectionKey(referenceRoom, directionRoomId)
+      const directionPhrase = buildDirectionPhrase(direction, isEnteringCurrentRoom ? 'enter' : 'exit')
+
+      const message = isEnteringCurrentRoom
+        ? `${event.username} enters from ${directionPhrase}`
+        : `${event.username} exits to ${directionPhrase}`
 
       return {
         id: `socket-room-move-${event.playerId}-${timestamp}`,
         action: 'move',
         message,
         timestamp,
-        roomId: event.toRoom,
         metadata: JSON.stringify(event),
+        suppressRoomDisplay: true,
       }
     },
-    [player?.id]
+    [player?.id, room, initialRoom, getCachedRoom]
   )
 
   const createChatEntry = useCallback((message: ChatMessage): ActionHistory => {
@@ -400,7 +452,43 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     }
 
     const cleanupActionResult = socketHandlers.onActionResult((payload) => {
-      pushAction(createActionResultEntry(payload))
+      const augmentedPayload: ActionResultPayload = {
+        ...payload,
+        data: payload.data ? { ...payload.data } : {},
+      }
+
+      if (payload.action === 'look') {
+        const resolvedRoomData =
+          payload.data?.roomData ||
+          resolveActiveRoomData() ||
+          (payload.data?.roomId ? getCachedRoom(payload.data.roomId) : null)
+
+        if (resolvedRoomData) {
+          augmentedPayload.data = {
+            ...(augmentedPayload.data || {}),
+            roomData: resolvedRoomData,
+          }
+        }
+      }
+
+      if (payload.action === 'move') {
+        const targetRoomId = payload.data?.toRoom || payload.data?.roomId
+        const cachedRoom = targetRoomId ? getCachedRoom(targetRoomId) : null
+
+        if (cachedRoom) {
+          augmentedPayload.data = {
+            ...(augmentedPayload.data || {}),
+            roomData: cachedRoom,
+          }
+        }
+
+        if (payload.success && targetRoomId) {
+          const destinationName = cachedRoom?.name || targetRoomId
+          augmentedPayload.message = `You travel to ${destinationName}`
+        }
+      }
+
+      pushAction(createActionResultEntry(augmentedPayload))
       setTimeout(scrollToBottom, 100)
     })
 
@@ -409,7 +497,10 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     })
 
     const cleanupRoomMove = socketHandlers.onRoomPlayerMoved((event) => {
-      pushAction(createMovementEntry(event))
+      const entry = createMovementEntry(event)
+      if (entry) {
+        pushAction(entry)
+      }
     })
 
     const cleanupChat = socketHandlers.onChatMessage((message) => {
@@ -432,7 +523,32 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     createMovementEntry,
     createChatEntry,
     scrollToBottom,
+    room,
+    getCachedRoom,
+    resolveActiveRoomData,
   ])
+
+  useEffect(() => {
+    if (!room) {
+      return
+    }
+
+    pendingRoomDisplays.current.forEach((info, actionId) => {
+      if (info.roomId === room.roomId) {
+        pendingRoomDisplays.current.delete(actionId)
+        const timestamp = new Date().toISOString()
+        const roomDisplayEntry: ActionHistory = {
+          id: `room-display-${room.roomId}-${timestamp}`,
+          action: 'room-display',
+          message: `Room: ${room.name}`,
+          timestamp,
+          success: true,
+          roomData: room,
+        }
+        pushAction(roomDisplayEntry)
+      }
+    })
+  }, [room, pushAction])
 
   const getActionColor = (action: string) => {
     switch (action.toLowerCase()) {

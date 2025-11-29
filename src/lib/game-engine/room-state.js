@@ -187,7 +187,7 @@ class RoomState {
       action: 'search',
       playerEvent: {
         event: 'action:result',
-        payload: this.createPlayerPayload('search', true, 'You search the area but find nothing yet.'),
+        payload: this.createPlayerPayload('search', true, 'You search the room and find nothing.'),
       },
     }
   }

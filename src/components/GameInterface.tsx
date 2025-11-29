@@ -151,15 +151,19 @@ export default function GameInterface() {
     const isTransition = options?.isTransition ?? false
     const travelTarget = options?.travel?.toRoomId
     const shouldUseAuth = options?.requireAuth ?? isLoggedIn
+    const previousRoom = currentRoomRef.current
 
     if (!isTransition) {
       setIsLoadingRoom(true)
     }
 
+    let travelResultEmitted = false
+
     if (isTransition && travelTarget) {
       const cachedRoom = getCachedRoom(travelTarget)
       if (cachedRoom) {
         setCurrentRoom(cachedRoom)
+        travelResultEmitted = true
       }
     }
 
@@ -235,20 +239,14 @@ export default function GameInterface() {
           setPlayer({ ...player, currentRoom: roomWithDirections.roomId })
         }
 
-        if (options?.travel) {
-          const travelDirection = findTravelDirection(currentRoom, roomWithDirections.roomId)
+        if (options?.travel && !travelResultEmitted) {
+          travelResultEmitted = true
+          const travelDirection = findTravelDirection(previousRoom, roomWithDirections.roomId)
           const travelMessage = travelDirection
             ? `You travel ${travelDirection} to the ${roomWithDirections.name}`
             : `You travel to ${roomWithDirections.name}`
 
-          setActionResult({
-            action: 'move',
-            message: travelMessage,
-            timestamp: new Date().toISOString(),
-            success: true,
-            roomData: roomWithDirections,
-            source: 'local',
-          })
+          console.log('[GameInterface] Travel result emitted locally skipped in favor of server payload')
         }
       } else {
         const errorText = await response.text()
@@ -337,37 +335,17 @@ export default function GameInterface() {
           toRoom: targetRoomId,
         })
       } else {
-        console.warn('Socket not connected; movement intent not sent')
+        console.warn('Socket not connected; movement request not sent')
       }
 
       return
     }
 
     if (normalizedAction === 'look') {
-      console.log('[handleAction] Look action detected, sending to server and updating feed')
-
-      const timestamp = new Date().toISOString()
-
-      if (currentRoom) {
-        setActionResult({
-          action: 'look',
-          message: 'You look around...',
-          timestamp,
-          success: true,
-          roomData: currentRoom,
-          source: 'local',
-        })
-      } else {
+      console.log('[handleAction] Look action detected, sending to server')
+      if (!currentRoom) {
         console.warn('Look action requested but no current room is available')
-        setActionResult({
-          action: 'look',
-          message: 'You look around, but something feels off. (no current room - probably an issue)',
-          timestamp,
-          success: false,
-          source: 'local',
-        })
       }
-
       const lookResult = socketHandlers.sendGameAction(actionType)
       console.log('[handleAction] sendGameAction result for look:', lookResult)
       if (!lookResult) {

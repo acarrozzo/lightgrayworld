@@ -39,12 +39,88 @@ app.prepare().then(() => {
   // Store active players
   const activePlayers = new Map()
   const roomPlayers = new Map()
+  const ACTION_QUEUE_ERRORS = {
+    QUEUE_FULL: 'QUEUE_FULL',
+    ACTION_TIMEOUT: 'ACTION_TIMEOUT',
+  }
+  const QUEUE_FULL_MESSAGE = 'Action queue is full. Please wait for pending actions to complete.'
+  const ACTION_TIMEOUT_MESSAGE = 'Action timed out after 5000ms.'
 
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id)
     console.log('[Server] Listening for player login event:', SOCKET_EVENTS.PLAYER_LOGIN)
- 
-    const createIntentId = () => `${socket.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+    const emitQueueAwareError = ({ actionName, player, error, fallbackMessage }) => {
+      if (!error) {
+        socket.emit('action:error', { action: actionName, message: fallbackMessage })
+        return
+      }
+
+      if (error.code === ACTION_QUEUE_ERRORS.QUEUE_FULL) {
+        console.warn('[Socket] Action rejected due to queue overflow', {
+          playerId: player?.id,
+          action: actionName,
+        })
+        socket.emit('action:error', { action: actionName, message: QUEUE_FULL_MESSAGE })
+        return
+      }
+
+      if (error.code === ACTION_QUEUE_ERRORS.ACTION_TIMEOUT) {
+        console.error('[Socket] Action timed out', {
+          playerId: player?.id,
+          action: actionName,
+        })
+        socket.emit('action:error', { action: actionName, message: ACTION_TIMEOUT_MESSAGE })
+        return
+      }
+
+      socket.emit('action:error', { action: actionName, message: fallbackMessage })
+    }
+
+    const transitionPlayerRoom = async ({ player, fromRoom, toRoom }) => {
+      if (!toRoom || fromRoom === toRoom) {
+        return
+      }
+
+      socket.leave(`room-${fromRoom}`)
+      if (roomPlayers.has(fromRoom)) {
+        roomPlayers.get(fromRoom).delete(socket.id)
+        socket.to(`room-${fromRoom}`).emit(SOCKET_EVENTS.PLAYER_LEFT, {
+          id: player.id,
+          username: player.username,
+        })
+      }
+
+      socket.join(`room-${toRoom}`)
+      if (!roomPlayers.has(toRoom)) {
+        roomPlayers.set(toRoom, new Set())
+      }
+      roomPlayers.get(toRoom).add(socket.id)
+
+      socket.to(`room-${toRoom}`).emit(SOCKET_EVENTS.PLAYER_JOINED, {
+        id: player.id,
+        username: player.username,
+        level: player.level,
+        hp: player.hp,
+        hpMax: player.hpMax,
+        mp: player.mp,
+        mpMax: player.mpMax,
+        currentRoom: toRoom,
+        isActive: true,
+      })
+
+      player.currentRoom = toRoom
+      activePlayers.set(socket.id, player)
+
+      try {
+        await prisma.user.update({
+          where: { id: player.id },
+          data: { currentRoom: toRoom },
+        })
+      } catch (error) {
+        console.error('Failed to persist player room change', error)
+      }
+    }
  
     // Handle player login
     socket.on(SOCKET_EVENTS.PLAYER_LOGIN, (playerData) => {
@@ -103,6 +179,7 @@ app.prepare().then(() => {
           mp: playerData.mp,
           mpMax: playerData.mpMax,
           level: playerData.level,
+          socketId: socket.id,
         })
         console.log(`[Server] Registered ${playerData.username} with engine in room ${playerData.currentRoom}`)
         
@@ -114,136 +191,145 @@ app.prepare().then(() => {
     })
 
     // Handle player movement
-    socket.on('player-move', (data) => {
+    socket.on('player-move', async (data) => {
       console.log('[Server] Received player-move event:', data)
-      console.log('[Server] Current socket ID:', socket.id)
-      console.log('[Server] Active sockets:', Array.from(activePlayers.keys()))
       const player = activePlayers.get(socket.id)
       if (!player) {
         console.log('[Server] No player found for socket:', socket.id)
-        console.log('[Server] Full activePlayers map:', activePlayers)
         return
       }
 
-      const { fromRoom, toRoom } = data
+      const fromRoom = data?.fromRoom || player.currentRoom
+      const toRoom = data?.toRoom
+
       console.log('[Server] Processing movement:', { playerId: player.id, fromRoom, toRoom })
 
-      gameEngine.queueIntent({
-        roomId: fromRoom,
-        intent: {
-          id: createIntentId(),
+      if (!toRoom) {
+        socket.emit('action:error', { action: 'move', message: 'Destination room missing' })
+        return
+      }
+
+      try {
+        const result = await gameEngine.processUserAction({
           playerId: player.id,
-          type: 'move',
-          data: { fromRoom, toRoom },
-          timestamp: Date.now(),
+          roomId: fromRoom,
+          action: {
+            type: 'move',
+            data: { fromRoom, toRoom },
+          },
+        })
+
+        if (result?.success === false) {
+          socket.emit('action:error', { action: 'move', message: result.message || 'Failed to move' })
+          return
         }
-      })
-      console.log('[Server] Movement intent queued')
 
-      gameEngine.movePlayer({
-        playerId: player.id,
-        fromRoomId: fromRoom,
-        toRoomId: toRoom,
-        playerState: {
-          id: player.id,
-          username: player.username,
-          hp: player.hp,
-          hpMax: player.hpMax,
-          mp: player.mp,
-          mpMax: player.mpMax,
-          level: player.level,
-        },
-      })
-      console.log('[Server] Player state updated in engine')
+        await transitionPlayerRoom({ player, fromRoom, toRoom })
 
-      // Leave old room
-      socket.leave(`room-${fromRoom}`)
-      if (roomPlayers.has(fromRoom)) {
-        roomPlayers.get(fromRoom).delete(socket.id)
-        socket.to(`room-${fromRoom}`).emit(SOCKET_EVENTS.PLAYER_LEFT, {
-          id: player.id,
-          username: player.username
+        socket.emit('action:confirmed', {
+          action: 'move',
+          success: true,
+          data: result?.data || { fromRoom, toRoom },
+        })
+      } catch (error) {
+        console.error('[Socket] Error handling player movement:', error)
+        emitQueueAwareError({
+          actionName: 'move',
+          player,
+          error,
+          fallbackMessage: 'Failed to move',
         })
       }
-
-      // Join new room
-      socket.join(`room-${toRoom}`)
-      if (!roomPlayers.has(toRoom)) {
-        roomPlayers.set(toRoom, new Set())
-      }
-      roomPlayers.get(toRoom).add(socket.id)
-
-      // Update player data
-      player.currentRoom = toRoom
-      activePlayers.set(socket.id, player)
-
-      prisma.user.update({
-        where: { id: player.id },
-        data: { currentRoom: toRoom },
-      }).catch((error) => {
-        console.error('Failed to persist player room change', error)
-      })
-
-      console.log(`[Server] Socket ${socket.id} rooms:`, Array.from(socket.rooms))
-      console.log(`Queued movement intent for player ${player.username} from ${fromRoom} to ${toRoom}`)
     })
 
     // Handle chat messages
-    socket.on(SOCKET_EVENTS.SEND_CHAT_MESSAGE, (data) => {
-      try {
-        const player = activePlayers.get(socket.id)
-        if (!player) return
+    socket.on(SOCKET_EVENTS.SEND_CHAT_MESSAGE, async (data) => {
+      const player = activePlayers.get(socket.id)
+      if (!player) return
 
+      try {
         // Basic sanitization for Socket.io messages
         const sanitizedMessage = data.message
           ? data.message.toString().trim().substring(0, 200)
           : ''
 
         if (!sanitizedMessage) {
-          socket.emit('error', { message: 'Message cannot be empty' })
+          socket.emit('action:error', { action: 'chat', message: 'Message cannot be empty' })
           return
         }
 
-        gameEngine.queueIntent({
+        const result = await gameEngine.processUserAction({
+          playerId: player.id,
           roomId: player.currentRoom,
-          intent: {
-            id: createIntentId(),
-            playerId: player.id,
+          action: {
             type: 'chat',
             data: { message: sanitizedMessage },
-            timestamp: Date.now(),
-          }
+          },
         })
 
-        console.log(`Queued chat intent from ${player.username}`)
+        if (result?.success === false) {
+          socket.emit('action:error', { action: 'chat', message: result.message || 'Failed to send message' })
+          return
+        }
+
+        socket.emit('action:confirmed', { action: 'chat', success: true })
       } catch (error) {
         console.error('Error handling chat message:', error)
-        socket.emit('error', { message: 'Failed to send message' })
+        emitQueueAwareError({
+          actionName: 'chat',
+          player,
+          error,
+          fallbackMessage: 'Failed to send message',
+        })
       }
     })
 
     // Handle game actions
-    socket.on(SOCKET_EVENTS.GAME_ACTION, (data) => {
+    socket.on(SOCKET_EVENTS.GAME_ACTION, async (data) => {
       const player = activePlayers.get(socket.id)
       if (!player) return
 
-      if (!data?.action) {
-        socket.emit('error', { message: 'Action is required' })
+      const actionName = data?.action?.toString().toLowerCase()
+      const supportedActions = new Set(['search', 'rest', 'look'])
+
+      if (!actionName) {
+        socket.emit('action:error', { action: 'action', message: 'Action is required' })
         return
       }
 
-      gameEngine.queueIntent({
-        roomId: player.currentRoom,
-        intent: {
-          id: createIntentId(),
-          playerId: player.id,
-          type: 'action',
-          data: { action: data.action },
-          timestamp: Date.now(),
-        }
-      })
+      if (!supportedActions.has(actionName)) {
+        socket.emit('action:error', { action: actionName, message: 'Unsupported action' })
+        return
+      }
 
-      console.log(`Queued action intent from ${player.username}: ${data.action}`)
+      try {
+        const result = await gameEngine.processUserAction({
+          playerId: player.id,
+          roomId: player.currentRoom,
+          action: {
+            type: actionName,
+          },
+        })
+
+        if (result?.success === false) {
+          socket.emit('action:error', { action: actionName, message: result.message || 'Action failed' })
+          return
+        }
+
+        socket.emit('action:confirmed', {
+          action: actionName,
+          success: true,
+          data: result?.data,
+        })
+      } catch (error) {
+        console.error('Error handling game action:', error)
+        emitQueueAwareError({
+          actionName,
+          player,
+          error,
+          fallbackMessage: 'Action failed',
+        })
+      }
     })
 
     // Handle disconnect
