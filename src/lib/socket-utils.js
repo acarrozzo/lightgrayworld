@@ -11,8 +11,14 @@ const SOCKET_EVENTS = {
   // Server to client
   PLAYER_JOINED: 'player-joined',
   PLAYER_LEFT: 'player-left',
+  CHAT_MESSAGE: 'chat-message',
   ACTION_COMPLETED: 'action-completed',
   PLAYER_ACTION: 'player-action',
+  ACTION_RESULT: 'action:result',
+  ACTION_CONFIRMED: 'action:confirmed',
+  ACTION_ERROR: 'action:error',
+  WORLD_TICK: 'world:tick',
+  ROOM_PLAYER_MOVED: 'room:player-moved',
   GAME_FACTS: 'game:facts',
 }
 
