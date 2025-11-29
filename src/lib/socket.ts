@@ -98,16 +98,22 @@ export interface RoomPlayerMovedPayload {
   toRoom: string
 }
 
+export interface AmbientTickData {
+  type: string
+  message: string
+  timestamp: number
+}
+
+export interface RoomTickUpdate {
+  playerCount: number
+  ambientData: AmbientTickData | null
+}
+
 export interface WorldTickPayload {
   tickId: number
   timestamp: number
-  rooms: Record<
-    string,
-    {
-      playerCount: number
-      lastActionAt: number | null
-    }
-  >
+  roomId: string
+  update: RoomTickUpdate
 }
 
 // Socket event constants

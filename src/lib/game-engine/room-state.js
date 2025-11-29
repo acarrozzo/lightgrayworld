@@ -3,6 +3,8 @@ class RoomState {
     this.roomId = roomId
     this.players = new Map()
     this.lastActionAt = null
+    this.lastTickPlayerCount = null
+    this.lastAmbientHintAt = 0
   }
 
   addPlayer(playerState) {
@@ -26,6 +28,26 @@ class RoomState {
       roomId: this.roomId,
       playerCount: this.players.size,
       lastActionAt: this.lastActionAt,
+    }
+  }
+
+  getTickUpdate(now = Date.now()) {
+    const playerCount = this.players.size
+    const playerCountChanged =
+      this.lastTickPlayerCount === null || this.lastTickPlayerCount !== playerCount
+
+    const ambientData = this.buildAmbientData(now)
+    const hasAmbientData = Boolean(ambientData)
+
+    if (!playerCountChanged && !hasAmbientData) {
+      return null
+    }
+
+    this.lastTickPlayerCount = playerCount
+
+    return {
+      playerCount,
+      ambientData: ambientData || null,
     }
   }
 
@@ -245,6 +267,33 @@ class RoomState {
 
   touchActivity() {
     this.lastActionAt = Date.now()
+  }
+
+  buildAmbientData(now) {
+    const MIN_AMBIENT_INTERVAL_MS = 30_000
+    const hasPlayers = this.players.size > 0
+    const elapsedSinceLastAmbient = now - this.lastAmbientHintAt
+
+    if (!hasPlayers || elapsedSinceLastAmbient < MIN_AMBIENT_INTERVAL_MS) {
+      return null
+    }
+
+    this.lastAmbientHintAt = now
+
+    const flavorSnippets = [
+      'A faint breeze rustles through the area.',
+      'You hear distant footsteps echo briefly.',
+      'The lights flicker for just a moment.',
+      'Something unseen shifts in the shadows.',
+    ]
+
+    const flavor = flavorSnippets[Math.floor(Math.random() * flavorSnippets.length)]
+
+    return {
+      type: 'flavor',
+      message: flavor,
+      timestamp: now,
+    }
   }
 }
 

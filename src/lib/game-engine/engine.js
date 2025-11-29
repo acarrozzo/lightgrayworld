@@ -13,6 +13,7 @@ class GameEngine {
     })
     this.playerSockets = new Map()
     this.lastMetricsLoggedAt = 0
+    this.lastTickProfile = null
   }
 
   start() {
@@ -81,23 +82,56 @@ class GameEngine {
   }
 
   async processWorldTick(tickId) {
-    const roomStates = {}
+    const tickStart = performance.now()
+    const tickTimestamp = Date.now()
+    const roomStats = []
+    let activeRooms = 0
+    let roomsWithUpdates = 0
 
     for (const [roomId, room] of this.rooms.entries()) {
-      if (typeof room.getState === 'function') {
-        roomStates[roomId] = room.getState()
-      } else {
-        roomStates[roomId] = { players: room.players?.size || 0 }
+      const playerCount = room?.players?.size || 0
+      if (playerCount === 0) {
+        continue
       }
+
+      activeRooms += 1
+      const roomStart = performance.now()
+      let update = null
+
+      if (typeof room.getTickUpdate === 'function') {
+        update = room.getTickUpdate()
+      } else {
+        console.warn(`[GameEngine] Room ${roomId} missing getTickUpdate, skipping ambient tick`)
+      }
+
+      const roomElapsed = performance.now() - roomStart
+      roomStats.push({
+        roomId,
+        elapsed: roomElapsed,
+        emitted: Boolean(update),
+      })
+
+      if (!update) {
+        continue
+      }
+
+      roomsWithUpdates += 1
+      this.io.to(`room-${roomId}`).emit('world:tick', {
+        tickId,
+        timestamp: tickTimestamp,
+        roomId,
+        update,
+      })
     }
 
-    console.log(`[GameEngine] World Tick #${tickId} - Broadcasting to all clients. Active rooms: ${this.rooms.size}`)
-
-    this.io.emit('world:tick', {
+    const totalElapsed = performance.now() - tickStart
+    this.lastTickProfile = {
       tickId,
-      timestamp: Date.now(),
-      rooms: roomStates,
-    })
+      totalElapsed,
+      activeRooms,
+      roomsWithUpdates,
+      roomStats,
+    }
   }
 
   async processUserAction({ playerId, roomId, action }) {
@@ -234,17 +268,54 @@ class GameEngine {
     this.lastMetricsLoggedAt = now
     const tickMetrics = this.tickClock.getMetrics()
     const queueMetrics = this.playerQueue.getMetrics()
+    const tickProfile =
+      this.lastTickProfile || {
+        totalElapsed: elapsed,
+        activeRooms: 0,
+        roomsWithUpdates: 0,
+        roomStats: [],
+      }
+
+    const perRoomTimes = tickProfile.roomStats.map((stat) => stat.elapsed)
+    const perRoomSummary =
+      perRoomTimes.length > 0
+        ? `roomAvg=${this.average(perRoomTimes).toFixed(2)}ms roomMax=${Math.max(...perRoomTimes).toFixed(
+            2
+          )}ms roomMin=${Math.min(...perRoomTimes).toFixed(2)}ms`
+        : 'roomAvg=0.00ms roomMax=0.00ms roomMin=0.00ms'
+
+    const roomDetail =
+      tickProfile.roomStats.length > 0 && tickProfile.roomStats.length <= 10
+        ? ` roomDetails=[${tickProfile.roomStats
+            .map(
+              (stat) =>
+                `${stat.roomId}:${stat.elapsed.toFixed(2)}ms${stat.emitted ? '' : '(idle)'}`
+            )
+            .join(', ')}]`
+        : tickProfile.roomStats.length > 10
+        ? ` roomsLogged=${tickProfile.roomStats.length}`
+        : ''
+
     console.log(
       `[GameEngine] tick=${tickId} rooms=${this.rooms.size} tickAvg=${tickMetrics.avgTickTime.toFixed(
         2
       )}ms p95=${tickMetrics.p95TickTime.toFixed(2)}ms last=${elapsed.toFixed(
         2
-      )}ms actionQueue={ enqueued=${queueMetrics.enqueued} started=${
-        queueMetrics.started
-      } completed=${queueMetrics.completed} timedOut=${queueMetrics.timedOut} rejected=${
-        queueMetrics.rejected
-      } active=${queueMetrics.activePlayers} }`
+      )}ms worldTickTotal=${tickProfile.totalElapsed.toFixed(2)}ms activeRooms=${
+        tickProfile.activeRooms
+      } roomsWithUpdates=${tickProfile.roomsWithUpdates} ${perRoomSummary}${roomDetail} actionQueue={ enqueued=${
+        queueMetrics.enqueued
+      } started=${queueMetrics.started} completed=${queueMetrics.completed} timedOut=${
+        queueMetrics.timedOut
+      } rejected=${queueMetrics.rejected} active=${queueMetrics.activePlayers} }`
     )
+  }
+
+  average(values) {
+    if (!values.length) {
+      return 0
+    }
+    return values.reduce((sum, value) => sum + value, 0) / values.length
   }
 }
 
