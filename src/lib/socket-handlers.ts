@@ -1,15 +1,16 @@
 import { useMemo } from 'react'
 import { Socket } from 'socket.io-client'
-import { SOCKET_EVENTS, PlayerData, ChatMessage, ActionData } from './socket'
-
-export interface GameFact {
-  seq: number
-  tickId: number
-  type: string
-  data: Record<string, any>
-  affectedPlayers: string[]
-  timestamp?: number
-}
+import {
+  SOCKET_EVENTS,
+  PlayerData,
+  ChatMessage,
+  ActionData,
+  ActionResultPayload,
+  ActionConfirmation,
+  ActionErrorPayload,
+  WorldTickPayload,
+  RoomPlayerMovedPayload,
+} from './socket'
 
 // Centralized socket event handlers to reduce duplication
 export class SocketEventHandlers {
@@ -94,11 +95,6 @@ export class SocketEventHandlers {
     return this.on(SOCKET_EVENTS.ACTION_COMPLETED, handler)
   }
 
-  // Listen for authoritative game facts
-  onGameFacts(handler: (payload: { tickId: number, facts: GameFact[] }) => void): () => void {
-    return this.on(SOCKET_EVENTS.GAME_FACTS, handler)
-  }
-
   // Listen for player joined events
   onPlayerJoined(handler: (player: any) => void): () => void {
     return this.on(SOCKET_EVENTS.PLAYER_JOINED, handler)
@@ -107,6 +103,26 @@ export class SocketEventHandlers {
   // Listen for player left events
   onPlayerLeft(handler: (player: any) => void): () => void {
     return this.on(SOCKET_EVENTS.PLAYER_LEFT, handler)
+  }
+
+  onActionResult(handler: (payload: ActionResultPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.ACTION_RESULT, handler)
+  }
+
+  onActionConfirmed(handler: (payload: ActionConfirmation) => void): () => void {
+    return this.on(SOCKET_EVENTS.ACTION_CONFIRMED, handler)
+  }
+
+  onActionError(handler: (payload: ActionErrorPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.ACTION_ERROR, handler)
+  }
+
+  onWorldTick(handler: (payload: WorldTickPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.WORLD_TICK, handler)
+  }
+
+  onRoomPlayerMoved(handler: (payload: RoomPlayerMovedPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.ROOM_PLAYER_MOVED, handler)
   }
 
   // Cleanup all listeners

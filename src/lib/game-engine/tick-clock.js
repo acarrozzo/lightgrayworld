@@ -1,7 +1,7 @@
-const DEFAULT_TICK_MS = 100;
+const WORLD_TICK_MS = 5000;
 
 class TickClock {
-  constructor(tickMs = DEFAULT_TICK_MS) {
+  constructor(tickMs = WORLD_TICK_MS) {
     this.tickMs = tickMs;
     this.epoch = Date.now();
     this.running = false;
@@ -97,5 +97,5 @@ class TickClock {
 
 module.exports = {
   TickClock,
-  DEFAULT_TICK_MS,
+  WORLD_TICK_MS,
 };

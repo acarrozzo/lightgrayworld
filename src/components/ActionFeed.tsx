@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useGameStore } from '@/lib/game-state'
 import { useSocket } from '@/hooks/useSocket'
-import { useSocketHandlers, GameFact } from '@/lib/socket-handlers'
+import { useSocketHandlers } from '@/lib/socket-handlers'
+import { ActionResultPayload, RoomPlayerMovedPayload } from '@/lib/socket'
 import Icon from './Icon'
 
 interface ActionHistory {
@@ -102,84 +103,42 @@ export default function ActionFeed({ className = '' }: ActionFeedProps) {
     loadActions(1, false)
   }, [])
 
-  const factToAction = (fact: GameFact): ActionHistory | null => {
-    const timestamp = new Date(fact.timestamp || Date.now()).toISOString()
-    switch (fact.type) {
-      case 'chat':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: 'chat',
-          message: `${fact.data.username || fact.data.playerId}: ${fact.data.message || ''}`,
-          timestamp,
-          roomId: fact.data.roomId || undefined,
-          metadata: JSON.stringify(fact.data),
-        }
-      case 'player_moved':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: 'move',
-          message: `${fact.data.username || fact.data.playerId} moved to ${fact.data.toRoom || 'another room'}`,
-          timestamp,
-          roomId: fact.data.toRoom || undefined,
-          metadata: JSON.stringify(fact.data),
-        }
-      case 'player_action':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: fact.data.action || 'action',
-          message: `${fact.data.playerId} performed ${fact.data.action}`,
-          timestamp,
-          metadata: JSON.stringify(fact.data),
-        }
-      case 'attack_intent':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: 'attack',
-          message: `${fact.data.playerId} prepares an attack`,
-          timestamp,
-          metadata: JSON.stringify(fact.data),
-        }
-      case 'use_item':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: 'use_item',
-          message: `${fact.data.playerId} used ${fact.data.itemId}`,
-          timestamp,
-          metadata: JSON.stringify(fact.data),
-        }
-      case 'look':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: 'look',
-          message: `${fact.data.playerId} looks around`,
-          timestamp,
-          metadata: JSON.stringify(fact.data),
-        }
-      default:
-        return null
-    }
-  }
+  const actionResultToHistory = (payload: ActionResultPayload): ActionHistory => ({
+    id: `action-${payload.timestamp}-${payload.action}-${Math.random().toString(36).slice(2, 8)}`,
+    action: payload.action,
+    message: payload.message,
+    timestamp: payload.timestamp,
+    roomId: payload.data?.roomId,
+    metadata: payload.data ? JSON.stringify(payload.data) : undefined,
+    success: payload.success,
+  })
+
+  const roomMovementToHistory = (event: RoomPlayerMovedPayload): ActionHistory => ({
+    id: `room-move-${event.playerId}-${event.toRoom}-${Date.now()}`,
+    action: 'move',
+    message: `${event.username} travels to ${event.toRoom}`,
+    timestamp: new Date().toISOString(),
+    roomId: event.toRoom,
+    metadata: JSON.stringify(event),
+  })
 
   // Listen for real-time action updates
   useEffect(() => {
     if (!socket || !player) {
-      return // Silently return, don't log as this is normal during initial load
+      return
     }
- 
-    const cleanupFacts = socketHandlers.onGameFacts(({ facts }) => {
-      const newEntries = facts
-        .map(factToAction)
-        .filter((entry): entry is ActionHistory => entry !== null)
 
-      if (newEntries.length === 0) {
-        return
-      }
+    const cleanupActionResults = socketHandlers.onActionResult((payload) => {
+      setActions((prev) => deduplicateActions([actionResultToHistory(payload), ...prev]))
+    })
 
-      setActions((prev) => deduplicateActions([...newEntries, ...prev]))
+    const cleanupRoomMoves = socketHandlers.onRoomPlayerMoved((event) => {
+      setActions((prev) => deduplicateActions([roomMovementToHistory(event), ...prev]))
     })
 
     return () => {
-      cleanupFacts()
+      cleanupActionResults()
+      cleanupRoomMoves()
     }
   }, [socket, player, socketHandlers])
 

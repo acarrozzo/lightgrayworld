@@ -47,8 +47,6 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id)
   console.log('[Server] Listening for player login event:', SOCKET_EVENTS.PLAYER_LOGIN)
 
-  const createIntentId = () => `${socket.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-
   socket.on(SOCKET_EVENTS.PLAYER_LOGIN, (playerData) => {
     console.log(`[Server] PLAYER_LOGIN received for socket ${socket.id}, player:`, playerData.username)
     console.log('[Server] PLAYER_LOGIN payload:', playerData)
@@ -104,6 +102,7 @@ io.on('connection', (socket) => {
         mp: playerData.mp,
         mpMax: playerData.mpMax,
         level: playerData.level,
+        socketId: socket.id,
       })
       console.log(`[Server] Registered ${playerData.username} with engine in room ${playerData.currentRoom}`)
 
@@ -114,47 +113,10 @@ io.on('connection', (socket) => {
     }
   })
 
-  socket.on('player-move', (data) => {
-    console.log('[Server] Received player-move event:', data)
-    console.log('[Server] Current socket ID:', socket.id)
-    console.log('[Server] Active sockets:', Array.from(activePlayers.keys()))
-    const player = activePlayers.get(socket.id)
-    if (!player) {
-      console.log('[Server] No player found for socket:', socket.id)
-      console.log('[Server] Full activePlayers map:', activePlayers)
+  const transitionPlayerRoom = async ({ player, fromRoom, toRoom }) => {
+    if (!toRoom || fromRoom === toRoom) {
       return
     }
-
-    const { fromRoom, toRoom } = data
-    console.log('[Server] Processing movement:', { playerId: player.id, fromRoom, toRoom })
-
-    gameEngine.queueIntent({
-      roomId: fromRoom,
-      intent: {
-        id: createIntentId(),
-        playerId: player.id,
-        type: 'move',
-        data: { fromRoom, toRoom },
-        timestamp: Date.now(),
-      },
-    })
-    console.log('[Server] Movement intent queued')
-
-    gameEngine.movePlayer({
-      playerId: player.id,
-      fromRoomId: fromRoom,
-      toRoomId: toRoom,
-      playerState: {
-        id: player.id,
-        username: player.username,
-        hp: player.hp,
-        hpMax: player.hpMax,
-        mp: player.mp,
-        mpMax: player.mpMax,
-        level: player.level,
-      },
-    })
-    console.log('[Server] Player state updated in engine')
 
     socket.leave(`room-${fromRoom}`)
     if (roomPlayers.has(fromRoom)) {
@@ -171,75 +133,174 @@ io.on('connection', (socket) => {
     }
     roomPlayers.get(toRoom).add(socket.id)
 
+    socket.to(`room-${toRoom}`).emit(SOCKET_EVENTS.PLAYER_JOINED, {
+      id: player.id,
+      username: player.username,
+      level: player.level,
+      hp: player.hp,
+      hpMax: player.hpMax,
+      mp: player.mp,
+      mpMax: player.mpMax,
+      currentRoom: toRoom,
+      isActive: true,
+    })
+
     player.currentRoom = toRoom
     activePlayers.set(socket.id, player)
 
-    prisma.user
-      .update({
+    try {
+      await prisma.user.update({
         where: { id: player.id },
         data: { currentRoom: toRoom },
       })
-      .catch((error) => {
-        console.error('Failed to persist player room change', error)
-      })
-
-    console.log(`[Server] Socket ${socket.id} rooms:`, Array.from(socket.rooms))
-    console.log(`Queued movement intent for player ${player.username} from ${fromRoom} to ${toRoom}`)
-  })
-
-  socket.on(SOCKET_EVENTS.SEND_CHAT_MESSAGE, (data) => {
-    try {
-      const player = activePlayers.get(socket.id)
-      if (!player) return
-
-      const sanitizedMessage = data.message
-        ? data.message.toString().trim().substring(0, 200)
-        : ''
-
-      if (!sanitizedMessage) {
-        socket.emit('error', { message: 'Message cannot be empty' })
-        return
-      }
-
-      gameEngine.queueIntent({
-        roomId: player.currentRoom,
-        intent: {
-          id: createIntentId(),
-          playerId: player.id,
-          type: 'chat',
-          data: { message: sanitizedMessage },
-          timestamp: Date.now(),
-        },
-      })
-
-      console.log(`Queued chat intent from ${player.username}`)
     } catch (error) {
-      console.error('Error handling chat message:', error)
-      socket.emit('error', { message: 'Failed to send message' })
+      console.error('Failed to persist player room change', error)
     }
-  })
+  }
 
-  socket.on(SOCKET_EVENTS.GAME_ACTION, (data) => {
+  socket.on('player-move', async (data) => {
+    console.log(`[Socket] player-move event received from ${socket.id}:`, data)
     const player = activePlayers.get(socket.id)
-    if (!player) return
-
-    if (!data?.action) {
-      socket.emit('error', { message: 'Action is required' })
+    if (!player) {
+      console.log(`[Socket] player-move - Player not found for socket ${socket.id}`)
+      socket.emit('action:error', { action: 'move', message: 'Player not found' })
       return
     }
 
-    gameEngine.queueIntent({
-      roomId: player.currentRoom,
-      intent: {
-        id: createIntentId(),
-        playerId: player.id,
-        type: 'action',
-        data: { action: data.action },
-        timestamp: Date.now(),
-      },
-    })
+    const fromRoom = data?.fromRoom || player.currentRoom
+    const toRoom = data?.toRoom
 
-    console.log(`Queued action intent from ${player.username}: ${data.action}`)
+    console.log(`[Socket] player-move - ${player.username} moving from ${fromRoom} to ${toRoom}`)
+
+    if (!toRoom) {
+      console.log(`[Socket] player-move - Destination room missing`)
+      socket.emit('action:error', { action: 'move', message: 'Destination room missing' })
+      return
+    }
+
+    try {
+      console.log(`[Socket] Calling gameEngine.processUserAction for ${player.username}`)
+      const result = await gameEngine.processUserAction({
+        playerId: player.id,
+        roomId: fromRoom,
+        action: {
+          type: 'move',
+          data: { fromRoom, toRoom },
+        },
+      })
+
+      console.log(`[Socket] processUserAction result:`, result)
+
+      if (result?.success === false) {
+        console.log(`[Socket] Movement failed:`, result.message)
+        socket.emit('action:error', {
+          action: 'move',
+          message: result.message || 'Failed to move',
+        })
+        return
+      }
+
+      console.log(`[Socket] Transitioning player room`)
+      await transitionPlayerRoom({ player, fromRoom, toRoom })
+
+      console.log(`[Socket] Emitting action:confirmed to player`)
+      socket.emit('action:confirmed', {
+        action: 'move',
+        success: true,
+        data: result?.data || { fromRoom, toRoom },
+      })
+    } catch (error) {
+      console.error('[Socket] Error handling player movement:', error)
+      socket.emit('action:error', { action: 'move', message: 'Failed to move' })
+    }
+  })
+
+  socket.on(SOCKET_EVENTS.SEND_CHAT_MESSAGE, async (data) => {
+    const player = activePlayers.get(socket.id)
+    if (!player) {
+      console.log(`[Socket] SEND_CHAT_MESSAGE - Player not found for socket ${socket.id}`)
+      return
+    }
+
+    const sanitizedMessage = data.message ? data.message.toString().trim().substring(0, 200) : ''
+
+    console.log(`[Socket] SEND_CHAT_MESSAGE from ${player.username}: "${sanitizedMessage}"`)
+
+    if (!sanitizedMessage) {
+      socket.emit('action:error', { action: 'chat', message: 'Message cannot be empty' })
+      return
+    }
+
+    try {
+      console.log(`[Socket] Calling gameEngine.processUserAction for chat from ${player.username}`)
+      const result = await gameEngine.processUserAction({
+        playerId: player.id,
+        roomId: player.currentRoom,
+        action: {
+          type: 'chat',
+          data: { message: sanitizedMessage },
+        },
+      })
+
+      console.log(`[Socket] Chat processUserAction result:`, result)
+
+      if (result?.success === false) {
+        console.log(`[Socket] Chat failed:`, result.message)
+        socket.emit('action:error', { action: 'chat', message: result.message || 'Failed to send message' })
+        return
+      }
+
+      console.log(`[Socket] Emitting chat action:confirmed to player`)
+      socket.emit('action:confirmed', { action: 'chat', success: true })
+    } catch (error) {
+      console.error('[Socket] Error handling chat message:', error)
+      socket.emit('action:error', { action: 'chat', message: 'Failed to send message' })
+    }
+  })
+
+  socket.on(SOCKET_EVENTS.GAME_ACTION, async (data) => {
+    const player = activePlayers.get(socket.id)
+    if (!player) return
+
+    const actionName = data?.action?.toString().toLowerCase()
+    const supportedActions = new Set(['search', 'rest', 'look'])
+
+    if (!actionName) {
+      socket.emit('action:error', { action: 'action', message: 'Action is required' })
+      return
+    }
+
+    if (!supportedActions.has(actionName)) {
+      socket.emit('action:error', { action: actionName, message: 'Unsupported action' })
+      return
+    }
+
+    try {
+      const result = await gameEngine.processUserAction({
+        playerId: player.id,
+        roomId: player.currentRoom,
+        action: {
+          type: actionName,
+        },
+      })
+
+      if (result?.success === false) {
+        socket.emit('action:error', {
+          action: actionName,
+          message: result.message || 'Action failed',
+        })
+        return
+      }
+
+      socket.emit('action:confirmed', {
+        action: actionName,
+        success: true,
+        data: result?.data,
+      })
+    } catch (error) {
+      console.error('Error handling game action:', error)
+      socket.emit('action:error', { action: actionName, message: 'Action failed' })
+    }
   })
 
   socket.on('disconnect', () => {

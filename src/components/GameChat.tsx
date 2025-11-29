@@ -128,27 +128,29 @@ export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
   useEffect(() => {
     if (!socket || !player) return
 
-    const cleanupFacts = socketHandlers.onGameFacts(({ facts }) => {
-      const chatMessages: ChatMessage[] = facts
-        .filter((fact) => fact.type === 'chat')
-        .map((fact) => ({
-          id: `${fact.tickId}-${fact.seq}`,
-          username: fact.data.username || 'Unknown',
-          message: fact.data.message || '',
-          timestamp: new Date(fact.timestamp || Date.now()),
-          level: fact.data.level ?? 0,
-        }))
+    console.log('[GameChat] Setting up chat-message listener')
 
-      if (chatMessages.length === 0) return
+    const cleanupChat = socketHandlers.onChatMessage((message) => {
+      console.log('[GameChat] Received chat-message event:', message)
+      const chatMessage: ChatMessage = {
+        id: message.id || `${message.userId}-${Date.now()}`,
+        username: message.username,
+        message: message.message,
+        timestamp: new Date(message.timestamp),
+        level: message.level,
+      }
 
-      const added = mergeMessages(chatMessages)
+      console.log('[GameChat] Processed chat message:', chatMessage)
+      const added = mergeMessages([chatMessage])
+      console.log('[GameChat] Message added to state:', added)
       if (added && onNewMessage) {
         onNewMessage()
       }
     })
 
     return () => {
-      cleanupFacts()
+      console.log('[GameChat] Cleaning up chat-message listener')
+      cleanupChat()
     }
   }, [socket, player?.id, socketHandlers, mergeMessages, onNewMessage])
 

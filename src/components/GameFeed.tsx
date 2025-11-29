@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Room, useGameStore } from '@/lib/game-state'
 import { useSocket } from '@/hooks/useSocket'
-import { useSocketHandlers, GameFact } from '@/lib/socket-handlers'
+import { useSocketHandlers } from '@/lib/socket-handlers'
+import { ActionResultPayload, ActionErrorPayload, RoomPlayerMovedPayload, ChatMessage } from '@/lib/socket'
 import Icon from './Icon'
 import RoomDisplay from './RoomDisplay'
 
@@ -107,7 +108,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
   const feedRef = useRef<HTMLDivElement>(null)
   const hasInitialized = useRef(false)
   const isClearingFeed = useRef(false)
-  const { getAuthHeaders, player, setCurrentRoom, setRoomPlayers, setRoomFactSeq, getCachedRoom } = useGameStore()
+  const { getAuthHeaders, player, setCurrentRoom, setRoomPlayers, getCachedRoom } = useGameStore()
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
 
@@ -279,6 +280,31 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     return { id: roomId, name: 'Unknown Room' }
   }
 
+  const pushAction = useCallback(
+    (entry: ActionHistory) => {
+      setActions((prev) => {
+        let nextEntries = [...prev, entry]
+
+        if (entry.roomData) {
+          const timestampMs = new Date(entry.timestamp || Date.now()).getTime()
+          const roomDisplayAction: ActionHistory = {
+            id: `room-display-${entry.roomData.roomId || timestampMs}`,
+            action: 'room-display',
+            message: `Room: ${entry.roomData.name}`,
+            timestamp: new Date(timestampMs + 1).toISOString(),
+            success: true,
+            roomData: entry.roomData,
+          }
+
+          nextEntries = [...nextEntries, roomDisplayAction]
+        }
+
+        return deduplicateActions(nextEntries)
+      })
+    },
+    [setActions]
+  )
+
   const formatRoomLabel = (roomId?: string, fallbackName?: string) => {
     const info = resolveRoomInfo(roomId, fallbackName)
     if (!info.id) {
@@ -289,146 +315,83 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
 
   // Add current action result to the feed
   useEffect(() => {
-    if (actionResult) {
-      const newAction: ActionHistory = {
-        id: `action-${Date.now()}`,
-        action: actionResult.action,
-        message: actionResult.message,
-        timestamp: actionResult.timestamp,
-        success: actionResult.success,
-        roomData: actionResult.roomData
-      }
-      
-      setActions(prev => {
-        let combined = [...prev, newAction]
-        
-        // If this action has room data, add a separate room display action
-        if (actionResult.roomData) {
-          const roomDisplayAction: ActionHistory = {
-            id: `room-${Date.now()}`,
-            action: 'room-display',
-            message: `Room: ${actionResult.roomData.name}`,
-            timestamp: new Date(Date.now() + 1).toISOString(), // Slightly after the main action
-            success: true,
-            roomData: actionResult.roomData
-          }
-          combined = [...combined, roomDisplayAction]
-        }
-        
-        return deduplicateActions(combined)
-      })
-      
-      // Note: We don't update the initial room display on travel - it should remain the original room
-      
-      // Auto-scroll to bottom when new action is added
-      setTimeout(() => {
-        scrollToBottom()
-      }, 100)
+    if (!actionResult || actionResult.source !== 'local') {
+      return
     }
-  }, [actionResult])
 
-  const factToAction = (fact: GameFact): ActionHistory | null => {
-    const timestamp = new Date(fact.timestamp || Date.now()).toISOString()
-    const isSelfMovement = fact.type === 'player_moved' && fact.data.playerId === player?.id
-    switch (fact.type) {
-      case 'chat':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: 'chat',
-          message: `${fact.data.username || 'Unknown'} says: ${fact.data.message || ''}`,
-          timestamp,
-          roomId: room?.roomId,
-          metadata: JSON.stringify(fact.data),
-        }
-      case 'player_moved': {
-        const toRoomId = (fact.data.toRoom as string) || undefined
-        const fromRoomId = (fact.data.fromRoom as string) || undefined
-        const toRoomName = (fact.data.toRoomName as string) || undefined
-        const fromRoomName = (fact.data.fromRoomName as string) || undefined
-
-        const playerLabel = isSelfMovement ? 'You' : fact.data.username || fact.data.playerId || 'Unknown player'
-        const enterVerb = isSelfMovement ? 'enter' : 'enters'
-        const exitVerb = isSelfMovement ? 'exit' : 'exits'
-        const travelVerb = isSelfMovement ? 'travel' : 'travels'
-
-        const isEnteringCurrentRoom = room?.roomId !== undefined && toRoomId === room.roomId
-        const isExitingCurrentRoom = room?.roomId !== undefined && fromRoomId === room.roomId
-
-        let message: string
-
-        if (isEnteringCurrentRoom) {
-          const directionKey = findDirectionKey(room, fromRoomId)
-          const directionPhrase = buildDirectionPhrase(directionKey, 'enter')
-          const originLabel = formatRoomLabel(fromRoomId, fromRoomName)
-          message = `${playerLabel} ${enterVerb} from ${directionPhrase} (${originLabel})`
-        } else if (isExitingCurrentRoom) {
-          // Don't show exit message for self-movement; only show when others exit
-          if (isSelfMovement) {
-            return null
-          }
-          const directionKey = findDirectionKey(room, toRoomId)
-          const directionPhrase = buildDirectionPhrase(directionKey, 'exit')
-          const destinationLabel = formatRoomLabel(toRoomId, toRoomName)
-          message = `${playerLabel} ${exitVerb} to ${directionPhrase} (${destinationLabel})`
-        } else {
-          const originLabel = formatRoomLabel(fromRoomId, fromRoomName)
-          const destinationLabel = formatRoomLabel(toRoomId, toRoomName)
-          message = `${playerLabel} ${travelVerb} from ${originLabel} to ${destinationLabel}`
-        }
-
-        const actionRoomId = isEnteringCurrentRoom || isExitingCurrentRoom
-          ? room?.roomId
-          : toRoomId || fromRoomId || room?.roomId
-
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: 'move',
-          message,
-          timestamp,
-          roomId: actionRoomId,
-          metadata: JSON.stringify(fact.data),
-        }
-      }
-      case 'player_action':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: fact.data.action || 'action',
-          message: `${fact.data.playerId} performed ${fact.data.action}`,
-          timestamp,
-          roomId: room?.roomId,
-          metadata: JSON.stringify(fact.data),
-        }
-      case 'attack_intent':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: 'attack',
-          message: `${fact.data.playerId} prepares an attack`,
-          timestamp,
-          roomId: room?.roomId,
-          metadata: JSON.stringify(fact.data),
-        }
-      case 'use_item':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: 'use_item',
-          message: `${fact.data.playerId} used ${fact.data.itemId}`,
-          timestamp,
-          roomId: room?.roomId,
-          metadata: JSON.stringify(fact.data),
-        }
-      case 'look':
-        return {
-          id: `fact-${fact.tickId}-${fact.seq}`,
-          action: 'look',
-          message: `${fact.data.playerId} looks around`,
-          timestamp,
-          roomId: room?.roomId,
-          metadata: JSON.stringify(fact.data),
-        }
-      default:
-        return null
+    const entry: ActionHistory = {
+      id: `local-action-${Date.now()}`,
+      action: actionResult.action,
+      message: actionResult.message,
+      timestamp: actionResult.timestamp || new Date().toISOString(),
+      success: actionResult.success,
+      roomData: actionResult.roomData,
     }
-  }
+
+    pushAction(entry)
+
+    setTimeout(() => {
+      scrollToBottom()
+    }, 100)
+  }, [actionResult, pushAction, scrollToBottom])
+
+  const createActionResultEntry = useCallback(
+    (payload: ActionResultPayload): ActionHistory => ({
+      id: `socket-action-${payload.timestamp}-${payload.action}-${Math.random().toString(36).slice(2, 8)}`,
+      action: payload.action,
+      message: payload.message,
+      timestamp: payload.timestamp,
+      roomId: payload.data?.roomId,
+      metadata: payload.data ? JSON.stringify(payload.data) : undefined,
+      success: payload.success,
+      roomData: payload.data?.roomData,
+    }),
+    []
+  )
+
+  const createActionErrorEntry = useCallback((payload: ActionErrorPayload): ActionHistory => {
+    const timestamp = new Date().toISOString()
+    return {
+      id: `socket-action-error-${timestamp}-${payload.action}`,
+      action: payload.action,
+      message: `Action failed: ${payload.message}`,
+      timestamp,
+      success: false,
+    }
+  }, [])
+
+  const createMovementEntry = useCallback(
+    (event: RoomPlayerMovedPayload): ActionHistory => {
+      const timestamp = new Date().toISOString()
+      const isSelfMovement = event.playerId === player?.id
+
+      const message = isSelfMovement
+        ? `You travel to ${event.toRoom}`
+        : `${event.username} travels to ${event.toRoom}`
+
+      return {
+        id: `socket-room-move-${event.playerId}-${timestamp}`,
+        action: 'move',
+        message,
+        timestamp,
+        roomId: event.toRoom,
+        metadata: JSON.stringify(event),
+      }
+    },
+    [player?.id]
+  )
+
+  const createChatEntry = useCallback((message: ChatMessage): ActionHistory => {
+    const timestamp = new Date(message.timestamp).toISOString()
+    return {
+      id: message.id || `socket-chat-${timestamp}`,
+      action: 'chat',
+      message: `[${message.username}] ${message.message}`,
+      timestamp,
+      roomId: message.roomId,
+      metadata: JSON.stringify(message),
+    }
+  }, [])
 
   // Listen for real-time action updates
   useEffect(() => {
@@ -436,34 +399,40 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
       return
     }
 
-    const cleanupFacts = socketHandlers.onGameFacts(({ facts }) => {
-      const newActions = facts
-        .map(factToAction)
-        .filter((entry): entry is ActionHistory => entry !== null)
+    const cleanupActionResult = socketHandlers.onActionResult((payload) => {
+      pushAction(createActionResultEntry(payload))
+      setTimeout(scrollToBottom, 100)
+    })
 
-      if (newActions.length === 0) {
-        return
-      }
+    const cleanupActionError = socketHandlers.onActionError((payload) => {
+      pushAction(createActionErrorEntry(payload))
+    })
 
-      const maxSeq = facts.reduce((max, fact) => Math.max(max, fact.seq), 0)
-      if (maxSeq > 0 && room?.roomId) {
-        setRoomFactSeq(room.roomId, maxSeq)
-      }
+    const cleanupRoomMove = socketHandlers.onRoomPlayerMoved((event) => {
+      pushAction(createMovementEntry(event))
+    })
 
-      setActions((prev) => {
-        const combined = deduplicateActions([...prev, ...newActions])
-        return combined
-      })
-
-      setTimeout(() => {
-        scrollToBottom()
-      }, 100)
+    const cleanupChat = socketHandlers.onChatMessage((message) => {
+      pushAction(createChatEntry(message))
     })
 
     return () => {
-      cleanupFacts()
+      cleanupActionResult()
+      cleanupActionError()
+      cleanupRoomMove()
+      cleanupChat()
     }
-  }, [socket, player, room?.roomId, socketHandlers])
+  }, [
+    socket,
+    player,
+    socketHandlers,
+    pushAction,
+    createActionResultEntry,
+    createActionErrorEntry,
+    createMovementEntry,
+    createChatEntry,
+    scrollToBottom,
+  ])
 
   const getActionColor = (action: string) => {
     switch (action.toLowerCase()) {

@@ -6,14 +6,18 @@ export interface SocketEvents {
   'player-login': (playerData: PlayerData) => void
   'send-chat-message': (data: { message: string }) => void
   'game-action': (data: { action: string }) => void
-  
+
   // Server to client events
   'player-joined': (player: PlayerInfo) => void
   'player-left': (player: { id: string; username: string }) => void
   'chat-message': (message: ChatMessage) => void
   'action-completed': (actionData: ActionData) => void
   'player-action': (actionData: PlayerAction) => void
-  'game:facts': (payload: { tickId: number; facts: GameFact[] }) => void
+  'action:result': (payload: ActionResultPayload) => void
+  'action:confirmed': (payload: ActionConfirmation) => void
+  'action:error': (payload: ActionErrorPayload) => void
+  'world:tick': (payload: WorldTickPayload) => void
+  'room:player-moved': (payload: RoomPlayerMovedPayload) => void
 }
 
 // Data type definitions
@@ -68,13 +72,42 @@ export interface PlayerAction {
   timestamp: Date
 }
 
-export interface GameFact {
-  seq: number
+export interface ActionResultPayload {
+  action: string
+  success: boolean
+  message: string
+  timestamp: string
+  data?: Record<string, any>
+}
+
+export interface ActionConfirmation {
+  action: string
+  success: boolean
+  data?: Record<string, any>
+}
+
+export interface ActionErrorPayload {
+  action: string
+  message: string
+}
+
+export interface RoomPlayerMovedPayload {
+  playerId: string
+  username: string
+  fromRoom: string
+  toRoom: string
+}
+
+export interface WorldTickPayload {
   tickId: number
-  type: string
-  data: Record<string, any>
-  affectedPlayers: string[]
-  timestamp?: number
+  timestamp: number
+  rooms: Record<
+    string,
+    {
+      playerCount: number
+      lastActionAt: number | null
+    }
+  >
 }
 
 // Socket event constants
@@ -90,7 +123,11 @@ export const SOCKET_EVENTS = {
   CHAT_MESSAGE: 'chat-message',
   ACTION_COMPLETED: 'action-completed',
   PLAYER_ACTION: 'player-action',
-  GAME_FACTS: 'game:facts',
+  ACTION_RESULT: 'action:result',
+  ACTION_CONFIRMED: 'action:confirmed',
+  ACTION_ERROR: 'action:error',
+  WORLD_TICK: 'world:tick',
+  ROOM_PLAYER_MOVED: 'room:player-moved',
 } as const
 
 let io: Server<SocketEvents> | null = null

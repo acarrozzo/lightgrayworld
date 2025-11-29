@@ -45,8 +45,6 @@ export default function GameInterface() {
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
   const lastLoginSocketId = useRef<string | null>(null)
-  const gameFactsCleanupRef = useRef<(() => void) | null>(null)
-  const isGameFactsListenerRegisteredRef = useRef(false)
   const playerRef = useRef(player)
   const currentRoomRef = useRef(currentRoom)
 
@@ -249,6 +247,7 @@ export default function GameInterface() {
             timestamp: new Date().toISOString(),
             success: true,
             roomData: roomWithDirections,
+            source: 'local',
           })
         }
       } else {
@@ -311,6 +310,7 @@ export default function GameInterface() {
           message: `You don't see an exit in that direction (${actionType})`,
           timestamp: new Date().toISOString(),
           success: false,
+          source: 'local',
         })
         return
       }
@@ -325,6 +325,7 @@ export default function GameInterface() {
           message: `You don't see an exit in that direction (${actionType})`,
           timestamp: new Date().toISOString(),
           success: false,
+          source: 'local',
         })
         return
       }
@@ -354,6 +355,7 @@ export default function GameInterface() {
           timestamp,
           success: true,
           roomData: currentRoom,
+          source: 'local',
         })
       } else {
         console.warn('Look action requested but no current room is available')
@@ -362,6 +364,7 @@ export default function GameInterface() {
           message: 'You look around, but something feels off. (no current room - probably an issue)',
           timestamp,
           success: false,
+          source: 'local',
         })
       }
 
@@ -386,64 +389,73 @@ export default function GameInterface() {
       return
     }
 
-    if (gameFactsCleanupRef.current) {
-      gameFactsCleanupRef.current()
-      gameFactsCleanupRef.current = null
-      isGameFactsListenerRegisteredRef.current = false
-    }
+    const cleanupActionResult = socketHandlers.onActionResult((payload) => {
+      console.log('[GameInterface] Received action:result event:', payload)
+      setActionResult({ ...payload, source: 'socket' })
 
-    if (isGameFactsListenerRegisteredRef.current) {
-      return
-    }
-
-    const cleanup = socketHandlers.onGameFacts(({ facts }) => {
-      console.log('[GameInterface] Received facts:', facts.length, facts)
-      const currentPlayer = playerRef.current
-      const activeRoom = currentRoomRef.current
-
-      if (!currentPlayer) {
-        return
-      }
-
-      let updatedPlayerRoom: string | null = null
-      facts.forEach((fact) => {
-        if (fact.type === 'player_moved' && fact.data.playerId === currentPlayer.id) {
-          updatedPlayerRoom = fact.data.toRoom
+      if (payload.action === 'move' && payload.success && payload.data?.toRoom) {
+        console.log('[GameInterface] Processing move action result')
+        const currentPlayer = playerRef.current
+        if (currentPlayer && currentPlayer.currentRoom !== payload.data.toRoom) {
+          console.log('[GameInterface] Updating player room to:', payload.data.toRoom)
+          setPlayer({ ...currentPlayer, currentRoom: payload.data.toRoom })
         }
-      })
 
-      if (updatedPlayerRoom && currentPlayer.currentRoom !== updatedPlayerRoom) {
-        console.log('[GameInterface] Updating player currentRoom to:', updatedPlayerRoom)
-        setPlayer({ ...currentPlayer, currentRoom: updatedPlayerRoom })
-      }
-
-      const shouldReload = facts.some((fact) => {
-        if (fact.type !== 'player_moved') return false
-        if (fact.data.playerId === currentPlayer.id) return true
-        if (!activeRoom) return false
-        return fact.data.toRoom === activeRoom.roomId || fact.data.fromRoom === activeRoom.roomId
-      })
-
-      console.log('[GameInterface] shouldReload:', shouldReload)
-      if (shouldReload) {
-        console.log('[GameInterface] Calling loadRoomData')
-        const playerMovementFact = facts.find((fact) => fact.type === 'player_moved' && fact.data.playerId === currentPlayer.id)
+        console.log('[GameInterface] Loading room data for:', payload.data.toRoom)
         loadRoomDataRef.current?.({
           isTransition: true,
-          travel: playerMovementFact ? { toRoomId: playerMovementFact.data.toRoom } : undefined,
+          travel: { toRoomId: payload.data.toRoom },
         })
       }
     })
 
-    gameFactsCleanupRef.current = cleanup
-    isGameFactsListenerRegisteredRef.current = true
+    const cleanupActionError = socketHandlers.onActionError((payload) => {
+      console.log('[GameInterface] Received action:error event:', payload)
+      setActionResult({
+        action: payload.action,
+        success: false,
+        message: payload.message,
+        timestamp: new Date().toISOString(),
+        source: 'socket',
+      })
+    })
+
+    const cleanupRoomMoves = socketHandlers.onRoomPlayerMoved((event) => {
+      console.log('[GameInterface] Received room:player-moved event:', event)
+      const currentPlayer = playerRef.current
+      const activeRoom = currentRoomRef.current
+
+      if (!currentPlayer) {
+        console.log('[GameInterface] No current player, ignoring room:player-moved')
+        return
+      }
+
+      if (event.playerId === currentPlayer.id) {
+        console.log('[GameInterface] Player moved event is for current player')
+        if (currentPlayer.currentRoom !== event.toRoom) {
+          console.log('[GameInterface] Updating player room from', currentPlayer.currentRoom, 'to', event.toRoom)
+          setPlayer({ ...currentPlayer, currentRoom: event.toRoom })
+        }
+
+        console.log('[GameInterface] Loading room data for:', event.toRoom)
+        loadRoomDataRef.current?.({
+          isTransition: true,
+          travel: { toRoomId: event.toRoom },
+        })
+        return
+      }
+
+      console.log('[GameInterface] Player moved event is for another player:', event.playerId)
+      if (activeRoom && (event.toRoom === activeRoom.roomId || event.fromRoom === activeRoom.roomId)) {
+        console.log('[GameInterface] Player entered or left current room, reloading')
+        loadRoomDataRef.current?.({ isTransition: true })
+      }
+    })
 
     return () => {
-      if (gameFactsCleanupRef.current) {
-        gameFactsCleanupRef.current()
-        gameFactsCleanupRef.current = null
-        isGameFactsListenerRegisteredRef.current = false
-      }
+      cleanupActionResult()
+      cleanupActionError()
+      cleanupRoomMoves()
     }
   }, [socket, socketHandlers, setPlayer])
 
