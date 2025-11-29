@@ -191,6 +191,8 @@ model Room {
   id               String     @id @default(cuid())
   roomId           String     @unique
   name             String
+  subtitle         String     @default("This is it. The world is yours.")
+  subtitlePosition String     @default("below")
   description      String
   dangerLevel      Int        @default(0)
   isSafe           Boolean    @default(true)

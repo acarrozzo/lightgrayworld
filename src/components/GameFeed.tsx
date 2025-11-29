@@ -82,6 +82,8 @@ interface ActionHistory {
     id: string
     roomId: string
     name: string
+    subtitle: string
+    subtitlePosition?: 'above' | 'below' | string
     description: string
     dangerLevel: number
     isSafe: boolean
@@ -799,6 +801,10 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     }
 
     const roomActions = getRoomActions(roomData.roomId)
+    const defaultSubtitle = 'This is it. The world is yours.'
+    const subtitleText = (roomData.subtitle ?? defaultSubtitle).trim()
+    const hasSubtitle = subtitleText.length > 0
+    const subtitlePlacement = roomData.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
 
     return (
       <div className="p-6">
@@ -806,8 +812,13 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
         <div className="flex items-start gap-4 mb-4">
           <Icon name={getRoomIcon(roomData.roomId)} size={64} color="yellow" />
           <div className="flex-1">
-            <p className="text-blue-300 text-sm mb-1">This is it. The world is yours.</p>
+            {hasSubtitle && subtitlePlacement === 'above' && (
+              <p className="text-blue-300 text-sm mb-1">{subtitleText}</p>
+            )}
             <h3 className="text-xl font-bold text-green-400">{roomData.name}</h3>
+            {hasSubtitle && subtitlePlacement === 'below' && (
+              <p className="text-blue-300 text-sm mt-1">{subtitleText}</p>
+            )}
           </div>
         </div>
 

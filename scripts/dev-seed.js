@@ -10,6 +10,8 @@ async function main() {
     {
       roomId: '000',
       name: 'Room Zero',
+      subtitle: 'Awaken beneath the sapphire pillar.',
+      subtitlePosition: 'above',
       description: 'You find yourself in a small, dimly lit chamber. A soft blue light emanates from a pillar in the center of the room. A sign is attached to the pillar, and you can see a map on the ground.',
       dangerLevel: 0,
       isSafe: true,
@@ -29,6 +31,8 @@ async function main() {
     {
       roomId: '001',
       name: 'Grassy Field Crossroads',
+      subtitle: 'Sunlit trails converge on first adventures.',
+      subtitlePosition: 'below',
       description: 'You find yourself standing in the middle of a large, grassy field. The air is warm, and the sky above is bright blue. A sign stands nearby with a golden chest at its base. To the southwest, you see a small, cozy cabin.',
       dangerLevel: 0,
       isSafe: true,
@@ -48,6 +52,8 @@ async function main() {
     {
       roomId: '002',
       name: 'Grassy Field South',
+      subtitle: 'South winds carry the scent of ripe redberries.',
+      subtitlePosition: 'below',
       description: 'You find yourself in the southern part of the grassy field. Red berries grow in patches here, and the grass is slightly taller. You can see the crossroads to the north.',
       dangerLevel: 0,
       isSafe: true,
@@ -67,6 +73,8 @@ async function main() {
     {
       roomId: '003',
       name: 'Wood Cabin',
+      subtitle: 'Where the old mentor tests eager hands.',
+      subtitlePosition: 'below',
       description: 'You approach a cozy wooden cabin with smoke rising from its chimney. An old man sits in a rocking chair on the porch, and you can see a wooden training dummy in the corner.',
       dangerLevel: 0,
       isSafe: true,
@@ -86,6 +94,8 @@ async function main() {
     {
       roomId: '004',
       name: 'Flower Patch',
+      subtitle: 'Every bloom hums a lullaby of peace.',
+      subtitlePosition: 'below',
       description: 'You enter a beautiful flower patch where colorful wildflowers bloom in abundance. The air is filled with sweet floral scents, and butterflies dance among the petals.',
       dangerLevel: 0,
       isSafe: true,
@@ -105,6 +115,8 @@ async function main() {
     {
       roomId: '005',
       name: 'Grassy Field North',
+      subtitle: 'Blue horizons meet pajama skies.',
+      subtitlePosition: 'below',
       description: 'You reach the northern part of the grassy field. Blueberry bushes grow here in abundance, and you can see a strange tent made of pajamas to the east.',
       dangerLevel: 0,
       isSafe: true,
@@ -124,6 +136,8 @@ async function main() {
     {
       roomId: '006',
       name: 'Basic Shop',
+      subtitle: 'Trade stories, leave armed with resolve.',
+      subtitlePosition: 'below',
       description: 'You find yourself at a small trading post. A friendly merchant has set up shop here, displaying various weapons, armor, and supplies on wooden tables.',
       dangerLevel: 0,
       isSafe: true,
@@ -143,6 +157,8 @@ async function main() {
     {
       roomId: '007',
       name: 'Cave Entrance',
+      subtitle: 'Shadows breathe just beyond the lantern glow.',
+      subtitlePosition: 'below',
       description: 'You stand before the dark entrance to a mysterious cave. A weathered sign warns of dangers within, and you can hear strange sounds echoing from the depths.',
       dangerLevel: 1,
       isSafe: false,
@@ -162,6 +178,8 @@ async function main() {
     {
       roomId: '020',
       name: 'Healing Springs',
+      subtitle: 'Let the waters knit bone, spirit, and resolve.',
+      subtitlePosition: 'below',
       description: 'You discover a beautiful waterfall cascading into a crystal-clear pool. The water glows with a soft blue light, and you feel rejuvenated just being near it.',
       dangerLevel: 0,
       isSafe: true,
@@ -181,6 +199,8 @@ async function main() {
     {
       roomId: '021',
       name: 'Pajama Shaman',
+      subtitle: 'Dreamcraft is strongest after a good stretch.',
+      subtitlePosition: 'below',
       description: 'You encounter a mystical figure wearing colorful pajamas and slippers. The Pajama Shaman sits cross-legged on a rug, surrounded by magical items and spell components.',
       dangerLevel: 0,
       isSafe: true,

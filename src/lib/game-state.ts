@@ -17,6 +17,8 @@ export interface Room {
   id: string
   roomId: string
   name: string
+  subtitle: string
+  subtitlePosition?: 'above' | 'below' | string
   description: string
   dangerLevel: number
   isSafe: boolean
