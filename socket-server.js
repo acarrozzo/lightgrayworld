@@ -43,6 +43,41 @@ global.gameEngine = gameEngine
 const activePlayers = new Map()
 const roomPlayers = new Map()
 
+const ACTION_QUEUE_ERRORS = {
+  QUEUE_FULL: 'QUEUE_FULL',
+  ACTION_TIMEOUT: 'ACTION_TIMEOUT',
+}
+
+const QUEUE_FULL_MESSAGE = 'Action queue is full. Please wait for pending actions to complete.'
+const ACTION_TIMEOUT_MESSAGE = 'Action timed out after 5000ms.'
+
+const emitQueueAwareError = ({ socket, actionName, player, error, fallbackMessage }) => {
+  if (!error) {
+    socket.emit('action:error', { action: actionName, message: fallbackMessage })
+    return
+  }
+
+  if (error.code === ACTION_QUEUE_ERRORS.QUEUE_FULL) {
+    console.warn(
+      `[Socket] Action rejected due to queue overflow`,
+      { playerId: player?.id, action: actionName }
+    )
+    socket.emit('action:error', { action: actionName, message: QUEUE_FULL_MESSAGE })
+    return
+  }
+
+  if (error.code === ACTION_QUEUE_ERRORS.ACTION_TIMEOUT) {
+    console.error(
+      `[Socket] Action timed out`,
+      { playerId: player?.id, action: actionName }
+    )
+    socket.emit('action:error', { action: actionName, message: ACTION_TIMEOUT_MESSAGE })
+    return
+  }
+
+  socket.emit('action:error', { action: actionName, message: fallbackMessage })
+}
+
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id)
   console.log('[Server] Listening for player login event:', SOCKET_EVENTS.PLAYER_LOGIN)
@@ -211,7 +246,13 @@ io.on('connection', (socket) => {
       })
     } catch (error) {
       console.error('[Socket] Error handling player movement:', error)
-      socket.emit('action:error', { action: 'move', message: 'Failed to move' })
+      emitQueueAwareError({
+        socket,
+        actionName: 'move',
+        player,
+        error,
+        fallbackMessage: 'Failed to move',
+      })
     }
   })
 
@@ -254,7 +295,13 @@ io.on('connection', (socket) => {
       socket.emit('action:confirmed', { action: 'chat', success: true })
     } catch (error) {
       console.error('[Socket] Error handling chat message:', error)
-      socket.emit('action:error', { action: 'chat', message: 'Failed to send message' })
+      emitQueueAwareError({
+        socket,
+        actionName: 'chat',
+        player,
+        error,
+        fallbackMessage: 'Failed to send message',
+      })
     }
   })
 
@@ -299,13 +346,21 @@ io.on('connection', (socket) => {
       })
     } catch (error) {
       console.error('Error handling game action:', error)
-      socket.emit('action:error', { action: actionName, message: 'Action failed' })
+      emitQueueAwareError({
+        socket,
+        actionName,
+        player,
+        error,
+        fallbackMessage: 'Action failed',
+      })
     }
   })
 
   socket.on('disconnect', () => {
     const player = activePlayers.get(socket.id)
     if (player) {
+      gameEngine.playerQueue.clearPlayer(player.id, { rejectPending: true })
+      console.log(`[Socket] Cleared action queue for player ${player.username}`)
       gameEngine.unregisterPlayer(player.id, player.currentRoom)
 
       socket.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_LEFT, {

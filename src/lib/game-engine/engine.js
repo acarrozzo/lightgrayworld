@@ -7,7 +7,10 @@ class GameEngine {
     this.io = io
     this.tickClock = new TickClock(tickMs)
     this.rooms = new Map()
-    this.playerQueue = new PlayerActionQueue()
+    this.playerQueue = new PlayerActionQueue({
+      timeoutMs: 5000,
+      maxQueueLength: 5,
+    })
     this.playerSockets = new Map()
     this.lastMetricsLoggedAt = 0
   }
@@ -33,6 +36,7 @@ class GameEngine {
     return {
       tick: this.tickClock.getMetrics(),
       roomCount: this.rooms.size,
+      actionQueue: this.playerQueue.getMetrics(),
     }
   }
 
@@ -62,6 +66,8 @@ class GameEngine {
     if (room) {
       room.removePlayer(playerId)
     }
+    this.playerQueue.clearPlayer(playerId, { rejectPending: true })
+    console.log(`[GameEngine] Player ${playerId} unregistered and action queue cleared`)
     this.playerSockets.delete(playerId)
   }
 
@@ -99,13 +105,20 @@ class GameEngine {
       throw new Error('processUserAction requires playerId, roomId, and action')
     }
 
-    return this.playerQueue.enqueueAction(playerId, async () => {
-      const room = this.getOrCreateRoom(roomId)
-      const result = await room.executeAction(action, playerId)
+    return this.playerQueue.enqueueAction(
+      playerId,
+      async () => {
+        const room = this.getOrCreateRoom(roomId)
+        const result = await room.executeAction(action, playerId)
 
-      this.handleActionResult({ roomId, playerId, result })
-      return result
-    })
+        this.handleActionResult({ roomId, playerId, result })
+        return result
+      },
+      {
+        actionType: action?.type,
+        roomId,
+      }
+    )
   }
 
   queueIntent({ roomId, intent }) {
@@ -219,11 +232,18 @@ class GameEngine {
     }
 
     this.lastMetricsLoggedAt = now
-    const metrics = this.tickClock.getMetrics()
+    const tickMetrics = this.tickClock.getMetrics()
+    const queueMetrics = this.playerQueue.getMetrics()
     console.log(
-      `[GameEngine] tick=${tickId} rooms=${this.rooms.size} tickAvg=${metrics.avgTickTime.toFixed(
+      `[GameEngine] tick=${tickId} rooms=${this.rooms.size} tickAvg=${tickMetrics.avgTickTime.toFixed(
         2
-      )}ms p95=${metrics.p95TickTime.toFixed(2)}ms last=${elapsed.toFixed(2)}ms`
+      )}ms p95=${tickMetrics.p95TickTime.toFixed(2)}ms last=${elapsed.toFixed(
+        2
+      )}ms actionQueue={ enqueued=${queueMetrics.enqueued} started=${
+        queueMetrics.started
+      } completed=${queueMetrics.completed} timedOut=${queueMetrics.timedOut} rejected=${
+        queueMetrics.rejected
+      } active=${queueMetrics.activePlayers} }`
     )
   }
 }
