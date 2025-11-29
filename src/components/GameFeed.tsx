@@ -36,6 +36,8 @@ const ROOM_NAME_MAP: Record<string, string> = {
   '021': 'Pajama Shaman',
 }
 
+const SCROLL_THRESHOLD = 100
+
 const findDirectionKey = (currentRoom: Room | null | undefined, targetRoomId?: string): DirectionKey | null => {
   if (!currentRoom || !targetRoomId) {
     return null
@@ -106,7 +108,12 @@ interface GameFeedProps {
 export default function GameFeed({ room, actionResult, className = '', onRegisterControls }: GameFeedProps) {
   const [actions, setActions] = useState<ActionHistory[]>([])
   const [initialRoom, setInitialRoom] = useState(room)
+  const [isNearBottom, setIsNearBottom] = useState(true)
+  const [unreadCount, setUnreadCount] = useState(0)
   const feedRef = useRef<HTMLDivElement>(null)
+  const isNearBottomRef = useRef(true)
+  const prevActionsLengthRef = useRef(0)
+  const hasHydratedActionsRef = useRef(false)
   const hasInitialized = useRef(false)
   const isClearingFeed = useRef(false)
   const pendingRoomDisplays = useRef(
@@ -213,6 +220,9 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     setActions([])
     localStorage.removeItem('gameFeedActions') // Clear localStorage as well
     localStorage.removeItem('gameFeedInitialRoom') // Clear saved initial room
+    setUnreadCount(0)
+    setIsNearBottom(true)
+    isNearBottomRef.current = true
     
     // Set the current room as the new initial room
     if (room) {
@@ -227,17 +237,76 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     }, 100)
   }, [room])
 
+  const updateScrollState = useCallback(() => {
+    const container = feedRef.current
+    if (!container) {
+      return
+    }
+
+    const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight)
+    const nearBottom = distanceFromBottom <= SCROLL_THRESHOLD
+
+    isNearBottomRef.current = nearBottom
+    setIsNearBottom(nearBottom)
+
+    if (nearBottom) {
+      setUnreadCount((prev) => {
+        return 0
+      })
+    }
+  }, [])
+
   const scrollToBottom = useCallback(() => {
     if (feedRef.current) {
       feedRef.current.scrollTop = feedRef.current.scrollHeight
+      requestAnimationFrame(() => updateScrollState())
     }
-  }, [])
+  }, [updateScrollState])
 
   const scrollToTop = useCallback(() => {
     if (feedRef.current) {
       feedRef.current.scrollTop = 0
     }
   }, [])
+
+  const handleNewFeedEntries = useCallback(
+    (count = 1) => {
+      if (isNearBottomRef.current) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            scrollToBottom()
+          })
+        })
+      } else {
+        setUnreadCount((prev) => {
+          return prev + count
+        })
+      }
+    },
+    [scrollToBottom]
+  )
+
+  const handleUnreadIndicatorClick = useCallback(() => {
+    scrollToBottom()
+  }, [scrollToBottom])
+
+  useEffect(() => {
+    if (!hasHydratedActionsRef.current) {
+      prevActionsLengthRef.current = actions.length
+      hasHydratedActionsRef.current = true
+      return
+    }
+
+    const previousLength = prevActionsLengthRef.current
+    const currentLength = actions.length
+    const additions = Math.max(currentLength - previousLength, 0)
+
+    prevActionsLengthRef.current = currentLength
+
+    if (additions > 0) {
+      handleNewFeedEntries(additions)
+    }
+  }, [actions, handleNewFeedEntries])
 
   useEffect(() => {
     if (!onRegisterControls) return
@@ -254,6 +323,24 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     const t = setTimeout(() => scrollToBottom(), 0)
     return () => clearTimeout(t)
   }, [])
+
+  useEffect(() => {
+    const container = feedRef.current
+    if (!container) {
+      return
+    }
+
+    const handleScroll = () => {
+      updateScrollState()
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    updateScrollState()
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+    }
+  }, [updateScrollState])
 
   const resolveRoomInfo = (roomId?: string, fallbackName?: string) => {
     if (!roomId) {
@@ -291,34 +378,38 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
 
   const pushAction = useCallback(
     (entry: ActionHistory) => {
+      let supplementalRoomAction: ActionHistory | null = null
+
+      if (entry.roomData && !entry.suppressRoomDisplay) {
+        const timestampMs = new Date(entry.timestamp || Date.now()).getTime()
+        supplementalRoomAction = {
+          id: `room-display-${entry.roomData.roomId || 'unknown'}-${timestampMs}`,
+          action: 'room-display',
+          message: `Room: ${entry.roomData.name}`,
+          timestamp: new Date(timestampMs + 1).toISOString(),
+          success: true,
+          roomData: entry.roomData,
+        }
+      }
+
       setActions((prev) => {
         let nextEntries = [...prev, entry]
 
-    if (entry.roomData && !entry.suppressRoomDisplay) {
-          const timestampMs = new Date(entry.timestamp || Date.now()).getTime()
-        const roomDisplayAction: ActionHistory = {
-          id: `room-display-${entry.roomData.roomId || 'unknown'}-${timestampMs}`,
-            action: 'room-display',
-            message: `Room: ${entry.roomData.name}`,
-            timestamp: new Date(timestampMs + 1).toISOString(),
-            success: true,
-            roomData: entry.roomData,
-          }
-
-          nextEntries = [...nextEntries, roomDisplayAction]
+        if (supplementalRoomAction) {
+          nextEntries = [...nextEntries, supplementalRoomAction]
         }
 
         return deduplicateActions(nextEntries)
       })
 
-    if (
-      !entry.roomData &&
-      entry.roomId &&
-      (entry.action === 'move' || entry.action === 'look') &&
-      !entry.suppressRoomDisplay
-    ) {
-      pendingRoomDisplays.current.set(entry.id, { roomId: entry.roomId })
-    }
+      if (
+        !entry.roomData &&
+        entry.roomId &&
+        (entry.action === 'move' || entry.action === 'look') &&
+        !entry.suppressRoomDisplay
+      ) {
+        pendingRoomDisplays.current.set(entry.id, { roomId: entry.roomId })
+      }
     },
     [setActions]
   )
@@ -366,11 +457,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     }
 
     pushAction(entry)
-
-    setTimeout(() => {
-      scrollToBottom()
-    }, 100)
-  }, [actionResult, pushAction, scrollToBottom])
+  }, [actionResult, pushAction])
 
   const createActionResultEntry = useCallback(
     (payload: ActionResultPayload): ActionHistory => ({
@@ -489,7 +576,6 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
       }
 
       pushAction(createActionResultEntry(augmentedPayload))
-      setTimeout(scrollToBottom, 100)
     })
 
     const cleanupActionError = socketHandlers.onActionError((payload) => {
@@ -522,7 +608,6 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     createActionErrorEntry,
     createMovementEntry,
     createChatEntry,
-    scrollToBottom,
     room,
     getCachedRoom,
     resolveActiveRoomData,
@@ -537,13 +622,19 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
       if (info.roomId === room.roomId) {
         pendingRoomDisplays.current.delete(actionId)
         const timestamp = new Date().toISOString()
+        const normalizedRoomData: ActionHistory['roomData'] = {
+          ...room,
+          players: Array.isArray(room.players) ? room.players : [],
+          items: Array.isArray(room.items) ? room.items : [],
+          npcs: Array.isArray(room.npcs) ? room.npcs : [],
+        }
         const roomDisplayEntry: ActionHistory = {
           id: `room-display-${room.roomId}-${timestamp}`,
           action: 'room-display',
           message: `Room: ${room.name}`,
           timestamp,
           success: true,
-          roomData: room,
+          roomData: normalizedRoomData,
         }
         pushAction(roomDisplayEntry)
       }
@@ -836,63 +927,78 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
 
   return (
     <div className={`flex flex-col h-full bg-gray-900 ${className}`}>
-      {/* Feed Content */}
-      <div 
-        ref={feedRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
-      >
-        {/* Initial Room Info - Always show at the top */}
-        <div className="space-y-4">
-          <div className="text-center text-gray-500 py-4">
-            <p className="text-lg font-semibold mb-2">Welcome to {initialRoom.name}!</p>
-            <p className="text-sm">Your adventure begins here.</p>
+      <div className="relative flex-1 overflow-hidden">
+        {/* Feed Content */}
+        <div 
+          ref={feedRef}
+          data-near-bottom={isNearBottom ? 'true' : 'false'}
+          className="absolute inset-0 overflow-y-auto p-4 space-y-4"
+        >
+          {/* Initial Room Info - Always show at the top */}
+          <div className="space-y-4">
+            <div className="text-center text-gray-500 py-4">
+              <p className="text-lg font-semibold mb-2">Welcome to {initialRoom.name}!</p>
+              <p className="text-sm">Your adventure begins here.</p>
+            </div>
+            <div className={`bg-gray-800 rounded-lg ${
+              actions.length === 0 ? 'border-2 border-green-500' : 'border border-gray-600'
+            }`}>
+              {renderRoomInfo(initialRoom, undefined, actions.length === 0)}
+            </div>
           </div>
-          <div className={`bg-gray-800 rounded-lg ${
-            actions.length === 0 ? 'border-2 border-green-500' : 'border border-gray-600'
-          }`}>
-            {renderRoomInfo(initialRoom, undefined, actions.length === 0)}
-          </div>
-        </div>
 
-        {/* Actions List */}
-        {actions.map((action, index) => {
-          // Check if this is the last action in the feed (bottom-most)
-          const isLastAction = index === actions.length - 1
-          
-          // Check if this is a room-display action
-          if (action.action === 'room-display') {
+          {/* Actions List */}
+          {actions.map((action, index) => {
+            // Check if this is the last action in the feed (bottom-most)
+            const isLastAction = index === actions.length - 1
+            
+            // Check if this is a room-display action
+            if (action.action === 'room-display') {
+              return (
+                <div
+                  key={action.id}
+                  className={`room-box bg-gray-800 rounded-lg ${
+                    isLastAction ? 'border-2 border-green-500' : 'border border-gray-600'
+                  }`}
+                >
+                  {renderRoomInfo(action.roomData, action.action, isLastAction)}
+                </div>
+              )
+            }
+            
+            // Regular action (LOOK, REST, SEARCH, ATTACK, etc.)
             return (
               <div
                 key={action.id}
-                className={`room-box bg-gray-800 rounded-lg ${
-                  isLastAction ? 'border-2 border-green-500' : 'border border-gray-600'
+                className={`action-bar rounded-lgX p-X2 border-r ${
+                  isLastAction ? 'border-green-500' : 'border-gray-600'
                 }`}
               >
-                {renderRoomInfo(action.roomData, action.action, isLastAction)}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">
+                    {new Date(action.timestamp).toLocaleTimeString()}
+                  </span>
+                  <p className="text-gray-300 text-sm">
+                    {action.message}
+                  </p>
+                </div>
               </div>
             )
-          }
-          
-          // Regular action (LOOK, REST, SEARCH, ATTACK, etc.)
-          return (
-            <div
-              key={action.id}
-              className={`action-bar rounded-lgX p-X2 border-r ${
-                isLastAction ? 'border-green-500' : 'border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">
-                  {new Date(action.timestamp).toLocaleTimeString()}
-                </span>
-                <p className="text-gray-300 text-sm">
-                  {action.message}
-                </p>
-              </div>
-            </div>
-          )
-        })}
+          })}
 
+        </div>
+
+        {unreadCount > 0 && (
+          <button
+            type="button"
+            onClick={handleUnreadIndicatorClick}
+            className="absolute left-1/2 bottom-4 -translate-x-1/2 bg-gray-800/90 text-white text-sm px-4 py-2 rounded-full shadow-lg border border-green-400/60 flex items-center gap-2 z-10 hover:bg-gray-700/90 transition-colors"
+            aria-label={`${unreadCount} new message${unreadCount === 1 ? '' : 's'}. Click to scroll to bottom.`}
+          >
+            <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`}</span>
+            <span aria-hidden="true">↓</span>
+          </button>
+        )}
       </div>
     </div>
   )
