@@ -1,0 +1,38 @@
+# fly.toml app configuration file generated for lg-ai-25 on 2025-11-29T08:27:30-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'lg-ai-25'
+primary_region = 'ewr'
+
+[build]
+
+[env]
+  PORT = '8080'
+
+[deploy]
+  release_command = 'npx prisma migrate deploy'
+
+[processes]
+  app = "node socket-server.js"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '2s'
+    grace_period = '5s'
+    method = 'GET'
+    path = '/healthz'
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
