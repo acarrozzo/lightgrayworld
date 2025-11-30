@@ -222,6 +222,8 @@ io.on('connection', (socket) => {
           name: true,
           subtitle: true,
           subtitlePosition: true,
+          nameColor: true,
+          subtitleColor: true,
           description: true,
           dangerLevel: true,
           isSafe: true,
