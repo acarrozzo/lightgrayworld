@@ -11,8 +11,8 @@ primary_region = 'ewr'
 [env]
   PORT = '8080'
 
-[deploy]
-  release_command = 'npx prisma migrate deploy'
+# [deploy]
+#  release_command = 'npx prisma migrate deploy'
 
 [processes]
   app = "node socket-server.js"
