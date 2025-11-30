@@ -125,8 +125,8 @@ model User {
   actionHistory             ActionHistory[]
   chatMessages              ChatMessage[]
   equipment                 Equipment?
-  inventory                 InventoryItem[]
   killList                  KillList[]
+  PlayerItem                PlayerItem[]
   quests                    QuestProgress[]
   sessions                  Session[]
   room                      Room            @relation("RoomPlayers", fields: [currentRoom], references: [roomId])
@@ -156,16 +156,6 @@ model Equipment {
   user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model InventoryItem {
-  id       String @id @default(cuid())
-  userId   String
-  itemName String
-  quantity Int    @default(1)
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, itemName])
-}
-
 model KillList {
   id      String @id @default(cuid())
   userId  String
@@ -191,8 +181,6 @@ model Room {
   id               String     @id @default(cuid())
   roomId           String     @unique
   name             String
-  subtitle         String     @default("This is it. The world is yours.")
-  subtitlePosition String     @default("below")
   description      String
   dangerLevel      Int        @default(0)
   isSafe           Boolean    @default(true)
@@ -208,18 +196,24 @@ model Room {
   down             String?
   hasFire          Boolean    @default(false)
   hasCraftingTable Boolean    @default(false)
+  subtitle         String     @default("This is it. The world is yours.")
+  subtitlePosition String     @default("below")
   npcs             NPC[]
   items            RoomItem[]
   players          User[]     @relation("RoomPlayers")
 }
 
 model RoomItem {
-  id       String  @id @default(cuid())
-  roomId   String
-  itemName String
-  quantity Int     @default(1)
-  isHidden Boolean @default(false)
-  room     Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  roomId         String
+  quantity       Int          @default(1)
+  maxQuantity    Int?
+  respawnSeconds Int?
+  templateId     String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @default(now())
+  room           Room         @relation(fields: [roomId], references: [roomId], onDelete: Cascade)
+  ItemTemplate   ItemTemplate @relation(fields: [templateId], references: [id])
 }
 
 model NPC {
@@ -285,4 +279,37 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model ItemTemplate {
+  id           String       @id
+  slug         String       @unique
+  name         String
+  description  String
+  type         ItemType
+  maxStack     Int          @default(99)
+  maxPerPlayer Int?
+  weight       Float?
+  metadata     Json?
+  PlayerItem   PlayerItem[]
+  RoomItem     RoomItem[]
+}
+
+model PlayerItem {
+  id           String       @id
+  playerId     String
+  templateId   String
+  quantity     Int          @default(1)
+  isEquipped   Boolean      @default(false)
+  slot         String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @default(now())
+  User         User         @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  ItemTemplate ItemTemplate @relation(fields: [templateId], references: [id])
+}
+
+enum ItemType {
+  WEAPON
+  CONSUMABLE
+  MISC
 }
