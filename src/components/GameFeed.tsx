@@ -38,6 +38,46 @@ const ROOM_NAME_MAP: Record<string, string> = {
 
 const SCROLL_THRESHOLD = 100
 
+// Helper function to get text color class - ensures Tailwind can detect all classes at build time
+const getTextColorClass = (color?: string | null, defaultColor: string = 'green-400'): string => {
+  const colorValue = color || defaultColor
+  
+  // Map common Tailwind color values to full class names
+  // This ensures Tailwind's JIT compiler can detect these classes
+  const colorMap: Record<string, string> = {
+    'red-300': 'text-red-300',
+    'red-400': 'text-red-400',
+    'red-500': 'text-red-500',
+    'blue-300': 'text-blue-300',
+    'blue-400': 'text-blue-400',
+    'blue-500': 'text-blue-500',
+    'green-300': 'text-green-300',
+    'green-400': 'text-green-400',
+    'green-500': 'text-green-500',
+    'yellow-300': 'text-yellow-300',
+    'yellow-400': 'text-yellow-400',
+    'yellow-500': 'text-yellow-500',
+    'purple-300': 'text-purple-300',
+    'purple-400': 'text-purple-400',
+    'purple-500': 'text-purple-500',
+    'pink-300': 'text-pink-300',
+    'pink-400': 'text-pink-400',
+    'pink-500': 'text-pink-500',
+    'orange-300': 'text-orange-300',
+    'orange-400': 'text-orange-400',
+    'orange-500': 'text-orange-500',
+    'gray-300': 'text-gray-300',
+    'gray-400': 'text-gray-400',
+    'gray-500': 'text-gray-500',
+    'indigo-300': 'text-indigo-300',
+    'indigo-400': 'text-indigo-400',
+    'indigo-500': 'text-indigo-500',
+  }
+  
+  // If color is in map, return it; otherwise construct it (for custom colors)
+  return colorMap[colorValue] || `text-${colorValue}`
+}
+
 const findDirectionKey = (currentRoom: Room | null | undefined, targetRoomId?: string): DirectionKey | null => {
   if (!currentRoom || !targetRoomId) {
     return null
@@ -84,6 +124,8 @@ interface ActionHistory {
     name: string
     subtitle: string
     subtitlePosition?: 'above' | 'below' | string
+    nameColor?: string | null
+    subtitleColor?: string | null
     description: string
     dangerLevel: number
     isSafe: boolean
@@ -774,11 +816,11 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
           <Icon name={getRoomIcon(roomData.roomId)} size={64} color="yellow" />
           <div className="flex-1">
             {hasSubtitle && subtitlePlacement === 'above' && (
-              <p className="text-blue-300 text-sm mb-1">{subtitleText}</p>
+              <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} text-sm mb-1`}>{subtitleText}</p>
             )}
-            <h3 className="text-xl font-bold text-green-400">{roomData.name}</h3>
+            <h3 className={`text-xl font-bold ${getTextColorClass(roomData.nameColor, 'green-400')}`}>{roomData.name}</h3>
             {hasSubtitle && subtitlePlacement === 'below' && (
-              <p className="text-blue-300 text-sm mt-1">{subtitleText}</p>
+              <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} text-sm mt-1`}>{subtitleText}</p>
             )}
           </div>
         </div>

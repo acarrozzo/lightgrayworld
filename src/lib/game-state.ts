@@ -19,6 +19,8 @@ export interface Room {
   name: string
   subtitle: string
   subtitlePosition?: 'above' | 'below' | string
+  nameColor?: string | null
+  subtitleColor?: string | null
   description: string
   dangerLevel: number
   isSafe: boolean

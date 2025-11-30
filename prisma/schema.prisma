@@ -198,6 +198,8 @@ model Room {
   hasCraftingTable Boolean    @default(false)
   subtitle         String     @default("This is it. The world is yours.")
   subtitlePosition String     @default("below")
+  nameColor        String?
+  subtitleColor    String?
   npcs             NPC[]
   items            RoomItem[]
   players          User[]     @relation("RoomPlayers")

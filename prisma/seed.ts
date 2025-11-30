@@ -55,6 +55,8 @@ async function main() {
       name: 'Grassy Field South',
       subtitle: 'Redberry Patch',
       subtitlePosition: 'below',
+      nameColor: 'red-400',
+      subtitleColor: 'red-400',
       description: 'The grass starts to get rocky in this area. A redberry bush is here, and consuming its fruit will restore lost health points. An entrance to a cave can be seen to the east, and a cabin is visible to the west.',
       dangerLevel: 0,
       isSafe: true,
