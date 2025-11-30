@@ -571,10 +571,8 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
           }
         }
 
-        if (payload.success && targetRoomId) {
-          const destinationName = cachedRoom?.name || targetRoomId
-          augmentedPayload.message = `You travel to ${destinationName}`
-        }
+        // Server already sends the descriptive travel message once the room data is known.
+        // Avoid overriding it here so we can take advantage of the improved payload.
       }
 
       pushAction(createActionResultEntry(augmentedPayload))

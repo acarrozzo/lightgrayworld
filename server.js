@@ -210,12 +210,22 @@ app.prepare().then(() => {
       }
 
       try {
+        const destinationRoom = await prisma.room.findUnique({
+          where: { roomId: toRoom },
+          include: {
+            players: true,
+            npcs: true,
+            items: true,
+          },
+        })
+        const toRoomName = destinationRoom?.name
+
         const result = await gameEngine.processUserAction({
           playerId: player.id,
           roomId: fromRoom,
           action: {
             type: 'move',
-            data: { fromRoom, toRoom },
+            data: { fromRoom, toRoom, toRoomName, roomData: destinationRoom },
           },
         })
 
@@ -229,7 +239,7 @@ app.prepare().then(() => {
         socket.emit('action:confirmed', {
           action: 'move',
           success: true,
-          data: result?.data || { fromRoom, toRoom },
+          data: result?.data || { fromRoom, toRoom, toRoomName, roomData: destinationRoom },
         })
       } catch (error) {
         console.error('[Socket] Error handling player movement:', error)

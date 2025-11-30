@@ -87,15 +87,17 @@ class RoomState {
     this.touchActivity()
     this.removePlayer(playerId)
 
-    const message = `You travel to ${toRoom}`
+    const toRoomName = action.data?.toRoomName || toRoom
+    const roomData = action.data?.roomData
+    const message = `You travel to ${toRoomName}`
 
     return {
       success: true,
       action: 'move',
-      data: { fromRoom, toRoom },
+      data: { fromRoom, toRoom, toRoomName, roomData },
       playerEvent: {
         event: 'action:result',
-        payload: this.createPlayerPayload('move', true, message, { toRoom }),
+        payload: this.createPlayerPayload('move', true, message, { toRoom, toRoomName, roomData }),
       },
       broadcastEvents: [
         {
