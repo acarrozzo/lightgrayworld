@@ -524,15 +524,20 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
 
   const createChatEntry = useCallback((message: ChatMessage): ActionHistory => {
     const timestamp = new Date(message.timestamp).toISOString()
+    const isPlayerMessage = player?.id && message.userId === player.id
+    const formattedMessage = isPlayerMessage
+      ? `You say, "${message.message}"`
+      : `[${message.level}] ${message.username} says, "${message.message}"`
+
     return {
       id: message.id || `socket-chat-${timestamp}`,
       action: 'chat',
-      message: `[${message.username}] ${message.message}`,
+      message: formattedMessage,
       timestamp,
       roomId: message.roomId,
       metadata: JSON.stringify(message),
     }
-  }, [])
+  }, [player?.id])
 
   // Listen for real-time action updates
   useEffect(() => {
@@ -541,6 +546,10 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     }
 
     const cleanupActionResult = socketHandlers.onActionResult((payload) => {
+      if (payload.action === 'chat') {
+        return
+      }
+
       const augmentedPayload: ActionResultPayload = {
         ...payload,
         data: payload.data ? { ...payload.data } : {},
