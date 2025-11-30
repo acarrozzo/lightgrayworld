@@ -52,6 +52,8 @@ async function handleGetRoom(request: AuthenticatedRequest) {
         id: room.id,
         roomId: room.roomId,
         name: room.name,
+        subtitle: room.subtitle,
+        subtitlePosition: room.subtitlePosition,
         description: room.description,
         dangerLevel: room.dangerLevel,
         isSafe: room.isSafe,
