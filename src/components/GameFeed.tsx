@@ -713,13 +713,11 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
         case '000': // Room Zero
           return [
             { action: 'read sign', label: 'Read Sign' },
-            { action: 'pick up map', label: 'Pick Up Map' },
             { action: 'press button', label: 'Press Button' },
           ]
         case '001': // Grassy Field Crossroads
           return [
             { action: 'read sign', label: 'Read Sign' },
-            { action: 'ex chest', label: 'Examine Chest' },
             { action: 'open chest', label: 'Open Gold Chest' },
           ]
         case '002': // Grassy Field South
@@ -739,12 +737,10 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
         case '005': // Grassy Field North
           return [
             { action: 'pick blueberry', label: 'Pick Blueberry' },
-            { action: 'ex tent', label: 'Examine Tent' },
           ]
         case '006': // Basic Shop
           return [
-            { action: 'buy dagger', label: 'Buy Dagger' },
-            { action: 'buy potion', label: 'Buy Potion' },
+            { action: 'view shop', label: 'View Shop' },
           ]
         case '007': // Cave Entrance
           return [
