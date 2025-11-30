@@ -118,14 +118,6 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
   const hasHydratedActionsRef = useRef(false)
   const hasInitialized = useRef(false)
   const isClearingFeed = useRef(false)
-  const pendingRoomDisplays = useRef(
-    new Map<
-      string,
-      {
-        roomId: string
-      }
-    >()
-  )
   const { getAuthHeaders, player, setCurrentRoom, setRoomPlayers, getCachedRoom } = useGameStore()
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
@@ -404,14 +396,6 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
         return deduplicateActions(nextEntries)
       })
 
-      if (
-        !entry.roomData &&
-        entry.roomId &&
-        (entry.action === 'move' || entry.action === 'look') &&
-        !entry.suppressRoomDisplay
-      ) {
-        pendingRoomDisplays.current.set(entry.id, { roomId: entry.roomId })
-      }
     },
     [setActions]
   )
@@ -569,19 +553,18 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
         }
       }
 
-      if (payload.action === 'move') {
-        const targetRoomId = payload.data?.toRoom || payload.data?.roomId
-        const cachedRoom = targetRoomId ? getCachedRoom(targetRoomId) : null
-
-        if (cachedRoom) {
-          augmentedPayload.data = {
-            ...(augmentedPayload.data || {}),
-            roomData: cachedRoom,
-          }
+      if (payload.action === 'move' && payload.data?.roomData) {
+        const normalizedRoomData = {
+          ...payload.data.roomData,
+          players: Array.isArray(payload.data.roomData.players) ? payload.data.roomData.players : [],
+          items: Array.isArray(payload.data.roomData.items) ? payload.data.roomData.items : [],
+          npcs: Array.isArray(payload.data.roomData.npcs) ? payload.data.roomData.npcs : [],
         }
 
-        // Server already sends the descriptive travel message once the room data is known.
-        // Avoid overriding it here so we can take advantage of the improved payload.
+        augmentedPayload.data = {
+          ...(augmentedPayload.data || {}),
+          roomData: normalizedRoomData,
+        }
       }
 
       pushAction(createActionResultEntry(augmentedPayload))
@@ -621,34 +604,6 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     getCachedRoom,
     resolveActiveRoomData,
   ])
-
-  useEffect(() => {
-    if (!room) {
-      return
-    }
-
-    pendingRoomDisplays.current.forEach((info, actionId) => {
-      if (info.roomId === room.roomId) {
-        pendingRoomDisplays.current.delete(actionId)
-        const timestamp = new Date().toISOString()
-        const normalizedRoomData: ActionHistory['roomData'] = {
-          ...room,
-          players: Array.isArray(room.players) ? room.players : [],
-          items: Array.isArray(room.items) ? room.items : [],
-          npcs: Array.isArray(room.npcs) ? room.npcs : [],
-        }
-        const roomDisplayEntry: ActionHistory = {
-          id: `room-display-${room.roomId}-${timestamp}`,
-          action: 'room-display',
-          message: `Room: ${room.name}`,
-          timestamp,
-          success: true,
-          roomData: normalizedRoomData,
-        }
-        pushAction(roomDisplayEntry)
-      }
-    })
-  }, [room, pushAction])
 
   const getActionColor = (action: string) => {
     switch (action.toLowerCase()) {

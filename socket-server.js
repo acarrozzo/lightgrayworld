@@ -216,9 +216,41 @@ io.on('connection', (socket) => {
     try {
       const destinationRoom = await prisma.room.findUnique({
         where: { roomId: toRoom },
-        select: { name: true },
+        select: {
+          id: true,
+          roomId: true,
+          name: true,
+          subtitle: true,
+          subtitlePosition: true,
+          description: true,
+          dangerLevel: true,
+          isSafe: true,
+          north: true,
+          northeast: true,
+          east: true,
+          southeast: true,
+          south: true,
+          southwest: true,
+          west: true,
+          northwest: true,
+          up: true,
+          down: true,
+        },
       })
-      const toRoomName = destinationRoom?.name
+
+      if (!destinationRoom) {
+        console.log(`[Socket] player-move - Destination room ${toRoom} not found`)
+        socket.emit('action:error', { action: 'move', message: 'Destination room not found' })
+        return
+      }
+
+      const normalizedRoomData = {
+        ...destinationRoom,
+        players: [],
+        items: [],
+        npcs: [],
+      }
+      const toRoomName = destinationRoom.name
 
       console.log(`[Socket] Calling gameEngine.processUserAction for ${player.username}`)
       const result = await gameEngine.processUserAction({
@@ -226,7 +258,7 @@ io.on('connection', (socket) => {
         roomId: fromRoom,
         action: {
           type: 'move',
-          data: { fromRoom, toRoom, toRoomName },
+          data: { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData },
         },
       })
 
@@ -248,7 +280,7 @@ io.on('connection', (socket) => {
       socket.emit('action:confirmed', {
         action: 'move',
         success: true,
-        data: result?.data || { fromRoom, toRoom, toRoomName },
+        data: result?.data || { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData },
       })
     } catch (error) {
       console.error('[Socket] Error handling player movement:', error)
