@@ -252,7 +252,10 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
 
   const scrollToBottom = useCallback(() => {
     if (feedRef.current) {
-      feedRef.current.scrollTop = feedRef.current.scrollHeight
+      feedRef.current.scrollTo({
+        top: feedRef.current.scrollHeight,
+        behavior: 'smooth',
+      })
       requestAnimationFrame(() => updateScrollState())
     }
   }, [updateScrollState])
