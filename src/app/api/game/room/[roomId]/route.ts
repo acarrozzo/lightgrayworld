@@ -56,6 +56,8 @@ async function handleGetRoom(request: AuthenticatedRequest) {
         subtitlePosition: room.subtitlePosition,
         nameColor: room.nameColor,
         subtitleColor: room.subtitleColor,
+        icon: room.icon,
+        iconColor: room.iconColor,
         description: room.description,
         dangerLevel: room.dangerLevel,
         isSafe: room.isSafe,

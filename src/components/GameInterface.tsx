@@ -147,17 +147,42 @@ export default function GameInterface() {
     }
   }, [])
 
-  const loadRoomData = useCallback(async (options?: { isTransition?: boolean; travel?: { toRoomId?: string }; requireAuth?: boolean }) => {
+  const loadRoomData = useCallback(async (options?: { isTransition?: boolean; travel?: { toRoomId?: string }; requireAuth?: boolean; roomData?: any }) => {
     const isTransition = options?.isTransition ?? false
     const travelTarget = options?.travel?.toRoomId
     const shouldUseAuth = options?.requireAuth ?? isLoggedIn
     const previousRoom = currentRoomRef.current
+    const providedRoomData = options?.roomData
 
     if (!isTransition) {
       setIsLoadingRoom(true)
     }
 
     let travelResultEmitted = false
+
+    // If roomData is provided (e.g., from socket event), use it directly
+    if (providedRoomData && providedRoomData.roomId) {
+      const roomWithDirections = {
+        ...providedRoomData,
+        players: Array.isArray(providedRoomData.players) ? providedRoomData.players : [],
+        items: Array.isArray(providedRoomData.items) ? providedRoomData.items : [],
+        npcs: Array.isArray(providedRoomData.npcs) ? providedRoomData.npcs : [],
+      }
+      
+      cacheRoom(roomWithDirections)
+      setCurrentRoom(roomWithDirections)
+      setRoomPlayers(roomWithDirections.players)
+      
+      if (player && player.currentRoom !== roomWithDirections.roomId) {
+        setPlayer({ ...player, currentRoom: roomWithDirections.roomId })
+      }
+      
+      if (!isTransition) {
+        setIsLoadingRoom(false)
+      }
+      setIsInitialLoad(false)
+      return
+    }
 
     if (isTransition && travelTarget) {
       const cachedRoom = getCachedRoom(travelTarget)
@@ -380,9 +405,11 @@ export default function GameInterface() {
         }
 
         console.log('[GameInterface] Loading room data for:', payload.data.toRoom)
+        // Use roomData from socket payload if available, otherwise fetch from API
         loadRoomDataRef.current?.({
           isTransition: true,
           travel: { toRoomId: payload.data.toRoom },
+          roomData: payload.data?.roomData,
         })
       }
     })
