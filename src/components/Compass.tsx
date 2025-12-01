@@ -118,8 +118,8 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
 
   const isRoomZero = room.roomId === '000'
   const mapBackground = isRoomZero
-    ? '/icons/roomzero.svg'
-    : '/icons/lightgray_map_grassyfield_main.jpg'
+    ? '/img/lightgray_map_grassyfield_underground.jpg'
+    : '/img/lightgray_map_grassyfield_main.jpg'
   const mapPosition = isRoomZero
     ? 'center'
     : (isTransitioning ? targetPosition : currentPosition)
@@ -151,11 +151,11 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
             <button
               type="button"
               onClick={() => onOpenMap?.(mapBackground, mapTitle)}
-              className="w-[140px] h-[140px] cursor-pointer rounded-full bg-no-repeat transition-all duration-500 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="w-[160px] h-[160px] cursor-pointer rounded-full bg-no-repeat transition-all duration-500 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition,
-                border: '20px solid rgba(250, 250, 250, 0)'
+                border: '30px solid rgba(250, 250, 250, 0)'
               }}
               aria-label="View full map"
               title={mapTitle}
