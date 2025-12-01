@@ -181,7 +181,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
                 disabled={isNavigating}
-                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-8 h-8 border rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-10 h-10 border rounded-full flex items-center justify-center transition-colors cursor-pointer ${
                   isAvailable
                     ? 'bg-gray-700 hover:bg-gray-600 border-gray-600'
                     : 'bg-gray-800 hover:bg-gray-700 border-gray-700 opacity-70'
@@ -189,7 +189,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
                 <ArrowBigUpDash
-                  className={`h-4.5 w-4.5 ${isAvailable ? 'text-white' : 'text-gray-400'}`}
+                  className={`h-5 w-5 ${isAvailable ? 'text-white' : 'text-gray-400'}`}
                   strokeWidth={1.75}
                   style={dir.rotation !== undefined ? { transform: `rotate(${dir.rotation}deg)` } : undefined}
                   aria-hidden="true"
@@ -209,7 +209,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
                 disabled={isNavigating}
-                className={`w-8 h-8 border rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                className={`w-10 h-10 border rounded-full flex items-center justify-center transition-colors cursor-pointer ${
                   isAvailable
                     ? 'bg-gray-700 hover:bg-gray-600 border-gray-600'
                     : 'bg-gray-800 hover:bg-gray-700 border-gray-700 opacity-70'
@@ -217,7 +217,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
                 <ArrowBigUp
-                  className={`h-4.5 w-4.5 ${isAvailable ? 'text-white' : 'text-gray-400'}`}
+                  className={`h-5 w-5 ${isAvailable ? 'text-white' : 'text-gray-400'}`}
                   strokeWidth={1.75}
                   style={dir.rotation !== undefined ? { transform: `rotate(${dir.rotation}deg)` } : undefined}
                   aria-hidden="true"
