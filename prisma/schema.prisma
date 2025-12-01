@@ -200,6 +200,8 @@ model Room {
   subtitlePosition String     @default("below")
   nameColor        String?
   subtitleColor    String?
+  icon             String?
+  iconColor         String?
   npcs             NPC[]
   items            RoomItem[]
   players          User[]     @relation("RoomPlayers")

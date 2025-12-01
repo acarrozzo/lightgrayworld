@@ -794,23 +794,6 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     }
   }
 
-  // Get room-specific icon
-  const getRoomIcon = (roomId: string) => {
-    switch (roomId) {
-      case '000': return 'roomzero'
-      case '001': return 'sun'
-      case '002': return 'redberry'
-      case '003': return 'cabin2'
-      case '004': return 'flower'
-      case '005': return 'blueberry'
-      case '006': return 'basicshop'
-      case '007': return 'cave1'
-      case '020': return 'waterfall'
-      case '021': return 'tent'
-      default: return 'sun'
-    }
-  }
-
   const renderRoomInfo = (roomData: any, action?: string, isMostRecent: boolean = false) => {
     // Get room-specific actions
     const getRoomActions = (roomId: string) => {
@@ -876,7 +859,13 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
       <div className="p-6">
         {/* Header with icon and two-line title */}
         <div className="flex items-start gap-4 mb-4">
-          <Icon name={getRoomIcon(roomData.roomId)} size={64} color="yellow" />
+          <div className={getTextColorClass(roomData.iconColor, 'yellow-400')}>
+            <Icon 
+              name={roomData.icon || 'sun'} 
+              size={64} 
+              color="current"
+            />
+          </div>
           <div className="flex-1">
             {hasSubtitle && subtitlePlacement === 'above' && (
               <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-md`}>{subtitleText}</p>
