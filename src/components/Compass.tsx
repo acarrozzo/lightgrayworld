@@ -151,11 +151,11 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
             <button
               type="button"
               onClick={() => onOpenMap?.(mapBackground, mapTitle)}
-              className="w-[160px] h-[160px] cursor-pointer rounded-full bg-no-repeat transition-all duration-500 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="w-[150px] h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-500 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition,
-                border: '30px solid rgba(250, 250, 250, 0)'
+                border: '25px solid rgba(250, 250, 250, 0)'
               }}
               aria-label="View full map"
               title={mapTitle}
@@ -166,14 +166,14 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
           {directions.map((dir) => {
             const isAvailable = !!room[dir.key]
             const positionClasses = {
-              'top-left': 'top-8 left-8',
-              'top-center': 'top-4 left-1/2 transform -translate-x-1/2',
-              'top-right': 'top-8 right-8',
-              'left': 'top-1/2 left-4 transform -translate-y-1/2',
-              'right': 'top-1/2 right-4 transform -translate-y-1/2',
-              'bottom-left': 'bottom-8 left-8',
-              'bottom-center': 'bottom-4 left-1/2 transform -translate-x-1/2',
-              'bottom-right': 'bottom-8 right-8',
+              'top-left': 'top-8.5 left-8.5',
+              'top-center': 'top-1 left-1/2 transform -translate-x-1/2',
+              'top-right': 'top-8.5 right-8.5',
+              'left': 'top-1/2 left-1 transform -translate-y-1/2',
+              'right': 'top-1/2 right-1 transform -translate-y-1/2',
+              'bottom-left': 'bottom-8.5 left-8.5',
+              'bottom-center': 'bottom-1 left-1/2 transform -translate-x-1/2',
+              'bottom-right': 'bottom-8.5 right-8.5',
             }
 
             return (
