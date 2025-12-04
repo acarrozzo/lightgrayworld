@@ -33,18 +33,19 @@ class RoomState {
 
   getTickUpdate(now = Date.now()) {
     const playerCount = this.players.size
+    
+    // Always get ambient data (no longer conditional)
+    const ambientData = this.buildAmbientData(now)
+    
+    // Always return an update - world tick IS the display
+    // Track player count changes but always return update when players are present
     const playerCountChanged =
       this.lastTickPlayerCount === null || this.lastTickPlayerCount !== playerCount
 
-    const ambientData = this.buildAmbientData(now)
-    const hasAmbientData = Boolean(ambientData)
-
-    if (!playerCountChanged && !hasAmbientData) {
-      return null
-    }
-
     this.lastTickPlayerCount = playerCount
 
+    // Always return an update object when there are players
+    // This ensures world ticks always occur every 5 seconds
     return {
       playerCount,
       ambientData: ambientData || null,
@@ -272,14 +273,15 @@ class RoomState {
   }
 
   buildAmbientData(now) {
-    const MIN_AMBIENT_INTERVAL_MS = 30_000
+    // Removed MIN_AMBIENT_INTERVAL_MS restriction - ambient data is part of every world tick
     const hasPlayers = this.players.size > 0
-    const elapsedSinceLastAmbient = now - this.lastAmbientHintAt
 
-    if (!hasPlayers || elapsedSinceLastAmbient < MIN_AMBIENT_INTERVAL_MS) {
+    if (!hasPlayers) {
       return null
     }
 
+    // Update timestamp every time (no interval check)
+    // Ambient data generates on every world tick (every 5 seconds)
     this.lastAmbientHintAt = now
 
     const flavorSnippets = [

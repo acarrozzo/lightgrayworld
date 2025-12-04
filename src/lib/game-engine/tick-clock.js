@@ -1,4 +1,4 @@
-const WORLD_TICK_MS = 5000;
+const WORLD_TICK_MS = 3600000; // 1 hour
 
 class TickClock {
   constructor(tickMs = WORLD_TICK_MS) {

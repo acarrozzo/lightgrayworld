@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Room, useGameStore } from '@/lib/game-state'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
-import { ActionResultPayload, ActionErrorPayload, RoomPlayerMovedPayload, ChatMessage } from '@/lib/socket'
+import { ActionResultPayload, ActionErrorPayload, RoomPlayerMovedPayload, ChatMessage, WorldTickPayload } from '@/lib/socket'
 import Icon from './Icon'
 import RoomDisplay from './RoomDisplay'
 
@@ -631,6 +631,21 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     }
   }, [player?.id])
 
+  const createWorldTickEntry = useCallback((payload: WorldTickPayload): ActionHistory => {
+    const timestamp = new Date(payload.timestamp).toISOString()
+    const displayNumber = payload.tickId + 1 // tickId starts at 0, display starts at 1
+
+    return {
+      id: `world-tick-${payload.tickId}-${payload.timestamp}`,
+      action: 'world-tick',
+      message: `world tick - ${displayNumber}`,
+      timestamp,
+      roomId: payload.roomId,
+      metadata: JSON.stringify(payload),
+      suppressRoomDisplay: true,
+    }
+  }, [])
+
   // Listen for real-time action updates
   useEffect(() => {
     if (!socket || !player) {
@@ -693,11 +708,16 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
       pushAction(createChatEntry(message))
     })
 
+    const cleanupWorldTick = socketHandlers.onWorldTick((payload) => {
+      pushAction(createWorldTickEntry(payload))
+    })
+
     return () => {
       cleanupActionResult()
       cleanupActionError()
       cleanupRoomMove()
       cleanupChat()
+      cleanupWorldTick()
     }
   }, [
     socket,
@@ -708,6 +728,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     createActionErrorEntry,
     createMovementEntry,
     createChatEntry,
+    createWorldTickEntry,
     room,
     getCachedRoom,
     resolveActiveRoomData,
