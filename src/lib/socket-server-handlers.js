@@ -357,11 +357,21 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       }
 
       try {
+        // For look action, fetch room data to get room name
+        let actionData = {}
+        if (actionName === 'look') {
+          const currentRoom = await fetchRoomWithColors(prisma, player.currentRoom)
+          if (currentRoom) {
+            actionData.roomName = currentRoom.name
+          }
+        }
+
         const result = await gameEngine.processUserAction({
           playerId: player.id,
           roomId: player.currentRoom,
           action: {
             type: actionName,
+            data: Object.keys(actionData).length > 0 ? actionData : undefined,
           },
         })
 

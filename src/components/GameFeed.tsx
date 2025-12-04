@@ -879,21 +879,21 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     return (
       <div className="p-6">
         {/* Header with icon and two-line title */}
-        <div className="flex items-start gap-4 mb-4">
+        <div className="flex items-center gap-4 mb-4">
           <div className={getTextColorClass(roomData.iconColor, 'yellow-400')}>
             <Icon 
               name={roomData.icon || 'sun'} 
-              size={64} 
+              size={80} //64 was original size
               color="current"
             />
           </div>
           <div className="flex-1">
             {hasSubtitle && subtitlePlacement === 'above' && (
-              <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-md`}>{subtitleText}</p>
+              <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-lg`}>{subtitleText}</p>
             )}
-            <h3 className={`text-xl font-bold ${getTextColorClass(roomData.nameColor, 'green-400')}`}>{roomData.name}</h3>
+            <h3 className={`text-2xl font-bold ${getTextColorClass(roomData.nameColor, 'green-400')}`}>{roomData.name}</h3>
             {hasSubtitle && subtitlePlacement === 'below' && (
-              <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-md`}>{subtitleText}</p>
+              <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-lg`}>{subtitleText}</p>
             )}
           </div>
         </div>

@@ -63,7 +63,7 @@ class RoomState {
       case 'rest':
         return this.executeRest(playerId)
       case 'look':
-        return this.executeLook(playerId)
+        return this.executeLook(action, playerId)
       default:
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
     }
@@ -225,7 +225,7 @@ class RoomState {
     }
   }
 
-  executeLook(playerId) {
+  executeLook(action, playerId) {
     const player = this.players.get(playerId)
     if (!player) {
       return this.createErrorResult('look', 'Player not found in this room')
@@ -233,12 +233,15 @@ class RoomState {
 
     this.touchActivity()
 
+    const roomName = action?.data?.roomName || this.roomId
+    const message = `You look around: ${roomName}`
+
     return {
       success: true,
       action: 'look',
       playerEvent: {
         event: 'action:result',
-        payload: this.createPlayerPayload('look', true, 'You take a careful look around.', {
+        payload: this.createPlayerPayload('look', true, message, {
           roomId: this.roomId,
           playerCount: this.players.size,
         }),

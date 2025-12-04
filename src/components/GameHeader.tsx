@@ -30,10 +30,10 @@ export default function GameHeader({ player, onToggleLeftSidebar, onToggleRightS
             title="Toggle Chat & Navigation (Ctrl+2 or swipe left)"
           >
             <MessageCircle className="h-5 w-5" strokeWidth={2} />
-          </button>
+          </button> {/* VERSION NUMBER IS HERE */}
           <div className="flex items-center space-x-4 hidden md:flex">
             <h1 className="text-xl font-bold text-white">Light Gray RPG </h1>
-            <span className="text-sm text-gray-400 font-normal">v0.1.03</span>
+            <span className="text-sm text-gray-400 font-normal">v0.1.04</span>
             <div className="text-sm text-gray-300">
               Welcome, <span className="text-yellow-400 font-semibold">{player.username}</span>
             </div>
