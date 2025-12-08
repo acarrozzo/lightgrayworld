@@ -39,7 +39,7 @@ const ROOM_NAME_MAP: Record<string, string> = {
 const SCROLL_THRESHOLD = 100
 
 // Helper function to get text color class - ensures Tailwind can detect all classes at build time
-const getTextColorClass = (color?: string | null, defaultColor: string = 'green-400'): string => {
+export const getTextColorClass = (color?: string | null, defaultColor: string = 'green-400'): string => {
   const colorValue = color || defaultColor
   
   // Map common Tailwind color values to full class names
@@ -210,6 +210,201 @@ interface GameFeedProps {
   actionResult?: any
   className?: string
   onRegisterControls?: (handlers: FeedControlHandlers) => void
+}
+
+// Export renderRoomInfo function for reuse in other components
+export const renderRoomInfo = (roomData: any, options?: { action?: string; isMostRecent?: boolean; player?: any; onAction?: (action: string) => void }) => {
+  const { action, isMostRecent = false, player, onAction } = options || {}
+  const handleRoomDisplayAction = onAction || (async (action: string) => {
+    // Fallback if no onAction provided - this shouldn't happen in practice
+    console.warn('No onAction handler provided to renderRoomInfo')
+  })
+  // Get room-specific actions
+  const getRoomActions = (roomId: string) => {
+    switch (roomId) {
+      case '000': // Room Zero
+        return [
+          { action: 'read sign', label: 'Read Sign' },
+          { action: 'press button', label: 'Press Button' },
+        ]
+      case '001': // Grassy Field Crossroads
+        return [
+          { action: 'read sign', label: 'Read Sign' },
+          { action: 'open chest', label: 'Open Gold Chest' },
+        ]
+      case '002': // Grassy Field South
+        return [
+          { action: 'pick redberry', label: 'Pick Redberry' },
+        ]
+      case '003': // Wood Cabin
+        return [
+          { action: 'ex cabin', label: 'Examine Cabin' },
+          { action: 'attack dummy', label: 'Attack Dummy' },
+          { action: 'cook meat', label: 'Cook Meat' },
+        ]
+      case '004': // Flower Patch
+        return [
+          { action: 'pick flower', label: 'Pick Flower' },
+        ]
+      case '005': // Grassy Field North
+        return [
+          { action: 'pick blueberry', label: 'Pick Blueberry' },
+        ]
+      case '006': // Basic Shop
+        return [
+          { action: 'view shop', label: 'View Shop' },
+        ]
+      case '007': // Cave Entrance
+        return [
+          { action: 'read sign', label: 'Read Sign' },
+          { action: 'search', label: 'Search' },
+        ]
+      case '020': // Healing Springs
+        return [
+          { action: 'rest', label: 'Rest at Waterfall' },
+        ]
+      case '021': // Pajama Shaman
+        return [
+          { action: 'read sign', label: 'Read Sign' },
+          { action: 'buy staff', label: 'Buy Staff' },
+        ]
+      default:
+        return []
+    }
+  }
+
+  const roomActions = getRoomActions(roomData.roomId)
+  const defaultSubtitle = 'This is it. The world is yours.'
+  const subtitleText = (roomData.subtitle ?? defaultSubtitle).trim()
+  const hasSubtitle = subtitleText.length > 0
+  const subtitlePlacement = roomData.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
+
+  return (
+    <div className="p-6">
+      {/* Header with icon and two-line title */}
+      <div className="flex items-center gap-4 mb-4">
+        <div className={getTextColorClass(roomData.iconColor, 'yellow-400')}>
+          <Icon 
+            name={roomData.icon || 'sun'} 
+            size={80} //64 was original size
+            color="current"
+          />
+        </div>
+        <div className="flex-1">
+          {hasSubtitle && subtitlePlacement === 'above' && (
+            <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-lg`}>{subtitleText}</p>
+          )}
+          <h3 className={`text-2xl font-bold ${getTextColorClass(roomData.nameColor, 'green-400')}`}>{roomData.name}</h3>
+          {hasSubtitle && subtitlePlacement === 'below' && (
+            <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-lg`}>{subtitleText}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Room Description */}
+      <p className="text-gray-300 leading-relaxed mb-6">
+        {roomData.description}
+      </p>
+
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-2">
+        {/* Universal actions */}
+        <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
+          West
+        </button>
+        <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
+          South
+        </button>
+        <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
+          North
+        </button>
+        <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
+          East
+        </button>
+        
+        {/* Room-specific actions */}
+        {roomActions.map((actionItem) => (
+          <button
+            key={actionItem.action}
+            className={`px-4 py-2 text-white rounded-md text-sm flex items-center gap-2 ${
+              actionItem.action === 'read sign' ? 'bg-amber-600 hover:bg-amber-700' :
+              actionItem.action === 'open chest' ? 'bg-orange-500 hover:bg-orange-600' :
+              'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {actionItem.action === 'read sign' && <Icon name="sign" size={18} color="white" />}
+            {actionItem.action === 'open chest' && <Icon name="chest" size={18} color="white" />}
+            {actionItem.label}
+          </button>
+        ))}
+      </div>
+
+      <RoomDisplay
+        room={roomData}
+        roomPlayers={Array.isArray(roomData.players) ? roomData.players : []}
+        currentPlayerId={player?.id}
+        onAction={handleRoomDisplayAction}
+        showHeader={false}
+        className="mt-6"
+      />
+
+      {/* Additional room info sections */}
+      {(roomData.players?.length > 0 || roomData.items?.length > 0 || roomData.npcs?.length > 0) && (          <div className="mt-6 space-y-3">
+          {/* Players in Room */}
+          {roomData.players && roomData.players.length > 0 && (
+            <div className="bg-gray-700 rounded-lg p-3">
+              <h4 className="text-sm font-semibold text-yellow-400 mb-2">Also Here:</h4>
+              <div className="flex flex-wrap gap-2">
+                {roomData.players.map((player: any) => (
+                  <span
+                    key={player.id}
+                    className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full"
+                  >
+                    [{player.level}] {player.username}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+
+          {/* Items in Room */}
+          {roomData.items && roomData.items.length > 0 && (
+            <div className="bg-gray-700 rounded-lg p-3">
+              <h4 className="text-sm font-semibold text-green-400 mb-2">Items:</h4>
+              <div className="flex flex-wrap gap-2">
+                {roomData.items.map((item: any) => (
+                  <span
+                    key={item.id}
+                    className="px-2 py-1 bg-green-600 text-white text-xs rounded-full"
+                  >
+                    {item.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* NPCs in Room */}
+          {roomData.npcs && roomData.npcs.length > 0 && (
+            <div className="bg-gray-700 rounded-lg p-3">
+              <h4 className="text-sm font-semibold text-purple-400 mb-2">NPCs:</h4>
+              <div className="flex flex-wrap gap-2">
+                {roomData.npcs.map((npc: any) => (
+                  <span
+                    key={npc.id}
+                    className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full"
+                  >
+                    {npc.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function GameFeed({ room, actionResult, className = '', onRegisterControls }: GameFeedProps) {
@@ -480,27 +675,8 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
 
   const pushAction = useCallback(
     (entry: ActionHistory) => {
-      let supplementalRoomAction: ActionHistory | null = null
-
-      if (entry.roomData && !entry.suppressRoomDisplay) {
-        const timestampMs = new Date(entry.timestamp || Date.now()).getTime()
-        supplementalRoomAction = {
-          id: `room-display-${entry.roomData.roomId || 'unknown'}-${timestampMs}`,
-          action: 'room-display',
-          message: `Room: ${entry.roomData.name}`,
-          timestamp: new Date(timestampMs + 1).toISOString(),
-          success: true,
-          roomData: entry.roomData,
-        }
-      }
-
       setActions((prev) => {
         let nextEntries = [...prev, entry]
-
-        if (supplementalRoomAction) {
-          nextEntries = [...nextEntries, supplementalRoomAction]
-        }
-
         return deduplicateActions(nextEntries)
       })
 
@@ -815,194 +991,6 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     }
   }
 
-  const renderRoomInfo = (roomData: any, action?: string, isMostRecent: boolean = false) => {
-    // Get room-specific actions
-    const getRoomActions = (roomId: string) => {
-      switch (roomId) {
-        case '000': // Room Zero
-          return [
-            { action: 'read sign', label: 'Read Sign' },
-            { action: 'press button', label: 'Press Button' },
-          ]
-        case '001': // Grassy Field Crossroads
-          return [
-            { action: 'read sign', label: 'Read Sign' },
-            { action: 'open chest', label: 'Open Gold Chest' },
-          ]
-        case '002': // Grassy Field South
-          return [
-            { action: 'pick redberry', label: 'Pick Redberry' },
-          ]
-        case '003': // Wood Cabin
-          return [
-            { action: 'ex cabin', label: 'Examine Cabin' },
-            { action: 'attack dummy', label: 'Attack Dummy' },
-            { action: 'cook meat', label: 'Cook Meat' },
-          ]
-        case '004': // Flower Patch
-          return [
-            { action: 'pick flower', label: 'Pick Flower' },
-          ]
-        case '005': // Grassy Field North
-          return [
-            { action: 'pick blueberry', label: 'Pick Blueberry' },
-          ]
-        case '006': // Basic Shop
-          return [
-            { action: 'view shop', label: 'View Shop' },
-          ]
-        case '007': // Cave Entrance
-          return [
-            { action: 'read sign', label: 'Read Sign' },
-            { action: 'search', label: 'Search' },
-          ]
-        case '020': // Healing Springs
-          return [
-            { action: 'rest', label: 'Rest at Waterfall' },
-          ]
-        case '021': // Pajama Shaman
-          return [
-            { action: 'read sign', label: 'Read Sign' },
-            { action: 'buy staff', label: 'Buy Staff' },
-          ]
-        default:
-          return []
-      }
-    }
-
-    const roomActions = getRoomActions(roomData.roomId)
-    const defaultSubtitle = 'This is it. The world is yours.'
-    const subtitleText = (roomData.subtitle ?? defaultSubtitle).trim()
-    const hasSubtitle = subtitleText.length > 0
-    const subtitlePlacement = roomData.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
-
-    return (
-      <div className="p-6">
-        {/* Header with icon and two-line title */}
-        <div className="flex items-center gap-4 mb-4">
-          <div className={getTextColorClass(roomData.iconColor, 'yellow-400')}>
-            <Icon 
-              name={roomData.icon || 'sun'} 
-              size={80} //64 was original size
-              color="current"
-            />
-          </div>
-          <div className="flex-1">
-            {hasSubtitle && subtitlePlacement === 'above' && (
-              <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-lg`}>{subtitleText}</p>
-            )}
-            <h3 className={`text-2xl font-bold ${getTextColorClass(roomData.nameColor, 'green-400')}`}>{roomData.name}</h3>
-            {hasSubtitle && subtitlePlacement === 'below' && (
-              <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-lg`}>{subtitleText}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Room Description */}
-        <p className="text-gray-300 leading-relaxed mb-6">
-          {roomData.description}
-        </p>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-2">
-          {/* Universal actions */}
-          <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
-            West
-          </button>
-          <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
-            South
-          </button>
-          <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
-            North
-          </button>
-          <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
-            East
-          </button>
-          
-          {/* Room-specific actions */}
-          {roomActions.map((actionItem) => (
-            <button
-              key={actionItem.action}
-              className={`px-4 py-2 text-white rounded-md text-sm flex items-center gap-2 ${
-                actionItem.action === 'read sign' ? 'bg-amber-600 hover:bg-amber-700' :
-                actionItem.action === 'open chest' ? 'bg-orange-500 hover:bg-orange-600' :
-                'bg-blue-600 hover:bg-blue-700'
-              }`}
-            >
-              {actionItem.action === 'read sign' && <Icon name="sign" size={18} color="white" />}
-              {actionItem.action === 'open chest' && <Icon name="chest" size={18} color="white" />}
-              {actionItem.label}
-            </button>
-          ))}
-        </div>
-
-        <RoomDisplay
-          room={roomData}
-          roomPlayers={Array.isArray(roomData.players) ? roomData.players : []}
-          currentPlayerId={player?.id}
-          onAction={handleRoomDisplayAction}
-          showHeader={false}
-          className="mt-6"
-        />
-
-        {/* Additional room info sections */}
-        {(roomData.players?.length > 0 || roomData.items?.length > 0 || roomData.npcs?.length > 0) && (          <div className="mt-6 space-y-3">
-            {/* Players in Room */}
-            {roomData.players && roomData.players.length > 0 && (
-              <div className="bg-gray-700 rounded-lg p-3">
-                <h4 className="text-sm font-semibold text-yellow-400 mb-2">Also Here:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {roomData.players.map((player: any) => (
-                    <span
-                      key={player.id}
-                      className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full"
-                    >
-                      [{player.level}] {player.username}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-
-            {/* Items in Room */}
-            {roomData.items && roomData.items.length > 0 && (
-              <div className="bg-gray-700 rounded-lg p-3">
-                <h4 className="text-sm font-semibold text-green-400 mb-2">Items:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {roomData.items.map((item: any) => (
-                    <span
-                      key={item.id}
-                      className="px-2 py-1 bg-green-600 text-white text-xs rounded-full"
-                    >
-                      {item.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* NPCs in Room */}
-            {roomData.npcs && roomData.npcs.length > 0 && (
-              <div className="bg-gray-700 rounded-lg p-3">
-                <h4 className="text-sm font-semibold text-purple-400 mb-2">NPCs:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {roomData.npcs.map((npc: any) => (
-                    <span
-                      key={npc.id}
-                      className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full"
-                    >
-                      {npc.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
 
   if (!initialRoom) {
     return (
@@ -1021,37 +1009,10 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
           data-near-bottom={isNearBottom ? 'true' : 'false'}
           className="absolute inset-0 overflow-y-auto p-4 space-y-4"
         >
-          {/* Initial Room Info - Always show at the top */}
-          <div className="space-y-4">
-            <div className="text-center text-gray-500 py-4">
-              <p className="text-lg font-semibold mb-2">Welcome to {initialRoom.name}!</p>
-              <p className="text-sm">Your adventure begins here.</p>
-            </div>
-            <div className={`bg-gray-800 rounded-lg ${
-              actions.length === 0 ? 'border-2 border-green-500' : 'border border-gray-600'
-            }`}>
-              {renderRoomInfo(initialRoom, undefined, actions.length === 0)}
-            </div>
-          </div>
-
           {/* Actions List */}
           {actions.map((action, index) => {
             // Check if this is the last action in the feed (bottom-most)
             const isLastAction = index === actions.length - 1
-            
-            // Check if this is a room-display action
-            if (action.action === 'room-display') {
-              return (
-                <div
-                  key={action.id}
-                  className={`room-box bg-gray-800 rounded-lg ${
-                    isLastAction ? 'border-2 border-green-500' : 'border border-gray-600'
-                  }`}
-                >
-                  {renderRoomInfo(action.roomData, action.action, isLastAction)}
-                </div>
-              )
-            }
             
             // Regular action (LOOK, REST, SEARCH, ATTACK, etc.)
             return (

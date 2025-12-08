@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
 import GameRightSidebar from './GameRightSidebar'
-import GameFeed, { FeedControlHandlers } from './GameFeed'
+import GameFeed, { FeedControlHandlers, renderRoomInfo } from './GameFeed'
 import Compass from './Compass'
 import Icon from './Icon'
 import { useSocket } from '@/hooks/useSocket'
@@ -678,6 +678,18 @@ export default function GameInterface() {
               onRegisterControls={handleRegisterFeedControls}
             />
           </div>
+
+          {/* Static Room Display */}
+          {currentRoom && (
+            <div className="bg-gray-800 border-t border-gray-700 flex-shrink-0">
+              <div className="border border-gray-600 rounded-lg m-4">
+                {renderRoomInfo(currentRoom, {
+                  player,
+                  onAction: handleAction,
+                })}
+              </div>
+            </div>
+          )}
 
           {/* D-pad */}
           <div className="bg-gray-800 border-t border-gray-700 p-4 flex-shrink-0">
