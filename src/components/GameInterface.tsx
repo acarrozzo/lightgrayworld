@@ -679,8 +679,8 @@ export default function GameInterface() {
             />
           </div>
 
-          {/* Mobile D-pad */}
-          <div className="lg:hidden bg-gray-800 border-t border-gray-700 p-4 flex-shrink-0">
+          {/* D-pad */}
+          <div className="bg-gray-800 border-t border-gray-700 p-4 flex-shrink-0">
             <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
           </div>
           

@@ -1,7 +1,6 @@
 'use client'
 
 import Icon from './Icon'
-import Compass from './Compass'
 import GameChat from './GameChat'
 
 interface GameRightSidebarProps {
@@ -26,11 +25,6 @@ export default function GameRightSidebar({ room, onAction, onClose, onOpenMap }:
           </button>
         </div>
       )}
-
-      {/* Compass Navigation */}
-      <div className="hidden lg:flex p-4 justify-center border-b border-gray-700 flex-shrink-0">
-        <Compass room={room} onAction={onAction} onOpenMap={onOpenMap} />
-      </div>
       
       {/* Chat Interface */}
       <div className="flex-1 overflow-hidden min-h-0">
