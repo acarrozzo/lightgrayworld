@@ -661,7 +661,7 @@ export default function GameInterface() {
           transition-transform duration-300 ease-in-out
           ${leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           xl:translate-x-0 xl:static xl:w-80
-          absolute left-0 top-0 bottom-0 w-80 z-20
+          absolute left-0 top-0 bottom-0 w-full h-full z-20
         `}>
           <GameSidebar 
             player={player} 
@@ -763,7 +763,7 @@ export default function GameInterface() {
           transition-transform duration-300 ease-in-out
           ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
           lg:translate-x-0 lg:static lg:w-96
-          absolute right-0 top-0 bottom-0 w-96 z-20
+          absolute right-0 top-0 bottom-0 w-full h-full z-20
         `}>
           <GameTabs
             room={currentRoom}
