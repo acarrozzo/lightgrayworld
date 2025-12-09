@@ -622,7 +622,7 @@ export default function GameInterface() {
   }
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col">
+    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -643,7 +643,7 @@ export default function GameInterface() {
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,25%)] xl:grid-cols-[minmax(360px,23%)_1fr_minmax(360px,23%)] flex-1 overflow-hidden relative">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,25%)] xl:grid-cols-[minmax(360px,23%)_1fr_minmax(360px,23%)] flex-1 overflow-hidden relative min-h-0">
         {/* Overlay backdrop for mobile */}
         {(leftSidebarOpen || rightSidebarOpen) && (
           <div 
@@ -657,12 +657,12 @@ export default function GameInterface() {
         
         {/* Left Sidebar - Player Info */}
         <div className={`
-          bg-gray-800 border-r border-gray-700 flex flex-col flex-shrink-0
+          bg-gray-800 border-r border-gray-700 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
           transition-transform duration-300 ease-in-out
           min-w-[360px]
           ${leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           xl:translate-x-0 xl:static xl:col-start-1
-          absolute left-0 top-0 bottom-0 w-full h-full z-20
+          absolute left-0 top-0 bottom-0 w-full z-20
         `}>
           <GameSidebar 
             player={player} 
@@ -674,7 +674,7 @@ export default function GameInterface() {
         <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden lg:col-start-1 xl:col-start-2">
           {/* Left Column: Room Display + D-pad */}
           {currentRoom && (
-            <div className="bg-gray-800 border-r border-gray-700 flex-1 overflow-y-auto min-h-0">
+            <div className="bg-gray-800 border-r border-gray-700 flex-1 overflow-y-auto min-h-0 h-full">
               {/* D-pad */}
               <div className="p-4">
                 <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
@@ -759,7 +759,7 @@ export default function GameInterface() {
           ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
           lg:translate-x-0 lg:static lg:col-start-2
           xl:col-start-3
-          absolute right-0 top-0 bottom-0 w-full h-full z-20
+          absolute right-0 top-0 bottom-0 w-full z-20
         `}>
           <GameTabs
             room={currentRoom}
