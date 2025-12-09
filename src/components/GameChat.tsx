@@ -218,7 +218,7 @@ export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Connection Status */}
       <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 flex-shrink-0">
         <div className="w-full flex-1 flex items-center justify-between">

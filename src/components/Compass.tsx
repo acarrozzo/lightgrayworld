@@ -142,7 +142,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
   ]
 
   return (
-    <div className="compass space-y-4XXX w-full px-4XXX">
+    <div className="compass w-full">
       {/* Main D-pad */}
       <div className="relative">
         <div className="relative w-64 h-64 mx-auto">

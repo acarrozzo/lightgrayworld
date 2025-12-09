@@ -671,96 +671,89 @@ export default function GameInterface() {
         </div>
         
         {/* Main Game Area */}
-        <div className="flex flex-col min-w-0 lg:col-start-1 xl:col-start-2">
-          <div className="flex-1 flex overflow-hidden min-w-0">
-            {/* Left Column: Room Display + D-pad */}
-            <div className="flex flex-col flex-1 min-w-0">
-              {/* Room Display - fills height and scrolls */}
-              {currentRoom && (
-                <div className="bg-gray-800 border-r border-gray-700 flex-1 overflow-y-auto min-h-0">
-                  <div className="border border-gray-600 rounded-lg m-4">
-                    {renderRoomInfo(currentRoom, {
-                      player,
-                      onAction: handleAction,
-                    })}
-                  </div>
-                </div>
-              )}
-
+        <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden lg:col-start-1 xl:col-start-2">
+          {/* Left Column: Room Display + D-pad */}
+          {currentRoom && (
+            <div className="bg-gray-800 border-r border-gray-700 flex-1 overflow-y-auto min-h-0">
               {/* D-pad */}
-              <div className="bg-gray-800 border-t border-gray-700 p-4 flex-shrink-0">
+              <div className="p-4">
                 <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
               </div>
 
-              {/* Action Controls Section */}
-              <div className="bg-gray-800 border-t border-gray-700 p-4 flex-shrink-0">
-                <div className="max-w-4xl mx-auto">
-                  <div className="flex gap-3 items-center flex-wrap">
-                    {/* Custom Action Input */}
-                    <div className="flex flex-1 min-w-0">
-                      <input
-                        type="text"
-                        placeholder="Enter custom action..."
-                        className="flex-1 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <button
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-r-md whitespace-nowrap"
-                      >
-                        Submit
-                      </button>
-                    </div>
+              <div className="border border-gray-600 rounded-lg m-4">
+                {renderRoomInfo(currentRoom, {
+                  player,
+                  onAction: handleAction,
+                })}
 
-                    {/* Action Buttons */}
-                    <button
-                      onClick={() => {
-                        console.log('[ActionButton] Attack button clicked')
-                        handleAction('attack')
-                      }}
-                      disabled={isLoadingRoom}
-                      className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
-                    >
-                      {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log('[ActionButton] Search button clicked')
-                        handleAction('search')
-                      }}
-                      disabled={isLoadingRoom}
-                      className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
-                    >
-                      {isLoadingRoom && action === 'search' ? '...' : 'Search'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log('[ActionButton] Rest button clicked')
-                        handleAction('rest')
-                      }}
-                      disabled={isLoadingRoom}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
-                    >
-                      {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log('[ActionButton] Look button clicked')
-                        handleAction('look')
-                      }}
-                      disabled={isLoadingRoom}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
-                    >
-                      {isLoadingRoom && action === 'look' ? '...' : 'Look'}
-                    </button>
+                {/* Action Controls Section */}
+                <div className="border-t border-gray-600 p-4 mt-4 max-w-4xl mx-auto">
+                  <div className="flex gap-3 items-center flex-wrap">
+                          {/* Custom Action Input */}
+                          <div className="flex flex-1 min-w-0">
+                            <input
+                              type="text"
+                              placeholder="Enter custom action..."
+                              className="flex-1 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <button
+                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-r-md whitespace-nowrap"
+                            >
+                              Submit
+                            </button>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <button
+                            onClick={() => {
+                              console.log('[ActionButton] Attack button clicked')
+                              handleAction('attack')
+                            }}
+                            disabled={isLoadingRoom}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
+                          >
+                            {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              console.log('[ActionButton] Search button clicked')
+                              handleAction('search')
+                            }}
+                            disabled={isLoadingRoom}
+                            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
+                          >
+                            {isLoadingRoom && action === 'search' ? '...' : 'Search'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              console.log('[ActionButton] Rest button clicked')
+                              handleAction('rest')
+                            }}
+                            disabled={isLoadingRoom}
+                            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
+                          >
+                            {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              console.log('[ActionButton] Look button clicked')
+                              handleAction('look')
+                            }}
+                            disabled={isLoadingRoom}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
+                          >
+                            {isLoadingRoom && action === 'look' ? '...' : 'Look'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
-            </div>
-          </div>
-        </div>
         
         {/* Right Sidebar - Tabbed Interface (Feed, World Chat, Room Chat) */}
         <div className={`
-          bg-gray-800 border-l border-gray-700 flex flex-col flex-shrink-0 h-full
+          bg-gray-800 border-l border-gray-700 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
           transition-transform duration-300 ease-in-out
           min-w-[360px]
           ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
