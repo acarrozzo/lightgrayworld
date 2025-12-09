@@ -20,10 +20,10 @@ export default function Icon({ name, className = '', size = 24, color = 'current
 
   return (
     <svg 
-      className={`icon-svg ${colorClass} ${className}`}
+      className={`icon-svg w-12 sm:w-20 h-12 sm:h-20 ${colorClass} ${className}`}
       style={{ 
-        width: size, 
-        height: size,
+     //   width: size, 
+     //   height: size,
         transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined
       }}
       fill="currentColor"

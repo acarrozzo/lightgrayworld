@@ -280,7 +280,7 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
   const subtitlePlacement = roomData.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Header with icon and two-line title */}
       <div className="flex items-center gap-4 mb-4">
         <div className={getTextColorClass(roomData.iconColor, 'yellow-400')}>
@@ -294,15 +294,15 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
           {hasSubtitle && subtitlePlacement === 'above' && (
             <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-lg`}>{subtitleText}</p>
           )}
-          <h3 className={`text-2xl font-bold ${getTextColorClass(roomData.nameColor, 'green-400')}`}>{roomData.name}</h3>
+          <h3 className={`text-xl sm:text-2xl font-bold ${getTextColorClass(roomData.nameColor, 'green-400')}`}>{roomData.name}</h3>
           {hasSubtitle && subtitlePlacement === 'below' && (
-            <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-lg`}>{subtitleText}</p>
+            <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-base sm:text-lg`}>{subtitleText}</p>
           )}
         </div>
       </div>
 
       {/* Room Description */}
-      <p className="text-gray-300 leading-relaxed mb-6">
+      <p className="text-gray-300 leading-relaxed text-xs sm:text-base mb-6">
         {roomData.description}
       </p>
 

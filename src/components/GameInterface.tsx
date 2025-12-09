@@ -676,7 +676,7 @@ export default function GameInterface() {
           {currentRoom && (
             <div className="bg-gray-800 border-r border-gray-700 flex-1 overflow-y-auto min-h-0 h-full">
               {/* D-pad */}
-              <div className="p-4">
+              <div className="p-2 sm:p-4">
                 <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
               </div>
 

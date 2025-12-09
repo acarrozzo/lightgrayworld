@@ -145,17 +145,16 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
     <div className="compass w-full">
       {/* Main D-pad */}
       <div className="relative">
-        <div className="relative w-64 h-64 mx-auto">
+        <div className="relative w-56 sm:w-64 h-56 sm:h-64 mx-auto">
           {/* Map circle in center */}
           <div className="absolute inset-0 flex items-center justify-center">
             <button
               type="button"
               onClick={() => onOpenMap?.(mapBackground, mapTitle)}
-              className="w-[150px] h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-500 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-500 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 border-[10px] sm:border-[25px] border-solid border-transparent"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
-                backgroundPosition: mapPosition,
-                border: '25px solid rgba(250, 250, 250, 0)'
+                backgroundPosition: mapPosition
               }}
               aria-label="View full map"
               title={mapTitle}
