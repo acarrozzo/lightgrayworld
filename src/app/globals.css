@@ -35,6 +35,10 @@ body {
   height: 100dvh;
 }
 
+.min-h-dvh {
+  min-height: 100dvh;
+}
+
 /* Icon styling for sprite sheet */
 .icon-svg {
   display: inline-block;

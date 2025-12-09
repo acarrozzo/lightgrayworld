@@ -612,7 +612,7 @@ export default function GameInterface() {
 
   if (!currentRoom || (isLoadingRoom && isInitialLoad)) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+      <div className="min-h-dvh bg-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-400">Loading room data...</p>
@@ -622,7 +622,7 @@ export default function GameInterface() {
   }
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
+    <div className="h-dvh bg-gray-900 text-white flex flex-col overflow-hidden">
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
