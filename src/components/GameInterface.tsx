@@ -671,29 +671,35 @@ export default function GameInterface() {
         
         {/* Main Game Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 overflow-hidden">
-            <GameFeed 
-              room={currentRoom} 
-              actionResult={actionResult} 
-              onRegisterControls={handleRegisterFeedControls}
-            />
-          </div>
+          <div className="flex-1 flex overflow-hidden min-w-0">
+            {/* Left Column: Room Display + D-pad */}
+            <div className="flex flex-col flex-1 min-w-0">
+              {/* Room Display - fills height and scrolls */}
+              {currentRoom && (
+                <div className="bg-gray-800 border-r border-gray-700 flex-1 overflow-y-auto min-h-0">
+                  <div className="border border-gray-600 rounded-lg m-4">
+                    {renderRoomInfo(currentRoom, {
+                      player,
+                      onAction: handleAction,
+                    })}
+                  </div>
+                </div>
+              )}
 
-          {/* Static Room Display */}
-          {currentRoom && (
-            <div className="bg-gray-800 border-t border-gray-700 flex-shrink-0">
-              <div className="border border-gray-600 rounded-lg m-4">
-                {renderRoomInfo(currentRoom, {
-                  player,
-                  onAction: handleAction,
-                })}
+              {/* D-pad */}
+              <div className="bg-gray-800 border-t border-gray-700 p-4 flex-shrink-0">
+                <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
               </div>
             </div>
-          )}
 
-          {/* D-pad */}
-          <div className="bg-gray-800 border-t border-gray-700 p-4 flex-shrink-0">
-            <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
+            {/* Right Column: Feed */}
+            <div className="flex-1 overflow-hidden min-w-0">
+              <GameFeed 
+                room={currentRoom} 
+                actionResult={actionResult} 
+                onRegisterControls={handleRegisterFeedControls}
+              />
+            </div>
           </div>
           
           {/* Action Controls Section */}
