@@ -643,7 +643,7 @@ export default function GameInterface() {
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
       
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,25%)] xl:grid-cols-[minmax(360px,23%)_1fr_minmax(360px,23%)] flex-1 overflow-hidden relative">
         {/* Overlay backdrop for mobile */}
         {(leftSidebarOpen || rightSidebarOpen) && (
           <div 
@@ -659,8 +659,9 @@ export default function GameInterface() {
         <div className={`
           bg-gray-800 border-r border-gray-700 flex flex-col flex-shrink-0
           transition-transform duration-300 ease-in-out
+          min-w-[360px]
           ${leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          xl:translate-x-0 xl:static xl:w-80
+          xl:translate-x-0 xl:static xl:col-start-1
           absolute left-0 top-0 bottom-0 w-full h-full z-20
         `}>
           <GameSidebar 
@@ -670,7 +671,7 @@ export default function GameInterface() {
         </div>
         
         {/* Main Game Area */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex flex-col min-w-0 lg:col-start-1 xl:col-start-2">
           <div className="flex-1 flex overflow-hidden min-w-0">
             {/* Left Column: Room Display + D-pad */}
             <div className="flex flex-col flex-1 min-w-0">
@@ -761,8 +762,10 @@ export default function GameInterface() {
         <div className={`
           bg-gray-800 border-l border-gray-700 flex flex-col flex-shrink-0 h-full
           transition-transform duration-300 ease-in-out
+          min-w-[360px]
           ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
-          lg:translate-x-0 lg:static lg:w-96
+          lg:translate-x-0 lg:static lg:col-start-2
+          xl:col-start-3
           absolute right-0 top-0 bottom-0 w-full h-full z-20
         `}>
           <GameTabs
