@@ -286,7 +286,7 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
         <div className={getTextColorClass(roomData.iconColor, 'yellow-400')}>
           <Icon 
             name={roomData.icon || 'sun'} 
-            size={80} //64 was original size
+            className="w-12 sm:w-20 h-12 sm:h-20"
             color="current"
           />
         </div>

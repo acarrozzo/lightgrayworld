@@ -18,14 +18,24 @@ export default function Icon({ name, className = '', size = 24, color = 'current
   // Validate icon name exists in mappings
   const iconName = IconMappings[name as IconName] || name
 
+  // Check if className contains width or height utilities (e.g., w-*, h-*)
+  // If so, don't apply inline width/height styles to allow responsive classes to work
+  const hasSizeClasses = /\b(w-|h-|width|height)/.test(className)
+  
+  const style: React.CSSProperties = {
+    transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined
+  }
+  
+  // Only apply inline width/height if no size classes are present
+  if (!hasSizeClasses) {
+    style.width = size
+    style.height = size
+  }
+
   return (
     <svg 
-      className={`icon-svg w-12 sm:w-20 h-12 sm:h-20 ${colorClass} ${className}`}
-      style={{ 
-     //   width: size, 
-     //   height: size,
-        transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined
-      }}
+      className={`icon-svg ${colorClass} ${className}`}
+      style={style}
       fill="currentColor"
       stroke="currentColor"
       viewBox="0 0 100 100"
