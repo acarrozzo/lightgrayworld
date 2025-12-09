@@ -5,8 +5,8 @@ import type { Room } from '@/lib/game-state'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
-import GameRightSidebar from './GameRightSidebar'
-import GameFeed, { FeedControlHandlers, renderRoomInfo } from './GameFeed'
+import GameTabs from './GameTabs'
+import { FeedControlHandlers, renderRoomInfo } from './GameFeed'
 import Compass from './Compass'
 import Icon from './Icon'
 import { useSocket } from '@/hooks/useSocket'
@@ -754,19 +754,10 @@ export default function GameInterface() {
                 </div>
               </div>
             </div>
-
-            {/* Right Column: Feed */}
-            <div className="flex-1 overflow-hidden min-w-0">
-              <GameFeed 
-                room={currentRoom} 
-                actionResult={actionResult} 
-                onRegisterControls={handleRegisterFeedControls}
-              />
-            </div>
           </div>
         </div>
         
-        {/* Right Sidebar - Navigation & Chat */}
+        {/* Right Sidebar - Tabbed Interface (Feed, World Chat, Room Chat) */}
         <div className={`
           bg-gray-800 border-l border-gray-700 flex flex-col flex-shrink-0 h-full
           transition-transform duration-300 ease-in-out
@@ -774,11 +765,11 @@ export default function GameInterface() {
           lg:translate-x-0 lg:static lg:w-96
           absolute right-0 top-0 bottom-0 w-96 z-20
         `}>
-          <GameRightSidebar 
-            room={currentRoom} 
-            onAction={handleAction}
-            onClose={() => setRightSidebarOpen(false)} 
-            onOpenMap={handleOpenMap}
+          <GameTabs
+            room={currentRoom}
+            actionResult={actionResult}
+            onRegisterFeedControls={handleRegisterFeedControls}
+            onClose={() => setRightSidebarOpen(false)}
           />
         </div>
       </div>
