@@ -151,7 +151,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
             <button
               type="button"
               onClick={() => onOpenMap?.(mapBackground, mapTitle)}
-              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-500 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 border-[10px] sm:border-[25px] border-solid border-transparent"
+              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-500 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950 border-[10px] sm:border-[25px] border-solid border-gray-800/0 shadow-lg hover:shadow-xl"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition
@@ -180,11 +180,11 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
                 disabled={isNavigating}
-                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-10 h-10 border rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                   isAvailable
-                    ? 'bg-gray-700 hover:bg-gray-600 border-gray-600'
-                    : 'bg-gray-800 hover:bg-gray-700 border-gray-700 opacity-70'
-                } ${isAvailable ? 'hover:border-blue-400' : ''} ${isNavigating ? 'cursor-wait' : ''}`}
+                    ? 'bg-gray-800/80 hover:bg-gray-800 border-gray-700/50 hover:border-indigo-500/50'
+                    : 'bg-gray-900/50 hover:bg-gray-900/70 border-gray-800/30 opacity-50'
+                } ${isNavigating ? 'cursor-wait opacity-60' : ''}`}
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
                 <ArrowBigUpDash
@@ -208,11 +208,11 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
                 disabled={isNavigating}
-                className={`w-10 h-10 border rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                className={`w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                   isAvailable
-                    ? 'bg-gray-700 hover:bg-gray-600 border-gray-600'
-                    : 'bg-gray-800 hover:bg-gray-700 border-gray-700 opacity-70'
-                } ${isAvailable ? 'hover:border-blue-400' : ''} ${isNavigating ? 'cursor-wait' : ''}`}
+                    ? 'bg-gray-800/80 hover:bg-gray-800 border-gray-700/50 hover:border-indigo-500/50'
+                    : 'bg-gray-900/50 hover:bg-gray-900/70 border-gray-800/30 opacity-50'
+                } ${isNavigating ? 'cursor-wait opacity-60' : ''}`}
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
                 <ArrowBigUp
@@ -229,7 +229,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
         {/* Loading indicator - show during navigation or transition */}
         {(isNavigating || isTransitioning) && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-6 h-6 border-2 border-indigo-500/50 border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
       </div>

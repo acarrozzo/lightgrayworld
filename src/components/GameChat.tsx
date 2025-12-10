@@ -220,13 +220,13 @@ export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Connection Status */}
-      <div className="px-4 py-2 bg-gray-800 border-b border-gray-700 flex-shrink-0">
+      <div className="px-4 py-2.5 bg-gray-900/50 border-b border-gray-800/50 flex-shrink-0">
         <div className="w-full flex-1 flex items-center justify-between">
-          <div className="flex-1 flex items-center gap-2">
-            <span className="text-sm text-gray-200">World Chat</span>
+          <div className="flex-1 flex items-center gap-2.5">
+            <span className="text-sm text-gray-300 font-medium">World Chat</span>
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-              <span className="text-sm text-gray-400">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-red-500'}`} />
+              <span className="text-xs text-gray-500">
                 {isConnected ? 'Connected' : 'Disconnected'}
               </span>
             </div>
@@ -235,7 +235,7 @@ export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
           {onClose && (
             <button
               onClick={onClose}
-              className="lg:hidden p-2 text-gray-400 hover:text-white transition-colors"
+              className="lg:hidden p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
               title="Close"
             >
               <Icon name="x" size={20} />
@@ -245,28 +245,28 @@ export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
       </div>
 
       {/* Messages */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
         {messages.length === 0 ? (
-          <div className="text-gray-500 text-sm text-center">
+          <div className="text-gray-500/80 text-sm text-center py-8">
             No messages yet. Start the conversation!
           </div>
         ) : (
           messages.map((message) => (
             <div key={message.id} className="text-sm">
-              <span className="text-gray-500 text-xs">
+              <span className="text-gray-500/70 text-xs">
                 {message.timestamp.toLocaleTimeString()}
               </span>
-              <span className={`ml-2 font-semibold ${getLevelColor(message.level)}`}>
+              <span className={`ml-2 font-medium ${getLevelColor(message.level)}`}>
                 [{message.level}] {escapeHtml(message.username)}:
               </span>
-              <span className="ml-2 text-gray-300">{escapeHtml(message.message)}</span>
+              <span className="ml-2 text-gray-300/90">{escapeHtml(message.message)}</span>
             </div>
           ))
         )}
       </div>
 
       {/* Message Input */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700 flex-shrink-0">
+      <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-800/50 flex-shrink-0 bg-gray-900/30">
         <div className="flex">
           <input
             type="text"

@@ -53,10 +53,10 @@ export default function TabContainer({
     <div className={`flex-1 flex flex-col min-h-0 ${containerClassName}`}>
       {/* Mobile close button - separate placement */}
       {onClose && closeButtonPlacement === 'separate' && (
-        <div className={`${breakpointClass} flex justify-end p-2 border-b border-gray-700`}>
+        <div className={`${breakpointClass} flex justify-end p-2 border-b border-gray-800/50`}>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white transition-colors"
+            className="p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
             title="Close"
           >
             <Icon name="x" size={20} />
@@ -65,15 +65,15 @@ export default function TabContainer({
       )}
 
       {/* Tab Navigation */}
-      <div className={`flex border-b border-gray-700 bg-gray-800 flex-shrink-0 ${headerClassName}`}>
+      <div className={`flex border-b border-gray-800/50 bg-gray-900/95 backdrop-blur-sm flex-shrink-0 ${headerClassName}`}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 ${buttonPadding} text-sm font-medium transition-colors flex items-center justify-center ${
+            className={`flex-1 ${buttonPadding} text-sm font-medium transition-all duration-200 flex items-center justify-center ${
               activeTab === tab.id
-                ? 'text-white border-b-2 border-blue-500 bg-gray-900'
-                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800'
+                ? 'text-white border-b-2 border-indigo-500/80 bg-gray-900/50'
+                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
             }`}
           >
             {tab.icon && (
@@ -92,7 +92,7 @@ export default function TabContainer({
         {onClose && closeButtonPlacement === 'integrated' && (
           <button
             onClick={onClose}
-            className={`${breakpointClass} p-3 text-gray-400 hover:text-white transition-colors`}
+            className={`${breakpointClass} p-3 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50`}
             title="Close"
           >
             <Icon name="x" size={20} />

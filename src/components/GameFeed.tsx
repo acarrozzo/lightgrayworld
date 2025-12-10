@@ -302,23 +302,23 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
       </div>
 
       {/* Room Description */}
-      <p className="text-gray-300 leading-relaxed text-xs sm:text-base mb-6">
+      <p className="text-gray-300/90 leading-relaxed text-xs sm:text-base mb-6">
         {roomData.description}
       </p>
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
         {/* Universal actions */}
-        <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
+        <button className="px-4 py-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
           West
         </button>
-        <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
+        <button className="px-4 py-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
           South
         </button>
-        <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
+        <button className="px-4 py-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
           North
         </button>
-        <button className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm">
+        <button className="px-4 py-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
           East
         </button>
         
@@ -326,10 +326,10 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
         {roomActions.map((actionItem) => (
           <button
             key={actionItem.action}
-            className={`px-4 py-2 text-white rounded-md text-sm flex items-center gap-2 ${
-              actionItem.action === 'read sign' ? 'bg-amber-600 hover:bg-amber-700' :
-              actionItem.action === 'open chest' ? 'bg-orange-500 hover:bg-orange-600' :
-              'bg-blue-600 hover:bg-blue-700'
+            className={`px-4 py-2 text-white rounded-lg text-sm flex items-center gap-2 transition-all duration-200 ${
+              actionItem.action === 'read sign' ? 'bg-amber-600/90 hover:bg-amber-500' :
+              actionItem.action === 'open chest' ? 'bg-orange-500/90 hover:bg-orange-500' :
+              'bg-blue-600/90 hover:bg-blue-500'
             }`}
           >
             {actionItem.action === 'read sign' && <Icon name="sign" size={18} color="white" />}
@@ -352,13 +352,13 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
       {(roomData.players?.length > 0 || roomData.items?.length > 0 || roomData.npcs?.length > 0) && (          <div className="mt-6 space-y-3">
           {/* Players in Room */}
           {roomData.players && roomData.players.length > 0 && (
-            <div className="bg-gray-700 rounded-lg p-3">
-              <h4 className="text-sm font-semibold text-yellow-400 mb-2">Also Here:</h4>
+            <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-800/50">
+              <h4 className="text-sm font-semibold text-amber-400/90 mb-2">Also Here:</h4>
               <div className="flex flex-wrap gap-2">
                 {roomData.players.map((player: any) => (
                   <span
                     key={player.id}
-                    className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full"
+                    className="px-2.5 py-1 bg-blue-600/80 hover:bg-blue-600 text-white text-xs rounded-full transition-colors duration-200"
                   >
                     [{player.level}] {player.username}
                   </span>
@@ -370,13 +370,13 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
 
           {/* Items in Room */}
           {roomData.items && roomData.items.length > 0 && (
-            <div className="bg-gray-700 rounded-lg p-3">
-              <h4 className="text-sm font-semibold text-green-400 mb-2">Items:</h4>
+            <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-800/50">
+              <h4 className="text-sm font-semibold text-emerald-400/90 mb-2">Items:</h4>
               <div className="flex flex-wrap gap-2">
                 {roomData.items.map((item: any) => (
                   <span
                     key={item.id}
-                    className="px-2 py-1 bg-green-600 text-white text-xs rounded-full"
+                    className="px-2.5 py-1 bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs rounded-full transition-colors duration-200"
                   >
                     {item.name}
                   </span>
@@ -387,8 +387,8 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
 
           {/* NPCs in Room */}
           {roomData.npcs && roomData.npcs.length > 0 && (
-            <div className="bg-gray-700 rounded-lg p-3">
-              <h4 className="text-sm font-semibold text-purple-400 mb-2">NPCs:</h4>
+            <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-800/50">
+              <h4 className="text-sm font-semibold text-purple-400/90 mb-2">NPCs:</h4>
               <div className="flex flex-wrap gap-2">
                 {roomData.npcs.map((npc: any) => (
                   <span
@@ -995,19 +995,19 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
   if (!initialRoom) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="text-gray-400">Loading room...</div>
+        <div className="text-gray-500/80">Loading room...</div>
       </div>
     )
   }
 
   return (
-    <div className={`flex flex-col h-full bg-gray-900 ${className}`}>
+    <div className={`flex flex-col h-full ${className}`}>
       <div className="relative flex-1 overflow-hidden">
         {/* Feed Content */}
         <div 
           ref={feedRef}
           data-near-bottom={isNearBottom ? 'true' : 'false'}
-          className="absolute inset-0 overflow-y-auto p-4 space-y-4"
+          className="absolute inset-0 overflow-y-auto p-2 space-y-1"
         >
           {/* Actions List */}
           {actions.map((action, index) => {
@@ -1018,15 +1018,15 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
             return (
               <div
                 key={action.id}
-                className={`action-bar rounded-lgX p-X2 border-r ${
-                  isLastAction ? 'border-green-500' : 'border-gray-600'
+                className={`action-bar rounded-lg p-2  ${
+                  isLastAction ? 'border-l-0 border-emerald-500/60 bg-emerald-500/10' : 'border-l-0 border-gray-800/50 bg-gray-900/30 hover:bg-gray-800/50'
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">
+                <div className="flex flex-col items-start">
+                  <span className="text-xs text-gray-500/70 whitespace-nowrap shrink-0">
                     {new Date(action.timestamp).toLocaleTimeString()}
                   </span>
-                  <p className="text-gray-300 text-sm">
+                  <p className="text-gray-300/90 text-sm">
                     {action.message}
                   </p>
                 </div>
@@ -1040,7 +1040,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
           <button
             type="button"
             onClick={handleUnreadIndicatorClick}
-            className="absolute left-1/2 bottom-4 -translate-x-1/2 bg-gray-800/90 text-white text-sm px-4 py-2 rounded-full shadow-lg border border-green-400/60 flex items-center gap-2 z-10 hover:bg-gray-700/90 transition-colors"
+            className="absolute left-1/2 bottom-4 -translate-x-1/2 bg-gray-900/95 backdrop-blur-sm text-white text-sm px-4 py-2 rounded-full shadow-lg border border-emerald-500/50 flex items-center gap-2 z-10 hover:bg-gray-800/95 transition-all duration-200"
             aria-label={`${unreadCount} new message${unreadCount === 1 ? '' : 's'}. Click to scroll to bottom.`}
           >
             <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`}</span>

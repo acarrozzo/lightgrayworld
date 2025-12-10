@@ -22,36 +22,36 @@ export default function GameSidebar({ player, onClose }: GameSidebarProps) {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-400">Level:</span>
-              <span className="text-white">{player.level}</span>
+              <span className="text-white font-medium">{player.level}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">HP:</span>
-              <span className="text-red-400">{player.hp}/{player.hpMax}</span>
+              <span className="text-red-400/90 font-medium">{player.hp}/{player.hpMax}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">MP:</span>
-              <span className="text-blue-400">{player.mp}/{player.mpMax}</span>
+              <span className="text-blue-400/90 font-medium">{player.mp}/{player.mpMax}</span>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-gray-700">
+          <div className="pt-4 border-t border-gray-800/50">
             <h4 className="text-md font-semibold text-white mb-2">Attributes</h4>
-            <div className="space-y-1 text-sm">
+            <div className="space-y-1.5 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-400">STR:</span>
-                <span className="text-white">10</span>
+                <span className="text-white font-medium">10</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">DEX:</span>
-                <span className="text-white">10</span>
+                <span className="text-white font-medium">10</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">MAG:</span>
-                <span className="text-white">10</span>
+                <span className="text-white font-medium">10</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">DEF:</span>
-                <span className="text-white">10</span>
+                <span className="text-white font-medium">10</span>
               </div>
             </div>
           </div>

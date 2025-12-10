@@ -612,17 +612,17 @@ export default function GameInterface() {
 
   if (!currentRoom || (isLoadingRoom && isInitialLoad)) {
     return (
-      <div className="min-h-dvh bg-gray-900 text-white flex items-center justify-center">
+      <div className="min-h-dvh bg-gray-950 text-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading room data...</p>
+          <div className="w-8 h-8 border-2 border-indigo-500/50 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400 text-sm">Loading room data...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="h-dvh bg-gray-900 text-white flex flex-col overflow-hidden">
+    <div className="h-dvh bg-gray-950 text-white flex flex-col overflow-hidden">
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -647,7 +647,7 @@ export default function GameInterface() {
         {/* Overlay backdrop for mobile */}
         {(leftSidebarOpen || rightSidebarOpen) && (
           <div 
-            className="fixed inset-0 bg-black/50 bg-opacity-50 backdrop-blur-sm z-10 lg:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-10 lg:hidden transition-opacity duration-300"
             onClick={() => {
               setLeftSidebarOpen(false)
               setRightSidebarOpen(false)
@@ -657,12 +657,12 @@ export default function GameInterface() {
         
         {/* Left Sidebar - Player Info */}
         <div className={`
-          bg-gray-800 border-r border-gray-700 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
-          transition-transform duration-300 ease-in-out
+          bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
+          transition-transform duration-300 ease-out
           min-w-[360px]
           ${leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           xl:translate-x-0 xl:static xl:col-start-1
-          absolute left-0 top-0 bottom-0 w-full z-20
+          absolute left-0 top-0 bottom-0 w-full z-20 shadow-xl
         `}>
           <GameSidebar 
             player={player} 
@@ -674,76 +674,78 @@ export default function GameInterface() {
         <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden lg:col-start-1 xl:col-start-2">
           {/* Left Column: Room Display + D-pad */}
           {currentRoom && (
-            <div className="bg-gray-800 border-r border-gray-700 flex-1 overflow-y-auto min-h-0 h-full">
+            <div className="bg-gray-900/50 flex-1 overflow-y-auto min-h-0 h-full">
               {/* D-pad */}
-              <div className="p-2 sm:p-4">
+              <div className="p-4 sm:p-6">
                 <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
               </div>
 
-              <div className="border border-gray-600 rounded-lg m-4">
+              <div className="border border-gray-800/50 rounded-xl m-4 sm:m-6 bg-gray-900/30 backdrop-blur-sm shadow-lg">
                 {renderRoomInfo(currentRoom, {
                   player,
                   onAction: handleAction,
                 })}
 
                 {/* Action Controls Section */}
-                <div className="border-t border-gray-600 p-4 mt-4 max-w-4xl mx-auto">
-                  <div className="flex gap-3 items-center flex-wrap">
+                <div className="border-t border-gray-800/50 p-5 mt-5 max-w-4xl mx-auto">
+                  <div className="flex flex-col gap-2.5">
+                          {/* Action Buttons */}
+                          <div className="flex gap-2.5">
+                            <button
+                              onClick={() => {
+                                console.log('[ActionButton] Attack button clicked')
+                                handleAction('attack')
+                              }}
+                              disabled={isLoadingRoom}
+                              className="px-4 py-2.5 bg-red-600/90 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                            >
+                              {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                console.log('[ActionButton] Search button clicked')
+                                handleAction('search')
+                              }}
+                              disabled={isLoadingRoom}
+                              className="px-4 py-2.5 bg-amber-600/90 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                            >
+                              {isLoadingRoom && action === 'search' ? '...' : 'Search'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                console.log('[ActionButton] Rest button clicked')
+                                handleAction('rest')
+                              }}
+                              disabled={isLoadingRoom}
+                              className="px-4 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                            >
+                              {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                console.log('[ActionButton] Look button clicked')
+                                handleAction('look')
+                              }}
+                              disabled={isLoadingRoom}
+                              className="px-4 py-2.5 bg-blue-600/90 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                            >
+                              {isLoadingRoom && action === 'look' ? '...' : 'Look'}
+                            </button>
+                          </div>
+
                           {/* Custom Action Input */}
-                          <div className="flex flex-1 min-w-0">
+                          <div className="flex w-full max-w-[280px]">
                             <input
                               type="text"
                               placeholder="Enter custom action..."
-                              className="flex-1 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="flex-1 px-4 py-2.5 bg-gray-800/50 text-white border border-gray-700/50 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all duration-200"
                             />
                             <button
-                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-r-md whitespace-nowrap"
+                              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-r-lg whitespace-nowrap text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
                             >
                               Submit
                             </button>
                           </div>
-
-                          {/* Action Buttons */}
-                          <button
-                            onClick={() => {
-                              console.log('[ActionButton] Attack button clicked')
-                              handleAction('attack')
-                            }}
-                            disabled={isLoadingRoom}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
-                          >
-                            {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              console.log('[ActionButton] Search button clicked')
-                              handleAction('search')
-                            }}
-                            disabled={isLoadingRoom}
-                            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
-                          >
-                            {isLoadingRoom && action === 'search' ? '...' : 'Search'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              console.log('[ActionButton] Rest button clicked')
-                              handleAction('rest')
-                            }}
-                            disabled={isLoadingRoom}
-                            className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
-                          >
-                            {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              console.log('[ActionButton] Look button clicked')
-                              handleAction('look')
-                            }}
-                            disabled={isLoadingRoom}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded font-semibold whitespace-nowrap"
-                          >
-                            {isLoadingRoom && action === 'look' ? '...' : 'Look'}
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -753,13 +755,13 @@ export default function GameInterface() {
         
         {/* Right Sidebar - Tabbed Interface (Feed, World Chat, Room Chat) */}
         <div className={`
-          bg-gray-800 border-l border-gray-700 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
-          transition-transform duration-300 ease-in-out
+          bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
+          transition-transform duration-300 ease-out
           min-w-[360px]
           ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
           lg:translate-x-0 lg:static lg:col-start-2
           xl:col-start-3
-          absolute right-0 top-0 bottom-0 w-full z-20
+          absolute right-0 top-0 bottom-0 w-full z-20 shadow-xl
         `}>
           <GameTabs
             room={currentRoom}

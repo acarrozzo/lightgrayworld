@@ -37,7 +37,7 @@ export default function GameTabs({ room, actionResult, onRegisterFeedControls, o
         <div className="h-full flex items-center justify-center p-8">
           <div className="text-center">
             <p className="text-gray-400 text-lg mb-2">Room Chat</p>
-            <p className="text-gray-500 text-sm">Coming Soon</p>
+            <p className="text-gray-500/80 text-sm">Coming Soon</p>
           </div>
         </div>
       ),
@@ -51,7 +51,7 @@ export default function GameTabs({ room, actionResult, onRegisterFeedControls, o
       onClose={onClose}
       closeButtonPlacement="integrated"
       closeButtonBreakpoint="lg"
-      containerClassName="h-full bg-gray-900"
+      containerClassName="h-full"
       buttonPadding="px-4 py-3"
     />
   )

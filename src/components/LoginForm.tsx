@@ -60,22 +60,22 @@ export default function LoginForm() {
   const handleRegister = (e: React.FormEvent) => handleAuth(e, false)
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-gray-900">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-dvh flex items-center justify-center bg-gray-950">
+      <div className="max-w-md w-full space-y-8 px-4">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
+          <h2 className="mt-6 text-center text-3xl font-semibold text-white tracking-tight">
             Light Gray RPG
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-400">
+          <p className="mt-3 text-center text-sm text-gray-400">
             {isLogin ? 'Sign in to your account' : 'Create a new account'}
           </p>
         </div>
         
         <form 
-          className="mt-8 space-y-6" 
+          className="mt-8 space-y-5" 
           onSubmit={isLogin ? handleSubmit : handleRegister}
         >
-          <div className="rounded-md shadow-sm -space-y-px">
+          <div className="space-y-3">
             <div>
               <label htmlFor="username" className="sr-only">
                 Username
@@ -131,7 +131,7 @@ export default function LoginForm() {
 
           </div>
 
-          <div>
+          <div className="pt-2">
             <button
               type="submit"
               className={inputStyles.button.primary}
@@ -140,7 +140,7 @@ export default function LoginForm() {
             </button>
           </div>
 
-          <div className="text-center">
+          <div className="text-center pt-2">
             <button
               type="button"
               className={inputStyles.button.link}
