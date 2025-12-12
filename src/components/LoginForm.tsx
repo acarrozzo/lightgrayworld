@@ -1,9 +1,72 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useGameStore } from '@/lib/game-state'
 import { inputStyles } from '@/lib/styles'
 import { FEATURE_FLAGS } from '@/lib/config'
+
+// Component to load and colorize SVG
+function ColoredSVG({ src, colorClass, className }: { src: string; colorClass: string; className?: string }) {
+  const [svgContent, setSvgContent] = useState<string>('')
+
+  // Map Tailwind color classes to hex values
+  const colorMap: Record<string, string> = {
+    'text-green-400': '#4ade80',
+    'text-red-400': '#f87171',
+    'text-blue-400': '#60a5fa',
+    'text-purple-400': '#a78bfa',
+  }
+
+  // Extract just the color class from the colorClass prop (in case it contains other classes)
+  const colorClassOnly = colorClass.split(' ').find(cls => cls.startsWith('text-')) || colorClass
+  const fillColor = colorMap[colorClassOnly] || '#ffffff'
+
+  useEffect(() => {
+    fetch(src)
+      .then((res) => res.text())
+      .then((text) => {
+        // Replace all fill attributes with the specified color
+        let coloredSvg = text
+          .replace(/fill="[^"]*"/g, `fill="${fillColor}"`)
+          .replace(/fill='[^']*'/g, `fill='${fillColor}'`)
+        
+        // Add fill to path elements that don't have it
+        coloredSvg = coloredSvg.replace(
+          /<path([^>]*?)(?:\s+fill="[^"]*")?([^>]*?)>/g,
+          (match, before, after) => {
+            if (!match.includes('fill=')) {
+              return `<path${before}${after} fill="${fillColor}">`
+            }
+            return match
+          }
+        )
+        
+        // Add fill to g elements that don't have it (for grouped paths)
+        coloredSvg = coloredSvg.replace(
+          /<g([^>]*?)(?:\s+fill="[^"]*")?([^>]*?)>/g,
+          (match, before, after) => {
+            if (!match.includes('fill=')) {
+              return `<g${before}${after} fill="${fillColor}">`
+            }
+            return match
+          }
+        )
+        
+        setSvgContent(coloredSvg)
+      })
+      .catch((err) => console.error('Failed to load SVG:', err))
+  }, [src, fillColor])
+
+  if (!svgContent) return null
+
+  return (
+    <div
+      className={`flex-shrink-0 ${className || ''}`}
+      dangerouslySetInnerHTML={{ __html: svgContent }}
+      style={{ width: '120px' }}
+    />
+  )
+}
 
 export default function LoginForm() {
   const [isLogin, setIsLogin] = useState(true)
@@ -69,6 +132,33 @@ export default function LoginForm() {
           <p className="mt-3 text-center text-sm text-gray-400">
             {isLogin ? 'Sign in to your account' : 'Create a new account'}
           </p>
+        </div>
+
+        {/* Character SVGs */}
+        <div className="flex justify-center items-center gap-1 mt-4 mb-2">
+          {isLogin ? (
+            <>
+              <ColoredSVG
+                src="/img/svg/npc/char-archer.svg"
+                colorClass="text-green-400"
+                className="scale-90 scale-x-[-1]"
+              />
+              <ColoredSVG
+                src="/img/svg/npc/char-commander.svg"
+                colorClass="text-red-400"
+              />
+              <ColoredSVG
+                src="/img/svg/npc/npc-guardian.svg"
+                colorClass="text-blue-400"
+                className="scale-90 scale-x-[-1]"
+              />
+            </>
+          ) : (
+            <ColoredSVG
+              src="/img/svg/potion.svg"
+              colorClass="text-purple-400"
+            />
+          )}
         </div>
         
         <form 
