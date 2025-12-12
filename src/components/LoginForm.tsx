@@ -75,7 +75,7 @@ export default function LoginForm() {
           className="mt-8 space-y-5" 
           onSubmit={isLogin ? handleSubmit : handleRegister}
         >
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div>
               <label htmlFor="username" className="sr-only">
                 Username

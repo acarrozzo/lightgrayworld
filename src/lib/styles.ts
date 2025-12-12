@@ -6,9 +6,9 @@ export const inputStyles = {
   
   // Login form specific styles
   login: {
-    username: "appearance-none rounded-none relative block w-full px-4 py-2.5 border border-gray-700/50 placeholder-gray-500 text-white bg-gray-800/50 backdrop-blur-sm rounded-t-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 focus:z-10 transition-all duration-200 text-sm",
-    email: "appearance-none rounded-none relative block w-full px-4 py-2.5 border-t-0 border border-gray-700/50 placeholder-gray-500 text-white bg-gray-800/50 backdrop-blur-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 focus:z-10 transition-all duration-200 text-sm",
-    password: "appearance-none rounded-none relative block w-full px-4 py-2.5 border-t-0 border border-gray-700/50 placeholder-gray-500 text-white bg-gray-800/50 backdrop-blur-sm rounded-b-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 focus:z-10 transition-all duration-200 text-sm"
+    username: "appearance-none relative block w-full px-4 py-2.5 border border-gray-700/50 placeholder-gray-500 text-white bg-gray-800/50 backdrop-blur-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 focus:z-10 transition-all duration-200 text-sm",
+    email: "appearance-none relative block w-full px-4 py-2.5 border border-gray-700/50 placeholder-gray-500 text-white bg-gray-800/50 backdrop-blur-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 focus:z-10 transition-all duration-200 text-sm",
+    password: "appearance-none relative block w-full px-4 py-2.5 border border-gray-700/50 placeholder-gray-500 text-white bg-gray-800/50 backdrop-blur-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 focus:z-10 transition-all duration-200 text-sm"
   },
   
   // Chat input styles

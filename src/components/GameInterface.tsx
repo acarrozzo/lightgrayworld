@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
 import GameTabs from './GameTabs'
+import GameFeed from './GameFeed'
 import { FeedControlHandlers, renderRoomInfo } from './GameFeed'
 import Compass from './Compass'
 import Icon from './Icon'
@@ -672,86 +673,25 @@ export default function GameInterface() {
         
         {/* Main Game Area */}
         <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden lg:col-start-1 xl:col-start-2">
-          {/* Left Column: Room Display + D-pad */}
+          {/* Center Column: D-pad + Feed */}
           {currentRoom && (
-            <div className="bg-gray-900/50 flex-1 overflow-y-auto min-h-0 h-full">
+            <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
               {/* D-pad */}
-              <div className="p-4 sm:p-6">
+              <div className="p-4 sm:p-6 flex-shrink-0">
                 <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
               </div>
 
-              <div className="border border-gray-800/50 rounded-xl m-4 sm:m-6 bg-gray-900/30 backdrop-blur-sm shadow-lg">
-                {renderRoomInfo(currentRoom, {
-                  player,
-                  onAction: handleAction,
-                })}
-
-                {/* Action Controls Section */}
-                <div className="border-t border-gray-800/50 p-5 mt-5 max-w-4xl mx-auto">
-                  <div className="flex flex-col gap-2.5">
-                          {/* Action Buttons */}
-                          <div className="flex gap-2.5">
-                            <button
-                              onClick={() => {
-                                console.log('[ActionButton] Attack button clicked')
-                                handleAction('attack')
-                              }}
-                              disabled={isLoadingRoom}
-                              className="px-4 py-2.5 bg-red-600/90 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                            >
-                              {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                console.log('[ActionButton] Search button clicked')
-                                handleAction('search')
-                              }}
-                              disabled={isLoadingRoom}
-                              className="px-4 py-2.5 bg-amber-600/90 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                            >
-                              {isLoadingRoom && action === 'search' ? '...' : 'Search'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                console.log('[ActionButton] Rest button clicked')
-                                handleAction('rest')
-                              }}
-                              disabled={isLoadingRoom}
-                              className="px-4 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                            >
-                              {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                console.log('[ActionButton] Look button clicked')
-                                handleAction('look')
-                              }}
-                              disabled={isLoadingRoom}
-                              className="px-4 py-2.5 bg-blue-600/90 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                            >
-                              {isLoadingRoom && action === 'look' ? '...' : 'Look'}
-                            </button>
-                          </div>
-
-                          {/* Custom Action Input */}
-                          <div className="flex w-full max-w-[280px]">
-                            <input
-                              type="text"
-                              placeholder="Enter custom action..."
-                              className="flex-1 px-4 py-2.5 bg-gray-800/50 text-white border border-gray-700/50 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all duration-200"
-                            />
-                            <button
-                              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-r-lg whitespace-nowrap text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
-                            >
-                              Submit
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+              {/* Feed */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <GameFeed 
+                  room={currentRoom} 
+                  actionResult={actionResult} 
+                  onRegisterControls={handleRegisterFeedControls}
+                />
               </div>
+            </div>
+          )}
+        </div>
         
         {/* Right Sidebar - Tabbed Interface (Feed, World Chat, Room Chat) */}
         <div className={`
@@ -768,6 +708,10 @@ export default function GameInterface() {
             actionResult={actionResult}
             onRegisterFeedControls={handleRegisterFeedControls}
             onClose={() => setRightSidebarOpen(false)}
+            player={player}
+            onAction={handleAction}
+            isLoadingRoom={isLoadingRoom}
+            action={action}
           />
         </div>
       </div>
