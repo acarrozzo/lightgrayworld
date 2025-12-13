@@ -19,8 +19,13 @@ interface GameTabsProps {
 export default function GameTabs({ room, actionResult, onRegisterFeedControls, onClose, player, onAction, isLoadingRoom, action }: GameTabsProps) {
   const tabs: TabConfig[] = [
     {
+      id: 'world-chat',
+      label: 'World Chat',
+      content: <GameChat onClose={onClose} />,
+    },
+    {
       id: 'feed',
-      label: 'Feed',
+      label: 'Room',
       content: (
         <div className="h-full overflow-y-auto">
           {room && (
@@ -53,29 +58,12 @@ export default function GameTabs({ room, actionResult, onRegisterFeedControls, o
         </div>
       ),
     },
-    {
-      id: 'world-chat',
-      label: 'World Chat',
-      content: <GameChat onClose={onClose} />,
-    },
-    {
-      id: 'room-chat',
-      label: 'Room Chat',
-      content: (
-        <div className="h-full flex items-center justify-center p-8">
-          <div className="text-center">
-            <p className="text-gray-400 text-lg mb-2">Room Chat</p>
-            <p className="text-gray-500/80 text-sm">Coming Soon</p>
-          </div>
-        </div>
-      ),
-    },
   ]
 
   return (
     <TabContainer
       tabs={tabs}
-      defaultTab="feed"
+      defaultTab="world-chat"
       onClose={onClose}
       closeButtonPlacement="integrated"
       closeButtonBreakpoint="lg"
