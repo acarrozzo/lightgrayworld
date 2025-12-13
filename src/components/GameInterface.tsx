@@ -672,9 +672,18 @@ export default function GameInterface() {
         
         {/* Main Game Area */}
         <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden lg:col-start-1 xl:col-start-2">
-          {/* Center Column: D-pad + Feed */}
+          {/* Center Column: Feed + D-pad */}
           {currentRoom && (
             <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
+              {/* Feed */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <GameFeed 
+                  room={currentRoom} 
+                  actionResult={actionResult} 
+                  onRegisterControls={handleRegisterFeedControls}
+                />
+              </div>
+
               {/* D-pad */}
               <div className="p-4 sm:p-6 flex-shrink-0 relative">
                 {/* Mobile sidebar toggles - positioned in top corners of dpad area */}
@@ -695,15 +704,6 @@ export default function GameInterface() {
                 </button>
                 
                 <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
-              </div>
-
-              {/* Feed */}
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <GameFeed 
-                  room={currentRoom} 
-                  actionResult={actionResult} 
-                  onRegisterControls={handleRegisterFeedControls}
-                />
               </div>
             </div>
           )}

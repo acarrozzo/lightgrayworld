@@ -25,10 +25,11 @@ export default function GameTabs({ room, actionResult, onRegisterFeedControls, o
         <div className="h-full overflow-y-auto">
           {room && (
             <>
-              <div className="border border-gray-800/50 rounded-xl m-4 sm:m-6 bg-gray-900/30 backdrop-blur-sm shadow-lg">
+              <div className="m-3 bg-gray-900/30g">
                 {renderRoomInfo(room, {
                   player,
                   onAction: onAction,
+                  variant: 'sidebar',
                 })}
 
                 {/* Action Controls Section */}

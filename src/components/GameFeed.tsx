@@ -212,9 +212,30 @@ interface GameFeedProps {
   onRegisterControls?: (handlers: FeedControlHandlers) => void
 }
 
+// Variant styles configuration
+const variantStyles = {
+  default: {
+    padding: 'p-4 sm:p-6',
+    iconSize: 'w-12 sm:w-20 h-12 sm:h-20',
+    titleSize: 'text-xl sm:text-2xl',
+    subtitleSize: 'text-base sm:text-lg',
+    subtitleSizeAbove: 'text-lg',
+    descriptionSize: 'text-xs sm:text-base',
+  },
+  sidebar: {
+    padding: 'p-0',
+    iconSize: 'w-10 h-10',
+    titleSize: 'text-md',
+    subtitleSize: 'text-sm',
+    subtitleSizeAbove: 'text-sm',
+    descriptionSize: 'text-xs',
+  },
+} as const
+
 // Export renderRoomInfo function for reuse in other components
-export const renderRoomInfo = (roomData: any, options?: { action?: string; isMostRecent?: boolean; player?: any; onAction?: (action: string) => void }) => {
-  const { action, isMostRecent = false, player, onAction } = options || {}
+export const renderRoomInfo = (roomData: any, options?: { action?: string; isMostRecent?: boolean; player?: any; onAction?: (action: string) => void; variant?: 'default' | 'sidebar' }) => {
+  const { action, isMostRecent = false, player, onAction, variant = 'default' } = options || {}
+  const styles = variantStyles[variant]
   const handleRoomDisplayAction = onAction || (async (action: string) => {
     // Fallback if no onAction provided - this shouldn't happen in practice
     console.warn('No onAction handler provided to renderRoomInfo')
@@ -280,29 +301,29 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
   const subtitlePlacement = roomData.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className={styles.padding}>
       {/* Header with icon and two-line title */}
       <div className="flex items-center gap-4 mb-4">
         <div className={getTextColorClass(roomData.iconColor, 'yellow-400')}>
           <Icon 
             name={roomData.icon || 'sun'} 
-            className="w-12 sm:w-20 h-12 sm:h-20"
+            className={styles.iconSize}
             color="current"
           />
         </div>
         <div className="flex-1">
           {hasSubtitle && subtitlePlacement === 'above' && (
-            <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-lg`}>{subtitleText}</p>
+            <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold ${styles.subtitleSizeAbove}`}>{subtitleText}</p>
           )}
-          <h3 className={`text-xl sm:text-2xl font-bold ${getTextColorClass(roomData.nameColor, 'green-400')}`}>{roomData.name}</h3>
+          <h3 className={`${styles.titleSize} font-bold ${getTextColorClass(roomData.nameColor, 'green-400')}`}>{roomData.name}</h3>
           {hasSubtitle && subtitlePlacement === 'below' && (
-            <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold text-base sm:text-lg`}>{subtitleText}</p>
+            <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold ${styles.subtitleSize}`}>{subtitleText}</p>
           )}
         </div>
       </div>
 
       {/* Room Description */}
-      <p className="text-gray-300/90 leading-relaxed text-xs sm:text-base mb-6">
+      <p className={`text-gray-300/90 leading-relaxed ${styles.descriptionSize} mb-6`}>
         {roomData.description}
       </p>
 
@@ -352,7 +373,7 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
       {(roomData.players?.length > 0 || roomData.items?.length > 0 || roomData.npcs?.length > 0) && (          <div className="mt-6 space-y-3">
           {/* Players in Room */}
           {roomData.players && roomData.players.length > 0 && (
-            <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-800/50">
+            <div className="pt-2 px-2 border-t border-gray-800/50">
               <h4 className="text-sm font-semibold text-amber-400/90 mb-2">Also Here:</h4>
               <div className="flex flex-wrap gap-2">
                 {roomData.players.map((player: any) => (
@@ -1014,22 +1035,39 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
             // Check if this is the last action in the feed (bottom-most)
             const isLastAction = index === actions.length - 1
             
+            // Check if we should show roombox for look actions
+            const shouldShowRoombox = 
+              action.action === 'look' && 
+              action.roomData && 
+              !action.suppressRoomDisplay
+            
             // Regular action (LOOK, REST, SEARCH, ATTACK, etc.)
             return (
-              <div
-                key={action.id}
-                className={`action-bar rounded-lg p-2  ${
-                  isLastAction ? 'border-l-0 border-emerald-500/60 bg-emerald-500/10' : 'border-l-0 border-gray-800/50 bg-gray-900/30 hover:bg-gray-800/50'
-                }`}
-              >
-                <div className="flex flex-col items-start">
-                  <span className="text-xs text-gray-500/70 whitespace-nowrap shrink-0">
-                    {new Date(action.timestamp).toLocaleTimeString()}
-                  </span>
-                  <p className="text-gray-300/90 text-sm">
-                    {action.message}
-                  </p>
+              <div key={action.id} className="space-y-2">
+                <div
+                  className={`action-bar rounded-lg p-2  ${
+                    isLastAction ? 'border-1 border-emerald-500/60 bg-emerald-500/10' : 'border-l-0 border-gray-800/50 bg-gray-900/30 hover:bg-gray-800/50'
+                  }`}
+                >
+                  <div className="flex flex-col items-start">
+                    <span className="text-xs text-gray-500/70 whitespace-nowrap shrink-0">
+                      {new Date(action.timestamp).toLocaleTimeString()}
+                    </span>
+                    <p className="text-gray-300/90 text-sm">
+                      {action.message}
+                    </p>
+                  </div>
                 </div>
+                
+                {/* Roombox display after look action */}
+                {shouldShowRoombox && (
+                  <div className="borderx border-gray-700/50 rounded-lg bg-gray-900/50 overflow-hidden">
+                    {renderRoomInfo(action.roomData, {
+                      player,
+                      onAction: handleRoomDisplayAction,
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}
