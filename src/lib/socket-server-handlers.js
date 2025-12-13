@@ -134,6 +134,39 @@ async function fetchRoomWithColors(prisma, roomId) {
   })
 }
 
+// Direction finding helpers for entry/exit messages
+const DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down']
+
+function findDirectionKey(room, targetRoomId) {
+  if (!room || !targetRoomId) {
+    return null
+  }
+
+  for (const key of DIRECTION_KEYS) {
+    if (room[key] === targetRoomId) {
+      return key
+    }
+  }
+
+  return null
+}
+
+function buildDirectionPhrase(direction, context) {
+  if (!direction) {
+    return 'an unknown direction'
+  }
+
+  if (direction === 'up') {
+    return context === 'enter' ? 'above' : 'upward'
+  }
+
+  if (direction === 'down') {
+    return context === 'enter' ? 'below' : 'downward'
+  }
+
+  return `the ${direction.replace(/_/g, ' ')}`
+}
+
 // Setup socket handlers
 function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers) {
   io.on('connection', (socket) => {
@@ -272,6 +305,48 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         console.log(`[Socket] Transitioning player room`)
         await transitionPlayerRoom({ player, fromRoom, toRoom })
 
+        // Save entry/exit messages to database
+        try {
+          // Fetch both rooms for direction finding
+          const fromRoomData = await fetchRoomWithColors(prisma, fromRoom)
+          const toRoomData = await fetchRoomWithColors(prisma, toRoom)
+
+          if (fromRoomData && toRoomData) {
+            // Exit message for the room being left
+            const exitDirection = findDirectionKey(fromRoomData, toRoom)
+            const exitDirectionPhrase = buildDirectionPhrase(exitDirection, 'exit')
+            const exitMessage = `${player.username} exits to ${exitDirectionPhrase}`
+
+            await prisma.roomChatMessage.create({
+              data: {
+                userId: player.id,
+                roomId: fromRoom,
+                message: exitMessage,
+                type: 'system',
+              },
+            })
+
+            // Entry message for the room being entered
+            const entryDirection = findDirectionKey(toRoomData, fromRoom)
+            const entryDirectionPhrase = buildDirectionPhrase(entryDirection, 'enter')
+            const entryMessage = `${player.username} enters from ${entryDirectionPhrase}`
+
+            await prisma.roomChatMessage.create({
+              data: {
+                userId: player.id,
+                roomId: toRoom,
+                message: entryMessage,
+                type: 'system',
+              },
+            })
+
+            console.log(`[Socket] Saved entry/exit messages for ${player.username} moving from ${fromRoom} to ${toRoom}`)
+          }
+        } catch (error) {
+          console.error('[Socket] Error saving entry/exit messages:', error)
+          // Don't fail the movement if message saving fails
+        }
+
         console.log(`[Socket] Emitting action:confirmed to player`)
         socket.emit('action:confirmed', {
           action: 'move',
@@ -334,6 +409,90 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
           player,
           error,
           fallbackMessage: 'Failed to send message',
+        })
+      }
+    })
+
+    // Handle room chat messages
+    socket.on(SOCKET_EVENTS.SEND_ROOM_CHAT_MESSAGE, async (data) => {
+      const player = activePlayers.get(socket.id)
+      if (!player) {
+        console.log(`[Socket] SEND_ROOM_CHAT_MESSAGE - Player not found for socket ${socket.id}`)
+        return
+      }
+
+      const sanitizedMessage = data.message ? data.message.toString().trim().substring(0, 200) : ''
+      const roomId = data.roomId ? data.roomId.toString() : ''
+
+      console.log(`[Socket] SEND_ROOM_CHAT_MESSAGE from ${player.username} in room ${roomId}: "${sanitizedMessage}"`)
+
+      if (!sanitizedMessage) {
+        socket.emit('action:error', { action: 'room-chat', message: 'Message cannot be empty' })
+        return
+      }
+
+      if (!roomId) {
+        socket.emit('action:error', { action: 'room-chat', message: 'Room ID is required' })
+        return
+      }
+
+      // Validate player is in the specified room
+      if (player.currentRoom !== roomId) {
+        console.log(`[Socket] SEND_ROOM_CHAT_MESSAGE - Player ${player.username} not in room ${roomId} (current: ${player.currentRoom})`)
+        socket.emit('action:error', { action: 'room-chat', message: 'You must be in the room to send room chat messages' })
+        return
+      }
+
+      try {
+        // Verify room exists
+        const room = await prisma.room.findUnique({
+          where: { roomId },
+        })
+
+        if (!room) {
+          socket.emit('action:error', { action: 'room-chat', message: 'Room not found' })
+          return
+        }
+
+        // Save to database
+        const roomChatMessage = await prisma.roomChatMessage.create({
+          data: {
+            userId: player.id,
+            roomId: roomId,
+            message: sanitizedMessage,
+          },
+          include: {
+            user: {
+              select: {
+                username: true,
+                level: true,
+              },
+            },
+          },
+        })
+
+        // Broadcast to room only
+        const payload = {
+          id: roomChatMessage.id,
+          userId: player.id,
+          username: roomChatMessage.user.username,
+          level: roomChatMessage.user.level,
+          message: sanitizedMessage,
+          timestamp: roomChatMessage.timestamp,
+          roomId: roomId,
+        }
+
+        console.log(`[Socket] Broadcasting room chat message to room ${roomId}`)
+        io.to(`room-${roomId}`).emit(SOCKET_EVENTS.ROOM_CHAT_MESSAGE, payload)
+
+        socket.emit('action:confirmed', { action: 'room-chat', success: true })
+      } catch (error) {
+        console.error('[Socket] Error handling room chat message:', error)
+        emitQueueAwareError({
+          actionName: 'room-chat',
+          player,
+          error,
+          fallbackMessage: 'Failed to send room chat message',
         })
       }
     })

@@ -828,6 +828,23 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     }
   }, [player?.id])
 
+  const createRoomChatEntry = useCallback((message: ChatMessage): ActionHistory => {
+    const timestamp = new Date(message.timestamp).toISOString()
+    const isPlayerMessage = player?.id && message.userId === player.id
+    const formattedMessage = isPlayerMessage
+      ? `You say, "${message.message}"`
+      : `[${message.level}] ${message.username} says, "${message.message}"`
+
+    return {
+      id: message.id || `socket-room-chat-${timestamp}`,
+      action: 'room-chat',
+      message: formattedMessage,
+      timestamp,
+      roomId: message.roomId,
+      metadata: JSON.stringify(message),
+    }
+  }, [player?.id])
+
   const createWorldTickEntry = useCallback((payload: WorldTickPayload): ActionHistory => {
     const timestamp = new Date(payload.timestamp).toISOString()
     const displayNumber = payload.tickId + 1 // tickId starts at 0, display starts at 1
@@ -905,6 +922,13 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
       pushAction(createChatEntry(message))
     })
 
+    const cleanupRoomChat = socketHandlers.onRoomChatMessage((message) => {
+      // Only show room chat messages for the current room
+      if (room?.roomId && message.roomId === room.roomId) {
+        pushAction(createRoomChatEntry(message))
+      }
+    })
+
     const cleanupWorldTick = socketHandlers.onWorldTick((payload) => {
       pushAction(createWorldTickEntry(payload))
     })
@@ -914,6 +938,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
       cleanupActionError()
       cleanupRoomMove()
       cleanupChat()
+      cleanupRoomChat()
       cleanupWorldTick()
     }
   }, [
@@ -925,6 +950,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
     createActionErrorEntry,
     createMovementEntry,
     createChatEntry,
+    createRoomChatEntry,
     createWorldTickEntry,
     room,
     getCachedRoom,
@@ -945,6 +971,10 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
         return 'text-purple-400'
       case 'room-display':
         return 'text-green-400'
+      case 'chat':
+        return 'text-cyan-400'
+      case 'room-chat':
+        return 'text-cyan-400'
       default:
         return 'text-gray-400'
     }
@@ -1054,7 +1084,11 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
                     <span className="text-xs text-gray-500/70 whitespace-nowrap shrink-0">
                       {new Date(action.timestamp).toLocaleTimeString()}
                     </span>
-                    <p className="text-gray-300/90 text-sm">
+                    <p className={`text-sm ${
+                      action.action === 'move' 
+                        ? 'italic text-gray-400/80' 
+                        : 'text-gray-300/90'
+                    }`}>
                       {action.message}
                     </p>
                   </div>

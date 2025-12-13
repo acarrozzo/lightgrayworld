@@ -80,6 +80,11 @@ export class SocketEventHandlers {
     return this.emit(SOCKET_EVENTS.SEND_CHAT_MESSAGE, { message })
   }
 
+  // Send room chat message
+  sendRoomChatMessage(message: string, roomId: string): boolean {
+    return this.emit(SOCKET_EVENTS.SEND_ROOM_CHAT_MESSAGE, { message, roomId })
+  }
+
   // Send game action
   sendGameAction(action: string): boolean {
     return this.emit(SOCKET_EVENTS.GAME_ACTION, { action })
@@ -88,6 +93,11 @@ export class SocketEventHandlers {
   // Listen for chat messages
   onChatMessage(handler: (message: ChatMessage) => void): () => void {
     return this.on(SOCKET_EVENTS.CHAT_MESSAGE, handler)
+  }
+
+  // Listen for room chat messages
+  onRoomChatMessage(handler: (message: ChatMessage) => void): () => void {
+    return this.on(SOCKET_EVENTS.ROOM_CHAT_MESSAGE, handler)
   }
 
   // Listen for action completed events

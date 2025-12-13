@@ -124,6 +124,7 @@ model User {
   accounts                  Account[]
   actionHistory             ActionHistory[]
   chatMessages              ChatMessage[]
+  roomChatMessages          RoomChatMessage[]
   equipment                 Equipment?
   killList                  KillList[]
   PlayerItem                PlayerItem[]
@@ -205,6 +206,7 @@ model Room {
   npcs             NPC[]
   items            RoomItem[]
   players          User[]     @relation("RoomPlayers")
+  roomChatMessages RoomChatMessage[]
 }
 
 model RoomItem {
@@ -236,6 +238,19 @@ model ChatMessage {
   timestamp DateTime @default(now())
   roomId    String?
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RoomChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  roomId    String
+  message   String
+  type      String?  @default("chat")
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room      Room     @relation(fields: [roomId], references: [roomId], onDelete: Cascade)
+
+  @@index([roomId, timestamp])
 }
 
 model ActionHistory {

@@ -6,12 +6,14 @@ const SOCKET_EVENTS = {
   // Client to server
   PLAYER_LOGIN: 'player-login',
   SEND_CHAT_MESSAGE: 'send-chat-message',
+  SEND_ROOM_CHAT_MESSAGE: 'send-room-chat-message',
   GAME_ACTION: 'game-action',
   
   // Server to client
   PLAYER_JOINED: 'player-joined',
   PLAYER_LEFT: 'player-left',
   CHAT_MESSAGE: 'chat-message',
+  ROOM_CHAT_MESSAGE: 'room-chat-message',
   ACTION_COMPLETED: 'action-completed',
   PLAYER_ACTION: 'player-action',
   ACTION_RESULT: 'action:result',
