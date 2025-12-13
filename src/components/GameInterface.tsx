@@ -14,6 +14,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
 import MapModal from './MapModal'
+import { MessageCircle, PersonStanding } from 'lucide-react'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -639,12 +640,10 @@ export default function GameInterface() {
       />
       <GameHeader 
         player={player} 
-        onToggleLeftSidebar={() => setLeftSidebarOpen(!leftSidebarOpen)}
-        onToggleRightSidebar={() => setRightSidebarOpen(!rightSidebarOpen)}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,25%)] xl:grid-cols-[minmax(360px,23%)_1fr_minmax(360px,23%)] flex-1 overflow-hidden relative min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,35%)] xl:grid-cols-[minmax(360px,23%)_1fr_minmax(360px,23%)] flex-1 overflow-hidden relative min-h-0">
         {/* Overlay backdrop for mobile */}
         {(leftSidebarOpen || rightSidebarOpen) && (
           <div 
@@ -677,7 +676,24 @@ export default function GameInterface() {
           {currentRoom && (
             <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
               {/* D-pad */}
-              <div className="p-4 sm:p-6 flex-shrink-0">
+              <div className="p-4 sm:p-6 flex-shrink-0 relative">
+                {/* Mobile sidebar toggles - positioned in top corners of dpad area */}
+                <button 
+                  className="absolute top-4 left-4 xl:hidden p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 z-10"
+                  onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
+                  title="Toggle Player Info (Ctrl+1 or swipe right)"
+                >
+                  <PersonStanding className="h-5 w-5" strokeWidth={2} />
+                </button>
+                
+                <button 
+                  className="absolute top-4 right-4 lg:hidden p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 z-10"
+                  onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
+                  title="Toggle Chat & Navigation (Ctrl+2 or swipe left)"
+                >
+                  <MessageCircle className="h-5 w-5" strokeWidth={2} />
+                </button>
+                
                 <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
               </div>
 
