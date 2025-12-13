@@ -1035,10 +1035,11 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
             // Check if this is the last action in the feed (bottom-most)
             const isLastAction = index === actions.length - 1
             
-            // Check if we should show roombox for look actions
+            // Check if we should show roombox for look or move actions
             const shouldShowRoombox = 
-              action.action === 'look' && 
+              (action.action === 'look' || action.action === 'move') && 
               action.roomData && 
+              action.success !== false &&
               !action.suppressRoomDisplay
             
             // Regular action (LOOK, REST, SEARCH, ATTACK, etc.)
@@ -1059,7 +1060,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
                   </div>
                 </div>
                 
-                {/* Roombox display after look action */}
+                {/* Roombox display after look or move action */}
                 {shouldShowRoombox && (
                   <div className="borderx border-gray-700/50 rounded-lg bg-gray-900/50 overflow-hidden">
                     {renderRoomInfo(action.roomData, {
