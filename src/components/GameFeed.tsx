@@ -330,16 +330,16 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-2">
         {/* Universal actions */}
-        <button className="px-4 py-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
+        <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
           West
         </button>
-        <button className="px-4 py-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
+        <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
           South
         </button>
-        <button className="px-4 py-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
+        <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
           North
         </button>
-        <button className="px-4 py-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
+        <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
           East
         </button>
         
@@ -347,7 +347,7 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
         {roomActions.map((actionItem) => (
           <button
             key={actionItem.action}
-            className={`px-4 py-2 text-white rounded-lg text-sm flex items-center gap-2 transition-all duration-200 ${
+            className={`px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-2 transition-all duration-200 ${
               actionItem.action === 'read sign' ? 'bg-amber-600/90 hover:bg-amber-500' :
               actionItem.action === 'open chest' ? 'bg-orange-500/90 hover:bg-orange-500' :
               'bg-blue-600/90 hover:bg-blue-500'
@@ -1113,7 +1113,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
           <button
             type="button"
             onClick={handleUnreadIndicatorClick}
-            className="absolute left-1/2 bottom-4 -translate-x-1/2 bg-gray-900/95 backdrop-blur-sm text-white text-sm px-4 py-2 rounded-full shadow-lg border border-emerald-500/50 flex items-center gap-2 z-10 hover:bg-gray-800/95 transition-all duration-200"
+            className="absolute left-1/2 bottom-4 -translate-x-1/2 bg-gray-900/95 backdrop-blur-sm text-white text-sm px-4 py-1.5 rounded-full shadow-lg border border-emerald-500/50 flex items-center gap-2 z-10 hover:bg-gray-800/95 transition-all duration-200"
             aria-label={`${unreadCount} new message${unreadCount === 1 ? '' : 's'}. Click to scroll to bottom.`}
           >
             <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`}</span>

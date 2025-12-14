@@ -62,3 +62,34 @@ body {
   outline: 2px solid rgb(99 102 241);
   outline-offset: 2px;
 }
+
+/* Custom scrollbar styling - matches game's dark theme */
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(75 85 99 / 0.9) rgb(31 41 55 / 0.3);
+  /*scrollbar-color: greenyellow  rgb(75 85 99 / 0.6);*/
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgb(31 41 55 / 0.3);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(75 85 99 / 0.6);
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(107 114 128 / 0.8);
+  background-clip: padding-box;
+}
