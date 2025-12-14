@@ -28,6 +28,34 @@ const findTravelDirection = (fromRoom: Room | null, toRoomId: string): TravelDir
   return TRAVEL_DIRECTION_KEYS.find((direction) => fromRoom[direction] === toRoomId)
 }
 
+// Command shorthand mapping
+const COMMAND_SHORTHAND: Record<string, string> = {
+  // Directions
+  'n': 'north',
+  'e': 'east',
+  's': 'south',
+  'w': 'west',
+  'ne': 'northeast',
+  'nw': 'northwest',
+  'se': 'southeast',
+  'sw': 'southwest',
+  'u': 'up',
+  'd': 'down',
+  // Actions
+  'l': 'look',
+  'a': 'attack',
+}
+
+/**
+ * Normalizes a command by converting shorthand to full command names.
+ * Returns the full command if a shorthand is found, otherwise returns the original input.
+ * This maintains backward compatibility with full commands.
+ */
+const normalizeCommand = (input: string): string => {
+  const normalized = input.toLowerCase().trim()
+  return COMMAND_SHORTHAND[normalized] || normalized
+}
+
 export default function GameInterface() {
   const { player, setPlayer, currentRoom, setCurrentRoom, setRoomPlayers, getAuthHeaders, isLoggedIn, cacheRoom, getCachedRoom } = useGameStore()
   const [action, setAction] = useState('')
@@ -397,7 +425,8 @@ export default function GameInterface() {
     if (!actionToSend) return
     
     setCustomAction('') // Clear input immediately
-    handleAction(actionToSend)
+    const normalizedCommand = normalizeCommand(actionToSend)
+    handleAction(normalizedCommand)
   }
 
   useEffect(() => {
