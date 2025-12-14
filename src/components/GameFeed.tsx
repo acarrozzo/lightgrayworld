@@ -1058,7 +1058,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
         <div 
           ref={feedRef}
           data-near-bottom={isNearBottom ? 'true' : 'false'}
-          className="absolute inset-0 overflow-y-auto p-2 space-y-1"
+          className="absolute inset-0 overflow-y-auto p-4 space-y-2"
         >
           {/* Actions List */}
           {actions.map((action, index) => {
@@ -1076,7 +1076,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
             return (
               <div key={action.id} className="space-y-2">
                 <div
-                  className={`action-bar rounded-lg p-2  ${
+                  className={`action-bar rounded-lg p-2 border border-gray-700/50 ${
                     isLastAction ? 'border-1 border-emerald-500/60 bg-emerald-500/10' : 'border-l-0 border-gray-800/50 bg-gray-900/30 hover:bg-gray-800/50'
                   }`}
                 >
@@ -1096,7 +1096,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
                 
                 {/* Roombox display after look or move action */}
                 {shouldShowRoombox && (
-                  <div className="borderx border-gray-700/50 rounded-lg bg-gray-900/50 overflow-hidden">
+                  <div className="border border-gray-700/50 rounded-lg bg-gray-900/50 overflow-hidden">
                     {renderRoomInfo(action.roomData, {
                       player,
                       onAction: handleRoomDisplayAction,
