@@ -50,6 +50,7 @@ export default function GameInterface() {
   const lastLoginSocketId = useRef<string | null>(null)
   const playerRef = useRef(player)
   const currentRoomRef = useRef(currentRoom)
+  const customActionInputRef = useRef<HTMLInputElement>(null)
 
   // Load sidebar state from localStorage on mount
   useEffect(() => {
@@ -609,6 +610,12 @@ export default function GameInterface() {
     }
   }, [attemptSocketLogin, socket, player, isLoggedIn])
 
+  useEffect(() => {
+    if (!isLoadingRoom && !isInitialLoad && customActionInputRef.current) {
+      customActionInputRef.current.focus()
+    }
+  }, [isLoadingRoom, isInitialLoad])
+
   const handleRegisterFeedControls = useCallback((controls: FeedControlHandlers) => {
     setFeedControls(controls)
   }, [])
@@ -695,7 +702,7 @@ export default function GameInterface() {
               </div>
 
               {/* D-pad */}
-              <div className="p-4 sm:p-6 flex-shrink-0 relative flex items-center justify-center gap-4">
+              <div className="p-4 sm:p-6 flex-shrink-0 relative flex flex-col gap-4">
                 {/* Mobile sidebar toggles - positioned in top corners of dpad area */}
                 <button 
                   className="absolute top-4 left-4 xl:hidden p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 z-10"
@@ -713,69 +720,73 @@ export default function GameInterface() {
                   <MessageCircle className="h-5 w-5" strokeWidth={2} />
                 </button>
                 
-                <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
+                {/* Custom Action Input */}
+                <form onSubmit={handleCustomAction} className="flex gap-0 w-full max-w-60 mx-auto">
+                  <input
+                    ref={customActionInputRef}
+                    type="text"
+                    value={customAction}
+                    onChange={(e) => setCustomAction(e.target.value)}
+                    placeholder="Enter action..."
+                    disabled={isLoadingRoom}
+                    className="flex-1 px-4 py-2.5 bg-gray-800/50 text-white border border-gray-700/50 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all duration-200 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 min-w-0"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoadingRoom || !customAction.trim()}
+                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-r-lg whitespace-nowrap text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
+                  >
+                    Submit
+                  </button>
+                </form>
                 
-                {/* Action Buttons - stacked vertically */}
-                <div className="flex flex-col gap-2.5 h-full justify-end sm:h-auto sm:justify-start">
-                  <button
-                    onClick={() => {
-                      console.log('[ActionButton] Attack button clicked')
-                      handleAction('attack')
-                    }}
-                    disabled={isLoadingRoom}
-                    className="px-4 py-2 bg-red-600/90 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                  >
-                    {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('[ActionButton] Search button clicked')
-                      handleAction('search')
-                    }}
-                    disabled={isLoadingRoom}
-                    className="px-4 py-2 bg-amber-600/90 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                  >
-                    {isLoadingRoom && action === 'search' ? '...' : 'Search'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('[ActionButton] Rest button clicked')
-                      handleAction('rest')
-                    }}
-                    disabled={isLoadingRoom}
-                    className="px-4 py-2 bg-emerald-600/90 hover:bg-emerald-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                  >
-                    {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('[ActionButton] Look button clicked')
-                      handleAction('look')
-                    }}
-                    disabled={isLoadingRoom}
-                    className="px-4 py-2 bg-blue-600/90 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                  >
-                    {isLoadingRoom && action === 'look' ? '...' : 'Look'}
-                  </button>
+                {/* Compass and Action Buttons */}
+                <div className="flex items-center justify-center gap-4">
+                  <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
                   
-                  {/* Custom Action Input */}
-                  <form onSubmit={handleCustomAction} className="flex gap-0 mt-2.5">
-                    <input
-                      type="text"
-                      value={customAction}
-                      onChange={(e) => setCustomAction(e.target.value)}
-                      placeholder="Enter custom action..."
-                      disabled={isLoadingRoom}
-                      className="flex-1 px-4 py-2.5 bg-gray-800/50 text-white border border-gray-700/50 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all duration-200 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 min-w-0"
-                    />
+                  {/* Action Buttons - stacked vertically */}
+                  <div className="flex flex-col gap-2.5 h-full justify-end sm:h-auto sm:justify-start">
                     <button
-                      type="submit"
-                      disabled={isLoadingRoom || !customAction.trim()}
-                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-r-lg whitespace-nowrap text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
+                      onClick={() => {
+                        console.log('[ActionButton] Attack button clicked')
+                        handleAction('attack')
+                      }}
+                      disabled={isLoadingRoom}
+                      className="px-4 py-2 bg-red-600/90 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
                     >
-                      Submit
+                      {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
                     </button>
-                  </form>
+                    <button
+                      onClick={() => {
+                        console.log('[ActionButton] Search button clicked')
+                        handleAction('search')
+                      }}
+                      disabled={isLoadingRoom}
+                      className="px-4 py-2 bg-amber-600/90 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                    >
+                      {isLoadingRoom && action === 'search' ? '...' : 'Search'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        console.log('[ActionButton] Rest button clicked')
+                        handleAction('rest')
+                      }}
+                      disabled={isLoadingRoom}
+                      className="px-4 py-2 bg-emerald-600/90 hover:bg-emerald-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                    >
+                      {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        console.log('[ActionButton] Look button clicked')
+                        handleAction('look')
+                      }}
+                      disabled={isLoadingRoom}
+                      className="px-4 py-2 bg-blue-600/90 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                    >
+                      {isLoadingRoom && action === 'look' ? '...' : 'Look'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

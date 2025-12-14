@@ -265,7 +265,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       }
 
       try {
-        const destinationRoom = await fetchRoomWithColors(prisma, toRoom)
+        // Fetch both rooms to calculate direction
+        const [sourceRoom, destinationRoom] = await Promise.all([
+          fetchRoomWithColors(prisma, fromRoom),
+          fetchRoomWithColors(prisma, toRoom),
+        ])
 
         if (!destinationRoom) {
           console.log(`[Socket] player-move - Destination room ${toRoom} not found`)
@@ -281,13 +285,16 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         }
         const toRoomName = destinationRoom.name
 
+        // Calculate direction from source room to destination
+        const direction = sourceRoom ? findDirectionKey(sourceRoom, toRoom) : null
+
         console.log(`[Socket] Calling gameEngine.processUserAction for ${player.username}`)
         const result = await gameEngine.processUserAction({
           playerId: player.id,
           roomId: fromRoom,
           action: {
             type: 'move',
-            data: { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData },
+            data: { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData, direction },
           },
         })
 

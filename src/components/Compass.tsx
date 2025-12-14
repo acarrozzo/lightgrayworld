@@ -182,8 +182,9 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 disabled={isNavigating}
                 className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                   isAvailable
-                    ? 'bg-gray-800/80 hover:bg-gray-800 border-gray-700/50 hover:border-indigo-500/50'
-                    : 'bg-gray-900/50 hover:bg-gray-900/70 border-gray-800/30 opacity-50'
+                   /* ? 'bg-gray-800/80 hover:bg-gray-800 border-gray-700/50 hover:border-indigo-500/50'*/
+                   ? 'bg-green-600/80 hover:bg-green-500 border-gray-700/50 hover:border-gray-500/50'
+                   : 'bg-gray-900/50 hover:bg-gray-900/70 border-gray-800/30 opacity-50'
                 } ${isNavigating ? 'cursor-wait opacity-60' : ''}`}
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
@@ -210,7 +211,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 disabled={isNavigating}
                 className={`w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                   isAvailable
-                    ? 'bg-gray-800/80 hover:bg-gray-800 border-gray-700/50 hover:border-indigo-500/50'
+                    ? 'bg-green-600/80 hover:bg-green-500  border-gray-700/50 hover:border-gray-500/50'
                     : 'bg-gray-900/50 hover:bg-gray-900/70 border-gray-800/30 opacity-50'
                 } ${isNavigating ? 'cursor-wait opacity-60' : ''}`}
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
