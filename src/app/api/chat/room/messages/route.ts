@@ -59,6 +59,7 @@ async function handleGetRoomMessages(request: AuthenticatedRequest) {
       .reverse()
       .map((msg: any) => ({
         id: msg.id,
+        userId: msg.userId,
         username: msg.user.username,
         message: msg.message,
         timestamp: msg.timestamp,

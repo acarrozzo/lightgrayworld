@@ -59,6 +59,7 @@ const buildDirectionPhrase = (direction: DirectionKey | null, context: 'enter' |
 
 interface RoomChatMessage {
   id: string
+  userId?: string
   username: string
   message: string
   timestamp: Date
@@ -158,6 +159,7 @@ export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps)
         const data = await response.json()
         const formattedMessages: RoomChatMessage[] = (data.messages || []).map((msg: any) => ({
           id: msg.id,
+          userId: msg.userId,
           username: msg.username,
           message: msg.message,
           timestamp: new Date(msg.timestamp),
@@ -233,11 +235,6 @@ export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps)
     console.log('[RoomChat] Setting up room:player-moved listener for room:', room.roomId)
 
     const cleanupRoomMove = socketHandlers.onRoomPlayerMoved((event: RoomPlayerMovedPayload) => {
-      // Skip self-movement
-      if (event.playerId === player.id) {
-        return
-      }
-
       const isEnteringCurrentRoom = event.toRoom === room.roomId
       const isLeavingCurrentRoom = event.fromRoom === room.roomId
 
@@ -248,13 +245,16 @@ export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps)
       const directionRoomId = isEnteringCurrentRoom ? event.fromRoom : event.toRoom
       const direction = findDirectionKey(room, directionRoomId)
       const directionPhrase = buildDirectionPhrase(direction, isEnteringCurrentRoom ? 'enter' : 'exit')
+      const isSelfMovement = event.playerId === player.id
+      const displayName = isSelfMovement ? 'You' : event.username
 
       const systemMessage: RoomChatMessage = {
         id: `room-move-${event.playerId}-${Date.now()}`,
+        userId: event.playerId,
         username: '',
         message: isEnteringCurrentRoom
-          ? `${event.username} enters from ${directionPhrase}`
-          : `${event.username} exits to ${directionPhrase}`,
+          ? `${displayName} enter${isSelfMovement ? '' : 's'} from ${directionPhrase}`
+          : `${displayName} exit${isSelfMovement ? '' : 's'} to ${directionPhrase}`,
         timestamp: new Date(),
         level: 0,
         type: 'system',
@@ -295,11 +295,13 @@ export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps)
 
     try {
       // Send message via Socket.io for real-time delivery (if connected)
+      // Socket handler already saves to database, so no need for API call
       if (socketHandlers.isConnected) {
         socketHandlers.sendRoomChatMessage(messageToSend, room.roomId)
+        return // Socket handler saves to DB and broadcasts, so we're done
       }
       
-      // Always save to database via API
+      // If Socket.io is not connected, save to database via API
       const response = await fetch('/api/chat/room/send', {
         method: 'POST',
         headers: {
@@ -316,10 +318,8 @@ export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps)
         return
       }
 
-      // If Socket.io is not connected, reload messages to show the new one
-      if (!socket || !isConnected) {
-        loadMessages(room.roomId)
-      }
+      // Reload messages to show the new one when not using socket
+      loadMessages(room.roomId)
     } catch (error) {
       console.error('Failed to send room chat message:', error)
       // Optionally show error to user
@@ -387,13 +387,31 @@ export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps)
         ) : (
           messages.map((message) => {
             if (message.type === 'system') {
+              // Replace username with "You" for system messages from the current player
+              let displayMessage = message.message
+              if (message.userId && player?.id && message.userId === player.id) {
+                // For database-loaded messages, replace username in message text with "You"
+                // For socket messages, the message already contains "You" when it's self-movement
+                const username = message.username || player.username
+                if (username && !displayMessage.startsWith('You ')) {
+                  // Replace username at the start of the message with "You"
+                  displayMessage = displayMessage.replace(
+                    new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+`, 'i'),
+                    'You '
+                  )
+                  // Fix verb conjugation: "You enters" -> "You enter", "You exits" -> "You exit"
+                  displayMessage = displayMessage.replace(/\s+enters\s+/i, ' enter ')
+                  displayMessage = displayMessage.replace(/\s+exits\s+/i, ' exit ')
+                }
+              }
+              
               return (
                 <div key={message.id} className="text-sm">
                   <span className="text-gray-500/70 text-xs">
                     {message.timestamp.toLocaleTimeString()}
                   </span>
                   <span className="ml-2 italic text-gray-400/80">
-                    {escapeHtml(message.message)}
+                    {escapeHtml(displayMessage)}
                   </span>
                 </div>
               )

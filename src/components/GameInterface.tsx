@@ -39,6 +39,7 @@ export default function GameInterface() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [mapInfo, setMapInfo] = useState<{ src: string; title: string }>({ src: '', title: '' })
+  const [customAction, setCustomAction] = useState('')
   const [feedControls, setFeedControls] = useState<FeedControlHandlers>(() => ({
     clearFeed: () => {},
     scrollToTop: () => {},
@@ -387,6 +388,15 @@ export default function GameInterface() {
     if (!result) {
       console.warn('Failed to send game action via socket; action will be ignored')
     }
+  }
+
+  const handleCustomAction = (e: React.FormEvent) => {
+    e.preventDefault()
+    const actionToSend = customAction.trim()
+    if (!actionToSend) return
+    
+    setCustomAction('') // Clear input immediately
+    handleAction(actionToSend)
   }
 
   useEffect(() => {
@@ -747,6 +757,25 @@ export default function GameInterface() {
                   >
                     {isLoadingRoom && action === 'look' ? '...' : 'Look'}
                   </button>
+                  
+                  {/* Custom Action Input */}
+                  <form onSubmit={handleCustomAction} className="flex gap-0 mt-2.5">
+                    <input
+                      type="text"
+                      value={customAction}
+                      onChange={(e) => setCustomAction(e.target.value)}
+                      placeholder="Enter custom action..."
+                      disabled={isLoadingRoom}
+                      className="flex-1 px-4 py-2.5 bg-gray-800/50 text-white border border-gray-700/50 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all duration-200 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 min-w-0"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isLoadingRoom || !customAction.trim()}
+                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-r-lg whitespace-nowrap text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
+                    >
+                      Submit
+                    </button>
+                  </form>
                 </div>
               </div>
             </div>
