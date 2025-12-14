@@ -76,6 +76,7 @@ interface RoomChatProps {
 export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps) {
   const [messages, setMessages] = useState<RoomChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const hasAutoScrolledRef = useRef(false)
   const hasLoadedHistoryRef = useRef(false)
@@ -150,6 +151,7 @@ export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps)
   const loadMessages = useCallback(async (roomId: string) => {
     if (!roomId) return
 
+    setIsLoading(true)
     try {
       const response = await fetch(`/api/chat/room/messages?roomId=${encodeURIComponent(roomId)}`, {
         headers: getAuthHeaders(),
@@ -172,6 +174,8 @@ export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps)
       }
     } catch (error) {
       console.error('Failed to load room chat messages:', error)
+    } finally {
+      setIsLoading(false)
     }
   }, [getAuthHeaders, mergeMessages])
 
@@ -185,6 +189,7 @@ export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps)
       setMessages([])
       hasLoadedHistoryRef.current = false
       hasAutoScrolledRef.current = false
+      setIsLoading(true)
       previousRoomIdRef.current = room.roomId
       loadMessages(room.roomId)
     } else if (!hasLoadedHistoryRef.current) {
@@ -380,7 +385,14 @@ export default function RoomChat({ room, onClose, onNewMessage }: RoomChatProps)
 
       {/* Messages */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
-        {messages.length === 0 ? (
+        {isLoading && messages.length === 0 ? (
+          <div className="text-gray-500/80 text-sm text-center py-8">
+            <div className="inline-flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+              Loading messages...
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
           <div className="text-gray-500/80 text-sm text-center py-8">
             No messages yet. Start the conversation!
           </div>
