@@ -272,7 +272,7 @@ export default function GameChat({ onClose, onNewMessage }: GameChatProps) {
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
+            placeholder="Type a world message..."
             className={inputStyles.chat}
           />
           <button

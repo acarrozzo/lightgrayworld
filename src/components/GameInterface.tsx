@@ -702,7 +702,7 @@ export default function GameInterface() {
               </div>
 
               {/* D-pad */}
-              <div className="p-4 sm:p-6 flex-shrink-0 relative flex flex-col gap-4 border-t border-gray-800/50">
+              <div className="p-4 flex-shrink-0 relative flex flex-col gap-4 border-t border-gray-800/50">
                 {/* Mobile sidebar toggles - positioned in top corners of dpad area */}
                 <button 
                   className="absolute top-4 left-4 xl:hidden p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 z-10"

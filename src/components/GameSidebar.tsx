@@ -16,7 +16,7 @@ export default function GameSidebar({ player, onClose }: GameSidebarProps) {
       icon: 'character',
       color: 'blue',
       content: (
-        <div className="space-y-4">
+        <div className="space-y-4 p-4">
           <h3 className="text-lg font-semibold text-white">Character Stats</h3>
           
           <div className="space-y-2">
@@ -64,7 +64,7 @@ export default function GameSidebar({ player, onClose }: GameSidebarProps) {
       icon: 'inv',
       color: 'green',
       content: (
-        <div className="space-y-4">
+        <div className="space-y-4 p-4">
           <h3 className="text-lg font-semibold text-white">Inventory</h3>
           <div className="text-gray-400 text-sm">
             Your inventory is empty.
@@ -78,7 +78,7 @@ export default function GameSidebar({ player, onClose }: GameSidebarProps) {
       icon: 'attack',
       color: 'red',
       content: (
-        <div className="space-y-4">
+        <div className="space-y-4 p-4">
           <h3 className="text-lg font-semibold text-white">Skills & Spells</h3>
           <div className="text-gray-400 text-sm">
             No skills learned yet.
@@ -92,7 +92,7 @@ export default function GameSidebar({ player, onClose }: GameSidebarProps) {
       icon: 'inv',
       color: 'purple',
       content: (
-        <div className="space-y-4">
+        <div className="space-y-4 p-4">
           <h3 className="text-lg font-semibold text-white">Quests</h3>
           <div className="text-gray-400 text-sm">
             No active quests.

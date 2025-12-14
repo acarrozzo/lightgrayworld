@@ -323,42 +323,46 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
       </div>
 
       {/* Room Description */}
-      <p className={`text-gray-300/90 leading-relaxed ${styles.descriptionSize} mb-6`}>
-        {roomData.description}
-      </p>
+      {variant !== 'sidebar' && (
+        <p className={`text-gray-300/90 leading-relaxed ${styles.descriptionSize} mb-6`}>
+          {roomData.description}
+        </p>
+      )}
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-2">
-        {/* Universal actions */}
-        <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
-          West
-        </button>
-        <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
-          South
-        </button>
-        <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
-          North
-        </button>
-        <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
-          East
-        </button>
-        
-        {/* Room-specific actions */}
-        {roomActions.map((actionItem) => (
-          <button
-            key={actionItem.action}
-            className={`px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-2 transition-all duration-200 ${
-              actionItem.action === 'read sign' ? 'bg-amber-600/90 hover:bg-amber-500' :
-              actionItem.action === 'open chest' ? 'bg-orange-500/90 hover:bg-orange-500' :
-              'bg-blue-600/90 hover:bg-blue-500'
-            }`}
-          >
-            {actionItem.action === 'read sign' && <Icon name="sign" size={18} color="white" />}
-            {actionItem.action === 'open chest' && <Icon name="chest" size={18} color="white" />}
-            {actionItem.label}
+      {variant !== 'sidebar' && (
+        <div className="flex flex-wrap gap-2">
+          {/* Universal actions */}
+          <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
+            West
           </button>
-        ))}
-      </div>
+          <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
+            South
+          </button>
+          <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
+            North
+          </button>
+          <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
+            East
+          </button>
+          
+          {/* Room-specific actions */}
+          {roomActions.map((actionItem) => (
+            <button
+              key={actionItem.action}
+              className={`px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-2 transition-all duration-200 ${
+                actionItem.action === 'read sign' ? 'bg-amber-600/90 hover:bg-amber-500' :
+                actionItem.action === 'open chest' ? 'bg-orange-500/90 hover:bg-orange-500' :
+                'bg-blue-600/90 hover:bg-blue-500'
+              }`}
+            >
+              {actionItem.action === 'read sign' && <Icon name="sign" size={18} color="white" />}
+              {actionItem.action === 'open chest' && <Icon name="chest" size={18} color="white" />}
+              {actionItem.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <RoomDisplay
         room={roomData}
@@ -373,7 +377,7 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
       {(roomData.players?.length > 0 || roomData.items?.length > 0 || roomData.npcs?.length > 0) && (          <div className="mt-6 space-y-3">
           {/* Players in Room */}
           {roomData.players && roomData.players.length > 0 && (
-            <div className="pt-2 px-2 border-t border-gray-800/50">
+            <div className="pt-2 px-2 XXborder-t border-gray-800/50">
               <h4 className="text-sm font-semibold text-amber-400/90 mb-2">Also Here:</h4>
               <div className="flex flex-wrap gap-2">
                 {roomData.players.map((player: any) => (
