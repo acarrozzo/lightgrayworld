@@ -378,7 +378,7 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
           {/* Players in Room */}
           {roomData.players && roomData.players.length > 0 && (
             <div className="pt-2 px-2 XXborder-t border-gray-800/50">
-              <h4 className="text-sm font-semibold text-amber-400/90 mb-2">Also Here:</h4>
+              <h4 className="text-sm font-semibold text-amber-400/90 mb-2">Also Here: ({roomData.players.length})</h4>
               <div className="flex flex-wrap gap-2">
                 {roomData.players.map((player: any) => (
                   <span
