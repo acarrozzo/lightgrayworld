@@ -37,6 +37,10 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     '005': '-350px -245px',    // Grassy Field North
     '006': '-455px -350px',    // Basic Shop
     '007': '-455px -455px',    // Cave Entrance
+    '014': '-140px -350px',    // Dirt Road West
+    '015': '-35px -140px',     // On the Beach Sandy shores
+    '016': '-35px -245px',     // On the Beach by a Giant Rock
+    '017': '-35px -350px',     // Abandoned Docks
     '020': '-245px -245px',    // Healing Springs
     '021': '-455px -245px',    // Pajama Shaman
   }
