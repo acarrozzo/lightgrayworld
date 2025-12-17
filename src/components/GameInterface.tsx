@@ -14,7 +14,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
 import MapModal from './MapModal'
-import { MessageCircle, PersonStanding } from 'lucide-react'
+import { Earth, MessageCircle, PersonStanding } from 'lucide-react'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -738,7 +738,7 @@ export default function GameInterface() {
                   onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
                   title="Toggle Player Info (Ctrl+1 or swipe right)"
                 >
-                  <PersonStanding className="h-5 w-5" strokeWidth={2} />
+                  <Icon name="character" className="h-5 w-5" color="current" />
                 </button>
                 
                 <button 
@@ -746,7 +746,7 @@ export default function GameInterface() {
                   onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
                   title="Toggle Chat & Navigation (Ctrl+2 or swipe left)"
                 >
-                  <MessageCircle className="h-5 w-5" strokeWidth={2} />
+                  <Icon name="world" className="h-5 w-5" color="current" />
                 </button>
                 
                 {/* Custom Action Input */}
@@ -774,14 +774,14 @@ export default function GameInterface() {
                   <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
                   
                   {/* Action Buttons - stacked vertically */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2.5">
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2">
                     <button
                       onClick={() => {
                         console.log('[ActionButton] Attack button clicked')
                         handleAction('attack')
                       }}
                       disabled={isLoadingRoom}
-                      className="px-4 py-1.5 bg-red-600/90 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                      className="px-3 py-1 bg-red-600/90 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
                     >
                       {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
                     </button>
@@ -791,7 +791,7 @@ export default function GameInterface() {
                         handleAction('search')
                       }}
                       disabled={isLoadingRoom}
-                      className="px-4 py-1.5 bg-amber-600/90 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                      className="px-3 py-1 bg-amber-600/90 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
                     >
                       {isLoadingRoom && action === 'search' ? '...' : 'Search'}
                     </button>
@@ -801,7 +801,7 @@ export default function GameInterface() {
                         handleAction('rest')
                       }}
                       disabled={isLoadingRoom}
-                      className="px-4 py-1.5 bg-emerald-600/90 hover:bg-emerald-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                      className="px-3 py-1 bg-emerald-600/90 hover:bg-emerald-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
                     >
                       {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
                     </button>
@@ -811,7 +811,7 @@ export default function GameInterface() {
                         handleAction('look')
                       }}
                       disabled={isLoadingRoom}
-                      className="px-4 py-1.5 bg-blue-600/90 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                      className="px-3 py-1 bg-blue-600/90 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
                     >
                       {isLoadingRoom && action === 'look' ? '...' : 'Look'}
                     </button>
