@@ -48,6 +48,135 @@ const getRoomMapPosition = (roomId: string | undefined) => {
   return roomMapPositions[roomId || '000'] || '-350px -350px' // Default to center
 }
 
+// Helper function to get background color classes for a direction button
+// Defaults to green if no custom color is specified
+// This mapping ensures Tailwind can detect all color classes at build time
+const getBackgroundColorClasses = (color: string): { base: string; hover: string } => {
+  // Map common Tailwind color values to full class names
+  const colorMap: Record<string, { base: string; hover: string }> = {
+    'amber-50': { base: 'bg-amber-50/90', hover: 'hover:bg-amber-50' },
+    'amber-100': { base: 'bg-amber-100/90', hover: 'hover:bg-amber-50' },
+    'amber-200': { base: 'bg-amber-200/90', hover: 'hover:bg-amber-100' },
+    'amber-300': { base: 'bg-amber-300/90', hover: 'hover:bg-amber-200' },
+    'sand': { base: 'bg-amber-300/90', hover: 'hover:bg-amber-200' },
+    'amber-400': { base: 'bg-amber-400/90', hover: 'hover:bg-amber-300' },
+    'amber-500': { base: 'bg-amber-500/90', hover: 'hover:bg-amber-400' },
+    'amber-600': { base: 'bg-amber-600/90', hover: 'hover:bg-amber-500' },
+    'amber-700': { base: 'bg-amber-700/90', hover: 'hover:bg-amber-600' },
+    'amber-800': { base: 'bg-amber-800/90', hover: 'hover:bg-amber-700' },
+    'amber-900': { base: 'bg-amber-900/90', hover: 'hover:bg-amber-800' },
+    'yellow-50': { base: 'bg-yellow-50/90', hover: 'hover:bg-yellow-50' },
+    'yellow-100': { base: 'bg-yellow-100/90', hover: 'hover:bg-yellow-50' },
+    'yellow-200': { base: 'bg-yellow-200/90', hover: 'hover:bg-yellow-100' },
+    'yellow-300': { base: 'bg-yellow-300/90', hover: 'hover:bg-yellow-200' },
+    'yellow-400': { base: 'bg-yellow-400/90', hover: 'hover:bg-yellow-300' },
+    'yellow-500': { base: 'bg-yellow-500/90', hover: 'hover:bg-yellow-400' },
+    'yellow-600': { base: 'bg-yellow-600/90', hover: 'hover:bg-yellow-500' },
+    'yellow-700': { base: 'bg-yellow-700/90', hover: 'hover:bg-yellow-600' },
+    'yellow-800': { base: 'bg-yellow-800/90', hover: 'hover:bg-yellow-700' },
+    'yellow-900': { base: 'bg-yellow-900/90', hover: 'hover:bg-yellow-800' },
+    'red-50': { base: 'bg-red-50/90', hover: 'hover:bg-red-50' },
+    'red-100': { base: 'bg-red-100/90', hover: 'hover:bg-red-50' },
+    'red-200': { base: 'bg-red-200/90', hover: 'hover:bg-red-100' },
+    'red-300': { base: 'bg-red-300/90', hover: 'hover:bg-red-200' },
+    'red-400': { base: 'bg-red-400/90', hover: 'hover:bg-red-300' },
+    'red-500': { base: 'bg-red-500/90', hover: 'hover:bg-red-400' },
+    'red-600': { base: 'bg-red-600/90', hover: 'hover:bg-red-500' },
+    'red-700': { base: 'bg-red-700/90', hover: 'hover:bg-red-600' },
+    'red-800': { base: 'bg-red-800/90', hover: 'hover:bg-red-700' },
+    'red-900': { base: 'bg-red-900/90', hover: 'hover:bg-red-800' },
+    'blue-50': { base: 'bg-blue-50/90', hover: 'hover:bg-blue-50' },
+    'blue-100': { base: 'bg-blue-100/90', hover: 'hover:bg-blue-50' },
+    'blue-200': { base: 'bg-blue-200/90', hover: 'hover:bg-blue-100' },
+    'blue-300': { base: 'bg-blue-300/90', hover: 'hover:bg-blue-200' },
+    'blue-400': { base: 'bg-blue-400/90', hover: 'hover:bg-blue-300' },
+    'blue-500': { base: 'bg-blue-500/90', hover: 'hover:bg-blue-400' },
+    'blue-600': { base: 'bg-blue-600/90', hover: 'hover:bg-blue-500' },
+    'blue-700': { base: 'bg-blue-700/90', hover: 'hover:bg-blue-600' },
+    'blue-800': { base: 'bg-blue-800/90', hover: 'hover:bg-blue-700' },
+    'blue-900': { base: 'bg-blue-900/90', hover: 'hover:bg-blue-800' },
+    'green-50': { base: 'bg-green-50/90', hover: 'hover:bg-green-50' },
+    'green-100': { base: 'bg-green-100/90', hover: 'hover:bg-green-50' },
+    'green-200': { base: 'bg-green-200/90', hover: 'hover:bg-green-100' },
+    'green-300': { base: 'bg-green-300/90', hover: 'hover:bg-green-200' },
+    'green-400': { base: 'bg-green-400/90', hover: 'hover:bg-green-300' },
+    'green-500': { base: 'bg-green-500/90', hover: 'hover:bg-green-400' },
+    'green-600': { base: 'bg-green-600/90', hover: 'hover:bg-green-500' },
+    'green-700': { base: 'bg-green-700/90', hover: 'hover:bg-green-600' },
+    'green-800': { base: 'bg-green-800/90', hover: 'hover:bg-green-700' },
+    'green-900': { base: 'bg-green-900/90', hover: 'hover:bg-green-800' },
+    'purple-50': { base: 'bg-purple-50/90', hover: 'hover:bg-purple-50' },
+    'purple-100': { base: 'bg-purple-100/90', hover: 'hover:bg-purple-50' },
+    'purple-200': { base: 'bg-purple-200/90', hover: 'hover:bg-purple-100' },
+    'purple-300': { base: 'bg-purple-300/90', hover: 'hover:bg-purple-200' },
+    'purple-400': { base: 'bg-purple-400/90', hover: 'hover:bg-purple-300' },
+    'purple-500': { base: 'bg-purple-500/90', hover: 'hover:bg-purple-400' },
+    'purple-600': { base: 'bg-purple-600/90', hover: 'hover:bg-purple-500' },
+    'purple-700': { base: 'bg-purple-700/90', hover: 'hover:bg-purple-600' },
+    'purple-800': { base: 'bg-purple-800/90', hover: 'hover:bg-purple-700' },
+    'purple-900': { base: 'bg-purple-900/90', hover: 'hover:bg-purple-800' },
+    'orange-50': { base: 'bg-orange-50/90', hover: 'hover:bg-orange-50' },
+    'orange-100': { base: 'bg-orange-100/90', hover: 'hover:bg-orange-50' },
+    'orange-200': { base: 'bg-orange-200/90', hover: 'hover:bg-orange-100' },
+    'orange-300': { base: 'bg-orange-300/90', hover: 'hover:bg-orange-200' },
+    'orange-400': { base: 'bg-orange-400/90', hover: 'hover:bg-orange-300' },
+    'orange-500': { base: 'bg-orange-500/90', hover: 'hover:bg-orange-400' },
+    'orange-600': { base: 'bg-orange-600/90', hover: 'hover:bg-orange-500' },
+    'orange-700': { base: 'bg-orange-700/90', hover: 'hover:bg-orange-600' },
+    'orange-800': { base: 'bg-orange-800/90', hover: 'hover:bg-orange-700' },
+    'orange-900': { base: 'bg-orange-900/90', hover: 'hover:bg-orange-800' },
+    'pink-50': { base: 'bg-pink-50/90', hover: 'hover:bg-pink-50' },
+    'pink-100': { base: 'bg-pink-100/90', hover: 'hover:bg-pink-50' },
+    'pink-200': { base: 'bg-pink-200/90', hover: 'hover:bg-pink-100' },
+    'pink-300': { base: 'bg-pink-300/90', hover: 'hover:bg-pink-200' },
+    'pink-400': { base: 'bg-pink-400/90', hover: 'hover:bg-pink-300' },
+    'pink-500': { base: 'bg-pink-500/90', hover: 'hover:bg-pink-400' },
+    'pink-600': { base: 'bg-pink-600/90', hover: 'hover:bg-pink-500' },
+    'pink-700': { base: 'bg-pink-700/90', hover: 'hover:bg-pink-600' },
+    'pink-800': { base: 'bg-pink-800/90', hover: 'hover:bg-pink-700' },
+    'pink-900': { base: 'bg-pink-900/90', hover: 'hover:bg-pink-800' },
+    'gray-50': { base: 'bg-gray-50/90', hover: 'hover:bg-gray-50' },
+    'gray-100': { base: 'bg-gray-100/90', hover: 'hover:bg-gray-50' },
+    'gray-200': { base: 'bg-gray-200/90', hover: 'hover:bg-gray-100' },
+    'gray-300': { base: 'bg-gray-300/90', hover: 'hover:bg-gray-200' },
+    'gray-400': { base: 'bg-gray-400/90', hover: 'hover:bg-gray-300' },
+    'gray-500': { base: 'bg-gray-500/90', hover: 'hover:bg-gray-400' },
+    'gray-600': { base: 'bg-gray-600/90', hover: 'hover:bg-gray-500' },
+    'gray-700': { base: 'bg-gray-700/90', hover: 'hover:bg-gray-600' },
+    'gray-800': { base: 'bg-gray-800/90', hover: 'hover:bg-gray-700' },
+    'gray-900': { base: 'bg-gray-900/90', hover: 'hover:bg-gray-800' },
+    'indigo-50': { base: 'bg-indigo-50/90', hover: 'hover:bg-indigo-50' },
+    'indigo-100': { base: 'bg-indigo-100/90', hover: 'hover:bg-indigo-50' },
+    'indigo-200': { base: 'bg-indigo-200/90', hover: 'hover:bg-indigo-100' },
+    'indigo-300': { base: 'bg-indigo-300/90', hover: 'hover:bg-indigo-200' },
+    'indigo-400': { base: 'bg-indigo-400/90', hover: 'hover:bg-indigo-300' },
+    'indigo-500': { base: 'bg-indigo-500/90', hover: 'hover:bg-indigo-400' },
+    'indigo-600': { base: 'bg-indigo-600/90', hover: 'hover:bg-indigo-500' },
+    'indigo-700': { base: 'bg-indigo-700/90', hover: 'hover:bg-indigo-600' },
+    'indigo-800': { base: 'bg-indigo-800/90', hover: 'hover:bg-indigo-700' },
+    'indigo-900': { base: 'bg-indigo-900/90', hover: 'hover:bg-indigo-800' },
+  }
+  
+  return colorMap[color] || { base: `bg-${color}/90`, hover: `hover:bg-${color}` }
+}
+
+const getDirectionColorClasses = (directionKey: string, directionColors: any, isAvailable: boolean): string => {
+  if (!isAvailable) {
+    return 'bg-gray-900/50 hover:bg-gray-900/70 border-gray-800/30 opacity-50'
+  }
+
+  // Check if there's a custom color for this direction
+  const customColor = directionColors?.[directionKey]
+  
+  if (customColor) {
+    const colorClasses = getBackgroundColorClasses(customColor)
+    return `${colorClasses.base} ${colorClasses.hover} border-gray-700/50 hover:border-gray-500/50`
+  }
+
+  // Default to green
+  return 'bg-green-600/90 hover:bg-green-500 border-gray-700/50 hover:border-gray-500/50'
+}
+
 export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
   const [currentPosition, setCurrentPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
@@ -184,12 +313,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
                 disabled={isNavigating}
-                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                  isAvailable
-                   /* ? 'bg-gray-800/80 hover:bg-gray-800 border-gray-700/50 hover:border-indigo-500/50'*/
-                   ? 'bg-green-600/80 hover:bg-green-500 border-gray-700/50 hover:border-gray-500/50'
-                   : 'bg-gray-900/50 hover:bg-gray-900/70 border-gray-800/30 opacity-50'
-                } ${isNavigating ? 'cursor-wait opacity-60' : ''}`}
+                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${getDirectionColorClasses(dir.key, room.directionColors, isAvailable)} ${isNavigating ? 'cursor-wait opacity-60' : ''}`}
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
                 <ArrowBigUpDash
@@ -213,11 +337,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
                 disabled={isNavigating}
-                className={`w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                  isAvailable
-                    ? 'bg-green-600/80 hover:bg-green-500  border-gray-700/50 hover:border-gray-500/50'
-                    : 'bg-gray-900/50 hover:bg-gray-900/70 border-gray-800/30 opacity-50'
-                } ${isNavigating ? 'cursor-wait opacity-60' : ''}`}
+                className={`w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${getDirectionColorClasses(dir.key, room.directionColors, isAvailable)} ${isNavigating ? 'cursor-wait opacity-60' : ''}`}
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
                 <ArrowBigUp

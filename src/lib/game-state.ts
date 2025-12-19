@@ -23,6 +23,7 @@ export interface Room {
   subtitleColor?: string | null
   icon?: string | null
   iconColor?: string | null
+  directionColors?: any
   description: string
   dangerLevel: number
   isSafe: boolean

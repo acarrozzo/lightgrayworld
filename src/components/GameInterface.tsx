@@ -257,6 +257,7 @@ export default function GameInterface() {
           northwest: roomData.room.northwest,
           up: roomData.room.up,
           down: roomData.room.down,
+          directionColors: roomData.room.directionColors,
           players: Array.isArray(roomData.players) ? roomData.players : []
         }
         
@@ -383,6 +384,17 @@ export default function GameInterface() {
           source: 'local',
         })
         return
+      }
+
+      // Optimistic update: immediately use cached room if available
+      const cachedTargetRoom = getCachedRoom(targetRoomId)
+      if (cachedTargetRoom) {
+        console.log('[handleAction] Using cached room for optimistic update:', cachedTargetRoom.name)
+        setCurrentRoom(cachedTargetRoom)
+        // Update player room optimistically
+        if (player && player.currentRoom !== targetRoomId) {
+          setPlayer({ ...player, currentRoom: targetRoomId })
+        }
       }
 
       if (socket) {

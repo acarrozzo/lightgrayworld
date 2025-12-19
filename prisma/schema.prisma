@@ -203,6 +203,7 @@ model Room {
   subtitleColor    String?
   icon             String?
   iconColor         String?
+  directionColors   Json?
   npcs             NPC[]
   items            RoomItem[]
   players          User[]     @relation("RoomPlayers")
