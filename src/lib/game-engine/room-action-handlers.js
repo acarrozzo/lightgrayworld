@@ -20,6 +20,8 @@ function executeRoomAction(roomId, action, playerId, roomState) {
       return handleRoom001Actions(normalizedAction, playerId, roomState)
     case '002':
       return handleRoom002Actions(normalizedAction, playerId, roomState)
+    case '003':
+      return handleRoom003Actions(normalizedAction, playerId, roomState)
     // Add more room handlers as needed
     default:
       return null
@@ -34,7 +36,6 @@ function handleRoom001Actions(action, playerId, roomState) {
     case 'read sign':
       return executeReadSign(playerId, roomState)
     case 'open gold chest':
-    case 'open chest':
       return executeOpenGoldChest(playerId, roomState)
     default:
       return null
@@ -47,8 +48,23 @@ function handleRoom001Actions(action, playerId, roomState) {
 function handleRoom002Actions(action, playerId, roomState) {
   switch (action) {
     case 'pick redberry':
-      // TODO: Implement in future
-      return createErrorResult(action, 'This action is not yet implemented.')
+      return executePickRedberry(playerId, roomState)
+    default:
+      return null
+  }
+}
+
+/**
+ * Handle actions for room 003 (Wood Cabin)
+ */
+function handleRoom003Actions(action, playerId, roomState) {
+  switch (action) {
+    case 'ex cabin':
+      return executeExamineCabin(playerId, roomState)
+    case 'attack dummy':
+      return executeAttackDummy(playerId, roomState)
+    case 'cook meat':
+      return executeCookMeat(playerId, roomState)
     default:
       return null
   }
@@ -107,7 +123,67 @@ function executeReadSign(playerId, roomState) {
 function executeOpenGoldChest(playerId, roomState) {
   return executeBasicDisplay(
     'open gold chest',
-    "You open the gold chest and find it empty. Perhaps it was already looted?",
+    "The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.",
+    playerId,
+    roomState
+  )
+}
+
+/**
+ * Execute the 'pick redberry' action for room 002
+ * @param {string} playerId - The ID of the player performing the action
+ * @param {RoomState} roomState - The room state instance
+ * @returns {Object} Action result object
+ */
+function executePickRedberry(playerId, roomState) {
+  return executeBasicDisplay(
+    'pick redberry',
+    "You pick a redberry from the bush. The fruit looks ripe and juicy, ready to restore your health.",
+    playerId,
+    roomState
+  )
+}
+
+/**
+ * Execute the 'examine cabin' action for room 003
+ * @param {string} playerId - The ID of the player performing the action
+ * @param {RoomState} roomState - The room state instance
+ * @returns {Object} Action result object
+ */
+function executeExamineCabin(playerId, roomState) {
+  return executeBasicDisplay(
+    'ex cabin',
+    "You examine the cabin. It's warm and cozy, with a cooking fire burning and the Old Man rocking in his chair.",
+    playerId,
+    roomState
+  )
+}
+
+/**
+ * Execute the 'attack dummy' action for room 003
+ * @param {string} playerId - The ID of the player performing the action
+ * @param {RoomState} roomState - The room state instance
+ * @returns {Object} Action result object
+ */
+function executeAttackDummy(playerId, roomState) {
+  return executeBasicDisplay(
+    'attack dummy',
+    "You attack the training dummy. Your weapon strikes true!",
+    playerId,
+    roomState
+  )
+}
+
+/**
+ * Execute the 'cook meat' action for room 003
+ * @param {string} playerId - The ID of the player performing the action
+ * @param {RoomState} roomState - The room state instance
+ * @returns {Object} Action result object
+ */
+function executeCookMeat(playerId, roomState) {
+  return executeBasicDisplay(
+    'cook meat',
+    "You cook the meat over the fire. It smells delicious!",
     playerId,
     roomState
   )
