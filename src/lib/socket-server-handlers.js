@@ -511,15 +511,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       if (!player) return
 
       const actionName = data?.action?.toString().toLowerCase()
-      const supportedActions = new Set(['search', 'rest', 'look'])
 
       if (!actionName) {
         socket.emit('action:error', { action: 'action', message: 'Action is required' })
-        return
-      }
-
-      if (!supportedActions.has(actionName)) {
-        socket.emit('action:error', { action: actionName, message: 'Unsupported action' })
         return
       }
 

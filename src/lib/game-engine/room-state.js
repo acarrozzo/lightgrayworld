@@ -1,3 +1,5 @@
+const { executeRoomAction } = require('./room-action-handlers')
+
 class RoomState {
   constructor(roomId) {
     this.roomId = roomId
@@ -53,6 +55,16 @@ class RoomState {
   }
 
   executeAction(action, playerId) {
+    // First, check if this is a room-specific action
+    const actionName = action.type || action
+    const roomSpecificResult = executeRoomAction(this.roomId, actionName, playerId, this)
+    
+    // If room-specific handler returned a result, use it
+    if (roomSpecificResult !== null) {
+      return roomSpecificResult
+    }
+    
+    // Otherwise, fall back to standard actions
     switch (action.type) {
       case 'move':
         return this.executeMove(action, playerId)

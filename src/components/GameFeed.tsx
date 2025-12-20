@@ -5,6 +5,7 @@ import { Room, useGameStore } from '@/lib/game-state'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import { ActionResultPayload, ActionErrorPayload, RoomPlayerMovedPayload, ChatMessage, WorldTickPayload } from '@/lib/socket'
+import { getRoomActions } from '@/lib/room-actions'
 import Icon from './Icon'
 import RoomDisplay from './RoomDisplay'
 
@@ -253,60 +254,6 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
     // Fallback if no onAction provided - this shouldn't happen in practice
     console.warn('No onAction handler provided to renderRoomInfo')
   })
-  // Get room-specific actions
-  const getRoomActions = (roomId: string) => {
-    switch (roomId) {
-      case '000': // Room Zero
-        return [
-          { action: 'read sign', label: 'Read Sign' },
-          { action: 'press button', label: 'Press Button' },
-        ]
-      case '001': // Grassy Field Crossroads
-        return [
-          { action: 'read sign', label: 'Read Sign' },
-          { action: 'open chest', label: 'Open Gold Chest' },
-        ]
-      case '002': // Grassy Field South
-        return [
-          { action: 'pick redberry', label: 'Pick Redberry' },
-        ]
-      case '003': // Wood Cabin
-        return [
-          { action: 'ex cabin', label: 'Examine Cabin' },
-          { action: 'attack dummy', label: 'Attack Dummy' },
-          { action: 'cook meat', label: 'Cook Meat' },
-        ]
-      case '004': // Flower Patch
-        return [
-          { action: 'pick flower', label: 'Pick Flower' },
-        ]
-      case '005': // Grassy Field North
-        return [
-          { action: 'pick blueberry', label: 'Pick Blueberry' },
-        ]
-      case '006': // Basic Shop
-        return [
-          { action: 'view shop', label: 'View Shop' },
-        ]
-      case '007': // Cave Entrance
-        return [
-          { action: 'read sign', label: 'Read Sign' },
-          { action: 'search', label: 'Search' },
-        ]
-      case '020': // Healing Springs
-        return [
-          { action: 'rest', label: 'Rest at Waterfall' },
-        ]
-      case '021': // Pajama Shaman
-        return [
-          { action: 'read sign', label: 'Read Sign' },
-          { action: 'buy staff', label: 'Buy Staff' },
-        ]
-      default:
-        return []
-    }
-  }
-
   const roomActions = getRoomActions(roomData.roomId)
   const defaultSubtitle = 'This is it. The world is yours.'
   const subtitleText = (roomData.subtitle ?? defaultSubtitle).trim()
@@ -363,14 +310,14 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
           {roomActions.map((actionItem) => (
             <button
               key={actionItem.action}
+              onClick={() => handleRoomDisplayAction(actionItem.action)}
               className={`px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-2 transition-all duration-200 ${
                 actionItem.action === 'read sign' ? 'bg-amber-600/90 hover:bg-amber-500' :
-                actionItem.action === 'open chest' ? 'bg-orange-500/90 hover:bg-orange-500' :
-                'bg-blue-600/90 hover:bg-blue-500'
+                actionItem.action === 'open gold chest' || actionItem.action === 'open chest' ? 'bg-orange-500/90 hover:bg-orange-500' :
+                actionItem.className || 'bg-blue-600/90 hover:bg-blue-500'
               }`}
             >
-              {actionItem.action === 'read sign' && <Icon name="sign" size={18} color="white" />}
-              {actionItem.action === 'open chest' && <Icon name="chest" size={18} color="white" />}
+              {actionItem.icon && <Icon name={actionItem.icon} size={18} color="white" />}
               {actionItem.label}
             </button>
           ))}
