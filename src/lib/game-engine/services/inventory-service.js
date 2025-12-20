@@ -1,6 +1,4 @@
-const { PrismaClient } = require('@prisma/client')
-
-const prisma = new PrismaClient()
+const { prisma } = require('../../db-client')
 
 /**
  * Get a player's inventory with template details, shaped for UI.
