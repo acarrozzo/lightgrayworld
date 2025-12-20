@@ -43,11 +43,28 @@ export interface Room {
   down?: string
 }
 
+export interface InventoryItem {
+  id: string
+  quantity: number
+  isEquipped: boolean
+  slot?: string | null
+  template: {
+    id: string
+    slug: string
+    name: string
+    type: string
+    description: string
+    maxStack: number
+    maxPerPlayer?: number | null
+  }
+}
+
 export interface GameState {
   // Player state
   player: Player | null
   isLoggedIn: boolean
   token: string | null
+  inventory: InventoryItem[]
   
   // Room state
   currentRoom: Room | null
@@ -61,6 +78,7 @@ export interface GameState {
   
   // Actions
   setPlayer: (player: Player | null) => void
+  setInventory: (inventory: InventoryItem[]) => void
   setCurrentRoom: (room: Room | null) => void
   setRoomPlayers: (players: Player[]) => void
   setLoading: (loading: boolean) => void
@@ -81,6 +99,7 @@ export const useGameStore = create<GameState>()(
       player: null,
       isLoggedIn: false,
       token: null,
+      inventory: [],
       currentRoom: null,
       roomPlayers: [],
       roomCache: {},
@@ -90,6 +109,7 @@ export const useGameStore = create<GameState>()(
       
       // Actions
       setPlayer: (player) => set({ player }),
+      setInventory: (inventory) => set({ inventory }),
       setCurrentRoom: (currentRoom) => set({ currentRoom }),
       setRoomPlayers: (roomPlayers) => set({ roomPlayers }),
       setLoading: (isLoading) => set({ isLoading }),
@@ -106,6 +126,7 @@ export const useGameStore = create<GameState>()(
         player: null, 
         token: null,
         isLoggedIn: false,
+        inventory: [],
         currentRoom: null,
         roomPlayers: [],
         roomCache: {},

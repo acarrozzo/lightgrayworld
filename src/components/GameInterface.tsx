@@ -57,7 +57,18 @@ const normalizeCommand = (input: string): string => {
 }
 
 export default function GameInterface() {
-  const { player, setPlayer, currentRoom, setCurrentRoom, setRoomPlayers, getAuthHeaders, isLoggedIn, cacheRoom, getCachedRoom } = useGameStore()
+  const {
+    player,
+    setPlayer,
+    currentRoom,
+    setCurrentRoom,
+    setRoomPlayers,
+    getAuthHeaders,
+    isLoggedIn,
+    cacheRoom,
+    getCachedRoom,
+    setInventory,
+  } = useGameStore()
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(false)
@@ -449,6 +460,9 @@ export default function GameInterface() {
     const cleanupActionResult = socketHandlers.onActionResult((payload) => {
       console.log('[GameInterface] Received action:result event:', payload)
       setActionResult({ ...payload, source: 'socket' })
+      if (payload?.data?.inventory) {
+        setInventory(payload.data.inventory)
+      }
 
       if (payload.action === 'move' && payload.success && payload.data?.toRoom) {
         console.log('[GameInterface] Processing move action result')
@@ -465,6 +479,13 @@ export default function GameInterface() {
           travel: { toRoomId: payload.data.toRoom },
           roomData: payload.data?.roomData,
         })
+      }
+    })
+
+    const cleanupLoginSuccess = socketHandlers.onLoginSuccess((payload) => {
+      console.log('[GameInterface] Received login:success event')
+      if (payload?.inventory) {
+        setInventory(payload.inventory)
       }
     })
 
@@ -513,10 +534,11 @@ export default function GameInterface() {
 
     return () => {
       cleanupActionResult()
+      cleanupLoginSuccess()
       cleanupActionError()
       cleanupRoomMoves()
     }
-  }, [socket, socketHandlers, setPlayer])
+  }, [socket, socketHandlers, setPlayer, setInventory])
 
   useEffect(() => {
     console.log('[GameInterface] Socket state:', {

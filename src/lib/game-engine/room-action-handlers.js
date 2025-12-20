@@ -2,11 +2,13 @@
  * Room-specific action handlers
  * Handles execution of actions that are unique to specific rooms
  */
+const { grantPersonalItemOnce } = require('./effects')
 
 /**
  * Map of room IDs to room-specific actions. Each action entry can be either:
  * - A string message (handled by executeBasicDisplay)
  * - A custom function (playerId, roomState) => actionResult
+ * - A structured action definition object (supports effects)
  */
 const ROOM_ACTIONS = {
   '001': {
@@ -21,6 +23,20 @@ const ROOM_ACTIONS = {
     'attack dummy': 'You attack the training dummy. Your weapon strikes true!',
     'cook meat': 'You cook the meat over the fire. It smells delicious!',
   },
+  '004': {
+    'pick flower': {
+      effects: [
+        { type: 'grantPersonalItemOnce', itemSlug: 'flower', quantity: 1 },
+      ],
+      generateMessage: (effects) => {
+        const grantResult = effects?.[0]
+        if (grantResult?.success) {
+          return 'You pick a beautiful flower and tuck it safely away.'
+        }
+        return 'You already have a flower. One is enough for now.'
+      },
+    },
+  },
 }
 
 /**
@@ -31,7 +47,7 @@ const ROOM_ACTIONS = {
  * @param {RoomState} roomState - The room state instance
  * @returns {Object|null} Action result object or null if action not found
  */
-function executeRoomAction(roomId, action, playerId, roomState) {
+async function executeRoomAction(roomId, action, playerId, roomState) {
   const normalizedAction = action.toLowerCase().trim()
   const roomActions = ROOM_ACTIONS[roomId]
 
@@ -51,6 +67,10 @@ function executeRoomAction(roomId, action, playerId, roomState) {
 
   if (typeof handler === 'string') {
     return executeBasicDisplay(normalizedAction, handler, playerId, roomState)
+  }
+
+  if (isStructuredAction(handler)) {
+    return executeStructuredAction(normalizedAction, handler, playerId, roomState)
   }
 
   return null
@@ -111,6 +131,74 @@ function createErrorResult(action, message) {
       payload: createPlayerPayload(action, false, message),
     },
   }
+}
+
+/**
+ * Determine if an action handler is a structured definition.
+ */
+function isStructuredAction(handler) {
+  return handler && typeof handler === 'object' && !Array.isArray(handler)
+}
+
+/**
+ * Execute structured action definition with optional effects.
+ */
+async function executeStructuredAction(actionName, definition, playerId, roomState) {
+  const player = roomState.players.get(playerId)
+  if (!player) {
+    return createErrorResult(actionName, 'Player not found in this room')
+  }
+
+  roomState.touchActivity()
+
+  const effects = Array.isArray(definition.effects) ? definition.effects : []
+  const { results: effectResults, inventory } = await executeEffects(effects, playerId)
+
+  const message = typeof definition.generateMessage === 'function'
+    ? definition.generateMessage(effectResults)
+    : definition.message || 'You take action.'
+
+  const success = typeof definition.success === 'boolean'
+    ? definition.success
+    : effectResults.every((r) => r?.success !== false)
+
+  return {
+    success,
+    action: actionName,
+    playerEvent: {
+      event: 'action:result',
+      payload: createPlayerPayload(actionName, success, message, {
+        roomId: roomState.roomId,
+        ...(inventory ? { inventory } : {}),
+        effects: effectResults,
+      }),
+    },
+  }
+}
+
+/**
+ * Execute a list of effects and collect results.
+ */
+async function executeEffects(effects, playerId) {
+  const results = []
+  let latestInventory = null
+
+  for (const effect of effects) {
+    if (!effect?.type) continue
+
+    if (effect.type === 'grantPersonalItemOnce') {
+      const result = await grantPersonalItemOnce(playerId, effect.itemSlug, effect.quantity || 1)
+      results.push(result)
+      if (result.inventory) {
+        latestInventory = result.inventory
+      }
+      continue
+    }
+
+    results.push({ success: false, message: `Unknown effect type: ${effect.type}` })
+  }
+
+  return { results, inventory: latestInventory }
 }
 
 module.exports = {

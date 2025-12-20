@@ -1,6 +1,7 @@
 'use client'
 
 import { Player } from '@/lib/game-state'
+import { useGameStore } from '@/lib/game-state'
 import TabContainer, { TabConfig } from './TabContainer'
 
 interface GameSidebarProps {
@@ -9,6 +10,8 @@ interface GameSidebarProps {
 }
 
 export default function GameSidebar({ player, onClose }: GameSidebarProps) {
+  const { inventory } = useGameStore()
+
   const tabs: TabConfig[] = [
     {
       id: 'stats',
@@ -66,9 +69,27 @@ export default function GameSidebar({ player, onClose }: GameSidebarProps) {
       content: (
         <div className="space-y-4 p-4">
           <h3 className="text-lg font-semibold text-white">Inventory</h3>
-          <div className="text-gray-400 text-sm">
-            Your inventory is empty.
-          </div>
+          {(!inventory || inventory.length === 0) ? (
+            <div className="text-gray-400 text-sm">
+              Your inventory is empty.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {inventory.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded bg-gray-800/40 px-3 py-2"
+                >
+                  <div className="text-white text-sm font-medium">
+                    {item.template?.name || 'Unknown Item'}
+                  </div>
+                  {item.quantity > 1 && (
+                    <div className="text-gray-400 text-xs">x{item.quantity}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ),
     },

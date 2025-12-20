@@ -1,10 +1,11 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, ItemType } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Seeding database...')
+  // Run locally with `npm run db:seed` (uses DATABASE_URL)
 
   // Create initial rooms - 9-room grassy field area
   const rooms = [
@@ -394,6 +395,27 @@ async function main() {
       where: { roomId: roomData.roomId },
       update: roomData,
       create: roomData
+    })
+  }
+
+  // Seed item templates (idempotent by slug)
+  const itemTemplates = [
+    {
+      id: 'flower_001',
+      slug: 'flower',
+      name: 'Flower',
+      description: 'A beautiful wildflower from the flower patch.',
+      type: ItemType.MISC,
+      maxStack: 1,
+      maxPerPlayer: 1,
+    },
+  ]
+
+  for (const item of itemTemplates) {
+    await prisma.itemTemplate.upsert({
+      where: { slug: item.slug },
+      update: item,
+      create: item,
     })
   }
 

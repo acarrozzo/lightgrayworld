@@ -119,6 +119,10 @@ export class SocketEventHandlers {
     return this.on(SOCKET_EVENTS.ACTION_RESULT, handler)
   }
 
+  onLoginSuccess(handler: (payload: any) => void): () => void {
+    return this.on('login:success', handler)
+  }
+
   onActionConfirmed(handler: (payload: ActionConfirmation) => void): () => void {
     return this.on(SOCKET_EVENTS.ACTION_CONFIRMED, handler)
   }

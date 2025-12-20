@@ -1,5 +1,6 @@
 // Shared socket handling logic for server.js and socket-server.js
 const { SOCKET_EVENTS } = require('./socket-utils.js')
+const { getPlayerInventory } = require('./game-engine/services/inventory-service.js')
 
 // Constants
 const ACTION_QUEUE_ERRORS = {
@@ -178,7 +179,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
     const transitionPlayerRoom = createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers)
 
     // Handle player login
-    socket.on(SOCKET_EVENTS.PLAYER_LOGIN, (playerData) => {
+    socket.on(SOCKET_EVENTS.PLAYER_LOGIN, async (playerData) => {
       console.log(`[Server] PLAYER_LOGIN received for socket ${socket.id}, player:`, playerData.username)
       console.log('[Server] PLAYER_LOGIN payload:', playerData)
 
@@ -238,6 +239,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         console.log(`[Server] Registered ${playerData.username} with engine in room ${playerData.currentRoom}`)
 
         console.log(`Player ${playerData.username} joined room ${playerData.currentRoom}`)
+
+        // Send initial inventory snapshot to client
+        const inventory = await getPlayerInventory(playerData.id)
+        socket.emit('login:success', {
+          player: playerData,
+          inventory,
+        })
       } catch (error) {
         console.error('Error handling player login:', error)
         socket.emit('error', { message: 'Failed to process login' })
