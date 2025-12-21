@@ -5,7 +5,6 @@ import { Room, useGameStore } from '@/lib/game-state'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import { ActionResultPayload, ActionErrorPayload, RoomPlayerMovedPayload, ChatMessage, WorldTickPayload } from '@/lib/socket'
-import { getRoomActions } from '@/lib/room-actions'
 import Icon from './Icon'
 import RoomDisplay from './RoomDisplay'
 
@@ -259,7 +258,6 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
     // Fallback if no onAction provided - this shouldn't happen in practice
     console.warn('No onAction handler provided to renderRoomInfo')
   })
-  const roomActions = getRoomActions(roomData.roomId)
   const defaultSubtitle = 'This is it. The world is yours.'
   const subtitleText = (roomData.subtitle ?? defaultSubtitle).trim()
   const hasSubtitle = subtitleText.length > 0
@@ -289,7 +287,7 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
 
       {/* Room Description */}
       {variant !== 'sidebar' && (
-        <p className={`text-gray-300/90 leading-relaxed ${styles.descriptionSize} mb-6`}>
+        <p className={`text-gray-300/90 leading-relaxed ${styles.descriptionSize} mb-4`}>
           {roomData.description}
         </p>
       )}
@@ -310,22 +308,6 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
           <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
             East
           </button>
-          
-          {/* Room-specific actions */}
-          {roomActions.map((actionItem) => (
-            <button
-              key={actionItem.action}
-              onClick={() => handleRoomDisplayAction(actionItem.action)}
-              className={`px-4 py-1.5 text-white rounded-lg text-sm flex items-center gap-2 transition-all duration-200 ${
-                actionItem.action === 'read sign' ? 'bg-amber-600/90 hover:bg-amber-500' :
-                actionItem.action === 'open gold chest' || actionItem.action === 'open chest' ? 'bg-orange-500/90 hover:bg-orange-500' :
-                actionItem.className || 'bg-blue-600/90 hover:bg-blue-500'
-              }`}
-            >
-              {actionItem.icon && <Icon name={actionItem.icon} size={18} color="white" />}
-              {actionItem.label}
-            </button>
-          ))}
         </div>
       )}
 
@@ -335,31 +317,14 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
         currentPlayerId={player?.id}
         onAction={handleRoomDisplayAction}
         showHeader={false}
-        className="mt-6"
+        className="mt-0"
         worldTick={worldTick}
         actionResult={actionResult}
       />
 
       {/* Additional room info sections */}
-      {(roomData.players?.length > 0 || roomData.items?.length > 0 || roomData.npcs?.length > 0) && (          <div className="mt-6 space-y-3">
-          {/* Players in Room */}
-          {roomData.players && roomData.players.length > 0 && (
-            <div className="pt-2 px-2 XXborder-t border-gray-800/50">
-              <h4 className="text-sm font-semibold text-amber-400/90 mb-2">Also Here: ({roomData.players.length})</h4>
-              <div className="flex flex-wrap gap-2">
-                {roomData.players.map((player: any) => (
-                  <span
-                    key={player.id}
-                    className="px-2.5 py-1 bg-blue-600/80 hover:bg-blue-600 text-white text-xs rounded-full transition-colors duration-200"
-                  >
-                    [{player.level}] {player.username}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-
+      {(roomData.items?.length > 0 || roomData.npcs?.length > 0) && (
+        <div className="mt-6 space-y-3">
           {/* Items in Room */}
           {roomData.items && roomData.items.length > 0 && (
             <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-800/50">

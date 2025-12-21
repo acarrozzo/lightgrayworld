@@ -125,7 +125,7 @@ export default function RoomDisplay({
   }
 
   return (
-    <div className={`mt-4 p-4 bg-gray-800/70 rounded-lg border border-gray-800/60 ${className || ''}`}>
+    <div className={`roomboxActions ${className || ''}`}>
       {showHeader && (
         <div className="flex items-center justify-between">
           <div>
@@ -178,7 +178,7 @@ export default function RoomDisplay({
               <button
                 key={player.id}
                 onClick={() => handleInspectPlayer(player)}
-                className="px-3 py-1.5 rounded-md bg-gray-700/70 text-white text-xs hover:bg-gray-700 transition-colors"
+                className="px-3 py-1.5 rounded-md bg-violet-500/70 text-white text-xs hover:bg-violet-500 transition-colors"
                 disabled={isPerformingAction === `look at ${player.username}`}
               >
                 [{player.level}] {player.username}
