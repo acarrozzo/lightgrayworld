@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
-import RoomDisplay from './RoomDisplay'
 import { useGameStore } from '@/lib/game-state'
 import { ArrowBigUp, ArrowBigUpDash } from 'lucide-react'
 
@@ -360,15 +359,6 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
           </div>
         )}
       </div>
-
-      {/* Room Display */}
-      <RoomDisplay
-        room={room}
-        onAction={onAction}
-        roomPlayers={roomPlayers}
-        currentPlayerId={currentPlayerId}
-        showPlayers={false}
-      />
     </div>
   )
 }
