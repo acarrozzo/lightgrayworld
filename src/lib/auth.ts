@@ -16,27 +16,27 @@ export interface AuthUser {
   isActive: boolean
 }
 
-export function generateToken(user: AuthUser): string {
-  return jwt.sign(
-    { 
-      id: user.id, 
-      username: user.username,
-      level: user.level,
-      hp: user.hp,
-      hpMax: user.hpMax,
-      mp: user.mp,
-      mpMax: user.mpMax,
-      currentRoom: user.currentRoom,
-      isActive: user.isActive
-    },
-    JWT_SECRET,
-    { expiresIn: '7d' }
-  )
+interface TokenPayload {
+  id: string
+  username: string
+  scopes?: string[]
 }
 
-export function verifyToken(token: string): AuthUser | null {
+export function generateToken(user: AuthUser): string {
+  const payload: TokenPayload = {
+    id: user.id,
+    username: user.username,
+  }
+
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
+}
+
+export function verifyToken(token: string): TokenPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as AuthUser
+    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
+    if (!decoded?.id || !decoded?.username) {
+      return null
+    }
     return decoded
   } catch (error) {
     return null

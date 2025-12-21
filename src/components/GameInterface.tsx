@@ -68,6 +68,7 @@ export default function GameInterface() {
     cacheRoom,
     getCachedRoom,
     setInventory,
+    logout,
   } = useGameStore()
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
@@ -617,26 +618,14 @@ export default function GameInterface() {
         return true
       }
 
-      const playerRoomId = player.currentRoom || currentRoom.roomId
-      if (player.currentRoom !== currentRoom.roomId) {
-        console.warn('[GameInterface] Player room mismatch during login, proceeding with fallback', {
-          reason,
-          playerRoom: player.currentRoom,
-          currentRoom: currentRoom.roomId,
-          fallbackRoom: playerRoomId,
-        })
-      }
-
-      const payload = { ...player, currentRoom: playerRoomId }
-
       console.log('[GameInterface] Logging in player via socket', {
         reason,
         socketId: socket.id,
         playerId: player.id,
-        playerRoom: payload.currentRoom,
+        playerRoom: player.currentRoom ?? currentRoom.roomId,
       })
 
-      const loginResult = socketHandlers.loginPlayer(payload)
+      const loginResult = socketHandlers.loginPlayer()
       console.log('[GameInterface] loginPlayer result:', loginResult)
       if (loginResult) {
         lastLoginSocketId.current = socket.id
@@ -671,6 +660,33 @@ export default function GameInterface() {
       socket.off('connect', handleConnect)
     }
   }, [socket, attemptSocketLogin])
+
+  useEffect(() => {
+    if (!socket) {
+      return
+    }
+
+    const handleAuthError = (error: { message?: string }) => {
+      console.error('[GameInterface] Socket auth error:', error?.message || 'Unknown auth error')
+      logout()
+    }
+
+    const handleConnectError = (error: Error & { message: string }) => {
+      const message = error?.message || ''
+      if (message.toLowerCase().includes('token') || message.toLowerCase().includes('auth')) {
+        console.error('[GameInterface] Socket auth failed during connection:', message)
+        logout()
+      }
+    }
+
+    socket.on('auth:error', handleAuthError)
+    socket.on('connect_error', handleConnectError)
+
+    return () => {
+      socket.off('auth:error', handleAuthError)
+      socket.off('connect_error', handleConnectError)
+    }
+  }, [socket, logout])
 
   useEffect(() => {
     if (!socket || !player || !isLoggedIn) {

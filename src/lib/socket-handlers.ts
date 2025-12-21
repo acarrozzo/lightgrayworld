@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import { Socket } from 'socket.io-client'
 import {
   SOCKET_EVENTS,
-  PlayerData,
   ChatMessage,
   ActionData,
   ActionResultPayload,
@@ -67,10 +66,10 @@ export class SocketEventHandlers {
     }
   }
 
-  // Player login
-  loginPlayer(playerData: PlayerData): boolean {
-    console.log('[SocketHandlers] loginPlayer called with:', playerData.username, 'socket:', !!this.socket)
-    const result = this.emit(SOCKET_EVENTS.PLAYER_LOGIN, playerData)
+  // Player login (no payload - server derives identity from JWT)
+  loginPlayer(): boolean {
+    console.log('[SocketHandlers] loginPlayer called (payloadless), socket:', !!this.socket)
+    const result = this.emit(SOCKET_EVENTS.PLAYER_LOGIN, {})
     console.log('[SocketHandlers] PLAYER_LOGIN emit result:', result)
     return result
   }

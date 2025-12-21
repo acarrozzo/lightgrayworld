@@ -178,25 +178,64 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
     const emitQueueAwareError = createEmitQueueAwareError(socket)
     const transitionPlayerRoom = createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers)
 
-    // Handle player login
-    socket.on(SOCKET_EVENTS.PLAYER_LOGIN, async (playerData) => {
-      console.log(`[Server] PLAYER_LOGIN received for socket ${socket.id}, player:`, playerData.username)
-      console.log('[Server] PLAYER_LOGIN payload:', playerData)
+    // Handle player login (server-authoritative; ignores client payload)
+    socket.on(SOCKET_EVENTS.PLAYER_LOGIN, async () => {
+      const authUser = socket.data?.user
+      console.log(`[Server] PLAYER_LOGIN received for socket ${socket.id}, auth user:`, authUser?.username)
+
+      if (!authUser || !authUser.userId) {
+        socket.emit('auth:error', { message: 'Not authenticated' })
+        socket.disconnect(true)
+        return
+      }
 
       try {
         const previousState = activePlayers.get(socket.id)
         const previousRoom = previousState?.currentRoom
 
-        activePlayers.set(socket.id, {
-          ...playerData,
+        const dbPlayer = await prisma.user.findUnique({
+          where: { id: authUser.userId },
+          select: {
+            id: true,
+            username: true,
+            level: true,
+            hp: true,
+            hpMax: true,
+            mp: true,
+            mpMax: true,
+            currentRoom: true,
+            isActive: true,
+          },
+        })
+
+        if (!dbPlayer || !dbPlayer.isActive) {
+          socket.emit('auth:error', { message: 'Player not found or inactive' })
+          socket.disconnect(true)
+          return
+        }
+
+        const playerData = {
+          id: dbPlayer.id,
+          username: dbPlayer.username,
+          level: dbPlayer.level,
+          hp: dbPlayer.hp,
+          hpMax: dbPlayer.hpMax,
+          mp: dbPlayer.mp,
+          mpMax: dbPlayer.mpMax,
+          currentRoom: dbPlayer.currentRoom,
+          isActive: dbPlayer.isActive,
           socketId: socket.id,
           lastActive: new Date(),
-        })
+        }
+
+        activePlayers.set(socket.id, playerData)
         console.log(`[Server] Player ${playerData.username} registered in activePlayers for socket ${socket.id}`)
         console.log(`[Server] activePlayers now has ${activePlayers.size} entries`)
 
         if (previousRoom && previousRoom !== playerData.currentRoom) {
-          console.log(`[Server] Player ${playerData.username} moving socket room from ${previousRoom} to ${playerData.currentRoom}`)
+          console.log(
+            `[Server] Player ${playerData.username} moving socket room from ${previousRoom} to ${playerData.currentRoom}`
+          )
           socket.leave(`room-${previousRoom}`)
           if (roomPlayers.has(previousRoom)) {
             roomPlayers.get(previousRoom).delete(socket.id)
@@ -248,7 +287,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         })
       } catch (error) {
         console.error('Error handling player login:', error)
-        socket.emit('error', { message: 'Failed to process login' })
+        socket.emit('auth:error', { message: 'Failed to process login' })
+        socket.disconnect(true)
       }
     })
 

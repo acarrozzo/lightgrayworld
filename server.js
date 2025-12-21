@@ -6,6 +6,7 @@ const { setSocketIO } = require('./src/lib/socket-utils.js')
 const { GameEngine } = require('./src/lib/game-engine/engine.js')
 const { PrismaClient } = require('@prisma/client')
 const { setupSocketHandlers } = require('./src/lib/socket-server-handlers.js')
+const { verifySocketToken } = require('./src/lib/token-verification.js')
 const prisma = new PrismaClient()
 
 const dev = process.env.NODE_ENV !== 'production'
@@ -27,6 +28,24 @@ app.prepare().then(() => {
       origin: "*",
       methods: ["GET", "POST"]
     }
+  })
+
+  // Socket authentication middleware
+  io.use((socket, next) => {
+    const token = socket.handshake?.auth?.token
+
+    if (!token) {
+      return next(new Error('Authentication token required'))
+    }
+
+    const user = verifySocketToken(token)
+
+    if (!user) {
+      return next(new Error('Invalid or expired token'))
+    }
+
+    socket.data.user = user // { userId, username }
+    next()
   })
 
   // Set the global Socket.io instance

@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client'
+import { useGameStore } from './game-state'
 
 let globalSocket: Socket | null = null
 const connectionListeners = new Set<(connected: boolean) => void>()
@@ -8,6 +9,7 @@ export function getOrCreateSocket(): Socket {
     console.log('[SocketClient] Creating global socket instance')
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'
     const socketPath = process.env.NEXT_PUBLIC_SOCKET_PATH || '/socket.io'
+    const token = useGameStore.getState().token
 
     globalSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
@@ -17,7 +19,8 @@ export function getOrCreateSocket(): Socket {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      path: socketPath
+      path: socketPath,
+      auth: token ? { token } : undefined,
     })
 
     globalSocket.on('connect', () => {

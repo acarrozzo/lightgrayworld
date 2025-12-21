@@ -3,7 +3,7 @@ import { Server } from 'socket.io'
 // Socket event types
 export interface SocketEvents {
   // Client to server events
-  'player-login': (playerData: PlayerData) => void
+  'player-login': (data: Record<string, never>) => void
   'send-chat-message': (data: { message: string }) => void
   'send-room-chat-message': (data: { message: string; roomId: string }) => void
   'game-action': (data: { action: string }) => void
@@ -20,18 +20,6 @@ export interface SocketEvents {
   'action:error': (payload: ActionErrorPayload) => void
   'world:tick': (payload: WorldTickPayload) => void
   'room:player-moved': (payload: RoomPlayerMovedPayload) => void
-}
-
-// Data type definitions
-export interface PlayerData {
-  id: string
-  username: string
-  level: number
-  hp: number
-  hpMax: number
-  mp: number
-  mpMax: number
-  currentRoom: string
 }
 
 export interface PlayerInfo {
