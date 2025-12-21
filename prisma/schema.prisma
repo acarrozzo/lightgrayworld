@@ -130,6 +130,7 @@ model User {
   PlayerItem                PlayerItem[]
   quests                    QuestProgress[]
   sessions                  Session[]
+  actionCaps                ActionCap[]
   room                      Room            @relation("RoomPlayers", fields: [currentRoom], references: [roomId])
 }
 
@@ -326,6 +327,21 @@ model PlayerItem {
   updatedAt    DateTime     @default(now())
   User         User         @relation(fields: [playerId], references: [id], onDelete: Cascade)
   ItemTemplate ItemTemplate @relation(fields: [templateId], references: [id])
+}
+
+model ActionCap {
+  id             String   @id @default(cuid())
+  playerId       String
+  roomId         String
+  actionKey      String
+  usedCount      Int      @default(0)
+  lastTickNumber Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, roomId, actionKey])
+  @@index([playerId, roomId])
 }
 
 enum ItemType {

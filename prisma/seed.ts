@@ -409,6 +409,15 @@ async function main() {
       maxStack: 1,
       maxPerPlayer: 1,
     },
+    {
+      id: 'redberry_001',
+      slug: 'redberry',
+      name: 'Redberry',
+      description: 'A juicy red berry that restores health.',
+      type: ItemType.CONSUMABLE,
+      maxStack: 99,
+      maxPerPlayer: null,
+    },
   ]
 
   for (const item of itemTemplates) {

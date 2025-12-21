@@ -3,6 +3,8 @@
  * Handles execution of actions that are unique to specific rooms
  */
 const { grantPersonalItemOnce } = require('./effects')
+const { grantItemOnce } = require('./services/inventory-service')
+const { checkAndIncrementCap } = require('./services/action-cap-service')
 
 /**
  * Map of room IDs to room-specific actions. Each action entry can be either:
@@ -16,7 +18,18 @@ const ROOM_ACTIONS = {
     'open gold chest': 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
   },
   '002': {
-    'pick redberry': 'You pick a redberry from the bush. The fruit looks ripe and juicy, ready to restore your health.',
+    'pick redberry': {
+      maxPerTick: 5,
+      isCapped: true,
+      effects: [{ type: 'grantItem', itemSlug: 'redberry', quantity: 1 }],
+      generateMessage: (effects, capInfo) => {
+        if (!effects?.[0]?.success) {
+          const secondsRemaining = capInfo?.secondsUntilReset ?? 0
+          return `No more redberries right now. The bushes will regrow in ${secondsRemaining} seconds.`
+        }
+        return `You pick a ripe redberry. (${capInfo.remaining} picks remaining this tick)`
+      },
+    },
   },
   '003': {
     'ex cabin': "You examine the cabin. It's warm and cozy, with a cooking fire burning and the Old Man rocking in his chair.",
@@ -47,7 +60,7 @@ const ROOM_ACTIONS = {
  * @param {RoomState} roomState - The room state instance
  * @returns {Object|null} Action result object or null if action not found
  */
-async function executeRoomAction(roomId, action, playerId, roomState) {
+async function executeRoomAction(roomId, action, playerId, roomState, currentTickNumber, nextTickAt) {
   const normalizedAction = action.toLowerCase().trim()
   const roomActions = ROOM_ACTIONS[roomId]
 
@@ -70,7 +83,7 @@ async function executeRoomAction(roomId, action, playerId, roomState) {
   }
 
   if (isStructuredAction(handler)) {
-    return executeStructuredAction(normalizedAction, handler, playerId, roomState)
+    return executeStructuredAction(normalizedAction, handler, playerId, roomState, currentTickNumber, nextTickAt)
   }
 
   return null
@@ -143,7 +156,7 @@ function isStructuredAction(handler) {
 /**
  * Execute structured action definition with optional effects.
  */
-async function executeStructuredAction(actionName, definition, playerId, roomState) {
+async function executeStructuredAction(actionName, definition, playerId, roomState, currentTickNumber, nextTickAt) {
   const player = roomState.players.get(playerId)
   if (!player) {
     return createErrorResult(actionName, 'Player not found in this room')
@@ -151,11 +164,70 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
 
   roomState.touchActivity()
 
+  let capResult = null
+
+  // Handle capped actions before running effects
+  if (definition.isCapped) {
+    if (!currentTickNumber && currentTickNumber !== 0) {
+      return createErrorResult(actionName, 'World tick unavailable. Please try again.')
+    }
+
+    capResult = await checkAndIncrementCap(
+      playerId,
+      roomState.roomId,
+      actionName,
+      definition.maxPerTick,
+      currentTickNumber
+    )
+
+    const secondsUntilReset =
+      typeof nextTickAt === 'number'
+        ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
+        : null
+
+    if (!capResult.allowed) {
+      const message = typeof definition.generateMessage === 'function'
+        ? definition.generateMessage([{ success: false }], {
+            remaining: 0,
+            secondsUntilReset,
+          })
+        : 'You cannot perform this action right now.'
+
+      return {
+        success: false,
+        action: actionName,
+        message,
+        playerEvent: {
+          event: 'action:result',
+          payload: createPlayerPayload(actionName, false, message, {
+            roomId: roomState.roomId,
+            remaining: 0,
+            secondsUntilReset,
+          }),
+        },
+      }
+    }
+
+    roomState.touchActivity()
+  }
+
   const effects = Array.isArray(definition.effects) ? definition.effects : []
   const { results: effectResults, inventory } = await executeEffects(effects, playerId)
 
+  const capInfo = definition.isCapped
+    ? {
+        remaining: capResult
+          ? Math.max(0, definition.maxPerTick - capResult.usedCount)
+          : 0,
+        secondsUntilReset:
+          typeof nextTickAt === 'number'
+            ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
+            : null,
+      }
+    : null
+
   const message = typeof definition.generateMessage === 'function'
-    ? definition.generateMessage(effectResults)
+    ? definition.generateMessage(effectResults, capInfo)
     : definition.message || 'You take action.'
 
   const success = typeof definition.success === 'boolean'
@@ -170,6 +242,7 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
       payload: createPlayerPayload(actionName, success, message, {
         roomId: roomState.roomId,
         ...(inventory ? { inventory } : {}),
+        ...(capInfo ? { remaining: capInfo.remaining, secondsUntilReset: capInfo.secondsUntilReset } : {}),
         effects: effectResults,
       }),
     },
@@ -189,6 +262,19 @@ async function executeEffects(effects, playerId) {
     if (effect.type === 'grantPersonalItemOnce') {
       const result = await grantPersonalItemOnce(playerId, effect.itemSlug, effect.quantity || 1)
       results.push(result)
+      if (result.inventory) {
+        latestInventory = result.inventory
+      }
+      continue
+    }
+
+    if (effect.type === 'grantItem') {
+      const result = await grantItemOnce(playerId, effect.itemSlug, effect.quantity || 1)
+      results.push({
+        success: result.granted,
+        message: result.reason,
+        inventory: result.inventory,
+      })
       if (result.inventory) {
         latestInventory = result.inventory
       }

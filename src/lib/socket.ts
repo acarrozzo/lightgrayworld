@@ -113,9 +113,12 @@ export interface RoomTickUpdate {
 
 export interface WorldTickPayload {
   tickId: number
+  tickNumber: number
   timestamp: number
-  roomId: string
-  update: RoomTickUpdate
+  nextTickAt: number
+  tickIntervalMs: number
+  roomId?: string
+  update?: RoomTickUpdate
 }
 
 // Socket event constants

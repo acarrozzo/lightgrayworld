@@ -224,6 +224,11 @@ interface GameFeedProps {
   actionResult?: any
   className?: string
   onRegisterControls?: (handlers: FeedControlHandlers) => void
+  worldTick?: {
+    tickNumber: number
+    nextTickAt: number
+    tickIntervalMs: number
+  }
 }
 
 // Variant styles configuration
@@ -247,8 +252,8 @@ const variantStyles = {
 } as const
 
 // Export renderRoomInfo function for reuse in other components
-export const renderRoomInfo = (roomData: any, options?: { action?: string; isMostRecent?: boolean; player?: any; onAction?: (action: string) => void; variant?: 'default' | 'sidebar' }) => {
-  const { action, isMostRecent = false, player, onAction, variant = 'default' } = options || {}
+export const renderRoomInfo = (roomData: any, options?: { action?: string; isMostRecent?: boolean; player?: any; onAction?: (action: string) => void; variant?: 'default' | 'sidebar'; worldTick?: { tickNumber: number; nextTickAt: number; tickIntervalMs: number }; actionResult?: any }) => {
+  const { action, isMostRecent = false, player, onAction, variant = 'default', worldTick, actionResult } = options || {}
   const styles = variantStyles[variant]
   const handleRoomDisplayAction = onAction || (async (action: string) => {
     // Fallback if no onAction provided - this shouldn't happen in practice
@@ -331,6 +336,8 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
         onAction={handleRoomDisplayAction}
         showHeader={false}
         className="mt-6"
+        worldTick={worldTick}
+        actionResult={actionResult}
       />
 
       {/* Additional room info sections */}
@@ -392,7 +399,7 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
   )
 }
 
-export default function GameFeed({ room, actionResult, className = '', onRegisterControls }: GameFeedProps) {
+export default function GameFeed({ room, actionResult, className = '', onRegisterControls, worldTick }: GameFeedProps) {
   const [actions, setActions] = useState<ActionHistory[]>([])
   const [initialRoom, setInitialRoom] = useState(room)
   const [isNearBottom, setIsNearBottom] = useState(true)
@@ -1064,6 +1071,8 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
                     {renderRoomInfo(action.roomData, {
                       player,
                       onAction: handleRoomDisplayAction,
+                      worldTick,
+                      actionResult,
                     })}
                   </div>
                 )}

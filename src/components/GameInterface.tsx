@@ -84,6 +84,11 @@ export default function GameInterface() {
     scrollToTop: () => {},
     scrollToBottom: () => {},
   }))
+  const [worldTick, setWorldTick] = useState({
+    tickNumber: 0,
+    nextTickAt: Date.now() + 10000,
+    tickIntervalMs: 10000,
+  })
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
   const lastLoginSocketId = useRef<string | null>(null)
@@ -103,6 +108,22 @@ export default function GameInterface() {
       setRightSidebarOpen(JSON.parse(savedRightSidebar))
     }
   }, [])
+
+  // Listen for world ticks to drive countdowns
+  useEffect(() => {
+    if (!socket) return
+    const cleanup = socketHandlers.onWorldTick((payload) => {
+      const tickNumber = payload?.tickNumber ?? payload?.tickId ?? 0
+      const interval = payload?.tickIntervalMs ?? 10000
+      const nextTickAt = payload?.nextTickAt ?? (Date.now() + interval)
+      setWorldTick({
+        tickNumber,
+        nextTickAt,
+        tickIntervalMs: interval,
+      })
+    })
+    return cleanup
+  }, [socket, socketHandlers])
 
   // Save sidebar state to localStorage
   useEffect(() => {
@@ -760,6 +781,7 @@ export default function GameInterface() {
                 <GameFeed 
                   room={currentRoom} 
                   actionResult={actionResult} 
+                  worldTick={worldTick}
                   onRegisterControls={handleRegisterFeedControls}
                 />
               </div>

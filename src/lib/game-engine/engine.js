@@ -14,6 +14,8 @@ class GameEngine {
     this.playerSockets = new Map()
     this.lastMetricsLoggedAt = 0
     this.lastTickProfile = null
+    this.currentWorldTickNumber = 0
+    this.nextWorldTickAt = Date.now() + tickMs
   }
 
   start() {
@@ -84,6 +86,18 @@ class GameEngine {
   async processWorldTick(tickId) {
     const tickStart = performance.now()
     const tickTimestamp = Date.now()
+    const nextTickAt = tickTimestamp + this.tickClock.tickMs
+    this.currentWorldTickNumber = tickId
+    this.nextWorldTickAt = nextTickAt
+    // Broadcast global world tick for all clients (authoritative countdown)
+    this.io.emit('world:tick', {
+      tickNumber: tickId,
+      tickId: tickId, // for backwards compatibility with GameFeed
+      timestamp: tickTimestamp,
+      nextTickAt,
+      tickIntervalMs: this.tickClock.tickMs,
+      roomId: 'global', // indicate this is a global tick, not room-specific
+    })
     const roomStats = []
     let activeRooms = 0
     let roomsWithUpdates = 0
@@ -118,7 +132,10 @@ class GameEngine {
       roomsWithUpdates += 1
       this.io.to(`room-${roomId}`).emit('world:tick', {
         tickId,
+        tickNumber: tickId,
         timestamp: tickTimestamp,
+        nextTickAt,
+        tickIntervalMs: this.tickClock.tickMs,
         roomId,
         update,
       })
@@ -143,7 +160,12 @@ class GameEngine {
       playerId,
       async () => {
         const room = this.getOrCreateRoom(roomId)
-        const result = await room.executeAction(action, playerId)
+        const result = await room.executeAction(
+          action,
+          playerId,
+          this.currentWorldTickNumber,
+          this.nextWorldTickAt
+        )
 
         this.handleActionResult({ roomId, playerId, result })
         return result
