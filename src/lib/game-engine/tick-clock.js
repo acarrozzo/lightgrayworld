@@ -1,7 +1,7 @@
-//const WORLD_TICK_MS = 43200000; // 12 hours
+const WORLD_TICK_MS = 43200000; // 12 hours
 // const WORLD_TICK_MS = 3600000; // 1 hour 
 // const WORLD_TICK_MS = 30000; // 30 seconds
- const WORLD_TICK_MS = 600000; // 10 minute
+// const WORLD_TICK_MS = 600000; // 10 minute
 // const WORLD_TICK_MS = 60000; // 1 minute
 //const WORLD_TICK_MS = 10000; // 10 seconds
 
