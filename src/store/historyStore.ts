@@ -10,12 +10,17 @@ export type HistoryEntry = {
   scope?: 'room' | 'world' | 'system'
 }
 
+export type HistoryEntryInput = Omit<HistoryEntry, 'id' | 'ts'> & {
+  id?: string
+  ts?: number
+}
+
 type HistoryState = {
   userId: string | null
   entries: HistoryEntry[]
   setUser: (userId: string | null) => void
-  append: (entry: string | HistoryEntry) => HistoryEntry | null
-  appendMany: (entries: Array<string | HistoryEntry>) => void
+  append: (entry: string | HistoryEntryInput) => HistoryEntry | null
+  appendMany: (entries: Array<string | HistoryEntryInput>) => void
   clear: () => void
 }
 
@@ -46,7 +51,7 @@ const persistEntries = (userId: string | null, entries: HistoryEntry[]) => {
   localStorage.setItem(storageKey(userId), JSON.stringify(entries))
 }
 
-const ensureEntry = (entry: string | HistoryEntry): HistoryEntry => {
+const ensureEntry = (entry: string | HistoryEntryInput): HistoryEntry => {
   if (typeof entry === 'string') {
     return {
       id: crypto.randomUUID ? crypto.randomUUID() : `hist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
