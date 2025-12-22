@@ -1,6 +1,6 @@
 const { prisma } = require('../../db-client')
 const { getPlayerInventory } = require('./inventory-service')
-const { normalizeRoomItems } = require('./room-normalization')
+const { normalizeRoomItems } = require('./room-normalization.js')
 
 /**
  * Pickup an item from a room (transactional)

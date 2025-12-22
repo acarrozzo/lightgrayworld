@@ -46,17 +46,31 @@ const ROOM_ITEMS_INCLUDE = {
 function normalizeRoomItems(rawItems) {
   if (!Array.isArray(rawItems)) return []
 
-  return rawItems.map((item) => ({
-    id: item.id,
-    quantity: item.quantity,
-    template: {
-      id: item.ItemTemplate.id,
-      slug: item.ItemTemplate.slug,
-      name: item.ItemTemplate.name,
-      description: item.ItemTemplate.description,
-      type: item.ItemTemplate.type,
-    },
-  }))
+  const normalized = []
+
+  rawItems.forEach((item) => {
+    if (!item?.ItemTemplate) {
+      console.warn('[room-normalization] Skipping room item missing ItemTemplate', {
+        id: item?.id,
+        templateId: item?.templateId,
+      })
+      return
+    }
+
+    normalized.push({
+      id: item.id,
+      quantity: item.quantity,
+      template: {
+        id: item.ItemTemplate.id,
+        slug: item.ItemTemplate.slug,
+        name: item.ItemTemplate.name,
+        description: item.ItemTemplate.description,
+        type: item.ItemTemplate.type,
+      },
+    })
+  })
+
+  return normalized
 }
 
 /**

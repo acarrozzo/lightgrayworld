@@ -4,7 +4,7 @@ const { getPlayerInventory } = require('./game-engine/services/inventory-service
 const {
   ROOM_ITEMS_SELECT,
   normalizeRoomData,
-} = require('./game-engine/services/room-normalization')
+} = require('./game-engine/services/room-normalization.js')
 
 // Constants
 const ACTION_QUEUE_ERRORS = {
