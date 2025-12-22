@@ -7,7 +7,7 @@ interface GameHeaderProps {
   player: Player
   onOpenSettings?: () => void
 }
-
+// VERSION NUMBER
 export default function GameHeader({ player, onOpenSettings }: GameHeaderProps) {
   return (
     <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-3 shadow-sm">
@@ -15,7 +15,7 @@ export default function GameHeader({ player, onOpenSettings }: GameHeaderProps) 
         <div className="flex items-center space-x-3 sm:space-x-4">
           <div className="flex items-center space-x-3 sm:space-x-4 hidden md:flex">
             <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">Light Gray RPG</h1>
-            <span className="text-xs sm:text-sm text-gray-500 font-normal">v0.1.2</span>
+            <span className="text-xs sm:text-sm text-gray-500 font-normal">v0.1.3 - item epic</span>
             <div className="text-sm text-gray-400">
               Welcome, <span className="text-amber-400/90 font-medium">{player.username}</span>
             </div>

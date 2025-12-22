@@ -1,6 +1,10 @@
 // Shared socket handling logic for server.js and socket-server.js
 const { SOCKET_EVENTS } = require('./socket-utils.js')
 const { getPlayerInventory } = require('./game-engine/services/inventory-service.js')
+const {
+  ROOM_ITEMS_SELECT,
+  normalizeRoomData,
+} = require('./game-engine/services/room-normalization')
 
 // Constants
 const ACTION_QUEUE_ERRORS = {
@@ -91,7 +95,7 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) 
 
 // Standard room query - ensures nameColor and subtitleColor are included
 async function fetchRoomWithColors(prisma, roomId) {
-  return await prisma.room.findUnique({
+  const room = await prisma.room.findUnique({
     where: { roomId },
     select: {
       id: true,
@@ -130,10 +134,12 @@ async function fetchRoomWithColors(prisma, roomId) {
           isActive: true,
         },
       },
-      items: true,
+      ...ROOM_ITEMS_SELECT,
       npcs: true,
     },
   })
+
+  return normalizeRoomData(room)
 }
 
 // Direction finding helpers for entry/exit messages
@@ -558,20 +564,26 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       const player = activePlayers.get(socket.id)
       if (!player) return
 
-      const actionName = data?.action?.toString().toLowerCase()
+      let actionType = null
+      let actionData = {}
 
-      if (!actionName) {
+      if (typeof data?.action === 'string') {
+        actionType = data.action.toLowerCase()
+      } else if (data?.action && typeof data.action === 'object' && typeof data.action.type === 'string') {
+        actionType = data.action.type
+        actionData = data.action.data || {}
+      }
+
+      if (!actionType) {
         socket.emit('action:error', { action: 'action', message: 'Action is required' })
         return
       }
 
       try {
-        // For look action, fetch room data to get room name
-        let actionData = {}
-        if (actionName === 'look') {
+        if (actionType === 'look') {
           const currentRoom = await fetchRoomWithColors(prisma, player.currentRoom)
           if (currentRoom) {
-            actionData.roomName = currentRoom.name
+            actionData = { ...actionData, roomName: currentRoom.name }
           }
         }
 
@@ -579,28 +591,28 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
           playerId: player.id,
           roomId: player.currentRoom,
           action: {
-            type: actionName,
+            type: actionType,
             data: Object.keys(actionData).length > 0 ? actionData : undefined,
           },
         })
 
         if (result?.success === false) {
           socket.emit('action:error', {
-            action: actionName,
+            action: actionType,
             message: result.message || 'Action failed',
           })
           return
         }
 
         socket.emit('action:confirmed', {
-          action: actionName,
+          action: actionType,
           success: true,
           data: result?.data,
         })
       } catch (error) {
         console.error('Error handling game action:', error)
         emitQueueAwareError({
-          actionName,
+          actionName: actionType,
           player,
           error,
           fallbackMessage: 'Action failed',

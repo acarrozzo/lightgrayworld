@@ -70,6 +70,7 @@ export default function GameInterface() {
     setInventory,
     logout,
   } = useGameStore()
+  const { updateRoomItems } = useGameStore()
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(false)
@@ -125,6 +126,15 @@ export default function GameInterface() {
     })
     return cleanup
   }, [socket, socketHandlers])
+
+  useEffect(() => {
+    if (!socket) return
+    const cleanup = socketHandlers.onRoomItemsUpdate((payload) => {
+      if (!payload?.roomId || !Array.isArray(payload.items)) return
+      updateRoomItems(payload.roomId, payload.items)
+    })
+    return cleanup
+  }, [socket, socketHandlers, updateRoomItems])
 
   // Save sidebar state to localStorage
   useEffect(() => {
@@ -379,8 +389,11 @@ export default function GameInterface() {
     }
   }, [isLoggedIn, isInitialLoad, loadRoomData])
 
-  const handleAction = async (actionType: string) => {
-    console.log('[handleAction] Called with action:', actionType)
+  const handleAction = async (actionInput: string | { type: string; data?: any }) => {
+    const actionType = typeof actionInput === 'string' ? actionInput : actionInput.type
+    const actionData = typeof actionInput === 'string' ? undefined : actionInput.data
+
+    console.log('[handleAction] Called with action:', actionType, 'data:', actionData)
     setAction(actionType)
     setActionResult(null)
 
@@ -457,7 +470,8 @@ export default function GameInterface() {
     }
 
     console.log('[handleAction] Non-navigation action, sending via socketHandlers')
-    const result = socketHandlers.sendGameAction(actionType)
+    const payload = actionData ? { type: normalizedAction, data: actionData } : actionType
+    const result = socketHandlers.sendGameAction(payload as any)
     console.log('[handleAction] sendGameAction result:', result)
     if (!result) {
       console.warn('Failed to send game action via socket; action will be ignored')
@@ -484,6 +498,10 @@ export default function GameInterface() {
       setActionResult({ ...payload, source: 'socket' })
       if (payload?.data?.inventory) {
         setInventory(payload.data.inventory)
+      }
+
+      if (payload?.data?.roomItems && currentRoomRef.current?.roomId) {
+        updateRoomItems(currentRoomRef.current.roomId, payload.data.roomItems)
       }
 
       if (payload.action === 'move' && payload.success && payload.data?.toRoom) {
@@ -784,6 +802,7 @@ export default function GameInterface() {
           <GameSidebar 
             player={player} 
             onClose={() => setLeftSidebarOpen(false)} 
+            onAction={handleAction}
           />
         </div>
         

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
+import { ROOM_ITEMS_SELECT, normalizeRoomData } from '@/lib/game-engine/services/room-normalization'
 
 async function handleGetRoom(request: AuthenticatedRequest) {
   try {
@@ -18,7 +19,30 @@ async function handleGetRoom(request: AuthenticatedRequest) {
     // Get room data
     const room = await prisma.room.findUnique({
       where: { roomId: actualRoomId },
-      include: {
+      select: {
+        id: true,
+        roomId: true,
+        name: true,
+        subtitle: true,
+        subtitlePosition: true,
+        nameColor: true,
+        subtitleColor: true,
+        icon: true,
+        iconColor: true,
+        directionColors: true,
+        description: true,
+        dangerLevel: true,
+        isSafe: true,
+        north: true,
+        northeast: true,
+        east: true,
+        southeast: true,
+        south: true,
+        southwest: true,
+        west: true,
+        northwest: true,
+        up: true,
+        down: true,
         players: {
           select: {
             id: true,
@@ -32,7 +56,7 @@ async function handleGetRoom(request: AuthenticatedRequest) {
             isActive: true
           }
         },
-        items: true,
+        ...ROOM_ITEMS_SELECT,
         npcs: true
       }
     })
@@ -44,37 +68,11 @@ async function handleGetRoom(request: AuthenticatedRequest) {
       )
     }
 
-    // Filter active players
-    const activePlayers = room.players.filter(player => player.isActive)
+    const normalizedRoom = normalizeRoomData(room)
+    const activePlayers = normalizedRoom?.players?.filter((player) => player.isActive) || []
 
     return NextResponse.json({
-      room: {
-        id: room.id,
-        roomId: room.roomId,
-        name: room.name,
-        subtitle: room.subtitle,
-        subtitlePosition: room.subtitlePosition,
-        nameColor: room.nameColor,
-        subtitleColor: room.subtitleColor,
-        icon: room.icon,
-        iconColor: room.iconColor,
-        directionColors: room.directionColors,
-        description: room.description,
-        dangerLevel: room.dangerLevel,
-        isSafe: room.isSafe,
-        players: activePlayers,
-        // Include navigation directions
-        north: room.north,
-        northeast: room.northeast,
-        east: room.east,
-        southeast: room.southeast,
-        south: room.south,
-        southwest: room.southwest,
-        west: room.west,
-        northwest: room.northwest,
-        up: room.up,
-        down: room.down
-      },
+      room: normalizedRoom ? { ...normalizedRoom, players: activePlayers } : null,
       players: activePlayers
     })
   } catch (error) {

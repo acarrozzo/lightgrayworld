@@ -84,8 +84,11 @@ export class SocketEventHandlers {
     return this.emit(SOCKET_EVENTS.SEND_ROOM_CHAT_MESSAGE, { message, roomId })
   }
 
-  // Send game action
-  sendGameAction(action: string): boolean {
+  // Send game action (supports legacy string or structured object)
+  sendGameAction(action: string | { type: string; data?: any }): boolean {
+    if (typeof action === 'string') {
+      return this.emit(SOCKET_EVENTS.GAME_ACTION, { action })
+    }
     return this.emit(SOCKET_EVENTS.GAME_ACTION, { action })
   }
 
@@ -128,6 +131,10 @@ export class SocketEventHandlers {
 
   onActionError(handler: (payload: ActionErrorPayload) => void): () => void {
     return this.on(SOCKET_EVENTS.ACTION_ERROR, handler)
+  }
+
+  onRoomItemsUpdate(handler: (payload: { roomId: string; items: any[] }) => void): () => void {
+    return this.on('room:items:update', handler)
   }
 
   onWorldTick(handler: (payload: WorldTickPayload) => void): () => void {

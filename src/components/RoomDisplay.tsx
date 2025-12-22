@@ -6,7 +6,7 @@ interface RoomDisplayProps {
   room: any
   roomPlayers?: Player[]
   currentPlayerId?: string
-  onAction?: (action: string) => void
+  onAction?: (action: string | { type: string; data?: any }) => void | Promise<void>
   showHeader?: boolean
   className?: string
   showPlayers?: boolean
@@ -109,6 +109,27 @@ export default function RoomDisplay({
 
   const shouldShowCap = Boolean(capConfig && maxCap && worldTick)
 
+  const handlePickupItem = async (item: any) => {
+    if (!onAction || isPerformingAction) return
+
+    const actionPayload = {
+      type: 'pickup_item',
+      data: {
+        roomItemId: item.id,
+        quantity: 1,
+      },
+    }
+
+    setIsPerformingAction(`pickup-${item.id}`)
+    try {
+      await onAction(actionPayload)
+    } catch (error) {
+      console.error('Room pickup error:', error)
+    } finally {
+      setIsPerformingAction(null)
+    }
+  }
+
   const handleInspectPlayer = async (player: Player) => {
     if (!onAction || isPerformingAction) return
 
@@ -169,6 +190,25 @@ export default function RoomDisplay({
           </button>
         ))}
       </div>
+
+      {room.items && room.items.length > 0 && (
+        <div className="mt-4">
+          <div className="text-sm text-gray-300 mb-2">Items here:</div>
+          <div className="flex flex-wrap gap-2">
+            {room.items.map((item: any) => (
+              <button
+                key={item.id}
+                onClick={() => handlePickupItem(item)}
+                className="px-3 py-1.5 rounded-md bg-emerald-500/70 text-white text-xs hover:bg-emerald-500 transition-colors flex items-center gap-1"
+                disabled={isPerformingAction === `pickup-${item.id}`}
+              >
+                <span>{item.template?.name || 'Item'}</span>
+                {item.quantity > 1 && <span className="text-emerald-200">x{item.quantity}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showPlayers && otherUsers.length > 0 && (
         <div className="mt-4">

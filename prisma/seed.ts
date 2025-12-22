@@ -418,15 +418,38 @@ async function main() {
       maxStack: 99,
       maxPerPlayer: null,
     },
+    {
+      id: 'welcome-book',
+      slug: 'welcome-book',
+      name: 'Welcome Book',
+      description: 'A leather-bound book welcoming adventurers to the world.',
+      type: ItemType.MISC,
+      maxStack: 1,
+      maxPerPlayer: 1,
+    },
   ]
 
   for (const item of itemTemplates) {
+    const { id, ...updateData } = item
     await prisma.itemTemplate.upsert({
       where: { slug: item.slug },
-      update: item,
+      update: updateData,
       create: item,
     })
   }
+
+  // Seed room items (idempotent)
+  await prisma.roomItem.deleteMany({
+    where: { roomId: '001', templateId: 'welcome-book' },
+  })
+
+  await prisma.roomItem.create({
+    data: {
+      roomId: '001',
+      templateId: 'welcome-book',
+      quantity: 1,
+    },
+  })
 
   // Create a test user
   const hashedPassword = await bcrypt.hash('password123', 12)

@@ -251,7 +251,7 @@ const variantStyles = {
 } as const
 
 // Export renderRoomInfo function for reuse in other components
-export const renderRoomInfo = (roomData: any, options?: { action?: string; isMostRecent?: boolean; player?: any; onAction?: (action: string) => void; variant?: 'default' | 'sidebar'; worldTick?: { tickNumber: number; nextTickAt: number; tickIntervalMs: number }; actionResult?: any }) => {
+export const renderRoomInfo = (roomData: any, options?: { action?: string; isMostRecent?: boolean; player?: any; onAction?: (action: any) => void | Promise<void>; variant?: 'default' | 'sidebar'; worldTick?: { tickNumber: number; nextTickAt: number; tickIntervalMs: number }; actionResult?: any }) => {
   const { action, isMostRecent = false, player, onAction, variant = 'default', worldTick, actionResult } = options || {}
   const styles = variantStyles[variant]
   const handleRoomDisplayAction = onAction || (async (action: string) => {
@@ -315,7 +315,7 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
         room={roomData}
         roomPlayers={Array.isArray(roomData.players) ? roomData.players : []}
         currentPlayerId={player?.id}
-        onAction={handleRoomDisplayAction}
+        onAction={handleRoomDisplayAction as any}
         showHeader={false}
         className="mt-0"
         worldTick={worldTick}
@@ -335,7 +335,7 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
                     key={item.id}
                     className="px-2.5 py-1 bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs rounded-full transition-colors duration-200"
                   >
-                    {item.name}
+                    {item.template?.name || 'Item'}{item.quantity > 1 ? ` x${item.quantity}` : ''}
                   </span>
                 ))}
               </div>
@@ -379,8 +379,8 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
 
-  const handleRoomDisplayAction = useCallback(async (action: string) => {
-    const success = socketHandlers.sendGameAction(action)
+  const handleRoomDisplayAction = useCallback(async (action: string | { type: string; data?: any }) => {
+    const success = socketHandlers.sendGameAction(action as any)
     if (!success) {
       throw new Error('Failed to send game action')
     }

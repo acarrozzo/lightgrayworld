@@ -90,6 +90,7 @@ export interface GameState {
   getCachedRoom: (roomId: string) => Room | null
   setRoomFactSeq: (roomId: string, seq: number) => void
   getRoomFactSeq: (roomId: string) => number
+  updateRoomItems: (roomId: string, items: any[]) => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -114,6 +115,26 @@ export const useGameStore = create<GameState>()(
       setRoomPlayers: (roomPlayers) => set({ roomPlayers }),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
+      updateRoomItems: (roomId, items) =>
+        set((state) => {
+          const cachedRoom = state.roomCache[roomId]
+          const nextCache = cachedRoom
+            ? {
+                ...state.roomCache,
+                [roomId]: { ...cachedRoom, items },
+              }
+            : state.roomCache
+
+          const isCurrent = state.currentRoom?.roomId === roomId
+
+          return {
+            ...state,
+            roomCache: nextCache,
+            currentRoom: isCurrent && state.currentRoom
+              ? { ...state.currentRoom, items }
+              : state.currentRoom,
+          }
+        }),
       
       login: (player, token) => set({ 
         player, 

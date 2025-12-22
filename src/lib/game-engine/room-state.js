@@ -1,4 +1,5 @@
 const { executeRoomAction } = require('./room-action-handlers')
+const { pickupRoomItem, dropRoomItem } = require('./services/room-item-service')
 
 class RoomState {
   constructor(roomId) {
@@ -73,6 +74,10 @@ class RoomState {
     
     // Otherwise, fall back to standard actions
     switch (action.type) {
+      case 'pickup_item':
+        return this.executePickupItem(action, playerId)
+      case 'drop_item':
+        return this.executeDropItem(action, playerId)
       case 'move':
         return this.executeMove(action, playerId)
       case 'chat':
@@ -85,6 +90,90 @@ class RoomState {
         return this.executeLook(action, playerId)
       default:
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
+    }
+  }
+
+  async executePickupItem(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('pickup_item', 'Player not found in this room')
+    }
+
+    const { roomItemId, quantity = 1 } = action.data || {}
+    if (!roomItemId) {
+      return this.createErrorResult('pickup_item', 'Room item ID is required')
+    }
+
+    this.touchActivity()
+
+    const result = await pickupRoomItem(playerId, roomItemId, quantity, this.roomId)
+
+    if (!result.success) {
+      return this.createErrorResult('pickup_item', result.message)
+    }
+
+    return {
+      success: true,
+      action: 'pickup_item',
+      playerEvent: {
+        event: 'action:result',
+        payload: this.createPlayerPayload('pickup_item', true, result.message, {
+          inventory: result.inventory,
+          roomItems: result.roomItems,
+        }),
+      },
+      broadcastEvents: [
+        {
+          event: 'room:items:update',
+          targetRoomId: this.roomId,
+          payload: {
+            roomId: this.roomId,
+            items: result.roomItems,
+          },
+        },
+      ],
+    }
+  }
+
+  async executeDropItem(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('drop_item', 'Player not found in this room')
+    }
+
+    const { playerItemId, quantity = 1 } = action.data || {}
+    if (!playerItemId) {
+      return this.createErrorResult('drop_item', 'Player item ID is required')
+    }
+
+    this.touchActivity()
+
+    const result = await dropRoomItem(playerId, playerItemId, quantity, this.roomId)
+
+    if (!result.success) {
+      return this.createErrorResult('drop_item', result.message)
+    }
+
+    return {
+      success: true,
+      action: 'drop_item',
+      playerEvent: {
+        event: 'action:result',
+        payload: this.createPlayerPayload('drop_item', true, result.message, {
+          inventory: result.inventory,
+          roomItems: result.roomItems,
+        }),
+      },
+      broadcastEvents: [
+        {
+          event: 'room:items:update',
+          targetRoomId: this.roomId,
+          payload: {
+            roomId: this.roomId,
+            items: result.roomItems,
+          },
+        },
+      ],
     }
   }
 

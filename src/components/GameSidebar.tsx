@@ -7,9 +7,10 @@ import TabContainer, { TabConfig } from './TabContainer'
 interface GameSidebarProps {
   player: Player
   onClose?: () => void
+  onAction?: (action: string | { type: string; data?: any }) => void
 }
 
-export default function GameSidebar({ player, onClose }: GameSidebarProps) {
+export default function GameSidebar({ player, onClose, onAction }: GameSidebarProps) {
   const { inventory } = useGameStore()
 
   const tabs: TabConfig[] = [
@@ -78,7 +79,7 @@ export default function GameSidebar({ player, onClose }: GameSidebarProps) {
               {inventory.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between rounded bg-gray-800/40 px-3 py-2"
+                  className="flex items-center justify-between rounded bg-gray-800/40 px-3 py-2 gap-2"
                 >
                   <div className="text-white text-sm font-medium">
                     {item.template?.name || 'Unknown Item'}
@@ -86,6 +87,17 @@ export default function GameSidebar({ player, onClose }: GameSidebarProps) {
                   {item.quantity > 1 && (
                     <div className="text-gray-400 text-xs">x{item.quantity}</div>
                   )}
+                  <button
+                    className="px-2 py-1 text-xs bg-red-600/70 hover:bg-red-600 rounded text-white"
+                    onClick={() =>
+                      onAction?.({
+                        type: 'drop_item',
+                        data: { playerItemId: item.id, quantity: 1 },
+                      })
+                    }
+                  >
+                    Drop
+                  </button>
                 </div>
               ))}
             </div>

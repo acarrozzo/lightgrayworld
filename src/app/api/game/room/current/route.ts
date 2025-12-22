@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { COMMON_ERRORS } from '@/lib/error-handling'
 import { getCurrentUser } from '@/lib/auth'
+import { ROOM_ITEMS_SELECT, normalizeRoomData } from '@/lib/game-engine/services/room-normalization'
 
 const RATE_LIMIT_WINDOW_MS = 60_000
 const RATE_LIMIT_MAX_REQUESTS = 60
@@ -107,6 +108,7 @@ export async function GET(request: NextRequest) {
         northwest: true,
         up: true,
         down: true,
+        ...ROOM_ITEMS_SELECT,
       },
     })
 
@@ -154,32 +156,10 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const normalizedRoom = normalizeRoomData(room)
+
     const payload: Record<string, unknown> = {
-      room: {
-        id: room.id,
-        roomId: room.roomId,
-        name: room.name,
-        subtitle: room.subtitle,
-        subtitlePosition: room.subtitlePosition,
-        nameColor: room.nameColor,
-        subtitleColor: room.subtitleColor,
-        icon: room.icon,
-        iconColor: room.iconColor,
-        directionColors: room.directionColors,
-        description: room.description,
-        dangerLevel: room.dangerLevel,
-        isSafe: room.isSafe,
-        north: room.north,
-        northeast: room.northeast,
-        east: room.east,
-        southeast: room.southeast,
-        south: room.south,
-        southwest: room.southwest,
-        west: room.west,
-        northwest: room.northwest,
-        up: room.up,
-        down: room.down,
-      },
+      room: normalizedRoom,
     }
 
     if (user) {
