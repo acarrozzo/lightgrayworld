@@ -322,44 +322,6 @@ export const renderRoomInfo = (roomData: any, options?: { action?: string; isMos
         actionResult={actionResult}
       />
 
-      {/* Additional room info sections */}
-      {(roomData.items?.length > 0 || roomData.npcs?.length > 0) && (
-        <div className="mt-6 space-y-3">
-          {/* Items in Room */}
-          {roomData.items && roomData.items.length > 0 && (
-            <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-800/50">
-              <h4 className="text-sm font-semibold text-emerald-400/90 mb-2">Items:</h4>
-              <div className="flex flex-wrap gap-2">
-                {roomData.items.map((item: any) => (
-                  <span
-                    key={item.id}
-                    className="px-2.5 py-1 bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs rounded-full transition-colors duration-200"
-                  >
-                    {item.template?.name || 'Item'}{item.quantity > 1 ? ` x${item.quantity}` : ''}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* NPCs in Room */}
-          {roomData.npcs && roomData.npcs.length > 0 && (
-            <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-800/50">
-              <h4 className="text-sm font-semibold text-purple-400/90 mb-2">NPCs:</h4>
-              <div className="flex flex-wrap gap-2">
-                {roomData.npcs.map((npc: any) => (
-                  <span
-                    key={npc.id}
-                    className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full"
-                  >
-                    {npc.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
