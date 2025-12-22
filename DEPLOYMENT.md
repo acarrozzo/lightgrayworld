@@ -63,6 +63,25 @@ Reference `env.local.template` for sample values.
 
 All other game endpoints continue to require Bearer token authentication.
 
+## Prisma Migrations & Baseline Reset
+
+The schema is now tracked by a single baseline migration (`prisma/migrations/20251222024922_baseline_init`). Previous migrations have been archived in `prisma/migrations_archive/` for reference only.
+
+1. **Develop schema changes**
+   - Update [`prisma/schema.prisma`](prisma/schema.prisma).
+   - Run `npx prisma migrate dev --name <change>` locally (this creates a new dated folder next to the baseline).
+2. **Deploy migrations**
+   - Commit the new migration folder(s).
+   - In every environment (local dev DB, staging, production, Vercel build), run `npx prisma migrate deploy`.
+3. **Resetting from scratch**
+   - Drop the `public` schema (e.g. `psql "$DATABASE_URL" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'`) or run `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION="<user confirmation>" npx prisma migrate reset`.
+   - Run `npx prisma migrate deploy`.
+   - Seed with `npx prisma db seed` (uses [`prisma/seed.ts`](prisma/seed.ts)).
+   - This sequence is already configured in the Vercel postinstall hook so deploys start from a clean baseline on empty databases.
+4. **Verification**
+   - `npx prisma migrate status` should report “Database schema is up to date”.
+   - Vercel logs should show `prisma migrate deploy` completing before `next build`.
+
 ## Local Development
 
 1. Copy `env.local.template` to `.env.local`, fill in your Supabase credentials once, and keep it synced with the production values.
