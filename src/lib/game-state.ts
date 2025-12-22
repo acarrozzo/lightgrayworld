@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { RoomView, RoomItemView } from '@/lib/types/room'
 
 export interface Player {
   id: string
@@ -13,35 +14,7 @@ export interface Player {
   isActive: boolean
 }
 
-export interface Room {
-  id: string
-  roomId: string
-  name: string
-  subtitle: string
-  subtitlePosition?: 'above' | 'below' | string
-  nameColor?: string | null
-  subtitleColor?: string | null
-  icon?: string | null
-  iconColor?: string | null
-  directionColors?: any
-  description: string
-  dangerLevel: number
-  isSafe: boolean
-  players: Player[]
-  items?: any[]
-  npcs?: any[]
-  // Navigation directions
-  north?: string
-  northeast?: string
-  east?: string
-  southeast?: string
-  south?: string
-  southwest?: string
-  west?: string
-  northwest?: string
-  up?: string
-  down?: string
-}
+export type Room = RoomView
 
 export interface InventoryItem {
   id: string
@@ -69,7 +42,7 @@ export interface GameState {
   // Room state
   currentRoom: Room | null
   roomPlayers: Player[]
-  roomCache: Record<string, Room> // Cache for visited rooms
+  roomCache: Record<string, Room>
   roomFactSeq: Record<string, number>
   
   // UI state
@@ -90,7 +63,7 @@ export interface GameState {
   getCachedRoom: (roomId: string) => Room | null
   setRoomFactSeq: (roomId: string, seq: number) => void
   getRoomFactSeq: (roomId: string) => number
-  updateRoomItems: (roomId: string, items: any[]) => void
+  updateRoomItems: (roomId: string, items: RoomItemView[]) => void
 }
 
 export const useGameStore = create<GameState>()(

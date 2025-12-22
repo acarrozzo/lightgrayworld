@@ -202,7 +202,7 @@ export default function RoomDisplay({
                 className="px-3 py-1.5 rounded-md bg-emerald-500/70 text-white text-xs hover:bg-emerald-500 transition-colors flex items-center gap-1"
                 disabled={isPerformingAction === `pickup-${item.id}`}
               >
-                <span>{item.template?.name || 'Item'}</span>
+                <span>{item.template.name}</span>
                 {item.quantity > 1 && <span className="text-emerald-200">x{item.quantity}</span>}
               </button>
             ))}

@@ -15,6 +15,7 @@ import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
 import MapModal from './MapModal'
 import { Earth, MessageCircle, PersonStanding } from 'lucide-react'
+import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -131,7 +132,7 @@ export default function GameInterface() {
     if (!socket) return
     const cleanup = socketHandlers.onRoomItemsUpdate((payload) => {
       if (!payload?.roomId || !Array.isArray(payload.items)) return
-      updateRoomItems(payload.roomId, payload.items)
+      updateRoomItems(payload.roomId, normalizeRoomItems(payload.items))
     })
     return cleanup
   }, [socket, socketHandlers, updateRoomItems])
@@ -237,26 +238,22 @@ export default function GameInterface() {
 
     // If roomData is provided (e.g., from socket event), use it directly
     if (providedRoomData && providedRoomData.roomId) {
-      const roomWithDirections = {
-        ...providedRoomData,
-        players: Array.isArray(providedRoomData.players) ? providedRoomData.players : [],
-        items: Array.isArray(providedRoomData.items) ? providedRoomData.items : [],
-        npcs: Array.isArray(providedRoomData.npcs) ? providedRoomData.npcs : [],
+      const normalizedRoom = normalizeRoom(providedRoomData)
+      if (normalizedRoom) {
+        cacheRoom(normalizedRoom)
+        setCurrentRoom(normalizedRoom)
+        setRoomPlayers(normalizedRoom.players)
+        
+        if (player && player.currentRoom !== normalizedRoom.roomId) {
+          setPlayer({ ...player, currentRoom: normalizedRoom.roomId })
+        }
+        
+        if (!isTransition) {
+          setIsLoadingRoom(false)
+        }
+        setIsInitialLoad(false)
+        return
       }
-      
-      cacheRoom(roomWithDirections)
-      setCurrentRoom(roomWithDirections)
-      setRoomPlayers(roomWithDirections.players)
-      
-      if (player && player.currentRoom !== roomWithDirections.roomId) {
-        setPlayer({ ...player, currentRoom: roomWithDirections.roomId })
-      }
-      
-      if (!isTransition) {
-        setIsLoadingRoom(false)
-      }
-      setIsInitialLoad(false)
-      return
     }
 
     if (isTransition && travelTarget) {
@@ -286,31 +283,20 @@ export default function GameInterface() {
       
       if (response.ok) {
         const roomData = await response.json()
-        
-        // Include navigation directions in the room data
-        const roomWithDirections = {
+        const roomPlayers = Array.isArray(roomData.players) ? roomData.players : []
+        const normalizedRoom = normalizeRoom({
           ...roomData.room,
-          north: roomData.room.north,
-          northeast: roomData.room.northeast,
-          east: roomData.room.east,
-          southeast: roomData.room.southeast,
-          south: roomData.room.south,
-          southwest: roomData.room.southwest,
-          west: roomData.room.west,
-          northwest: roomData.room.northwest,
-          up: roomData.room.up,
-          down: roomData.room.down,
-          directionColors: roomData.room.directionColors,
-          players: Array.isArray(roomData.players) ? roomData.players : []
-        }
+          players: roomPlayers,
+        })
         
-        // Cache the room data for future navigation
-        cacheRoom(roomWithDirections)
-        setCurrentRoom(roomWithDirections)
-        setRoomPlayers(Array.isArray(roomData.players) ? roomData.players : [])
+        if (normalizedRoom) {
+          cacheRoom(normalizedRoom)
+          setCurrentRoom(normalizedRoom)
+          setRoomPlayers(roomPlayers)
+        }
 
-        if (player && player.currentRoom !== roomWithDirections.roomId) {
-          console.log('[GameInterface] Syncing player.currentRoom to', roomWithDirections.roomId)
+        if (player && normalizedRoom && player.currentRoom !== normalizedRoom.roomId) {
+          console.log('[GameInterface] Syncing player.currentRoom to', normalizedRoom.roomId)
 
           if (shouldUseAuth) {
             try {
@@ -320,7 +306,7 @@ export default function GameInterface() {
                   'Content-Type': 'application/json',
                   ...getAuthHeaders(),
                 },
-                body: JSON.stringify({ roomId: roomWithDirections.roomId }),
+                body: JSON.stringify({ roomId: normalizedRoom.roomId }),
               })
 
               if (!syncResponse.ok) {
@@ -337,15 +323,15 @@ export default function GameInterface() {
             }
           }
 
-          setPlayer({ ...player, currentRoom: roomWithDirections.roomId })
+          setPlayer({ ...player, currentRoom: normalizedRoom.roomId })
         }
 
-        if (options?.travel && !travelResultEmitted) {
+        if (normalizedRoom && options?.travel && !travelResultEmitted) {
           travelResultEmitted = true
-          const travelDirection = findTravelDirection(previousRoom, roomWithDirections.roomId)
+          const travelDirection = findTravelDirection(previousRoom, normalizedRoom.roomId)
           const travelMessage = travelDirection
-            ? `You travel ${travelDirection} to the ${roomWithDirections.name}`
-            : `You travel to ${roomWithDirections.name}`
+            ? `You travel ${travelDirection} to the ${normalizedRoom.name}`
+            : `You travel to ${normalizedRoom.name}`
 
           console.log('[GameInterface] Travel result emitted locally skipped in favor of server payload')
         }
@@ -501,7 +487,7 @@ export default function GameInterface() {
       }
 
       if (payload?.data?.roomItems && currentRoomRef.current?.roomId) {
-        updateRoomItems(currentRoomRef.current.roomId, payload.data.roomItems)
+        updateRoomItems(currentRoomRef.current.roomId, normalizeRoomItems(payload.data.roomItems))
       }
 
       if (payload.action === 'move' && payload.success && payload.data?.toRoom) {

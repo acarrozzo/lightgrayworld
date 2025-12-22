@@ -82,7 +82,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
                   className="flex items-center justify-between rounded bg-gray-800/40 px-3 py-2 gap-2"
                 >
                   <div className="text-white text-sm font-medium">
-                    {item.template?.name || 'Unknown Item'}
+                    {item.template.name}
                   </div>
                   {item.quantity > 1 && (
                     <div className="text-gray-400 text-xs">x{item.quantity}</div>

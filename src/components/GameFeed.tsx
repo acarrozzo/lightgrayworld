@@ -7,6 +7,7 @@ import { useSocketHandlers } from '@/lib/socket-handlers'
 import { ActionResultPayload, ActionErrorPayload, RoomPlayerMovedPayload, ChatMessage, WorldTickPayload } from '@/lib/socket'
 import Icon from './Icon'
 import RoomDisplay from './RoomDisplay'
+import { normalizeRoom } from '@/lib/normalize/room'
 
 const DIRECTION_KEYS = [
   'north',
@@ -774,6 +775,20 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
         data: payload.data ? { ...payload.data } : {},
       }
 
+      const normalizeAndAttachRoomData = (roomData?: any) => {
+        const normalizedRoomData = normalizeRoom(roomData)
+        if (normalizedRoomData) {
+          augmentedPayload.data = {
+            ...(augmentedPayload.data || {}),
+            roomData: normalizedRoomData,
+          }
+        }
+      }
+
+      if (payload.data?.roomData) {
+        normalizeAndAttachRoomData(payload.data.roomData)
+      }
+
       if (payload.action === 'look') {
         const resolvedRoomData =
           payload.data?.roomData ||
@@ -781,24 +796,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
           (payload.data?.roomId ? getCachedRoom(payload.data.roomId) : null)
 
         if (resolvedRoomData) {
-          augmentedPayload.data = {
-            ...(augmentedPayload.data || {}),
-            roomData: resolvedRoomData,
-          }
-        }
-      }
-
-      if (payload.action === 'move' && payload.data?.roomData) {
-        const normalizedRoomData = {
-          ...payload.data.roomData,
-          players: Array.isArray(payload.data.roomData.players) ? payload.data.roomData.players : [],
-          items: Array.isArray(payload.data.roomData.items) ? payload.data.roomData.items : [],
-          npcs: Array.isArray(payload.data.roomData.npcs) ? payload.data.roomData.npcs : [],
-        }
-
-        augmentedPayload.data = {
-          ...(augmentedPayload.data || {}),
-          roomData: normalizedRoomData,
+          normalizeAndAttachRoomData(resolvedRoomData)
         }
       }
 
