@@ -6,16 +6,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
 import GameTabs from './GameTabs'
-import GameFeed from './GameFeed'
-import { FeedControlHandlers, renderRoomInfo } from './GameFeed'
+import RoomBox from './RoomBox'
 import Compass from './Compass'
 import Icon from './Icon'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
 import MapModal from './MapModal'
-import { Earth, MessageCircle, PersonStanding } from 'lucide-react'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
+import { useHistoryStore } from '@/store/historyStore'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -62,6 +61,7 @@ export default function GameInterface() {
     player,
     setPlayer,
     currentRoom,
+    roomPlayers,
     setCurrentRoom,
     setRoomPlayers,
     getAuthHeaders,
@@ -82,11 +82,6 @@ export default function GameInterface() {
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [mapInfo, setMapInfo] = useState<{ src: string; title: string }>({ src: '', title: '' })
   const [customAction, setCustomAction] = useState('')
-  const [feedControls, setFeedControls] = useState<FeedControlHandlers>(() => ({
-    clearFeed: () => {},
-    scrollToTop: () => {},
-    scrollToBottom: () => {},
-  }))
   const [worldTick, setWorldTick] = useState({
     tickNumber: 0,
     nextTickAt: Date.now() + 10000,
@@ -98,6 +93,20 @@ export default function GameInterface() {
   const playerRef = useRef(player)
   const currentRoomRef = useRef(currentRoom)
   const customActionInputRef = useRef<HTMLInputElement>(null)
+  const noop = useCallback(() => {}, [])
+  const appendHistory = useCallback(
+    (text: string, options?: { roomId?: string; scope?: 'room' | 'world' | 'system'; ts?: number; id?: string }) => {
+      const { append } = useHistoryStore.getState()
+      append({
+        id: options?.id,
+        ts: options?.ts,
+        text,
+        roomId: options?.roomId,
+        scope: options?.scope,
+      })
+    },
+    []
+  )
 
   // Load sidebar state from localStorage on mount
   useEffect(() => {
@@ -355,6 +364,11 @@ export default function GameInterface() {
   }, [player])
 
   useEffect(() => {
+    const { setUser } = useHistoryStore.getState()
+    setUser(player?.id ?? null)
+  }, [player?.id])
+
+  useEffect(() => {
     currentRoomRef.current = currentRoom
   }, [currentRoom])
 
@@ -400,6 +414,10 @@ export default function GameInterface() {
           success: false,
           source: 'local',
         })
+        appendHistory(`You don't see an exit in that direction (${actionType})`, {
+          roomId: currentRoomRef.current?.roomId,
+          scope: 'system',
+        })
         return
       }
 
@@ -414,6 +432,10 @@ export default function GameInterface() {
           timestamp: new Date().toISOString(),
           success: false,
           source: 'local',
+        })
+        appendHistory(`You don't see an exit in that direction (${actionType})`, {
+          roomId: currentRoomRef.current?.roomId,
+          scope: 'system',
         })
         return
       }
@@ -506,6 +528,14 @@ export default function GameInterface() {
           roomData: payload.data?.roomData,
         })
       }
+
+      const ts = payload.timestamp ? Date.parse(payload.timestamp) : Date.now()
+      const text = payload.message || payload.action || 'Action result'
+      appendHistory(text, {
+        roomId: payload.data?.roomId || currentRoomRef.current?.roomId,
+        scope: 'system',
+        ts,
+      })
     })
 
     const cleanupLoginSuccess = socketHandlers.onLoginSuccess((payload) => {
@@ -523,6 +553,10 @@ export default function GameInterface() {
         message: payload.message,
         timestamp: new Date().toISOString(),
         source: 'socket',
+      })
+      appendHistory(`Action failed: ${payload.message}`, {
+        roomId: currentRoomRef.current?.roomId,
+        scope: 'system',
       })
     })
 
@@ -555,6 +589,13 @@ export default function GameInterface() {
       if (activeRoom && (event.toRoom === activeRoom.roomId || event.fromRoom === activeRoom.roomId)) {
         console.log('[GameInterface] Player entered or left current room, reloading')
         loadRoomDataRef.current?.({ isTransition: true })
+        if (event.playerId !== currentPlayer?.id) {
+          const directionText = event.toRoom === activeRoom.roomId ? 'enters the room' : 'leaves the room'
+          appendHistory(`${event.username} ${directionText}.`, {
+            roomId: activeRoom.roomId,
+            scope: 'room',
+          })
+        }
       }
     })
 
@@ -565,6 +606,40 @@ export default function GameInterface() {
       cleanupRoomMoves()
     }
   }, [socket, socketHandlers, setPlayer, setInventory])
+
+  useEffect(() => {
+    if (!socket) {
+      return
+    }
+
+    const cleanupChat = socketHandlers.onChatMessage((message) => {
+      const ts = message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
+      appendHistory(`[World] ${message.username}: ${message.message}`, {
+        scope: 'world',
+        ts,
+        id: message.id,
+      })
+    })
+
+    const cleanupRoomChat = socketHandlers.onRoomChatMessage((message) => {
+      const activeRoom = currentRoomRef.current
+      if (activeRoom?.roomId && message.roomId && message.roomId !== activeRoom.roomId) {
+        return
+      }
+      const ts = message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
+      appendHistory(`[Room] ${message.username}: ${message.message}`, {
+        scope: 'room',
+        ts,
+        id: message.id,
+        roomId: message.roomId ?? activeRoom?.roomId,
+      })
+    })
+
+    return () => {
+      cleanupChat()
+      cleanupRoomChat()
+    }
+  }, [socket, socketHandlers, appendHistory])
 
   useEffect(() => {
     console.log('[GameInterface] Socket state:', {
@@ -720,10 +795,6 @@ export default function GameInterface() {
     }
   }, [isLoadingRoom, isInitialLoad])
 
-  const handleRegisterFeedControls = useCallback((controls: FeedControlHandlers) => {
-    setFeedControls(controls)
-  }, [])
-
   const handleOpenMap = useCallback((src: string, title: string) => {
     setMapInfo({ src, title })
     setIsMapModalOpen(true)
@@ -749,9 +820,9 @@ export default function GameInterface() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onClearFeed={feedControls.clearFeed}
-        onScrollToTop={feedControls.scrollToTop}
-        onScrollToBottom={feedControls.scrollToBottom}
+        onClearFeed={noop}
+        onScrollToTop={noop}
+        onScrollToBottom={noop}
       />
       <MapModal
         isOpen={isMapModalOpen}
@@ -794,16 +865,16 @@ export default function GameInterface() {
         
         {/* Main Game Area */}
         <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden lg:col-start-1 xl:col-start-2">
-          {/* Center Column: Feed + D-pad */}
           {currentRoom && (
             <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
-              {/* Feed */}
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <GameFeed 
-                  room={currentRoom} 
-                  actionResult={actionResult} 
+              <div className="flex-1 min-h-0 overflow-y-auto p-4">
+                <RoomBox
+                  room={currentRoom}
+                  roomPlayers={roomPlayers}
+                  currentPlayerId={player.id}
+                  onAction={handleAction}
                   worldTick={worldTick}
-                  onRegisterControls={handleRegisterFeedControls}
+                  actionResult={actionResult}
                 />
               </div>
 
@@ -903,7 +974,7 @@ export default function GameInterface() {
         <div className={`
           bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
           transition-transform duration-300 ease-out
-          min-w-[360px]
+          min-w-[480px]
           ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
           lg:translate-x-0 lg:static lg:col-start-2
           xl:col-start-3
@@ -911,13 +982,7 @@ export default function GameInterface() {
         `}>
           <GameTabs
             room={currentRoom}
-            actionResult={actionResult}
-            onRegisterFeedControls={handleRegisterFeedControls}
             onClose={() => setRightSidebarOpen(false)}
-            player={player}
-            onAction={handleAction}
-            isLoadingRoom={isLoadingRoom}
-            action={action}
           />
         </div>
       </div>

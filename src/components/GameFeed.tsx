@@ -5,8 +5,6 @@ import { Room, useGameStore } from '@/lib/game-state'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import { ActionResultPayload, ActionErrorPayload, RoomPlayerMovedPayload, ChatMessage, WorldTickPayload } from '@/lib/socket'
-import Icon from './Icon'
-import RoomDisplay from './RoomDisplay'
 import { normalizeRoom } from '@/lib/normalize/room'
 
 const DIRECTION_KEYS = [
@@ -39,121 +37,6 @@ const ROOM_NAME_MAP: Record<string, string> = {
 
 const SCROLL_THRESHOLD = 100
 
-// Helper function to get text color class - ensures Tailwind can detect all classes at build time
-export const getTextColorClass = (color?: string | null, defaultColor: string = 'green-400'): string => {
-  const colorValue = color || defaultColor
-  
-  // Map common Tailwind color values to full class names
-  // This ensures Tailwind's JIT compiler can detect these classes
-  const colorMap: Record<string, string> = {
-    'red-50': 'text-red-50',
-    'red-100': 'text-red-100',
-    'red-200': 'text-red-200',
-    'red-300': 'text-red-300',
-    'red-400': 'text-red-400',
-    'red-500': 'text-red-500',
-    'red-600': 'text-red-600',
-    'red-700': 'text-red-700',
-    'red-800': 'text-red-800',
-    'red-900': 'text-red-900',
-    'blue-50': 'text-blue-50',
-    'blue-100': 'text-blue-100',
-    'blue-200': 'text-blue-200',
-    'blue-300': 'text-blue-300',
-    'blue-400': 'text-blue-400',
-    'blue-500': 'text-blue-500',
-    'blue-600': 'text-blue-600',
-    'blue-700': 'text-blue-700',
-    'blue-800': 'text-blue-800',
-    'blue-900': 'text-blue-900',
-    'green-50': 'text-green-50',
-    'green-100': 'text-green-100',
-    'green-200': 'text-green-200',
-    'green-300': 'text-green-300',
-    'green-400': 'text-green-400',
-    'grass': 'text-green-400',
-    'green-500': 'text-green-500',
-    'green-600': 'text-green-600',
-    'green-700': 'text-green-700',
-    'green-800': 'text-green-800',
-    'green-900': 'text-green-900',
-    'yellow-50': 'text-yellow-50',
-    'yellow-100': 'text-yellow-100',
-    'yellow-200': 'text-yellow-200',
-    'yellow-300': 'text-yellow-300',
-    'yellow-400': 'text-yellow-400',
-    'yellow-500': 'text-yellow-500',
-    'yellow-600': 'text-yellow-600',
-    'yellow-700': 'text-yellow-700',
-    'dirt': 'text-yellow-700',
-    'yellow-800': 'text-yellow-800',
-    'yellow-900': 'text-yellow-900',
-    'purple-50': 'text-purple-50',
-    'purple-100': 'text-purple-100',
-    'purple-200': 'text-purple-200',
-    'purple-300': 'text-purple-300',
-    'purple-400': 'text-purple-400',
-    'purple-500': 'text-purple-500',
-    'purple-600': 'text-purple-600',
-    'purple-700': 'text-purple-700',
-    'purple-800': 'text-purple-800',
-    'purple-900': 'text-purple-900',
-    'pink-50': 'text-pink-50',
-    'pink-100': 'text-pink-100',
-    'pink-200': 'text-pink-200',
-    'pink-300': 'text-pink-300',
-    'pink-400': 'text-pink-400',
-    'pink-500': 'text-pink-500',
-    'pink-600': 'text-pink-600',
-    'pink-700': 'text-pink-700',
-    'pink-800': 'text-pink-800',
-    'pink-900': 'text-pink-900',
-    'orange-50': 'text-orange-50',
-    'orange-100': 'text-orange-100',
-    'orange-200': 'text-orange-200',
-    'orange-300': 'text-orange-300',
-    'orange-400': 'text-orange-400',
-    'orange-500': 'text-orange-500',
-    'orange-600': 'text-orange-600',
-    'orange-700': 'text-orange-700',
-    'orange-800': 'text-orange-800',
-    'orange-900': 'text-orange-900',
-    'amber-50': 'text-amber-50',
-    'amber-100': 'text-amber-100',
-    'amber-200': 'text-amber-200',
-    'amber-300': 'text-amber-300',
-    'sand': 'text-amber-300',
-    'amber-400': 'text-amber-400',
-    'amber-500': 'text-amber-500',
-    'amber-600': 'text-amber-600',
-    'amber-700': 'text-amber-700',
-    'amber-800': 'text-amber-800',
-    'amber-900': 'text-amber-900',
-    'gray-50': 'text-gray-50',
-    'gray-100': 'text-gray-100',
-    'gray-200': 'text-gray-200',
-    'gray-300': 'text-gray-300',
-    'gray-400': 'text-gray-400',
-    'gray-500': 'text-gray-500',
-    'gray-600': 'text-gray-600',
-    'gray-700': 'text-gray-700',
-    'gray-800': 'text-gray-800',
-    'gray-900': 'text-gray-900',
-    'indigo-50': 'text-indigo-50',
-    'indigo-100': 'text-indigo-100',
-    'indigo-200': 'text-indigo-200',
-    'indigo-300': 'text-indigo-300',
-    'indigo-400': 'text-indigo-400',
-    'indigo-500': 'text-indigo-500',
-    'indigo-600': 'text-indigo-600',
-    'indigo-700': 'text-indigo-700',
-    'indigo-800': 'text-indigo-800',
-    'indigo-900': 'text-indigo-900',
-  }
-  
-  // If color is in map, return it; otherwise construct it (for custom colors)
-  return colorMap[colorValue] || `text-${colorValue}`
-}
 
 const findDirectionKey = (currentRoom: Room | null | undefined, targetRoomId?: string): DirectionKey | null => {
   if (!currentRoom || !targetRoomId) {
@@ -231,101 +114,6 @@ interface GameFeedProps {
   }
 }
 
-// Variant styles configuration
-const variantStyles = {
-  default: {
-    padding: 'p-4 sm:p-6',
-    iconSize: 'w-12 sm:w-20 h-12 sm:h-20',
-    titleSize: 'text-xl sm:text-2xl',
-    subtitleSize: 'text-base sm:text-lg',
-    subtitleSizeAbove: 'text-lg',
-    descriptionSize: 'text-xs sm:text-base',
-  },
-  sidebar: {
-    padding: 'p-0',
-    iconSize: 'w-10 h-10',
-    titleSize: 'text-md',
-    subtitleSize: 'text-sm',
-    subtitleSizeAbove: 'text-sm',
-    descriptionSize: 'text-xs',
-  },
-} as const
-
-// Export renderRoomInfo function for reuse in other components
-export const renderRoomInfo = (roomData: any, options?: { action?: string; isMostRecent?: boolean; player?: any; onAction?: (action: any) => void | Promise<void>; variant?: 'default' | 'sidebar'; worldTick?: { tickNumber: number; nextTickAt: number; tickIntervalMs: number }; actionResult?: any }) => {
-  const { action, isMostRecent = false, player, onAction, variant = 'default', worldTick, actionResult } = options || {}
-  const styles = variantStyles[variant]
-  const handleRoomDisplayAction = onAction || (async (action: string) => {
-    // Fallback if no onAction provided - this shouldn't happen in practice
-    console.warn('No onAction handler provided to renderRoomInfo')
-  })
-  const defaultSubtitle = 'This is it. The world is yours.'
-  const subtitleText = (roomData.subtitle ?? defaultSubtitle).trim()
-  const hasSubtitle = subtitleText.length > 0
-  const subtitlePlacement = roomData.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
-
-  return (
-    <div className={styles.padding}>
-      {/* Header with icon and two-line title */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className={getTextColorClass(roomData.iconColor, 'yellow-400')}>
-          <Icon 
-            name={roomData.icon || 'sun'} 
-            className={styles.iconSize}
-            color="current"
-          />
-        </div>
-        <div className="flex-1">
-          {hasSubtitle && subtitlePlacement === 'above' && (
-            <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold ${styles.subtitleSizeAbove}`}>{subtitleText}</p>
-          )}
-          <h3 className={`${styles.titleSize} font-bold ${getTextColorClass(roomData.nameColor, 'green-400')}`}>{roomData.name}</h3>
-          {hasSubtitle && subtitlePlacement === 'below' && (
-            <p className={`${getTextColorClass(roomData.subtitleColor, 'blue-300')} font-bold ${styles.subtitleSize}`}>{subtitleText}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Room Description */}
-      {variant !== 'sidebar' && (
-        <p className={`text-gray-300/90 leading-relaxed ${styles.descriptionSize} mb-4`}>
-          {roomData.description}
-        </p>
-      )}
-
-      {/* Action Buttons */}
-      {variant !== 'sidebar' && (
-        <div className="flex flex-wrap gap-2">
-          {/* Universal actions */}
-          <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
-            West
-          </button>
-          <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
-            South
-          </button>
-          <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
-            North
-          </button>
-          <button className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200">
-            East
-          </button>
-        </div>
-      )}
-
-      <RoomDisplay
-        room={roomData}
-        roomPlayers={Array.isArray(roomData.players) ? roomData.players : []}
-        currentPlayerId={player?.id}
-        onAction={handleRoomDisplayAction as any}
-        showHeader={false}
-        className="mt-0"
-        worldTick={worldTick}
-        actionResult={actionResult}
-      />
-
-    </div>
-  )
-}
 
 export default function GameFeed({ room, actionResult, className = '', onRegisterControls, worldTick }: GameFeedProps) {
   const [actions, setActions] = useState<ActionHistory[]>([])
@@ -960,15 +748,7 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
           {actions.map((action, index) => {
             // Check if this is the last action in the feed (bottom-most)
             const isLastAction = index === actions.length - 1
-            
-            // Check if we should show roombox for look or move actions
-            const shouldShowRoombox = 
-              (action.action === 'look' || action.action === 'move') && 
-              action.roomData && 
-              action.success !== false &&
-              !action.suppressRoomDisplay
-            
-            // Regular action (LOOK, REST, SEARCH, ATTACK, etc.)
+
             return (
               <div key={action.id} className="space-y-2">
                 <div
@@ -989,18 +769,6 @@ export default function GameFeed({ room, actionResult, className = '', onRegiste
                     </p>
                   </div>
                 </div>
-                
-                {/* Roombox display after look or move action */}
-                {shouldShowRoombox && (
-                  <div className="border border-gray-700/50 rounded-lg bg-gray-900/50 overflow-hidden">
-                    {renderRoomInfo(action.roomData, {
-                      player,
-                      onAction: handleRoomDisplayAction,
-                      worldTick,
-                      actionResult,
-                    })}
-                  </div>
-                )}
               </div>
             )
           })}

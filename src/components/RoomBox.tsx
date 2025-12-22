@@ -1,0 +1,224 @@
+'use client'
+
+import RoomDisplay from './RoomDisplay'
+import type { Room, Player } from '@/lib/game-state'
+import Icon from './Icon'
+import { useMemo } from 'react'
+
+// Copied from the previous GameFeed helper to ensure Tailwind picks up dynamic color classes
+export const getTextColorClass = (color?: string | null, defaultColor: string = 'green-400'): string => {
+  const colorValue = color || defaultColor
+
+  const colorMap: Record<string, string> = {
+    'red-50': 'text-red-50',
+    'red-100': 'text-red-100',
+    'red-200': 'text-red-200',
+    'red-300': 'text-red-300',
+    'red-400': 'text-red-400',
+    'red-500': 'text-red-500',
+    'red-600': 'text-red-600',
+    'red-700': 'text-red-700',
+    'red-800': 'text-red-800',
+    'red-900': 'text-red-900',
+    'blue-50': 'text-blue-50',
+    'blue-100': 'text-blue-100',
+    'blue-200': 'text-blue-200',
+    'blue-300': 'text-blue-300',
+    'blue-400': 'text-blue-400',
+    'blue-500': 'text-blue-500',
+    'blue-600': 'text-blue-600',
+    'blue-700': 'text-blue-700',
+    'blue-800': 'text-blue-800',
+    'blue-900': 'text-blue-900',
+    'green-50': 'text-green-50',
+    'green-100': 'text-green-100',
+    'green-200': 'text-green-200',
+    'green-300': 'text-green-300',
+    'green-400': 'text-green-400',
+    'grass': 'text-green-400',
+    'green-500': 'text-green-500',
+    'green-600': 'text-green-600',
+    'green-700': 'text-green-700',
+    'green-800': 'text-green-800',
+    'green-900': 'text-green-900',
+    'yellow-50': 'text-yellow-50',
+    'yellow-100': 'text-yellow-100',
+    'yellow-200': 'text-yellow-200',
+    'yellow-300': 'text-yellow-300',
+    'yellow-400': 'text-yellow-400',
+    'yellow-500': 'text-yellow-500',
+    'yellow-600': 'text-yellow-600',
+    'yellow-700': 'text-yellow-700',
+    'dirt': 'text-yellow-700',
+    'yellow-800': 'text-yellow-800',
+    'yellow-900': 'text-yellow-900',
+    'purple-50': 'text-purple-50',
+    'purple-100': 'text-purple-100',
+    'purple-200': 'text-purple-200',
+    'purple-300': 'text-purple-300',
+    'purple-400': 'text-purple-400',
+    'purple-500': 'text-purple-500',
+    'purple-600': 'text-purple-600',
+    'purple-700': 'text-purple-700',
+    'purple-800': 'text-purple-800',
+    'purple-900': 'text-purple-900',
+    'pink-50': 'text-pink-50',
+    'pink-100': 'text-pink-100',
+    'pink-200': 'text-pink-200',
+    'pink-300': 'text-pink-300',
+    'pink-400': 'text-pink-400',
+    'pink-500': 'text-pink-500',
+    'pink-600': 'text-pink-600',
+    'pink-700': 'text-pink-700',
+    'pink-800': 'text-pink-800',
+    'pink-900': 'text-pink-900',
+    'orange-50': 'text-orange-50',
+    'orange-100': 'text-orange-100',
+    'orange-200': 'text-orange-200',
+    'orange-300': 'text-orange-300',
+    'orange-400': 'text-orange-400',
+    'orange-500': 'text-orange-500',
+    'orange-600': 'text-orange-600',
+    'orange-700': 'text-orange-700',
+    'orange-800': 'text-orange-800',
+    'orange-900': 'text-orange-900',
+    'amber-50': 'text-amber-50',
+    'amber-100': 'text-amber-100',
+    'amber-200': 'text-amber-200',
+    'amber-300': 'text-amber-300',
+    'sand': 'text-amber-300',
+    'amber-400': 'text-amber-400',
+    'amber-500': 'text-amber-500',
+    'amber-600': 'text-amber-600',
+    'amber-700': 'text-amber-700',
+    'amber-800': 'text-amber-800',
+    'amber-900': 'text-amber-900',
+    'gray-50': 'text-gray-50',
+    'gray-100': 'text-gray-100',
+    'gray-200': 'text-gray-200',
+    'gray-300': 'text-gray-300',
+    'gray-400': 'text-gray-400',
+    'gray-500': 'text-gray-500',
+    'gray-600': 'text-gray-600',
+    'gray-700': 'text-gray-700',
+    'gray-800': 'text-gray-800',
+    'gray-900': 'text-gray-900',
+    'indigo-50': 'text-indigo-50',
+    'indigo-100': 'text-indigo-100',
+    'indigo-200': 'text-indigo-200',
+    'indigo-300': 'text-indigo-300',
+    'indigo-400': 'text-indigo-400',
+    'indigo-500': 'text-indigo-500',
+    'indigo-600': 'text-indigo-600',
+    'indigo-700': 'text-indigo-700',
+    'indigo-800': 'text-indigo-800',
+    'indigo-900': 'text-indigo-900',
+  }
+
+  return colorMap[colorValue] || `text-${colorValue}`
+}
+
+const DIRECTIONS = [
+  'north',
+  'northeast',
+  'east',
+  'southeast',
+  'south',
+  'southwest',
+  'west',
+  'northwest',
+  'up',
+  'down',
+] as const
+
+type DirectionKey = (typeof DIRECTIONS)[number]
+
+interface RoomBoxProps {
+  room: Room
+  roomPlayers?: Player[]
+  currentPlayerId?: string
+  onAction: (action: string | { type: string; data?: any }) => void | Promise<void>
+  worldTick?: {
+    tickNumber: number
+    nextTickAt: number
+    tickIntervalMs: number
+  }
+  actionResult?: any
+}
+
+export default function RoomBox({
+  room,
+  roomPlayers = [],
+  currentPlayerId,
+  onAction,
+  worldTick,
+  actionResult,
+}: RoomBoxProps) {
+  const subtitleText = (room.subtitle ?? 'This is it. The world is yours.').trim()
+  const hasSubtitle = subtitleText.length > 0
+  const subtitlePlacement = room.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
+
+  const availableDirections = useMemo(
+    () => DIRECTIONS.filter((dir) => typeof room[dir as DirectionKey] === 'string' && room[dir as DirectionKey]),
+    [room]
+  )
+
+  const handleDirection = (dir: DirectionKey) => {
+    if (!onAction) return
+    onAction(dir)
+  }
+
+  return (
+    <div className="p-4 sm:p-6 space-y-4">
+      {/* Header with icon and two-line title */}
+      <div className="flex items-center gap-4">
+        <div className={getTextColorClass(room.iconColor, 'yellow-400')}>
+          <Icon name={room.icon || 'sun'} className="w-12 sm:w-20 h-12 sm:h-20" color="current" />
+        </div>
+        <div className="flex-1">
+          {hasSubtitle && subtitlePlacement === 'above' && (
+            <p className={`${getTextColorClass(room.subtitleColor, 'blue-300')} font-bold text-lg`}>{subtitleText}</p>
+          )}
+          <h3 className={`text-xl sm:text-2xl font-bold ${getTextColorClass(room.nameColor, 'green-400')}`}>
+            {room.name}
+          </h3>
+          {hasSubtitle && subtitlePlacement === 'below' && (
+            <p className={`${getTextColorClass(room.subtitleColor, 'blue-300')} font-bold text-base sm:text-lg`}>
+              {subtitleText}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Room Description */}
+      <p className="text-gray-300/90 leading-relaxed text-sm sm:text-base">{room.description}</p>
+
+      {/* Direction Buttons */}
+      {availableDirections.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {availableDirections.map((dir) => (
+            <button
+              key={dir}
+              onClick={() => handleDirection(dir)}
+              className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200"
+            >
+              {dir.charAt(0).toUpperCase() + dir.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <RoomDisplay
+        room={room}
+        roomPlayers={roomPlayers}
+        currentPlayerId={currentPlayerId}
+        onAction={onAction}
+        showHeader={false}
+        className="mt-2"
+        worldTick={worldTick}
+        actionResult={actionResult}
+      />
+    </div>
+  )
+}
+
