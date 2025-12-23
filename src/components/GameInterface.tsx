@@ -5,7 +5,7 @@ import type { Room } from '@/lib/game-state'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
-import GameTabs from './GameTabs'
+import UnifiedFeedPanel from './UnifiedFeedPanel'
 import RoomBox from './RoomBox'
 import Compass from './Compass'
 import Icon from './Icon'
@@ -14,7 +14,8 @@ import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
 import MapModal from './MapModal'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
-import { useHistoryStore } from '@/store/historyStore'
+import { useTimelineStore } from '@/store/timelineStore'
+import type { TimelineEntryInput } from '@/store/timelineStore'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -56,6 +57,24 @@ const normalizeCommand = (input: string): string => {
   return COMMAND_SHORTHAND[normalized] || normalized
 }
 
+const KNOWN_COMMANDS = new Set<string>([
+  ...TRAVEL_DIRECTION_KEYS,
+  'look',
+  'attack',
+  'search',
+  'rest',
+  'move',
+  'navigate',
+  'buy',
+  'sell',
+  'inventory',
+  'pick',
+  'use',
+  'map',
+  'talk',
+  'trade',
+])
+
 export default function GameInterface() {
   const {
     player,
@@ -94,19 +113,10 @@ export default function GameInterface() {
   const currentRoomRef = useRef(currentRoom)
   const customActionInputRef = useRef<HTMLInputElement>(null)
   const noop = useCallback(() => {}, [])
-  const appendHistory = useCallback(
-    (text: string, options?: { roomId?: string; scope?: 'room' | 'world' | 'system'; ts?: number; id?: string }) => {
-      const { append } = useHistoryStore.getState()
-      append({
-        id: options?.id,
-        ts: options?.ts,
-        text,
-        roomId: options?.roomId,
-        scope: options?.scope,
-      })
-    },
-    []
-  )
+  const appendTimeline = useCallback((entry: TimelineEntryInput) => {
+    const { append } = useTimelineStore.getState()
+    return append(entry)
+  }, [])
 
   // Load sidebar state from localStorage on mount
   useEffect(() => {
@@ -364,7 +374,7 @@ export default function GameInterface() {
   }, [player])
 
   useEffect(() => {
-    const { setUser } = useHistoryStore.getState()
+    const { setUser } = useTimelineStore.getState()
     setUser(player?.id ?? null)
   }, [player?.id])
 
@@ -414,9 +424,10 @@ export default function GameInterface() {
           success: false,
           source: 'local',
         })
-        appendHistory(`You don't see an exit in that direction (${actionType})`, {
+        appendTimeline({
+          type: 'action',
+          text: `You don't see an exit in that direction (${actionType})`,
           roomId: currentRoomRef.current?.roomId,
-          scope: 'system',
         })
         return
       }
@@ -433,9 +444,10 @@ export default function GameInterface() {
           success: false,
           source: 'local',
         })
-        appendHistory(`You don't see an exit in that direction (${actionType})`, {
+        appendTimeline({
+          type: 'action',
+          text: `You don't see an exit in that direction (${actionType})`,
           roomId: currentRoomRef.current?.roomId,
-          scope: 'system',
         })
         return
       }
@@ -490,9 +502,69 @@ export default function GameInterface() {
     e.preventDefault()
     const actionToSend = customAction.trim()
     if (!actionToSend) return
-    
+
     setCustomAction('') // Clear input immediately
+
+    const lowerInput = actionToSend.toLowerCase()
+    const sayMatch = lowerInput.startsWith('say ')
+    const shoutMatch = lowerInput.startsWith('shout ')
+
+    if (sayMatch || shoutMatch) {
+      const message = actionToSend.slice(actionToSend.indexOf(' ') + 1).trim()
+      if (!message) {
+        appendTimeline({
+          type: 'action',
+          text: 'To chat: say hello | shout hello',
+        })
+        return
+      }
+
+      if (sayMatch) {
+        const roomId = currentRoomRef.current?.roomId
+        if (!roomId) {
+          appendTimeline({
+            type: 'action',
+            text: 'You must be in a room to chat. Try again after loading a room.',
+          })
+          return
+        }
+
+        const sent = socketHandlers.sendRoomChatMessage(message, roomId)
+        if (!sent) {
+          appendTimeline({
+            type: 'action',
+            text: 'Failed to send room chat. Please try again.',
+          })
+        }
+        return
+      }
+
+      const sent = socketHandlers.sendChatMessage(message)
+      if (!sent) {
+        appendTimeline({
+          type: 'action',
+          text: 'Failed to send world chat. Please try again.',
+        })
+      }
+      return
+    }
+
     const normalizedCommand = normalizeCommand(actionToSend)
+    const commandWord = normalizedCommand.split(/\s+/)[0]
+
+    if (!commandWord || !KNOWN_COMMANDS.has(commandWord)) {
+      const maybeSuggestion = commandWord && commandWord.startsWith('attac') ? 'attack' : null
+      const unknownText = maybeSuggestion
+        ? `Unknown command "${commandWord}". Did you mean "${maybeSuggestion}"?`
+        : 'To chat: say hello | shout hello'
+
+      appendTimeline({
+        type: 'action',
+        text: unknownText,
+      })
+      return
+    }
+
     handleAction(normalizedCommand)
   }
 
@@ -531,9 +603,10 @@ export default function GameInterface() {
 
       const ts = payload.timestamp ? Date.parse(payload.timestamp) : Date.now()
       const text = payload.message || payload.action || 'Action result'
-      appendHistory(text, {
+      appendTimeline({
+        type: 'action',
+        text,
         roomId: payload.data?.roomId || currentRoomRef.current?.roomId,
-        scope: 'system',
         ts,
       })
     })
@@ -554,9 +627,10 @@ export default function GameInterface() {
         timestamp: new Date().toISOString(),
         source: 'socket',
       })
-      appendHistory(`Action failed: ${payload.message}`, {
+      appendTimeline({
+        type: 'action',
+        text: `Action failed: ${payload.message}`,
         roomId: currentRoomRef.current?.roomId,
-        scope: 'system',
       })
     })
 
@@ -589,13 +663,6 @@ export default function GameInterface() {
       if (activeRoom && (event.toRoom === activeRoom.roomId || event.fromRoom === activeRoom.roomId)) {
         console.log('[GameInterface] Player entered or left current room, reloading')
         loadRoomDataRef.current?.({ isTransition: true })
-        if (event.playerId !== currentPlayer?.id) {
-          const directionText = event.toRoom === activeRoom.roomId ? 'enters the room' : 'leaves the room'
-          appendHistory(`${event.username} ${directionText}.`, {
-            roomId: activeRoom.roomId,
-            scope: 'room',
-          })
-        }
       }
     })
 
@@ -605,7 +672,7 @@ export default function GameInterface() {
       cleanupActionError()
       cleanupRoomMoves()
     }
-  }, [socket, socketHandlers, setPlayer, setInventory])
+  }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendTimeline])
 
   useEffect(() => {
     if (!socket) {
@@ -614,8 +681,9 @@ export default function GameInterface() {
 
     const cleanupChat = socketHandlers.onChatMessage((message) => {
       const ts = message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
-      appendHistory(`[World] ${message.username}: ${message.message}`, {
-        scope: 'world',
+      appendTimeline({
+        type: 'world',
+        text: `[World] ${message.username}: ${message.message}`,
         ts,
         id: message.id,
       })
@@ -627,11 +695,13 @@ export default function GameInterface() {
         return
       }
       const ts = message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
-      appendHistory(`[Room] ${message.username}: ${message.message}`, {
-        scope: 'room',
+      const roomIdAtReceipt = message.roomId || activeRoom?.roomId
+      appendTimeline({
+        type: 'room',
+        text: `[Room] ${message.username}: ${message.message}`,
         ts,
         id: message.id,
-        roomId: message.roomId ?? activeRoom?.roomId,
+        roomId: roomIdAtReceipt,
       })
     })
 
@@ -639,7 +709,7 @@ export default function GameInterface() {
       cleanupChat()
       cleanupRoomChat()
     }
-  }, [socket, socketHandlers, appendHistory])
+  }, [socket, socketHandlers, appendTimeline])
 
   useEffect(() => {
     console.log('[GameInterface] Socket state:', {
@@ -835,7 +905,7 @@ export default function GameInterface() {
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,35%)] xl:grid-cols-[minmax(360px,23%)_1fr_minmax(360px,23%)] flex-1 overflow-hidden relative min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,35%)] xl:grid-cols-[minmax(360px,25%)_1fr_minmax(360px,25%)] flex-1 overflow-hidden relative min-h-0">
         {/* Overlay backdrop for mobile */}
         {(leftSidebarOpen || rightSidebarOpen) && (
           <div 
@@ -974,14 +1044,15 @@ export default function GameInterface() {
         <div className={`
           bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
           transition-transform duration-300 ease-out
-          min-w-[480px]
+          min-w-[360px]
           ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
           lg:translate-x-0 lg:static lg:col-start-2
           xl:col-start-3
           absolute right-0 top-0 bottom-0 w-full z-20 shadow-xl
         `}>
-          <GameTabs
-            room={currentRoom}
+          <UnifiedFeedPanel
+            currentRoomId={currentRoom?.roomId}
+            isConnected={socket?.connected ?? false}
             onClose={() => setRightSidebarOpen(false)}
           />
         </div>

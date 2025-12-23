@@ -88,7 +88,7 @@ async function pickupRoomItem(playerId, roomItemId, quantity, playerCurrentRoom)
 
   return {
     success: true,
-    message: `You pick up the ${template.name}.`,
+    message: `You pick up a ${template.name}.`,
     inventory,
     roomItems,
   }
@@ -157,7 +157,7 @@ async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom)
 
   return {
     success: true,
-    message: `You drop the ${template.name}.`,
+    message: `You drop a ${template.name}.`,
     inventory,
     roomItems,
   }
