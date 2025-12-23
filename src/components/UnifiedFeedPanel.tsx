@@ -21,6 +21,8 @@ export default function UnifiedFeedPanel({ currentRoomId, isConnected, onClose }
   const [isNearBottom, setIsNearBottom] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const filteredEntries = useMemo(() => {
     const filtered = entries.filter((entry) => {
@@ -96,7 +98,19 @@ export default function UnifiedFeedPanel({ currentRoomId, isConnected, onClose }
   const handleLoadMore = () => {
     if (!canLoadMore) return
     setVisibleCount((prev) => prev + LOAD_MORE_STEP)
+    setIsMenuOpen(false)
   }
+
+  useEffect(() => {
+    if (!isMenuOpen) return
+    const handlePointerDown = (event: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [isMenuOpen])
 
   return (
     <div className="flex flex-col h-full">
@@ -136,17 +150,32 @@ export default function UnifiedFeedPanel({ currentRoomId, isConnected, onClose }
           </button>
         ))}
 
-        <button
-          onClick={handleLoadMore}
-          disabled={!canLoadMore}
-          className={`ml-auto px-3 py-1.5 text-xs rounded-md border ${
-            canLoadMore
-              ? 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'
-              : 'bg-gray-800/60 text-gray-500 border-gray-800 cursor-not-allowed'
-          }`}
-        >
-          Load previous 50
-        </button>
+        <div ref={menuRef} className="ml-auto relative">
+          <button
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            className="px-2 py-1.5 text-lg leading-none rounded-md border bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+            aria-haspopup="menu"
+            aria-expanded={isMenuOpen}
+            aria-label="More timeline actions"
+          >
+            ⋮
+          </button>
+          {isMenuOpen && (
+            <div className="absolute right-0 mt-2 w-48 rounded-md border border-gray-800 bg-gray-900/95 shadow-lg shadow-black/40 p-2 z-10">
+              <button
+                onClick={handleLoadMore}
+                disabled={!canLoadMore}
+                className={`w-full px-3 py-1.5 text-xs rounded-md border ${
+                  canLoadMore
+                    ? 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'
+                    : 'bg-gray-800/60 text-gray-500 border-gray-800 cursor-not-allowed'
+                }`}
+              >
+                Load previous 50
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div ref={listRef} className="flex-1 overflow-y-auto p-4 pb-8 space-y-3 bg-gray-950/80">

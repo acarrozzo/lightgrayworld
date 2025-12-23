@@ -901,7 +901,6 @@ export default function GameInterface() {
         mapTitle={mapInfo.title || 'Map'}
       />
       <GameHeader 
-        player={player} 
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
       

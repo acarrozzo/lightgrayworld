@@ -1,34 +1,23 @@
 'use client'
 
-import type { Player } from '@/lib/game-state'
 import { Settings as SettingsIcon } from 'lucide-react'
 
 interface GameHeaderProps {
-  player: Player
   onOpenSettings?: () => void
 }
-// VERSION NUMBER
-export default function GameHeader({ player, onOpenSettings }: GameHeaderProps) {
-  return (
-    <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-3 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3 sm:space-x-4">
-          <div className="flex items-center space-x-3 sm:space-x-4 hidden md:flex">
-            <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">Light Gray RPG</h1>
-            <span className="text-xs sm:text-sm text-gray-500 font-normal">v0.1.3 - item epic</span>
-            <div className="text-sm text-gray-400">
-              Welcome, <span className="text-amber-400/90 font-medium">{player.username}</span>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-3 sm:space-x-4">
-        <div className="flex items-center space-x-3 sm:space-x-4 hidden md:flex">
-          <div className="text-xs sm:text-sm text-gray-400">
-            <span className="font-medium">Lv.{player.level}</span> | <span className="text-red-400/90">HP: {player.hp}/{player.hpMax}</span> | <span className="text-blue-400/90">MP: {player.mp}/{player.mpMax}</span>
-          </div>
-          </div>
 
+export default function GameHeader({ onOpenSettings }: GameHeaderProps) {
+  return (
+    <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-2 shadow-sm">
+      <div className="flex w-full items-center gap-4">
+        <div className="flex-1" aria-hidden="true" />
+
+        <div className="flex flex-col items-center text-center space-y-0">
+          <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">Light Gray</h1>
+          <span className="text-xs text-gray-500 font-normal">v0.1.3 - item epic</span>
+        </div>
+
+        <div className="flex flex-1 justify-end">
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}
