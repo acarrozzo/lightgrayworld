@@ -8,7 +8,7 @@ import GameSidebar from './GameSidebar'
 import UnifiedFeedPanel from './UnifiedFeedPanel'
 import RoomBox from './RoomBox'
 import Compass from './Compass'
-import Icon from './Icon'
+import { Settings as SettingsIcon } from 'lucide-react'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
@@ -900,8 +900,9 @@ export default function GameInterface() {
         mapSrc={mapInfo.src}
         mapTitle={mapInfo.title || 'Map'}
       />
-      <GameHeader 
-        onOpenSettings={() => setIsSettingsOpen(true)}
+      <GameHeader
+        onToggleCharacterSidebar={() => setLeftSidebarOpen((prev) => !prev)}
+        onToggleWorldSidebar={() => setRightSidebarOpen((prev) => !prev)}
       />
       
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,35%)] xl:grid-cols-[minmax(360px,25%)_1fr_minmax(360px,25%)] flex-1 overflow-hidden relative min-h-0">
@@ -949,42 +950,14 @@ export default function GameInterface() {
 
               {/* D-pad */}
               <div className="p-4 flex-shrink-0 relative flex flex-col gap-4 border-t border-gray-800/50">
-                {/* Mobile sidebar toggles - positioned in top corners of dpad area */}
-                <button 
-                  className="absolute top-4 left-4 xl:hidden p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 z-10"
-                  onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
-                  title="Toggle Player Info (Ctrl+1 or swipe right)"
+                <button
+                  className="absolute top-4 left-4 p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 z-10"
+                  onClick={() => setIsSettingsOpen(true)}
+                  title="Open settings"
+                  aria-label="Open settings"
                 >
-                  <Icon name="character" className="h-5 w-5" color="current" />
+                  <SettingsIcon className="h-5 w-5" strokeWidth={2} />
                 </button>
-                
-                <button 
-                  className="absolute top-4 right-4 lg:hidden p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 z-10"
-                  onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
-                  title="Toggle Chat & Navigation (Ctrl+2 or swipe left)"
-                >
-                  <Icon name="world" className="h-5 w-5" color="current" />
-                </button>
-                
-                {/* Custom Action Input */}
-                <form onSubmit={handleCustomAction} className="flex gap-0 w-full max-w-60 mx-auto">
-                  <input
-                    ref={customActionInputRef}
-                    type="text"
-                    value={customAction}
-                    onChange={(e) => setCustomAction(e.target.value)}
-                    placeholder="Enter action..."
-                    disabled={isLoadingRoom}
-                    className="flex-1 px-4 py-2 bg-gray-800/50 text-white border border-gray-700/50 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all duration-200 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 min-w-0"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isLoadingRoom || !customAction.trim()}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-r-lg whitespace-nowrap text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
-                  >
-                    Submit
-                  </button>
-                </form>
                 
                 {/* Compass and Action Buttons */}
                 <div className="relative flex items-center justify-center gap-4">
@@ -1053,6 +1026,11 @@ export default function GameInterface() {
             currentRoomId={currentRoom?.roomId}
             isConnected={socket?.connected ?? false}
             onClose={() => setRightSidebarOpen(false)}
+            customAction={customAction}
+            onCustomActionChange={setCustomAction}
+            onCustomActionSubmit={handleCustomAction}
+            isLoadingRoom={isLoadingRoom}
+            customActionInputRef={customActionInputRef}
           />
         </div>
       </div>

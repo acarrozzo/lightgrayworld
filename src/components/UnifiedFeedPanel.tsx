@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
 import { useTimelineStore } from '@/store/timelineStore'
 
 type FilterType = 'all' | 'room' | 'world' | 'action'
@@ -9,12 +9,26 @@ type UnifiedFeedPanelProps = {
   currentRoomId?: string
   isConnected?: boolean
   onClose?: () => void
+  customAction: string
+  onCustomActionChange: (value: string) => void
+  onCustomActionSubmit: (event: FormEvent<HTMLFormElement>) => void
+  isLoadingRoom?: boolean
+  customActionInputRef?: RefObject<HTMLInputElement | null>
 }
 
 const DEFAULT_VISIBLE = 200
 const LOAD_MORE_STEP = 50
 
-export default function UnifiedFeedPanel({ currentRoomId, isConnected, onClose }: UnifiedFeedPanelProps) {
+export default function UnifiedFeedPanel({
+  currentRoomId,
+  isConnected,
+  onClose,
+  customAction,
+  onCustomActionChange,
+  onCustomActionSubmit,
+  isLoadingRoom,
+  customActionInputRef,
+}: UnifiedFeedPanelProps) {
   const entries = useTimelineStore((state) => state.entries)
   const [filter, setFilter] = useState<FilterType>('all')
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE)
@@ -44,6 +58,9 @@ export default function UnifiedFeedPanel({ currentRoomId, isConnected, onClose }
   }, [filteredEntries, visibleCount])
 
   const canLoadMore = visibleCount < filteredEntries.length
+  const trimmedCustomAction = customAction.trim()
+  const showUnreadNotice = !isNearBottom && unreadCount > 0
+  const isSubmitDisabled = Boolean(isLoadingRoom) || trimmedCustomAction.length === 0
 
   const scrollToBottom = useCallback(() => {
     const container = listRef.current
@@ -193,19 +210,39 @@ export default function UnifiedFeedPanel({ currentRoomId, isConnected, onClose }
         )}
       </div>
 
-      {!isNearBottom && unreadCount > 0 && (
-        <div className="p-3 border-t border-gray-800/60 bg-gray-900/80 flex items-center justify-between">
-          <span className="text-xs text-gray-300">
-            {unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`}
-          </span>
+      <div className="p-4 border-t border-gray-800/60 bg-gray-950/95 space-y-3">
+        {showUnreadNotice && (
+          <div className="flex items-center justify-between text-xs text-gray-300 bg-gray-900/80 px-3 py-2 rounded-md border border-gray-800/80">
+            <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`}</span>
+            <button
+              onClick={scrollToBottom}
+              className="px-3 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+            >
+              Jump to latest
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={onCustomActionSubmit} className="flex gap-0 w-full">
+          <input
+            ref={customActionInputRef ?? undefined}
+            type="text"
+            value={customAction}
+            onChange={(e) => onCustomActionChange(e.target.value)}
+            placeholder="Enter action..."
+            disabled={Boolean(isLoadingRoom)}
+            className="flex-1 px-4 py-2 bg-gray-900/70 text-white border border-gray-700/60 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all duration-200 disabled:bg-gray-800/50 disabled:cursor-not-allowed disabled:opacity-50 min-w-0"
+            autoComplete="off"
+          />
           <button
-            onClick={scrollToBottom}
-            className="px-3 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+            type="submit"
+            disabled={isSubmitDisabled}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-r-lg whitespace-nowrap text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
           >
-            Jump to latest
+            Submit
           </button>
-        </div>
-      )}
+        </form>
+      </div>
     </div>
   )
 }
