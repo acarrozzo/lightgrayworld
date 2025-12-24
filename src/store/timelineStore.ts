@@ -5,9 +5,17 @@ import { create } from 'zustand'
 export type TimelineEntry = {
   id: string
   ts: number
-  text: string
+  message: string
   type: 'room' | 'world' | 'action'
+  level?: 'info' | 'error'
+  actor?: string
+  isSelf?: boolean
   roomId?: string
+  /**
+   * Deprecated: kept temporarily for compatibility with older persisted entries.
+   * Prefer using `message` for all rendering.
+   */
+  text?: string
 }
 
 export type TimelineEntryInput = Omit<TimelineEntry, 'id' | 'ts'> & {
@@ -32,10 +40,17 @@ const safeParse = (value: string | null): TimelineEntry[] => {
   if (!value) return []
   try {
     const parsed = JSON.parse(value)
-    if (Array.isArray(parsed)) {
-      return parsed.filter((entry) => Boolean(entry?.id) && Boolean(entry?.ts) && Boolean(entry?.text))
+    if (!Array.isArray(parsed)) {
+      return []
     }
-    return []
+
+    const hasLegacyEntries = parsed.some((entry) => typeof entry?.message !== 'string')
+    if (hasLegacyEntries) {
+      // Drop legacy timeline data to avoid parsing fragile text formats.
+      return []
+    }
+
+    return parsed.filter((entry) => Boolean(entry?.id) && typeof entry?.ts === 'number' && typeof entry?.message === 'string')
   } catch {
     return []
   }
@@ -52,12 +67,17 @@ const persistEntries = (userId: string | null, entries: TimelineEntry[]) => {
 }
 
 const ensureEntry = (entry: TimelineEntryInput): TimelineEntry => {
+  const message = entry.message ?? entry.text ?? ''
   return {
     id: entry.id || (crypto.randomUUID ? crypto.randomUUID() : `timeline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
     ts: entry.ts ?? Date.now(),
-    text: entry.text,
+    message,
     type: entry.type,
+    level: entry.level,
+    actor: entry.actor,
+    isSelf: entry.isSelf,
     roomId: entry.roomId,
+    text: entry.text ?? message,
   }
 }
 

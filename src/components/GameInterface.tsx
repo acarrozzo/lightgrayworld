@@ -426,7 +426,8 @@ export default function GameInterface() {
         })
         appendTimeline({
           type: 'action',
-          text: `You don't see an exit in that direction (${actionType})`,
+          level: 'error',
+          message: `You don't see an exit in that direction (${actionType})`,
           roomId: currentRoomRef.current?.roomId,
         })
         return
@@ -446,7 +447,8 @@ export default function GameInterface() {
         })
         appendTimeline({
           type: 'action',
-          text: `You don't see an exit in that direction (${actionType})`,
+          level: 'error',
+          message: `You don't see an exit in that direction (${actionType})`,
           roomId: currentRoomRef.current?.roomId,
         })
         return
@@ -514,7 +516,8 @@ export default function GameInterface() {
       if (!message) {
         appendTimeline({
           type: 'action',
-          text: 'To chat: say hello | shout hello',
+          level: 'error',
+          message: 'To chat: say hello | shout hello',
         })
         return
       }
@@ -524,7 +527,8 @@ export default function GameInterface() {
         if (!roomId) {
           appendTimeline({
             type: 'action',
-            text: 'You must be in a room to chat. Try again after loading a room.',
+            level: 'error',
+            message: 'You must be in a room to chat. Try again after loading a room.',
           })
           return
         }
@@ -533,7 +537,8 @@ export default function GameInterface() {
         if (!sent) {
           appendTimeline({
             type: 'action',
-            text: 'Failed to send room chat. Please try again.',
+            level: 'error',
+            message: 'Failed to send room chat. Please try again.',
           })
         }
         return
@@ -543,7 +548,8 @@ export default function GameInterface() {
       if (!sent) {
         appendTimeline({
           type: 'action',
-          text: 'Failed to send world chat. Please try again.',
+          level: 'error',
+          message: 'Failed to send world chat. Please try again.',
         })
       }
       return
@@ -560,7 +566,8 @@ export default function GameInterface() {
 
       appendTimeline({
         type: 'action',
-        text: unknownText,
+        level: 'error',
+        message: unknownText,
       })
       return
     }
@@ -602,10 +609,10 @@ export default function GameInterface() {
       }
 
       const ts = payload.timestamp ? Date.parse(payload.timestamp) : Date.now()
-      const text = payload.message || payload.action || 'Action result'
+      const messageText = payload.message || payload.action || 'Action result'
       appendTimeline({
         type: 'action',
-        text,
+        message: messageText,
         roomId: payload.data?.roomId || currentRoomRef.current?.roomId,
         ts,
       })
@@ -629,7 +636,8 @@ export default function GameInterface() {
       })
       appendTimeline({
         type: 'action',
-        text: `Action failed: ${payload.message}`,
+        level: 'error',
+        message: payload.message || 'Action failed',
         roomId: currentRoomRef.current?.roomId,
       })
     })
@@ -679,28 +687,36 @@ export default function GameInterface() {
       return
     }
 
-    const cleanupChat = socketHandlers.onChatMessage((message) => {
-      const ts = message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
+    const cleanupChat = socketHandlers.onChatMessage((chatMessage) => {
+      const ts = chatMessage.timestamp ? new Date(chatMessage.timestamp).getTime() : Date.now()
+      const currentPlayerName = playerRef.current?.username
+      const isSelf = Boolean(currentPlayerName && chatMessage.username === currentPlayerName)
       appendTimeline({
         type: 'world',
-        text: `[World] ${message.username}: ${message.message}`,
+        actor: chatMessage.username,
+        isSelf,
+        message: chatMessage.message,
         ts,
-        id: message.id,
+        id: chatMessage.id,
       })
     })
 
-    const cleanupRoomChat = socketHandlers.onRoomChatMessage((message) => {
+    const cleanupRoomChat = socketHandlers.onRoomChatMessage((roomMessage) => {
       const activeRoom = currentRoomRef.current
-      if (activeRoom?.roomId && message.roomId && message.roomId !== activeRoom.roomId) {
+      if (activeRoom?.roomId && roomMessage.roomId && roomMessage.roomId !== activeRoom.roomId) {
         return
       }
-      const ts = message.timestamp ? new Date(message.timestamp).getTime() : Date.now()
-      const roomIdAtReceipt = message.roomId || activeRoom?.roomId
+      const ts = roomMessage.timestamp ? new Date(roomMessage.timestamp).getTime() : Date.now()
+      const roomIdAtReceipt = roomMessage.roomId || activeRoom?.roomId
+      const currentPlayerName = playerRef.current?.username
+      const isSelf = Boolean(currentPlayerName && roomMessage.username === currentPlayerName)
       appendTimeline({
         type: 'room',
-        text: `[Room] ${message.username}: ${message.message}`,
+        actor: roomMessage.username,
+        isSelf,
+        message: roomMessage.message,
         ts,
-        id: message.id,
+        id: roomMessage.id,
         roomId: roomIdAtReceipt,
       })
     })

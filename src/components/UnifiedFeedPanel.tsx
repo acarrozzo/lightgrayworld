@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { useTimelineStore } from '@/store/timelineStore'
+import { AlertTriangle, Globe, MessageSquare, Sparkles, type LucideIcon } from 'lucide-react'
+import { useTimelineStore, type TimelineEntry } from '@/store/timelineStore'
 
 type FilterType = 'all' | 'room' | 'world' | 'action'
 
@@ -14,6 +15,84 @@ type UnifiedFeedPanelProps = {
   onCustomActionSubmit: (event: FormEvent<HTMLFormElement>) => void
   isLoadingRoom?: boolean
   customActionInputRef?: RefObject<HTMLInputElement | null>
+}
+
+type TimelineSettings = {
+  showTimestamps: boolean
+  compactMode: boolean
+  groupRepeats: boolean
+}
+
+type RenderEntry = {
+  entry: TimelineEntry
+  count: number
+}
+
+type CategoryStyle = {
+  label: string
+  icon: LucideIcon
+  badgeClass: string
+  barClass: string
+}
+
+const TIMELINE_TOGGLES: { key: keyof TimelineSettings; label: string }[] = [
+  { key: 'showTimestamps', label: 'Show timestamps' },
+  { key: 'compactMode', label: 'Compact mode' },
+  { key: 'groupRepeats', label: 'Group repeats' },
+]
+
+const CATEGORY_STYLES: Record<'room' | 'world' | 'action', CategoryStyle> = {
+  room: {
+    label: 'ROOM',
+    icon: MessageSquare,
+    badgeClass: 'border-indigo-400/70 bg-indigo-600/30 text-indigo-100',
+    barClass: 'bg-indigo-500',
+  },
+  world: {
+    label: 'WORLD',
+    icon: Globe,
+    badgeClass: 'border-emerald-400/70 bg-emerald-600/25 text-emerald-100',
+    barClass: 'bg-emerald-500',
+  },
+  action: {
+    label: 'ACT',
+    icon: Sparkles,
+    badgeClass: 'border-amber-400/70 bg-amber-600/25 text-amber-100',
+    barClass: 'bg-amber-400',
+  },
+}
+
+const ERROR_STYLE: CategoryStyle = {
+  label: 'ERR',
+  icon: AlertTriangle,
+  badgeClass: 'border-red-500/70 bg-red-700/25 text-red-200',
+  barClass: 'bg-red-500',
+}
+
+const createDefaultSettings = (): TimelineSettings => ({
+  showTimestamps: true,
+  compactMode: false,
+  groupRepeats: false,
+})
+
+const getSettingsKey = (userId?: string | null) => (userId ? `timeline-settings:${userId}` : null)
+
+const canGroupEntries = (a: TimelineEntry, b: TimelineEntry) => {
+  return (
+    a.type === b.type &&
+    (a.level ?? 'info') === (b.level ?? 'info') &&
+    (a.roomId ?? null) === (b.roomId ?? null) &&
+    (a.actor ?? null) === (b.actor ?? null) &&
+    Boolean(a.isSelf) === Boolean(b.isSelf) &&
+    (a.message ?? a.text ?? '') === (b.message ?? b.text ?? '')
+  )
+}
+
+const getEntryStyle = (entry: TimelineEntry): CategoryStyle => {
+  if (entry.level === 'error') {
+    return ERROR_STYLE
+  }
+  return CATEGORY_STYLES[entry.type]
 }
 
 const DEFAULT_VISIBLE = 200
@@ -30,6 +109,7 @@ export default function UnifiedFeedPanel({
   customActionInputRef,
 }: UnifiedFeedPanelProps) {
   const entries = useTimelineStore((state) => state.entries)
+  const userId = useTimelineStore((state) => state.userId)
   const [filter, setFilter] = useState<FilterType>('all')
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE)
   const [isNearBottom, setIsNearBottom] = useState(true)
@@ -37,6 +117,47 @@ export default function UnifiedFeedPanel({
   const listRef = useRef<HTMLDivElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [settings, setSettings] = useState<TimelineSettings>(() => createDefaultSettings())
+  const [settingsHydrated, setSettingsHydrated] = useState(false)
+  const settingsKey = useMemo(() => getSettingsKey(userId), [userId])
+  const iconSize = settings.compactMode ? 12 : 14
+
+  useEffect(() => {
+    if (!settingsKey) {
+      setSettings(createDefaultSettings())
+      setSettingsHydrated(false)
+      return
+    }
+
+    try {
+      const stored = localStorage.getItem(settingsKey)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (typeof parsed === 'object' && parsed !== null) {
+          setSettings({ ...createDefaultSettings(), ...parsed })
+          setSettingsHydrated(true)
+          return
+        }
+      }
+    } catch {
+      // ignore parse errors and fall back to defaults
+    }
+
+    setSettings(createDefaultSettings())
+    setSettingsHydrated(true)
+  }, [settingsKey])
+
+  useEffect(() => {
+    if (!settingsKey || !settingsHydrated) return
+    localStorage.setItem(settingsKey, JSON.stringify(settings))
+  }, [settings, settingsKey, settingsHydrated])
+
+  const handleToggleSetting = (key: keyof TimelineSettings) => {
+    setSettings((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }))
+  }
 
   const filteredEntries = useMemo(() => {
     const filtered = entries.filter((entry) => {
@@ -44,7 +165,8 @@ export default function UnifiedFeedPanel({
       if (filter === 'world') return entry.type === 'world'
       if (filter === 'action') return entry.type === 'action'
       if (filter === 'room') {
-        return entry.type === 'room' && (!currentRoomId || entry.roomId === currentRoomId)
+        if (!currentRoomId) return false
+        return entry.type === 'room' && entry.roomId === currentRoomId
       }
       return true
     })
@@ -56,6 +178,26 @@ export default function UnifiedFeedPanel({
     const start = Math.max(filteredEntries.length - visibleCount, 0)
     return filteredEntries.slice(start)
   }, [filteredEntries, visibleCount])
+
+  const renderEntries = useMemo<RenderEntry[]>(() => {
+    if (!visibleEntries.length) return []
+    if (!settings.groupRepeats) {
+      return visibleEntries.map((entry) => ({ entry, count: 1 }))
+    }
+
+    const grouped: RenderEntry[] = []
+    for (const entry of visibleEntries) {
+      const normalizedEntry = entry.message ? entry : { ...entry, message: entry.message ?? entry.text ?? '' }
+      const lastGroup = grouped[grouped.length - 1]
+      if (lastGroup && canGroupEntries(lastGroup.entry, normalizedEntry)) {
+        lastGroup.count += 1
+        lastGroup.entry = normalizedEntry
+      } else {
+        grouped.push({ entry: normalizedEntry, count: 1 })
+      }
+    }
+    return grouped
+  }, [visibleEntries, settings.groupRepeats])
 
   const canLoadMore = visibleCount < filteredEntries.length
   const trimmedCustomAction = customAction.trim()
@@ -152,61 +294,123 @@ export default function UnifiedFeedPanel({
         </div>
       </div>
 
-      <div className="px-4 py-2 flex flex-wrap items-center gap-2 border-b border-gray-800/60 bg-gray-900/70">
-        {(['all', 'room', 'world', 'action'] as FilterType[]).map((key) => (
-          <button
-            key={key}
-            onClick={() => handleFilterChange(key)}
-            className={`px-3 py-1.5 text-xs rounded-md border ${
-              filter === key
-                ? 'bg-indigo-600 text-white border-indigo-500'
-                : 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'
-            }`}
-          >
-            {key === 'action' ? 'Actions' : key.charAt(0).toUpperCase() + key.slice(1)}
-          </button>
-        ))}
+      <div className="px-4 py-2 border-b border-gray-800/60 bg-gray-900/70 flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {(['all', 'room', 'world', 'action'] as FilterType[]).map((key) => (
+            <button
+              key={key}
+              onClick={() => handleFilterChange(key)}
+              className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${
+                filter === key
+                  ? 'bg-indigo-600 text-white border-indigo-500'
+                  : 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'
+              }`}
+            >
+              {key === 'action' ? 'Actions' : key.charAt(0).toUpperCase() + key.slice(1)}
+            </button>
+          ))}
 
-        <div ref={menuRef} className="ml-auto relative">
-          <button
-            onClick={() => setIsMenuOpen((prev) => !prev)}
-            className="px-2 py-1.5 text-lg leading-none rounded-md border bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
-            aria-haspopup="menu"
-            aria-expanded={isMenuOpen}
-            aria-label="More timeline actions"
-          >
-            ⋮
-          </button>
-          {isMenuOpen && (
-            <div className="absolute right-0 mt-2 w-48 rounded-md border border-gray-800 bg-gray-900/95 shadow-lg shadow-black/40 p-2 z-10">
+          <div ref={menuRef} className="ml-auto relative">
+            <button
+              onClick={() => setIsMenuOpen((prev) => !prev)}
+              className="px-2 py-1.5 text-lg leading-none rounded-md border bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
+              aria-label="More timeline actions"
+            >
+              ⋮
+            </button>
+            {isMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 rounded-md border border-gray-800 bg-gray-900/95 shadow-lg shadow-black/40 p-2 z-10">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={!canLoadMore}
+                  className={`w-full px-3 py-1.5 text-xs rounded-md border ${
+                    canLoadMore
+                      ? 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'
+                      : 'bg-gray-800/60 text-gray-500 border-gray-800 cursor-not-allowed'
+                  }`}
+                >
+                  Load previous 50
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {TIMELINE_TOGGLES.map(({ key, label }) => {
+            const active = settings[key]
+            return (
               <button
-                onClick={handleLoadMore}
-                disabled={!canLoadMore}
-                className={`w-full px-3 py-1.5 text-xs rounded-md border ${
-                  canLoadMore
-                    ? 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'
-                    : 'bg-gray-800/60 text-gray-500 border-gray-800 cursor-not-allowed'
+                key={key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => handleToggleSetting(key)}
+                className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+                  active
+                    ? 'bg-gray-800 text-white border-indigo-400/70'
+                    : 'bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200'
                 }`}
               >
-                Load previous 50
+                {label}
               </button>
-            </div>
-          )}
+            )
+          })}
         </div>
       </div>
 
-      <div ref={listRef} className="flex-1 overflow-y-auto p-4 pb-8 space-y-3 bg-gray-950/80">
-        {visibleEntries.length === 0 ? (
+      <div ref={listRef} className="flex-1 overflow-y-auto p-4 pb-8 space-y-2 bg-gray-950/80">
+        {renderEntries.length === 0 ? (
           <div className="text-center text-sm text-gray-500 py-8">No entries yet.</div>
         ) : (
-          visibleEntries.map((entry) => (
-            <div key={entry.id} className="flex items-start gap-3">
-              <span className="text-[11px] text-gray-500 whitespace-nowrap">
-                {new Date(entry.ts).toLocaleTimeString()}
-              </span>
-              <span className="text-sm text-gray-200 leading-relaxed break-words">{entry.text}</span>
-            </div>
-          ))
+          renderEntries.map(({ entry, count }, index) => {
+            const style = getEntryStyle(entry)
+            const messageText = entry.message ?? entry.text ?? ''
+            const isChat = entry.type === 'room' || entry.type === 'world'
+            const actorLabel = entry.isSelf ? 'You' : entry.actor || 'Unknown'
+            const contentSize = settings.compactMode ? 'text-[13px]' : 'text-sm'
+            const rowPadding = settings.compactMode ? 'py-1.5 pr-3 pl-5' : 'py-2.5 pr-4 pl-6'
+
+            return (
+              <div
+                key={`${entry.id}-${index}`}
+                className={`relative border border-gray-800/70 rounded-lg bg-gray-900/60 ${rowPadding}`}
+              >
+                <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${style.barClass}`} aria-hidden />
+                <div className="flex flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-gray-400">
+                    <span
+                      className={`flex items-center gap-1 font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border ${style.badgeClass} ${
+                        entry.isSelf ? 'ring-1 ring-white/60' : ''
+                      }`}
+                    >
+                      <style.icon size={iconSize} className="shrink-0" />
+                      {style.label}
+                    </span>
+                    {settings.showTimestamps && (
+                      <span className="text-gray-500 whitespace-nowrap">
+                        {new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </span>
+                    )}
+                    {count > 1 && (
+                      <span className="text-gray-400 font-medium whitespace-nowrap">×{count}</span>
+                    )}
+                  </div>
+                  <div className={`flex flex-wrap items-center gap-1 leading-relaxed break-words ${contentSize}`}>
+                    {isChat ? (
+                      <>
+                        <span className="font-semibold text-gray-50">{actorLabel}</span>
+                        <span className="text-gray-200">: {messageText}</span>
+                      </>
+                    ) : (
+                      <span className={entry.level === 'error' ? 'text-red-200' : 'text-gray-200'}>{messageText}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })
         )}
       </div>
 
