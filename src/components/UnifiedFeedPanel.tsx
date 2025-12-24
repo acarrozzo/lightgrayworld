@@ -31,8 +31,8 @@ type RenderEntry = {
 type CategoryStyle = {
   label: string
   icon: LucideIcon
-  badgeClass: string
   barClass: string
+  iconClass: string
 }
 
 const TIMELINE_TOGGLES: { key: keyof TimelineSettings; label: string }[] = [
@@ -45,28 +45,28 @@ const CATEGORY_STYLES: Record<'room' | 'world' | 'action', CategoryStyle> = {
   room: {
     label: 'ROOM',
     icon: MessageSquare,
-    badgeClass: 'border-indigo-400/70 bg-indigo-600/30 text-indigo-100',
     barClass: 'bg-indigo-500',
+    iconClass: 'text-indigo-300',
   },
   world: {
     label: 'WORLD',
     icon: Globe,
-    badgeClass: 'border-emerald-400/70 bg-emerald-600/25 text-emerald-100',
     barClass: 'bg-emerald-500',
+    iconClass: 'text-emerald-300',
   },
   action: {
     label: 'ACT',
     icon: Sparkles,
-    badgeClass: 'border-amber-400/70 bg-amber-600/25 text-amber-100',
     barClass: 'bg-amber-400',
+    iconClass: 'text-amber-300',
   },
 }
 
 const ERROR_STYLE: CategoryStyle = {
   label: 'ERR',
   icon: AlertTriangle,
-  badgeClass: 'border-red-500/70 bg-red-700/25 text-red-200',
   barClass: 'bg-red-500',
+  iconClass: 'text-red-300',
 }
 
 const createDefaultSettings = (): TimelineSettings => ({
@@ -360,7 +360,7 @@ export default function UnifiedFeedPanel({
         </div>
       </div>
 
-      <div ref={listRef} className="flex-1 overflow-y-auto p-4 pb-8 space-y-2 bg-gray-950/80">
+      <div ref={listRef} className="flex-1 overflow-y-auto p-3 pb-6 space-y-1 bg-gray-950/80">
         {renderEntries.length === 0 ? (
           <div className="text-center text-sm text-gray-500 py-8">No entries yet.</div>
         ) : (
@@ -370,43 +370,39 @@ export default function UnifiedFeedPanel({
             const isChat = entry.type === 'room' || entry.type === 'world'
             const actorLabel = entry.isSelf ? 'You' : entry.actor || 'Unknown'
             const contentSize = settings.compactMode ? 'text-[13px]' : 'text-sm'
-            const rowPadding = settings.compactMode ? 'py-1.5 pr-3 pl-5' : 'py-2.5 pr-4 pl-6'
+            const rowPadding = settings.compactMode ? 'py-1 pr-3 pl-4' : 'py-1.5 pr-4 pl-5'
 
             return (
-              <div
-                key={`${entry.id}-${index}`}
-                className={`relative border border-gray-800/70 rounded-lg bg-gray-900/60 ${rowPadding}`}
-              >
-                <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${style.barClass}`} aria-hidden />
-                <div className="flex flex-col gap-1">
-                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-gray-400">
-                    <span
-                      className={`flex items-center gap-1 font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border ${style.badgeClass} ${
-                        entry.isSelf ? 'ring-1 ring-white/60' : ''
-                      }`}
-                    >
-                      <style.icon size={iconSize} className="shrink-0" />
-                      {style.label}
+              <div key={`${entry.id}-${index}`} className={`relative ${rowPadding}`}>
+                <span className={`absolute left-0 top-0 bottom-0 w-1 ${style.barClass}`} aria-hidden />
+                <div className="flex flex-wrap items-baseline gap-2 text-[11px] text-gray-400">
+                  <span className={`flex items-center ${style.iconClass}`}>
+                    <style.icon size={iconSize} className="shrink-0" aria-hidden="true" />
+                    <span className="sr-only">{style.label}</span>
+                  </span>
+                  {settings.showTimestamps && (
+                    <span className="text-gray-500 whitespace-nowrap tabular-nums">
+                      {new Date(entry.ts).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}
                     </span>
-                    {settings.showTimestamps && (
-                      <span className="text-gray-500 whitespace-nowrap">
-                        {new Date(entry.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                      </span>
-                    )}
-                    {count > 1 && (
-                      <span className="text-gray-400 font-medium whitespace-nowrap">×{count}</span>
-                    )}
-                  </div>
-                  <div className={`flex flex-wrap items-center gap-1 leading-relaxed break-words ${contentSize}`}>
+                  )}
+                  <div className={`flex flex-wrap items-baseline gap-1 flex-1 break-words leading-snug ${contentSize}`}>
                     {isChat ? (
                       <>
                         <span className="font-semibold text-gray-50">{actorLabel}</span>
-                        <span className="text-gray-200">: {messageText}</span>
+                        <span className="text-gray-400">:</span>
+                        <span className="text-gray-200">{messageText}</span>
                       </>
                     ) : (
                       <span className={entry.level === 'error' ? 'text-red-200' : 'text-gray-200'}>{messageText}</span>
                     )}
                   </div>
+                  {count > 1 && (
+                    <span className="text-gray-500 font-semibold whitespace-nowrap">×{count}</span>
+                  )}
                 </div>
               </div>
             )
