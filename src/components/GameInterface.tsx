@@ -874,13 +874,7 @@ export default function GameInterface() {
       window.clearTimeout(timeoutId)
     }
   }, [attemptSocketLogin, socket, player, isLoggedIn])
-
-  useEffect(() => {
-    if (!isLoadingRoom && !isInitialLoad && customActionInputRef.current) {
-      customActionInputRef.current.focus()
-    }
-  }, [isLoadingRoom, isInitialLoad])
-
+  
   const handleOpenMap = useCallback((src: string, title: string) => {
     setMapInfo({ src, title })
     setIsMapModalOpen(true)
@@ -1029,10 +1023,10 @@ export default function GameInterface() {
         </div>
         
         {/* Right Sidebar - Tabbed Interface (Feed, World Chat, Room Chat) */}
-        <div className={`
+        <div className={` rightColumn
           bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
           transition-transform duration-300 ease-out
-          min-w-[360px]
+          lg:min-w-[360px]
           ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
           lg:translate-x-0 lg:static lg:col-start-2
           xl:col-start-3

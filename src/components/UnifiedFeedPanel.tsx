@@ -272,8 +272,8 @@ export default function UnifiedFeedPanel({
   }, [isMenuOpen])
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800/60 bg-gray-900/80">
+    <div className="rightColumnInner flex flex-col h-full">
+      <div className="timelineHeader flex items-center justify-between px-4 py-3 border-b border-gray-800/60 bg-gray-900/80">
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-gray-100">Timeline</span>
           <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -294,7 +294,7 @@ export default function UnifiedFeedPanel({
         </div>
       </div>
 
-      <div className="px-4 py-2 border-b border-gray-800/60 bg-gray-900/70 flex flex-col gap-2">
+      <div className="timelineControls px-4 py-2 border-b border-gray-800/60 bg-gray-900/70 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {(['all', 'room', 'world', 'action'] as FilterType[]).map((key) => (
             <button
@@ -360,7 +360,7 @@ export default function UnifiedFeedPanel({
         </div>
       </div>
 
-      <div ref={listRef} className="flex-1 overflow-y-auto p-3 pb-6 space-y-1 bg-gray-950/80">
+      <div ref={listRef} className="timelineEntries flex-1 overflow-y-auto p-3 pb-6 space-y-1 bg-gray-950/80">
         {renderEntries.length === 0 ? (
           <div className="text-center text-sm text-gray-500 py-8">No entries yet.</div>
         ) : (
@@ -410,7 +410,7 @@ export default function UnifiedFeedPanel({
         )}
       </div>
 
-      <div className="p-4 border-t border-gray-800/60 bg-gray-950/95 space-y-3">
+      <div className="timelineFooter p-4 border-t border-gray-800/60 bg-gray-950/95 space-y-3">
         {showUnreadNotice && (
           <div className="flex items-center justify-between text-xs text-gray-300 bg-gray-900/80 px-3 py-2 rounded-md border border-gray-800/80">
             <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`}</span>
@@ -431,7 +431,7 @@ export default function UnifiedFeedPanel({
             onChange={(e) => onCustomActionChange(e.target.value)}
             placeholder="Enter action..."
             disabled={Boolean(isLoadingRoom)}
-            className="flex-1 px-4 py-2 bg-gray-900/70 text-white border border-gray-700/60 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all duration-200 disabled:bg-gray-800/50 disabled:cursor-not-allowed disabled:opacity-50 min-w-0"
+            className="flex-1 min-w-0 px-4 py-2 bg-gray-900/70 text-white border border-gray-700/60 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all duration-200 disabled:bg-gray-800/50 disabled:cursor-not-allowed disabled:opacity-50"
             autoComplete="off"
           />
           <button
