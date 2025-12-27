@@ -9,7 +9,7 @@ interface ColorPickerProps {
 
 export default function ColorPicker({ selectedColor, onSelectColor }: ColorPickerProps) {
   return (
-    <div className="grid grid-cols-5 gap-3">
+    <div className="grid grid-cols-6 gap-3">
       {AVATAR_COLORS.map((color) => {
         const isActive = selectedColor === color.value
         return (

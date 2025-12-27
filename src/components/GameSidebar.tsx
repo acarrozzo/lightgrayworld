@@ -88,7 +88,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
         <div className="space-y-4 p-4">
           <div className="bg-gradient-to-br from-gray-900/90 via-gray-900/70 to-gray-900/50 border border-gray-800/70 rounded-3xl p-6 shadow-xl shadow-black/20 relative overflow-hidden">
             <div className="relative flex flex-row items-start gap-6">
-              <div className="relative w-32 h-48 bg-gray-950/70 rounded-3xl border border-gray-800/80 flex items-center justify-center shadow-inner shadow-black/60 flex-shrink-0">
+              <div className="relative w-36 h-52 bg-gray-950/70 rounded-3xl border border-gray-800/80 flex items-center justify-center shadow-inner shadow-black/60 flex-shrink-0">
                 {coloredAvatarSvg ? (
                   <div
                     className="w-28 h-44"
@@ -108,7 +108,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
               </div>
 
               <div className="flex-1 w-full space-y-3">
-                <div className="space-y-1 text-left">
+                <div className="space-y-0 text-left">
                   <div className="text-xs uppercase tracking-[0.3em] text-indigo-300/80">lvl {player.level}</div>
                   <h3 className="text-2xl font-semibold text-white">{player.username}</h3>
                   <p className="text-sm text-gray-400">Room: {player.currentRoom || '???'}</p>

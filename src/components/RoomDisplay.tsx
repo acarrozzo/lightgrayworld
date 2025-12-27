@@ -247,12 +247,12 @@ function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
       type="button"
       onClick={onInspect}
       disabled={disabled}
-      className="group flex items-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-2.5 py-1.5 text-left text-white transition-all hover:border-violet-400 hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden"
+      className="group flex items-center gap-2 rounded-lg border border-slate-500/30 bg-slate-500/10 px-2.5 py-1.5 text-left text-white transition-all hover:border-violet-400 hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden"
     >
-      <div className="flex h-8 w-8 items-center justify-center">
+      <div className="flex h-12 w-8 items-center justify-center">
         {coloredAvatar ? (
           <div
-            className="h-7 w-7"
+            className="h-12 w-8"
             dangerouslySetInnerHTML={{ __html: coloredAvatar }}
           />
         ) : (
