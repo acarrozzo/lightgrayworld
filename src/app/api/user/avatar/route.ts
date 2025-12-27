@@ -3,7 +3,12 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/middleware'
-import { PLAYER_AVATARS, AVATAR_COLORS, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
+import {
+  PLAYER_AVATARS,
+  AVATAR_COLORS,
+  DEFAULT_AVATAR_COLOR,
+  isValidPlayerAvatar,
+} from '@/lib/constants/avatars'
 
 const selectPlayerFields = {
   id: true,
@@ -30,7 +35,7 @@ export const PUT = withAuth(async (request) => {
   try {
     const { avatar, color } = await request.json()
 
-    if (typeof avatar !== 'string' || !PLAYER_AVATARS.includes(avatar)) {
+    if (typeof avatar !== 'string' || !isValidPlayerAvatar(avatar)) {
       return NextResponse.json(
         { message: 'Invalid avatar selection' },
         { status: 400 }

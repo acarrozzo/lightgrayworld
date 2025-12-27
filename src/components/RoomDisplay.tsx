@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Player } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
+import { DEFAULT_AVATAR_COLOR, DEFAULT_PLAYER_AVATAR } from '@/lib/constants/avatars'
+import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 
 interface RoomDisplayProps {
   room: any
@@ -213,20 +215,54 @@ export default function RoomDisplay({
       {showPlayers && otherUsers.length > 0 && (
         <div className="mt-4">
           <div className="text-sm text-gray-300 mb-2">Others here:</div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             {otherUsers.map((player) => (
-              <button
+              <PlayerCard
                 key={player.id}
-                onClick={() => handleInspectPlayer(player)}
-                className="px-3 py-1.5 rounded-md bg-violet-500/70 text-white text-xs hover:bg-violet-500 transition-colors"
+                player={player}
+                onInspect={() => handleInspectPlayer(player)}
                 disabled={isPerformingAction === `look at ${player.username}`}
-              >
-                [{player.level}] {player.username}
-              </button>
+              />
             ))}
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+interface PlayerCardProps {
+  player: Player
+  onInspect: () => void
+  disabled?: boolean
+}
+
+function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
+  const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
+  const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
+  const coloredAvatar = useColoredAvatar(avatarKey, avatarColor)
+
+  return (
+    <button
+      type="button"
+      onClick={onInspect}
+      disabled={disabled}
+      className="group flex items-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-2.5 py-1.5 text-left text-white transition-all hover:border-violet-400 hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden"
+    >
+      <div className="flex h-8 w-8 items-center justify-center">
+        {coloredAvatar ? (
+          <div
+            className="h-7 w-7"
+            dangerouslySetInnerHTML={{ __html: coloredAvatar }}
+          />
+        ) : (
+          <span className="text-[10px] text-violet-200/70">...</span>
+        )}
+      </div>
+      <div className="leading-tight">
+        <div className="text-xs font-semibold text-white/90 truncate max-w-[110px]">{player.username}</div>
+        <div className="text-[10px] uppercase tracking-[0.15em] text-violet-200/80">Lvl {player.level}</div>
+      </div>
+    </button>
   )
 }

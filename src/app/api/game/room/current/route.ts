@@ -134,6 +134,8 @@ export async function GET(request: NextRequest) {
       mpMax: number
       currentRoom: string
       isActive: boolean
+      uIcon: string | null
+      uIconColor: string | null
     }> = []
 
     if (user) {
@@ -152,6 +154,8 @@ export async function GET(request: NextRequest) {
           mpMax: true,
           currentRoom: true,
           isActive: true,
+          uIcon: true,
+          uIconColor: true,
         },
       })
     }

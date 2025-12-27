@@ -41,3 +41,7 @@ export function getRandomAvatarColor(): AvatarColorValue {
   return AVATAR_COLORS[index]?.value ?? DEFAULT_AVATAR_COLOR
 }
 
+export function isValidPlayerAvatar(value: string): value is PlayerAvatar {
+  return PLAYER_AVATARS.includes(value as PlayerAvatar)
+}
+
