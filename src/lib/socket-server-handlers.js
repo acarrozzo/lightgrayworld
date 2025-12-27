@@ -355,15 +355,6 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
 
         console.log(`[Socket] processUserAction result:`, result)
 
-        if (result?.success === false) {
-          console.log(`[Socket] Movement failed:`, result.message)
-          socket.emit('action:error', {
-            action: 'move',
-            message: result.message || 'Failed to move',
-          })
-          return
-        }
-
         console.log(`[Socket] Transitioning player room`)
         await transitionPlayerRoom({ player, fromRoom, toRoom })
 
@@ -455,12 +446,6 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         })
 
         console.log(`[Socket] Chat processUserAction result:`, result)
-
-        if (result?.success === false) {
-          console.log(`[Socket] Chat failed:`, result.message)
-          socket.emit('action:error', { action: 'chat', message: result.message || 'Failed to send message' })
-          return
-        }
 
         console.log(`[Socket] Emitting chat action:confirmed to player`)
         socket.emit('action:confirmed', { action: 'chat', success: true })
@@ -595,14 +580,6 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
             data: Object.keys(actionData).length > 0 ? actionData : undefined,
           },
         })
-
-        if (result?.success === false) {
-          socket.emit('action:error', {
-            action: actionType,
-            message: result.message || 'Action failed',
-          })
-          return
-        }
 
         socket.emit('action:confirmed', {
           action: actionType,
