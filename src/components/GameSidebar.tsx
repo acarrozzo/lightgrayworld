@@ -85,13 +85,13 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
       icon: 'character',
       color: 'blue',
       content: (
-        <div className="space-y-6 p-4">
+        <div className="space-y-4 p-4">
           <div className="bg-gradient-to-br from-gray-900/90 via-gray-900/70 to-gray-900/50 border border-gray-800/70 rounded-3xl p-6 shadow-xl shadow-black/20 relative overflow-hidden">
-            <div className="relative flex flex-col items-center gap-4">
-              <div className="relative w-48 h-64 bg-gray-950/70 rounded-3xl border border-gray-800/80 flex items-center justify-center shadow-inner shadow-black/60">
+            <div className="relative flex flex-row items-start gap-6">
+              <div className="relative w-32 h-48 bg-gray-950/70 rounded-3xl border border-gray-800/80 flex items-center justify-center shadow-inner shadow-black/60 flex-shrink-0">
                 {coloredAvatarSvg ? (
                   <div
-                    className="w-36 h-52"
+                    className="w-28 h-44"
                     dangerouslySetInnerHTML={{ __html: coloredAvatarSvg }}
                   />
                 ) : (
@@ -99,7 +99,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
                 )}
                 <button
                   type="button"
-                  className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-all"
+                  className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-all"
                   onClick={() => setAvatarModalOpen(true)}
                   disabled={!isLoggedIn}
                 >
@@ -107,45 +107,47 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
                 </button>
               </div>
 
-              <div className="text-center space-y-2">
-                <div className="text-xs uppercase tracking-[0.3em] text-indigo-300/80">lvl {player.level}</div>
-                <h3 className="text-2xl font-semibold text-white">{player.username}</h3>
-                <p className="text-sm text-gray-400">Room: {player.currentRoom || '???'}</p>
-              </div>
+              <div className="flex-1 w-full space-y-3">
+                <div className="space-y-1 text-left">
+                  <div className="text-xs uppercase tracking-[0.3em] text-indigo-300/80">lvl {player.level}</div>
+                  <h3 className="text-2xl font-semibold text-white">{player.username}</h3>
+                  <p className="text-sm text-gray-400">Room: {player.currentRoom || '???'}</p>
+                </div>
 
-              <div className="w-full space-y-4">
-                <StatBar
-                  label="HP"
-                  value={`${player.hp}/${player.hpMax}`}
-                  percentage={hpPercent}
-                  gradient="from-rose-500 via-red-500 to-rose-600"
-                />
-                <StatBar
-                  label="MP"
-                  value={`${player.mp}/${player.mpMax}`}
-                  percentage={mpPercent}
-                  gradient="from-sky-500 via-blue-500 to-indigo-500"
-                />
-                <StatBar
-                  label="XP"
-                  value={`${xpCurrent.toLocaleString()} need ${xpNeeded.toLocaleString()}`}
-                  percentage={xpProgress}
-                  gradient="from-amber-400 via-yellow-400 to-orange-400"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 w-full pt-4 border-t border-gray-800/70">
-                <StatBox label="Core Points" value={player.cp ?? 0} />
-                <StatBox label="Training Points" value={player.tp ?? 0} />
-                <StatBox label="Skill Points" value={player.sp ?? 0} />
-                <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} />
-              </div>
-
-              <div className="w-full grid grid-cols-2 gap-3">
-                <StatBox label="PT" value={player.physicalTraining ?? 0} subtle />
-                <StatBox label="MT" value={player.mentalTraining ?? 0} subtle />
+                <div className="space-y-3">
+                  <StatBar
+                    label="HP"
+                    value={`${player.hp}/${player.hpMax}`}
+                    percentage={hpPercent}
+                    gradient="from-rose-500 via-red-500 to-rose-600"
+                  />
+                  <StatBar
+                    label="MP"
+                    value={`${player.mp}/${player.mpMax}`}
+                    percentage={mpPercent}
+                    gradient="from-sky-500 via-blue-500 to-indigo-500"
+                  />
+                  <StatBar
+                    label="XP"
+                    value={`${xpCurrent.toLocaleString()} need ${xpNeeded.toLocaleString()}`}
+                    percentage={xpProgress}
+                    gradient="from-amber-400 via-yellow-400 to-orange-400"
+                  />
+                </div>
               </div>
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <StatBox label="Core Points" value={player.cp ?? 0} />
+            <StatBox label="Training Points" value={player.tp ?? 0} />
+            <StatBox label="Skill Points" value={player.sp ?? 0} />
+            <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <StatBox label="PT" value={player.physicalTraining ?? 0} subtle />
+            <StatBox label="MT" value={player.mentalTraining ?? 0} subtle />
           </div>
         </div>
       ),

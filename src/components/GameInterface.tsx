@@ -931,10 +931,12 @@ export default function GameInterface() {
         <div className={`
           bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
           transition-transform duration-300 ease-out
-          min-w-[360px]
+          w-full md:w-[calc(100%-30%)] xl:w-full
+          md:max-w-[calc(100%-340px)] xl:max-w-full
+
           ${leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           xl:translate-x-0 xl:static xl:col-start-1
-          absolute left-0 top-0 bottom-0 w-full z-20 shadow-xl
+          absolute left-0 top-0 bottom-0 z-20 shadow-xl
         `}>
           <GameSidebar 
             player={player} 
