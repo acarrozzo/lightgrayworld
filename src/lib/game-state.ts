@@ -12,6 +12,15 @@ export interface Player {
   mpMax: number
   currentRoom: string
   isActive: boolean
+  xp?: number
+  cp?: number
+  tp?: number
+  sp?: number
+  currency?: number
+  physicalTraining?: number
+  mentalTraining?: number
+  uIcon?: string
+  uIconColor?: string
 }
 
 export type Room = RoomView

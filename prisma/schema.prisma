@@ -76,6 +76,7 @@ model User {
   endFight                  Boolean         @default(false)
   weaponType                Int             @default(0)
   uIcon                     String          @default("char-commander")
+  uIconColor                String          @default("#60a5fa")
   uIconWeapon               String          @default("fists")
   eIcon                     String          @default("question")
   chest1                    Boolean         @default(false)

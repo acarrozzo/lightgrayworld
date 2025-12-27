@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
 import { NextRequest } from 'next/server'
 import { prisma } from './prisma'
+import { DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
 
@@ -14,6 +15,15 @@ export interface AuthUser {
   mpMax: number
   currentRoom: string
   isActive: boolean
+  xp: number
+  cp: number
+  tp: number
+  sp: number
+  currency: number
+  physicalTraining: number
+  mentalTraining: number
+  uIcon: string
+  uIconColor: string
 }
 
 interface TokenPayload {
@@ -59,23 +69,36 @@ export async function getCurrentUser(request: NextRequest): Promise<AuthUser | n
     }
 
     // Verify user still exists and is active
-    const user = await prisma.user.findUnique({
+    const record = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: {
-        id: true,
-        username: true,
-        level: true,
-        hp: true,
-        hpMax: true,
-        mp: true,
-        mpMax: true,
-        currentRoom: true,
-        isActive: true
-      }
     })
 
-    if (!user || !user.isActive) {
+    if (!record || !record.isActive) {
       return null
+    }
+
+    const avatarColor =
+      (record as Record<string, unknown>).uIconColor as string | undefined
+
+    const user: AuthUser = {
+      id: record.id,
+      username: record.username,
+      level: record.level,
+      hp: record.hp,
+      hpMax: record.hpMax,
+      mp: record.mp,
+      mpMax: record.mpMax,
+      currentRoom: record.currentRoom,
+      isActive: record.isActive,
+      xp: record.xp,
+      cp: record.cp,
+      tp: record.tp,
+      sp: record.sp,
+      currency: record.currency,
+      physicalTraining: record.physicalTraining,
+      mentalTraining: record.mentalTraining,
+      uIcon: record.uIcon,
+      uIconColor: avatarColor ?? DEFAULT_AVATAR_COLOR,
     }
 
     return user

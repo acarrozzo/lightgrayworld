@@ -3,6 +3,7 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createAuthResponse } from '@/lib/auth'
+import { PLAYER_AVATARS, DEFAULT_PLAYER_AVATAR, getRandomAvatarColor, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
 import { FEATURE_FLAGS } from '@/lib/config'
 import bcrypt from 'bcryptjs'
@@ -44,16 +45,23 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
+    const randomAvatar =
+      PLAYER_AVATARS[Math.floor(Math.random() * PLAYER_AVATARS.length)] ||
+      DEFAULT_PLAYER_AVATAR
+    const randomColor = getRandomAvatarColor()
+
     // Create user
     const user = await prisma.user.create({
       data: {
         username,
         password: hashedPassword,
+        uIcon: randomAvatar,
         ...(email ? { email } : {}),
         // Create default equipment
         equipment: {
           create: {}
-        }
+        },
+        uIconColor: randomColor,
       },
       include: { equipment: true }
     })
@@ -68,7 +76,16 @@ export async function POST(request: NextRequest) {
       mp: user.mp,
       mpMax: user.mpMax,
       currentRoom: user.currentRoom,
-      isActive: user.isActive
+      isActive: user.isActive,
+      xp: user.xp,
+      cp: user.cp,
+      tp: user.tp,
+      sp: user.sp,
+      currency: user.currency,
+      physicalTraining: user.physicalTraining,
+      mentalTraining: user.mentalTraining,
+      uIcon: user.uIcon,
+      uIconColor: user.uIconColor ?? DEFAULT_AVATAR_COLOR,
     })
 
     return NextResponse.json(authResponse)

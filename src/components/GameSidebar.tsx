@@ -1,8 +1,11 @@
 'use client'
 
-import { Player } from '@/lib/game-state'
-import { useGameStore } from '@/lib/game-state'
+import { Player, useGameStore } from '@/lib/game-state'
 import TabContainer, { TabConfig } from './TabContainer'
+import { useMemo, useState } from 'react'
+import AvatarSelectionModal from './AvatarSelectionModal'
+import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
+import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 
 interface GameSidebarProps {
   player: Player
@@ -11,7 +14,69 @@ interface GameSidebarProps {
 }
 
 export default function GameSidebar({ player, onClose, onAction }: GameSidebarProps) {
-  const { inventory } = useGameStore()
+  const inventory = useGameStore((state) => state.inventory)
+  const setPlayer = useGameStore((state) => state.setPlayer)
+  const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
+  const isLoggedIn = useGameStore((state) => state.isLoggedIn)
+  const [isAvatarModalOpen, setAvatarModalOpen] = useState(false)
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false)
+
+  const hpPercent = useMemo(() => {
+    if (!player.hpMax) return 0
+    return Math.min(100, Math.max(0, (player.hp / Math.max(player.hpMax, 1)) * 100))
+  }, [player.hp, player.hpMax])
+
+  const mpPercent = useMemo(() => {
+    if (!player.mpMax) return 0
+    return Math.min(100, Math.max(0, (player.mp / Math.max(player.mpMax, 1)) * 100))
+  }, [player.mp, player.mpMax])
+
+  const xpTarget = useMemo(() => {
+    const nextLevel = Math.max(player.level + 1, 1)
+    return nextLevel * nextLevel * 100
+  }, [player.level])
+
+  const xpCurrent = player.xp ?? 0
+  const xpProgress = Math.min(100, Math.max(0, (xpCurrent / Math.max(xpTarget, 1)) * 100))
+  const xpNeeded = Math.max(0, xpTarget - xpCurrent)
+  const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
+  const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
+  const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
+
+  const handleAvatarUpdate = async (avatar: PlayerAvatar, color: string) => {
+    if (!isLoggedIn || !player.id) {
+      setAvatarModalOpen(false)
+      return
+    }
+
+    try {
+      setIsSavingAvatar(true)
+      const response = await fetch('/api/user/avatar', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ avatar, color }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update avatar')
+      }
+
+      const data = await response.json()
+      if (data?.player) {
+        setPlayer(data.player)
+      } else {
+        setPlayer({ ...player, uIcon: avatar, uIconColor: color })
+      }
+      setAvatarModalOpen(false)
+    } catch (error) {
+      console.error('Avatar update failed:', error)
+    } finally {
+      setIsSavingAvatar(false)
+    }
+  }
 
   const tabs: TabConfig[] = [
     {
@@ -20,42 +85,66 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
       icon: 'character',
       color: 'blue',
       content: (
-        <div className="space-y-4 p-4">
-          <h3 className="text-lg font-semibold text-white">Character Stats</h3>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Level:</span>
-              <span className="text-white font-medium">{player.level}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">HP:</span>
-              <span className="text-red-400/90 font-medium">{player.hp}/{player.hpMax}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">MP:</span>
-              <span className="text-blue-400/90 font-medium">{player.mp}/{player.mpMax}</span>
-            </div>
-          </div>
+        <div className="space-y-6 p-4">
+          <div className="bg-gradient-to-br from-gray-900/90 via-gray-900/70 to-gray-900/50 border border-gray-800/70 rounded-3xl p-6 shadow-2xl shadow-black/40 relative overflow-hidden">
+            <div className="absolute inset-x-4 inset-y-6 border border-gray-800/60 rounded-3xl pointer-events-none" />
+            <div className="relative flex flex-col items-center gap-4">
+              <div className="relative w-48 h-64 bg-gray-950/70 rounded-3xl border border-gray-800/80 flex items-center justify-center shadow-inner shadow-black/60">
+                {coloredAvatarSvg ? (
+                  <div
+                    className="w-36 h-52"
+                    dangerouslySetInnerHTML={{ __html: coloredAvatarSvg }}
+                  />
+                ) : (
+                  <div className="text-gray-500 text-sm">Loading avatar...</div>
+                )}
+                <button
+                  type="button"
+                  className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-all"
+                  onClick={() => setAvatarModalOpen(true)}
+                  disabled={!isLoggedIn}
+                >
+                  {isLoggedIn ? 'Edit' : 'Login to edit'}
+                </button>
+              </div>
 
-          <div className="pt-4 border-t border-gray-800/50">
-            <h4 className="text-md font-semibold text-white mb-2">Attributes</h4>
-            <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">STR:</span>
-                <span className="text-white font-medium">10</span>
+              <div className="text-center space-y-2">
+                <div className="text-xs uppercase tracking-[0.3em] text-indigo-300/80">lvl {player.level}</div>
+                <h3 className="text-2xl font-semibold text-white">{player.username}</h3>
+                <p className="text-sm text-gray-400">Room: {player.currentRoom || '???'}</p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">DEX:</span>
-                <span className="text-white font-medium">10</span>
+
+              <div className="w-full space-y-4">
+                <StatBar
+                  label="HP"
+                  value={`${player.hp}/${player.hpMax}`}
+                  percentage={hpPercent}
+                  gradient="from-rose-500 via-red-500 to-rose-600"
+                />
+                <StatBar
+                  label="MP"
+                  value={`${player.mp}/${player.mpMax}`}
+                  percentage={mpPercent}
+                  gradient="from-sky-500 via-blue-500 to-indigo-500"
+                />
+                <StatBar
+                  label="XP"
+                  value={`${xpCurrent.toLocaleString()} need ${xpNeeded.toLocaleString()}`}
+                  percentage={xpProgress}
+                  gradient="from-amber-400 via-yellow-400 to-orange-400"
+                />
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">MAG:</span>
-                <span className="text-white font-medium">10</span>
+
+              <div className="grid grid-cols-2 gap-3 w-full pt-4 border-t border-gray-800/70">
+                <StatBox label="Core Points" value={player.cp ?? 0} />
+                <StatBox label="Training Points" value={player.tp ?? 0} />
+                <StatBox label="Skill Points" value={player.sp ?? 0} />
+                <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} />
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">DEF:</span>
-                <span className="text-white font-medium">10</span>
+
+              <div className="w-full grid grid-cols-2 gap-3">
+                <StatBox label="PT" value={player.physicalTraining ?? 0} subtle />
+                <StatBox label="MT" value={player.mentalTraining ?? 0} subtle />
               </div>
             </div>
           </div>
@@ -136,13 +225,63 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   ]
 
   return (
-    <TabContainer
-      tabs={tabs}
-      defaultTab="stats"
-      onClose={onClose}
-      closeButtonPlacement="separate"
-      closeButtonBreakpoint="xl"
-      contentClassName="p-4"
-    />
+    <>
+      <TabContainer
+        tabs={tabs}
+        defaultTab="stats"
+        onClose={onClose}
+        closeButtonPlacement="separate"
+        closeButtonBreakpoint="xl"
+        contentClassName="p-4"
+      />
+
+      <AvatarSelectionModal
+        isOpen={isAvatarModalOpen}
+        currentAvatar={avatarKey}
+        currentColor={avatarColor}
+        isSaving={isSavingAvatar}
+        onClose={() => (isSavingAvatar ? null : setAvatarModalOpen(false))}
+        onSelectAvatar={handleAvatarUpdate}
+      />
+    </>
+  )
+}
+
+interface StatBarProps {
+  label: string
+  value: string
+  percentage: number
+  gradient: string
+}
+
+function StatBar({ label, value, percentage, gradient }: StatBarProps) {
+  return (
+    <div>
+      <div className="flex justify-between text-xs text-gray-400 mb-1">
+        <span>{label}</span>
+        <span className="text-white font-medium">{value}</span>
+      </div>
+      <div className="h-3 rounded-full bg-gray-800/80 overflow-hidden">
+        <div
+          className={`h-full rounded-full bg-gradient-to-r ${gradient}`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+interface StatBoxProps {
+  label: string
+  value: number | string
+  subtle?: boolean
+}
+
+function StatBox({ label, value, subtle = false }: StatBoxProps) {
+  return (
+    <div className={`rounded-2xl border px-4 py-3 text-center ${subtle ? 'border-gray-800/70 bg-gray-900/60' : 'border-gray-800/80 bg-gray-900/80'}`}>
+      <p className="text-xs uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="text-lg font-semibold text-white mt-1">{value}</p>
+    </div>
   )
 }
