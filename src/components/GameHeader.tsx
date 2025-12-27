@@ -32,7 +32,7 @@ export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSide
           {onToggleWorldSidebar && (
             <button
               onClick={onToggleWorldSidebar}
-              className="lg:hidden p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="md:hidden p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               aria-label="Toggle world feed sidebar"
             >
               <Icon name="world" className="h-5 w-5" color="current" />

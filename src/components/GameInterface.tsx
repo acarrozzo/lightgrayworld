@@ -14,8 +14,8 @@ import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
 import MapModal from './MapModal'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
-import { useTimelineStore } from '@/store/timelineStore'
-import type { TimelineEntryInput } from '@/store/timelineStore'
+import { useWorldFeedStore } from '@/store/worldFeedStore'
+import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -113,8 +113,8 @@ export default function GameInterface() {
   const currentRoomRef = useRef(currentRoom)
   const customActionInputRef = useRef<HTMLInputElement>(null)
   const noop = useCallback(() => {}, [])
-  const appendTimeline = useCallback((entry: TimelineEntryInput) => {
-    const { append } = useTimelineStore.getState()
+  const appendWorldFeed = useCallback((entry: WorldFeedEntryInput) => {
+    const { append } = useWorldFeedStore.getState()
     return append(entry)
   }, [])
 
@@ -169,7 +169,7 @@ export default function GameInterface() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle shortcuts on desktop (when sidebars are not always visible)
-      if (window.innerWidth >= 1024) return
+      if (window.innerWidth >= 768) return
       
       if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
@@ -231,7 +231,7 @@ export default function GameInterface() {
     }
 
     // Only add touch listeners on mobile
-    if (window.innerWidth < 1024) {
+    if (window.innerWidth < 768) {
       document.addEventListener('touchstart', handleTouchStart, { passive: true })
       document.addEventListener('touchend', handleTouchEnd, { passive: true })
     }
@@ -374,7 +374,7 @@ export default function GameInterface() {
   }, [player])
 
   useEffect(() => {
-    const { setUser } = useTimelineStore.getState()
+    const { setUser } = useWorldFeedStore.getState()
     setUser(player?.id ?? null)
   }, [player?.id])
 
@@ -424,7 +424,7 @@ export default function GameInterface() {
           success: false,
           source: 'local',
         })
-        appendTimeline({
+        appendWorldFeed({
           type: 'action',
           level: 'error',
           message: `You don't see an exit in that direction (${actionType})`,
@@ -445,7 +445,7 @@ export default function GameInterface() {
           success: false,
           source: 'local',
         })
-        appendTimeline({
+        appendWorldFeed({
           type: 'action',
           level: 'error',
           message: `You don't see an exit in that direction (${actionType})`,
@@ -514,7 +514,7 @@ export default function GameInterface() {
     if (sayMatch || shoutMatch) {
       const message = actionToSend.slice(actionToSend.indexOf(' ') + 1).trim()
       if (!message) {
-        appendTimeline({
+        appendWorldFeed({
           type: 'action',
           level: 'error',
           message: 'To chat: say hello | shout hello',
@@ -525,7 +525,7 @@ export default function GameInterface() {
       if (sayMatch) {
         const roomId = currentRoomRef.current?.roomId
         if (!roomId) {
-          appendTimeline({
+          appendWorldFeed({
             type: 'action',
             level: 'error',
             message: 'You must be in a room to chat. Try again after loading a room.',
@@ -535,7 +535,7 @@ export default function GameInterface() {
 
         const sent = socketHandlers.sendRoomChatMessage(message, roomId)
         if (!sent) {
-          appendTimeline({
+          appendWorldFeed({
             type: 'action',
             level: 'error',
             message: 'Failed to send room chat. Please try again.',
@@ -546,7 +546,7 @@ export default function GameInterface() {
 
       const sent = socketHandlers.sendChatMessage(message)
       if (!sent) {
-        appendTimeline({
+        appendWorldFeed({
           type: 'action',
           level: 'error',
           message: 'Failed to send world chat. Please try again.',
@@ -564,7 +564,7 @@ export default function GameInterface() {
         ? `Unknown command "${commandWord}". Did you mean "${maybeSuggestion}"?`
         : 'To chat: say hello | shout hello'
 
-      appendTimeline({
+      appendWorldFeed({
         type: 'action',
         level: 'error',
         message: unknownText,
@@ -610,7 +610,7 @@ export default function GameInterface() {
 
       const ts = payload.timestamp ? Date.parse(payload.timestamp) : Date.now()
       const messageText = payload.message || payload.action || 'Action result'
-      appendTimeline({
+      appendWorldFeed({
         type: 'action',
         message: messageText,
         roomId: payload.data?.roomId || currentRoomRef.current?.roomId,
@@ -634,7 +634,7 @@ export default function GameInterface() {
         timestamp: new Date().toISOString(),
         source: 'socket',
       })
-      appendTimeline({
+      appendWorldFeed({
         type: 'action',
         level: 'error',
         message: payload.message || 'Action failed',
@@ -680,7 +680,7 @@ export default function GameInterface() {
       cleanupActionError()
       cleanupRoomMoves()
     }
-  }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendTimeline])
+  }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed])
 
   useEffect(() => {
     if (!socket) {
@@ -691,7 +691,7 @@ export default function GameInterface() {
       const ts = chatMessage.timestamp ? new Date(chatMessage.timestamp).getTime() : Date.now()
       const currentPlayerName = playerRef.current?.username
       const isSelf = Boolean(currentPlayerName && chatMessage.username === currentPlayerName)
-      appendTimeline({
+      appendWorldFeed({
         type: 'world',
         actor: chatMessage.username,
         isSelf,
@@ -710,7 +710,7 @@ export default function GameInterface() {
       const roomIdAtReceipt = roomMessage.roomId || activeRoom?.roomId
       const currentPlayerName = playerRef.current?.username
       const isSelf = Boolean(currentPlayerName && roomMessage.username === currentPlayerName)
-      appendTimeline({
+      appendWorldFeed({
         type: 'room',
         actor: roomMessage.username,
         isSelf,
@@ -725,7 +725,7 @@ export default function GameInterface() {
       cleanupChat()
       cleanupRoomChat()
     }
-  }, [socket, socketHandlers, appendTimeline])
+  }, [socket, socketHandlers, appendWorldFeed])
 
   useEffect(() => {
     console.log('[GameInterface] Socket state:', {
@@ -915,11 +915,11 @@ export default function GameInterface() {
         onToggleWorldSidebar={() => setRightSidebarOpen((prev) => !prev)}
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(360px,35%)] xl:grid-cols-[minmax(360px,25%)_1fr_minmax(360px,25%)] flex-1 overflow-hidden relative min-h-0">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_minmax(340px,30%)] xl:grid-cols-[minmax(360px,25%)_1fr_minmax(360px,25%)] flex-1 overflow-hidden relative min-h-0">
         {/* Overlay backdrop for mobile */}
         {(leftSidebarOpen || rightSidebarOpen) && (
           <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-10 lg:hidden transition-opacity duration-300"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-10 md:hidden transition-opacity duration-300"
             onClick={() => {
               setLeftSidebarOpen(false)
               setRightSidebarOpen(false)
@@ -944,7 +944,7 @@ export default function GameInterface() {
         </div>
         
         {/* Main Game Area */}
-        <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden lg:col-start-1 xl:col-start-2">
+        <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden md:col-start-1 xl:col-start-2">
           {currentRoom && (
             <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
               <div className="flex-1 min-h-0 overflow-y-auto p-4">
@@ -1026,9 +1026,9 @@ export default function GameInterface() {
         <div className={` rightColumn
           bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
           transition-transform duration-300 ease-out
-          lg:min-w-[360px]
+          md:min-w-[320px]
           ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
-          lg:translate-x-0 lg:static lg:col-start-2
+          md:translate-x-0 md:static md:col-start-2
           xl:col-start-3
           absolute right-0 top-0 bottom-0 w-full z-20 shadow-xl
         `}>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
 import { AlertTriangle, Globe, MessageSquare, Sparkles, type LucideIcon } from 'lucide-react'
-import { useTimelineStore, type TimelineEntry } from '@/store/timelineStore'
+import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 
 type FilterType = 'all' | 'room' | 'world' | 'action'
 
@@ -17,14 +17,14 @@ type UnifiedFeedPanelProps = {
   customActionInputRef?: RefObject<HTMLInputElement | null>
 }
 
-type TimelineSettings = {
+type WorldFeedSettings = {
   showTimestamps: boolean
   compactMode: boolean
   groupRepeats: boolean
 }
 
 type RenderEntry = {
-  entry: TimelineEntry
+  entry: WorldFeedEntry
   count: number
 }
 
@@ -35,7 +35,7 @@ type CategoryStyle = {
   iconClass: string
 }
 
-const TIMELINE_TOGGLES: { key: keyof TimelineSettings; label: string }[] = [
+const WORLD_FEED_TOGGLES: { key: keyof WorldFeedSettings; label: string }[] = [
   { key: 'showTimestamps', label: 'Show timestamps' },
   { key: 'compactMode', label: 'Compact mode' },
   { key: 'groupRepeats', label: 'Group repeats' },
@@ -69,15 +69,15 @@ const ERROR_STYLE: CategoryStyle = {
   iconClass: 'text-red-300',
 }
 
-const createDefaultSettings = (): TimelineSettings => ({
+const createDefaultSettings = (): WorldFeedSettings => ({
   showTimestamps: true,
   compactMode: false,
   groupRepeats: false,
 })
 
-const getSettingsKey = (userId?: string | null) => (userId ? `timeline-settings:${userId}` : null)
+const getSettingsKey = (userId?: string | null) => (userId ? `worldFeed-settings:${userId}` : null)
 
-const canGroupEntries = (a: TimelineEntry, b: TimelineEntry) => {
+const canGroupEntries = (a: WorldFeedEntry, b: WorldFeedEntry) => {
   return (
     a.type === b.type &&
     (a.level ?? 'info') === (b.level ?? 'info') &&
@@ -88,7 +88,7 @@ const canGroupEntries = (a: TimelineEntry, b: TimelineEntry) => {
   )
 }
 
-const getEntryStyle = (entry: TimelineEntry): CategoryStyle => {
+const getEntryStyle = (entry: WorldFeedEntry): CategoryStyle => {
   if (entry.level === 'error') {
     return ERROR_STYLE
   }
@@ -108,8 +108,8 @@ export default function UnifiedFeedPanel({
   isLoadingRoom,
   customActionInputRef,
 }: UnifiedFeedPanelProps) {
-  const entries = useTimelineStore((state) => state.entries)
-  const userId = useTimelineStore((state) => state.userId)
+  const entries = useWorldFeedStore((state) => state.entries)
+  const userId = useWorldFeedStore((state) => state.userId)
   const [filter, setFilter] = useState<FilterType>('all')
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE)
   const [isNearBottom, setIsNearBottom] = useState(true)
@@ -117,7 +117,7 @@ export default function UnifiedFeedPanel({
   const listRef = useRef<HTMLDivElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const [settings, setSettings] = useState<TimelineSettings>(() => createDefaultSettings())
+  const [settings, setSettings] = useState<WorldFeedSettings>(() => createDefaultSettings())
   const [settingsHydrated, setSettingsHydrated] = useState(false)
   const settingsKey = useMemo(() => getSettingsKey(userId), [userId])
   const iconSize = settings.compactMode ? 12 : 14
@@ -152,7 +152,7 @@ export default function UnifiedFeedPanel({
     localStorage.setItem(settingsKey, JSON.stringify(settings))
   }, [settings, settingsKey, settingsHydrated])
 
-  const handleToggleSetting = (key: keyof TimelineSettings) => {
+  const handleToggleSetting = (key: keyof WorldFeedSettings) => {
     setSettings((prev) => ({
       ...prev,
       [key]: !prev[key],
@@ -273,9 +273,9 @@ export default function UnifiedFeedPanel({
 
   return (
     <div className="rightColumnInner flex flex-col h-full">
-      <div className="timelineHeader flex items-center justify-between px-4 py-3 border-b border-gray-800/60 bg-gray-900/80">
+      <div className="worldFeedHeader flex items-center justify-between px-4 py-3 border-b border-gray-800/60 bg-gray-900/80">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-gray-100">Timeline</span>
+          <span className="text-sm font-semibold text-gray-100">World</span>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-red-500'}`} />
             <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
@@ -284,7 +284,7 @@ export default function UnifiedFeedPanel({
         <div className="flex items-center gap-2">
           {onClose && (
             <button
-              className="lg:hidden px-2 py-1 text-gray-400 hover:text-white rounded-md hover:bg-gray-800/60 transition-colors"
+              className="md:hidden px-2 py-1 text-gray-400 hover:text-white rounded-md hover:bg-gray-800/60 transition-colors"
               onClick={onClose}
               aria-label="Close"
             >
@@ -294,7 +294,7 @@ export default function UnifiedFeedPanel({
         </div>
       </div>
 
-      <div className="timelineControls px-4 py-2 border-b border-gray-800/60 bg-gray-900/70 flex flex-col gap-2">
+      <div className="worldFeedControls px-4 py-2 border-b border-gray-800/60 bg-gray-900/70 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {(['all', 'room', 'world', 'action'] as FilterType[]).map((key) => (
             <button
@@ -316,7 +316,7 @@ export default function UnifiedFeedPanel({
               className="px-2 py-1.5 text-lg leading-none rounded-md border bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700"
               aria-haspopup="menu"
               aria-expanded={isMenuOpen}
-              aria-label="More timeline actions"
+              aria-label="More world feed actions"
             >
               ⋮
             </button>
@@ -339,7 +339,7 @@ export default function UnifiedFeedPanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {TIMELINE_TOGGLES.map(({ key, label }) => {
+          {WORLD_FEED_TOGGLES.map(({ key, label }) => {
             const active = settings[key]
             return (
               <button
@@ -347,7 +347,7 @@ export default function UnifiedFeedPanel({
                 type="button"
                 aria-pressed={active}
                 onClick={() => handleToggleSetting(key)}
-                className={`text-[11px] px-2.5 py-1 rounded-md border transition-colors ${
+                className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
                   active
                     ? 'bg-gray-800 text-white border-indigo-400/70'
                     : 'bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200'
@@ -360,7 +360,7 @@ export default function UnifiedFeedPanel({
         </div>
       </div>
 
-      <div ref={listRef} className="timelineEntries flex-1 overflow-y-auto p-3 pb-6 space-y-1 bg-gray-950/80">
+      <div ref={listRef} className="worldFeedEntries flex-1 overflow-y-auto p-3 pb-6 space-y-1 bg-gray-950/80">
         {renderEntries.length === 0 ? (
           <div className="text-center text-sm text-gray-500 py-8">No entries yet.</div>
         ) : (
@@ -410,7 +410,7 @@ export default function UnifiedFeedPanel({
         )}
       </div>
 
-      <div className="timelineFooter p-4 border-t border-gray-800/60 bg-gray-950/95 space-y-3">
+      <div className="worldFeedFooter p-4 border-t border-gray-800/60 bg-gray-950/95 space-y-3">
         {showUnreadNotice && (
           <div className="flex items-center justify-between text-xs text-gray-300 bg-gray-900/80 px-3 py-2 rounded-md border border-gray-800/80">
             <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`}</span>

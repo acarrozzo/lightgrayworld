@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 
-export type TimelineEntry = {
+export type WorldFeedEntry = {
   id: string
   ts: number
   message: string
@@ -18,25 +18,25 @@ export type TimelineEntry = {
   text?: string
 }
 
-export type TimelineEntryInput = Omit<TimelineEntry, 'id' | 'ts'> & {
+export type WorldFeedEntryInput = Omit<WorldFeedEntry, 'id' | 'ts'> & {
   id?: string
   ts?: number
 }
 
-type TimelineState = {
+type WorldFeedState = {
   userId: string | null
-  entries: TimelineEntry[]
+  entries: WorldFeedEntry[]
   setUser: (userId: string | null) => void
-  append: (entry: TimelineEntryInput) => TimelineEntry | null
-  appendMany: (entries: TimelineEntryInput[]) => void
+  append: (entry: WorldFeedEntryInput) => WorldFeedEntry | null
+  appendMany: (entries: WorldFeedEntryInput[]) => void
   clear: () => void
 }
 
 const MAX_HISTORY_ENTRIES = 500
 
-const storageKey = (userId: string) => `timeline:${userId}`
+const storageKey = (userId: string) => `worldFeed:${userId}`
 
-const safeParse = (value: string | null): TimelineEntry[] => {
+const safeParse = (value: string | null): WorldFeedEntry[] => {
   if (!value) return []
   try {
     const parsed = JSON.parse(value)
@@ -46,7 +46,7 @@ const safeParse = (value: string | null): TimelineEntry[] => {
 
     const hasLegacyEntries = parsed.some((entry) => typeof entry?.message !== 'string')
     if (hasLegacyEntries) {
-      // Drop legacy timeline data to avoid parsing fragile text formats.
+      // Drop legacy feed data to avoid parsing fragile text formats.
       return []
     }
 
@@ -56,20 +56,20 @@ const safeParse = (value: string | null): TimelineEntry[] => {
   }
 }
 
-const loadEntries = (userId: string | null): TimelineEntry[] => {
+const loadEntries = (userId: string | null): WorldFeedEntry[] => {
   if (!userId || typeof window === 'undefined') return []
   return safeParse(localStorage.getItem(storageKey(userId)))
 }
 
-const persistEntries = (userId: string | null, entries: TimelineEntry[]) => {
+const persistEntries = (userId: string | null, entries: WorldFeedEntry[]) => {
   if (!userId || typeof window === 'undefined') return
   localStorage.setItem(storageKey(userId), JSON.stringify(entries))
 }
 
-const ensureEntry = (entry: TimelineEntryInput): TimelineEntry => {
+const ensureEntry = (entry: WorldFeedEntryInput): WorldFeedEntry => {
   const message = entry.message ?? entry.text ?? ''
   return {
-    id: entry.id || (crypto.randomUUID ? crypto.randomUUID() : `timeline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+    id: entry.id || (crypto.randomUUID ? crypto.randomUUID() : `worldfeed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
     ts: entry.ts ?? Date.now(),
     message,
     type: entry.type,
@@ -81,12 +81,12 @@ const ensureEntry = (entry: TimelineEntryInput): TimelineEntry => {
   }
 }
 
-const trimEntries = (entries: TimelineEntry[]) => {
+const trimEntries = (entries: WorldFeedEntry[]) => {
   if (entries.length <= MAX_HISTORY_ENTRIES) return entries
   return entries.slice(entries.length - MAX_HISTORY_ENTRIES)
 }
 
-export const useTimelineStore = create<TimelineState>((set, get) => ({
+export const useWorldFeedStore = create<WorldFeedState>((set, get) => ({
   userId: null,
   entries: [],
 
