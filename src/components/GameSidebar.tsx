@@ -61,6 +61,16 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
     const previousInventory = previousInventoryRef.current
     const currentInventory = inventory
 
+    // Check if this is initial load (previous is empty, current has items)
+    // This handles the case where inventory loads asynchronously after component mount
+    const isInitialLoad = previousInventory.length === 0 && currentInventory.length > 0
+
+    if (isInitialLoad) {
+      // Just set the baseline without triggering badge
+      previousInventoryRef.current = currentInventory
+      return
+    }
+
     // Check if inventory has new items (new item IDs or increased quantities)
     const previousItemIds = new Set(previousInventory.map(item => item.id))
     const previousItemQuantities = new Map(
