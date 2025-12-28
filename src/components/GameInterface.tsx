@@ -113,7 +113,6 @@ export default function GameInterface() {
   const playerRef = useRef(player)
   const currentRoomRef = useRef(currentRoom)
   const customActionInputRef = useRef<HTMLInputElement>(null)
-  const noop = useCallback(() => {}, [])
   const appendWorldFeed = useCallback((entry: WorldFeedEntryInput) => {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
@@ -1024,9 +1023,6 @@ export default function GameInterface() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onClearFeed={noop}
-        onScrollToTop={noop}
-        onScrollToBottom={noop}
         onLogout={handleLogoutFlow}
       />
       <MapModal

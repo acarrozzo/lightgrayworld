@@ -382,6 +382,13 @@ export default function UnifiedFeedPanel({
     }
   }, [])
 
+  const scrollToTop = useCallback(() => {
+    const container = listRef.current
+    if (container) {
+      container.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [])
+
   const handleScroll = useCallback(() => {
     const container = listRef.current
     if (!container) return
@@ -485,26 +492,60 @@ export default function UnifiedFeedPanel({
         </div>
 
         {!isDisplayOptionsCollapsed && (
-          <div className="flex flex-wrap items-center gap-2">
-            {WORLD_FEED_TOGGLES.map(({ key, label }) => {
-              const active = settings[key]
-              return (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <div className="text-[10px] text-gray-500 font-medium">Feed display options</div>
+              <div className="flex flex-wrap items-center gap-2">
+                {WORLD_FEED_TOGGLES.map(({ key, label }) => {
+                  const active = settings[key]
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => handleToggleSetting(key)}
+                      className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
+                        active
+                          ? 'bg-gray-800 text-white border-indigo-400/70'
+                          : 'bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="text-[10px] text-gray-500 font-medium">Feed actions</div>
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  key={key}
                   type="button"
-                  aria-pressed={active}
-                  onClick={() => handleToggleSetting(key)}
-                  className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
-                    active
-                      ? 'bg-gray-800 text-white border-indigo-400/70'
-                      : 'bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200'
-                  }`}
+                  onClick={() => {
+                    const { clear } = useWorldFeedStore.getState()
+                    clear()
+                  }}
+                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800"
                 >
-                  {label}
+                  Clear Feed
                 </button>
-              )
-            })}
-          </div>
+                <button
+                  type="button"
+                  onClick={scrollToTop}
+                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800"
+                >
+                  Jump to Top
+                </button>
+                <button
+                  type="button"
+                  onClick={scrollToBottom}
+                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800"
+                >
+                  Jump to Bottom
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
 

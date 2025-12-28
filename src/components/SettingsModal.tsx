@@ -6,18 +6,12 @@ import { useNotificationStore } from '@/store/notificationStore'
 interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
-  onClearFeed: () => void
-  onScrollToTop: () => void
-  onScrollToBottom: () => void
   onLogout: () => Promise<void> | void
 }
 
 export default function SettingsModal({
   isOpen,
   onClose,
-  onClearFeed,
-  onScrollToTop,
-  onScrollToBottom,
   onLogout,
 }: SettingsModalProps) {
   const enabled = useNotificationStore((state) => state.enabled)
@@ -64,37 +58,6 @@ export default function SettingsModal({
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-6">
-          <section className="mb-8">
-            <h3 className="text-lg font-semibold text-white">Feed Controls</h3>
-            <p className="text-sm text-gray-400">Manage the game feed and navigation tools.</p>
-
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={onClearFeed}
-                className="rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              >
-                Clear Feed
-              </button>
-
-              <button
-                type="button"
-                onClick={onScrollToTop}
-                className="rounded-full bg-gray-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              >
-                ↑ Top
-              </button>
-
-              <button
-                type="button"
-                onClick={onScrollToBottom}
-                className="rounded-full bg-gray-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              >
-                ↓ Bottom
-              </button>
-            </div>
-          </section>
-
           <section className="mb-8">
             <h3 className="text-lg font-semibold text-white">Notifications</h3>
             <p className="text-sm text-gray-400">Control in-app notifications for room actions.</p>
