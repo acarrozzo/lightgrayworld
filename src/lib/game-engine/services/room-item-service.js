@@ -224,6 +224,11 @@ async function getRoomItems(roomId) {
         },
       },
     },
+    orderBy: {
+      ItemTemplate: {
+        name: 'asc'
+      }
+    },
   })
 
   return normalizeRoomItems(items)

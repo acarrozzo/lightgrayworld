@@ -21,6 +21,11 @@ const ROOM_ITEMS_SELECT = {
         },
       },
     },
+    orderBy: {
+      ItemTemplate: {
+        name: 'asc'
+      }
+    },
   },
 }
 
