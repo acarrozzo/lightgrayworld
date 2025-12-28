@@ -431,6 +431,18 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
           return
         }
 
+        // Ensure auto-respawn items exist in the destination room
+        const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service')
+        await ensureAutoRespawnItems(toRoom)
+        // Re-fetch room data to include any respawned items
+        const updatedDestinationRoom = await fetchRoomWithColors(prisma, toRoom)
+        if (updatedDestinationRoom) {
+          // Update destinationRoom with fresh data including respawned items
+          destinationRoom.items = updatedDestinationRoom.items || []
+          destinationRoom.players = updatedDestinationRoom.players || []
+          destinationRoom.npcs = updatedDestinationRoom.npcs || []
+        }
+
         const normalizedRoomData = {
           ...destinationRoom,
           players: Array.isArray(destinationRoom.players) ? destinationRoom.players : [],

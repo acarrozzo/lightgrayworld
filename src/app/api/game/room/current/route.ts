@@ -82,6 +82,10 @@ export async function GET(request: NextRequest) {
       ? requestedRoomId
       : user?.currentRoom || '001'
 
+    // Ensure auto-respawn items exist in the room
+    const { ensureAutoRespawnItems } = require('@/lib/game-engine/services/room-item-service')
+    await ensureAutoRespawnItems(roomId)
+
     const room = await prisma.room.findUnique({
       where: { roomId },
       select: {

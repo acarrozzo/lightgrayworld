@@ -1,5 +1,5 @@
 const { prisma } = require('../../db-client')
-const { getPlayerInventory } = require('./inventory-service')
+const { getPlayerInventory, getItemBySlug } = require('./inventory-service')
 const { normalizeRoomItems } = require('./room-normalization.js')
 
 /**
@@ -182,9 +182,108 @@ async function getRoomItems(roomId) {
   return normalizeRoomItems(items)
 }
 
+/**
+ * Ensure all auto-respawn items exist in the given room.
+ * This function checks for items that should auto-respawn and creates them if missing.
+ * 
+ * Strategy: Query for RoomItems with autoRespawn: true. If we find any, they exist.
+ * If we don't find any, it means either:
+ * 1. No items are configured to auto-respawn in this room, OR
+ * 2. All auto-respawn items have been picked up (deleted)
+ * 
+ * For case 2, we need to know what should exist. Since RoomItems are deleted when picked up,
+ * we can't query for them. We use a fallback: query the database for any RoomItem that has
+ * ever had autoRespawn: true for this room by checking if there's a pattern, or use a
+ * known configuration mapping.
+ * 
+ * For a truly generic solution, we'd need a separate configuration table, but for now
+ * we'll use a hybrid approach that queries existing items first, then falls back to
+ * known configurations.
+ * 
+ * @param {string} roomId - The room ID to check for auto-respawn items
+ * @returns {Promise<void>}
+ */
+async function ensureAutoRespawnItems(roomId) {
+  try {
+    // First, check if there are any existing RoomItems with autoRespawn: true in this room
+    // If we find any, they already exist - nothing to do
+    const existingAutoRespawnItems = await prisma.roomItem.findMany({
+      where: {
+        roomId,
+        autoRespawn: true,
+      },
+    })
+    
+    // If we found existing items, they're already there
+    if (existingAutoRespawnItems.length > 0) {
+      return
+    }
+    
+    // No existing auto-respawn items found. This could mean:
+    // 1. No items are configured to auto-respawn (room doesn't need any)
+    // 2. All auto-respawn items have been picked up (need to recreate)
+    
+    // To handle case 2, we need to know what items should auto-respawn.
+    // Since items are deleted when picked up, we can't query for them.
+    // We'll use a fallback: query for distinct templateIds that have autoRespawn: true
+    // in this room's history, but that won't work if they're all deleted.
+    
+    // For now, we'll use a known mapping from seed data as a fallback.
+    // This is not ideal but works for the current use case.
+    // A better solution would be a separate RoomItemConfig table, but that's a bigger change.
+    
+    const knownAutoRespawnItems = {
+      '001': ['welcome-book'],
+      '006': ['shovel'],
+    }
+    
+    const itemsToCheck = knownAutoRespawnItems[roomId]
+    if (!itemsToCheck || itemsToCheck.length === 0) {
+      // No known auto-respawn items for this room
+      return
+    }
+    
+    // For each known auto-respawn item, check if it exists and create if missing
+    for (const itemSlug of itemsToCheck) {
+      const template = await getItemBySlug(itemSlug)
+      if (!template) {
+        console.warn(`[ensureAutoRespawnItems] Template not found for slug: ${itemSlug}`)
+        continue
+      }
+      
+      // Check if this item currently exists in the room
+      const existingItem = await prisma.roomItem.findFirst({
+        where: {
+          roomId,
+          templateId: template.id,
+        },
+      })
+      
+      // If the item doesn't exist, create it with autoRespawn: true
+      if (!existingItem) {
+        const { randomUUID } = require('crypto')
+        await prisma.roomItem.create({
+          data: {
+            id: randomUUID(),
+            roomId,
+            templateId: template.id,
+            quantity: 1,
+            autoRespawn: true,
+          },
+        })
+        console.log(`[ensureAutoRespawnItems] Created ${itemSlug} in room ${roomId}`)
+      }
+    }
+  } catch (error) {
+    console.error(`[ensureAutoRespawnItems] Error ensuring auto-respawn items for room ${roomId}:`, error)
+    // Don't throw - this is a non-critical operation
+  }
+}
+
 module.exports = {
   pickupRoomItem,
   dropRoomItem,
   getRoomItems,
+  ensureAutoRespawnItems,
 }
 

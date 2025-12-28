@@ -436,6 +436,15 @@ async function main() {
       maxStack: 1,
       maxPerPlayer: 1,
     },
+    {
+      id: 'shovel_001',
+      slug: 'shovel',
+      name: 'Shovel',
+      description: 'A sturdy shovel for digging.',
+      type: ItemType.MISC,
+      maxStack: 1,
+      maxPerPlayer: 1,
+    },
   ]
 
   for (const item of itemTemplates) {
@@ -457,6 +466,21 @@ async function main() {
       roomId: '001',
       templateId: 'welcome-book',
       quantity: 1,
+      autoRespawn: true,
+    },
+  })
+
+  // Seed shovel in room 006 (idempotent)
+  await prisma.roomItem.deleteMany({
+    where: { roomId: '006', templateId: 'shovel_001' },
+  })
+
+  await prisma.roomItem.create({
+    data: {
+      roomId: '006',
+      templateId: 'shovel_001',
+      quantity: 1,
+      autoRespawn: true,
     },
   })
 

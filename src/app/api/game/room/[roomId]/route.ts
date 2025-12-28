@@ -16,6 +16,10 @@ async function handleGetRoom(request: AuthenticatedRequest) {
     // Use the authenticated user's current room, not the provided roomId
     const actualRoomId = request.user.currentRoom || '000'
 
+    // Ensure auto-respawn items exist in the room
+    const { ensureAutoRespawnItems } = require('@/lib/game-engine/services/room-item-service')
+    await ensureAutoRespawnItems(actualRoomId)
+
     // Get room data
     const room = await prisma.room.findUnique({
       where: { roomId: actualRoomId },
