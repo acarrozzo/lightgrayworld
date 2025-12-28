@@ -47,8 +47,22 @@ export default function RoomDisplay({
     if (room.roomId === '002') {
       return { action: 'pick redberry', maxPerTick: 5 }
     }
+    if (room.roomId === '005') {
+      return { action: 'pick blueberry', maxPerTick: 3 }
+    }
     return null
   }, [room?.roomId])
+
+  // Extract and pluralize item name from action (e.g., "pick redberry" -> "redberries")
+  const getItemNamePlural = (action: string): string => {
+    if (!action) return ''
+    const itemName = action.replace(/^pick\s+/i, '')
+    // Handle berry -> berries, otherwise just add 's'
+    if (itemName.endsWith('berry')) {
+      return itemName.replace(/berry$/, 'berries')
+    }
+    return `${itemName}s`
+  }
 
   useEffect(() => {
     if (capConfig) {
@@ -162,7 +176,7 @@ export default function RoomDisplay({
       {shouldShowCap && (
         <div className="mt-3 flex items-center gap-3 p-3 rounded-md bg-gray-900/70 border border-red-500/40">
           <div className="text-sm text-red-200">
-            Remaining redberries this tick:{' '}
+            Remaining {getItemNamePlural(capConfig?.action || '')} this tick:{' '}
             <span className="font-semibold text-white">
               {remainingCap ?? maxCap ?? 0}/{maxCap ?? 0}
             </span>

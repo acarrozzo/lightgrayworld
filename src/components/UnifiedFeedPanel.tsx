@@ -79,8 +79,8 @@ const SUCCESS_STYLE: CategoryStyle = {
 const INFO_STYLE: CategoryStyle = {
   label: 'ACT',
   icon: Sparkles,
-  barClass: 'bg-gray-500',
-  iconClass: 'text-gray-400',
+  barClass: 'bg-blue-500',
+  iconClass: 'text-blue-300',
 }
 
 const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
@@ -201,7 +201,7 @@ const getMessageColorClass = (entry: WorldFeedEntry) => {
       return 'text-red-200'
     }
     if (entry.outcome === 'info') {
-      return 'text-gray-400'
+      return 'text-blue-200'
     }
   }
   
@@ -530,7 +530,7 @@ export default function UnifiedFeedPanel({
                         <span className="text-gray-200">"{messageText}"</span>
                       </>
                     ) : (
-                      <span className={entry.level === 'error' ? 'text-red-200' : 'text-gray-200'}>{messageText}</span>
+                      <span className={messageColorClass}>{messageText}</span>
                     )}
                   </div>
                   {count > 1 && (

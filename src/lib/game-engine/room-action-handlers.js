@@ -52,6 +52,21 @@ const ROOM_ACTIONS = {
       determineOutcome: ({ success }) => (success ? 'success' : 'info'),
     },
   },
+  '005': {
+    'pick blueberry': {
+      maxPerTick: 3,
+      isCapped: true,
+      effects: [{ type: 'grantItem', itemSlug: 'blueberry', quantity: 1 }],
+      generateMessage: (effects, capInfo) => {
+        if (!effects?.[0]?.success) {
+          const secondsRemaining = capInfo?.secondsUntilReset ?? 0
+          return `No more blueberries right now. The bushes will regrow in ${secondsRemaining} seconds.`
+        }
+        return `You pick a ripe blueberry. (${capInfo.remaining} picks remaining this tick)`
+      },
+      determineOutcome: ({ success }) => (success ? 'success' : 'info'),
+    },
+  },
 }
 
 /**
