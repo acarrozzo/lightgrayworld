@@ -1,6 +1,5 @@
 'use client'
 
-import { useGameStore } from '@/lib/game-state'
 import Icon from './Icon'
 
 interface SettingsModalProps {
@@ -9,6 +8,7 @@ interface SettingsModalProps {
   onClearFeed: () => void
   onScrollToTop: () => void
   onScrollToBottom: () => void
+  onLogout: () => Promise<void> | void
 }
 
 export default function SettingsModal({
@@ -17,11 +17,10 @@ export default function SettingsModal({
   onClearFeed,
   onScrollToTop,
   onScrollToBottom,
+  onLogout,
 }: SettingsModalProps) {
-  const { logout } = useGameStore()
-
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await onLogout()
     onClose()
   }
 

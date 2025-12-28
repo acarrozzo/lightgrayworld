@@ -117,6 +117,24 @@ export default function GameInterface() {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
   }, [])
+  const handleLogoutFlow = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+      })
+    } catch (error) {
+      console.error('[GameInterface] Failed to call logout API', error)
+    } finally {
+      socketHandlers.logoutPlayer()
+      logout()
+      const { clear } = useWorldFeedStore.getState()
+      clear()
+    }
+  }, [getAuthHeaders, logout, socketHandlers])
 
   // Load sidebar state from localStorage on mount
   useEffect(() => {
@@ -155,6 +173,23 @@ export default function GameInterface() {
     })
     return cleanup
   }, [socket, socketHandlers, updateRoomItems])
+
+  useEffect(() => {
+    if (!socket) return
+    const cleanup = socketHandlers.onWorldActivity((payload) => {
+      if (!payload) return
+      appendWorldFeed({
+        id: payload.id,
+        ts: payload.ts,
+        type: payload.type ?? 'world',
+        level: payload.level,
+        actor: payload.actor,
+        message: payload.message,
+        eventType: payload.eventType,
+      })
+    })
+    return cleanup
+  }, [socket, socketHandlers, appendWorldFeed])
 
   // Save sidebar state to localStorage
   useEffect(() => {
@@ -903,6 +938,7 @@ export default function GameInterface() {
         onClearFeed={noop}
         onScrollToTop={noop}
         onScrollToBottom={noop}
+        onLogout={handleLogoutFlow}
       />
       <MapModal
         isOpen={isMapModalOpen}

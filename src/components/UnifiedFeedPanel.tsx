@@ -69,6 +69,63 @@ const ERROR_STYLE: CategoryStyle = {
   iconClass: 'text-red-300',
 }
 
+const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
+  login: {
+    label: 'LOGIN',
+    icon: Globe,
+    barClass: 'bg-emerald-500',
+    iconClass: 'text-emerald-300',
+  },
+  register: {
+    label: 'NEW',
+    icon: Globe,
+    barClass: 'bg-emerald-500',
+    iconClass: 'text-emerald-300',
+  },
+  return: {
+    label: 'ACTIVE',
+    icon: Globe,
+    barClass: 'bg-emerald-500',
+    iconClass: 'text-emerald-300',
+  },
+  logout: {
+    label: 'LOGOUT',
+    icon: Globe,
+    barClass: 'bg-gray-500',
+    iconClass: 'text-gray-400',
+  },
+  disconnect: {
+    label: 'DISCONNECT',
+    icon: Globe,
+    barClass: 'bg-gray-500',
+    iconClass: 'text-gray-400',
+  },
+  idle: {
+    label: 'IDLE',
+    icon: Globe,
+    barClass: 'bg-gray-500',
+    iconClass: 'text-gray-400',
+  },
+}
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  login: 'Login',
+  logout: 'Logout',
+  disconnect: 'Disconnect',
+  register: 'New Player',
+  idle: 'Idle',
+  return: 'Active',
+}
+
+const ACTIVITY_TEXT_CLASSES: Record<string, string> = {
+  login: 'text-emerald-200',
+  register: 'text-emerald-200',
+  return: 'text-emerald-200',
+  logout: 'text-gray-300',
+  disconnect: 'text-gray-300',
+  idle: 'text-gray-300',
+}
+
 const createDefaultSettings = (): WorldFeedSettings => ({
   showTimestamps: true,
   compactMode: false,
@@ -89,10 +146,24 @@ const canGroupEntries = (a: WorldFeedEntry, b: WorldFeedEntry) => {
 }
 
 const getEntryStyle = (entry: WorldFeedEntry): CategoryStyle => {
+  if (entry.eventType) {
+    const activityStyle = ACTIVITY_STYLES[entry.eventType]
+    if (activityStyle) {
+      return activityStyle
+    }
+  }
+
   if (entry.level === 'error') {
     return ERROR_STYLE
   }
   return CATEGORY_STYLES[entry.type]
+}
+
+const getMessageColorClass = (entry: WorldFeedEntry) => {
+  if (entry.eventType) {
+    return ACTIVITY_TEXT_CLASSES[entry.eventType] ?? 'text-gray-200'
+  }
+  return entry.level === 'error' ? 'text-red-200' : 'text-gray-200'
 }
 
 const DEFAULT_VISIBLE = 200
@@ -367,10 +438,13 @@ export default function UnifiedFeedPanel({
           renderEntries.map(({ entry, count }, index) => {
             const style = getEntryStyle(entry)
             const messageText = entry.message ?? entry.text ?? ''
-            const isChat = entry.type === 'room' || entry.type === 'world'
+            const isActivity = Boolean(entry.eventType)
+            const isChat = !isActivity && (entry.type === 'room' || entry.type === 'world')
             const actorLabel = entry.isSelf ? 'You' : entry.actor || 'Unknown'
             const contentSize = settings.compactMode ? 'text-[13px]' : 'text-sm'
             const rowPadding = settings.compactMode ? 'py-1 pr-3 pl-4' : 'py-1.5 pr-4 pl-5'
+            const activityLabel = entry.eventType ? (ACTIVITY_LABELS[entry.eventType] ?? entry.eventType).toUpperCase() : null
+            const messageColorClass = getMessageColorClass(entry)
 
             return (
               <div key={`${entry.id}-${index}`} className={`relative ${rowPadding}`}>
@@ -390,7 +464,16 @@ export default function UnifiedFeedPanel({
                     </span>
                   )}
                   <div className={`flex flex-wrap items-baseline gap-1 flex-1 break-words leading-snug ${contentSize}`}>
-                    {isChat ? (
+                    {isActivity ? (
+                      <>
+                        {activityLabel && (
+                          <span className={`text-[10px] font-semibold tracking-wide uppercase ${messageColorClass}`}>
+                            {activityLabel}
+                          </span>
+                        )}
+                        <span className={messageColorClass}>{messageText}</span>
+                      </>
+                    ) : isChat ? (
                       <>
                         <span className="font-semibold text-gray-50">{actorLabel}</span>
                         <span className="text-gray-400">:</span>

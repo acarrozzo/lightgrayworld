@@ -6,6 +6,7 @@ import { createAuthResponse } from '@/lib/auth'
 import { PLAYER_AVATARS, DEFAULT_PLAYER_AVATAR, getRandomAvatarColor, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
 import { FEATURE_FLAGS } from '@/lib/config'
+import { createWorldFeedEvent } from '@/lib/services/world-feed-event-service'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -65,6 +66,16 @@ export async function POST(request: NextRequest) {
       },
       include: { equipment: true }
     })
+
+    try {
+      await createWorldFeedEvent({
+        userId: user.id,
+        username: user.username,
+        eventType: 'register',
+      })
+    } catch (error) {
+      console.error('Failed to record world feed registration event', error)
+    }
 
     // Return player data with JWT token
     const authResponse = createAuthResponse({

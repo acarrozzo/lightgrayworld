@@ -22,6 +22,8 @@ const SOCKET_EVENTS = {
   WORLD_TICK: 'world:tick',
   ROOM_PLAYER_MOVED: 'room:player-moved',
   GAME_FACTS: 'game:facts',
+  WORLD_ACTIVITY: 'world:activity',
+  USER_LOGOUT: 'user:logout',
 }
 
 function setSocketIO(ioInstance) {

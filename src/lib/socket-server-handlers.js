@@ -14,6 +14,9 @@ const ACTION_QUEUE_ERRORS = {
 
 const QUEUE_FULL_MESSAGE = 'Action queue is full. Please wait for pending actions to complete.'
 const ACTION_TIMEOUT_MESSAGE = 'Action timed out after 5000ms.'
+const LAST_ACTIVE_PERSIST_INTERVAL = 60 * 1000
+const { createWorldFeedEvent } = require('./services/world-feed-event-service.js')
+const { createIdleDetectionService } = require('./services/idle-detection-service.js')
 
 // Create error handler factory
 function createEmitQueueAwareError(socket) {
@@ -42,6 +45,14 @@ function createEmitQueueAwareError(socket) {
     }
 
     socket.emit('action:error', { action: actionName, message: fallbackMessage })
+  }
+}
+
+async function recordWorldFeedEventSafe({ userId, username, eventType }) {
+  try {
+    await createWorldFeedEvent({ userId, username, eventType })
+  } catch (error) {
+    console.error('[WorldFeed] Failed to record event', { userId, username, eventType, error })
   }
 }
 
@@ -177,12 +188,38 @@ function buildDirectionPhrase(direction, context) {
 
 // Setup socket handlers
 function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers) {
+  const idleDetectionService = createIdleDetectionService({ activePlayers })
+  idleDetectionService.start()
+  const lastActivityPersistedAt = new Map()
+
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id)
     console.log('[Server] Listening for player login event:', SOCKET_EVENTS.PLAYER_LOGIN)
 
     const emitQueueAwareError = createEmitQueueAwareError(socket)
     const transitionPlayerRoom = createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers)
+    const touchPlayerActivity = (player) => {
+      if (!player || !player.id) {
+        return
+      }
+
+      const now = Date.now()
+      player.lastActive = new Date(now)
+      idleDetectionService.markUserActive(player.id)
+
+      const lastPersisted = lastActivityPersistedAt.get(player.id) || 0
+      if (now - lastPersisted >= LAST_ACTIVE_PERSIST_INTERVAL) {
+        lastActivityPersistedAt.set(player.id, now)
+        prisma.user
+          .update({
+            where: { id: player.id },
+            data: { lastActive: new Date(now), isActive: true },
+          })
+          .catch((error) => {
+            console.error('[Socket] Failed to persist lastActive timestamp', error)
+          })
+      }
+    }
 
     // Handle player login (server-authoritative; ignores client payload)
     socket.on(SOCKET_EVENTS.PLAYER_LOGIN, async () => {
@@ -235,6 +272,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         }
 
         activePlayers.set(socket.id, playerData)
+        touchPlayerActivity(playerData)
         console.log(`[Server] Player ${playerData.username} registered in activePlayers for socket ${socket.id}`)
         console.log(`[Server] activePlayers now has ${activePlayers.size} entries`)
 
@@ -291,6 +329,12 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
           player: playerData,
           inventory,
         })
+
+        recordWorldFeedEventSafe({
+          userId: playerData.id,
+          username: playerData.username,
+          eventType: 'login',
+        })
       } catch (error) {
         console.error('Error handling player login:', error)
         socket.emit('auth:error', { message: 'Failed to process login' })
@@ -307,6 +351,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         socket.emit('action:error', { action: 'move', message: 'Player not found' })
         return
       }
+
+      touchPlayerActivity(player)
 
       const fromRoom = data?.fromRoom || player.currentRoom
       const toRoom = data?.toRoom
@@ -434,6 +480,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         return
       }
 
+      touchPlayerActivity(player)
+
       try {
         console.log(`[Socket] Calling gameEngine.processUserAction for chat from ${player.username}`)
         const result = await gameEngine.processUserAction({
@@ -489,6 +537,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         socket.emit('action:error', { action: 'room-chat', message: 'You must be in the room to send room chat messages' })
         return
       }
+
+      touchPlayerActivity(player)
 
       try {
         // Verify room exists
@@ -549,6 +599,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       const player = activePlayers.get(socket.id)
       if (!player) return
 
+      touchPlayerActivity(player)
+
       let actionType = null
       let actionData = {}
 
@@ -597,6 +649,36 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       }
     })
 
+    // Handle explicit logout
+    socket.on(SOCKET_EVENTS.USER_LOGOUT, async () => {
+      const player = activePlayers.get(socket.id)
+      if (!player) {
+        socket.emit('auth:error', { message: 'Player not found' })
+        return
+      }
+
+      try {
+        await prisma.user.update({
+          where: { id: player.id },
+          data: {
+            isActive: false,
+            lastActive: new Date(),
+          },
+        })
+      } catch (error) {
+        console.error('[Socket] Failed to persist logout state', error)
+      }
+
+      await recordWorldFeedEventSafe({
+        userId: player.id,
+        username: player.username,
+        eventType: 'logout',
+      })
+
+      socket.emit('auth:logout', { success: true })
+      socket.disconnect(true)
+    })
+
     // Handle disconnect
     socket.on('disconnect', () => {
       const player = activePlayers.get(socket.id)
@@ -617,8 +699,15 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         }
 
         activePlayers.delete(socket.id)
+        lastActivityPersistedAt.delete(player.id)
 
         console.log(`Player ${player.username} disconnected`)
+
+        recordWorldFeedEventSafe({
+          userId: player.id,
+          username: player.username,
+          eventType: 'disconnect',
+        })
       }
     })
   })

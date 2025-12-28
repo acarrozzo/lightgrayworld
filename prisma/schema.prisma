@@ -126,6 +126,7 @@ model User {
   actionHistory             ActionHistory[]
   chatMessages              ChatMessage[]
   roomChatMessages          RoomChatMessage[]
+  worldFeedEvents           WorldFeedEvent[]
   equipment                 Equipment?
   killList                  KillList[]
   PlayerItem                PlayerItem[]
@@ -254,6 +255,18 @@ model RoomChatMessage {
   room      Room     @relation(fields: [roomId], references: [roomId], onDelete: Cascade)
 
   @@index([roomId, timestamp])
+}
+
+model WorldFeedEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  username  String
+  eventType String
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([timestamp])
+  @@index([eventType])
 }
 
 model ActionHistory {

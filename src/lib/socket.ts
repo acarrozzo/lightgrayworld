@@ -7,6 +7,7 @@ export interface SocketEvents {
   'send-chat-message': (data: { message: string }) => void
   'send-room-chat-message': (data: { message: string; roomId: string }) => void
   'game-action': (data: { action: string }) => void
+  'user:logout': () => void
 
   // Server to client events
   'player-joined': (player: PlayerInfo) => void
@@ -20,6 +21,7 @@ export interface SocketEvents {
   'action:error': (payload: ActionErrorPayload) => void
   'world:tick': (payload: WorldTickPayload) => void
   'room:player-moved': (payload: RoomPlayerMovedPayload) => void
+  'world:activity': (payload: WorldActivityPayload) => void
 }
 
 export interface PlayerInfo {
@@ -88,6 +90,16 @@ export interface RoomPlayerMovedPayload {
   toRoom: string
 }
 
+export interface WorldActivityPayload {
+  id: string
+  ts: number
+  type: 'world'
+  level?: 'info' | 'error'
+  actor?: string
+  message: string
+  eventType?: string
+}
+
 export interface AmbientTickData {
   type: string
   message: string
@@ -116,6 +128,7 @@ export const SOCKET_EVENTS = {
   SEND_CHAT_MESSAGE: 'send-chat-message',
   SEND_ROOM_CHAT_MESSAGE: 'send-room-chat-message',
   GAME_ACTION: 'game-action',
+  USER_LOGOUT: 'user:logout',
   
   // Server to client
   PLAYER_JOINED: 'player-joined',
@@ -129,6 +142,7 @@ export const SOCKET_EVENTS = {
   ACTION_ERROR: 'action:error',
   WORLD_TICK: 'world:tick',
   ROOM_PLAYER_MOVED: 'room:player-moved',
+  WORLD_ACTIVITY: 'world:activity',
 } as const
 
 let io: Server<SocketEvents> | null = null

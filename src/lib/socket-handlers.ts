@@ -9,6 +9,7 @@ import {
   ActionErrorPayload,
   WorldTickPayload,
   RoomPlayerMovedPayload,
+  WorldActivityPayload,
 } from './socket'
 
 // Centralized socket event handlers to reduce duplication
@@ -72,6 +73,10 @@ export class SocketEventHandlers {
     const result = this.emit(SOCKET_EVENTS.PLAYER_LOGIN, {})
     console.log('[SocketHandlers] PLAYER_LOGIN emit result:', result)
     return result
+  }
+
+  logoutPlayer(): boolean {
+    return this.emit(SOCKET_EVENTS.USER_LOGOUT, {})
   }
 
   // Send chat message
@@ -143,6 +148,10 @@ export class SocketEventHandlers {
 
   onRoomPlayerMoved(handler: (payload: RoomPlayerMovedPayload) => void): () => void {
     return this.on(SOCKET_EVENTS.ROOM_PLAYER_MOVED, handler)
+  }
+
+  onWorldActivity(handler: (payload: WorldActivityPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.WORLD_ACTIVITY, handler)
   }
 
   // Cleanup all listeners
