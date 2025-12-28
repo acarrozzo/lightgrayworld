@@ -2,7 +2,7 @@
 
 import { Player, useGameStore } from '@/lib/game-state'
 import TabContainer, { TabConfig } from './TabContainer'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import AvatarSelectionModal from './AvatarSelectionModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
@@ -20,6 +20,12 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   const isLoggedIn = useGameStore((state) => state.isLoggedIn)
   const [isAvatarModalOpen, setAvatarModalOpen] = useState(false)
   const [isSavingAvatar, setIsSavingAvatar] = useState(false)
+  const [newItemsCount, setNewItemsCount] = useState(0)
+  const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = useState('stats')
+  const previousInventoryRef = useRef<typeof inventory>([])
+  const isInitialMountRef = useRef(true)
+  const wasInventoryTabOpenRef = useRef(false) // Will be updated by useEffect
 
   const hpPercent = useMemo(() => {
     if (!player.hpMax) return 0
@@ -42,6 +48,81 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
+
+  // Track inventory changes to detect new items
+  useEffect(() => {
+    // Skip on initial mount to avoid showing badge on load
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false
+      previousInventoryRef.current = inventory
+      return
+    }
+
+    const previousInventory = previousInventoryRef.current
+    const currentInventory = inventory
+
+    // Check if inventory has new items (new item IDs or increased quantities)
+    const previousItemIds = new Set(previousInventory.map(item => item.id))
+    const previousItemQuantities = new Map(
+      previousInventory.map(item => [item.id, item.quantity])
+    )
+
+    const newlyAddedItemIds = new Set<string>()
+    let newItemsAddedCount = 0
+
+    // Check for new item IDs and quantity increases
+    for (const item of currentInventory) {
+      if (!previousItemIds.has(item.id)) {
+        // Completely new item
+        newlyAddedItemIds.add(item.id)
+        newItemsAddedCount += item.quantity
+      } else {
+        // Check if quantity increased (new items of same type)
+        const previousQty = previousItemQuantities.get(item.id) || 0
+        if (item.quantity > previousQty) {
+          const quantityIncrease = item.quantity - previousQty
+          newlyAddedItemIds.add(item.id)
+          newItemsAddedCount += quantityIncrease
+        }
+      }
+    }
+
+    // Only update badge and new items if new items were added AND inventory tab is not active
+    if (newItemsAddedCount > 0 && activeTab !== 'inventory') {
+      setNewItemsCount(prev => prev + newItemsAddedCount)
+      setNewItemIds(prev => {
+        const updated = new Set(prev)
+        newlyAddedItemIds.forEach(id => updated.add(id))
+        return updated
+      })
+    }
+
+    // Update previous inventory reference
+    previousInventoryRef.current = inventory
+  }, [inventory, activeTab])
+
+  // Track when inventory tab opens/closes to clear new items indicators
+  useEffect(() => {
+    const isInventoryTabOpen = activeTab === 'inventory'
+    const wasOpen = wasInventoryTabOpenRef.current
+
+    // When inventory tab opens, clear the badge count
+    if (!wasOpen && isInventoryTabOpen) {
+      setNewItemsCount(0)
+    }
+
+    // When inventory tab closes (was open, now closed), clear red dots on items
+    if (wasOpen && !isInventoryTabOpen) {
+      setNewItemIds(new Set())
+    }
+
+    wasInventoryTabOpenRef.current = isInventoryTabOpen
+  }, [activeTab])
+
+  // Handle tab changes
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId)
+  }
 
   const handleAvatarUpdate = async (avatar: PlayerAvatar, color: string) => {
     if (!isLoggedIn || !player.id) {
@@ -157,6 +238,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
       label: 'Inventory',
       icon: 'inv',
       color: 'green',
+      badge: newItemsCount > 0 ? newItemsCount : undefined,
       content: (
         <div className="space-y-4 p-4">
           <h3 className="text-lg font-semibold text-white">Inventory</h3>
@@ -166,30 +248,36 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
             </div>
           ) : (
             <div className="space-y-2">
-              {inventory.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded bg-gray-800/40 px-3 py-2 gap-2"
-                >
-                  <div className="text-white text-sm font-medium">
-                    {item.template.name}
-                  </div>
-                  {item.quantity > 1 && (
-                    <div className="text-gray-400 text-xs">x{item.quantity}</div>
-                  )}
-                  <button
-                    className="px-2 py-1 text-xs bg-red-600/70 hover:bg-red-600 rounded text-white"
-                    onClick={() =>
-                      onAction?.({
-                        type: 'drop_item',
-                        data: { playerItemId: item.id, quantity: 1 },
-                      })
-                    }
+              {inventory.map((item) => {
+                const isNewItem = newItemIds.has(item.id)
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded bg-gray-800/40 px-3 py-2 gap-2 relative"
                   >
-                    Drop
-                  </button>
-                </div>
-              ))}
+                    {isNewItem && (
+                      <span className="absolute left-1 top-1 w-2 h-2 bg-red-500 rounded-full border border-gray-900"></span>
+                    )}
+                    <div className={`text-white text-sm font-medium ${isNewItem ? 'pl-3' : ''}`}>
+                      {item.template.name}
+                    </div>
+                    {item.quantity > 1 && (
+                      <div className="text-gray-400 text-xs">x{item.quantity}</div>
+                    )}
+                    <button
+                      className="px-2 py-1 text-xs bg-red-600/70 hover:bg-red-600 rounded text-white"
+                      onClick={() =>
+                        onAction?.({
+                          type: 'drop_item',
+                          data: { playerItemId: item.id, quantity: 1 },
+                        })
+                      }
+                    >
+                      Drop
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -231,6 +319,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
         tabs={tabs}
         defaultTab="stats"
         onClose={onClose}
+        onTabChange={handleTabChange}
         closeButtonPlacement="separate"
         closeButtonBreakpoint="xl"
         contentClassName="p-4"

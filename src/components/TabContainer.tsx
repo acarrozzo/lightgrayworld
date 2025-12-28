@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, ReactNode } from 'react'
+import { useState, ReactNode, useEffect } from 'react'
 import Icon from './Icon'
 
 export interface TabConfig {
@@ -9,12 +9,14 @@ export interface TabConfig {
   icon?: string
   color?: string
   content: ReactNode | ((isActive: boolean) => ReactNode)
+  badge?: boolean | number
 }
 
 interface TabContainerProps {
   tabs: TabConfig[]
   defaultTab?: string
   onClose?: () => void
+  onTabChange?: (tabId: string) => void
   closeButtonPlacement?: 'integrated' | 'separate'
   closeButtonBreakpoint?: 'lg' | 'xl'
   headerClassName?: string
@@ -27,6 +29,7 @@ export default function TabContainer({
   tabs,
   defaultTab,
   onClose,
+  onTabChange,
   closeButtonPlacement = 'separate',
   closeButtonBreakpoint = 'xl',
   headerClassName = '',
@@ -35,6 +38,20 @@ export default function TabContainer({
   buttonPadding = 'px-3 py-2',
 }: TabContainerProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id || '')
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId)
+    onTabChange?.(tabId)
+  }
+
+  // Sync initial tab state with parent on mount
+  useEffect(() => {
+    const initialTab = defaultTab || tabs[0]?.id || ''
+    if (initialTab) {
+      onTabChange?.(initialTab)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Only run on mount
 
   const breakpointClass = closeButtonBreakpoint === 'lg' ? 'lg:hidden' : 'xl:hidden'
 
@@ -69,8 +86,8 @@ export default function TabContainer({
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 ${buttonPadding} text-sm font-medium transition-all duration-200 flex items-center justify-center ${
+            onClick={() => handleTabChange(tab.id)}
+            className={`flex-1 ${buttonPadding} text-sm font-medium transition-all duration-200 flex items-center justify-center relative ${
               activeTab === tab.id
                 ? 'text-white border-b-2 border-indigo-500/80 bg-gray-900/50'
                 : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
@@ -85,6 +102,15 @@ export default function TabContainer({
               />
             )}
             {tab.label}
+            {tab.badge && (
+              <span className={`absolute top-1 right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center ${
+                typeof tab.badge === 'number' 
+                  ? 'min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white' 
+                  : 'w-2 h-2'
+              }`}>
+                {typeof tab.badge === 'number' && tab.badge > 0 ? (tab.badge > 99 ? '99+' : tab.badge) : ''}
+              </span>
+            )}
           </button>
         ))}
         
