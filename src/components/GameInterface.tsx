@@ -57,24 +57,6 @@ const normalizeCommand = (input: string): string => {
   return COMMAND_SHORTHAND[normalized] || normalized
 }
 
-const KNOWN_COMMANDS = new Set<string>([
-  ...TRAVEL_DIRECTION_KEYS,
-  'look',
-  'attack',
-  'search',
-  'rest',
-  'move',
-  'navigate',
-  'buy',
-  'sell',
-  'inventory',
-  'pick',
-  'use',
-  'map',
-  'talk',
-  'trade',
-])
-
 export default function GameInterface() {
   const {
     player,
@@ -605,22 +587,6 @@ export default function GameInterface() {
     }
 
     const normalizedCommand = normalizeCommand(actionToSend)
-    const commandWord = normalizedCommand.split(/\s+/)[0]
-
-    if (!commandWord || !KNOWN_COMMANDS.has(commandWord)) {
-      const maybeSuggestion = commandWord && commandWord.startsWith('attac') ? 'attack' : null
-      const unknownText = maybeSuggestion
-        ? `Unknown command "${commandWord}". Did you mean "${maybeSuggestion}"?`
-        : "To chat: say hello | 'hello | \"hello | shout hello | !hello"
-
-      appendWorldFeed({
-        type: 'action',
-        level: 'error',
-        message: unknownText,
-      })
-      return
-    }
-
     handleAction(normalizedCommand)
   }
 
@@ -629,9 +595,26 @@ export default function GameInterface() {
       return
     }
 
-    const cleanupActionResult = socketHandlers.onActionResult((payload) => {
-      console.log('[GameInterface] Received action:result event:', payload)
-      setActionResult({ ...payload, source: 'socket' })
+    const cleanupActionFeedback = socketHandlers.onActionFeedback((payload) => {
+      console.log('[GameInterface] Received action:feedback event:', payload)
+      const outcome = payload?.outcome ?? 'info'
+      const success = outcome === 'success'
+      const timestampMs =
+        typeof payload?.ts === 'number'
+          ? payload.ts
+          : Date.now()
+      const messageText = payload?.message || payload?.action || 'Action feedback'
+
+      setActionResult({
+        action: payload?.action,
+        success,
+        outcome,
+        message: messageText,
+        timestamp: new Date(timestampMs).toISOString(),
+        source: 'socket',
+        data: payload?.data,
+      })
+
       if (payload?.data?.inventory) {
         setInventory(payload.data.inventory)
       }
@@ -640,8 +623,8 @@ export default function GameInterface() {
         updateRoomItems(currentRoomRef.current.roomId, normalizeRoomItems(payload.data.roomItems))
       }
 
-      if (payload.action === 'move' && payload.success && payload.data?.toRoom) {
-        console.log('[GameInterface] Processing move action result')
+      if (payload?.action === 'move' && success && payload?.data?.toRoom) {
+        console.log('[GameInterface] Processing move action feedback')
         const currentPlayer = playerRef.current
         if (currentPlayer && currentPlayer.currentRoom !== payload.data.toRoom) {
           console.log('[GameInterface] Updating player room to:', payload.data.toRoom)
@@ -649,7 +632,6 @@ export default function GameInterface() {
         }
 
         console.log('[GameInterface] Loading room data for:', payload.data.toRoom)
-        // Use roomData from socket payload if available, otherwise fetch from API
         loadRoomDataRef.current?.({
           isTransition: true,
           travel: { toRoomId: payload.data.toRoom },
@@ -657,13 +639,12 @@ export default function GameInterface() {
         })
       }
 
-      const ts = payload.timestamp ? Date.parse(payload.timestamp) : Date.now()
-      const messageText = payload.message || payload.action || 'Action result'
       appendWorldFeed({
         type: 'action',
         message: messageText,
-        roomId: payload.data?.roomId || currentRoomRef.current?.roomId,
-        ts,
+        roomId: payload?.data?.roomId || payload?.roomId || currentRoomRef.current?.roomId,
+        ts: timestampMs,
+        outcome,
       })
     })
 
@@ -672,23 +653,6 @@ export default function GameInterface() {
       if (payload?.inventory) {
         setInventory(payload.inventory)
       }
-    })
-
-    const cleanupActionError = socketHandlers.onActionError((payload) => {
-      console.log('[GameInterface] Received action:error event:', payload)
-      setActionResult({
-        action: payload.action,
-        success: false,
-        message: payload.message,
-        timestamp: new Date().toISOString(),
-        source: 'socket',
-      })
-      appendWorldFeed({
-        type: 'action',
-        level: 'error',
-        message: payload.message || 'Action failed',
-        roomId: currentRoomRef.current?.roomId,
-      })
     })
 
     const cleanupRoomMoves = socketHandlers.onRoomPlayerMoved((event) => {
@@ -724,9 +688,8 @@ export default function GameInterface() {
     })
 
     return () => {
-      cleanupActionResult()
+      cleanupActionFeedback()
       cleanupLoginSuccess()
-      cleanupActionError()
       cleanupRoomMoves()
     }
   }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed])

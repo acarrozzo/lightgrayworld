@@ -4,9 +4,8 @@ import {
   SOCKET_EVENTS,
   ChatMessage,
   ActionData,
-  ActionResultPayload,
   ActionConfirmation,
-  ActionErrorPayload,
+  ActionFeedbackPayload,
   WorldTickPayload,
   RoomPlayerMovedPayload,
   WorldActivityPayload,
@@ -122,8 +121,8 @@ export class SocketEventHandlers {
     return this.on(SOCKET_EVENTS.PLAYER_LEFT, handler)
   }
 
-  onActionResult(handler: (payload: ActionResultPayload) => void): () => void {
-    return this.on(SOCKET_EVENTS.ACTION_RESULT, handler)
+  onActionFeedback(handler: (payload: ActionFeedbackPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.ACTION_FEEDBACK, handler)
   }
 
   onLoginSuccess(handler: (payload: any) => void): () => void {
@@ -132,10 +131,6 @@ export class SocketEventHandlers {
 
   onActionConfirmed(handler: (payload: ActionConfirmation) => void): () => void {
     return this.on(SOCKET_EVENTS.ACTION_CONFIRMED, handler)
-  }
-
-  onActionError(handler: (payload: ActionErrorPayload) => void): () => void {
-    return this.on(SOCKET_EVENTS.ACTION_ERROR, handler)
   }
 
   onRoomItemsUpdate(handler: (payload: { roomId: string; items: any[] }) => void): () => void {

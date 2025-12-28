@@ -29,6 +29,7 @@ const ROOM_ACTIONS = {
         }
         return `You pick a ripe redberry. (${capInfo.remaining} picks remaining this tick)`
       },
+      determineOutcome: ({ success }) => (success ? 'success' : 'info'),
     },
   },
   '003': {
@@ -48,6 +49,7 @@ const ROOM_ACTIONS = {
         }
         return 'You already have a flower. One is enough for now.'
       },
+      determineOutcome: ({ success }) => (success ? 'success' : 'info'),
     },
   },
 }
@@ -98,6 +100,19 @@ async function executeRoomAction(roomId, action, playerId, roomState, currentTic
  * @param {RoomState} roomState - The room state instance
  * @returns {Object} Action result object
  */
+function createActionFeedbackPayload(action, outcome, message, data = {}) {
+  const ts = Date.now()
+  return {
+    action,
+    message,
+    outcome,
+    ts,
+    timestamp: new Date(ts).toISOString(),
+    success: outcome === 'success',
+    data,
+  }
+}
+
 function executeBasicDisplay(actionName, message, playerId, roomState) {
   const player = roomState.players.get(playerId)
   if (!player) {
@@ -110,24 +125,11 @@ function executeBasicDisplay(actionName, message, playerId, roomState) {
     success: true,
     action: actionName,
     playerEvent: {
-      event: 'action:result',
-      payload: createPlayerPayload(actionName, true, message, {
+      event: 'action:feedback',
+      payload: createActionFeedbackPayload(actionName, 'success', message, {
         roomId: roomState.roomId,
       }),
     },
-  }
-}
-
-/**
- * Create a player payload for action results
- */
-function createPlayerPayload(action, success, message, data = {}) {
-  return {
-    action,
-    success,
-    message,
-    timestamp: new Date().toISOString(),
-    data,
   }
 }
 
@@ -140,8 +142,8 @@ function createErrorResult(action, message) {
     action,
     message,
     playerEvent: {
-      event: 'action:result',
-      payload: createPlayerPayload(action, false, message),
+      event: 'action:feedback',
+      payload: createActionFeedbackPayload(action, 'failure', message),
     },
   }
 }
@@ -193,13 +195,22 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
           })
         : 'You cannot perform this action right now.'
 
+      const capExceededOutcome =
+        typeof definition.determineOutcome === 'function'
+          ? definition.determineOutcome({
+              success: false,
+              effectResults: [{ success: false }],
+              capInfo: { remaining: 0, secondsUntilReset },
+            }) || 'failure'
+          : 'failure'
+
       return {
         success: false,
         action: actionName,
         message,
         playerEvent: {
-          event: 'action:result',
-          payload: createPlayerPayload(actionName, false, message, {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
             roomId: roomState.roomId,
             remaining: 0,
             secondsUntilReset,
@@ -234,12 +245,21 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
     ? definition.success
     : effectResults.every((r) => r?.success !== false)
 
+  const outcome =
+    typeof definition.determineOutcome === 'function'
+      ? definition.determineOutcome({
+          success,
+          effectResults,
+          capInfo,
+        }) || (success ? 'success' : 'failure')
+      : success ? 'success' : 'failure'
+
   return {
     success,
     action: actionName,
     playerEvent: {
-      event: 'action:result',
-      payload: createPlayerPayload(actionName, success, message, {
+      event: 'action:feedback',
+      payload: createActionFeedbackPayload(actionName, outcome, message, {
         roomId: roomState.roomId,
         ...(inventory ? { inventory } : {}),
         ...(capInfo ? { remaining: capInfo.remaining, secondsUntilReset: capInfo.secondsUntilReset } : {}),

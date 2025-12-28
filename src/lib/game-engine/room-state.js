@@ -116,8 +116,8 @@ class RoomState {
       success: true,
       action: 'pickup_item',
       playerEvent: {
-        event: 'action:result',
-        payload: this.createPlayerPayload('pickup_item', true, result.message, {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('pickup_item', 'success', result.message, {
           inventory: result.inventory,
           roomItems: result.roomItems,
         }),
@@ -158,8 +158,8 @@ class RoomState {
       success: true,
       action: 'drop_item',
       playerEvent: {
-        event: 'action:result',
-        payload: this.createPlayerPayload('drop_item', true, result.message, {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('drop_item', 'success', result.message, {
           inventory: result.inventory,
           roomItems: result.roomItems,
         }),
@@ -206,8 +206,8 @@ class RoomState {
       action: 'move',
       data: { fromRoom, toRoom, toRoomName, roomData },
       playerEvent: {
-        event: 'action:result',
-        payload: this.createPlayerPayload('move', true, message, { toRoom, toRoomName, roomData }),
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('move', 'success', message, { toRoom, toRoomName, roomData }),
       },
       broadcastEvents: [
         {
@@ -274,8 +274,8 @@ class RoomState {
       success: true,
       action: 'chat',
       playerEvent: {
-        event: 'action:result',
-        payload: this.createPlayerPayload('chat', true, 'Message sent', { message }),
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('chat', 'success', 'Message sent', { message }),
       },
       broadcastEvents: [
         {
@@ -298,8 +298,8 @@ class RoomState {
       success: true,
       action: 'search',
       playerEvent: {
-        event: 'action:result',
-        payload: this.createPlayerPayload('search', true, 'You search the room and find nothing.'),
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('search', 'success', 'You search the room and find nothing.'),
       },
     }
   }
@@ -326,8 +326,8 @@ class RoomState {
       success: true,
       action: 'rest',
       playerEvent: {
-        event: 'action:result',
-        payload: this.createPlayerPayload('rest', true, `You recover ${recovered} HP.`, {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('rest', 'success', `You recover ${recovered} HP.`, {
           hp: newHp,
         }),
       },
@@ -349,8 +349,8 @@ class RoomState {
       success: true,
       action: 'look',
       playerEvent: {
-        event: 'action:result',
-        payload: this.createPlayerPayload('look', true, message, {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('look', 'success', message, {
           roomId: this.roomId,
           playerCount: this.players.size,
         }),
@@ -358,12 +358,15 @@ class RoomState {
     }
   }
 
-  createPlayerPayload(action, success, message, data = {}) {
+  createFeedbackPayload(action, outcome, message, data = {}) {
+    const ts = Date.now()
     return {
       action,
-      success,
       message,
-      timestamp: new Date().toISOString(),
+      outcome,
+      ts,
+      timestamp: new Date(ts).toISOString(),
+      success: outcome === 'success',
       data,
     }
   }
@@ -374,8 +377,8 @@ class RoomState {
       action,
       message,
       playerEvent: {
-        event: 'action:result',
-        payload: this.createPlayerPayload(action, false, message),
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload(action, 'failure', message),
       },
     }
   }

@@ -1,6 +1,24 @@
 import { Server } from 'socket.io'
 
 // Socket event types
+export type ActionFeedbackOutcome = 'success' | 'failure' | 'info'
+
+export interface ActionFeedbackPayload {
+  action: string
+  message: string
+  ts: number
+  outcome: ActionFeedbackOutcome
+  timestamp?: string
+  success?: boolean
+  data?: Record<string, any>
+  eventType?: string
+  roomId?: string
+  actorId?: string
+  actorName?: string
+  actionId?: string
+  meta?: Record<string, any>
+}
+
 export interface SocketEvents {
   // Client to server events
   'player-login': (data: Record<string, never>) => void
@@ -16,9 +34,8 @@ export interface SocketEvents {
   'room-chat-message': (message: ChatMessage) => void
   'action-completed': (actionData: ActionData) => void
   'player-action': (actionData: PlayerAction) => void
-  'action:result': (payload: ActionResultPayload) => void
   'action:confirmed': (payload: ActionConfirmation) => void
-  'action:error': (payload: ActionErrorPayload) => void
+  'action:feedback': (payload: ActionFeedbackPayload) => void
   'world:tick': (payload: WorldTickPayload) => void
   'room:player-moved': (payload: RoomPlayerMovedPayload) => void
   'world:activity': (payload: WorldActivityPayload) => void
@@ -64,23 +81,10 @@ export interface PlayerAction {
   timestamp: Date
 }
 
-export interface ActionResultPayload {
-  action: string
-  success: boolean
-  message: string
-  timestamp: string
-  data?: Record<string, any>
-}
-
 export interface ActionConfirmation {
   action: string
   success: boolean
   data?: Record<string, any>
-}
-
-export interface ActionErrorPayload {
-  action: string
-  message: string
 }
 
 export interface RoomPlayerMovedPayload {
@@ -137,9 +141,8 @@ export const SOCKET_EVENTS = {
   ROOM_CHAT_MESSAGE: 'room-chat-message',
   ACTION_COMPLETED: 'action-completed',
   PLAYER_ACTION: 'player-action',
-  ACTION_RESULT: 'action:result',
   ACTION_CONFIRMED: 'action:confirmed',
-  ACTION_ERROR: 'action:error',
+  ACTION_FEEDBACK: 'action:feedback',
   WORLD_TICK: 'world:tick',
   ROOM_PLAYER_MOVED: 'room:player-moved',
   WORLD_ACTIVITY: 'world:activity',

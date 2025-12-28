@@ -1,6 +1,7 @@
 'use client'
 
 import { create } from 'zustand'
+import type { ActionFeedbackOutcome } from '../lib/socket'
 
 export type WorldFeedEntry = {
   id: string
@@ -8,6 +9,7 @@ export type WorldFeedEntry = {
   message: string
   type: 'room' | 'world' | 'action'
   level?: 'info' | 'error'
+  outcome?: ActionFeedbackOutcome
   actor?: string
   isSelf?: boolean
   roomId?: string
@@ -69,12 +71,15 @@ const persistEntries = (userId: string | null, entries: WorldFeedEntry[]) => {
 
 const ensureEntry = (entry: WorldFeedEntryInput): WorldFeedEntry => {
   const message = entry.message ?? entry.text ?? ''
+  const outcome = entry.outcome
+  const normalizedLevel = entry.level ?? (outcome === 'failure' ? 'error' : undefined)
   return {
     id: entry.id || (crypto.randomUUID ? crypto.randomUUID() : `worldfeed-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
     ts: entry.ts ?? Date.now(),
     message,
     type: entry.type,
-    level: entry.level,
+    level: normalizedLevel,
+    outcome,
     actor: entry.actor,
     isSelf: entry.isSelf,
     roomId: entry.roomId,

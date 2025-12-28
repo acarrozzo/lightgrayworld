@@ -18,11 +18,35 @@ const LAST_ACTIVE_PERSIST_INTERVAL = 60 * 1000
 const { createWorldFeedEvent } = require('./services/world-feed-event-service.js')
 const { createIdleDetectionService } = require('./services/idle-detection-service.js')
 
+function emitActionFeedback(socket, payload) {
+  const ts = payload.ts || Date.now()
+  const success = payload.outcome === 'success'
+  socket.emit(SOCKET_EVENTS.ACTION_FEEDBACK, {
+    action: payload.action,
+    message: payload.message,
+    outcome: payload.outcome || 'info',
+    ts,
+    timestamp: new Date(ts).toISOString(),
+    success,
+    data: payload.data,
+    eventType: payload.eventType,
+    roomId: payload.roomId,
+    actorId: payload.actorId,
+    actorName: payload.actorName,
+    actionId: payload.actionId,
+    meta: payload.meta,
+  })
+}
+
 // Create error handler factory
 function createEmitQueueAwareError(socket) {
   return ({ actionName, player, error, fallbackMessage }) => {
     if (!error) {
-      socket.emit('action:error', { action: actionName, message: fallbackMessage })
+      emitActionFeedback(socket, {
+        action: actionName,
+        message: fallbackMessage,
+        outcome: 'failure',
+      })
       return
     }
 
@@ -31,7 +55,12 @@ function createEmitQueueAwareError(socket) {
         `[Socket] Action rejected due to queue overflow`,
         { playerId: player?.id, action: actionName }
       )
-      socket.emit('action:error', { action: actionName, message: QUEUE_FULL_MESSAGE })
+      emitActionFeedback(socket, {
+        action: actionName,
+        message: QUEUE_FULL_MESSAGE,
+        outcome: 'failure',
+        meta: { code: ACTION_QUEUE_ERRORS.QUEUE_FULL },
+      })
       return
     }
 
@@ -40,11 +69,20 @@ function createEmitQueueAwareError(socket) {
         `[Socket] Action timed out`,
         { playerId: player?.id, action: actionName }
       )
-      socket.emit('action:error', { action: actionName, message: ACTION_TIMEOUT_MESSAGE })
+      emitActionFeedback(socket, {
+        action: actionName,
+        message: ACTION_TIMEOUT_MESSAGE,
+        outcome: 'failure',
+        meta: { code: ACTION_QUEUE_ERRORS.ACTION_TIMEOUT },
+      })
       return
     }
 
-    socket.emit('action:error', { action: actionName, message: fallbackMessage })
+    emitActionFeedback(socket, {
+      action: actionName,
+      message: fallbackMessage,
+      outcome: 'failure',
+    })
   }
 }
 
@@ -348,7 +386,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       const player = activePlayers.get(socket.id)
       if (!player) {
         console.log(`[Socket] player-move - Player not found for socket ${socket.id}`)
-        socket.emit('action:error', { action: 'move', message: 'Player not found' })
+        emitActionFeedback(socket, {
+          action: 'move',
+          message: 'Player not found',
+          outcome: 'failure',
+        })
         return
       }
 
@@ -361,7 +403,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
 
       if (!toRoom) {
         console.log(`[Socket] player-move - Destination room missing`)
-        socket.emit('action:error', { action: 'move', message: 'Destination room missing' })
+        emitActionFeedback(socket, {
+          action: 'move',
+          message: 'Destination room missing',
+          outcome: 'failure',
+        })
         return
       }
 
@@ -374,7 +420,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
 
         if (!destinationRoom) {
           console.log(`[Socket] player-move - Destination room ${toRoom} not found`)
-          socket.emit('action:error', { action: 'move', message: 'Destination room not found' })
+          emitActionFeedback(socket, {
+            action: 'move',
+            message: 'Destination room not found',
+            outcome: 'failure',
+          })
           return
         }
 
@@ -476,7 +526,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       console.log(`[Socket] SEND_CHAT_MESSAGE from ${player.username}: "${sanitizedMessage}"`)
 
       if (!sanitizedMessage) {
-        socket.emit('action:error', { action: 'chat', message: 'Message cannot be empty' })
+        emitActionFeedback(socket, {
+          action: 'chat',
+          message: 'Message cannot be empty',
+          outcome: 'failure',
+        })
         return
       }
 
@@ -522,19 +576,31 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       console.log(`[Socket] SEND_ROOM_CHAT_MESSAGE from ${player.username} in room ${roomId}: "${sanitizedMessage}"`)
 
       if (!sanitizedMessage) {
-        socket.emit('action:error', { action: 'room-chat', message: 'Message cannot be empty' })
+        emitActionFeedback(socket, {
+          action: 'room-chat',
+          message: 'Message cannot be empty',
+          outcome: 'failure',
+        })
         return
       }
 
       if (!roomId) {
-        socket.emit('action:error', { action: 'room-chat', message: 'Room ID is required' })
+        emitActionFeedback(socket, {
+          action: 'room-chat',
+          message: 'Room ID is required',
+          outcome: 'failure',
+        })
         return
       }
 
       // Validate player is in the specified room
       if (player.currentRoom !== roomId) {
         console.log(`[Socket] SEND_ROOM_CHAT_MESSAGE - Player ${player.username} not in room ${roomId} (current: ${player.currentRoom})`)
-        socket.emit('action:error', { action: 'room-chat', message: 'You must be in the room to send room chat messages' })
+        emitActionFeedback(socket, {
+          action: 'room-chat',
+          message: 'You must be in the room to send room chat messages',
+          outcome: 'failure',
+        })
         return
       }
 
@@ -547,7 +613,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         })
 
         if (!room) {
-          socket.emit('action:error', { action: 'room-chat', message: 'Room not found' })
+          emitActionFeedback(socket, {
+            action: 'room-chat',
+            message: 'Room not found',
+            outcome: 'failure',
+          })
           return
         }
 
@@ -612,7 +682,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       }
 
       if (!actionType) {
-        socket.emit('action:error', { action: 'action', message: 'Action is required' })
+        emitActionFeedback(socket, {
+          action: 'action',
+          message: 'Action is required',
+          outcome: 'failure',
+        })
         return
       }
 

@@ -69,6 +69,20 @@ const ERROR_STYLE: CategoryStyle = {
   iconClass: 'text-red-300',
 }
 
+const SUCCESS_STYLE: CategoryStyle = {
+  label: 'ACT',
+  icon: Sparkles,
+  barClass: 'bg-emerald-500',
+  iconClass: 'text-emerald-300',
+}
+
+const INFO_STYLE: CategoryStyle = {
+  label: 'ACT',
+  icon: Sparkles,
+  barClass: 'bg-gray-500',
+  iconClass: 'text-gray-400',
+}
+
 const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
   login: {
     label: 'LOGIN',
@@ -153,6 +167,20 @@ const getEntryStyle = (entry: WorldFeedEntry): CategoryStyle => {
     }
   }
 
+  // For action entries, check outcome first
+  if (entry.type === 'action' && entry.outcome) {
+    if (entry.outcome === 'success') {
+      return SUCCESS_STYLE
+    }
+    if (entry.outcome === 'failure') {
+      return ERROR_STYLE
+    }
+    if (entry.outcome === 'info') {
+      return INFO_STYLE
+    }
+  }
+
+  // Fallback to level-based styling
   if (entry.level === 'error') {
     return ERROR_STYLE
   }
@@ -163,6 +191,20 @@ const getMessageColorClass = (entry: WorldFeedEntry) => {
   if (entry.eventType) {
     return ACTIVITY_TEXT_CLASSES[entry.eventType] ?? 'text-gray-200'
   }
+  
+  // For action entries, check outcome first
+  if (entry.type === 'action' && entry.outcome) {
+    if (entry.outcome === 'success') {
+      return 'text-emerald-200'
+    }
+    if (entry.outcome === 'failure') {
+      return 'text-red-200'
+    }
+    if (entry.outcome === 'info') {
+      return 'text-gray-400'
+    }
+  }
+  
   return entry.level === 'error' ? 'text-red-200' : 'text-gray-200'
 }
 
