@@ -1,12 +1,13 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { Notification } from '@/store/notificationStore'
 
 type NotificationToastProps = {
   notification: Notification
   onDismiss: (id: string) => void
+  fadeOutDuration?: number
 }
 
 const getOutcomeStyles = (outcome: string) => {
@@ -36,42 +37,80 @@ const getOutcomeStyles = (outcome: string) => {
   }
 }
 
-export default function NotificationToast({ notification, onDismiss }: NotificationToastProps) {
+export default function NotificationToast({ notification, onDismiss, fadeOutDuration = 300 }: NotificationToastProps) {
   const styles = getOutcomeStyles(notification.outcome)
+  const [isFadingOut, setIsFadingOut] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
+
+  // Trigger initial slide-in animation
+  useEffect(() => {
+    // Small delay to ensure DOM is ready, then trigger animation
+    const timer = setTimeout(() => {
+      setIsVisible(true)
+    }, 10)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Auto-dismiss with fade-out after 3 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsFadingOut(true)
+      setTimeout(() => {
+        onDismiss(notification.id)
+      }, fadeOutDuration)
+    }, 3000 - fadeOutDuration) // Start fading before removal
+
+    return () => clearTimeout(timer)
+  }, [notification.id, onDismiss, fadeOutDuration])
+
+  const handleDismiss = () => {
+    setIsFadingOut(true)
+    setTimeout(() => {
+      onDismiss(notification.id)
+    }, fadeOutDuration)
+  }
 
   return (
     <div
       className={`
         ${styles.bg} ${styles.border}
-        border-2 rounded-lg shadow-lg backdrop-blur-sm
-        px-4 py-3 min-w-[280px] max-w-[400px]
-        flex items-start gap-3
-        animate-[slideIn_0.3s_ease-out_forwards]
+        border rounded-md shadow-sm backdrop-blur-sm
+        px-3 py-2 min-w-[200px] max-w-[320px]
+        flex items-start gap-2
+        ${isFadingOut 
+          ? 'opacity-0 translate-x-4 transition-all duration-300 ease-out' 
+          : isVisible
+            ? 'opacity-100 translate-x-0 transition-all duration-300 ease-out' 
+            : 'opacity-0 translate-x-4'
+        }
       `}
+      style={{
+        animation: !isVisible ? 'slideInRight 0.25s ease-out forwards' : undefined,
+      }}
       role="alert"
       aria-live="polite"
     >
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${styles.text} break-words`}>
+        <p className={`text-xs font-medium ${styles.text} break-words leading-snug`}>
           {notification.message}
         </p>
         {notification.action && (
-          <p className={`text-xs ${styles.icon} mt-1 opacity-80`}>
+          <p className={`text-[10px] ${styles.icon} mt-0.5 opacity-70`}>
             {notification.action}
           </p>
         )}
       </div>
       <button
-        onClick={() => onDismiss(notification.id)}
+        onClick={handleDismiss}
         className={`
-          text-gray-400
-          flex-shrink-0 p-1 rounded-md
-          hover:bg-gray-800/50 hover:text-gray-200 transition-colors
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50
+          text-gray-500
+          flex-shrink-0 p-0.5 rounded
+          hover:bg-gray-800/40 hover:text-gray-300 transition-colors
+          focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30
         `}
         aria-label="Dismiss notification"
       >
-        <X size={16} />
+        <X size={12} />
       </button>
     </div>
   )

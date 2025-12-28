@@ -23,7 +23,7 @@ type NotificationState = {
 }
 
 const MAX_NOTIFICATIONS = 5
-const NOTIFICATION_DURATION_MS = 4000
+const NOTIFICATION_DURATION_MS = 3000
 
 const getSettingsKey = (userId: string | null) => (userId ? `notifications:${userId}` : null)
 
@@ -93,10 +93,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     
     set({ notifications: trimmedNotifications })
     
-    // Auto-dismiss after duration
+    // Note: Auto-dismiss is handled by the NotificationToast component
+    // This timeout is kept as a safety net to prevent memory leaks
     setTimeout(() => {
-      get().removeNotification(id)
-    }, NOTIFICATION_DURATION_MS)
+      const currentNotifications = get().notifications
+      if (currentNotifications.some((n) => n.id === id)) {
+        get().removeNotification(id)
+      }
+    }, NOTIFICATION_DURATION_MS + 500) // Add buffer for fade-out
   },
 
   removeNotification: (id) => {
