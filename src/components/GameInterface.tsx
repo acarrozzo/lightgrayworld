@@ -16,6 +16,8 @@ import MapModal from './MapModal'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
+import { useNotificationStore } from '@/store/notificationStore'
+import NotificationContainer from './NotificationContainer'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -421,6 +423,11 @@ export default function GameInterface() {
   }, [player?.id])
 
   useEffect(() => {
+    const { setUser } = useNotificationStore.getState()
+    setUser(player?.id ?? null)
+  }, [player?.id])
+
+  useEffect(() => {
     currentRoomRef.current = currentRoom
   }, [currentRoom])
 
@@ -675,6 +682,14 @@ export default function GameInterface() {
         outcome,
         eventType: isMoveAction ? 'room-travel' : undefined,
         direction: travelDirection,
+      })
+
+      // Trigger notification for room actions
+      const { addNotification } = useNotificationStore.getState()
+      addNotification({
+        message: messageText,
+        outcome,
+        action: payload?.action,
       })
     })
 
@@ -1020,6 +1035,7 @@ export default function GameInterface() {
         mapSrc={mapInfo.src}
         mapTitle={mapInfo.title || 'Map'}
       />
+      <NotificationContainer />
       <GameHeader
         onToggleCharacterSidebar={() => setLeftSidebarOpen((prev) => !prev)}
         onToggleWorldSidebar={() => setRightSidebarOpen((prev) => !prev)}
