@@ -32,7 +32,7 @@ Reference `env.local.template` for sample values.
    fly secrets set NODE_ENV=production
    fly secrets set DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
    fly secrets set DIRECT_URL="postgresql://postgres.[project-ref]:[password]@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
-   fly secrets set ALLOWED_ORIGINS="https://lightgray-rpg-mud.vercel.app/"
+   fly secrets set ALLOWED_ORIGINS="https://lightgray.vercel.app/"
    ```
 5. Deploy: `fly deploy`.
 6. After the deployment finishes, note the generated domain (e.g. `https://your-app.fly.dev`) and set it as `NEXT_PUBLIC_SOCKET_URL` in Vercel.

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 
 type FilterType = 'all' | 'room' | 'world' | 'action'
@@ -173,6 +173,7 @@ const createDefaultSettings = (): WorldFeedSettings => ({
 })
 
 const getSettingsKey = (userId?: string | null) => (userId ? `worldFeed-settings:${userId}` : null)
+const getDisplayOptionsCollapsedKey = (userId?: string | null) => (userId ? `worldFeed-displayOptionsCollapsed:${userId}` : null)
 
 const canGroupEntries = (a: WorldFeedEntry, b: WorldFeedEntry) => {
   return (
@@ -257,6 +258,9 @@ export default function UnifiedFeedPanel({
   const [settings, setSettings] = useState<WorldFeedSettings>(() => createDefaultSettings())
   const [settingsHydrated, setSettingsHydrated] = useState(false)
   const settingsKey = useMemo(() => getSettingsKey(userId), [userId])
+  const [isDisplayOptionsCollapsed, setIsDisplayOptionsCollapsed] = useState(false)
+  const [displayOptionsHydrated, setDisplayOptionsHydrated] = useState(false)
+  const displayOptionsCollapsedKey = useMemo(() => getDisplayOptionsCollapsedKey(userId), [userId])
   const iconSize = settings.compactMode ? 12 : 14
 
   useEffect(() => {
@@ -288,6 +292,36 @@ export default function UnifiedFeedPanel({
     if (!settingsKey || !settingsHydrated) return
     localStorage.setItem(settingsKey, JSON.stringify(settings))
   }, [settings, settingsKey, settingsHydrated])
+
+  useEffect(() => {
+    if (!displayOptionsCollapsedKey) {
+      setIsDisplayOptionsCollapsed(false)
+      setDisplayOptionsHydrated(false)
+      return
+    }
+
+    try {
+      const stored = localStorage.getItem(displayOptionsCollapsedKey)
+      if (stored !== null) {
+        const parsed = JSON.parse(stored)
+        if (typeof parsed === 'boolean') {
+          setIsDisplayOptionsCollapsed(parsed)
+          setDisplayOptionsHydrated(true)
+          return
+        }
+      }
+    } catch {
+      // ignore parse errors and fall back to defaults
+    }
+
+    setIsDisplayOptionsCollapsed(false)
+    setDisplayOptionsHydrated(true)
+  }, [displayOptionsCollapsedKey])
+
+  useEffect(() => {
+    if (!displayOptionsCollapsedKey || !displayOptionsHydrated) return
+    localStorage.setItem(displayOptionsCollapsedKey, JSON.stringify(isDisplayOptionsCollapsed))
+  }, [isDisplayOptionsCollapsed, displayOptionsCollapsedKey, displayOptionsHydrated])
 
   const handleToggleSetting = (key: keyof WorldFeedSettings) => {
     setSettings((prev) => ({
@@ -435,38 +469,59 @@ export default function UnifiedFeedPanel({
               {key === 'action' ? 'Actions' : key.charAt(0).toUpperCase() + key.slice(1)}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setIsDisplayOptionsCollapsed((prev) => !prev)}
+            className="ml-auto px-2 py-1.5 rounded-md border bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800/60 transition-colors"
+            aria-expanded={!isDisplayOptionsCollapsed}
+            aria-label="Toggle display options"
+          >
+            {isDisplayOptionsCollapsed ? (
+              <ChevronDown size={14} />
+            ) : (
+              <ChevronUp size={14} />
+            )}
+          </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {WORLD_FEED_TOGGLES.map(({ key, label }) => {
-            const active = settings[key]
-            return (
-              <button
-                key={key}
-                type="button"
-                aria-pressed={active}
-                onClick={() => handleToggleSetting(key)}
-                className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
-                  active
-                    ? 'bg-gray-800 text-white border-indigo-400/70'
-                    : 'bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200'
-                }`}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </div>
+        {!isDisplayOptionsCollapsed && (
+          <div className="flex flex-wrap items-center gap-2">
+            {WORLD_FEED_TOGGLES.map(({ key, label }) => {
+              const active = settings[key]
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => handleToggleSetting(key)}
+                  className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
+                    active
+                      ? 'bg-gray-800 text-white border-indigo-400/70'
+                      : 'bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div ref={listRef} className="worldFeedEntries flex-1 overflow-y-auto p-3 pb-6 space-y-1 bg-gray-950/80">
         {canLoadMore && (
-          <div className="flex justify-center py-3">
+          <div className="flex justify-center items-center gap-2 py-3">
             <button
               onClick={handleLoadMore}
               className="px-4 py-2 text-sm rounded-md border bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700 transition-colors"
             >
               Load previous 50
+            </button>
+            <button
+              onClick={scrollToBottom}
+              className="px-4 py-2 text-sm rounded-md border bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700 transition-colors"
+            >
+              Jump to bottom
             </button>
           </div>
         )}
