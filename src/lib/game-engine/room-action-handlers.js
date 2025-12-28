@@ -7,6 +7,34 @@ const { grantItemOnce } = require('./services/inventory-service')
 const { checkAndIncrementCap } = require('./services/action-cap-service')
 
 /**
+ * Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
+ */
+function formatTimeRemaining(seconds) {
+  if (seconds <= 0) return '0s'
+  
+  const totalMinutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  
+  if (totalMinutes >= 60) {
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    if (minutes > 0) {
+      return `${hours}h ${minutes}m`
+    }
+    return `${hours}h`
+  }
+  
+  if (totalMinutes > 0) {
+    if (remainingSeconds > 0) {
+      return `${totalMinutes}m ${remainingSeconds}s`
+    }
+    return `${totalMinutes}m`
+  }
+  
+  return `${remainingSeconds}s`
+}
+
+/**
  * Map of room IDs to room-specific actions. Each action entry can be either:
  * - A string message (handled by executeBasicDisplay)
  * - A custom function (playerId, roomState) => actionResult
@@ -25,7 +53,8 @@ const ROOM_ACTIONS = {
       generateMessage: (effects, capInfo) => {
         if (!effects?.[0]?.success) {
           const secondsRemaining = capInfo?.secondsUntilReset ?? 0
-          return `No more redberries right now. The bushes will regrow in ${secondsRemaining} seconds.`
+          const timeFormatted = formatTimeRemaining(secondsRemaining)
+          return `No more redberries right now. The bushes will regrow in ${timeFormatted}.`
         }
         return `You pick a ripe redberry. (${capInfo.remaining} picks remaining this tick)`
       },
@@ -60,7 +89,8 @@ const ROOM_ACTIONS = {
       generateMessage: (effects, capInfo) => {
         if (!effects?.[0]?.success) {
           const secondsRemaining = capInfo?.secondsUntilReset ?? 0
-          return `No more blueberries right now. The bushes will regrow in ${secondsRemaining} seconds.`
+          const timeFormatted = formatTimeRemaining(secondsRemaining)
+          return `No more blueberries right now. The bushes will regrow in ${timeFormatted}.`
         }
         return `You pick a ripe blueberry. (${capInfo.remaining} picks remaining this tick)`
       },

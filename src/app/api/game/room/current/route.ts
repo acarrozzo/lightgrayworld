@@ -172,6 +172,40 @@ export async function GET(request: NextRequest) {
 
     if (user) {
       payload.players = activePlayers
+
+      // Fetch action cap data for rooms with capped actions
+      const actionCaps: Record<string, number> = {}
+      const gameEngine = (globalThis as any).gameEngine
+
+      if (gameEngine && roomId) {
+        const currentTickNumber = gameEngine.currentWorldTickNumber ?? 0
+
+        // Room 002: "pick redberry" (maxPerTick: 5)
+        if (roomId === '002') {
+          const { getRemainingCap } = require('@/lib/game-engine/services/action-cap-service')
+          try {
+            const remaining = await getRemainingCap(user.id, roomId, 'pick redberry', 5, currentTickNumber)
+            actionCaps['pick redberry'] = remaining
+          } catch (error) {
+            console.error('[Room API] Error fetching redberry cap:', error)
+          }
+        }
+
+        // Room 005: "pick blueberry" (maxPerTick: 3)
+        if (roomId === '005') {
+          const { getRemainingCap } = require('@/lib/game-engine/services/action-cap-service')
+          try {
+            const remaining = await getRemainingCap(user.id, roomId, 'pick blueberry', 3, currentTickNumber)
+            actionCaps['pick blueberry'] = remaining
+          } catch (error) {
+            console.error('[Room API] Error fetching blueberry cap:', error)
+          }
+        }
+      }
+
+      if (Object.keys(actionCaps).length > 0) {
+        payload.actionCaps = actionCaps
+      }
     }
 
     return NextResponse.json(

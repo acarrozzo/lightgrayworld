@@ -160,11 +160,20 @@ class GameEngine {
       playerId,
       async () => {
         const room = this.getOrCreateRoom(roomId)
+        // Calculate nextTickAt dynamically to ensure it's always current
+        // Use the tick clock's nextTickTimestamp if available, otherwise calculate from current tick
+        const now = Date.now()
+        const nextTickAt = this.tickClock?.nextTickTimestamp 
+          ? this.tickClock.nextTickTimestamp 
+          : (this.nextWorldTickAt && this.nextWorldTickAt > now) 
+            ? this.nextWorldTickAt 
+            : now + this.tickClock.tickMs
+        
         const result = await room.executeAction(
           action,
           playerId,
           this.currentWorldTickNumber,
-          this.nextWorldTickAt
+          nextTickAt
         )
 
         this.handleActionResult({ roomId, playerId, result })

@@ -100,11 +100,11 @@ export default function GameInterface() {
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [mapInfo, setMapInfo] = useState<{ src: string; title: string }>({ src: '', title: '' })
   const [customAction, setCustomAction] = useState('')
-  const [worldTick, setWorldTick] = useState({
-    tickNumber: 0,
-    nextTickAt: Date.now() + 10000,
-    tickIntervalMs: 10000,
-  })
+  const [worldTick, setWorldTick] = useState<{
+    tickNumber: number
+    nextTickAt: number
+    tickIntervalMs: number
+  } | undefined>(undefined)
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
   const lastLoginSocketId = useRef<string | null>(null)
@@ -340,6 +340,8 @@ export default function GameInterface() {
         const normalizedRoom = normalizeRoom({
           ...roomData.room,
           players: roomPlayers,
+          // Preserve actionCaps from API response if present
+          ...(roomData.actionCaps ? { actionCaps: roomData.actionCaps } : {}),
         })
         
         if (normalizedRoom) {

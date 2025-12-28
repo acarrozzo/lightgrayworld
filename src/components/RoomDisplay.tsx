@@ -35,6 +35,7 @@ export default function RoomDisplay({
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null)
   const [remainingCap, setRemainingCap] = useState<number | null>(null)
   const [maxCap, setMaxCap] = useState<number | null>(null)
+  const [fallbackSecondsUntilReset, setFallbackSecondsUntilReset] = useState<number | null>(null)
   const lastTickRef = useRef<number | null>(null)
 
   const otherUsers = useMemo(
@@ -64,32 +65,88 @@ export default function RoomDisplay({
     return `${itemName}s`
   }
 
+  // Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
+  const formatTimeRemaining = (seconds: number): string => {
+    if (seconds <= 0) return '0s'
+    
+    const totalMinutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    
+    if (totalMinutes >= 60) {
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
+      if (minutes > 0) {
+        return `${hours}h ${minutes}m`
+      }
+      return `${hours}h`
+    }
+    
+    if (totalMinutes > 0) {
+      if (remainingSeconds > 0) {
+        return `${totalMinutes}m ${remainingSeconds}s`
+      }
+      return `${totalMinutes}m`
+    }
+    
+    return `${remainingSeconds}s`
+  }
+
   useEffect(() => {
     if (capConfig) {
       setMaxCap(capConfig.maxPerTick)
-      setRemainingCap(capConfig.maxPerTick)
+      // Use fetched actionCaps if available, otherwise default to maxPerTick
+      const actionKey = capConfig.action
+      const fetchedRemaining = (room as any)?.actionCaps?.[actionKey]
+      if (typeof fetchedRemaining === 'number') {
+        setRemainingCap(fetchedRemaining)
+      } else {
+        setRemainingCap(capConfig.maxPerTick)
+      }
     } else {
       setMaxCap(null)
       setRemainingCap(null)
     }
-  }, [capConfig])
+  }, [capConfig, room])
 
   useEffect(() => {
-    if (!worldTick) return
-    const now = Date.now()
-    const seconds = Math.max(0, Math.ceil((worldTick.nextTickAt - now) / 1000))
-    setCountdownSeconds(seconds)
+    if (!worldTick || !worldTick.nextTickAt) return
+    
+    const updateCountdown = () => {
+      const now = Date.now()
+      const remaining = Math.max(0, Math.ceil((worldTick.nextTickAt - now) / 1000))
+      setCountdownSeconds(remaining)
+      // Clear fallback when we have real tick data
+      setFallbackSecondsUntilReset(null)
+    }
+    
+    // Update immediately
+    updateCountdown()
+    
     // reset remaining on tick increment
     if (lastTickRef.current !== null && worldTick.tickNumber !== lastTickRef.current && capConfig) {
       setRemainingCap(capConfig.maxPerTick)
     }
     lastTickRef.current = worldTick.tickNumber
-    const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((worldTick.nextTickAt - Date.now()) / 1000))
-      setCountdownSeconds(remaining)
-    }, 1000)
+    
+    // Update every second
+    const interval = setInterval(updateCountdown, 1000)
     return () => clearInterval(interval)
   }, [worldTick, capConfig])
+
+  // Update fallback countdown when worldTick is not available
+  useEffect(() => {
+    if (worldTick || fallbackSecondsUntilReset === null) return
+    
+    const updateFallback = () => {
+      setFallbackSecondsUntilReset((prev) => {
+        if (prev === null || prev <= 0) return null
+        return Math.max(0, prev - 1)
+      })
+    }
+    
+    const interval = setInterval(updateFallback, 1000)
+    return () => clearInterval(interval)
+  }, [worldTick, fallbackSecondsUntilReset])
 
   useEffect(() => {
     if (!actionResult?.action || !capConfig) return
@@ -97,6 +154,11 @@ export default function RoomDisplay({
     const remaining = actionResult?.data?.remaining
     if (typeof remaining === 'number') {
       setRemainingCap(remaining)
+    }
+    // Store secondsUntilReset from action result as fallback for countdown display
+    const secondsUntilReset = actionResult?.data?.secondsUntilReset
+    if (typeof secondsUntilReset === 'number') {
+      setFallbackSecondsUntilReset(secondsUntilReset)
     }
   }, [actionResult, capConfig])
   
@@ -123,7 +185,7 @@ export default function RoomDisplay({
     }
   }
 
-  const shouldShowCap = Boolean(capConfig && maxCap && worldTick)
+  const shouldShowCap = Boolean(capConfig && maxCap)
 
   const handlePickupItem = async (item: any) => {
     if (!onAction || isPerformingAction) return
@@ -176,7 +238,7 @@ export default function RoomDisplay({
       {shouldShowCap && (
         <div className="mt-3 flex items-center gap-3 p-3 rounded-md bg-gray-900/70 border border-red-500/40">
           <div className="text-sm text-red-200">
-            Remaining {getItemNamePlural(capConfig?.action || '')} this tick:{' '}
+            Available {getItemNamePlural(capConfig?.action || '')}:{' '}
             <span className="font-semibold text-white">
               {remainingCap ?? maxCap ?? 0}/{maxCap ?? 0}
             </span>
@@ -184,7 +246,17 @@ export default function RoomDisplay({
           <div className="text-sm text-gray-300">
             Refresh in:{' '}
             <span className="font-semibold">
-              {countdownSeconds !== null ? `${countdownSeconds}s` : '...'}
+              {(() => {
+                // Use countdown from worldTick if available
+                if (worldTick && countdownSeconds !== null) {
+                  return formatTimeRemaining(countdownSeconds)
+                }
+                // Fall back to secondsUntilReset from action result (same as feed message)
+                if (fallbackSecondsUntilReset !== null) {
+                  return formatTimeRemaining(fallbackSecondsUntilReset)
+                }
+                return '...'
+              })()}
             </span>
           </div>
         </div>
