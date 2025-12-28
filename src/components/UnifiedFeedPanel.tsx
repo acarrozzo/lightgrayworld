@@ -476,8 +476,16 @@ export default function UnifiedFeedPanel({
                     ) : isChat ? (
                       <>
                         <span className="font-semibold text-gray-50">{actorLabel}</span>
-                        <span className="text-gray-400">:</span>
-                        <span className="text-gray-200">{messageText}</span>
+                        <span className="text-gray-400">
+                          {entry.type === 'room'
+                            ? entry.isSelf
+                              ? ' say, '
+                              : ' says, '
+                            : entry.isSelf
+                              ? ' shout, '
+                              : ' shouts, '}
+                        </span>
+                        <span className="text-gray-200">"{messageText}"</span>
                       </>
                     ) : (
                       <span className={entry.level === 'error' ? 'text-red-200' : 'text-gray-200'}>{messageText}</span>

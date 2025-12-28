@@ -545,19 +545,32 @@ export default function GameInterface() {
     const lowerInput = actionToSend.toLowerCase()
     const sayMatch = lowerInput.startsWith('say ')
     const shoutMatch = lowerInput.startsWith('shout ')
+    const singleQuoteMatch = actionToSend.startsWith("'")
+    const doubleQuoteMatch = actionToSend.startsWith('"')
+    const exclamationMatch = actionToSend.startsWith('!')
 
-    if (sayMatch || shoutMatch) {
-      const message = actionToSend.slice(actionToSend.indexOf(' ') + 1).trim()
+    const isRoomChat = sayMatch || singleQuoteMatch || doubleQuoteMatch
+    const isWorldChat = shoutMatch || exclamationMatch
+
+    if (isRoomChat || isWorldChat) {
+      let message = ''
+
+      if (sayMatch || shoutMatch) {
+        const firstSpace = actionToSend.indexOf(' ')
+        message = firstSpace >= 0 ? actionToSend.slice(firstSpace + 1).trim() : ''
+      } else if (singleQuoteMatch || doubleQuoteMatch || exclamationMatch) {
+        message = actionToSend.slice(1).trim()
+      }
+
       if (!message) {
         appendWorldFeed({
           type: 'action',
           level: 'error',
-          message: 'To chat: say hello | shout hello',
+          message: "To chat: say hello | 'hello | \"hello | shout hello | !hello",
         })
         return
       }
-
-      if (sayMatch) {
+      if (isRoomChat) {
         const roomId = currentRoomRef.current?.roomId
         if (!roomId) {
           appendWorldFeed({
@@ -578,16 +591,17 @@ export default function GameInterface() {
         }
         return
       }
-
-      const sent = socketHandlers.sendChatMessage(message)
-      if (!sent) {
-        appendWorldFeed({
-          type: 'action',
-          level: 'error',
-          message: 'Failed to send world chat. Please try again.',
-        })
+      if (isWorldChat) {
+        const sent = socketHandlers.sendChatMessage(message)
+        if (!sent) {
+          appendWorldFeed({
+            type: 'action',
+            level: 'error',
+            message: 'Failed to send world chat. Please try again.',
+          })
+        }
+        return
       }
-      return
     }
 
     const normalizedCommand = normalizeCommand(actionToSend)
@@ -597,7 +611,7 @@ export default function GameInterface() {
       const maybeSuggestion = commandWord && commandWord.startsWith('attac') ? 'attack' : null
       const unknownText = maybeSuggestion
         ? `Unknown command "${commandWord}". Did you mean "${maybeSuggestion}"?`
-        : 'To chat: say hello | shout hello'
+        : "To chat: say hello | 'hello | \"hello | shout hello | !hello"
 
       appendWorldFeed({
         type: 'action',
