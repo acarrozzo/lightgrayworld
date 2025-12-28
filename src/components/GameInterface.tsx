@@ -291,7 +291,11 @@ export default function GameInterface() {
 
     // If roomData is provided (e.g., from socket event), use it directly
     if (providedRoomData && providedRoomData.roomId) {
-      const normalizedRoom = normalizeRoom(providedRoomData)
+      const normalizedRoom = normalizeRoom({
+        ...providedRoomData,
+        // Preserve worldTick if present in provided data
+        ...(providedRoomData.worldTick ? { worldTick: providedRoomData.worldTick } : {}),
+      })
       if (normalizedRoom) {
         cacheRoom(normalizedRoom)
         setCurrentRoom(normalizedRoom)
@@ -342,6 +346,8 @@ export default function GameInterface() {
           players: roomPlayers,
           // Preserve actionCaps from API response if present
           ...(roomData.actionCaps ? { actionCaps: roomData.actionCaps } : {}),
+          // Preserve worldTick from API response if present
+          ...(roomData.worldTick ? { worldTick: roomData.worldTick } : {}),
         })
         
         if (normalizedRoom) {

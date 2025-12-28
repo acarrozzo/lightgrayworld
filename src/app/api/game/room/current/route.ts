@@ -206,6 +206,21 @@ export async function GET(request: NextRequest) {
       if (Object.keys(actionCaps).length > 0) {
         payload.actionCaps = actionCaps
       }
+
+      // Include world tick information for immediate countdown display
+      if (gameEngine) {
+        const nextTickAt = gameEngine.nextWorldTickAt
+        const tickIntervalMs = gameEngine.tickClock?.tickMs ?? 43200000 // WORLD_TICK_MS fallback
+        const tickNumber = gameEngine.currentWorldTickNumber ?? 0
+
+        if (nextTickAt) {
+          payload.worldTick = {
+            tickNumber,
+            nextTickAt,
+            tickIntervalMs,
+          }
+        }
+      }
     }
 
     return NextResponse.json(

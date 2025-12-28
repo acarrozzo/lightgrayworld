@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+'use client'
+
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Player } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
 import { DEFAULT_AVATAR_COLOR, DEFAULT_PLAYER_AVATAR } from '@/lib/constants/avatars'
@@ -36,6 +38,7 @@ export default function RoomDisplay({
   const [remainingCap, setRemainingCap] = useState<number | null>(null)
   const [maxCap, setMaxCap] = useState<number | null>(null)
   const [fallbackSecondsUntilReset, setFallbackSecondsUntilReset] = useState<number | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
   const lastTickRef = useRef<number | null>(null)
 
   const otherUsers = useMemo(
@@ -108,7 +111,43 @@ export default function RoomDisplay({
     }
   }, [capConfig, room])
 
+  // Track mount state to prevent hydration mismatches
+  // Use useLayoutEffect for faster initialization on client
+  useLayoutEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Initialize countdown from room.worldTick if worldTick prop is not available
   useEffect(() => {
+    if (!isMounted) return // Only run on client after mount
+    if (worldTick?.nextTickAt) {
+      // If we have worldTick prop, clear any room-based countdown
+      return
+    }
+    
+    const roomWorldTick = (room as any)?.worldTick
+    if (!roomWorldTick || !roomWorldTick.nextTickAt) {
+      // Clear countdown if no worldTick data available
+      setCountdownSeconds(null)
+      return
+    }
+    
+    const updateCountdown = () => {
+      const now = Date.now()
+      const remaining = Math.max(0, Math.ceil((roomWorldTick.nextTickAt - now) / 1000))
+      setCountdownSeconds(remaining)
+    }
+    
+    // Update immediately
+    updateCountdown()
+    
+    // Update every second
+    const interval = setInterval(updateCountdown, 1000)
+    return () => clearInterval(interval)
+  }, [room, worldTick, isMounted])
+
+  useEffect(() => {
+    if (!isMounted) return // Only run on client after mount
     if (!worldTick || !worldTick.nextTickAt) return
     
     const updateCountdown = () => {
@@ -131,10 +170,11 @@ export default function RoomDisplay({
     // Update every second
     const interval = setInterval(updateCountdown, 1000)
     return () => clearInterval(interval)
-  }, [worldTick, capConfig])
+  }, [worldTick, capConfig, isMounted])
 
   // Update fallback countdown when worldTick is not available
   useEffect(() => {
+    if (!isMounted) return // Only run on client after mount
     if (worldTick || fallbackSecondsUntilReset === null) return
     
     const updateFallback = () => {
@@ -146,7 +186,7 @@ export default function RoomDisplay({
     
     const interval = setInterval(updateFallback, 1000)
     return () => clearInterval(interval)
-  }, [worldTick, fallbackSecondsUntilReset])
+  }, [worldTick, fallbackSecondsUntilReset, isMounted])
 
   useEffect(() => {
     if (!actionResult?.action || !capConfig) return
@@ -186,6 +226,34 @@ export default function RoomDisplay({
   }
 
   const shouldShowCap = Boolean(capConfig && maxCap)
+
+  // Filter out berry actions from the main action buttons list
+  const filteredRoomActions = useMemo(() => {
+    if (!capConfig) return roomActions
+    return roomActions.filter((actionItem) => actionItem.action !== capConfig.action)
+  }, [roomActions, capConfig])
+
+  // Get the berry action for the button inside the container
+  const berryAction = useMemo(() => {
+    if (!capConfig) return null
+    return roomActions.find((actionItem) => actionItem.action === capConfig.action)
+  }, [roomActions, capConfig])
+
+  // Determine border color based on berry type
+  const getBerryBorderColor = (): string => {
+    if (!capConfig) return 'border-red-500/40'
+    if (capConfig.action === 'pick redberry') return 'border-red-500/40'
+    if (capConfig.action === 'pick blueberry') return 'border-blue-500/40'
+    return 'border-red-500/40'
+  }
+
+  // Determine text color based on berry type
+  const getBerryTextColor = (): string => {
+    if (!capConfig) return 'text-red-200'
+    if (capConfig.action === 'pick redberry') return 'text-red-200'
+    if (capConfig.action === 'pick blueberry') return 'text-blue-200'
+    return 'text-red-200'
+  }
 
   const handlePickupItem = async (item: any) => {
     if (!onAction || isPerformingAction) return
@@ -236,34 +304,49 @@ export default function RoomDisplay({
       )}
 
       {shouldShowCap && (
-        <div className="mt-3 flex items-center gap-3 p-3 rounded-md bg-gray-900/70 border border-red-500/40">
-          <div className="text-sm text-red-200">
-            Available {getItemNamePlural(capConfig?.action || '')}:{' '}
-            <span className="font-semibold text-white">
-              {remainingCap ?? maxCap ?? 0}/{maxCap ?? 0}
-            </span>
-          </div>
-          <div className="text-sm text-gray-300">
-            Refresh in:{' '}
-            <span className="font-semibold">
-              {(() => {
-                // Use countdown from worldTick if available
-                if (worldTick && countdownSeconds !== null) {
-                  return formatTimeRemaining(countdownSeconds)
-                }
-                // Fall back to secondsUntilReset from action result (same as feed message)
-                if (fallbackSecondsUntilReset !== null) {
-                  return formatTimeRemaining(fallbackSecondsUntilReset)
-                }
-                return '...'
-              })()}
-            </span>
+        <div className={`mt-3 flex items-center gap-3 p-3 rounded-md bg-gray-900/70 border ${getBerryBorderColor()}`}>
+          {berryAction && (
+            <button
+              onClick={() => handleAction(berryAction.action)}
+              disabled={isPerformingAction === berryAction.action}
+              className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 ${
+                isPerformingAction === berryAction.action
+                  ? 'bg-gray-700 cursor-wait'
+                  : berryAction.className || 'bg-indigo-600 hover:bg-indigo-500'
+              }`}
+            >
+              {berryAction.label}
+            </button>
+          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className={`text-sm ${getBerryTextColor()}`}>
+              Available {getItemNamePlural(capConfig?.action || '')}:{' '}
+              <span className="font-semibold text-white">
+                {remainingCap ?? maxCap ?? 0}/{maxCap ?? 0}
+              </span>
+            </div>
+            <div className="text-sm text-gray-300">
+              Refresh in:{' '}
+              <span className="font-semibold">
+                {(() => {
+                  // Use countdown from worldTick (prop or room data) if available
+                  if (countdownSeconds !== null) {
+                    return formatTimeRemaining(countdownSeconds)
+                  }
+                  // Fall back to secondsUntilReset from action result (same as feed message)
+                  if (fallbackSecondsUntilReset !== null) {
+                    return formatTimeRemaining(fallbackSecondsUntilReset)
+                  }
+                  return '...'
+                })()}
+              </span>
+            </div>
           </div>
         </div>
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {roomActions.map((actionItem) => (
+        {filteredRoomActions.map((actionItem) => (
           <button
             key={actionItem.action}
             onClick={() => handleAction(actionItem.action)}
