@@ -4,6 +4,7 @@ import { Player, useGameStore } from '@/lib/game-state'
 import TabContainer, { TabConfig } from './TabContainer'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import AvatarSelectionModal from './AvatarSelectionModal'
+import StatAllocationModal from './StatAllocationModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 
@@ -20,6 +21,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   const isLoggedIn = useGameStore((state) => state.isLoggedIn)
   const [isAvatarModalOpen, setAvatarModalOpen] = useState(false)
   const [isSavingAvatar, setIsSavingAvatar] = useState(false)
+  const [isStatModalOpen, setStatModalOpen] = useState(false)
   const [newItemsCount, setNewItemsCount] = useState(0)
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState('stats')
@@ -169,6 +171,10 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
     }
   }
 
+  const handleStatAllocated = (updatedPlayer: Player) => {
+    setPlayer(updatedPlayer)
+  }
+
   const tabs: TabConfig[] = [
     {
       id: 'stats',
@@ -229,16 +235,41 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <StatBox label="Core Points" value={player.cp ?? 0} />
             <StatBox label="Training Points" value={player.tp ?? 0} />
             <StatBox label="Skill Points" value={player.sp ?? 0} />
-            <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <StatBox label="PT" value={player.physicalTraining ?? 0} subtle />
             <StatBox label="MT" value={player.mentalTraining ?? 0} subtle />
+          </div>
+
+          <div>
+            <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} />
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Core Stats</h4>
+              {(player.cp ?? 0) > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatModalOpen(true)}
+                  disabled={!isLoggedIn}
+                  className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
+                >
+                  Spend Core Points ({player.cp ?? 0})
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <StatBox label="STR" value={player.str ?? 0} />
+              <StatBox label="DEX" value={player.dex ?? 0} />
+              <StatBox label="MAG" value={player.mag ?? 0} />
+              <StatBox label="DEF" value={player.def ?? 0} />
+            </div>
           </div>
         </div>
       ),
@@ -342,6 +373,12 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
         isSaving={isSavingAvatar}
         onClose={() => (isSavingAvatar ? null : setAvatarModalOpen(false))}
         onSelectAvatar={handleAvatarUpdate}
+      />
+      <StatAllocationModal
+        isOpen={isStatModalOpen}
+        player={player}
+        onClose={() => setStatModalOpen(false)}
+        onStatAllocated={handleStatAllocated}
       />
     </>
   )

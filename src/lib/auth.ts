@@ -22,6 +22,10 @@ export interface AuthUser {
   currency: number
   physicalTraining: number
   mentalTraining: number
+  str: number
+  dex: number
+  mag: number
+  def: number
   uIcon: string
   uIconColor: string
 }
@@ -97,6 +101,10 @@ export async function getCurrentUser(request: NextRequest): Promise<AuthUser | n
       currency: record.currency,
       physicalTraining: record.physicalTraining,
       mentalTraining: record.mentalTraining,
+      str: record.str,
+      dex: record.dex,
+      mag: record.mag,
+      def: record.def,
       uIcon: record.uIcon,
       uIconColor: avatarColor ?? DEFAULT_AVATAR_COLOR,
     }

@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
           create: {}
         },
         uIconColor: randomColor,
+        cp: 4, // Give new users 4 Core Points
       },
       include: { equipment: true }
     })
@@ -95,6 +96,10 @@ export async function POST(request: NextRequest) {
       currency: user.currency,
       physicalTraining: user.physicalTraining,
       mentalTraining: user.mentalTraining,
+      str: user.str,
+      dex: user.dex,
+      mag: user.mag,
+      def: user.def,
       uIcon: user.uIcon,
       uIconColor: user.uIconColor ?? DEFAULT_AVATAR_COLOR,
     })

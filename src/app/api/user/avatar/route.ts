@@ -27,6 +27,10 @@ const selectPlayerFields = {
   currency: true,
   physicalTraining: true,
   mentalTraining: true,
+  str: true,
+  dex: true,
+  mag: true,
+  def: true,
   uIcon: true,
   uIconColor: true,
 } as const

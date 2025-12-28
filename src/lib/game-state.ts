@@ -19,6 +19,10 @@ export interface Player {
   currency?: number
   physicalTraining?: number
   mentalTraining?: number
+  str?: number
+  dex?: number
+  mag?: number
+  def?: number
   uIcon?: string
   uIconColor?: string
 }
