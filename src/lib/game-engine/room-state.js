@@ -1,5 +1,6 @@
 const { executeRoomAction } = require('./room-action-handlers')
-const { pickupRoomItem, dropRoomItem } = require('./services/room-item-service')
+const { pickupRoomItem, dropRoomItem, getRoomItems } = require('./services/room-item-service')
+const { getPlayerInventory } = require('./services/inventory-service')
 
 class RoomState {
   constructor(roomId) {
@@ -88,6 +89,10 @@ class RoomState {
         return this.executeRest(playerId)
       case 'look':
         return this.executeLook(action, playerId)
+      case 'examine_item':
+        return this.executeExamineItem(action, playerId)
+      case 'examine_player_item':
+        return this.executeExaminePlayerItem(action, playerId)
       default:
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
     }
@@ -353,6 +358,83 @@ class RoomState {
         payload: this.createFeedbackPayload('look', 'success', message, {
           roomId: this.roomId,
           playerCount: this.players.size,
+        }),
+      },
+    }
+  }
+
+  async executeExamineItem(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('examine_item', 'Player not found in this room')
+    }
+
+    const { roomItemId } = action.data || {}
+    if (!roomItemId) {
+      return this.createErrorResult('examine_item', 'Room item ID is required')
+    }
+
+    this.touchActivity()
+
+    // Get all room items to find the one being examined
+    const roomItems = await getRoomItems(this.roomId)
+    const item = roomItems.find((item) => item.id === roomItemId)
+
+    if (!item) {
+      return this.createErrorResult('examine_item', 'Item not found in this room')
+    }
+
+    const itemName = item.template.name
+    const itemDescription = item.template.description || 'You see nothing special about it.'
+    const message = `You examine ${itemName}. ${itemDescription}`
+
+    return {
+      success: true,
+      action: 'examine_item',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('examine_item', 'success', message, {
+          roomId: this.roomId,
+          itemName,
+          itemDescription,
+        }),
+      },
+    }
+  }
+
+  async executeExaminePlayerItem(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('examine_player_item', 'Player not found in this room')
+    }
+
+    const { playerItemId } = action.data || {}
+    if (!playerItemId) {
+      return this.createErrorResult('examine_player_item', 'Player item ID is required')
+    }
+
+    this.touchActivity()
+
+    // Get player inventory to find the item being examined
+    const inventory = await getPlayerInventory(playerId)
+    const item = inventory.find((item) => item.id === playerItemId)
+
+    if (!item) {
+      return this.createErrorResult('examine_player_item', 'Item not found in your inventory')
+    }
+
+    const itemName = item.template.name
+    const itemDescription = item.template.description || 'You see nothing special about it.'
+    const message = `You examine ${itemName}. ${itemDescription}`
+
+    return {
+      success: true,
+      action: 'examine_player_item',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('examine_player_item', 'success', message, {
+          itemName,
+          itemDescription,
         }),
       },
     }

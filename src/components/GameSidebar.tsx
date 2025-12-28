@@ -7,6 +7,7 @@ import AvatarSelectionModal from './AvatarSelectionModal'
 import StatAllocationModal from './StatAllocationModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
+import InventoryDropButton from './InventoryDropButton'
 
 interface GameSidebarProps {
   player: Player
@@ -305,17 +306,21 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
                     {item.quantity > 1 && (
                       <div className="text-gray-400 text-xs">x{item.quantity}</div>
                     )}
-                    <button
-                      className="px-2 py-1 text-xs bg-red-600/70 hover:bg-red-600 rounded text-white"
-                      onClick={() =>
+                    <InventoryDropButton
+                      item={item}
+                      onDrop={(quantity) =>
                         onAction?.({
                           type: 'drop_item',
-                          data: { playerItemId: item.id, quantity: 1 },
+                          data: { playerItemId: item.id, quantity },
                         })
                       }
-                    >
-                      Drop
-                    </button>
+                      onExamine={() =>
+                        onAction?.({
+                          type: 'examine_player_item',
+                          data: { playerItemId: item.id },
+                        })
+                      }
+                    />
                   </div>
                 )
               })}

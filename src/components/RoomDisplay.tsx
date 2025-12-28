@@ -5,6 +5,7 @@ import type { Player } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
 import { DEFAULT_AVATAR_COLOR, DEFAULT_PLAYER_AVATAR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
+import ItemDropdownButton from './ItemDropdownButton'
 
 interface RoomDisplayProps {
   room: any
@@ -255,14 +256,14 @@ export default function RoomDisplay({
     return 'text-red-200'
   }
 
-  const handlePickupItem = async (item: any) => {
+  const handlePickupItem = async (item: any, quantity: number = 1) => {
     if (!onAction || isPerformingAction) return
 
     const actionPayload = {
       type: 'pickup_item',
       data: {
         roomItemId: item.id,
-        quantity: 1,
+        quantity,
       },
     }
 
@@ -271,6 +272,26 @@ export default function RoomDisplay({
       await onAction(actionPayload)
     } catch (error) {
       console.error('Room pickup error:', error)
+    } finally {
+      setIsPerformingAction(null)
+    }
+  }
+
+  const handleExamineItem = async (item: any) => {
+    if (!onAction || isPerformingAction) return
+
+    const actionPayload = {
+      type: 'examine_item',
+      data: {
+        roomItemId: item.id,
+      },
+    }
+
+    setIsPerformingAction(`examine-${item.id}`)
+    try {
+      await onAction(actionPayload)
+    } catch (error) {
+      console.error('Room examine error:', error)
     } finally {
       setIsPerformingAction(null)
     }
@@ -367,15 +388,16 @@ export default function RoomDisplay({
           <div className="text-sm text-gray-300 mb-2">Items here:</div>
           <div className="flex flex-wrap gap-2">
             {room.items.map((item: any) => (
-              <button
+              <ItemDropdownButton
                 key={item.id}
-                onClick={() => handlePickupItem(item)}
-                className="px-3 py-1.5 rounded-md bg-emerald-500/70 text-white text-xs hover:bg-emerald-500 transition-colors flex items-center gap-1"
-                disabled={isPerformingAction === `pickup-${item.id}`}
-              >
-                <span>{item.template.name}</span>
-                {item.quantity > 1 && <span className="text-emerald-200">x{item.quantity}</span>}
-              </button>
+                item={item}
+                onPickup={(quantity) => handlePickupItem(item, quantity)}
+                onExamine={() => handleExamineItem(item)}
+                disabled={
+                  isPerformingAction === `pickup-${item.id}` ||
+                  isPerformingAction === `examine-${item.id}`
+                }
+              />
             ))}
           </div>
         </div>

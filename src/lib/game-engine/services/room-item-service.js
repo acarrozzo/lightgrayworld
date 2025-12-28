@@ -3,6 +3,53 @@ const { getPlayerInventory, getItemBySlug } = require('./inventory-service')
 const { normalizeRoomItems } = require('./room-normalization.js')
 
 /**
+ * Pluralize an item name
+ * @param {string} name - The item name
+ * @returns {string} - The pluralized name
+ */
+function pluralizeItemName(name) {
+  if (!name) return name
+  // Handle words ending in 'y' (e.g., berry -> berries)
+  if (name.endsWith('y')) {
+    return name.slice(0, -1) + 'ies'
+  }
+  // Handle words ending in 's', 'x', 'z', 'ch', 'sh' (add 'es')
+  if (name.match(/[sxz]|[cs]h$/)) {
+    return name + 'es'
+  }
+  // Default: add 's'
+  return name + 's'
+}
+
+/**
+ * Format pickup message with proper quantity and pluralization
+ * @param {string} itemName - The item name
+ * @param {number} quantity - The quantity being picked up
+ * @returns {string} - The formatted message
+ */
+function formatPickupMessage(itemName, quantity) {
+  if (quantity === 1) {
+    return `You pick up a ${itemName}.`
+  }
+  const pluralName = pluralizeItemName(itemName)
+  return `You pick up ${quantity} ${pluralName}.`
+}
+
+/**
+ * Format drop message with proper quantity and pluralization
+ * @param {string} itemName - The item name
+ * @param {number} quantity - The quantity being dropped
+ * @returns {string} - The formatted message
+ */
+function formatDropMessage(itemName, quantity) {
+  if (quantity === 1) {
+    return `You drop a ${itemName}.`
+  }
+  const pluralName = pluralizeItemName(itemName)
+  return `You drop ${quantity} ${pluralName}.`
+}
+
+/**
  * Pickup an item from a room (transactional)
  *
  * @param {string} playerId
@@ -88,7 +135,7 @@ async function pickupRoomItem(playerId, roomItemId, quantity, playerCurrentRoom)
 
   return {
     success: true,
-    message: `You pick up a ${template.name}.`,
+    message: formatPickupMessage(template.name, quantity),
     inventory,
     roomItems,
   }
@@ -157,7 +204,7 @@ async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom)
 
   return {
     success: true,
-    message: `You drop a ${template.name}.`,
+    message: formatDropMessage(template.name, quantity),
     inventory,
     roomItems,
   }
