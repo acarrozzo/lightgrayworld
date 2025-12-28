@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Globe, MessageSquare, Sparkles, type LucideIcon } from 'lucide-react'
+import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
+import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 
 type FilterType = 'all' | 'room' | 'world' | 'action'
@@ -138,6 +138,32 @@ const ACTIVITY_TEXT_CLASSES: Record<string, string> = {
   logout: 'text-gray-300',
   disconnect: 'text-gray-300',
   idle: 'text-gray-300',
+}
+
+const DIRECTION_ICONS: Record<string, LucideIcon> = {
+  north: ArrowUp,
+  south: ArrowDown,
+  east: ArrowRight,
+  west: ArrowLeft,
+  northeast: ArrowUpRight,
+  northwest: ArrowUpLeft,
+  southeast: ArrowDownRight,
+  southwest: ArrowDownLeft,
+  up: ArrowUp,
+  down: ArrowDown,
+}
+
+const REVERSE_DIRECTION: Record<string, string> = {
+  north: 'south',
+  south: 'north',
+  east: 'west',
+  west: 'east',
+  northeast: 'southwest',
+  northwest: 'southeast',
+  southeast: 'northwest',
+  southwest: 'northeast',
+  up: 'down',
+  down: 'up',
 }
 
 const createDefaultSettings = (): WorldFeedSettings => ({
@@ -480,20 +506,30 @@ export default function UnifiedFeedPanel({
           renderEntries.map(({ entry, count }, index) => {
             const style = getEntryStyle(entry)
             const messageText = entry.message ?? entry.text ?? ''
-            const isActivity = Boolean(entry.eventType)
-            const isChat = !isActivity && (entry.type === 'room' || entry.type === 'world')
+            const isRoomTravel = entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel'
+            const isActivity = Boolean(entry.eventType) && !isRoomTravel
+            const isChat = !isActivity && !isRoomTravel && (entry.type === 'room' || entry.type === 'world')
             const actorLabel = entry.isSelf ? 'You' : entry.actor || 'Unknown'
             const contentSize = settings.compactMode ? 'text-[13px]' : 'text-sm'
             const rowPadding = settings.compactMode ? 'py-1 pr-3 pl-4' : 'py-1.5 pr-4 pl-5'
             const activityLabel = entry.eventType ? (ACTIVITY_LABELS[entry.eventType] ?? entry.eventType).toUpperCase() : null
             const messageColorClass = getMessageColorClass(entry)
+            
+            // Get direction icon for travel messages
+            // Reverse direction for room-enter events (entered from = opposite direction)
+            let directionForIcon = entry.direction
+            if (isRoomTravel && entry.direction && entry.eventType === 'room-enter') {
+              directionForIcon = REVERSE_DIRECTION[entry.direction] || entry.direction
+            }
+            const directionIcon = isRoomTravel && directionForIcon ? DIRECTION_ICONS[directionForIcon] : null
+            const displayIcon = directionIcon || style.icon
 
             return (
               <div key={`${entry.id}-${index}`} className={`relative ${rowPadding}`}>
                 <span className={`absolute left-0 top-0 bottom-0 w-1 ${style.barClass}`} aria-hidden />
                 <div className="flex flex-wrap items-baseline gap-2 text-[11px] text-gray-400">
                   <span className={`flex items-center ${style.iconClass}`}>
-                    <style.icon size={iconSize} className="shrink-0" aria-hidden="true" />
+                    {React.createElement(displayIcon, { size: iconSize, className: 'shrink-0', 'aria-hidden': 'true' })}
                     <span className="sr-only">{style.label}</span>
                   </span>
                   {settings.showTimestamps && (
@@ -506,7 +542,9 @@ export default function UnifiedFeedPanel({
                     </span>
                   )}
                   <div className={`flex flex-wrap items-baseline gap-1 flex-1 break-words leading-snug ${contentSize}`}>
-                    {isActivity ? (
+                    {isRoomTravel ? (
+                      <span className={messageColorClass}>{messageText}</span>
+                    ) : isActivity ? (
                       <>
                         {activityLabel && (
                           <span className={`text-[10px] font-semibold tracking-wide uppercase ${messageColorClass}`}>

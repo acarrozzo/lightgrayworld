@@ -57,6 +57,23 @@ const normalizeCommand = (input: string): string => {
   return COMMAND_SHORTHAND[normalized] || normalized
 }
 
+// Helper function to format direction phrases for feed messages
+const formatDirectionPhrase = (direction: string | null | undefined, context: 'enter' | 'exit'): string => {
+  if (!direction) {
+    return 'an unknown direction'
+  }
+
+  if (direction === 'up') {
+    return context === 'enter' ? 'above' : 'upward'
+  }
+
+  if (direction === 'down') {
+    return context === 'enter' ? 'below' : 'downward'
+  }
+
+  return `the ${direction.replace(/_/g, ' ')}`
+}
+
 export default function GameInterface() {
   const {
     player,
@@ -639,12 +656,17 @@ export default function GameInterface() {
         })
       }
 
+      const isMoveAction = payload?.action === 'move'
+      const travelDirection = isMoveAction && payload?.data?.direction ? payload.data.direction : undefined
+      
       appendWorldFeed({
         type: 'action',
         message: messageText,
         roomId: payload?.data?.roomId || payload?.roomId || currentRoomRef.current?.roomId,
         ts: timestampMs,
         outcome,
+        eventType: isMoveAction ? 'room-travel' : undefined,
+        direction: travelDirection,
       })
     })
 
@@ -736,6 +758,73 @@ export default function GameInterface() {
     return () => {
       cleanupChat()
       cleanupRoomChat()
+    }
+  }, [socket, socketHandlers, appendWorldFeed])
+
+  useEffect(() => {
+    if (!socket) {
+      return
+    }
+
+    const cleanupPlayerJoined = socketHandlers.onPlayerJoined((playerInfo) => {
+      const activeRoom = currentRoomRef.current
+      const currentPlayer = playerRef.current
+
+      // Only show notification if event is for current room
+      if (!activeRoom || playerInfo.currentRoom !== activeRoom.roomId) {
+        return
+      }
+
+      const isSelf = Boolean(currentPlayer && playerInfo.id === currentPlayer.id)
+      const entryDirection = playerInfo.entryDirection
+      const directionPhrase = formatDirectionPhrase(entryDirection, 'enter')
+      const message = entryDirection
+        ? `${playerInfo.username} entered from ${directionPhrase}`
+        : `${playerInfo.username} entered the room`
+
+      appendWorldFeed({
+        type: 'room',
+        actor: playerInfo.username,
+        isSelf,
+        message,
+        ts: Date.now(),
+        roomId: activeRoom.roomId,
+        eventType: 'room-enter',
+        direction: entryDirection || undefined,
+      })
+    })
+
+    const cleanupPlayerLeft = socketHandlers.onPlayerLeft((playerData) => {
+      const activeRoom = currentRoomRef.current
+      const currentPlayer = playerRef.current
+
+      // Only show notification if event is for current room
+      if (!activeRoom || !activeRoom.roomId) {
+        return
+      }
+
+      const isSelf = Boolean(currentPlayer && playerData.id === currentPlayer.id)
+      const exitDirection = playerData.exitDirection
+      const directionPhrase = formatDirectionPhrase(exitDirection, 'exit')
+      const message = exitDirection
+        ? `${playerData.username} exited to ${directionPhrase}`
+        : `${playerData.username} left the room`
+
+      appendWorldFeed({
+        type: 'room',
+        actor: playerData.username,
+        isSelf,
+        message,
+        ts: Date.now(),
+        roomId: activeRoom.roomId,
+        eventType: 'room-exit',
+        direction: exitDirection || undefined,
+      })
+    })
+
+    return () => {
+      cleanupPlayerJoined()
+      cleanupPlayerLeft()
     }
   }, [socket, socketHandlers, appendWorldFeed])
 

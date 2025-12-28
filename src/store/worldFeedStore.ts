@@ -14,6 +14,7 @@ export type WorldFeedEntry = {
   isSelf?: boolean
   roomId?: string
   eventType?: string
+  direction?: string
   /**
    * Deprecated: kept temporarily for compatibility with older persisted entries.
    * Prefer using `message` for all rendering.
@@ -84,6 +85,7 @@ const ensureEntry = (entry: WorldFeedEntryInput): WorldFeedEntry => {
     isSelf: entry.isSelf,
     roomId: entry.roomId,
     eventType: entry.eventType,
+    direction: entry.direction,
     text: entry.text ?? message,
   }
 }

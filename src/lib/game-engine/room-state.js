@@ -207,7 +207,7 @@ class RoomState {
       data: { fromRoom, toRoom, toRoomName, roomData },
       playerEvent: {
         event: 'action:feedback',
-        payload: this.createFeedbackPayload('move', 'success', message, { toRoom, toRoomName, roomData }),
+        payload: this.createFeedbackPayload('move', 'success', message, { toRoom, toRoomName, roomData, direction }),
       },
       broadcastEvents: [
         {

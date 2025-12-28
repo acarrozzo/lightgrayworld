@@ -96,7 +96,7 @@ async function recordWorldFeedEventSafe({ userId, username, eventType }) {
 
 // Create room transition function
 function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) {
-  return async ({ player, fromRoom, toRoom }) => {
+  return async ({ player, fromRoom, toRoom, exitDirection, entryDirection }) => {
     if (!toRoom || fromRoom === toRoom) {
       return
     }
@@ -107,6 +107,7 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) 
       socket.to(`room-${fromRoom}`).emit(SOCKET_EVENTS.PLAYER_LEFT, {
         id: player.id,
         username: player.username,
+        exitDirection: exitDirection || null,
       })
     }
 
@@ -126,6 +127,7 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) 
       mpMax: player.mpMax,
       currentRoom: toRoom,
       isActive: true,
+      entryDirection: entryDirection || null,
     })
 
     player.currentRoom = toRoom
@@ -343,6 +345,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
             mpMax: playerData.mpMax,
             currentRoom: playerData.currentRoom,
             isActive: true,
+            entryDirection: null, // No direction info on initial login
           })
         }
 
@@ -439,6 +442,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         // Calculate direction from source room to destination
         const direction = sourceRoom ? findDirectionKey(sourceRoom, toRoom) : null
 
+        // Calculate directions for entry/exit notifications
+        const exitDirection = sourceRoom ? findDirectionKey(sourceRoom, toRoom) : null
+        const entryDirection = destinationRoom ? findDirectionKey(destinationRoom, fromRoom) : null
+
         console.log(`[Socket] Calling gameEngine.processUserAction for ${player.username}`)
         const result = await gameEngine.processUserAction({
           playerId: player.id,
@@ -452,7 +459,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         console.log(`[Socket] processUserAction result:`, result)
 
         console.log(`[Socket] Transitioning player room`)
-        await transitionPlayerRoom({ player, fromRoom, toRoom })
+        await transitionPlayerRoom({ player, fromRoom, toRoom, exitDirection, entryDirection })
 
         // Save entry/exit messages to database
         try {
@@ -766,6 +773,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         socket.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_LEFT, {
           id: player.id,
           username: player.username,
+          exitDirection: null, // No direction info on disconnect
         })
 
         if (roomPlayers.has(player.currentRoom)) {
