@@ -254,7 +254,7 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
   const isRoomZero = room.roomId === '000'
   const isLobby = room.roomId === '999'
   const mapBackground = isRoomZero
-    ? '/img/lightgray_map_grassyfield_underground.jpg'
+    ? '/img/lightgray_map_roomzero.jpg'
     : isLobby
     ? '/img/lightgray_map_the_lobby.jpg'
     : '/img/lightgray_map_grassyfield_main.jpg'

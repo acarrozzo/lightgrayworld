@@ -218,6 +218,43 @@ export default function RoomBox({
         worldTick={worldTick}
         actionResult={actionResult}
       />
+
+      {/* Teleport Section */}
+      <div className="mt-60 pt-4 border-t border-gray-800/50">
+        <h4 className="text-sm text-gray-400 mb-3">Teleport to:</h4>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              if (onAction) {
+                onAction({ type: 'teleport', data: { toRoomId: '999' } })
+              }
+            }}
+            className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200"
+          >
+            Lobby 999
+          </button>
+          <button
+            onClick={() => {
+              if (onAction) {
+                onAction({ type: 'teleport', data: { toRoomId: '001' } })
+              }
+            }}
+            className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200"
+          >
+            Grassy Field 001
+          </button>
+          <button
+            onClick={() => {
+              if (onAction) {
+                onAction({ type: 'teleport', data: { toRoomId: '000' } })
+              }
+            }}
+            className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200"
+          >
+            Room Zero 000
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

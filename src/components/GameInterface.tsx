@@ -548,6 +548,60 @@ export default function GameInterface() {
 
     const normalizedAction = actionType.toLowerCase()
     
+    // Handle "teleport to grassy field" string action - convert to teleport object format
+    if (normalizedAction === 'teleport to grassy field') {
+      console.log('[handleAction] Converting teleport to grassy field string to teleport object')
+      return handleAction({ type: 'teleport', data: { toRoomId: '001' } })
+    }
+    
+    // Handle teleport action
+    if (normalizedAction === 'teleport' && actionData?.toRoomId) {
+      console.log('[handleAction] Teleport action detected, target room:', actionData.toRoomId)
+      if (!currentRoom) {
+        console.warn('No current room available for teleport action')
+        setActionResult({
+          action: 'teleport',
+          message: 'Cannot teleport: no current room',
+          timestamp: new Date().toISOString(),
+          success: false,
+          source: 'local',
+        })
+        appendWorldFeed({
+          type: 'action',
+          level: 'error',
+          message: 'Cannot teleport: no current room',
+          roomId: currentRoomRef.current?.roomId,
+        })
+        return
+      }
+
+      const targetRoomId = actionData.toRoomId
+      console.log('[handleAction] Teleporting from', currentRoom.roomId, 'to', targetRoomId)
+
+      // Optimistic update: immediately use cached room if available
+      const cachedTargetRoom = getCachedRoom(targetRoomId)
+      if (cachedTargetRoom) {
+        console.log('[handleAction] Using cached room for optimistic update:', cachedTargetRoom.name)
+        setCurrentRoom(cachedTargetRoom)
+        // Update player room optimistically
+        if (player && player.currentRoom !== targetRoomId) {
+          setPlayer({ ...player, currentRoom: targetRoomId })
+        }
+      }
+
+      if (socket) {
+        console.log('[handleAction] Emitting player-move event for teleport:', { fromRoom: currentRoom.roomId, toRoom: targetRoomId })
+        socket.emit('player-move', {
+          fromRoom: currentRoom.roomId,
+          toRoom: targetRoomId,
+        })
+      } else {
+        console.warn('Socket not connected; teleport request not sent')
+      }
+
+      return
+    }
+    
     // Check if this is a navigation action for optimistic updates
     const travelActions = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down', 'move', 'navigate']
     const isNavigationAction = travelActions.includes(normalizedAction)

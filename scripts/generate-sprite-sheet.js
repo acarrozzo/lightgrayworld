@@ -43,26 +43,58 @@ ${cleanedContent}
 
 // Main function to generate sprite sheet
 function generateSpriteSheet() {
-  const svgDir = path.join(__dirname, '../public/icons');
+  // Define directories to scan
+  const svgDirs = [
+    path.join(__dirname, '../public/icons'),
+    path.join(__dirname, '../public/img/svg/environment')
+  ];
   const outputPath = path.join(__dirname, '../public/sprite-sheet.svg');
   
   console.log('🔍 Finding SVG files...');
-  const svgFiles = findSvgFiles(svgDir);
-  console.log(`📁 Found ${svgFiles.length} SVG files`);
+  const allSvgFiles = [];
+  
+  // Collect SVG files from all directories
+  svgDirs.forEach(svgDir => {
+    if (fs.existsSync(svgDir)) {
+      const files = findSvgFiles(svgDir);
+      allSvgFiles.push(...files);
+      console.log(`📁 Found ${files.length} SVG files in ${path.relative(path.join(__dirname, '..'), svgDir)}`);
+    } else {
+      console.log(`⚠️  Directory does not exist: ${path.relative(path.join(__dirname, '..'), svgDir)}`);
+    }
+  });
+  
+  console.log(`📁 Total: ${allSvgFiles.length} SVG files`);
   
   const symbols = [];
+  const iconMappings = [];
   
-  svgFiles.forEach(svgPath => {
+  allSvgFiles.forEach(svgPath => {
+    // Determine which base directory this file belongs to
+    let baseDir = svgDirs.find(dir => svgPath.startsWith(dir));
+    if (!baseDir) {
+      // Fallback: use the first directory as base
+      baseDir = svgDirs[0];
+    }
+    
     // Create symbol ID from file path
-    const relativePath = path.relative(svgDir, svgPath);
-    const symbolId = relativePath
+    const relativePath = path.relative(baseDir, svgPath);
+    let symbolId = relativePath
       .replace(/\.svg$/, '')
       .replace(/\//g, '-')
       .replace(/[^a-zA-Z0-9-]/g, '');
     
+    // For files from public/img/svg/environment, prefix with 'environment-'
+    if (baseDir.includes('public/img/svg/environment')) {
+      // Remove 'environment-' if it's already in the path, then add it
+      symbolId = symbolId.replace(/^environment-/, '');
+      symbolId = `environment-${symbolId}`;
+    }
+    
     try {
       const symbol = createSymbolFromSvg(svgPath, symbolId);
       symbols.push(symbol);
+      iconMappings.push(`  '${symbolId}': '${symbolId}'`);
       console.log(`✅ Processed: ${relativePath} -> ${symbolId}`);
     } catch (error) {
       console.error(`❌ Error processing ${svgPath}:`, error.message);
@@ -82,15 +114,6 @@ ${symbols.join('\n\n')}
   console.log(`🎉 Generated sprite sheet with ${symbols.length} icons at: ${outputPath}`);
   
   // Generate a TypeScript file with icon mappings
-  const iconMappings = svgFiles.map(svgPath => {
-    const relativePath = path.relative(svgDir, svgPath);
-    const symbolId = relativePath
-      .replace(/\.svg$/, '')
-      .replace(/\//g, '-')
-      .replace(/[^a-zA-Z0-9-]/g, '');
-    return `  '${symbolId}': '${symbolId}'`;
-  });
-  
   const mappingsContent = `// Auto-generated icon mappings
 export const IconMappings = {
 ${iconMappings.join(',\n')}
