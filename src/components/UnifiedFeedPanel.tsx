@@ -450,6 +450,16 @@ export default function UnifiedFeedPanel({
             <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-red-500'}`} />
             <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
           </div>
+          {!isConnected && (
+            <button
+              onClick={() => window.location.reload()}
+              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
+              aria-label="Refresh page"
+              title="Refresh page"
+            >
+              Refresh
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {onOpenSettings && (
