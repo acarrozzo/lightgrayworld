@@ -106,6 +106,7 @@ model User {
   worldMapV4                Boolean         @default(false)
   worldMapV5                Boolean         @default(false)
   worldMapFull              Boolean         @default(false)
+  lobbyMap                  Boolean         @default(false)
   pajamaShamanFlag          Boolean         @default(false)
   youngSoldierFlag          Boolean         @default(false)
   jackLumberFlag            Boolean         @default(false)

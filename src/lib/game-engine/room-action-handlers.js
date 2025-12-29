@@ -171,7 +171,7 @@ async function executeRoomAction(roomId, action, playerId, roomState, currentTic
   }
 
   if (typeof handler === 'function') {
-    return handler(playerId, roomState)
+    return await handler(playerId, roomState)
   }
 
   if (typeof handler === 'string') {

@@ -42,6 +42,7 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     '017': '-35px -350px',     // Abandoned Docks
     '020': '-245px -245px',    // Healing Springs
     '021': '-455px -245px',    // Pajama Shaman
+    '999': 'center',            // The Lobby
   }
   
   return roomMapPositions[roomId || '000'] || '-350px -350px' // Default to center
@@ -251,13 +252,16 @@ export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
   if (!room) return null
 
   const isRoomZero = room.roomId === '000'
+  const isLobby = room.roomId === '999'
   const mapBackground = isRoomZero
     ? '/img/lightgray_map_grassyfield_underground.jpg'
+    : isLobby
+    ? '/img/lightgray_map_the_lobby.jpg'
     : '/img/lightgray_map_grassyfield_main.jpg'
-  const mapPosition = isRoomZero
+  const mapPosition = isRoomZero || isLobby
     ? 'center'
     : (isTransitioning ? targetPosition : currentPosition)
-  const mapTitle = isRoomZero ? 'Room Zero' : 'Grassy Field'
+  const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : 'Grassy Field'
 
   const directions: Direction[] = [
     { key: 'northwest', label: 'NW', position: 'top-left', rotation: 315 },
