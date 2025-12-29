@@ -261,7 +261,7 @@ export default function UnifiedFeedPanel({
   const [settings, setSettings] = useState<WorldFeedSettings>(() => createDefaultSettings())
   const [settingsHydrated, setSettingsHydrated] = useState(false)
   const settingsKey = useMemo(() => getSettingsKey(userId), [userId])
-  const [isDisplayOptionsCollapsed, setIsDisplayOptionsCollapsed] = useState(false)
+  const [isDisplayOptionsCollapsed, setIsDisplayOptionsCollapsed] = useState(true)
   const [displayOptionsHydrated, setDisplayOptionsHydrated] = useState(false)
   const displayOptionsCollapsedKey = useMemo(() => getDisplayOptionsCollapsedKey(userId), [userId])
   const iconSize = settings.compactMode ? 12 : 14
@@ -298,7 +298,7 @@ export default function UnifiedFeedPanel({
 
   useEffect(() => {
     if (!displayOptionsCollapsedKey) {
-      setIsDisplayOptionsCollapsed(false)
+      setIsDisplayOptionsCollapsed(true)
       setDisplayOptionsHydrated(false)
       return
     }
@@ -317,7 +317,7 @@ export default function UnifiedFeedPanel({
       // ignore parse errors and fall back to defaults
     }
 
-    setIsDisplayOptionsCollapsed(false)
+    setIsDisplayOptionsCollapsed(true)
     setDisplayOptionsHydrated(true)
   }, [displayOptionsCollapsedKey])
 
@@ -498,7 +498,7 @@ export default function UnifiedFeedPanel({
               <button
                 key={key}
                 onClick={() => handleFilterChange(key)}
-                className={`px-2.5 py-1.5 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow ${
+                className={`px-2 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow ${
                   isActive
                     ? 'border-1 border-blue-500 hover:border-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
                     : 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
@@ -507,7 +507,7 @@ export default function UnifiedFeedPanel({
                 {key === 'all' && (
                   <Icon 
                     name="world" 
-                    size={14} 
+                    size={12} 
                     className="mr-1" 
                   />
                 )}
@@ -641,15 +641,7 @@ export default function UnifiedFeedPanel({
                     {React.createElement(displayIcon, { size: iconSize, className: 'shrink-0', 'aria-hidden': 'true' })}
                     <span className="sr-only">{style.label}</span>
                   </span>
-                  {settings.showTimestamps && (
-                    <span className="text-gray-500 whitespace-nowrap tabular-nums">
-                      {new Date(entry.ts).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}
-                    </span>
-                  )}
+
                   <div className={`flex flex-wrap items-baseline gap-1 flex-1 break-words leading-snug ${contentSize}`}>
                     {isRoomTravel ? (
                       <span className={messageColorClass}>{messageText}</span>
@@ -683,6 +675,16 @@ export default function UnifiedFeedPanel({
                   {count > 1 && (
                     <span className="text-gray-500 font-semibold whitespace-nowrap">×{count}</span>
                   )}
+                  {settings.showTimestamps && (
+                    <span className="text-gray-500 whitespace-nowrap tabular-nums">
+                      {new Date(entry.ts).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}
+                    </span>
+                  )}
+
                 </div>
               </div>
             )

@@ -458,8 +458,8 @@ async function main() {
       name: 'Welcome Book',
       description: 'A leather-bound book welcoming adventurers to the world.',
       type: ItemType.MISC,
-      maxStack: 1,
-      maxPerPlayer: 1,
+      maxStack: 99999,
+      maxPerPlayer: null,
     },
     {
       id: 'shovel_001',

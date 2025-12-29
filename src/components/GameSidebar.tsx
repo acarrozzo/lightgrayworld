@@ -179,7 +179,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   const tabs: TabConfig[] = [
     {
       id: 'stats',
-      label: 'Stats',
+      label: player.username || 'Stats',
       icon: 'character',
       color: 'purple',
       content: (

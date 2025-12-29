@@ -69,6 +69,21 @@ export function sanitizeUsername(username: string): string {
 }
 
 /**
+ * Validates that a username does not contain spaces
+ */
+export function validateUsername(username: string): { isValid: boolean; error?: string } {
+  if (!username || typeof username !== 'string') {
+    return { isValid: false, error: 'Username is required' }
+  }
+
+  if (/\s/.test(username)) {
+    return { isValid: false, error: 'Username cannot contain spaces' }
+  }
+
+  return { isValid: true }
+}
+
+/**
  * Validates that a string is safe for display
  */
 export function isValidText(input: string, maxLength: number = 500): boolean {

@@ -7,6 +7,7 @@ import { PLAYER_AVATARS, DEFAULT_PLAYER_AVATAR, getRandomAvatarColor, DEFAULT_AV
 import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
 import { FEATURE_FLAGS } from '@/lib/config'
 import { createWorldFeedEvent } from '@/lib/services/world-feed-event-service'
+import { validateUsername } from '@/lib/sanitization'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -27,6 +28,15 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         COMMON_ERRORS.VALIDATION_ERROR(message),
+        { status: 400 }
+      )
+    }
+
+    // Validate username format (no spaces)
+    const usernameValidation = validateUsername(username)
+    if (!usernameValidation.isValid) {
+      return NextResponse.json(
+        COMMON_ERRORS.VALIDATION_ERROR(usernameValidation.error || 'Invalid username'),
         { status: 400 }
       )
     }

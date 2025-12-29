@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useGameStore } from '@/lib/game-state'
 import { inputStyles } from '@/lib/styles'
 import { FEATURE_FLAGS } from '@/lib/config'
+import { validateUsername } from '@/lib/sanitization'
 
 // Component to load and colorize SVG
 function ColoredSVG({ src, colorClass, className }: { src: string; colorClass: string; className?: string }) {
@@ -75,13 +76,40 @@ export default function LoginForm() {
     password: '',
     email: ''
   })
+  const [usernameError, setUsernameError] = useState<string | null>(null)
   const { setLoading, setError, login } = useGameStore()
   const requireEmail = FEATURE_FLAGS.REQUIRE_EMAIL_ON_REGISTRATION
+
+  const handleUsernameChange = (value: string) => {
+    setFormData({ ...formData, username: value })
+    
+    // Only validate during registration, not login
+    if (!isLogin) {
+      const validation = validateUsername(value)
+      if (!validation.isValid) {
+        setUsernameError(validation.error || 'Invalid username')
+      } else {
+        setUsernameError(null)
+      }
+    } else {
+      setUsernameError(null)
+    }
+  }
 
   const handleAuth = async (e: React.FormEvent, isLogin: boolean) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
+
+    // Validate username before submission (only for registration)
+    if (!isLogin) {
+      const validation = validateUsername(formData.username)
+      if (!validation.isValid) {
+        setError(validation.error || 'Invalid username')
+        setLoading(false)
+        return
+      }
+    }
 
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
@@ -121,6 +149,13 @@ export default function LoginForm() {
 
   const handleSubmit = (e: React.FormEvent) => handleAuth(e, true)
   const handleRegister = (e: React.FormEvent) => handleAuth(e, false)
+
+  // Reset username error when switching between login/register
+  const handleToggleMode = () => {
+    setIsLogin(!isLogin)
+    setUsernameError(null)
+    setError(null)
+  }
 
   return (
     <div className="min-h-dvh flex items-center justify-center bg-gray-950">
@@ -179,8 +214,11 @@ export default function LoginForm() {
                 className={inputStyles.login.username}
                 placeholder="Username"
                 value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                onChange={(e) => handleUsernameChange(e.target.value)}
               />
+              {usernameError && !isLogin && (
+                <p className="mt-1 text-sm text-red-400">{usernameError}</p>
+              )}
             </div>
             
             <div>
@@ -234,7 +272,7 @@ export default function LoginForm() {
             <button
               type="button"
               className={inputStyles.button.link}
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={handleToggleMode}
             >
               {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
             </button>
