@@ -25,6 +25,10 @@ export interface Player {
   def?: number
   uIcon?: string
   uIconColor?: string
+  grassyFieldMap?: boolean
+  grassyFieldUndergroundMap?: boolean
+  roomZeroMap?: boolean
+  lobbyMap?: boolean
 }
 
 export type Room = RoomView

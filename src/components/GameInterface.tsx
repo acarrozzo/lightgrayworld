@@ -1,7 +1,7 @@
 'use client'
 
 import { useGameStore } from '@/lib/game-state'
-import type { Room } from '@/lib/game-state'
+import type { Room, Player } from '@/lib/game-state'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import React from 'react'
 import GameHeader from './GameHeader'
@@ -12,7 +12,7 @@ import Compass from './Compass'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
-import MapModal from './MapModal'
+import MapModal, { type MapOption } from './MapModal'
 import ActionModal from './ActionModal'
 import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
@@ -59,6 +59,27 @@ const COMMAND_SHORTHAND: Record<string, string> = {
 const normalizeCommand = (input: string): string => {
   const normalized = input.toLowerCase().trim()
   return COMMAND_SHORTHAND[normalized] || normalized
+}
+
+// Map configuration
+const MAP_CONFIG: Array<MapOption & { flag: keyof Player }> = [
+  { id: 'grassy-field', src: '/img/lightgray_map_grassyfield_main.jpg', title: 'Grassy Field', flag: 'grassyFieldMap' },
+  { id: 'grassy-field-underground', src: '/img/lightgray_map_grassyfield_underground.jpg', title: 'Grassy Field Underground', flag: 'grassyFieldUndergroundMap' },
+  { id: 'room-zero', src: '/img/lightgray_map_roomzero.jpg', title: 'Room Zero', flag: 'roomZeroMap' },
+  { id: 'lobby', src: '/img/lightgray_map_the_lobby.jpg', title: 'The Lobby', flag: 'lobbyMap' },
+]
+
+// Helper function to determine which map corresponds to a room
+const getMapIdForRoom = (roomId: string): string => {
+  if (roomId === '000') return 'room-zero'
+  if (roomId === '999') return 'lobby'
+  return 'grassy-field' // Default for grassy field rooms
+}
+
+// Helper function to get unlocked maps - all maps are available to everyone
+const getUnlockedMaps = (player: Player | null, currentRoomId: string | undefined): MapOption[] => {
+  // Everyone can view all maps - no restrictions
+  return MAP_CONFIG
 }
 
 // Helper function to render directory content for sign modals
@@ -181,6 +202,7 @@ export default function GameInterface() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [mapInfo, setMapInfo] = useState<{ src: string; title: string }>({ src: '', title: '' })
+  const [currentMapId, setCurrentMapId] = useState<string>('grassy-field')
   const [actionModal, setActionModal] = useState<{ 
     isOpen: boolean
     title: string
@@ -1211,8 +1233,19 @@ export default function GameInterface() {
   }, [attemptSocketLogin, socket, player, isLoggedIn])
   
   const handleOpenMap = useCallback((src: string, title: string) => {
+    // Determine which map this corresponds to based on src
+    const mapId = MAP_CONFIG.find(m => m.src === src)?.id || getMapIdForRoom(currentRoom?.roomId || '001')
+    setCurrentMapId(mapId)
     setMapInfo({ src, title })
     setIsMapModalOpen(true)
+  }, [currentRoom])
+  
+  const handleMapChange = useCallback((mapId: string) => {
+    const selectedMap = MAP_CONFIG.find(m => m.id === mapId)
+    if (selectedMap) {
+      setCurrentMapId(mapId)
+      setMapInfo({ src: selectedMap.src, title: selectedMap.title })
+    }
   }, [])
 
   if (!player || !isLoggedIn) {
@@ -1242,6 +1275,9 @@ export default function GameInterface() {
         onClose={() => setIsMapModalOpen(false)}
         mapSrc={mapInfo.src}
         mapTitle={mapInfo.title || 'Map'}
+        availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
+        currentMapId={currentMapId}
+        onMapChange={handleMapChange}
       />
       <ActionModal
         isOpen={actionModal.isOpen}

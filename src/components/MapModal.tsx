@@ -4,14 +4,23 @@ import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import Icon from './Icon'
 
+export interface MapOption {
+  id: string
+  src: string
+  title: string
+}
+
 interface MapModalProps {
   isOpen: boolean
   onClose: () => void
   mapSrc: string
   mapTitle: string
+  availableMaps?: MapOption[]
+  currentMapId?: string
+  onMapChange?: (mapId: string) => void
 }
 
-export default function MapModal({ isOpen, onClose, mapSrc, mapTitle }: MapModalProps) {
+export default function MapModal({ isOpen, onClose, mapSrc, mapTitle, availableMaps, currentMapId, onMapChange }: MapModalProps) {
   const [isZoomed, setIsZoomed] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -130,31 +139,51 @@ export default function MapModal({ isOpen, onClose, mapSrc, mapTitle }: MapModal
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between border-b border-gray-700/50 px-4 py-3">
-          <h2 className="text-lg font-semibold text-white">{mapTitle}</h2>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleToggleZoom}
-              className="rounded bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-            >
-              {isZoomed ? 'Reset View' : 'Zoom In'}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded p-1.5 text-gray-400 transition-colors hover:text-white hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              aria-label="Close map"
-            >
-              <Icon name="x" size={16} />
-            </button>
+        <div className="border-b border-gray-700/50">
+          <div className="flex items-center justify-between px-4 py-3">
+            <h2 className="text-lg font-semibold text-white">{mapTitle}</h2>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleToggleZoom}
+                className="rounded bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              >
+                {isZoomed ? 'Reset View' : 'Zoom In'}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded p-1.5 text-gray-400 transition-colors hover:text-white hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                aria-label="Close map"
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </div>
           </div>
+          {availableMaps && availableMaps.length > 1 && (
+            <div className="flex gap-2 border-t border-gray-700/50 px-4 py-2">
+              {availableMaps.map((map) => (
+                <button
+                  key={map.id}
+                  type="button"
+                  onClick={() => onMapChange?.(map.id)}
+                  className={`px-2.5 py-1 text-xs font-medium transition-colors rounded border ${
+                    currentMapId === map.id
+                      ? 'text-white bg-gray-800 border-gray-600'
+                      : 'text-gray-400 border-gray-700 hover:text-gray-200 hover:border-gray-600'
+                  }`}
+                >
+                  {map.title}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div
-          className={`flex-1 bg-gray-950/40 px-4 py-4 ${isZoomed ? 'overflow-hidden' : 'overflow-auto'}`}
+          className={`flex-1 bg-gray-950/40 px-4 py-4 ${isZoomed ? 'overflow-hidden' : 'overflow-auto'} min-h-0`}
         >
-          <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="flex min-h-[60vh] items-center justify-center py-4">
             <div
               className={`${isZoomed ? 'cursor-grab' : ''}`}
               onPointerDown={handlePointerDown}
@@ -181,13 +210,14 @@ export default function MapModal({ isOpen, onClose, mapSrc, mapTitle }: MapModal
                 className={`rounded-xl shadow-inner ${
                   isZoomed
                     ? 'max-h-none w-auto max-w-none'
-                    : 'h-full max-h-[70vh] w-full max-w-full object-contain'
+                    : 'w-full max-w-full object-contain'
                 }`}
                 style={{
                   transform: isZoomed ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : undefined,
                   transition: !isDragging ? 'transform 0.2s ease-out' : 'none',
                   userSelect: 'none',
                   pointerEvents: isZoomed ? 'none' : 'auto',
+                  maxHeight: isZoomed ? 'none' : 'calc(85vh - 200px)',
                 }}
                 draggable={false}
               />
