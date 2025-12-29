@@ -42,7 +42,27 @@ function formatTimeRemaining(seconds) {
  */
 const ROOM_ACTIONS = {
   '001': {
-    'read sign': "You read the sign. It says: 'Welcome to Grassy Field Crossroads!'",
+    'read sign': {
+      showModal: true,
+      message: "You read the sign. It says: 'Welcome to Grassy Field Crossroads!'",
+      modalContent: {
+        title: 'Grassy Field Directory',
+        heading: { text: 'Grassy Field Directory', parts: ['Grassy Field', 'Directory'] },
+        locations: [
+          { name: 'Healing Waterfall', direction: 'northwest' },
+          { name: 'Shaman Tent', direction: 'northeast' },
+          { name: 'Beach', direction: 'west' },
+          { name: 'Wood Cabin', direction: 'southwest' }
+        ],
+        questMessage: "Visit the OLD MAN at the cabin to start your first quest."
+      },
+      buttons: [
+        { label: 'northwest', direction: 'northwest' },
+        { label: 'northeast', direction: 'northeast' },
+        { label: 'west', direction: 'west' },
+        { label: 'southwest', direction: 'southwest' }
+      ]
+    },
     'open gold chest': 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
   },
   '002': {
@@ -129,6 +149,11 @@ async function executeRoomAction(roomId, action, playerId, roomState, currentTic
     return executeBasicDisplay(normalizedAction, handler, playerId, roomState)
   }
 
+  // Check if handler is a simple object with showModal (but not a full structured action)
+  if (isStructuredAction(handler) && handler.showModal && typeof handler.message === 'string' && !handler.effects && !handler.generateMessage) {
+    return executeBasicDisplay(normalizedAction, handler.message, playerId, roomState, handler.showModal, handler)
+  }
+
   if (isStructuredAction(handler)) {
     return executeStructuredAction(normalizedAction, handler, playerId, roomState, currentTickNumber, nextTickAt)
   }
@@ -158,7 +183,7 @@ function createActionFeedbackPayload(action, outcome, message, data = {}) {
   }
 }
 
-function executeBasicDisplay(actionName, message, playerId, roomState) {
+function executeBasicDisplay(actionName, message, playerId, roomState, showModal = false, handler = null) {
   const player = roomState.players.get(playerId)
   if (!player) {
     return createErrorResult(actionName, 'Player not found in this room')
@@ -166,14 +191,29 @@ function executeBasicDisplay(actionName, message, playerId, roomState) {
 
   roomState.touchActivity()
 
+  const data = {
+    roomId: roomState.roomId,
+  }
+
+  if (showModal) {
+    data.showModal = true
+    // Check if handler has structured modalContent, otherwise use message string
+    if (handler && handler.modalContent) {
+      data.modalContent = handler.modalContent
+      if (handler.buttons) {
+        data.buttons = handler.buttons
+      }
+    } else {
+      data.modalContent = message
+    }
+  }
+
   return {
     success: true,
     action: actionName,
     playerEvent: {
       event: 'action:feedback',
-      payload: createActionFeedbackPayload(actionName, 'success', message, {
-        roomId: roomState.roomId,
-      }),
+      payload: createActionFeedbackPayload(actionName, 'success', message, data),
     },
   }
 }
@@ -299,17 +339,24 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
         }) || (success ? 'success' : 'failure')
       : success ? 'success' : 'failure'
 
+  const data = {
+    roomId: roomState.roomId,
+    ...(inventory ? { inventory } : {}),
+    ...(capInfo ? { remaining: capInfo.remaining, secondsUntilReset: capInfo.secondsUntilReset } : {}),
+    effects: effectResults,
+  }
+
+  if (definition.showModal) {
+    data.showModal = true
+    data.modalContent = message
+  }
+
   return {
     success,
     action: actionName,
     playerEvent: {
       event: 'action:feedback',
-      payload: createActionFeedbackPayload(actionName, outcome, message, {
-        roomId: roomState.roomId,
-        ...(inventory ? { inventory } : {}),
-        ...(capInfo ? { remaining: capInfo.remaining, secondsUntilReset: capInfo.secondsUntilReset } : {}),
-        effects: effectResults,
-      }),
+      payload: createActionFeedbackPayload(actionName, outcome, message, data),
     },
   }
 }

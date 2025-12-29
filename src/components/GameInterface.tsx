@@ -3,6 +3,7 @@
 import { useGameStore } from '@/lib/game-state'
 import type { Room } from '@/lib/game-state'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import React from 'react'
 import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
 import UnifiedFeedPanel from './UnifiedFeedPanel'
@@ -13,6 +14,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
 import MapModal from './MapModal'
+import ActionModal from './ActionModal'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
@@ -59,6 +61,66 @@ const normalizeCommand = (input: string): string => {
   return COMMAND_SHORTHAND[normalized] || normalized
 }
 
+// Helper function to render directory content for sign modals
+const renderDirectoryContent = (
+  modalContent: any,
+  buttons: Array<{ label: string; direction: string }>
+): React.ReactNode => {
+  const heading = modalContent.heading
+  const locations = modalContent.locations || []
+  const questMessage = modalContent.questMessage
+
+  return (
+    <div className="w-full">
+      {/* Directory Panel */}
+      <div className="bg-amber-900/30 border border-amber-800/50 rounded-lg p-6 mb-4">
+        {/* Heading */}
+        {heading && heading.parts ? (
+          <h3 className="text-2xl font-bold mb-6">
+            <span className="text-white">{heading.parts[0]}</span>
+            {' '}
+            <span className="text-yellow-400">{heading.parts[1]}</span>
+          </h3>
+        ) : (
+          <h3 className="text-2xl font-bold text-white mb-6">{heading?.text || 'Directory'}</h3>
+        )}
+
+        {/* Location Buttons */}
+        <div className="space-y-3 mb-4">
+          {locations.map((location: any, index: number) => {
+            const button = buttons.find(b => b.direction === location.direction)
+            return (
+              <div key={index} className="flex items-center justify-between gap-4">
+                <span className="text-white text-lg">{location.name}</span>
+                {button && (
+                  <button
+                    type="button"
+                    data-direction={button.direction}
+                    className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-900/30"
+                  >
+                    {button.label}
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Separator */}
+        <div className="border-t border-amber-700/50 my-4"></div>
+
+        {/* Quest Message */}
+        {questMessage && (
+          <>
+            <p className="text-white text-base leading-relaxed">{questMessage}</p>
+            <div className="border-t border-amber-700/50 my-4"></div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // Helper function to format direction phrases for feed messages
 const formatDirectionPhrase = (direction: string | null | undefined, context: 'enter' | 'exit'): string => {
   if (!direction) {
@@ -101,6 +163,16 @@ export default function GameInterface() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [mapInfo, setMapInfo] = useState<{ src: string; title: string }>({ src: '', title: '' })
+  const [actionModal, setActionModal] = useState<{ 
+    isOpen: boolean
+    title: string
+    content: string | React.ReactNode
+    buttons?: Array<{ label: string; direction: string }>
+  }>({
+    isOpen: false,
+    title: '',
+    content: '',
+  })
   const [customAction, setCustomAction] = useState('')
   const [worldTick, setWorldTick] = useState<{
     tickNumber: number
@@ -683,13 +755,39 @@ export default function GameInterface() {
         direction: travelDirection,
       })
 
-      // Trigger notification for room actions
-      const { addNotification } = useNotificationStore.getState()
-      addNotification({
-        message: messageText,
-        outcome,
-        action: payload?.action,
-      })
+      // Check if action should open a modal
+      if (payload?.data?.showModal === true) {
+        const modalContent = payload?.data?.modalContent
+        const buttons = payload?.data?.buttons
+        
+        // Check if modalContent is structured (object) or simple string
+        let renderedContent: string | React.ReactNode = messageText
+        let modalTitle = payload?.action || 'Action'
+        
+        if (modalContent && typeof modalContent === 'object' && !Array.isArray(modalContent)) {
+          // Structured content - render directory
+          modalTitle = modalContent.title || modalTitle
+          renderedContent = renderDirectoryContent(modalContent, buttons || [])
+        } else if (typeof modalContent === 'string') {
+          // Simple string content
+          renderedContent = modalContent
+        }
+        
+        setActionModal({
+          isOpen: true,
+          title: modalTitle,
+          content: renderedContent,
+          buttons: buttons,
+        })
+      } else {
+        // Trigger notification for room actions (only if not showing modal)
+        const { addNotification } = useNotificationStore.getState()
+        addNotification({
+          message: messageText,
+          outcome,
+          action: payload?.action,
+        })
+      }
     })
 
     const cleanupLoginSuccess = socketHandlers.onLoginSuccess((payload) => {
@@ -1030,6 +1128,14 @@ export default function GameInterface() {
         onClose={() => setIsMapModalOpen(false)}
         mapSrc={mapInfo.src}
         mapTitle={mapInfo.title || 'Map'}
+      />
+      <ActionModal
+        isOpen={actionModal.isOpen}
+        onClose={() => setActionModal({ isOpen: false, title: '', content: '' })}
+        title={actionModal.title}
+        content={actionModal.content}
+        buttons={actionModal.buttons}
+        onAction={handleAction}
       />
       <NotificationContainer />
       <GameHeader
