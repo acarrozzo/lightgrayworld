@@ -127,9 +127,9 @@ export default function TabContainer({
       </div>
 
       {/* Tab Content */}
-     {/* <div className={`flex-1 flex flex-col overflow-hidden min-h-0 ${contentClassName}`}> */}
+      <div className={`flex-1 flex flex-col overflow-y-auto min-h-0 ${contentClassName}`}>
         {renderTabContent()}
-      {/* </div> */}
+      </div>
     </div>
   )
 }

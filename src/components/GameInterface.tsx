@@ -820,12 +820,15 @@ export default function GameInterface() {
         })
       } else {
         // Trigger notification for room actions (only if not showing modal)
-        const { addNotification } = useNotificationStore.getState()
-        addNotification({
-          message: messageText,
-          outcome,
-          action: payload?.action,
-        })
+        // Skip notifications for movement actions
+        if (payload?.action !== 'move') {
+          const { addNotification } = useNotificationStore.getState()
+          addNotification({
+            message: messageText,
+            outcome,
+            action: payload?.action,
+          })
+        }
       }
     })
 
