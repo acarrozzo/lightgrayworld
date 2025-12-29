@@ -9,7 +9,6 @@ import GameSidebar from './GameSidebar'
 import UnifiedFeedPanel from './UnifiedFeedPanel'
 import RoomBox from './RoomBox'
 import Compass from './Compass'
-import { Settings as SettingsIcon } from 'lucide-react'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
@@ -1237,6 +1236,7 @@ export default function GameInterface() {
       <GameHeader
         onToggleCharacterSidebar={() => setLeftSidebarOpen((prev) => !prev)}
         onToggleWorldSidebar={() => setRightSidebarOpen((prev) => !prev)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
       
       <div className="grid grid-cols-1 md:grid-cols-[1fr_minmax(340px,30%)] xl:grid-cols-[minmax(360px,25%)_1fr_minmax(360px,25%)] flex-1 overflow-hidden relative min-h-0">
@@ -1286,15 +1286,6 @@ export default function GameInterface() {
 
               {/* D-pad */}
               <div className="p-4 flex-shrink-0 relative flex flex-col gap-4 border-t border-gray-800/50">
-                <button
-                  className="absolute top-4 left-4 p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 z-10"
-                  onClick={() => setIsSettingsOpen(true)}
-                  title="Open settings"
-                  aria-label="Open settings"
-                >
-                  <SettingsIcon className="h-5 w-5" strokeWidth={2} />
-                </button>
-                
                 {/* Compass and Action Buttons */}
                 <div className="relative flex items-center justify-center gap-4">
                   <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />

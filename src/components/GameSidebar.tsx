@@ -184,7 +184,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
       color: 'blue',
       content: (
         <div className="space-y-4 p-4">
-          <div className="bg-gradient-to-br from-gray-900/90 via-gray-900/70 to-gray-900/50 border border-gray-800/70 rounded-3xl p-6 shadow-xl shadow-black/20 relative overflow-hidden">
+          <div className="">
             <div className="relative flex flex-row items-start gap-6">
               <div className="relative w-36 h-52 bg-gray-950/70 rounded-3xl border border-gray-800/80 flex items-center justify-center shadow-inner shadow-black/60 flex-shrink-0">
                 {coloredAvatarSvg ? (

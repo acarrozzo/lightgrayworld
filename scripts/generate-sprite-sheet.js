@@ -68,6 +68,7 @@ function generateSpriteSheet() {
   
   const symbols = [];
   const iconMappings = [];
+  const processedSymbolIds = new Set(); // Track processed symbol IDs to avoid duplicates
   
   allSvgFiles.forEach(svgPath => {
     // Determine which base directory this file belongs to
@@ -91,10 +92,24 @@ function generateSpriteSheet() {
       symbolId = `environment-${symbolId}`;
     }
     
+    // For files from public/icons/environment, prefix with 'environment-'
+    if (baseDir.includes('public/icons') && relativePath.startsWith('environment/')) {
+      // Remove 'environment-' if it's already in the path, then add it
+      symbolId = symbolId.replace(/^environment-/, '');
+      symbolId = `environment-${symbolId}`;
+    }
+    
+    // Skip if this symbol ID has already been processed
+    if (processedSymbolIds.has(symbolId)) {
+      console.log(`⏭️  Skipped duplicate: ${relativePath} -> ${symbolId} (already processed)`);
+      return;
+    }
+    
     try {
       const symbol = createSymbolFromSvg(svgPath, symbolId);
       symbols.push(symbol);
       iconMappings.push(`  '${symbolId}': '${symbolId}'`);
+      processedSymbolIds.add(symbolId);
       console.log(`✅ Processed: ${relativePath} -> ${symbolId}`);
     } catch (error) {
       console.error(`❌ Error processing ${svgPath}:`, error.message);
