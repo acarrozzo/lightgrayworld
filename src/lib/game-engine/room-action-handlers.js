@@ -46,7 +46,7 @@ const ROOM_ACTIONS = {
       showModal: true,
       message: "You read the sign. It says: 'Welcome to Grassy Field Crossroads!'",
       modalContent: {
-        title: 'Grassy Field Directory',
+        title: 'You read the sign',
         heading: { text: 'Grassy Field Directory', parts: ['Grassy Field', 'Directory'] },
         locations: [
           { name: 'Healing Waterfall', direction: 'northwest' },

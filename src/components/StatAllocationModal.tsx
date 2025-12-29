@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Player, useGameStore } from '@/lib/game-state'
+import Icon from './Icon'
 
 interface StatAllocationModalProps {
   isOpen: boolean
@@ -254,25 +255,25 @@ export default function StatAllocationModal({
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={handleCancel}
       />
-      <div className="relative z-10 h-full w-full bg-gray-900/95 border border-gray-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-8 py-6 border-b border-gray-800/70">
+      <div className="relative z-10 h-full w-full bg-gray-900/95 border border-gray-700/50 rounded-lg shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700/50">
           <div>
-            <h3 className="text-2xl font-semibold text-white">Allocate Core Points</h3>
-            <p className="text-sm text-gray-400 mt-1">
+            <h3 className="text-lg font-semibold text-white">Allocate Core Points</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
               Use the plus and minus buttons to adjust your stat allocations. Click Confirm to apply changes.
             </p>
           </div>
           <button
             onClick={handleCancel}
-            className="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-800/70"
+            className="text-gray-400 hover:text-white transition-colors p-1.5 rounded hover:bg-gray-800"
             disabled={isSaving || isAllocating}
           >
             <span className="sr-only">Close</span>
-            ✕
+            <Icon name="x" size={16} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
           <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -351,11 +352,11 @@ export default function StatAllocationModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-8 py-6 border-t border-gray-800/70">
+        <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-gray-700/50">
           <button
             type="button"
             onClick={handleCancel}
-            className="px-4 py-2 rounded-full text-sm font-semibold text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+            className="px-4 py-1.5 rounded text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
             disabled={isSaving || isAllocating}
           >
             Cancel
@@ -364,7 +365,7 @@ export default function StatAllocationModal({
             type="button"
             onClick={handleConfirm}
             disabled={isSaving || isAllocating || totalPending === 0}
-            className="px-5 py-2 rounded-full text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 rounded text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isAllocating ? 'Allocating...' : 'Confirm'}
           </button>

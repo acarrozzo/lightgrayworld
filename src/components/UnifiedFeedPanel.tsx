@@ -479,7 +479,11 @@ export default function UnifiedFeedPanel({
           <button
             type="button"
             onClick={() => setIsDisplayOptionsCollapsed((prev) => !prev)}
-            className="ml-auto px-2 py-1.5 rounded-md border bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800/60 transition-colors"
+            className={`ml-auto px-2 py-1.5 rounded-md border transition-colors ${
+              !isDisplayOptionsCollapsed
+                ? 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500'
+                : 'bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800/60'
+            }`}
             aria-expanded={!isDisplayOptionsCollapsed}
             aria-label="Toggle display options"
           >

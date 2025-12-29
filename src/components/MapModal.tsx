@@ -125,34 +125,34 @@ export default function MapModal({ isOpen, onClose, mapSrc, mapTitle }: MapModal
       role="presentation"
     >
       <div
-        className="relative flex max-h-[90vh] w-[90vw] max-w-5xl flex-col overflow-hidden rounded-2xl border border-purple-500/40 bg-gray-900 shadow-2xl"
+        className="relative flex max-h-[85vh] w-[90vw] max-w-4xl flex-col overflow-hidden rounded-lg border border-gray-700/50 bg-gray-900 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between border-b border-gray-700 px-6 py-4">
-          <h2 className="text-xl font-semibold text-white">{mapTitle}</h2>
+        <div className="flex items-center justify-between border-b border-gray-700/50 px-4 py-3">
+          <h2 className="text-lg font-semibold text-white">{mapTitle}</h2>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleToggleZoom}
-              className="rounded-full bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-200 transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="rounded bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
             >
               {isZoomed ? 'Reset View' : 'Zoom In'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full p-2 text-gray-400 transition-colors hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="rounded p-1.5 text-gray-400 transition-colors hover:text-white hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               aria-label="Close map"
             >
-              <Icon name="x" size={24} />
+              <Icon name="x" size={16} />
             </button>
           </div>
         </div>
 
         <div
-          className={`flex-1 bg-gray-950/40 px-6 py-6 ${isZoomed ? 'overflow-hidden' : 'overflow-auto'}`}
+          className={`flex-1 bg-gray-950/40 px-4 py-4 ${isZoomed ? 'overflow-hidden' : 'overflow-auto'}`}
         >
           <div className="flex min-h-[60vh] items-center justify-center">
             <div
@@ -195,11 +195,11 @@ export default function MapModal({ isOpen, onClose, mapSrc, mapTitle }: MapModal
           </div>
         </div>
 
-        <div className="border-t border-gray-800 px-6 py-4 text-right">
+        <div className="border-t border-gray-700/50 px-4 py-3 text-right">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full bg-purple-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-purple-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+            className="rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
           >
             Close
           </button>
