@@ -7,6 +7,8 @@ import Icon from './Icon'
 
 type FilterType = 'all' | 'room' | 'world' | 'action'
 
+export type InputMode = 'action' | 'room' | 'world'
+
 type UnifiedFeedPanelProps = {
   currentRoomId?: string
   isConnected?: boolean
@@ -14,7 +16,7 @@ type UnifiedFeedPanelProps = {
   onOpenSettings?: () => void
   customAction: string
   onCustomActionChange: (value: string) => void
-  onCustomActionSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onCustomActionSubmit: (event: FormEvent<HTMLFormElement>, mode: InputMode) => void
   isLoadingRoom?: boolean
   customActionInputRef?: RefObject<HTMLInputElement | null>
 }
@@ -176,6 +178,7 @@ const createDefaultSettings = (): WorldFeedSettings => ({
 
 const getSettingsKey = (userId?: string | null) => (userId ? `worldFeed-settings:${userId}` : null)
 const getDisplayOptionsCollapsedKey = (userId?: string | null) => (userId ? `worldFeed-displayOptionsCollapsed:${userId}` : null)
+const getInputModeKey = (userId?: string | null) => (userId ? `inputMode:${userId}` : null)
 
 const canGroupEntries = (a: WorldFeedEntry, b: WorldFeedEntry) => {
   return (
@@ -264,6 +267,9 @@ export default function UnifiedFeedPanel({
   const [isDisplayOptionsCollapsed, setIsDisplayOptionsCollapsed] = useState(true)
   const [displayOptionsHydrated, setDisplayOptionsHydrated] = useState(false)
   const displayOptionsCollapsedKey = useMemo(() => getDisplayOptionsCollapsedKey(userId), [userId])
+  const [inputMode, setInputMode] = useState<InputMode>('world')
+  const [inputModeHydrated, setInputModeHydrated] = useState(false)
+  const inputModeKey = useMemo(() => getInputModeKey(userId), [userId])
   const iconSize = settings.compactMode ? 12 : 14
 
   useEffect(() => {
@@ -325,6 +331,36 @@ export default function UnifiedFeedPanel({
     if (!displayOptionsCollapsedKey || !displayOptionsHydrated) return
     localStorage.setItem(displayOptionsCollapsedKey, JSON.stringify(isDisplayOptionsCollapsed))
   }, [isDisplayOptionsCollapsed, displayOptionsCollapsedKey, displayOptionsHydrated])
+
+  useEffect(() => {
+    if (!inputModeKey) {
+      setInputMode('world')
+      setInputModeHydrated(false)
+      return
+    }
+
+    try {
+      const stored = localStorage.getItem(inputModeKey)
+      if (stored !== null) {
+        const parsed = stored as InputMode
+        if (parsed === 'action' || parsed === 'room' || parsed === 'world') {
+          setInputMode(parsed)
+          setInputModeHydrated(true)
+          return
+        }
+      }
+    } catch {
+      // ignore parse errors and fall back to defaults
+    }
+
+    setInputMode('world')
+    setInputModeHydrated(true)
+  }, [inputModeKey])
+
+  useEffect(() => {
+    if (!inputModeKey || !inputModeHydrated) return
+    localStorage.setItem(inputModeKey, inputMode)
+  }, [inputMode, inputModeKey, inputModeHydrated])
 
   const handleToggleSetting = (key: keyof WorldFeedSettings) => {
     setSettings((prev) => ({
@@ -486,7 +522,7 @@ export default function UnifiedFeedPanel({
 
       <div className="worldFeedControls px-4 py-2 border-b border-gray-800/60 bg-gray-900/70 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          {(['all', 'room', 'world', 'action'] as FilterType[]).map((key) => {
+          {(['all', 'action', 'world', 'room'] as FilterType[]).map((key) => {
             const isActive = filter === key
             const labelMap: Record<FilterType, string> = {
               all: 'All',
@@ -695,31 +731,77 @@ export default function UnifiedFeedPanel({
       <div className="worldFeedFooter p-4 border-t border-gray-800/60 bg-gray-950/95 space-y-3">
         {showUnreadNotice && (
           <div className="flex items-center justify-between text-xs text-gray-300 bg-gray-900/80 px-3 py-2 rounded-md border border-gray-800/80">
-            <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`}</span>
+
             <button
               onClick={scrollToBottom}
-              className="px-3 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+              className="px-3 py-2 w-full text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
             >
-              Jump to latest
+                            <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`} </span>
+
+               - Jump to latest
             </button>
           </div>
         )}
 
-        <form onSubmit={onCustomActionSubmit} className="flex gap-0 w-full">
+        <div className="flex flex-wrap items-center gap-2">
+          {(['world', 'room', 'action'] as InputMode[]).map((mode) => {
+            const isActive = inputMode === mode
+            const labelMap: Record<InputMode, string> = {
+              action: 'Action',
+              room: 'Room Chat',
+              world: 'World Chat',
+            }
+            const colorMap: Record<InputMode, { active: string; inactive: string }> = {
+              action: {
+                active: 'border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300',
+                inactive: 'border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300',
+              },
+              room: {
+                active: 'border-indigo-500 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300',
+                inactive: 'border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300',
+              },
+              world: {
+                active: 'border-emerald-500 hover:border-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300',
+                inactive: 'border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300',
+              },
+            }
+            const colors = colorMap[mode]
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setInputMode(mode)}
+                className={`px-2 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 ${
+                  isActive ? colors.active : colors.inactive
+                }`}
+              >
+                {labelMap[mode]}
+              </button>
+            )
+          })}
+        </div>
+
+        <form onSubmit={(e) => onCustomActionSubmit(e, inputMode)} className="flex gap-2 w-full">
           <input
             ref={customActionInputRef ?? undefined}
             type="text"
             value={customAction}
             onChange={(e) => onCustomActionChange(e.target.value)}
-            placeholder="Enter action..."
+            placeholder={
+              inputMode === 'action' 
+                ? 'Enter action...' 
+                : inputMode === 'room' 
+                ? 'Say something...' 
+                : 'Shout something...'
+            }
             disabled={Boolean(isLoadingRoom)}
-            className="flex-1 min-w-0 px-4 py-2 bg-gray-900/70 text-white border border-gray-700/60 rounded-l-lg focus:outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all duration-200 disabled:bg-gray-800/50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 min-w-0 px-4 py-2.5 bg-gray-800 text-white border-2 border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500 shadow-md transition-all duration-200 disabled:bg-gray-800/50 disabled:cursor-not-allowed disabled:opacity-50"
             autoComplete="off"
           />
           <button
             type="submit"
             disabled={isSubmitDisabled}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-r-lg whitespace-nowrap text-sm font-medium transition-all duration-200 shadow-sm hover:shadow"
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg whitespace-nowrap text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:bg-indigo-500"
           >
             Submit
           </button>

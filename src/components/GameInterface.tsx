@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import React from 'react'
 import GameHeader from './GameHeader'
 import GameSidebar from './GameSidebar'
-import UnifiedFeedPanel from './UnifiedFeedPanel'
+import UnifiedFeedPanel, { type InputMode } from './UnifiedFeedPanel'
 import RoomBox from './RoomBox'
 import Compass from './Compass'
 import { useSocket } from '@/hooks/useSocket'
@@ -692,7 +692,7 @@ export default function GameInterface() {
     }
   }
 
-  const handleCustomAction = (e: React.FormEvent) => {
+  const handleCustomAction = (e: React.FormEvent, mode: InputMode) => {
     e.preventDefault()
     const actionToSend = customAction.trim()
     if (!actionToSend) return
@@ -706,8 +706,23 @@ export default function GameInterface() {
     const doubleQuoteMatch = actionToSend.startsWith('"')
     const exclamationMatch = actionToSend.startsWith('!')
 
-    const isRoomChat = sayMatch || singleQuoteMatch || doubleQuoteMatch
-    const isWorldChat = shoutMatch || exclamationMatch
+    // Prefix detection as fallback/override
+    const prefixIsRoomChat = sayMatch || singleQuoteMatch || doubleQuoteMatch
+    const prefixIsWorldChat = shoutMatch || exclamationMatch
+
+    // Determine chat type: prefix overrides mode, otherwise use mode
+    let isRoomChat = false
+    let isWorldChat = false
+
+    if (prefixIsRoomChat || prefixIsWorldChat) {
+      // Prefix detection takes precedence
+      isRoomChat = prefixIsRoomChat
+      isWorldChat = prefixIsWorldChat
+    } else {
+      // Use selected mode
+      isRoomChat = mode === 'room'
+      isWorldChat = mode === 'world'
+    }
 
     if (isRoomChat || isWorldChat) {
       let message = ''
@@ -717,6 +732,9 @@ export default function GameInterface() {
         message = firstSpace >= 0 ? actionToSend.slice(firstSpace + 1).trim() : ''
       } else if (singleQuoteMatch || doubleQuoteMatch || exclamationMatch) {
         message = actionToSend.slice(1).trim()
+      } else {
+        // No prefix, use the input as-is for the selected mode
+        message = actionToSend
       }
 
       if (!message) {
@@ -761,6 +779,7 @@ export default function GameInterface() {
       }
     }
 
+    // If not chat, treat as action
     const normalizedCommand = normalizeCommand(actionToSend)
     handleAction(normalizedCommand)
   }
