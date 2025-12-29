@@ -18,7 +18,7 @@ export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSide
           {onToggleCharacterSidebar && (
             <button
               onClick={onToggleCharacterSidebar}
-              className="xl:hidden px-3 py-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2"
+              className="xl:hidden px-3 py-2 bg-transparent hover:bg-purple-500/10 border border-purple-500/40 hover:border-purple-500/60 text-purple-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2"
               aria-label="Toggle player info sidebar"
             >
               <Icon name="character" className="h-5 w-5" color="current" />
@@ -36,16 +36,17 @@ export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSide
           {onToggleWorldSidebar && (
             <button
               onClick={onToggleWorldSidebar}
-              className="md:hidden p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="md:hidden px-3 py-2 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2"
               aria-label="Toggle world feed sidebar"
             >
               <Icon name="world" className="h-5 w-5" color="current" />
+              <span className="text-sm font-medium">World</span>
             </button>
           )}
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}
-              className="p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="md:hidden p-2 bg-transparent hover:bg-gray-500/10 border border-gray-500/40 hover:border-gray-500/60 text-gray-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
               aria-label="Open settings"
               title="Open settings"
             >

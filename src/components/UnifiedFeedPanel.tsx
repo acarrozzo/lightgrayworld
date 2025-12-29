@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, Settings as SettingsIcon, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
+import Icon from './Icon'
 
 type FilterType = 'all' | 'room' | 'world' | 'action'
 
@@ -10,6 +11,7 @@ type UnifiedFeedPanelProps = {
   currentRoomId?: string
   isConnected?: boolean
   onClose?: () => void
+  onOpenSettings?: () => void
   customAction: string
   onCustomActionChange: (value: string) => void
   onCustomActionSubmit: (event: FormEvent<HTMLFormElement>) => void
@@ -242,6 +244,7 @@ export default function UnifiedFeedPanel({
   currentRoomId,
   isConnected,
   onClose,
+  onOpenSettings,
   customAction,
   onCustomActionChange,
   onCustomActionSubmit,
@@ -449,6 +452,16 @@ export default function UnifiedFeedPanel({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className="hidden md:flex p-1.5 bg-transparent hover:bg-gray-500/10 border border-gray-500/40 hover:border-gray-500/60 text-gray-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              aria-label="Open settings"
+              title="Open settings"
+            >
+              <SettingsIcon className="h-4 w-4" strokeWidth={2} />
+            </button>
+          )}
           {onClose && (
             <button
               className="md:hidden px-2 py-1 text-gray-400 hover:text-white rounded-md hover:bg-gray-800/60 transition-colors"
@@ -463,19 +476,35 @@ export default function UnifiedFeedPanel({
 
       <div className="worldFeedControls px-4 py-2 border-b border-gray-800/60 bg-gray-900/70 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          {(['all', 'room', 'world', 'action'] as FilterType[]).map((key) => (
-            <button
-              key={key}
-              onClick={() => handleFilterChange(key)}
-              className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${
-                filter === key
-                  ? 'bg-indigo-600 text-white border-indigo-500'
-                  : 'bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700'
-              }`}
-            >
-              {key === 'action' ? 'Actions' : key.charAt(0).toUpperCase() + key.slice(1)}
-            </button>
-          ))}
+          {(['all', 'room', 'world', 'action'] as FilterType[]).map((key) => {
+            const isActive = filter === key
+            const labelMap: Record<FilterType, string> = {
+              all: 'All',
+              room: 'Room',
+              world: 'World',
+              action: 'Actions',
+            }
+            return (
+              <button
+                key={key}
+                onClick={() => handleFilterChange(key)}
+                className={`px-2.5 py-1.5 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow ${
+                  isActive
+                    ? 'border-1 border-blue-500 hover:border-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
+                    : 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                {key === 'all' && (
+                  <Icon 
+                    name="world" 
+                    size={14} 
+                    className="mr-1" 
+                  />
+                )}
+                {labelMap[key]}
+              </button>
+            )
+          })}
           <button
             type="button"
             onClick={() => setIsDisplayOptionsCollapsed((prev) => !prev)}

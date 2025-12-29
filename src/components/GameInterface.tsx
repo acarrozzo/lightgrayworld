@@ -1354,6 +1354,7 @@ export default function GameInterface() {
             currentRoomId={currentRoom?.roomId}
             isConnected={socket?.connected ?? false}
             onClose={() => setRightSidebarOpen(false)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
             customAction={customAction}
             onCustomActionChange={setCustomAction}
             onCustomActionSubmit={handleCustomAction}

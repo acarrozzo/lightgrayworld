@@ -181,7 +181,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
       id: 'stats',
       label: 'Stats',
       icon: 'character',
-      color: 'blue',
+      color: 'purple',
       content: (
         <div className="space-y-4 p-4">
           <div className="">
