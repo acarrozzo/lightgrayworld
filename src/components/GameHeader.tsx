@@ -7,9 +7,10 @@ interface GameHeaderProps {
   onToggleCharacterSidebar?: () => void
   onToggleWorldSidebar?: () => void
   onOpenSettings?: () => void
+  playerName?: string
 }
 
-export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSidebar, onOpenSettings }: GameHeaderProps) {
+export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSidebar, onOpenSettings, playerName }: GameHeaderProps) {
   return (
     <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-2 shadow-sm">
       <div className="flex w-full items-center gap-4">
@@ -17,10 +18,11 @@ export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSide
           {onToggleCharacterSidebar && (
             <button
               onClick={onToggleCharacterSidebar}
-              className="xl:hidden p-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="xl:hidden px-3 py-2 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2"
               aria-label="Toggle player info sidebar"
             >
               <Icon name="character" className="h-5 w-5" color="current" />
+              {playerName && <span className="text-sm font-medium">{playerName}</span>}
             </button>
           )}
         </div>

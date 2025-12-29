@@ -1233,11 +1233,6 @@ export default function GameInterface() {
         onAction={handleAction}
       />
       <NotificationContainer />
-      <GameHeader
-        onToggleCharacterSidebar={() => setLeftSidebarOpen((prev) => !prev)}
-        onToggleWorldSidebar={() => setRightSidebarOpen((prev) => !prev)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-      />
       
       <div className="grid grid-cols-1 md:grid-cols-[1fr_minmax(340px,30%)] xl:grid-cols-[minmax(360px,25%)_1fr_minmax(360px,25%)] flex-1 overflow-hidden relative min-h-0">
         {/* Overlay backdrop for mobile */}
@@ -1271,6 +1266,12 @@ export default function GameInterface() {
         
         {/* Main Game Area */}
         <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden md:col-start-1 xl:col-start-2">
+          <GameHeader
+            onToggleCharacterSidebar={() => setLeftSidebarOpen((prev) => !prev)}
+            onToggleWorldSidebar={() => setRightSidebarOpen((prev) => !prev)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            playerName={player?.username}
+          />
           {currentRoom && (
             <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
               <div className="flex-1 min-h-0 overflow-y-auto p-4">

@@ -330,24 +330,10 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
       ),
     },
     {
-      id: 'skills',
-      label: 'Skills',
-      icon: 'attack',
-      color: 'red',
-      content: (
-        <div className="space-y-4 p-4">
-          <h3 className="text-lg font-semibold text-white">Skills & Spells</h3>
-          <div className="text-gray-400 text-sm">
-            No skills learned yet.
-          </div>
-        </div>
-      ),
-    },
-    {
       id: 'quests',
       label: 'Quests',
-      icon: 'inv',
-      color: 'purple',
+      icon: 'trophy',
+      color: 'gold',
       content: (
         <div className="space-y-4 p-4">
           <h3 className="text-lg font-semibold text-white">Quests</h3>
