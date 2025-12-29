@@ -75,7 +75,7 @@ export default function ActionModal({
         </div>
 
         <div 
-          className="flex-1 overflow-y-auto px-4 py-4"
+          className="flex-1 overflow-y-auto px-4 py-4 min-h-[240px]"
           onClick={handleContentClick}
         >
           {isStringContent ? (

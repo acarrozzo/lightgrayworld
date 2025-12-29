@@ -15,6 +15,7 @@ import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
 import MapModal from './MapModal'
 import ActionModal from './ActionModal'
+import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
@@ -76,31 +77,46 @@ const renderDirectoryContent = (
       <div className="bg-amber-900/30 border border-amber-800/50 rounded-lg p-6 mb-4">
         {/* Heading */}
         {heading && heading.parts ? (
-          <h3 className="text-2xl font-bold mb-6">
-            <span className="text-white">{heading.parts[0]}</span>
-            {' '}
-            <span className="text-yellow-400">{heading.parts[1]}</span>
-          </h3>
+          <>
+            <h3 className="text-2xl font-bold mb-2">
+              <span className="text-white">{heading.parts[0]}</span>
+              {' '}
+              <span className="text-yellow-400">{heading.parts[1]}</span>
+            </h3>
+            {heading.description && (
+              <p className="text-sm text-amber-200/70 mb-6 leading-relaxed">{heading.description}</p>
+            )}
+          </>
         ) : (
-          <h3 className="text-2xl font-bold text-white mb-6">{heading?.text || 'Directory'}</h3>
+          <>
+            <h3 className="text-2xl font-bold text-white mb-2">{heading?.text || 'Directory'}</h3>
+            {heading?.description && (
+              <p className="text-sm text-amber-200/70 mb-6 leading-relaxed">{heading.description}</p>
+            )}
+          </>
         )}
 
         {/* Location Buttons */}
-        <div className="space-y-3 mb-4">
+        <div className="space-y-4 mb-4">
           {locations.map((location: any, index: number) => {
             const button = buttons.find(b => b.direction === location.direction)
             return (
-              <div key={index} className="flex items-center justify-between gap-4">
-                <span className="text-white text-lg">{location.name}</span>
+              <div key={index} className="flex items-start gap-4">
                 {button && (
                   <button
                     type="button"
                     data-direction={button.direction}
-                    className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-900/30"
+                    className="w-28 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-medium text-[0.97rem] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-900/30 flex-shrink-0"
                   >
                     {button.label}
                   </button>
                 )}
+                <div className="flex-1 space-y-1">
+                  <span className="text-white text-lg">{location.name}</span>
+                  {location.description && (
+                    <p className="text-sm text-amber-200/70 leading-relaxed">{location.description}</p>
+                  )}
+                </div>
               </div>
             )
           })}
@@ -113,6 +129,9 @@ const renderDirectoryContent = (
         {questMessage && (
           <>
             <p className="text-white text-base leading-relaxed">{questMessage}</p>
+            {modalContent.questMessageDescription && (
+              <p className="text-sm text-amber-200/70 mt-2 leading-relaxed">{modalContent.questMessageDescription}</p>
+            )}
             <div className="border-t border-amber-700/50 my-4"></div>
           </>
         )}
@@ -765,9 +784,29 @@ export default function GameInterface() {
         let modalTitle = payload?.action || 'Action'
         
         if (modalContent && typeof modalContent === 'object' && !Array.isArray(modalContent)) {
-          // Structured content - render directory
-          modalTitle = modalContent.title || modalTitle
-          renderedContent = renderDirectoryContent(modalContent, buttons || [])
+          // Check if it's an icon type modal
+          if (modalContent.type === 'icon' && modalContent.icon) {
+            renderedContent = (
+              <div className="flex flex-col items-center justify-center gap-6 py-8">
+                <Icon 
+                  name={modalContent.icon} 
+                  size={200} 
+                  className="text-yellow-400"
+                />
+                <p className="text-gray-200 text-center text-base leading-relaxed max-w-md">
+                  {modalContent.message || messageText}
+                </p>
+              </div>
+            )
+          } else if (modalContent.heading || modalContent.locations) {
+            // Structured content - render directory
+            modalTitle = modalContent.title || modalTitle
+            renderedContent = renderDirectoryContent(modalContent, buttons || [])
+          } else {
+            // Other structured content
+            modalTitle = modalContent.title || modalTitle
+            renderedContent = modalContent.message || messageText
+          }
         } else if (typeof modalContent === 'string') {
           // Simple string content
           renderedContent = modalContent

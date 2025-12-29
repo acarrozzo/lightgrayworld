@@ -47,14 +47,35 @@ const ROOM_ACTIONS = {
       message: "You read the sign. It says: 'Welcome to Grassy Field Crossroads!'",
       modalContent: {
         title: 'You read the sign',
-        heading: { text: 'Grassy Field Directory', parts: ['Grassy Field', 'Directory'] },
+        heading: { 
+          text: 'Grassy Field Directory', 
+          parts: ['Grassy Field', 'Directory'],
+          description: 'Welcome! This directory shows nearby locations you can explore. Click the direction buttons to travel there instantly.'
+        },
         locations: [
-          { name: 'Healing Waterfall', direction: 'northwest' },
-          { name: 'Shaman Tent', direction: 'northeast' },
-          { name: 'Beach', direction: 'west' },
-          { name: 'Wood Cabin', direction: 'southwest' }
+          { 
+            name: 'Healing Waterfall', 
+            direction: 'northwest',
+            description: 'Rest here to restore your health. Essential for survival when you take damage in combat!'
+          },
+          { 
+            name: 'Shaman Tent', 
+            direction: 'northeast',
+            description: 'A mystical place where you can learn new abilities and purchase magical items to aid your journey.'
+          },
+          { 
+            name: 'Beach', 
+            direction: 'west',
+            description: 'A peaceful coastal area where you can gather resources and find items washed ashore.'
+          },
+          { 
+            name: 'Wood Cabin', 
+            direction: 'southwest',
+            description: 'The Old Man lives here. He\'s your first quest giver and will help you get started on your adventure.'
+          }
         ],
-        questMessage: "Visit the OLD MAN at the cabin to start your first quest."
+        questMessage: "Visit the OLD MAN at the cabin to start your first quest.",
+        questMessageDescription: 'The Old Man will give you your first quest and help you learn the basics of the game. This is where your adventure truly begins!'
       },
       buttons: [
         { label: 'northwest', direction: 'northwest' },
@@ -63,7 +84,15 @@ const ROOM_ACTIONS = {
         { label: 'southwest', direction: 'southwest' }
       ]
     },
-    'open gold chest': 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
+    'open gold chest': {
+      showModal: true,
+      message: 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
+      modalContent: {
+        type: 'icon',
+        icon: 'chest',
+        message: 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
+      },
+    },
   },
   '002': {
     'pick redberry': {
