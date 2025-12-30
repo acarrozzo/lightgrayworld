@@ -278,10 +278,6 @@ class RoomState {
     return {
       success: true,
       action: 'chat',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('chat', 'success', 'Message sent', { message }),
-      },
       broadcastEvents: [
         {
           event: 'chat-message',
