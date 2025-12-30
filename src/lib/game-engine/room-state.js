@@ -386,7 +386,7 @@ class RoomState {
 
     const itemName = item.template.name
     const itemDescription = item.template.description || 'You see nothing special about it.'
-    const message = `You examine ${itemName}. ${itemDescription}`
+    const message = `You examine the ${itemName}. ${itemDescription}`
 
     return {
       success: true,
@@ -425,7 +425,7 @@ class RoomState {
 
     const itemName = item.template.name
     const itemDescription = item.template.description || 'You see nothing special about it.'
-    const message = `You examine ${itemName}. ${itemDescription}`
+    const message = `You examine the${itemName}. ${itemDescription}`
 
     return {
       success: true,
