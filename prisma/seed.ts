@@ -511,6 +511,20 @@ async function main() {
     },
   })
 
+  // Seed flower in room 004 (idempotent)
+  await prisma.roomItem.deleteMany({
+    where: { roomId: '004', templateId: 'flower_001' },
+  })
+
+  await prisma.roomItem.create({
+    data: {
+      roomId: '004',
+      templateId: 'flower_001',
+      quantity: 1,
+      autoRespawn: true,
+    },
+  })
+
   // Create a test user
   const hashedPassword = await bcrypt.hash('password123', 12)
   

@@ -141,21 +141,7 @@ const ROOM_ACTIONS = {
     'attack dummy': 'You attack the training dummy. Your weapon strikes true!',
     'cook meat': 'You cook the meat over the fire. It smells delicious!',
   },
-  '004': {
-    'pick flower': {
-      effects: [
-        { type: 'grantPersonalItemOnce', itemSlug: 'flower', quantity: 1 },
-      ],
-      generateMessage: (effects) => {
-        const grantResult = effects?.[0]
-        if (grantResult?.success) {
-          return 'You pick a beautiful flower and tuck it safely away.'
-        }
-        return 'You already have a flower. One is enough for now.'
-      },
-      determineOutcome: ({ success }) => (success ? 'success' : 'info'),
-    },
-  },
+  '004': {},
   '005': {
     'pick blueberry': {
       maxPerTick: 3,
