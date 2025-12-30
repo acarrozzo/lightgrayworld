@@ -6,6 +6,7 @@ import { getRoomActions } from '@/lib/room-actions'
 import { DEFAULT_AVATAR_COLOR, DEFAULT_PLAYER_AVATAR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import ItemDropdownButton from './ItemDropdownButton'
+import Icon from './Icon'
 
 interface RoomDisplayProps {
   room: any
@@ -330,12 +331,13 @@ export default function RoomDisplay({
             <button
               onClick={() => handleAction(berryAction.action)}
               disabled={isPerformingAction === berryAction.action}
-              className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 ${
+              className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 flex items-center gap-2 ${
                 isPerformingAction === berryAction.action
                   ? 'bg-gray-700 cursor-wait'
                   : berryAction.className || 'bg-indigo-600 hover:bg-indigo-500'
               }`}
             >
+              {berryAction.icon && <Icon name={berryAction.icon} size={16} color="current" />}
               {berryAction.label}
             </button>
           )}
@@ -372,12 +374,13 @@ export default function RoomDisplay({
             key={actionItem.action}
             onClick={() => handleAction(actionItem.action)}
             disabled={isPerformingAction === actionItem.action}
-            className={`px-3 py-2 rounded-md text-sm text-white transition-colors ${
+            className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex items-center gap-2 ${
               isPerformingAction === actionItem.action
                 ? 'bg-gray-700 cursor-wait'
                 : actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
             }`}
           >
+            {actionItem.icon && <Icon name={actionItem.icon} size={16} color="current" />}
             {actionItem.label}
           </button>
         ))}
