@@ -29,7 +29,7 @@ export interface SocketEvents {
 
   // Server to client events
   'player-joined': (player: PlayerInfo) => void
-  'player-left': (player: { id: string; username: string; exitDirection?: string | null }) => void
+  'player-left': (player: { id: string; username: string; exitDirection?: string | null; isTeleport?: boolean }) => void
   'chat-message': (message: ChatMessage) => void
   'room-chat-message': (message: ChatMessage) => void
   'action-completed': (actionData: ActionData) => void
@@ -52,6 +52,7 @@ export interface PlayerInfo {
   currentRoom: string
   isActive: boolean
   entryDirection?: string | null
+  isTeleport?: boolean
 }
 
 export interface ChatMessage {

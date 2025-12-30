@@ -96,7 +96,7 @@ async function recordWorldFeedEventSafe({ userId, username, eventType }) {
 
 // Create room transition function
 function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) {
-  return async ({ player, fromRoom, toRoom, exitDirection, entryDirection }) => {
+  return async ({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport = false }) => {
     if (!toRoom || fromRoom === toRoom) {
       return
     }
@@ -108,6 +108,7 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) 
         id: player.id,
         username: player.username,
         exitDirection: exitDirection || null,
+        isTeleport: isTeleport || false,
       })
     }
 
@@ -128,6 +129,7 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) 
       currentRoom: toRoom,
       isActive: true,
       entryDirection: entryDirection || null,
+      isTeleport: isTeleport || false,
     })
 
     player.currentRoom = toRoom
@@ -346,6 +348,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
             currentRoom: playerData.currentRoom,
             isActive: true,
             entryDirection: null, // No direction info on initial login
+            isTeleport: false, // Login is not a teleport
           })
         }
 
@@ -471,7 +474,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         console.log(`[Socket] processUserAction result:`, result)
 
         console.log(`[Socket] Transitioning player room`)
-        await transitionPlayerRoom({ player, fromRoom, toRoom, exitDirection, entryDirection })
+        const isTeleport = data?.isTeleport || false
+        await transitionPlayerRoom({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
 
         // Save entry/exit messages to database
         try {
@@ -786,6 +790,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
           id: player.id,
           username: player.username,
           exitDirection: null, // No direction info on disconnect
+          isTeleport: false, // Disconnect is not a teleport
         })
 
         if (roomPlayers.has(player.currentRoom)) {

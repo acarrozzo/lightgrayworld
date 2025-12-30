@@ -514,7 +514,7 @@ export default function GameInterface() {
           const travelDirection = findTravelDirection(previousRoom, normalizedRoom.roomId)
           const travelMessage = travelDirection
             ? `You travel ${travelDirection} to the ${normalizedRoom.name}`
-            : `You travel to ${normalizedRoom.name}`
+            : `You teleport to ${normalizedRoom.name}`
 
           console.log('[GameInterface] Travel result emitted locally skipped in favor of server payload')
         }
@@ -1045,7 +1045,7 @@ export default function GameInterface() {
       const directionPhrase = formatDirectionPhrase(entryDirection, 'enter')
       const message = entryDirection
         ? `${playerInfo.username} entered from ${directionPhrase}`
-        : `${playerInfo.username} entered the room`
+        : `${playerInfo.username} teleported in`
 
       appendWorldFeed({
         type: 'room',
@@ -1073,7 +1073,7 @@ export default function GameInterface() {
       const directionPhrase = formatDirectionPhrase(exitDirection, 'exit')
       const message = exitDirection
         ? `${playerData.username} exited to ${directionPhrase}`
-        : `${playerData.username} left the room`
+        : `${playerData.username} teleported away`
 
       appendWorldFeed({
         type: 'room',

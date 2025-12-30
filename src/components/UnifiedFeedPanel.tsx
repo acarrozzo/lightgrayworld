@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, Settings as SettingsIcon, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, Settings as SettingsIcon, Zap, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import Icon from './Icon'
 
@@ -522,7 +522,7 @@ export default function UnifiedFeedPanel({
 
       <div className="worldFeedControls px-4 py-2 border-b border-gray-800/60 bg-gray-900/70 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          {(['all', 'action', 'world', 'room'] as FilterType[]).map((key) => {
+          {(['all', 'world', 'room', 'action'] as FilterType[]).map((key) => {
             const isActive = filter === key
             const labelMap: Record<FilterType, string> = {
               all: 'All',
@@ -667,7 +667,7 @@ export default function UnifiedFeedPanel({
               directionForIcon = REVERSE_DIRECTION[entry.direction] || entry.direction
             }
             const directionIcon = isRoomTravel && directionForIcon ? DIRECTION_ICONS[directionForIcon] : null
-            const displayIcon = directionIcon || style.icon
+            const displayIcon = directionIcon || (isRoomTravel ? Zap : style.icon)
 
             return (
               <div key={`${entry.id}-${index}`} className={`relative ${rowPadding}`}>

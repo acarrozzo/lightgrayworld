@@ -204,7 +204,7 @@ class RoomState {
     const toRoomName = action.data?.toRoomName || toRoom
     const roomData = action.data?.roomData
     const direction = action.data?.direction
-    const message = direction ? `You travel ${direction}` : `You travel to ${toRoomName}`
+    const message = direction ? `You travel ${direction}` : `You teleport to ${toRoomName}`
 
     return {
       success: true,
