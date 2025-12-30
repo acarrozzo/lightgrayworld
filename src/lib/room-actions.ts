@@ -8,12 +8,12 @@ export interface RoomAction {
 export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '000': [
     { action: 'read sign', label: 'Read Sign', icon: '', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
-    { action: 'examine pillar', label: 'Examine Pillar', icon: '', className: 'bg-blue-500/70 hover:bg-blue-600' },
-    { action: 'teleport to grassy field', label: 'Press Button (Teleports to Grassy Field)', icon: '', className: 'bg-green-500/70 hover:bg-green-600' },
+    { action: 'examine pillar', label: 'Examine Pillar', icon: '', className: 'bg-blue-500/70 hover:bg-blue-500' },
+    { action: 'teleport to grassy field', label: 'Press Button (Teleports to Grassy Field)', icon: '', className: 'bg-green-500/70 hover:bg-green-500/90' },
   ],
   '001': [
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
-    { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'bg-orange-500/90 hover:bg-orange-500' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+    { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'bg-amber-500/80 hover:bg-amber-500' },
   ],
   '002': [
     { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'bg-red-600 hover:bg-red-700' },
@@ -29,7 +29,6 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '005': [
     { action: 'pick blueberry', label: 'Pick Blueberry', icon: 'blueberry', className: 'bg-blue-600 hover:bg-blue-700' },
-    { action: 'ex tent', label: 'Examine Tent', icon: 'tent', className: 'bg-purple-600 hover:bg-purple-700' },
   ],
   '006': [
     { action: 'view shop', label: 'View Shop', icon: 'shop', className: 'bg-gray-600 hover:bg-gray-700' },

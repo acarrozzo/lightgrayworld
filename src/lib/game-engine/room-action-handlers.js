@@ -48,18 +48,19 @@ const ROOM_ACTIONS = {
       modalContent: {
         title: 'You read the sign attached to the pillar',
         type: 'icon',
-        icon: 'sign-metal',
-        iconColor: 'gray-500',
-        message: 'Welcome to Room Zero, the first room ever made. It is unlike the others. I allow you to stand here, for now.',
+        icon: 'sign-metal2',
+        iconColor: 'gray-500/50',
+        message: 'Welcome to Room Zero, the first room ever made. It is unlike the others. I allow you to access here, for now.',
       },
     },
     'examine pillar': {
       showModal: true,
       message: 'You examine the glowing pillar at the center of the room.',
       modalContent: {
+        title: 'You examine the glowing pillar at the center of the room',
         type: 'icon',
         icon: 'pillar2',
-        iconColor: 'blue-300/30',
+        iconColor: 'blue-300/50',
         message: 'The bright blue light emanating from the pillar seems to be a button. Press it to teleport to the grassy field.',
       },
     },
@@ -73,23 +74,23 @@ const ROOM_ACTIONS = {
         heading: { 
           text: 'Grassy Field Directory', 
           parts: ['Grassy Field', 'Directory'],
-          description: 'Welcome! This directory shows nearby locations you can explore. Click the direction buttons to travel there instantly.'
+          description: 'Welcome! This directory shows nearby locations you can explore. Click the direction buttons to travel there.'
         },
         locations: [
           { 
             name: 'Healing Waterfall', 
             direction: 'northwest',
-            description: 'Rest here to restore your health. Essential for survival when you take damage in combat!'
+            description: 'Rest here to restore your health and mana.'
           },
           { 
             name: 'Shaman Tent', 
             direction: 'northeast',
-            description: 'A mystical place where you can learn new abilities and purchase magical items to aid your journey.'
+            description: 'A mystical place where you can learn new abilities and learn a thing or two.'
           },
           { 
             name: 'Beach', 
             direction: 'west',
-            description: 'A peaceful coastal area where you can gather resources and find items washed ashore.'
+            description: 'A peaceful coastal area where you can relax. (Watch out for sand crabs!)'
           },
           { 
             name: 'Wood Cabin', 
@@ -98,7 +99,7 @@ const ROOM_ACTIONS = {
           }
         ],
         questMessage: "Visit the OLD MAN at the cabin to start your first quest.",
-        questMessageDescription: 'The Old Man will give you your first quest and help you learn the basics of the game. This is where your adventure truly begins!'
+        questMessageDescription: 'The Old Man will give you your first quest and help you learn the basics of the game.'
       },
       buttons: [
         { label: 'northwest', direction: 'northwest' },
@@ -111,8 +112,10 @@ const ROOM_ACTIONS = {
       showModal: true,
       message: 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
       modalContent: {
+        title: 'You try to open the gold chest',
         type: 'icon',
         icon: 'chest',
+        iconColor: 'amber-500/90',
         message: 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
       },
     },

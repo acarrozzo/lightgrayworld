@@ -909,6 +909,7 @@ export default function GameInterface() {
                 </p>
               </div>
             )
+            modalTitle = modalContent.title || modalTitle
           } else if (modalContent.heading || modalContent.locations) {
             // Structured content - render directory
             modalTitle = modalContent.title || modalTitle
@@ -1421,7 +1422,7 @@ export default function GameInterface() {
                         handleAction('attack')
                       }}
                       disabled={isLoadingRoom}
-                      className="px-3 py-1 bg-red-500/70 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                      className="px-3 py-1 bg-red-500/70 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
                     >
                       {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
                     </button>
@@ -1431,7 +1432,7 @@ export default function GameInterface() {
                         handleAction('search')
                       }}
                       disabled={isLoadingRoom}
-                      className="px-3 py-1 bg-amber-500/70 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                      className="px-3 py-1 bg-amber-500/70 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
                     >
                       {isLoadingRoom && action === 'search' ? '...' : 'Search'}
                     </button>
@@ -1441,7 +1442,7 @@ export default function GameInterface() {
                         handleAction('rest')
                       }}
                       disabled={isLoadingRoom}
-                      className="px-3 py-1 bg-emerald-600/70 hover:bg-emerald-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                      className="px-3 py-1 bg-green-500/70 hover:bg-green-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
                     >
                       {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
                     </button>
@@ -1451,7 +1452,7 @@ export default function GameInterface() {
                         handleAction('look')
                       }}
                       disabled={isLoadingRoom}
-                      className="px-3 py-1 bg-blue-600/70 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+                      className="px-3 py-1 bg-blue-500/70 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
                     >
                       {isLoadingRoom && action === 'look' ? '...' : 'Look'}
                     </button>
