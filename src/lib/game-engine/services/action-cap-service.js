@@ -95,6 +95,75 @@ async function checkAndIncrementCap(playerId, roomId, actionKey, maxCap, current
 }
 
 /**
+ * Check and increment the cap by a bulk quantity for a player/action within a room for the current tick.
+ * Increments only when allowed and quantity doesn't exceed remaining cap.
+ */
+async function checkAndIncrementCapBulk(playerId, roomId, actionKey, maxCap, currentTickNumber, quantity) {
+  if (!playerId || !roomId || !actionKey) {
+    throw new Error('checkAndIncrementCapBulk requires playerId, roomId, and actionKey')
+  }
+  if (typeof maxCap !== 'number' || maxCap <= 0) {
+    throw new Error('checkAndIncrementCapBulk requires a positive maxCap')
+  }
+  if (typeof quantity !== 'number' || quantity <= 0) {
+    throw new Error('checkAndIncrementCapBulk requires a positive quantity')
+  }
+
+  console.log(`[ActionCap] checkAndIncrementCapBulk called: player=${playerId}, room=${roomId}, action=${actionKey}, maxCap=${maxCap}, currentTick=${currentTickNumber}, quantity=${quantity}`)
+
+  const record = await getOrCreateActionCap(playerId, roomId, actionKey)
+  console.log(`[ActionCap] Fetched record:`, record)
+
+  const normalized = applyLazyReset(record, currentTickNumber)
+  console.log(`[ActionCap] After lazy reset:`, normalized)
+
+  const remaining = Math.max(0, maxCap - normalized.usedCount)
+
+  if (quantity > remaining) {
+    console.log(`[ActionCap] Quantity exceeds remaining: quantity=${quantity} > remaining=${remaining}`)
+    return {
+      allowed: false,
+      remaining: 0,
+      usedCount: normalized.usedCount,
+      lastTickNumber: normalized.lastTickNumber,
+    }
+  }
+
+  if (normalized.usedCount >= maxCap) {
+    console.log(`[ActionCap] Cap reached: usedCount=${normalized.usedCount} >= maxCap=${maxCap}`)
+    return {
+      allowed: false,
+      remaining: 0,
+      usedCount: normalized.usedCount,
+      lastTickNumber: normalized.lastTickNumber,
+    }
+  }
+
+  const updated = await prisma.actionCap.update({
+    where: {
+      playerId_roomId_actionKey: { playerId, roomId, actionKey },
+    },
+    data: {
+      usedCount: normalized.usedCount + quantity,
+      lastTickNumber: currentTickNumber,
+    },
+  })
+
+  console.log(`[ActionCap] Updated record:`, updated)
+
+  const newRemaining = Math.max(0, maxCap - updated.usedCount)
+
+  console.log(`[ActionCap] Allowed: usedCount=${updated.usedCount}, remaining=${newRemaining}`)
+
+  return {
+    allowed: true,
+    remaining: newRemaining,
+    usedCount: updated.usedCount,
+    lastTickNumber: updated.lastTickNumber,
+  }
+}
+
+/**
  * Read-only cap status for UI (uses lazy reset semantics).
  */
 async function getRemainingCap(playerId, roomId, actionKey, maxCap, currentTickNumber) {
@@ -113,6 +182,7 @@ async function getRemainingCap(playerId, roomId, actionKey, maxCap, currentTickN
 
 module.exports = {
   checkAndIncrementCap,
+  checkAndIncrementCapBulk,
   getRemainingCap,
 }
 

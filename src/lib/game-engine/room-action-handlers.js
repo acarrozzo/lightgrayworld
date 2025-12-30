@@ -4,7 +4,7 @@
  */
 const { grantPersonalItemOnce } = require('./effects')
 const { grantItemOnce } = require('./services/inventory-service')
-const { checkAndIncrementCap } = require('./services/action-cap-service')
+const { checkAndIncrementCap, checkAndIncrementCapBulk, getRemainingCap } = require('./services/action-cap-service')
 
 /**
  * Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
@@ -131,7 +131,11 @@ const ROOM_ACTIONS = {
           const timeFormatted = formatTimeRemaining(secondsRemaining)
           return `No more redberries right now. The bushes will regrow in ${timeFormatted}.`
         }
-        return `You pick a ripe redberry. (${capInfo.remaining} picks remaining this tick)`
+        const quantity = capInfo?.quantity ?? 1
+        if (quantity === 1) {
+          return `You pick a ripe redberry. (${capInfo.remaining} picks remaining this tick)`
+        }
+        return `You pick ${quantity} ripe redberries. (${capInfo.remaining} picks remaining this tick)`
       },
       determineOutcome: ({ success }) => (success ? 'success' : 'info'),
     },
@@ -153,7 +157,11 @@ const ROOM_ACTIONS = {
           const timeFormatted = formatTimeRemaining(secondsRemaining)
           return `No more blueberries right now. The bushes will regrow in ${timeFormatted}.`
         }
-        return `You pick a ripe blueberry. (${capInfo.remaining} picks remaining this tick)`
+        const quantity = capInfo?.quantity ?? 1
+        if (quantity === 1) {
+          return `You pick a ripe blueberry. (${capInfo.remaining} picks remaining this tick)`
+        }
+        return `You pick ${quantity} ripe blueberries. (${capInfo.remaining} picks remaining this tick)`
       },
       determineOutcome: ({ success }) => (success ? 'success' : 'info'),
     },
@@ -292,6 +300,10 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
 
   roomState.touchActivity()
 
+  // Check if this is a berry action (pick redberry or pick blueberry)
+  const isBerryAction = actionName === 'pick redberry' || actionName === 'pick blueberry'
+  let berryQuantity = 0
+
   let capResult = null
 
   // Handle capped actions before running effects
@@ -300,55 +312,160 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
       return createErrorResult(actionName, 'World tick unavailable. Please try again.')
     }
 
-    capResult = await checkAndIncrementCap(
-      playerId,
-      roomState.roomId,
-      actionName,
-      definition.maxPerTick,
-      currentTickNumber
-    )
+    // For berry actions, get remaining cap first and use bulk increment
+    if (isBerryAction) {
+      const remaining = await getRemainingCap(
+        playerId,
+        roomState.roomId,
+        actionName,
+        definition.maxPerTick,
+        currentTickNumber
+      )
 
-    const secondsUntilReset =
-      typeof nextTickAt === 'number'
-        ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
-        : null
+      if (remaining <= 0) {
+        const secondsUntilReset =
+          typeof nextTickAt === 'number'
+            ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
+            : null
 
-    if (!capResult.allowed) {
-      const message = typeof definition.generateMessage === 'function'
-        ? definition.generateMessage([{ success: false }], {
-            remaining: 0,
-            secondsUntilReset,
-          })
-        : 'You cannot perform this action right now.'
+        const message = typeof definition.generateMessage === 'function'
+          ? definition.generateMessage([{ success: false }], {
+              remaining: 0,
+              secondsUntilReset,
+            })
+          : 'You cannot perform this action right now.'
 
-      const capExceededOutcome =
-        typeof definition.determineOutcome === 'function'
-          ? definition.determineOutcome({
-              success: false,
-              effectResults: [{ success: false }],
-              capInfo: { remaining: 0, secondsUntilReset },
-            }) || 'failure'
-          : 'failure'
+        const capExceededOutcome =
+          typeof definition.determineOutcome === 'function'
+            ? definition.determineOutcome({
+                success: false,
+                effectResults: [{ success: false }],
+                capInfo: { remaining: 0, secondsUntilReset },
+              }) || 'failure'
+            : 'failure'
 
-      return {
-        success: false,
-        action: actionName,
-        message,
-        playerEvent: {
-          event: 'action:feedback',
-          payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
-            roomId: roomState.roomId,
-            remaining: 0,
-            secondsUntilReset,
-          }),
-        },
+        return {
+          success: false,
+          action: actionName,
+          message,
+          playerEvent: {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
+              roomId: roomState.roomId,
+              remaining: 0,
+              secondsUntilReset,
+            }),
+          },
+        }
+      }
+
+      // Use bulk increment to increment by the full remaining amount
+      berryQuantity = remaining
+      capResult = await checkAndIncrementCapBulk(
+        playerId,
+        roomState.roomId,
+        actionName,
+        definition.maxPerTick,
+        currentTickNumber,
+        remaining
+      )
+
+      if (!capResult.allowed) {
+        const secondsUntilReset =
+          typeof nextTickAt === 'number'
+            ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
+            : null
+
+        const message = typeof definition.generateMessage === 'function'
+          ? definition.generateMessage([{ success: false }], {
+              remaining: 0,
+              secondsUntilReset,
+            })
+          : 'You cannot perform this action right now.'
+
+        const capExceededOutcome =
+          typeof definition.determineOutcome === 'function'
+            ? definition.determineOutcome({
+                success: false,
+                effectResults: [{ success: false }],
+                capInfo: { remaining: 0, secondsUntilReset },
+              }) || 'failure'
+            : 'failure'
+
+        return {
+          success: false,
+          action: actionName,
+          message,
+          playerEvent: {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
+              roomId: roomState.roomId,
+              remaining: 0,
+              secondsUntilReset,
+            }),
+          },
+        }
+      }
+    } else {
+      // For non-berry actions, use the standard single increment
+      capResult = await checkAndIncrementCap(
+        playerId,
+        roomState.roomId,
+        actionName,
+        definition.maxPerTick,
+        currentTickNumber
+      )
+
+      const secondsUntilReset =
+        typeof nextTickAt === 'number'
+          ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
+          : null
+
+      if (!capResult.allowed) {
+        const message = typeof definition.generateMessage === 'function'
+          ? definition.generateMessage([{ success: false }], {
+              remaining: 0,
+              secondsUntilReset,
+            })
+          : 'You cannot perform this action right now.'
+
+        const capExceededOutcome =
+          typeof definition.determineOutcome === 'function'
+            ? definition.determineOutcome({
+                success: false,
+                effectResults: [{ success: false }],
+                capInfo: { remaining: 0, secondsUntilReset },
+              }) || 'failure'
+            : 'failure'
+
+        return {
+          success: false,
+          action: actionName,
+          message,
+          playerEvent: {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
+              roomId: roomState.roomId,
+              remaining: 0,
+              secondsUntilReset,
+            }),
+          },
+        }
       }
     }
 
     roomState.touchActivity()
   }
 
-  const effects = Array.isArray(definition.effects) ? definition.effects : []
+  // For berry actions, modify the effects to use the full quantity
+  let effects = Array.isArray(definition.effects) ? definition.effects : []
+  if (isBerryAction && berryQuantity > 0 && effects.length > 0) {
+    effects = effects.map(effect => ({
+      ...effect,
+      quantity: berryQuantity
+    }))
+  }
+
   const { results: effectResults, inventory } = await executeEffects(effects, playerId)
 
   const capInfo = definition.isCapped
@@ -360,6 +477,7 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
           typeof nextTickAt === 'number'
             ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
             : null,
+        ...(isBerryAction && berryQuantity > 0 ? { quantity: berryQuantity } : {}),
       }
     : null
 

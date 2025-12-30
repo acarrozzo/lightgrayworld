@@ -335,7 +335,7 @@ export default function RoomDisplay({
                 isPerformingAction === berryAction.action
                   ? 'bg-gray-700 cursor-wait'
                   : berryAction.className || 'bg-indigo-600 hover:bg-indigo-500'
-              }`}
+              } ${remainingCap === 0 ? 'opacity-50' : ''}`}
             >
               {berryAction.icon && <Icon name={berryAction.icon} size={16} color="current" />}
               {berryAction.label}
