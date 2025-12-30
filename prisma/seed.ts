@@ -435,6 +435,7 @@ async function main() {
       type: ItemType.MISC,
       maxStack: 1,
       maxPerPlayer: 1,
+      value: 10,
     },
     {
       id: 'redberry_001',
@@ -444,6 +445,7 @@ async function main() {
       type: ItemType.CONSUMABLE,
       maxStack: 99999,
       maxPerPlayer: null,
+      value: 10,
     },
     {
       id: 'blueberry_001',
@@ -453,6 +455,7 @@ async function main() {
       type: ItemType.CONSUMABLE,
       maxStack: 99999,
       maxPerPlayer: null,
+      value: 10,
     },
     {
       id: 'welcome-book',
@@ -462,6 +465,7 @@ async function main() {
       type: ItemType.MISC,
       maxStack: 99999,
       maxPerPlayer: null,
+      value: 10,
     },
     {
       id: 'shovel_001',
@@ -471,6 +475,7 @@ async function main() {
       type: ItemType.MISC,
       maxStack: 1,
       maxPerPlayer: 1,
+      value: 10,
     },
   ]
 

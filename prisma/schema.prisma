@@ -327,6 +327,7 @@ model ItemTemplate {
   maxStack     Int          @default(99)
   maxPerPlayer Int?
   weight       Float?
+  value        Int          @default(10)
   metadata     Json?
   PlayerItem   PlayerItem[]
   RoomItem     RoomItem[]

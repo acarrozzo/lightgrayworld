@@ -4,6 +4,7 @@ export interface RoomItemTemplate {
   name: string
   description: string
   type: string
+  value: number
 }
 
 export interface RoomItemView {

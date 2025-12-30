@@ -20,6 +20,7 @@ const fallbackTemplate: RoomItemTemplate = {
   name: 'Unknown Item',
   description: '',
   type: 'generic',
+  value: 10,
 }
 
 const normalizeTemplate = (item: RawRoomItem): RoomItemTemplate | null => {

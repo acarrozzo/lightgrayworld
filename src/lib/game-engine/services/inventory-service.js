@@ -16,6 +16,7 @@ async function getPlayerInventory(playerId) {
           type: true,
           maxStack: true,
           maxPerPlayer: true,
+          value: true,
         },
       },
     },
