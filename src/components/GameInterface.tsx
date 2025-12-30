@@ -13,6 +13,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsModal from './SettingsModal'
 import MapModal, { type MapOption } from './MapModal'
+import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
 import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
@@ -81,6 +82,13 @@ const getUnlockedMaps = (player: Player | null, currentRoomId: string | undefine
   // Everyone can view all maps - no restrictions
   return MAP_CONFIG
 }
+
+// Teleport locations configuration
+const TELEPORT_LOCATIONS: TeleportLocation[] = [
+  { roomId: '999', name: 'Lobby', description: 'The main lobby area' },
+  { roomId: '001', name: 'Grassy Field', description: 'Grassy Field Crossroads' },
+  { roomId: '000', name: 'Room Zero', description: 'The starting room' },
+]
 
 // Helper function to render directory content for sign modals
 const renderDirectoryContent = (
@@ -201,6 +209,7 @@ export default function GameInterface() {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
+  const [isTeleportModalOpen, setIsTeleportModalOpen] = useState(false)
   const [mapInfo, setMapInfo] = useState<{ src: string; title: string }>({ src: '', title: '' })
   const [currentMapId, setCurrentMapId] = useState<string>('grassy-field')
   const [actionModal, setActionModal] = useState<{ 
@@ -1248,6 +1257,14 @@ export default function GameInterface() {
     }
   }, [])
 
+  const handleOpenTeleport = useCallback(() => {
+    setIsTeleportModalOpen(true)
+  }, [])
+
+  const handleTeleport = useCallback((roomId: string) => {
+    handleAction({ type: 'teleport', data: { toRoomId: roomId } })
+  }, [handleAction])
+
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
   }
@@ -1278,6 +1295,13 @@ export default function GameInterface() {
         availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
         currentMapId={currentMapId}
         onMapChange={handleMapChange}
+      />
+      <TeleportModal
+        isOpen={isTeleportModalOpen}
+        onClose={() => setIsTeleportModalOpen(false)}
+        locations={TELEPORT_LOCATIONS}
+        onTeleport={handleTeleport}
+        currentRoomId={currentRoom?.roomId}
       />
       <ActionModal
         isOpen={actionModal.isOpen}
@@ -1342,9 +1366,44 @@ export default function GameInterface() {
 
               {/* D-pad */}
               <div className="p-4 flex-shrink-0 relative flex flex-col gap-4 border-t border-gray-800/50">
+                {/* Map and Teleport buttons - left edge */}
+                <div className="absolute left-4 top-4 flex flex-row md:flex-col gap-2 z-10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const isRoomZero = currentRoom?.roomId === '000'
+                      const isLobby = currentRoom?.roomId === '999'
+                      const mapBackground = isRoomZero
+                        ? '/img/lightgray_map_roomzero.jpg'
+                        : isLobby
+                        ? '/img/lightgray_map_the_lobby.jpg'
+                        : '/img/lightgray_map_grassyfield_main.jpg'
+                      const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : 'Grassy Field'
+                      handleOpenMap(mapBackground, mapTitle)
+                    }}
+                    className="px-3 py-1.5 border border-green-600/40 hover:border-green-500/60 bg-transparent hover:bg-green-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-green-400/70 hover:text-green-300 text-sm font-medium whitespace-nowrap"
+                    title="View Map"
+                    aria-label="View Map"
+                  >
+                    <Icon name="world" size={16} />
+                    <span className="hidden md:inline">Map</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenTeleport}
+                    className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
+                    title="Open Teleport"
+                    aria-label="Open Teleport"
+                  >
+                    <span className="block md:hidden">
+                      <Icon name="ironskin" size={16} />
+                    </span>
+                    <span className="hidden md:inline">Teleport</span>
+                  </button>
+                </div>
                 {/* Compass and Action Buttons */}
                 <div className="relative flex items-center justify-center gap-4">
-                  <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} />
+                  <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} onOpenTeleport={handleOpenTeleport} />
                   
                   {/* Action Buttons - stacked vertically */}
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2">

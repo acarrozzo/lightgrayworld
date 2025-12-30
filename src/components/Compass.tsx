@@ -3,11 +3,13 @@
 import React, { useState, useRef } from 'react'
 import { useGameStore } from '@/lib/game-state'
 import { ArrowBigUp, ArrowBigUpDash } from 'lucide-react'
+import Icon from './Icon'
 
 interface CompassProps {
   room: any
   onAction?: (action: string) => void
   onOpenMap?: (src: string, title: string) => void
+  onOpenTeleport?: () => void
 }
 
 interface Direction {
@@ -179,7 +181,7 @@ const getDirectionColorClasses = (directionKey: string, directionColors: any, is
   return 'bg-green-600/90 hover:bg-green-500 border-gray-700/50 hover:border-gray-500/50'
 }
 
-export default function Compass({ room, onAction, onOpenMap }: CompassProps) {
+export default function Compass({ room, onAction, onOpenMap, onOpenTeleport }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
   const [currentPosition, setCurrentPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
   const [targetPosition, setTargetPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
