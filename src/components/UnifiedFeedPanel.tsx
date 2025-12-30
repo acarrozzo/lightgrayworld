@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, Settings as SettingsIcon, Zap, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, Settings as SettingsIcon, Zap, Check, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import Icon from './Icon'
 
@@ -54,14 +54,14 @@ const CATEGORY_STYLES: Record<'room' | 'world' | 'action', CategoryStyle> = {
   },
   world: {
     label: 'WORLD',
-    icon: Globe,
-    barClass: 'bg-emerald-500',
-    iconClass: 'text-emerald-300',
+    icon: MessageSquare,
+    barClass: 'bg-amber-300',
+    iconClass: 'text-amber-300',
   },
   action: {
     label: 'ACT',
     icon: Sparkles,
-    barClass: 'bg-amber-400',
+    barClass: 'bg-amber-500',
     iconClass: 'text-amber-300',
   },
 }
@@ -75,9 +75,9 @@ const ERROR_STYLE: CategoryStyle = {
 
 const SUCCESS_STYLE: CategoryStyle = {
   label: 'ACT',
-  icon: Sparkles,
-  barClass: 'bg-emerald-500',
-  iconClass: 'text-emerald-300',
+  icon: Check,
+  barClass: 'bg-green-500',
+  iconClass: 'text-green-300',
 }
 
 const INFO_STYLE: CategoryStyle = {
@@ -109,20 +109,38 @@ const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
   logout: {
     label: 'LOGOUT',
     icon: Globe,
-    barClass: 'bg-gray-500',
-    iconClass: 'text-gray-400',
+    barClass: 'bg-red-600',
+    iconClass: 'text-red-300',
   },
   disconnect: {
     label: 'DISCONNECT',
     icon: Globe,
     barClass: 'bg-gray-500',
-    iconClass: 'text-gray-400',
+    iconClass: 'text-gray-500',
   },
   idle: {
     label: 'IDLE',
     icon: Globe,
     barClass: 'bg-gray-500',
     iconClass: 'text-gray-400',
+  },
+  'room-enter': {
+    label: 'ENTER',
+    icon: Zap,
+    barClass: 'bg-purple-500',
+    iconClass: 'text-purple-300',
+  },
+  'room-exit': {
+    label: 'EXIT',
+    icon: Zap,
+    barClass: 'bg-purple-500',
+    iconClass: 'text-purple-300',
+  },
+  'room-travel': {
+    label: 'TRAVEL',
+    icon: Zap,
+    barClass: 'bg-purple-500',
+    iconClass: 'text-purple-300',
   },
 }
 
@@ -133,15 +151,21 @@ const ACTIVITY_LABELS: Record<string, string> = {
   register: 'New Player',
   idle: 'Idle',
   return: 'Active',
+  'room-enter': 'Enter',
+  'room-exit': 'Exit',
+  'room-travel': 'Travel',
 }
 
 const ACTIVITY_TEXT_CLASSES: Record<string, string> = {
   login: 'text-emerald-200',
   register: 'text-emerald-200',
   return: 'text-emerald-200',
-  logout: 'text-gray-300',
-  disconnect: 'text-gray-300',
+  logout: 'text-red-200',
+  disconnect: 'text-gray-400',
   idle: 'text-gray-300',
+  'room-enter': 'text-purple-200',
+  'room-exit': 'text-purple-200',
+  'room-travel': 'text-purple-200',
 }
 
 const DIRECTION_ICONS: Record<string, LucideIcon> = {
@@ -227,7 +251,7 @@ const getMessageColorClass = (entry: WorldFeedEntry) => {
   // For action entries, check outcome first
   if (entry.type === 'action' && entry.outcome) {
     if (entry.outcome === 'success') {
-      return 'text-emerald-200'
+      return 'text-green-200'
     }
     if (entry.outcome === 'failure') {
       return 'text-red-200'
