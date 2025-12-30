@@ -9,7 +9,8 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '000': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
     { action: 'examine pillar', label: 'Examine Pillar', icon: 'target', className: 'bg-blue-500/70 hover:bg-blue-600' },
-    { action: 'teleport to grassy field', label: 'Press Button', icon: 'ePow', className: 'bg-green-500/70 hover:bg-green-600' },
+    { action: 'pick up paper', label: 'Pick Up Paper', icon: 'paper', className: 'bg-gray-600 hover:bg-gray-700' },
+    { action: 'teleport to grassy field', label: 'Press Button (Teleports to Grassy Field)', icon: 'ePow', className: 'bg-green-500/70 hover:bg-green-600' },
   ],
   '001': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },

@@ -41,6 +41,26 @@ function formatTimeRemaining(seconds) {
  * - A structured action definition object (supports effects)
  */
 const ROOM_ACTIONS = {
+  '000': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the sign attached to the pillar.',
+      modalContent: {
+        type: 'icon',
+        icon: 'sign',
+        message: 'Welcome to Room Zero. This was the first room created. It\'s not like the others. I\'m letting you visit here... for now.',
+      },
+    },
+    'examine pillar': {
+      showModal: true,
+      message: 'You examine the glowing pillar at the center of the room.',
+      modalContent: {
+        type: 'icon',
+        icon: 'target',
+        message: 'The bright blue light emanating from the pillar seems to be a button. Press it to teleport to the grassy field.',
+      },
+    },
+  },
   '001': {
     'read sign': {
       showModal: true,
