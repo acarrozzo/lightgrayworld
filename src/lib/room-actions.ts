@@ -8,7 +8,6 @@ export interface RoomAction {
 export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '000': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
-    { action: 'pick up map', label: 'Pick Up Map', icon: 'world', className: 'bg-green-600 hover:bg-green-700' },
     { action: 'press button', label: 'Press Button', icon: 'target', className: 'bg-yellow-600 hover:bg-yellow-700' },
   ],
   '001': [

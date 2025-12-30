@@ -220,7 +220,7 @@ export default function RoomBox({
       />
 
       {/* Teleport Section */}
-      <div className="mt-60 pt-4 border-t border-gray-800/50">
+      <div className="mt-6 pt-4 border-t border-gray-800/50">
         <h4 className="text-sm text-gray-400 mb-3">Teleport to:</h4>
         <div className="flex flex-wrap gap-2">
           <button
@@ -229,9 +229,9 @@ export default function RoomBox({
                 onAction({ type: 'teleport', data: { toRoomId: '999' } })
               }
             }}
-            className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200"
+            className="px-2 py-1 bg-blue-400/50 hover:bg-blue-400/70 border border-blue-500/50 hover:border-blue-400/70 text-white rounded text-xs transition-all duration-200"
           >
-            Lobby 999
+            The Lobby
           </button>
           <button
             onClick={() => {
@@ -239,9 +239,9 @@ export default function RoomBox({
                 onAction({ type: 'teleport', data: { toRoomId: '001' } })
               }
             }}
-            className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200"
+            className="px-2 py-1 bg-green-500/50 hover:bg-green-500/70 border border-green-600/50 hover:border-green-500/70 text-white rounded text-xs transition-all duration-200"
           >
-            Grassy Field 001
+            Grassy Field
           </button>
           <button
             onClick={() => {
@@ -249,9 +249,9 @@ export default function RoomBox({
                 onAction({ type: 'teleport', data: { toRoomId: '000' } })
               }
             }}
-            className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200"
+            className="px-2 py-1 bg-gray-700/70 hover:bg-gray-600/70 border border-gray-600/50 hover:border-gray-500/50 text-white rounded text-xs transition-all duration-200"
           >
-            Room Zero 000
+            Room Zero
           </button>
         </div>
       </div>
