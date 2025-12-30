@@ -49,7 +49,6 @@ body {
 
 .icon-svg use {
   fill: currentColor;
-  stroke: currentColor;
 }
 
 /* Smooth scrolling */

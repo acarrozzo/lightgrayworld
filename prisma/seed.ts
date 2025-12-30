@@ -15,7 +15,7 @@ async function main() {
       subtitle: '000',
       subtitlePosition: 'above',
       nameColor: 'white',
-      subtitleColor: 'gray-400',
+      subtitleColor: 'gray-500',
       icon: 'roomzero2',
       iconColor: 'gray-700',
       description: 'You are in an empty room. The walls are all gray and there are no windows or doors. The only light you see comes from a pillar in the center of the room. There is a small sign on the side of the pillar and a small piece of paper on the floor.',

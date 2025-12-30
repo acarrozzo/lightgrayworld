@@ -889,12 +889,20 @@ export default function GameInterface() {
         if (modalContent && typeof modalContent === 'object' && !Array.isArray(modalContent)) {
           // Check if it's an icon type modal
           if (modalContent.type === 'icon' && modalContent.icon) {
+            // Ensure iconColor has 'text-' prefix if it's a color without it
+            // Opacity modifiers (e.g., /70) are preserved and will be handled by Icon component
+            let iconColorClass = modalContent.iconColor || "text-yellow-400"
+            if (iconColorClass && !iconColorClass.startsWith('text-') && !iconColorClass.includes(' ')) {
+              // If it's a simple color name like 'yellow-400', 'gray-500', or 'gray-500/70', add 'text-' prefix
+              // The opacity modifier (e.g., /70) will be preserved: 'gray-500/70' -> 'text-gray-500/70'
+              iconColorClass = `text-${iconColorClass}`
+            }
             renderedContent = (
               <div className="flex flex-col items-center justify-center gap-6 py-8">
                 <Icon 
                   name={modalContent.icon} 
                   size={200} 
-                  className="text-yellow-400"
+                  className={iconColorClass}
                 />
                 <p className="text-gray-200 text-center text-base leading-relaxed max-w-md">
                   {modalContent.message || messageText}

@@ -12,18 +12,41 @@ interface IconProps {
 }
 
 export default function Icon({ name, className = '', size = 24, color = 'currentColor', rotation = 0 }: IconProps) {
-  // Get the appropriate color class
-  const colorClass = getColorClass(color)
-  
   // Validate icon name exists in mappings
   const iconName = IconMappings[name as IconName] || name
-
+  
+  // Parse className for opacity modifiers (e.g., /70, /50)
+  // Tailwind opacity modifiers don't work with SVG fill="currentColor", so we need to extract and apply separately
+  let processedClassName = className
+  let fillOpacity: number | undefined = undefined
+  
+  // Match opacity modifier at the end of a class (e.g., text-gray-500/70 or gray-500/70)
+  const opacityMatch = className.match(/\/(\d+)(?:\s|$)/)
+  if (opacityMatch) {
+    const opacityValue = parseInt(opacityMatch[1])
+    if (opacityValue >= 0 && opacityValue <= 100) {
+      fillOpacity = opacityValue / 100
+      // Remove the opacity modifier from className to avoid conflicts
+      processedClassName = className.replace(/\/(\d+)(?=\s|$)/g, '').trim()
+    }
+  }
+  
+  // Check if processedClassName contains a text color class (e.g., text-*)
+  // If so, use that instead of the default colorClass
+  const hasTextColorClass = /\btext-[\w-]+/.test(processedClassName)
+  const colorClass = hasTextColorClass ? '' : getColorClass(color)
+  
   // Check if className contains width or height utilities (e.g., w-*, h-*)
   // If so, don't apply inline width/height styles to allow responsive classes to work
-  const hasSizeClasses = /\b(w-|h-|width|height)/.test(className)
+  const hasSizeClasses = /\b(w-|h-|width|height)/.test(processedClassName)
   
   const style: React.CSSProperties = {
     transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined
+  }
+  
+  // Apply fill-opacity if opacity modifier was detected
+  if (fillOpacity !== undefined) {
+    style.fillOpacity = fillOpacity
   }
   
   // Only apply inline width/height if no size classes are present
@@ -34,10 +57,9 @@ export default function Icon({ name, className = '', size = 24, color = 'current
 
   return (
     <svg 
-      className={`icon-svg ${colorClass} ${className}`}
+      className={`icon-svg ${colorClass} ${processedClassName}`.trim()}
       style={style}
       fill="currentColor"
-      stroke="currentColor"
       viewBox="0 0 100 100"
     >
       <use href={`/sprite-sheet.svg?v=9#${iconName}`} />

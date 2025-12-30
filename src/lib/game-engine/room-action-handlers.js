@@ -44,11 +44,13 @@ const ROOM_ACTIONS = {
   '000': {
     'read sign': {
       showModal: true,
-      message: 'You read the sign attached to the pillar.',
+      message: 'You read the sign attached to the pillar',
       modalContent: {
+        title: 'You read the sign attached to the pillar',
         type: 'icon',
-        icon: 'sign',
-        message: 'Welcome to Room Zero. This was the first room created. It\'s not like the others. I\'m letting you visit here... for now.',
+        icon: 'sign-metal',
+        iconColor: 'gray-500',
+        message: 'Welcome to Room Zero, the first room ever made. It is unlike the others. I allow you to stand here, for now.',
       },
     },
     'examine pillar': {
@@ -56,7 +58,8 @@ const ROOM_ACTIONS = {
       message: 'You examine the glowing pillar at the center of the room.',
       modalContent: {
         type: 'icon',
-        icon: 'target',
+        icon: 'pillar2',
+        iconColor: 'blue-300/30',
         message: 'The bright blue light emanating from the pillar seems to be a button. Press it to teleport to the grassy field.',
       },
     },
@@ -397,7 +400,15 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
 
   if (definition.showModal) {
     data.showModal = true
-    data.modalContent = message
+    // Check if definition has structured modalContent, otherwise use message string
+    if (definition.modalContent) {
+      data.modalContent = definition.modalContent
+      if (definition.buttons) {
+        data.buttons = definition.buttons
+      }
+    } else {
+      data.modalContent = message
+    }
   }
 
   return {
