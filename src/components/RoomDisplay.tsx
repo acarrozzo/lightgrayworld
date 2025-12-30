@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import type { Player } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
 import { DEFAULT_AVATAR_COLOR, DEFAULT_PLAYER_AVATAR } from '@/lib/constants/avatars'
@@ -96,22 +97,15 @@ export default function RoomDisplay({
     return `${remainingSeconds}s`
   }
 
+  // Set maxCap when capConfig changes
   useEffect(() => {
     if (capConfig) {
       setMaxCap(capConfig.maxPerTick)
-      // Use fetched actionCaps if available, otherwise default to maxPerTick
-      const actionKey = capConfig.action
-      const fetchedRemaining = (room as any)?.actionCaps?.[actionKey]
-      if (typeof fetchedRemaining === 'number') {
-        setRemainingCap(fetchedRemaining)
-      } else {
-        setRemainingCap(capConfig.maxPerTick)
-      }
     } else {
       setMaxCap(null)
       setRemainingCap(null)
     }
-  }, [capConfig, room])
+  }, [capConfig])
 
   // Track mount state to prevent hydration mismatches
   // Use useLayoutEffect for faster initialization on client
@@ -148,6 +142,58 @@ export default function RoomDisplay({
     return () => clearInterval(interval)
   }, [room, worldTick, isMounted])
 
+  // Consolidated state management for remainingCap with priority order:
+  // 1. actionResult.data.remaining (highest priority - most recent from action execution)
+  // 2. room.actionCaps[actionKey] (from API response)
+  // 3. Reset to maxPerTick when world tick increments (only if we have confirmed tick data)
+  // 4. null if no data available (show loading state)
+  useEffect(() => {
+    if (!capConfig) {
+      setRemainingCap(null)
+      return
+    }
+
+    const actionKey = capConfig.action
+
+    // Priority 1: Action result (most recent, from action execution)
+    if (actionResult?.action === actionKey && typeof actionResult?.data?.remaining === 'number') {
+      setRemainingCap(actionResult.data.remaining)
+      // Store secondsUntilReset from action result as fallback for countdown display
+      const secondsUntilReset = actionResult.data.secondsUntilReset
+      if (typeof secondsUntilReset === 'number') {
+        setFallbackSecondsUntilReset(secondsUntilReset)
+      }
+      return
+    }
+
+    // Priority 2: API data from room.actionCaps
+    const fetchedRemaining = (room as any)?.actionCaps?.[actionKey]
+    if (typeof fetchedRemaining === 'number') {
+      setRemainingCap(fetchedRemaining)
+      return
+    }
+
+    // Priority 3: Tick reset (only if we have confirmed tick data and detect increment)
+    // Only reset if we already have API data to avoid flicker when entering room
+    if (worldTick && worldTick.tickNumber !== undefined) {
+      if (lastTickRef.current !== null && worldTick.tickNumber !== lastTickRef.current) {
+        // Tick has incremented
+        // Only reset to maxPerTick if we have API data (room.actionCaps exists)
+        // This prevents flicker when entering a room right after tick increment
+        // If we don't have API data yet, wait for it rather than optimistically resetting
+        if (typeof fetchedRemaining === 'number') {
+          setRemainingCap(capConfig.maxPerTick)
+        }
+      }
+      lastTickRef.current = worldTick.tickNumber
+      return
+    }
+
+    // Priority 4: No data available - keep as null (will show loading state)
+    // Don't set anything, let it remain null
+  }, [capConfig, room, actionResult, worldTick])
+
+  // Handle countdown timer from worldTick prop
   useEffect(() => {
     if (!isMounted) return // Only run on client after mount
     if (!worldTick || !worldTick.nextTickAt) return
@@ -163,16 +209,10 @@ export default function RoomDisplay({
     // Update immediately
     updateCountdown()
     
-    // reset remaining on tick increment
-    if (lastTickRef.current !== null && worldTick.tickNumber !== lastTickRef.current && capConfig) {
-      setRemainingCap(capConfig.maxPerTick)
-    }
-    lastTickRef.current = worldTick.tickNumber
-    
     // Update every second
     const interval = setInterval(updateCountdown, 1000)
     return () => clearInterval(interval)
-  }, [worldTick, capConfig, isMounted])
+  }, [worldTick, isMounted])
 
   // Update fallback countdown when worldTick is not available
   useEffect(() => {
@@ -189,20 +229,6 @@ export default function RoomDisplay({
     const interval = setInterval(updateFallback, 1000)
     return () => clearInterval(interval)
   }, [worldTick, fallbackSecondsUntilReset, isMounted])
-
-  useEffect(() => {
-    if (!actionResult?.action || !capConfig) return
-    if (actionResult.action !== capConfig.action) return
-    const remaining = actionResult?.data?.remaining
-    if (typeof remaining === 'number') {
-      setRemainingCap(remaining)
-    }
-    // Store secondsUntilReset from action result as fallback for countdown display
-    const secondsUntilReset = actionResult?.data?.secondsUntilReset
-    if (typeof secondsUntilReset === 'number') {
-      setFallbackSecondsUntilReset(secondsUntilReset)
-    }
-  }, [actionResult, capConfig])
   
   if (!room) {
     return (
@@ -255,6 +281,14 @@ export default function RoomDisplay({
     if (capConfig.action === 'pick redberry') return 'text-red-200'
     if (capConfig.action === 'pick blueberry') return 'text-blue-200'
     return 'text-red-200'
+  }
+
+  // Determine spinner color based on berry type
+  const getBerrySpinnerColor = (): string => {
+    if (!capConfig) return 'text-red-500'
+    if (capConfig.action === 'pick redberry') return 'text-red-500'
+    if (capConfig.action === 'pick blueberry') return 'text-blue-500'
+    return 'text-red-500'
   }
 
   const handlePickupItem = async (item: any, quantity: number = 1) => {
@@ -326,45 +360,55 @@ export default function RoomDisplay({
       )}
 
       {shouldShowCap && (
-        <div className={`mt-3 flex items-center gap-3 p-3 rounded-md bg-gray-900/70 border ${getBerryBorderColor()}`}>
-          {berryAction && (
-            <button
-              onClick={() => handleAction(berryAction.action)}
-              disabled={isPerformingAction === berryAction.action}
-              className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 flex items-center gap-2 ${
-                isPerformingAction === berryAction.action
-                  ? 'bg-gray-700 cursor-wait'
-                  : berryAction.className || 'bg-indigo-600 hover:bg-indigo-500'
-              } ${remainingCap === 0 ? 'opacity-50' : ''}`}
-            >
-              {berryAction.icon && <Icon name={berryAction.icon} size={16} color="current" />}
-              {berryAction.label}
-            </button>
+        <div className={`mt-3 relative flex items-center gap-3 p-3 rounded-md bg-gray-900/70 border ${getBerryBorderColor()}`}>
+          {remainingCap === null ? (
+            // Loading state: show centered spinner, hide content
+            <div className="flex items-center justify-center w-full py-2">
+              <Loader2 className={`h-6 w-6 animate-spin ${getBerrySpinnerColor()}`} />
+            </div>
+          ) : (
+            // Normal state: show button and text
+            <>
+              {berryAction && (
+                <button
+                  onClick={() => handleAction(berryAction.action)}
+                  disabled={isPerformingAction === berryAction.action}
+                  className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 flex items-center gap-2 ${
+                    isPerformingAction === berryAction.action
+                      ? 'bg-gray-700 cursor-wait'
+                      : berryAction.className || 'bg-indigo-600 hover:bg-indigo-500'
+                  } ${remainingCap === 0 ? 'opacity-50' : ''}`}
+                >
+                  {berryAction.icon && <Icon name={berryAction.icon} size={16} color="current" />}
+                  {berryAction.label}
+                </button>
+              )}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className={`text-sm ${getBerryTextColor()}`}>
+                  Available {getItemNamePlural(capConfig?.action || '')}:{' '}
+                  <span className="font-semibold text-white">
+                    {remainingCap}/{maxCap ?? 0}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-300">
+                  Refresh in:{' '}
+                  <span className="font-semibold">
+                    {(() => {
+                      // Use countdown from worldTick (prop or room data) if available
+                      if (countdownSeconds !== null) {
+                        return formatTimeRemaining(countdownSeconds)
+                      }
+                      // Fall back to secondsUntilReset from action result (same as feed message)
+                      if (fallbackSecondsUntilReset !== null) {
+                        return formatTimeRemaining(fallbackSecondsUntilReset)
+                      }
+                      return '...'
+                    })()}
+                  </span>
+                </div>
+              </div>
+            </>
           )}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className={`text-sm ${getBerryTextColor()}`}>
-              Available {getItemNamePlural(capConfig?.action || '')}:{' '}
-              <span className="font-semibold text-white">
-                {remainingCap ?? maxCap ?? 0}/{maxCap ?? 0}
-              </span>
-            </div>
-            <div className="text-sm text-gray-300">
-              Refresh in:{' '}
-              <span className="font-semibold">
-                {(() => {
-                  // Use countdown from worldTick (prop or room data) if available
-                  if (countdownSeconds !== null) {
-                    return formatTimeRemaining(countdownSeconds)
-                  }
-                  // Fall back to secondsUntilReset from action result (same as feed message)
-                  if (fallbackSecondsUntilReset !== null) {
-                    return formatTimeRemaining(fallbackSecondsUntilReset)
-                  }
-                  return '...'
-                })()}
-              </span>
-            </div>
-          </div>
         </div>
       )}
 
