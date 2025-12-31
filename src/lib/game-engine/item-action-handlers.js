@@ -13,7 +13,7 @@ const ITEM_ACTIONS = {
   'welcome-book': {
     'read book': {
       showModal: true,
-      message: 'You open the Welcome Book and begin reading.',
+      message: 'You read the Welcome Book.',
       modalContent: {
         title: 'Welcome Book',
         type: 'icon',
