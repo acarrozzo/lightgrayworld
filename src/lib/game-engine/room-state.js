@@ -1,4 +1,5 @@
 const { executeRoomAction } = require('./room-action-handlers')
+const { executeItemAction } = require('./item-action-handlers')
 const { pickupRoomItem, dropRoomItem, getRoomItems } = require('./services/room-item-service')
 const { getPlayerInventory } = require('./services/inventory-service')
 
@@ -93,6 +94,8 @@ class RoomState {
         return this.executeExamineItem(action, playerId)
       case 'examine_player_item':
         return this.executeExaminePlayerItem(action, playerId)
+      case 'use_item':
+        return this.executeUseItem(action, playerId, currentTickNumber, nextTickAt)
       default:
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
     }
@@ -434,6 +437,52 @@ class RoomState {
         }),
       },
     }
+  }
+
+  async executeUseItem(action, playerId, currentTickNumber, nextTickAt) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('use_item', 'Player not found in this room')
+    }
+
+    const { playerItemId, action: itemAction } = action.data || {}
+    if (!playerItemId) {
+      return this.createErrorResult('use_item', 'Player item ID is required')
+    }
+    if (!itemAction) {
+      return this.createErrorResult('use_item', 'Item action is required')
+    }
+
+    this.touchActivity()
+
+    // Get player inventory to find the item being used
+    const inventory = await getPlayerInventory(playerId)
+    const item = inventory.find((item) => item.id === playerItemId)
+
+    if (!item) {
+      return this.createErrorResult('use_item', 'Item not found in your inventory')
+    }
+
+    const itemSlug = item.template.slug
+    if (!itemSlug) {
+      return this.createErrorResult('use_item', 'Item slug not found')
+    }
+
+    // Execute the item-specific action
+    const itemActionResult = await executeItemAction(
+      itemSlug,
+      itemAction,
+      playerId,
+      this,
+      currentTickNumber,
+      nextTickAt
+    )
+
+    if (itemActionResult === null) {
+      return this.createErrorResult('use_item', `Action "${itemAction}" is not available for this item`)
+    }
+
+    return itemActionResult
   }
 
   createFeedbackPayload(action, outcome, message, data = {}) {

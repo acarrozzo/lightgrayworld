@@ -8,6 +8,8 @@ import StatAllocationModal from './StatAllocationModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import InventoryDropButton from './InventoryDropButton'
+import { getItemActions } from '@/lib/item-actions'
+import Icon from './Icon'
 
 interface GameSidebarProps {
   player: Player
@@ -289,38 +291,73 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
               Your inventory is empty.
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {inventory.map((item) => {
                 const isNewItem = newItemIds.has(item.id)
+                const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
+                const hasActions = itemActions.length > 0
+                
                 return (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between rounded bg-gray-800/40 px-3 py-2 gap-2 relative"
-                  >
-                    {isNewItem && (
-                      <span className="absolute left-1 top-1 w-2 h-2 bg-red-500 rounded-full border border-gray-900"></span>
-                    )}
-                    <div className={`text-white text-sm font-medium ${isNewItem ? 'pl-3' : ''}`}>
-                      {item.template.name}
+                  <div key={item.id} className="space-y-2">
+                    <div className="flex items-center justify-between rounded bg-gray-800/40 px-3 py-2 gap-2 relative">
+                      {isNewItem && (
+                        <span className="absolute left-1 top-1 w-2 h-2 bg-red-500 rounded-full border border-gray-900"></span>
+                      )}
+                      <div className={`text-white text-sm font-medium ${isNewItem ? 'pl-3' : ''}`}>
+                        {item.template.name}
+                      </div>
+                      {item.quantity > 1 && (
+                        <div className="text-gray-400 text-xs">x{item.quantity}</div>
+                      )}
+                      <InventoryDropButton
+                        item={item}
+                        onDrop={(quantity) =>
+                          onAction?.({
+                            type: 'drop_item',
+                            data: { playerItemId: item.id, quantity },
+                          })
+                        }
+                        onExamine={() =>
+                          onAction?.({
+                            type: 'examine_player_item',
+                            data: { playerItemId: item.id },
+                          })
+                        }
+                        onItemAction={(action) =>
+                          onAction?.({
+                            type: 'use_item',
+                            data: { playerItemId: item.id, action },
+                          })
+                        }
+                      />
                     </div>
-                    {item.quantity > 1 && (
-                      <div className="text-gray-400 text-xs">x{item.quantity}</div>
+                    {hasActions && (
+                      <div className="flex flex-wrap gap-2 pl-3">
+                        {itemActions.map((itemAction) => (
+                          <button
+                            key={itemAction.action}
+                            onClick={() =>
+                              onAction?.({
+                                type: 'use_item',
+                                data: { playerItemId: item.id, action: itemAction.action },
+                              })
+                            }
+                            className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex items-center gap-2 ${
+                              itemAction.className || 'bg-indigo-600 hover:bg-indigo-500'
+                            }`}
+                          >
+                            {itemAction.icon && (
+                              <Icon
+                                name={itemAction.icon}
+                                size={16}
+                                color="current"
+                              />
+                            )}
+                            {itemAction.label}
+                          </button>
+                        ))}
+                      </div>
                     )}
-                    <InventoryDropButton
-                      item={item}
-                      onDrop={(quantity) =>
-                        onAction?.({
-                          type: 'drop_item',
-                          data: { playerItemId: item.id, quantity },
-                        })
-                      }
-                      onExamine={() =>
-                        onAction?.({
-                          type: 'examine_player_item',
-                          data: { playerItemId: item.id },
-                        })
-                      }
-                    />
                   </div>
                 )
               })}

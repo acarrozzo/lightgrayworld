@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { getItemActions } from '@/lib/item-actions'
+import Icon from './Icon'
 
 interface InventoryDropButtonProps {
   item: {
     id: string
     template: {
       name: string
+      slug?: string
       description?: string
       canDrop?: boolean
     }
@@ -15,6 +18,7 @@ interface InventoryDropButtonProps {
   }
   onDrop: (quantity: number) => void
   onExamine: () => void
+  onItemAction?: (action: string) => void
   disabled?: boolean
 }
 
@@ -22,11 +26,14 @@ export default function InventoryDropButton({
   item,
   onDrop,
   onExamine,
+  onItemAction,
   disabled = false,
 }: InventoryDropButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLDivElement>(null)
+
+  const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -77,6 +84,12 @@ export default function InventoryDropButton({
   const handleExamine = () => {
     if (disabled) return
     onExamine()
+    setIsOpen(false)
+  }
+
+  const handleItemAction = (action: string) => {
+    if (disabled) return
+    onItemAction?.(action)
     setIsOpen(false)
   }
 
@@ -159,6 +172,25 @@ export default function InventoryDropButton({
             >
               Examine {item.template.name}
             </button>
+            
+            {itemActions.length > 0 && (
+              <>
+                <div className="border-t border-gray-700 my-1" />
+                {itemActions.map((itemAction) => (
+                  <button
+                    key={itemAction.action}
+                    onClick={() => handleItemAction(itemAction.action)}
+                    disabled={disabled}
+                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {itemAction.icon && (
+                      <Icon name={itemAction.icon} size={14} color="current" />
+                    )}
+                    {itemAction.label}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
       )}
