@@ -47,6 +47,8 @@ export interface InventoryItem {
     maxStack: number
     maxPerPlayer?: number | null
     value: number
+    canSell?: boolean
+    canDrop?: boolean
   }
 }
 

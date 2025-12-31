@@ -166,6 +166,61 @@ const ROOM_ACTIONS = {
       determineOutcome: ({ success }) => (success ? 'success' : 'info'),
     },
   },
+  '006': {
+    'view shop': async (playerId, roomState) => {
+      const { prisma } = require('../db-client')
+      const { getPlayerInventory } = require('./services/inventory-service')
+
+      // Get player data
+      const player = await prisma.user.findUnique({
+        where: { id: playerId },
+        select: { currency: true },
+      })
+
+      if (!player) {
+        return createErrorResult('view shop', 'Player not found')
+      }
+
+      // Get shop items (dagger, red-potion, blue-potion)
+      const shopItemSlugs = ['dagger', 'red-potion', 'blue-potion']
+      const shopItems = await prisma.itemTemplate.findMany({
+        where: {
+          slug: { in: shopItemSlugs },
+        },
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          description: true,
+          value: true,
+          type: true,
+        },
+      })
+
+      // Get player inventory
+      const inventory = await getPlayerInventory(playerId)
+
+      roomState.touchActivity()
+
+      return {
+        success: true,
+        action: 'view shop',
+        playerEvent: {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('view shop', 'success', 'You open the shop interface.', {
+            roomId: roomState.roomId,
+            showModal: true,
+            modalContent: {
+              type: 'shop',
+              shopItems,
+              playerCurrency: player.currency,
+              playerInventory: inventory,
+            },
+          }),
+        },
+      }
+    },
+  },
 }
 
 /**

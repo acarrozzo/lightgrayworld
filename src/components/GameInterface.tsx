@@ -15,6 +15,7 @@ import SettingsModal from './SettingsModal'
 import MapModal, { type MapOption } from './MapModal'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
+import ShopModal from './ShopModal'
 import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
@@ -197,6 +198,7 @@ export default function GameInterface() {
     isLoggedIn,
     cacheRoom,
     getCachedRoom,
+    inventory,
     setInventory,
     logout,
   } = useGameStore()
@@ -210,6 +212,12 @@ export default function GameInterface() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [isTeleportModalOpen, setIsTeleportModalOpen] = useState(false)
+  const [isShopModalOpen, setIsShopModalOpen] = useState(false)
+  const [shopModalData, setShopModalData] = useState<{
+    shopItems: Array<{ id: string; slug: string; name: string; description: string; value: number; type: string }>
+    playerCurrency: number
+    playerInventory: typeof inventory
+  } | null>(null)
   const [mapInfo, setMapInfo] = useState<{ src: string; title: string }>({ src: '', title: '' })
   const [currentMapId, setCurrentMapId] = useState<string>('grassy-field')
   const [actionModal, setActionModal] = useState<{ 
@@ -882,54 +890,64 @@ export default function GameInterface() {
         const modalContent = payload?.data?.modalContent
         const buttons = payload?.data?.buttons
         
-        // Check if modalContent is structured (object) or simple string
-        let renderedContent: string | React.ReactNode = messageText
-        let modalTitle = payload?.action || 'Action'
-        
-        if (modalContent && typeof modalContent === 'object' && !Array.isArray(modalContent)) {
-          // Check if it's an icon type modal
-          if (modalContent.type === 'icon' && modalContent.icon) {
-            // Ensure iconColor has 'text-' prefix if it's a color without it
-            // Opacity modifiers (e.g., /70) are preserved and will be handled by Icon component
-            let iconColorClass = modalContent.iconColor || "text-yellow-400"
-            if (iconColorClass && !iconColorClass.startsWith('text-') && !iconColorClass.includes(' ')) {
-              // If it's a simple color name like 'yellow-400', 'gray-500', or 'gray-500/70', add 'text-' prefix
-              // The opacity modifier (e.g., /70) will be preserved: 'gray-500/70' -> 'text-gray-500/70'
-              iconColorClass = `text-${iconColorClass}`
+        // Check if it's a shop modal
+        if (modalContent && typeof modalContent === 'object' && !Array.isArray(modalContent) && modalContent.type === 'shop') {
+          setIsShopModalOpen(true)
+          setShopModalData({
+            shopItems: modalContent.shopItems || [],
+            playerCurrency: modalContent.playerCurrency || 0,
+            playerInventory: modalContent.playerInventory || [],
+          })
+        } else {
+          // Check if modalContent is structured (object) or simple string
+          let renderedContent: string | React.ReactNode = messageText
+          let modalTitle = payload?.action || 'Action'
+          
+          if (modalContent && typeof modalContent === 'object' && !Array.isArray(modalContent)) {
+            // Check if it's an icon type modal
+            if (modalContent.type === 'icon' && modalContent.icon) {
+              // Ensure iconColor has 'text-' prefix if it's a color without it
+              // Opacity modifiers (e.g., /70) are preserved and will be handled by Icon component
+              let iconColorClass = modalContent.iconColor || "text-yellow-400"
+              if (iconColorClass && !iconColorClass.startsWith('text-') && !iconColorClass.includes(' ')) {
+                // If it's a simple color name like 'yellow-400', 'gray-500', or 'gray-500/70', add 'text-' prefix
+                // The opacity modifier (e.g., /70) will be preserved: 'gray-500/70' -> 'text-gray-500/70'
+                iconColorClass = `text-${iconColorClass}`
+              }
+              renderedContent = (
+                <div className="flex flex-col items-center justify-center gap-6 py-8">
+                  <Icon 
+                    name={modalContent.icon} 
+                    size={200} 
+                    className={iconColorClass}
+                  />
+                  <p className="text-gray-200 text-center text-base leading-relaxed max-w-md">
+                    {modalContent.message || messageText}
+                  </p>
+                </div>
+              )
+              modalTitle = modalContent.title || modalTitle
+            } else if (modalContent.heading || modalContent.locations) {
+              // Structured content - render directory
+              modalTitle = modalContent.title || modalTitle
+              renderedContent = renderDirectoryContent(modalContent, buttons || [])
+            } else {
+              // Other structured content
+              modalTitle = modalContent.title || modalTitle
+              renderedContent = modalContent.message || messageText
             }
-            renderedContent = (
-              <div className="flex flex-col items-center justify-center gap-6 py-8">
-                <Icon 
-                  name={modalContent.icon} 
-                  size={200} 
-                  className={iconColorClass}
-                />
-                <p className="text-gray-200 text-center text-base leading-relaxed max-w-md">
-                  {modalContent.message || messageText}
-                </p>
-              </div>
-            )
-            modalTitle = modalContent.title || modalTitle
-          } else if (modalContent.heading || modalContent.locations) {
-            // Structured content - render directory
-            modalTitle = modalContent.title || modalTitle
-            renderedContent = renderDirectoryContent(modalContent, buttons || [])
-          } else {
-            // Other structured content
-            modalTitle = modalContent.title || modalTitle
-            renderedContent = modalContent.message || messageText
+          } else if (typeof modalContent === 'string') {
+            // Simple string content
+            renderedContent = modalContent
           }
-        } else if (typeof modalContent === 'string') {
-          // Simple string content
-          renderedContent = modalContent
+          
+          setActionModal({
+            isOpen: true,
+            title: modalTitle,
+            content: renderedContent,
+            buttons: buttons,
+          })
         }
-        
-        setActionModal({
-          isOpen: true,
-          title: modalTitle,
-          content: renderedContent,
-          buttons: buttons,
-        })
       } else {
         // Trigger notification for room actions (only if not showing modal)
         // Skip notifications for movement actions
@@ -1319,6 +1337,82 @@ export default function GameInterface() {
         content={actionModal.content}
         buttons={actionModal.buttons}
         onAction={handleAction}
+      />
+      <ShopModal
+        isOpen={isShopModalOpen}
+        onClose={() => {
+          setIsShopModalOpen(false)
+          setShopModalData(null)
+        }}
+        shopItems={shopModalData?.shopItems || []}
+        playerCurrency={shopModalData?.playerCurrency || player?.currency || 0}
+        playerInventory={shopModalData?.playerInventory || inventory}
+        onBuy={async (itemSlug: string, quantity?: number) => {
+          const response = await fetch('/api/shop/buy', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...getAuthHeaders(),
+            },
+            body: JSON.stringify({ itemSlug, quantity }),
+          })
+
+          const data = await response.json()
+
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Failed to purchase item')
+          }
+
+          // Update inventory and currency
+          if (data.inventory) {
+            setInventory(data.inventory)
+          }
+          if (data.currency !== undefined && player) {
+            setPlayer({ ...player, currency: data.currency })
+          }
+
+          // Update shop modal data
+          if (shopModalData) {
+            setShopModalData({
+              ...shopModalData,
+              playerCurrency: data.currency,
+              playerInventory: data.inventory,
+            })
+          }
+        }}
+        onSell={async (playerItemId: string, quantity: number) => {
+          const response = await fetch('/api/shop/sell', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...getAuthHeaders(),
+            },
+            body: JSON.stringify({ playerItemId, quantity }),
+          })
+
+          const data = await response.json()
+
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Failed to sell item')
+          }
+
+          // Update inventory and currency
+          if (data.inventory) {
+            setInventory(data.inventory)
+          }
+          if (data.currency !== undefined && player) {
+            setPlayer({ ...player, currency: data.currency })
+          }
+
+          // Update shop modal data
+          if (shopModalData) {
+            setShopModalData({
+              ...shopModalData,
+              playerCurrency: data.currency,
+              playerInventory: data.inventory,
+            })
+          }
+        }}
       />
       <NotificationContainer />
       
