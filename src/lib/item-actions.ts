@@ -9,6 +9,12 @@ export const ITEM_ACTIONS: Record<string, ItemAction[]> = {
   'welcome-book': [
     { action: 'read book', label: 'Read Book', icon: 'book', className: 'bg-blue-600/70 hover:bg-blue-600' },
   ],
+  'flower': [
+    { action: 'eat', label: 'Eat', icon: 'flower', className: 'bg-amber-400/70 hover:bg-amber-400' },
+  ],
+  'redberry': [
+    { action: 'eat', label: 'Eat', icon: 'redberry', className: 'bg-red-500/70 hover:bg-red-500' },
+  ],
 }
 
 /**

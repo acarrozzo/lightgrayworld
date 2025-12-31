@@ -2,6 +2,8 @@
  * Item-specific action handlers
  * Handles execution of actions that are unique to specific items
  */
+const { prisma } = require('../db-client')
+const { getPlayerInventory } = require('./services/inventory-service')
 
 /**
  * Map of item slugs to item-specific actions. Each action entry can be either:
@@ -9,6 +11,187 @@
  * - A custom function (playerId, roomState) => actionResult
  * - A structured action definition object (supports effects)
  */
+/**
+ * Handler for eating a redberry - removes item and increases HP
+ */
+async function handleEatRedberry(playerId, roomState, playerItemId) {
+  const player = roomState.players.get(playerId)
+  if (!player) {
+    return createErrorResult('eat', 'Player not found in this room')
+  }
+
+  if (!playerItemId) {
+    return createErrorResult('eat', 'Item ID is required')
+  }
+
+  roomState.touchActivity()
+
+  // Get player inventory to verify item exists
+  const inventory = await getPlayerInventory(playerId)
+  const item = inventory.find((item) => item.id === playerItemId)
+
+  if (!item) {
+    return createErrorResult('eat', 'Item not found in your inventory')
+  }
+
+  if (item.template.slug !== 'redberry') {
+    return createErrorResult('eat', 'This action can only be used on redberries')
+  }
+
+  // Calculate new HP (increase by 1, capped at hpMax)
+  const currentHp = player.hp ?? 0
+  const hpMax = player.hpMax ?? 10
+  const newHp = Math.min(hpMax, currentHp + 1)
+
+  try {
+    // Remove item from inventory and update HP in database
+    await prisma.$transaction(async (tx) => {
+      // Remove 1 redberry from inventory
+      if (item.quantity === 1) {
+        await tx.playerItem.delete({
+          where: { id: playerItemId },
+        })
+      } else {
+        await tx.playerItem.update({
+          where: { id: playerItemId },
+          data: { quantity: item.quantity - 1 },
+        })
+      }
+
+      // Update player HP
+      await tx.user.update({
+        where: { id: playerId },
+        data: { hp: newHp },
+      })
+    })
+
+    // Update HP in memory
+    roomState.updatePlayer(playerId, (state) => ({
+      ...state,
+      hp: newHp,
+    }))
+
+    // Get updated inventory
+    const updatedInventory = await getPlayerInventory(playerId)
+
+    const message = `You eat the redberry. You gain 1 HP.`
+    const hpChange = newHp - currentHp
+
+    const data = {
+      roomId: roomState.roomId,
+      hp: newHp,
+      hpChange: hpChange,
+      inventory: updatedInventory,
+    }
+
+    return {
+      success: true,
+      action: 'eat',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload('eat', 'success', message, data),
+      },
+    }
+  } catch (error) {
+    console.error('Error eating redberry:', error)
+    return createErrorResult('eat', 'Failed to eat the redberry')
+  }
+}
+
+/**
+ * Handler for eating a flower - removes item and decreases HP
+ */
+async function handleEatFlower(playerId, roomState, playerItemId) {
+  const player = roomState.players.get(playerId)
+  if (!player) {
+    return createErrorResult('eat', 'Player not found in this room')
+  }
+
+  if (!playerItemId) {
+    return createErrorResult('eat', 'Item ID is required')
+  }
+
+  roomState.touchActivity()
+
+  // Get player inventory to verify item exists
+  const inventory = await getPlayerInventory(playerId)
+  const item = inventory.find((item) => item.id === playerItemId)
+
+  if (!item) {
+    return createErrorResult('eat', 'Item not found in your inventory')
+  }
+
+  if (item.template.slug !== 'flower') {
+    return createErrorResult('eat', 'This action can only be used on flowers')
+  }
+
+  // Calculate new HP (decrease by 1, minimum 0)
+  const currentHp = player.hp ?? 0
+  const newHp = Math.max(0, currentHp - 1)
+
+  try {
+    // Remove item from inventory and update HP in database
+    await prisma.$transaction(async (tx) => {
+      // Remove 1 flower from inventory
+      if (item.quantity === 1) {
+        await tx.playerItem.delete({
+          where: { id: playerItemId },
+        })
+      } else {
+        await tx.playerItem.update({
+          where: { id: playerItemId },
+          data: { quantity: item.quantity - 1 },
+        })
+      }
+
+      // Update player HP
+      await tx.user.update({
+        where: { id: playerId },
+        data: { hp: newHp },
+      })
+    })
+
+    // Update HP in memory
+    roomState.updatePlayer(playerId, (state) => ({
+      ...state,
+      hp: newHp,
+    }))
+
+    // Get updated inventory
+    const updatedInventory = await getPlayerInventory(playerId)
+
+    const message = `You eat the flower. You lose 1 HP.`
+    const hpChange = currentHp - newHp
+
+    const data = {
+      roomId: roomState.roomId,
+      hp: newHp,
+      hpChange: -hpChange,
+      inventory: updatedInventory,
+      showModal: true,
+      modalContent: {
+        title: 'You eat the flower',
+        type: 'icon',
+        icon: 'flower',
+        iconColor: 'pink-400/70',
+        message: `You consume the flower. It tastes bitter and you feel weaker. You lose 1 HP.`,
+      },
+    }
+
+    return {
+      success: true,
+      action: 'eat',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload('eat', 'success', message, data),
+      },
+    }
+  } catch (error) {
+    console.error('Error eating flower:', error)
+    return createErrorResult('eat', 'Failed to eat the flower')
+  }
+}
+
 const ITEM_ACTIONS = {
   'welcome-book': {
     'read book': {
@@ -23,6 +206,12 @@ const ITEM_ACTIONS = {
       },
     },
   },
+  'flower': {
+    'eat': handleEatFlower,
+  },
+  'redberry': {
+    'eat': handleEatRedberry,
+  },
 }
 
 /**
@@ -31,9 +220,10 @@ const ITEM_ACTIONS = {
  * @param {string} action - The action name (e.g., 'read book')
  * @param {string} playerId - The ID of the player performing the action
  * @param {RoomState} roomState - The room state instance
+ * @param {string} playerItemId - The ID of the player item being used
  * @returns {Object|null} Action result object or null if action not found
  */
-async function executeItemAction(itemSlug, action, playerId, roomState, currentTickNumber, nextTickAt) {
+async function executeItemAction(itemSlug, action, playerId, roomState, currentTickNumber, nextTickAt, playerItemId = null) {
   const normalizedAction = action.toLowerCase().trim()
   const itemActions = ITEM_ACTIONS[itemSlug]
 
@@ -48,7 +238,7 @@ async function executeItemAction(itemSlug, action, playerId, roomState, currentT
   }
 
   if (typeof handler === 'function') {
-    return await handler(playerId, roomState)
+    return await handler(playerId, roomState, playerItemId)
   }
 
   if (typeof handler === 'string') {

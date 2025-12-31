@@ -852,6 +852,14 @@ export default function GameInterface() {
         setInventory(payload.data.inventory)
       }
 
+      // Update player HP if provided in action feedback
+      if (typeof payload?.data?.hp === 'number') {
+        const currentPlayer = playerRef.current
+        if (currentPlayer) {
+          setPlayer({ ...currentPlayer, hp: payload.data.hp })
+        }
+      }
+
       if (payload?.data?.roomItems && currentRoomRef.current?.roomId) {
         updateRoomItems(currentRoomRef.current.roomId, normalizeRoomItems(payload.data.roomItems))
       }
