@@ -16,6 +16,7 @@ Reference `env.local.template` for sample values.
 | --- | --- | --- |
 | `NEXT_PUBLIC_SOCKET_URL` | Local | Base URL of the Socket.IO server. Use `http://localhost:3000` locally. In production, this should match your Fly.io domain (e.g. `https://your-app.fly.dev`). |
 | `NEXT_PUBLIC_SOCKET_PATH` | Local | Socket.IO path (defaults to `/socket.io`). Only set if you change it on the server. |
+| `JWT_SECRET` | Fly.io | Secret key for signing and verifying JWT tokens used by socket authentication and API routes. Generate a secure random string (e.g. `openssl rand -base64 32`). If you want continuity across redeployments/environments (existing auth tokens remain valid), reuse the same JWT_SECRET from your local `.env.local` or prior deployment. Generating a new JWT_SECRET invalidates existing tokens. |
 | `ALLOWED_ORIGINS` | Fly.io | Comma-separated list of frontend origins allowed to connect. Can include your Fly.io domain and any other domains that need access. |
 | `DATABASE_URL` | Fly.io | Supabase PgBouncer connection string used at runtime (`6543` with `?pgbouncer=true`). |
 | `DIRECT_URL` | Fly.io (migrations only) | Supabase direct connection string used exclusively by Prisma migrations (`5432`, no PgBouncer). |
@@ -30,10 +31,15 @@ Reference `env.local.template` for sample values.
 4. Configure secrets so the runtime uses the pooled Supabase connection and the server knows which origins to allow:
    ```bash
    fly secrets set NODE_ENV=production
+   fly secrets set JWT_SECRET="<generate-a-secure-random-string>"
    fly secrets set DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
    fly secrets set DIRECT_URL="postgresql://postgres.[project-ref]:[password]@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
    fly secrets set ALLOWED_ORIGINS="https://your-app.fly.dev"
    ```
+   
+   **JWT_SECRET notes:**
+   - Generate a new secret: `openssl rand -base64 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+   - If you want continuity across redeployments/environments (existing auth tokens remain valid), reuse the same JWT_SECRET from your local `.env.local` or prior deployment. Generating a new JWT_SECRET invalidates existing tokens.
 5. Deploy: `fly deploy`.
 6. After the deployment finishes, note the generated domain (e.g. `https://your-app.fly.dev`). This is your application URL.
 
@@ -44,6 +50,27 @@ Reference `env.local.template` for sample values.
 - The Dockerfile builds the Next.js application during the Docker build process, including icon generation and Next.js compilation.
 - In-memory state (like gameEngine) resets whenever the VM restarts. Persist long-lived data in Supabase.
 - Memory is set to 512mb to accommodate the full Next.js application alongside Socket.IO.
+
+### Deployment Sanity Check
+
+After deployment, verify everything is working:
+
+1. **Check secrets are set:**
+   ```bash
+   fly secrets list -a <app>
+   ```
+   Verify all required secrets are present: `JWT_SECRET`, `NODE_ENV`, `DATABASE_URL`, `DIRECT_URL`, `ALLOWED_ORIGINS`.
+
+2. **Check startup logs:**
+   ```bash
+   fly logs -a <app> --no-tail
+   ```
+   Look for successful server startup: "Server ready on http://0.0.0.0:8080" and no JWT_SECRET errors.
+
+3. **Test browser connectivity:**
+   - Visit `https://<app>.fly.dev` in a browser
+   - Open browser console and verify Socket.IO connects to `wss://<app>.fly.dev/socket.io` (not `ws://localhost:3000`)
+   - Check for any authentication errors in the console
 
 ## Optional: Vercel Deployment (Frontend Only)
 
