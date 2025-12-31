@@ -7,7 +7,18 @@ const connectionListeners = new Set<(connected: boolean) => void>()
 export function getOrCreateSocket(): Socket {
   if (!globalSocket) {
     console.log('[SocketClient] Creating global socket instance')
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000'
+    
+    // Use NEXT_PUBLIC_SOCKET_URL if set, otherwise detect from current origin
+    // This allows the app to work on the same domain (Fly.io) without needing env var
+    let socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL
+    if (!socketUrl && typeof window !== 'undefined') {
+      // In browser: use current origin (works when frontend and backend are on same domain)
+      socketUrl = window.location.origin
+    } else if (!socketUrl) {
+      // Fallback for SSR or when window is not available
+      socketUrl = 'http://localhost:3000'
+    }
+    
     const socketPath = process.env.NEXT_PUBLIC_SOCKET_PATH || '/socket.io'
     const token = useGameStore.getState().token
 
