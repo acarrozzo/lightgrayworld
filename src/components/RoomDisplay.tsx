@@ -413,21 +413,34 @@ export default function RoomDisplay({
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {filteredRoomActions.map((actionItem) => (
-          <button
-            key={actionItem.action}
-            onClick={() => handleAction(actionItem.action)}
-            disabled={isPerformingAction === actionItem.action}
-            className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex items-center gap-2 ${
-              isPerformingAction === actionItem.action
-                ? 'bg-gray-700 cursor-wait'
-                : actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
-            }`}
-          >
-            {actionItem.icon && <Icon name={actionItem.icon} size={16} color="current" />}
-            {actionItem.label}
-          </button>
-        ))}
+        {filteredRoomActions.map((actionItem) => {
+          const isViewShop = actionItem.action === 'view shop'
+          return (
+            <button
+              key={actionItem.action}
+              onClick={() => handleAction(actionItem.action)}
+              disabled={isPerformingAction === actionItem.action}
+              className={`${
+                isViewShop
+                  ? 'px-4 py-3 rounded-md text-base font-semibold text-white transition-all flex items-center gap-2 border-2 border-amber-400/50 shadow-lg hover:shadow-xl'
+                  : 'px-3 py-2 rounded-md text-sm text-white transition-colors flex items-center gap-2'
+              } ${
+                isPerformingAction === actionItem.action
+                  ? 'bg-gray-700 cursor-wait'
+                  : actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
+              }`}
+            >
+              {actionItem.icon && (
+                <Icon
+                  name={actionItem.icon}
+                  size={isViewShop ? 20 : 16}
+                  color="current"
+                />
+              )}
+              {actionItem.label}
+            </button>
+          )
+        })}
       </div>
 
       {room.items && room.items.length > 0 && (

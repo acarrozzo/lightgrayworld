@@ -29,7 +29,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'pick blueberry', label: 'Pick Blueberry', icon: 'blueberry', className: 'bg-blue-600 hover:bg-blue-700' },
   ],
   '006': [
-    { action: 'view shop', label: 'View Shop', icon: '', className: 'bg-amber-500/80 hover:bg-amber-500' },
+    { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'bg-amber-500/80 hover:bg-amber-500' },
   ],
   '007': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
