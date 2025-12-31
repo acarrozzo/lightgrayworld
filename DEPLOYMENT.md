@@ -2,12 +2,11 @@
 
 ## Overview
 
-The application runs as two services:
+The application runs as a single unified service on Fly.io:
 
-- **Next.js frontend**: deploy to Vercel.
-- **Socket.IO realtime server**: deploy to Fly.io.
+- **Full Next.js application** (frontend + API routes) + **Socket.IO realtime server**: deploy to Fly.io.
 
-Environment variables drive which Socket.IO endpoint the client uses so local development and production both work without code changes.
+This unified architecture ensures that API routes can access the gameEngine instance, matching the local development setup. The application is built and deployed as a single service for simplicity and consistency.
 
 ## Environment Variables
 
@@ -15,14 +14,15 @@ Reference `env.local.template` for sample values.
 
 | Variable | Location | Description |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SOCKET_URL` | Vercel + local | Base URL of the Socket.IO server. Use `http://localhost:3000` locally and your `https://*.fly.dev` domain in production. |
-| `NEXT_PUBLIC_SOCKET_PATH` | Vercel + local | Socket.IO path (defaults to `/socket.io`). Only set if you change it on the server. |
-| `ALLOWED_ORIGINS` | Fly.io | Comma-separated list of frontend origins allowed to connect (e.g. `https://your-app.vercel.app,https://preview-url.vercel.app`). |
-| `DATABASE_URL` | Vercel + Fly.io | Supabase PgBouncer connection string used at runtime (`6543` with `?pgbouncer=true`). |
-| `DIRECT_URL` | Local + Fly.io (migrations only) | Supabase direct connection string used exclusively by Prisma migrations (`5432`, no PgBouncer). |
+| `NEXT_PUBLIC_SOCKET_URL` | Local | Base URL of the Socket.IO server. Use `http://localhost:3000` locally. In production, this should match your Fly.io domain (e.g. `https://your-app.fly.dev`). |
+| `NEXT_PUBLIC_SOCKET_PATH` | Local | Socket.IO path (defaults to `/socket.io`). Only set if you change it on the server. |
+| `ALLOWED_ORIGINS` | Fly.io | Comma-separated list of frontend origins allowed to connect. Can include your Fly.io domain and any other domains that need access. |
+| `DATABASE_URL` | Fly.io | Supabase PgBouncer connection string used at runtime (`6543` with `?pgbouncer=true`). |
+| `DIRECT_URL` | Fly.io (migrations only) | Supabase direct connection string used exclusively by Prisma migrations (`5432`, no PgBouncer). |
 | `PORT` | Fly.io | Fly injects this automatically (defaults to `8080`). Bind your server to `process.env.PORT`. |
+| `NODE_ENV` | Fly.io | Set to `production` for production deployments. |
 
-## Fly.io Deployment (Socket Server)
+## Fly.io Deployment (Full Application)
 
 1. Install the Fly CLI: `brew install flyctl` (or follow the [Fly docs](https://fly.io/docs/hands-on/install-flyctl/)).
 2. Authenticate: `fly auth login`.
@@ -32,26 +32,30 @@ Reference `env.local.template` for sample values.
    fly secrets set NODE_ENV=production
    fly secrets set DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
    fly secrets set DIRECT_URL="postgresql://postgres.[project-ref]:[password]@aws-1-us-east-1.pooler.supabase.com:5432/postgres"
-   fly secrets set ALLOWED_ORIGINS="https://lightgray.vercel.app/"
+   fly secrets set ALLOWED_ORIGINS="https://your-app.fly.dev"
    ```
 5. Deploy: `fly deploy`.
-6. After the deployment finishes, note the generated domain (e.g. `https://your-app.fly.dev`) and set it as `NEXT_PUBLIC_SOCKET_URL` in Vercel.
+6. After the deployment finishes, note the generated domain (e.g. `https://your-app.fly.dev`). This is your application URL.
 
 ### Fly.io Notes
 
 - Free allowances include one shared-CPU VM with auto sleep (`auto_stop_machines = true` in `fly.toml`). Expect a short cold start on the first request.
-- Health checks hit `/healthz` automatically as defined in `fly.toml`.
-- In-memory state resets whenever the VM restarts. Persist long-lived data in Supabase.
+- Health checks hit `/healthz` or `/api/health` automatically as defined in `fly.toml`.
+- The Dockerfile builds the Next.js application during the Docker build process, including icon generation and Next.js compilation.
+- In-memory state (like gameEngine) resets whenever the VM restarts. Persist long-lived data in Supabase.
+- Memory is set to 512mb to accommodate the full Next.js application alongside Socket.IO.
 
-## Vercel Deployment (Frontend)
+## Optional: Vercel Deployment (Frontend Only)
+
+If you prefer to keep the frontend on Vercel for CDN benefits, you can:
 
 1. Set the following environment variables in Vercel:
-   - `NEXT_PUBLIC_SOCKET_URL=https://your-app.fly.dev`
+   - `NEXT_PUBLIC_SOCKET_URL=https://your-app.fly.dev` (your Fly.io domain)
    - `NEXT_PUBLIC_SOCKET_PATH=/socket.io` (only if you changed the path)
-   - `DATABASE_URL` matching the Koyeb value
-   - `DIRECT_URL` matching the value set in Fly secrets (required for `prisma migrate deploy`)
-2. Deploy the Next.js app. Vercel will build the frontend only (`next build`).
-3. Test the deployed site and confirm the browser console shows a successful socket connection to the Fly.io URL (look for `Connected with ID:` logs).
+2. Configure Vercel to build only the frontend (this requires custom build configuration).
+3. Note: API routes will not work on Vercel in this setup - they must be accessed via the Fly.io domain.
+
+**Recommended:** Use the unified Fly.io deployment for simplicity and to ensure all features work correctly.
 
 ## Public Endpoints
 
@@ -72,24 +76,24 @@ The schema is now tracked by a single baseline migration (`prisma/migrations/202
    - Run `npx prisma migrate dev --name <change>` locally (this creates a new dated folder next to the baseline).
 2. **Deploy migrations**
    - Commit the new migration folder(s).
-   - In every environment (local dev DB, staging, production, Vercel build), run `npx prisma migrate deploy`.
+   - In every environment (local dev DB, staging, production, Fly.io), run `npx prisma migrate deploy`.
 3. **Resetting from scratch**
    - Drop the `public` schema (e.g. `psql "$DATABASE_URL" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'`) or run `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION="<user confirmation>" npx prisma migrate reset`.
    - Run `npx prisma migrate deploy`.
    - Seed with `npx prisma db seed` (uses [`prisma/seed.ts`](prisma/seed.ts)).
-   - This sequence is already configured in the Vercel postinstall hook so deploys start from a clean baseline on empty databases.
+   - For Fly.io, you can add a release command in `fly.toml` to run migrations before deployment.
 4. **Verification**
-   - `npx prisma migrate status` should report “Database schema is up to date”.
-   - Vercel logs should show `prisma migrate deploy` completing before `next build`.
+   - `npx prisma migrate status` should report "Database schema is up to date".
+   - Fly.io deployment logs should show the build process completing successfully.
 
 ## Local Development
 
 1. Copy `env.local.template` to `.env.local`, fill in your Supabase credentials once, and keep it synced with the production values.
 2. Start the combined dev server:
    - `npm run dev` (Next.js + Socket.IO on the same process, existing behavior)
-3. Or run them separately for parity with production:
-   - Terminal 1: `npm run dev:socket`
-   - Terminal 2: `NEXT_PUBLIC_SOCKET_URL=http://localhost:3000 NEXT_PUBLIC_SOCKET_PATH=/socket.io npx next dev -p 3001`
+3. Or run them separately for testing:
+   - Terminal 1: `npm run dev:socket` (runs socket-server.js with Next.js)
+   - Terminal 2: `NEXT_PUBLIC_SOCKET_URL=http://localhost:3000 NEXT_PUBLIC_SOCKET_PATH=/socket.io npx next dev -p 3001` (runs separate Next.js instance)
 
-With the split setup, the browser connects to the same socket URL configured in environment variables, so switching between local and production versions requires no code edits. Because the same Supabase database is used everywhere, exercise caution when running destructive operations locally.
+The unified setup (`npm run dev`) matches production architecture where everything runs in a single process. Because the same Supabase database is used everywhere, exercise caution when running destructive operations locally.
 

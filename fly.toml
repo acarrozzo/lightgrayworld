@@ -10,6 +10,7 @@ primary_region = 'ewr'
 
 [env]
   PORT = '8080'
+  NODE_ENV = 'production'
 
 # [deploy]
 #  release_command = 'npx prisma migrate deploy'
@@ -33,6 +34,6 @@ primary_region = 'ewr'
     path = '/healthz'
 
 [[vm]]
-  memory = '256mb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
