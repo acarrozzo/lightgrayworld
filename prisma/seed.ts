@@ -466,6 +466,8 @@ async function main() {
       maxStack: 99999,
       maxPerPlayer: null,
       value: 10,
+      canSell: true,
+      canDrop: false,
     },
     {
       id: 'shovel_001',

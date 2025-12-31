@@ -328,6 +328,8 @@ model ItemTemplate {
   maxPerPlayer Int?
   weight       Float?
   value        Int          @default(10)
+  canSell      Boolean      @default(true)
+  canDrop      Boolean      @default(true)
   metadata     Json?
   PlayerItem   PlayerItem[]
   RoomItem     RoomItem[]

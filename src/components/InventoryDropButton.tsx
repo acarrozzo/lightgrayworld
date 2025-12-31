@@ -9,6 +9,7 @@ interface InventoryDropButtonProps {
     template: {
       name: string
       description?: string
+      canDrop?: boolean
     }
     quantity: number
   }
@@ -49,7 +50,7 @@ export default function InventoryDropButton({
   }, [isOpen])
 
   const handleMainButtonClick = () => {
-    if (disabled) return
+    if (isDisabled) return
     onDrop(1)
     setIsOpen(false)
   }
@@ -61,14 +62,14 @@ export default function InventoryDropButton({
   }
 
   const handleDropHalf = () => {
-    if (disabled || item.quantity <= 1) return
+    if (isDisabled || item.quantity <= 1) return
     const halfQuantity = Math.ceil(item.quantity / 2)
     onDrop(halfQuantity)
     setIsOpen(false)
   }
 
   const handleDropAll = () => {
-    if (disabled || item.quantity <= 1) return
+    if (isDisabled || item.quantity <= 1) return
     onDrop(item.quantity)
     setIsOpen(false)
   }
@@ -80,24 +81,30 @@ export default function InventoryDropButton({
   }
 
   const showQuantityOptions = item.quantity > 1
+  const cannotDrop = item.template.canDrop === false
+  const isDisabled = disabled || cannotDrop
 
   return (
     <div className="relative inline-block" ref={buttonRef}>
       <div className="flex items-stretch">
-        {/* Main button */}
-        <button
-          onClick={handleMainButtonClick}
-          disabled={disabled}
-          className="px-2 py-1 text-xs bg-red-600/70 hover:bg-red-600 rounded-l-md text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
-        >
-          Drop
-        </button>
+        {/* Main button - only show if item can be dropped */}
+        {!cannotDrop && (
+          <button
+            onClick={handleMainButtonClick}
+            disabled={disabled}
+            className="px-2 py-1 text-xs bg-red-600/70 hover:bg-red-600 rounded-l-md text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+          >
+            Drop
+          </button>
+        )}
         
         {/* Dropdown toggle button */}
         <button
           onClick={handleDropdownToggle}
           disabled={disabled}
-          className="px-1.5 py-1 bg-red-600/70 hover:bg-red-600 rounded-r-md text-white border-l border-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+          className={`px-1.5 py-1 bg-red-600/70 hover:bg-red-600 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            cannotDrop ? 'rounded-md' : 'rounded-r-md border-l border-red-500/30'
+          }`}
           aria-label="More options"
         >
           <ChevronDown size={12} className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
@@ -111,34 +118,39 @@ export default function InventoryDropButton({
           className="absolute right-0 top-full mt-1 z-50 min-w-[140px] bg-gray-800 rounded-md shadow-lg border border-gray-700 overflow-hidden"
         >
           <div className="py-1">
-            <button
-              onClick={handleMainButtonClick}
-              disabled={disabled}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Drop 1
-            </button>
-            
-            {showQuantityOptions && (
+            {/* Drop options - only show if item can be dropped */}
+            {!cannotDrop && (
               <>
                 <button
-                  onClick={handleDropHalf}
+                  onClick={handleMainButtonClick}
                   disabled={disabled}
                   className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Drop half
+                  Drop 1
                 </button>
-                <button
-                  onClick={handleDropAll}
-                  disabled={disabled}
-                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Drop all
-                </button>
+                
+                {showQuantityOptions && (
+                  <>
+                    <button
+                      onClick={handleDropHalf}
+                      disabled={disabled}
+                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Drop half
+                    </button>
+                    <button
+                      onClick={handleDropAll}
+                      disabled={disabled}
+                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Drop all
+                    </button>
+                  </>
+                )}
+                
+                <div className="border-t border-gray-700 my-1" />
               </>
             )}
-            
-            <div className="border-t border-gray-700 my-1" />
             
             <button
               onClick={handleExamine}

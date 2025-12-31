@@ -164,6 +164,10 @@ async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom)
 
   const template = playerItem.ItemTemplate
 
+  if (template.canDrop === false) {
+    return { success: false, message: 'This item cannot be dropped.' }
+  }
+
   await prisma.$transaction(async (tx) => {
     if (playerItem.quantity === quantity) {
       await tx.playerItem.delete({ where: { id: playerItemId } })
@@ -221,6 +225,8 @@ async function getRoomItems(roomId) {
           name: true,
           description: true,
           type: true,
+          canSell: true,
+          canDrop: true,
         },
       },
     },

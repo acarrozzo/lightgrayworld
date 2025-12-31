@@ -5,6 +5,8 @@ export interface RoomItemTemplate {
   description: string
   type: string
   value: number
+  canSell?: boolean
+  canDrop?: boolean
 }
 
 export interface RoomItemView {
