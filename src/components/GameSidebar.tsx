@@ -10,6 +10,14 @@ import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import InventoryDropButton from './InventoryDropButton'
 import { getItemActions } from '@/lib/item-actions'
 import Icon from './Icon'
+import { ItemType } from '@prisma/client'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import {
+  getItemDisplayOrder,
+  getCategoryDisplayName,
+  CATEGORY_ORDER,
+  getItemOrderIndex,
+} from '@/lib/inventory-utils'
 
 interface GameSidebarProps {
   player: Player
@@ -28,6 +36,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   const [newItemsCount, setNewItemsCount] = useState(0)
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState('stats')
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<ItemType>>(new Set())
   const previousInventoryRef = useRef<typeof inventory>([])
   const isInitialMountRef = useRef(true)
   const wasInventoryTabOpenRef = useRef(false) // Will be updated by useEffect
@@ -178,6 +187,57 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
     setPlayer(updatedPlayer)
   }
 
+  // Get item display order map (memoized)
+  const itemOrderMap = useMemo(() => getItemDisplayOrder(), [])
+
+  // Group and sort inventory items by category
+  const categorizedInventory = useMemo(() => {
+    if (!inventory || inventory.length === 0) {
+      return new Map<ItemType, typeof inventory>()
+    }
+
+    // Group items by type
+    const grouped = new Map<ItemType, typeof inventory>()
+    
+    for (const item of inventory) {
+      const itemType = (item.template.type as ItemType) || ItemType.MISC
+      if (!grouped.has(itemType)) {
+        grouped.set(itemType, [])
+      }
+      grouped.get(itemType)!.push(item)
+    }
+
+    // Sort items within each category by seed.ts order
+    for (const [type, items] of grouped.entries()) {
+      items.sort((a, b) => {
+        const orderA = getItemOrderIndex(a.template.slug, itemOrderMap)
+        const orderB = getItemOrderIndex(b.template.slug, itemOrderMap)
+        
+        // If both have same order (or both missing), sort alphabetically by name
+        if (orderA === orderB) {
+          return a.template.name.localeCompare(b.template.name)
+        }
+        
+        return orderA - orderB
+      })
+    }
+
+    return grouped
+  }, [inventory, itemOrderMap])
+
+  // Toggle category collapse state
+  const toggleCategory = (category: ItemType) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(category)) {
+        next.delete(category)
+      } else {
+        next.add(category)
+      }
+      return next
+    })
+  }
+
   const tabs: TabConfig[] = [
     {
       id: 'stats',
@@ -291,112 +351,145 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
               Your inventory is empty.
             </div>
           ) : (
-            <div className="space-y-2">
-              {inventory.map((item) => {
-                const isNewItem = newItemIds.has(item.id)
-                const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
-                const itemValue = item.template.value ?? 0
-                // Try to get icon from template, fallback to slug, or use a default
-                const itemIcon = (item.template as any).icon || item.template.slug || 'inv'
+            <div className="space-y-3">
+              {CATEGORY_ORDER.map((categoryType) => {
+                const categoryItems = categorizedInventory.get(categoryType) || []
+                const isCollapsed = collapsedCategories.has(categoryType)
+                const categoryName = getCategoryDisplayName(categoryType)
                 
                 return (
-                  <div
-                    key={item.id}
-                    className="relative rounded-md border border-gray-700/30 bg-gray-800/20 px-2.5 py-2.5 hover:bg-gray-800/40 hover:border-gray-700/50 hover:shadow-sm transition-all duration-200 flex gap-2"
-                  >
-                    {isNewItem && (
-                      <span className="absolute left-1 top-1 w-1.5 h-1.5 bg-red-500 rounded-full z-10"></span>
-                    )}
-                    
-                    {/* Item icon on the left */}
-                    <div className="flex-shrink-0 pt-0.5">
-                      <Icon
-                        name={itemIcon}
-                        size={32}
-                        color="current"
-                        className="text-gray-600"
-                      />
-                    </div>
-                    
-                    {/* Content area */}
-                    <div className="flex-1 min-w-0">
-                      {/* Top row: Item name with quantity */}
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <div className={`text-white text-sm font-medium truncate min-w-0 ${isNewItem ? 'pl-2' : ''}`}>
-                          {item.template.name}
-                        </div>
-                        {item.quantity > 1 && (
-                          <span className="text-gray-200 text-xs font-medium border border-gray-700/50 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">
-                            x{item.quantity}
-                          </span>
+                  <div key={categoryType} className="space-y-2">
+                    {/* Category Header */}
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory(categoryType)}
+                      className="w-full flex items-center justify-between px-2 py-2 hover:bg-gray-800/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        {isCollapsed ? (
+                          <ChevronRight size={16} className="text-gray-400" />
+                        ) : (
+                          <ChevronDown size={16} className="text-gray-400" />
                         )}
+                        <span className="text-sm font-semibold text-gray-300">
+                          {categoryName} ({categoryItems.length})
+                        </span>
                       </div>
-                      
-                      {/* Description */}
-                      {item.template.description && (
-                        <div className="text-gray-500 text-xs mb-1.5 line-clamp-2">
-                          {item.template.description}
-                        </div>
-                      )}
-                      
-                      {/* Bottom row: Action buttons on left, value and drop/examine button on right */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                          {itemActions.map((itemAction) => (
-                            <button
-                              key={itemAction.action}
-                              onClick={() =>
-                                onAction?.({
-                                  type: 'use_item',
-                                  data: { playerItemId: item.id, action: itemAction.action },
-                                })
-                              }
-                              className={`px-2.5 py-2 rounded text-xs text-white transition-colors flex items-center gap-1.5 flex-shrink-0 ${
-                                itemAction.className || 'bg-indigo-600/70 hover:bg-indigo-600'
-                              }`}
-                              title={itemAction.label}
+                    </button>
+                    
+                    {/* Category Items */}
+                    {!isCollapsed && categoryItems.length > 0 && (
+                      <div className="space-y-2">
+                        {categoryItems.map((item) => {
+                          const isNewItem = newItemIds.has(item.id)
+                          const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
+                          const itemValue = item.template.value ?? 0
+                          // Try to get icon from template, fallback to slug, or use a default
+                          const itemIcon = (item.template as any).icon || item.template.slug || 'inv'
+                          
+                          return (
+                            <div
+                              key={item.id}
+                              className="relative rounded-md border border-gray-700/30 bg-gray-800/20 px-2.5 py-2.5 hover:bg-gray-800/40 hover:border-gray-700/50 hover:shadow-sm transition-all duration-200 flex gap-2"
                             >
-                              {itemAction.icon && (
-                                <Icon
-                                  name={itemAction.icon}
-                                  size={14}
-                                  color="current"
-                                />
+                              {isNewItem && (
+                                <span className="absolute left-1 top-1 w-1.5 h-1.5 bg-red-500 rounded-full z-10"></span>
                               )}
-                              <span className="hidden sm:inline">{itemAction.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {itemValue > 0 && (
-                            <span className="text-[10px] text-gray-500/60">
-                              {itemValue}
-                            </span>
-                          )}
-                          <InventoryDropButton
-                            item={item}
-                            onDrop={(quantity) =>
-                              onAction?.({
-                                type: 'drop_item',
-                                data: { playerItemId: item.id, quantity },
-                              })
-                            }
-                            onExamine={() =>
-                              onAction?.({
-                                type: 'examine_player_item',
-                                data: { playerItemId: item.id },
-                              })
-                            }
-                            onItemAction={(action) =>
-                              onAction?.({
-                                type: 'use_item',
-                                data: { playerItemId: item.id, action },
-                              })
-                            }
-                          />
-                        </div>
+                              
+                              {/* Item icon on the left */}
+                              <div className="flex-shrink-0 pt-0.5">
+                                <Icon
+                                  name={itemIcon}
+                                  size={32}
+                                  color="current"
+                                  className="text-gray-600"
+                                />
+                              </div>
+                              
+                              {/* Content area */}
+                              <div className="flex-1 min-w-0">
+                                {/* Top row: Item name with quantity */}
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <div className={`text-white text-sm font-medium truncate min-w-0 ${isNewItem ? 'pl-2' : ''}`}>
+                                    {item.template.name}
+                                  </div>
+                                  {item.quantity > 1 && (
+                                    <span className="text-gray-200 text-xs font-medium border border-gray-700/50 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">
+                                      x{item.quantity}
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                {/* Description */}
+                                {item.template.description && (
+                                  <div className="text-gray-500 text-xs mb-1.5 line-clamp-2">
+                                    {item.template.description}
+                                  </div>
+                                )}
+                                
+                                {/* Bottom row: Action buttons on left, value and drop/examine button on right */}
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                    {itemActions.map((itemAction) => (
+                                      <button
+                                        key={itemAction.action}
+                                        onClick={() =>
+                                          onAction?.({
+                                            type: 'use_item',
+                                            data: { playerItemId: item.id, action: itemAction.action },
+                                          })
+                                        }
+                                        className={`px-2.5 py-2 rounded text-xs text-white transition-colors flex items-center gap-1.5 flex-shrink-0 ${
+                                          itemAction.className || 'bg-indigo-600/70 hover:bg-indigo-600'
+                                        }`}
+                                        title={itemAction.label}
+                                      >
+                                        {itemAction.icon && (
+                                          <Icon
+                                            name={itemAction.icon}
+                                            size={14}
+                                            color="current"
+                                          />
+                                        )}
+                                        <span className="hidden sm:inline">{itemAction.label}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    {itemValue > 0 && (
+                                      <span className="text-[10px] text-gray-500/60">
+                                        {itemValue}
+                                      </span>
+                                    )}
+                                    <InventoryDropButton
+                                      item={item}
+                                      onDrop={(quantity) =>
+                                        onAction?.({
+                                          type: 'drop_item',
+                                          data: { playerItemId: item.id, quantity },
+                                        })
+                                      }
+                                      onExamine={() =>
+                                        onAction?.({
+                                          type: 'examine_player_item',
+                                          data: { playerItemId: item.id },
+                                        })
+                                      }
+                                      onItemAction={(action) =>
+                                        onAction?.({
+                                          type: 'use_item',
+                                          data: { playerItemId: item.id, action },
+                                        })
+                                      }
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-                    </div>
+                    )}
                   </div>
                 )
               })}
