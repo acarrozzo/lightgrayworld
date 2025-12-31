@@ -105,7 +105,7 @@ export default function InventoryDropButton({
           <button
             onClick={handleMainButtonClick}
             disabled={disabled}
-            className="px-2 py-1 text-xs bg-red-600/70 hover:bg-red-600 rounded-l-md text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+            className="px-1.5 py-0.5 text-xs bg-gray-600/70 hover:bg-gray-600 rounded-l text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
           >
             Drop
           </button>
@@ -115,12 +115,12 @@ export default function InventoryDropButton({
         <button
           onClick={handleDropdownToggle}
           disabled={disabled}
-          className={`px-1.5 py-1 bg-red-600/70 hover:bg-red-600 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-            cannotDrop ? 'rounded-md' : 'rounded-r-md border-l border-red-500/30'
+          className={`px-1 py-0.5 bg-gray-600/70 hover:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            cannotDrop ? 'rounded' : 'rounded-r border-l border-gray-500/30'
           }`}
           aria-label="More options"
         >
-          <ChevronDown size={12} className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+          <ChevronDown size={10} className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
         </button>
       </div>
 
