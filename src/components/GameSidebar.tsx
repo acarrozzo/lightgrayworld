@@ -1,6 +1,6 @@
 'use client'
 
-import { Player, useGameStore } from '@/lib/game-state'
+import { Player, useGameStore, InventoryItem } from '@/lib/game-state'
 import TabContainer, { TabConfig } from './TabContainer'
 import { useMemo, useState, useEffect, useRef } from 'react'
 import AvatarSelectionModal from './AvatarSelectionModal'
@@ -691,7 +691,7 @@ function StatBox({ label, value, subtle = false }: StatBoxProps) {
 
 interface EquipmentSlotProps {
   slot: EquipSlot
-  item?: typeof inventory[0]
+  item?: InventoryItem
   onUnequip: (playerItemId: string) => void
 }
 
