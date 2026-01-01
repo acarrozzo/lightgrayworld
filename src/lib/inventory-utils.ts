@@ -12,6 +12,7 @@ const SEED_ITEM_ORDER = [
   'welcome-book',
   'shovel',
   'dagger',
+  'short-sword',
   'red-potion',
   'blue-potion',
   'dirt',

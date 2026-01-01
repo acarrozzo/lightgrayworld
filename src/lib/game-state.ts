@@ -49,6 +49,7 @@ export interface InventoryItem {
     value: number
     canSell?: boolean
     canDrop?: boolean
+    metadata?: { icon?: string } | null
   }
 }
 

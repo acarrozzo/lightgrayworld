@@ -7,6 +7,7 @@ export interface RoomItemTemplate {
   value: number
   canSell?: boolean
   canDrop?: boolean
+  metadata?: { icon?: string } | null
 }
 
 export interface RoomItemView {

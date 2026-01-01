@@ -17,6 +17,7 @@ export const ROOM_ITEMS_SELECT = {
           value: true,
           canSell: true,
           canDrop: true,
+          metadata: true,
         },
       },
     },
@@ -41,13 +42,14 @@ export const ROOM_ITEMS_INCLUDE = {
           value: true,
           canSell: true,
           canDrop: true,
+          metadata: true,
         },
       },
     },
   },
 } as const satisfies Prisma.RoomInclude
 
-type ItemTemplateSelected = Pick<ItemTemplate, 'id' | 'slug' | 'name' | 'description' | 'type' | 'value' | 'canSell' | 'canDrop'>
+type ItemTemplateSelected = Pick<ItemTemplate, 'id' | 'slug' | 'name' | 'description' | 'type' | 'value' | 'canSell' | 'canDrop' | 'metadata'>
 
 type RoomItemWithTemplate = {
   id: string
@@ -101,6 +103,7 @@ export function normalizeRoomItems(rawItems: RoomLike['items']): NormalizedRoomI
         value: item.ItemTemplate.value,
         canSell: item.ItemTemplate.canSell,
         canDrop: item.ItemTemplate.canDrop,
+        metadata: item.ItemTemplate.metadata,
       },
     })
   }

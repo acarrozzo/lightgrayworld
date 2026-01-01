@@ -490,6 +490,17 @@ async function main() {
       value: 10,
     },
     {
+      id: 'short-sword_001',
+      slug: 'short-sword',
+      name: 'Short Sword',
+      description: 'A short, practical sword for close combat.',
+      type: ItemType.WEAPON,
+      maxStack: 1,
+      maxPerPlayer: 1,
+      value: 10,
+      metadata: { icon: 'equipment-shortsword' },
+    },
+    {
       id: 'red-potion_001',
       slug: 'red-potion',
       name: 'Red Potion',
@@ -617,6 +628,20 @@ async function main() {
     data: {
       roomId: '004',
       templateId: 'flower_001',
+      quantity: 1,
+      autoRespawn: true,
+    },
+  })
+
+  // Seed short sword in room 007 (idempotent)
+  await prisma.roomItem.deleteMany({
+    where: { roomId: '007', templateId: 'short-sword_001' },
+  })
+
+  await prisma.roomItem.create({
+    data: {
+      roomId: '007',
+      templateId: 'short-sword_001',
       quantity: 1,
       autoRespawn: true,
     },

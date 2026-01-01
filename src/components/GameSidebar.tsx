@@ -384,8 +384,9 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
                           const isNewItem = newItemIds.has(item.id)
                           const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
                           const itemValue = item.template.value ?? 0
-                          // Try to get icon from template, fallback to slug, or use a default
-                          const itemIcon = (item.template as any).icon || item.template.slug || 'inv'
+                          // Try to get icon from metadata, fallback to slug, or use a default
+                          const metadata = item.template.metadata as { icon?: string } | null
+                          const itemIcon = metadata?.icon || item.template.slug || 'inv'
                           
                           return (
                             <div
