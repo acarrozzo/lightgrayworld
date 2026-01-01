@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Icon from './Icon'
 import InventorySellButton from './InventorySellButton'
 import type { InventoryItem } from '@/lib/game-state'
+import { EquipSlot } from '@prisma/client'
 
 interface ShopItem {
   id: string
@@ -12,6 +13,7 @@ interface ShopItem {
   description: string
   value: number
   type: string
+  equipSlot?: EquipSlot | null
 }
 
 interface ShopModalProps {
