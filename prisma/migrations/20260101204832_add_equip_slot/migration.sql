@@ -1,6 +1,9 @@
 -- CreateEnum
 CREATE TYPE "ItemType" AS ENUM ('WEAPON', 'CONSUMABLE', 'MISC');
 
+-- CreateEnum
+CREATE TYPE "EquipSlot" AS ENUM ('MAIN_HAND', 'OFF_HAND', 'HEAD', 'BODY', 'HANDS', 'FEET');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -70,6 +73,7 @@ CREATE TABLE "User" (
     "endFight" BOOLEAN NOT NULL DEFAULT false,
     "weaponType" INTEGER NOT NULL DEFAULT 0,
     "uIcon" TEXT NOT NULL DEFAULT 'char-commander',
+    "uIconColor" TEXT NOT NULL DEFAULT '#60a5fa',
     "uIconWeapon" TEXT NOT NULL DEFAULT 'fists',
     "eIcon" TEXT NOT NULL DEFAULT 'question',
     "chest1" BOOLEAN NOT NULL DEFAULT false,
@@ -99,6 +103,7 @@ CREATE TABLE "User" (
     "worldMapV4" BOOLEAN NOT NULL DEFAULT false,
     "worldMapV5" BOOLEAN NOT NULL DEFAULT false,
     "worldMapFull" BOOLEAN NOT NULL DEFAULT false,
+    "lobbyMap" BOOLEAN NOT NULL DEFAULT false,
     "pajamaShamanFlag" BOOLEAN NOT NULL DEFAULT false,
     "youngSoldierFlag" BOOLEAN NOT NULL DEFAULT false,
     "jackLumberFlag" BOOLEAN NOT NULL DEFAULT false,
@@ -204,6 +209,7 @@ CREATE TABLE "RoomItem" (
     "quantity" INTEGER NOT NULL DEFAULT 1,
     "maxQuantity" INTEGER,
     "respawnSeconds" INTEGER,
+    "autoRespawn" BOOLEAN NOT NULL DEFAULT false,
     "templateId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -243,6 +249,17 @@ CREATE TABLE "RoomChatMessage" (
     "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "RoomChatMessage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WorldFeedEvent" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "username" TEXT NOT NULL,
+    "eventType" TEXT NOT NULL,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "WorldFeedEvent_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -303,6 +320,10 @@ CREATE TABLE "ItemTemplate" (
     "maxStack" INTEGER NOT NULL DEFAULT 99,
     "maxPerPlayer" INTEGER,
     "weight" DOUBLE PRECISION,
+    "value" INTEGER NOT NULL DEFAULT 10,
+    "canSell" BOOLEAN NOT NULL DEFAULT true,
+    "canDrop" BOOLEAN NOT NULL DEFAULT true,
+    "equipSlot" "EquipSlot",
     "metadata" JSONB,
 
     CONSTRAINT "ItemTemplate_pkey" PRIMARY KEY ("id")
@@ -352,6 +373,12 @@ CREATE UNIQUE INDEX "Room_roomId_key" ON "Room"("roomId");
 
 -- CreateIndex
 CREATE INDEX "RoomChatMessage_roomId_timestamp_idx" ON "RoomChatMessage"("roomId", "timestamp");
+
+-- CreateIndex
+CREATE INDEX "WorldFeedEvent_timestamp_idx" ON "WorldFeedEvent"("timestamp");
+
+-- CreateIndex
+CREATE INDEX "WorldFeedEvent_eventType_idx" ON "WorldFeedEvent"("eventType");
 
 -- CreateIndex
 CREATE INDEX "ActionHistory_userId_timestamp_idx" ON "ActionHistory"("userId", "timestamp");
@@ -406,6 +433,9 @@ ALTER TABLE "RoomChatMessage" ADD CONSTRAINT "RoomChatMessage_userId_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "RoomChatMessage" ADD CONSTRAINT "RoomChatMessage_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "Room"("roomId") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "WorldFeedEvent" ADD CONSTRAINT "WorldFeedEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ActionHistory" ADD CONSTRAINT "ActionHistory_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

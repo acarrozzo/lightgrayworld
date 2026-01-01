@@ -227,6 +227,7 @@ async function getRoomItems(roomId) {
           type: true,
           canSell: true,
           canDrop: true,
+          equipSlot: true,
         },
       },
     },

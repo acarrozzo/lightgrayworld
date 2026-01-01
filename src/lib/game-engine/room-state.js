@@ -2,6 +2,7 @@ const { executeRoomAction } = require('./room-action-handlers')
 const { executeItemAction } = require('./item-action-handlers')
 const { pickupRoomItem, dropRoomItem, getRoomItems } = require('./services/room-item-service')
 const { getPlayerInventory } = require('./services/inventory-service')
+const { equipItem, unequipItem } = require('./services/equipment-service')
 
 class RoomState {
   constructor(roomId) {
@@ -96,6 +97,10 @@ class RoomState {
         return this.executeExaminePlayerItem(action, playerId)
       case 'use_item':
         return this.executeUseItem(action, playerId, currentTickNumber, nextTickAt)
+      case 'equip_item':
+        return this.executeEquipItem(action, playerId)
+      case 'unequip_item':
+        return this.executeUnequipItem(action, playerId)
       default:
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
     }
@@ -484,6 +489,68 @@ class RoomState {
     }
 
     return itemActionResult
+  }
+
+  async executeEquipItem(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('equip_item', 'Player not found in this room')
+    }
+
+    const { playerItemId } = action.data || {}
+    if (!playerItemId) {
+      return this.createErrorResult('equip_item', 'Player item ID is required')
+    }
+
+    this.touchActivity()
+
+    const result = await equipItem(playerId, playerItemId)
+
+    if (!result.success) {
+      return this.createErrorResult('equip_item', result.message)
+    }
+
+    return {
+      success: true,
+      action: 'equip_item',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('equip_item', 'success', result.message, {
+          inventory: result.inventory,
+        }),
+      },
+    }
+  }
+
+  async executeUnequipItem(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('unequip_item', 'Player not found in this room')
+    }
+
+    const { playerItemId } = action.data || {}
+    if (!playerItemId) {
+      return this.createErrorResult('unequip_item', 'Player item ID is required')
+    }
+
+    this.touchActivity()
+
+    const result = await unequipItem(playerId, playerItemId)
+
+    if (!result.success) {
+      return this.createErrorResult('unequip_item', result.message)
+    }
+
+    return {
+      success: true,
+      action: 'unequip_item',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('unequip_item', 'success', result.message, {
+          inventory: result.inventory,
+        }),
+      },
+    }
   }
 
   createFeedbackPayload(action, outcome, message, data = {}) {

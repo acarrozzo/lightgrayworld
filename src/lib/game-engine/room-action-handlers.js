@@ -194,6 +194,7 @@ const ROOM_ACTIONS = {
           description: true,
           value: true,
           type: true,
+          equipSlot: true,
         },
       })
 

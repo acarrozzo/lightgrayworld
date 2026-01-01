@@ -1,3 +1,5 @@
+import { EquipSlot } from '@prisma/client'
+
 export interface RoomItemTemplate {
   id: string
   slug: string
@@ -7,6 +9,7 @@ export interface RoomItemTemplate {
   value: number
   canSell?: boolean
   canDrop?: boolean
+  equipSlot?: EquipSlot | null
   metadata?: { icon?: string } | null
 }
 

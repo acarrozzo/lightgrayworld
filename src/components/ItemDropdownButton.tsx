@@ -9,6 +9,7 @@ interface ItemDropdownButtonProps {
     template: {
       name: string
       description?: string
+      equipSlot?: string | null
     }
     quantity: number
   }

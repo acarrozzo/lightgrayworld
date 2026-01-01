@@ -8,11 +8,13 @@ import Icon from './Icon'
 interface InventoryDropButtonProps {
   item: {
     id: string
+    isEquipped?: boolean
     template: {
       name: string
       slug?: string
       description?: string
       canDrop?: boolean
+      equipSlot?: string | null
     }
     quantity: number
   }
@@ -94,7 +96,8 @@ export default function InventoryDropButton({
   }
 
   const showQuantityOptions = item.quantity > 1
-  const cannotDrop = item.template.canDrop === false
+  const isEquipped = item.isEquipped === true
+  const cannotDrop = item.template.canDrop === false || isEquipped
   const isDisabled = disabled || cannotDrop
 
   return (

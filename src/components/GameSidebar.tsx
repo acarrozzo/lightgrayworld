@@ -10,7 +10,7 @@ import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import InventoryDropButton from './InventoryDropButton'
 import { getItemActions } from '@/lib/item-actions'
 import Icon from './Icon'
-import { ItemType } from '@prisma/client'
+import { ItemType, EquipSlot } from '@prisma/client'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import {
   getItemDisplayOrder,
@@ -62,6 +62,19 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
+
+  // Group equipped items by slot
+  const equippedBySlot = useMemo(() => {
+    const map = new Map<EquipSlot | null, typeof inventory[0]>()
+    inventory
+      .filter((item) => item.isEquipped === true)
+      .forEach((item) => {
+        if (item.slot) {
+          map.set(item.slot as EquipSlot, item)
+        }
+      })
+    return map
+  }, [inventory])
 
   // Track inventory changes to detect new items
   useEffect(() => {
@@ -313,6 +326,76 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
             <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} />
           </div>
 
+          {/* Equipment Display */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Equipment</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {/* Row 1: MAIN_HAND, OFF_HAND */}
+              <EquipmentSlot
+                slot={EquipSlot.MAIN_HAND}
+                item={equippedBySlot.get(EquipSlot.MAIN_HAND)}
+                onUnequip={(playerItemId) =>
+                  onAction?.({
+                    type: 'unequip_item',
+                    data: { playerItemId },
+                  })
+                }
+              />
+              <EquipmentSlot
+                slot={EquipSlot.OFF_HAND}
+                item={equippedBySlot.get(EquipSlot.OFF_HAND)}
+                onUnequip={(playerItemId) =>
+                  onAction?.({
+                    type: 'unequip_item',
+                    data: { playerItemId },
+                  })
+                }
+              />
+              {/* Row 2: HEAD, BODY */}
+              <EquipmentSlot
+                slot={EquipSlot.HEAD}
+                item={equippedBySlot.get(EquipSlot.HEAD)}
+                onUnequip={(playerItemId) =>
+                  onAction?.({
+                    type: 'unequip_item',
+                    data: { playerItemId },
+                  })
+                }
+              />
+              <EquipmentSlot
+                slot={EquipSlot.BODY}
+                item={equippedBySlot.get(EquipSlot.BODY)}
+                onUnequip={(playerItemId) =>
+                  onAction?.({
+                    type: 'unequip_item',
+                    data: { playerItemId },
+                  })
+                }
+              />
+              {/* Row 3: HANDS, FEET */}
+              <EquipmentSlot
+                slot={EquipSlot.HANDS}
+                item={equippedBySlot.get(EquipSlot.HANDS)}
+                onUnequip={(playerItemId) =>
+                  onAction?.({
+                    type: 'unequip_item',
+                    data: { playerItemId },
+                  })
+                }
+              />
+              <EquipmentSlot
+                slot={EquipSlot.FEET}
+                item={equippedBySlot.get(EquipSlot.FEET)}
+                onUnequip={(playerItemId) =>
+                  onAction?.({
+                    type: 'unequip_item',
+                    data: { playerItemId },
+                  })
+                }
+              />
+            </div>
+          </div>
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Core Stats</h4>
@@ -428,9 +511,31 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
                                   </div>
                                 )}
                                 
+                                {/* Equip Slot */}
+                                {item.template.equipSlot && (
+                                  <div className="text-blue-400 text-xs mb-1.5">
+                                    Equips to: {item.template.equipSlot.replace(/_/g, ' ')}
+                                  </div>
+                                )}
+                                
                                 {/* Bottom row: Action buttons on left, value and drop/examine button on right */}
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                    {/* Equip button - show if item has equipSlot and is not already equipped */}
+                                    {item.template.equipSlot !== null && !item.isEquipped && (
+                                      <button
+                                        onClick={() =>
+                                          onAction?.({
+                                            type: 'equip_item',
+                                            data: { playerItemId: item.id },
+                                          })
+                                        }
+                                        className="px-2 py-1 text-xs font-medium text-white bg-blue-600/70 hover:bg-blue-600 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                                      >
+                                        <Icon name="equipment-shortsword" size={12} color="current" />
+                                        <span className="hidden sm:inline">Equip</span>
+                                      </button>
+                                    )}
                                     {itemActions.map((itemAction) => (
                                       <button
                                         key={itemAction.action}
@@ -580,6 +685,35 @@ function StatBox({ label, value, subtle = false }: StatBoxProps) {
     <div className={`rounded-2xl border px-4 py-3 text-center ${subtle ? 'border-gray-800/70 bg-gray-900/60' : 'border-gray-800/80 bg-gray-900/80'}`}>
       <p className="text-xs uppercase tracking-wide text-gray-400">{label}</p>
       <p className="text-lg font-semibold text-white mt-1">{value}</p>
+    </div>
+  )
+}
+
+interface EquipmentSlotProps {
+  slot: EquipSlot
+  item?: typeof inventory[0]
+  onUnequip: (playerItemId: string) => void
+}
+
+function EquipmentSlot({ slot, item, onUnequip }: EquipmentSlotProps) {
+  const slotName = slot.replace(/_/g, ' ')
+  
+  if (item) {
+    return (
+      <button
+        onClick={() => onUnequip(item.id)}
+        className="rounded-lg border border-gray-800/80 bg-gray-900/80 px-3 py-2 text-left hover:bg-gray-800/80 transition-colors"
+      >
+        <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
+        <p className="text-sm font-medium text-white mt-0.5 truncate">{item.template.name}</p>
+      </button>
+    )
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-800/70 bg-gray-900/60 px-3 py-2">
+      <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
+      <p className="text-sm text-gray-500 mt-0.5">- - -</p>
     </div>
   )
 }

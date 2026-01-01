@@ -18,6 +18,7 @@ const ROOM_ITEMS_SELECT = {
           name: true,
           description: true,
           type: true,
+          equipSlot: true,
         },
       },
     },
@@ -39,6 +40,7 @@ const ROOM_ITEMS_INCLUDE = {
           name: true,
           description: true,
           type: true,
+          equipSlot: true,
         },
       },
     },
@@ -71,6 +73,7 @@ function normalizeRoomItems(rawItems) {
         name: item.ItemTemplate.name,
         description: item.ItemTemplate.description,
         type: item.ItemTemplate.type,
+        equipSlot: item.ItemTemplate.equipSlot,
       },
     })
   })

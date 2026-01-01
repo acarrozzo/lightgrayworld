@@ -1,4 +1,4 @@
-import { PrismaClient, ItemType } from '@prisma/client'
+import { PrismaClient, ItemType, EquipSlot } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -488,6 +488,7 @@ async function main() {
       maxStack: 1,
       maxPerPlayer: 1,
       value: 10,
+      equipSlot: EquipSlot.MAIN_HAND,
     },
     {
       id: 'short-sword_001',
@@ -498,6 +499,7 @@ async function main() {
       maxStack: 1,
       maxPerPlayer: 1,
       value: 10,
+      equipSlot: EquipSlot.MAIN_HAND,
       metadata: { icon: 'equipment-shortsword' },
     },
     {

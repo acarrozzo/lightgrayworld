@@ -175,6 +175,11 @@ export default function ShopModal({
                           <div className="text-gray-400 text-xs mt-0.5 line-clamp-2">
                             {item.description}
                           </div>
+                          {item.equipSlot && (
+                            <div className="text-blue-400 text-xs mt-1">
+                              Equips to: {item.equipSlot.replace(/_/g, ' ')}
+                            </div>
+                          )}
                           <div className="text-amber-400 text-xs mt-2 font-medium">
                             {item.value}g
                           </div>
