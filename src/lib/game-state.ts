@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { RoomView, RoomItemView } from '@/lib/types/room'
+import { EquipSlot } from '@prisma/client'
 
 export interface Player {
   id: string
@@ -49,6 +50,7 @@ export interface InventoryItem {
     value: number
     canSell?: boolean
     canDrop?: boolean
+    equipSlot?: EquipSlot | null
     metadata?: { icon?: string } | null
   }
 }
