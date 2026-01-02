@@ -3,17 +3,21 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import type { Player } from '@/lib/game-state'
+import { useGameStore } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
 import { DEFAULT_AVATAR_COLOR, DEFAULT_PLAYER_AVATAR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import ItemDropdownButton from './ItemDropdownButton'
 import Icon from './Icon'
 
+type CapStatus = 'known' | 'loading' | 'error' | 'unavailable'
+
 interface RoomDisplayProps {
   room: any
   roomPlayers?: Player[]
   currentPlayerId?: string
   onAction?: (action: string | { type: string; data?: any }) => void | Promise<void>
+  onRefreshCaps?: () => void | Promise<void>
   showHeader?: boolean
   className?: string
   showPlayers?: boolean
@@ -28,6 +32,7 @@ interface RoomDisplayProps {
 export default function RoomDisplay({
   room,
   onAction,
+  onRefreshCaps,
   roomPlayers = [],
   currentPlayerId,
   showHeader = true,
@@ -36,13 +41,17 @@ export default function RoomDisplay({
   worldTick,
   actionResult,
 }: RoomDisplayProps) {
+  const { getCapCache } = useGameStore()
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null)
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null)
   const [remainingCap, setRemainingCap] = useState<number | null>(null)
   const [maxCap, setMaxCap] = useState<number | null>(null)
   const [fallbackSecondsUntilReset, setFallbackSecondsUntilReset] = useState<number | null>(null)
   const [isMounted, setIsMounted] = useState(false)
+  const [capStatus, setCapStatus] = useState<CapStatus>('unavailable')
+  const [retryAttempted, setRetryAttempted] = useState(false)
   const lastTickRef = useRef<number | null>(null)
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const otherUsers = useMemo(
     () => roomPlayers.filter((player) => player.id !== currentPlayerId),
@@ -101,11 +110,15 @@ export default function RoomDisplay({
   useEffect(() => {
     if (capConfig) {
       setMaxCap(capConfig.maxPerTick)
+      setCapStatus('loading') // Start in loading state
+      setRetryAttempted(false)
     } else {
       setMaxCap(null)
       setRemainingCap(null)
+      setCapStatus('unavailable')
+      setRetryAttempted(false)
     }
-  }, [capConfig])
+  }, [capConfig, room?.roomId]) // Reset when room changes
 
   // Track mount state to prevent hydration mismatches
   // Use useLayoutEffect for faster initialization on client
@@ -144,20 +157,22 @@ export default function RoomDisplay({
 
   // Consolidated state management for remainingCap with priority order:
   // 1. actionResult.data.remaining (highest priority - most recent from action execution)
-  // 2. room.actionCaps[actionKey] (from API response)
-  // 3. Reset to maxPerTick when world tick increments (only if we have confirmed tick data)
-  // 4. null if no data available (show loading state)
+  // 2. Cap cache (primary source)
+  // 3. room.actionCaps[actionKey] (fallback from API response)
+  // 4. Reset to maxPerTick when world tick increments (only if we have confirmed tick data)
   useEffect(() => {
-    if (!capConfig) {
+    if (!capConfig || !room?.roomId) {
       setRemainingCap(null)
       return
     }
 
     const actionKey = capConfig.action
+    const roomId = room.roomId
 
-    // Priority 1: Action result (most recent, from action execution)
+    // Priority 1: Action result (most recent, from action execution) - always wins
     if (actionResult?.action === actionKey && typeof actionResult?.data?.remaining === 'number') {
       setRemainingCap(actionResult.data.remaining)
+      setCapStatus('known')
       // Store secondsUntilReset from action result as fallback for countdown display
       const secondsUntilReset = actionResult.data.secondsUntilReset
       if (typeof secondsUntilReset === 'number') {
@@ -166,32 +181,76 @@ export default function RoomDisplay({
       return
     }
 
-    // Priority 2: API data from room.actionCaps
+    // Priority 2: Cap cache (primary source)
+    const cachedEntry = getCapCache(roomId, actionKey)
+    if (cachedEntry) {
+      const currentTickId = worldTick?.tickNumber ?? 0
+      const isRecent = cachedEntry.tickId === currentTickId
+      
+      if (cachedEntry.status === 'known' && isRecent) {
+        setRemainingCap(cachedEntry.remaining)
+        setCapStatus('known')
+        return
+      } else if (cachedEntry.status === 'known' && !isRecent) {
+        // Stale cache - show value but mark as refreshing
+        setRemainingCap(cachedEntry.remaining)
+        setCapStatus('loading')
+        return
+      } else if (cachedEntry.status === 'error') {
+        setRemainingCap(null)
+        setCapStatus('error')
+        return
+      } else if (cachedEntry.status === 'loading') {
+        setRemainingCap(null)
+        setCapStatus('loading')
+        return
+      }
+    }
+
+    // Priority 3: API data from room.actionCaps (fallback)
     const fetchedRemaining = (room as any)?.actionCaps?.[actionKey]
     if (typeof fetchedRemaining === 'number') {
       setRemainingCap(fetchedRemaining)
+      setCapStatus('known')
       return
     }
 
-    // Priority 3: Tick reset (only if we have confirmed tick data and detect increment)
-    // Only reset if we already have API data to avoid flicker when entering room
-    if (worldTick && worldTick.tickNumber !== undefined) {
-      if (lastTickRef.current !== null && worldTick.tickNumber !== lastTickRef.current) {
-        // Tick has incremented
-        // Only reset to maxPerTick if we have API data (room.actionCaps exists)
-        // This prevents flicker when entering a room right after tick increment
-        // If we don't have API data yet, wait for it rather than optimistically resetting
-        if (typeof fetchedRemaining === 'number') {
-          setRemainingCap(capConfig.maxPerTick)
-        }
+    // Priority 4: No data available - show loading state
+    setRemainingCap(null)
+    setCapStatus('loading')
+  }, [capConfig, room, actionResult, worldTick, getCapCache])
+
+  // Retry logic: if cap remains loading beyond 3 seconds, trigger one re-fetch
+  useEffect(() => {
+    if (capStatus !== 'loading' || !capConfig || !room?.roomId || retryAttempted) {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+        retryTimeoutRef.current = null
       }
-      lastTickRef.current = worldTick.tickNumber
       return
     }
 
-    // Priority 4: No data available - keep as null (will show loading state)
-    // Don't set anything, let it remain null
-  }, [capConfig, room, actionResult, worldTick])
+    retryTimeoutRef.current = setTimeout(() => {
+      if (capStatus === 'loading' && !retryAttempted && capConfig && room?.roomId) {
+        console.log(`[RoomDisplay] Cap still loading after 3s, triggering retry for ${capConfig.action}`)
+        setRetryAttempted(true)
+        // Trigger refresh by calling onRefreshCaps if available, otherwise fall back to look action
+        if (onRefreshCaps) {
+          onRefreshCaps()
+        } else if (onAction) {
+          onAction('look')
+        }
+        // If still loading after retry, will be marked as error by the cap status logic
+      }
+    }, 3000)
+
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+        retryTimeoutRef.current = null
+      }
+    }
+  }, [capStatus, capConfig, room, retryAttempted, onAction, onRefreshCaps])
 
   // Handle countdown timer from worldTick prop
   useEffect(() => {
@@ -359,56 +418,75 @@ export default function RoomDisplay({
         </div>
       )}
 
-      {shouldShowCap && (
+      {shouldShowCap && capStatus !== 'unavailable' && (
         <div className={`mt-3 relative flex items-center gap-3 p-3 rounded-md bg-gray-900/70 border ${getBerryBorderColor()}`}>
-          {remainingCap === null ? (
-            // Loading state: show centered spinner, hide content
-            <div className="flex items-center justify-center w-full py-2">
-              <Loader2 className={`h-6 w-6 animate-spin ${getBerrySpinnerColor()}`} />
-            </div>
-          ) : (
-            // Normal state: show button and text
-            <>
-              {berryAction && (
-                <button
-                  onClick={() => handleAction(berryAction.action)}
-                  disabled={isPerformingAction === berryAction.action}
-                  className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 flex items-center gap-2 ${
-                    isPerformingAction === berryAction.action
-                      ? 'bg-gray-700 cursor-wait'
-                      : berryAction.className || 'bg-indigo-600 hover:bg-indigo-500'
-                  } ${remainingCap === 0 ? 'opacity-50' : ''}`}
-                >
-                  {berryAction.icon && <Icon name={berryAction.icon} size={16} color="current" />}
-                  {berryAction.label}
-                </button>
-              )}
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className={`text-sm ${getBerryTextColor()}`}>
-                  Available {getItemNamePlural(capConfig?.action || '')}:{' '}
-                  <span className="font-semibold text-white">
-                    {remainingCap}/{maxCap ?? 0}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-300">
-                  Refresh in:{' '}
-                  <span className="font-semibold">
-                    {(() => {
-                      // Use countdown from worldTick (prop or room data) if available
-                      if (countdownSeconds !== null) {
-                        return formatTimeRemaining(countdownSeconds)
-                      }
-                      // Fall back to secondsUntilReset from action result (same as feed message)
-                      if (fallbackSecondsUntilReset !== null) {
-                        return formatTimeRemaining(fallbackSecondsUntilReset)
-                      }
-                      return '...'
-                    })()}
-                  </span>
-                </div>
-              </div>
-            </>
+          {berryAction && !(capStatus === 'known' && remainingCap === 0) && capStatus !== 'loading' && (
+            <button
+              onClick={() => handleAction(berryAction.action)}
+              disabled={isPerformingAction === berryAction.action || capStatus === 'error' || remainingCap === 0}
+              className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 flex items-center gap-2 ${
+                isPerformingAction === berryAction.action
+                  ? 'bg-gray-700 cursor-wait'
+                  : berryAction.className || 'bg-indigo-600 hover:bg-indigo-500'
+              } ${remainingCap === 0 || capStatus === 'error' ? 'opacity-50' : ''}`}
+            >
+              {berryAction.icon && <Icon name={berryAction.icon} size={16} color="current" />}
+              {berryAction.label}
+            </button>
           )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className={`text-sm ${getBerryTextColor()}`}>
+              Available {getItemNamePlural(capConfig?.action || '')}:{' '}
+              {capStatus === 'loading' ? (
+                <span className="font-semibold text-gray-400 flex items-center gap-1">
+                  <Loader2 className={`h-3 w-3 animate-spin ${getBerrySpinnerColor()}`} />
+                  Checking...
+                </span>
+              ) : capStatus === 'error' ? (
+                <span className="font-semibold text-red-400 flex items-center gap-2">
+                  Can't load caps
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setRetryAttempted(false)
+                      setCapStatus('loading')
+                      // Trigger refresh by calling onRefreshCaps if available
+                      if (onRefreshCaps) {
+                        onRefreshCaps()
+                      } else if (onAction) {
+                        onAction('look')
+                      }
+                    }}
+                    className="text-xs underline hover:text-red-300 focus:outline-none"
+                  >
+                    Refresh
+                  </button>
+                </span>
+              ) : (
+                <span className="font-semibold text-white">
+                  {remainingCap ?? '?'}/{maxCap ?? 0}
+                </span>
+              )}
+            </div>
+            {capStatus !== 'error' && (
+              <div className="text-sm text-gray-300">
+                Refresh in:{' '}
+                <span className="font-semibold">
+                  {(() => {
+                    // Use countdown from worldTick (prop or room data) if available
+                    if (countdownSeconds !== null) {
+                      return formatTimeRemaining(countdownSeconds)
+                    }
+                    // Fall back to secondsUntilReset from action result (same as feed message)
+                    if (fallbackSecondsUntilReset !== null) {
+                      return formatTimeRemaining(fallbackSecondsUntilReset)
+                    }
+                    return '...'
+                  })()}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

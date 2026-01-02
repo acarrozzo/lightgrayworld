@@ -55,6 +55,14 @@ export interface InventoryItem {
   }
 }
 
+export interface CapCacheEntry {
+  remaining: number
+  capPerTick: number
+  tickId: number
+  lastUpdated: number
+  status: 'known' | 'loading' | 'error'
+}
+
 export interface GameState {
   // Player state
   player: Player | null
@@ -67,6 +75,9 @@ export interface GameState {
   roomPlayers: Player[]
   roomCache: Record<string, Room>
   roomFactSeq: Record<string, number>
+  
+  // Cap cache: key is `${roomId}:${actionKey}` -> CapCacheEntry
+  capCache: Record<string, CapCacheEntry>
   
   // UI state
   isLoading: boolean
@@ -87,6 +98,9 @@ export interface GameState {
   setRoomFactSeq: (roomId: string, seq: number) => void
   getRoomFactSeq: (roomId: string) => number
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
+  updateCapCache: (roomId: string, actionKey: string, entry: Partial<CapCacheEntry>) => void
+  getCapCache: (roomId: string, actionKey: string) => CapCacheEntry | null
+  clearCapCache: (roomId?: string) => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -101,6 +115,7 @@ export const useGameStore = create<GameState>()(
       roomPlayers: [],
       roomCache: {},
       roomFactSeq: {},
+      capCache: {},
       isLoading: false,
       error: null,
       
@@ -147,6 +162,7 @@ export const useGameStore = create<GameState>()(
         currentRoom: null,
         roomPlayers: [],
         roomCache: {},
+        capCache: {},
         error: null 
       }),
 
@@ -185,6 +201,47 @@ export const useGameStore = create<GameState>()(
       getRoomFactSeq: (roomId) => {
         const { roomFactSeq } = get()
         return roomFactSeq[roomId] || 0
+      },
+
+      updateCapCache: (roomId, actionKey, entry) => {
+        const key = `${roomId}:${actionKey}`
+        set((state) => {
+          const existing = state.capCache[key]
+          return {
+            capCache: {
+              ...state.capCache,
+              [key]: {
+                ...existing,
+                ...entry,
+                lastUpdated: Date.now(),
+              } as CapCacheEntry,
+            },
+          }
+        })
+      },
+
+      getCapCache: (roomId, actionKey) => {
+        const { capCache } = get()
+        const key = `${roomId}:${actionKey}`
+        return capCache[key] || null
+      },
+
+      clearCapCache: (roomId) => {
+        if (roomId) {
+          // Clear all caps for a specific room
+          set((state) => {
+            const newCache: Record<string, CapCacheEntry> = {}
+            for (const [key, entry] of Object.entries(state.capCache)) {
+              if (!key.startsWith(`${roomId}:`)) {
+                newCache[key] = entry
+              }
+            }
+            return { capCache: newCache }
+          })
+        } else {
+          // Clear all caps
+          set({ capCache: {} })
+        }
       },
     }),
     {

@@ -201,6 +201,8 @@ export default function GameInterface() {
     inventory,
     setInventory,
     logout,
+    updateCapCache,
+    getCapCache,
   } = useGameStore()
   const { updateRoomItems } = useGameStore()
   const [action, setAction] = useState('')
@@ -246,6 +248,8 @@ export default function GameInterface() {
   const roomLoadSequenceRef = useRef(0) // Tracks room load requests
   const enteredViaCacheRoomIdRef = useRef<string | null>(null) // Tracks optimistic entries
   const pendingMoveRef = useRef<{ moveSeq: number; toRoomId: string } | null>(null) // Tracks pending moves
+  const tickRefreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const tickRefreshSequenceRef = useRef(0)
   const appendWorldFeed = useCallback((entry: WorldFeedEntryInput) => {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
@@ -268,6 +272,127 @@ export default function GameInterface() {
       clear()
     }
   }, [getAuthHeaders, logout, socketHandlers])
+
+  /**
+   * Hydrates action caps and world tick for a room without affecting room state.
+   * This is a subordinate operation that does NOT trigger room transitions.
+   * 
+   * @param roomId - The room ID to hydrate caps for
+   * @param parentSequence - The room load sequence this hydration is subordinate to
+   * @returns Promise that resolves when hydration completes (or is cancelled)
+   */
+  const hydrateRoomCaps = useCallback(async (
+    roomId: string,
+    parentSequence: number
+  ): Promise<void> => {
+    // 1. Guard: Only proceed if roomId matches currentRoomRef
+    if (currentRoomRef.current?.roomId !== roomId) {
+      console.log(`[hydrateRoomCaps] Cancelled - room changed to ${currentRoomRef.current?.roomId}`)
+      return
+    }
+    
+    // 2. Guard: Only proceed if parent sequence is still current
+    if (parentSequence !== roomLoadSequenceRef.current) {
+      console.log(`[hydrateRoomCaps] Cancelled - sequence stale (${parentSequence} vs ${roomLoadSequenceRef.current})`)
+      return
+    }
+
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+
+      if (isLoggedIn) {
+        Object.assign(headers, getAuthHeaders())
+      }
+
+      const response = await fetch(`/api/game/room/caps?roomId=${encodeURIComponent(roomId)}`, {
+        headers,
+      })
+
+      if (!response.ok) {
+        console.error(`[hydrateRoomCaps] Failed to fetch caps: ${response.status}`)
+        // Mark cache entries as error for this room
+        const capConfigs = [
+          { roomId: '002', actionKey: 'pick redberry', maxPerTick: 5 },
+          { roomId: '005', actionKey: 'pick blueberry', maxPerTick: 3 },
+        ]
+        const config = capConfigs.find(c => c.roomId === roomId)
+        if (config) {
+          updateCapCache(roomId, config.actionKey, {
+            status: 'error',
+            remaining: 0,
+            capPerTick: config.maxPerTick,
+            tickId: worldTick?.tickNumber ?? 0,
+          })
+        }
+        return
+      }
+
+      const data = await response.json()
+
+      // 3. Guard again after async operation
+      if (currentRoomRef.current?.roomId !== roomId) {
+        console.log(`[hydrateRoomCaps] Cancelled after fetch - room changed to ${currentRoomRef.current?.roomId}`)
+        return
+      }
+
+      if (parentSequence !== roomLoadSequenceRef.current) {
+        console.log(`[hydrateRoomCaps] Cancelled after fetch - sequence stale (${parentSequence} vs ${roomLoadSequenceRef.current})`)
+        return
+      }
+
+      // 4. Update cap cache ONLY (never currentRoom, players, etc.)
+      if (data.actionCaps) {
+        const currentTickId = data.worldTick?.tickNumber ?? data.worldTick?.tickId ?? worldTick?.tickNumber ?? 0
+        for (const [actionKey, remaining] of Object.entries(data.actionCaps)) {
+          const capConfigs = [
+            { roomId: '002', actionKey: 'pick redberry', maxPerTick: 5 },
+            { roomId: '005', actionKey: 'pick blueberry', maxPerTick: 3 },
+          ]
+          const config = capConfigs.find(c => c.roomId === roomId && c.actionKey === actionKey)
+          if (config && typeof remaining === 'number') {
+            updateCapCache(roomId, actionKey, {
+              remaining,
+              capPerTick: config.maxPerTick,
+              tickId: currentTickId,
+              status: 'known',
+            })
+          }
+        }
+      }
+
+      // 5. Update worldTick state if provided
+      if (data.worldTick) {
+        const tickNumber = data.worldTick.tickNumber ?? data.worldTick.tickId ?? 0
+        const interval = data.worldTick.tickIntervalMs ?? 10000
+        const nextTickAt = data.worldTick.nextTickAt ?? (Date.now() + interval)
+        setWorldTick({
+          tickNumber,
+          nextTickAt,
+          tickIntervalMs: interval,
+        })
+      }
+
+      console.log(`[hydrateRoomCaps] Successfully hydrated caps for room ${roomId}`)
+    } catch (error) {
+      console.error(`[hydrateRoomCaps] Error hydrating caps for room ${roomId}:`, error)
+      // Mark cache entries as error for this room
+      const capConfigs = [
+        { roomId: '002', actionKey: 'pick redberry', maxPerTick: 5 },
+        { roomId: '005', actionKey: 'pick blueberry', maxPerTick: 3 },
+      ]
+      const config = capConfigs.find(c => c.roomId === roomId)
+      if (config) {
+        updateCapCache(roomId, config.actionKey, {
+          status: 'error',
+          remaining: 0,
+          capPerTick: config.maxPerTick,
+          tickId: worldTick?.tickNumber ?? 0,
+        })
+      }
+    }
+  }, [getAuthHeaders, isLoggedIn, updateCapCache, worldTick, setWorldTick])
 
   // Load sidebar state from localStorage on mount
   useEffect(() => {
@@ -297,6 +422,47 @@ export default function GameInterface() {
     })
     return cleanup
   }, [socket, socketHandlers])
+
+  // Automatic cap refresh at tick boundary
+  useEffect(() => {
+    if (!worldTick?.nextTickAt || !currentRoom) return
+    
+    // Cancel any existing scheduled refresh
+    if (tickRefreshTimeoutRef.current) {
+      clearTimeout(tickRefreshTimeoutRef.current)
+      tickRefreshTimeoutRef.current = null
+    }
+    
+    const msUntilTick = worldTick.nextTickAt - Date.now()
+    const sequence = ++tickRefreshSequenceRef.current
+    
+    tickRefreshTimeoutRef.current = setTimeout(() => {
+      // Small jitter to avoid edge timing
+      setTimeout(() => {
+        // Guard: only apply if still current room AND sequence matches
+        if (currentRoomRef.current?.roomId === currentRoom.roomId &&
+            sequence === tickRefreshSequenceRef.current) {
+          console.log(`[GameInterface] Triggering tick boundary cap refresh for room ${currentRoom.roomId}`)
+          hydrateRoomCaps(currentRoom.roomId, roomLoadSequenceRef.current) // Use current sequence, don't increment
+        }
+      }, 500)
+    }, Math.max(0, msUntilTick))
+    
+    return () => {
+      if (tickRefreshTimeoutRef.current) {
+        clearTimeout(tickRefreshTimeoutRef.current)
+        tickRefreshTimeoutRef.current = null
+      }
+    }
+  }, [worldTick, currentRoom, hydrateRoomCaps])
+
+  // Also cancel tick refresh on socket disconnect
+  useEffect(() => {
+    if (!socket?.connected && tickRefreshTimeoutRef.current) {
+      clearTimeout(tickRefreshTimeoutRef.current)
+      tickRefreshTimeoutRef.current = null
+    }
+  }, [socket?.connected])
 
   useEffect(() => {
     if (!socket) return
@@ -463,6 +629,19 @@ export default function GameInterface() {
         }
         setIsInitialLoad(false)
         console.log(`[GameInterface] Room load committed [roomLoadSeq:${sequence}] room:${normalizedRoom.roomId}`)
+        
+        // Check if hydration is needed for missing dynamic fields
+        const needsHydration = 
+          !providedRoomData?.actionCaps ||
+          !providedRoomData?.worldTick ||
+          enteredViaCacheRoomIdRef.current === normalizedRoom.roomId
+        
+        if (needsHydration) {
+          console.log(`[GameInterface] Triggering cap hydration for room ${normalizedRoom.roomId}`)
+          // Trigger second-stage hydration (subordinate to current room load sequence)
+          hydrateRoomCaps(normalizedRoom.roomId, sequence) // Pass existing sequence, don't increment
+        }
+        
         return
       }
     }
@@ -555,6 +734,38 @@ export default function GameInterface() {
         }
         
         console.log(`[GameInterface] Room load committed [roomLoadSeq:${sequence}] room:${normalizedRoom?.roomId}`)
+        
+        // Update cap cache from API response if present
+        if (normalizedRoom && roomData.actionCaps) {
+          const currentTickId = roomData.worldTick?.tickNumber ?? roomData.worldTick?.tickId ?? worldTick?.tickNumber ?? 0
+          for (const [actionKey, remaining] of Object.entries(roomData.actionCaps)) {
+            const capConfigs = [
+              { roomId: '002', actionKey: 'pick redberry', maxPerTick: 5 },
+              { roomId: '005', actionKey: 'pick blueberry', maxPerTick: 3 },
+            ]
+            const config = capConfigs.find(c => c.roomId === normalizedRoom.roomId && c.actionKey === actionKey)
+            if (config && typeof remaining === 'number') {
+              updateCapCache(normalizedRoom.roomId, actionKey, {
+                remaining,
+                capPerTick: config.maxPerTick,
+                tickId: currentTickId,
+                status: 'known',
+              })
+            }
+          }
+        }
+        
+        // Update worldTick from API response if present
+        if (roomData.worldTick) {
+          const tickNumber = roomData.worldTick.tickNumber ?? roomData.worldTick.tickId ?? 0
+          const interval = roomData.worldTick.tickIntervalMs ?? 10000
+          const nextTickAt = roomData.worldTick.nextTickAt ?? (Date.now() + interval)
+          setWorldTick({
+            tickNumber,
+            nextTickAt,
+            tickIntervalMs: interval,
+          })
+        }
 
         if (normalizedRoom && options?.travel && !travelResultEmitted) {
           travelResultEmitted = true
@@ -582,7 +793,7 @@ export default function GameInterface() {
       }
       setIsInitialLoad(false)
     }
-  }, [getAuthHeaders, cacheRoom, setCurrentRoom, setRoomPlayers, player, setPlayer, getCachedRoom, isLoggedIn])
+  }, [getAuthHeaders, cacheRoom, setCurrentRoom, setRoomPlayers, player, setPlayer, getCachedRoom, isLoggedIn, hydrateRoomCaps, updateCapCache, worldTick, setWorldTick])
   const loadRoomDataRef = useRef(loadRoomData)
 
   useEffect(() => {
@@ -923,6 +1134,32 @@ export default function GameInterface() {
         updateRoomItems(currentRoomRef.current.roomId, normalizeRoomItems(payload.data.roomItems))
       }
 
+      // Update cap cache from action result (action results always win)
+      if (currentRoomRef.current?.roomId && payload?.data?.remaining !== undefined) {
+        const actionKey = payload?.action
+        const remaining = payload.data.remaining
+        const roomId = currentRoomRef.current.roomId
+        
+        // Check if this is a berry picking action
+        const capConfigs = [
+          { roomId: '002', actionKey: 'pick redberry', maxPerTick: 5 },
+          { roomId: '005', actionKey: 'pick blueberry', maxPerTick: 3 },
+        ]
+        const config = capConfigs.find(c => c.roomId === roomId && c.actionKey === actionKey)
+        
+        if (config && typeof remaining === 'number') {
+          const currentTickId = worldTick?.tickNumber ?? 0
+          // Action result always wins - update cache immediately
+          updateCapCache(roomId, actionKey, {
+            remaining,
+            capPerTick: config.maxPerTick,
+            tickId: currentTickId,
+            status: 'known',
+          })
+          console.log(`[GameInterface] Updated cap cache from action result: ${actionKey} = ${remaining}`)
+        }
+      }
+
       if (payload?.action === 'move' && success && payload?.data?.toRoom) {
         const moveSeq = moveSequenceRef.current
         console.log(`[GameInterface] Processing move action feedback [moveSeq:${moveSeq}]`)
@@ -1151,7 +1388,7 @@ export default function GameInterface() {
       cleanupLoginSuccess()
       cleanupRoomMoves()
     }
-  }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed])
+  }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed, updateCapCache, worldTick])
 
   useEffect(() => {
     if (!socket) {
@@ -1607,6 +1844,11 @@ export default function GameInterface() {
                   roomPlayers={roomPlayers}
                   currentPlayerId={player.id}
                   onAction={handleAction}
+                  onRefreshCaps={() => {
+                    if (currentRoom?.roomId) {
+                      hydrateRoomCaps(currentRoom.roomId, roomLoadSequenceRef.current)
+                    }
+                  }}
                   worldTick={worldTick}
                   actionResult={actionResult}
                 />
