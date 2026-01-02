@@ -6,7 +6,7 @@ import Icon from './Icon'
 export interface TabConfig {
   id: string
   label: string
-  icon?: string
+  icon?: string | ReactNode
   color?: string
   content: ReactNode | ((isActive: boolean) => ReactNode)
   badge?: boolean | number
@@ -110,12 +110,16 @@ export default function TabContainer({
               className={`${buttonPadding} text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow ${getButtonColorClasses(tab, isActive)}`}
             >
               {tab.icon && (
-                <Icon 
-                  name={tab.icon} 
-                  size={14} 
-                  color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color)} 
-                  className="mr-1" 
-                />
+                typeof tab.icon === 'string' ? (
+                  <Icon 
+                    name={tab.icon} 
+                    size={14} 
+                    color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color)} 
+                    className="mr-1" 
+                  />
+                ) : (
+                  <span className="mr-1">{tab.icon}</span>
+                )
               )}
               {tab.label}
               {tab.badge && (

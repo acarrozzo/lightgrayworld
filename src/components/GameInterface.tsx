@@ -14,6 +14,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
+import { Settings as SettingsIcon } from 'lucide-react'
 import MapModal, { type MapOption } from './MapModal'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
@@ -1981,7 +1982,7 @@ export default function GameInterface() {
                     icon: 'trophy',
                     color: 'gold',
                     content: (
-                      <div className="space-y-4 p-4">
+                      <div className="space-y-4 p-4 sm:p-6">
                         <h3 className="text-lg font-semibold text-white">Quests</h3>
                         <div className="text-gray-400 text-sm">
                           No active quests.
@@ -1992,7 +1993,7 @@ export default function GameInterface() {
                   {
                     id: 'settings',
                     label: 'Settings',
-                    icon: 'character',
+                    icon: <SettingsIcon size={14} />,
                     color: 'gray',
                     content: (
                       <SettingsContent onLogout={handleLogoutFlow} />

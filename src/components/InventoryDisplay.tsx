@@ -304,7 +304,7 @@ export default function InventoryDisplay({
   ]
 
   return (
-    <div className="@container space-y-4">
+    <div className="@container space-y-4 p-4 sm:p-6">
       {showHeading && <h3 className="text-lg font-semibold text-white">Inventory</h3>}
       
       {/* Filter Tabs */}

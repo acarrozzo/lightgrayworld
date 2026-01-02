@@ -9,7 +9,6 @@ import {
   DEFAULT_AVATAR_COLOR,
 } from '@/lib/constants/avatars'
 import ColorPicker from './ColorPicker'
-import Icon from './Icon'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 
 interface AvatarSelectionModalProps {
@@ -122,25 +121,25 @@ export default function AvatarSelectionModal({
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={() => (!isSaving ? onClose() : null)}
       />
-      <div className="relative z-10 h-full w-full bg-gray-900/95 border border-gray-700/50 rounded-lg shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700/50">
+      <div className="relative z-10 h-full w-full bg-gray-900/95 border border-gray-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-8 py-6 border-b border-gray-800/70">
           <div>
-            <h3 className="text-lg font-semibold text-white">Customize Your Avatar</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h3 className="text-2xl font-semibold text-white">Customize Your Avatar</h3>
+            <p className="text-sm text-gray-400 mt-1">
               Choose a character and color that matches your vibe.
             </p>
           </div>
           <button
             onClick={() => (!isSaving ? onClose() : null)}
-            className="text-gray-400 hover:text-white transition-colors p-1.5 rounded hover:bg-gray-800"
+            className="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-800/70"
             disabled={isSaving}
           >
             <span className="sr-only">Close</span>
-            <Icon name="x" size={16} />
+            ✕
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
           <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -177,11 +176,11 @@ export default function AvatarSelectionModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-gray-700/50">
+        <div className="flex items-center justify-end gap-3 px-8 py-6 border-t border-gray-800/70">
           <button
             type="button"
             onClick={() => (!isSaving ? onClose() : null)}
-            className="px-4 py-1.5 rounded text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+            className="px-4 py-2 rounded-full text-sm font-semibold text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
             disabled={isSaving}
           >
             Cancel
@@ -190,7 +189,7 @@ export default function AvatarSelectionModal({
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-1.5 rounded text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-5 py-2 rounded-full text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSaving ? 'Saving...' : 'Save Avatar'}
           </button>
