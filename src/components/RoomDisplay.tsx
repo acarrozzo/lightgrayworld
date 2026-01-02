@@ -440,7 +440,7 @@ export default function RoomDisplay({
               {capStatus === 'loading' ? (
                 <span className="font-semibold text-gray-400 flex items-center gap-1">
                   <Loader2 className={`h-3 w-3 animate-spin ${getBerrySpinnerColor()}`} />
-                  Checking...
+                  Searching the berry bush...
                 </span>
               ) : capStatus === 'error' ? (
                 <span className="font-semibold text-red-400 flex items-center gap-2">
@@ -464,7 +464,7 @@ export default function RoomDisplay({
                 </span>
               ) : (
                 <span className="font-semibold text-white">
-                  {remainingCap ?? '?'}/{maxCap ?? 0}
+                  {remainingCap ?? '?'}
                 </span>
               )}
             </div>

@@ -129,13 +129,13 @@ const ROOM_ACTIONS = {
         if (!effects?.[0]?.success) {
           const secondsRemaining = capInfo?.secondsUntilReset ?? 0
           const timeFormatted = formatTimeRemaining(secondsRemaining)
-          return `No more redberries right now. The bushes will regrow in ${timeFormatted}.`
+          return `No more redberries right now. More will grow in ${timeFormatted}.`
         }
         const quantity = capInfo?.quantity ?? 1
         if (quantity === 1) {
           return `You pick a ripe redberry. (${capInfo.remaining} picks remaining this tick)`
         }
-        return `You pick ${quantity} ripe redberries. (${capInfo.remaining} picks remaining this tick)`
+        return `You pick ${quantity} ripe redberries. `
       },
       determineOutcome: ({ success }) => (success ? 'success' : 'info'),
     },
@@ -155,13 +155,13 @@ const ROOM_ACTIONS = {
         if (!effects?.[0]?.success) {
           const secondsRemaining = capInfo?.secondsUntilReset ?? 0
           const timeFormatted = formatTimeRemaining(secondsRemaining)
-          return `No more blueberries right now. The bushes will regrow in ${timeFormatted}.`
+          return `No more blueberries right now. More will grow in ${timeFormatted}.`
         }
         const quantity = capInfo?.quantity ?? 1
         if (quantity === 1) {
           return `You pick a ripe blueberry. (${capInfo.remaining} picks remaining this tick)`
         }
-        return `You pick ${quantity} ripe blueberries. (${capInfo.remaining} picks remaining this tick)`
+        return `You pick ${quantity} ripe blueberries.)`
       },
       determineOutcome: ({ success }) => (success ? 'success' : 'info'),
     },
