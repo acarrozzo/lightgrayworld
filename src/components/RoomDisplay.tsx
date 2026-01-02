@@ -436,7 +436,11 @@ export default function RoomDisplay({
           )}
           <div className="flex items-center gap-3 flex-wrap">
             <div className={`text-sm ${getBerryTextColor()}`}>
-              Available {getItemNamePlural(capConfig?.action || '')}:{' '}
+              {capStatus !== 'loading' && (
+                <>
+                  Available {getItemNamePlural(capConfig?.action || '')}:{' '}
+                </>
+              )}
               {capStatus === 'loading' ? (
                 <span className="font-semibold text-gray-400 flex items-center gap-1">
                   <Loader2 className={`h-3 w-3 animate-spin ${getBerrySpinnerColor()}`} />
@@ -468,7 +472,7 @@ export default function RoomDisplay({
                 </span>
               )}
             </div>
-            {capStatus !== 'error' && (
+            {capStatus !== 'error' && capStatus !== 'loading' && (
               <div className="text-sm text-gray-300">
                 Refresh in:{' '}
                 <span className="font-semibold">

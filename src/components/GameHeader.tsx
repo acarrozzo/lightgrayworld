@@ -29,7 +29,7 @@ export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSide
 
         <div className="flex flex-col items-center text-center space-y-0">
           <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">Light Gray</h1>
-          <span className="text-xs text-gray-500 font-normal">v0.1.4 - hour on the hour</span>
+          <span className="text-xs text-gray-500 font-normal">v0.1.4</span>
         </div>
 
         <div className="flex flex-1 justify-end items-center gap-2">

@@ -62,7 +62,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   const [isStatModalOpen, setStatModalOpen] = useState(false)
   const [newItemsCount, setNewItemsCount] = useState(0)
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
-  const [activeTab, setActiveTab] = useState('stats')
+  const [activeTab, setActiveTab] = useState<string | null>('stats')
   const previousInventoryRef = useRef<typeof inventory>([])
   const isInitialMountRef = useRef(true)
   const wasInventoryTabOpenRef = useRef(false) // Will be updated by useEffect
@@ -183,7 +183,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   }, [activeTab])
 
   // Handle tab changes
-  const handleTabChange = (tabId: string) => {
+  const handleTabChange = (tabId: string | null) => {
     setActiveTab(tabId)
   }
 
