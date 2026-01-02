@@ -242,6 +242,10 @@ export default function GameInterface() {
   const playerRef = useRef(player)
   const currentRoomRef = useRef(currentRoom)
   const customActionInputRef = useRef<HTMLInputElement>(null)
+  const moveSequenceRef = useRef(0) // Tracks move actions (not room loads)
+  const roomLoadSequenceRef = useRef(0) // Tracks room load requests
+  const enteredViaCacheRoomIdRef = useRef<string | null>(null) // Tracks optimistic entries
+  const pendingMoveRef = useRef<{ moveSeq: number; toRoomId: string } | null>(null) // Tracks pending moves
   const appendWorldFeed = useCallback((entry: WorldFeedEntryInput) => {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
@@ -407,6 +411,12 @@ export default function GameInterface() {
   }, [])
 
   const loadRoomData = useCallback(async (options?: { isTransition?: boolean; travel?: { toRoomId?: string }; requireAuth?: boolean; roomData?: any }) => {
+    // Increment sequence for this request
+    const sequence = ++roomLoadSequenceRef.current
+    const targetRoomId = options?.travel?.toRoomId || options?.roomData?.roomId || null
+    
+    console.log(`[GameInterface] loadRoomData started [roomLoadSeq:${sequence}] targetRoom:${targetRoomId}`)
+    
     const isTransition = options?.isTransition ?? false
     const travelTarget = options?.travel?.toRoomId
     const shouldUseAuth = options?.requireAuth ?? isLoggedIn
@@ -427,6 +437,13 @@ export default function GameInterface() {
         ...(providedRoomData.worldTick ? { worldTick: providedRoomData.worldTick } : {}),
       })
       if (normalizedRoom) {
+        // Check sequence BEFORE committing any state
+        if (sequence !== roomLoadSequenceRef.current) {
+          console.log(`[GameInterface] Ignoring stale room load (provided data) [seq:${sequence}] current:${roomLoadSequenceRef.current}`)
+          return
+        }
+        
+        // Commit ALL state changes atomically (guarded by sequence)
         cacheRoom(normalizedRoom)
         setCurrentRoom(normalizedRoom)
         setRoomPlayers(normalizedRoom.players)
@@ -435,10 +452,17 @@ export default function GameInterface() {
           setPlayer({ ...player, currentRoom: normalizedRoom.roomId })
         }
         
+        // Clear optimistic entry flag when authoritative data arrives
+        if (enteredViaCacheRoomIdRef.current === normalizedRoom.roomId) {
+          console.log(`[GameInterface] Clearing optimistic entry flag for room ${normalizedRoom.roomId}`)
+          enteredViaCacheRoomIdRef.current = null
+        }
+        
         if (!isTransition) {
           setIsLoadingRoom(false)
         }
         setIsInitialLoad(false)
+        console.log(`[GameInterface] Room load committed [roomLoadSeq:${sequence}] room:${normalizedRoom.roomId}`)
         return
       }
     }
@@ -480,10 +504,17 @@ export default function GameInterface() {
           ...(roomData.worldTick ? { worldTick: roomData.worldTick } : {}),
         })
         
+        // Check if this request is still the latest before committing ANY state
+        if (sequence !== roomLoadSequenceRef.current) {
+          console.log(`[GameInterface] Ignoring stale room load response [seq:${sequence}] current:${roomLoadSequenceRef.current}`)
+          return
+        }
+        
+        // Commit ALL state changes atomically (guarded by sequence)
         if (normalizedRoom) {
           cacheRoom(normalizedRoom)
           setCurrentRoom(normalizedRoom)
-          setRoomPlayers(roomPlayers)
+          setRoomPlayers(roomPlayers) // Guarded by sequence
         }
 
         if (player && normalizedRoom && player.currentRoom !== normalizedRoom.roomId) {
@@ -514,8 +545,16 @@ export default function GameInterface() {
             }
           }
 
-          setPlayer({ ...player, currentRoom: normalizedRoom.roomId })
+          setPlayer({ ...player, currentRoom: normalizedRoom.roomId }) // Guarded by sequence
         }
+        
+        // Clear optimistic entry flag when authoritative data arrives
+        if (normalizedRoom && enteredViaCacheRoomIdRef.current === normalizedRoom.roomId) {
+          console.log(`[GameInterface] Clearing optimistic entry flag for room ${normalizedRoom.roomId}`)
+          enteredViaCacheRoomIdRef.current = null
+        }
+        
+        console.log(`[GameInterface] Room load committed [roomLoadSeq:${sequence}] room:${normalizedRoom?.roomId}`)
 
         if (normalizedRoom && options?.travel && !travelResultEmitted) {
           travelResultEmitted = true
@@ -531,7 +570,12 @@ export default function GameInterface() {
         console.error('Failed to load room data:', response.status, response.statusText, errorText)
       }
     } catch (error) {
-      console.error('Failed to load room data:', error)
+      // Check sequence before logging errors from stale requests
+      if (sequence === roomLoadSequenceRef.current) {
+        console.error('Failed to load room data:', error)
+      } else {
+        console.log(`[GameInterface] Ignoring error from stale room load [seq:${sequence}]`)
+      }
     } finally {
       if (!isTransition) {
         setIsLoadingRoom(false)
@@ -685,11 +729,23 @@ export default function GameInterface() {
         return
       }
 
+      // Increment move sequence when initiating move
+      const moveSeq = ++moveSequenceRef.current
+
+      // Set pending move - will be cleared when action:feedback arrives
+      pendingMoveRef.current = { moveSeq, toRoomId: targetRoomId }
+
       // Optimistic update: immediately use cached room if available
+      // NOTE: This is UI-only for instant feedback. The authoritative update
+      // will come from action:feedback, which will hydrate the room with
+      // server truth (players, items, state). This does NOT trigger
+      // loadRoomData() to avoid competing with the authoritative update.
       const cachedTargetRoom = getCachedRoom(targetRoomId)
       if (cachedTargetRoom) {
-        console.log('[handleAction] Using cached room for optimistic update:', cachedTargetRoom.name)
+        console.log(`[handleAction] Using cached room for optimistic update (UI-only) [moveSeq:${moveSeq}]:`, cachedTargetRoom.name)
         setCurrentRoom(cachedTargetRoom)
+        // Track that we entered this room via optimistic cache
+        enteredViaCacheRoomIdRef.current = targetRoomId
         // Update player room optimistically
         if (player && player.currentRoom !== targetRoomId) {
           setPlayer({ ...player, currentRoom: targetRoomId })
@@ -697,7 +753,10 @@ export default function GameInterface() {
       }
 
       if (socket) {
-        console.log('[handleAction] Emitting player-move event:', { fromRoom: currentRoom.roomId, toRoom: targetRoomId })
+        console.log(`[handleAction] Emitting player-move event [moveSeq:${moveSeq}]`, { 
+          fromRoom: currentRoom.roomId, 
+          toRoom: targetRoomId 
+        })
         socket.emit('player-move', {
           fromRoom: currentRoom.roomId,
           toRoom: targetRoomId,
@@ -865,19 +924,50 @@ export default function GameInterface() {
       }
 
       if (payload?.action === 'move' && success && payload?.data?.toRoom) {
-        console.log('[GameInterface] Processing move action feedback')
+        const moveSeq = moveSequenceRef.current
+        console.log(`[GameInterface] Processing move action feedback [moveSeq:${moveSeq}]`)
         const currentPlayer = playerRef.current
+        const activeRoom = currentRoomRef.current
+        
+        // Clear pending move - feedback has arrived
+        if (pendingMoveRef.current) {
+          console.log(`[GameInterface] Clearing pending move - feedback received for room ${payload.data.toRoom}`)
+          pendingMoveRef.current = null
+        }
+        
         if (currentPlayer && currentPlayer.currentRoom !== payload.data.toRoom) {
           console.log('[GameInterface] Updating player room to:', payload.data.toRoom)
           setPlayer({ ...currentPlayer, currentRoom: payload.data.toRoom })
         }
 
-        console.log('[GameInterface] Loading room data for:', payload.data.toRoom)
-        loadRoomDataRef.current?.({
-          isTransition: true,
-          travel: { toRoomId: payload.data.toRoom },
-          roomData: payload.data?.roomData,
-        })
+        // Determine if we need to hydrate room data
+        const hasAuthoritativeRoomData = payload.data?.roomData && payload.data.roomData.roomId === payload.data.toRoom
+        const isAlreadyViewingRoom = activeRoom?.roomId === payload.data.toRoom
+        const enteredViaCache = enteredViaCacheRoomIdRef.current === payload.data.toRoom
+        
+        // Always hydrate if:
+        // 1. We have authoritative room data in payload (apply it)
+        // 2. We're not viewing the room (need to load it)
+        // 3. We're viewing the room but got here via optimistic cache (need server truth)
+        const shouldHydrate = hasAuthoritativeRoomData || !isAlreadyViewingRoom || enteredViaCache
+        
+        if (shouldHydrate) {
+          if (hasAuthoritativeRoomData) {
+            console.log('[GameInterface] Hydrating room with authoritative data from action:feedback')
+          } else if (!isAlreadyViewingRoom) {
+            console.log('[GameInterface] Loading room data for:', payload.data.toRoom)
+          } else if (enteredViaCache) {
+            console.log('[GameInterface] Refreshing room data to ensure server truth (entered via optimistic cache)')
+          }
+          
+          loadRoomDataRef.current?.({
+            isTransition: true,
+            travel: { toRoomId: payload.data.toRoom },
+            roomData: payload.data?.roomData, // Use authoritative data if provided
+          })
+        } else {
+          console.log('[GameInterface] Skipping room load - already have authoritative data for current room')
+        }
       }
 
       const isMoveAction = payload?.action === 'move'
@@ -988,17 +1078,64 @@ export default function GameInterface() {
       }
 
       if (event.playerId === currentPlayer.id) {
-        console.log('[GameInterface] Player moved event is for current player')
-        if (currentPlayer.currentRoom !== event.toRoom) {
-          console.log('[GameInterface] Updating player room from', currentPlayer.currentRoom, 'to', event.toRoom)
-          setPlayer({ ...currentPlayer, currentRoom: event.toRoom })
+        // For current player: treat as reconciliation, but only if event is credible
+        const playerRoom = currentPlayer.currentRoom
+        const uiRoom = activeRoom?.roomId
+        const pendingMove = pendingMoveRef.current
+        
+        // Gate reconciliation: only reconcile if:
+        // 1. There's a pending move that matches this event (credible - we're waiting for feedback)
+        // 2. OR player/UI state is unset/unknown (reconnect case - need to sync)
+        // 3. OR event matches expected target from pending move
+        const isCredibleEvent = 
+          (pendingMove && pendingMove.toRoomId === event.toRoom) || // Matches pending move
+          (!playerRoom && !uiRoom) || // Reconnect case - no state
+          (pendingMove && event.fromRoom === playerRoom && event.toRoom === pendingMove.toRoomId) // Matches expected move
+        
+        // Check if this event indicates a state mismatch that needs reconciliation
+        const needsReconciliation = 
+          (playerRoom !== event.toRoom) ||  // Player state doesn't match event
+          (uiRoom !== event.toRoom)         // UI doesn't match event destination
+        
+        if (needsReconciliation && isCredibleEvent) {
+          console.log('[GameInterface] Reconciliation needed for current player move', {
+            eventFromRoom: event.fromRoom,
+            eventToRoom: event.toRoom,
+            playerRoom,
+            uiRoom,
+            pendingMove: pendingMove?.toRoomId,
+            reason: playerRoom !== event.toRoom ? 'player-state-mismatch' : 'ui-state-mismatch'
+          })
+          
+          // Update player state if needed
+          if (playerRoom !== event.toRoom) {
+            console.log('[GameInterface] Reconciling player room from', playerRoom, 'to', event.toRoom)
+            setPlayer({ ...currentPlayer, currentRoom: event.toRoom })
+          }
+          
+          // Load room data if UI doesn't match
+          if (uiRoom !== event.toRoom) {
+            console.log('[GameInterface] Reconciling UI room - loading:', event.toRoom)
+            loadRoomDataRef.current?.({
+              isTransition: true,
+              travel: { toRoomId: event.toRoom },
+            })
+          }
+        } else if (!isCredibleEvent) {
+          console.log('[GameInterface] Ignoring stale room:player-moved for current player - event not credible', {
+            eventToRoom: event.toRoom,
+            playerRoom,
+            uiRoom,
+            pendingMove: pendingMove?.toRoomId,
+            reason: 'event-does-not-match-pending-move-or-state'
+          })
+        } else {
+          console.log('[GameInterface] room:player-moved redundant for current player - state already matches', {
+            eventToRoom: event.toRoom,
+            playerRoom,
+            uiRoom
+          })
         }
-
-        console.log('[GameInterface] Loading room data for:', event.toRoom)
-        loadRoomDataRef.current?.({
-          isTransition: true,
-          travel: { toRoomId: event.toRoom },
-        })
         return
       }
 
