@@ -582,6 +582,84 @@ async function main() {
       maxPerPlayer: 1,
       value: 10,
     },
+    {
+      id: 'mace_001',
+      slug: 'mace',
+      name: 'Mace',
+      description: 'A heavy mace with a solid metal head, perfect for crushing armor.',
+      type: ItemType.WEAPON,
+      maxStack: 1,
+      maxPerPlayer: 1,
+      value: 10,
+      equipSlot: EquipSlot.MAIN_HAND,
+    },
+    {
+      id: 'bo_001',
+      slug: 'bo',
+      name: 'Bo',
+      description: 'A long wooden staff that requires both hands to wield effectively.',
+      type: ItemType.WEAPON,
+      maxStack: 1,
+      maxPerPlayer: 1,
+      value: 10,
+      equipSlot: EquipSlot.MAIN_HAND,
+      metadata: { isTwoHanded: true },
+    },
+    {
+      id: 'basic-shield_001',
+      slug: 'basic-shield',
+      name: 'Basic Shield',
+      description: 'A simple wooden shield that provides basic protection.',
+      type: ItemType.WEAPON,
+      maxStack: 1,
+      maxPerPlayer: 1,
+      value: 10,
+      equipSlot: EquipSlot.OFF_HAND,
+    },
+    {
+      id: 'blue-hood_001',
+      slug: 'blue-hood',
+      name: 'Blue Hood',
+      description: 'A comfortable blue hood that covers the head.',
+      type: ItemType.WEAPON,
+      maxStack: 1,
+      maxPerPlayer: 1,
+      value: 10,
+      equipSlot: EquipSlot.HEAD,
+    },
+    {
+      id: 'padded-armor_001',
+      slug: 'padded-armor',
+      name: 'Padded Armor',
+      description: 'Lightweight padded armor that provides basic protection without hindering movement.',
+      type: ItemType.WEAPON,
+      maxStack: 1,
+      maxPerPlayer: 1,
+      value: 10,
+      equipSlot: EquipSlot.BODY,
+    },
+    {
+      id: 'black-gloves_001',
+      slug: 'black-gloves',
+      name: 'Black Gloves',
+      description: 'Stylish black gloves that provide a good grip.',
+      type: ItemType.WEAPON,
+      maxStack: 1,
+      maxPerPlayer: 1,
+      value: 10,
+      equipSlot: EquipSlot.HANDS,
+    },
+    {
+      id: 'black-boots_001',
+      slug: 'black-boots',
+      name: 'Black Boots',
+      description: 'Sturdy black boots that protect the feet and provide good traction.',
+      type: ItemType.WEAPON,
+      maxStack: 1,
+      maxPerPlayer: 1,
+      value: 10,
+      equipSlot: EquipSlot.FEET,
+    },
   ]
 
   for (const item of itemTemplates) {
@@ -648,6 +726,32 @@ async function main() {
       autoRespawn: true,
     },
   })
+
+  // Seed equipment items in room 020 (idempotent)
+  const room020Items = [
+    'mace_001',
+    'bo_001',
+    'basic-shield_001',
+    'blue-hood_001',
+    'padded-armor_001',
+    'black-gloves_001',
+    'black-boots_001',
+  ]
+
+  for (const templateId of room020Items) {
+    await prisma.roomItem.deleteMany({
+      where: { roomId: '020', templateId },
+    })
+
+    await prisma.roomItem.create({
+      data: {
+        roomId: '020',
+        templateId,
+        quantity: 1,
+        autoRespawn: true,
+      },
+    })
+  }
 
   // Create a test user
   const hashedPassword = await bcrypt.hash('password123', 12)

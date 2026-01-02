@@ -44,6 +44,8 @@ export function getCategoryDisplayName(type: ItemType): string {
   switch (type) {
     case ItemType.WEAPON:
       return 'Weapons'
+    case ItemType.EQUIPMENT:
+      return 'Equipment'
     case ItemType.CONSUMABLE:
       return 'Consumables'
     case ItemType.MISC:
@@ -58,6 +60,7 @@ export function getCategoryDisplayName(type: ItemType): string {
  */
 export const CATEGORY_ORDER: ItemType[] = [
   ItemType.WEAPON,
+  ItemType.EQUIPMENT,
   ItemType.CONSUMABLE,
   ItemType.MISC,
 ]

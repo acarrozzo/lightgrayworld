@@ -366,6 +366,7 @@ model ActionCap {
 
 enum ItemType {
   WEAPON
+  EQUIPMENT
   CONSUMABLE
   MISC
 }

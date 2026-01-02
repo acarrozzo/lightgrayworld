@@ -20,6 +20,7 @@ async function equipItem(playerId, playerItemId) {
           slug: true,
           name: true,
           equipSlot: true,
+          metadata: true,
         },
       },
     },
@@ -50,6 +51,36 @@ async function equipItem(playerId, playerItemId) {
 
   // Determine target slot from template
   const targetSlot = playerItem.ItemTemplate.equipSlot
+  const metadata = playerItem.ItemTemplate.metadata || {}
+  const isTwoHanded = metadata.isTwoHanded === true
+
+  // Check if equipping OFF_HAND while MAIN_HAND has a two-handed item
+  if (targetSlot === 'OFF_HAND') {
+    const mainHandItem = await prisma.playerItem.findFirst({
+      where: {
+        playerId,
+        slot: 'MAIN_HAND',
+        isEquipped: true,
+      },
+      include: {
+        ItemTemplate: {
+          select: {
+            metadata: true,
+          },
+        },
+      },
+    })
+
+    if (mainHandItem && mainHandItem.ItemTemplate) {
+      const mainHandMetadata = mainHandItem.ItemTemplate.metadata || {}
+      if (mainHandMetadata.isTwoHanded === true) {
+        return {
+          success: false,
+          message: 'Cannot equip off-hand item while wielding a two-handed weapon',
+        }
+      }
+    }
+  }
 
   // Perform all operations in a single transaction
   await prisma.$transaction(async (tx) => {
@@ -71,6 +102,27 @@ async function equipItem(playerId, playerItemId) {
           slot: null,
         },
       })
+    }
+
+    // If equipping a two-handed MAIN_HAND item, unequip any OFF_HAND item
+    if (targetSlot === 'MAIN_HAND' && isTwoHanded) {
+      const offHandItem = await tx.playerItem.findFirst({
+        where: {
+          playerId,
+          slot: 'OFF_HAND',
+          isEquipped: true,
+        },
+      })
+
+      if (offHandItem) {
+        await tx.playerItem.update({
+          where: { id: offHandItem.id },
+          data: {
+            isEquipped: false,
+            slot: null,
+          },
+        })
+      }
     }
 
     // Equip the selected item
