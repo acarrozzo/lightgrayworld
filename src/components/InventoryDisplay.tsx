@@ -243,7 +243,7 @@ export default function InventoryDisplay({
   ]
 
   return (
-    <div className="space-y-4">
+    <div className="@container space-y-4">
       {showHeading && <h3 className="text-lg font-semibold text-white">Inventory</h3>}
       
       {/* Filter Tabs */}
@@ -293,7 +293,7 @@ export default function InventoryDisplay({
                 <h4 className="text-sm font-semibold text-gray-300 px-2">
                   {tab.label.charAt(0).toUpperCase() + tab.label.slice(1)} ({categoryItems.length})
                 </h4>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 @sm:grid-cols-2 gap-2">
                   {categoryItems.map((item) => {
                       const isNewItem = showNewItems && newItemIds.has(item.id)
                       const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
@@ -305,7 +305,7 @@ export default function InventoryDisplay({
                       return (
                         <div
                           key={item.id}
-                          className={`relative rounded-md border px-2.5 py-2.5 hover:shadow-sm transition-all duration-200 flex gap-2 ${
+                          className={`relative rounded border px-2 py-1.5 hover:shadow-sm transition-all duration-200 flex gap-1.5 ${
                             item.isEquipped
                               ? 'border-green-500/60 bg-green-900/20 hover:bg-green-900/30 hover:border-green-500/80'
                               : 'border-gray-700/30 bg-gray-800/20 hover:bg-gray-800/40 hover:border-gray-700/50'
@@ -315,7 +315,7 @@ export default function InventoryDisplay({
                             <span className="absolute left-1 top-1 w-1.5 h-1.5 bg-red-500 rounded-full z-10"></span>
                           )}
                           {item.isEquipped && (
-                            <span className="absolute right-1 top-1 px-1.5 py-0.5 bg-green-500/80 text-white text-[10px] font-semibold rounded z-10">
+                            <span className="absolute right-1 top-1 px-1 py-0.5 bg-green-500/80 text-white text-[9px] font-semibold rounded z-10">
                               EQUIPPED
                             </span>
                           )}
@@ -324,7 +324,7 @@ export default function InventoryDisplay({
                           <div className="flex-shrink-0 pt-0.5">
                             <Icon
                               name={itemIcon}
-                              size={32}
+                              size={24}
                               color="current"
                               className="text-gray-600"
                             />
@@ -333,12 +333,12 @@ export default function InventoryDisplay({
                           {/* Content area */}
                           <div className="flex-1 min-w-0">
                             {/* Top row: Item name with quantity */}
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <div className={`text-white text-sm font-medium truncate min-w-0 ${isNewItem ? 'pl-2' : ''}`}>
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <div className={`text-white text-xs font-medium truncate min-w-0 ${isNewItem ? 'pl-2' : ''}`}>
                                 {item.template.name}
                               </div>
                               {item.quantity > 1 && (
-                                <span className="text-gray-200 text-xs font-medium border border-gray-700/50 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">
+                                <span className="text-gray-200 text-[10px] font-medium border border-gray-700/50 bg-gray-700/50 px-1 py-0.5 rounded flex-shrink-0">
                                   x{item.quantity}
                                 </span>
                               )}
@@ -348,7 +348,7 @@ export default function InventoryDisplay({
                             {(() => {
                               const modText = formatStatMods(item.template.metadata)
                               return modText ? (
-                                <div className="text-blue-400 text-xs mb-1">
+                                <div className="text-blue-400 text-xs font-semibold mb-0.5">
                                   {modText}
                                 </div>
                               ) : null
@@ -356,21 +356,14 @@ export default function InventoryDisplay({
                             
                             {/* Description */}
                             {item.template.description && (
-                              <div className="text-gray-500 text-xs mb-1.5 line-clamp-2">
+                              <div className="text-gray-500 text-[10px] mb-1 line-clamp-1">
                                 {item.template.description}
                               </div>
                             )}
                             
-                            {/* Equip Slot */}
-                            {item.template.equipSlot && (
-                              <div className="text-blue-400 text-xs mb-1.5">
-                                Equips to: {item.template.equipSlot.replace(/_/g, ' ')}
-                              </div>
-                            )}
-                            
                             {/* Bottom row: Action buttons on left, value and drop/examine button on right */}
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <div className="flex items-center gap-1 flex-1 min-w-0">
                                 {/* Unequip button - show if item is equipped */}
                                 {item.isEquipped && (
                                   <button
@@ -380,9 +373,9 @@ export default function InventoryDisplay({
                                         data: { playerItemId: item.id },
                                       })
                                     }
-                                    className="px-2 py-1 text-xs font-medium text-white bg-red-600/70 hover:bg-red-600 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                                    className="px-1.5 py-0.5 text-xs font-medium text-white bg-red-600/70 hover:bg-red-600 rounded transition-colors flex items-center gap-0.5 flex-shrink-0"
                                   >
-                                    <Icon name="equipment-shortsword" size={12} color="current" />
+                                    <Icon name="equipment-shortsword" size={10} color="current" />
                                     <span className="hidden sm:inline">Unequip</span>
                                   </button>
                                 )}
@@ -395,9 +388,9 @@ export default function InventoryDisplay({
                                         data: { playerItemId: item.id },
                                       })
                                     }
-                                    className="px-2 py-1 text-xs font-medium text-white bg-blue-600/70 hover:bg-blue-600 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                                    className="px-1.5 py-0.5 text-xs font-medium text-white bg-blue-600/70 hover:bg-blue-600 rounded transition-colors flex items-center gap-0.5 flex-shrink-0"
                                   >
-                                    <Icon name="equipment-shortsword" size={12} color="current" />
+                                    <Icon name="equipment-shortsword" size={10} color="current" />
                                     <span className="hidden sm:inline">Equip</span>
                                   </button>
                                 )}
@@ -410,7 +403,7 @@ export default function InventoryDisplay({
                                         data: { playerItemId: item.id, action: itemAction.action },
                                       })
                                     }
-                                    className={`px-2.5 py-2 rounded text-xs text-white transition-colors flex items-center gap-1.5 flex-shrink-0 ${
+                                    className={`px-1.5 py-0.5 rounded text-xs text-white transition-colors flex items-center gap-0.5 flex-shrink-0 ${
                                       itemAction.className || 'bg-indigo-600/70 hover:bg-indigo-600'
                                     }`}
                                     title={itemAction.label}
@@ -418,7 +411,7 @@ export default function InventoryDisplay({
                                     {itemAction.icon && (
                                       <Icon
                                         name={itemAction.icon}
-                                        size={14}
+                                        size={10}
                                         color="current"
                                       />
                                     )}
@@ -426,9 +419,9 @@ export default function InventoryDisplay({
                                   </button>
                                 ))}
                               </div>
-                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <div className="flex items-center gap-1 flex-shrink-0">
                                 {itemValue > 0 && (
-                                  <span className="text-[10px] text-gray-500/60">
+                                  <span className="text-[9px] text-gray-500/60">
                                     {itemValue}
                                   </span>
                                 )}
@@ -470,7 +463,7 @@ export default function InventoryDisplay({
         </div>
       ) : (
         // Show flat list for specific category tabs
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 @sm:grid-cols-2 gap-2">
           {filteredItems.map((item) => {
             const isNewItem = showNewItems && newItemIds.has(item.id)
             const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
@@ -482,7 +475,7 @@ export default function InventoryDisplay({
             return (
               <div
                 key={item.id}
-                className={`relative rounded-md border px-2.5 py-2.5 hover:shadow-sm transition-all duration-200 flex gap-2 ${
+                className={`relative rounded border px-2 py-1.5 hover:shadow-sm transition-all duration-200 flex gap-1.5 ${
                   item.isEquipped
                     ? 'border-green-500/60 bg-green-900/20 hover:bg-green-900/30 hover:border-green-500/80'
                     : 'border-gray-700/30 bg-gray-800/20 hover:bg-gray-800/40 hover:border-gray-700/50'
@@ -492,7 +485,7 @@ export default function InventoryDisplay({
                   <span className="absolute left-1 top-1 w-1.5 h-1.5 bg-red-500 rounded-full z-10"></span>
                 )}
                 {item.isEquipped && (
-                  <span className="absolute right-1 top-1 px-1.5 py-0.5 bg-green-500/80 text-white text-[10px] font-semibold rounded z-10">
+                  <span className="absolute right-1 top-1 px-1 py-0.5 bg-green-500/80 text-white text-[9px] font-semibold rounded z-10">
                     EQUIPPED
                   </span>
                 )}
@@ -501,7 +494,7 @@ export default function InventoryDisplay({
                 <div className="flex-shrink-0 pt-0.5">
                   <Icon
                     name={itemIcon}
-                    size={32}
+                    size={24}
                     color="current"
                     className="text-gray-600"
                   />
@@ -510,12 +503,12 @@ export default function InventoryDisplay({
                 {/* Content area */}
                 <div className="flex-1 min-w-0">
                   {/* Top row: Item name with quantity */}
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <div className={`text-white text-sm font-medium truncate min-w-0 ${isNewItem ? 'pl-2' : ''}`}>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <div className={`text-white text-xs font-medium truncate min-w-0 ${isNewItem ? 'pl-2' : ''}`}>
                       {item.template.name}
                     </div>
                     {item.quantity > 1 && (
-                      <span className="text-gray-200 text-xs font-medium border border-gray-700/50 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">
+                      <span className="text-gray-200 text-[10px] font-medium border border-gray-700/50 bg-gray-700/50 px-1 py-0.5 rounded flex-shrink-0">
                         x{item.quantity}
                       </span>
                     )}
@@ -525,7 +518,7 @@ export default function InventoryDisplay({
                   {(() => {
                     const modText = formatStatMods(item.template.metadata)
                     return modText ? (
-                      <div className="text-blue-400 text-xs mb-1">
+                      <div className="text-blue-400 text-xs font-semibold mb-0.5">
                         {modText}
                       </div>
                     ) : null
@@ -533,21 +526,14 @@ export default function InventoryDisplay({
                   
                   {/* Description */}
                   {item.template.description && (
-                    <div className="text-gray-500 text-xs mb-1.5 line-clamp-2">
+                    <div className="text-gray-500 text-[10px] mb-1 line-clamp-1">
                       {item.template.description}
                     </div>
                   )}
                   
-                  {/* Equip Slot */}
-                  {item.template.equipSlot && (
-                    <div className="text-blue-400 text-xs mb-1.5">
-                      Equips to: {item.template.equipSlot.replace(/_/g, ' ')}
-                    </div>
-                  )}
-                  
                   {/* Bottom row: Action buttons on left, value and drop/examine button on right */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1 flex-1 min-w-0">
                       {/* Unequip button - show if item is equipped */}
                       {item.isEquipped && (
                         <button
@@ -557,9 +543,9 @@ export default function InventoryDisplay({
                               data: { playerItemId: item.id },
                             })
                           }
-                          className="px-2 py-1 text-xs font-medium text-white bg-red-600/70 hover:bg-red-600 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                          className="px-1.5 py-0.5 text-xs font-medium text-white bg-red-600/70 hover:bg-red-600 rounded transition-colors flex items-center gap-0.5 flex-shrink-0"
                         >
-                          <Icon name="equipment-shortsword" size={12} color="current" />
+                          <Icon name="equipment-shortsword" size={10} color="current" />
                           <span className="hidden sm:inline">Unequip</span>
                         </button>
                       )}
@@ -572,9 +558,9 @@ export default function InventoryDisplay({
                               data: { playerItemId: item.id },
                             })
                           }
-                          className="px-2 py-1 text-xs font-medium text-white bg-blue-600/70 hover:bg-blue-600 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                          className="px-1.5 py-0.5 text-xs font-medium text-white bg-blue-600/70 hover:bg-blue-600 rounded transition-colors flex items-center gap-0.5 flex-shrink-0"
                         >
-                          <Icon name="equipment-shortsword" size={12} color="current" />
+                          <Icon name="equipment-shortsword" size={10} color="current" />
                           <span className="hidden sm:inline">Equip</span>
                         </button>
                       )}
@@ -587,7 +573,7 @@ export default function InventoryDisplay({
                               data: { playerItemId: item.id, action: itemAction.action },
                             })
                           }
-                          className={`px-2.5 py-2 rounded text-xs text-white transition-colors flex items-center gap-1.5 flex-shrink-0 ${
+                          className={`px-1.5 py-0.5 rounded text-xs text-white transition-colors flex items-center gap-0.5 flex-shrink-0 ${
                             itemAction.className || 'bg-indigo-600/70 hover:bg-indigo-600'
                           }`}
                           title={itemAction.label}
@@ -595,7 +581,7 @@ export default function InventoryDisplay({
                           {itemAction.icon && (
                             <Icon
                               name={itemAction.icon}
-                              size={14}
+                              size={10}
                               color="current"
                             />
                           )}
@@ -603,9 +589,9 @@ export default function InventoryDisplay({
                         </button>
                       ))}
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       {itemValue > 0 && (
-                        <span className="text-[10px] text-gray-500/60">
+                        <span className="text-[9px] text-gray-500/60">
                           {itemValue}
                         </span>
                       )}
