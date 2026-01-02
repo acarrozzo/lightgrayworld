@@ -14,8 +14,9 @@ class GameEngine {
     this.playerSockets = new Map()
     this.lastMetricsLoggedAt = 0
     this.lastTickProfile = null
+    // Cached mirror of tick state (not authoritative - use tickClock methods instead)
     this.currentWorldTickNumber = 0
-    this.nextWorldTickAt = Date.now() + tickMs
+    this.nextWorldTickAt = null
   }
 
   start() {
@@ -86,7 +87,9 @@ class GameEngine {
   async processWorldTick(tickId) {
     const tickStart = performance.now()
     const tickTimestamp = Date.now()
-    const nextTickAt = tickTimestamp + this.tickClock.tickMs
+    // Use tickClock method to get nextTickAt (derived from tickId, not tickTimestamp + tickMs)
+    const nextTickAt = this.tickClock.getNextTickTimestamp()
+    // Update cached mirror (not authoritative source)
     this.currentWorldTickNumber = tickId
     this.nextWorldTickAt = nextTickAt
     // Broadcast global world tick for all clients (authoritative countdown)
@@ -160,19 +163,17 @@ class GameEngine {
       playerId,
       async () => {
         const room = this.getOrCreateRoom(roomId)
-        // Calculate nextTickAt dynamically to ensure it's always current
-        // Use the tick clock's nextTickTimestamp if available, otherwise calculate from current tick
-        const now = Date.now()
-        const nextTickAt = this.tickClock?.nextTickTimestamp 
-          ? this.tickClock.nextTickTimestamp 
-          : (this.nextWorldTickAt && this.nextWorldTickAt > now) 
-            ? this.nextWorldTickAt 
-            : now + this.tickClock.tickMs
+        // Always use TickClock methods - single source of truth
+        if (!this.tickClock) {
+          throw new Error('TickClock not available - cannot process action')
+        }
+        const currentTickNumber = this.tickClock.getCurrentTickId()
+        const nextTickAt = this.tickClock.getNextTickTimestamp()
         
         const result = await room.executeAction(
           action,
           playerId,
-          this.currentWorldTickNumber,
+          currentTickNumber,
           nextTickAt
         )
 

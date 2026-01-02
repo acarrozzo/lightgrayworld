@@ -177,8 +177,9 @@ export async function GET(request: NextRequest) {
       const actionCaps: Record<string, number> = {}
       const gameEngine = (globalThis as any).gameEngine
 
-      if (gameEngine && roomId) {
-        const currentTickNumber = gameEngine.currentWorldTickNumber ?? 0
+      if (gameEngine?.tickClock && roomId) {
+        // Always use TickClock methods - single source of truth
+        const currentTickNumber = gameEngine.tickClock.getCurrentTickId()
 
         // Room 002: "pick redberry" (maxPerTick: 5)
         if (roomId === '002') {
@@ -208,18 +209,24 @@ export async function GET(request: NextRequest) {
       }
 
       // Include world tick information for immediate countdown display
-      if (gameEngine) {
-        const nextTickAt = gameEngine.nextWorldTickAt
-        const tickIntervalMs = gameEngine.tickClock?.tickMs ?? 43200000 // WORLD_TICK_MS fallback
-        const tickNumber = gameEngine.currentWorldTickNumber ?? 0
+      // Always use TickClock methods - no fallback math
+      if (gameEngine?.tickClock) {
+        const tickId = gameEngine.tickClock.getCurrentTickId()
+        const nextTickAt = gameEngine.tickClock.getNextTickTimestamp()
+        const tickIntervalMs = gameEngine.tickClock.tickMs
 
-        if (nextTickAt) {
-          payload.worldTick = {
-            tickNumber,
-            nextTickAt,
-            tickIntervalMs,
-          }
+        payload.worldTick = {
+          tickId,
+          tickNumber: tickId, // for backwards compatibility
+          nextTickAt,
+          tickIntervalMs,
         }
+      } else {
+        // Fail loudly in dev if tickClock is missing
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[API] tickClock missing - cannot compute worldTick')
+        }
+        // worldTick will be undefined - client handles gracefully
       }
     }
 

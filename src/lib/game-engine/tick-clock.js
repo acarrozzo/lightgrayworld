@@ -1,9 +1,4 @@
-const WORLD_TICK_MS = 43200000; // 12 hours
-// const WORLD_TICK_MS = 3600000; // 1 hour 
-// const WORLD_TICK_MS = 30000; // 30 seconds
-// const WORLD_TICK_MS = 600000; // 10 minute
-// const WORLD_TICK_MS = 60000; // 1 minute
-//const WORLD_TICK_MS = 10000; // 10 seconds
+const WORLD_TICK_MS = 3600000; // 1 hour (UTC-aligned)
 
 
 
@@ -11,11 +6,8 @@ const WORLD_TICK_MS = 43200000; // 12 hours
 class TickClock {
   constructor(tickMs = WORLD_TICK_MS) {
     this.tickMs = tickMs;
-    this.epoch = Date.now();
     this.running = false;
     this.timer = null;
-    this.currentTickId = 0;
-    this.nextTickTimestamp = this.epoch + this.tickMs;
 
     this.tickDurations = [];
     this.maxSamples = 1000;
@@ -36,8 +28,27 @@ class TickClock {
     }
   }
 
+  /**
+   * Get current tick ID from wall-clock time (stateless, UTC-aligned).
+   * Single source of truth for tick IDs.
+   */
+  getCurrentTickId() {
+    return Math.floor(Date.now() / this.tickMs);
+  }
+
+  /**
+   * Get next tick timestamp, derived deterministically from current tickId.
+   */
+  getNextTickTimestamp() {
+    const tickId = this.getCurrentTickId();
+    return (tickId + 1) * this.tickMs;
+  }
+
+  /**
+   * Backward compatibility method - calls getCurrentTickId().
+   */
   getCurrentTick() {
-    return this.currentTickId;
+    return this.getCurrentTickId();
   }
 
   getMetrics() {
@@ -49,7 +60,7 @@ class TickClock {
     const max = samples.length === 0 ? 0 : Math.max(...samples);
 
     return {
-      currentTick: this.currentTickId,
+      currentTick: this.getCurrentTickId(),
       running: this.running,
       avgTickTime: avg,
       p95TickTime: p95,
@@ -61,28 +72,31 @@ class TickClock {
     if (!this.running) return;
 
     const now = Date.now();
-    const delay = Math.max(0, this.nextTickTimestamp - now);
+    // Calculate next UTC hour boundary (absolute time, not relative)
+    const nextTickAt = Math.ceil(now / this.tickMs) * this.tickMs;
+    const delay = Math.max(0, nextTickAt - now);
 
     this.timer = setTimeout(async () => {
       const tickStart = Date.now();
-      this.currentTickId = Math.floor((tickStart - this.epoch) / this.tickMs);
+      
+      // CRITICAL: Compute tickId from the scheduled boundary time, not Date.now()
+      // This guarantees the tick event is exactly aligned to the boundary you intended
+      const tickId = Math.floor(nextTickAt / this.tickMs);
 
       try {
-        await onTick(this.currentTickId);
+        await onTick(tickId);
       } catch (error) {
-        console.error(`[TickClock] Tick ${this.currentTickId} handler error`, error);
+        console.error(`[TickClock] Tick ${tickId} handler error`, error);
       }
 
       const duration = Date.now() - tickStart;
       this.recordDuration(duration);
 
-      const expectedNext = this.epoch + (this.currentTickId + 1) * this.tickMs;
-      this.nextTickTimestamp = Math.max(expectedNext, Date.now());
-
       if (duration > this.tickMs * 0.8) {
-        console.warn(`[TickClock] Tick ${this.currentTickId} consumed ${duration}ms`);
+        console.warn(`[TickClock] Tick ${tickId} consumed ${duration}ms`);
       }
 
+      // Schedule next tick at absolute boundary (avoid drift)
       this.scheduleNextTick(onTick);
     }, delay);
   }
