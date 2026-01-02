@@ -10,6 +10,7 @@ import {
   getItemDisplayOrder,
   getItemOrderIndex,
 } from '@/lib/inventory-utils'
+import { IconMappings } from '@/lib/icon-mappings'
 
 interface InventoryDisplayProps {
   inventory: InventoryItem[]
@@ -21,6 +22,57 @@ interface InventoryDisplayProps {
 }
 
 type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
+
+/**
+ * Resolve item icon name with fallback logic.
+ * Tries: metadata.icon -> slug -> equipment-prefixed slug -> default
+ */
+function resolveItemIcon(metadata: any, slug: string): string {
+  // First, try metadata.icon if provided
+  if (metadata?.icon) {
+    const iconName = metadata.icon
+    // Check if icon exists in mappings
+    if (IconMappings[iconName as keyof typeof IconMappings]) {
+      return iconName
+    }
+    // Try with equipment- prefix
+    const equipmentIcon = `equipment-${iconName}`
+    if (IconMappings[equipmentIcon as keyof typeof IconMappings]) {
+      return equipmentIcon
+    }
+  }
+  
+  // Fallback to slug
+  if (slug) {
+    // Normalize slug: remove hyphens and spaces, convert to lowercase
+    const normalizedSlug = slug.replace(/[-\s]/g, '').toLowerCase()
+    
+    // Try slug as-is
+    if (IconMappings[slug as keyof typeof IconMappings]) {
+      return slug
+    }
+    
+    // Try normalized slug
+    if (IconMappings[normalizedSlug as keyof typeof IconMappings]) {
+      return normalizedSlug
+    }
+    
+    // Try with equipment- prefix (original slug)
+    const equipmentSlug = `equipment-${slug}`
+    if (IconMappings[equipmentSlug as keyof typeof IconMappings]) {
+      return equipmentSlug
+    }
+    
+    // Try with equipment- prefix (normalized slug)
+    const equipmentNormalized = `equipment-${normalizedSlug}`
+    if (IconMappings[equipmentNormalized as keyof typeof IconMappings]) {
+      return equipmentNormalized
+    }
+  }
+  
+  // Default fallback
+  return 'inv'
+}
 
 /**
  * Format stat modifiers from item metadata as a comma-separated string.
@@ -247,7 +299,7 @@ export default function InventoryDisplay({
       {showHeading && <h3 className="text-lg font-semibold text-white">Inventory</h3>}
       
       {/* Filter Tabs */}
-      <div className={`flex gap-2 flex-wrap overflow-x-auto pb-2 ${tabsPadding ? 'px-4' : ''}`}>
+      <div className={`flex gap-2 flex-wrap overflow-x-auto pb-2}`}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id
           const count = categoryCounts[tab.id]
@@ -298,9 +350,9 @@ export default function InventoryDisplay({
                       const isNewItem = showNewItems && newItemIds.has(item.id)
                       const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
                       const itemValue = item.template.value ?? 0
-                      // Try to get icon from metadata, fallback to slug, or use a default
+                      // Resolve icon with fallback logic
                       const metadata = item.template.metadata as { icon?: string } | null
-                      const itemIcon = metadata?.icon || item.template.slug || 'inv'
+                      const itemIcon = resolveItemIcon(metadata, item.template.slug || '')
                       
                       return (
                         <div
@@ -468,9 +520,9 @@ export default function InventoryDisplay({
             const isNewItem = showNewItems && newItemIds.has(item.id)
             const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
             const itemValue = item.template.value ?? 0
-            // Try to get icon from metadata, fallback to slug, or use a default
+            // Resolve icon with fallback logic
             const metadata = item.template.metadata as { icon?: string } | null
-            const itemIcon = metadata?.icon || item.template.slug || 'inv'
+            const itemIcon = resolveItemIcon(metadata, item.template.slug || '')
             
             return (
               <div

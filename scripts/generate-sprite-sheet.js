@@ -66,6 +66,17 @@ function generateSpriteSheet() {
   
   console.log(`📁 Total: ${allSvgFiles.length} SVG files`);
   
+  // Sort files to ensure root icons are processed before equipment icons
+  // This ensures root icons take precedence when conflicts exist
+  allSvgFiles.sort((a, b) => {
+    const aIsEquipment = a.includes('/equipment/');
+    const bIsEquipment = b.includes('/equipment/');
+    // Root files (non-equipment) come first
+    if (aIsEquipment && !bIsEquipment) return 1;
+    if (!aIsEquipment && bIsEquipment) return -1;
+    return 0;
+  });
+  
   const symbols = [];
   const iconMappings = [];
   const processedSymbolIds = new Set(); // Track processed symbol IDs to avoid duplicates
@@ -97,6 +108,13 @@ function generateSpriteSheet() {
       // Remove 'environment-' if it's already in the path, then add it
       symbolId = symbolId.replace(/^environment-/, '');
       symbolId = `environment-${symbolId}`;
+    }
+    
+    // For files from public/icons/equipment, prefix with 'equipment-'
+    if (baseDir.includes('public/icons') && relativePath.startsWith('equipment/')) {
+      // Remove 'equipment-' if it's already in the path, then add it
+      symbolId = symbolId.replace(/^equipment-/, '');
+      symbolId = `equipment-${symbolId}`;
     }
     
     // Skip if this symbol ID has already been processed
