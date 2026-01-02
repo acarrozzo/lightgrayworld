@@ -9,6 +9,7 @@ export type Notification = {
   outcome: ActionFeedbackOutcome
   action?: string
   ts: number
+  onUndo?: () => void
 }
 
 type NotificationState = {

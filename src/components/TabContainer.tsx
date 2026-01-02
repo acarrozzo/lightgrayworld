@@ -23,6 +23,7 @@ interface TabContainerProps {
   contentClassName?: string
   containerClassName?: string
   buttonPadding?: string
+  rightElement?: ReactNode
 }
 
 export default function TabContainer({
@@ -36,6 +37,7 @@ export default function TabContainer({
   contentClassName = '',
   containerClassName = '',
   buttonPadding = 'px-2.5 py-1.5',
+  rightElement,
 }: TabContainerProps) {
   const [activeTab, setActiveTab] = useState<string | null>(defaultTab ?? tabs[0]?.id ?? null)
 
@@ -129,16 +131,20 @@ export default function TabContainer({
           )
         })}
         
-        {/* Close button - on same row as tabs */}
-        {onClose && (
-          <button
-            onClick={onClose}
-            className={`ml-auto ${closeButtonPlacement === 'separate' ? breakpointClass : ''} p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50`}
-            title="Close"
-          >
-            <Icon name="x" size={20} />
-          </button>
-        )}
+        {/* Right side elements */}
+        <div className="ml-auto flex items-center gap-2">
+          {rightElement}
+          {/* Close button - on same row as tabs */}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className={`${closeButtonPlacement === 'separate' ? breakpointClass : ''} p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50`}
+              title="Close"
+            >
+              <Icon name="x" size={20} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tab Content */}

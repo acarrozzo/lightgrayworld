@@ -100,18 +100,38 @@ export default function NotificationToast({ notification, onDismiss, fadeOutDura
           </p>
         )}
       </div>
-      <button
-        onClick={handleDismiss}
-        className={`
-          text-gray-500
-          flex-shrink-0 p-0.5 rounded
-          hover:bg-gray-800/40 hover:text-gray-300 transition-colors
-          focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30
-        `}
-        aria-label="Dismiss notification"
-      >
-        <X size={12} />
-      </button>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        {notification.onUndo && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              notification.onUndo?.()
+              handleDismiss()
+            }}
+            className={`
+              text-xs font-medium px-2 py-1 rounded
+              bg-gray-700/50 hover:bg-gray-600/70 text-gray-200 hover:text-white
+              transition-colors
+              focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30
+            `}
+            aria-label="Undo"
+          >
+            Undo
+          </button>
+        )}
+        <button
+          onClick={handleDismiss}
+          className={`
+            text-gray-500
+            flex-shrink-0 p-0.5 rounded
+            hover:bg-gray-800/40 hover:text-gray-300 transition-colors
+            focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30
+          `}
+          aria-label="Dismiss notification"
+        >
+          <X size={12} />
+        </button>
+      </div>
     </div>
   )
 }

@@ -9,9 +9,11 @@ import GameSidebar from './GameSidebar'
 import UnifiedFeedPanel, { type InputMode } from './UnifiedFeedPanel'
 import RoomBox from './RoomBox'
 import Compass from './Compass'
+import TabContainer, { type TabConfig } from './TabContainer'
+import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
-import SettingsModal from './SettingsModal'
+import SettingsContent from './SettingsContent'
 import MapModal, { type MapOption } from './MapModal'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
@@ -211,7 +213,6 @@ export default function GameInterface() {
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [isTeleportModalOpen, setIsTeleportModalOpen] = useState(false)
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
@@ -238,6 +239,10 @@ export default function GameInterface() {
     nextTickAt: number
     tickIntervalMs: number
   } | undefined>(undefined)
+  const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
+  type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
+  const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
+  const pendingEquipActionRef = useRef<{ playerItemId: string } | null>(null)
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
   const lastLoginSocketId = useRef<string | null>(null)
@@ -993,6 +998,12 @@ export default function GameInterface() {
     }
 
     console.log('[handleAction] Non-navigation action, sending via socketHandlers')
+    
+    // Track equip_item actions for undo functionality
+    if (normalizedAction === 'equip_item' && actionData?.playerItemId) {
+      pendingEquipActionRef.current = { playerItemId: actionData.playerItemId }
+    }
+    
     const payload = actionData ? { type: normalizedAction, data: actionData } : actionType
     const result = socketHandlers.sendGameAction(payload as any)
     console.log('[handleAction] sendGameAction result:', result)
@@ -1117,6 +1128,41 @@ export default function GameInterface() {
         source: 'socket',
         data: payload?.data,
       })
+
+      // Handle equip_item action with undo toast (before inventory update to capture state)
+      if (payload?.action === 'equip_item' && success) {
+        const pendingEquip = pendingEquipActionRef.current
+        if (pendingEquip) {
+          // Update inventory first so we can find the item
+          if (payload?.data?.inventory) {
+            setInventory(payload.data.inventory)
+          }
+          
+          // Find the item in the updated inventory to get its name
+          const updatedInventory = payload?.data?.inventory || inventory
+          const equippedItem = updatedInventory.find((item: any) => item.id === pendingEquip.playerItemId && item.isEquipped)
+          const itemName = equippedItem?.template.name || messageText.replace(/^Equipped\s+/i, '').replace(/\.$/, '') || 'item'
+          
+          // Show toast with undo button
+          const { addNotification } = useNotificationStore.getState()
+          addNotification({
+            message: `Equipped ${itemName}`,
+            outcome: 'success',
+            action: 'equip_item',
+            onUndo: () => {
+              // Undo: unequip the item
+              handleAction({
+                type: 'unequip_item',
+                data: { playerItemId: pendingEquip.playerItemId },
+              })
+              pendingEquipActionRef.current = null
+            },
+          })
+          
+          // Clear pending equip action
+          pendingEquipActionRef.current = null
+        }
+      }
 
       if (payload?.data?.inventory) {
         setInventory(payload.data.inventory)
@@ -1290,8 +1336,8 @@ export default function GameInterface() {
         }
       } else {
         // Trigger notification for room actions (only if not showing modal)
-        // Skip notifications for movement actions
-        if (payload?.action !== 'move') {
+        // Skip notifications for movement actions and equip_item (handled above)
+        if (payload?.action !== 'move' && payload?.action !== 'equip_item') {
           const { addNotification } = useNotificationStore.getState()
           addNotification({
             message: messageText,
@@ -1679,6 +1725,11 @@ export default function GameInterface() {
     handleAction({ type: 'teleport', data: { toRoomId: roomId } })
   }, [handleAction])
 
+  const handleSwitchToInventory = useCallback((filter?: FilterTab) => {
+    setCenterActiveTab('inventory')
+    setInventoryFilter(filter)
+  }, [])
+
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
   }
@@ -1696,11 +1747,6 @@ export default function GameInterface() {
 
   return (
     <div className="h-dvh bg-gray-950 text-white flex flex-col overflow-hidden">
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onLogout={handleLogoutFlow}
-      />
       <MapModal
         isOpen={isMapModalOpen}
         onClose={() => setIsMapModalOpen(false)}
@@ -1803,6 +1849,12 @@ export default function GameInterface() {
       />
       <NotificationContainer />
       
+      <GameHeader
+        onToggleCharacterSidebar={() => setLeftSidebarOpen((prev) => !prev)}
+        onToggleWorldSidebar={() => setRightSidebarOpen((prev) => !prev)}
+        playerName={player?.username}
+      />
+      
       <div className="grid grid-cols-1 md:grid-cols-[1fr_minmax(340px,30%)] xl:grid-cols-[minmax(360px,25%)_1fr_minmax(360px,25%)] flex-1 overflow-hidden relative min-h-0">
         {/* Overlay backdrop for mobile */}
         {(leftSidebarOpen || rightSidebarOpen) && (
@@ -1830,79 +1882,134 @@ export default function GameInterface() {
             player={player} 
             onClose={() => setLeftSidebarOpen(false)} 
             onAction={handleAction}
+            onSwitchToInventory={handleSwitchToInventory}
           />
         </div>
         
         {/* Main Game Area */}
         <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden md:col-start-1 xl:col-start-2">
-          <GameHeader
-            onToggleCharacterSidebar={() => setLeftSidebarOpen((prev) => !prev)}
-            onToggleWorldSidebar={() => setRightSidebarOpen((prev) => !prev)}
-            onOpenSettings={() => setIsSettingsOpen(true)}
-            playerName={player?.username}
-          />
           {currentRoom && (
             <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
-              <div className="flex-1 min-h-0 overflow-y-auto p-0">
-                <RoomBox
-                  room={currentRoom}
-                  roomPlayers={roomPlayers}
-                  currentPlayerId={player.id}
-                  onAction={handleAction}
-                  onRefreshCaps={() => {
-                    if (currentRoom?.roomId) {
-                      hydrateRoomCaps(currentRoom.roomId, roomLoadSequenceRef.current)
-                    }
-                  }}
-                  worldTick={worldTick}
-                  actionResult={actionResult}
-                  isLoadingRoom={isLoadingRoom}
-                  currentAction={action}
-                />
-              </div>
+              <TabContainer
+                tabs={[
+                  {
+                    id: 'explore',
+                    label: 'Explore',
+                    icon: 'world',
+                    color: 'blue',
+                    content: (
+                      <div className="flex flex-col h-full min-h-0">
+                        <div className="flex-1 min-h-0 overflow-y-auto p-0">
+                          <RoomBox
+                            room={currentRoom}
+                            roomPlayers={roomPlayers}
+                            currentPlayerId={player.id}
+                            onAction={handleAction}
+                            onRefreshCaps={() => {
+                              if (currentRoom?.roomId) {
+                                hydrateRoomCaps(currentRoom.roomId, roomLoadSequenceRef.current)
+                              }
+                            }}
+                            worldTick={worldTick}
+                            actionResult={actionResult}
+                            isLoadingRoom={isLoadingRoom}
+                            currentAction={action}
+                          />
+                        </div>
 
-              {/* D-pad */}
-              <div className="p-4 flex-shrink-0 relative flex flex-col gap-4 border-t border-gray-800/50">
-                {/* Map and Teleport buttons - left edge */}
-                <div className="absolute left-4 top-4 flex flex-row md:flex-col gap-2 z-10">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const isRoomZero = currentRoom?.roomId === '000'
-                      const isLobby = currentRoom?.roomId === '999'
-                      const mapBackground = isRoomZero
-                        ? '/img/lightgray_map_roomzero.jpg'
-                        : isLobby
-                        ? '/img/lightgray_map_the_lobby.jpg'
-                        : '/img/lightgray_map_grassyfield_main.jpg'
-                      const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : 'Grassy Field'
-                      handleOpenMap(mapBackground, mapTitle)
-                    }}
-                    className="px-3 py-1.5 border border-green-600/40 hover:border-green-500/60 bg-transparent hover:bg-green-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-green-400/70 hover:text-green-300 text-sm font-medium whitespace-nowrap"
-                    title="View Map"
-                    aria-label="View Map"
-                  >
-                    <Icon name="world" size={16} />
-                    <span className="hidden md:inline">Map</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenTeleport}
-                    className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
-                    title="Open Teleport"
-                    aria-label="Open Teleport"
-                  >
-                    <span className="block md:hidden">
-                      <Icon name="ironskin" size={16} />
-                    </span>
-                    <span className="hidden md:inline">Teleport</span>
-                  </button>
-                </div>
-                {/* Compass */}
-                <div className="flex items-center justify-center">
-                  <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} onOpenTeleport={handleOpenTeleport} />
-                </div>
-              </div>
+                        {/* D-pad */}
+                        <div className="p-4 flex-shrink-0 relative flex flex-col gap-4 border-t border-gray-800/50">
+                          {/* Map and Teleport buttons - left edge */}
+                          <div className="absolute left-4 top-4 flex flex-row md:flex-col gap-2 z-10">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const isRoomZero = currentRoom?.roomId === '000'
+                                const isLobby = currentRoom?.roomId === '999'
+                                const mapBackground = isRoomZero
+                                  ? '/img/lightgray_map_roomzero.jpg'
+                                  : isLobby
+                                  ? '/img/lightgray_map_the_lobby.jpg'
+                                  : '/img/lightgray_map_grassyfield_main.jpg'
+                                const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : 'Grassy Field'
+                                handleOpenMap(mapBackground, mapTitle)
+                              }}
+                              className="px-3 py-1.5 border border-green-600/40 hover:border-green-500/60 bg-transparent hover:bg-green-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-green-400/70 hover:text-green-300 text-sm font-medium whitespace-nowrap"
+                              title="View Map"
+                              aria-label="View Map"
+                            >
+                              <Icon name="world" size={16} />
+                              <span className="hidden md:inline">Map</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleOpenTeleport}
+                              className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
+                              title="Open Teleport"
+                              aria-label="Open Teleport"
+                            >
+                              <span className="block md:hidden">
+                                <Icon name="ironskin" size={16} />
+                              </span>
+                              <span className="hidden md:inline">Teleport</span>
+                            </button>
+                          </div>
+                          {/* Compass */}
+                          <div className="flex items-center justify-center">
+                            <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} onOpenTeleport={handleOpenTeleport} />
+                          </div>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    id: 'inventory',
+                    label: 'Inventory',
+                    icon: 'inv',
+                    color: 'green',
+                    content: (
+                      <InventoryDisplay
+                        inventory={inventory}
+                        onAction={handleAction}
+                        initialFilter={inventoryFilter}
+                      />
+                    ),
+                  },
+                  {
+                    id: 'quests',
+                    label: 'Quests',
+                    icon: 'trophy',
+                    color: 'gold',
+                    content: (
+                      <div className="space-y-4 p-4">
+                        <h3 className="text-lg font-semibold text-white">Quests</h3>
+                        <div className="text-gray-400 text-sm">
+                          No active quests.
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    id: 'settings',
+                    label: 'Settings',
+                    icon: 'character',
+                    color: 'gray',
+                    content: (
+                      <SettingsContent onLogout={handleLogoutFlow} />
+                    ),
+                  },
+                ]}
+                defaultTab="explore"
+                onTabChange={(tabId) => {
+                  setCenterActiveTab(tabId || 'explore')
+                  // Clear inventory filter when switching away from inventory tab
+                  if (tabId !== 'inventory') {
+                    setInventoryFilter(undefined)
+                  }
+                }}
+                containerClassName="flex-1 min-h-0"
+                contentClassName="flex-1 min-h-0 overflow-hidden"
+              />
             </div>
           )}
         </div>
@@ -1921,7 +2028,7 @@ export default function GameInterface() {
             currentRoomId={currentRoom?.roomId}
             isConnected={socket?.connected ?? false}
             onClose={() => setRightSidebarOpen(false)}
-            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenSettings={() => setCenterActiveTab('settings')}
             customAction={customAction}
             onCustomActionChange={setCustomAction}
             onCustomActionSubmit={handleCustomAction}

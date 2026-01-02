@@ -1,7 +1,7 @@
 'use client'
 
 import { InventoryItem } from '@/lib/game-state'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import InventoryDropButton from './InventoryDropButton'
 import { getItemActions } from '@/lib/item-actions'
 import Icon from './Icon'
@@ -19,6 +19,7 @@ interface InventoryDisplayProps {
   showNewItems?: boolean
   showHeading?: boolean
   tabsPadding?: boolean
+  initialFilter?: FilterTab
 }
 
 type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
@@ -116,8 +117,16 @@ export default function InventoryDisplay({
   showNewItems = true,
   showHeading = true,
   tabsPadding = true,
+  initialFilter,
 }: InventoryDisplayProps) {
-  const [activeTab, setActiveTab] = useState<FilterTab>('all')
+  const [activeTab, setActiveTab] = useState<FilterTab>(initialFilter || 'all')
+
+  // Sync activeTab with initialFilter prop changes
+  useEffect(() => {
+    if (initialFilter !== undefined) {
+      setActiveTab(initialFilter)
+    }
+  }, [initialFilter])
 
   // Get item display order map (memoized)
   const itemOrderMap = useMemo(() => getItemDisplayOrder(), [])

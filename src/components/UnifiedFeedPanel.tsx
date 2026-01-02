@@ -522,16 +522,6 @@ export default function UnifiedFeedPanel({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {onOpenSettings && (
-            <button
-              onClick={onOpenSettings}
-              className="hidden md:flex p-1.5 bg-transparent hover:bg-gray-500/10 border border-gray-500/40 hover:border-gray-500/60 text-gray-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              aria-label="Open settings"
-              title="Open settings"
-            >
-              <SettingsIcon className="h-4 w-4" strokeWidth={2} />
-            </button>
-          )}
           {onClose && (
             <button
               className="md:hidden px-2 py-1 text-gray-400 hover:text-white rounded-md hover:bg-gray-800/60 transition-colors"

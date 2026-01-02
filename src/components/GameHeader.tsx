@@ -1,16 +1,14 @@
 'use client'
 
 import Icon from './Icon'
-import { Settings as SettingsIcon } from 'lucide-react'
 
 interface GameHeaderProps {
   onToggleCharacterSidebar?: () => void
   onToggleWorldSidebar?: () => void
-  onOpenSettings?: () => void
   playerName?: string
 }
 
-export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSidebar, onOpenSettings, playerName }: GameHeaderProps) {
+export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSidebar, playerName }: GameHeaderProps) {
   return (
     <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-2 shadow-sm">
       <div className="flex w-full items-center gap-4">
@@ -41,16 +39,6 @@ export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSide
             >
               <Icon name="world" className="h-5 w-5" color="current" />
               <span className="text-sm font-medium">World</span>
-            </button>
-          )}
-          {onOpenSettings && (
-            <button
-              onClick={onOpenSettings}
-              className="md:hidden p-2 bg-transparent hover:bg-gray-500/10 border border-gray-500/40 hover:border-gray-500/60 text-gray-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-              aria-label="Open settings"
-              title="Open settings"
-            >
-              <SettingsIcon className="h-5 w-5" strokeWidth={2} />
             </button>
           )}
         </div>

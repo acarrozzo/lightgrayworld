@@ -1,20 +1,21 @@
 'use client'
 
 import { Player, useGameStore, InventoryItem } from '@/lib/game-state'
-import TabContainer, { TabConfig } from './TabContainer'
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState } from 'react'
 import AvatarSelectionModal from './AvatarSelectionModal'
 import StatAllocationModal from './StatAllocationModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import Icon from './Icon'
-import { ItemType, EquipSlot } from '@prisma/client'
-import InventoryDisplay from './InventoryDisplay'
+import { EquipSlot } from '@prisma/client'
+
+type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
 
 interface GameSidebarProps {
   player: Player
   onClose?: () => void
   onAction?: (action: string | { type: string; data?: any }) => void
+  onSwitchToInventory?: (filter?: FilterTab) => void
 }
 
 /**
@@ -52,7 +53,7 @@ function formatStatMods(metadata: any): string {
   return parts.join(', ')
 }
 
-export default function GameSidebar({ player, onClose, onAction }: GameSidebarProps) {
+export default function GameSidebar({ player, onClose, onAction, onSwitchToInventory }: GameSidebarProps) {
   const inventory = useGameStore((state) => state.inventory)
   const setPlayer = useGameStore((state) => state.setPlayer)
   const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
@@ -60,12 +61,6 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   const [isAvatarModalOpen, setAvatarModalOpen] = useState(false)
   const [isSavingAvatar, setIsSavingAvatar] = useState(false)
   const [isStatModalOpen, setStatModalOpen] = useState(false)
-  const [newItemsCount, setNewItemsCount] = useState(0)
-  const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
-  const [activeTab, setActiveTab] = useState<string | null>('stats')
-  const previousInventoryRef = useRef<typeof inventory>([])
-  const isInitialMountRef = useRef(true)
-  const wasInventoryTabOpenRef = useRef(false) // Will be updated by useEffect
 
   const hpPercent = useMemo(() => {
     if (!player.hpMax) return 0
@@ -102,89 +97,24 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
     return map
   }, [inventory])
 
-  // Track inventory changes to detect new items
-  useEffect(() => {
-    // Skip on initial mount to avoid showing badge on load
-    if (isInitialMountRef.current) {
-      isInitialMountRef.current = false
-      previousInventoryRef.current = inventory
-      return
+  // Map EquipSlot to FilterTab
+  const getFilterForSlot = (slot: EquipSlot): FilterTab => {
+    switch (slot) {
+      case EquipSlot.MAIN_HAND:
+        return 'main'
+      case EquipSlot.OFF_HAND:
+        return 'off'
+      case EquipSlot.HEAD:
+        return 'head'
+      case EquipSlot.BODY:
+        return 'body'
+      case EquipSlot.HANDS:
+        return 'hands'
+      case EquipSlot.FEET:
+        return 'feet'
+      default:
+        return 'all'
     }
-
-    const previousInventory = previousInventoryRef.current
-    const currentInventory = inventory
-
-    // Check if this is initial load (previous is empty, current has items)
-    // This handles the case where inventory loads asynchronously after component mount
-    const isInitialLoad = previousInventory.length === 0 && currentInventory.length > 0
-
-    if (isInitialLoad) {
-      // Just set the baseline without triggering badge
-      previousInventoryRef.current = currentInventory
-      return
-    }
-
-    // Check if inventory has new items (new item IDs or increased quantities)
-    const previousItemIds = new Set(previousInventory.map(item => item.id))
-    const previousItemQuantities = new Map(
-      previousInventory.map(item => [item.id, item.quantity])
-    )
-
-    const newlyAddedItemIds = new Set<string>()
-    let newItemsAddedCount = 0
-
-    // Check for new item IDs and quantity increases
-    for (const item of currentInventory) {
-      if (!previousItemIds.has(item.id)) {
-        // Completely new item
-        newlyAddedItemIds.add(item.id)
-        newItemsAddedCount += item.quantity
-      } else {
-        // Check if quantity increased (new items of same type)
-        const previousQty = previousItemQuantities.get(item.id) || 0
-        if (item.quantity > previousQty) {
-          const quantityIncrease = item.quantity - previousQty
-          newlyAddedItemIds.add(item.id)
-          newItemsAddedCount += quantityIncrease
-        }
-      }
-    }
-
-    // Only update badge and new items if new items were added AND inventory tab is not active
-    if (newItemsAddedCount > 0 && activeTab !== 'inventory') {
-      setNewItemsCount(prev => prev + newItemsAddedCount)
-      setNewItemIds(prev => {
-        const updated = new Set(prev)
-        newlyAddedItemIds.forEach(id => updated.add(id))
-        return updated
-      })
-    }
-
-    // Update previous inventory reference
-    previousInventoryRef.current = inventory
-  }, [inventory, activeTab])
-
-  // Track when inventory tab opens/closes to clear new items indicators
-  useEffect(() => {
-    const isInventoryTabOpen = activeTab === 'inventory'
-    const wasOpen = wasInventoryTabOpenRef.current
-
-    // When inventory tab opens, clear the badge count
-    if (!wasOpen && isInventoryTabOpen) {
-      setNewItemsCount(0)
-    }
-
-    // When inventory tab closes (was open, now closed), clear red dots on items
-    if (wasOpen && !isInventoryTabOpen) {
-      setNewItemIds(new Set())
-    }
-
-    wasInventoryTabOpenRef.current = isInventoryTabOpen
-  }, [activeTab])
-
-  // Handle tab changes
-  const handleTabChange = (tabId: string | null) => {
-    setActiveTab(tabId)
   }
 
   const handleAvatarUpdate = async (avatar: PlayerAvatar, color: string) => {
@@ -226,233 +156,209 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
     setPlayer(updatedPlayer)
   }
 
-  const tabs: TabConfig[] = [
-    {
-      id: 'stats',
-      label: player.username || 'Stats',
-      icon: 'character',
-      color: 'purple',
-      content: (
-        <div className="space-y-4">
-          <div className="">
-            <div className="relative flex flex-row items-start gap-6">
-              <div className="relative w-36 h-52 bg-gray-950/70 rounded-3xl border border-gray-800/80 flex items-center justify-center shadow-inner shadow-black/60 flex-shrink-0">
-                {coloredAvatarSvg ? (
-                  <div
-                    className="w-28 h-44"
-                    dangerouslySetInnerHTML={{ __html: coloredAvatarSvg }}
-                  />
-                ) : (
-                  <div className="text-gray-500 text-sm">Loading avatar...</div>
-                )}
-                <button
-                  type="button"
-                  className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-all"
-                  onClick={() => setAvatarModalOpen(true)}
-                  disabled={!isLoggedIn}
-                >
-                  {isLoggedIn ? 'Edit' : 'Login to edit'}
-                </button>
-              </div>
-
-              <div className="flex-1 w-full space-y-3">
-                <div className="space-y-0 text-left">
-                  <div className="text-xs uppercase tracking-[0.3em] text-indigo-300/80">lvl {player.level}</div>
-                  <h3 className="text-2xl font-semibold text-white">{player.username}</h3>
-                  <p className="text-sm text-gray-400">Room: {player.currentRoom || '???'}</p>
-                </div>
-
-                <div className="space-y-3">
-                  <StatBar
-                    label="HP"
-                    value={`${player.hp}/${player.hpMax}`}
-                    percentage={hpPercent}
-                    gradient="from-rose-500 via-red-500 to-rose-600"
-                  />
-                  <StatBar
-                    label="MP"
-                    value={`${player.mp}/${player.mpMax}`}
-                    percentage={mpPercent}
-                    gradient="from-sky-500 via-blue-500 to-indigo-500"
-                  />
-                  <StatBar
-                    label="XP"
-                    value={`${xpCurrent.toLocaleString()} need ${xpNeeded.toLocaleString()}`}
-                    percentage={xpProgress}
-                    gradient="from-amber-400 via-yellow-400 to-orange-400"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <StatBox label="Core Points" value={player.cp ?? 0} />
-            <StatBox label="Training Points" value={player.tp ?? 0} />
-            <StatBox label="Skill Points" value={player.sp ?? 0} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <StatBox label="PT" value={player.physicalTraining ?? 0} subtle />
-            <StatBox label="MT" value={player.mentalTraining ?? 0} subtle />
-          </div>
-
-          <div>
-            <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} />
-          </div>
-
-          {/* Equipment Display */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Equipment</h4>
-            <div className="grid grid-cols-2 gap-2">
-              {/* Row 1: MAIN_HAND, OFF_HAND */}
-              <EquipmentSlot
-                slot={EquipSlot.MAIN_HAND}
-                item={equippedBySlot.get(EquipSlot.MAIN_HAND)}
-                onUnequip={(playerItemId) =>
-                  onAction?.({
-                    type: 'unequip_item',
-                    data: { playerItemId },
-                  })
-                }
-              />
-              <EquipmentSlot
-                slot={EquipSlot.OFF_HAND}
-                item={equippedBySlot.get(EquipSlot.OFF_HAND)}
-                onUnequip={(playerItemId) =>
-                  onAction?.({
-                    type: 'unequip_item',
-                    data: { playerItemId },
-                  })
-                }
-              />
-              {/* Row 2: HEAD, BODY */}
-              <EquipmentSlot
-                slot={EquipSlot.HEAD}
-                item={equippedBySlot.get(EquipSlot.HEAD)}
-                onUnequip={(playerItemId) =>
-                  onAction?.({
-                    type: 'unequip_item',
-                    data: { playerItemId },
-                  })
-                }
-              />
-              <EquipmentSlot
-                slot={EquipSlot.BODY}
-                item={equippedBySlot.get(EquipSlot.BODY)}
-                onUnequip={(playerItemId) =>
-                  onAction?.({
-                    type: 'unequip_item',
-                    data: { playerItemId },
-                  })
-                }
-              />
-              {/* Row 3: HANDS, FEET */}
-              <EquipmentSlot
-                slot={EquipSlot.HANDS}
-                item={equippedBySlot.get(EquipSlot.HANDS)}
-                onUnequip={(playerItemId) =>
-                  onAction?.({
-                    type: 'unequip_item',
-                    data: { playerItemId },
-                  })
-                }
-              />
-              <EquipmentSlot
-                slot={EquipSlot.FEET}
-                item={equippedBySlot.get(EquipSlot.FEET)}
-                onUnequip={(playerItemId) =>
-                  onAction?.({
-                    type: 'unequip_item',
-                    data: { playerItemId },
-                  })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Core Stats</h4>
-              {(player.cp ?? 0) > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setStatModalOpen(true)}
-                  disabled={!isLoggedIn}
-                  className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
-                >
-                  Spend Core Points ({player.cp ?? 0})
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <StatDisplay
-                label="STR"
-                core={player.str ?? 0}
-                mod={player.strMod ?? 0}
-              />
-              <StatDisplay
-                label="DEX"
-                core={player.dex ?? 0}
-                mod={player.dexMod ?? 0}
-              />
-              <StatDisplay
-                label="MAG"
-                core={player.mag ?? 0}
-                mod={player.magMod ?? 0}
-              />
-              <StatDisplay
-                label="DEF"
-                core={player.def ?? 0}
-                mod={player.defMod ?? 0}
-              />
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'inventory',
-      label: 'Inventory',
-      icon: 'inv',
-      color: 'green',
-      badge: newItemsCount > 0 ? newItemsCount : undefined,
-      content: (
-        <InventoryDisplay
-          inventory={inventory}
-          onAction={onAction}
-          newItemIds={newItemIds}
-          showNewItems={true}
-        />
-      ),
-    },
-    {
-      id: 'quests',
-      label: 'Quests',
-      icon: 'trophy',
-      color: 'gold',
-      content: (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-white">Quests</h3>
-          <div className="text-gray-400 text-sm">
-            No active quests.
-          </div>
-        </div>
-      ),
-    },
-  ]
-
   return (
     <>
-      <TabContainer
-        tabs={tabs}
-        defaultTab="stats"
-        onClose={onClose}
-        onTabChange={handleTabChange}
-        closeButtonPlacement="separate"
-        closeButtonBreakpoint="xl"
-        contentClassName="p-4"
-      />
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Header with close button */}
+        {onClose && (
+          <div className="flex items-center justify-between p-4 bg-gray-900/95 backdrop-blur-sm flex-shrink-0">
+            <h2 className="text-lg font-semibold text-white">{player.username || 'Character'}</h2>
+            <button
+              onClick={onClose}
+              className="xl:hidden p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+              title="Close"
+            >
+              <Icon name="x" size={20} />
+            </button>
+          </div>
+        )}
+        
+        {/* Character Stats Content */}
+        <div className="flex-1 overflow-y-auto min-h-0 p-4">
+          <div className="space-y-4">
+            <div className="">
+              <div className="relative flex flex-row items-start gap-6">
+                <div className="relative w-36 h-52 bg-gray-950/70 rounded-3xl border border-gray-800/80 flex items-center justify-center shadow-inner shadow-black/60 flex-shrink-0">
+                  {coloredAvatarSvg ? (
+                    <div
+                      className="w-28 h-44"
+                      dangerouslySetInnerHTML={{ __html: coloredAvatarSvg }}
+                    />
+                  ) : (
+                    <div className="text-gray-500 text-sm">Loading avatar...</div>
+                  )}
+                  <button
+                    type="button"
+                    className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-all"
+                    onClick={() => setAvatarModalOpen(true)}
+                    disabled={!isLoggedIn}
+                  >
+                    {isLoggedIn ? 'Edit' : 'Login to edit'}
+                  </button>
+                </div>
+
+                <div className="flex-1 w-full space-y-3">
+                  <div className="space-y-0 text-left">
+                    <div className="text-xs uppercase tracking-[0.3em] text-indigo-300/80">lvl {player.level}</div>
+                    <h3 className="text-2xl font-semibold text-white">{player.username}</h3>
+                    <p className="text-sm text-gray-400">Room: {player.currentRoom || '???'}</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <StatBar
+                      label="HP"
+                      value={`${player.hp}/${player.hpMax}`}
+                      percentage={hpPercent}
+                      gradient="from-rose-500 via-red-500 to-rose-600"
+                    />
+                    <StatBar
+                      label="MP"
+                      value={`${player.mp}/${player.mpMax}`}
+                      percentage={mpPercent}
+                      gradient="from-sky-500 via-blue-500 to-indigo-500"
+                    />
+                    <StatBar
+                      label="XP"
+                      value={`${xpCurrent.toLocaleString()} need ${xpNeeded.toLocaleString()}`}
+                      percentage={xpProgress}
+                      gradient="from-amber-400 via-yellow-400 to-orange-400"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <StatBox label="Core Points" value={player.cp ?? 0} />
+              <StatBox label="Training Points" value={player.tp ?? 0} />
+              <StatBox label="Skill Points" value={player.sp ?? 0} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <StatBox label="PT" value={player.physicalTraining ?? 0} subtle />
+              <StatBox label="MT" value={player.mentalTraining ?? 0} subtle />
+            </div>
+
+            <div>
+              <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} />
+            </div>
+
+            {/* Equipment Display */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Equipment</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {/* Row 1: MAIN_HAND, OFF_HAND */}
+                <EquipmentSlot
+                  slot={EquipSlot.MAIN_HAND}
+                  item={equippedBySlot.get(EquipSlot.MAIN_HAND)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.MAIN_HAND))}
+                />
+                <EquipmentSlot
+                  slot={EquipSlot.OFF_HAND}
+                  item={equippedBySlot.get(EquipSlot.OFF_HAND)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.OFF_HAND))}
+                />
+                {/* Row 2: HEAD, BODY */}
+                <EquipmentSlot
+                  slot={EquipSlot.HEAD}
+                  item={equippedBySlot.get(EquipSlot.HEAD)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.HEAD))}
+                />
+                <EquipmentSlot
+                  slot={EquipSlot.BODY}
+                  item={equippedBySlot.get(EquipSlot.BODY)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.BODY))}
+                />
+                {/* Row 3: HANDS, FEET */}
+                <EquipmentSlot
+                  slot={EquipSlot.HANDS}
+                  item={equippedBySlot.get(EquipSlot.HANDS)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.HANDS))}
+                />
+                <EquipmentSlot
+                  slot={EquipSlot.FEET}
+                  item={equippedBySlot.get(EquipSlot.FEET)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.FEET))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Core Stats</h4>
+                {(player.cp ?? 0) > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setStatModalOpen(true)}
+                    disabled={!isLoggedIn}
+                    className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
+                  >
+                    Spend Core Points ({player.cp ?? 0})
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <StatDisplay
+                  label="STR"
+                  core={player.str ?? 0}
+                  mod={player.strMod ?? 0}
+                />
+                <StatDisplay
+                  label="DEX"
+                  core={player.dex ?? 0}
+                  mod={player.dexMod ?? 0}
+                />
+                <StatDisplay
+                  label="MAG"
+                  core={player.mag ?? 0}
+                  mod={player.magMod ?? 0}
+                />
+                <StatDisplay
+                  label="DEF"
+                  core={player.def ?? 0}
+                  mod={player.defMod ?? 0}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <AvatarSelectionModal
         isOpen={isAvatarModalOpen}
@@ -533,9 +439,10 @@ interface EquipmentSlotProps {
   slot: EquipSlot
   item?: InventoryItem
   onUnequip: (playerItemId: string) => void
+  onSwitchToInventory?: () => void
 }
 
-function EquipmentSlot({ slot, item, onUnequip }: EquipmentSlotProps) {
+function EquipmentSlot({ slot, item, onUnequip, onSwitchToInventory }: EquipmentSlotProps) {
   const slotName = slot.replace(/_/g, ' ')
   
   if (item) {
@@ -543,7 +450,7 @@ function EquipmentSlot({ slot, item, onUnequip }: EquipmentSlotProps) {
     
     return (
       <button
-        onClick={() => onUnequip(item.id)}
+        onClick={() => onSwitchToInventory?.()}
         className="rounded-lg border border-gray-800/80 bg-gray-900/80 px-3 py-2 text-left hover:bg-gray-800/80 transition-colors"
       >
         <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
@@ -556,9 +463,12 @@ function EquipmentSlot({ slot, item, onUnequip }: EquipmentSlotProps) {
   }
 
   return (
-    <div className="rounded-lg border border-gray-800/70 bg-gray-900/60 px-3 py-2">
+    <button
+      onClick={() => onSwitchToInventory?.()}
+      className="rounded-lg border border-gray-800/70 bg-gray-900/60 px-3 py-2 text-left hover:bg-gray-800/60 hover:border-gray-700/70 transition-colors cursor-pointer"
+    >
       <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
       <p className="text-sm text-gray-500 mt-0.5">- - -</p>
-    </div>
+    </button>
   )
 }

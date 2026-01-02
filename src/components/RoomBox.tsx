@@ -4,9 +4,6 @@ import RoomDisplay from './RoomDisplay'
 import type { Room, Player } from '@/lib/game-state'
 import Icon from './Icon'
 import { useMemo } from 'react'
-import { useGameStore } from '@/lib/game-state'
-import InventoryDisplay from './InventoryDisplay'
-import TabContainer, { type TabConfig } from './TabContainer'
 
 // Copied from the previous GameFeed helper to ensure Tailwind picks up dynamic color classes
 export const getTextColorClass = (color?: string | null, defaultColor: string = 'green-400'): string => {
@@ -163,8 +160,6 @@ export default function RoomBox({
   isLoadingRoom = false,
   currentAction = '',
 }: RoomBoxProps) {
-  const inventory = useGameStore((state) => state.inventory)
-  
   const subtitleText = (room.subtitle ?? 'This is it. The world is yours.').trim()
   const hasSubtitle = subtitleText.length > 0
   const subtitlePlacement = room.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
@@ -231,124 +226,92 @@ export default function RoomBox({
         actionResult={actionResult}
       />
 
-      {/* Tabbed Section: Actions, Inventory, Teleport */}
+      {/* Actions Section */}
       <div className="mt-6 pt-4 border-t border-gray-800/50">
-        <TabContainer
-          tabs={[
-            {
-              id: 'actions',
-              label: 'Actions',
-              icon: 'hand',
-              color: 'red',
-              content: (
-                <div className="flex flex-col gap-4">
-                  {/* Basic Actions */}
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-300 mb-2">Basic Actions</h3>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => {
-                          console.log('[ActionButton] Attack button clicked')
-                          onAction('attack')
-                        }}
-                        disabled={isLoadingRoom}
-                        className="px-3 py-1 bg-red-500/70 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                      >
-                        {isLoadingRoom && currentAction === 'attack' ? '...' : 'Attack'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          console.log('[ActionButton] Search button clicked')
-                          onAction('search')
-                        }}
-                        disabled={isLoadingRoom}
-                        className="px-3 py-1 bg-amber-500/70 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                      >
-                        {isLoadingRoom && currentAction === 'search' ? '...' : 'Search'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          console.log('[ActionButton] Rest button clicked')
-                          onAction('rest')
-                        }}
-                        disabled={isLoadingRoom}
-                        className="px-3 py-1 bg-green-500/70 hover:bg-green-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                      >
-                        {isLoadingRoom && currentAction === 'rest' ? '...' : 'Rest'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          console.log('[ActionButton] Look button clicked')
-                          onAction('look')
-                        }}
-                        disabled={isLoadingRoom}
-                        className="px-3 py-1 bg-blue-500/70 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                      >
-                        {isLoadingRoom && currentAction === 'look' ? '...' : 'Look'}
-                      </button>
-                    </div>
-                  </div>
-                  {/* Teleport */}
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-300 mb-2">Teleport to:</h3>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => {
-                          if (onAction) {
-                            onAction({ type: 'teleport', data: { toRoomId: '999' } })
-                          }
-                        }}
-                        className="px-2 py-1 bg-blue-400/50 hover:bg-blue-400/70 border border-blue-500/50 hover:border-blue-400/70 text-white rounded text-xs transition-all duration-200"
-                      >
-                        The Lobby
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (onAction) {
-                            onAction({ type: 'teleport', data: { toRoomId: '001' } })
-                          }
-                        }}
-                        className="px-2 py-1 bg-green-500/50 hover:bg-green-500/70 border border-green-600/50 hover:border-green-500/70 text-white rounded text-xs transition-all duration-200"
-                      >
-                        Grassy Field
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (onAction) {
-                            onAction({ type: 'teleport', data: { toRoomId: '000' } })
-                          }
-                        }}
-                        className="px-2 py-1 bg-gray-700/70 hover:bg-gray-600/70 border border-gray-600/50 hover:border-gray-500/50 text-white rounded text-xs transition-all duration-200"
-                      >
-                        Room Zero
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ),
-            },
-            {
-              id: 'inventory',
-              label: 'Inventory',
-              icon: 'inv',
-              color: 'green',
-              content: (
-                <InventoryDisplay
-                  inventory={inventory}
-                  onAction={onAction}
-                  newItemIds={new Set<string>()}
-                  showNewItems={true}
-                  showHeading={false}
-                  tabsPadding={false}
-                />
-              ),
-            },
-          ]}
-          defaultTab="actions"
-          containerClassName="w-full"
-          contentClassName="p-0"
-          headerClassName="p-0 bg-transparent"
-        />
+        <div className="flex flex-col gap-4">
+          {/* Basic Actions */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-300 mb-2">Basic Actions</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  console.log('[ActionButton] Attack button clicked')
+                  onAction('attack')
+                }}
+                disabled={isLoadingRoom}
+                className="px-3 py-1 bg-red-500/70 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+              >
+                {isLoadingRoom && currentAction === 'attack' ? '...' : 'Attack'}
+              </button>
+              <button
+                onClick={() => {
+                  console.log('[ActionButton] Search button clicked')
+                  onAction('search')
+                }}
+                disabled={isLoadingRoom}
+                className="px-3 py-1 bg-amber-500/70 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+              >
+                {isLoadingRoom && currentAction === 'search' ? '...' : 'Search'}
+              </button>
+              <button
+                onClick={() => {
+                  console.log('[ActionButton] Rest button clicked')
+                  onAction('rest')
+                }}
+                disabled={isLoadingRoom}
+                className="px-3 py-1 bg-green-500/70 hover:bg-green-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+              >
+                {isLoadingRoom && currentAction === 'rest' ? '...' : 'Rest'}
+              </button>
+              <button
+                onClick={() => {
+                  console.log('[ActionButton] Look button clicked')
+                  onAction('look')
+                }}
+                disabled={isLoadingRoom}
+                className="px-3 py-1 bg-blue-500/70 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+              >
+                {isLoadingRoom && currentAction === 'look' ? '...' : 'Look'}
+              </button>
+            </div>
+          </div>
+          {/* Teleport */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-300 mb-2">Teleport to:</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  if (onAction) {
+                    onAction({ type: 'teleport', data: { toRoomId: '999' } })
+                  }
+                }}
+                className="px-2 py-1 bg-blue-400/50 hover:bg-blue-400/70 border border-blue-500/50 hover:border-blue-400/70 text-white rounded text-xs transition-all duration-200"
+              >
+                The Lobby
+              </button>
+              <button
+                onClick={() => {
+                  if (onAction) {
+                    onAction({ type: 'teleport', data: { toRoomId: '001' } })
+                  }
+                }}
+                className="px-2 py-1 bg-green-500/50 hover:bg-green-500/70 border border-green-600/50 hover:border-green-500/70 text-white rounded text-xs transition-all duration-200"
+              >
+                Grassy Field
+              </button>
+              <button
+                onClick={() => {
+                  if (onAction) {
+                    onAction({ type: 'teleport', data: { toRoomId: '000' } })
+                  }
+                }}
+                className="px-2 py-1 bg-gray-700/70 hover:bg-gray-600/70 border border-gray-600/50 hover:border-gray-500/50 text-white rounded text-xs transition-all duration-200"
+              >
+                Room Zero
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
