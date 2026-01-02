@@ -25,6 +25,41 @@ interface GameSidebarProps {
   onAction?: (action: string | { type: string; data?: any }) => void
 }
 
+/**
+ * Format stat modifiers from item metadata as a comma-separated string.
+ * Returns empty string if no mods or invalid metadata.
+ * Example: "+5 STR, +2 MAG" or "+1 STR, -5 MAG"
+ */
+function formatStatMods(metadata: any): string {
+  if (!metadata || typeof metadata !== 'object') {
+    return ''
+  }
+
+  const statMods = metadata.statMods
+  if (!statMods || typeof statMods !== 'object') {
+    return ''
+  }
+
+  const parts: string[] = []
+  const statOrder = ['str', 'dex', 'mag', 'def'] as const
+  const statLabels: Record<string, string> = {
+    str: 'STR',
+    dex: 'DEX',
+    mag: 'MAG',
+    def: 'DEF',
+  }
+
+  for (const stat of statOrder) {
+    const value = statMods[stat]
+    if (typeof value === 'number' && value !== 0) {
+      const sign = value > 0 ? '+' : ''
+      parts.push(`${sign}${value} ${statLabels[stat]}`)
+    }
+  }
+
+  return parts.join(', ')
+}
+
 export default function GameSidebar({ player, onClose, onAction }: GameSidebarProps) {
   const inventory = useGameStore((state) => state.inventory)
   const setPlayer = useGameStore((state) => state.setPlayer)
@@ -411,10 +446,26 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <StatBox label="STR" value={player.str ?? 0} />
-              <StatBox label="DEX" value={player.dex ?? 0} />
-              <StatBox label="MAG" value={player.mag ?? 0} />
-              <StatBox label="DEF" value={player.def ?? 0} />
+              <StatDisplay
+                label="STR"
+                core={player.str ?? 0}
+                mod={player.strMod ?? 0}
+              />
+              <StatDisplay
+                label="DEX"
+                core={player.dex ?? 0}
+                mod={player.dexMod ?? 0}
+              />
+              <StatDisplay
+                label="MAG"
+                core={player.mag ?? 0}
+                mod={player.magMod ?? 0}
+              />
+              <StatDisplay
+                label="DEF"
+                core={player.def ?? 0}
+                mod={player.defMod ?? 0}
+              />
             </div>
           </div>
         </div>
@@ -503,6 +554,16 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
                                     </span>
                                   )}
                                 </div>
+                                
+                                {/* Stat mods */}
+                                {(() => {
+                                  const modText = formatStatMods(item.template.metadata)
+                                  return modText ? (
+                                    <div className="text-blue-400 text-xs mb-1">
+                                      {modText}
+                                    </div>
+                                  ) : null
+                                })()}
                                 
                                 {/* Description */}
                                 {item.template.description && (
@@ -689,6 +750,24 @@ function StatBox({ label, value, subtle = false }: StatBoxProps) {
   )
 }
 
+interface StatDisplayProps {
+  label: string
+  core: number
+  mod: number
+}
+
+function StatDisplay({ label, core, mod }: StatDisplayProps) {
+  const effective = core + mod
+  
+  return (
+    <div className="rounded-2xl border border-gray-800/80 bg-gray-900/80 px-4 py-3 text-center">
+      <p className="text-xs uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="text-2xl font-semibold text-white mt-1">{effective}</p>
+      <p className="text-xs text-gray-500 mt-0.5">{core}</p>
+    </div>
+  )
+}
+
 interface EquipmentSlotProps {
   slot: EquipSlot
   item?: InventoryItem
@@ -699,6 +778,8 @@ function EquipmentSlot({ slot, item, onUnequip }: EquipmentSlotProps) {
   const slotName = slot.replace(/_/g, ' ')
   
   if (item) {
+    const modText = formatStatMods(item.template.metadata)
+    
     return (
       <button
         onClick={() => onUnequip(item.id)}
@@ -706,6 +787,9 @@ function EquipmentSlot({ slot, item, onUnequip }: EquipmentSlotProps) {
       >
         <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
         <p className="text-sm font-medium text-white mt-0.5 truncate">{item.template.name}</p>
+        {modText && (
+          <p className="text-blue-400 text-xs mt-0.5">{modText}</p>
+        )}
       </button>
     )
   }

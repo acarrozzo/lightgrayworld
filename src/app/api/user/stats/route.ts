@@ -29,6 +29,10 @@ const selectPlayerFields = {
   dex: true,
   mag: true,
   def: true,
+  strMod: true,
+  dexMod: true,
+  magMod: true,
+  defMod: true,
   uIcon: true,
   uIconColor: true,
 } as const

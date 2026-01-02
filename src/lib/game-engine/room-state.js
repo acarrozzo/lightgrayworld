@@ -517,6 +517,7 @@ class RoomState {
         event: 'action:feedback',
         payload: this.createFeedbackPayload('equip_item', 'success', result.message, {
           inventory: result.inventory,
+          player: result.player,
         }),
       },
     }
@@ -548,6 +549,7 @@ class RoomState {
         event: 'action:feedback',
         payload: this.createFeedbackPayload('unequip_item', 'success', result.message, {
           inventory: result.inventory,
+          player: result.player,
         }),
       },
     }

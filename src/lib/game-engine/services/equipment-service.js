@@ -2,12 +2,87 @@ const { prisma } = require('../../db-client')
 const { getPlayerInventory } = require('./inventory-service')
 
 /**
+ * Recompute stat modifiers from all equipped items and update the User row.
+ * 
+ * @param {string} playerId - The player's ID
+ * @returns {Promise<{strMod: number, dexMod: number, magMod: number, defMod: number}>}
+ */
+async function recomputeStatMods(playerId) {
+  // Load all equipped items with their templates
+  const equippedItems = await prisma.playerItem.findMany({
+    where: {
+      playerId,
+      isEquipped: true,
+    },
+    include: {
+      ItemTemplate: {
+        select: {
+          metadata: true,
+        },
+      },
+    },
+  })
+
+  // Initialize mod totals
+  const modTotals = {
+    str: 0,
+    dex: 0,
+    mag: 0,
+    def: 0,
+  }
+
+  // Sum mods from all equipped items
+  for (const item of equippedItems) {
+    if (!item.ItemTemplate || !item.ItemTemplate.metadata) {
+      continue
+    }
+
+    const metadata = item.ItemTemplate.metadata
+    const statMods = metadata.statMods
+
+    if (statMods && typeof statMods === 'object') {
+      // Handle lenient format - allow any keys, only process known stats
+      if (typeof statMods.str === 'number') {
+        modTotals.str += statMods.str
+      }
+      if (typeof statMods.dex === 'number') {
+        modTotals.dex += statMods.dex
+      }
+      if (typeof statMods.mag === 'number') {
+        modTotals.mag += statMods.mag
+      }
+      if (typeof statMods.def === 'number') {
+        modTotals.def += statMods.def
+      }
+    }
+  }
+
+  // Update User row with computed mod totals
+  await prisma.user.update({
+    where: { id: playerId },
+    data: {
+      strMod: modTotals.str,
+      dexMod: modTotals.dex,
+      magMod: modTotals.mag,
+      defMod: modTotals.def,
+    },
+  })
+
+  return {
+    strMod: modTotals.str,
+    dexMod: modTotals.dex,
+    magMod: modTotals.mag,
+    defMod: modTotals.def,
+  }
+}
+
+/**
  * Equip an item to its designated slot.
  * Automatically unequips any item currently in that slot.
  * 
  * @param {string} playerId - The player's ID
  * @param {string} playerItemId - The PlayerItem ID to equip
- * @returns {Promise<{success: boolean, message?: string, inventory?: Array}>}
+ * @returns {Promise<{success: boolean, message?: string, inventory?: Array, player?: Object}>}
  */
 async function equipItem(playerId, playerItemId) {
   // Validate playerItem exists and belongs to player (include ItemTemplate)
@@ -135,13 +210,48 @@ async function equipItem(playerId, playerItemId) {
     })
   })
 
-  // Return updated inventory (includes isEquipped, slot, template.equipSlot)
+  // Recompute stat mods after equip
+  await recomputeStatMods(playerId)
+
+  // Return updated inventory and player with mod totals
   const inventory = await getPlayerInventory(playerId)
+  const player = await prisma.user.findUnique({
+    where: { id: playerId },
+    select: {
+      id: true,
+      username: true,
+      level: true,
+      hp: true,
+      hpMax: true,
+      mp: true,
+      mpMax: true,
+      currentRoom: true,
+      isActive: true,
+      xp: true,
+      cp: true,
+      tp: true,
+      sp: true,
+      currency: true,
+      physicalTraining: true,
+      mentalTraining: true,
+      str: true,
+      dex: true,
+      mag: true,
+      def: true,
+      strMod: true,
+      dexMod: true,
+      magMod: true,
+      defMod: true,
+      uIcon: true,
+      uIconColor: true,
+    },
+  })
 
   return {
     success: true,
     message: `Equipped ${playerItem.ItemTemplate.name}`,
     inventory,
+    player,
   }
 }
 
@@ -150,7 +260,7 @@ async function equipItem(playerId, playerItemId) {
  * 
  * @param {string} playerId - The player's ID
  * @param {string} playerItemId - The PlayerItem ID to unequip
- * @returns {Promise<{success: boolean, message?: string, inventory?: Array}>}
+ * @returns {Promise<{success: boolean, message?: string, inventory?: Array, player?: Object}>}
  */
 async function unequipItem(playerId, playerItemId) {
   // Validate playerItem exists and belongs to player (include ItemTemplate)
@@ -193,18 +303,54 @@ async function unequipItem(playerId, playerItemId) {
     })
   })
 
-  // Return updated inventory (includes isEquipped, slot, template.equipSlot)
+  // Recompute stat mods after unequip
+  await recomputeStatMods(playerId)
+
+  // Return updated inventory and player with mod totals
   const inventory = await getPlayerInventory(playerId)
+  const player = await prisma.user.findUnique({
+    where: { id: playerId },
+    select: {
+      id: true,
+      username: true,
+      level: true,
+      hp: true,
+      hpMax: true,
+      mp: true,
+      mpMax: true,
+      currentRoom: true,
+      isActive: true,
+      xp: true,
+      cp: true,
+      tp: true,
+      sp: true,
+      currency: true,
+      physicalTraining: true,
+      mentalTraining: true,
+      str: true,
+      dex: true,
+      mag: true,
+      def: true,
+      strMod: true,
+      dexMod: true,
+      magMod: true,
+      defMod: true,
+      uIcon: true,
+      uIconColor: true,
+    },
+  })
 
   return {
     success: true,
     message: `Unequipped ${playerItem.ItemTemplate.name}`,
     inventory,
+    player,
   }
 }
 
 module.exports = {
   equipItem,
   unequipItem,
+  recomputeStatMods,
 }
 

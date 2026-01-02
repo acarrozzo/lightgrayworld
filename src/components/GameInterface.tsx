@@ -1122,6 +1122,11 @@ export default function GameInterface() {
         setInventory(payload.data.inventory)
       }
 
+      // Update player state if provided in action feedback (e.g., from equip/unequip)
+      if (payload?.data?.player) {
+        setPlayer(payload.data.player)
+      }
+
       // Update player HP if provided in action feedback
       if (typeof payload?.data?.hp === 'number') {
         const currentPlayer = playerRef.current

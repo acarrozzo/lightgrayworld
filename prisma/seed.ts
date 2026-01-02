@@ -489,6 +489,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10,
       equipSlot: EquipSlot.MAIN_HAND,
+      metadata: { statMods: { str: 1 } },
     },
     {
       id: 'short-sword_001',
@@ -500,7 +501,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10,
       equipSlot: EquipSlot.MAIN_HAND,
-      metadata: { icon: 'equipment-shortsword' },
+      metadata: { icon: 'equipment-shortsword', statMods: { str: 5 } },
     },
     {
       id: 'red-potion_001',
@@ -592,6 +593,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10,
       equipSlot: EquipSlot.MAIN_HAND,
+      metadata: { statMods: { str: 5, mag: 2 } },
     },
     {
       id: 'bo_001',
@@ -603,7 +605,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10,
       equipSlot: EquipSlot.MAIN_HAND,
-      metadata: { isTwoHanded: true },
+      metadata: { isTwoHanded: true, statMods: { str: 7 } },
     },
     {
       id: 'basic-shield_001',
@@ -615,6 +617,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10,
       equipSlot: EquipSlot.OFF_HAND,
+      metadata: { statMods: { def: 7 } },
     },
     {
       id: 'blue-hood_001',
@@ -626,6 +629,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10,
       equipSlot: EquipSlot.HEAD,
+      metadata: { statMods: { mag: 2 } },
     },
     {
       id: 'padded-armor_001',
@@ -637,6 +641,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10,
       equipSlot: EquipSlot.BODY,
+      metadata: { statMods: { def: 13 } },
     },
     {
       id: 'black-gloves_001',
@@ -648,6 +653,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10,
       equipSlot: EquipSlot.HANDS,
+      metadata: { statMods: { str: 1, def: 2 } },
     },
     {
       id: 'black-boots_001',
@@ -659,6 +665,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10,
       equipSlot: EquipSlot.FEET,
+      metadata: { statMods: { str: 1, mag: -5 } },
     },
   ]
 

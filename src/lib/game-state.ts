@@ -24,6 +24,10 @@ export interface Player {
   dex?: number
   mag?: number
   def?: number
+  strMod?: number
+  dexMod?: number
+  magMod?: number
+  defMod?: number
   uIcon?: string
   uIconColor?: string
   grassyFieldMap?: boolean
@@ -51,7 +55,7 @@ export interface InventoryItem {
     canSell?: boolean
     canDrop?: boolean
     equipSlot?: EquipSlot | null
-    metadata?: { icon?: string } | null
+    metadata?: { icon?: string; statMods?: { str?: number; dex?: number; mag?: number; def?: number } } | null
   }
 }
 
