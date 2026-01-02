@@ -1843,7 +1843,7 @@ export default function GameInterface() {
           />
           {currentRoom && (
             <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
-              <div className="flex-1 min-h-0 overflow-y-auto p-4">
+              <div className="flex-1 min-h-0 overflow-y-auto p-0">
                 <RoomBox
                   room={currentRoom}
                   roomPlayers={roomPlayers}
@@ -1856,6 +1856,8 @@ export default function GameInterface() {
                   }}
                   worldTick={worldTick}
                   actionResult={actionResult}
+                  isLoadingRoom={isLoadingRoom}
+                  currentAction={action}
                 />
               </div>
 
@@ -1896,53 +1898,9 @@ export default function GameInterface() {
                     <span className="hidden md:inline">Teleport</span>
                   </button>
                 </div>
-                {/* Compass and Action Buttons */}
-                <div className="relative flex items-center justify-center gap-4">
+                {/* Compass */}
+                <div className="flex items-center justify-center">
                   <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} onOpenTeleport={handleOpenTeleport} />
-                  
-                  {/* Action Buttons - stacked vertically */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2">
-                    <button
-                      onClick={() => {
-                        console.log('[ActionButton] Attack button clicked')
-                        handleAction('attack')
-                      }}
-                      disabled={isLoadingRoom}
-                      className="px-3 py-1 bg-red-500/70 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                    >
-                      {isLoadingRoom && action === 'attack' ? '...' : 'Attack'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log('[ActionButton] Search button clicked')
-                        handleAction('search')
-                      }}
-                      disabled={isLoadingRoom}
-                      className="px-3 py-1 bg-amber-500/70 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                    >
-                      {isLoadingRoom && action === 'search' ? '...' : 'Search'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log('[ActionButton] Rest button clicked')
-                        handleAction('rest')
-                      }}
-                      disabled={isLoadingRoom}
-                      className="px-3 py-1 bg-green-500/70 hover:bg-green-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                    >
-                      {isLoadingRoom && action === 'rest' ? '...' : 'Rest'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log('[ActionButton] Look button clicked')
-                        handleAction('look')
-                      }}
-                      disabled={isLoadingRoom}
-                      className="px-3 py-1 bg-blue-500/70 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                    >
-                      {isLoadingRoom && action === 'look' ? '...' : 'Look'}
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>

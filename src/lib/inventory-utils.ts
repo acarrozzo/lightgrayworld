@@ -59,7 +59,6 @@ export function getCategoryDisplayName(type: ItemType): string {
  * Category display order
  */
 export const CATEGORY_ORDER: ItemType[] = [
-  ItemType.WEAPON,
   ItemType.EQUIPMENT,
   ItemType.CONSUMABLE,
   ItemType.MISC,

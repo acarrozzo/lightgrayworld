@@ -7,17 +7,9 @@ import AvatarSelectionModal from './AvatarSelectionModal'
 import StatAllocationModal from './StatAllocationModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
-import InventoryDropButton from './InventoryDropButton'
-import { getItemActions } from '@/lib/item-actions'
 import Icon from './Icon'
 import { ItemType, EquipSlot } from '@prisma/client'
-import { ChevronDown, ChevronRight } from 'lucide-react'
-import {
-  getItemDisplayOrder,
-  getCategoryDisplayName,
-  CATEGORY_ORDER,
-  getItemOrderIndex,
-} from '@/lib/inventory-utils'
+import InventoryDisplay from './InventoryDisplay'
 
 interface GameSidebarProps {
   player: Player
@@ -71,7 +63,6 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
   const [newItemsCount, setNewItemsCount] = useState(0)
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState('stats')
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<ItemType>>(new Set())
   const previousInventoryRef = useRef<typeof inventory>([])
   const isInitialMountRef = useRef(true)
   const wasInventoryTabOpenRef = useRef(false) // Will be updated by useEffect
@@ -235,57 +226,6 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
     setPlayer(updatedPlayer)
   }
 
-  // Get item display order map (memoized)
-  const itemOrderMap = useMemo(() => getItemDisplayOrder(), [])
-
-  // Group and sort inventory items by category
-  const categorizedInventory = useMemo(() => {
-    if (!inventory || inventory.length === 0) {
-      return new Map<ItemType, typeof inventory>()
-    }
-
-    // Group items by type
-    const grouped = new Map<ItemType, typeof inventory>()
-    
-    for (const item of inventory) {
-      const itemType = (item.template.type as ItemType) || ItemType.MISC
-      if (!grouped.has(itemType)) {
-        grouped.set(itemType, [])
-      }
-      grouped.get(itemType)!.push(item)
-    }
-
-    // Sort items within each category by seed.ts order
-    for (const [type, items] of grouped.entries()) {
-      items.sort((a, b) => {
-        const orderA = getItemOrderIndex(a.template.slug, itemOrderMap)
-        const orderB = getItemOrderIndex(b.template.slug, itemOrderMap)
-        
-        // If both have same order (or both missing), sort alphabetically by name
-        if (orderA === orderB) {
-          return a.template.name.localeCompare(b.template.name)
-        }
-        
-        return orderA - orderB
-      })
-    }
-
-    return grouped
-  }, [inventory, itemOrderMap])
-
-  // Toggle category collapse state
-  const toggleCategory = (category: ItemType) => {
-    setCollapsedCategories((prev) => {
-      const next = new Set(prev)
-      if (next.has(category)) {
-        next.delete(category)
-      } else {
-        next.add(category)
-      }
-      return next
-    })
-  }
-
   const tabs: TabConfig[] = [
     {
       id: 'stats',
@@ -293,7 +233,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
       icon: 'character',
       color: 'purple',
       content: (
-        <div className="space-y-4 p-4">
+        <div className="space-y-4">
           <div className="">
             <div className="relative flex flex-row items-start gap-6">
               <div className="relative w-36 h-52 bg-gray-950/70 rounded-3xl border border-gray-800/80 flex items-center justify-center shadow-inner shadow-black/60 flex-shrink-0">
@@ -478,191 +418,12 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
       color: 'green',
       badge: newItemsCount > 0 ? newItemsCount : undefined,
       content: (
-        <div className="space-y-4 p-4">
-          <h3 className="text-lg font-semibold text-white">Inventory</h3>
-          {(!inventory || inventory.length === 0) ? (
-            <div className="text-gray-400 text-sm">
-              Your inventory is empty.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {CATEGORY_ORDER.map((categoryType) => {
-                const categoryItems = categorizedInventory.get(categoryType) || []
-                const isCollapsed = collapsedCategories.has(categoryType)
-                const categoryName = getCategoryDisplayName(categoryType)
-                
-                return (
-                  <div key={categoryType} className="space-y-2">
-                    {/* Category Header */}
-                    <button
-                      type="button"
-                      onClick={() => toggleCategory(categoryType)}
-                      className="w-full flex items-center justify-between px-2 py-2 hover:bg-gray-800/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        {isCollapsed ? (
-                          <ChevronRight size={16} className="text-gray-400" />
-                        ) : (
-                          <ChevronDown size={16} className="text-gray-400" />
-                        )}
-                        <span className="text-sm font-semibold text-gray-300">
-                          {categoryName} ({categoryItems.length})
-                        </span>
-                      </div>
-                    </button>
-                    
-                    {/* Category Items */}
-                    {!isCollapsed && categoryItems.length > 0 && (
-                      <div className="space-y-2">
-                        {categoryItems.map((item) => {
-                          const isNewItem = newItemIds.has(item.id)
-                          const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
-                          const itemValue = item.template.value ?? 0
-                          // Try to get icon from metadata, fallback to slug, or use a default
-                          const metadata = item.template.metadata as { icon?: string } | null
-                          const itemIcon = metadata?.icon || item.template.slug || 'inv'
-                          
-                          return (
-                            <div
-                              key={item.id}
-                              className="relative rounded-md border border-gray-700/30 bg-gray-800/20 px-2.5 py-2.5 hover:bg-gray-800/40 hover:border-gray-700/50 hover:shadow-sm transition-all duration-200 flex gap-2"
-                            >
-                              {isNewItem && (
-                                <span className="absolute left-1 top-1 w-1.5 h-1.5 bg-red-500 rounded-full z-10"></span>
-                              )}
-                              
-                              {/* Item icon on the left */}
-                              <div className="flex-shrink-0 pt-0.5">
-                                <Icon
-                                  name={itemIcon}
-                                  size={32}
-                                  color="current"
-                                  className="text-gray-600"
-                                />
-                              </div>
-                              
-                              {/* Content area */}
-                              <div className="flex-1 min-w-0">
-                                {/* Top row: Item name with quantity */}
-                                <div className="flex items-center gap-1.5 mb-1">
-                                  <div className={`text-white text-sm font-medium truncate min-w-0 ${isNewItem ? 'pl-2' : ''}`}>
-                                    {item.template.name}
-                                  </div>
-                                  {item.quantity > 1 && (
-                                    <span className="text-gray-200 text-xs font-medium border border-gray-700/50 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">
-                                      x{item.quantity}
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                {/* Stat mods */}
-                                {(() => {
-                                  const modText = formatStatMods(item.template.metadata)
-                                  return modText ? (
-                                    <div className="text-blue-400 text-xs mb-1">
-                                      {modText}
-                                    </div>
-                                  ) : null
-                                })()}
-                                
-                                {/* Description */}
-                                {item.template.description && (
-                                  <div className="text-gray-500 text-xs mb-1.5 line-clamp-2">
-                                    {item.template.description}
-                                  </div>
-                                )}
-                                
-                                {/* Equip Slot */}
-                                {item.template.equipSlot && (
-                                  <div className="text-blue-400 text-xs mb-1.5">
-                                    Equips to: {item.template.equipSlot.replace(/_/g, ' ')}
-                                  </div>
-                                )}
-                                
-                                {/* Bottom row: Action buttons on left, value and drop/examine button on right */}
-                                <div className="flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                    {/* Equip button - show if item has equipSlot and is not already equipped */}
-                                    {item.template.equipSlot !== null && !item.isEquipped && (
-                                      <button
-                                        onClick={() =>
-                                          onAction?.({
-                                            type: 'equip_item',
-                                            data: { playerItemId: item.id },
-                                          })
-                                        }
-                                        className="px-2 py-1 text-xs font-medium text-white bg-blue-600/70 hover:bg-blue-600 rounded transition-colors flex items-center gap-1 flex-shrink-0"
-                                      >
-                                        <Icon name="equipment-shortsword" size={12} color="current" />
-                                        <span className="hidden sm:inline">Equip</span>
-                                      </button>
-                                    )}
-                                    {itemActions.map((itemAction) => (
-                                      <button
-                                        key={itemAction.action}
-                                        onClick={() =>
-                                          onAction?.({
-                                            type: 'use_item',
-                                            data: { playerItemId: item.id, action: itemAction.action },
-                                          })
-                                        }
-                                        className={`px-2.5 py-2 rounded text-xs text-white transition-colors flex items-center gap-1.5 flex-shrink-0 ${
-                                          itemAction.className || 'bg-indigo-600/70 hover:bg-indigo-600'
-                                        }`}
-                                        title={itemAction.label}
-                                      >
-                                        {itemAction.icon && (
-                                          <Icon
-                                            name={itemAction.icon}
-                                            size={14}
-                                            color="current"
-                                          />
-                                        )}
-                                        <span className="hidden sm:inline">{itemAction.label}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                                    {itemValue > 0 && (
-                                      <span className="text-[10px] text-gray-500/60">
-                                        {itemValue}
-                                      </span>
-                                    )}
-                                    <InventoryDropButton
-                                      item={item}
-                                      onDrop={(quantity) =>
-                                        onAction?.({
-                                          type: 'drop_item',
-                                          data: { playerItemId: item.id, quantity },
-                                        })
-                                      }
-                                      onExamine={() =>
-                                        onAction?.({
-                                          type: 'examine_player_item',
-                                          data: { playerItemId: item.id },
-                                        })
-                                      }
-                                      onItemAction={(action) =>
-                                        onAction?.({
-                                          type: 'use_item',
-                                          data: { playerItemId: item.id, action },
-                                        })
-                                      }
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+        <InventoryDisplay
+          inventory={inventory}
+          onAction={onAction}
+          newItemIds={newItemIds}
+          showNewItems={true}
+        />
       ),
     },
     {
@@ -671,7 +432,7 @@ export default function GameSidebar({ player, onClose, onAction }: GameSidebarPr
       icon: 'trophy',
       color: 'gold',
       content: (
-        <div className="space-y-4 p-4">
+        <div className="space-y-4">
           <h3 className="text-lg font-semibold text-white">Quests</h3>
           <div className="text-gray-400 text-sm">
             No active quests.

@@ -1,0 +1,643 @@
+'use client'
+
+import { InventoryItem } from '@/lib/game-state'
+import { useMemo, useState } from 'react'
+import InventoryDropButton from './InventoryDropButton'
+import { getItemActions } from '@/lib/item-actions'
+import Icon from './Icon'
+import { ItemType, EquipSlot } from '@prisma/client'
+import {
+  getItemDisplayOrder,
+  getItemOrderIndex,
+} from '@/lib/inventory-utils'
+
+interface InventoryDisplayProps {
+  inventory: InventoryItem[]
+  onAction?: (action: string | { type: string; data?: any }) => void
+  newItemIds?: Set<string>
+  showNewItems?: boolean
+  showHeading?: boolean
+  tabsPadding?: boolean
+}
+
+type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
+
+/**
+ * Format stat modifiers from item metadata as a comma-separated string.
+ * Returns empty string if no mods or invalid metadata.
+ * Example: "+5 STR, +2 MAG" or "+1 STR, -5 MAG"
+ */
+function formatStatMods(metadata: any): string {
+  if (!metadata || typeof metadata !== 'object') {
+    return ''
+  }
+
+  const statMods = metadata.statMods
+  if (!statMods || typeof statMods !== 'object') {
+    return ''
+  }
+
+  const parts: string[] = []
+  const statOrder = ['str', 'dex', 'mag', 'def'] as const
+  const statLabels: Record<string, string> = {
+    str: 'STR',
+    dex: 'DEX',
+    mag: 'MAG',
+    def: 'DEF',
+  }
+
+  for (const stat of statOrder) {
+    const value = statMods[stat]
+    if (typeof value === 'number' && value !== 0) {
+      const sign = value > 0 ? '+' : ''
+      parts.push(`${sign}${value} ${statLabels[stat]}`)
+    }
+  }
+
+  return parts.join(', ')
+}
+
+export default function InventoryDisplay({
+  inventory,
+  onAction,
+  newItemIds = new Set<string>(),
+  showNewItems = true,
+  showHeading = true,
+  tabsPadding = true,
+}: InventoryDisplayProps) {
+  const [activeTab, setActiveTab] = useState<FilterTab>('all')
+
+  // Get item display order map (memoized)
+  const itemOrderMap = useMemo(() => getItemDisplayOrder(), [])
+
+  // Filter and sort items based on active tab
+  const filteredItems = useMemo(() => {
+    if (!inventory || inventory.length === 0) {
+      return []
+    }
+
+    let filtered: InventoryItem[] = []
+
+    switch (activeTab) {
+      case 'all':
+        filtered = [...inventory]
+        break
+      case 'main':
+        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.MAIN_HAND)
+        break
+      case 'off':
+        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.OFF_HAND)
+        break
+      case 'head':
+        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.HEAD)
+        break
+      case 'body':
+        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.BODY)
+        break
+      case 'hands':
+        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.HANDS)
+        break
+      case 'feet':
+        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.FEET)
+        break
+      case 'consumables':
+        filtered = inventory.filter(item => item.template.type === ItemType.CONSUMABLE)
+        break
+      case 'misc':
+        filtered = inventory.filter(item => item.template.type === ItemType.MISC)
+        break
+    }
+
+    // Sort items by seed.ts order
+    filtered.sort((a, b) => {
+      const orderA = getItemOrderIndex(a.template.slug, itemOrderMap)
+      const orderB = getItemOrderIndex(b.template.slug, itemOrderMap)
+      
+      // If both have same order (or both missing), sort alphabetically by name
+      if (orderA === orderB) {
+        return a.template.name.localeCompare(b.template.name)
+      }
+      
+      return orderA - orderB
+    })
+
+    return filtered
+  }, [inventory, activeTab, itemOrderMap])
+
+  // Group items by category when 'all' tab is selected
+  const groupedItems = useMemo(() => {
+    if (activeTab !== 'all' || !inventory || inventory.length === 0) {
+      return null
+    }
+
+    const groups: Record<string, InventoryItem[]> = {
+      main: [],
+      off: [],
+      head: [],
+      body: [],
+      hands: [],
+      feet: [],
+      consumables: [],
+      misc: [],
+    }
+
+    for (const item of inventory) {
+      if (item.template.equipSlot === EquipSlot.MAIN_HAND) {
+        groups.main.push(item)
+      } else if (item.template.equipSlot === EquipSlot.OFF_HAND) {
+        groups.off.push(item)
+      } else if (item.template.equipSlot === EquipSlot.HEAD) {
+        groups.head.push(item)
+      } else if (item.template.equipSlot === EquipSlot.BODY) {
+        groups.body.push(item)
+      } else if (item.template.equipSlot === EquipSlot.HANDS) {
+        groups.hands.push(item)
+      } else if (item.template.equipSlot === EquipSlot.FEET) {
+        groups.feet.push(item)
+      } else if (item.template.type === ItemType.CONSUMABLE) {
+        groups.consumables.push(item)
+      } else {
+        groups.misc.push(item)
+      }
+    }
+
+    // Sort items within each group
+    const categoryOrder: FilterTab[] = ['main', 'off', 'head', 'body', 'hands', 'feet', 'consumables', 'misc']
+    for (const category of categoryOrder) {
+      groups[category].sort((a, b) => {
+        const orderA = getItemOrderIndex(a.template.slug, itemOrderMap)
+        const orderB = getItemOrderIndex(b.template.slug, itemOrderMap)
+        
+        if (orderA === orderB) {
+          return a.template.name.localeCompare(b.template.name)
+        }
+        
+        return orderA - orderB
+      })
+    }
+
+    return groups
+  }, [inventory, activeTab, itemOrderMap])
+
+  // Calculate item counts for each category
+  const categoryCounts = useMemo(() => {
+    if (!inventory || inventory.length === 0) {
+      return {
+        all: 0,
+        main: 0,
+        off: 0,
+        head: 0,
+        body: 0,
+        hands: 0,
+        feet: 0,
+        consumables: 0,
+        misc: 0,
+      }
+    }
+
+    const counts = {
+      all: inventory.length,
+      main: 0,
+      off: 0,
+      head: 0,
+      body: 0,
+      hands: 0,
+      feet: 0,
+      consumables: 0,
+      misc: 0,
+    }
+
+    for (const item of inventory) {
+      if (item.template.equipSlot === EquipSlot.MAIN_HAND) {
+        counts.main++
+      } else if (item.template.equipSlot === EquipSlot.OFF_HAND) {
+        counts.off++
+      } else if (item.template.equipSlot === EquipSlot.HEAD) {
+        counts.head++
+      } else if (item.template.equipSlot === EquipSlot.BODY) {
+        counts.body++
+      } else if (item.template.equipSlot === EquipSlot.HANDS) {
+        counts.hands++
+      } else if (item.template.equipSlot === EquipSlot.FEET) {
+        counts.feet++
+      } else if (item.template.type === ItemType.CONSUMABLE) {
+        counts.consumables++
+      } else {
+        counts.misc++
+      }
+    }
+
+    return counts
+  }, [inventory])
+
+  const tabs: Array<{ id: FilterTab; label: string }> = [
+    { id: 'all', label: 'ALL' },
+    { id: 'main', label: 'main' },
+    { id: 'off', label: 'off' },
+    { id: 'head', label: 'head' },
+    { id: 'body', label: 'body' },
+    { id: 'hands', label: 'hands' },
+    { id: 'feet', label: 'feet' },
+    { id: 'consumables', label: 'consumables' },
+    { id: 'misc', label: 'misc' },
+  ]
+
+  return (
+    <div className="space-y-4">
+      {showHeading && <h3 className="text-lg font-semibold text-white">Inventory</h3>}
+      
+      {/* Filter Tabs */}
+      <div className={`flex gap-2 flex-wrap overflow-x-auto pb-2 ${tabsPadding ? 'px-4' : ''}`}>
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id
+          const count = categoryCounts[tab.id]
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3 py-1.5 text-xs font-medium rounded transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                isActive
+                  ? 'bg-blue-500/70 hover:bg-blue-500 text-white border border-blue-400/50'
+                  : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-300 border border-gray-700/50 hover:border-gray-600/50'
+              }`}
+            >
+              <span>{tab.label}</span>
+              {count > 0 && (
+                <span className={`text-[10px] font-normal ${
+                  isActive ? 'text-white/60' : 'text-gray-400/60'
+                }`}>
+                  ({count})
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Filtered Items */}
+      {(!inventory || inventory.length === 0) ? (
+        <div className="text-gray-400 text-sm">
+          Your inventory is empty.
+        </div>
+      ) : activeTab === 'all' && groupedItems ? (
+        // Show grouped items with category headers
+        <div className="space-y-4">
+          {tabs.slice(1).filter((tab) => {
+            const categoryItems = groupedItems[tab.id as keyof typeof groupedItems] || []
+            return categoryItems.length > 0
+          }).map((tab) => {
+            const categoryItems = groupedItems[tab.id as keyof typeof groupedItems] || []
+
+            return (
+              <div key={tab.id} className="space-y-2">
+                <h4 className="text-sm font-semibold text-gray-300 px-2">
+                  {tab.label.charAt(0).toUpperCase() + tab.label.slice(1)} ({categoryItems.length})
+                </h4>
+                <div className="space-y-2">
+                  {categoryItems.map((item) => {
+                      const isNewItem = showNewItems && newItemIds.has(item.id)
+                      const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
+                      const itemValue = item.template.value ?? 0
+                      // Try to get icon from metadata, fallback to slug, or use a default
+                      const metadata = item.template.metadata as { icon?: string } | null
+                      const itemIcon = metadata?.icon || item.template.slug || 'inv'
+                      
+                      return (
+                        <div
+                          key={item.id}
+                          className={`relative rounded-md border px-2.5 py-2.5 hover:shadow-sm transition-all duration-200 flex gap-2 ${
+                            item.isEquipped
+                              ? 'border-green-500/60 bg-green-900/20 hover:bg-green-900/30 hover:border-green-500/80'
+                              : 'border-gray-700/30 bg-gray-800/20 hover:bg-gray-800/40 hover:border-gray-700/50'
+                          }`}
+                        >
+                          {isNewItem && (
+                            <span className="absolute left-1 top-1 w-1.5 h-1.5 bg-red-500 rounded-full z-10"></span>
+                          )}
+                          {item.isEquipped && (
+                            <span className="absolute right-1 top-1 px-1.5 py-0.5 bg-green-500/80 text-white text-[10px] font-semibold rounded z-10">
+                              EQUIPPED
+                            </span>
+                          )}
+                          
+                          {/* Item icon on the left */}
+                          <div className="flex-shrink-0 pt-0.5">
+                            <Icon
+                              name={itemIcon}
+                              size={32}
+                              color="current"
+                              className="text-gray-600"
+                            />
+                          </div>
+                          
+                          {/* Content area */}
+                          <div className="flex-1 min-w-0">
+                            {/* Top row: Item name with quantity */}
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <div className={`text-white text-sm font-medium truncate min-w-0 ${isNewItem ? 'pl-2' : ''}`}>
+                                {item.template.name}
+                              </div>
+                              {item.quantity > 1 && (
+                                <span className="text-gray-200 text-xs font-medium border border-gray-700/50 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">
+                                  x{item.quantity}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Stat mods */}
+                            {(() => {
+                              const modText = formatStatMods(item.template.metadata)
+                              return modText ? (
+                                <div className="text-blue-400 text-xs mb-1">
+                                  {modText}
+                                </div>
+                              ) : null
+                            })()}
+                            
+                            {/* Description */}
+                            {item.template.description && (
+                              <div className="text-gray-500 text-xs mb-1.5 line-clamp-2">
+                                {item.template.description}
+                              </div>
+                            )}
+                            
+                            {/* Equip Slot */}
+                            {item.template.equipSlot && (
+                              <div className="text-blue-400 text-xs mb-1.5">
+                                Equips to: {item.template.equipSlot.replace(/_/g, ' ')}
+                              </div>
+                            )}
+                            
+                            {/* Bottom row: Action buttons on left, value and drop/examine button on right */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                {/* Unequip button - show if item is equipped */}
+                                {item.isEquipped && (
+                                  <button
+                                    onClick={() =>
+                                      onAction?.({
+                                        type: 'unequip_item',
+                                        data: { playerItemId: item.id },
+                                      })
+                                    }
+                                    className="px-2 py-1 text-xs font-medium text-white bg-red-600/70 hover:bg-red-600 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                                  >
+                                    <Icon name="equipment-shortsword" size={12} color="current" />
+                                    <span className="hidden sm:inline">Unequip</span>
+                                  </button>
+                                )}
+                                {/* Equip button - show if item has equipSlot and is not already equipped */}
+                                {item.template.equipSlot !== null && !item.isEquipped && (
+                                  <button
+                                    onClick={() =>
+                                      onAction?.({
+                                        type: 'equip_item',
+                                        data: { playerItemId: item.id },
+                                      })
+                                    }
+                                    className="px-2 py-1 text-xs font-medium text-white bg-blue-600/70 hover:bg-blue-600 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                                  >
+                                    <Icon name="equipment-shortsword" size={12} color="current" />
+                                    <span className="hidden sm:inline">Equip</span>
+                                  </button>
+                                )}
+                                {itemActions.map((itemAction) => (
+                                  <button
+                                    key={itemAction.action}
+                                    onClick={() =>
+                                      onAction?.({
+                                        type: 'use_item',
+                                        data: { playerItemId: item.id, action: itemAction.action },
+                                      })
+                                    }
+                                    className={`px-2.5 py-2 rounded text-xs text-white transition-colors flex items-center gap-1.5 flex-shrink-0 ${
+                                      itemAction.className || 'bg-indigo-600/70 hover:bg-indigo-600'
+                                    }`}
+                                    title={itemAction.label}
+                                  >
+                                    {itemAction.icon && (
+                                      <Icon
+                                        name={itemAction.icon}
+                                        size={14}
+                                        color="current"
+                                      />
+                                    )}
+                                    <span className="hidden sm:inline">{itemAction.label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                {itemValue > 0 && (
+                                  <span className="text-[10px] text-gray-500/60">
+                                    {itemValue}
+                                  </span>
+                                )}
+                                <InventoryDropButton
+                                  item={item}
+                                  onDrop={(quantity) =>
+                                    onAction?.({
+                                      type: 'drop_item',
+                                      data: { playerItemId: item.id, quantity },
+                                    })
+                                  }
+                                  onExamine={() =>
+                                    onAction?.({
+                                      type: 'examine_player_item',
+                                      data: { playerItemId: item.id },
+                                    })
+                                  }
+                                  onItemAction={(action) =>
+                                    onAction?.({
+                                      type: 'use_item',
+                                      data: { playerItemId: item.id, action },
+                                    })
+                                  }
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="text-gray-400 text-sm">
+          No items in this category.
+        </div>
+      ) : (
+        // Show flat list for specific category tabs
+        <div className="space-y-2">
+          {filteredItems.map((item) => {
+            const isNewItem = showNewItems && newItemIds.has(item.id)
+            const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
+            const itemValue = item.template.value ?? 0
+            // Try to get icon from metadata, fallback to slug, or use a default
+            const metadata = item.template.metadata as { icon?: string } | null
+            const itemIcon = metadata?.icon || item.template.slug || 'inv'
+            
+            return (
+              <div
+                key={item.id}
+                className={`relative rounded-md border px-2.5 py-2.5 hover:shadow-sm transition-all duration-200 flex gap-2 ${
+                  item.isEquipped
+                    ? 'border-green-500/60 bg-green-900/20 hover:bg-green-900/30 hover:border-green-500/80'
+                    : 'border-gray-700/30 bg-gray-800/20 hover:bg-gray-800/40 hover:border-gray-700/50'
+                }`}
+              >
+                {isNewItem && (
+                  <span className="absolute left-1 top-1 w-1.5 h-1.5 bg-red-500 rounded-full z-10"></span>
+                )}
+                {item.isEquipped && (
+                  <span className="absolute right-1 top-1 px-1.5 py-0.5 bg-green-500/80 text-white text-[10px] font-semibold rounded z-10">
+                    EQUIPPED
+                  </span>
+                )}
+                
+                {/* Item icon on the left */}
+                <div className="flex-shrink-0 pt-0.5">
+                  <Icon
+                    name={itemIcon}
+                    size={32}
+                    color="current"
+                    className="text-gray-600"
+                  />
+                </div>
+                
+                {/* Content area */}
+                <div className="flex-1 min-w-0">
+                  {/* Top row: Item name with quantity */}
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className={`text-white text-sm font-medium truncate min-w-0 ${isNewItem ? 'pl-2' : ''}`}>
+                      {item.template.name}
+                    </div>
+                    {item.quantity > 1 && (
+                      <span className="text-gray-200 text-xs font-medium border border-gray-700/50 bg-gray-700/50 px-1.5 py-0.5 rounded flex-shrink-0">
+                        x{item.quantity}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Stat mods */}
+                  {(() => {
+                    const modText = formatStatMods(item.template.metadata)
+                    return modText ? (
+                      <div className="text-blue-400 text-xs mb-1">
+                        {modText}
+                      </div>
+                    ) : null
+                  })()}
+                  
+                  {/* Description */}
+                  {item.template.description && (
+                    <div className="text-gray-500 text-xs mb-1.5 line-clamp-2">
+                      {item.template.description}
+                    </div>
+                  )}
+                  
+                  {/* Equip Slot */}
+                  {item.template.equipSlot && (
+                    <div className="text-blue-400 text-xs mb-1.5">
+                      Equips to: {item.template.equipSlot.replace(/_/g, ' ')}
+                    </div>
+                  )}
+                  
+                  {/* Bottom row: Action buttons on left, value and drop/examine button on right */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      {/* Unequip button - show if item is equipped */}
+                      {item.isEquipped && (
+                        <button
+                          onClick={() =>
+                            onAction?.({
+                              type: 'unequip_item',
+                              data: { playerItemId: item.id },
+                            })
+                          }
+                          className="px-2 py-1 text-xs font-medium text-white bg-red-600/70 hover:bg-red-600 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                        >
+                          <Icon name="equipment-shortsword" size={12} color="current" />
+                          <span className="hidden sm:inline">Unequip</span>
+                        </button>
+                      )}
+                      {/* Equip button - show if item has equipSlot and is not already equipped */}
+                      {item.template.equipSlot !== null && !item.isEquipped && (
+                        <button
+                          onClick={() =>
+                            onAction?.({
+                              type: 'equip_item',
+                              data: { playerItemId: item.id },
+                            })
+                          }
+                          className="px-2 py-1 text-xs font-medium text-white bg-blue-600/70 hover:bg-blue-600 rounded transition-colors flex items-center gap-1 flex-shrink-0"
+                        >
+                          <Icon name="equipment-shortsword" size={12} color="current" />
+                          <span className="hidden sm:inline">Equip</span>
+                        </button>
+                      )}
+                      {itemActions.map((itemAction) => (
+                        <button
+                          key={itemAction.action}
+                          onClick={() =>
+                            onAction?.({
+                              type: 'use_item',
+                              data: { playerItemId: item.id, action: itemAction.action },
+                            })
+                          }
+                          className={`px-2.5 py-2 rounded text-xs text-white transition-colors flex items-center gap-1.5 flex-shrink-0 ${
+                            itemAction.className || 'bg-indigo-600/70 hover:bg-indigo-600'
+                          }`}
+                          title={itemAction.label}
+                        >
+                          {itemAction.icon && (
+                            <Icon
+                              name={itemAction.icon}
+                              size={14}
+                              color="current"
+                            />
+                          )}
+                          <span className="hidden sm:inline">{itemAction.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {itemValue > 0 && (
+                        <span className="text-[10px] text-gray-500/60">
+                          {itemValue}
+                        </span>
+                      )}
+                      <InventoryDropButton
+                        item={item}
+                        onDrop={(quantity) =>
+                          onAction?.({
+                            type: 'drop_item',
+                            data: { playerItemId: item.id, quantity },
+                          })
+                        }
+                        onExamine={() =>
+                          onAction?.({
+                            type: 'examine_player_item',
+                            data: { playerItemId: item.id },
+                          })
+                        }
+                        onItemAction={(action) =>
+                          onAction?.({
+                            type: 'use_item',
+                            data: { playerItemId: item.id, action },
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}

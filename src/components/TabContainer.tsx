@@ -14,9 +14,9 @@ export interface TabConfig {
 
 interface TabContainerProps {
   tabs: TabConfig[]
-  defaultTab?: string
+  defaultTab?: string | null
   onClose?: () => void
-  onTabChange?: (tabId: string) => void
+  onTabChange?: (tabId: string | null) => void
   closeButtonPlacement?: 'integrated' | 'separate'
   closeButtonBreakpoint?: 'lg' | 'xl'
   headerClassName?: string
@@ -37,19 +37,19 @@ export default function TabContainer({
   containerClassName = '',
   buttonPadding = 'px-2.5 py-1.5',
 }: TabContainerProps) {
-  const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id || '')
+  const [activeTab, setActiveTab] = useState<string | null>(defaultTab ?? tabs[0]?.id ?? null)
 
   const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId)
-    onTabChange?.(tabId)
+    // Toggle behavior: if clicking the active tab, close it (set to null)
+    const newActiveTab = activeTab === tabId ? null : tabId
+    setActiveTab(newActiveTab)
+    onTabChange?.(newActiveTab)
   }
 
   // Sync initial tab state with parent on mount
   useEffect(() => {
-    const initialTab = defaultTab || tabs[0]?.id || ''
-    if (initialTab) {
-      onTabChange?.(initialTab)
-    }
+    const initialTab = defaultTab ?? tabs[0]?.id ?? null
+    onTabChange?.(initialTab)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run on mount
 
@@ -79,6 +79,8 @@ export default function TabContainer({
   }
 
   const renderTabContent = () => {
+    if (!activeTab) return null
+    
     const activeTabConfig = tabs.find(tab => tab.id === activeTab)
     if (!activeTabConfig) return null
 
@@ -89,10 +91,14 @@ export default function TabContainer({
     return content
   }
 
+  // Determine if headerClassName overrides padding
+  const hasPaddingOverride = headerClassName && /p[xy]?-[0-9]|p-0/.test(headerClassName)
+  const defaultHeaderPadding = hasPaddingOverride ? 'pb-4' : 'p-4'
+
   return (
     <div className={`flex-1 flex flex-col min-h-0 ${containerClassName}`}>
       {/* Tab Navigation */}
-      <div className={`flex gap-2 p-4 bg-gray-900/95 backdrop-blur-sm flex-shrink-0 flex-wrap items-center ${headerClassName}`}>
+      <div className={`flex gap-2 ${defaultHeaderPadding} bg-gray-900/95 backdrop-blur-sm flex-shrink-0 flex-wrap items-center ${headerClassName}`}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id
           return (
@@ -136,9 +142,11 @@ export default function TabContainer({
       </div>
 
       {/* Tab Content */}
-      <div className={`flex-1 flex flex-col overflow-y-auto min-h-0 ${contentClassName}`}>
-        {renderTabContent()}
-      </div>
+      {activeTab && (
+        <div className={`flex-1 flex flex-col overflow-y-auto min-h-0 ${contentClassName}`}>
+          {renderTabContent()}
+        </div>
+      )}
     </div>
   )
 }
