@@ -4,11 +4,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { COMMON_ERRORS } from '@/lib/error-handling'
+import { recomputeStatMods } from '@/lib/game-engine/services/equipment-service'
 
 async function handleGetMe(request: AuthenticatedRequest) {
   try {
     // User is already authenticated by middleware
     const user = request.user
+
+    // Recalculate stat mods from equipped items
+    await recomputeStatMods(user.id)
 
     // Get fresh user data from database
     const freshUser = await prisma.user.findUnique({
@@ -33,7 +37,24 @@ async function handleGetMe(request: AuthenticatedRequest) {
       mp: freshUser.mp,
       mpMax: freshUser.mpMax,
       currentRoom: freshUser.currentRoom,
-      isActive: freshUser.isActive
+      isActive: freshUser.isActive,
+      xp: freshUser.xp,
+      cp: freshUser.cp,
+      tp: freshUser.tp,
+      sp: freshUser.sp,
+      currency: freshUser.currency,
+      physicalTraining: freshUser.physicalTraining,
+      mentalTraining: freshUser.mentalTraining,
+      str: freshUser.str,
+      dex: freshUser.dex,
+      mag: freshUser.mag,
+      def: freshUser.def,
+      strMod: freshUser.strMod,
+      dexMod: freshUser.dexMod,
+      magMod: freshUser.magMod,
+      defMod: freshUser.defMod,
+      uIcon: freshUser.uIcon,
+      uIconColor: freshUser.uIconColor,
     }
 
     return NextResponse.json({

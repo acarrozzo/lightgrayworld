@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { createAuthResponse } from '@/lib/auth'
 import { DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
+import { recomputeStatMods } from '@/lib/game-engine/services/equipment-service'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -51,30 +52,70 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Recalculate stat mods from equipped items
+    await recomputeStatMods(user.id)
+
+    // Get fresh user data with updated mods
+    const freshUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        username: true,
+        level: true,
+        hp: true,
+        hpMax: true,
+        mp: true,
+        mpMax: true,
+        currentRoom: true,
+        isActive: true,
+        xp: true,
+        cp: true,
+        tp: true,
+        sp: true,
+        currency: true,
+        physicalTraining: true,
+        mentalTraining: true,
+        str: true,
+        dex: true,
+        mag: true,
+        def: true,
+        strMod: true,
+        dexMod: true,
+        magMod: true,
+        defMod: true,
+        uIcon: true,
+        uIconColor: true,
+      },
+    })
+
     // Return player data with JWT token
     const authResponse = createAuthResponse({
-      id: user.id,
-      username: user.username,
-      level: user.level,
-      hp: user.hp,
-      hpMax: user.hpMax,
-      mp: user.mp,
-      mpMax: user.mpMax,
-      currentRoom: user.currentRoom,
-      isActive: user.isActive,
-      xp: user.xp,
-      cp: user.cp,
-      tp: user.tp,
-      sp: user.sp,
-      currency: user.currency,
-      physicalTraining: user.physicalTraining,
-      mentalTraining: user.mentalTraining,
-      str: user.str,
-      dex: user.dex,
-      mag: user.mag,
-      def: user.def,
-      uIcon: user.uIcon,
-      uIconColor: user.uIconColor ?? DEFAULT_AVATAR_COLOR,
+      id: freshUser!.id,
+      username: freshUser!.username,
+      level: freshUser!.level,
+      hp: freshUser!.hp,
+      hpMax: freshUser!.hpMax,
+      mp: freshUser!.mp,
+      mpMax: freshUser!.mpMax,
+      currentRoom: freshUser!.currentRoom,
+      isActive: freshUser!.isActive,
+      xp: freshUser!.xp,
+      cp: freshUser!.cp,
+      tp: freshUser!.tp,
+      sp: freshUser!.sp,
+      currency: freshUser!.currency,
+      physicalTraining: freshUser!.physicalTraining,
+      mentalTraining: freshUser!.mentalTraining,
+      str: freshUser!.str,
+      dex: freshUser!.dex,
+      mag: freshUser!.mag,
+      def: freshUser!.def,
+      strMod: freshUser!.strMod,
+      dexMod: freshUser!.dexMod,
+      magMod: freshUser!.magMod,
+      defMod: freshUser!.defMod,
+      uIcon: freshUser!.uIcon,
+      uIconColor: freshUser!.uIconColor ?? DEFAULT_AVATAR_COLOR,
     })
 
     return NextResponse.json(authResponse)

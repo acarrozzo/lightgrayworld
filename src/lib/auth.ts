@@ -26,6 +26,10 @@ export interface AuthUser {
   dex: number
   mag: number
   def: number
+  strMod?: number
+  dexMod?: number
+  magMod?: number
+  defMod?: number
   uIcon: string
   uIconColor: string
 }
