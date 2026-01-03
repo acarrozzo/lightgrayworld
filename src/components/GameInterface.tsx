@@ -27,6 +27,7 @@ import { useNotificationStore } from '@/store/notificationStore'
 import NotificationContainer from './NotificationContainer'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
+import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -1155,6 +1156,17 @@ export default function GameInterface() {
         })
         return
       }
+      
+      // Validate message length
+      if (message.length > MESSAGE_MAX_LENGTH) {
+        appendWorldFeed({
+          type: 'action',
+          level: 'error',
+          message: `Message cannot exceed ${MESSAGE_MAX_LENGTH} characters. Current: ${message.length} characters`,
+        })
+        return
+      }
+      
       if (isRoomChat) {
         const roomId = currentRoomRef.current?.roomId
         if (!roomId) {
@@ -1978,7 +1990,9 @@ export default function GameInterface() {
             bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0
             transition-all duration-[250ms] ease-out
             ${leftSidebarOpen 
-              ? 'w-full md:w-[360px] xl:min-w-[360px] xl:max-w-[25%] translate-x-0' 
+              ? rightSidebarOpen
+                ? 'w-full md:w-[360px] xl:min-w-[360px] xl:max-w-[25%] translate-x-0'
+                : 'w-full md:w-[480px] xl:min-w-[480px] xl:max-w-[25%] translate-x-0'
               : 'w-0 md:w-0 -translate-x-full md:translate-x-0'
             }
             absolute md:relative left-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none
@@ -2196,7 +2210,9 @@ export default function GameInterface() {
             rightColumn bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0
             transition-all duration-[250ms] ease-out
             ${rightSidebarOpen 
-              ? 'w-full md:w-[360px] xl:min-w-[360px] xl:max-w-[25%] translate-x-0' 
+              ? leftSidebarOpen
+                ? 'w-full md:w-[360px] xl:min-w-[360px] xl:max-w-[25%] translate-x-0'
+                : 'w-full md:w-[480px] xl:min-w-[480px] xl:max-w-[25%] translate-x-0'
               : 'w-0 md:w-0 translate-x-full md:translate-x-0'
             }
             absolute md:relative right-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none

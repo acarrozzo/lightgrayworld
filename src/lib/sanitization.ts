@@ -3,6 +3,8 @@
  * Prevents XSS attacks and ensures data integrity
  */
 
+export const MESSAGE_MAX_LENGTH = 500
+
 export interface SanitizationOptions {
   maxLength?: number
   allowHtml?: boolean
@@ -51,7 +53,7 @@ export function sanitizeText(input: string, options: SanitizationOptions = {}): 
  */
 export function sanitizeChatMessage(message: string): string {
   return sanitizeText(message, {
-    maxLength: 200,
+    maxLength: MESSAGE_MAX_LENGTH,
     allowHtml: false,
     allowSpecialChars: false
   })

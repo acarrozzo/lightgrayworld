@@ -3,7 +3,7 @@ export const runtime = 'nodejs'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
-import { sanitizeChatMessage, isValidText } from '@/lib/sanitization'
+import { sanitizeChatMessage, isValidText, MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import { COMMON_ERRORS, validateRequiredFields, rateLimiter } from '@/lib/error-handling'
 
 async function handleRoomChatSend(request: AuthenticatedRequest) {
@@ -50,7 +50,7 @@ async function handleRoomChatSend(request: AuthenticatedRequest) {
     // Sanitize the message
     const sanitizedMessage = sanitizeChatMessage(message)
     
-    if (!isValidText(sanitizedMessage, 200)) {
+    if (!isValidText(sanitizedMessage, MESSAGE_MAX_LENGTH)) {
       return NextResponse.json(
         COMMON_ERRORS.VALIDATION_ERROR('Invalid message content'),
         { status: 400 }

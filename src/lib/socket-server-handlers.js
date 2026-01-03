@@ -544,7 +544,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         return
       }
 
-      const sanitizedMessage = data.message ? data.message.toString().trim().substring(0, 200) : ''
+      const sanitizedMessage = data.message ? data.message.toString().trim().substring(0, 500) : ''
 
       console.log(`[Socket] SEND_CHAT_MESSAGE from ${player.username}: "${sanitizedMessage}"`)
 
@@ -593,7 +593,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         return
       }
 
-      const sanitizedMessage = data.message ? data.message.toString().trim().substring(0, 200) : ''
+      const sanitizedMessage = data.message ? data.message.toString().trim().substring(0, 500) : ''
       const roomId = data.roomId ? data.roomId.toString() : ''
 
       console.log(`[Socket] SEND_ROOM_CHAT_MESSAGE from ${player.username} in room ${roomId}: "${sanitizedMessage}"`)

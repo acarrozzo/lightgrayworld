@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
 import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, ChevronRight, Settings as SettingsIcon, Zap, Check, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
+import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import Icon from './Icon'
 
 type FilterType = 'all' | 'chat' | 'events' | 'actions'
@@ -549,7 +550,12 @@ export default function UnifiedFeedPanel({
   const canLoadMore = visibleCount < filteredEntries.length
   const trimmedCustomAction = customAction.trim()
   const showUnreadNotice = !isNearBottom && unreadCount > 0
-  const isSubmitDisabled = Boolean(isLoadingRoom) || trimmedCustomAction.length === 0
+  
+  // Character count validation for chat modes
+  const isChatMode = inputMode === 'world' || inputMode === 'room'
+  const charCount = customAction.length
+  const isOverLimit = isChatMode && charCount > MESSAGE_MAX_LENGTH
+  const isSubmitDisabled = Boolean(isLoadingRoom) || trimmedCustomAction.length === 0 || isOverLimit
 
   const scrollToBottom = useCallback(() => {
     const container = listRef.current
@@ -1145,30 +1151,41 @@ export default function UnifiedFeedPanel({
           })}
         </div>
 
-        <form onSubmit={(e) => onCustomActionSubmit(e, inputMode)} className="flex gap-2 w-full">
-          <input
-            ref={customActionInputRef ?? undefined}
-            type="text"
-            value={customAction}
-            onChange={(e) => onCustomActionChange(e.target.value)}
-            placeholder={
-              inputMode === 'action' 
-                ? 'Enter action...' 
-                : inputMode === 'room' 
-                ? 'Say something...' 
-                : 'Shout something...'
-            }
-            disabled={Boolean(isLoadingRoom)}
-            className="flex-1 min-w-0 px-3 py-2 bg-gray-900/80 text-gray-100 font-mono text-sm border border-gray-700/60 rounded focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40 transition-all duration-200 disabled:bg-gray-900/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-gray-500"
-            autoComplete="off"
-          />
-          <button
-            type="submit"
-            disabled={isSubmitDisabled}
-            className="px-4 py-2 bg-indigo-600/90 hover:bg-indigo-600 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-indigo-50 font-mono text-sm border border-indigo-500/60 rounded whitespace-nowrap transition-all duration-200 hover:border-indigo-400/80"
-          >
-            Submit
-          </button>
+        <form onSubmit={(e) => onCustomActionSubmit(e, inputMode)} className="flex flex-col gap-2 w-full">
+          <div className="flex gap-2 w-full">
+            <input
+              ref={customActionInputRef ?? undefined}
+              type="text"
+              value={customAction}
+              onChange={(e) => onCustomActionChange(e.target.value)}
+              placeholder={
+                inputMode === 'action' 
+                  ? 'Enter action...' 
+                  : inputMode === 'room' 
+                  ? 'Say something...' 
+                  : 'Shout something...'
+              }
+              disabled={Boolean(isLoadingRoom)}
+              className={`flex-1 min-w-0 px-3 py-2 bg-gray-900/80 text-gray-100 font-mono text-sm border rounded focus:outline-none focus:ring-1 transition-all duration-200 disabled:bg-gray-900/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-gray-500 ${
+                isOverLimit
+                  ? 'border-red-500/60 focus:border-red-500/80 focus:ring-red-500/40'
+                  : 'border-gray-700/60 focus:border-indigo-500/60 focus:ring-indigo-500/40'
+              }`}
+              autoComplete="off"
+            />
+            <button
+              type="submit"
+              disabled={isSubmitDisabled}
+              className="px-4 py-2 bg-indigo-600/90 hover:bg-indigo-600 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-indigo-50 font-mono text-sm border border-indigo-500/60 rounded whitespace-nowrap transition-all duration-200 hover:border-indigo-400/80"
+            >
+              Submit
+            </button>
+          </div>
+          {isOverLimit && (
+            <p className="text-xs text-red-400 font-mono px-1">
+              Message cannot exceed {MESSAGE_MAX_LENGTH} characters. Current: {charCount} characters
+            </p>
+          )}
         </form>
       </div>
     </div>
