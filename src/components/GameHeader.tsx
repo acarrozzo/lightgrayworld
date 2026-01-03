@@ -1,14 +1,23 @@
 'use client'
 
 import Icon from './Icon'
+import { ChevronRight, ChevronLeft } from 'lucide-react'
 
 interface GameHeaderProps {
   onToggleCharacterSidebar?: () => void
   onToggleWorldSidebar?: () => void
+  leftSidebarOpen?: boolean
+  rightSidebarOpen?: boolean
   playerName?: string
 }
 
-export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSidebar, playerName }: GameHeaderProps) {
+export default function GameHeader({ 
+  onToggleCharacterSidebar, 
+  onToggleWorldSidebar, 
+  leftSidebarOpen,
+  rightSidebarOpen,
+  playerName 
+}: GameHeaderProps) {
   return (
     <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-2 shadow-sm">
       <div className="flex w-full items-center gap-4">
@@ -16,11 +25,15 @@ export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSide
           {onToggleCharacterSidebar && (
             <button
               onClick={onToggleCharacterSidebar}
-              className="xl:hidden px-3 py-2 bg-transparent hover:bg-purple-500/10 border border-purple-500/40 hover:border-purple-500/60 text-purple-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2"
+              className="px-3 py-2 bg-transparent hover:bg-purple-500/10 border border-purple-500/40 hover:border-purple-500/60 text-purple-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2"
               aria-label="Toggle player info sidebar"
             >
+              {leftSidebarOpen ? (
+                <ChevronLeft size={20} />
+              ) : (
+                <ChevronRight size={20} />
+              )}
               <Icon name="character" className="h-5 w-5" color="current" />
-              {playerName && <span className="text-sm font-medium">{playerName}</span>}
             </button>
           )}
         </div>
@@ -34,11 +47,15 @@ export default function GameHeader({ onToggleCharacterSidebar, onToggleWorldSide
           {onToggleWorldSidebar && (
             <button
               onClick={onToggleWorldSidebar}
-              className="md:hidden px-3 py-2 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2"
+              className="px-3 py-2 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2"
               aria-label="Toggle world feed sidebar"
             >
+              {rightSidebarOpen ? (
+                <ChevronRight size={20} />
+              ) : (
+                <ChevronLeft size={20} />
+              )}
               <Icon name="world" className="h-5 w-5" color="current" />
-              <span className="text-sm font-medium">World</span>
             </button>
           )}
         </div>

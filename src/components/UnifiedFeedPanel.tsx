@@ -19,6 +19,7 @@ type UnifiedFeedPanelProps = {
   onCustomActionSubmit: (event: FormEvent<HTMLFormElement>, mode: InputMode) => void
   isLoadingRoom?: boolean
   customActionInputRef?: RefObject<HTMLInputElement | null>
+  onUnreadCountChange?: (count: number) => void
 }
 
 type WorldFeedSettings = {
@@ -277,6 +278,7 @@ export default function UnifiedFeedPanel({
   onCustomActionSubmit,
   isLoadingRoom,
   customActionInputRef,
+  onUnreadCountChange,
 }: UnifiedFeedPanelProps) {
   const entries = useWorldFeedStore((state) => state.entries)
   const userId = useWorldFeedStore((state) => state.userId)
@@ -488,6 +490,11 @@ export default function UnifiedFeedPanel({
       }
     }
   }, [entries.length, isNearBottom, scrollToBottom])
+
+  // Notify parent of unread count changes
+  useEffect(() => {
+    onUnreadCountChange?.(unreadCount)
+  }, [unreadCount, onUnreadCountChange])
 
   const handleFilterChange = (next: FilterType) => {
     setFilter(next)

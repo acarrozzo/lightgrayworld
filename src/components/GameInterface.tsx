@@ -25,6 +25,8 @@ import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 import { useNotificationStore } from '@/store/notificationStore'
 import NotificationContainer from './NotificationContainer'
+import { useColoredAvatar } from '@/hooks/useColoredAvatar'
+import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -214,6 +216,11 @@ export default function GameInterface() {
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const leftSidebarScrollRef = useRef<HTMLDivElement>(null)
+  const rightSidebarScrollRef = useRef<HTMLDivElement>(null)
+  const leftSidebarScrollPosition = useRef<number>(0)
+  const rightSidebarScrollPosition = useRef<number>(0)
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [isTeleportModalOpen, setIsTeleportModalOpen] = useState(false)
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
@@ -260,6 +267,11 @@ export default function GameInterface() {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
   }, [])
+  
+  // Avatar for collapsed rail
+  const avatarKey = player?.uIcon || DEFAULT_PLAYER_AVATAR
+  const avatarColor = player?.uIconColor || DEFAULT_AVATAR_COLOR
+  const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
   const handleLogoutFlow = useCallback(async () => {
     try {
       await fetch('/api/auth/logout', {
@@ -401,15 +413,23 @@ export default function GameInterface() {
   }, [getAuthHeaders, isLoggedIn, updateCapCache, worldTick, setWorldTick])
 
   // Load sidebar state from localStorage on mount
+  // Default to open on desktop (md breakpoint and above) if no preference is saved
   useEffect(() => {
     const savedLeftSidebar = localStorage.getItem('leftSidebarOpen')
     const savedRightSidebar = localStorage.getItem('rightSidebarOpen')
     
     if (savedLeftSidebar !== null) {
       setLeftSidebarOpen(JSON.parse(savedLeftSidebar))
+    } else if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      // Default to open on desktop if no preference
+      setLeftSidebarOpen(true)
     }
+    
     if (savedRightSidebar !== null) {
       setRightSidebarOpen(JSON.parse(savedRightSidebar))
+    } else if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      // Default to open on desktop if no preference
+      setRightSidebarOpen(true)
     }
   }, [])
 
@@ -503,6 +523,52 @@ export default function GameInterface() {
 
   useEffect(() => {
     localStorage.setItem('rightSidebarOpen', JSON.stringify(rightSidebarOpen))
+  }, [rightSidebarOpen])
+
+  // Preserve scroll positions when collapsing/expanding
+  useEffect(() => {
+    if (!leftSidebarScrollRef.current) return
+    
+    // Find the actual scrollable element inside GameSidebar (the div with overflow-y-auto and p-4)
+    const scrollableElement = leftSidebarScrollRef.current.querySelector('div.overflow-y-auto.p-4') as HTMLElement ||
+                              leftSidebarScrollRef.current.querySelector('.overflow-y-auto') as HTMLElement
+    
+    if (scrollableElement) {
+      if (leftSidebarOpen) {
+        // Restore scroll position when expanding (after transition)
+        const timeoutId = setTimeout(() => {
+          if (scrollableElement) {
+            scrollableElement.scrollTop = leftSidebarScrollPosition.current
+          }
+        }, 260) // Slightly after transition completes
+        return () => clearTimeout(timeoutId)
+      } else {
+        // Save scroll position when collapsing
+        leftSidebarScrollPosition.current = scrollableElement.scrollTop
+      }
+    }
+  }, [leftSidebarOpen])
+
+  useEffect(() => {
+    if (!rightSidebarScrollRef.current) return
+    
+    // Find the actual scrollable element inside UnifiedFeedPanel (worldFeedEntries)
+    const scrollableElement = rightSidebarScrollRef.current.querySelector('.worldFeedEntries') as HTMLElement
+    
+    if (scrollableElement) {
+      if (rightSidebarOpen) {
+        // Restore scroll position when expanding (after transition)
+        const timeoutId = setTimeout(() => {
+          if (scrollableElement) {
+            scrollableElement.scrollTop = rightSidebarScrollPosition.current
+          }
+        }, 260) // Slightly after transition completes
+        return () => clearTimeout(timeoutId)
+      } else {
+        // Save scroll position when collapsing
+        rightSidebarScrollPosition.current = scrollableElement.scrollTop
+      }
+    }
   }, [rightSidebarOpen])
 
   // Keyboard shortcuts for desktop
@@ -1853,10 +1919,12 @@ export default function GameInterface() {
       <GameHeader
         onToggleCharacterSidebar={() => setLeftSidebarOpen((prev) => !prev)}
         onToggleWorldSidebar={() => setRightSidebarOpen((prev) => !prev)}
+        leftSidebarOpen={leftSidebarOpen}
+        rightSidebarOpen={rightSidebarOpen}
         playerName={player?.username}
       />
       
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_minmax(340px,30%)] xl:grid-cols-[minmax(360px,25%)_1fr_minmax(360px,25%)] flex-1 overflow-hidden relative min-h-0">
+      <div className="flex flex-1 overflow-hidden relative min-h-0">
         {/* Overlay backdrop for mobile */}
         {(leftSidebarOpen || rightSidebarOpen) && (
           <div 
@@ -1868,27 +1936,48 @@ export default function GameInterface() {
           />
         )}
         
-        {/* Left Sidebar - Player Info */}
-        <div className={`
-          bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
-          transition-transform duration-300 ease-out
-          w-full md:w-[calc(100%-30%)] xl:w-full
-          md:max-w-[calc(100%-340px)] xl:max-w-full
+        {/* Left Collapsed Rail - Desktop only */}
+        {!leftSidebarOpen && (
+          <button
+            onClick={() => setLeftSidebarOpen(true)}
+            className="hidden md:flex w-12 bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex-col items-center justify-start pt-4 flex-shrink-0 hover:bg-gray-800/95 transition-colors duration-200 z-30"
+            aria-label="Open character panel"
+          >
+            {coloredAvatarSvg ? (
+              <div
+                className="w-8 h-10"
+                dangerouslySetInnerHTML={{ __html: coloredAvatarSvg }}
+              />
+            ) : (
+              <Icon name="character" size={24} className="text-purple-300" />
+            )}
+          </button>
+        )}
 
-          ${leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          xl:translate-x-0 xl:static xl:col-start-1
-          absolute left-0 top-0 bottom-0 z-20 shadow-xl
-        `}>
-          <GameSidebar 
-            player={player} 
-            onClose={() => setLeftSidebarOpen(false)} 
-            onAction={handleAction}
-            onSwitchToInventory={handleSwitchToInventory}
-          />
+        {/* Left Sidebar - Player Info */}
+        <div 
+          className={`
+            bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0
+            transition-all duration-[250ms] ease-out
+            ${leftSidebarOpen 
+              ? 'w-full md:w-[360px] xl:min-w-[360px] xl:max-w-[25%] translate-x-0' 
+              : 'w-0 md:w-0 -translate-x-full md:translate-x-0 md:overflow-hidden'
+            }
+            absolute md:relative left-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none
+          `}
+        >
+          <div ref={leftSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
+            <GameSidebar 
+              player={player} 
+              onClose={() => setLeftSidebarOpen(false)} 
+              onAction={handleAction}
+              onSwitchToInventory={handleSwitchToInventory}
+            />
+          </div>
         </div>
         
         {/* Main Game Area */}
-        <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden md:col-start-1 xl:col-start-2">
+        <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden flex-1">
           {currentRoom && (
             <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
               <TabContainer
@@ -2009,34 +2098,57 @@ export default function GameInterface() {
                   }
                 }}
                 containerClassName="flex-1 min-h-0"
-                contentClassName="flex-1 min-h-0 overflow-hidden"
+                contentClassName="flex-1 min-h-0 overflow-hidden max-w-7xl mx-auto w-full"
               />
             </div>
           )}
         </div>
         
         {/* Right Sidebar - Tabbed Interface (Feed, World Chat, Room Chat) */}
-        <div className={` rightColumn
-          bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
-          transition-transform duration-300 ease-out
-          md:min-w-[320px]
-          ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
-          md:translate-x-0 md:static md:col-start-2
-          xl:col-start-3
-          absolute right-0 top-0 bottom-0 w-full z-20 shadow-xl
-        `}>
-          <UnifiedFeedPanel
-            currentRoomId={currentRoom?.roomId}
-            isConnected={socket?.connected ?? false}
-            onClose={() => setRightSidebarOpen(false)}
-            onOpenSettings={() => setCenterActiveTab('settings')}
-            customAction={customAction}
-            onCustomActionChange={setCustomAction}
-            onCustomActionSubmit={handleCustomAction}
-            isLoadingRoom={isLoadingRoom}
-            customActionInputRef={customActionInputRef}
-          />
+        <div 
+          className={`
+            rightColumn bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0
+            transition-all duration-[250ms] ease-out
+            ${rightSidebarOpen 
+              ? 'w-full md:w-[360px] xl:min-w-[360px] xl:max-w-[25%] translate-x-0' 
+              : 'w-0 md:w-0 translate-x-full md:translate-x-0 md:overflow-hidden'
+            }
+            absolute md:relative right-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none
+          `}
+        >
+          <div ref={rightSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
+            <UnifiedFeedPanel
+              currentRoomId={currentRoom?.roomId}
+              isConnected={socket?.connected ?? false}
+              onClose={() => setRightSidebarOpen(false)}
+              onOpenSettings={() => setCenterActiveTab('settings')}
+              customAction={customAction}
+              onCustomActionChange={setCustomAction}
+              onCustomActionSubmit={handleCustomAction}
+              isLoadingRoom={isLoadingRoom}
+              customActionInputRef={customActionInputRef}
+              onUnreadCountChange={setUnreadCount}
+            />
+          </div>
         </div>
+
+        {/* Right Collapsed Rail - Desktop only */}
+        {!rightSidebarOpen && (
+          <button
+            onClick={() => setRightSidebarOpen(true)}
+            className="hidden md:flex w-12 bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex-col items-center justify-start pt-4 flex-shrink-0 hover:bg-gray-800/95 transition-colors duration-200 z-30"
+            aria-label="Open world panel"
+          >
+            <div className="relative">
+              <Icon name="world" size={24} className="text-blue-300" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </div>
+          </button>
+        )}
       </div>
     </div>
   )
