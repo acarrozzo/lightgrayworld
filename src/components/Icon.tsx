@@ -98,6 +98,7 @@ export const IconColors = {
   gray: 'text-gray-500',
   white: 'text-white',
   black: 'text-black',
+  sky: 'text-sky-500',
   current: 'text-current',
 } as const
 

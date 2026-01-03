@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, ReactNode, useEffect, useRef, useCallback } from 'react'
+import React from 'react'
 import Icon from './Icon'
 import { ChevronDown } from 'lucide-react'
 
@@ -257,6 +258,29 @@ export default function TabContainer({
 
   const breakpointClass = closeButtonBreakpoint === 'lg' ? 'lg:hidden' : 'xl:hidden'
 
+  const getIconColorClass = (tab: TabConfig, isActive: boolean): string => {
+    if (isActive) return ''
+    const color = tab.color || 'blue'
+    switch (color) {
+      case 'blue':
+        return 'text-blue-500'
+      case 'green':
+        return 'text-green-500'
+      case 'purple':
+        return 'text-purple-500'
+      case 'gold':
+        return 'text-yellow-500'
+      case 'red':
+        return 'text-red-500'
+      case 'sky':
+        return 'text-sky-500'
+      case 'gray':
+        return 'text-gray-500'
+      default:
+        return 'text-blue-500'
+    }
+  }
+
   const getButtonColorClasses = (tab: TabConfig, isActive: boolean) => {
     const color = tab.color || 'blue'
     
@@ -337,7 +361,11 @@ export default function TabContainer({
                       className={tab.label ? "mr-1" : ""} 
                     />
                   ) : (
-                    <span className={tab.label ? "mr-1" : ""}>{tab.icon}</span>
+                    <span className={`${tab.label ? "mr-1" : ""} ${getIconColorClass(tab, isActive)}`}>
+                      {React.cloneElement(tab.icon as React.ReactElement<any>, {
+                        className: `${getIconColorClass(tab, isActive)} ${((tab.icon as React.ReactElement<any>).props as any)?.className || ''}`.trim()
+                      })}
+                    </span>
                   )
                 )}
                 {tab.label}
@@ -401,7 +429,11 @@ export default function TabContainer({
                               color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color === 'sky' ? 'sky' : tab.color)} 
                             />
                           ) : (
-                            <span>{tab.icon}</span>
+                            <span className={getIconColorClass(tab, isActive)}>
+                              {React.cloneElement(tab.icon as React.ReactElement<any>, {
+                                className: `${getIconColorClass(tab, isActive)} ${((tab.icon as React.ReactElement<any>).props as any)?.className || ''}`.trim()
+                              })}
+                            </span>
                           )
                         )}
                         <span className="flex-1 text-left">{tab.label || 'Settings'}</span>
@@ -452,7 +484,11 @@ export default function TabContainer({
                       className={tab.label ? "mr-1" : ""} 
                     />
                   ) : (
-                    <span className={tab.label ? "mr-1" : ""}>{tab.icon}</span>
+                    <span className={`${tab.label ? "mr-1" : ""} ${getIconColorClass(tab, isActive)}`}>
+                      {React.cloneElement(tab.icon as React.ReactElement<any>, {
+                        className: `${getIconColorClass(tab, isActive)} ${((tab.icon as React.ReactElement<any>).props as any)?.className || ''}`.trim()
+                      })}
+                    </span>
                   )
                 )}
                 {tab.label}

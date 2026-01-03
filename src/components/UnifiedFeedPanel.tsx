@@ -22,6 +22,7 @@ type UnifiedFeedPanelProps = {
   isLoadingRoom?: boolean
   customActionInputRef?: RefObject<HTMLInputElement | null>
   onUnreadCountChange?: (count: number) => void
+  forceInputMode?: InputMode
 }
 
 type WorldFeedSettings = {
@@ -283,6 +284,7 @@ export default function UnifiedFeedPanel({
   isLoadingRoom,
   customActionInputRef,
   onUnreadCountChange,
+  forceInputMode,
 }: UnifiedFeedPanelProps) {
   const entries = useWorldFeedStore((state) => state.entries)
   const userId = useWorldFeedStore((state) => state.userId)
@@ -392,6 +394,16 @@ export default function UnifiedFeedPanel({
     if (!inputModeKey || !inputModeHydrated) return
     localStorage.setItem(inputModeKey, inputMode)
   }, [inputMode, inputModeKey, inputModeHydrated])
+
+  // Handle forceInputMode prop - override stored value when provided
+  useEffect(() => {
+    if (forceInputMode && (forceInputMode === 'action' || forceInputMode === 'room' || forceInputMode === 'world')) {
+      setInputMode(forceInputMode)
+      if (inputModeKey) {
+        localStorage.setItem(inputModeKey, forceInputMode)
+      }
+    }
+  }, [forceInputMode, inputModeKey])
 
   const handleToggleSetting = (key: keyof WorldFeedSettings) => {
     setSettings((prev) => ({

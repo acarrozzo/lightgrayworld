@@ -14,7 +14,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react'
 import MapContent, { type MapOption } from './MapContent'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
@@ -249,6 +249,7 @@ export default function GameInterface() {
     tickIntervalMs: number
   } | undefined>(undefined)
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
+  const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
   type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
   const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
   const pendingEquipActionRef = useRef<{ playerItemId: string } | null>(null)
@@ -1088,6 +1089,11 @@ export default function GameInterface() {
     }
   }
 
+  const handleOpenWorldChat = () => {
+    setRightSidebarOpen(true)
+    setForceWorldChatMode('world')
+  }
+
   const handleCustomAction = (e: React.FormEvent, mode: InputMode) => {
     e.preventDefault()
     const actionToSend = customAction.trim()
@@ -1516,6 +1522,17 @@ export default function GameInterface() {
       cleanupRoomMoves()
     }
   }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed, updateCapCache, worldTick])
+
+  // Clear forceWorldChatMode after it's been applied
+  useEffect(() => {
+    if (forceWorldChatMode && rightSidebarOpen) {
+      // Small delay to ensure the mode is set, then clear it
+      const timer = setTimeout(() => {
+        setForceWorldChatMode(undefined)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [forceWorldChatMode, rightSidebarOpen])
 
   useEffect(() => {
     if (!socket) {
@@ -2093,6 +2110,26 @@ export default function GameInterface() {
                     })(),
                   },
                   {
+                    id: 'chat',
+                    label: 'Chat',
+                    icon: <MessageSquare size={14} />,
+                    color: 'purple',
+                    content: (
+                      <div className="space-y-4 p-4 sm:p-6">
+                        <h3 className="text-lg font-semibold text-white">Chat</h3>
+                        <div className="text-gray-400 text-sm mb-4">
+                          To use world chat or room chat, use the world feed panel to the right.
+                        </div>
+                        <button
+                          onClick={handleOpenWorldChat}
+                          className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow font-medium"
+                        >
+                          Open World Chat
+                        </button>
+                      </div>
+                    ),
+                  },
+                  {
                     id: 'settings',
                     label: '',
                     icon: <SettingsIcon size={14} />,
@@ -2143,6 +2180,7 @@ export default function GameInterface() {
               isLoadingRoom={isLoadingRoom}
               customActionInputRef={customActionInputRef}
               onUnreadCountChange={setUnreadCount}
+              forceInputMode={forceWorldChatMode}
             />
           </div>
         </div>
