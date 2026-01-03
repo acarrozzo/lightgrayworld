@@ -302,7 +302,7 @@ export default function TabContainer({
   return (
     <div className={`flex-1 flex flex-col min-h-0 ${containerClassName}`}>
       {/* Tab Navigation */}
-      <div className={`flex gap-2 ${defaultHeaderPadding} bg-gray-900/95 backdrop-blur-sm flex-shrink-0 flex-wrap items-center ${headerClassName}`}>
+      <div className={`relative z-10 flex gap-2 ${defaultHeaderPadding} bg-gray-900/95 backdrop-blur-sm flex-shrink-0 flex-wrap items-center ${headerClassName}`}>
         {/* Left side elements */}
         {leftElement && (
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -480,7 +480,7 @@ export default function TabContainer({
       {/* Tab Content */}
       {activeTab && (
         <div className={`flex-1 flex flex-col overflow-y-auto min-h-0 ${contentClassName}`}>
-          <div className={activeTab === 'map' ? 'w-full' : 'max-w-4xl mx-auto w-full'}>
+          <div className={`flex flex-col min-h-0 ${activeTab === 'map' ? 'w-full' : 'max-w-4xl mx-auto h-full w-full'}`}>
             {renderTabContent()}
           </div>
         </div>

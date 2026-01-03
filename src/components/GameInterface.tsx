@@ -1982,9 +1982,10 @@ export default function GameInterface() {
                     icon: 'world',
                     color: 'blue',
                     content: (
-                      <div className="flex flex-col h-full min-h-0">
-                        <div className="flex-1 min-h-0 overflow-y-auto p-0">
-                          <RoomBox
+                      <div className="flex flex-col flex-1 min-h-0 h-full">
+                        <div className="flex-1 min-h-0 overflow-y-auto h-full">
+                          <div className="max-w-4xl mx-auto w-full">
+                            <RoomBox
                             room={currentRoom}
                             roomPlayers={roomPlayers}
                             currentPlayerId={player.id}
@@ -1999,10 +2000,11 @@ export default function GameInterface() {
                             isLoadingRoom={isLoadingRoom}
                             currentAction={action}
                           />
+                          </div>
                         </div>
 
                         {/* D-pad */}
-                        <div className="p-4 flex-shrink-0 relative flex flex-col gap-4 border-t border-gray-800/50">
+                        <div className="flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50">
                           {/* Teleport button - left edge */}
                           <div className="absolute left-4 top-4 flex flex-row md:flex-col gap-2 z-10">
                             <button
