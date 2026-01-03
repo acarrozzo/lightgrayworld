@@ -692,6 +692,18 @@ async function main() {
       equipSlot: EquipSlot.FEET,
       metadata: { statMods: { str: 1, mag: -5 } },
     },
+    {
+      id: 'master-sword_001',
+      slug: 'master-sword',
+      name: 'Master Sword',
+      description: 'A legendary blade of immense power, forged with ancient magic. Its gleaming edge cuts through any foe.',
+      type: ItemType.EQUIPMENT,
+      maxStack: 1,
+      maxPerPlayer: 1,
+      value: 10000,
+      equipSlot: EquipSlot.MAIN_HAND,
+      metadata: { statMods: { str: 200, def: 100 } },
+    },
   ]
 
   for (const item of itemTemplates) {
@@ -784,6 +796,20 @@ async function main() {
       },
     })
   }
+
+  // Seed Master Sword in room 088 (idempotent)
+  await prisma.roomItem.deleteMany({
+    where: { roomId: '088', templateId: 'master-sword_001' },
+  })
+
+  await prisma.roomItem.create({
+    data: {
+      roomId: '088',
+      templateId: 'master-sword_001',
+      quantity: 1,
+      autoRespawn: true,
+    },
+  })
 
   // Create a test user
   const hashedPassword = await bcrypt.hash('password123', 12)

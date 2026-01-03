@@ -297,6 +297,7 @@ async function ensureAutoRespawnItems(roomId) {
       '006': ['shovel'],
       '007': ['short-sword'],
       '020': ['mace', 'bo', 'basic-shield', 'blue-hood', 'padded-armor', 'black-gloves', 'black-boots'],
+      '088': ['master-sword'],
     }
     
     const itemsToCheck = knownAutoRespawnItems[roomId]
