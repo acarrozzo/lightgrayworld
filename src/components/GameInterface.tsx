@@ -255,6 +255,9 @@ export default function GameInterface() {
   const [forceFeedChatSubFilter, setForceFeedChatSubFilter] = useState<'all-chat' | undefined>(undefined)
   type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
   const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
+  const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
+  const isInitialInventoryLoadRef = useRef(true)
+  const previousInventoryRef = useRef<typeof inventory>([])
   const pendingEquipActionRef = useRef<{ playerItemId: string } | null>(null)
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
@@ -1543,6 +1546,32 @@ export default function GameInterface() {
     }
   }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed, updateCapCache, worldTick])
 
+  // Track new items when inventory changes
+  useEffect(() => {
+    // Skip tracking on initial load
+    if (isInitialInventoryLoadRef.current) {
+      previousInventoryRef.current = inventory
+      isInitialInventoryLoadRef.current = false
+      return
+    }
+
+    // Compare previous inventory with new inventory to find new items
+    const previousItemIds = new Set(previousInventoryRef.current.map(item => item.id))
+    const newItems = inventory.filter(item => !previousItemIds.has(item.id))
+    
+    if (newItems.length > 0) {
+      // Add new item IDs to the set
+      setNewItemIds(prev => {
+        const updated = new Set(prev)
+        newItems.forEach(item => updated.add(item.id))
+        return updated
+      })
+    }
+
+    // Update previous inventory ref
+    previousInventoryRef.current = inventory
+  }, [inventory])
+
   // Clear forceWorldChatMode after it's been applied
   useEffect(() => {
     if (forceWorldChatMode && rightSidebarOpen) {
@@ -2103,6 +2132,7 @@ export default function GameInterface() {
                     label: 'Inv',
                     icon: 'inv',
                     color: 'green',
+                    badge: newItemIds.size > 0 ? newItemIds.size : undefined,
                     content: (
                       <div className="relative w-full h-full">
                         <button
@@ -2117,6 +2147,7 @@ export default function GameInterface() {
                           inventory={inventory}
                           onAction={handleAction}
                           initialFilter={inventoryFilter}
+                          newItemIds={newItemIds}
                         />
                       </div>
                     ),
@@ -2245,6 +2276,9 @@ export default function GameInterface() {
                   // Clear inventory filter when switching away from inventory tab
                   if (tabId !== 'inventory') {
                     setInventoryFilter(undefined)
+                  } else {
+                    // Clear new items badge when inventory tab is opened
+                    setNewItemIds(new Set())
                   }
                 }}
                 containerClassName="flex-1 min-h-0"
