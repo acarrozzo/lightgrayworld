@@ -2,6 +2,7 @@
 
 import Icon from './Icon'
 import { useNotificationStore } from '@/store/notificationStore'
+import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -16,6 +17,8 @@ export default function SettingsModal({
 }: SettingsModalProps) {
   const enabled = useNotificationStore((state) => state.enabled)
   const setEnabled = useNotificationStore((state) => state.setEnabled)
+  const fontFamily = useFontPreferenceStore((state) => state.fontFamily)
+  const setFontFamily = useFontPreferenceStore((state) => state.setFontFamily)
 
   const handleLogout = async () => {
     await onLogout()
@@ -97,6 +100,78 @@ export default function SettingsModal({
             </div>
             <p className="mt-2 text-xs text-gray-500">
               When enabled, you'll receive toast notifications for actions like picking up items, dropping items, and interacting with room objects.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h3 className="text-lg font-semibold text-white">Appearance</h3>
+            <p className="text-sm text-gray-400">Choose your preferred font style.</p>
+
+            <div className="mt-4 space-y-3">
+              <label
+                htmlFor="font-regular"
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <div className="relative">
+                  <input
+                    id="font-regular"
+                    type="radio"
+                    name="font-family"
+                    value="regular"
+                    checked={fontFamily === 'regular'}
+                    onChange={() => setFontFamily('regular')}
+                    className="sr-only"
+                  />
+                  <div
+                    className={`
+                      w-5 h-5 rounded-full border-2 transition-colors duration-200 ease-in-out
+                      ${fontFamily === 'regular' 
+                        ? 'border-purple-600 bg-purple-600' 
+                        : 'border-gray-600 bg-transparent group-hover:border-gray-500'
+                      }
+                    `}
+                  >
+                    {fontFamily === 'regular' && (
+                      <div className="w-full h-full rounded-full bg-white scale-50" />
+                    )}
+                  </div>
+                </div>
+                <span className="text-sm text-gray-200">Regular</span>
+              </label>
+
+              <label
+                htmlFor="font-mono"
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <div className="relative">
+                  <input
+                    id="font-mono"
+                    type="radio"
+                    name="font-family"
+                    value="mono"
+                    checked={fontFamily === 'mono'}
+                    onChange={() => setFontFamily('mono')}
+                    className="sr-only"
+                  />
+                  <div
+                    className={`
+                      w-5 h-5 rounded-full border-2 transition-colors duration-200 ease-in-out
+                      ${fontFamily === 'mono' 
+                        ? 'border-purple-600 bg-purple-600' 
+                        : 'border-gray-600 bg-transparent group-hover:border-gray-500'
+                      }
+                    `}
+                  >
+                    {fontFamily === 'mono' && (
+                      <div className="w-full h-full rounded-full bg-white scale-50" />
+                    )}
+                  </div>
+                </div>
+                <span className="text-sm text-gray-200">Fixed-width</span>
+              </label>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Select whether to use a regular sans-serif font or a fixed-width monospace font throughout the application.
             </p>
           </section>
 

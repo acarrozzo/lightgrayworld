@@ -10,6 +10,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-active: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -28,9 +29,19 @@ body {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-active, var(--font-geist-mono)), 'Courier New', Courier, monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body.font-regular {
+  --font-active: var(--font-geist-sans);
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body.font-mono {
+  --font-active: var(--font-geist-mono);
+  font-family: var(--font-geist-mono), 'Courier New', Courier, monospace;
 }
 
 .h-dvh {

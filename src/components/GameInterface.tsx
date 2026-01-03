@@ -24,6 +24,7 @@ import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 import { useNotificationStore } from '@/store/notificationStore'
+import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
 import NotificationContainer from './NotificationContainer'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
@@ -275,6 +276,11 @@ export default function GameInterface() {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
   }, [])
+  
+  // Clear new items on mount - after refresh, nothing should be "new"
+  useEffect(() => {
+    setNewItemIds(new Set())
+  }, []) // Run only on mount
   
   // Avatar for collapsed rail
   const avatarKey = player?.uIcon || DEFAULT_PLAYER_AVATAR
@@ -887,6 +893,11 @@ export default function GameInterface() {
 
   useEffect(() => {
     const { setUser } = useNotificationStore.getState()
+    setUser(player?.id ?? null)
+  }, [player?.id])
+
+  useEffect(() => {
+    const { setUser } = useFontPreferenceStore.getState()
     setUser(player?.id ?? null)
   }, [player?.id])
 
@@ -1549,7 +1560,11 @@ export default function GameInterface() {
   // Track new items when inventory changes
   useEffect(() => {
     // Skip tracking on initial load
-    if (isInitialInventoryLoadRef.current) {
+    // Check both the ref flag and if we're going from empty to populated (initial load scenario)
+    const isInitialLoad = isInitialInventoryLoadRef.current || 
+      (previousInventoryRef.current.length === 0 && inventory.length > 0)
+    
+    if (isInitialLoad) {
       previousInventoryRef.current = inventory
       isInitialInventoryLoadRef.current = false
       return
