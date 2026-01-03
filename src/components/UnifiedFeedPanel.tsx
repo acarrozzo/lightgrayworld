@@ -291,6 +291,7 @@ export default function UnifiedFeedPanel({
   const [isNearBottom, setIsNearBottom] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
+  const prevIsOpenRef = useRef(isOpen)
   const [settings, setSettings] = useState<WorldFeedSettings>(() => createDefaultSettings())
   const [settingsHydrated, setSettingsHydrated] = useState(false)
   const settingsKey = useMemo(() => getSettingsKey(userId), [userId])
@@ -499,6 +500,21 @@ export default function UnifiedFeedPanel({
   useEffect(() => {
     onUnreadCountChange?.(unreadCount)
   }, [unreadCount, onUnreadCountChange])
+
+  // Auto-scroll to bottom when panel opens
+  useEffect(() => {
+    // Only scroll when transitioning from closed to open
+    if (!prevIsOpenRef.current && isOpen) {
+      // Wait for panel animation to complete (250ms transition + buffer)
+      const timeoutId = setTimeout(() => {
+        scrollToBottom()
+      }, 300)
+      
+      return () => clearTimeout(timeoutId)
+    }
+    
+    prevIsOpenRef.current = isOpen
+  }, [isOpen, scrollToBottom])
 
   const handleFilterChange = (next: FilterType) => {
     setFilter(next)

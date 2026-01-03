@@ -29,7 +29,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, st
             className={`flex items-center gap-6 text-xs ${onCharacterClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
           >
             {/* Username and Level group */}
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
               <span className="text-gray-300">{playerName}</span>
               {level !== undefined && (
                 <span className="text-gray-400">Lv.{level}</span>
@@ -47,7 +47,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, st
             </div>
             
             {/* Stats group */}
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
               {strMod !== undefined && (
                 <span>
                   <span className="text-gray-500">STR </span>
