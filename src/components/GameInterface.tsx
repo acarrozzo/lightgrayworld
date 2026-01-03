@@ -1901,7 +1901,23 @@ export default function GameInterface() {
       />
       <NotificationContainer />
       
-      <GameHeader playerName={player?.username} />
+      <GameHeader 
+        playerName={player?.username}
+        level={player?.level}
+        hp={player?.hp}
+        hpMax={player?.hpMax}
+        mp={player?.mp}
+        mpMax={player?.mpMax}
+        str={player?.str}
+        strMod={player?.strMod}
+        dex={player?.dex}
+        dexMod={player?.dexMod}
+        mag={player?.mag}
+        magMod={player?.magMod}
+        def={player?.def}
+        defMod={player?.defMod}
+        onCharacterClick={() => setLeftSidebarOpen((prev) => !prev)}
+      />
       
       <div className="flex flex-1 overflow-hidden relative min-h-0">
         {/* Overlay backdrop for mobile */}

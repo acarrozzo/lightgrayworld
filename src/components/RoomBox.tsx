@@ -235,15 +235,15 @@ export default function RoomBox({
           <button
             type="button"
             onClick={() => setIsMoreActionsExpanded((prev) => !prev)}
-            className="flex items-center gap-2 transition-colors hover:text-gray-200"
+            className="group flex items-center gap-2 transition-all duration-200 text-gray-500 hover:text-gray-300 rounded-md px-2 py-1 -mx-2 -my-1"
             aria-expanded={isMoreActionsExpanded}
             aria-label="Toggle more actions"
           >
-            <span className="text-sm font-medium text-gray-300 hover:text-gray-200">More Actions</span>
+            <span className="text-sm font-medium">More Actions</span>
             {isMoreActionsExpanded ? (
-              <ChevronUp size={14} className="text-gray-400" />
+              <ChevronUp size={14} className="text-gray-500 group-hover:text-white transition-colors duration-200" />
             ) : (
-              <ChevronDown size={14} className="text-gray-400" />
+              <ChevronDown size={14} className="text-gray-500 group-hover:text-white transition-colors duration-200" />
             )}
           </button>
 
