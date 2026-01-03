@@ -14,7 +14,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, ArrowRight } from 'lucide-react'
 import MapContent, { type MapOption } from './MapContent'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
@@ -250,6 +250,8 @@ export default function GameInterface() {
   } | undefined>(undefined)
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
+  const [forceFeedFilter, setForceFeedFilter] = useState<'chat' | undefined>(undefined)
+  const [forceFeedChatSubFilter, setForceFeedChatSubFilter] = useState<'all-chat' | undefined>(undefined)
   type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
   const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
   const pendingEquipActionRef = useRef<{ playerItemId: string } | null>(null)
@@ -1091,7 +1093,13 @@ export default function GameInterface() {
 
   const handleOpenWorldChat = () => {
     setRightSidebarOpen(true)
+    setForceFeedFilter('chat')
+    setForceFeedChatSubFilter('all-chat')
     setForceWorldChatMode('world')
+    // Focus the input after sidebar opens
+    setTimeout(() => {
+      customActionInputRef.current?.focus()
+    }, 350) // Wait for sidebar animation to complete
   }
 
   const handleCustomAction = (e: React.FormEvent, mode: InputMode) => {
@@ -1533,6 +1541,18 @@ export default function GameInterface() {
       return () => clearTimeout(timer)
     }
   }, [forceWorldChatMode, rightSidebarOpen])
+
+  // Clear forceFeedFilter after it's been applied
+  useEffect(() => {
+    if (forceFeedFilter && rightSidebarOpen) {
+      // Small delay to ensure the filter is set, then clear it
+      const timer = setTimeout(() => {
+        setForceFeedFilter(undefined)
+        setForceFeedChatSubFilter(undefined)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [forceFeedFilter, rightSidebarOpen])
 
   useEffect(() => {
     if (!socket) {
@@ -2122,10 +2142,25 @@ export default function GameInterface() {
                         </div>
                         <button
                           onClick={handleOpenWorldChat}
-                          className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-all duration-200 shadow-sm hover:shadow font-medium"
+                          className="px-4 py-2 bg-purple-600/90 hover:bg-purple-500/90 text-white border border-purple-500/50 rounded-lg transition-all duration-200 shadow-sm hover:shadow font-medium flex items-center gap-2"
                         >
-                          Open World Chat
+                          <span>Open World Chat</span>
+                          <ArrowRight size={16} />
                         </button>
+                        <div className="mt-6 space-y-3 text-sm text-gray-400">
+                          <div>
+                            <div className="font-semibold text-gray-300 mb-1">Shout (World Chat)</div>
+                            <div className="text-xs">Use the right column's "World Chat" input mode to broadcast messages to all players.</div>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-300 mb-1">Say (Room Chat)</div>
+                            <div className="text-xs">Use the right column's "Room Chat" input mode to speak to players in your current room.</div>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-300 mb-1">Take Action</div>
+                            <div className="text-xs">Use the right column's "Action" input mode to perform game actions like "look", "pick redberry", etc.</div>
+                          </div>
+                        </div>
                       </div>
                     ),
                   },
@@ -2170,6 +2205,7 @@ export default function GameInterface() {
           <div ref={rightSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
             <UnifiedFeedPanel
               currentRoomId={currentRoom?.roomId}
+              currentRoomName={currentRoom?.name}
               isConnected={socket?.connected ?? false}
               onToggle={() => setRightSidebarOpen((prev) => !prev)}
               isOpen={rightSidebarOpen}
@@ -2181,6 +2217,8 @@ export default function GameInterface() {
               customActionInputRef={customActionInputRef}
               onUnreadCountChange={setUnreadCount}
               forceInputMode={forceWorldChatMode}
+              forceFilter={forceFeedFilter}
+              forceChatSubFilter={forceFeedChatSubFilter}
             />
           </div>
         </div>

@@ -5,12 +5,16 @@ import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, Arro
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import Icon from './Icon'
 
-type FilterType = 'all' | 'room' | 'world' | 'action'
+type FilterType = 'all' | 'chat' | 'events' | 'actions'
+type ChatSubFilter = 'room-chat' | 'world-chat' | 'all-chat'
+type EventsSubFilter = 'world-activity' | 'all-events'
+type ActionsSubFilter = 'action-feedback' | 'movement' | 'all-actions'
 
 export type InputMode = 'action' | 'room' | 'world'
 
 type UnifiedFeedPanelProps = {
   currentRoomId?: string
+  currentRoomName?: string
   isConnected?: boolean
   onClose?: () => void
   onToggle?: () => void
@@ -23,6 +27,8 @@ type UnifiedFeedPanelProps = {
   customActionInputRef?: RefObject<HTMLInputElement | null>
   onUnreadCountChange?: (count: number) => void
   forceInputMode?: InputMode
+  forceFilter?: FilterType
+  forceChatSubFilter?: ChatSubFilter
 }
 
 type WorldFeedSettings = {
@@ -59,8 +65,8 @@ const CATEGORY_STYLES: Record<'room' | 'world' | 'action', CategoryStyle> = {
   world: {
     label: 'WORLD',
     icon: MessageSquare,
-    barClass: 'bg-amber-300',
-    iconClass: 'text-amber-300',
+    barClass: 'bg-blue-400',
+    iconClass: 'text-blue-400',
   },
   action: {
     label: 'ACT',
@@ -161,7 +167,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
 }
 
 const ACTIVITY_TEXT_CLASSES: Record<string, string> = {
-  login: 'text-emerald-200',
+  login: 'text-gray-400',
   register: 'text-emerald-200',
   return: 'text-emerald-200',
   logout: 'text-red-200',
@@ -268,11 +274,43 @@ const getMessageColorClass = (entry: WorldFeedEntry) => {
   return entry.level === 'error' ? 'text-red-200' : 'text-gray-200'
 }
 
+const getEntryCategory = (entry: WorldFeedEntry): 'chat' | 'event' | 'action' => {
+  const isRoomTravel = entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel'
+  const isActivity = Boolean(entry.eventType) && !isRoomTravel
+  const isChat = !isActivity && !isRoomTravel && (entry.type === 'room' || entry.type === 'world')
+  
+  if (isChat) return 'chat'
+  if (isActivity) return 'event'
+  return 'action' // includes action feedback and movement
+}
+
+const formatTimestamp = (timestamp: number): string => {
+  const now = Date.now()
+  const diffMs = now - timestamp
+  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  
+  // Show relative time if less than 1 hour ago
+  if (diffMinutes < 60) {
+    if (diffMinutes < 1) {
+      return 'just now'
+    }
+    return `${diffMinutes}m ago`
+  }
+  
+  // Show absolute time for older messages
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 const DEFAULT_VISIBLE = 200
 const LOAD_MORE_STEP = 50
 
 export default function UnifiedFeedPanel({
   currentRoomId,
+  currentRoomName,
   isConnected,
   onClose,
   onToggle,
@@ -285,10 +323,15 @@ export default function UnifiedFeedPanel({
   customActionInputRef,
   onUnreadCountChange,
   forceInputMode,
+  forceFilter,
+  forceChatSubFilter,
 }: UnifiedFeedPanelProps) {
   const entries = useWorldFeedStore((state) => state.entries)
   const userId = useWorldFeedStore((state) => state.userId)
   const [filter, setFilter] = useState<FilterType>('all')
+  const [chatSubFilter, setChatSubFilter] = useState<ChatSubFilter>('all-chat')
+  const [eventsSubFilter, setEventsSubFilter] = useState<EventsSubFilter>('all-events')
+  const [actionsSubFilter, setActionsSubFilter] = useState<ActionsSubFilter>('all-actions')
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE)
   const [isNearBottom, setIsNearBottom] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -405,6 +448,16 @@ export default function UnifiedFeedPanel({
     }
   }, [forceInputMode, inputModeKey])
 
+  // Handle forceFilter prop - override stored value when provided
+  useEffect(() => {
+    if (forceFilter && (forceFilter === 'all' || forceFilter === 'chat' || forceFilter === 'events' || forceFilter === 'actions')) {
+      setFilter(forceFilter)
+      if (forceFilter === 'chat' && forceChatSubFilter) {
+        setChatSubFilter(forceChatSubFilter)
+      }
+    }
+  }, [forceFilter, forceChatSubFilter])
+
   const handleToggleSetting = (key: keyof WorldFeedSettings) => {
     setSettings((prev) => ({
       ...prev,
@@ -415,17 +468,58 @@ export default function UnifiedFeedPanel({
   const filteredEntries = useMemo(() => {
     const filtered = entries.filter((entry) => {
       if (filter === 'all') return true
-      if (filter === 'world') return entry.type === 'world'
-      if (filter === 'action') return entry.type === 'action'
-      if (filter === 'room') {
-        if (!currentRoomId) return false
-        return entry.type === 'room' && entry.roomId === currentRoomId
+      
+      if (filter === 'chat') {
+        // Chat messages: type === 'room'|'world' AND no eventType
+        const isChat = !entry.eventType && (entry.type === 'room' || entry.type === 'world')
+        if (!isChat) return false
+        
+        if (chatSubFilter === 'all-chat') return true
+        if (chatSubFilter === 'room-chat') {
+          if (!currentRoomId) return false
+          return entry.type === 'room' && entry.roomId === currentRoomId
+        }
+        if (chatSubFilter === 'world-chat') {
+          return entry.type === 'world'
+        }
+        return false
       }
+      
+      if (filter === 'events') {
+        // Events: type === 'world' AND eventType exists (world activity)
+        const isEvent = entry.type === 'world' && Boolean(entry.eventType)
+        if (!isEvent) return false
+        
+        if (eventsSubFilter === 'all-events' || eventsSubFilter === 'world-activity') {
+          return true
+        }
+        return false
+      }
+      
+      if (filter === 'actions') {
+        // Actions: type === 'action' OR (type === 'room' AND eventType === room movement)
+        const isActionFeedback = entry.type === 'action'
+        const isMovement = (entry.type === 'room' && (entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel')) ||
+                          (entry.type === 'action' && entry.eventType === 'room-travel')
+        const isAction = isActionFeedback || isMovement
+        
+        if (!isAction) return false
+        
+        if (actionsSubFilter === 'all-actions') return true
+        if (actionsSubFilter === 'action-feedback') {
+          return isActionFeedback && entry.eventType !== 'room-travel'
+        }
+        if (actionsSubFilter === 'movement') {
+          return isMovement
+        }
+        return false
+      }
+      
       return true
     })
 
     return filtered.sort((a, b) => a.ts - b.ts)
-  }, [entries, filter, currentRoomId])
+  }, [entries, filter, currentRoomId, chatSubFilter, eventsSubFilter, actionsSubFilter])
 
   const visibleEntries = useMemo(() => {
     const start = Math.max(filteredEntries.length - visibleCount, 0)
@@ -530,6 +624,14 @@ export default function UnifiedFeedPanel({
 
   const handleFilterChange = (next: FilterType) => {
     setFilter(next)
+    // Reset sub-filters to defaults when top-level filter changes
+    if (next === 'chat') {
+      setChatSubFilter('all-chat')
+    } else if (next === 'events') {
+      setEventsSubFilter('all-events')
+    } else if (next === 'actions') {
+      setActionsSubFilter('all-actions')
+    }
     setVisibleCount(DEFAULT_VISIBLE)
     requestAnimationFrame(scrollToBottom)
   }
@@ -577,14 +679,21 @@ export default function UnifiedFeedPanel({
 
       <div className="worldFeedControls px-4 py-2 border-b border-gray-800/60 bg-gray-900/70 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          {(['all', 'world', 'room', 'action'] as FilterType[]).map((key) => {
+          {(['all', 'chat', 'events', 'actions'] as FilterType[]).map((key) => {
             const isActive = filter === key
             const labelMap: Record<FilterType, string> = {
               all: 'All',
-              room: 'Room',
-              world: 'World',
-              action: 'Actions',
+              chat: 'Chat',
+              events: 'Events',
+              actions: 'Actions',
             }
+            const iconMap: Record<FilterType, LucideIcon | null> = {
+              all: Globe,
+              chat: MessageSquare,
+              events: Globe,
+              actions: Sparkles,
+            }
+            const IconComponent = iconMap[key]
             return (
               <button
                 key={key}
@@ -595,11 +704,11 @@ export default function UnifiedFeedPanel({
                     : 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
                 }`}
               >
-                {key === 'all' && (
-                  <Icon 
-                    name="world" 
+                {IconComponent && (
+                  <IconComponent 
                     size={12} 
-                    className="mr-1" 
+                    className="mr-1 shrink-0" 
+                    aria-hidden="true"
                   />
                 )}
                 {labelMap[key]}
@@ -624,6 +733,96 @@ export default function UnifiedFeedPanel({
             )}
           </button>
         </div>
+
+        {/* Sub-filters */}
+        {filter === 'chat' && (
+          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-indigo-500/30">
+            {(['all-chat', 'world-chat', 'room-chat'] as ChatSubFilter[]).map((subKey) => {
+              const isActive = chatSubFilter === subKey
+              const labelMap: Record<ChatSubFilter, string> = {
+                'all-chat': 'All Chat',
+                'room-chat': 'Room',
+                'world-chat': 'World',
+              }
+              return (
+                <button
+                  key={subKey}
+                  onClick={() => {
+                    setChatSubFilter(subKey)
+                    setVisibleCount(DEFAULT_VISIBLE)
+                    requestAnimationFrame(scrollToBottom)
+                  }}
+                  className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md ${
+                    isActive
+                      ? 'border-1 border-indigo-400 hover:border-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
+                      : 'border-1 border-gray-700 hover:border-gray-600 bg-transparent hover:bg-gray-800/30 text-gray-500 hover:text-gray-400'
+                  }`}
+                >
+                  {labelMap[subKey]}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {filter === 'events' && (
+          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-amber-500/30">
+            {(['all-events', 'world-activity'] as EventsSubFilter[]).map((subKey) => {
+              const isActive = eventsSubFilter === subKey
+              const labelMap: Record<EventsSubFilter, string> = {
+                'all-events': 'All Events',
+                'world-activity': 'World Activity',
+              }
+              return (
+                <button
+                  key={subKey}
+                  onClick={() => {
+                    setEventsSubFilter(subKey)
+                    setVisibleCount(DEFAULT_VISIBLE)
+                    requestAnimationFrame(scrollToBottom)
+                  }}
+                  className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md ${
+                    isActive
+                      ? 'border-1 border-amber-400 hover:border-amber-300 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
+                      : 'border-1 border-gray-700 hover:border-gray-600 bg-transparent hover:bg-gray-800/30 text-gray-500 hover:text-gray-400'
+                  }`}
+                >
+                  {labelMap[subKey]}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {filter === 'actions' && (
+          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-amber-500/30">
+            {(['all-actions', 'action-feedback', 'movement'] as ActionsSubFilter[]).map((subKey) => {
+              const isActive = actionsSubFilter === subKey
+              const labelMap: Record<ActionsSubFilter, string> = {
+                'all-actions': 'All Actions',
+                'action-feedback': 'Feedback',
+                'movement': 'Movement',
+              }
+              return (
+                <button
+                  key={subKey}
+                  onClick={() => {
+                    setActionsSubFilter(subKey)
+                    setVisibleCount(DEFAULT_VISIBLE)
+                    requestAnimationFrame(scrollToBottom)
+                  }}
+                  className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md ${
+                    isActive
+                      ? 'border-1 border-amber-400 hover:border-amber-300 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
+                      : 'border-1 border-gray-700 hover:border-gray-600 bg-transparent hover:bg-gray-800/30 text-gray-500 hover:text-gray-400'
+                  }`}
+                >
+                  {labelMap[subKey]}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         {!isDisplayOptionsCollapsed && (
           <>
@@ -683,7 +882,21 @@ export default function UnifiedFeedPanel({
         )}
       </div>
 
-      <div ref={listRef} className="worldFeedEntries flex-1 overflow-y-auto p-3 pb-6 space-y-1 bg-gray-950/80">
+      <div ref={listRef} className={`worldFeedEntries flex-1 overflow-y-auto pb-6 bg-gray-950/80 ${
+        filter === 'chat' && chatSubFilter === 'room-chat' ? 'px-3 pt-2' : 'px-2 pt-1'
+      }`}>
+        {/* Room header for room chat */}
+        {filter === 'chat' && chatSubFilter === 'room-chat' && currentRoomId && currentRoomName && (
+          <div className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-indigo-500/30 mb-3 -mx-3 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={16} className="text-indigo-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-gray-100 truncate">{currentRoomName}</div>
+                <div className="text-xs text-gray-400">Room {currentRoomId}</div>
+              </div>
+            </div>
+          </div>
+        )}
         {canLoadMore && (
           <div className="flex justify-center items-center gap-2 py-3">
             <button
@@ -709,7 +922,7 @@ export default function UnifiedFeedPanel({
             const isRoomTravel = entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel'
             const isActivity = Boolean(entry.eventType) && !isRoomTravel
             const isChat = !isActivity && !isRoomTravel && (entry.type === 'room' || entry.type === 'world')
-            const actorLabel = entry.isSelf ? 'You' : entry.actor || 'Unknown'
+            const actorLabel = entry.actor || 'Unknown'
             const contentSize = settings.compactMode ? 'text-[13px]' : 'text-sm'
             const rowPadding = settings.compactMode ? 'py-1 pr-3 pl-4' : 'py-1.5 pr-4 pl-5'
             const activityLabel = entry.eventType ? (ACTIVITY_LABELS[entry.eventType] ?? entry.eventType).toUpperCase() : null
@@ -724,55 +937,137 @@ export default function UnifiedFeedPanel({
             const directionIcon = isRoomTravel && directionForIcon ? DIRECTION_ICONS[directionForIcon] : null
             const displayIcon = directionIcon || (isRoomTravel ? Zap : style.icon)
 
+            // Get entry category for visual styling
+            const entryCategory = getEntryCategory(entry)
+            
+            // Special styling for chat messages (terminal-style with modern influence)
+            if (isChat) {
+              const isSelf = entry.isSelf
+              const isWorldChat = entry.type === 'world'
+              const isRoomChat = entry.type === 'room'
+              const isCurrentRoom = isRoomChat && entry.roomId === currentRoomId
+              
+              // World chat gets blue, room chat gets indigo for self, gray for others
+              // Current room messages are lighter/more vibrant, other rooms are darker/muted
+              const chatBubbleClass = isWorldChat
+                ? isSelf
+                  ? 'bg-blue-500/85 text-blue-50 border border-blue-400/60'
+                  : 'bg-blue-500/50 text-blue-100 border border-blue-500/40'
+                : isCurrentRoom
+                ? isSelf
+                  ? 'bg-indigo-500/85 text-indigo-50 border border-indigo-400/60'
+                  : 'bg-indigo-500/50 text-indigo-100 border border-indigo-500/40'
+                : isSelf
+                ? 'bg-indigo-600/60 text-indigo-50 border border-indigo-500/40'
+                : 'bg-indigo-700/40 text-indigo-200 border border-indigo-600/30'
+              
+              const borderColorClass = isWorldChat
+                ? isSelf ? 'bg-blue-500' : 'bg-blue-500'
+                : isCurrentRoom
+                ? isSelf ? 'bg-indigo-500' : 'bg-indigo-500'
+                : isSelf ? 'bg-indigo-600' : 'bg-indigo-700'
+              
+              const avatarBgClass = isWorldChat
+                ? isSelf ? 'bg-blue-500/80' : 'bg-blue-500/80'
+                : isCurrentRoom
+                ? isSelf ? 'bg-indigo-500/80' : 'bg-indigo-500/80'
+                : isSelf ? 'bg-indigo-600/80' : 'bg-indigo-700/80'
+              
+              const avatarBorderClass = isWorldChat
+                ? isSelf ? 'border-blue-400/50' : 'border-blue-500/50'
+                : isCurrentRoom
+                ? isSelf ? 'border-indigo-400/50' : 'border-indigo-500/50'
+                : isSelf ? 'border-indigo-500/50' : 'border-indigo-600/50'
+              
+              const chatContainerClass = isSelf ? 'flex justify-end' : 'flex justify-start'
+              const avatarInitial = (actorLabel.charAt(0) || '?').toUpperCase()
+              
+              // Apply opacity dimming for other room messages
+              const containerOpacityClass = isRoomChat && !isCurrentRoom ? 'opacity-70' : ''
+              
+              return (
+                <div key={`${entry.id}-${index}`} className={`${chatContainerClass} mb-1 group relative ${containerOpacityClass}`}>
+                  <span className={`absolute left-0 top-0 bottom-0 w-0.5 ${borderColorClass}`} aria-hidden />
+                  <div className="flex items-start gap-1.5 max-w-[90%] pl-1.5">
+                    {!isSelf && (
+                      <div className={`${avatarBgClass} w-5 h-5 rounded flex items-center justify-center text-[10px] font-mono font-semibold text-white shrink-0 border ${avatarBorderClass}`}>
+                        {avatarInitial}
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                      <span className={`text-[10px] text-gray-400 font-mono font-medium ${isSelf ? 'text-right' : ''}`}>
+                        {actorLabel}
+                        {isRoomChat && entry.roomId && (
+                          <span className="text-gray-500 ml-1">({entry.roomId})</span>
+                        )}
+                      </span>
+                      <div className={`${chatBubbleClass} rounded px-2.5 py-1.5 ${contentSize} font-mono break-words leading-tight`}>
+                        {messageText}
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${isSelf ? 'justify-end' : 'justify-start'}`}>
+                        {settings.showTimestamps && (
+                          <span className="text-[9px] text-gray-500/70 whitespace-nowrap tabular-nums font-mono">
+                            {formatTimestamp(entry.ts)}
+                          </span>
+                        )}
+                        {count > 1 && (
+                          <span className="text-[9px] text-gray-500/70 font-mono font-semibold whitespace-nowrap">
+                            ×{count}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {isSelf && (
+                      <div className={`${avatarBgClass} w-5 h-5 rounded flex items-center justify-center text-[10px] font-mono font-semibold text-white shrink-0 border ${avatarBorderClass}`}>
+                        {avatarInitial}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            }
+            
+            // Non-chat entries (events, actions) - terminal-style with modern influence
+            const isEvent = entryCategory === 'event'
+            const isAction = entryCategory === 'action'
+            const terminalPadding = settings.compactMode ? 'py-0.5 pr-2 pl-3' : 'py-1 pr-3 pl-4'
+            const categoryBgClass = isEvent
+              ? 'bg-gray-800/30' 
+              : isAction
+              ? 'bg-gray-900/40'
+              : 'bg-transparent'
+
             return (
-              <div key={`${entry.id}-${index}`} className={`relative ${rowPadding}`}>
-                <span className={`absolute left-0 top-0 bottom-0 w-1 ${style.barClass}`} aria-hidden />
-                <div className="flex flex-wrap items-baseline gap-2 text-[11px] text-gray-400">
-                  <span className={`flex items-center ${style.iconClass}`}>
+              <div key={`${entry.id}-${index}`} className={`relative ${terminalPadding} ${categoryBgClass} group mb-1`}>
+                <span className={`absolute left-0 top-0 bottom-0 w-0.5 ${style.barClass}`} aria-hidden />
+                <div className="flex flex-wrap items-baseline gap-1.5 text-[11px]">
+                  <span className={`flex items-center ${style.iconClass} shrink-0`}>
                     {React.createElement(displayIcon, { size: iconSize, className: 'shrink-0', 'aria-hidden': 'true' })}
                     <span className="sr-only">{style.label}</span>
                   </span>
 
-                  <div className={`flex flex-wrap items-baseline gap-1 flex-1 break-words leading-snug ${contentSize}`}>
+                  <div className={`flex flex-wrap items-baseline gap-1 flex-1 break-words leading-tight font-mono ${contentSize}`}>
                     {isRoomTravel ? (
-                      <span className={messageColorClass}>{messageText}</span>
+                      <span className={`${messageColorClass} font-mono`}>{messageText}</span>
                     ) : isActivity ? (
                       <>
                         {activityLabel && (
-                          <span className={`text-[10px] font-semibold tracking-wide uppercase ${messageColorClass}`}>
-                            {activityLabel}
+                          <span className={`text-[10px] font-mono font-semibold tracking-wide uppercase ${messageColorClass} opacity-80`}>
+                            [{activityLabel}]
                           </span>
                         )}
-                        <span className={messageColorClass}>{messageText}</span>
-                      </>
-                    ) : isChat ? (
-                      <>
-                        <span className="font-semibold text-gray-50">{actorLabel}</span>
-                        <span className="text-gray-400">
-                          {entry.type === 'room'
-                            ? entry.isSelf
-                              ? ' say, '
-                              : ' says, '
-                            : entry.isSelf
-                              ? ' shout, '
-                              : ' shouts, '}
-                        </span>
-                        <span className="text-gray-200">"{messageText}"</span>
+                        <span className={`${messageColorClass} font-mono`}>{messageText}</span>
                       </>
                     ) : (
-                      <span className={messageColorClass}>{messageText}</span>
+                      <span className={`${messageColorClass} font-mono`}>{messageText}</span>
                     )}
                   </div>
                   {count > 1 && (
-                    <span className="text-gray-500 font-semibold whitespace-nowrap">×{count}</span>
+                    <span className="text-gray-500/70 font-mono font-semibold whitespace-nowrap text-[10px]">×{count}</span>
                   )}
                   {settings.showTimestamps && (
-                    <span className="text-gray-500 whitespace-nowrap tabular-nums">
-                      {new Date(entry.ts).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}
+                    <span className="text-gray-500/60 whitespace-nowrap tabular-nums font-mono text-[10px]">
+                      {formatTimestamp(entry.ts)}
                     </span>
                   )}
 
@@ -801,11 +1096,20 @@ export default function UnifiedFeedPanel({
         <div className="flex flex-wrap items-center gap-2">
           {(['world', 'room', 'action'] as InputMode[]).map((mode) => {
             const isActive = inputMode === mode
+            // Highlight input mode when corresponding filter is active
+            const isFilterActive = (filter === 'chat' && (mode === 'room' || mode === 'world')) || 
+                                  (filter === 'actions' && mode === 'action')
             const labelMap: Record<InputMode, string> = {
               action: 'Action',
               room: 'Room Chat',
               world: 'World Chat',
             }
+            const iconMap: Record<InputMode, LucideIcon> = {
+              action: Sparkles,
+              room: MessageSquare,
+              world: Globe,
+            }
+            const IconComponent = iconMap[mode]
             const colorMap: Record<InputMode, { active: string; inactive: string }> = {
               action: {
                 active: 'border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300',
@@ -827,9 +1131,14 @@ export default function UnifiedFeedPanel({
                 type="button"
                 onClick={() => setInputMode(mode)}
                 className={`px-2 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 ${
-                  isActive ? colors.active : colors.inactive
+                  isActive ? colors.active : isFilterActive ? 'border-gray-500 bg-gray-800/20 text-gray-300' : colors.inactive
                 }`}
               >
+                <IconComponent 
+                  size={12} 
+                  className="mr-1 shrink-0" 
+                  aria-hidden="true"
+                />
                 {labelMap[mode]}
               </button>
             )
@@ -850,13 +1159,13 @@ export default function UnifiedFeedPanel({
                 : 'Shout something...'
             }
             disabled={Boolean(isLoadingRoom)}
-            className="flex-1 min-w-0 px-4 py-2.5 bg-gray-800 text-white border-2 border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500 shadow-md transition-all duration-200 disabled:bg-gray-800/50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 min-w-0 px-3 py-2 bg-gray-900/80 text-gray-100 font-mono text-sm border border-gray-700/60 rounded focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40 transition-all duration-200 disabled:bg-gray-900/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-gray-500"
             autoComplete="off"
           />
           <button
             type="submit"
             disabled={isSubmitDisabled}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-lg whitespace-nowrap text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg hover:bg-indigo-500"
+            className="px-4 py-2 bg-indigo-600/90 hover:bg-indigo-600 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-indigo-50 font-mono text-sm border border-indigo-500/60 rounded whitespace-nowrap transition-all duration-200 hover:border-indigo-400/80"
           >
             Submit
           </button>
