@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, Settings as SettingsIcon, Zap, Check, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, ChevronRight, Settings as SettingsIcon, Zap, Check, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import Icon from './Icon'
 
@@ -13,6 +13,8 @@ type UnifiedFeedPanelProps = {
   currentRoomId?: string
   isConnected?: boolean
   onClose?: () => void
+  onToggle?: () => void
+  isOpen?: boolean
   onOpenSettings?: () => void
   customAction: string
   onCustomActionChange: (value: string) => void
@@ -272,6 +274,8 @@ export default function UnifiedFeedPanel({
   currentRoomId,
   isConnected,
   onClose,
+  onToggle,
+  isOpen,
   onOpenSettings,
   customAction,
   onCustomActionChange,
@@ -529,13 +533,14 @@ export default function UnifiedFeedPanel({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {onClose && (
+          {(onToggle || onClose) && (
             <button
-              className="md:hidden px-2 py-1 text-gray-400 hover:text-white rounded-md hover:bg-gray-800/60 transition-colors"
-              onClick={onClose}
-              aria-label="Close"
+              onClick={onToggle || onClose}
+              className="px-3 py-2 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2"
+              title={isOpen ? 'Close' : 'Open'}
+              aria-label={isOpen ? 'Close world panel' : 'Open world panel'}
             >
-              ✕
+              {isOpen && <ChevronRight size={20} />}
             </button>
           )}
         </div>

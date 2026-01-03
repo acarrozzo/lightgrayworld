@@ -1916,13 +1916,7 @@ export default function GameInterface() {
       />
       <NotificationContainer />
       
-      <GameHeader
-        onToggleCharacterSidebar={() => setLeftSidebarOpen((prev) => !prev)}
-        onToggleWorldSidebar={() => setRightSidebarOpen((prev) => !prev)}
-        leftSidebarOpen={leftSidebarOpen}
-        rightSidebarOpen={rightSidebarOpen}
-        playerName={player?.username}
-      />
+      <GameHeader playerName={player?.username} />
       
       <div className="flex flex-1 overflow-hidden relative min-h-0">
         {/* Overlay backdrop for mobile */}
@@ -1936,23 +1930,6 @@ export default function GameInterface() {
           />
         )}
         
-        {/* Left Collapsed Rail - Desktop only */}
-        {!leftSidebarOpen && (
-          <button
-            onClick={() => setLeftSidebarOpen(true)}
-            className="hidden md:flex w-12 bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex-col items-center justify-start pt-4 flex-shrink-0 hover:bg-gray-800/95 transition-colors duration-200 z-30"
-            aria-label="Open character panel"
-          >
-            {coloredAvatarSvg ? (
-              <div
-                className="w-8 h-10"
-                dangerouslySetInnerHTML={{ __html: coloredAvatarSvg }}
-              />
-            ) : (
-              <Icon name="character" size={24} className="text-purple-300" />
-            )}
-          </button>
-        )}
 
         {/* Left Sidebar - Player Info */}
         <div 
@@ -1969,7 +1946,8 @@ export default function GameInterface() {
           <div ref={leftSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
             <GameSidebar 
               player={player} 
-              onClose={() => setLeftSidebarOpen(false)} 
+              onToggle={() => setLeftSidebarOpen((prev) => !prev)}
+              isOpen={leftSidebarOpen}
               onAction={handleAction}
               onSwitchToInventory={handleSwitchToInventory}
             />
@@ -1981,6 +1959,37 @@ export default function GameInterface() {
           {currentRoom && (
             <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
               <TabContainer
+                leftElement={
+                  !leftSidebarOpen && (
+                    <button
+                      onClick={() => setLeftSidebarOpen(true)}
+                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                      title="Open character panel"
+                      aria-label="Open character panel"
+                    >
+                      <Icon name="chevron-east" size={14} className="mr-1" />
+                      <Icon name="character" size={14} color="purple" />
+                    </button>
+                  )
+                }
+                rightElement={
+                  !rightSidebarOpen && (
+                    <button
+                      onClick={() => setRightSidebarOpen(true)}
+                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                      title="Open world panel"
+                      aria-label="Open world panel"
+                    >
+                      <Icon name="world" size={14} color="blue" />
+                      <Icon name="chevron-west" size={14} className="ml-1" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  )
+                }
                 tabs={[
                   {
                     id: 'explore',
@@ -2054,7 +2063,7 @@ export default function GameInterface() {
                   },
                   {
                     id: 'inventory',
-                    label: 'Inventory',
+                    label: 'Inv',
                     icon: 'inv',
                     color: 'green',
                     content: (
@@ -2081,7 +2090,7 @@ export default function GameInterface() {
                   },
                   {
                     id: 'settings',
-                    label: 'Settings',
+                    label: '',
                     icon: <SettingsIcon size={14} />,
                     color: 'gray',
                     content: (
@@ -2098,7 +2107,7 @@ export default function GameInterface() {
                   }
                 }}
                 containerClassName="flex-1 min-h-0"
-                contentClassName="flex-1 min-h-0 overflow-hidden max-w-7xl mx-auto w-full"
+                contentClassName="flex-1 min-h-0 overflow-hidden max-w-5xl mx-auto w-full"
               />
             </div>
           )}
@@ -2120,7 +2129,8 @@ export default function GameInterface() {
             <UnifiedFeedPanel
               currentRoomId={currentRoom?.roomId}
               isConnected={socket?.connected ?? false}
-              onClose={() => setRightSidebarOpen(false)}
+              onToggle={() => setRightSidebarOpen((prev) => !prev)}
+              isOpen={rightSidebarOpen}
               onOpenSettings={() => setCenterActiveTab('settings')}
               customAction={customAction}
               onCustomActionChange={setCustomAction}
@@ -2132,23 +2142,6 @@ export default function GameInterface() {
           </div>
         </div>
 
-        {/* Right Collapsed Rail - Desktop only */}
-        {!rightSidebarOpen && (
-          <button
-            onClick={() => setRightSidebarOpen(true)}
-            className="hidden md:flex w-12 bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex-col items-center justify-start pt-4 flex-shrink-0 hover:bg-gray-800/95 transition-colors duration-200 z-30"
-            aria-label="Open world panel"
-          >
-            <div className="relative">
-              <Icon name="world" size={24} className="text-blue-300" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </div>
-          </button>
-        )}
       </div>
     </div>
   )

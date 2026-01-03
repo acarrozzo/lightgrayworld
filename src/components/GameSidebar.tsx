@@ -8,12 +8,15 @@ import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import Icon from './Icon'
 import { EquipSlot } from '@prisma/client'
+import { ChevronLeft } from 'lucide-react'
 
 type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
 
 interface GameSidebarProps {
   player: Player
   onClose?: () => void
+  onToggle?: () => void
+  isOpen?: boolean
   onAction?: (action: string | { type: string; data?: any }) => void
   onSwitchToInventory?: (filter?: FilterTab) => void
 }
@@ -53,7 +56,7 @@ function formatStatMods(metadata: any): string {
   return parts.join(', ')
 }
 
-export default function GameSidebar({ player, onClose, onAction, onSwitchToInventory }: GameSidebarProps) {
+export default function GameSidebar({ player, onClose, onToggle, isOpen, onAction, onSwitchToInventory }: GameSidebarProps) {
   const inventory = useGameStore((state) => state.inventory)
   const setPlayer = useGameStore((state) => state.setPlayer)
   const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
@@ -159,19 +162,20 @@ export default function GameSidebar({ player, onClose, onAction, onSwitchToInven
   return (
     <>
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Header with close button */}
-        {onClose && (
-          <div className="flex items-center justify-between p-4 bg-gray-900/95 backdrop-blur-sm flex-shrink-0">
-            <h2 className="text-lg font-semibold text-white">{player.username || 'Character'}</h2>
+        {/* Header with toggle button */}
+        <div className="flex items-center gap-3 p-4 bg-gray-900/95 backdrop-blur-sm flex-shrink-0">
+          {(onToggle || onClose) && (
             <button
-              onClick={onClose}
-              className="xl:hidden p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
-              title="Close"
+              onClick={onToggle || onClose}
+              className="px-3 py-2 bg-transparent hover:bg-purple-500/10 border border-purple-500/40 hover:border-purple-500/60 text-purple-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2 flex-shrink-0"
+              title={isOpen ? 'Close' : 'Open'}
+              aria-label={isOpen ? 'Close character panel' : 'Open character panel'}
             >
-              <Icon name="x" size={20} />
+              {isOpen && <ChevronLeft size={20} />}
             </button>
-          </div>
-        )}
+          )}
+          <h2 className="text-sm font-semibold text-white">Character</h2>
+        </div>
         
         {/* Character Stats Content */}
         <div className="flex-1 overflow-y-auto min-h-0 p-4">

@@ -23,6 +23,7 @@ interface TabContainerProps {
   contentClassName?: string
   containerClassName?: string
   buttonPadding?: string
+  leftElement?: ReactNode
   rightElement?: ReactNode
 }
 
@@ -37,6 +38,7 @@ export default function TabContainer({
   contentClassName = '',
   containerClassName = '',
   buttonPadding = 'px-2.5 py-1.5',
+  leftElement,
   rightElement,
 }: TabContainerProps) {
   const [activeTab, setActiveTab] = useState<string | null>(defaultTab ?? tabs[0]?.id ?? null)
@@ -101,42 +103,52 @@ export default function TabContainer({
     <div className={`flex-1 flex flex-col min-h-0 ${containerClassName}`}>
       {/* Tab Navigation */}
       <div className={`flex gap-2 ${defaultHeaderPadding} bg-gray-900/95 backdrop-blur-sm flex-shrink-0 flex-wrap items-center ${headerClassName}`}>
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={`${buttonPadding} text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow ${getButtonColorClasses(tab, isActive)}`}
-            >
-              {tab.icon && (
-                typeof tab.icon === 'string' ? (
-                  <Icon 
-                    name={tab.icon} 
-                    size={14} 
-                    color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color)} 
-                    className="mr-1" 
-                  />
-                ) : (
-                  <span className="mr-1">{tab.icon}</span>
-                )
-              )}
-              {tab.label}
-              {tab.badge && (
-                <span className={`absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center ${
-                  typeof tab.badge === 'number' 
-                    ? 'min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white' 
-                    : 'w-2 h-2'
-                }`}>
-                  {typeof tab.badge === 'number' && tab.badge > 0 ? (tab.badge > 99 ? '99+' : tab.badge) : ''}
-                </span>
-              )}
-            </button>
-          )
-        })}
+        {/* Left side elements */}
+        {leftElement && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {leftElement}
+          </div>
+        )}
+        
+        {/* Centered tabs */}
+        <div className="flex-1 flex items-center justify-center gap-2 flex-wrap">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`${buttonPadding} h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow ${getButtonColorClasses(tab, isActive)}`}
+              >
+                {tab.icon && (
+                  typeof tab.icon === 'string' ? (
+                    <Icon 
+                      name={tab.icon} 
+                      size={14} 
+                      color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color)} 
+                      className={tab.label ? "mr-1" : ""} 
+                    />
+                  ) : (
+                    <span className={tab.label ? "mr-1" : ""}>{tab.icon}</span>
+                  )
+                )}
+                {tab.label}
+                {tab.badge && (
+                  <span className={`absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center ${
+                    typeof tab.badge === 'number' 
+                      ? 'min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white' 
+                      : 'w-2 h-2'
+                  }`}>
+                    {typeof tab.badge === 'number' && tab.badge > 0 ? (tab.badge > 99 ? '99+' : tab.badge) : ''}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
         
         {/* Right side elements */}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {rightElement}
           {/* Close button - on same row as tabs */}
           {onClose && (
