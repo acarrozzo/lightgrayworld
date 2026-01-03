@@ -44,6 +44,7 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     '017': '-35px -350px',     // Abandoned Docks
     '020': '-245px -245px',    // Healing Springs
     '021': '-455px -245px',    // Pajama Shaman
+    '088': 'center',            // Solar Office
     '999': 'center',            // The Lobby
   }
   
@@ -255,15 +256,18 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
 
   const isRoomZero = room.roomId === '000'
   const isLobby = room.roomId === '999'
+  const isSolarOffice = room.roomId === '088'
   const mapBackground = isRoomZero
     ? '/img/lightgray_map_roomzero.jpg'
     : isLobby
     ? '/img/lightgray_map_the_lobby.jpg'
+    : isSolarOffice
+    ? '/img/lightgray_map_solar_office.jpg'
     : '/img/lightgray_map_grassyfield_main.jpg'
-  const mapPosition = isRoomZero || isLobby
+  const mapPosition = isRoomZero || isLobby || isSolarOffice
     ? 'center'
     : (isTransitioning ? targetPosition : currentPosition)
-  const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : 'Grassy Field'
+  const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : isSolarOffice ? 'Solar Office' : 'Grassy Field'
 
   const directions: Direction[] = [
     { key: 'northwest', label: 'NW', position: 'top-left', rotation: 315 },

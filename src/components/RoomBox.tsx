@@ -330,6 +330,16 @@ export default function RoomBox({
                   >
                     Room Zero
                   </button>
+                  <button
+                    onClick={() => {
+                      if (onAction) {
+                        onAction({ type: 'teleport', data: { toRoomId: '088' } })
+                      }
+                    }}
+                    className="px-2 py-1 bg-gray-900/70 hover:bg-gray-900/90 border border-gray-700/50 hover:border-amber-300/70 text-gray-300 rounded text-xs transition-all duration-200"
+                  >
+                    Solar Office
+                  </button>
                 </div>
               </div>
             </div>

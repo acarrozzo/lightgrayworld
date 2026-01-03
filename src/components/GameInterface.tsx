@@ -74,12 +74,14 @@ const MAP_CONFIG: Array<MapOption & { flag: keyof Player }> = [
   { id: 'grassy-field-underground', src: '/img/lightgray_map_grassyfield_underground.jpg', title: 'Grassy Field Underground', flag: 'grassyFieldUndergroundMap' },
   { id: 'room-zero', src: '/img/lightgray_map_roomzero.jpg', title: 'Room Zero', flag: 'roomZeroMap' },
   { id: 'lobby', src: '/img/lightgray_map_the_lobby.jpg', title: 'The Lobby', flag: 'lobbyMap' },
+  { id: 'solar-office', src: '/img/lightgray_map_solar_office.jpg', title: 'Solar Office', flag: 'solarOfficeMap' },
 ]
 
 // Helper function to determine which map corresponds to a room
 const getMapIdForRoom = (roomId: string): string => {
   if (roomId === '000') return 'room-zero'
   if (roomId === '999') return 'lobby'
+  if (roomId === '088') return 'solar-office'
   return 'grassy-field' // Default for grassy field rooms
 }
 
@@ -94,6 +96,7 @@ const TELEPORT_LOCATIONS: TeleportLocation[] = [
   { roomId: '999', name: 'Lobby', description: 'The main lobby area' },
   { roomId: '001', name: 'Grassy Field', description: 'Grassy Field Crossroads' },
   { roomId: '000', name: 'Room Zero', description: 'The starting room' },
+  { roomId: '088', name: 'Solar Office', description: 'A large, open-plan command office' },
 ]
 
 // Helper function to render directory content for sign modals
@@ -1939,7 +1942,7 @@ export default function GameInterface() {
             transition-all duration-[250ms] ease-out
             ${leftSidebarOpen 
               ? 'w-full md:w-[360px] xl:min-w-[360px] xl:max-w-[25%] translate-x-0' 
-              : 'w-0 md:w-0 -translate-x-full md:translate-x-0 md:overflow-hidden'
+              : 'w-0 md:w-0 -translate-x-full md:translate-x-0'
             }
             absolute md:relative left-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none
           `}
@@ -2122,7 +2125,7 @@ export default function GameInterface() {
             transition-all duration-[250ms] ease-out
             ${rightSidebarOpen 
               ? 'w-full md:w-[360px] xl:min-w-[360px] xl:max-w-[25%] translate-x-0' 
-              : 'w-0 md:w-0 translate-x-full md:translate-x-0 md:overflow-hidden'
+              : 'w-0 md:w-0 translate-x-full md:translate-x-0'
             }
             absolute md:relative right-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none
           `}

@@ -413,6 +413,31 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false
+    },
+    {
+      roomId: '088',
+      name: 'Solar Office',
+      subtitle: 'Central Operations',
+      subtitlePosition: 'below',
+      nameColor: 'gray-100',
+      subtitleColor: 'gray-400',
+      icon: 'solaroffice',
+      iconColor: 'blue-300',
+      description: 'A wide, open-plan command office with dark composite walls and a polished floor, housing a range of personalized workstations. Transparent displays float above each desk, presenting system data and tactical readouts. One full wall is a reinforced viewport looking out onto a nearby star, its light filtered through polarized panels that serve as the primary illumination for the space.',
+      dangerLevel: 0,
+      isSafe: true,
+      north: null,
+      south: null,
+      east: null,
+      west: null,
+      up: null,
+      down: null,
+      northeast: null,
+      northwest: null,
+      southeast: null,
+      southwest: null,
+      hasFire: false,
+      hasCraftingTable: false
     }
   ]
 

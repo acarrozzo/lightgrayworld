@@ -34,6 +34,7 @@ export interface Player {
   grassyFieldUndergroundMap?: boolean
   roomZeroMap?: boolean
   lobbyMap?: boolean
+  solarOfficeMap?: boolean
 }
 
 export type Room = RoomView
