@@ -229,13 +229,15 @@ export default function RoomBox({
       />
 
       {/* More Actions Section */}
-      <div className="mt-6 pt-4 border-t border-gray-800/50">
+      <div className="mt-6 pt-4">
+        {/* Top-left border above More Actions */}
+        <div className="w-32 border-t border-gray-800/50 mb-4"></div>
         <div className="flex flex-col gap-4">
           {/* Collapsible Header */}
           <button
             type="button"
             onClick={() => setIsMoreActionsExpanded((prev) => !prev)}
-            className="group flex items-center gap-2 transition-all duration-200 text-gray-500 hover:text-gray-300 rounded-md px-2 py-1 -mx-2 -my-1"
+            className="group flex items-center gap-2 transition-all duration-200 text-gray-500 hover:text-gray-300 rounded-md px-2 py-1 -mx-2 -my-1 w-auto self-start"
             aria-expanded={isMoreActionsExpanded}
             aria-label="Toggle more actions"
           >

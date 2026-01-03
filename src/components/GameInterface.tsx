@@ -14,7 +14,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, ArrowRight } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, ArrowRight, Map, X } from 'lucide-react'
 import MapContent, { type MapOption } from './MapContent'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
@@ -2104,11 +2104,21 @@ export default function GameInterface() {
                     icon: 'inv',
                     color: 'green',
                     content: (
-                      <InventoryDisplay
-                        inventory={inventory}
-                        onAction={handleAction}
-                        initialFilter={inventoryFilter}
-                      />
+                      <div className="relative w-full h-full">
+                        <button
+                          onClick={() => setCenterActiveTab('explore')}
+                          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+                          title="Close"
+                          aria-label="Close"
+                        >
+                          <X size={20} />
+                        </button>
+                        <InventoryDisplay
+                          inventory={inventory}
+                          onAction={handleAction}
+                          initialFilter={inventoryFilter}
+                        />
+                      </div>
                     ),
                   },
                   {
@@ -2117,10 +2127,20 @@ export default function GameInterface() {
                     icon: 'trophy',
                     color: 'gold',
                     content: (
-                      <div className="space-y-4 p-4 sm:p-6">
-                        <h3 className="text-lg font-semibold text-white">Quests</h3>
-                        <div className="text-gray-400 text-sm">
-                          No active quests.
+                      <div className="relative w-full h-full">
+                        <button
+                          onClick={() => setCenterActiveTab('explore')}
+                          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+                          title="Close"
+                          aria-label="Close"
+                        >
+                          <X size={20} />
+                        </button>
+                        <div className="space-y-4 p-4 sm:p-6">
+                          <h3 className="text-lg font-semibold text-white">Quests</h3>
+                          <div className="text-gray-400 text-sm">
+                            No active quests.
+                          </div>
                         </div>
                       </div>
                     ),
@@ -2128,18 +2148,28 @@ export default function GameInterface() {
                   {
                     id: 'map',
                     label: 'Map',
-                    icon: 'world',
+                    icon: <Map size={14} />,
                     color: 'sky',
                     content: (() => {
                       const selectedMap = MAP_CONFIG.find(m => m.id === currentMapId)
                       return (
-                        <MapContent
-                          mapSrc={selectedMap?.src || ''}
-                          mapTitle={selectedMap?.title || 'Map'}
-                          availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
-                          currentMapId={currentMapId}
-                          onMapChange={handleMapChange}
-                        />
+                        <div className="relative w-full h-full">
+                          <button
+                            onClick={() => setCenterActiveTab('explore')}
+                            className="absolute top-2 right-3 z-30 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+                            title="Close"
+                            aria-label="Close"
+                          >
+                            <X size={20} />
+                          </button>
+                          <MapContent
+                            mapSrc={selectedMap?.src || ''}
+                            mapTitle={selectedMap?.title || 'Map'}
+                            availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
+                            currentMapId={currentMapId}
+                            onMapChange={handleMapChange}
+                          />
+                        </div>
                       )
                     })(),
                   },
@@ -2149,30 +2179,40 @@ export default function GameInterface() {
                     icon: <MessageSquare size={14} />,
                     color: 'purple',
                     content: (
-                      <div className="space-y-4 p-4 sm:p-6">
-                        <h3 className="text-lg font-semibold text-white">Chat</h3>
-                        <div className="text-gray-400 text-sm mb-4">
-                          To use world chat or room chat, use the world feed panel to the right.
-                        </div>
+                      <div className="relative w-full h-full">
                         <button
-                          onClick={handleOpenWorldChat}
-                          className="px-4 py-2 bg-purple-600/90 hover:bg-purple-500/90 text-white border border-purple-500/50 rounded-lg transition-all duration-200 shadow-sm hover:shadow font-medium flex items-center gap-2"
+                          onClick={() => setCenterActiveTab('explore')}
+                          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+                          title="Close"
+                          aria-label="Close"
                         >
-                          <span>Open World Chat</span>
-                          <ArrowRight size={16} />
+                          <X size={20} />
                         </button>
-                        <div className="mt-6 space-y-3 text-sm text-gray-400">
-                          <div>
-                            <div className="font-semibold text-gray-300 mb-1">Shout (World Chat)</div>
-                            <div className="text-xs">Use the right column's "World Chat" input mode to broadcast messages to all players.</div>
+                        <div className="space-y-4 p-4 sm:p-6">
+                          <h3 className="text-lg font-semibold text-white">Chat</h3>
+                          <div className="text-gray-400 text-sm mb-4">
+                            To use world chat or room chat, use the world feed panel to the right.
                           </div>
-                          <div>
-                            <div className="font-semibold text-gray-300 mb-1">Say (Room Chat)</div>
-                            <div className="text-xs">Use the right column's "Room Chat" input mode to speak to players in your current room.</div>
-                          </div>
-                          <div>
-                            <div className="font-semibold text-gray-300 mb-1">Take Action</div>
-                            <div className="text-xs">Use the right column's "Action" input mode to perform game actions like "look", "pick redberry", etc.</div>
+                          <button
+                            onClick={handleOpenWorldChat}
+                            className="px-4 py-2 bg-purple-600/90 hover:bg-purple-500/90 text-white border border-purple-500/50 rounded-lg transition-all duration-200 shadow-sm hover:shadow font-medium flex items-center gap-2"
+                          >
+                            <span>Open World Chat</span>
+                            <ArrowRight size={16} />
+                          </button>
+                          <div className="mt-6 space-y-3 text-sm text-gray-400">
+                            <div>
+                              <div className="font-semibold text-gray-300 mb-1">Shout (World Chat)</div>
+                              <div className="text-xs">Use the right column's "World Chat" input mode to broadcast messages to all players.</div>
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-300 mb-1">Say (Room Chat)</div>
+                              <div className="text-xs">Use the right column's "Room Chat" input mode to speak to players in your current room.</div>
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-300 mb-1">Take Action</div>
+                              <div className="text-xs">Use the right column's "Action" input mode to perform game actions like "look", "pick redberry", etc.</div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -2184,7 +2224,17 @@ export default function GameInterface() {
                     icon: <SettingsIcon size={14} />,
                     color: 'gray',
                     content: (
-                      <SettingsContent onLogout={handleLogoutFlow} />
+                      <div className="relative w-full h-full">
+                        <button
+                          onClick={() => setCenterActiveTab('explore')}
+                          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+                          title="Close"
+                          aria-label="Close"
+                        >
+                          <X size={20} />
+                        </button>
+                        <SettingsContent onLogout={handleLogoutFlow} />
+                      </div>
                     ),
                   },
                 ]}

@@ -603,7 +603,14 @@ export default function UnifiedFeedPanel({
       if (isNearBottom) {
         scrollToBottom()
       } else {
-        setUnreadCount((count) => count + (entries.length - prevLength))
+        // Get new entries
+        const newEntries = entries.slice(prevLength)
+        // Filter to only chat messages (world/room without eventType)
+        const chatMessages = newEntries.filter(
+          (entry) => (entry.type === 'world' || entry.type === 'room') && !entry.eventType
+        )
+        // Only increment badge for chat messages
+        setUnreadCount((count) => count + chatMessages.length)
       }
     }
   }, [entries.length, isNearBottom, scrollToBottom])

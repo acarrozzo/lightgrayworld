@@ -318,7 +318,7 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
     <div className="flex flex-col h-full min-h-0">
       {/* Map Selector Buttons */}
       {availableMaps && availableMaps.length > 1 && (
-        <div className="flex gap-2 border-b border-gray-700/50 px-4 py-2 flex-shrink-0 relative">
+        <div className="flex gap-2 border-b border-gray-700/50 pl-4 pr-12 md:pr-4 py-2 flex-shrink-0 relative">
             <div ref={buttonsContainerRef} className="flex-1 flex items-center justify-center gap-2 flex-nowrap">
               {/* Render visible buttons */}
               {visibleButtons.map((map) => {
