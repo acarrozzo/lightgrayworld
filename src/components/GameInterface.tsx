@@ -2107,7 +2107,7 @@ export default function GameInterface() {
                   }
                 }}
                 containerClassName="flex-1 min-h-0"
-                contentClassName="flex-1 min-h-0 overflow-hidden max-w-5xl mx-auto w-full"
+                contentClassName="flex-1 min-h-0 overflow-hidden"
               />
             </div>
           )}

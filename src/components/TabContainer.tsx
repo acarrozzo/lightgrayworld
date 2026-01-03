@@ -466,7 +466,9 @@ export default function TabContainer({
       {/* Tab Content */}
       {activeTab && (
         <div className={`flex-1 flex flex-col overflow-y-auto min-h-0 ${contentClassName}`}>
-          {renderTabContent()}
+          <div className="max-w-5xl mx-auto w-full">
+            {renderTabContent()}
+          </div>
         </div>
       )}
     </div>
