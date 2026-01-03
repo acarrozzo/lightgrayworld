@@ -8,7 +8,7 @@ import Icon from './Icon'
 interface CompassProps {
   room: any
   onAction?: (action: string) => void
-  onOpenMap?: (src: string, title: string) => void
+  onNavigateToMap?: () => void
   onOpenTeleport?: () => void
 }
 
@@ -181,7 +181,7 @@ const getDirectionColorClasses = (directionKey: string, directionColors: any, is
   return 'bg-green-600/90 hover:bg-green-500 border-gray-700/50 hover:border-gray-500/50'
 }
 
-export default function Compass({ room, onAction, onOpenMap, onOpenTeleport }: CompassProps) {
+export default function Compass({ room, onAction, onNavigateToMap, onOpenTeleport }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
   const [currentPosition, setCurrentPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
   const [targetPosition, setTargetPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
@@ -290,7 +290,7 @@ export default function Compass({ room, onAction, onOpenMap, onOpenTeleport }: C
           <div className="absolute inset-0 flex items-center justify-center">
             <button
               type="button"
-              onClick={() => onOpenMap?.(mapBackground, mapTitle)}
+              onClick={() => onNavigateToMap?.()}
               className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-500 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950 border-[10px] sm:border-[25px] border-solid border-gray-800/0 shadow-lg hover:shadow-xl"
               style={{
                 backgroundImage: `url('${mapBackground}')`,

@@ -16,6 +16,7 @@ export interface TabConfig {
 interface TabContainerProps {
   tabs: TabConfig[]
   defaultTab?: string | null
+  activeTab?: string | null
   onClose?: () => void
   onTabChange?: (tabId: string | null) => void
   closeButtonPlacement?: 'integrated' | 'separate'
@@ -31,6 +32,7 @@ interface TabContainerProps {
 export default function TabContainer({
   tabs,
   defaultTab,
+  activeTab: controlledActiveTab,
   onClose,
   onTabChange,
   closeButtonPlacement = 'separate',
@@ -42,7 +44,8 @@ export default function TabContainer({
   leftElement,
   rightElement,
 }: TabContainerProps) {
-  const [activeTab, setActiveTab] = useState<string | null>(defaultTab ?? tabs[0]?.id ?? null)
+  const [internalActiveTab, setInternalActiveTab] = useState<string | null>(defaultTab ?? tabs[0]?.id ?? null)
+  const activeTab = controlledActiveTab !== undefined ? controlledActiveTab : internalActiveTab
   const [visibleTabs, setVisibleTabs] = useState<TabConfig[]>(tabs)
   const [dropdownTabs, setDropdownTabs] = useState<TabConfig[]>([])
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
@@ -53,7 +56,9 @@ export default function TabContainer({
   const handleTabChange = (tabId: string) => {
     // Toggle behavior: if clicking the active tab, close it (set to null)
     const newActiveTab = activeTab === tabId ? null : tabId
-    setActiveTab(newActiveTab)
+    if (controlledActiveTab === undefined) {
+      setInternalActiveTab(newActiveTab)
+    }
     onTabChange?.(newActiveTab)
     // Close dropdown when a tab is selected
     setIsDropdownOpen(false)
@@ -65,6 +70,13 @@ export default function TabContainer({
     onTabChange?.(initialTab)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run on mount
+
+  // Sync internal state when controlled activeTab changes
+  useEffect(() => {
+    if (controlledActiveTab !== undefined && controlledActiveTab !== internalActiveTab) {
+      setInternalActiveTab(controlledActiveTab)
+    }
+  }, [controlledActiveTab, internalActiveTab])
 
   // Calculate which tabs should be visible vs in dropdown
   const calculateTabLayout = useCallback(() => {
@@ -260,6 +272,8 @@ export default function TabContainer({
           return 'border-1 border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
         case 'red':
           return 'border-1 border-red-500 hover:border-red-400 bg-red-500/10 hover:bg-red-500/20 text-red-300'
+        case 'sky':
+          return 'border-1 border-sky-500 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300'
         default:
           return 'border-1 border-indigo-500 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
       }
@@ -319,7 +333,7 @@ export default function TabContainer({
                     <Icon 
                       name={tab.icon} 
                       size={14} 
-                      color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color)} 
+                      color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color === 'sky' ? 'sky' : tab.color)} 
                       className={tab.label ? "mr-1" : ""} 
                     />
                   ) : (
@@ -384,7 +398,7 @@ export default function TabContainer({
                             <Icon 
                               name={tab.icon} 
                               size={14} 
-                              color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color)} 
+                              color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color === 'sky' ? 'sky' : tab.color)} 
                             />
                           ) : (
                             <span>{tab.icon}</span>
@@ -434,7 +448,7 @@ export default function TabContainer({
                     <Icon 
                       name={tab.icon} 
                       size={14} 
-                      color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color)} 
+                      color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color === 'sky' ? 'sky' : tab.color)} 
                       className={tab.label ? "mr-1" : ""} 
                     />
                   ) : (
@@ -466,7 +480,7 @@ export default function TabContainer({
       {/* Tab Content */}
       {activeTab && (
         <div className={`flex-1 flex flex-col overflow-y-auto min-h-0 ${contentClassName}`}>
-          <div className="max-w-5xl mx-auto w-full">
+          <div className={activeTab === 'map' ? 'w-full' : 'max-w-4xl mx-auto w-full'}>
             {renderTabContent()}
           </div>
         </div>

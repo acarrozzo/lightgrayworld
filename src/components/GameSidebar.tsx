@@ -167,11 +167,12 @@ export default function GameSidebar({ player, onClose, onToggle, isOpen, onActio
           {(onToggle || onClose) && (
             <button
               onClick={onToggle || onClose}
-              className="px-3 py-2 bg-transparent hover:bg-purple-500/10 border border-purple-500/40 hover:border-purple-500/60 text-purple-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2 flex-shrink-0"
+              className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
               title={isOpen ? 'Close' : 'Open'}
               aria-label={isOpen ? 'Close character panel' : 'Open character panel'}
             >
-              {isOpen && <ChevronLeft size={20} />}
+              <ChevronLeft size={14} className="mr-0.5" />
+              <Icon name="character" size={14} color="purple" />
             </button>
           )}
           <h2 className="text-sm font-semibold text-white">Character</h2>

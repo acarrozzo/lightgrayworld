@@ -14,8 +14,8 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon } from 'lucide-react'
-import MapModal, { type MapOption } from './MapModal'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight } from 'lucide-react'
+import MapContent, { type MapOption } from './MapContent'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
@@ -221,7 +221,6 @@ export default function GameInterface() {
   const rightSidebarScrollRef = useRef<HTMLDivElement>(null)
   const leftSidebarScrollPosition = useRef<number>(0)
   const rightSidebarScrollPosition = useRef<number>(0)
-  const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [isTeleportModalOpen, setIsTeleportModalOpen] = useState(false)
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
   const [shopModalData, setShopModalData] = useState<{
@@ -229,7 +228,6 @@ export default function GameInterface() {
     playerCurrency: number
     playerInventory: typeof inventory
   } | null>(null)
-  const [mapInfo, setMapInfo] = useState<{ src: string; title: string }>({ src: '', title: '' })
   const [currentMapId, setCurrentMapId] = useState<string>('grassy-field')
   const [actionModal, setActionModal] = useState<{ 
     isOpen: boolean
@@ -885,6 +883,14 @@ export default function GameInterface() {
   useEffect(() => {
     currentRoomRef.current = currentRoom
   }, [currentRoom])
+
+  // Initialize map based on current room
+  useEffect(() => {
+    if (currentRoom?.roomId) {
+      const mapId = getMapIdForRoom(currentRoom.roomId)
+      setCurrentMapId(mapId)
+    }
+  }, [currentRoom?.roomId])
 
   useEffect(() => {
     loadRoomDataRef.current = loadRoomData
@@ -1768,20 +1774,8 @@ export default function GameInterface() {
     }
   }, [attemptSocketLogin, socket, player, isLoggedIn])
   
-  const handleOpenMap = useCallback((src: string, title: string) => {
-    // Determine which map this corresponds to based on src
-    const mapId = MAP_CONFIG.find(m => m.src === src)?.id || getMapIdForRoom(currentRoom?.roomId || '001')
-    setCurrentMapId(mapId)
-    setMapInfo({ src, title })
-    setIsMapModalOpen(true)
-  }, [currentRoom])
-  
   const handleMapChange = useCallback((mapId: string) => {
-    const selectedMap = MAP_CONFIG.find(m => m.id === mapId)
-    if (selectedMap) {
-      setCurrentMapId(mapId)
-      setMapInfo({ src: selectedMap.src, title: selectedMap.title })
-    }
+    setCurrentMapId(mapId)
   }, [])
 
   const handleOpenTeleport = useCallback(() => {
@@ -1814,15 +1808,6 @@ export default function GameInterface() {
 
   return (
     <div className="h-dvh bg-gray-950 text-white flex flex-col overflow-hidden">
-      <MapModal
-        isOpen={isMapModalOpen}
-        onClose={() => setIsMapModalOpen(false)}
-        mapSrc={mapInfo.src}
-        mapTitle={mapInfo.title || 'Map'}
-        availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
-        currentMapId={currentMapId}
-        onMapChange={handleMapChange}
-      />
       <TeleportModal
         isOpen={isTeleportModalOpen}
         onClose={() => setIsTeleportModalOpen(false)}
@@ -1967,8 +1952,8 @@ export default function GameInterface() {
                       title="Open character panel"
                       aria-label="Open character panel"
                     >
-                      <Icon name="chevron-east" size={14} className="mr-1" />
                       <Icon name="character" size={14} color="purple" />
+                      <ChevronRight size={14} className="ml-0.5" />
                     </button>
                   )
                 }
@@ -1980,8 +1965,8 @@ export default function GameInterface() {
                       title="Open world panel"
                       aria-label="Open world panel"
                     >
+                      <ChevronLeft size={14} className="mr-0.5" />
                       <Icon name="world" size={14} color="blue" />
-                      <Icon name="chevron-west" size={14} className="ml-1" />
                       {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
                           {unreadCount > 99 ? '99+' : unreadCount}
@@ -2018,28 +2003,8 @@ export default function GameInterface() {
 
                         {/* D-pad */}
                         <div className="p-4 flex-shrink-0 relative flex flex-col gap-4 border-t border-gray-800/50">
-                          {/* Map and Teleport buttons - left edge */}
+                          {/* Teleport button - left edge */}
                           <div className="absolute left-4 top-4 flex flex-row md:flex-col gap-2 z-10">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const isRoomZero = currentRoom?.roomId === '000'
-                                const isLobby = currentRoom?.roomId === '999'
-                                const mapBackground = isRoomZero
-                                  ? '/img/lightgray_map_roomzero.jpg'
-                                  : isLobby
-                                  ? '/img/lightgray_map_the_lobby.jpg'
-                                  : '/img/lightgray_map_grassyfield_main.jpg'
-                                const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : 'Grassy Field'
-                                handleOpenMap(mapBackground, mapTitle)
-                              }}
-                              className="px-3 py-1.5 border border-green-600/40 hover:border-green-500/60 bg-transparent hover:bg-green-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-green-400/70 hover:text-green-300 text-sm font-medium whitespace-nowrap"
-                              title="View Map"
-                              aria-label="View Map"
-                            >
-                              <Icon name="world" size={16} />
-                              <span className="hidden md:inline">Map</span>
-                            </button>
                             <button
                               type="button"
                               onClick={handleOpenTeleport}
@@ -2055,7 +2020,7 @@ export default function GameInterface() {
                           </div>
                           {/* Compass */}
                           <div className="flex items-center justify-center">
-                            <Compass room={currentRoom} onAction={handleAction} onOpenMap={handleOpenMap} onOpenTeleport={handleOpenTeleport} />
+                            <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={() => setCenterActiveTab('map')} onOpenTeleport={handleOpenTeleport} />
                           </div>
                         </div>
                       </div>
@@ -2089,6 +2054,24 @@ export default function GameInterface() {
                     ),
                   },
                   {
+                    id: 'map',
+                    label: 'Map',
+                    icon: 'world',
+                    color: 'sky',
+                    content: (() => {
+                      const selectedMap = MAP_CONFIG.find(m => m.id === currentMapId)
+                      return (
+                        <MapContent
+                          mapSrc={selectedMap?.src || ''}
+                          mapTitle={selectedMap?.title || 'Map'}
+                          availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
+                          currentMapId={currentMapId}
+                          onMapChange={handleMapChange}
+                        />
+                      )
+                    })(),
+                  },
+                  {
                     id: 'settings',
                     label: '',
                     icon: <SettingsIcon size={14} />,
@@ -2099,6 +2082,7 @@ export default function GameInterface() {
                   },
                 ]}
                 defaultTab="explore"
+                activeTab={centerActiveTab}
                 onTabChange={(tabId) => {
                   setCenterActiveTab(tabId || 'explore')
                   // Clear inventory filter when switching away from inventory tab

@@ -514,7 +514,7 @@ export default function UnifiedFeedPanel({
 
   return (
     <div className="rightColumnInner flex flex-col h-full">
-      <div className="worldFeedHeader flex items-center justify-between px-4 py-3 border-b border-gray-800/60 bg-gray-900/80">
+      <div className="worldFeedHeader flex items-center justify-between px-4 py-4 border-b border-gray-800/60 bg-gray-900/80">
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold text-gray-100">World</span>
           <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -536,11 +536,12 @@ export default function UnifiedFeedPanel({
           {(onToggle || onClose) && (
             <button
               onClick={onToggle || onClose}
-              className="px-3 py-2 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-300 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 flex items-center gap-2"
+              className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
               title={isOpen ? 'Close' : 'Open'}
               aria-label={isOpen ? 'Close world panel' : 'Open world panel'}
             >
-              {isOpen && <ChevronRight size={20} />}
+              <Icon name="world" size={14} color="blue" />
+              <ChevronRight size={14} className="ml-0.5" />
             </button>
           )}
         </div>
@@ -665,7 +666,7 @@ export default function UnifiedFeedPanel({
             </button>
             <button
               onClick={scrollToBottom}
-              className="px-4 py-2 text-sm rounded-md border bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 text-sm rounded-md transition-colors bg-indigo-600 hover:bg-indigo-500 text-white border-transparent shadow-sm hover:shadow"
             >
               Jump to bottom
             </button>
