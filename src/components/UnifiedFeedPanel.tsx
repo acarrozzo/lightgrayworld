@@ -335,6 +335,7 @@ export default function UnifiedFeedPanel({
   const [actionsSubFilter, setActionsSubFilter] = useState<ActionsSubFilter>('all-actions')
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE)
   const [isNearBottom, setIsNearBottom] = useState(true)
+  const [isScrollable, setIsScrollable] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const prevIsOpenRef = useRef(isOpen)
@@ -549,7 +550,7 @@ export default function UnifiedFeedPanel({
 
   const canLoadMore = visibleCount < filteredEntries.length
   const trimmedCustomAction = customAction.trim()
-  const showUnreadNotice = !isNearBottom && unreadCount > 0
+  const showUnreadNotice = !isNearBottom && unreadCount > 0 && isScrollable
   
   // Character count validation for chat modes
   const isChatMode = inputMode === 'world' || inputMode === 'room'
@@ -557,29 +558,38 @@ export default function UnifiedFeedPanel({
   const isOverLimit = isChatMode && charCount > MESSAGE_MAX_LENGTH
   const isSubmitDisabled = Boolean(isLoadingRoom) || trimmedCustomAction.length === 0 || isOverLimit
 
-  const scrollToBottom = useCallback(() => {
-    const container = listRef.current
-    if (container) {
-      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
-    }
-  }, [])
-
-  const scrollToTop = useCallback(() => {
-    const container = listRef.current
-    if (container) {
-      container.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-  }, [])
-
   const handleScroll = useCallback(() => {
     const container = listRef.current
     if (!container) return
+
+    const hasOverflow = container.scrollHeight > container.clientHeight
+    setIsScrollable(hasOverflow)
 
     const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight)
     const nearBottom = distanceFromBottom < 120
     setIsNearBottom(nearBottom)
     if (nearBottom) {
       setUnreadCount(0)
+    }
+  }, [])
+
+  const scrollToBottom = useCallback(() => {
+    const container = listRef.current
+    if (container) {
+      // Immediately reset unread count when jumping to bottom
+      setUnreadCount(0)
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+      // Ensure scroll handler runs after smooth scroll completes
+      setTimeout(() => {
+        handleScroll()
+      }, 300)
+    }
+  }, [handleScroll])
+
+  const scrollToTop = useCallback(() => {
+    const container = listRef.current
+    if (container) {
+      container.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }, [])
 
@@ -634,6 +644,14 @@ export default function UnifiedFeedPanel({
     
     prevIsOpenRef.current = isOpen
   }, [isOpen, scrollToBottom])
+
+  // Update scrollability when visible content changes
+  useEffect(() => {
+    // Use requestAnimationFrame to ensure DOM has updated
+    requestAnimationFrame(() => {
+      handleScroll()
+    })
+  }, [visibleEntries, handleScroll])
 
   const handleFilterChange = (next: FilterType) => {
     setFilter(next)
