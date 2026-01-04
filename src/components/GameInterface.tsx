@@ -2334,6 +2334,13 @@ export default function GameInterface() {
                 activeTab={centerActiveTab}
                 onTabChange={(tabId) => {
                   setCenterActiveTab(tabId || 'explore')
+                  
+                  // When map tab is opened, default to the player's current map
+                  if (tabId === 'map' && currentRoom?.roomId) {
+                    const mapIdForCurrentRoom = getMapIdForRoom(currentRoom.roomId)
+                    setCurrentMapId(mapIdForCurrentRoom)
+                  }
+                  
                   // Clear inventory filter when switching away from inventory tab
                   if (tabId !== 'inventory') {
                     setInventoryFilter(undefined)
