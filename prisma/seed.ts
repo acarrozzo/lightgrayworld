@@ -358,11 +358,12 @@ async function main() {
       up: null,
       down: null,
       northeast: null,
-      northwest: null,
+      northwest: '000',
       southeast: '001',
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { northwest: 'blue-400'}
     },
     {
       roomId: '021',

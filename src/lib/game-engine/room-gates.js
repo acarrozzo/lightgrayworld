@@ -34,6 +34,25 @@ const ROOM_GATES = {
       },
     },
   },
+  '020': {
+    'northwest': {
+      check: async (playerId) => {
+        const user = await prisma.user.findUnique({
+          where: { id: playerId },
+          select: { wings: true },
+        })
+        return user?.wings >= 1
+      },
+      message: "The path ahead is too treacherous. You need the ability to fly to traverse this route.",
+      modalContent: {
+        title: 'The path is blocked',
+        type: 'icon',
+        icon: 'mountain',
+        iconColor: 'gray-600',
+        message: "The path ahead is too treacherous. You need the ability to fly to traverse this route.",
+      },
+    },
+  },
 }
 
 /**

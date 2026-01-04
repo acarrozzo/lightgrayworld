@@ -51,6 +51,9 @@ const CLIENT_ROOM_GATES: Record<string, Record<string, boolean>> = {
   '004': {
     'west': true,
   },
+  '020': {
+    'northwest': true,
+  },
 }
 
 /**
