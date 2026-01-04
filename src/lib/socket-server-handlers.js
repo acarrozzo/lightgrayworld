@@ -418,12 +418,16 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       }
 
       try {
-        // Fetch both rooms to calculate direction
-        const [sourceRoom, destinationRoom] = await Promise.all([
-          fetchRoomWithColors(prisma, fromRoom),
-          fetchRoomWithColors(prisma, toRoom),
-        ])
+        // Fetch source room (needed for direction calculation)
+        const sourceRoom = await fetchRoomWithColors(prisma, fromRoom)
 
+        // Ensure auto-respawn items exist in the destination room FIRST
+        // This may create items in the database, so we fetch destination room after
+        const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service')
+        await ensureAutoRespawnItems(toRoom)
+
+        // Fetch destination room ONCE (includes any newly created items from ensureAutoRespawnItems)
+        const destinationRoom = await fetchRoomWithColors(prisma, toRoom)
         if (!destinationRoom) {
           console.log(`[Socket] player-move - Destination room ${toRoom} not found`)
           emitActionFeedback(socket, {
@@ -434,36 +438,21 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
           return
         }
 
-        // Ensure auto-respawn items exist in the destination room
-        const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service')
-        await ensureAutoRespawnItems(toRoom)
-        // Re-fetch room data to include any respawned items
-        const updatedDestinationRoom = await fetchRoomWithColors(prisma, toRoom)
-        if (!updatedDestinationRoom) {
-          console.log(`[Socket] player-move - Failed to fetch updated room ${toRoom} after respawn check`)
-          emitActionFeedback(socket, {
-            action: 'move',
-            message: 'Failed to load destination room',
-            outcome: 'failure',
-          })
-          return
-        }
-
-        // Use the updated room data which includes respawned items
+        // Use the room data which includes respawned items
         const normalizedRoomData = {
-          ...updatedDestinationRoom,
-          players: Array.isArray(updatedDestinationRoom.players) ? updatedDestinationRoom.players : [],
-          items: Array.isArray(updatedDestinationRoom.items) ? updatedDestinationRoom.items : [],
-          npcs: Array.isArray(updatedDestinationRoom.npcs) ? updatedDestinationRoom.npcs : [],
+          ...destinationRoom,
+          players: Array.isArray(destinationRoom.players) ? destinationRoom.players : [],
+          items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
+          npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
         }
-        const toRoomName = updatedDestinationRoom.name
+        const toRoomName = destinationRoom.name
 
         // Calculate direction from source room to destination
         const direction = sourceRoom ? findDirectionKey(sourceRoom, toRoom) : null
 
         // Calculate directions for entry/exit notifications
         const exitDirection = sourceRoom ? findDirectionKey(sourceRoom, toRoom) : null
-        const entryDirection = updatedDestinationRoom ? findDirectionKey(updatedDestinationRoom, fromRoom) : null
+        const entryDirection = destinationRoom ? findDirectionKey(destinationRoom, fromRoom) : null
 
         console.log(`[Socket] Calling gameEngine.processUserAction for ${player.username}`)
         const result = await gameEngine.processUserAction({
@@ -486,9 +475,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
 
           // Save entry/exit messages to database
           try {
-            // Fetch both rooms for direction finding
-            const fromRoomData = await fetchRoomWithColors(prisma, fromRoom)
-            const toRoomData = await fetchRoomWithColors(prisma, toRoom)
+            // Reuse already-fetched rooms (sourceRoom and destinationRoom) instead of fetching again
+            const fromRoomData = sourceRoom
+            const toRoomData = destinationRoom
 
             if (fromRoomData && toRoomData) {
               // Exit message for the room being left
