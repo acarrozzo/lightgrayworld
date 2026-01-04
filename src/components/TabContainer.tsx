@@ -337,48 +337,53 @@ export default function TabContainer({
         {/* Centered tabs */}
         <div ref={tabsContainerRef} className="flex-1 flex items-center justify-center gap-2 flex-nowrap">
           {/* Render visible tabs */}
-          {visibleTabs.map((tab) => {
+          {visibleTabs.map((tab, index) => {
             const isActive = activeTab === tab.id
+            const isFirstExploreTab = index === 0 && tab.id === 'explore'
             return (
-              <button
-                key={tab.id}
-                ref={(el) => {
-                  if (el) {
-                    tabRefs.current.set(tab.id, el)
-                  } else {
-                    tabRefs.current.delete(tab.id)
-                  }
-                }}
-                onClick={() => handleTabChange(tab.id)}
-                className={`${buttonPadding} h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 ${getButtonColorClasses(tab, isActive)}`}
-              >
-                {tab.icon && (
-                  typeof tab.icon === 'string' ? (
-                    <Icon 
-                      name={tab.icon} 
-                      size={14} 
-                      color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color === 'sky' ? 'sky' : tab.color)} 
-                      className={tab.label ? "mr-1" : ""} 
-                    />
-                  ) : (
-                    <span className={`${tab.label ? "mr-1" : ""} ${getIconColorClass(tab, isActive)}`}>
-                      {React.cloneElement(tab.icon as React.ReactElement<any>, {
-                        className: `${getIconColorClass(tab, isActive)} ${((tab.icon as React.ReactElement<any>).props as any)?.className || ''}`.trim()
-                      })}
+              <React.Fragment key={tab.id}>
+                <button
+                  ref={(el) => {
+                    if (el) {
+                      tabRefs.current.set(tab.id, el)
+                    } else {
+                      tabRefs.current.delete(tab.id)
+                    }
+                  }}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`${buttonPadding} h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 ${getButtonColorClasses(tab, isActive)}`}
+                >
+                  {tab.icon && (
+                    typeof tab.icon === 'string' ? (
+                      <Icon 
+                        name={tab.icon} 
+                        size={14} 
+                        color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color === 'sky' ? 'sky' : tab.color)} 
+                        className={tab.label ? "mr-1" : ""} 
+                      />
+                    ) : (
+                      <span className={`${tab.label ? "mr-1" : ""} ${getIconColorClass(tab, isActive)}`}>
+                        {React.cloneElement(tab.icon as React.ReactElement<any>, {
+                          className: `${getIconColorClass(tab, isActive)} ${((tab.icon as React.ReactElement<any>).props as any)?.className || ''}`.trim()
+                        })}
+                      </span>
+                    )
+                  )}
+                  {tab.label}
+                  {tab.badge && (
+                    <span className={`absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center ${
+                      typeof tab.badge === 'number' 
+                        ? 'min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white' 
+                        : 'w-2 h-2'
+                    }`}>
+                      {typeof tab.badge === 'number' && tab.badge > 0 ? (tab.badge > 99 ? '99+' : tab.badge) : ''}
                     </span>
-                  )
+                  )}
+                </button>
+                {isFirstExploreTab && (
+                  <span className="w-1 h-1 rounded-full bg-gray-600 flex-shrink-0" aria-hidden="true" />
                 )}
-                {tab.label}
-                {tab.badge && (
-                  <span className={`absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center ${
-                    typeof tab.badge === 'number' 
-                      ? 'min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white' 
-                      : 'w-2 h-2'
-                  }`}>
-                    {typeof tab.badge === 'number' && tab.badge > 0 ? (tab.badge > 99 ? '99+' : tab.badge) : ''}
-                  </span>
-                )}
-              </button>
+              </React.Fragment>
             )
           })}
           
