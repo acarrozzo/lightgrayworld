@@ -14,7 +14,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, MessageSquareText, ArrowRight, Map, X } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, MessageSquareText, ArrowRight, Map, X, MessagesSquare, Users, Sword } from 'lucide-react'
 import MapContent, { type MapOption } from './MapContent'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
@@ -29,6 +29,7 @@ import NotificationContainer from './NotificationContainer'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
+import UsersDisplay from './UsersDisplay'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -2241,31 +2242,69 @@ export default function GameInterface() {
                         >
                           <X size={20} />
                         </button>
-                        <div className="space-y-4 p-4 sm:p-6">
-                          <h3 className="text-lg font-semibold text-white">Chat</h3>
-                          <div className="text-gray-400 text-sm mb-4">
-                            To use world chat or room chat, use the world feed panel to the right.
+                        <div className="space-y-6 p-4 sm:p-6">
+                          <div>
+                            <h3 className="text-lg font-semibold text-white">Chat</h3>
+                            <p className="text-gray-400 text-sm leading-relaxed mt-2">
+                              Access all communication and game actions through the world feed panel on the right.
+                            </p>
                           </div>
+                          
                           <button
                             onClick={handleOpenWorldChat}
-                            className="px-4 py-2 bg-purple-600/90 hover:bg-purple-500/90 text-white border border-purple-500/50 rounded-lg transition-all duration-200 shadow-sm hover:shadow font-medium flex items-center gap-2"
+                            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl font-medium flex items-center gap-2 group"
                           >
+                            <MessageSquare size={16} />
                             <span>Open World Chat</span>
-                            <ArrowRight size={16} />
+                            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                           </button>
-                          <div className="mt-6 space-y-3 text-sm text-gray-400">
-                            <div>
-                              <div className="font-semibold text-gray-300 mb-1">Shout (World Chat)</div>
-                              <div className="text-xs">Use the right column's "World Chat" input mode to broadcast messages to all players.</div>
+
+                          <div className="flex flex-col md:flex-row gap-3 pt-2">
+                            <div className="p-3 rounded-lg bg-gray-800/30 border border-gray-700/30 hover:border-gray-600/40 transition-colors flex-1">
+                              <div className="flex items-start gap-2.5">
+                                <div className="p-1.5 rounded-md bg-purple-500/8 border border-purple-500/15 flex-shrink-0">
+                                  <MessagesSquare size={16} className="text-purple-400/80" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-gray-300 mb-1 text-sm">Shout (World Chat)</div>
+                                  <div className="text-xs text-gray-500 leading-relaxed">
+                                    Broadcast messages to all players using the "World Chat" input mode in the right panel.
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="font-semibold text-gray-300 mb-1">Say (Room Chat)</div>
-                              <div className="text-xs">Use the right column's "Room Chat" input mode to speak to players in your current room.</div>
+
+                            <div className="p-3 rounded-lg bg-gray-800/30 border border-gray-700/30 hover:border-gray-600/40 transition-colors flex-1">
+                              <div className="flex items-start gap-2.5">
+                                <div className="p-1.5 rounded-md bg-blue-500/8 border border-blue-500/15 flex-shrink-0">
+                                  <Users size={16} className="text-blue-400/80" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-gray-300 mb-1 text-sm">Say (Room Chat)</div>
+                                  <div className="text-xs text-gray-500 leading-relaxed">
+                                    Communicate with players in your current room using the "Room Chat" input mode.
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="font-semibold text-gray-300 mb-1">Take Action</div>
-                              <div className="text-xs">Use the right column's "Action" input mode to perform game actions like "look", "pick redberry", etc.</div>
+
+                            <div className="p-3 rounded-lg bg-gray-800/30 border border-gray-700/30 hover:border-gray-600/40 transition-colors flex-1">
+                              <div className="flex items-start gap-2.5">
+                                <div className="p-1.5 rounded-md bg-amber-500/8 border border-amber-500/15 flex-shrink-0">
+                                  <Sword size={16} className="text-amber-400/80" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-gray-300 mb-1 text-sm">Take Action</div>
+                                  <div className="text-xs text-gray-500 leading-relaxed">
+                                    Perform custom game actions like "examine cabin" or "attack guard" using the "Action" input mode.
+                                  </div>
+                                </div>
+                              </div>
                             </div>
+                          </div>
+                          
+                          <div className="border-t border-gray-700/50 pt-6">
+                            <UsersDisplay />
                           </div>
                         </div>
                       </div>
