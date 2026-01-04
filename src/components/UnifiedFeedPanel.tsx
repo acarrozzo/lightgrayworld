@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Globe, MessageSquare, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, ChevronRight, Settings as SettingsIcon, Zap, Check, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Globe, MessageSquare, MessageSquareText, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, ChevronRight, Settings as SettingsIcon, Zap, Check, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import Icon from './Icon'
@@ -659,7 +659,7 @@ export default function UnifiedFeedPanel({
     <div className="rightColumnInner flex flex-col h-full">
       <div className="worldFeedHeader flex items-center justify-between px-4 py-4 border-b border-gray-800/60 bg-gray-900/80">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-semibold text-gray-100">World</span>
+          <span className="text-sm font-semibold text-gray-100">World Feed</span>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-red-500'}`} />
             <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
@@ -683,7 +683,7 @@ export default function UnifiedFeedPanel({
               title={isOpen ? 'Close' : 'Open'}
               aria-label={isOpen ? 'Close world panel' : 'Open world panel'}
             >
-              <Icon name="world" size={14} color="blue" />
+              <MessageSquareText size={14} className="text-blue-500" />
               <ChevronRight size={14} className="ml-0.5" />
             </button>
           )}

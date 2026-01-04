@@ -14,7 +14,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, ArrowRight, Map, X } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, MessageSquareText, ArrowRight, Map, X } from 'lucide-react'
 import MapContent, { type MapOption } from './MapContent'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
@@ -2080,7 +2080,7 @@ export default function GameInterface() {
                       aria-label="Open world panel"
                     >
                       <ChevronLeft size={14} className="mr-0.5" />
-                      <Icon name="world" size={14} color="blue" />
+                      <MessageSquareText size={14} className="text-blue-500" />
                       {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
                           {unreadCount > 99 ? '99+' : unreadCount}
@@ -2163,6 +2163,13 @@ export default function GameInterface() {
                           onAction={handleAction}
                           initialFilter={inventoryFilter}
                           newItemIds={newItemIds}
+                          onClearNewItem={(itemId) => {
+                            setNewItemIds(prev => {
+                              const updated = new Set(prev)
+                              updated.delete(itemId)
+                              return updated
+                            })
+                          }}
                         />
                       </div>
                     ),
@@ -2291,8 +2298,7 @@ export default function GameInterface() {
                   // Clear inventory filter when switching away from inventory tab
                   if (tabId !== 'inventory') {
                     setInventoryFilter(undefined)
-                  } else {
-                    // Clear new items badge when inventory tab is opened
+                    // Clear new items badge when leaving inventory tab
                     setNewItemIds(new Set())
                   }
                 }}
