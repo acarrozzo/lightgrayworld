@@ -16,6 +16,7 @@ interface InventoryDisplayProps {
   inventory: InventoryItem[]
   onAction?: (action: string | { type: string; data?: any }) => void
   newItemIds?: Set<string>
+  onClearNewItem?: (itemId: string) => void
   showNewItems?: boolean
   showHeading?: boolean
   tabsPadding?: boolean
@@ -114,6 +115,7 @@ export default function InventoryDisplay({
   inventory,
   onAction,
   newItemIds = new Set<string>(),
+  onClearNewItem,
   showNewItems = true,
   showHeading = true,
   tabsPadding = true,
@@ -428,12 +430,13 @@ export default function InventoryDisplay({
                                 {/* Unequip button - show if item is equipped */}
                                 {item.isEquipped && (
                                   <button
-                                    onClick={() =>
+                                    onClick={() => {
+                                      onClearNewItem?.(item.id)
                                       onAction?.({
                                         type: 'unequip_item',
                                         data: { playerItemId: item.id },
                                       })
-                                    }
+                                    }}
                                     className="px-3 py-1.5 text-sm font-semibold text-white bg-red-600/80 hover:bg-red-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
                                   >
                                     <Icon name="equipment-shortsword" size={12} color="current" />
@@ -443,12 +446,13 @@ export default function InventoryDisplay({
                                 {/* Equip button - show if item has equipSlot and is not already equipped */}
                                 {item.template.equipSlot !== null && !item.isEquipped && (
                                   <button
-                                    onClick={() =>
+                                    onClick={() => {
+                                      onClearNewItem?.(item.id)
                                       onAction?.({
                                         type: 'equip_item',
                                         data: { playerItemId: item.id },
                                       })
-                                    }
+                                    }}
                                     className="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600/80 hover:bg-blue-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
                                   >
                                     <Icon name="equipment-shortsword" size={12} color="current" />
@@ -458,12 +462,13 @@ export default function InventoryDisplay({
                                 {itemActions.map((itemAction) => (
                                   <button
                                     key={itemAction.action}
-                                    onClick={() =>
+                                    onClick={() => {
+                                      onClearNewItem?.(item.id)
                                       onAction?.({
                                         type: 'use_item',
                                         data: { playerItemId: item.id, action: itemAction.action },
                                       })
-                                    }
+                                    }}
                                     className={`px-3 py-1.5 rounded-md text-sm font-semibold text-white transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md ${
                                       itemAction.className || 'bg-indigo-600/80 hover:bg-indigo-600'
                                     }`}
@@ -488,24 +493,27 @@ export default function InventoryDisplay({
                                 )}
                                 <InventoryDropButton
                                   item={item}
-                                  onDrop={(quantity) =>
+                                  onDrop={(quantity) => {
+                                    onClearNewItem?.(item.id)
                                     onAction?.({
                                       type: 'drop_item',
                                       data: { playerItemId: item.id, quantity },
                                     })
-                                  }
-                                  onExamine={() =>
+                                  }}
+                                  onExamine={() => {
+                                    onClearNewItem?.(item.id)
                                     onAction?.({
                                       type: 'examine_player_item',
                                       data: { playerItemId: item.id },
                                     })
-                                  }
-                                  onItemAction={(action) =>
+                                  }}
+                                  onItemAction={(action) => {
+                                    onClearNewItem?.(item.id)
                                     onAction?.({
                                       type: 'use_item',
                                       data: { playerItemId: item.id, action },
                                     })
-                                  }
+                                  }}
                                 />
                               </div>
                             </div>
@@ -598,12 +606,13 @@ export default function InventoryDisplay({
                       {/* Unequip button - show if item is equipped */}
                       {item.isEquipped && (
                         <button
-                          onClick={() =>
+                          onClick={() => {
+                            onClearNewItem?.(item.id)
                             onAction?.({
                               type: 'unequip_item',
                               data: { playerItemId: item.id },
                             })
-                          }
+                          }}
                           className="px-3 py-1.5 text-sm font-semibold text-white bg-red-600/80 hover:bg-red-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
                         >
                           <Icon name="equipment-shortsword" size={12} color="current" />
@@ -613,12 +622,13 @@ export default function InventoryDisplay({
                       {/* Equip button - show if item has equipSlot and is not already equipped */}
                       {item.template.equipSlot !== null && !item.isEquipped && (
                         <button
-                          onClick={() =>
+                          onClick={() => {
+                            onClearNewItem?.(item.id)
                             onAction?.({
                               type: 'equip_item',
                               data: { playerItemId: item.id },
                             })
-                          }
+                          }}
                           className="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600/80 hover:bg-blue-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
                         >
                           <Icon name="equipment-shortsword" size={12} color="current" />
@@ -628,12 +638,13 @@ export default function InventoryDisplay({
                       {itemActions.map((itemAction) => (
                         <button
                           key={itemAction.action}
-                          onClick={() =>
+                          onClick={() => {
+                            onClearNewItem?.(item.id)
                             onAction?.({
                               type: 'use_item',
                               data: { playerItemId: item.id, action: itemAction.action },
                             })
-                          }
+                          }}
                           className={`px-3 py-1.5 rounded-md text-sm font-semibold text-white transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md ${
                             itemAction.className || 'bg-indigo-600/80 hover:bg-indigo-600'
                           }`}
@@ -658,24 +669,27 @@ export default function InventoryDisplay({
                       )}
                       <InventoryDropButton
                         item={item}
-                        onDrop={(quantity) =>
+                        onDrop={(quantity) => {
+                          onClearNewItem?.(item.id)
                           onAction?.({
                             type: 'drop_item',
                             data: { playerItemId: item.id, quantity },
                           })
-                        }
-                        onExamine={() =>
+                        }}
+                        onExamine={() => {
+                          onClearNewItem?.(item.id)
                           onAction?.({
                             type: 'examine_player_item',
                             data: { playerItemId: item.id },
                           })
-                        }
-                        onItemAction={(action) =>
+                        }}
+                        onItemAction={(action) => {
+                          onClearNewItem?.(item.id)
                           onAction?.({
                             type: 'use_item',
                             data: { playerItemId: item.id, action },
                           })
-                        }
+                        }}
                       />
                     </div>
                   </div>

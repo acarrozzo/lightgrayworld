@@ -69,14 +69,14 @@ const CATEGORY_STYLES: Record<'room' | 'world' | 'action', CategoryStyle> = {
   room: {
     label: 'ROOM',
     icon: MessageSquare,
-    barClass: 'bg-indigo-500',
+    barClass: 'bg-indigo-600',
     iconClass: 'text-indigo-300',
   },
   world: {
     label: 'WORLD',
     icon: MessageSquare,
-    barClass: 'bg-blue-400',
-    iconClass: 'text-blue-400',
+    barClass: 'bg-emerald-500',
+    iconClass: 'text-emerald-300',
   },
   action: {
     label: 'ACT',
@@ -860,7 +860,7 @@ export default function UnifiedFeedPanel({
 
         {/* Sub-filters */}
         {filter === 'chat' && (
-          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-indigo-500/30">
+          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-indigo-600/25">
             {(['all-chat', 'world-chat', 'room-chat'] as ChatSubFilter[]).map((subKey) => {
               const isActive = chatSubFilter === subKey
               const labelMap: Record<ChatSubFilter, string> = {
@@ -878,7 +878,7 @@ export default function UnifiedFeedPanel({
                   }}
                   className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md ${
                     isActive
-                      ? 'border-1 border-indigo-400 hover:border-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
+                      ? 'border-1 border-indigo-500 hover:border-indigo-400 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300'
                       : 'border-1 border-gray-700 hover:border-gray-600 bg-transparent hover:bg-gray-800/30 text-gray-500 hover:text-gray-400'
                   }`}
                 >
@@ -1033,11 +1033,11 @@ export default function UnifiedFeedPanel({
             if (isGroupedRoomChat(item)) {
               const { roomId, entries, isCurrentRoom } = item
               const groupBgClass = isCurrentRoom 
-                ? 'bg-indigo-950/30 border-indigo-500/20' 
-                : 'bg-indigo-950/20 border-indigo-600/15'
+                ? 'bg-indigo-950/30 border-indigo-600/20' 
+                : 'bg-indigo-950/20 border-indigo-700/15'
               const headerBgClass = isCurrentRoom
-                ? 'bg-indigo-950/50 border-indigo-500/30'
-                : 'bg-indigo-950/40 border-indigo-600/25'
+                ? 'bg-indigo-950/50 border-indigo-600/30'
+                : 'bg-indigo-950/40 border-indigo-700/25'
               const headerTextClass = isCurrentRoom
                 ? 'text-indigo-300'
                 : 'text-indigo-400'
@@ -1067,23 +1067,23 @@ export default function UnifiedFeedPanel({
                       
                       const chatBubbleClass = isCurrentRoom
                         ? isSelf
-                          ? 'bg-indigo-500/85 text-indigo-50 border border-indigo-400/60'
-                          : 'bg-indigo-500/50 text-indigo-100 border border-indigo-500/40'
+                          ? 'bg-indigo-600/70 text-indigo-50 border border-indigo-600/50'
+                          : 'bg-indigo-600/40 text-indigo-100 border border-indigo-700/35'
                         : isSelf
-                        ? 'bg-indigo-600/60 text-indigo-50 border border-indigo-500/40'
-                        : 'bg-indigo-700/40 text-indigo-200 border border-indigo-600/30'
+                        ? 'bg-indigo-700/50 text-indigo-50 border border-indigo-700/40'
+                        : 'bg-indigo-800/35 text-indigo-200 border border-indigo-800/30'
                       
                       const borderColorClass = isCurrentRoom
-                        ? isSelf ? 'bg-indigo-500' : 'bg-indigo-500'
-                        : isSelf ? 'bg-indigo-600' : 'bg-indigo-700'
+                        ? isSelf ? 'bg-indigo-600' : 'bg-indigo-600'
+                        : isSelf ? 'bg-indigo-700' : 'bg-indigo-800'
                       
                       const avatarBgClass = isCurrentRoom
-                        ? isSelf ? 'bg-indigo-500/80' : 'bg-indigo-500/80'
-                        : isSelf ? 'bg-indigo-600/80' : 'bg-indigo-700/80'
+                        ? isSelf ? 'bg-indigo-600/70' : 'bg-indigo-600/70'
+                        : isSelf ? 'bg-indigo-700/70' : 'bg-indigo-800/70'
                       
                       const avatarBorderClass = isCurrentRoom
-                        ? isSelf ? 'border-indigo-400/50' : 'border-indigo-500/50'
-                        : isSelf ? 'border-indigo-500/50' : 'border-indigo-600/50'
+                        ? isSelf ? 'border-indigo-600/45' : 'border-indigo-700/45'
+                        : isSelf ? 'border-indigo-700/45' : 'border-indigo-800/45'
                       
                       const chatContainerClass = isSelf ? 'flex justify-end' : 'flex justify-start'
                       const avatarInitial = (actorLabel.charAt(0) || '?').toUpperCase()
@@ -1163,37 +1163,37 @@ export default function UnifiedFeedPanel({
               const isRoomChat = entry.type === 'room'
               const isCurrentRoom = isRoomChat && entry.roomId === currentRoomId
               
-              // World chat gets blue, room chat gets indigo for self, gray for others
-              // Current room messages are lighter/more vibrant, other rooms are darker/muted
+              // World chat gets very subtle emerald-tinted backgrounds with stronger borders (global)
+              // Room chat gets indigo (local/intimate). Self messages have more contrast.
               const chatBubbleClass = isWorldChat
                 ? isSelf
-                  ? 'bg-blue-500/85 text-blue-50 border border-blue-400/60'
-                  : 'bg-blue-500/50 text-blue-100 border border-blue-500/40'
+                  ? 'bg-emerald-950/60 text-emerald-50 border border-emerald-500/80'
+                  : 'bg-emerald-950/35 text-emerald-100 border border-emerald-600/50'
                 : isCurrentRoom
                 ? isSelf
-                  ? 'bg-indigo-500/85 text-indigo-50 border border-indigo-400/60'
-                  : 'bg-indigo-500/50 text-indigo-100 border border-indigo-500/40'
+                  ? 'bg-indigo-600/75 text-indigo-50 border border-indigo-600/55'
+                  : 'bg-indigo-600/40 text-indigo-100 border border-indigo-700/35'
                 : isSelf
-                ? 'bg-indigo-600/60 text-indigo-50 border border-indigo-500/40'
-                : 'bg-indigo-700/40 text-indigo-200 border border-indigo-600/30'
+                ? 'bg-indigo-700/55 text-indigo-50 border border-indigo-700/45'
+                : 'bg-indigo-800/35 text-indigo-200 border border-indigo-800/30'
               
               const borderColorClass = isWorldChat
-                ? isSelf ? 'bg-blue-500' : 'bg-blue-500'
+                ? isSelf ? 'bg-emerald-500' : 'bg-emerald-500'
                 : isCurrentRoom
-                ? isSelf ? 'bg-indigo-500' : 'bg-indigo-500'
-                : isSelf ? 'bg-indigo-600' : 'bg-indigo-700'
+                ? isSelf ? 'bg-indigo-600' : 'bg-indigo-600'
+                : isSelf ? 'bg-indigo-700' : 'bg-indigo-800'
               
               const avatarBgClass = isWorldChat
-                ? isSelf ? 'bg-blue-500/80' : 'bg-blue-500/80'
+                ? isSelf ? 'bg-emerald-500/75' : 'bg-emerald-500/75'
                 : isCurrentRoom
-                ? isSelf ? 'bg-indigo-500/80' : 'bg-indigo-500/80'
-                : isSelf ? 'bg-indigo-600/80' : 'bg-indigo-700/80'
+                ? isSelf ? 'bg-indigo-600/70' : 'bg-indigo-600/70'
+                : isSelf ? 'bg-indigo-700/70' : 'bg-indigo-800/70'
               
               const avatarBorderClass = isWorldChat
-                ? isSelf ? 'border-blue-400/50' : 'border-blue-500/50'
+                ? isSelf ? 'border-emerald-500/50' : 'border-emerald-600/50'
                 : isCurrentRoom
-                ? isSelf ? 'border-indigo-400/50' : 'border-indigo-500/50'
-                : isSelf ? 'border-indigo-500/50' : 'border-indigo-600/50'
+                ? isSelf ? 'border-indigo-600/45' : 'border-indigo-700/45'
+                : isSelf ? 'border-indigo-700/45' : 'border-indigo-800/45'
               
               const chatContainerClass = isSelf ? 'flex justify-end' : 'flex justify-start'
               const avatarInitial = (actorLabel.charAt(0) || '?').toUpperCase()
@@ -1332,7 +1332,7 @@ export default function UnifiedFeedPanel({
                 inactive: 'border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300',
               },
               room: {
-                active: 'border-indigo-500 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300',
+                active: 'border-indigo-600 hover:border-indigo-500 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300',
                 inactive: 'border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300',
               },
               world: {
