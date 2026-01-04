@@ -45,34 +45,6 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, st
                 <span className="text-blue-400">{mp}/{mpMax}</span>
               )}
             </div>
-            
-            {/* Stats group */}
-            <div className="hidden md:flex items-center gap-2">
-              {strMod !== undefined && (
-                <span>
-                  <span className="text-gray-500">STR </span>
-                  <span className="text-red-400">{strMod}</span>
-                </span>
-              )}
-              {dexMod !== undefined && (
-                <span>
-                  <span className="text-gray-500">DEX </span>
-                  <span className="text-green-400">{dexMod}</span>
-                </span>
-              )}
-              {magMod !== undefined && (
-                <span>
-                  <span className="text-gray-500">MAG </span>
-                  <span className="text-blue-400">{magMod}</span>
-                </span>
-              )}
-              {defMod !== undefined && (
-                <span>
-                  <span className="text-gray-500">DEF </span>
-                  <span className="text-yellow-400">{defMod}</span>
-                </span>
-              )}
-            </div>
           </div>
         )}
         
@@ -82,8 +54,36 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, st
           <span className="text-[10px] text-gray-500 font-normal">v0.1.4</span>
         </div>
         
-        {/* Right side - Empty for balance */}
-        <div className="flex-1" />
+        {/* Right side - Stats */}
+        <div className="flex-1 flex justify-end text-xs">
+          {/* Stats group */}
+          <div className="hidden md:flex items-center gap-2">
+            {strMod !== undefined && (
+              <>
+                <span className="text-gray-500 hidden lg:inline">STR </span>
+                <span className="text-red-400">{strMod}</span>
+              </>
+            )}
+            {dexMod !== undefined && (
+              <>
+                <span className="text-gray-500 hidden lg:inline">DEX </span>
+                <span className="text-green-400">{dexMod}</span>
+              </>
+            )}
+            {magMod !== undefined && (
+              <>
+                <span className="text-gray-500 hidden lg:inline">MAG </span>
+                <span className="text-blue-400">{magMod}</span>
+              </>
+            )}
+            {defMod !== undefined && (
+              <>
+                <span className="text-gray-500 hidden lg:inline">DEF </span>
+                <span className="text-yellow-400">{defMod}</span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </header>
   )
