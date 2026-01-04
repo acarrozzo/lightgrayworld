@@ -2223,41 +2223,37 @@ export default function GameInterface() {
             <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
               <TabContainer
                 leftElement={
-                  !leftSidebarOpen && (
-                    <button
-                      onClick={() => setLeftSidebarOpen(true)}
-                      className="group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
-                      title="Open character panel"
-                      aria-label="Open character panel"
-                    >
-                      <Icon name="character" size={14} color="purple" />
-                      <span className="opacity-0 -translate-x-2 max-w-0 overflow-hidden transition-all duration-200 md:group-hover:opacity-100 md:group-hover:translate-x-0 md:group-hover:max-w-[100px] whitespace-nowrap ml-1">
-                        Character
-                      </span>
-                      <ChevronRight size={14} className="ml-0.5" />
-                    </button>
-                  )
+                  <button
+                    onClick={() => setLeftSidebarOpen(true)}
+                    className={`group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${leftSidebarOpen ? 'md:hidden' : ''}`}
+                    title="Open character panel"
+                    aria-label="Open character panel"
+                  >
+                    <Icon name="character" size={14} color="purple" />
+                    <span className="opacity-0 -translate-x-2 max-w-0 overflow-hidden transition-all duration-200 md:group-hover:opacity-100 md:group-hover:translate-x-0 md:group-hover:max-w-[100px] whitespace-nowrap ml-1">
+                      Character
+                    </span>
+                    <ChevronRight size={14} className="ml-0.5" />
+                  </button>
                 }
                 rightElement={
-                  !rightSidebarOpen && (
-                    <button
-                      onClick={() => setRightSidebarOpen(true)}
-                      className="group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
-                      title="Open world panel"
-                      aria-label="Open world panel"
-                    >
-                      <ChevronLeft size={14} className="mr-0.5" />
-                      <span className="opacity-0 translate-x-2 max-w-0 overflow-hidden transition-all duration-200 md:group-hover:opacity-100 md:group-hover:translate-x-0 md:group-hover:max-w-[120px] whitespace-nowrap">
-                        World Feed
+                  <button
+                    onClick={() => setRightSidebarOpen(true)}
+                    className={`group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${rightSidebarOpen ? 'md:hidden' : ''}`}
+                    title="Open world panel"
+                    aria-label="Open world panel"
+                  >
+                    <ChevronLeft size={14} className="mr-0.5" />
+                    <span className="opacity-0 translate-x-2 max-w-0 overflow-hidden transition-all duration-200 md:group-hover:opacity-100 md:group-hover:translate-x-0 md:group-hover:max-w-[120px] whitespace-nowrap">
+                      World Feed
+                    </span>
+                    <MessageSquareText size={14} className="text-blue-500 ml-1" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
+                        {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
-                      <MessageSquareText size={14} className="text-blue-500 ml-1" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
-                          {unreadCount > 99 ? '99+' : unreadCount}
-                        </span>
-                      )}
-                    </button>
-                  )
+                    )}
+                  </button>
                 }
                 tabs={[
                   {

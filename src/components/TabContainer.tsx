@@ -124,6 +124,17 @@ export default function TabContainer({
       }
     }
 
+    // Subtract the last gap (we added gap after every tab, but last tab doesn't need one)
+    if (tabWidths.length > 0) {
+      totalWidth -= gap
+    }
+
+    // Account for bullet point separator after explore tab (if first tab is explore)
+    if (tabs.length > 0 && tabs[0].id === 'explore') {
+      const bulletWidth = 4  // w-1 = 0.25rem = 4px
+      totalWidth += bulletWidth + gap  // bullet + gap = 12px total
+    }
+
     // Get available width for the tabs container
     const containerRect = container.getBoundingClientRect()
     const availableWidth = containerRect.width
@@ -144,7 +155,8 @@ export default function TabContainer({
     }
 
     // If all tabs fit without needing dropdown, show them all
-    if (totalWidth <= availableWidth && tabWidths.length === tabs.length) {
+    // Use < with small buffer to account for rounding
+    if (totalWidth < availableWidth - 2 && tabWidths.length === tabs.length) {
       setVisibleTabs(tabs)
       setDropdownTabs([])
       return
@@ -164,12 +176,15 @@ export default function TabContainer({
       const hasMoreTabs = i < tabs.length - 1
       const spaceForDropdown = hasMoreTabs ? dropdownButtonWidth + gap : 0
       
+      // Account for bullet point if this is the first tab and it's explore
+      const bulletSpace = (i === 0 && tabs[0].id === 'explore') ? 4 + gap : 0
+      
       // Check if this tab would fit
-      const wouldFit = fittingWidth + tabWidth + gap + spaceForDropdown <= availableWidth
+      const wouldFit = fittingWidth + tabWidth + gap + spaceForDropdown + bulletSpace <= availableWidth
       
       if (wouldFit) {
         fittingTabs.push(tabs[i])
-        fittingWidth += tabWidth + gap
+        fittingWidth += tabWidth + gap + bulletSpace
       } else {
         // This tab doesn't fit, stop here
         break
