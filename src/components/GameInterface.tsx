@@ -298,6 +298,7 @@ export default function GameInterface() {
   const [isMoveInProgress, setIsMoveInProgress] = useState(false) // Prevents multiple simultaneous moves and triggers UI updates
   const tickRefreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const tickRefreshSequenceRef = useRef(0)
+  const lastTickNumberRef = useRef<number | null>(null)
   const appendWorldFeed = useCallback((entry: WorldFeedEntryInput) => {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
@@ -488,6 +489,24 @@ export default function GameInterface() {
     })
     return cleanup
   }, [socket, socketHandlers])
+
+  // Detect tick number changes and trigger refresh immediately
+  useEffect(() => {
+    if (!worldTick?.tickNumber || !currentRoom) return
+    
+    const currentTickNumber = worldTick.tickNumber
+    const lastTickNumber = lastTickNumberRef.current
+    
+    // If tick number has increased, a new tick has occurred
+    if (lastTickNumber !== null && currentTickNumber > lastTickNumber) {
+      console.log(`[GameInterface] Detected tick number change from ${lastTickNumber} to ${currentTickNumber}, triggering cap refresh for room ${currentRoom.roomId}`)
+      // Trigger refresh immediately when tick number changes
+      hydrateRoomCaps(currentRoom.roomId, roomLoadSequenceRef.current)
+    }
+    
+    // Update the ref to track the current tick number
+    lastTickNumberRef.current = currentTickNumber
+  }, [worldTick?.tickNumber, currentRoom, hydrateRoomCaps])
 
   // Automatic cap refresh at tick boundary
   useEffect(() => {
@@ -996,11 +1015,41 @@ export default function GameInterface() {
       const targetRoomId = actionData.toRoomId
       console.log('[handleAction] Teleporting from', currentRoom.roomId, 'to', targetRoomId)
 
+      // Increment move sequence when initiating teleport
+      const moveSeq = ++moveSequenceRef.current
+
+      // Store previous room state for rollback on failure
+      const previousRoom = currentRoom
+      const previousPlayerRoom = player?.currentRoom
+
+      // Set pending move with previous state - will be cleared when action:feedback arrives
+      pendingMoveRef.current = { 
+        moveSeq, 
+        toRoomId: targetRoomId,
+        fromRoomId: currentRoom.roomId,
+        previousRoom: previousRoom,
+      }
+
+      // Set move-in-progress flag
+      setIsMoveInProgress(true)
+
+      // Safety timeout: Clear move-in-progress flag if no feedback arrives within 10 seconds
+      // This prevents the UI from being permanently stuck if feedback is lost
+      setTimeout(() => {
+        if (pendingMoveRef.current?.moveSeq === moveSeq) {
+          console.warn(`[GameInterface] Teleport timeout - clearing move-in-progress flag for moveSeq:${moveSeq}`)
+          setIsMoveInProgress(false)
+          // Don't clear pendingMoveRef here - let it be cleared by feedback if it arrives late
+        }
+      }, 10000)
+
       // Optimistic update: immediately use cached room if available
       const cachedTargetRoom = getCachedRoom(targetRoomId)
       if (cachedTargetRoom) {
-        console.log('[handleAction] Using cached room for optimistic update:', cachedTargetRoom.name)
+        console.log(`[handleAction] Using cached room for optimistic update (UI-only) [moveSeq:${moveSeq}]:`, cachedTargetRoom.name)
         setCurrentRoom(cachedTargetRoom)
+        // Track that we entered this room via optimistic cache
+        enteredViaCacheRoomIdRef.current = targetRoomId
         // Update player room optimistically
         if (player && player.currentRoom !== targetRoomId) {
           setPlayer({ ...player, currentRoom: targetRoomId })
@@ -1008,13 +1057,16 @@ export default function GameInterface() {
       }
 
       if (socket) {
-        console.log('[handleAction] Emitting player-move event for teleport:', { fromRoom: currentRoom.roomId, toRoom: targetRoomId })
+        console.log(`[handleAction] Emitting player-move event for teleport [moveSeq:${moveSeq}]:`, { fromRoom: currentRoom.roomId, toRoom: targetRoomId })
         socket.emit('player-move', {
           fromRoom: currentRoom.roomId,
           toRoom: targetRoomId,
         })
       } else {
         console.warn('Socket not connected; teleport request not sent')
+        // Clear move-in-progress if socket not connected
+        setIsMoveInProgress(false)
+        pendingMoveRef.current = null
       }
 
       return

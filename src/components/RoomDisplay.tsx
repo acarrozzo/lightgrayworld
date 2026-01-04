@@ -41,7 +41,24 @@ export default function RoomDisplay({
   worldTick,
   actionResult,
 }: RoomDisplayProps) {
-  const { getCapCache } = useGameStore()
+  // Subscribe to cap cache entry for this room/action using Zustand selector
+  // This ensures the component re-renders when the cache updates
+  const capConfig = useMemo(() => {
+    if (!room?.roomId) return null
+    if (room.roomId === '002') {
+      return { action: 'pick redberry', maxPerTick: 5 }
+    }
+    if (room.roomId === '005') {
+      return { action: 'pick blueberry', maxPerTick: 3 }
+    }
+    return null
+  }, [room?.roomId])
+
+  const cachedCapEntry = useGameStore((state) => {
+    if (!capConfig || !room?.roomId) return null
+    const key = `${room.roomId}:${capConfig.action}`
+    return state.capCache[key] || null
+  })
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null)
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null)
   const [remainingCap, setRemainingCap] = useState<number | null>(null)
@@ -57,17 +74,6 @@ export default function RoomDisplay({
     () => roomPlayers.filter((player) => player.id !== currentPlayerId),
     [roomPlayers, currentPlayerId]
   )
-
-  const capConfig = useMemo(() => {
-    if (!room?.roomId) return null
-    if (room.roomId === '002') {
-      return { action: 'pick redberry', maxPerTick: 5 }
-    }
-    if (room.roomId === '005') {
-      return { action: 'pick blueberry', maxPerTick: 3 }
-    }
-    return null
-  }, [room?.roomId])
 
   // Extract and pluralize item name from action (e.g., "pick redberry" -> "redberries")
   const getItemNamePlural = (action: string): string => {
@@ -157,7 +163,7 @@ export default function RoomDisplay({
 
   // Consolidated state management for remainingCap with priority order:
   // 1. actionResult.data.remaining (highest priority - most recent from action execution)
-  // 2. Cap cache (primary source)
+  // 2. Cap cache (primary source) - now subscribed via Zustand selector
   // 3. room.actionCaps[actionKey] (fallback from API response)
   // 4. Reset to maxPerTick when world tick increments (only if we have confirmed tick data)
   useEffect(() => {
@@ -181,26 +187,26 @@ export default function RoomDisplay({
       return
     }
 
-    // Priority 2: Cap cache (primary source)
-    const cachedEntry = getCapCache(roomId, actionKey)
-    if (cachedEntry) {
+    // Priority 2: Cap cache (primary source) - now subscribed via Zustand selector
+    // This will automatically trigger re-renders when the cache updates
+    if (cachedCapEntry) {
       const currentTickId = worldTick?.tickNumber ?? 0
-      const isRecent = cachedEntry.tickId === currentTickId
+      const isRecent = cachedCapEntry.tickId === currentTickId
       
-      if (cachedEntry.status === 'known' && isRecent) {
-        setRemainingCap(cachedEntry.remaining)
+      if (cachedCapEntry.status === 'known' && isRecent) {
+        setRemainingCap(cachedCapEntry.remaining)
         setCapStatus('known')
         return
-      } else if (cachedEntry.status === 'known' && !isRecent) {
+      } else if (cachedCapEntry.status === 'known' && !isRecent) {
         // Stale cache - show value but mark as refreshing
-        setRemainingCap(cachedEntry.remaining)
+        setRemainingCap(cachedCapEntry.remaining)
         setCapStatus('loading')
         return
-      } else if (cachedEntry.status === 'error') {
+      } else if (cachedCapEntry.status === 'error') {
         setRemainingCap(null)
         setCapStatus('error')
         return
-      } else if (cachedEntry.status === 'loading') {
+      } else if (cachedCapEntry.status === 'loading') {
         setRemainingCap(null)
         setCapStatus('loading')
         return
@@ -218,7 +224,7 @@ export default function RoomDisplay({
     // Priority 4: No data available - show loading state
     setRemainingCap(null)
     setCapStatus('loading')
-  }, [capConfig, room, actionResult, worldTick, getCapCache])
+  }, [capConfig, room, actionResult, worldTick, cachedCapEntry])
 
   // Retry logic: if cap remains loading beyond 3 seconds, trigger one re-fetch
   useEffect(() => {
