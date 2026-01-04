@@ -10,6 +10,7 @@ interface CompassProps {
   onAction?: (action: string) => void
   onNavigateToMap?: () => void
   onOpenTeleport?: () => void
+  isMoveInProgress?: boolean
 }
 
 interface Direction {
@@ -182,7 +183,7 @@ const getDirectionColorClasses = (directionKey: string, directionColors: any, is
   return 'bg-green-600/90 hover:bg-green-500 border-gray-700/50 hover:border-gray-500/50'
 }
 
-export default function Compass({ room, onAction, onNavigateToMap, onOpenTeleport }: CompassProps) {
+export default function Compass({ room, onAction, onNavigateToMap, onOpenTeleport, isMoveInProgress = false }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
   const [currentPosition, setCurrentPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
   const [targetPosition, setTargetPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
@@ -232,8 +233,8 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
 
   const handleNavigate = async (direction: string) => {
     console.log('[Compass] handleNavigate called with direction:', direction)
-    console.log('[Compass] isNavigating:', isNavigating, 'room[direction]:', room?.[direction], 'onAction:', !!onAction)
-    if (isNavigating || !onAction) {
+    console.log('[Compass] isNavigating:', isNavigating, 'isMoveInProgress:', isMoveInProgress, 'room[direction]:', room?.[direction], 'onAction:', !!onAction)
+    if (isNavigating || isMoveInProgress || !onAction) {
       console.log('[Compass] Early return - navigation blocked')
       return
     }
@@ -319,20 +320,27 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
               'bottom-right': 'bottom-8.5 right-8.5',
             }
 
+            const isDisabled = isNavigating || isMoveInProgress
+            const showSpinner = isMoveInProgress && isAvailable
+            
             return (
               <button
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
-                disabled={isNavigating}
-                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${getDirectionColorClasses(dir.key, room.directionColors, isAvailable)} ${isNavigating ? 'cursor-wait opacity-60' : ''}`}
+                disabled={isDisabled}
+                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${getDirectionColorClasses(dir.key, room.directionColors, isAvailable)} ${isDisabled ? 'cursor-wait opacity-60' : ''}`}
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
-                <ArrowBigUpDash
-                  className={`h-5 w-5 ${isAvailable ? 'text-white' : 'text-gray-400'}`}
-                  strokeWidth={1.75}
-                  style={dir.rotation !== undefined ? { transform: `rotate(${dir.rotation}deg)` } : undefined}
-                  aria-hidden="true"
-                />
+                {showSpinner ? (
+                  <div className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <ArrowBigUpDash
+                    className={`h-5 w-5 ${isAvailable ? 'text-white' : 'text-gray-400'}`}
+                    strokeWidth={1.75}
+                    style={dir.rotation !== undefined ? { transform: `rotate(${dir.rotation}deg)` } : undefined}
+                    aria-hidden="true"
+                  />
+                )}
               </button>
             )
           })}
@@ -343,27 +351,34 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
           {verticalDirections.map((dir) => {
             const isAvailable = !!room[dir.key]
             
+            const isDisabled = isNavigating || isMoveInProgress
+            const showSpinner = isMoveInProgress && isAvailable
+            
             return (
               <button
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
-                disabled={isNavigating}
-                className={`w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${getDirectionColorClasses(dir.key, room.directionColors, isAvailable)} ${isNavigating ? 'cursor-wait opacity-60' : ''}`}
+                disabled={isDisabled}
+                className={`w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${getDirectionColorClasses(dir.key, room.directionColors, isAvailable)} ${isDisabled ? 'cursor-wait opacity-60' : ''}`}
                 title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
               >
-                <ArrowBigUp
-                  className={`h-5 w-5 ${isAvailable ? 'text-white' : 'text-gray-400'}`}
-                  strokeWidth={1.75}
-                  style={dir.rotation !== undefined ? { transform: `rotate(${dir.rotation}deg)` } : undefined}
-                  aria-hidden="true"
-                />
+                {showSpinner ? (
+                  <div className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <ArrowBigUp
+                    className={`h-5 w-5 ${isAvailable ? 'text-white' : 'text-gray-400'}`}
+                    strokeWidth={1.75}
+                    style={dir.rotation !== undefined ? { transform: `rotate(${dir.rotation}deg)` } : undefined}
+                    aria-hidden="true"
+                  />
+                )}
               </button>
             )
           })}
         </div>
 
-        {/* Loading indicator - show during navigation or transition */}
-        {(isNavigating || isTransitioning) && (
+        {/* Loading indicator - show during transition (not during move-in-progress as buttons show spinners) */}
+        {isTransitioning && !isMoveInProgress && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-indigo-500/50 border-t-transparent rounded-full animate-spin"></div>
           </div>

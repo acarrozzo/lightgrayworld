@@ -3,6 +3,8 @@ const { executeItemAction } = require('./item-action-handlers')
 const { pickupRoomItem, dropRoomItem, getRoomItems } = require('./services/room-item-service')
 const { getPlayerInventory } = require('./services/inventory-service')
 const { equipItem, unequipItem } = require('./services/equipment-service')
+const { checkRoomGate } = require('./room-gates')
+const { prisma } = require('../db-client')
 
 class RoomState {
   constructor(roomId) {
@@ -82,7 +84,7 @@ class RoomState {
       case 'drop_item':
         return this.executeDropItem(action, playerId)
       case 'move':
-        return this.executeMove(action, playerId)
+        return await this.executeMove(action, playerId)
       case 'chat':
         return this.executeChat(action, playerId)
       case 'search':
@@ -190,7 +192,7 @@ class RoomState {
     }
   }
 
-  executeMove(action, playerId) {
+  async executeMove(action, playerId) {
     const player = this.players.get(playerId)
     if (!player) {
       console.log(`[RoomState:${this.roomId}] executeMove - Player ${playerId} not found`)
@@ -204,6 +206,70 @@ class RoomState {
       return this.createErrorResult('move', 'No destination room provided')
     }
 
+    const direction = action.data?.direction
+
+    // 1. REACHABILITY VALIDATION (primary constraint)
+    // Verify that the source room has an exit in the direction that leads to the destination
+    if (direction) {
+      try {
+        const sourceRoom = await prisma.room.findUnique({
+          where: { roomId: fromRoom },
+          select: {
+            roomId: true,
+            north: true,
+            northeast: true,
+            east: true,
+            southeast: true,
+            south: true,
+            southwest: true,
+            west: true,
+            northwest: true,
+            up: true,
+            down: true,
+          },
+        })
+
+        if (!sourceRoom) {
+          console.log(`[RoomState:${this.roomId}] executeMove - Source room ${fromRoom} not found`)
+          return this.createErrorResult('move', 'Source room not found')
+        }
+
+        // Check if the source room has an exit in the specified direction that leads to the destination
+        const exitRoomId = sourceRoom[direction]
+        if (exitRoomId !== toRoom) {
+          console.log(`[RoomState:${this.roomId}] executeMove - No valid exit from ${fromRoom} ${direction} to ${toRoom}`)
+          return this.createErrorResult('move', `You don't see an exit in that direction`)
+        }
+      } catch (error) {
+        console.error(`[RoomState:${this.roomId}] executeMove - Error validating reachability:`, error)
+        return this.createErrorResult('move', 'Failed to validate room connection')
+      }
+    }
+
+    // 2. GATE CHECK (additional constraint, only if reachability passes)
+    if (direction) {
+      const gateResult = await checkRoomGate(fromRoom, direction, playerId)
+      if (gateResult && !gateResult.allowed) {
+        console.log(`[RoomState:${this.roomId}] executeMove - Gate blocked ${player.username} from ${fromRoom} going ${direction}`)
+        const gate = gateResult.gate
+        const message = gate.message || "You cannot pass through this way."
+        
+        return {
+          success: false,
+          action: 'move',
+          playerEvent: {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload('move', 'failure', message, {
+              roomId: this.roomId,
+              showModal: true,
+              modalContent: gate.modalContent || message,
+            }),
+          },
+        }
+      }
+    }
+
+    // 3. MOVEMENT EXECUTION (both validations passed)
     console.log(`[RoomState:${this.roomId}] executeMove - ${player.username} moving from ${fromRoom} to ${toRoom}`)
 
     this.touchActivity()
@@ -211,7 +277,6 @@ class RoomState {
 
     const toRoomName = action.data?.toRoomName || toRoom
     const roomData = action.data?.roomData
-    const direction = action.data?.direction
     const message = direction ? `You travel ${direction}` : `You teleport to ${toRoomName}`
 
     return {

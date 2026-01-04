@@ -117,6 +117,13 @@ function generateSpriteSheet() {
       symbolId = `equipment-${symbolId}`;
     }
     
+    // For files from public/icons/npc, use just the filename (remove npc/ folder prefix)
+    if (baseDir.includes('public/icons') && relativePath.startsWith('npc/')) {
+      // Extract just the filename without the folder
+      const filename = path.basename(svgPath, '.svg');
+      symbolId = filename;
+    }
+    
     // Skip if this symbol ID has already been processed
     if (processedSymbolIds.has(symbolId)) {
       console.log(`⏭️  Skipped duplicate: ${relativePath} -> ${symbolId} (already processed)`);

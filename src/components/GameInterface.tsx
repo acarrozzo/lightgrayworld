@@ -43,6 +43,27 @@ const findTravelDirection = (fromRoom: Room | null, toRoomId: string): TravelDir
   return TRAVEL_DIRECTION_KEYS.find((direction) => fromRoom[direction] === toRoomId)
 }
 
+/**
+ * Client-side map of room gates (mirrors server-side ROOM_GATES structure)
+ * Used to skip optimistic updates for gated exits
+ */
+const CLIENT_ROOM_GATES: Record<string, Record<string, boolean>> = {
+  '004': {
+    'west': true,
+  },
+}
+
+/**
+ * Check if an exit has a gate (client-side check for optimistic update skipping)
+ */
+function checkIfExitHasGate(roomId: string, direction: string): boolean {
+  const roomGates = CLIENT_ROOM_GATES[roomId]
+  if (!roomGates) {
+    return false
+  }
+  return roomGates[direction] === true
+}
+
 // Command shorthand mapping
 const COMMAND_SHORTHAND: Record<string, string> = {
   // Directions
@@ -270,7 +291,8 @@ export default function GameInterface() {
   const moveSequenceRef = useRef(0) // Tracks move actions (not room loads)
   const roomLoadSequenceRef = useRef(0) // Tracks room load requests
   const enteredViaCacheRoomIdRef = useRef<string | null>(null) // Tracks optimistic entries
-  const pendingMoveRef = useRef<{ moveSeq: number; toRoomId: string } | null>(null) // Tracks pending moves
+  const pendingMoveRef = useRef<{ moveSeq: number; toRoomId: string; fromRoomId: string; previousRoom: Room | null } | null>(null) // Tracks pending moves with previous state
+  const [isMoveInProgress, setIsMoveInProgress] = useState(false) // Prevents multiple simultaneous moves and triggers UI updates
   const tickRefreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const tickRefreshSequenceRef = useRef(0)
   const appendWorldFeed = useCallback((entry: WorldFeedEntryInput) => {
@@ -1001,6 +1023,13 @@ export default function GameInterface() {
     
     if (isNavigationAction) {
       console.log('[handleAction] Navigation action detected, currentRoom:', currentRoom?.roomId)
+      
+      // Move-in-progress guard: Prevent new moves while one is pending
+      if (isMoveInProgress) {
+        console.warn('[handleAction] Move already in progress, ignoring new move request')
+        return
+      }
+
       if (!currentRoom) {
         console.warn('No current room available for navigation action')
         setActionResult({
@@ -1040,27 +1069,57 @@ export default function GameInterface() {
         return
       }
 
+      // Check if this exit has a gate (skip optimistic update for gated exits)
+      const hasGate = checkIfExitHasGate(currentRoom.roomId, actionType)
+
       // Increment move sequence when initiating move
       const moveSeq = ++moveSequenceRef.current
 
-      // Set pending move - will be cleared when action:feedback arrives
-      pendingMoveRef.current = { moveSeq, toRoomId: targetRoomId }
+      // Store previous room state for rollback on failure
+      const previousRoom = currentRoom
+      const previousPlayerRoom = player?.currentRoom
+
+      // Set pending move with previous state - will be cleared when action:feedback arrives
+      pendingMoveRef.current = { 
+        moveSeq, 
+        toRoomId: targetRoomId,
+        fromRoomId: currentRoom.roomId,
+        previousRoom: previousRoom,
+      }
+
+      // Set move-in-progress flag
+      setIsMoveInProgress(true)
+
+      // Safety timeout: Clear move-in-progress flag if no feedback arrives within 10 seconds
+      // This prevents the UI from being permanently stuck if feedback is lost
+      setTimeout(() => {
+        if (pendingMoveRef.current?.moveSeq === moveSeq) {
+          console.warn(`[GameInterface] Move timeout - clearing move-in-progress flag for moveSeq:${moveSeq}`)
+          setIsMoveInProgress(false)
+          // Don't clear pendingMoveRef here - let it be cleared by feedback if it arrives late
+        }
+      }, 10000)
 
       // Optimistic update: immediately use cached room if available
+      // SKIP optimistic update for gated exits to avoid showing wrong room
       // NOTE: This is UI-only for instant feedback. The authoritative update
       // will come from action:feedback, which will hydrate the room with
       // server truth (players, items, state). This does NOT trigger
       // loadRoomData() to avoid competing with the authoritative update.
-      const cachedTargetRoom = getCachedRoom(targetRoomId)
-      if (cachedTargetRoom) {
-        console.log(`[handleAction] Using cached room for optimistic update (UI-only) [moveSeq:${moveSeq}]:`, cachedTargetRoom.name)
-        setCurrentRoom(cachedTargetRoom)
-        // Track that we entered this room via optimistic cache
-        enteredViaCacheRoomIdRef.current = targetRoomId
-        // Update player room optimistically
-        if (player && player.currentRoom !== targetRoomId) {
-          setPlayer({ ...player, currentRoom: targetRoomId })
+      if (!hasGate) {
+        const cachedTargetRoom = getCachedRoom(targetRoomId)
+        if (cachedTargetRoom) {
+          console.log(`[handleAction] Using cached room for optimistic update (UI-only) [moveSeq:${moveSeq}]:`, cachedTargetRoom.name)
+          setCurrentRoom(cachedTargetRoom)
+          // Track that we entered this room via optimistic cache
+          enteredViaCacheRoomIdRef.current = targetRoomId
+          // Update player room optimistically
+          if (player && player.currentRoom !== targetRoomId) {
+            setPlayer({ ...player, currentRoom: targetRoomId })
+          }
         }
+      } else {
+        console.log(`[handleAction] Skipping optimistic update - exit has gate [moveSeq:${moveSeq}]`)
       }
 
       if (socket) {
@@ -1074,6 +1133,9 @@ export default function GameInterface() {
         })
       } else {
         console.warn('Socket not connected; movement request not sent')
+        // Clear move-in-progress if socket not connected
+        setIsMoveInProgress(false)
+        pendingMoveRef.current = null
       }
 
       return
@@ -1328,50 +1390,96 @@ export default function GameInterface() {
         }
       }
 
-      if (payload?.action === 'move' && success && payload?.data?.toRoom) {
-        const moveSeq = moveSequenceRef.current
-        console.log(`[GameInterface] Processing move action feedback [moveSeq:${moveSeq}]`)
-        const currentPlayer = playerRef.current
-        const activeRoom = currentRoomRef.current
+      // Handle move action feedback (both success and failure)
+      if (payload?.action === 'move') {
+        const pendingMove = pendingMoveRef.current
         
-        // Clear pending move - feedback has arrived
-        if (pendingMoveRef.current) {
-          console.log(`[GameInterface] Clearing pending move - feedback received for room ${payload.data.toRoom}`)
-          pendingMoveRef.current = null
+        // Validate: Only process feedback if there's a pending move
+        // This ensures we're processing feedback for the move we initiated
+        if (!pendingMove) {
+          console.warn('[GameInterface] Received move feedback but no pending move exists, ignoring')
+          return
         }
         
-        if (currentPlayer && currentPlayer.currentRoom !== payload.data.toRoom) {
-          console.log('[GameInterface] Updating player room to:', payload.data.toRoom)
-          setPlayer({ ...currentPlayer, currentRoom: payload.data.toRoom })
+        // Validate: Check if feedback destination matches pending move destination
+        // This is a sanity check to ensure feedback matches our request
+        const feedbackToRoom = payload?.data?.toRoom
+        if (success && feedbackToRoom && feedbackToRoom !== pendingMove.toRoomId) {
+          console.warn(`[GameInterface] Move feedback destination mismatch - pending: ${pendingMove.toRoomId}, feedback: ${feedbackToRoom}, ignoring`)
+          return
         }
-
-        // Determine if we need to hydrate room data
-        const hasAuthoritativeRoomData = payload.data?.roomData && payload.data.roomData.roomId === payload.data.toRoom
-        const isAlreadyViewingRoom = activeRoom?.roomId === payload.data.toRoom
-        const enteredViaCache = enteredViaCacheRoomIdRef.current === payload.data.toRoom
         
-        // Always hydrate if:
-        // 1. We have authoritative room data in payload (apply it)
-        // 2. We're not viewing the room (need to load it)
-        // 3. We're viewing the room but got here via optimistic cache (need server truth)
-        const shouldHydrate = hasAuthoritativeRoomData || !isAlreadyViewingRoom || enteredViaCache
-        
-        if (shouldHydrate) {
-          if (hasAuthoritativeRoomData) {
-            console.log('[GameInterface] Hydrating room with authoritative data from action:feedback')
-          } else if (!isAlreadyViewingRoom) {
-            console.log('[GameInterface] Loading room data for:', payload.data.toRoom)
-          } else if (enteredViaCache) {
-            console.log('[GameInterface] Refreshing room data to ensure server truth (entered via optimistic cache)')
-          }
+        if (success && payload?.data?.toRoom) {
+          // SUCCESSFUL MOVE
+          console.log(`[GameInterface] Processing successful move action feedback [moveSeq:${pendingMove?.moveSeq}]`)
+          const currentPlayer = playerRef.current
+          const activeRoom = currentRoomRef.current
           
-          loadRoomDataRef.current?.({
-            isTransition: true,
-            travel: { toRoomId: payload.data.toRoom },
-            roomData: payload.data?.roomData, // Use authoritative data if provided
-          })
-        } else {
-          console.log('[GameInterface] Skipping room load - already have authoritative data for current room')
+          // Clear pending move and move-in-progress flag - feedback has arrived
+          if (pendingMove) {
+            console.log(`[GameInterface] Clearing pending move - feedback received for room ${payload.data.toRoom}`)
+            pendingMoveRef.current = null
+          }
+          setIsMoveInProgress(false)
+          
+          if (currentPlayer && currentPlayer.currentRoom !== payload.data.toRoom) {
+            console.log('[GameInterface] Updating player room to:', payload.data.toRoom)
+            setPlayer({ ...currentPlayer, currentRoom: payload.data.toRoom })
+          }
+
+          // Determine if we need to hydrate room data
+          const hasAuthoritativeRoomData = payload.data?.roomData && payload.data.roomData.roomId === payload.data.toRoom
+          const isAlreadyViewingRoom = activeRoom?.roomId === payload.data.toRoom
+          const enteredViaCache = enteredViaCacheRoomIdRef.current === payload.data.toRoom
+          
+          // Always hydrate if:
+          // 1. We have authoritative room data in payload (apply it)
+          // 2. We're not viewing the room (need to load it)
+          // 3. We're viewing the room but got here via optimistic cache (need server truth)
+          const shouldHydrate = hasAuthoritativeRoomData || !isAlreadyViewingRoom || enteredViaCache
+          
+          if (shouldHydrate) {
+            if (hasAuthoritativeRoomData) {
+              console.log('[GameInterface] Hydrating room with authoritative data from action:feedback')
+            } else if (!isAlreadyViewingRoom) {
+              console.log('[GameInterface] Loading room data for:', payload.data.toRoom)
+            } else if (enteredViaCache) {
+              console.log('[GameInterface] Refreshing room data to ensure server truth (entered via optimistic cache)')
+            }
+            
+            loadRoomDataRef.current?.({
+              isTransition: true,
+              travel: { toRoomId: payload.data.toRoom },
+              roomData: payload.data?.roomData, // Use authoritative data if provided
+            })
+          } else {
+            console.log('[GameInterface] Skipping room load - already have authoritative data for current room')
+          }
+        } else if (!success) {
+          // FAILED MOVE - Rollback optimistic update
+          console.log(`[GameInterface] Processing failed move action feedback [moveSeq:${pendingMove?.moveSeq}]`)
+          
+          // Clear move-in-progress flag
+          setIsMoveInProgress(false)
+          
+          if (pendingMove) {
+            // Rollback: Restore previous room state
+            if (pendingMove.previousRoom) {
+              console.log(`[GameInterface] Rolling back optimistic update - restoring room ${pendingMove.previousRoom.roomId}`)
+              setCurrentRoom(pendingMove.previousRoom)
+              enteredViaCacheRoomIdRef.current = null
+              
+              // Restore player room state
+              const currentPlayer = playerRef.current
+              if (currentPlayer && currentPlayer.currentRoom !== pendingMove.fromRoomId) {
+                console.log(`[GameInterface] Restoring player room to: ${pendingMove.fromRoomId}`)
+                setPlayer({ ...currentPlayer, currentRoom: pendingMove.fromRoomId })
+              }
+            }
+            
+            // Clear pending move
+            pendingMoveRef.current = null
+          }
         }
       }
 
@@ -2143,7 +2251,7 @@ export default function GameInterface() {
                           </div>
                           {/* Compass */}
                           <div className="flex items-center justify-center">
-                            <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={() => setCenterActiveTab('map')} onOpenTeleport={handleOpenTeleport} />
+                            <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={() => setCenterActiveTab('map')} onOpenTeleport={handleOpenTeleport} isMoveInProgress={isMoveInProgress} />
                           </div>
                         </div>
                       </div>

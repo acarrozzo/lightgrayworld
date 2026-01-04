@@ -477,58 +477,66 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
 
         console.log(`[Socket] processUserAction result:`, result)
 
-        console.log(`[Socket] Transitioning player room`)
-        const isTeleport = data?.isTeleport || false
-        await transitionPlayerRoom({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
+        // CRITICAL: Only transition/persist player room if movement succeeded
+        // The engine result is authoritative - do not transition unless result.success === true
+        if (result && result.success === true) {
+          console.log(`[Socket] Movement succeeded, transitioning player room`)
+          const isTeleport = data?.isTeleport || false
+          await transitionPlayerRoom({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
 
-        // Save entry/exit messages to database
-        try {
-          // Fetch both rooms for direction finding
-          const fromRoomData = await fetchRoomWithColors(prisma, fromRoom)
-          const toRoomData = await fetchRoomWithColors(prisma, toRoom)
+          // Save entry/exit messages to database
+          try {
+            // Fetch both rooms for direction finding
+            const fromRoomData = await fetchRoomWithColors(prisma, fromRoom)
+            const toRoomData = await fetchRoomWithColors(prisma, toRoom)
 
-          if (fromRoomData && toRoomData) {
-            // Exit message for the room being left
-            const exitDirection = findDirectionKey(fromRoomData, toRoom)
-            const exitDirectionPhrase = buildDirectionPhrase(exitDirection, 'exit')
-            const exitMessage = `${player.username} exits to ${exitDirectionPhrase}`
+            if (fromRoomData && toRoomData) {
+              // Exit message for the room being left
+              const exitDirection = findDirectionKey(fromRoomData, toRoom)
+              const exitDirectionPhrase = buildDirectionPhrase(exitDirection, 'exit')
+              const exitMessage = `${player.username} exits to ${exitDirectionPhrase}`
 
-            await prisma.roomChatMessage.create({
-              data: {
-                userId: player.id,
-                roomId: fromRoom,
-                message: exitMessage,
-                type: 'system',
-              },
-            })
+              await prisma.roomChatMessage.create({
+                data: {
+                  userId: player.id,
+                  roomId: fromRoom,
+                  message: exitMessage,
+                  type: 'system',
+                },
+              })
 
-            // Entry message for the room being entered
-            const entryDirection = findDirectionKey(toRoomData, fromRoom)
-            const entryDirectionPhrase = buildDirectionPhrase(entryDirection, 'enter')
-            const entryMessage = `${player.username} enters from ${entryDirectionPhrase}`
+              // Entry message for the room being entered
+              const entryDirection = findDirectionKey(toRoomData, fromRoom)
+              const entryDirectionPhrase = buildDirectionPhrase(entryDirection, 'enter')
+              const entryMessage = `${player.username} enters from ${entryDirectionPhrase}`
 
-            await prisma.roomChatMessage.create({
-              data: {
-                userId: player.id,
-                roomId: toRoom,
-                message: entryMessage,
-                type: 'system',
-              },
-            })
+              await prisma.roomChatMessage.create({
+                data: {
+                  userId: player.id,
+                  roomId: toRoom,
+                  message: entryMessage,
+                  type: 'system',
+                },
+              })
 
-            console.log(`[Socket] Saved entry/exit messages for ${player.username} moving from ${fromRoom} to ${toRoom}`)
+              console.log(`[Socket] Saved entry/exit messages for ${player.username} moving from ${fromRoom} to ${toRoom}`)
+            }
+          } catch (error) {
+            console.error('[Socket] Error saving entry/exit messages:', error)
+            // Don't fail the movement if message saving fails
           }
-        } catch (error) {
-          console.error('[Socket] Error saving entry/exit messages:', error)
-          // Don't fail the movement if message saving fails
-        }
 
-        console.log(`[Socket] Emitting action:confirmed to player`)
-        socket.emit('action:confirmed', {
-          action: 'move',
-          success: true,
-          data: result?.data || { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData },
-        })
+          console.log(`[Socket] Emitting action:confirmed to player`)
+          socket.emit('action:confirmed', {
+            action: 'move',
+            success: true,
+            data: result?.data || { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData },
+          })
+        } else {
+          console.log(`[Socket] Movement failed or blocked, not transitioning player room`)
+          // The action:feedback event will be emitted by the engine with the error/modal
+          // No need to emit action:confirmed for failed movements
+        }
       } catch (error) {
         console.error('[Socket] Error handling player movement:', error)
         emitQueueAwareError({

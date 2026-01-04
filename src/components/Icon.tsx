@@ -60,9 +60,9 @@ export default function Icon({ name, className = '', size = 24, color = 'current
       className={`icon-svg ${colorClass} ${processedClassName}`.trim()}
       style={style}
       fill="currentColor"
-      viewBox="0 0 100 100"
+      preserveAspectRatio="xMidYMid meet"
     >
-      <use href={`/sprite-sheet.svg?v=9#${iconName}`} />
+      <use href={`/sprite-sheet.svg?v=10#${iconName}`} />
     </svg>
   )
 }
