@@ -43,6 +43,15 @@ type RenderEntry = {
   count: number
 }
 
+type GroupedRoomChat = {
+  type: 'room-group'
+  roomId: string
+  entries: RenderEntry[]
+  isCurrentRoom: boolean
+}
+
+type RenderItem = RenderEntry | GroupedRoomChat
+
 type CategoryStyle = {
   label: string
   icon: LucideIcon
@@ -306,6 +315,78 @@ const formatTimestamp = (timestamp: number): string => {
   })
 }
 
+// Helper function to check if an entry is a room chat message
+const isRoomChatEntry = (entry: WorldFeedEntry): boolean => {
+  return entry.type === 'room' && !entry.eventType && Boolean(entry.roomId)
+}
+
+// Type guard for GroupedRoomChat
+const isGroupedRoomChat = (item: RenderItem): item is GroupedRoomChat => {
+  return 'type' in item && item.type === 'room-group'
+}
+
+// Helper function to group consecutive room chat entries by roomId
+const groupRoomChats = (renderEntries: RenderEntry[], currentRoomId?: string): RenderItem[] => {
+  const result: RenderItem[] = []
+  let currentGroup: RenderEntry[] | null = null
+  let currentRoomIdInGroup: string | null = null
+
+  for (const renderEntry of renderEntries) {
+    const { entry } = renderEntry
+    
+    if (isRoomChatEntry(entry)) {
+      const entryRoomId = entry.roomId!
+      
+      // If this is the same room as the current group, add to group
+      if (currentGroup && currentRoomIdInGroup === entryRoomId) {
+        currentGroup.push(renderEntry)
+      } else {
+        // Save previous group if it exists
+        if (currentGroup && currentGroup.length > 0) {
+          result.push({
+            type: 'room-group',
+            roomId: currentRoomIdInGroup!,
+            entries: currentGroup,
+            isCurrentRoom: currentRoomIdInGroup === currentRoomId,
+          })
+        }
+        
+        // Start new group
+        currentGroup = [renderEntry]
+        currentRoomIdInGroup = entryRoomId
+      }
+    } else {
+      // Non-room-chat entry breaks the grouping
+      // Save previous group if it exists
+      if (currentGroup && currentGroup.length > 0) {
+        result.push({
+          type: 'room-group',
+          roomId: currentRoomIdInGroup!,
+          entries: currentGroup,
+          isCurrentRoom: currentRoomIdInGroup === currentRoomId,
+        })
+        currentGroup = null
+        currentRoomIdInGroup = null
+      }
+      
+      // Add non-room-chat entry as-is
+      result.push(renderEntry)
+    }
+  }
+  
+  // Don't forget the last group
+  if (currentGroup && currentGroup.length > 0) {
+    result.push({
+      type: 'room-group',
+      roomId: currentRoomIdInGroup!,
+      entries: currentGroup,
+      isCurrentRoom: currentRoomIdInGroup === currentRoomId,
+    })
+  }
+  
+  return result
+}
+
 const DEFAULT_VISIBLE = 200
 const LOAD_MORE_STEP = 50
 
@@ -478,8 +559,8 @@ export default function UnifiedFeedPanel({
         
         if (chatSubFilter === 'all-chat') return true
         if (chatSubFilter === 'room-chat') {
-          if (!currentRoomId) return false
-          return entry.type === 'room' && entry.roomId === currentRoomId
+          // Show all room chat messages (from all rooms), not just current room
+          return entry.type === 'room'
         }
         if (chatSubFilter === 'world-chat') {
           return entry.type === 'world'
@@ -528,25 +609,37 @@ export default function UnifiedFeedPanel({
     return filteredEntries.slice(start)
   }, [filteredEntries, visibleCount])
 
-  const renderEntries = useMemo<RenderEntry[]>(() => {
+  const renderEntries = useMemo<RenderItem[]>(() => {
     if (!visibleEntries.length) return []
+    
+    // First, handle repeat grouping if enabled
+    let processedEntries: RenderEntry[]
     if (!settings.groupRepeats) {
-      return visibleEntries.map((entry) => ({ entry, count: 1 }))
-    }
-
-    const grouped: RenderEntry[] = []
-    for (const entry of visibleEntries) {
-      const normalizedEntry = entry.message ? entry : { ...entry, message: entry.message ?? entry.text ?? '' }
-      const lastGroup = grouped[grouped.length - 1]
-      if (lastGroup && canGroupEntries(lastGroup.entry, normalizedEntry)) {
-        lastGroup.count += 1
-        lastGroup.entry = normalizedEntry
-      } else {
-        grouped.push({ entry: normalizedEntry, count: 1 })
+      processedEntries = visibleEntries.map((entry) => ({ entry, count: 1 }))
+    } else {
+      const grouped: RenderEntry[] = []
+      for (const entry of visibleEntries) {
+        const normalizedEntry = entry.message ? entry : { ...entry, message: entry.message ?? entry.text ?? '' }
+        const lastGroup = grouped[grouped.length - 1]
+        if (lastGroup && canGroupEntries(lastGroup.entry, normalizedEntry)) {
+          lastGroup.count += 1
+          lastGroup.entry = normalizedEntry
+        } else {
+          grouped.push({ entry: normalizedEntry, count: 1 })
+        }
       }
+      processedEntries = grouped
     }
-    return grouped
-  }, [visibleEntries, settings.groupRepeats])
+    
+    // Then, group room chats if we're viewing chat filters
+    const shouldGroupRoomChats = filter === 'chat' && (chatSubFilter === 'all-chat' || chatSubFilter === 'room-chat')
+    if (shouldGroupRoomChats) {
+      return groupRoomChats(processedEntries, currentRoomId)
+    }
+    
+    // Otherwise, return entries as-is
+    return processedEntries
+  }, [visibleEntries, settings.groupRepeats, filter, chatSubFilter, currentRoomId])
 
   const canLoadMore = visibleCount < filteredEntries.length
   const trimmedCustomAction = customAction.trim()
@@ -916,18 +1009,6 @@ export default function UnifiedFeedPanel({
       <div ref={listRef} className={`worldFeedEntries flex-1 overflow-y-auto pb-6 bg-gray-950/80 ${
         filter === 'chat' && chatSubFilter === 'room-chat' ? 'px-3 pt-2' : 'px-2 pt-1'
       }`}>
-        {/* Room header for room chat */}
-        {filter === 'chat' && chatSubFilter === 'room-chat' && currentRoomId && currentRoomName && (
-          <div className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm border-b border-indigo-500/30 mb-3 -mx-3 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <MessageSquare size={16} className="text-indigo-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold text-gray-100 truncate">{currentRoomName}</div>
-                <div className="text-xs text-gray-400">Room {currentRoomId}</div>
-              </div>
-            </div>
-          </div>
-        )}
         {canLoadMore && (
           <div className="flex justify-center items-center gap-2 py-3">
             <button
@@ -947,7 +1028,111 @@ export default function UnifiedFeedPanel({
         {renderEntries.length === 0 ? (
           <div className="text-center text-sm text-gray-500 py-8">No entries yet.</div>
         ) : (
-          renderEntries.map(({ entry, count }, index) => {
+          renderEntries.map((item, index) => {
+            // Handle grouped room chats
+            if (isGroupedRoomChat(item)) {
+              const { roomId, entries, isCurrentRoom } = item
+              const groupBgClass = isCurrentRoom 
+                ? 'bg-indigo-950/30 border-indigo-500/20' 
+                : 'bg-indigo-950/20 border-indigo-600/15'
+              const headerBgClass = isCurrentRoom
+                ? 'bg-indigo-950/50 border-indigo-500/30'
+                : 'bg-indigo-950/40 border-indigo-600/25'
+              const headerTextClass = isCurrentRoom
+                ? 'text-indigo-300'
+                : 'text-indigo-400'
+              
+              return (
+                <div key={`room-group-${roomId}-${index}`} className={`mb-4 rounded-lg border ${groupBgClass} overflow-hidden`}>
+                  {/* Room header */}
+                  <div className={`px-3 py-2 border-b ${headerBgClass}`}>
+                    <div className="flex items-center gap-2">
+                      <MessageSquare size={14} className={`${headerTextClass} shrink-0`} />
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-xs font-semibold ${headerTextClass} truncate`}>
+                          Room {roomId}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Grouped messages */}
+                  <div className="px-2 py-1.5 space-y-1">
+                    {entries.map((renderEntry: RenderEntry, entryIndex: number) => {
+                      const { entry, count } = renderEntry
+                      const messageText = entry.message ?? entry.text ?? ''
+                      const isSelf = entry.isSelf
+                      const actorLabel = entry.actor || 'Unknown'
+                      const contentSize = settings.compactMode ? 'text-[13px]' : 'text-sm'
+                      
+                      const chatBubbleClass = isCurrentRoom
+                        ? isSelf
+                          ? 'bg-indigo-500/85 text-indigo-50 border border-indigo-400/60'
+                          : 'bg-indigo-500/50 text-indigo-100 border border-indigo-500/40'
+                        : isSelf
+                        ? 'bg-indigo-600/60 text-indigo-50 border border-indigo-500/40'
+                        : 'bg-indigo-700/40 text-indigo-200 border border-indigo-600/30'
+                      
+                      const borderColorClass = isCurrentRoom
+                        ? isSelf ? 'bg-indigo-500' : 'bg-indigo-500'
+                        : isSelf ? 'bg-indigo-600' : 'bg-indigo-700'
+                      
+                      const avatarBgClass = isCurrentRoom
+                        ? isSelf ? 'bg-indigo-500/80' : 'bg-indigo-500/80'
+                        : isSelf ? 'bg-indigo-600/80' : 'bg-indigo-700/80'
+                      
+                      const avatarBorderClass = isCurrentRoom
+                        ? isSelf ? 'border-indigo-400/50' : 'border-indigo-500/50'
+                        : isSelf ? 'border-indigo-500/50' : 'border-indigo-600/50'
+                      
+                      const chatContainerClass = isSelf ? 'flex justify-end' : 'flex justify-start'
+                      const avatarInitial = (actorLabel.charAt(0) || '?').toUpperCase()
+                      
+                      return (
+                        <div key={`${entry.id}-${entryIndex}`} className={`${chatContainerClass} group relative`}>
+                          <span className={`absolute left-0 top-0 bottom-0 w-0.5 ${borderColorClass}`} aria-hidden />
+                          <div className="flex items-start gap-1.5 max-w-[90%] pl-1.5">
+                            {!isSelf && (
+                              <div className={`${avatarBgClass} w-5 h-5 rounded flex items-center justify-center text-[10px] font-mono font-semibold text-white shrink-0 border ${avatarBorderClass}`}>
+                                {avatarInitial}
+                              </div>
+                            )}
+                            <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                              <span className={`text-[10px] text-gray-400 font-mono font-medium ${isSelf ? 'text-right' : ''}`}>
+                                {actorLabel}
+                              </span>
+                              <div className={`${chatBubbleClass} rounded px-2.5 py-1.5 ${contentSize} font-mono break-words leading-tight`}>
+                                {messageText}
+                              </div>
+                              <div className={`flex items-center gap-1.5 ${isSelf ? 'justify-end' : 'justify-start'}`}>
+                                {settings.showTimestamps && (
+                                  <span className="text-[9px] text-gray-500/70 whitespace-nowrap tabular-nums font-mono">
+                                    {formatTimestamp(entry.ts)}
+                                  </span>
+                                )}
+                                {count > 1 && (
+                                  <span className="text-[9px] text-gray-500/70 font-mono font-semibold whitespace-nowrap">
+                                    ×{count}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {isSelf && (
+                              <div className={`${avatarBgClass} w-5 h-5 rounded flex items-center justify-center text-[10px] font-mono font-semibold text-white shrink-0 border ${avatarBorderClass}`}>
+                                {avatarInitial}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            }
+            
+            // Handle regular entries (non-grouped)
+            const { entry, count } = item as RenderEntry
             const style = getEntryStyle(entry)
             const messageText = entry.message ?? entry.text ?? ''
             const isRoomTravel = entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel'
