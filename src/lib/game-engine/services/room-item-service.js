@@ -243,54 +243,20 @@ async function getRoomItems(roomId) {
 
 /**
  * Ensure all auto-respawn items exist in the given room.
- * This function checks for items that should auto-respawn and creates them if missing.
+ * This function checks each item that should auto-respawn and creates it if missing.
  * 
- * Strategy: Query for RoomItems with autoRespawn: true. If we find any, they exist.
- * If we don't find any, it means either:
- * 1. No items are configured to auto-respawn in this room, OR
- * 2. All auto-respawn items have been picked up (deleted)
+ * Since RoomItems are deleted when picked up, we use a known configuration mapping
+ * to determine which items should exist in each room. For each item in the room's
+ * configuration, we check if it exists and create it if missing.
  * 
- * For case 2, we need to know what should exist. Since RoomItems are deleted when picked up,
- * we can't query for them. We use a fallback: query the database for any RoomItem that has
- * ever had autoRespawn: true for this room by checking if there's a pattern, or use a
- * known configuration mapping.
- * 
- * For a truly generic solution, we'd need a separate configuration table, but for now
- * we'll use a hybrid approach that queries existing items first, then falls back to
- * known configurations.
+ * Note: This checks each item individually, so items will respawn even if other
+ * auto-respawn items are still present in the room.
  * 
  * @param {string} roomId - The room ID to check for auto-respawn items
  * @returns {Promise<void>}
  */
 async function ensureAutoRespawnItems(roomId) {
   try {
-    // First, check if there are any existing RoomItems with autoRespawn: true in this room
-    // If we find any, they already exist - nothing to do
-    const existingAutoRespawnItems = await prisma.roomItem.findMany({
-      where: {
-        roomId,
-        autoRespawn: true,
-      },
-    })
-    
-    // If we found existing items, they're already there
-    if (existingAutoRespawnItems.length > 0) {
-      return
-    }
-    
-    // No existing auto-respawn items found. This could mean:
-    // 1. No items are configured to auto-respawn (room doesn't need any)
-    // 2. All auto-respawn items have been picked up (need to recreate)
-    
-    // To handle case 2, we need to know what items should auto-respawn.
-    // Since items are deleted when picked up, we can't query for them.
-    // We'll use a fallback: query for distinct templateIds that have autoRespawn: true
-    // in this room's history, but that won't work if they're all deleted.
-    
-    // For now, we'll use a known mapping from seed data as a fallback.
-    // This is not ideal but works for the current use case.
-    // A better solution would be a separate RoomItemConfig table, but that's a bigger change.
-    
     const knownAutoRespawnItems = {
       '001': ['welcome-book'],
       '004': ['flower'],

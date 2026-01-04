@@ -439,27 +439,31 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         await ensureAutoRespawnItems(toRoom)
         // Re-fetch room data to include any respawned items
         const updatedDestinationRoom = await fetchRoomWithColors(prisma, toRoom)
-        if (updatedDestinationRoom) {
-          // Update destinationRoom with fresh data including respawned items
-          destinationRoom.items = updatedDestinationRoom.items || []
-          destinationRoom.players = updatedDestinationRoom.players || []
-          destinationRoom.npcs = updatedDestinationRoom.npcs || []
+        if (!updatedDestinationRoom) {
+          console.log(`[Socket] player-move - Failed to fetch updated room ${toRoom} after respawn check`)
+          emitActionFeedback(socket, {
+            action: 'move',
+            message: 'Failed to load destination room',
+            outcome: 'failure',
+          })
+          return
         }
 
+        // Use the updated room data which includes respawned items
         const normalizedRoomData = {
-          ...destinationRoom,
-          players: Array.isArray(destinationRoom.players) ? destinationRoom.players : [],
-          items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
-          npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
+          ...updatedDestinationRoom,
+          players: Array.isArray(updatedDestinationRoom.players) ? updatedDestinationRoom.players : [],
+          items: Array.isArray(updatedDestinationRoom.items) ? updatedDestinationRoom.items : [],
+          npcs: Array.isArray(updatedDestinationRoom.npcs) ? updatedDestinationRoom.npcs : [],
         }
-        const toRoomName = destinationRoom.name
+        const toRoomName = updatedDestinationRoom.name
 
         // Calculate direction from source room to destination
         const direction = sourceRoom ? findDirectionKey(sourceRoom, toRoom) : null
 
         // Calculate directions for entry/exit notifications
         const exitDirection = sourceRoom ? findDirectionKey(sourceRoom, toRoom) : null
-        const entryDirection = destinationRoom ? findDirectionKey(destinationRoom, fromRoom) : null
+        const entryDirection = updatedDestinationRoom ? findDirectionKey(updatedDestinationRoom, fromRoom) : null
 
         console.log(`[Socket] Calling gameEngine.processUserAction for ${player.username}`)
         const result = await gameEngine.processUserAction({
