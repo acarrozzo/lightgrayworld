@@ -53,6 +53,9 @@ export default function TabContainer({
   const tabsContainerRef = useRef<HTMLDivElement>(null)
   const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
+  const leftElementRef = useRef<HTMLDivElement>(null)
+  const rightElementRef = useRef<HTMLDivElement>(null)
 
   const handleTabChange = (tabId: string) => {
     // Toggle behavior: if clicking the active tab, close it (set to null)
@@ -136,8 +139,33 @@ export default function TabContainer({
     }
 
     // Get available width for the tabs container
-    const containerRect = container.getBoundingClientRect()
-    const availableWidth = containerRect.width
+    // Calculate by getting parent width and subtracting leftElement/rightElement widths
+    let availableWidth = container.getBoundingClientRect().width
+    
+    // If we have a header ref, use it to get the parent container width
+    // and subtract the widths of leftElement and rightElement containers
+    if (headerRef.current) {
+      const headerRect = headerRef.current.getBoundingClientRect()
+      const headerWidth = headerRect.width
+      
+      let leftElementWidth = 0
+      if (leftElementRef.current && leftElement) {
+        const leftRect = leftElementRef.current.getBoundingClientRect()
+        leftElementWidth = leftRect.width > 0 ? leftRect.width : leftElementRef.current.offsetWidth || 0
+      }
+      
+      let rightElementWidth = 0
+      if (rightElementRef.current) {
+        const rightRect = rightElementRef.current.getBoundingClientRect()
+        rightElementWidth = rightRect.width > 0 ? rightRect.width : rightElementRef.current.offsetWidth || 0
+      }
+      
+      // Calculate available width: parent width - leftElement - rightElement - gaps
+      // gap-2 = 8px, and there are gaps between leftElement, tabs, and rightElement
+      // Only account for gaps if the elements actually have width
+      const gapsBetweenElements = (leftElementWidth > 0 ? gap : 0) + (rightElementWidth > 0 ? gap : 0)
+      availableWidth = headerWidth - leftElementWidth - rightElementWidth - gapsBetweenElements - 30
+    }
 
     // If we couldn't measure any tabs, show all (fallback)
     if (tabWidths.length === 0) {
@@ -341,10 +369,10 @@ export default function TabContainer({
   return (
     <div className={`flex-1 flex flex-col min-h-0 ${containerClassName}`}>
       {/* Tab Navigation */}
-      <div className={`relative z-10 flex gap-2 ${defaultHeaderPadding} bg-gray-900/95 backdrop-blur-sm flex-shrink-0 flex-wrap items-center ${headerClassName}`}>
+      <div ref={headerRef} className={`relative z-10 flex gap-2 ${defaultHeaderPadding} bg-gray-900/95 backdrop-blur-sm flex-shrink-0 flex-wrap items-center ${headerClassName}`}>
         {/* Left side elements */}
         {leftElement && (
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div ref={leftElementRef} className="flex items-center gap-2 flex-shrink-0">
             {leftElement}
           </div>
         )}
@@ -518,7 +546,7 @@ export default function TabContainer({
         </div>
         
         {/* Right side elements */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div ref={rightElementRef} className="flex items-center gap-2 flex-shrink-0">
           {rightElement}
           {/* Close button - on same row as tabs */}
           {onClose && (
