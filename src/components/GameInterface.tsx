@@ -263,7 +263,7 @@ export default function GameInterface() {
     isOpen: boolean
     title: string
     content: string | React.ReactNode
-    buttons?: Array<{ label: string; direction: string }>
+    buttons?: Array<{ label: string; direction: string; closeOnAction?: boolean }>
   }>({
     isOpen: false,
     title: '',
@@ -277,6 +277,8 @@ export default function GameInterface() {
   } | undefined>(undefined)
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
+  const [quests, setQuests] = useState<Array<{ id: string; questId: string; progress: number; completed: boolean }>>([])
+  const [isLoadingQuests, setIsLoadingQuests] = useState(false)
   const [forceFeedFilter, setForceFeedFilter] = useState<'chat' | undefined>(undefined)
   const [forceFeedChatSubFilter, setForceFeedChatSubFilter] = useState<'all-chat' | undefined>(undefined)
   type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
@@ -1209,6 +1211,164 @@ export default function GameInterface() {
       return
     }
 
+    // Handle quest-specific actions
+    if (normalizedAction === 'accept_quest') {
+      try {
+        const response = await fetch('/api/game/quests/accept', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({ questId: 'quest_001' }),
+        })
+
+        const data = await response.json()
+        if (data.success) {
+          // Refresh quests if quest tab is open
+          if (centerActiveTab === 'quests') {
+            fetch('/api/game/quests/progress', {
+              headers: getAuthHeaders(),
+            })
+              .then((res) => res.json())
+              .then((questData) => {
+                if (questData.success) {
+                  setQuests(questData.quests || [])
+                }
+              })
+              .catch((error) => {
+                console.error('Error refreshing quests:', error)
+              })
+          }
+
+          // Show follow-up message
+          setActionModal({
+            isOpen: true,
+            title: 'Talk to Old Man',
+            content: (
+              <div className="flex flex-col items-center justify-center gap-6 py-8">
+                <Icon name="npc-oldman" size={200} className="text-yellow-400" />
+                <p className="text-gray-200 text-center text-base leading-relaxed max-w-md">
+                  The Old Man smiles warmly. "Wonderful! I need a single yellow flower. You can find them in the flower patch to the north. Bring it back to me when you have it, and I'll reward you handsomely!"
+                </p>
+              </div>
+            ),
+            buttons: [
+              { label: 'Continue', direction: 'continue', closeOnAction: true },
+            ],
+          })
+        } else {
+          console.error('Failed to accept quest:', data)
+        }
+      } catch (error) {
+        console.error('Error accepting quest:', error)
+      }
+      return
+    }
+
+    if (normalizedAction === 'decline_quest') {
+      // Just close the modal (already handled by ActionModal)
+      return
+    }
+
+    if (normalizedAction === 'complete_quest') {
+      try {
+        const response = await fetch('/api/game/quests/complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({ questId: 'quest_001' }),
+        })
+
+        const data = await response.json()
+        if (data.success) {
+          // Update player state
+          if (data.player && player) {
+            setPlayer({
+              ...player,
+              currency: data.player.currency,
+              xp: data.player.xp,
+            })
+          }
+
+          // Update inventory
+          if (data.inventory) {
+            setInventory(data.inventory)
+          }
+
+          // Show completion message
+          setActionModal({
+            isOpen: true,
+            title: 'Quest Completed!',
+            content: (
+              <div className="flex flex-col items-center justify-center gap-6 py-8">
+                <Icon name="npc-oldman" size={200} className="text-yellow-400" />
+                <p className="text-gray-200 text-center text-base leading-relaxed max-w-md">
+                  The Old Man takes the flower with gratitude. "Thank you so much, traveler! Here is your reward: 10 gold and 5 experience points. You've been a great help!"
+                </p>
+                <div className="mt-4 p-4 bg-green-900/30 border border-green-700/50 rounded-lg">
+                  <p className="text-green-300 text-sm font-semibold">Rewards:</p>
+                  <p className="text-green-200 text-sm">+10 Gold</p>
+                  <p className="text-green-200 text-sm">+5 XP</p>
+                </div>
+              </div>
+            ),
+            buttons: [
+              { label: 'Close', direction: 'close', closeOnAction: true },
+            ],
+          })
+
+          // Refresh quests if quest tab is open
+          if (centerActiveTab === 'quests') {
+            fetch('/api/game/quests/progress', {
+              headers: getAuthHeaders(),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.success) {
+                  setQuests(data.quests || [])
+                }
+              })
+              .catch((error) => {
+                console.error('Error refreshing quests:', error)
+              })
+          }
+
+          // Add notification
+          const { addNotification } = useNotificationStore.getState()
+          addNotification({
+            message: 'Quest completed! You received 10 gold and 5 XP.',
+            outcome: 'success',
+            action: 'complete_quest',
+          })
+        } else {
+          console.error('Failed to complete quest:', data)
+          const { addNotification } = useNotificationStore.getState()
+          addNotification({
+            message: data.error || 'Failed to complete quest',
+            outcome: 'failure',
+            action: 'complete_quest',
+          })
+        }
+      } catch (error) {
+        console.error('Error completing quest:', error)
+        const { addNotification } = useNotificationStore.getState()
+        addNotification({
+          message: 'Error completing quest. Please try again.',
+          outcome: 'failure',
+          action: 'complete_quest',
+        })
+      }
+      return
+    }
+
+    if (normalizedAction === 'continue') {
+      // Just close the modal (already handled by ActionModal)
+      return
+    }
+
     console.log('[handleAction] Non-navigation action, sending via socketHandlers')
     
     // Track equip_item actions for undo functionality
@@ -1720,6 +1880,37 @@ export default function GameInterface() {
       cleanupRoomMoves()
     }
   }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed, updateCapCache, worldTick])
+
+  // Fetch quests when quest tab is opened
+  useEffect(() => {
+    if (centerActiveTab === 'quests' && isLoggedIn) {
+      let cancelled = false
+      setIsLoadingQuests(true)
+      fetch('/api/game/quests/progress', {
+        headers: getAuthHeaders(),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!cancelled && data.success) {
+            setQuests(data.quests || [])
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            console.error('Error fetching quests:', error)
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setIsLoadingQuests(false)
+          }
+        })
+      
+      return () => {
+        cancelled = true
+      }
+    }
+  }, [centerActiveTab, isLoggedIn]) // Removed isLoadingQuests and getAuthHeaders from deps
 
   // Track new items when inventory changes
   useEffect(() => {
@@ -2373,9 +2564,85 @@ export default function GameInterface() {
                         </button>
                         <div className="space-y-4 p-4 sm:p-6">
                           <h3 className="text-lg font-semibold text-white">Quests</h3>
-                          <div className="text-gray-400 text-sm">
-                            No active quests.
-                          </div>
+                          {isLoadingQuests ? (
+                            <div className="text-gray-400 text-sm">Loading quests...</div>
+                          ) : quests.length === 0 ? (
+                            <div className="text-gray-400 text-sm">No active quests.</div>
+                          ) : (
+                            <div className="space-y-4">
+                              {quests.map((quest) => {
+                                if (quest.questId === 'quest_001') {
+                                  const isCompleted = quest.completed
+                                  const flowerItem = inventory.find(item => item.template.slug === 'flower')
+                                  const hasFlower = flowerItem && flowerItem.quantity >= 1
+                                  const progressText = isCompleted
+                                    ? 'Completed'
+                                    : hasFlower
+                                    ? 'Ready to complete'
+                                    : 'In progress'
+
+                                  return (
+                                    <div
+                                      key={quest.id}
+                                      className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3"
+                                    >
+                                      <div className="flex items-start justify-between">
+                                        <div>
+                                          <h4 className="text-white font-semibold text-base">
+                                            Quest 1: The Old Man's Request
+                                          </h4>
+                                          <p className="text-gray-400 text-sm mt-1">
+                                            {isCompleted
+                                              ? 'You helped the Old Man by bringing him a yellow flower.'
+                                              : 'The Old Man needs a single yellow flower for a special recipe.'}
+                                          </p>
+                                        </div>
+                                        {isCompleted && (
+                                          <span className="px-2 py-1 bg-green-900/50 border border-green-700/50 text-green-300 text-xs font-semibold rounded">
+                                            Completed
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-gray-500 text-sm">Objective:</span>
+                                          <span className="text-gray-300 text-sm">
+                                            Bring 1 Yellow Flower to the Old Man
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-gray-500 text-sm">Progress:</span>
+                                          <span
+                                            className={`text-sm font-medium ${
+                                              isCompleted
+                                                ? 'text-green-400'
+                                                : hasFlower
+                                                ? 'text-yellow-400'
+                                                : 'text-gray-400'
+                                            }`}
+                                          >
+                                            {isCompleted ? '1/1' : hasFlower ? '1/1 (Ready!)' : '0/1'} Yellow Flower
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-gray-500 text-sm">Reward:</span>
+                                          <span className="text-gray-300 text-sm">10 Gold, 5 XP</span>
+                                        </div>
+                                      </div>
+                                      {!isCompleted && hasFlower && (
+                                        <div className="pt-2 border-t border-gray-700/50">
+                                          <p className="text-yellow-400 text-sm font-medium">
+                                            You have the flower! Return to the Old Man in room 003 to complete the quest.
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                }
+                                return null
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ),

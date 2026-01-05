@@ -144,6 +144,114 @@ const ROOM_ACTIONS = {
     'ex cabin': "You examine the cabin. It's warm and cozy, with a cooking fire burning and the Old Man rocking in his chair.",
     'attack dummy': 'You attack the training dummy. Your weapon strikes true!',
     'cook meat': 'You cook the meat over the fire. It smells delicious!',
+    'talk to old man': async (playerId, roomState) => {
+      const { getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
+      const { getPlayerInventory } = require('./services/inventory-service')
+
+      const questId = 'quest_001'
+      const questProgress = await getQuestProgress(playerId, questId)
+
+      roomState.touchActivity()
+
+      // Quest not started - show offer
+      if (!questProgress) {
+        return {
+          success: true,
+          action: 'talk to old man',
+          playerEvent: {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man.', {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: {
+                type: 'icon',
+                icon: 'npc-oldman',
+                iconColor: 'yellow-400',
+                title: 'Talk to Old Man',
+                message: 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! I have a small favor to ask. I need a single yellow flower for a special recipe. Would you be willing to help me? I can offer you 10 gold and some experience in return."',
+              },
+              buttons: [
+                { label: 'Accept', direction: 'accept_quest' },
+                { label: 'Decline', direction: 'decline_quest' },
+              ],
+            }),
+          },
+        }
+      }
+
+      // Quest in progress
+      if (questProgress && !questProgress.completed) {
+        const requirements = await checkQuestRequirements(playerId, questId)
+        const inventory = await getPlayerInventory(playerId)
+        const flowerItem = inventory.find(item => item.template.slug === 'flower')
+        const hasFlower = requirements.hasFlower && (flowerItem?.quantity || 0) >= 1
+
+        if (hasFlower) {
+          // Player has flower - show completion prompt
+          return {
+            success: true,
+            action: 'talk to old man',
+            playerEvent: {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man with the flower.', {
+                roomId: roomState.roomId,
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'npc-oldman',
+                  iconColor: 'yellow-400',
+                  title: 'Talk to Old Man',
+                  message: 'The Old Man\'s eyes light up as he sees the yellow flower in your hand. "Perfect! That\'s exactly what I needed. Thank you so much, traveler!"',
+                },
+                buttons: [
+                  { label: 'Complete Quest', direction: 'complete_quest' },
+                ],
+              }),
+            },
+          }
+        } else {
+          // Player doesn't have flower - show reminder
+          return {
+            success: true,
+            action: 'talk to old man',
+            playerEvent: {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
+                roomId: roomState.roomId,
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'npc-oldman',
+                  iconColor: 'yellow-400',
+                  title: 'Talk to Old Man',
+                  message: 'The Old Man looks at you expectantly. "Have you found that yellow flower yet? You can find them in the flower patch to the north. Just bring me one when you have it!"',
+                },
+              }),
+            },
+          }
+        }
+      }
+
+      // Quest completed
+      return {
+        success: true,
+        action: 'talk to old man',
+        playerEvent: {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
+            roomId: roomState.roomId,
+            showModal: true,
+            modalContent: {
+              type: 'icon',
+              icon: 'npc-oldman',
+              iconColor: 'yellow-400',
+              title: 'Talk to Old Man',
+              message: 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."',
+            },
+          }),
+        },
+      }
+    },
   },
   '004': {},
   '005': {

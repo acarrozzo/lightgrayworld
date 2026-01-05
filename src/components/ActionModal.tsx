@@ -6,6 +6,7 @@ import Icon from './Icon'
 interface ActionModalButton {
   label: string
   direction: string
+  closeOnAction?: boolean
 }
 
 interface ActionModalProps {
@@ -25,11 +26,13 @@ export default function ActionModal({
   buttons,
   onAction,
 }: ActionModalProps) {
-  const handleButtonClick = (direction: string) => {
+  const handleButtonClick = (direction: string, closeOnAction: boolean = true) => {
     if (onAction) {
       onAction(direction)
     }
-    onClose()
+    if (closeOnAction) {
+      onClose()
+    }
   }
 
   // Handle button clicks in content using event delegation
@@ -38,8 +41,9 @@ export default function ActionModal({
     const button = target.closest('button[data-direction]')
     if (button) {
       const direction = button.getAttribute('data-direction')
+      const closeOnAction = button.getAttribute('data-close-on-action') !== 'false'
       if (direction) {
-        handleButtonClick(direction)
+        handleButtonClick(direction, closeOnAction)
       }
     }
   }
@@ -91,14 +95,29 @@ export default function ActionModal({
           )}
         </div>
 
-        <div className="border-t border-gray-700/50 px-4 py-3 text-right">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-          >
-            Close
-          </button>
+        <div className="border-t border-gray-700/50 px-4 py-3 flex items-center justify-end gap-2">
+          {buttons && buttons.length > 0 ? (
+            buttons.map((button, index) => (
+              <button
+                key={index}
+                type="button"
+                data-direction={button.direction}
+                data-close-on-action={button.closeOnAction !== false}
+                onClick={() => handleButtonClick(button.direction, button.closeOnAction !== false)}
+                className="rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              >
+                {button.label}
+              </button>
+            ))
+          ) : (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+            >
+              Close
+            </button>
+          )}
         </div>
       </div>
     </div>
