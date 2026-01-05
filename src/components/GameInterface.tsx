@@ -2265,6 +2265,22 @@ export default function GameInterface() {
                       <div className="flex flex-col flex-1 min-h-0 h-full">
                         <div className="flex-1 min-h-0 overflow-y-auto h-full">
                           <div className="max-w-4xl mx-auto w-full">
+                            {!socket?.connected && (
+                              <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-gray-800/60 bg-gray-900/80">
+                                <div className="flex items-center gap-2 text-xs text-gray-400">
+                                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                                  <span>Not Connected</span>
+                                </div>
+                                <button
+                                  onClick={() => window.location.reload()}
+                                  className="px-6 py-2 text-md font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
+                                  aria-label="Refresh page"
+                                  title="Refresh page"
+                                >
+                                  Refresh
+                                </button>
+                              </div>
+                            )}
                             <RoomBox
                             room={currentRoom}
                             roomPlayers={roomPlayers}
