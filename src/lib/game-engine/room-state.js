@@ -638,13 +638,29 @@ class RoomState {
     this.touchActivity()
 
     const { acceptQuest, getQuestDef } = require('./services/quest-service')
+    
+    // Load quest definition early to validate room context
+    const questDef = getQuestDef(questId)
+    if (!questDef) {
+      return this.createErrorResult('accept_quest', 'Quest not found')
+    }
+
+    // Validate that player is in the quest giver's room
+    if (!questDef.giver || !questDef.giver.roomId) {
+      return this.createErrorResult('accept_quest', 'Quest giver information is missing')
+    }
+
+    if (this.roomId !== questDef.giver.roomId) {
+      const npcName = this.getNpcFriendlyName(questDef.giver.npcId || 'the quest giver')
+      return this.createErrorResult('accept_quest', `You need to speak to ${npcName} to do that.`)
+    }
+
     const result = await acceptQuest(playerId, questId, choiceId)
 
     if (!result.success) {
       return this.createErrorResult('accept_quest', result.error || 'Failed to accept quest')
     }
 
-    const questDef = getQuestDef(questId)
     const questTitle = questDef ? questDef.title : questId
 
     return {
@@ -674,13 +690,29 @@ class RoomState {
     this.touchActivity()
 
     const { completeQuest, getQuestDef } = require('./services/quest-service')
+    
+    // Load quest definition early to validate room context
+    const questDef = getQuestDef(questId)
+    if (!questDef) {
+      return this.createErrorResult('complete_quest', 'Quest not found')
+    }
+
+    // Validate that player is in the quest giver's room
+    if (!questDef.giver || !questDef.giver.roomId) {
+      return this.createErrorResult('complete_quest', 'Quest giver information is missing')
+    }
+
+    if (this.roomId !== questDef.giver.roomId) {
+      const npcName = this.getNpcFriendlyName(questDef.giver.npcId || 'the quest giver')
+      return this.createErrorResult('complete_quest', `You need to speak to ${npcName} to do that.`)
+    }
+
     const result = await completeQuest(playerId, questId)
 
     if (!result.success) {
       return this.createErrorResult('complete_quest', result.error || 'Failed to complete quest')
     }
 
-    const questDef = getQuestDef(questId)
     const questTitle = questDef ? questDef.title : questId
 
     // Build rewards message
@@ -741,6 +773,18 @@ class RoomState {
         payload: this.createFeedbackPayload(action, 'failure', message),
       },
     }
+  }
+
+  /**
+   * Convert npcId to friendly name for error messages
+   * @param {string} npcId - The NPC ID
+   * @returns {string} Friendly NPC name
+   */
+  getNpcFriendlyName(npcId) {
+    if (npcId === 'old_man') {
+      return 'the Old Man'
+    }
+    return npcId
   }
 
   touchActivity() {
