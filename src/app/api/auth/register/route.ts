@@ -78,6 +78,23 @@ export async function POST(request: NextRequest) {
       include: { equipment: true }
     })
 
+    // Seed quest_001 for new players
+    try {
+      const { randomUUID } = require('crypto')
+      await prisma.questProgress.create({
+        data: {
+          id: randomUUID(),
+          userId: user.id,
+          questId: 'quest_001',
+          progress: 0,
+          completed: false,
+        },
+      })
+    } catch (error) {
+      console.error('Failed to seed quest_001 for new user:', error)
+      // Don't fail registration if quest seeding fails
+    }
+
     try {
       await createWorldFeedEvent({
         userId: user.id,

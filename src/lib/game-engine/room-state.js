@@ -103,6 +103,10 @@ class RoomState {
         return this.executeEquipItem(action, playerId)
       case 'unequip_item':
         return this.executeUnequipItem(action, playerId)
+      case 'accept_quest':
+        return await this.executeAcceptQuest(action, playerId)
+      case 'complete_quest':
+        return await this.executeCompleteQuest(action, playerId)
       default:
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
     }
@@ -615,6 +619,100 @@ class RoomState {
         payload: this.createFeedbackPayload('unequip_item', 'success', result.message, {
           inventory: result.inventory,
           player: result.player,
+        }),
+      },
+    }
+  }
+
+  async executeAcceptQuest(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('accept_quest', 'Player not found in this room')
+    }
+
+    const { questId, choiceId } = action.data || {}
+    if (!questId) {
+      return this.createErrorResult('accept_quest', 'Quest ID is required')
+    }
+
+    this.touchActivity()
+
+    const { acceptQuest, getQuestDef } = require('./services/quest-service')
+    const result = await acceptQuest(playerId, questId, choiceId)
+
+    if (!result.success) {
+      return this.createErrorResult('accept_quest', result.error || 'Failed to accept quest')
+    }
+
+    const questDef = getQuestDef(questId)
+    const questTitle = questDef ? questDef.title : questId
+
+    return {
+      success: true,
+      action: 'accept_quest',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('accept_quest', 'success', `Quest accepted: ${questTitle}`, {
+          roomId: this.roomId,
+          quests: await require('./services/quest-service').getAllQuestProgress(playerId),
+        }),
+      },
+    }
+  }
+
+  async executeCompleteQuest(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('complete_quest', 'Player not found in this room')
+    }
+
+    const { questId } = action.data || {}
+    if (!questId) {
+      return this.createErrorResult('complete_quest', 'Quest ID is required')
+    }
+
+    this.touchActivity()
+
+    const { completeQuest, getQuestDef } = require('./services/quest-service')
+    const result = await completeQuest(playerId, questId)
+
+    if (!result.success) {
+      return this.createErrorResult('complete_quest', result.error || 'Failed to complete quest')
+    }
+
+    const questDef = getQuestDef(questId)
+    const questTitle = questDef ? questDef.title : questId
+
+    // Build rewards message
+    const rewards = questDef?.rewards || []
+    const rewardMessages = []
+    for (const reward of rewards) {
+      if (reward.type === 'currency') {
+        rewardMessages.push(`${reward.amount} gold`)
+      } else if (reward.type === 'xp') {
+        rewardMessages.push(`${reward.amount} XP`)
+      }
+    }
+    const rewardText = rewardMessages.length > 0 ? ` You received: ${rewardMessages.join(', ')}.` : ''
+
+    return {
+      success: true,
+      action: 'complete_quest',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('complete_quest', 'success', `Quest completed: ${questTitle}.${rewardText}`, {
+          roomId: this.roomId,
+          quests: result.quests,
+          inventory: result.inventory,
+          player: result.player,
+          showModal: true,
+          modalContent: {
+            type: 'icon',
+            icon: 'npc-oldman',
+            iconColor: 'yellow-400',
+            title: 'Quest Completed!',
+            message: `You completed: ${questTitle}.${rewardText}`,
+          },
         }),
       },
     }

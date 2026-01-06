@@ -30,6 +30,7 @@ import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import UsersDisplay from './UsersDisplay'
+import QUESTS from '@/lib/game-data/quests.json'
 
 const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -1211,156 +1212,44 @@ export default function GameInterface() {
       return
     }
 
-    // Handle quest-specific actions
-    if (normalizedAction === 'accept_quest') {
-      try {
-        const response = await fetch('/api/game/quests/accept', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getAuthHeaders(),
-          },
-          body: JSON.stringify({ questId: 'quest_001' }),
-        })
+    // Parse quest actions with questId (and optional choiceId)
+    // Format: accept_quest:quest_002 or accept_quest:quest_002:polite
+    if (normalizedAction.startsWith('accept_quest:')) {
+      const parts = normalizedAction.split(':')
+      const questId = parts[1]
+      const choiceId = parts[2] || null
+      if (questId) {
+        console.log('[handleAction] Parsed accept_quest action:', { questId, choiceId })
+        return handleAction({ type: 'accept_quest', data: { questId, choiceId } })
+      }
+    }
 
-        const data = await response.json()
-        if (data.success) {
-          // Refresh quests if quest tab is open
-          if (centerActiveTab === 'quests') {
-            fetch('/api/game/quests/progress', {
-              headers: getAuthHeaders(),
-            })
-              .then((res) => res.json())
-              .then((questData) => {
-                if (questData.success) {
-                  setQuests(questData.quests || [])
-                }
-              })
-              .catch((error) => {
-                console.error('Error refreshing quests:', error)
-              })
-          }
+    // Format: complete_quest:quest_002
+    if (normalizedAction.startsWith('complete_quest:')) {
+      const parts = normalizedAction.split(':')
+      const questId = parts[1]
+      if (questId) {
+        console.log('[handleAction] Parsed complete_quest action:', { questId })
+        return handleAction({ type: 'complete_quest', data: { questId } })
+      }
+    }
 
-          // Show follow-up message
-          setActionModal({
-            isOpen: true,
-            title: 'Talk to Old Man',
-            content: (
-              <div className="flex flex-col items-center justify-center gap-6 py-8">
-                <Icon name="npc-oldman" size={200} className="text-yellow-400" />
-                <p className="text-gray-200 text-center text-base leading-relaxed max-w-md">
-                  The Old Man smiles warmly. "Wonderful! I need a single yellow flower. You can find them in the flower patch to the north. Bring it back to me when you have it, and I'll reward you handsomely!"
-                </p>
-              </div>
-            ),
-            buttons: [
-              { label: 'Continue', direction: 'continue', closeOnAction: true },
-            ],
-          })
-        } else {
-          console.error('Failed to accept quest:', data)
-        }
-      } catch (error) {
-        console.error('Error accepting quest:', error)
+    // Handle quest actions via socket (after parsing)
+    if (normalizedAction === 'accept_quest' || normalizedAction === 'complete_quest') {
+      console.log('[handleAction] Quest action detected, sending to server:', normalizedAction, actionData)
+      const questResult = socketHandlers.sendGameAction({
+        type: normalizedAction,
+        data: actionData,
+      })
+      console.log('[handleAction] sendGameAction result for quest:', questResult)
+      if (!questResult) {
+        console.warn('Failed to send quest action via socket')
       }
       return
     }
 
     if (normalizedAction === 'decline_quest') {
       // Just close the modal (already handled by ActionModal)
-      return
-    }
-
-    if (normalizedAction === 'complete_quest') {
-      try {
-        const response = await fetch('/api/game/quests/complete', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...getAuthHeaders(),
-          },
-          body: JSON.stringify({ questId: 'quest_001' }),
-        })
-
-        const data = await response.json()
-        if (data.success) {
-          // Update player state
-          if (data.player && player) {
-            setPlayer({
-              ...player,
-              currency: data.player.currency,
-              xp: data.player.xp,
-            })
-          }
-
-          // Update inventory
-          if (data.inventory) {
-            setInventory(data.inventory)
-          }
-
-          // Show completion message
-          setActionModal({
-            isOpen: true,
-            title: 'Quest Completed!',
-            content: (
-              <div className="flex flex-col items-center justify-center gap-6 py-8">
-                <Icon name="npc-oldman" size={200} className="text-yellow-400" />
-                <p className="text-gray-200 text-center text-base leading-relaxed max-w-md">
-                  The Old Man takes the flower with gratitude. "Thank you so much, traveler! Here is your reward: 10 gold and 5 experience points. You've been a great help!"
-                </p>
-                <div className="mt-4 p-4 bg-green-900/30 border border-green-700/50 rounded-lg">
-                  <p className="text-green-300 text-sm font-semibold">Rewards:</p>
-                  <p className="text-green-200 text-sm">+10 Gold</p>
-                  <p className="text-green-200 text-sm">+5 XP</p>
-                </div>
-              </div>
-            ),
-            buttons: [
-              { label: 'Close', direction: 'close', closeOnAction: true },
-            ],
-          })
-
-          // Refresh quests if quest tab is open
-          if (centerActiveTab === 'quests') {
-            fetch('/api/game/quests/progress', {
-              headers: getAuthHeaders(),
-            })
-              .then((res) => res.json())
-              .then((data) => {
-                if (data.success) {
-                  setQuests(data.quests || [])
-                }
-              })
-              .catch((error) => {
-                console.error('Error refreshing quests:', error)
-              })
-          }
-
-          // Add notification
-          const { addNotification } = useNotificationStore.getState()
-          addNotification({
-            message: 'Quest completed! You received 10 gold and 5 XP.',
-            outcome: 'success',
-            action: 'complete_quest',
-          })
-        } else {
-          console.error('Failed to complete quest:', data)
-          const { addNotification } = useNotificationStore.getState()
-          addNotification({
-            message: data.error || 'Failed to complete quest',
-            outcome: 'failure',
-            action: 'complete_quest',
-          })
-        }
-      } catch (error) {
-        console.error('Error completing quest:', error)
-        const { addNotification } = useNotificationStore.getState()
-        addNotification({
-          message: 'Error completing quest. Please try again.',
-          outcome: 'failure',
-          action: 'complete_quest',
-        })
-      }
       return
     }
 
@@ -1562,9 +1451,16 @@ export default function GameInterface() {
         setInventory(payload.data.inventory)
       }
 
-      // Update player state if provided in action feedback (e.g., from equip/unequip)
+      // Update player state if provided in action feedback (e.g., from equip/unequip, quest completion)
+      // Merge partial updates instead of replacing entire state to preserve fields like hp, hpMax, mp, mpMax, level, currentRoom
       if (payload?.data?.player) {
-        setPlayer(payload.data.player)
+        const currentPlayer = playerRef.current
+        if (currentPlayer) {
+          setPlayer({ ...currentPlayer, ...payload.data.player })
+        } else {
+          // Fallback: if no current player, use the payload player (shouldn't happen normally)
+          setPlayer(payload.data.player)
+        }
       }
 
       // Update player HP if provided in action feedback
@@ -2567,80 +2463,132 @@ export default function GameInterface() {
                           {isLoadingQuests ? (
                             <div className="text-gray-400 text-sm">Loading quests...</div>
                           ) : quests.length === 0 ? (
-                            <div className="text-gray-400 text-sm">No active quests.</div>
+                            <div className="text-gray-400 text-sm">No quests.</div>
                           ) : (
-                            <div className="space-y-4">
-                              {quests.map((quest) => {
-                                if (quest.questId === 'quest_001') {
-                                  const isCompleted = quest.completed
-                                  const flowerItem = inventory.find(item => item.template.slug === 'flower')
-                                  const hasFlower = flowerItem && flowerItem.quantity >= 1
-                                  const progressText = isCompleted
-                                    ? 'Completed'
-                                    : hasFlower
-                                    ? 'Ready to complete'
-                                    : 'In progress'
+                            <div className="space-y-6">
+                              {/* Active Quests */}
+                              {quests.filter(q => !q.completed).length > 0 && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-300 mb-3">Active</h4>
+                                  <div className="space-y-4">
+                                    {quests
+                                      .filter(q => !q.completed)
+                                      .map((quest) => {
+                                        const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
+                                        if (!questDef) return null
 
-                                  return (
-                                    <div
-                                      key={quest.id}
-                                      className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3"
-                                    >
-                                      <div className="flex items-start justify-between">
-                                        <div>
-                                          <h4 className="text-white font-semibold text-base">
-                                            Quest 1: The Old Man's Request
-                                          </h4>
-                                          <p className="text-gray-400 text-sm mt-1">
-                                            {isCompleted
-                                              ? 'You helped the Old Man by bringing him a yellow flower.'
-                                              : 'The Old Man needs a single yellow flower for a special recipe.'}
-                                          </p>
-                                        </div>
-                                        {isCompleted && (
-                                          <span className="px-2 py-1 bg-green-900/50 border border-green-700/50 text-green-300 text-xs font-semibold rounded">
-                                            Completed
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-gray-500 text-sm">Objective:</span>
-                                          <span className="text-gray-300 text-sm">
-                                            Bring 1 Yellow Flower to the Old Man
-                                          </span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-gray-500 text-sm">Progress:</span>
-                                          <span
-                                            className={`text-sm font-medium ${
-                                              isCompleted
-                                                ? 'text-green-400'
-                                                : hasFlower
-                                                ? 'text-yellow-400'
-                                                : 'text-gray-400'
-                                            }`}
+                                        // Check if ready to turn in (for turn_in completion mode)
+                                        let isReadyToTurnIn = false
+                                        if (questDef.completionMode === 'turn_in' && questDef.requirements) {
+                                          const hasAllRequirements = questDef.requirements.every((req: any) => {
+                                            if (req.type === 'hasItem') {
+                                              const item = inventory.find(i => i.template.slug === req.itemSlug)
+                                              return item && item.quantity >= (req.quantity || 1)
+                                            }
+                                            return false
+                                          })
+                                          isReadyToTurnIn = hasAllRequirements
+                                        }
+
+                                        return (
+                                          <div
+                                            key={quest.id}
+                                            className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3"
                                           >
-                                            {isCompleted ? '1/1' : hasFlower ? '1/1 (Ready!)' : '0/1'} Yellow Flower
-                                          </span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-gray-500 text-sm">Reward:</span>
-                                          <span className="text-gray-300 text-sm">10 Gold, 5 XP</span>
-                                        </div>
-                                      </div>
-                                      {!isCompleted && hasFlower && (
-                                        <div className="pt-2 border-t border-gray-700/50">
-                                          <p className="text-yellow-400 text-sm font-medium">
-                                            You have the flower! Return to the Old Man in room 003 to complete the quest.
-                                          </p>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )
-                                }
-                                return null
-                              })}
+                                            <div className="flex items-start justify-between">
+                                              <div>
+                                                <h4 className="text-white font-semibold text-base">
+                                                  Quest {questDef.number}: {questDef.title}
+                                                </h4>
+                                                <p className="text-gray-400 text-sm mt-1">
+                                                  {questDef.summary}
+                                                </p>
+                                              </div>
+                                              <span className="px-2 py-1 bg-blue-900/50 border border-blue-700/50 text-blue-300 text-xs font-semibold rounded">
+                                                Active
+                                              </span>
+                                            </div>
+                                            <div className="space-y-2">
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-gray-500 text-sm">Objective:</span>
+                                                <span className="text-gray-300 text-sm">
+                                                  {questDef.objective}
+                                                </span>
+                                              </div>
+                                              {questDef.rewards && questDef.rewards.length > 0 && (
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-gray-500 text-sm">Reward:</span>
+                                                  <span className="text-gray-300 text-sm">
+                                                    {questDef.rewards.map((r: any, idx: number) => {
+                                                      if (r.type === 'currency') return `${r.amount} Gold`
+                                                      if (r.type === 'xp') return `${r.amount} XP`
+                                                      return ''
+                                                    }).filter(Boolean).join(', ')}
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </div>
+                                            {isReadyToTurnIn && questDef.giver && (
+                                              <div className="pt-2 border-t border-gray-700/50">
+                                                <p className="text-yellow-400 text-sm font-medium">
+                                                  Ready to turn in — return to {questDef.giver.roomId === '003' ? 'the Old Man' : `Room ${questDef.giver.roomId}`} to complete the quest.
+                                                </p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Completed Quests */}
+                              {quests.filter(q => q.completed).length > 0 && (
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-300 mb-3">Completed</h4>
+                                  <div className="space-y-4">
+                                    {quests
+                                      .filter(q => q.completed)
+                                      .map((quest) => {
+                                        const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
+                                        if (!questDef) return null
+
+                                        return (
+                                          <div
+                                            key={quest.id}
+                                            className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3 opacity-75"
+                                          >
+                                            <div className="flex items-start justify-between">
+                                              <div>
+                                                <h4 className="text-white font-semibold text-base">
+                                                  Quest {questDef.number}: {questDef.title}
+                                                </h4>
+                                                <p className="text-gray-400 text-sm mt-1">
+                                                  {questDef.summary}
+                                                </p>
+                                              </div>
+                                              <span className="px-2 py-1 bg-green-900/50 border border-green-700/50 text-green-300 text-xs font-semibold rounded">
+                                                Completed
+                                              </span>
+                                            </div>
+                                            {questDef.rewards && questDef.rewards.length > 0 && (
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-gray-500 text-sm">Reward:</span>
+                                                <span className="text-gray-300 text-sm">
+                                                  {questDef.rewards.map((r: any) => {
+                                                    if (r.type === 'currency') return `${r.amount} Gold`
+                                                    if (r.type === 'xp') return `${r.amount} XP`
+                                                    return ''
+                                                  }).filter(Boolean).join(', ')}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

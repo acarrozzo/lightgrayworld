@@ -1,0 +1,56 @@
+{
+  "quest_001": {
+    "number": 1,
+    "title": "Talk to the Old Man",
+    "summary": "Find the Old Man in the cabin and introduce yourself.",
+    "objective": "Talk to the Old Man in Room 003.",
+    "giver": {
+      "npcId": "old_man",
+      "roomId": "003"
+    },
+    "completionMode": "linked",
+    "completeWhen": {
+      "type": "questAccepted",
+      "questId": "quest_002"
+    },
+    "requirements": [],
+    "consumeRequirementsOnComplete": false,
+    "rewards": []
+  },
+  "quest_002": {
+    "number": 2,
+    "title": "Bring a Flower to the Old Man",
+    "summary": "He needs a single yellow flower for a special recipe.",
+    "objective": "Bring 1 Yellow Flower to the Old Man in Room 003.",
+    "giver": {
+      "npcId": "old_man",
+      "roomId": "003"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "flower",
+        "quantity": 1
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 10
+      },
+      {
+        "type": "xp",
+        "amount": 5
+      }
+    ],
+    "onAccept": [
+      {
+        "type": "completeQuest",
+        "questId": "quest_001"
+      }
+    ]
+  }
+}
+

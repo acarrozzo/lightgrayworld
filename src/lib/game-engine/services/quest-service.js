@@ -1,6 +1,24 @@
 const { prisma } = require('../../db-client')
-const { playerHasItem, getPlayerInventory } = require('./inventory-service')
+const { playerHasItem, getPlayerInventory, removeItemBySlug } = require('./inventory-service')
 const { getItemBySlug } = require('./inventory-service')
+const QUESTS = require('../../game-data/quests.json')
+
+/**
+ * Get quest definition from registry
+ * @param {string} questId - The quest ID
+ * @returns {Object|null} Quest definition or null if not found
+ */
+function getQuestDef(questId) {
+  return QUESTS[questId] || null
+}
+
+/**
+ * List all quest definitions sorted by number
+ * @returns {Array} Array of quest definitions
+ */
+function listQuestDefs() {
+  return Object.values(QUESTS).sort((a, b) => a.number - b.number)
+}
 
 /**
  * Get quest progress for a player
@@ -23,27 +41,104 @@ async function getQuestProgress(playerId, questId) {
  * Accept a quest (create quest progress entry)
  * @param {string} playerId - The player's ID
  * @param {string} questId - The quest ID
- * @returns {Promise<Object>} Created quest progress
+ * @param {string} choiceId - Optional choice ID for branching
+ * @returns {Promise<Object>} Result with quest progress or error
  */
-async function acceptQuest(playerId, questId) {
+async function acceptQuest(playerId, questId, choiceId = null) {
   const { randomUUID } = require('crypto')
   
+  // Get quest definition
+  const questDef = getQuestDef(questId)
+  if (!questDef) {
+    return { success: false, error: 'Quest not found' }
+  }
+
   // Check if quest already exists
   const existing = await getQuestProgress(playerId, questId)
   if (existing) {
-    return existing
+    return { success: true, questProgress: existing }
   }
 
+  // Extract quests that will be completed by onAccept effects
+  const questsToBeCompleted = new Set()
+  if (questDef.onAccept && Array.isArray(questDef.onAccept)) {
+    for (const effect of questDef.onAccept) {
+      if (effect.type === 'completeQuest') {
+        questsToBeCompleted.add(effect.questId)
+      }
+    }
+  }
+
+  // One-quest-per-NPC gating
+  if (questDef.giver && questDef.giver.npcId) {
+    const activeQuests = await prisma.questProgress.findMany({
+      where: {
+        userId: playerId,
+        completed: false,
+      },
+    })
+
+    for (const activeQuest of activeQuests) {
+      // Skip quests that will be completed by onAccept effects
+      if (questsToBeCompleted.has(activeQuest.questId)) {
+        continue
+      }
+
+      const activeQuestDef = getQuestDef(activeQuest.questId)
+      if (activeQuestDef && activeQuestDef.giver && activeQuestDef.giver.npcId === questDef.giver.npcId) {
+        return { 
+          success: false, 
+          error: `You already have a quest from ${questDef.giver.npcId === 'old_man' ? 'the Old Man' : questDef.giver.npcId}.` 
+        }
+      }
+    }
+  }
+
+  // Prepare data field
+  const data = choiceId ? { acceptChoice: choiceId } : null
+
   // Create new quest progress
-  return prisma.questProgress.create({
+  const questProgress = await prisma.questProgress.create({
     data: {
       id: randomUUID(),
       userId: playerId,
       questId: questId,
       progress: 0,
       completed: false,
+      data: data,
     },
   })
+
+  // Handle onAccept effects (quest chains)
+  if (questDef.onAccept && Array.isArray(questDef.onAccept)) {
+    for (const effect of questDef.onAccept) {
+      if (effect.type === 'completeQuest') {
+        const linkedQuestId = effect.questId
+        // Idempotent: upsert the linked quest as completed
+        await prisma.questProgress.upsert({
+          where: {
+            userId_questId: {
+              userId: playerId,
+              questId: linkedQuestId,
+            },
+          },
+          update: {
+            completed: true,
+            progress: 1,
+          },
+          create: {
+            id: randomUUID(),
+            userId: playerId,
+            questId: linkedQuestId,
+            progress: 1,
+            completed: true,
+          },
+        })
+      }
+    }
+  }
+
+  return { success: true, questProgress }
 }
 
 /**
@@ -53,21 +148,47 @@ async function acceptQuest(playerId, questId) {
  * @returns {Promise<Object>} Requirements check result
  */
 async function checkQuestRequirements(playerId, questId) {
-  if (questId === 'quest_001') {
-    // Quest 1: Need 1 yellow flower
-    const hasFlower = await playerHasItem(playerId, 'flower')
-    const inventory = await getPlayerInventory(playerId)
-    const flowerItem = inventory.find(item => item.template.slug === 'flower')
-    const flowerQuantity = flowerItem?.quantity || 0
+  const questDef = getQuestDef(questId)
+  if (!questDef) {
+    return { met: false, error: 'Quest not found' }
+  }
 
-    return {
-      met: hasFlower && flowerQuantity >= 1,
-      hasFlower,
-      flowerQuantity,
+  if (!questDef.requirements || questDef.requirements.length === 0) {
+    return { met: true, details: {} }
+  }
+
+  const inventory = await getPlayerInventory(playerId)
+  const itemQuantities = {}
+  
+  // Build item quantity map
+  for (const item of inventory) {
+    const slug = item.template.slug
+    if (!itemQuantities[slug]) {
+      itemQuantities[slug] = 0
+    }
+    itemQuantities[slug] += item.quantity
+  }
+
+  // Check each requirement
+  for (const requirement of questDef.requirements) {
+    if (requirement.type === 'hasItem') {
+      const { itemSlug, quantity = 1 } = requirement
+      const hasQuantity = (itemQuantities[itemSlug] || 0) >= quantity
+      
+      if (!hasQuantity) {
+        return {
+          met: false,
+          details: {
+            missingItem: itemSlug,
+            requiredQuantity: quantity,
+            currentQuantity: itemQuantities[itemSlug] || 0,
+          },
+        }
+      }
     }
   }
 
-  return { met: false }
+  return { met: true, details: { itemQuantities } }
 }
 
 /**
@@ -77,6 +198,12 @@ async function checkQuestRequirements(playerId, questId) {
  * @returns {Promise<Object>} Completion result with updated player and inventory
  */
 async function completeQuest(playerId, questId) {
+  // Get quest definition
+  const questDef = getQuestDef(questId)
+  if (!questDef) {
+    return { success: false, error: 'Quest not found' }
+  }
+
   // Get quest progress
   const questProgress = await getQuestProgress(playerId, questId)
   if (!questProgress) {
@@ -93,71 +220,73 @@ async function completeQuest(playerId, questId) {
     return { success: false, error: 'Quest requirements not met' }
   }
 
-  // Quest-specific completion logic
-  if (questId === 'quest_001') {
-    // Remove 1 flower from inventory
-    const flowerTemplate = await getItemBySlug('flower')
-    if (!flowerTemplate) {
-      return { success: false, error: 'Flower item not found' }
-    }
-
-    const flowerItem = await prisma.playerItem.findFirst({
-      where: {
-        playerId,
-        templateId: flowerTemplate.id,
-      },
-    })
-
-    if (!flowerItem || flowerItem.quantity < 1) {
-      return { success: false, error: 'Flower not found in inventory' }
-    }
-
-    // Remove flower
-    if (flowerItem.quantity === 1) {
-      await prisma.playerItem.delete({
-        where: { id: flowerItem.id },
-      })
-    } else {
-      await prisma.playerItem.update({
-        where: { id: flowerItem.id },
-        data: { quantity: flowerItem.quantity - 1 },
-      })
-    }
-
-    // Grant rewards: 10 gold, 5 XP
-    const updatedUser = await prisma.user.update({
-      where: { id: playerId },
-      data: {
-        currency: { increment: 10 },
-        xp: { increment: 5 },
-      },
-      select: {
-        id: true,
-        currency: true,
-        xp: true,
-      },
-    })
-
-    // Mark quest as completed
-    await prisma.questProgress.update({
-      where: { id: questProgress.id },
-      data: {
-        completed: true,
-        progress: 1,
-      },
-    })
-
-    // Get updated inventory
-    const inventory = await getPlayerInventory(playerId)
-
-    return {
-      success: true,
-      player: updatedUser,
-      inventory,
+  // Consume requirements if needed
+  if (questDef.consumeRequirementsOnComplete && questDef.requirements) {
+    for (const requirement of questDef.requirements) {
+      if (requirement.type === 'hasItem') {
+        const { itemSlug, quantity = 1 } = requirement
+        const removeResult = await removeItemBySlug(playerId, itemSlug, quantity)
+        if (!removeResult.success) {
+          return { success: false, error: `Failed to remove ${itemSlug}: ${removeResult.error}` }
+        }
+      }
     }
   }
 
-  return { success: false, error: 'Unknown quest' }
+  // Grant rewards
+  let currencyIncrement = 0
+  let xpIncrement = 0
+
+  if (questDef.rewards && Array.isArray(questDef.rewards)) {
+    for (const reward of questDef.rewards) {
+      if (reward.type === 'currency') {
+        currencyIncrement += reward.amount || 0
+      } else if (reward.type === 'xp') {
+        xpIncrement += reward.amount || 0
+      }
+    }
+  }
+
+  // Update player
+  const updateData = {}
+  if (currencyIncrement > 0) {
+    updateData.currency = { increment: currencyIncrement }
+  }
+  if (xpIncrement > 0) {
+    updateData.xp = { increment: xpIncrement }
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: playerId },
+    data: updateData,
+    select: {
+      id: true,
+      currency: true,
+      xp: true,
+    },
+  })
+
+  // Mark quest as completed
+  await prisma.questProgress.update({
+    where: { id: questProgress.id },
+    data: {
+      completed: true,
+      progress: 1,
+    },
+  })
+
+  // Get updated inventory
+  const inventory = await getPlayerInventory(playerId)
+
+  // Get updated quests list
+  const quests = await getAllQuestProgress(playerId)
+
+  return {
+    success: true,
+    player: updatedUser,
+    inventory,
+    quests,
+  }
 }
 
 /**
@@ -173,11 +302,11 @@ async function getAllQuestProgress(playerId) {
 }
 
 module.exports = {
+  getQuestDef,
+  listQuestDefs,
   getQuestProgress,
   acceptQuest,
   checkQuestRequirements,
   completeQuest,
   getAllQuestProgress,
 }
-
-

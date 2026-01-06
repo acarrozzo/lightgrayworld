@@ -146,9 +146,8 @@ const ROOM_ACTIONS = {
     'cook meat': 'You cook the meat over the fire. It smells delicious!',
     'talk to old man': async (playerId, roomState) => {
       const { getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
-      const { getPlayerInventory } = require('./services/inventory-service')
 
-      const questId = 'quest_001'
+      const questId = 'quest_002'
       const questProgress = await getQuestProgress(playerId, questId)
 
       roomState.touchActivity()
@@ -171,7 +170,7 @@ const ROOM_ACTIONS = {
                 message: 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! I have a small favor to ask. I need a single yellow flower for a special recipe. Would you be willing to help me? I can offer you 10 gold and some experience in return."',
               },
               buttons: [
-                { label: 'Accept', direction: 'accept_quest' },
+                { label: 'Accept', direction: 'accept_quest:quest_002' },
                 { label: 'Decline', direction: 'decline_quest' },
               ],
             }),
@@ -182,11 +181,8 @@ const ROOM_ACTIONS = {
       // Quest in progress
       if (questProgress && !questProgress.completed) {
         const requirements = await checkQuestRequirements(playerId, questId)
-        const inventory = await getPlayerInventory(playerId)
-        const flowerItem = inventory.find(item => item.template.slug === 'flower')
-        const hasFlower = requirements.hasFlower && (flowerItem?.quantity || 0) >= 1
 
-        if (hasFlower) {
+        if (requirements.met) {
           // Player has flower - show completion prompt
           return {
             success: true,
@@ -204,7 +200,7 @@ const ROOM_ACTIONS = {
                   message: 'The Old Man\'s eyes light up as he sees the yellow flower in your hand. "Perfect! That\'s exactly what I needed. Thank you so much, traveler!"',
                 },
                 buttons: [
-                  { label: 'Complete Quest', direction: 'complete_quest' },
+                  { label: 'Complete Quest', direction: 'complete_quest:quest_002' },
                 ],
               }),
             },

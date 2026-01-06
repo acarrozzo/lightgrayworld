@@ -115,10 +115,55 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1) {
   }
 }
 
+/**
+ * Remove an item from player inventory by slug and quantity
+ * @param {string} playerId - The player's ID
+ * @param {string} itemSlug - The item slug
+ * @param {number} quantity - The quantity to remove
+ * @returns {Promise<Object>} Result with success status and updated inventory
+ */
+async function removeItemBySlug(playerId, itemSlug, quantity = 1) {
+  const template = await getItemBySlug(itemSlug)
+  if (!template) {
+    return { success: false, error: 'Item not found', inventory: null }
+  }
+
+  const playerItem = await prisma.playerItem.findFirst({
+    where: {
+      playerId,
+      templateId: template.id,
+    },
+  })
+
+  if (!playerItem || playerItem.quantity < quantity) {
+    return { success: false, error: 'Not enough items in inventory', inventory: null }
+  }
+
+  // Remove item
+  if (playerItem.quantity === quantity) {
+    await prisma.playerItem.delete({
+      where: { id: playerItem.id },
+    })
+  } else {
+    await prisma.playerItem.update({
+      where: { id: playerItem.id },
+      data: { quantity: playerItem.quantity - quantity },
+    })
+  }
+
+  const inventory = await getPlayerInventory(playerId)
+
+  return {
+    success: true,
+    inventory,
+  }
+}
+
 module.exports = {
   getPlayerInventory,
   getItemBySlug,
   playerHasItem,
   grantItemOnce,
+  removeItemBySlug,
 }
 

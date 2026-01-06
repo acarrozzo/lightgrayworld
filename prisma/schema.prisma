@@ -178,6 +178,7 @@ model QuestProgress {
   questId   String
   progress  Int     @default(0)
   completed Boolean @default(false)
+  data      Json?
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, questId])
