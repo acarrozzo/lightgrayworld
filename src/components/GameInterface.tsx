@@ -280,6 +280,7 @@ export default function GameInterface() {
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
   const [quests, setQuests] = useState<Array<{ id: string; questId: string; progress: number; completed: boolean }>>([])
   const [isLoadingQuests, setIsLoadingQuests] = useState(false)
+  const [isResettingQuests, setIsResettingQuests] = useState(false)
   const [forceFeedFilter, setForceFeedFilter] = useState<'chat' | undefined>(undefined)
   const [forceFeedChatSubFilter, setForceFeedChatSubFilter] = useState<'all-chat' | undefined>(undefined)
   type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
@@ -1808,6 +1809,37 @@ export default function GameInterface() {
     }
   }, [centerActiveTab, isLoggedIn]) // Removed isLoadingQuests and getAuthHeaders from deps
 
+  // Handler to reset quests to initial state
+  const handleResetQuests = async () => {
+    if (!isLoggedIn) return
+    
+    setIsResettingQuests(true)
+    try {
+      const response = await fetch('/api/game/quests/reset', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        // Refresh quests after reset
+        const questResponse = await fetch('/api/game/quests/progress', {
+          headers: getAuthHeaders(),
+        })
+        const questData = await questResponse.json()
+        if (questData.success) {
+          setQuests(questData.quests || [])
+        }
+      } else {
+        console.error('Failed to reset quests:', data.error)
+      }
+    } catch (error) {
+      console.error('Error resetting quests:', error)
+    } finally {
+      setIsResettingQuests(false)
+    }
+  }
+
   // Track new items when inventory changes
   useEffect(() => {
     // Skip tracking on initial load
@@ -2614,6 +2646,21 @@ export default function GameInterface() {
                                   </div>
                                 ) : null
                               })()}
+                            </div>
+                          )}
+                          {/* Reset Quests Button */}
+                          {!isLoadingQuests && (
+                            <div className="mt-6 pt-4 border-t border-gray-700/50">
+                              <button
+                                onClick={handleResetQuests}
+                                disabled={isResettingQuests || !isLoggedIn}
+                                className="w-full px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 hover:border-red-600/70 text-red-400 hover:text-red-300 text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {isResettingQuests ? 'Resetting...' : 'Reset Quests to Initial State'}
+                              </button>
+                              <p className="mt-2 text-xs text-gray-500 text-center">
+                                Resets all quests except Quest 001 (for testing)
+                              </p>
                             </div>
                           )}
                         </div>

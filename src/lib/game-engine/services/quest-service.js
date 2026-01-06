@@ -351,7 +351,7 @@ async function completeQuest(playerId, questId) {
       for (const requirement of questDef.requirements) {
         if (requirement.type === 'hasItem') {
           const { itemSlug, quantity = 1 } = requirement
-          const removeResult = await removeItemBySlug(playerId, itemSlug, quantity)
+          const removeResult = await removeItemBySlug(playerId, itemSlug, quantity, tx)
           if (!removeResult.success) {
             throw new Error(`Failed to remove ${itemSlug}: ${removeResult.error}`)
           }

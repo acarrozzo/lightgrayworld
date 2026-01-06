@@ -2,9 +2,12 @@ const { prisma } = require('../../db-client')
 
 /**
  * Get a player's inventory with template details, shaped for UI.
+ * @param {string} playerId - The player's ID
+ * @param {Object} tx - Optional transaction client (defaults to global prisma)
  */
-async function getPlayerInventory(playerId) {
-  const items = await prisma.playerItem.findMany({
+async function getPlayerInventory(playerId, tx = null) {
+  const client = tx || prisma
+  const items = await client.playerItem.findMany({
     where: { playerId },
     include: {
       ItemTemplate: {
@@ -120,15 +123,17 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1) {
  * @param {string} playerId - The player's ID
  * @param {string} itemSlug - The item slug
  * @param {number} quantity - The quantity to remove
+ * @param {Object} tx - Optional transaction client (defaults to global prisma)
  * @returns {Promise<Object>} Result with success status and updated inventory
  */
-async function removeItemBySlug(playerId, itemSlug, quantity = 1) {
+async function removeItemBySlug(playerId, itemSlug, quantity = 1, tx = null) {
+  const client = tx || prisma
   const template = await getItemBySlug(itemSlug)
   if (!template) {
     return { success: false, error: 'Item not found', inventory: null }
   }
 
-  const playerItem = await prisma.playerItem.findFirst({
+  const playerItem = await client.playerItem.findFirst({
     where: {
       playerId,
       templateId: template.id,
@@ -141,17 +146,17 @@ async function removeItemBySlug(playerId, itemSlug, quantity = 1) {
 
   // Remove item
   if (playerItem.quantity === quantity) {
-    await prisma.playerItem.delete({
+    await client.playerItem.delete({
       where: { id: playerItem.id },
     })
   } else {
-    await prisma.playerItem.update({
+    await client.playerItem.update({
       where: { id: playerItem.id },
       data: { quantity: playerItem.quantity - quantity },
     })
   }
 
-  const inventory = await getPlayerInventory(playerId)
+  const inventory = await getPlayerInventory(playerId, tx)
 
   return {
     success: true,
