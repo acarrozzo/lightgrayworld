@@ -147,13 +147,13 @@ const ROOM_ACTIONS = {
     'talk to old man': async (playerId, roomState) => {
       const { getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
 
-      const questId = 'quest_002'
-      const questProgress = await getQuestProgress(playerId, questId)
-
       roomState.touchActivity()
 
-      // Quest not started - show offer
-      if (!questProgress) {
+      // Check quest_001 status first
+      const quest001Progress = await getQuestProgress(playerId, 'quest_001')
+      
+      // If quest_001 exists and is not completed, show forced completion
+      if (quest001Progress && !quest001Progress.completed) {
         return {
           success: true,
           action: 'talk to old man',
@@ -167,20 +167,22 @@ const ROOM_ACTIONS = {
                 icon: 'npc-oldman',
                 iconColor: 'yellow-400',
                 title: 'Talk to Old Man',
-                message: 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! I have a small favor to ask. I need a single yellow flower for a special recipe. Would you be willing to help me? I can offer you 10 gold and some experience in return."',
+                message: 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here. There\'s much to learn about this world, and I\'m here to help guide you on your journey."',
               },
               buttons: [
-                { label: 'Accept', direction: 'accept_quest:quest_002' },
-                { label: 'Decline', direction: 'decline_quest' },
+                { label: 'Continue', direction: 'complete_quest:quest_001' },
               ],
             }),
           },
         }
       }
 
-      // Quest in progress
-      if (questProgress && !questProgress.completed) {
-        const requirements = await checkQuestRequirements(playerId, questId)
+      // Quest_001 is completed, check quest_002 status
+      const quest002Progress = await getQuestProgress(playerId, 'quest_002')
+
+      // If quest_002 exists and is not completed
+      if (quest002Progress && !quest002Progress.completed) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_002')
 
         if (requirements.met) {
           // Player has flower - show completion prompt
@@ -228,7 +230,9 @@ const ROOM_ACTIONS = {
         }
       }
 
-      // Quest completed
+      // Quest_002 completed or missing - show post-quest friendly dialog
+      // Optional fallback: if quest_002 missing (old accounts), we could offer it here
+      // For now, just show friendly dialog
       return {
         success: true,
         action: 'talk to old man',
@@ -242,7 +246,119 @@ const ROOM_ACTIONS = {
               icon: 'npc-oldman',
               iconColor: 'yellow-400',
               title: 'Talk to Old Man',
-              message: 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."',
+              message: quest002Progress && quest002Progress.completed
+                ? 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."'
+                : 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
+            },
+          }),
+        },
+      }
+    },
+  },
+  '003c': {
+    'talk to young soldier': async (playerId, roomState) => {
+      const { getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
+
+      roomState.touchActivity()
+
+      // Check quest_003 status first
+      const quest003Progress = await getQuestProgress(playerId, 'quest_003')
+
+      // If quest_003 active (exists, not completed)
+      if (quest003Progress && !quest003Progress.completed) {
+        return {
+          success: true,
+          action: 'talk to young soldier',
+          playerEvent: {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: {
+                type: 'icon',
+                icon: 'npc-soldier',
+                iconColor: 'blue-400',
+                title: 'Talk to Young Soldier',
+                message: 'The Young Soldier turns to face you with a determined look. "Greetings, traveler! I see you\'ve spoken with the Old Man. He\'s a wise one, but let me give you some advice: in this world, you need to be prepared. Make sure you\'re properly armed before you venture too far."',
+              },
+              buttons: [
+                { label: 'Continue', direction: 'complete_quest:quest_003' },
+              ],
+            }),
+          },
+        }
+      }
+
+      // Quest_003 is completed, check quest_004 status
+      const quest004Progress = await getQuestProgress(playerId, 'quest_004')
+
+      // If quest_004 active (exists, not completed)
+      if (quest004Progress && !quest004Progress.completed) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_004')
+
+        if (requirements.met) {
+          // Player has equipped MAIN_HAND item - show completion prompt
+          return {
+            success: true,
+            action: 'talk to young soldier',
+            playerEvent: {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
+                roomId: roomState.roomId,
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'npc-soldier',
+                  iconColor: 'blue-400',
+                  title: 'Talk to Young Soldier',
+                  message: 'The Young Soldier nods approvingly as he sees your weapon. "Good. Now you\'re armed. That\'s much better. You\'ll need that if you plan to explore beyond these safe areas."',
+                },
+                buttons: [
+                  { label: 'Complete Quest', direction: 'complete_quest:quest_004' },
+                ],
+              }),
+            },
+          }
+        } else {
+          // Player doesn't have MAIN_HAND item equipped - show reminder
+          return {
+            success: true,
+            action: 'talk to young soldier',
+            playerEvent: {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to the Young Soldier.', {
+                roomId: roomState.roomId,
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'npc-soldier',
+                  iconColor: 'blue-400',
+                  title: 'Talk to Young Soldier',
+                  message: 'The Young Soldier looks at you with concern. "You\'re still unarmed? That\'s dangerous. Open your inventory and equip something into your Main Hand. You can\'t rely on your fists forever."',
+                },
+              }),
+            },
+          }
+        }
+      }
+
+      // Quest_004 completed or missing - show idle dialog
+      return {
+        success: true,
+        action: 'talk to young soldier',
+        playerEvent: {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to the Young Soldier.', {
+            roomId: roomState.roomId,
+            showModal: true,
+            modalContent: {
+              type: 'icon',
+              icon: 'npc-soldier',
+              iconColor: 'blue-400',
+              title: 'Talk to Young Soldier',
+              message: quest004Progress && quest004Progress.completed
+                ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
+                : 'The Young Soldier stands at attention. "If you need any advice, feel free to ask."',
             },
           }),
         },

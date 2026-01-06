@@ -655,7 +655,8 @@ class RoomState {
       return this.createErrorResult('accept_quest', `You need to speak to ${npcName} to do that.`)
     }
 
-    const result = await acceptQuest(playerId, questId, choiceId)
+    // Client-triggered quest acceptance always validates room (system: false)
+    const result = await acceptQuest(playerId, questId, choiceId, { system: false })
 
     if (!result.success) {
       return this.createErrorResult('accept_quest', result.error || 'Failed to accept quest')

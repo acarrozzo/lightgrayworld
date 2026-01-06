@@ -15,13 +15,23 @@ async function handleGetProgress(request: AuthenticatedRequest) {
     if (!quest001) {
       try {
         const { randomUUID } = require('crypto')
+        
+        // Check if downstream quests exist (quest_002, quest_003, or quest_004)
+        const quest002 = await getQuestProgress(user.id, 'quest_002')
+        const quest003 = await getQuestProgress(user.id, 'quest_003')
+        const quest004 = await getQuestProgress(user.id, 'quest_004')
+        
+        // If any downstream quest exists, create quest_001 as completed (prevents stuck state)
+        // Otherwise, create it as active (for new users)
+        const shouldComplete = !!(quest002 || quest003 || quest004)
+        
         await prisma.questProgress.create({
           data: {
             id: randomUUID(),
             userId: user.id,
             questId: 'quest_001',
-            progress: 0,
-            completed: false,
+            progress: shouldComplete ? 1 : 0,
+            completed: shouldComplete,
           },
         })
       } catch (error) {

@@ -2,29 +2,40 @@
   "quest_001": {
     "number": 1,
     "title": "Talk to the Old Man",
-    "summary": "Find the Old Man in the cabin and introduce yourself.",
+    "summary": "Find the Old Man in the cabin.",
     "objective": "Talk to the Old Man in Room 003.",
+    "nextStep": "Go to the cabin (Room 003) and speak with the Old Man.",
     "giver": {
       "npcId": "old_man",
-      "roomId": "003"
+      "roomId": "003",
+      "name": "Old Man",
+      "icon": "npc-oldman"
     },
-    "completionMode": "linked",
-    "completeWhen": {
-      "type": "questAccepted",
-      "questId": "quest_002"
-    },
+    "completionMode": "turn_in",
     "requirements": [],
-    "consumeRequirementsOnComplete": false,
-    "rewards": []
+    "rewards": [],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_003"
+      }
+    ]
   },
   "quest_002": {
     "number": 2,
     "title": "Bring a Flower to the Old Man",
-    "summary": "He needs a single yellow flower for a special recipe.",
-    "objective": "Bring 1 Yellow Flower to the Old Man in Room 003.",
+    "summary": "He needs a yellow flower for a recipe.",
+    "objective": "Bring 1 Yellow Flower to the Old Man.",
+    "nextStep": "Find a Yellow Flower, then return to the Old Man in Room 003.",
     "giver": {
       "npcId": "old_man",
-      "roomId": "003"
+      "roomId": "003",
+      "name": "Old Man",
+      "icon": "npc-oldman"
     },
     "completionMode": "turn_in",
     "requirements": [
@@ -44,11 +55,59 @@
         "type": "xp",
         "amount": 5
       }
-    ],
-    "onAccept": [
+    ]
+  },
+  "quest_003": {
+    "number": 3,
+    "title": "Talk to the Young Soldier",
+    "summary": "A young soldier nearby looks like they have advice.",
+    "objective": "Talk to the Young Soldier in Room 003c.",
+    "nextStep": "Go to Room 003c and talk to the Young Soldier.",
+    "giver": {
+      "npcId": "young_soldier",
+      "roomId": "003c",
+      "name": "Young Soldier",
+      "icon": "npc-soldier"
+    },
+    "completionMode": "turn_in",
+    "requirements": [],
+    "rewards": [],
+    "onComplete": [
       {
-        "type": "completeQuest",
-        "questId": "quest_001"
+        "type": "startQuest",
+        "questId": "quest_004"
+      }
+    ]
+  },
+  "quest_004": {
+    "number": 4,
+    "title": "Equip a Weapon",
+    "summary": "The soldier insists you should arm yourself.",
+    "objective": "Equip any item in your Main Hand (not fists).",
+    "nextStep": "Open Inventory and equip something into Main Hand.",
+    "giver": {
+      "npcId": "young_soldier",
+      "roomId": "003c",
+      "name": "Young Soldier",
+      "icon": "npc-soldier"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasEquippedInSlot",
+        "slot": "MAIN_HAND",
+        "notDefault": true
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 10
+      },
+      {
+        "type": "xp",
+        "amount": 5
       }
     ]
   }

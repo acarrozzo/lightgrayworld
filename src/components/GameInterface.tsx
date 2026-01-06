@@ -2467,13 +2467,21 @@ export default function GameInterface() {
                           ) : (
                             <div className="space-y-6">
                               {/* Active Quests */}
-                              {quests.filter(q => !q.completed).length > 0 && (
-                                <div>
-                                  <h4 className="text-sm font-semibold text-gray-300 mb-3">Active</h4>
-                                  <div className="space-y-4">
-                                    {quests
-                                      .filter(q => !q.completed)
-                                      .map((quest) => {
+                              {(() => {
+                                // Sort quests by number before filtering
+                                const sortedQuests = [...quests].sort((a, b) => {
+                                  const aDef = QUESTS[a.questId as keyof typeof QUESTS]
+                                  const bDef = QUESTS[b.questId as keyof typeof QUESTS]
+                                  const aNum = aDef?.number || 999
+                                  const bNum = bDef?.number || 999
+                                  return aNum - bNum
+                                })
+                                const activeQuests = sortedQuests.filter(q => !q.completed)
+                                return activeQuests.length > 0 ? (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-gray-300 mb-3">Active</h4>
+                                    <div className="space-y-4">
+                                      {activeQuests.map((quest) => {
                                         const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
                                         if (!questDef) return null
 
@@ -2535,21 +2543,37 @@ export default function GameInterface() {
                                                 </p>
                                               </div>
                                             )}
+                                            {questDef.nextStep && (
+                                              <div className="pt-2 border-t border-gray-700/50">
+                                                <p className="text-gray-500 text-xs mt-2">
+                                                  Next: {questDef.nextStep}
+                                                </p>
+                                              </div>
+                                            )}
                                           </div>
                                         )
                                       })}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                ) : null
+                              })()}
 
                               {/* Completed Quests */}
-                              {quests.filter(q => q.completed).length > 0 && (
-                                <div>
-                                  <h4 className="text-sm font-semibold text-gray-300 mb-3">Completed</h4>
-                                  <div className="space-y-4">
-                                    {quests
-                                      .filter(q => q.completed)
-                                      .map((quest) => {
+                              {(() => {
+                                // Sort quests by number before filtering
+                                const sortedQuests = [...quests].sort((a, b) => {
+                                  const aDef = QUESTS[a.questId as keyof typeof QUESTS]
+                                  const bDef = QUESTS[b.questId as keyof typeof QUESTS]
+                                  const aNum = aDef?.number || 999
+                                  const bNum = bDef?.number || 999
+                                  return aNum - bNum
+                                })
+                                const completedQuests = sortedQuests.filter(q => q.completed)
+                                return completedQuests.length > 0 ? (
+                                  <div>
+                                    <h4 className="text-sm font-semibold text-gray-300 mb-3">Completed</h4>
+                                    <div className="space-y-4">
+                                      {completedQuests.map((quest) => {
                                         const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
                                         if (!questDef) return null
 
@@ -2586,9 +2610,10 @@ export default function GameInterface() {
                                           </div>
                                         )
                                       })}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                ) : null
+                              })()}
                             </div>
                           )}
                         </div>

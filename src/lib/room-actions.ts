@@ -24,7 +24,9 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'attack dummy', label: 'Attack Dummy', icon: 'sword1', className: 'bg-red-500/70 hover:bg-red-500' },
     { action: 'cook meat', label: 'Cook Meat', icon: 'fire', className: 'bg-orange-600 hover:bg-orange-700' },
   ],
-  '003c': [],
+  '003c': [
+    { action: 'talk to young soldier', label: 'Talk to Young Soldier', icon: 'npc-soldier', className: 'bg-blue-600 hover:bg-blue-700' },
+  ],
   '004': [],
   '005': [
     { action: 'pick blueberry', label: 'Pick Blueberry', icon: 'blueberry', className: 'bg-blue-600 hover:bg-blue-700' },
