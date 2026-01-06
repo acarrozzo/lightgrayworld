@@ -19,7 +19,7 @@ async function handleCompleteQuest(request: AuthenticatedRequest) {
     }
 
     const user = request.user
-    const result = await completeQuest(user.id, questId)
+    const result = await completeQuest(user.id, questId) as { success: boolean; error?: string; player?: any; inventory?: any; quests?: any }
 
     if (!result.success) {
       return NextResponse.json(
