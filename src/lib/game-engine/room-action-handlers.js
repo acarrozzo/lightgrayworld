@@ -361,7 +361,7 @@ const ROOM_ACTIONS = {
               title: 'Talk to Young Soldier',
               message: quest004Progress && quest004Progress.completed
                 ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
-                : 'The Young Soldier stands at attention. "Help out the Old Man first and then come back to me."',
+                : 'The Young Soldier stands at attention. "Help out the Old Man first and then come back to me."Hello there Young Adventurer. I\'m a Young Soldier sent here from Domus to assist you. Feel free to take any of the training weapons here."',
             },
           }),
         },

@@ -14,8 +14,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, MessageSquareText, ArrowRight, Map, X, MessagesSquare, Users, Sword, Home } from 'lucide-react'
-import MapContent, { type MapOption } from './MapContent'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, MessageSquareText, Map, Home } from 'lucide-react'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
@@ -30,197 +29,15 @@ import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import UsersDisplay from './UsersDisplay'
-import QUESTS from '@/lib/game-data/quests.json'
-
-const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
-
-type TravelDirectionKey = (typeof TRAVEL_DIRECTION_KEYS)[number]
-
-const findTravelDirection = (fromRoom: Room | null, toRoomId: string): TravelDirectionKey | undefined => {
-  if (!fromRoom) {
-    return undefined
-  }
-
-  return TRAVEL_DIRECTION_KEYS.find((direction) => fromRoom[direction] === toRoomId)
-}
-
-/**
- * Client-side map of room gates (mirrors server-side ROOM_GATES structure)
- * Used to skip optimistic updates for gated exits
- */
-const CLIENT_ROOM_GATES: Record<string, Record<string, boolean>> = {
-  '004': {
-    'west': true,
-  },
-  '020': {
-    'northwest': true,
-  },
-}
-
-/**
- * Check if an exit has a gate (client-side check for optimistic update skipping)
- */
-function checkIfExitHasGate(roomId: string, direction: string): boolean {
-  const roomGates = CLIENT_ROOM_GATES[roomId]
-  if (!roomGates) {
-    return false
-  }
-  return roomGates[direction] === true
-}
-
-// Command shorthand mapping
-const COMMAND_SHORTHAND: Record<string, string> = {
-  // Directions
-  'n': 'north',
-  'e': 'east',
-  's': 'south',
-  'w': 'west',
-  'ne': 'northeast',
-  'nw': 'northwest',
-  'se': 'southeast',
-  'sw': 'southwest',
-  'u': 'up',
-  'd': 'down',
-  // Actions
-  'l': 'look',
-  'a': 'attack',
-}
-
-/**
- * Normalizes a command by converting shorthand to full command names.
- * Returns the full command if a shorthand is found, otherwise returns the original input.
- * This maintains backward compatibility with full commands.
- */
-const normalizeCommand = (input: string): string => {
-  const normalized = input.toLowerCase().trim()
-  return COMMAND_SHORTHAND[normalized] || normalized
-}
-
-// Map configuration
-const MAP_CONFIG: Array<MapOption & { flag: keyof Player }> = [
-  { id: 'grassy-field', src: '/img/lightgray_map_grassyfield_main.jpg', title: 'Grassy Field', flag: 'grassyFieldMap' },
-  { id: 'grassy-field-underground', src: '/img/lightgray_map_grassyfield_underground.jpg', title: 'Grassy Field Underground', flag: 'grassyFieldUndergroundMap' },
-  { id: 'room-zero', src: '/img/lightgray_map_roomzero.jpg', title: 'Room Zero', flag: 'roomZeroMap' },
-  { id: 'lobby', src: '/img/lightgray_map_the_lobby.jpg', title: 'The Lobby', flag: 'lobbyMap' },
-  { id: 'solar-office', src: '/img/lightgray_map_solar_office.jpg', title: 'Solar Office', flag: 'solarOfficeMap' },
-]
-
-// Helper function to determine which map corresponds to a room
-const getMapIdForRoom = (roomId: string): string => {
-  if (roomId === '000') return 'room-zero'
-  if (roomId === '999') return 'lobby'
-  if (roomId === '088') return 'solar-office'
-  return 'grassy-field' // Default for grassy field rooms
-}
-
-// Helper function to get unlocked maps - all maps are available to everyone
-const getUnlockedMaps = (player: Player | null, currentRoomId: string | undefined): MapOption[] => {
-  // Everyone can view all maps - no restrictions
-  return MAP_CONFIG
-}
-
-// Teleport locations configuration
-const TELEPORT_LOCATIONS: TeleportLocation[] = [
-  { roomId: '999', name: 'Lobby', description: 'The main lobby area' },
-  { roomId: '001', name: 'Grassy Field', description: 'Grassy Field Crossroads' },
-  { roomId: '000', name: 'Room Zero', description: 'The starting room' },
-  { roomId: '088', name: 'Solar Office', description: 'A large, open-plan command office' },
-]
-
-// Helper function to render directory content for sign modals
-const renderDirectoryContent = (
-  modalContent: any,
-  buttons: Array<{ label: string; direction: string }>
-): React.ReactNode => {
-  const heading = modalContent.heading
-  const locations = modalContent.locations || []
-  const questMessage = modalContent.questMessage
-
-  return (
-    <div className="w-full">
-      {/* Directory Panel */}
-      <div className="bg-amber-900/30 border border-amber-800/50 rounded-lg p-6 mb-4">
-        {/* Heading */}
-        {heading && heading.parts ? (
-          <>
-            <h3 className="text-2xl font-bold mb-2">
-              <span className="text-white">{heading.parts[0]}</span>
-              {' '}
-              <span className="text-yellow-400">{heading.parts[1]}</span>
-            </h3>
-            {heading.description && (
-              <p className="text-sm text-amber-200/70 mb-6 leading-relaxed">{heading.description}</p>
-            )}
-          </>
-        ) : (
-          <>
-            <h3 className="text-2xl font-bold text-white mb-2">{heading?.text || 'Directory'}</h3>
-            {heading?.description && (
-              <p className="text-sm text-amber-200/70 mb-6 leading-relaxed">{heading.description}</p>
-            )}
-          </>
-        )}
-
-        {/* Location Buttons */}
-        <div className="space-y-4 mb-4">
-          {locations.map((location: any, index: number) => {
-            const button = buttons.find(b => b.direction === location.direction)
-            return (
-              <div key={index} className="flex items-start gap-4">
-                {button && (
-                  <button
-                    type="button"
-                    data-direction={button.direction}
-                    className="w-28 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-medium text-[0.97rem] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-900/30 flex-shrink-0"
-                  >
-                    {button.label}
-                  </button>
-                )}
-                <div className="flex-1 space-y-1">
-                  <span className="text-white text-lg">{location.name}</span>
-                  {location.description && (
-                    <p className="text-sm text-amber-200/70 leading-relaxed">{location.description}</p>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Separator */}
-        <div className="border-t border-amber-700/50 my-4"></div>
-
-        {/* Quest Message */}
-        {questMessage && (
-          <>
-            <p className="text-white text-base leading-relaxed">{questMessage}</p>
-            {modalContent.questMessageDescription && (
-              <p className="text-sm text-amber-200/70 mt-2 leading-relaxed">{modalContent.questMessageDescription}</p>
-            )}
-            <div className="border-t border-amber-700/50 my-4"></div>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// Helper function to format direction phrases for feed messages
-const formatDirectionPhrase = (direction: string | null | undefined, context: 'enter' | 'exit'): string => {
-  if (!direction) {
-    return 'an unknown direction'
-  }
-
-  if (direction === 'up') {
-    return context === 'enter' ? 'above' : 'upward'
-  }
-
-  if (direction === 'down') {
-    return context === 'enter' ? 'below' : 'downward'
-  }
-
-  return `the ${direction.replace(/_/g, ' ')}`
-}
+import { MAP_CONFIG, TELEPORT_LOCATIONS } from './game-interface/constants'
+import { findTravelDirection, checkIfExitHasGate, normalizeCommand, getMapIdForRoom, getUnlockedMaps, formatDirectionPhrase } from './game-interface/utils'
+import { DirectoryContent } from './game-interface/DirectoryContent'
+import InventoryPanel from './game-interface/panels/InventoryPanel'
+import QuestsPanel from './game-interface/panels/QuestsPanel'
+import MapPanel from './game-interface/panels/MapPanel'
+import ChatPanel from './game-interface/panels/ChatPanel'
+import HomePanel from './game-interface/panels/HomePanel'
+import SettingsPanel from './game-interface/panels/SettingsPanel'
 
 export default function GameInterface() {
   const {
@@ -1653,7 +1470,7 @@ export default function GameInterface() {
             } else if (modalContent.heading || modalContent.locations) {
               // Structured content - render directory
               modalTitle = modalContent.title || modalTitle
-              renderedContent = renderDirectoryContent(modalContent, buttons || [])
+              renderedContent = <DirectoryContent modalContent={modalContent} buttons={buttons || []} />
             } else {
               // Other structured content
               modalTitle = modalContent.title || modalTitle
@@ -2463,29 +2280,20 @@ export default function GameInterface() {
                     color: 'green',
                     badge: newItemIds.size > 0 ? newItemIds.size : undefined,
                     content: (
-                      <div className="relative w-full h-full">
-                        <button
-                          onClick={() => setCenterActiveTab('explore')}
-                          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
-                          title="Close"
-                          aria-label="Close"
-                        >
-                          <X size={20} />
-                        </button>
-                        <InventoryDisplay
-                          inventory={inventory}
-                          onAction={handleAction}
-                          initialFilter={inventoryFilter}
-                          newItemIds={newItemIds}
-                          onClearNewItem={(itemId) => {
-                            setNewItemIds(prev => {
-                              const updated = new Set(prev)
-                              updated.delete(itemId)
-                              return updated
-                            })
-                          }}
-                        />
-                      </div>
+                      <InventoryPanel
+                        inventory={inventory}
+                        onAction={handleAction}
+                        initialFilter={inventoryFilter}
+                        newItemIds={newItemIds}
+                        onClearNewItem={(itemId) => {
+                          setNewItemIds(prev => {
+                            const updated = new Set(prev)
+                            updated.delete(itemId)
+                            return updated
+                          })
+                        }}
+                        onClose={() => setCenterActiveTab('explore')}
+                      />
                     ),
                   },
                   {
@@ -2494,200 +2302,15 @@ export default function GameInterface() {
                     icon: 'trophy',
                     color: 'gold',
                     content: (
-                      <div className="relative w-full h-full">
-                        <button
-                          onClick={() => setCenterActiveTab('explore')}
-                          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
-                          title="Close"
-                          aria-label="Close"
-                        >
-                          <X size={20} />
-                        </button>
-                        <div className="space-y-4 p-4 sm:p-6">
-                          <h3 className="text-lg font-semibold text-white">Quests</h3>
-                          {isLoadingQuests ? (
-                            <div className="text-gray-400 text-sm">Loading quests...</div>
-                          ) : quests.length === 0 ? (
-                            <div className="text-gray-400 text-sm">No quests.</div>
-                          ) : (
-                            <div className="space-y-6">
-                              {/* Active Quests */}
-                              {(() => {
-                                // Sort quests by number before filtering
-                                const sortedQuests = [...quests].sort((a, b) => {
-                                  const aDef = QUESTS[a.questId as keyof typeof QUESTS]
-                                  const bDef = QUESTS[b.questId as keyof typeof QUESTS]
-                                  const aNum = aDef?.number || 999
-                                  const bNum = bDef?.number || 999
-                                  return aNum - bNum
-                                })
-                                const activeQuests = sortedQuests.filter(q => !q.completed)
-                                return activeQuests.length > 0 ? (
-                                  <div>
-                                    <h4 className="text-sm font-semibold text-gray-300 mb-3">Active</h4>
-                                    <div className="space-y-4">
-                                      {activeQuests.map((quest) => {
-                                        const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
-                                        if (!questDef) return null
-
-                                        // Check if ready to turn in (for turn_in completion mode)
-                                        let isReadyToTurnIn = false
-                                        if (questDef.completionMode === 'turn_in' && questDef.requirements) {
-                                          const hasAllRequirements = questDef.requirements.every((req: any) => {
-                                            if (req.type === 'hasItem') {
-                                              const item = inventory.find(i => i.template.slug === req.itemSlug)
-                                              return item && item.quantity >= (req.quantity || 1)
-                                            }
-                                            return false
-                                          })
-                                          isReadyToTurnIn = hasAllRequirements
-                                        }
-
-                                        return (
-                                          <div
-                                            key={quest.id}
-                                            className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3"
-                                          >
-                                            <div className="flex items-start justify-between">
-                                              <div>
-                                                {questDef.giver?.name && (
-                                                  <p className="text-gray-500 text-xs mb-1">
-                                                    {questDef.giver.name}
-                                                  </p>
-                                                )}
-                                                <h4 className="text-white font-semibold text-base">
-                                                  {questDef.title}
-                                                </h4>
-                                                <p className="text-gray-400 text-sm mt-1">
-                                                  {questDef.summary}
-                                                </p>
-                                              </div>
-                                              <span className="px-2 py-1 bg-blue-900/50 border border-blue-700/50 text-blue-300 text-xs font-semibold rounded">
-                                                Active
-                                              </span>
-                                            </div>
-                                            <div className="space-y-2">
-                                              <div className="flex items-center gap-2">
-                                                <span className="text-gray-500 text-sm">Objective:</span>
-                                                <span className="text-gray-300 text-sm">
-                                                  {questDef.objective}
-                                                </span>
-                                              </div>
-                                              {questDef.rewards && questDef.rewards.length > 0 && (
-                                                <div className="flex items-center gap-2">
-                                                  <span className="text-gray-500 text-sm">Reward:</span>
-                                                  <span className="text-gray-300 text-sm">
-                                                    {questDef.rewards.map((r: any, idx: number) => {
-                                                      if (r.type === 'currency') return `${r.amount} Gold`
-                                                      if (r.type === 'xp') return `${r.amount} XP`
-                                                      return ''
-                                                    }).filter(Boolean).join(', ')}
-                                                  </span>
-                                                </div>
-                                              )}
-                                            </div>
-                                            {isReadyToTurnIn && questDef.giver && (
-                                              <div className="pt-2 border-t border-gray-700/50">
-                                                <p className="text-yellow-400 text-sm font-medium">
-                                                  Ready to turn in — return to {questDef.giver.roomId === '003' ? 'the Old Man' : `Room ${questDef.giver.roomId}`} to complete the quest.
-                                                </p>
-                                              </div>
-                                            )}
-                                            {questDef.nextStep && (
-                                              <div className="pt-2 border-t border-gray-700/50">
-                                                <p className="text-gray-500 text-xs mt-2">
-                                                  Next: {questDef.nextStep}
-                                                </p>
-                                              </div>
-                                            )}
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                  </div>
-                                ) : null
-                              })()}
-
-                              {/* Completed Quests */}
-                              {(() => {
-                                // Sort quests by number before filtering
-                                const sortedQuests = [...quests].sort((a, b) => {
-                                  const aDef = QUESTS[a.questId as keyof typeof QUESTS]
-                                  const bDef = QUESTS[b.questId as keyof typeof QUESTS]
-                                  const aNum = aDef?.number || 999
-                                  const bNum = bDef?.number || 999
-                                  return aNum - bNum
-                                })
-                                const completedQuests = sortedQuests.filter(q => q.completed)
-                                return completedQuests.length > 0 ? (
-                                  <div>
-                                    <h4 className="text-sm font-semibold text-gray-300 mb-3">Completed</h4>
-                                    <div className="space-y-4">
-                                      {completedQuests.map((quest) => {
-                                        const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
-                                        if (!questDef) return null
-
-                                        return (
-                                          <div
-                                            key={quest.id}
-                                            className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3 opacity-75"
-                                          >
-                                            <div className="flex items-start justify-between">
-                                              <div>
-                                                {questDef.giver?.name && (
-                                                  <p className="text-gray-500 text-xs mb-1">
-                                                    {questDef.giver.name}
-                                                  </p>
-                                                )}
-                                                <h4 className="text-white font-semibold text-base">
-                                                  {questDef.title}
-                                                </h4>
-                                                <p className="text-gray-400 text-sm mt-1">
-                                                  {questDef.summary}
-                                                </p>
-                                              </div>
-                                              <span className="px-2 py-1 bg-green-900/50 border border-green-700/50 text-green-300 text-xs font-semibold rounded">
-                                                Completed
-                                              </span>
-                                            </div>
-                                            {questDef.rewards && questDef.rewards.length > 0 && (
-                                              <div className="flex items-center gap-2">
-                                                <span className="text-gray-500 text-sm">Reward:</span>
-                                                <span className="text-gray-300 text-sm">
-                                                  {questDef.rewards.map((r: any) => {
-                                                    if (r.type === 'currency') return `${r.amount} Gold`
-                                                    if (r.type === 'xp') return `${r.amount} XP`
-                                                    return ''
-                                                  }).filter(Boolean).join(', ')}
-                                                </span>
-                                              </div>
-                                            )}
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                  </div>
-                                ) : null
-                              })()}
-                            </div>
-                          )}
-                          {/* Reset Quests Button */}
-                          {!isLoadingQuests && (
-                            <div className="mt-6 pt-4 border-t border-gray-700/50">
-                              <button
-                                onClick={handleResetQuests}
-                                disabled={isResettingQuests || !isLoggedIn}
-                                className="w-full px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 hover:border-red-600/70 text-red-400 hover:text-red-300 text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {isResettingQuests ? 'Resetting...' : 'Reset Quests to Initial State'}
-                              </button>
-                              <p className="mt-2 text-xs text-gray-500 text-center">
-                                Resets all quests except Quest 001 (for testing)
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <QuestsPanel
+                        quests={quests}
+                        isLoadingQuests={isLoadingQuests}
+                        isResettingQuests={isResettingQuests}
+                        isLoggedIn={isLoggedIn}
+                        inventory={inventory}
+                        onResetQuests={handleResetQuests}
+                        onClose={() => setCenterActiveTab('explore')}
+                      />
                     ),
                   },
                   {
@@ -2695,28 +2318,14 @@ export default function GameInterface() {
                     label: 'Map',
                     icon: <Map size={14} />,
                     color: 'sky',
-                    content: (() => {
-                      const selectedMap = MAP_CONFIG.find(m => m.id === currentMapId)
-                      return (
-                        <div className="relative w-full h-full">
-                          <button
-                            onClick={() => setCenterActiveTab('explore')}
-                            className="absolute top-2 right-3 z-30 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
-                            title="Close"
-                            aria-label="Close"
-                          >
-                            <X size={20} />
-                          </button>
-                          <MapContent
-                            mapSrc={selectedMap?.src || ''}
-                            mapTitle={selectedMap?.title || 'Map'}
-                            availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
-                            currentMapId={currentMapId}
-                            onMapChange={handleMapChange}
-                          />
-                        </div>
-                      )
-                    })(),
+                    content: (
+                      <MapPanel
+                        currentMapId={currentMapId}
+                        availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
+                        onMapChange={handleMapChange}
+                        onClose={() => setCenterActiveTab('explore')}
+                      />
+                    ),
                   },
                   {
                     id: 'chat',
@@ -2724,81 +2333,10 @@ export default function GameInterface() {
                     icon: <MessageSquare size={14} />,
                     color: 'purple',
                     content: (
-                      <div className="relative w-full h-full">
-                        <button
-                          onClick={() => setCenterActiveTab('explore')}
-                          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
-                          title="Close"
-                          aria-label="Close"
-                        >
-                          <X size={20} />
-                        </button>
-                        <div className="space-y-6 p-4 sm:p-6">
-                          <div>
-                            <h3 className="text-lg font-semibold text-white">Chat</h3>
-                            <p className="text-gray-400 text-sm leading-relaxed mt-2">
-                              Access all communication and game actions through the world feed panel on the right.
-                            </p>
-                          </div>
-                          
-                          <button
-                            onClick={handleOpenWorldChat}
-                            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl font-medium flex items-center gap-2 group"
-                          >
-                            <MessageSquare size={16} />
-                            <span>Open World Chat</span>
-                            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                          </button>
-
-                          <div className="flex flex-col md:flex-row gap-3 pt-2">
-                            <div className="p-3 rounded-lg bg-gray-800/30 border border-gray-700/30 hover:border-gray-600/40 transition-colors flex-1">
-                              <div className="flex items-start gap-2.5">
-                                <div className="p-1.5 rounded-md bg-purple-500/8 border border-purple-500/15 flex-shrink-0">
-                                  <MessagesSquare size={16} className="text-purple-400/80" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-gray-300 mb-1 text-sm">Shout (World Chat)</div>
-                                  <div className="text-xs text-gray-500 leading-relaxed">
-                                    Broadcast messages to all players using the "World Chat" input mode in the right panel.
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="p-3 rounded-lg bg-gray-800/30 border border-gray-700/30 hover:border-gray-600/40 transition-colors flex-1">
-                              <div className="flex items-start gap-2.5">
-                                <div className="p-1.5 rounded-md bg-blue-500/8 border border-blue-500/15 flex-shrink-0">
-                                  <Users size={16} className="text-blue-400/80" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-gray-300 mb-1 text-sm">Say (Room Chat)</div>
-                                  <div className="text-xs text-gray-500 leading-relaxed">
-                                    Communicate with players in your current room using the "Room Chat" input mode.
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="p-3 rounded-lg bg-gray-800/30 border border-gray-700/30 hover:border-gray-600/40 transition-colors flex-1">
-                              <div className="flex items-start gap-2.5">
-                                <div className="p-1.5 rounded-md bg-amber-500/8 border border-amber-500/15 flex-shrink-0">
-                                  <Sword size={16} className="text-amber-400/80" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-gray-300 mb-1 text-sm">Take Action</div>
-                                  <div className="text-xs text-gray-500 leading-relaxed">
-                                    Perform custom game actions like "examine cabin" or "attack guard" using the "Action" input mode.
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="border-t border-gray-700/50 pt-6">
-                            <UsersDisplay />
-                          </div>
-                        </div>
-                      </div>
+                      <ChatPanel
+                        onOpenWorldChat={handleOpenWorldChat}
+                        onClose={() => setCenterActiveTab('explore')}
+                      />
                     ),
                   },
                   {
@@ -2807,74 +2345,10 @@ export default function GameInterface() {
                     icon: <Home size={14} />,
                     color: 'amber',
                     content: (
-                      <div className="relative w-full h-full">
-                        <button
-                          onClick={() => setCenterActiveTab('explore')}
-                          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
-                          title="Close"
-                          aria-label="Close"
-                        >
-                          <X size={20} />
-                        </button>
-                        <div className="space-y-6 p-4 sm:p-6">
-                          <div>
-                            <h3 className="text-lg font-semibold text-white">Home</h3>
-                            <p className="text-gray-400 text-sm leading-relaxed mt-2">
-                              Make your home truly yours! Customize your own space and add your own items to create a personalized sanctuary in the world.
-                            </p>
-                          </div>
-                          
-                          <button
-                            onClick={() => {
-                              // Placeholder - functionality to be implemented later
-                            }}
-                            className="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl font-medium flex items-center gap-2 group"
-                          >
-                            <Home size={16} />
-                            <span>Take me Home</span>
-                            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                          </button>
-
-                          {/* Teleport Section */}
-                          <div>
-                            <h3 className="text-sm font-medium text-gray-300 mb-2">Teleport to:</h3>
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                onClick={() => {
-                                  handleAction({ type: 'teleport', data: { toRoomId: '999' } })
-                                }}
-                                className="px-2 py-1 bg-blue-400/50 hover:bg-blue-400/70 border border-blue-500/50 hover:border-blue-400/70 text-white rounded text-xs transition-all duration-200"
-                              >
-                                The Lobby
-                              </button>
-                              <button
-                                onClick={() => {
-                                  handleAction({ type: 'teleport', data: { toRoomId: '001' } })
-                                }}
-                                className="px-2 py-1 bg-green-500/50 hover:bg-green-500/70 border border-green-600/50 hover:border-green-500/70 text-white rounded text-xs transition-all duration-200"
-                              >
-                                Grassy Field
-                              </button>
-                              <button
-                                onClick={() => {
-                                  handleAction({ type: 'teleport', data: { toRoomId: '000' } })
-                                }}
-                                className="px-2 py-1 bg-gray-700/70 hover:bg-gray-600/70 border border-gray-600/50 hover:border-gray-500/50 text-white rounded text-xs transition-all duration-200"
-                              >
-                                Room Zero
-                              </button>
-                              <button
-                                onClick={() => {
-                                  handleAction({ type: 'teleport', data: { toRoomId: '088' } })
-                                }}
-                                className="px-2 py-1 bg-gray-900/70 hover:bg-gray-900/90 border border-gray-700/50 hover:border-amber-300/70 text-gray-300 rounded text-xs transition-all duration-200"
-                              >
-                                Solar Office
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <HomePanel
+                        onTeleport={(toRoomId) => handleAction({ type: 'teleport', data: { toRoomId } })}
+                        onClose={() => setCenterActiveTab('explore')}
+                      />
                     ),
                   },
                   {
@@ -2883,17 +2357,10 @@ export default function GameInterface() {
                     icon: <SettingsIcon size={14} />,
                     color: 'gray',
                     content: (
-                      <div className="relative w-full h-full">
-                        <button
-                          onClick={() => setCenterActiveTab('explore')}
-                          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
-                          title="Close"
-                          aria-label="Close"
-                        >
-                          <X size={20} />
-                        </button>
-                        <SettingsContent onLogout={handleLogoutFlow} />
-                      </div>
+                      <SettingsPanel
+                        onLogout={handleLogoutFlow}
+                        onClose={() => setCenterActiveTab('explore')}
+                      />
                     ),
                   },
                 ]}
