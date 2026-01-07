@@ -2,9 +2,9 @@
   "quest_001": {
     "number": 1,
     "title": "Talk to the Old Man",
-    "summary": "Find the Old Man in the cabin.",
-    "objective": "Talk to the Old Man in Room 003.",
-    "nextStep": "Go to the cabin (Room 003) and speak with the Old Man.",
+    "summary": "Find the Old Man in his cozy wood cabin.",
+    "objective": "Talk to the Old Man in his cabin.",
+    "nextStep": "Go to the cabin (Room 003) and speak with the Old Man. His cabin is to the southwest of the Grassy Field Crossroads.",
     "giver": {
       "npcId": "old_man",
       "roomId": "003",
@@ -27,10 +27,10 @@
   },
   "quest_002": {
     "number": 2,
-    "title": "Bring a Flower to the Old Man",
-    "summary": "He needs a yellow flower for a recipe.",
-    "objective": "Bring 1 Yellow Flower to the Old Man.",
-    "nextStep": "Find a Yellow Flower, then return to the Old Man in Room 003.",
+    "title": "A Flower for my Wife",
+    "summary": "The Old Man sure is romantic. Help him pick a flower for his wife.",
+    "objective": "Bring a Yellow Flower to the Old Man.",
+    "nextStep": "Find a Yellow Flower in the flower patch to the north, then return to the Old Man in Room his cabin.",
     "giver": {
       "npcId": "old_man",
       "roomId": "003",
@@ -67,7 +67,7 @@
       "npcId": "young_soldier",
       "roomId": "003c",
       "name": "Young Soldier",
-      "icon": "npc-soldier"
+      "icon": "npc-youngsoldier"
     },
     "completionMode": "turn_in",
     "requirements": [],
@@ -89,7 +89,7 @@
       "npcId": "young_soldier",
       "roomId": "003c",
       "name": "Young Soldier",
-      "icon": "npc-soldier"
+      "icon": "npc-youngsoldier"
     },
     "completionMode": "turn_in",
     "requirements": [

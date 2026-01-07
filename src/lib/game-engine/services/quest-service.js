@@ -42,14 +42,15 @@ async function getQuestProgress(playerId, questId) {
  * @param {string} playerId - The player's ID
  * @param {Array} effects - Array of effect objects
  * @param {Set} visitedQuestIds - Set of quest IDs already processed (prevents infinite loops)
- * @returns {Promise<Object>} Result with success status
+ * @returns {Promise<Object>} Result with success status and started quest IDs
  */
 async function runQuestEffects(playerId, effects, visitedQuestIds = new Set()) {
   if (!effects || !Array.isArray(effects)) {
-    return { success: true }
+    return { success: true, startedQuestIds: [] }
   }
 
   const { randomUUID } = require('crypto')
+  const startedQuestIds = []
 
   for (const effect of effects) {
     if (!effect || !effect.type) continue
@@ -67,11 +68,18 @@ async function runQuestEffects(playerId, effects, visitedQuestIds = new Set()) {
       // Mark as visited
       visitedQuestIds.add(questId)
 
+      // Check if quest already exists before accepting
+      const existingProgress = await getQuestProgress(playerId, questId)
+      const wasNewlyCreated = !existingProgress
+
       // Accept quest with system flag (bypasses room validation and NPC gating)
       const acceptResult = await acceptQuest(playerId, questId, null, { system: true })
       if (!acceptResult.success) {
         console.error(`[runQuestEffects] Failed to start quest ${questId}:`, acceptResult.error)
         // Continue with other effects even if one fails
+      } else if (wasNewlyCreated) {
+        // Only track quests that were newly created (didn't exist before)
+        startedQuestIds.push(questId)
       }
     } else if (effect.type === 'completeQuest') {
       const { questId } = effect
@@ -109,7 +117,7 @@ async function runQuestEffects(playerId, effects, visitedQuestIds = new Set()) {
     }
   }
 
-  return { success: true }
+  return { success: true, startedQuestIds }
 }
 
 /**
@@ -419,8 +427,10 @@ async function completeQuest(playerId, questId) {
 
   // Run onComplete effects (outside transaction but after completion is committed)
   // These effects may start new quests, which is safe to do after the transaction
+  let startedQuestIds = []
   if (questDef.onComplete && Array.isArray(questDef.onComplete)) {
-    await runQuestEffects(playerId, questDef.onComplete)
+    const effectResult = await runQuestEffects(playerId, questDef.onComplete)
+    startedQuestIds = effectResult.startedQuestIds || []
   }
 
   // Get updated inventory
@@ -434,6 +444,7 @@ async function completeQuest(playerId, questId) {
     player: result.updatedUser,
     inventory,
     quests,
+    startedQuestIds,
   }
 }
 

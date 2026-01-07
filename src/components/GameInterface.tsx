@@ -1683,6 +1683,19 @@ export default function GameInterface() {
           })
         }
       }
+
+      // Handle quest chain toast (show even if modal is open)
+      if (payload?.data?.questChain) {
+        const toastMessage = payload.data.toast || payload.data.questChain.message
+        if (toastMessage) {
+          const { addNotification } = useNotificationStore.getState()
+          addNotification({
+            message: toastMessage,
+            outcome: 'success',
+            action: 'quest_chain',
+          })
+        }
+      }
     })
 
     const cleanupLoginSuccess = socketHandlers.onLoginSuccess((payload) => {
@@ -2537,8 +2550,13 @@ export default function GameInterface() {
                                           >
                                             <div className="flex items-start justify-between">
                                               <div>
+                                                {questDef.giver?.name && (
+                                                  <p className="text-gray-500 text-xs mb-1">
+                                                    {questDef.giver.name}
+                                                  </p>
+                                                )}
                                                 <h4 className="text-white font-semibold text-base">
-                                                  Quest {questDef.number}: {questDef.title}
+                                                  {questDef.title}
                                                 </h4>
                                                 <p className="text-gray-400 text-sm mt-1">
                                                   {questDef.summary}
@@ -2616,8 +2634,13 @@ export default function GameInterface() {
                                           >
                                             <div className="flex items-start justify-between">
                                               <div>
+                                                {questDef.giver?.name && (
+                                                  <p className="text-gray-500 text-xs mb-1">
+                                                    {questDef.giver.name}
+                                                  </p>
+                                                )}
                                                 <h4 className="text-white font-semibold text-base">
-                                                  Quest {questDef.number}: {questDef.title}
+                                                  {questDef.title}
                                                 </h4>
                                                 <p className="text-gray-400 text-sm mt-1">
                                                   {questDef.summary}

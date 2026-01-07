@@ -166,11 +166,14 @@ const ROOM_ACTIONS = {
                 type: 'icon',
                 icon: 'npc-oldman',
                 iconColor: 'yellow-400',
-                title: 'Talk to Old Man',
-                message: 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here. There\'s much to learn about this world, and I\'m here to help guide you on your journey."',
+                title: 'Old Man',
+                message: [
+                  "Hey there young whippersnapper, I could use the help of a bright adventurer like yourself.",
+                  "Bring me a yellow flower from the flower patch to the north and you will do this old man a great favor."
+                ],
               },
               buttons: [
-                { label: 'Continue', direction: 'complete_quest:quest_001' },
+                { label: 'I can bring you a flower', direction: 'complete_quest:quest_001' },
               ],
             }),
           },
@@ -276,7 +279,7 @@ const ROOM_ACTIONS = {
               showModal: true,
               modalContent: {
                 type: 'icon',
-                icon: 'npc-soldier',
+                icon: 'npc-youngsoldier',
                 iconColor: 'blue-400',
                 title: 'Talk to Young Soldier',
                 message: 'The Young Soldier turns to face you with a determined look. "Greetings, traveler! I see you\'ve spoken with the Old Man. He\'s a wise one, but let me give you some advice: in this world, you need to be prepared. Make sure you\'re properly armed before you venture too far."',
@@ -308,7 +311,7 @@ const ROOM_ACTIONS = {
                 showModal: true,
                 modalContent: {
                   type: 'icon',
-                  icon: 'npc-soldier',
+                  icon: 'npc-youngsoldier',
                   iconColor: 'blue-400',
                   title: 'Talk to Young Soldier',
                   message: 'The Young Soldier nods approvingly as he sees your weapon. "Good. Now you\'re armed. That\'s much better. You\'ll need that if you plan to explore beyond these safe areas."',
@@ -331,7 +334,7 @@ const ROOM_ACTIONS = {
                 showModal: true,
                 modalContent: {
                   type: 'icon',
-                  icon: 'npc-soldier',
+                  icon: 'npc-youngsoldier',
                   iconColor: 'blue-400',
                   title: 'Talk to Young Soldier',
                   message: 'The Young Soldier looks at you with concern. "You\'re still unarmed? That\'s dangerous. Open your inventory and equip something into your Main Hand. You can\'t rely on your fists forever."',
@@ -353,12 +356,12 @@ const ROOM_ACTIONS = {
             showModal: true,
             modalContent: {
               type: 'icon',
-              icon: 'npc-soldier',
+              icon: 'npc-youngsoldier',
               iconColor: 'blue-400',
               title: 'Talk to Young Soldier',
               message: quest004Progress && quest004Progress.completed
                 ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
-                : 'The Young Soldier stands at attention. "If you need any advice, feel free to ask."',
+                : 'The Young Soldier stands at attention. "Help out the Old Man first and then come back to me."',
             },
           }),
         },

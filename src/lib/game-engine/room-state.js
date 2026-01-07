@@ -728,25 +728,50 @@ class RoomState {
     }
     const rewardText = rewardMessages.length > 0 ? ` You received: ${rewardMessages.join(', ')}.` : ''
 
+    // Build quest chain message if new quests were started
+    let questChainData = null
+    let toastMessage = null
+    if (result.startedQuestIds && result.startedQuestIds.length > 0) {
+      const { getQuestDef } = require('./services/quest-service')
+      
+      // Map quest IDs to quest definitions and format as "(number) title"
+      const questEntries = result.startedQuestIds
+        .map(questId => {
+          const def = getQuestDef(questId)
+          return def ? { number: def.number, title: def.title } : null
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.number - b.number)
+        .map(q => `(${q.number}) ${q.title}`)
+      
+      const formattedMessage = `New quests: ${questEntries.join(', ')}.`
+      
+      questChainData = {
+        startedQuestIds: result.startedQuestIds,
+        message: formattedMessage,
+      }
+      toastMessage = formattedMessage
+    }
+
+    const data = {
+      roomId: this.roomId,
+      quests: result.quests,
+      inventory: result.inventory,
+      player: result.player,
+    }
+
+    // Add quest chain data if quests were started
+    if (questChainData) {
+      data.questChain = questChainData
+      data.toast = toastMessage
+    }
+
     return {
       success: true,
       action: 'complete_quest',
       playerEvent: {
         event: 'action:feedback',
-        payload: this.createFeedbackPayload('complete_quest', 'success', `Quest completed: ${questTitle}.${rewardText}`, {
-          roomId: this.roomId,
-          quests: result.quests,
-          inventory: result.inventory,
-          player: result.player,
-          showModal: true,
-          modalContent: {
-            type: 'icon',
-            icon: 'npc-oldman',
-            iconColor: 'yellow-400',
-            title: 'Quest Completed!',
-            message: `You completed: ${questTitle}.${rewardText}`,
-          },
-        }),
+        payload: this.createFeedbackPayload('complete_quest', 'success', `Quest completed: ${questTitle}.${rewardText}`, data),
       },
     }
   }
