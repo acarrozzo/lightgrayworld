@@ -167,8 +167,9 @@ const ROOM_ACTIONS = {
                 icon: 'npc-oldman',
                 iconColor: 'yellow-400',
                 title: 'Old Man',
+                header: 'Well met, traveler!',
                 message: [
-                  "Hey there young whippersnapper, I could use the help of a bright adventurer like yourself.",
+                  "Hey there young whippersnapper, I could use the help of a bright adventurer like yourself. ",
                   "Bring me a yellow flower from the flower patch to the north and you will do this old man a great favor."
                 ],
               },

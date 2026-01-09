@@ -223,7 +223,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
       setCurrentPosition(newPosition)
       setIsTransitioning(false)
       console.log('[Compass] Transition complete, currentPosition updated to:', newPosition)
-    }, 2000) // Match CSS transition duration
+    }, 1000) // Match CSS transition duration
 
     return () => {
       console.log('[Compass] Cleaning up transition timer for room change')
@@ -296,7 +296,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
             <button
               type="button"
               onClick={() => onNavigateToMap?.()}
-              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-[2000ms] ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950 border-[10px] sm:border-[25px] border-solid border-gray-800/0 shadow-lg hover:shadow-xl"
+              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-[1000ms] ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950 border-[10px] sm:border-[25px] border-solid border-gray-800/0 shadow-lg hover:shadow-xl"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition

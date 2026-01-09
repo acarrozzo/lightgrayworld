@@ -1454,6 +1454,10 @@ export default function GameInterface() {
                 // The opacity modifier (e.g., /70) will be preserved: 'gray-500/70' -> 'text-gray-500/70'
                 iconColorClass = `text-${iconColorClass}`
               }
+              // Handle message as array (paragraphs) or string
+              const messageContent = modalContent.message || messageText
+              const isMessageArray = Array.isArray(messageContent)
+              
               renderedContent = (
                 <div className="flex flex-col items-center justify-center gap-6 py-8">
                   <Icon 
@@ -1461,9 +1465,24 @@ export default function GameInterface() {
                     size={200} 
                     className={iconColorClass}
                   />
-                  <p className="text-gray-200 text-center text-base leading-relaxed max-w-md">
-                    {modalContent.message || messageText}
-                  </p>
+                  <div className="text-center max-w-md">
+                    {modalContent.header && (
+                      <h3 className="text-gray-100 text-lg font-semibold mb-4">
+                        {modalContent.header}
+                      </h3>
+                    )}
+                    {isMessageArray ? (
+                      <div className="text-gray-200 text-base leading-relaxed space-y-4">
+                        {messageContent.map((paragraph, index) => (
+                          <p key={index}>{paragraph}</p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-200 text-base leading-relaxed">
+                        {messageContent}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )
               modalTitle = modalContent.title || modalTitle
