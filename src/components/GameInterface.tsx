@@ -5,8 +5,7 @@ import type { Room, Player } from '@/lib/game-state'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import React from 'react'
 import GameHeader from './GameHeader'
-import GameSidebar from './GameSidebar'
-import UnifiedFeedPanel, { type InputMode } from './UnifiedFeedPanel'
+import { type InputMode } from './game-interface/panels/FeedPanel'
 import RoomBox from './RoomBox'
 import Compass from './Compass'
 import TabContainer, { type TabConfig } from './TabContainer'
@@ -14,7 +13,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, MessageSquareText, Map, Home } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, MessageSquareText, Map } from 'lucide-react'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
@@ -32,11 +31,12 @@ import UsersDisplay from './UsersDisplay'
 import { MAP_CONFIG, TELEPORT_LOCATIONS } from './game-interface/constants'
 import { findTravelDirection, checkIfExitHasGate, normalizeCommand, getMapIdForRoom, getUnlockedMaps, formatDirectionPhrase } from './game-interface/utils'
 import { DirectoryContent } from './game-interface/DirectoryContent'
+import CharPanel from './game-interface/panels/CharPanel'
 import InventoryPanel from './game-interface/panels/InventoryPanel'
 import QuestsPanel from './game-interface/panels/QuestsPanel'
 import MapPanel from './game-interface/panels/MapPanel'
 import ChatPanel from './game-interface/panels/ChatPanel'
-import HomePanel from './game-interface/panels/HomePanel'
+import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
 
 export default function GameInterface() {
@@ -2163,7 +2163,7 @@ export default function GameInterface() {
         {/* Left Sidebar - Player Info */}
         <div 
           className={`
-            bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0
+            bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
             transition-all duration-[250ms] ease-out
             ${leftSidebarOpen 
               ? rightSidebarOpen
@@ -2174,14 +2174,27 @@ export default function GameInterface() {
             absolute md:relative left-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none
           `}
         >
-          <div ref={leftSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
-            <GameSidebar 
-              player={player} 
-              onToggle={() => setLeftSidebarOpen((prev) => !prev)}
-              isOpen={leftSidebarOpen}
-              onAction={handleAction}
-              onSwitchToInventory={handleSwitchToInventory}
-            />
+          <div className="flex flex-col h-full">
+            {/* Header with toggle button */}
+            <div className="flex items-center gap-3 p-4 bg-gray-900/95 backdrop-blur-sm flex-shrink-0 border-b border-gray-800/50">
+              <button
+                onClick={() => setLeftSidebarOpen((prev) => !prev)}
+                className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                title="Close"
+                aria-label="Close character panel"
+              >
+                <ChevronLeft size={14} className="mr-0.5" />
+                <Icon name="character" size={14} color="purple" />
+              </button>
+              <h2 className="text-sm font-semibold text-white">Character</h2>
+            </div>
+            <div ref={leftSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
+              <CharPanel
+                player={player}
+                onAction={handleAction}
+                onSwitchToInventory={handleSwitchToInventory}
+              />
+            </div>
           </div>
         </div>
         
@@ -2293,6 +2306,20 @@ export default function GameInterface() {
                     ),
                   },
                   {
+                    id: 'char',
+                    label: 'Char',
+                    icon: 'character',
+                    color: 'purple',
+                    content: (
+                      <CharPanel
+                        player={player}
+                        onAction={handleAction}
+                        onSwitchToInventory={handleSwitchToInventory}
+                        onClose={() => setCenterActiveTab('explore')}
+                      />
+                    ),
+                  },
+                  {
                     id: 'inventory',
                     label: 'Inv',
                     icon: 'inv',
@@ -2359,14 +2386,26 @@ export default function GameInterface() {
                     ),
                   },
                   {
-                    id: 'home',
-                    label: 'Home',
-                    icon: <Home size={14} />,
-                    color: 'amber',
+                    id: 'feed',
+                    label: 'Feed',
+                    icon: <MessageSquareText size={14} />,
+                    color: 'blue',
                     content: (
-                      <HomePanel
-                        onTeleport={(toRoomId) => handleAction({ type: 'teleport', data: { toRoomId } })}
+                      <FeedPanel
+                        currentRoomId={currentRoom?.roomId}
+                        currentRoomName={currentRoom?.name}
+                        isConnected={socket?.connected ?? false}
                         onClose={() => setCenterActiveTab('explore')}
+                        onOpenSettings={() => setCenterActiveTab('settings')}
+                        customAction={customAction}
+                        onCustomActionChange={setCustomAction}
+                        onCustomActionSubmit={handleCustomAction}
+                        isLoadingRoom={isLoadingRoom}
+                        customActionInputRef={customActionInputRef}
+                        onUnreadCountChange={setUnreadCount}
+                        forceInputMode={forceWorldChatMode}
+                        forceFilter={forceFeedFilter}
+                        forceChatSubFilter={forceFeedChatSubFilter}
                       />
                     ),
                   },
@@ -2411,7 +2450,7 @@ export default function GameInterface() {
         {/* Right Sidebar - Tabbed Interface (Feed, World Chat, Room Chat) */}
         <div 
           className={`
-            rightColumn bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0
+            rightColumn bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
             transition-all duration-[250ms] ease-out
             ${rightSidebarOpen 
               ? leftSidebarOpen
@@ -2422,24 +2461,55 @@ export default function GameInterface() {
             absolute md:relative right-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none
           `}
         >
-          <div ref={rightSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
-            <UnifiedFeedPanel
-              currentRoomId={currentRoom?.roomId}
-              currentRoomName={currentRoom?.name}
-              isConnected={socket?.connected ?? false}
-              onToggle={() => setRightSidebarOpen((prev) => !prev)}
-              isOpen={rightSidebarOpen}
-              onOpenSettings={() => setCenterActiveTab('settings')}
-              customAction={customAction}
-              onCustomActionChange={setCustomAction}
-              onCustomActionSubmit={handleCustomAction}
-              isLoadingRoom={isLoadingRoom}
-              customActionInputRef={customActionInputRef}
-              onUnreadCountChange={setUnreadCount}
-              forceInputMode={forceWorldChatMode}
-              forceFilter={forceFeedFilter}
-              forceChatSubFilter={forceFeedChatSubFilter}
-            />
+          <div className="flex flex-col h-full">
+            {/* Header with toggle button */}
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800/60 bg-gray-900/80 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-gray-100">World Feed</span>
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <span className={`w-2 h-2 rounded-full ${socket?.connected ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                  <span>{socket?.connected ? 'Connected' : 'Disconnected'}</span>
+                </div>
+                {!socket?.connected && (
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
+                    aria-label="Refresh page"
+                    title="Refresh page"
+                  >
+                    Refresh
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setRightSidebarOpen((prev) => !prev)}
+                  className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                  title="Close"
+                  aria-label="Close world panel"
+                >
+                  <MessageSquareText size={14} className="text-blue-500" />
+                  <ChevronRight size={14} className="ml-0.5" />
+                </button>
+              </div>
+            </div>
+            <div ref={rightSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
+              <FeedPanel
+                currentRoomId={currentRoom?.roomId}
+                currentRoomName={currentRoom?.name}
+                isConnected={socket?.connected ?? false}
+                onOpenSettings={() => setCenterActiveTab('settings')}
+                customAction={customAction}
+                onCustomActionChange={setCustomAction}
+                onCustomActionSubmit={handleCustomAction}
+                isLoadingRoom={isLoadingRoom}
+                customActionInputRef={customActionInputRef}
+                onUnreadCountChange={setUnreadCount}
+                forceInputMode={forceWorldChatMode}
+                forceFilter={forceFeedFilter}
+                forceChatSubFilter={forceFeedChatSubFilter}
+              />
+            </div>
           </div>
         </div>
 
