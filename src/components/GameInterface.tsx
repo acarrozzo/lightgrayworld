@@ -2381,11 +2381,7 @@ export default function GameInterface() {
                 aria-label="Close panel"
               >
                 <ChevronLeft size={14} className="mr-0.5" />
-                {typeof getPanelIcon(leftPanelType) === 'string' ? (
-                  <Icon name={getPanelIcon(leftPanelType) as string} size={14} color={getPanelColor(leftPanelType)} />
-                ) : (
-                  <span className="text-gray-400">{getPanelIcon(leftPanelType) as React.ReactNode}</span>
-                )}
+                {renderIcon(getPanelIcon(leftPanelType), getPanelColor(leftPanelType), false)}
               </button>
               <div className="flex items-center gap-2 flex-1">
                 <h2 className="text-sm font-semibold text-white">{getPanelLabel(leftPanelType)}</h2>
@@ -2446,12 +2442,12 @@ export default function GameInterface() {
                   <button
                     onClick={() => setLeftSidebarOpen(true)}
                     className={`hidden lg:flex group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${leftSidebarOpen ? 'lg:hidden' : ''}`}
-                    title="Open character panel"
-                    aria-label="Open character panel"
+                    title={`Open ${getPanelLabel(leftPanelType).toLowerCase()} panel`}
+                    aria-label={`Open ${getPanelLabel(leftPanelType).toLowerCase()} panel`}
                   >
-                    <Icon name="character" size={14} color="purple" />
+                    {renderIcon(getPanelIcon(leftPanelType), getPanelColor(leftPanelType), false)}
                     <span className="opacity-0 -translate-x-2 max-w-0 overflow-hidden transition-all duration-200 md:group-hover:opacity-100 md:group-hover:translate-x-0 md:group-hover:max-w-[100px] whitespace-nowrap ml-1">
-                      Character
+                      {getPanelLabel(leftPanelType)}
                     </span>
                     <ChevronRight size={14} className="ml-0.5" />
                   </button>
@@ -2460,15 +2456,17 @@ export default function GameInterface() {
                   <button
                     onClick={() => setRightSidebarOpen(true)}
                     className={`hidden xl:flex group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${rightSidebarOpen ? 'xl:hidden' : ''}`}
-                    title="Open world panel"
-                    aria-label="Open world panel"
+                    title={`Open ${getPanelLabel(rightPanelType).toLowerCase()} panel`}
+                    aria-label={`Open ${getPanelLabel(rightPanelType).toLowerCase()} panel`}
                   >
                     <ChevronLeft size={14} className="mr-0.5" />
                     <span className="opacity-0 translate-x-2 max-w-0 overflow-hidden transition-all duration-200 md:group-hover:opacity-100 md:group-hover:translate-x-0 md:group-hover:max-w-[120px] whitespace-nowrap">
-                      World Feed
+                      {getPanelLabel(rightPanelType)}
                     </span>
-                    <MessageSquareText size={14} className="text-blue-500 ml-1" />
-                    {unreadCount > 0 && (
+                    <span className="ml-1">
+                      {renderIcon(getPanelIcon(rightPanelType), getPanelColor(rightPanelType), false)}
+                    </span>
+                    {rightPanelType === 'feed' && unreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
@@ -2755,11 +2753,7 @@ export default function GameInterface() {
                   title="Close"
                   aria-label="Close panel"
                 >
-                  {typeof getPanelIcon(rightPanelType) === 'string' ? (
-                    <Icon name={getPanelIcon(rightPanelType) as string} size={14} color={getPanelColor(rightPanelType)} />
-                  ) : (
-                    <span className="text-gray-400">{getPanelIcon(rightPanelType) as React.ReactNode}</span>
-                  )}
+                  {renderIcon(getPanelIcon(rightPanelType), getPanelColor(rightPanelType), false)}
                   <ChevronRight size={14} className="ml-0.5" />
                 </button>
               </div>

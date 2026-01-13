@@ -302,25 +302,46 @@ export default function TabContainer({
   const breakpointClass = closeButtonBreakpoint === 'lg' ? 'lg:hidden' : 'xl:hidden'
 
   const getIconColorClass = (tab: TabConfig, isActive: boolean): string => {
-    if (isActive) return ''
     const color = tab.color || 'blue'
-    switch (color) {
-      case 'blue':
-        return 'text-blue-500'
-      case 'green':
-        return 'text-green-500'
-      case 'purple':
-        return 'text-purple-500'
-      case 'gold':
-        return 'text-yellow-500'
-      case 'red':
-        return 'text-red-500'
-      case 'sky':
-        return 'text-sky-500'
-      case 'gray':
-        return 'text-gray-500'
-      default:
-        return 'text-blue-500'
+    
+    if (isActive) {
+      switch (color) {
+        case 'blue':
+          return 'text-blue-300'
+        case 'green':
+          return 'text-green-300'
+        case 'purple':
+          return 'text-purple-300'
+        case 'gold':
+          return 'text-yellow-300'
+        case 'red':
+          return 'text-red-300'
+        case 'sky':
+          return 'text-sky-300'
+        case 'gray':
+          return 'text-gray-300'
+        default:
+          return 'text-blue-300'
+      }
+    } else {
+      switch (color) {
+        case 'blue':
+          return 'text-blue-400'
+        case 'green':
+          return 'text-green-400'
+        case 'purple':
+          return 'text-purple-400'
+        case 'gold':
+          return 'text-yellow-400'
+        case 'red':
+          return 'text-red-400'
+        case 'sky':
+          return 'text-sky-400'
+        case 'gray':
+          return 'text-gray-400'
+        default:
+          return 'text-blue-400'
+      }
     }
   }
 
@@ -378,7 +399,9 @@ export default function TabContainer({
         )}
         
         {/* Centered tabs */}
-        <div ref={tabsContainerRef} className="flex-1 flex items-center justify-left gap-2 flex-nowrap max-w-[848px]">
+        <div ref={tabsContainerRef} className="flex-1 flex items-center justify-left md:justify-center gap-2 flex-nowrap px-0 lg:pr-[56px] xl:px-0">
+          {/* max-w-[848px] lg:max-w-[904px] xl:max-w-[848px] */}
+
           {/* Render visible tabs */}
           {visibleTabs.map((tab, index) => {
             const isActive = activeTab === tab.id
