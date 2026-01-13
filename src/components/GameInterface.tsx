@@ -531,7 +531,32 @@ export default function GameInterface() {
     }
   }, [leftDropdownOpen, rightDropdownOpen])
 
-  // Touch/swipe gesture support for mobile
+  // Tab order for swipe navigation (matches the order in the tabs array)
+  const tabOrder = ['explore', 'char', 'inventory', 'quests', 'map', 'chat', 'feed', 'settings']
+
+  // Helper function to get next/previous tab with wrapping
+  const getAdjacentTab = useCallback((currentTab: string | null, direction: 'next' | 'prev'): string => {
+    const currentTabId = currentTab || 'explore'
+    const currentIndex = tabOrder.indexOf(currentTabId)
+    
+    // If current tab not found, default to explore
+    if (currentIndex === -1) {
+      return 'explore'
+    }
+
+    let newIndex: number
+    if (direction === 'next') {
+      // Swipe right = next tab (wrap to first if at end)
+      newIndex = (currentIndex + 1) % tabOrder.length
+    } else {
+      // Swipe left = previous tab (wrap to last if at start)
+      newIndex = currentIndex === 0 ? tabOrder.length - 1 : currentIndex - 1
+    }
+
+    return tabOrder[newIndex]
+  }, [])
+
+  // Touch/swipe gesture support for mobile - navigate tabs instead of opening sidebars
   useEffect(() => {
     let touchStartX = 0
     let touchStartY = 0
@@ -553,13 +578,13 @@ export default function GameInterface() {
       // Only handle horizontal swipes
       if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
         if (deltaX > 0) {
-          // Swipe right - open left sidebar
-          setLeftSidebarOpen(true)
-          setRightSidebarOpen(false)
+          // Swipe right - go to next tab (wraps to first if at last)
+          const nextTab = getAdjacentTab(centerActiveTab, 'next')
+          setCenterActiveTab(nextTab)
         } else {
-          // Swipe left - open right sidebar
-          setRightSidebarOpen(true)
-          setLeftSidebarOpen(false)
+          // Swipe left - go to previous tab (wraps to last if at first)
+          const nextTab = getAdjacentTab(centerActiveTab, 'prev')
+          setCenterActiveTab(nextTab)
         }
       }
 
@@ -567,8 +592,8 @@ export default function GameInterface() {
       touchStartY = 0
     }
 
-    // Only add touch listeners on mobile
-    if (window.innerWidth < 768) {
+    // Only add touch listeners on screens below lg breakpoint (1024px) where sidebars are hidden
+    if (window.innerWidth < 1024) {
       document.addEventListener('touchstart', handleTouchStart, { passive: true })
       document.addEventListener('touchend', handleTouchEnd, { passive: true })
     }
@@ -577,7 +602,7 @@ export default function GameInterface() {
       document.removeEventListener('touchstart', handleTouchStart)
       document.removeEventListener('touchend', handleTouchEnd)
     }
-  }, [])
+  }, [centerActiveTab, getAdjacentTab])
 
   const loadRoomData = useCallback(async (options?: { isTransition?: boolean; travel?: { toRoomId?: string }; requireAuth?: boolean; roomData?: any }) => {
     // Increment sequence for this request
