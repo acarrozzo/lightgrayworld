@@ -2360,7 +2360,7 @@ export default function GameInterface() {
         {/* Left Sidebar - Player Info */}
         <div 
           className={`
-            bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 ${leftDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}
+            bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 hidden lg:flex flex-col flex-shrink-0 h-full min-h-0 ${leftDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}
             transition-all duration-[250ms] ease-out
             ${leftSidebarOpen 
               ? rightSidebarOpen
@@ -2445,7 +2445,7 @@ export default function GameInterface() {
                 leftElement={
                   <button
                     onClick={() => setLeftSidebarOpen(true)}
-                    className={`group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${leftSidebarOpen ? 'md:hidden' : ''}`}
+                    className={`hidden lg:flex group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${leftSidebarOpen ? 'lg:hidden' : ''}`}
                     title="Open character panel"
                     aria-label="Open character panel"
                   >
@@ -2459,7 +2459,7 @@ export default function GameInterface() {
                 rightElement={
                   <button
                     onClick={() => setRightSidebarOpen(true)}
-                    className={`group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${rightSidebarOpen ? 'md:hidden' : ''}`}
+                    className={`hidden xl:flex group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${rightSidebarOpen ? 'xl:hidden' : ''}`}
                     title="Open world panel"
                     aria-label="Open world panel"
                   >
@@ -2689,7 +2689,7 @@ export default function GameInterface() {
         {/* Right Sidebar - Tabbed Interface (Feed, World Chat, Room Chat) */}
         <div 
           className={`
-            rightColumn bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
+            rightColumn bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 hidden xl:flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
             transition-all duration-[250ms] ease-out
             ${rightSidebarOpen 
               ? leftSidebarOpen

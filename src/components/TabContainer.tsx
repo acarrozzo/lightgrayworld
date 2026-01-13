@@ -369,7 +369,7 @@ export default function TabContainer({
   return (
     <div className={`flex-1 flex flex-col min-h-0 ${containerClassName}`}>
       {/* Tab Navigation */}
-      <div ref={headerRef} className={`relative z-10 flex gap-2 ${defaultHeaderPadding} bg-gray-900/95 backdrop-blur-sm flex-shrink-0 flex-wrap items-center ${headerClassName}`}>
+      <div ref={headerRef} className={`relative z-10 flex gap-2 ${defaultHeaderPadding} bg-gray-900/95 backdrop-blur-sm flex-shrink-0 flex-wrap justify-between items-center ${headerClassName}`}>
         {/* Left side elements */}
         {leftElement && (
           <div ref={leftElementRef} className="flex items-center gap-2 flex-shrink-0">
@@ -378,7 +378,7 @@ export default function TabContainer({
         )}
         
         {/* Centered tabs */}
-        <div ref={tabsContainerRef} className="flex-1 flex items-center justify-center gap-2 flex-nowrap">
+        <div ref={tabsContainerRef} className="flex-1 flex items-center justify-left gap-2 flex-nowrap max-w-[848px]">
           {/* Render visible tabs */}
           {visibleTabs.map((tab, index) => {
             const isActive = activeTab === tab.id
