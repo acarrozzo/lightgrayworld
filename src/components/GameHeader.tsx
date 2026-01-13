@@ -16,9 +16,11 @@ interface GameHeaderProps {
   def?: number
   defMod?: number
   onCharacterClick?: () => void
+  isConnected?: boolean
+  onRefresh?: () => void
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, str, strMod, dex, dexMod, mag, magMod, def, defMod, onCharacterClick }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, str, strMod, dex, dexMod, mag, magMod, def, defMod, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
   return (
     <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-1 shadow-sm">
       <div className="flex w-full items-center justify-between">
@@ -54,8 +56,28 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, st
           <span className="text-[10px] text-gray-500 font-normal">v0.1.4</span>
         </div>
         
-        {/* Right side - Stats */}
-        <div className="flex-1 flex justify-end text-xs">
+        {/* Right side - Connection Status and Stats */}
+        <div className="flex-1 flex justify-end items-center gap-3 text-xs">
+          {/* Connection Status */}
+          {isConnected !== undefined && (
+            <div className="hidden md:flex items-center gap-2">
+              <div className="flex items-center gap-2 text-gray-400">
+                <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                <span className="text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
+              </div>
+              {!isConnected && onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  className="px-2 py-1 text-xs font-medium rounded-md bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
+                  aria-label="Refresh page"
+                  title="Refresh page"
+                >
+                  Refresh
+                </button>
+              )}
+            </div>
+          )}
+          
           {/* Stats group */}
           <div className="hidden md:flex items-center gap-2">
             {strMod !== undefined && (

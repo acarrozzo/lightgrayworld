@@ -13,7 +13,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight, MessageSquare, MessageSquareText, Map } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageSquareText, Map } from 'lucide-react'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
@@ -64,11 +64,17 @@ export default function GameInterface() {
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
+  const [leftPanelType, setLeftPanelType] = useState<string>('char')
+  const [rightPanelType, setRightPanelType] = useState<string>('feed')
+  const [leftDropdownOpen, setLeftDropdownOpen] = useState(false)
+  const [rightDropdownOpen, setRightDropdownOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const leftSidebarScrollRef = useRef<HTMLDivElement>(null)
   const rightSidebarScrollRef = useRef<HTMLDivElement>(null)
   const leftSidebarScrollPosition = useRef<number>(0)
   const rightSidebarScrollPosition = useRef<number>(0)
+  const leftDropdownRef = useRef<HTMLDivElement>(null)
+  const rightDropdownRef = useRef<HTMLDivElement>(null)
   const [isTeleportModalOpen, setIsTeleportModalOpen] = useState(false)
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
   const [shopModalData, setShopModalData] = useState<{
@@ -279,6 +285,8 @@ export default function GameInterface() {
   useEffect(() => {
     const savedLeftSidebar = localStorage.getItem('leftSidebarOpen')
     const savedRightSidebar = localStorage.getItem('rightSidebarOpen')
+    const savedLeftPanelType = localStorage.getItem('leftPanelType')
+    const savedRightPanelType = localStorage.getItem('rightPanelType')
     
     if (savedLeftSidebar !== null) {
       setLeftSidebarOpen(JSON.parse(savedLeftSidebar))
@@ -292,6 +300,14 @@ export default function GameInterface() {
     } else if (typeof window !== 'undefined' && window.innerWidth >= 768) {
       // Default to open on desktop if no preference
       setRightSidebarOpen(true)
+    }
+    
+    if (savedLeftPanelType) {
+      setLeftPanelType(savedLeftPanelType)
+    }
+    
+    if (savedRightPanelType) {
+      setRightPanelType(savedRightPanelType)
     }
   }, [])
 
@@ -405,6 +421,14 @@ export default function GameInterface() {
     localStorage.setItem('rightSidebarOpen', JSON.stringify(rightSidebarOpen))
   }, [rightSidebarOpen])
 
+  useEffect(() => {
+    localStorage.setItem('leftPanelType', leftPanelType)
+  }, [leftPanelType])
+
+  useEffect(() => {
+    localStorage.setItem('rightPanelType', rightPanelType)
+  }, [rightPanelType])
+
   // Preserve scroll positions when collapsing/expanding
   useEffect(() => {
     if (!leftSidebarScrollRef.current) return
@@ -479,6 +503,33 @@ export default function GameInterface() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [leftSidebarOpen, rightSidebarOpen])
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        leftDropdownRef.current &&
+        !leftDropdownRef.current.contains(event.target as Node) &&
+        !(event.target as HTMLElement)?.closest('[data-left-dropdown-button]')
+      ) {
+        setLeftDropdownOpen(false)
+      }
+      if (
+        rightDropdownRef.current &&
+        !rightDropdownRef.current.contains(event.target as Node) &&
+        !(event.target as HTMLElement)?.closest('[data-right-dropdown-button]')
+      ) {
+        setRightDropdownOpen(false)
+      }
+    }
+
+    if (leftDropdownOpen || rightDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [leftDropdownOpen, rightDropdownOpen])
 
   // Touch/swipe gesture support for mobile
   useEffect(() => {
@@ -2019,6 +2070,150 @@ export default function GameInterface() {
     setInventoryFilter(filter)
   }, [])
 
+  // Panel configuration
+  const panelConfig: Record<string, { label: string; icon: string | React.ReactNode; color: string }> = {
+    char: { label: 'Character', icon: 'character', color: 'purple' },
+    inventory: { label: 'Inventory', icon: 'inv', color: 'green' },
+    quests: { label: 'Quests', icon: 'trophy', color: 'gold' },
+    map: { label: 'Map', icon: <Map size={14} />, color: 'sky' },
+    chat: { label: 'Chat', icon: <MessageSquare size={14} />, color: 'purple' },
+    feed: { label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'blue' },
+    settings: { label: 'Settings', icon: <SettingsIcon size={14} />, color: 'gray' },
+  }
+
+  const getPanelLabel = (panelType: string) => panelConfig[panelType]?.label || 'Character'
+  const getPanelIcon = (panelType: string) => panelConfig[panelType]?.icon || 'character'
+  const getPanelColor = (panelType: string) => panelConfig[panelType]?.color || 'purple'
+
+  // Helper function to get color class for ReactNode icons
+  const getIconColorClass = useCallback((color: string, isActive: boolean): string => {
+    if (isActive) return 'text-blue-300'
+    
+    const colorMap: Record<string, string> = {
+      sky: 'text-sky-400',
+      purple: 'text-purple-400',
+      blue: 'text-blue-400',
+      gray: 'text-gray-400',
+      gold: 'text-yellow-400',
+      yellow: 'text-yellow-400',
+      green: 'text-green-400',
+      red: 'text-red-400',
+    }
+    
+    return colorMap[color] || 'text-gray-400'
+  }, [])
+
+  // Helper function to render icon with proper colors
+  const renderIcon = useCallback((icon: string | React.ReactNode, color: string, isActive: boolean) => {
+    if (typeof icon === 'string') {
+      return (
+        <Icon 
+          name={icon} 
+          size={14} 
+          color={isActive ? undefined : (color === 'gold' ? 'yellow' : color === 'sky' ? 'sky' : color)} 
+        />
+      )
+    } else {
+      // Clone ReactNode and apply color class
+      const colorClass = getIconColorClass(color, isActive)
+      return React.cloneElement(icon as React.ReactElement, {
+        className: `${colorClass} ${((icon as React.ReactElement).props as any)?.className || ''}`.trim(),
+        size: 14,
+      })
+    }
+  }, [getIconColorClass])
+
+  const renderPanelContent = useCallback((panelType: string, side: 'left' | 'right') => {
+    switch (panelType) {
+      case 'char':
+        return (
+          <CharPanel
+            player={player}
+            onAction={handleAction}
+            onSwitchToInventory={handleSwitchToInventory}
+          />
+        )
+      case 'inventory':
+        return (
+          <InventoryPanel
+            inventory={inventory}
+            onAction={handleAction}
+            initialFilter={inventoryFilter}
+            newItemIds={newItemIds}
+            onClearNewItem={(itemId) => {
+              setNewItemIds(prev => {
+                const updated = new Set(prev)
+                updated.delete(itemId)
+                return updated
+              })
+            }}
+            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
+          />
+        )
+      case 'quests':
+        return (
+          <QuestsPanel
+            quests={quests}
+            isLoadingQuests={isLoadingQuests}
+            isResettingQuests={isResettingQuests}
+            isLoggedIn={isLoggedIn}
+            inventory={inventory}
+            onResetQuests={handleResetQuests}
+            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
+          />
+        )
+      case 'map':
+        return (
+          <MapPanel
+            currentMapId={currentMapId}
+            availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
+            onMapChange={handleMapChange}
+            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
+          />
+        )
+      case 'chat':
+        return (
+          <ChatPanel
+            onOpenWorldChat={handleOpenWorldChat}
+            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
+          />
+        )
+      case 'feed':
+        return (
+          <FeedPanel
+            currentRoomId={currentRoom?.roomId}
+            currentRoomName={currentRoom?.name}
+            isConnected={socket?.connected ?? false}
+            onOpenSettings={() => setCenterActiveTab('settings')}
+            customAction={customAction}
+            onCustomActionChange={setCustomAction}
+            onCustomActionSubmit={handleCustomAction}
+            isLoadingRoom={isLoadingRoom}
+            customActionInputRef={customActionInputRef}
+            onUnreadCountChange={setUnreadCount}
+            forceInputMode={forceWorldChatMode}
+            forceFilter={forceFeedFilter}
+            forceChatSubFilter={forceFeedChatSubFilter}
+          />
+        )
+      case 'settings':
+        return (
+          <SettingsPanel
+            onLogout={handleLogoutFlow}
+            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
+          />
+        )
+      default:
+        return (
+          <CharPanel
+            player={player}
+            onAction={handleAction}
+            onSwitchToInventory={handleSwitchToInventory}
+          />
+        )
+    }
+  }, [player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow])
+
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
   }
@@ -2145,6 +2340,8 @@ export default function GameInterface() {
         def={player?.def}
         defMod={player?.defMod}
         onCharacterClick={() => setLeftSidebarOpen((prev) => !prev)}
+        isConnected={socket?.connected ?? false}
+        onRefresh={() => window.location.reload()}
       />
       
       <div className="flex flex-1 overflow-hidden relative min-h-0">
@@ -2163,7 +2360,7 @@ export default function GameInterface() {
         {/* Left Sidebar - Player Info */}
         <div 
           className={`
-            bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
+            bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 flex flex-col flex-shrink-0 h-full min-h-0 ${leftDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}
             transition-all duration-[250ms] ease-out
             ${leftSidebarOpen 
               ? rightSidebarOpen
@@ -2174,26 +2371,68 @@ export default function GameInterface() {
             absolute md:relative left-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none
           `}
         >
-          <div className="flex flex-col h-full">
+          <div className={`flex flex-col h-full ${leftDropdownOpen ? 'overflow-visible' : ''}`}>
             {/* Header with toggle button */}
-            <div className="flex items-center gap-3 p-4 bg-gray-900/95 backdrop-blur-sm flex-shrink-0 border-b border-gray-800/50">
+            <div className={`flex items-center gap-3 p-4 bg-gray-900/95 backdrop-blur-sm flex-shrink-0 border-b border-gray-800/50 ${leftDropdownOpen ? 'overflow-visible z-10 relative' : ''}`}>
               <button
                 onClick={() => setLeftSidebarOpen((prev) => !prev)}
                 className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                 title="Close"
-                aria-label="Close character panel"
+                aria-label="Close panel"
               >
                 <ChevronLeft size={14} className="mr-0.5" />
-                <Icon name="character" size={14} color="purple" />
+                {typeof getPanelIcon(leftPanelType) === 'string' ? (
+                  <Icon name={getPanelIcon(leftPanelType) as string} size={14} color={getPanelColor(leftPanelType)} />
+                ) : (
+                  <span className="text-gray-400">{getPanelIcon(leftPanelType) as React.ReactNode}</span>
+                )}
               </button>
-              <h2 className="text-sm font-semibold text-white">Character</h2>
+              <div className="flex items-center gap-2 flex-1">
+                <h2 className="text-sm font-semibold text-white">{getPanelLabel(leftPanelType)}</h2>
+                <div className="relative flex-shrink-0" ref={leftDropdownRef}>
+                  <button
+                    data-left-dropdown-button
+                    onClick={() => setLeftDropdownOpen((prev) => !prev)}
+                    className="px-1.5 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-md hover:bg-gray-800/50 text-gray-400 hover:text-gray-300"
+                    title="Select panel"
+                    aria-label="Select panel"
+                  >
+                    <ChevronDown 
+                      size={12} 
+                      className={`transition-transform duration-200 ${leftDropdownOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  
+                  {/* Dropdown menu */}
+                  {leftDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-2 bg-gray-900/95 backdrop-blur-sm border border-gray-700/50 rounded-lg shadow-xl z-[100] min-w-[160px] py-1" style={{ position: 'absolute' }}>
+                      {Object.entries(panelConfig).map(([panelId, config]) => {
+                        const isActive = leftPanelType === panelId
+                        return (
+                          <button
+                            key={panelId}
+                            onClick={() => {
+                              setLeftPanelType(panelId)
+                              setLeftDropdownOpen(false)
+                            }}
+                            className={`w-full px-2.5 py-1.5 text-sm font-medium transition-all duration-200 flex items-center gap-2 rounded-lg first:rounded-t-lg last:rounded-b-lg ${
+                              isActive
+                                ? 'border-1 border-blue-500 hover:border-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
+                                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
+                            }`}
+                          >
+                            {renderIcon(config.icon, config.color, isActive)}
+                            <span className="flex-1 text-left">{config.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             <div ref={leftSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
-              <CharPanel
-                player={player}
-                onAction={handleAction}
-                onSwitchToInventory={handleSwitchToInventory}
-              />
+              {renderPanelContent(leftPanelType, 'left')}
             </div>
           </div>
         </div>
@@ -2464,51 +2703,69 @@ export default function GameInterface() {
           <div className="flex flex-col h-full">
             {/* Header with toggle button */}
             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800/60 bg-gray-900/80 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-gray-100">World Feed</span>
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <span className={`w-2 h-2 rounded-full ${socket?.connected ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                  <span>{socket?.connected ? 'Connected' : 'Disconnected'}</span>
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <h2 className="text-sm font-semibold text-gray-100 truncate">{getPanelLabel(rightPanelType)}</h2>
+                  <div className="relative flex-shrink-0" ref={rightDropdownRef}>
+                    <button
+                      data-right-dropdown-button
+                      onClick={() => setRightDropdownOpen((prev) => !prev)}
+                      className="px-1.5 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-md hover:bg-gray-800/50 text-gray-400 hover:text-gray-300"
+                      title="Select panel"
+                      aria-label="Select panel"
+                    >
+                      <ChevronDown 
+                        size={12} 
+                        className={`transition-transform duration-200 ${rightDropdownOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+                    
+                    {/* Dropdown menu */}
+                    {rightDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-2 bg-gray-900/95 backdrop-blur-sm border border-gray-700/50 rounded-lg shadow-xl z-[100] min-w-[160px] py-1">
+                        {Object.entries(panelConfig).map(([panelId, config]) => {
+                          const isActive = rightPanelType === panelId
+                          return (
+                            <button
+                              key={panelId}
+                              onClick={() => {
+                                setRightPanelType(panelId)
+                                setRightDropdownOpen(false)
+                              }}
+                              className={`w-full px-2.5 py-1.5 text-sm font-medium transition-all duration-200 flex items-center gap-2 rounded-lg first:rounded-t-lg last:rounded-b-lg ${
+                                isActive
+                                  ? 'border-1 border-blue-500 hover:border-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
+                                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
+                              }`}
+                              >
+                              {renderIcon(config.icon, config.color, isActive)}
+                              <span className="flex-1 text-left">{config.label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {!socket?.connected && (
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="px-3 py-1.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
-                    aria-label="Refresh page"
-                    title="Refresh page"
-                  >
-                    Refresh
-                  </button>
-                )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={() => setRightSidebarOpen((prev) => !prev)}
                   className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                   title="Close"
-                  aria-label="Close world panel"
+                  aria-label="Close panel"
                 >
-                  <MessageSquareText size={14} className="text-blue-500" />
+                  {typeof getPanelIcon(rightPanelType) === 'string' ? (
+                    <Icon name={getPanelIcon(rightPanelType) as string} size={14} color={getPanelColor(rightPanelType)} />
+                  ) : (
+                    <span className="text-gray-400">{getPanelIcon(rightPanelType) as React.ReactNode}</span>
+                  )}
                   <ChevronRight size={14} className="ml-0.5" />
                 </button>
               </div>
             </div>
             <div ref={rightSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
-              <FeedPanel
-                currentRoomId={currentRoom?.roomId}
-                currentRoomName={currentRoom?.name}
-                isConnected={socket?.connected ?? false}
-                onOpenSettings={() => setCenterActiveTab('settings')}
-                customAction={customAction}
-                onCustomActionChange={setCustomAction}
-                onCustomActionSubmit={handleCustomAction}
-                isLoadingRoom={isLoadingRoom}
-                customActionInputRef={customActionInputRef}
-                onUnreadCountChange={setUnreadCount}
-                forceInputMode={forceWorldChatMode}
-                forceFilter={forceFeedFilter}
-                forceChatSubFilter={forceFeedChatSubFilter}
-              />
+              {renderPanelContent(rightPanelType, 'right')}
             </div>
           </div>
         </div>
