@@ -532,7 +532,7 @@ export default function GameInterface() {
   }, [leftDropdownOpen, rightDropdownOpen])
 
   // Tab order for swipe navigation (matches the order in the tabs array)
-  const tabOrder = ['explore', 'char', 'inventory', 'quests', 'map', 'chat', 'feed', 'settings']
+  const tabOrder = ['explore', 'char', 'inventory', 'quests', 'map', 'players', 'feed', 'settings']
 
   // Helper function to get next/previous tab with wrapping
   const getAdjacentTab = useCallback((currentTab: string | null, direction: 'next' | 'prev'): string => {
@@ -2101,7 +2101,7 @@ export default function GameInterface() {
     inventory: { label: 'Inventory', icon: 'inv', color: 'green' },
     quests: { label: 'Quests', icon: 'trophy', color: 'gold' },
     map: { label: 'Map', icon: <Map size={14} />, color: 'sky' },
-    chat: { label: 'Chat', icon: <MessageSquare size={14} />, color: 'purple' },
+    players: { label: 'Players', icon: <MessageSquare size={14} />, color: 'purple' },
     feed: { label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'blue' },
     settings: { label: 'Settings', icon: <SettingsIcon size={14} />, color: 'gray' },
   }
@@ -2201,7 +2201,7 @@ export default function GameInterface() {
             onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
           />
         )
-      case 'chat':
+      case 'players':
         return (
           <ChatPanel
             onOpenWorldChat={handleOpenWorldChat}
@@ -2641,8 +2641,8 @@ export default function GameInterface() {
                     ),
                   },
                   {
-                    id: 'chat',
-                    label: 'Chat',
+                    id: 'players',
+                    label: 'Players',
                     icon: <MessageSquare size={14} />,
                     color: 'purple',
                     content: (

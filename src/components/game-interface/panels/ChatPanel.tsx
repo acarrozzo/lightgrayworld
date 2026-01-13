@@ -24,7 +24,7 @@ export default function ChatPanel({
       </button>
       <div className="space-y-6 p-4 sm:p-6">
         <div>
-          <h3 className="text-lg font-semibold text-white">Chat</h3>
+          <h3 className="text-lg font-semibold text-white">Players</h3>
           <p className="text-gray-400 text-sm leading-relaxed mt-2">
             Access all communication and game actions through the world feed panel on the right.
           </p>
