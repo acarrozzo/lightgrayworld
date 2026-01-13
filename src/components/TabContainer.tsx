@@ -320,6 +320,10 @@ export default function TabContainer({
           return 'text-sky-300'
         case 'gray':
           return 'text-gray-300'
+        case 'violet':
+          return 'text-violet-300'
+        case 'pink':
+          return 'text-pink-300'
         default:
           return 'text-blue-300'
       }
@@ -339,6 +343,10 @@ export default function TabContainer({
           return 'text-sky-400'
         case 'gray':
           return 'text-gray-400'
+        case 'violet':
+          return 'text-violet-400'
+        case 'pink':
+          return 'text-pink-400'
         default:
           return 'text-blue-400'
       }
@@ -362,6 +370,10 @@ export default function TabContainer({
           return 'border-1 border-red-500 hover:border-red-400 bg-red-500/10 hover:bg-red-500/20 text-red-300'
         case 'sky':
           return 'border-1 border-sky-500 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300'
+        case 'violet':
+          return 'border-1 border-violet-500 hover:border-violet-400 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300'
+        case 'pink':
+          return 'border-1 border-pink-500 hover:border-pink-400 bg-pink-500/10 hover:bg-pink-500/20 text-pink-300'
         default:
           return 'border-1 border-indigo-500 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
       }

@@ -412,13 +412,17 @@ export default function GameInterface() {
     return cleanup
   }, [socket, socketHandlers, appendWorldFeed])
 
-  // Save sidebar state to localStorage
+  // Save sidebar state to localStorage (only on desktop to preserve preferences)
   useEffect(() => {
-    localStorage.setItem('leftSidebarOpen', JSON.stringify(leftSidebarOpen))
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      localStorage.setItem('leftSidebarOpen', JSON.stringify(leftSidebarOpen))
+    }
   }, [leftSidebarOpen])
 
   useEffect(() => {
-    localStorage.setItem('rightSidebarOpen', JSON.stringify(rightSidebarOpen))
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      localStorage.setItem('rightSidebarOpen', JSON.stringify(rightSidebarOpen))
+    }
   }, [rightSidebarOpen])
 
   useEffect(() => {
@@ -503,6 +507,39 @@ export default function GameInterface() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [leftSidebarOpen, rightSidebarOpen])
+
+  // Auto-close sidebars on mobile (< 768px) to prevent dark curtain overlay
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        // Close both sidebars when on mobile (using functional updates to avoid dependencies)
+        setLeftSidebarOpen((prev) => prev ? false : prev)
+        setRightSidebarOpen((prev) => prev ? false : prev)
+      }
+    }
+
+    // Check on initial mount
+    handleResize()
+
+    // Listen for resize events with throttling for performance
+    let timeoutId: NodeJS.Timeout | null = null
+    const throttledHandleResize = () => {
+      if (timeoutId) return
+      timeoutId = setTimeout(() => {
+        handleResize()
+        timeoutId = null
+      }, 100)
+    }
+
+    window.addEventListener('resize', throttledHandleResize)
+
+    return () => {
+      window.removeEventListener('resize', throttledHandleResize)
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
+    }
+  }, [])
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -2097,12 +2134,12 @@ export default function GameInterface() {
 
   // Panel configuration
   const panelConfig: Record<string, { label: string; icon: string | React.ReactNode; color: string }> = {
-    char: { label: 'Character', icon: 'character', color: 'purple' },
+    char: { label: 'Character', icon: 'character', color: 'violet' },
     inventory: { label: 'Inventory', icon: 'inv', color: 'green' },
     quests: { label: 'Quests', icon: 'trophy', color: 'gold' },
     map: { label: 'Map', icon: <Map size={14} />, color: 'sky' },
-    players: { label: 'Players', icon: <MessageSquare size={14} />, color: 'purple' },
-    feed: { label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'blue' },
+    players: { label: 'Players', icon: <MessageSquare size={14} />, color: 'pink' },
+    feed: { label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'red' },
     settings: { label: 'Settings', icon: <SettingsIcon size={14} />, color: 'gray' },
   }
 
@@ -2112,9 +2149,25 @@ export default function GameInterface() {
 
   // Helper function to get color class for ReactNode icons
   const getIconColorClass = useCallback((color: string, isActive: boolean): string => {
-    if (isActive) return 'text-blue-300'
+    if (isActive) {
+      // Active state uses -300 variants
+      const activeColorMap: Record<string, string> = {
+        sky: 'text-sky-300',
+        purple: 'text-purple-300',
+        blue: 'text-blue-300',
+        gray: 'text-gray-300',
+        gold: 'text-yellow-300',
+        yellow: 'text-yellow-300',
+        green: 'text-green-300',
+        red: 'text-red-300',
+        violet: 'text-violet-300',
+        pink: 'text-pink-300',
+      }
+      return activeColorMap[color] || 'text-blue-300'
+    }
     
-    const colorMap: Record<string, string> = {
+    // Inactive state uses -400 variants
+    const inactiveColorMap: Record<string, string> = {
       sky: 'text-sky-400',
       purple: 'text-purple-400',
       blue: 'text-blue-400',
@@ -2123,9 +2176,41 @@ export default function GameInterface() {
       yellow: 'text-yellow-400',
       green: 'text-green-400',
       red: 'text-red-400',
+      violet: 'text-violet-400',
+      pink: 'text-pink-400',
     }
     
-    return colorMap[color] || 'text-gray-400'
+    return inactiveColorMap[color] || 'text-gray-400'
+  }, [])
+
+  // Helper function to get button color classes for panel dropdowns (matches TabContainer.getButtonColorClasses)
+  const getPanelButtonColorClasses = useCallback((color: string, isActive: boolean): string => {
+    if (isActive) {
+      switch (color) {
+        case 'blue':
+          return 'border-1 border-blue-500 hover:border-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
+        case 'green':
+          return 'border-1 border-green-500 hover:border-green-400 bg-green-500/10 hover:bg-green-500/20 text-green-300'
+        case 'purple':
+          return 'border-1 border-purple-500 hover:border-purple-400 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300'
+        case 'gold':
+          return 'border-1 border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
+        case 'red':
+          return 'border-1 border-red-500 hover:border-red-400 bg-red-500/10 hover:bg-red-500/20 text-red-300'
+        case 'sky':
+          return 'border-1 border-sky-500 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300'
+        case 'gray':
+          return 'border-1 border-gray-500 hover:border-gray-400 bg-gray-500/10 hover:bg-gray-500/20 text-gray-300'
+        case 'violet':
+          return 'border-1 border-violet-500 hover:border-violet-400 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300'
+        case 'pink':
+          return 'border-1 border-pink-500 hover:border-pink-400 bg-pink-500/10 hover:bg-pink-500/20 text-pink-300'
+        default:
+          return 'border-1 border-indigo-500 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
+      }
+    } else {
+      return 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
+    }
   }, [])
 
   // Helper function to render icon with proper colors
@@ -2419,7 +2504,7 @@ export default function GameInterface() {
                   <button
                     data-left-dropdown-button
                     onClick={() => setLeftDropdownOpen((prev) => !prev)}
-                    className="px-1.5 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-md hover:bg-gray-800/50 text-gray-400 hover:text-gray-300"
+                    className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                     title="Select panel"
                     aria-label="Select panel"
                   >
@@ -2443,7 +2528,7 @@ export default function GameInterface() {
                             }}
                             className={`w-full px-2.5 py-1.5 text-sm font-medium transition-all duration-200 flex items-center gap-2 rounded-lg first:rounded-t-lg last:rounded-b-lg ${
                               isActive
-                                ? 'border-1 border-blue-500 hover:border-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
+                                ? getPanelButtonColorClasses(config.color, true)
                                 : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
                             }`}
                           >
@@ -2576,7 +2661,7 @@ export default function GameInterface() {
                     id: 'char',
                     label: 'Char',
                     icon: 'character',
-                    color: 'purple',
+                    color: 'violet',
                     content: (
                       <CharPanel
                         player={player}
@@ -2644,7 +2729,7 @@ export default function GameInterface() {
                     id: 'players',
                     label: 'Players',
                     icon: <MessageSquare size={14} />,
-                    color: 'purple',
+                    color: 'pink',
                     content: (
                       <ChatPanel
                         onOpenWorldChat={handleOpenWorldChat}
@@ -2656,7 +2741,7 @@ export default function GameInterface() {
                     id: 'feed',
                     label: 'Feed',
                     icon: <MessageSquareText size={14} />,
-                    color: 'blue',
+                    color: 'red',
                     content: (
                       <FeedPanel
                         currentRoomId={currentRoom?.roomId}
@@ -2738,7 +2823,7 @@ export default function GameInterface() {
                     <button
                       data-right-dropdown-button
                       onClick={() => setRightDropdownOpen((prev) => !prev)}
-                      className="px-1.5 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-md hover:bg-gray-800/50 text-gray-400 hover:text-gray-300"
+                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                       title="Select panel"
                       aria-label="Select panel"
                     >
@@ -2762,7 +2847,7 @@ export default function GameInterface() {
                               }}
                               className={`w-full px-2.5 py-1.5 text-sm font-medium transition-all duration-200 flex items-center gap-2 rounded-lg first:rounded-t-lg last:rounded-b-lg ${
                                 isActive
-                                  ? 'border-1 border-blue-500 hover:border-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
+                                  ? getPanelButtonColorClasses(config.color, true)
                                   : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
                               }`}
                               >
