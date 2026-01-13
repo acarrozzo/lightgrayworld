@@ -2116,14 +2116,19 @@ export default function GameInterface() {
     } else {
       // Clone ReactNode and apply color class
       const colorClass = getIconColorClass(color, isActive)
-      return React.cloneElement(icon as React.ReactElement, {
-        className: `${colorClass} ${((icon as React.ReactElement).props as any)?.className || ''}`.trim(),
+      const iconElement = icon as React.ReactElement<{ className?: string; size?: number }>
+      return React.cloneElement(iconElement, {
+        className: `${colorClass} ${iconElement.props?.className || ''}`.trim(),
         size: 14,
       })
     }
   }, [getIconColorClass])
 
   const renderPanelContent = useCallback((panelType: string, side: 'left' | 'right') => {
+    if (!player) {
+      return <div>Loading...</div>
+    }
+    
     switch (panelType) {
       case 'char':
         return (
