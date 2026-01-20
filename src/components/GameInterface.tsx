@@ -2139,7 +2139,7 @@ export default function GameInterface() {
     quests: { label: 'Quests', icon: 'trophy', color: 'gold' },
     map: { label: 'Map', icon: <Map size={14} />, color: 'sky' },
     players: { label: 'Players', icon: <MessageSquare size={14} />, color: 'pink' },
-    feed: { label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'red' },
+    feed: { label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'blue' },
     settings: { label: 'Settings', icon: <SettingsIcon size={14} />, color: 'gray' },
   }
 
@@ -2504,7 +2504,7 @@ export default function GameInterface() {
                   <button
                     data-left-dropdown-button
                     onClick={() => setLeftDropdownOpen((prev) => !prev)}
-                    className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                    className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                     title="Select panel"
                     aria-label="Select panel"
                   >
@@ -2582,7 +2582,7 @@ export default function GameInterface() {
                       {renderIcon(getPanelIcon(rightPanelType), getPanelColor(rightPanelType), false)}
                     </span>
                     {rightPanelType === 'feed' && unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
+                      <span className="absolute -top-1 -right-1 bg-blue-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}
@@ -2741,7 +2741,7 @@ export default function GameInterface() {
                     id: 'feed',
                     label: 'Feed',
                     icon: <MessageSquareText size={14} />,
-                    color: 'red',
+                    color: 'blue',
                     content: (
                       <FeedPanel
                         currentRoomId={currentRoom?.roomId}
@@ -2823,7 +2823,7 @@ export default function GameInterface() {
                     <button
                       data-right-dropdown-button
                       onClick={() => setRightDropdownOpen((prev) => !prev)}
-                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                       title="Select panel"
                       aria-label="Select panel"
                     >
