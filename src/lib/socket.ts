@@ -51,6 +51,8 @@ export interface PlayerInfo {
   mpMax: number
   currentRoom: string
   isActive: boolean
+  uIcon?: string | null
+  uIconColor?: string | null
   entryDirection?: string | null
   isTeleport?: boolean
 }

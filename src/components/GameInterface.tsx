@@ -1914,6 +1914,12 @@ export default function GameInterface() {
         return
       }
 
+      const currentRoomPlayers = useGameStore.getState().roomPlayers
+      const alreadyPresent = currentRoomPlayers.some((playerItem) => playerItem.id === playerInfo.id)
+      if (!alreadyPresent) {
+        setRoomPlayers([...currentRoomPlayers, playerInfo])
+      }
+
       const isSelf = Boolean(currentPlayer && playerInfo.id === currentPlayer.id)
       const entryDirection = playerInfo.entryDirection
       const directionPhrase = formatDirectionPhrase(entryDirection, 'enter')
@@ -1941,6 +1947,9 @@ export default function GameInterface() {
       if (!activeRoom || !activeRoom.roomId) {
         return
       }
+
+      const currentRoomPlayers = useGameStore.getState().roomPlayers
+      setRoomPlayers(currentRoomPlayers.filter((playerItem) => playerItem.id !== playerData.id))
 
       const isSelf = Boolean(currentPlayer && playerData.id === currentPlayer.id)
       const exitDirection = playerData.exitDirection

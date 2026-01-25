@@ -128,6 +128,8 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) 
       mpMax: player.mpMax,
       currentRoom: toRoom,
       isActive: true,
+      uIcon: player.uIcon ?? null,
+      uIconColor: player.uIconColor ?? null,
       entryDirection: entryDirection || null,
       isTeleport: isTeleport || false,
     })
@@ -185,6 +187,8 @@ async function fetchRoomWithColors(prisma, roomId) {
           mpMax: true,
           currentRoom: true,
           isActive: true,
+          uIcon: true,
+          uIconColor: true,
         },
       },
       ...ROOM_ITEMS_SELECT,
@@ -290,6 +294,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
             mpMax: true,
             currentRoom: true,
             isActive: true,
+            uIcon: true,
+            uIconColor: true,
           },
         })
 
@@ -309,6 +315,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
           mpMax: dbPlayer.mpMax,
           currentRoom: dbPlayer.currentRoom,
           isActive: dbPlayer.isActive,
+          uIcon: dbPlayer.uIcon ?? null,
+          uIconColor: dbPlayer.uIconColor ?? null,
           socketId: socket.id,
           lastActive: new Date(),
         }
@@ -347,6 +355,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
             mpMax: playerData.mpMax,
             currentRoom: playerData.currentRoom,
             isActive: true,
+            uIcon: playerData.uIcon ?? null,
+            uIconColor: playerData.uIconColor ?? null,
             entryDirection: null, // No direction info on initial login
             isTeleport: false, // Login is not a teleport
           })
