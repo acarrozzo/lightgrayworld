@@ -1,5 +1,6 @@
 // Socket utility functions for server.js (CommonJS)
 let io = null
+let userIdToSocketIds = null
 
 // Socket event constants
 const SOCKET_EVENTS = {
@@ -22,6 +23,7 @@ const SOCKET_EVENTS = {
   ROOM_PLAYER_MOVED: 'room:player-moved',
   GAME_FACTS: 'game:facts',
   WORLD_ACTIVITY: 'world:activity',
+  DIRECT_MESSAGE: 'direct-message',
   USER_LOGOUT: 'user:logout',
 }
 
@@ -31,6 +33,23 @@ function setSocketIO(ioInstance) {
 
 function getSocketIO() {
   return io
+}
+
+function setUserSocketMap(mapInstance) {
+  userIdToSocketIds = mapInstance
+}
+
+function getSocketIdsForUser(userId) {
+  if (!userId || !userIdToSocketIds) {
+    return []
+  }
+
+  const socketSet = userIdToSocketIds.get(userId)
+  if (!socketSet) {
+    return []
+  }
+
+  return Array.from(socketSet)
 }
 
 // Helper function to emit socket events with error handling
@@ -52,6 +71,8 @@ function emitToRoom(roomId, event, data) {
 module.exports = { 
   setSocketIO, 
   getSocketIO, 
+  setUserSocketMap,
+  getSocketIdsForUser,
   SOCKET_EVENTS,
   emitToRoom
 }

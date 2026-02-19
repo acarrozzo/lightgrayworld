@@ -39,6 +39,7 @@ export interface SocketEvents {
   'world:tick': (payload: WorldTickPayload) => void
   'room:player-moved': (payload: RoomPlayerMovedPayload) => void
   'world:activity': (payload: WorldActivityPayload) => void
+  'direct-message': (payload: DirectMessagePayload) => void
 }
 
 export interface PlayerInfo {
@@ -108,6 +109,21 @@ export interface WorldActivityPayload {
   eventType?: string
 }
 
+export interface DirectMessagePayload {
+  id: string
+  senderId: string
+  senderUsername: string
+  senderAvatar?: {
+    uIcon?: string | null
+    uIconColor?: string | null
+  } | null
+  recipientId: string
+  recipientUsername: string
+  message: string
+  createdAt: string
+  readAt?: string | null
+}
+
 export interface AmbientTickData {
   type: string
   message: string
@@ -150,6 +166,7 @@ export const SOCKET_EVENTS = {
   WORLD_TICK: 'world:tick',
   ROOM_PLAYER_MOVED: 'room:player-moved',
   WORLD_ACTIVITY: 'world:activity',
+  DIRECT_MESSAGE: 'direct-message',
 } as const
 
 let io: Server<SocketEvents> | null = null

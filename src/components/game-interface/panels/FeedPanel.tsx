@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Globe, MessageSquare, MessageSquareText, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 
@@ -62,7 +62,7 @@ const WORLD_FEED_TOGGLES: { key: keyof WorldFeedSettings; label: string }[] = [
   { key: 'groupRepeats', label: 'Group repeats' },
 ]
 
-const CATEGORY_STYLES: Record<'room' | 'world' | 'action', CategoryStyle> = {
+const CATEGORY_STYLES: Record<'room' | 'world' | 'action' | 'dm', CategoryStyle> = {
   room: {
     label: 'ROOM',
     icon: MessageSquare,
@@ -80,6 +80,12 @@ const CATEGORY_STYLES: Record<'room' | 'world' | 'action', CategoryStyle> = {
     icon: Sparkles,
     barClass: 'bg-amber-500',
     iconClass: 'text-amber-300',
+  },
+  dm: {
+    label: 'DM',
+    icon: Mail,
+    barClass: 'bg-violet-500',
+    iconClass: 'text-violet-300',
   },
 }
 

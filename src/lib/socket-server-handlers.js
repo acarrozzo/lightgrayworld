@@ -233,7 +233,7 @@ function buildDirectionPhrase(direction, context) {
 }
 
 // Setup socket handlers
-function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers) {
+function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers, userIdToSocketIds = new Map()) {
   const idleDetectionService = createIdleDetectionService({ activePlayers })
   idleDetectionService.start()
   const lastActivityPersistedAt = new Map()
@@ -280,6 +280,15 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
 
       try {
         const previousState = activePlayers.get(socket.id)
+        if (previousState?.id && previousState.id !== authUser.userId) {
+          const previousSocketSet = userIdToSocketIds.get(previousState.id)
+          if (previousSocketSet) {
+            previousSocketSet.delete(socket.id)
+            if (previousSocketSet.size === 0) {
+              userIdToSocketIds.delete(previousState.id)
+            }
+          }
+        }
         const previousRoom = previousState?.currentRoom
 
         const dbPlayer = await prisma.user.findUnique({
@@ -322,6 +331,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         }
 
         activePlayers.set(socket.id, playerData)
+        if (!userIdToSocketIds.has(playerData.id)) {
+          userIdToSocketIds.set(playerData.id, new Set())
+        }
+        userIdToSocketIds.get(playerData.id).add(socket.id)
         touchPlayerActivity(playerData)
         console.log(`[Server] Player ${playerData.username} registered in activePlayers for socket ${socket.id}`)
         console.log(`[Server] activePlayers now has ${activePlayers.size} entries`)
@@ -784,6 +797,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
       })
 
       socket.emit('auth:logout', { success: true })
+      const socketSet = userIdToSocketIds.get(player.id)
+      if (socketSet) {
+        socketSet.delete(socket.id)
+        if (socketSet.size === 0) {
+          userIdToSocketIds.delete(player.id)
+        }
+      }
       socket.disconnect(true)
     })
 
@@ -809,6 +829,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
         }
 
         activePlayers.delete(socket.id)
+        const socketSet = userIdToSocketIds.get(player.id)
+        if (socketSet) {
+          socketSet.delete(socket.id)
+          if (socketSet.size === 0) {
+            userIdToSocketIds.delete(player.id)
+          }
+        }
         lastActivityPersistedAt.delete(player.id)
 
         console.log(`Player ${player.username} disconnected`)

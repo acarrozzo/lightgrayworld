@@ -17,6 +17,7 @@ interface RoomDisplayProps {
   roomPlayers?: Player[]
   currentPlayerId?: string
   onAction?: (action: string | { type: string; data?: any }) => void | Promise<void>
+  onOpenPlayerProfile?: (player: Player) => void
   onRefreshCaps?: () => void | Promise<void>
   showHeader?: boolean
   className?: string
@@ -32,6 +33,7 @@ interface RoomDisplayProps {
 export default function RoomDisplay({
   room,
   onAction,
+  onOpenPlayerProfile,
   onRefreshCaps,
   roomPlayers = [],
   currentPlayerId,
@@ -559,7 +561,13 @@ export default function RoomDisplay({
               <PlayerCard
                 key={player.id}
                 player={player}
-                onInspect={() => handleInspectPlayer(player)}
+                onInspect={() => {
+                  if (onOpenPlayerProfile) {
+                    onOpenPlayerProfile(player)
+                    return
+                  }
+                  handleInspectPlayer(player)
+                }}
                 disabled={isPerformingAction === `look at ${player.username}`}
               />
             ))}

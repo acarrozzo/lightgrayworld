@@ -128,6 +128,10 @@ model User {
   actionHistory             ActionHistory[]
   chatMessages              ChatMessage[]
   roomChatMessages          RoomChatMessage[]
+  sentDMs                   DirectMessage[] @relation("SentDMs")
+  receivedDMs               DirectMessage[] @relation("ReceivedDMs")
+  threadsAsA                DirectThread[]  @relation("ThreadsAsA")
+  threadsAsB                DirectThread[]  @relation("ThreadsAsB")
   worldFeedEvents           WorldFeedEvent[]
   equipment                 Equipment?
   killList                  KillList[]
@@ -259,6 +263,36 @@ model RoomChatMessage {
   room      Room     @relation(fields: [roomId], references: [roomId], onDelete: Cascade)
 
   @@index([roomId, timestamp])
+}
+
+model DirectMessage {
+  id          String   @id @default(cuid())
+  senderId    String
+  recipientId String
+  message     String
+  createdAt   DateTime @default(now())
+  readAt      DateTime?
+  sender      User     @relation("SentDMs", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient   User     @relation("ReceivedDMs", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, readAt, createdAt])
+}
+
+model DirectThread {
+  id                 String   @id @default(cuid())
+  userAId            String
+  userBId            String
+  lastMessageAt      DateTime @default(now())
+  lastMessageSnippet String   @default("")
+  userAUnreadCount   Int      @default(0)
+  userBUnreadCount   Int      @default(0)
+  userA              User     @relation("ThreadsAsA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB              User     @relation("ThreadsAsB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+  @@index([userAId, lastMessageAt])
+  @@index([userBId, lastMessageAt])
 }
 
 model WorldFeedEvent {

@@ -7,7 +7,7 @@ export type WorldFeedEntry = {
   id: string
   ts: number
   message: string
-  type: 'room' | 'world' | 'action'
+  type: 'room' | 'world' | 'action' | 'dm'
   level?: 'info' | 'error'
   outcome?: ActionFeedbackOutcome
   actor?: string

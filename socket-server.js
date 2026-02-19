@@ -3,7 +3,7 @@ const next = require('next')
 const { Server } = require('socket.io')
 const { PrismaClient } = require('@prisma/client')
 const { GameEngine } = require('./src/lib/game-engine/engine.js')
-const { setSocketIO } = require('./src/lib/socket-utils.js')
+const { setSocketIO, setUserSocketMap } = require('./src/lib/socket-utils.js')
 const { setupSocketHandlers } = require('./src/lib/socket-server-handlers.js')
 const { verifySocketToken } = require('./src/lib/token-verification.js')
 
@@ -65,9 +65,11 @@ app.prepare().then(() => {
 
   const activePlayers = new Map()
   const roomPlayers = new Map()
+  const userIdToSocketIds = new Map()
+  setUserSocketMap(userIdToSocketIds)
 
   // Setup socket handlers using shared module
-  setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers)
+  setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers, userIdToSocketIds)
 
   httpServer
     .once('error', (err) => {

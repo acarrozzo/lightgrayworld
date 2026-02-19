@@ -9,6 +9,7 @@ import {
   WorldTickPayload,
   RoomPlayerMovedPayload,
   WorldActivityPayload,
+  DirectMessagePayload,
 } from './socket'
 
 // Centralized socket event handlers to reduce duplication
@@ -147,6 +148,10 @@ export class SocketEventHandlers {
 
   onWorldActivity(handler: (payload: WorldActivityPayload) => void): () => void {
     return this.on(SOCKET_EVENTS.WORLD_ACTIVITY, handler)
+  }
+
+  onDirectMessage(handler: (payload: DirectMessagePayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.DIRECT_MESSAGE, handler)
   }
 
   // Cleanup all listeners

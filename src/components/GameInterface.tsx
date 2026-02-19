@@ -13,7 +13,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageSquareText, Map } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageSquareText, Mail, Map } from 'lucide-react'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
@@ -38,6 +38,9 @@ import MapPanel from './game-interface/panels/MapPanel'
 import ChatPanel from './game-interface/panels/ChatPanel'
 import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
+import DMPanel from './game-interface/panels/DMPanel'
+import PlayerProfileModal from './PlayerProfileModal'
+import { useDMStore } from '@/store/dmStore'
 
 export default function GameInterface() {
   const {
@@ -106,6 +109,13 @@ export default function GameInterface() {
   const [isResettingQuests, setIsResettingQuests] = useState(false)
   const [forceFeedFilter, setForceFeedFilter] = useState<'chat' | undefined>(undefined)
   const [forceFeedChatSubFilter, setForceFeedChatSubFilter] = useState<'all-chat' | undefined>(undefined)
+  const [playerProfileModal, setPlayerProfileModal] = useState<{
+    isOpen: boolean
+    player: Pick<Player, 'id' | 'username' | 'level' | 'uIcon' | 'uIconColor'> | null
+  }>({
+    isOpen: false,
+    player: null,
+  })
   type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
   const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
@@ -876,6 +886,11 @@ export default function GameInterface() {
   }, [player?.id])
 
   useEffect(() => {
+    const { setUser } = useDMStore.getState()
+    setUser(player?.id ?? null)
+  }, [player?.id])
+
+  useEffect(() => {
     const { setUser } = useFontPreferenceStore.getState()
     setUser(player?.id ?? null)
   }, [player?.id])
@@ -1215,7 +1230,33 @@ export default function GameInterface() {
     }, 350) // Wait for sidebar animation to complete
   }
 
-  const handleCustomAction = (e: React.FormEvent, mode: InputMode) => {
+  const appendDMFeed = useCallback((direction: 'from' | 'to', username: string, message: string) => {
+    const snippet = message.length > 120 ? `${message.slice(0, 119)}...` : message
+    appendWorldFeed({
+      type: 'dm',
+      message: `DM ${direction} ${username}: ${snippet}`,
+      ts: Date.now(),
+    })
+  }, [appendWorldFeed])
+
+  const openDMThread = useCallback((otherUserId: string, otherUsername?: string) => {
+    const { setSelectedThread, upsertThread } = useDMStore.getState()
+    if (otherUsername) {
+      upsertThread({
+        otherUser: {
+          id: otherUserId,
+          username: otherUsername,
+        },
+        lastMessageSnippet: '',
+        lastMessageAt: new Date().toISOString(),
+        unreadCount: 0,
+      })
+    }
+    setSelectedThread(otherUserId)
+    setCenterActiveTab('dm')
+  }, [])
+
+  const handleCustomAction = async (e: React.FormEvent, mode: InputMode) => {
     e.preventDefault()
     const actionToSend = customAction.trim()
     if (!actionToSend) return
@@ -1223,6 +1264,66 @@ export default function GameInterface() {
     setCustomAction('') // Clear input immediately
 
     const lowerInput = actionToSend.toLowerCase()
+    if (lowerInput.startsWith('dm ')) {
+      const directMessageInput = actionToSend.slice(3).trim()
+      const firstSeparator = directMessageInput.indexOf(' ')
+      const recipientUsername =
+        firstSeparator > 0 ? directMessageInput.slice(0, firstSeparator).trim() : ''
+      const message = firstSeparator > 0 ? directMessageInput.slice(firstSeparator + 1).trim() : ''
+
+      if (!recipientUsername || !message) {
+        appendWorldFeed({
+          type: 'action',
+          level: 'error',
+          message: 'Usage: dm username message',
+        })
+        return
+      }
+
+      if (message.length > MESSAGE_MAX_LENGTH) {
+        appendWorldFeed({
+          type: 'action',
+          level: 'error',
+          message: `Message cannot exceed ${MESSAGE_MAX_LENGTH} characters. Current: ${message.length} characters`,
+        })
+        return
+      }
+
+      try {
+        const response = await fetch('/api/dm/send', {
+          method: 'POST',
+          headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            recipientUsername,
+            message,
+          }),
+        })
+        const payload = await response.json()
+        if (!response.ok) {
+          throw new Error(payload?.error?.message || 'Failed to send direct message')
+        }
+
+        const currentUserId = playerRef.current?.id
+        if (currentUserId) {
+          const { appendMessage } = useDMStore.getState()
+          appendMessage(payload.directMessage, currentUserId)
+        }
+        openDMThread(payload.directMessage.recipientId, payload.directMessage.recipientUsername)
+        appendDMFeed('to', payload.directMessage.recipientUsername, payload.directMessage.message)
+      } catch (dmError) {
+        console.error('[DM command] send failed:', dmError)
+        appendWorldFeed({
+          type: 'action',
+          level: 'error',
+          message: dmError instanceof Error ? dmError.message : 'Failed to send direct message',
+        })
+      }
+      return
+    }
+
     const sayMatch = lowerInput.startsWith('say ')
     const shoutMatch = lowerInput.startsWith('shout ')
     const singleQuoteMatch = actionToSend.startsWith("'")
@@ -1905,6 +2006,56 @@ export default function GameInterface() {
       return
     }
 
+    const cleanupDirectMessage = socketHandlers.onDirectMessage((payload) => {
+      const currentUser = playerRef.current
+      if (!currentUser?.id || !payload) return
+
+      const { appendMessage, upsertThread, threadsByUserId } = useDMStore.getState()
+      appendMessage(
+        {
+          id: payload.id,
+          senderId: payload.senderId,
+          senderUsername: payload.senderUsername,
+          recipientId: payload.recipientId,
+          recipientUsername: payload.recipientUsername,
+          message: payload.message,
+          createdAt: payload.createdAt,
+          readAt: payload.readAt || null,
+        },
+        currentUser.id
+      )
+
+      upsertThread({
+        otherUser: {
+          id: payload.senderId,
+          username: payload.senderUsername,
+          uIcon: payload.senderAvatar?.uIcon || undefined,
+          uIconColor: payload.senderAvatar?.uIconColor || undefined,
+        },
+        lastMessageSnippet: payload.message.length > 120 ? `${payload.message.slice(0, 119)}...` : payload.message,
+        lastMessageAt: payload.createdAt,
+        unreadCount: threadsByUserId[payload.senderId]?.unreadCount ?? 0,
+      })
+
+      const { addNotification } = useNotificationStore.getState()
+      addNotification({
+        message: `DM from ${payload.senderUsername}: ${payload.message.length > 80 ? `${payload.message.slice(0, 79)}...` : payload.message}`,
+        outcome: 'info',
+        action: 'direct_message',
+      })
+      appendDMFeed('from', payload.senderUsername, payload.message)
+    })
+
+    return () => {
+      cleanupDirectMessage()
+    }
+  }, [socket, socketHandlers, appendDMFeed])
+
+  useEffect(() => {
+    if (!socket) {
+      return
+    }
+
     const cleanupPlayerJoined = socketHandlers.onPlayerJoined((playerInfo) => {
       const activeRoom = currentRoomRef.current
       const currentPlayer = playerRef.current
@@ -2141,6 +2292,27 @@ export default function GameInterface() {
     setInventoryFilter(filter)
   }, [])
 
+  const handleOpenPlayerProfile = useCallback((targetPlayer: Player) => {
+    setPlayerProfileModal({
+      isOpen: true,
+      player: {
+        id: targetPlayer.id,
+        username: targetPlayer.username,
+        level: targetPlayer.level,
+        uIcon: targetPlayer.uIcon,
+        uIconColor: targetPlayer.uIconColor,
+      },
+    })
+  }, [])
+
+  const handleProfileInspect = useCallback((targetPlayer: Pick<Player, 'username'>) => {
+    handleAction(`look at ${targetPlayer.username}`)
+  }, [handleAction])
+
+  const handleProfileMessage = useCallback((targetPlayer: Pick<Player, 'id' | 'username'>) => {
+    openDMThread(targetPlayer.id, targetPlayer.username)
+  }, [openDMThread])
+
   // Panel configuration
   const panelConfig: Record<string, { label: string; icon: string | React.ReactNode; color: string }> = {
     char: { label: 'Character', icon: 'character', color: 'violet' },
@@ -2148,6 +2320,7 @@ export default function GameInterface() {
     quests: { label: 'Quests', icon: 'trophy', color: 'gold' },
     map: { label: 'Map', icon: <Map size={14} />, color: 'sky' },
     players: { label: 'Players', icon: <MessageSquare size={14} />, color: 'pink' },
+    dm: { label: 'DM', icon: <Mail size={14} />, color: 'amber' },
     feed: { label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'blue' },
     settings: { label: 'Settings', icon: <SettingsIcon size={14} />, color: 'gray' },
   }
@@ -2171,6 +2344,7 @@ export default function GameInterface() {
         red: 'text-red-300',
         violet: 'text-violet-300',
         pink: 'text-pink-300',
+        amber: 'text-amber-300',
       }
       return activeColorMap[color] || 'text-blue-300'
     }
@@ -2187,6 +2361,7 @@ export default function GameInterface() {
       red: 'text-red-400',
       violet: 'text-violet-400',
       pink: 'text-pink-400',
+      amber: 'text-amber-400',
     }
     
     return inactiveColorMap[color] || 'text-gray-400'
@@ -2214,6 +2389,8 @@ export default function GameInterface() {
           return 'border-1 border-violet-500 hover:border-violet-400 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300'
         case 'pink':
           return 'border-1 border-pink-500 hover:border-pink-400 bg-pink-500/10 hover:bg-pink-500/20 text-pink-300'
+        case 'amber':
+          return 'border-1 border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
         default:
           return 'border-1 border-indigo-500 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
       }
@@ -2302,6 +2479,15 @@ export default function GameInterface() {
             onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
           />
         )
+      case 'dm':
+        return (
+          <DMPanel
+            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
+            onMessageSent={(payload) => {
+              appendDMFeed('to', payload.recipientUsername || 'Unknown', payload.message)
+            }}
+          />
+        )
       case 'feed':
         return (
           <FeedPanel
@@ -2336,7 +2522,7 @@ export default function GameInterface() {
           />
         )
     }
-  }, [player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow])
+  }, [player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed])
 
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
@@ -2369,6 +2555,13 @@ export default function GameInterface() {
         content={actionModal.content}
         buttons={actionModal.buttons}
         onAction={handleAction}
+      />
+      <PlayerProfileModal
+        isOpen={playerProfileModal.isOpen}
+        onClose={() => setPlayerProfileModal({ isOpen: false, player: null })}
+        player={playerProfileModal.player}
+        onInspect={handleProfileInspect}
+        onMessage={handleProfileMessage}
       />
       <ShopModal
         isOpen={isShopModalOpen}
@@ -2513,7 +2706,7 @@ export default function GameInterface() {
                   <button
                     data-left-dropdown-button
                     onClick={() => setLeftDropdownOpen((prev) => !prev)}
-                    className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                    className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                     title="Select panel"
                     aria-label="Select panel"
                   >
@@ -2628,6 +2821,7 @@ export default function GameInterface() {
                             roomPlayers={roomPlayers}
                             currentPlayerId={player.id}
                             onAction={handleAction}
+                            onOpenPlayerProfile={handleOpenPlayerProfile}
                             onRefreshCaps={() => {
                               if (currentRoom?.roomId) {
                                 hydrateRoomCaps(currentRoom.roomId, roomLoadSequenceRef.current)
@@ -2747,6 +2941,20 @@ export default function GameInterface() {
                     ),
                   },
                   {
+                    id: 'dm',
+                    label: 'DM',
+                    icon: <Mail size={14} />,
+                    color: 'amber',
+                    content: (
+                      <DMPanel
+                        onClose={() => setCenterActiveTab('explore')}
+                        onMessageSent={(payload) => {
+                          appendDMFeed('to', payload.recipientUsername || 'Unknown', payload.message)
+                        }}
+                      />
+                    ),
+                  },
+                  {
                     id: 'feed',
                     label: 'Feed',
                     icon: <MessageSquareText size={14} />,
@@ -2832,7 +3040,7 @@ export default function GameInterface() {
                     <button
                       data-right-dropdown-button
                       onClick={() => setRightDropdownOpen((prev) => !prev)}
-                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                       title="Select panel"
                       aria-label="Select panel"
                     >

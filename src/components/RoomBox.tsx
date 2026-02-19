@@ -139,6 +139,7 @@ interface RoomBoxProps {
   roomPlayers?: Player[]
   currentPlayerId?: string
   onAction: (action: string | { type: string; data?: any }) => void | Promise<void>
+  onOpenPlayerProfile?: (player: Player) => void
   onRefreshCaps?: () => void | Promise<void>
   worldTick?: {
     tickNumber: number
@@ -155,6 +156,7 @@ export default function RoomBox({
   roomPlayers = [],
   currentPlayerId,
   onAction,
+  onOpenPlayerProfile,
   onRefreshCaps,
   worldTick,
   actionResult,
@@ -221,6 +223,7 @@ export default function RoomBox({
         roomPlayers={roomPlayers}
         currentPlayerId={currentPlayerId}
         onAction={onAction}
+        onOpenPlayerProfile={onOpenPlayerProfile}
         onRefreshCaps={onRefreshCaps}
         showHeader={false}
         className="mt-2"
