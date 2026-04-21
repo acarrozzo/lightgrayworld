@@ -7,6 +7,7 @@ interface ActionModalButton {
   label: string
   direction: string
   closeOnAction?: boolean
+  primary?: boolean
 }
 
 interface ActionModalProps {
@@ -104,7 +105,10 @@ export default function ActionModal({
                 data-direction={button.direction}
                 data-close-on-action={button.closeOnAction !== false}
                 onClick={() => handleButtonClick(button.direction, button.closeOnAction !== false)}
-                className="rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                className={button.primary
+                  ? "rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                  : "rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                }
               >
                 {button.label}
               </button>

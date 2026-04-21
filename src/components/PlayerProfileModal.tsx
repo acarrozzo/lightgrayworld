@@ -36,7 +36,7 @@ interface PlayerProfileModalProps {
   isOpen: boolean
   onClose: () => void
   player: PlayerProfileSummary | null
-  onInspect: (player: PlayerProfileSummary) => void
+  onInspect?: (player: PlayerProfileSummary) => void
   onMessage: (player: PlayerProfileSummary) => void
 }
 
@@ -233,22 +233,14 @@ export default function PlayerProfileModal({
       content={content}
       buttons={[
         {
-          label: 'Inspect',
-          direction: 'inspect-player',
-          closeOnAction: true,
-        },
-        {
           label: 'Message',
           direction: 'message-player',
           closeOnAction: true,
+          primary: true,
         },
       ]}
       onAction={(direction) => {
         if (!player) return
-        if (direction === 'inspect-player') {
-          onInspect(player)
-          return
-        }
         if (direction === 'message-player') {
           onMessage(player)
         }

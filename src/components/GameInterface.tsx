@@ -72,6 +72,7 @@ export default function GameInterface() {
   const [leftDropdownOpen, setLeftDropdownOpen] = useState(false)
   const [rightDropdownOpen, setRightDropdownOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const totalDmUnread = useDMStore((state) => state.getTotalUnreadCount())
   const leftSidebarScrollRef = useRef<HTMLDivElement>(null)
   const rightSidebarScrollRef = useRef<HTMLDivElement>(null)
   const leftSidebarScrollPosition = useRef<number>(0)
@@ -2945,6 +2946,7 @@ export default function GameInterface() {
                     label: 'DM',
                     icon: <Mail size={14} />,
                     color: 'amber',
+                    badge: totalDmUnread > 0 ? totalDmUnread : undefined,
                     content: (
                       <DMPanel
                         onClose={() => setCenterActiveTab('explore')}
