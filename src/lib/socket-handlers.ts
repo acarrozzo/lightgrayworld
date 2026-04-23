@@ -10,6 +10,11 @@ import {
   RoomPlayerMovedPayload,
   WorldActivityPayload,
   DirectMessagePayload,
+  BattleStartedPayload,
+  BattleTurnPayload,
+  BattleVictoryPayload,
+  BattleDefeatPayload,
+  BattleFledPayload,
 } from './socket'
 
 // Centralized socket event handlers to reduce duplication
@@ -152,6 +157,26 @@ export class SocketEventHandlers {
 
   onDirectMessage(handler: (payload: DirectMessagePayload) => void): () => void {
     return this.on(SOCKET_EVENTS.DIRECT_MESSAGE, handler)
+  }
+
+  onBattleStarted(handler: (payload: BattleStartedPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.BATTLE_STARTED, handler)
+  }
+
+  onBattleTurn(handler: (payload: BattleTurnPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.BATTLE_TURN, handler)
+  }
+
+  onBattleVictory(handler: (payload: BattleVictoryPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.BATTLE_VICTORY, handler)
+  }
+
+  onBattleDefeat(handler: (payload: BattleDefeatPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.BATTLE_DEFEAT, handler)
+  }
+
+  onBattleFled(handler: (payload: BattleFledPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.BATTLE_FLED, handler)
   }
 
   // Cleanup all listeners

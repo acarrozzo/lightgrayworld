@@ -5,11 +5,13 @@ const { getPlayerInventory } = require('./services/inventory-service')
 const { equipItem, unequipItem } = require('./services/equipment-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
+const { executeStartBattle, executePlayerAttack, executePlayerFlee } = require('./battle-action-handlers')
 
 class RoomState {
   constructor(roomId) {
     this.roomId = roomId
     this.players = new Map()
+    this.activeBattles = new Map()
     this.lastActionAt = null
     this.lastTickPlayerCount = null
     this.lastAmbientHintAt = 0
@@ -22,6 +24,12 @@ class RoomState {
 
   removePlayer(playerId) {
     this.players.delete(playerId)
+    const battle = this.activeBattles.get(playerId)
+    if (battle) {
+      battle.end()
+      this.activeBattles.delete(playerId)
+      prisma.user.update({ where: { id: playerId }, data: { inFight: false } }).catch(() => {})
+    }
   }
 
   updatePlayer(playerId, updater) {
@@ -79,6 +87,12 @@ class RoomState {
     
     // Otherwise, fall back to standard actions
     switch (action.type) {
+      case 'start_battle':
+        return await executeStartBattle(action, playerId, this)
+      case 'player_attack':
+        return await executePlayerAttack(action, playerId, this)
+      case 'player_flee':
+        return await executePlayerFlee(action, playerId, this)
       case 'pickup_item':
         return this.executePickupItem(action, playerId)
       case 'drop_item':
@@ -201,6 +215,11 @@ class RoomState {
     if (!player) {
       console.log(`[RoomState:${this.roomId}] executeMove - Player ${playerId} not found`)
       return this.createErrorResult('move', 'Player not found in this room')
+    }
+
+    const activeBattle = this.activeBattles.get(playerId)
+    if (activeBattle && activeBattle.isActive) {
+      return this.createErrorResult('move', 'You cannot leave while in combat. Fight or flee.')
     }
 
     const fromRoom = action.data?.fromRoom || this.roomId

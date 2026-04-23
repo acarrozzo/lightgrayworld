@@ -166,8 +166,16 @@ export async function GET(request: NextRequest) {
 
     const normalizedRoom = normalizeRoomData(room)
 
+    // Attach static enemy data for rooms that have enemies
+    const { getRoomEnemies } = require('@/lib/game-data/room-enemies')
+    const { getEnemy } = require('@/lib/game-data/enemies')
+    const roomEnemyConfig = getRoomEnemies(roomId)
+    const roomEnemies = roomEnemyConfig
+      ? roomEnemyConfig.enemies.map((slug: string) => getEnemy(slug)).filter(Boolean)
+      : []
+
     const payload: Record<string, unknown> = {
-      room: normalizedRoom,
+      room: { ...normalizedRoom, enemies: roomEnemies },
     }
 
     if (user) {

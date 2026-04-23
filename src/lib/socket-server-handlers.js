@@ -5,6 +5,8 @@ const {
   ROOM_ITEMS_SELECT,
   normalizeRoomData,
 } = require('./game-engine/services/room-normalization.js')
+const { getRoomEnemies } = require('./game-data/room-enemies.js')
+const { getEnemy } = require('./game-data/enemies.js')
 
 // Constants
 const ACTION_QUEUE_ERRORS = {
@@ -461,12 +463,19 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           return
         }
 
+        // Attach enemy data to the destination room
+        const destEnemyConfig = getRoomEnemies(toRoom)
+        const destEnemies = destEnemyConfig
+          ? destEnemyConfig.enemies.map((slug) => getEnemy(slug)).filter(Boolean)
+          : []
+
         // Use the room data which includes respawned items
         const normalizedRoomData = {
           ...destinationRoom,
           players: Array.isArray(destinationRoom.players) ? destinationRoom.players : [],
           items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
           npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
+          enemies: destEnemies,
         }
         const toRoomName = destinationRoom.name
 
@@ -544,6 +553,30 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             success: true,
             data: result?.data || { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData },
           })
+
+          // Aggressive enemy auto-battle trigger
+          const roomEnemyConfig = getRoomEnemies(toRoom)
+          if (roomEnemyConfig) {
+            const aggressiveSlug = roomEnemyConfig.enemies.find((slug) => {
+              const e = getEnemy(slug)
+              return e && e.isAggressive
+            })
+            if (aggressiveSlug) {
+              const destRoomState = gameEngine.getOrCreateRoom(toRoom)
+              if (!destRoomState.activeBattles.has(player.id)) {
+                try {
+                  await gameEngine.processUserAction({
+                    playerId: player.id,
+                    roomId: toRoom,
+                    action: { type: 'start_battle', data: { enemySlug: aggressiveSlug } },
+                  })
+                  console.log(`[Socket] Auto-battle started: ${player.username} vs ${aggressiveSlug} in room ${toRoom}`)
+                } catch (err) {
+                  console.error('[Socket] Failed to auto-start battle:', err)
+                }
+              }
+            }
+          }
         } else {
           console.log(`[Socket] Movement failed or blocked, not transitioning player room`)
           // The action:feedback event will be emitted by the engine with the error/modal
@@ -738,6 +771,46 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       }
 
       try {
+        if (actionType === 'teleport') {
+          const toRoomId = actionData?.toRoomId
+          if (!toRoomId) {
+            emitActionFeedback(socket, { action: 'teleport', message: 'No destination specified', outcome: 'failure' })
+            return
+          }
+
+          const fromRoom = player.currentRoom
+          const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service')
+          await ensureAutoRespawnItems(toRoomId)
+
+          const destinationRoom = await fetchRoomWithColors(prisma, toRoomId)
+          if (!destinationRoom) {
+            emitActionFeedback(socket, { action: 'teleport', message: 'Destination not found', outcome: 'failure' })
+            return
+          }
+
+          const destEnemyConfig = getRoomEnemies(toRoomId)
+          const destEnemies = destEnemyConfig
+            ? destEnemyConfig.enemies.map((slug) => getEnemy(slug)).filter(Boolean)
+            : []
+
+          const normalizedRoomData = {
+            ...destinationRoom,
+            players: Array.isArray(destinationRoom.players) ? destinationRoom.players : [],
+            items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
+            npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
+            enemies: destEnemies,
+          }
+
+          await transitionPlayerRoom({ player, fromRoom, toRoom: toRoomId, exitDirection: null, entryDirection: null, isTeleport: true })
+
+          socket.emit('action:confirmed', {
+            action: 'move',
+            success: true,
+            data: { fromRoom, toRoom: toRoomId, toRoomName: destinationRoom.name, roomData: normalizedRoomData },
+          })
+          return
+        }
+
         if (actionType === 'look') {
           const currentRoom = await fetchRoomWithColors(prisma, player.currentRoom)
           if (currentRoom) {

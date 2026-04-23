@@ -14,7 +14,7 @@ export default function NotificationContainer() {
 
   return (
     <div
-      className="fixed top-3 right-4 z-50 flex flex-col gap-1.5 pointer-events-none"
+      className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-1.5 pointer-events-none items-center"
       aria-live="polite"
       aria-atomic="false"
     >

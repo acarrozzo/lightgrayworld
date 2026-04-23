@@ -77,11 +77,11 @@ export default function NotificationToast({ notification, onDismiss, fadeOutDura
         border rounded-md shadow-sm backdrop-blur-sm
         px-3 py-2 min-w-[200px] max-w-[320px]
         flex items-start gap-2
-        ${isFadingOut 
-          ? 'opacity-0 translate-x-4 transition-all duration-300 ease-out' 
+        ${isFadingOut
+          ? 'opacity-0 -translate-y-2 transition-all duration-300 ease-out'
           : isVisible
-            ? 'opacity-100 translate-x-0 transition-all duration-300 ease-out' 
-            : 'opacity-0 translate-x-4'
+            ? 'opacity-100 translate-y-0 transition-all duration-300 ease-out'
+            : 'opacity-0 -translate-y-2'
         }
       `}
       style={{

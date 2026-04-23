@@ -19,6 +19,53 @@ export interface ActionFeedbackPayload {
   meta?: Record<string, any>
 }
 
+export interface BattleSnapshot {
+  enemySlug: string
+  enemyName: string
+  enemyCurrentHp: number
+  enemyMaxHp: number
+  turnCount: number
+  canFlee: boolean
+}
+
+export interface BattleStartedPayload extends BattleSnapshot {
+  enemyDescription: string
+  playerHp: number
+  playerHpMax: number
+  isAggressive?: boolean
+}
+
+export interface BattleTurnPayload extends BattleSnapshot {
+  playerHp: number
+  playerHpMax: number
+  playerDealtDamage: number
+  enemyDealtDamage: number
+  playerBlocked: number
+  enemyBlocked: number
+  multiplayerBonus: boolean
+  bonusPercent: number
+  message: string
+}
+
+export interface BattleVictoryPayload {
+  enemyName: string
+  xpAwarded: number
+  goldAwarded: number
+  droppedItems: string[]
+  message: string
+  lastTurnResult?: Record<string, any>
+}
+
+export interface BattleDefeatPayload {
+  enemyName: string
+  respawnRoomId: string
+  message: string
+}
+
+export interface BattleFledPayload {
+  message: string
+}
+
 export interface SocketEvents {
   // Client to server events
   'player-login': (data: Record<string, never>) => void
@@ -40,6 +87,11 @@ export interface SocketEvents {
   'room:player-moved': (payload: RoomPlayerMovedPayload) => void
   'world:activity': (payload: WorldActivityPayload) => void
   'direct-message': (payload: DirectMessagePayload) => void
+  'battle:started': (payload: BattleStartedPayload) => void
+  'battle:turn': (payload: BattleTurnPayload) => void
+  'battle:victory': (payload: BattleVictoryPayload) => void
+  'battle:defeat': (payload: BattleDefeatPayload) => void
+  'battle:fled': (payload: BattleFledPayload) => void
 }
 
 export interface PlayerInfo {
@@ -167,6 +219,11 @@ export const SOCKET_EVENTS = {
   ROOM_PLAYER_MOVED: 'room:player-moved',
   WORLD_ACTIVITY: 'world:activity',
   DIRECT_MESSAGE: 'direct-message',
+  BATTLE_STARTED: 'battle:started',
+  BATTLE_TURN: 'battle:turn',
+  BATTLE_VICTORY: 'battle:victory',
+  BATTLE_DEFEAT: 'battle:defeat',
+  BATTLE_FLED: 'battle:fled',
 } as const
 
 let io: Server<SocketEvents> | null = null

@@ -68,26 +68,61 @@ export interface CapCacheEntry {
   status: 'known' | 'loading' | 'error'
 }
 
+export interface BattleState {
+  isInBattle: boolean
+  enemySlug: string | null
+  enemyName: string | null
+  enemyCurrentHp: number
+  enemyMaxHp: number
+  turnCount: number
+  canFlee: boolean
+  playerHp: number
+  playerHpMax: number
+  lastPlayerDamage: number | null
+  lastEnemyDamage: number | null
+  multiplayerBonus: boolean
+  bonusPercent: number
+}
+
+const INITIAL_BATTLE_STATE: BattleState = {
+  isInBattle: false,
+  enemySlug: null,
+  enemyName: null,
+  enemyCurrentHp: 0,
+  enemyMaxHp: 0,
+  turnCount: 0,
+  canFlee: false,
+  playerHp: 0,
+  playerHpMax: 0,
+  lastPlayerDamage: null,
+  lastEnemyDamage: null,
+  multiplayerBonus: false,
+  bonusPercent: 0,
+}
+
 export interface GameState {
   // Player state
   player: Player | null
   isLoggedIn: boolean
   token: string | null
   inventory: InventoryItem[]
-  
+
   // Room state
   currentRoom: Room | null
   roomPlayers: Player[]
   roomCache: Record<string, Room>
   roomFactSeq: Record<string, number>
-  
+
   // Cap cache: key is `${roomId}:${actionKey}` -> CapCacheEntry
   capCache: Record<string, CapCacheEntry>
-  
+
+  // Battle state
+  battle: BattleState
+
   // UI state
   isLoading: boolean
   error: string | null
-  
+
   // Actions
   setPlayer: (player: Player | null) => void
   setInventory: (inventory: InventoryItem[]) => void
@@ -106,6 +141,9 @@ export interface GameState {
   updateCapCache: (roomId: string, actionKey: string, entry: Partial<CapCacheEntry>) => void
   getCapCache: (roomId: string, actionKey: string) => CapCacheEntry | null
   clearCapCache: (roomId?: string) => void
+  setBattleStarted: (payload: { enemySlug: string; enemyName: string; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number }) => void
+  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; multiplayerBonus: boolean; bonusPercent: number }) => void
+  clearBattle: () => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -121,6 +159,7 @@ export const useGameStore = create<GameState>()(
       roomCache: {},
       roomFactSeq: {},
       capCache: {},
+      battle: { ...INITIAL_BATTLE_STATE },
       isLoading: false,
       error: null,
       
@@ -159,8 +198,8 @@ export const useGameStore = create<GameState>()(
         error: null 
       }),
       
-      logout: () => set({ 
-        player: null, 
+      logout: () => set({
+        player: null,
         token: null,
         isLoggedIn: false,
         inventory: [],
@@ -168,7 +207,8 @@ export const useGameStore = create<GameState>()(
         roomPlayers: [],
         roomCache: {},
         capCache: {},
-        error: null 
+        battle: { ...INITIAL_BATTLE_STATE },
+        error: null
       }),
 
       getAuthHeaders: () => {
@@ -230,6 +270,44 @@ export const useGameStore = create<GameState>()(
         const key = `${roomId}:${actionKey}`
         return capCache[key] || null
       },
+
+      setBattleStarted: (payload) =>
+        set((state) => ({
+          battle: {
+            ...INITIAL_BATTLE_STATE,
+            isInBattle: true,
+            enemySlug: payload.enemySlug,
+            enemyName: payload.enemyName,
+            enemyCurrentHp: payload.enemyCurrentHp,
+            enemyMaxHp: payload.enemyMaxHp,
+            turnCount: payload.turnCount,
+            canFlee: payload.canFlee,
+            playerHp: payload.playerHp,
+            playerHpMax: payload.playerHpMax,
+          },
+          player: state.player ? { ...state.player, hp: payload.playerHp, hpMax: payload.playerHpMax } : state.player,
+        })),
+
+      updateBattleTurn: (payload) =>
+        set((state) => ({
+          battle: {
+            ...state.battle,
+            enemyCurrentHp: payload.enemyCurrentHp,
+            enemyMaxHp: payload.enemyMaxHp,
+            turnCount: payload.turnCount,
+            canFlee: payload.canFlee,
+            playerHp: payload.playerHp,
+            playerHpMax: payload.playerHpMax,
+            lastPlayerDamage: payload.playerDealtDamage,
+            lastEnemyDamage: payload.enemyDealtDamage,
+            multiplayerBonus: payload.multiplayerBonus,
+            bonusPercent: payload.bonusPercent,
+          },
+          player: state.player ? { ...state.player, hp: payload.playerHp } : state.player,
+        })),
+
+      clearBattle: () =>
+        set({ battle: { ...INITIAL_BATTLE_STATE } }),
 
       clearCapCache: (roomId) => {
         if (roomId) {

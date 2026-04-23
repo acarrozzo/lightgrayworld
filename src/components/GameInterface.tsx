@@ -6,7 +6,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import React from 'react'
 import GameHeader from './GameHeader'
 import { type InputMode } from './game-interface/panels/FeedPanel'
-import RoomBox from './RoomBox'
+import RoomBox, { type RoomEnemy } from './RoomBox'
+import BattlePanel from './game-interface/panels/BattlePanel'
 import Compass from './Compass'
 import TabContainer, { type TabConfig } from './TabContainer'
 import InventoryDisplay from './InventoryDisplay'
@@ -59,6 +60,10 @@ export default function GameInterface() {
     logout,
     updateCapCache,
     getCapCache,
+    battle,
+    setBattleStarted,
+    updateBattleTurn,
+    clearBattle,
   } = useGameStore()
   const { updateRoomItems } = useGameStore()
   const [action, setAction] = useState('')
@@ -120,9 +125,11 @@ export default function GameInterface() {
   type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
   const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
+  const [hasQuestUpdate, setHasQuestUpdate] = useState(false)
   const isInitialInventoryLoadRef = useRef(true)
   const previousInventoryRef = useRef<typeof inventory>([])
   const pendingEquipActionRef = useRef<{ playerItemId: string } | null>(null)
+  const [roomEnemies, setRoomEnemies] = useState<RoomEnemy[]>([])
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
   const lastLoginSocketId = useRef<string | null>(null)
@@ -689,7 +696,8 @@ export default function GameInterface() {
         cacheRoom(normalizedRoom)
         setCurrentRoom(normalizedRoom)
         setRoomPlayers(normalizedRoom.players)
-        
+        setRoomEnemies((providedRoomData as any).enemies || [])
+
         if (player && player.currentRoom !== normalizedRoom.roomId) {
           setPlayer({ ...player, currentRoom: normalizedRoom.roomId })
         }
@@ -769,7 +777,8 @@ export default function GameInterface() {
         if (normalizedRoom) {
           cacheRoom(normalizedRoom)
           setCurrentRoom(normalizedRoom)
-          setRoomPlayers(roomPlayers) // Guarded by sequence
+          setRoomPlayers(roomPlayers)
+          setRoomEnemies(Array.isArray(roomData.room?.enemies) ? roomData.room.enemies : [])
         }
 
         if (player && normalizedRoom && player.currentRoom !== normalizedRoom.roomId) {
@@ -1746,6 +1755,7 @@ export default function GameInterface() {
             action: 'quest_chain',
           })
         }
+        setHasQuestUpdate(true)
       }
     })
 
@@ -1845,6 +1855,7 @@ export default function GameInterface() {
   // Fetch quests when quest tab is opened
   useEffect(() => {
     if (centerActiveTab === 'quests' && isLoggedIn) {
+      setHasQuestUpdate(false)
       let cancelled = false
       setIsLoadingQuests(true)
       fetch('/api/game/quests/progress', {
@@ -2051,6 +2062,83 @@ export default function GameInterface() {
       cleanupDirectMessage()
     }
   }, [socket, socketHandlers, appendDMFeed])
+
+  // Battle event handlers
+  useEffect(() => {
+    if (!socket) return
+
+    const cleanupStarted = socketHandlers.onBattleStarted((payload) => {
+      setBattleStarted({
+        enemySlug: payload.enemySlug,
+        enemyName: payload.enemyName,
+        enemyCurrentHp: payload.enemyCurrentHp,
+        enemyMaxHp: payload.enemyMaxHp,
+        turnCount: payload.turnCount,
+        canFlee: payload.canFlee,
+        playerHp: payload.playerHp,
+        playerHpMax: payload.playerHpMax,
+      })
+      const { addNotification } = useNotificationStore.getState()
+      if (payload.isAggressive) {
+        addNotification({ message: `A ${payload.enemyName} attacks you!`, outcome: 'failure', action: 'battle' })
+      } else {
+        addNotification({ message: `You engage the ${payload.enemyName}!`, outcome: 'info', action: 'battle' })
+      }
+    })
+
+    const cleanupTurn = socketHandlers.onBattleTurn((payload) => {
+      updateBattleTurn({
+        enemyCurrentHp: payload.enemyCurrentHp,
+        enemyMaxHp: payload.enemyMaxHp,
+        turnCount: payload.turnCount,
+        canFlee: payload.canFlee,
+        playerHp: payload.playerHp,
+        playerHpMax: payload.playerHpMax,
+        playerDealtDamage: payload.playerDealtDamage,
+        enemyDealtDamage: payload.enemyDealtDamage,
+        multiplayerBonus: payload.multiplayerBonus,
+        bonusPercent: payload.bonusPercent,
+      })
+      appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-turn' })
+    })
+
+    const cleanupVictory = socketHandlers.onBattleVictory((payload) => {
+      clearBattle()
+      appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-victory' })
+      const { addNotification } = useNotificationStore.getState()
+      addNotification({ message: `Victory! +${payload.xpAwarded} XP  +${payload.goldAwarded} Gold${payload.droppedItems.length > 0 ? `  +${payload.droppedItems.join(', ')}` : ''}`, outcome: 'success', action: 'battle' })
+      // Refresh inventory if items dropped
+      if (payload.droppedItems.length > 0) {
+        const headers = useGameStore.getState().getAuthHeaders()
+        fetch('/api/game/room/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({}) }).catch(() => {})
+      }
+    })
+
+    const cleanupDefeat = socketHandlers.onBattleDefeat((payload) => {
+      clearBattle()
+      appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-defeat' })
+      const { addNotification } = useNotificationStore.getState()
+      addNotification({ message: `Defeated! Respawning at The Lobby...`, outcome: 'failure', action: 'battle' })
+      // Navigate to lobby
+      setRoomEnemies([])
+      socketHandlers.sendGameAction({ type: 'teleport', data: { toRoomId: '999' } })
+    })
+
+    const cleanupFled = socketHandlers.onBattleFled((payload) => {
+      clearBattle()
+      appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-fled' })
+      const { addNotification } = useNotificationStore.getState()
+      addNotification({ message: payload.message, outcome: 'info', action: 'battle' })
+    })
+
+    return () => {
+      cleanupStarted()
+      cleanupTurn()
+      cleanupVictory()
+      cleanupDefeat()
+      cleanupFled()
+    }
+  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, appendWorldFeed])
 
   useEffect(() => {
     if (!socket) {
@@ -2373,30 +2461,30 @@ export default function GameInterface() {
     if (isActive) {
       switch (color) {
         case 'blue':
-          return 'border-1 border-blue-500 hover:border-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
+          return 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
         case 'green':
-          return 'border-1 border-green-500 hover:border-green-400 bg-green-500/10 hover:bg-green-500/20 text-green-300'
+          return 'bg-green-500/10 hover:bg-green-500/20 text-green-300'
         case 'purple':
-          return 'border-1 border-purple-500 hover:border-purple-400 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300'
+          return 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-300'
         case 'gold':
-          return 'border-1 border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
+          return 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
         case 'red':
-          return 'border-1 border-red-500 hover:border-red-400 bg-red-500/10 hover:bg-red-500/20 text-red-300'
+          return 'bg-red-500/10 hover:bg-red-500/20 text-red-300'
         case 'sky':
-          return 'border-1 border-sky-500 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300'
+          return 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-300'
         case 'gray':
-          return 'border-1 border-gray-500 hover:border-gray-400 bg-gray-500/10 hover:bg-gray-500/20 text-gray-300'
+          return 'bg-gray-500/10 hover:bg-gray-500/20 text-gray-300'
         case 'violet':
-          return 'border-1 border-violet-500 hover:border-violet-400 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300'
+          return 'bg-violet-500/10 hover:bg-violet-500/20 text-violet-300'
         case 'pink':
-          return 'border-1 border-pink-500 hover:border-pink-400 bg-pink-500/10 hover:bg-pink-500/20 text-pink-300'
+          return 'bg-pink-500/10 hover:bg-pink-500/20 text-pink-300'
         case 'amber':
-          return 'border-1 border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
+          return 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
         default:
-          return 'border-1 border-indigo-500 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
+          return 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
       }
     } else {
-      return 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
+      return 'bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
     }
   }, [])
 
@@ -2694,7 +2782,7 @@ export default function GameInterface() {
             <div className={`flex items-center gap-3 p-4 bg-gray-900/95 backdrop-blur-sm flex-shrink-0 border-b border-gray-800/50 ${leftDropdownOpen ? 'overflow-visible z-10 relative' : ''}`}>
               <button
                 onClick={() => setLeftSidebarOpen((prev) => !prev)}
-                className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                 title="Close"
                 aria-label="Close panel"
               >
@@ -2707,7 +2795,7 @@ export default function GameInterface() {
                   <button
                     data-left-dropdown-button
                     onClick={() => setLeftDropdownOpen((prev) => !prev)}
-                    className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                    className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                     title="Select panel"
                     aria-label="Select panel"
                   >
@@ -2759,7 +2847,7 @@ export default function GameInterface() {
                 leftElement={
                   <button
                     onClick={() => setLeftSidebarOpen(true)}
-                    className={`hidden lg:flex group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${leftSidebarOpen ? 'lg:hidden' : ''}`}
+                    className={`hidden lg:flex group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${leftSidebarOpen ? 'lg:hidden' : ''}`}
                     title={`Open ${getPanelLabel(leftPanelType).toLowerCase()} panel`}
                     aria-label={`Open ${getPanelLabel(leftPanelType).toLowerCase()} panel`}
                   >
@@ -2773,7 +2861,7 @@ export default function GameInterface() {
                 rightElement={
                   <button
                     onClick={() => setRightSidebarOpen(true)}
-                    className={`hidden xl:flex group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${rightSidebarOpen ? 'xl:hidden' : ''}`}
+                    className={`hidden xl:flex group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${rightSidebarOpen ? 'xl:hidden' : ''}`}
                     title={`Open ${getPanelLabel(rightPanelType).toLowerCase()} panel`}
                     aria-label={`Open ${getPanelLabel(rightPanelType).toLowerCase()} panel`}
                   >
@@ -2817,6 +2905,16 @@ export default function GameInterface() {
                                 </button>
                               </div>
                             )}
+                            {battle.isInBattle && (
+                              <div className="px-4 pt-4">
+                                <BattlePanel
+                                  battle={battle}
+                                  onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
+                                  onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
+                                  isActing={isLoadingRoom}
+                                />
+                              </div>
+                            )}
                             <RoomBox
                             room={currentRoom}
                             roomPlayers={roomPlayers}
@@ -2832,6 +2930,8 @@ export default function GameInterface() {
                             actionResult={actionResult}
                             isLoadingRoom={isLoadingRoom}
                             currentAction={action}
+                            roomEnemies={roomEnemies}
+                            isInBattle={battle.isInBattle}
                           />
                           </div>
                         </div>
@@ -2903,6 +3003,7 @@ export default function GameInterface() {
                     label: 'Quests',
                     icon: 'trophy',
                     color: 'gold',
+                    badge: hasQuestUpdate ? true : undefined,
                     content: (
                       <QuestsPanel
                         quests={quests}
@@ -3042,12 +3143,12 @@ export default function GameInterface() {
                     <button
                       data-right-dropdown-button
                       onClick={() => setRightDropdownOpen((prev) => !prev)}
-                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                       title="Select panel"
                       aria-label="Select panel"
                     >
-                      <ChevronDown 
-                        size={12} 
+                      <ChevronDown
+                        size={12}
                         className={`transition-transform duration-200 ${rightDropdownOpen ? 'rotate-180' : ''}`}
                       />
                     </button>
@@ -3083,7 +3184,7 @@ export default function GameInterface() {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={() => setRightSidebarOpen((prev) => !prev)}
-                  className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                  className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                   title="Close"
                   aria-label="Close panel"
                 >

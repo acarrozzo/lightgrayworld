@@ -796,7 +796,7 @@ export default function UnifiedFeedPanel({
           {(onToggle || onClose) && (
             <button
               onClick={onToggle || onClose}
-              className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+              className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
               title={isOpen ? 'Close' : 'Open'}
               aria-label={isOpen ? 'Close world panel' : 'Open world panel'}
             >

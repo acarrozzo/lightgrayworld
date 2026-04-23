@@ -134,6 +134,19 @@ const DIRECTIONS = [
 
 type DirectionKey = (typeof DIRECTIONS)[number]
 
+export interface RoomEnemy {
+  slug: string
+  name: string
+  description: string
+  icon: string
+  level: number
+  hp: number
+  att: number
+  def: number
+  isAggressive: boolean
+  isFriendly: boolean
+}
+
 interface RoomBoxProps {
   room: Room
   roomPlayers?: Player[]
@@ -149,6 +162,8 @@ interface RoomBoxProps {
   actionResult?: any
   isLoadingRoom?: boolean
   currentAction?: string
+  roomEnemies?: RoomEnemy[]
+  isInBattle?: boolean
 }
 
 export default function RoomBox({
@@ -162,6 +177,8 @@ export default function RoomBox({
   actionResult,
   isLoadingRoom = false,
   currentAction = '',
+  roomEnemies = [],
+  isInBattle = false,
 }: RoomBoxProps) {
   const subtitleText = (room.subtitle ?? 'This is it. The world is yours.').trim()
   const hasSubtitle = subtitleText.length > 0
@@ -202,6 +219,41 @@ export default function RoomBox({
 
       {/* Room Description */}
       <p className="text-gray-300/90 leading-relaxed text-sm sm:text-base">{room.description}</p>
+
+      {/* Enemies in Room */}
+      {roomEnemies.length > 0 && (
+        <div className="space-y-2">
+          {roomEnemies.map((enemy) => (
+            <div
+              key={enemy.slug}
+              className="flex items-center justify-between bg-gray-800/40 border border-gray-700/40 rounded-lg px-3 py-2"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {enemy.isAggressive ? (
+                  <span className="text-xs font-bold text-red-400 bg-red-900/30 border border-red-800/40 px-1.5 py-0.5 rounded shrink-0">
+                    HOSTILE
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-500 bg-gray-800/60 px-1.5 py-0.5 rounded shrink-0">
+                    neutral
+                  </span>
+                )}
+                <span className={`text-sm font-medium truncate ${enemy.isAggressive ? 'text-red-200' : 'text-gray-300'}`}>
+                  {enemy.name}
+                </span>
+              </div>
+              <button
+                onClick={() => onAction({ type: 'start_battle', data: { enemySlug: enemy.slug } })}
+                disabled={isInBattle || isLoadingRoom}
+                title={isInBattle ? 'You are already in combat' : `Attack the ${enemy.name}`}
+                className="ml-3 px-3 py-1 text-xs font-semibold bg-red-700/60 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-md transition-all duration-150 shrink-0"
+              >
+                Attack
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Direction Buttons */}
       {availableDirections.length > 0 && (
