@@ -2104,6 +2104,14 @@ export default function GameInterface() {
 
     const cleanupVictory = socketHandlers.onBattleVictory((payload) => {
       clearBattle()
+      const currentPlayer = useGameStore.getState().player
+      if (currentPlayer) {
+        setPlayer({
+          ...currentPlayer,
+          xp: (currentPlayer.xp ?? 0) + payload.xpAwarded,
+          currency: (currentPlayer.currency ?? 0) + payload.goldAwarded,
+        })
+      }
       appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-victory' })
       const { addNotification } = useNotificationStore.getState()
       addNotification({ message: `Victory! +${payload.xpAwarded} XP  +${payload.goldAwarded} Gold${payload.droppedItems.length > 0 ? `  +${payload.droppedItems.join(', ')}` : ''}`, outcome: 'success', action: 'battle' })
@@ -2116,12 +2124,14 @@ export default function GameInterface() {
 
     const cleanupDefeat = socketHandlers.onBattleDefeat((payload) => {
       clearBattle()
+      if (payload.playerHp !== undefined) {
+        setPlayer({ ...useGameStore.getState().player!, hp: payload.playerHp })
+      }
       appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-defeat' })
       const { addNotification } = useNotificationStore.getState()
       addNotification({ message: `Defeated! Respawning at The Lobby...`, outcome: 'failure', action: 'battle' })
-      // Navigate to lobby
       setRoomEnemies([])
-      socketHandlers.sendGameAction({ type: 'teleport', data: { toRoomId: '999' } })
+      handleAction({ type: 'teleport', data: { toRoomId: payload.respawnRoomId ?? '999' } })
     })
 
     const cleanupFled = socketHandlers.onBattleFled((payload) => {
@@ -2138,7 +2148,7 @@ export default function GameInterface() {
       cleanupDefeat()
       cleanupFled()
     }
-  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, appendWorldFeed])
+  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, appendWorldFeed, handleAction])
 
   useEffect(() => {
     if (!socket) {

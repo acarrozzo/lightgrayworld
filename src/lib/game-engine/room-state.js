@@ -104,7 +104,7 @@ class RoomState {
       case 'search':
         return this.executeSearch(playerId)
       case 'rest':
-        return this.executeRest(playerId)
+        return await this.executeRest(playerId)
       case 'look':
         return this.executeLook(action, playerId)
       case 'examine_item':
@@ -401,7 +401,7 @@ class RoomState {
     }
   }
 
-  executeRest(playerId) {
+  async executeRest(playerId) {
     const player = this.players.get(playerId)
     if (!player) {
       return this.createErrorResult('rest', 'Player not found in this room')
@@ -414,10 +414,8 @@ class RoomState {
     const newHp = Math.min(player.hpMax ?? 10, startingHp + healAmount)
     const recovered = Math.max(0, newHp - startingHp)
 
-    this.updatePlayer(playerId, (state) => ({
-      ...state,
-      hp: newHp,
-    }))
+    this.updatePlayer(playerId, (state) => ({ ...state, hp: newHp }))
+    await prisma.user.update({ where: { id: playerId }, data: { hp: newHp } })
 
     return {
       success: true,

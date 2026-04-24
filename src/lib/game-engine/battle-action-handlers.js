@@ -62,6 +62,9 @@ async function executeStartBattle(action, playerId, roomState) {
   const playerStats = await fetchPlayerStats(playerId)
   if (!playerStats) return errorResult('start_battle', 'Could not load your stats.')
 
+  // Bug fix #5: prevent dead players from initiating combat
+  if (playerStats.hp <= 0) return errorResult('start_battle', 'You cannot fight while dead.')
+
   const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats })
   roomState.activeBattles.set(playerId, battleState)
 
@@ -102,6 +105,10 @@ async function executePlayerAttack(action, playerId, roomState) {
     return errorResult('player_attack', 'You are not in a battle.')
   }
 
+  const liveStats = await fetchPlayerStats(playerId)
+  if (!liveStats) return errorResult('player_attack', 'Could not load your stats.')
+  battleState.updateStats(liveStats)
+
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
   const turnResult = resolveTurn(battleState, otherCombatants)
 
@@ -111,11 +118,20 @@ async function executePlayerAttack(action, playerId, roomState) {
   // Victory check
   if (battleState.isEnemyDead()) {
     battleState.end()
+
+    let winData
+    try {
+      winData = await handleBattleWin(playerId, battleState)
+    } catch (err) {
+      console.error(`handleBattleWin failed for player ${playerId}:`, err)
+      // Still need to clear the battle so the player isn't stuck
+      roomState.activeBattles.delete(playerId)
+      return errorResult('player_attack', 'You won, but a server error prevented rewards from being saved. Please contact support.')
+    }
+
+    // Bug fix #1: delete from activeBattles only after win handler succeeds
     roomState.activeBattles.delete(playerId)
 
-    const winData = await handleBattleWin(playerId, battleState)
-
-    // Rebuild feedback message
     const rewardParts = [`+${winData.xpAwarded} XP`, `+${winData.goldAwarded} Gold`]
     if (winData.droppedItems.length > 0) rewardParts.push(`+${winData.droppedItems.join(', ')}`)
     const winMsg = `You defeated the ${battleState.enemyName}! ${rewardParts.join('  ')}`
@@ -134,24 +150,35 @@ async function executePlayerAttack(action, playerId, roomState) {
           message: winMsg,
         },
       },
+      // Bug fix #4: notify room of victory
+      broadcastEvents: [
+        {
+          event: 'action:feedback',
+          targetRoomId: roomState.roomId,
+          payload: makeFeedback('player_attack', 'info', `${player.username} defeated the ${battleState.enemyName}!`),
+        },
+      ],
     }
   }
 
-  // Fetch current player HP for enemy damage application
-  const dbPlayer = await prisma.user.findUnique({
+  // Bug fix #3: atomic HP decrement — avoids read-modify-write race with concurrent updates
+  const updatedPlayer = await prisma.user.update({
     where: { id: playerId },
+    data: { hp: { decrement: turnResult.enemyDealtDamage } },
     select: { hp: true, hpMax: true },
   })
-  if (!dbPlayer) return errorResult('player_attack', 'Could not load player state.')
-
-  const newHp = Math.max(0, dbPlayer.hp - turnResult.enemyDealtDamage)
-  await prisma.user.update({ where: { id: playerId }, data: { hp: newHp } })
+  const newHp = Math.max(0, updatedPlayer.hp)
 
   // Death check
   if (newHp <= 0) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
-    await handleBattleDefeat(playerId)
+
+    try {
+      await handleBattleDefeat(playerId)
+    } catch (err) {
+      console.error(`handleBattleDefeat failed for player ${playerId}:`, err)
+    }
 
     return {
       success: true,
@@ -161,9 +188,18 @@ async function executePlayerAttack(action, playerId, roomState) {
         payload: {
           enemyName: battleState.enemyName,
           respawnRoomId: '999',
+          playerHp: 1,
           message: `The ${battleState.enemyName} overwhelms you. You black out...`,
         },
       },
+      // Bug fix #4: notify room of defeat
+      broadcastEvents: [
+        {
+          event: 'action:feedback',
+          targetRoomId: roomState.roomId,
+          payload: makeFeedback('player_attack', 'info', `${player.username} was defeated by the ${battleState.enemyName}...`),
+        },
+      ],
     }
   }
 
@@ -175,7 +211,7 @@ async function executePlayerAttack(action, playerId, roomState) {
   if (turnResult.enemyDealtDamage === 0) {
     parts.push(`The ${battleState.enemyName} attacks but you block it!`)
   } else {
-    parts.push(`The ${battleState.enemyName} hits you for ${turnResult.enemyDealtDamage} damage. (HP: ${newHp}/${dbPlayer.hpMax})`)
+    parts.push(`The ${battleState.enemyName} hits you for ${turnResult.enemyDealtDamage} damage. (HP: ${newHp}/${updatedPlayer.hpMax})`)
   }
 
   return {
@@ -186,7 +222,7 @@ async function executePlayerAttack(action, playerId, roomState) {
       payload: {
         ...snapshot,
         playerHp: newHp,
-        playerHpMax: dbPlayer.hpMax,
+        playerHpMax: updatedPlayer.hpMax,
         playerDealtDamage: turnResult.playerDealtDamage,
         enemyDealtDamage: turnResult.enemyDealtDamage,
         playerBlocked: turnResult.playerBlocked,

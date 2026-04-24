@@ -53,7 +53,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, st
         {/* Center - Title */}
         <div className="flex items-center gap-2 text-center absolute left-1/2 -translate-x-1/2">
           <h1 className="text-sm font-medium text-white tracking-tight">Light Gray</h1>
-          <span className="text-[10px] text-gray-500 font-normal">v0.1.4</span>
+          <span className="text-[10px] text-gray-500 font-normal">v0.1.5</span>
         </div>
         
         {/* Right side - Connection Status and Stats */}

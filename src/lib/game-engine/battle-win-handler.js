@@ -36,7 +36,10 @@ async function handleBattleWin(playerId, battleState) {
   const droppedItems = []
   for (const slug of droppedSlugs) {
     const template = await prisma.itemTemplate.findUnique({ where: { slug } })
-    if (!template) continue
+    if (!template) {
+      console.error(`handleBattleWin: item template not found for slug "${slug}"`)
+      continue
+    }
 
     if (template.maxPerPlayer !== null) {
       const existing = await prisma.playerItem.findFirst({
