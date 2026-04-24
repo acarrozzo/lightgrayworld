@@ -59,6 +59,36 @@ export interface BattleTurnPayload extends BattleSnapshot {
   message: string
 }
 
+export interface BattleLastTurn {
+  playerDealtDamage: number
+  enemyDealtDamage: number
+  playerRaw: number | null
+  enemyRaw: number
+  playerBlocked: number
+  enemyBlocked: number
+  playerStrMax: number
+  playerDefMax: number
+  enemyStrMax: number
+  multiplayerBonus: boolean
+  bonusPercent: number
+}
+
+export interface BattleSummary {
+  outcome: 'WIN' | 'LOSS'
+  enemyName: string
+  enemyIcon: string
+  enemySlug: string
+  turnsCount: number
+  totalDamageDealt: number
+  totalDamageReceived: number
+  maxSingleHit: number
+  xpEarned: number
+  goldEarned: number
+  itemsDropped: string[]
+  multiplayerBonus: boolean
+  lastTurn: BattleLastTurn | null
+}
+
 export interface BattleVictoryPayload {
   enemyName: string
   xpAwarded: number
@@ -66,6 +96,7 @@ export interface BattleVictoryPayload {
   droppedItems: string[]
   message: string
   lastTurnResult?: Record<string, any>
+  summary?: BattleSummary
 }
 
 export interface BattleDefeatPayload {
@@ -73,6 +104,7 @@ export interface BattleDefeatPayload {
   respawnRoomId: string
   playerHp?: number
   message: string
+  summary?: BattleSummary
 }
 
 export interface BattleFledPayload {

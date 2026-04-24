@@ -97,10 +97,12 @@ async function executeStartBattle(action, playerId, roomState) {
       multiplayerBonus: otherCombatants > 0,
       bonusPercent: otherCombatants * 10,
     }
+    battleState.recordTurn(0, enemyFinal, otherCombatants > 0, firstTurn)
   } else {
     // Player-initiated — normal full turn
     firstTurn = resolveTurn(battleState, otherCombatants)
     battleState.applyDamageToEnemy(firstTurn.playerDealtDamage)
+    battleState.recordTurn(firstTurn.playerDealtDamage, firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
   }
 
   battleState.incrementTurn()
@@ -181,6 +183,21 @@ async function executeStartBattle(action, playerId, roomState) {
         droppedItems: winData.droppedItems,
         lastTurnResult: firstTurn,
         message: `You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
+        summary: {
+          outcome: 'WIN',
+          enemyName: enemy.name,
+          enemyIcon: enemy.icon,
+          enemySlug: enemy.slug,
+          turnsCount: battleState.turnCount,
+          totalDamageDealt: battleState.totalDamageDealt,
+          totalDamageReceived: battleState.totalDamageReceived,
+          maxSingleHit: battleState.maxSingleHit,
+          xpEarned: winData.xpAwarded,
+          goldEarned: winData.goldAwarded,
+          itemsDropped: winData.droppedItems,
+          multiplayerBonus: battleState.multiplayerBonusUsed,
+          lastTurn: battleState.lastTurnResult,
+        },
       },
     })
   } else if (newPlayerHp <= 0) {
@@ -188,7 +205,7 @@ async function executeStartBattle(action, playerId, roomState) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
     try {
-      await handleBattleDefeat(playerId)
+      await handleBattleDefeat(playerId, battleState)
     } catch (err) {
       console.error(`handleBattleDefeat failed on turn 1 for player ${playerId}:`, err)
     }
@@ -199,6 +216,21 @@ async function executeStartBattle(action, playerId, roomState) {
         respawnRoomId: '999',
         playerHp: 1,
         message: `The ${enemy.name} overwhelms you. You black out...`,
+        summary: {
+          outcome: 'LOSS',
+          enemyName: enemy.name,
+          enemyIcon: enemy.icon,
+          enemySlug: enemy.slug,
+          turnsCount: battleState.turnCount,
+          totalDamageDealt: battleState.totalDamageDealt,
+          totalDamageReceived: battleState.totalDamageReceived,
+          maxSingleHit: battleState.maxSingleHit,
+          xpEarned: 0,
+          goldEarned: 0,
+          itemsDropped: [],
+          multiplayerBonus: battleState.multiplayerBonusUsed,
+          lastTurn: battleState.lastTurnResult,
+        },
       },
     })
   }
@@ -241,6 +273,7 @@ async function executePlayerAttack(action, playerId, roomState) {
 
   battleState.applyDamageToEnemy(turnResult.playerDealtDamage)
   battleState.incrementTurn()
+  battleState.recordTurn(turnResult.playerDealtDamage, turnResult.enemyDealtDamage, turnResult.multiplayerBonus, turnResult)
 
   // Victory check
   if (battleState.isEnemyDead()) {
@@ -275,6 +308,21 @@ async function executePlayerAttack(action, playerId, roomState) {
           droppedItems: winData.droppedItems,
           lastTurnResult: turnResult,
           message: winMsg,
+          summary: {
+            outcome: 'WIN',
+            enemyName: battleState.enemyName,
+            enemyIcon: battleState.enemy.icon,
+            enemySlug: battleState.enemySlug,
+            turnsCount: battleState.turnCount,
+            totalDamageDealt: battleState.totalDamageDealt,
+            totalDamageReceived: battleState.totalDamageReceived,
+            maxSingleHit: battleState.maxSingleHit,
+            xpEarned: winData.xpAwarded,
+            goldEarned: winData.goldAwarded,
+            itemsDropped: winData.droppedItems,
+            multiplayerBonus: battleState.multiplayerBonusUsed,
+          lastTurn: battleState.lastTurnResult,
+          },
         },
       },
       // Bug fix #4: notify room of victory
@@ -302,7 +350,7 @@ async function executePlayerAttack(action, playerId, roomState) {
     roomState.activeBattles.delete(playerId)
 
     try {
-      await handleBattleDefeat(playerId)
+      await handleBattleDefeat(playerId, battleState)
     } catch (err) {
       console.error(`handleBattleDefeat failed for player ${playerId}:`, err)
     }
@@ -317,6 +365,21 @@ async function executePlayerAttack(action, playerId, roomState) {
           respawnRoomId: '999',
           playerHp: 1,
           message: `The ${battleState.enemyName} overwhelms you. You black out...`,
+          summary: {
+            outcome: 'LOSS',
+            enemyName: battleState.enemyName,
+            enemyIcon: battleState.enemy.icon,
+            enemySlug: battleState.enemySlug,
+            turnsCount: battleState.turnCount,
+            totalDamageDealt: battleState.totalDamageDealt,
+            totalDamageReceived: battleState.totalDamageReceived,
+            maxSingleHit: battleState.maxSingleHit,
+            xpEarned: 0,
+            goldEarned: 0,
+            itemsDropped: [],
+            multiplayerBonus: battleState.multiplayerBonusUsed,
+          lastTurn: battleState.lastTurnResult,
+          },
         },
       },
       // Bug fix #4: notify room of defeat

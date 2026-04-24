@@ -124,6 +124,36 @@ const INITIAL_BATTLE_STATE: BattleState = {
   bonusPercent: 0,
 }
 
+export interface BattleLastTurn {
+  playerDealtDamage: number
+  enemyDealtDamage: number
+  playerRaw: number | null
+  enemyRaw: number
+  playerBlocked: number
+  enemyBlocked: number
+  playerStrMax: number
+  playerDefMax: number
+  enemyStrMax: number
+  multiplayerBonus: boolean
+  bonusPercent: number
+}
+
+export interface BattleResult {
+  outcome: 'WIN' | 'LOSS'
+  enemyName: string
+  enemyIcon: string
+  enemySlug: string
+  turnsCount: number
+  totalDamageDealt: number
+  totalDamageReceived: number
+  maxSingleHit: number
+  xpEarned: number
+  goldEarned: number
+  itemsDropped: string[]
+  multiplayerBonus: boolean
+  lastTurn: BattleLastTurn | null
+}
+
 export interface GameState {
   // Player state
   player: Player | null
@@ -142,6 +172,9 @@ export interface GameState {
 
   // Battle state
   battle: BattleState
+
+  // Post-battle result (shown after battle ends, null when dismissed)
+  battleResult: BattleResult | null
 
   // UI state
   isLoading: boolean
@@ -168,6 +201,8 @@ export interface GameState {
   setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
   updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number }) => void
   clearBattle: () => void
+  setBattleResult: (result: BattleResult) => void
+  clearBattleResult: () => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -184,6 +219,7 @@ export const useGameStore = create<GameState>()(
       roomFactSeq: {},
       capCache: {},
       battle: { ...INITIAL_BATTLE_STATE },
+      battleResult: null,
       isLoading: false,
       error: null,
       
@@ -232,6 +268,7 @@ export const useGameStore = create<GameState>()(
         roomCache: {},
         capCache: {},
         battle: { ...INITIAL_BATTLE_STATE },
+        battleResult: null,
         error: null
       }),
 
@@ -346,6 +383,10 @@ export const useGameStore = create<GameState>()(
 
       clearBattle: () =>
         set({ battle: { ...INITIAL_BATTLE_STATE } }),
+
+      setBattleResult: (result) => set({ battleResult: result }),
+
+      clearBattleResult: () => set({ battleResult: null }),
 
       clearCapCache: (roomId) => {
         if (roomId) {

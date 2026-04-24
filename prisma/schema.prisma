@@ -126,6 +126,7 @@ model User {
   dailyChestCount           Int             @default(0)
   accounts                  Account[]
   actionHistory             ActionHistory[]
+  battleLogs                BattleLog[]
   chatMessages              ChatMessage[]
   roomChatMessages          RoomChatMessage[]
   sentDMs                   DirectMessage[] @relation("SentDMs")
@@ -383,6 +384,26 @@ model PlayerItem {
   updatedAt    DateTime     @default(now())
   User         User         @relation(fields: [playerId], references: [id], onDelete: Cascade)
   ItemTemplate ItemTemplate @relation(fields: [templateId], references: [id])
+}
+
+model BattleLog {
+  id                  String   @id @default(cuid())
+  userId              String
+  enemySlug           String
+  enemyName           String
+  outcome             String
+  turnsCount          Int
+  totalDamageDealt    Int
+  totalDamageReceived Int
+  maxSingleHit        Int
+  xpEarned            Int
+  goldEarned          Int
+  itemsDropped        Json     @default("[]")
+  multiplayerBonus    Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model ActionCap {

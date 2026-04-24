@@ -61,9 +61,12 @@ export default function GameInterface() {
     updateCapCache,
     getCapCache,
     battle,
+    battleResult,
     setBattleStarted,
     updateBattleTurn,
     clearBattle,
+    setBattleResult,
+    clearBattleResult,
   } = useGameStore()
   const { updateRoomItems } = useGameStore()
   const equippedWeapon = inventory.find(item => item.isEquipped && item.slot === 'WEAPON')
@@ -2120,6 +2123,7 @@ export default function GameInterface() {
 
     const cleanupVictory = socketHandlers.onBattleVictory((payload) => {
       const applyVictory = () => {
+        if (payload.summary) setBattleResult(payload.summary)
         clearBattle()
         const currentPlayer = useGameStore.getState().player
         if (currentPlayer) {
@@ -2148,6 +2152,7 @@ export default function GameInterface() {
 
     const cleanupDefeat = socketHandlers.onBattleDefeat((payload) => {
       const applyDefeat = () => {
+        if (payload.summary) setBattleResult(payload.summary)
         clearBattle()
         if (payload.playerHp !== undefined) {
           setPlayer({ ...useGameStore.getState().player!, hp: payload.playerHp })
@@ -2181,7 +2186,7 @@ export default function GameInterface() {
       cleanupDefeat()
       cleanupFled()
     }
-  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, appendWorldFeed, handleAction])
+  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, setBattleResult, appendWorldFeed, handleAction])
 
   useEffect(() => {
     if (!socket) {
@@ -2948,12 +2953,14 @@ export default function GameInterface() {
                                 </button>
                               </div>
                             )}
-                            {battle.isInBattle && (
+                            {(battle.isInBattle || battleResult) && (
                               <div className="px-4 pt-4">
                                 <BattlePanel
                                   battle={battle}
+                                  battleResult={battleResult}
                                   onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
                                   onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
+                                  onDismissResult={clearBattleResult}
                                   isActing={isLoadingRoom}
                                   playerName={player.username}
                                   playerLevel={player.level}

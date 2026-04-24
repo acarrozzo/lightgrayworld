@@ -15,6 +15,12 @@ class BattleState {
     this.canFlee = false
     this.isActive = true
     this.startedAt = Date.now()
+
+    this.totalDamageDealt = 0
+    this.totalDamageReceived = 0
+    this.maxSingleHit = 0
+    this.multiplayerBonusUsed = false
+    this.lastTurnResult = null
   }
 
   updateStats(playerStats) {
@@ -25,6 +31,14 @@ class BattleState {
   incrementTurn() {
     this.turnCount++
     if (this.turnCount >= 10) this.canFlee = true
+  }
+
+  recordTurn(playerDealt, enemyDealt, hadMultiplayerBonus, fullTurnResult = null) {
+    this.totalDamageDealt += playerDealt
+    this.totalDamageReceived += enemyDealt
+    if (playerDealt > this.maxSingleHit) this.maxSingleHit = playerDealt
+    if (hadMultiplayerBonus) this.multiplayerBonusUsed = true
+    if (fullTurnResult) this.lastTurnResult = fullTurnResult
   }
 
   applyDamageToEnemy(amount) {

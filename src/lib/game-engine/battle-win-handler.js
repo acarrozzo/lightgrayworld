@@ -54,10 +54,27 @@ async function handleBattleWin(playerId, battleState) {
     droppedItems.push(template.name)
   }
 
+  await prisma.battleLog.create({
+    data: {
+      userId: playerId,
+      enemySlug: battleState.enemySlug,
+      enemyName: battleState.enemyName,
+      outcome: 'WIN',
+      turnsCount: battleState.turnCount,
+      totalDamageDealt: battleState.totalDamageDealt,
+      totalDamageReceived: battleState.totalDamageReceived,
+      maxSingleHit: battleState.maxSingleHit,
+      xpEarned: xpAwarded,
+      goldEarned: goldAwarded,
+      itemsDropped: droppedItems,
+      multiplayerBonus: battleState.multiplayerBonusUsed,
+    },
+  })
+
   return { xpAwarded, goldAwarded, droppedItems }
 }
 
-async function handleBattleDefeat(playerId) {
+async function handleBattleDefeat(playerId, battleState) {
   await prisma.user.update({
     where: { id: playerId },
     data: {
@@ -65,6 +82,23 @@ async function handleBattleDefeat(playerId) {
       inFight: false,
       deaths: { increment: 1 },
       currentRoom: '999',
+    },
+  })
+
+  await prisma.battleLog.create({
+    data: {
+      userId: playerId,
+      enemySlug: battleState.enemySlug,
+      enemyName: battleState.enemyName,
+      outcome: 'LOSS',
+      turnsCount: battleState.turnCount,
+      totalDamageDealt: battleState.totalDamageDealt,
+      totalDamageReceived: battleState.totalDamageReceived,
+      maxSingleHit: battleState.maxSingleHit,
+      xpEarned: 0,
+      goldEarned: 0,
+      itemsDropped: [],
+      multiplayerBonus: battleState.multiplayerBonusUsed,
     },
   })
 }

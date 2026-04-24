@@ -1,12 +1,14 @@
 'use client'
 
-import { BattleState } from '@/lib/game-state'
+import { BattleState, BattleResult } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 
 interface BattlePanelProps {
   battle: BattleState
+  battleResult: BattleResult | null
   onAttack: () => void
   onFlee: () => void
+  onDismissResult: () => void
   isActing: boolean
   playerName: string
   playerLevel: number
@@ -44,10 +46,125 @@ function Swoosh() {
   )
 }
 
+function StatRow({ label, value, highlight = false }: { label: string; value: string | number; highlight?: boolean }) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-gray-400">{label}</span>
+      <span className={highlight ? 'text-yellow-300 font-bold' : 'text-white font-semibold'}>{value}</span>
+    </div>
+  )
+}
+
+function BattleResultCard({ result, weaponIconName, onDismiss }: { result: BattleResult; weaponIconName: string | null; onDismiss: () => void }) {
+  const isWin = result.outcome === 'WIN'
+  const lt = result.lastTurn
+  const wasAdvantageTurn = lt?.playerRaw === null
+
+  return (
+    <div className={`border ${isWin ? 'border-green-700/60' : 'border-red-800/60'} bg-gray-900/95 rounded-lg overflow-hidden shadow-lg`}>
+
+      {/* Header */}
+      <div className={`flex items-center justify-between px-4 py-3 ${isWin ? 'bg-green-900/30' : 'bg-red-900/20'} border-b border-gray-800/60`}>
+        <div className="flex items-center gap-2">
+          {result.enemyIcon && <Icon name={result.enemyIcon} size={22} className="text-white opacity-70" />}
+          <div>
+            <p className={`text-base font-bold ${isWin ? 'text-green-300' : 'text-red-400'}`}>
+              {isWin ? 'Victory!' : 'Defeated'}
+            </p>
+            <p className="text-xs text-gray-400">{result.enemyName}</p>
+          </div>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="text-gray-500 hover:text-white transition-colors p-1 rounded"
+          aria-label="Dismiss"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Last turn replay */}
+      {lt && (
+        <div className="flex items-center px-4 py-3 gap-2 border-b border-gray-800/60">
+          {/* Player side */}
+          <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+            {wasAdvantageTurn ? (
+              <p className="text-xs text-gray-500 italic">You were ambushed entering the room</p>
+            ) : (
+              <>
+                <p className="text-xs text-gray-500">
+                  {lt.playerRaw} &minus; {lt.enemyBlocked} = {lt.playerDealtDamage}
+                  <span className="text-gray-600 ml-1">(max {lt.playerStrMax})</span>
+                </p>
+                <p className="text-xs text-gray-400">
+                  Final strike with{' '}
+                  <span className="text-red-300 font-semibold">{weaponIconName ?? 'fists'}</span>
+                </p>
+                <p className="text-3xl font-bold text-red-400 leading-tight">{lt.playerDealtDamage}</p>
+              </>
+            )}
+          </div>
+
+          {/* Icons */}
+          <div className="flex-shrink-0 flex items-center gap-1">
+            {weaponIconName && <Icon name={weaponIconName} size={38} className="text-white opacity-75" />}
+            <Swoosh />
+            {result.enemyIcon && <Icon name={result.enemyIcon} size={38} className="text-white opacity-75" />}
+          </div>
+
+          {/* Enemy side */}
+          <div className="flex-1 flex flex-col items-end gap-0.5 min-w-0">
+            <p className="text-xs text-gray-500 text-right">
+              <span className="text-gray-600 mr-1">(max {lt.enemyStrMax})</span>
+              {lt.enemyRaw} &minus; {lt.playerBlocked} = {lt.enemyDealtDamage}
+            </p>
+            <p className="text-xs text-gray-400 text-right">
+              <span className="text-yellow-300 font-semibold">{result.enemyName}</span> attacks for
+            </p>
+            <p className="text-3xl font-bold text-yellow-400 leading-tight text-right">{lt.enemyDealtDamage}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="px-4 py-3 space-y-1.5 border-b border-gray-800/60">
+        <StatRow label="Turns" value={result.turnsCount} />
+        <StatRow label="Damage dealt" value={result.totalDamageDealt} />
+        <StatRow label="Damage received" value={result.totalDamageReceived} />
+        <StatRow label="Biggest hit" value={result.maxSingleHit} highlight />
+        {result.multiplayerBonus && (
+          <p className="text-xs text-blue-400 pt-0.5">Group bonus was active</p>
+        )}
+      </div>
+
+      {/* Rewards (win only) */}
+      {isWin && (
+        <div className="px-4 py-3 space-y-1.5">
+          <StatRow label="XP earned" value={`+${result.xpEarned}`} />
+          <StatRow label="Gold earned" value={`+${result.goldEarned}`} />
+          {result.itemsDropped.length > 0 ? (
+            <div className="flex items-start justify-between text-sm">
+              <span className="text-gray-400">Items</span>
+              <span className="text-green-300 font-semibold text-right">{result.itemsDropped.join(', ')}</span>
+            </div>
+          ) : (
+            <StatRow label="Items" value="No drops" />
+          )}
+        </div>
+      )}
+
+    </div>
+  )
+}
+
 export default function BattlePanel({
   battle,
+  battleResult,
   onAttack,
   onFlee,
+  onDismissResult,
   isActing,
   playerName,
   playerLevel,
@@ -55,6 +172,10 @@ export default function BattlePanel({
   playerMpMax,
   weaponIconName,
 }: BattlePanelProps) {
+  if (!battle.isInBattle && battleResult) {
+    return <BattleResultCard result={battleResult} weaponIconName={weaponIconName} onDismiss={onDismissResult} />
+  }
+
   if (!battle.isInBattle) return null
 
   const turnsUntilFlee = Math.max(0, 10 - battle.turnCount)
