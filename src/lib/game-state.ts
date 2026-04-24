@@ -70,32 +70,56 @@ export interface CapCacheEntry {
 
 export interface BattleState {
   isInBattle: boolean
+  isAdvantageTurn: boolean
   enemySlug: string | null
   enemyName: string | null
+  enemyIcon: string | null
+  enemyLevel: number | null
+  enemyAtt: number | null
+  enemyDef: number | null
   enemyCurrentHp: number
   enemyMaxHp: number
   turnCount: number
   canFlee: boolean
   playerHp: number
   playerHpMax: number
+  playerStrMax: number | null
+  playerDefMax: number | null
   lastPlayerDamage: number | null
   lastEnemyDamage: number | null
+  playerRaw: number | null
+  enemyRaw: number | null
+  enemyStrMax: number | null
+  playerBlocked: number | null
+  enemyBlocked: number | null
   multiplayerBonus: boolean
   bonusPercent: number
 }
 
 const INITIAL_BATTLE_STATE: BattleState = {
   isInBattle: false,
+  isAdvantageTurn: false,
   enemySlug: null,
   enemyName: null,
+  enemyIcon: null,
+  enemyLevel: null,
+  enemyAtt: null,
+  enemyDef: null,
   enemyCurrentHp: 0,
   enemyMaxHp: 0,
   turnCount: 0,
   canFlee: false,
   playerHp: 0,
   playerHpMax: 0,
+  playerStrMax: null,
+  playerDefMax: null,
   lastPlayerDamage: null,
   lastEnemyDamage: null,
+  playerRaw: null,
+  enemyRaw: null,
+  enemyStrMax: null,
+  playerBlocked: null,
+  enemyBlocked: null,
   multiplayerBonus: false,
   bonusPercent: 0,
 }
@@ -141,8 +165,8 @@ export interface GameState {
   updateCapCache: (roomId: string, actionKey: string, entry: Partial<CapCacheEntry>) => void
   getCapCache: (roomId: string, actionKey: string) => CapCacheEntry | null
   clearCapCache: (roomId?: string) => void
-  setBattleStarted: (payload: { enemySlug: string; enemyName: string; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number }) => void
-  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; multiplayerBonus: boolean; bonusPercent: number }) => void
+  setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
+  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number }) => void
   clearBattle: () => void
 }
 
@@ -276,14 +300,21 @@ export const useGameStore = create<GameState>()(
           battle: {
             ...INITIAL_BATTLE_STATE,
             isInBattle: true,
+            isAdvantageTurn: payload.isAdvantageTurn,
             enemySlug: payload.enemySlug,
             enemyName: payload.enemyName,
+            enemyIcon: payload.enemyIcon,
+            enemyLevel: payload.enemyLevel,
+            enemyAtt: payload.enemyAtt,
+            enemyDef: payload.enemyDef,
             enemyCurrentHp: payload.enemyCurrentHp,
             enemyMaxHp: payload.enemyMaxHp,
             turnCount: payload.turnCount,
             canFlee: payload.canFlee,
             playerHp: payload.playerHp,
             playerHpMax: payload.playerHpMax,
+            playerStrMax: payload.playerStr,
+            playerDefMax: payload.playerDef,
           },
           player: state.player ? { ...state.player, hp: payload.playerHp, hpMax: payload.playerHpMax } : state.player,
         })),
@@ -298,8 +329,15 @@ export const useGameStore = create<GameState>()(
             canFlee: payload.canFlee,
             playerHp: payload.playerHp,
             playerHpMax: payload.playerHpMax,
+            playerStrMax: payload.playerStrMax,
+            playerDefMax: payload.playerDefMax,
             lastPlayerDamage: payload.playerDealtDamage,
             lastEnemyDamage: payload.enemyDealtDamage,
+            playerRaw: payload.playerRaw,
+            enemyRaw: payload.enemyRaw,
+            enemyStrMax: payload.enemyStrMax,
+            playerBlocked: payload.playerBlocked,
+            enemyBlocked: payload.enemyBlocked,
             multiplayerBonus: payload.multiplayerBonus,
             bonusPercent: payload.bonusPercent,
           },

@@ -30,8 +30,13 @@ function resolveTurn(battleState, otherCombatants) {
   return {
     playerDealtDamage: playerFinal,
     enemyDealtDamage: enemyFinal,
+    playerRaw,
+    enemyRaw,
     enemyBlocked: enemyBlock,
     playerBlocked: playerBlock,
+    playerStrMax: effectiveStr,
+    playerDefMax: effectiveDef,
+    enemyStrMax: enemy.att,
     multiplayerBonus: otherCombatants > 0,
     bonusPercent: otherCombatants * 10,
   }

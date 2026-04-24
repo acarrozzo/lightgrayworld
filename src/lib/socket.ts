@@ -29,9 +29,16 @@ export interface BattleSnapshot {
 }
 
 export interface BattleStartedPayload extends BattleSnapshot {
+  enemyIcon: string
+  enemyLevel: number
+  enemyAtt: number
+  enemyDef: number
   enemyDescription: string
+  isAdvantageTurn: boolean
   playerHp: number
   playerHpMax: number
+  playerStr: number
+  playerDef: number
   isAggressive?: boolean
 }
 
@@ -40,8 +47,13 @@ export interface BattleTurnPayload extends BattleSnapshot {
   playerHpMax: number
   playerDealtDamage: number
   enemyDealtDamage: number
+  playerRaw: number | null
+  enemyRaw: number
   playerBlocked: number
   enemyBlocked: number
+  playerStrMax: number
+  playerDefMax: number
+  enemyStrMax: number
   multiplayerBonus: boolean
   bonusPercent: number
   message: string
@@ -59,6 +71,7 @@ export interface BattleVictoryPayload {
 export interface BattleDefeatPayload {
   enemyName: string
   respawnRoomId: string
+  playerHp?: number
   message: string
 }
 

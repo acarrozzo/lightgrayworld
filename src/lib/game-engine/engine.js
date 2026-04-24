@@ -194,7 +194,12 @@ class GameEngine {
 
     console.log(`[GameEngine] handleActionResult for player ${playerId}, action: ${result.action}`)
 
-    if (result.playerEvent) {
+    if (Array.isArray(result.playerEvents)) {
+      result.playerEvents.forEach(({ event, payload }) => {
+        console.log(`[GameEngine] Emitting player event: ${event} to player ${playerId}`)
+        this.emitToPlayer(playerId, event, payload)
+      })
+    } else if (result.playerEvent) {
       console.log(`[GameEngine] Emitting player event: ${result.playerEvent.event} to player ${playerId}`)
       this.emitToPlayer(playerId, result.playerEvent.event, result.playerEvent.payload)
     }

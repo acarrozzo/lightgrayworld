@@ -1,6 +1,6 @@
 const { prisma } = require('../db-client')
 const { BattleState } = require('./battle-state')
-const { resolveTurn, getOtherCombatantCount } = require('./battle-calculator')
+const { rand, resolveTurn, getOtherCombatantCount } = require('./battle-calculator')
 const { handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
 const { getRoomEnemies } = require('../game-data/room-enemies')
@@ -71,24 +71,151 @@ async function executeStartBattle(action, playerId, roomState) {
   await prisma.user.update({ where: { id: playerId }, data: { inFight: true } })
   roomState.touchActivity()
 
+  // ─── Resolve first turn immediately ──────────────────────────────────────
+  const isAdvantageTurn = enemy.isAggressive
+  const otherCombatants = getOtherCombatantCount(roomState, playerId)
+  const bonus = 1 + otherCombatants * 0.1
+  const effectiveStr = Math.max(1, Math.floor(battleState.baseStr * bonus))
+  const effectiveDef = Math.max(1, Math.floor(battleState.baseDef * bonus))
+
+  let firstTurn
+  if (isAdvantageTurn) {
+    // Enemy gets a free hit — player was entering the room, no counter-attack
+    const enemyRaw = rand(Math.floor(enemy.att * 0.6), enemy.att)
+    const playerBlock = rand(Math.floor(effectiveDef * 0.6), effectiveDef)
+    const enemyFinal = Math.max(0, enemyRaw - playerBlock)
+    firstTurn = {
+      playerDealtDamage: 0,
+      enemyDealtDamage: enemyFinal,
+      playerRaw: null,
+      enemyRaw,
+      enemyBlocked: 0,
+      playerBlocked: playerBlock,
+      playerStrMax: effectiveStr,
+      playerDefMax: effectiveDef,
+      enemyStrMax: enemy.att,
+      multiplayerBonus: otherCombatants > 0,
+      bonusPercent: otherCombatants * 10,
+    }
+  } else {
+    // Player-initiated — normal full turn
+    firstTurn = resolveTurn(battleState, otherCombatants)
+    battleState.applyDamageToEnemy(firstTurn.playerDealtDamage)
+  }
+
+  battleState.incrementTurn()
+
+  // Apply enemy damage to player HP
+  const updatedPlayer = await prisma.user.update({
+    where: { id: playerId },
+    data: { hp: { decrement: firstTurn.enemyDealtDamage } },
+    select: { hp: true, hpMax: true },
+  })
+  const newPlayerHp = Math.max(0, updatedPlayer.hp)
+
   const snapshot = battleState.getSnapshot()
+
+  const startPayload = {
+    ...snapshot,
+    enemyIcon: enemy.icon,
+    enemyLevel: enemy.level,
+    enemyAtt: enemy.att,
+    enemyDef: enemy.def,
+    enemyDescription: enemy.description,
+    isAdvantageTurn,
+    playerHp: playerStats.hp,
+    playerHpMax: playerStats.hpMax,
+    playerStr: battleState.baseStr,
+    playerDef: battleState.baseDef,
+  }
+
+  const attackDesc = isAdvantageTurn
+    ? `You enter the area and the ${enemy.name} immediately attacks!`
+    : `You strike the ${enemy.name} for ${firstTurn.playerDealtDamage} damage.`
+  const defenseDesc = firstTurn.enemyDealtDamage === 0
+    ? `The ${enemy.name} attacks but you block it!`
+    : `The ${enemy.name} hits you for ${firstTurn.enemyDealtDamage} damage.`
+
+  const turnPayload = {
+    ...snapshot,
+    playerHp: newPlayerHp,
+    playerHpMax: updatedPlayer.hpMax,
+    playerDealtDamage: firstTurn.playerDealtDamage,
+    enemyDealtDamage: firstTurn.enemyDealtDamage,
+    playerRaw: firstTurn.playerRaw,
+    enemyRaw: firstTurn.enemyRaw,
+    playerBlocked: firstTurn.playerBlocked,
+    enemyBlocked: firstTurn.enemyBlocked,
+    playerStrMax: firstTurn.playerStrMax,
+    playerDefMax: firstTurn.playerDefMax,
+    enemyStrMax: firstTurn.enemyStrMax,
+    multiplayerBonus: firstTurn.multiplayerBonus,
+    bonusPercent: firstTurn.bonusPercent,
+    message: [attackDesc, defenseDesc].join(' '),
+  }
+
+  const playerEvents = [
+    { event: 'battle:started', payload: startPayload },
+    { event: 'battle:turn', payload: turnPayload },
+  ]
+
+  // Victory check (only possible on player-initiated turn)
+  if (!isAdvantageTurn && battleState.isEnemyDead()) {
+    battleState.end()
+    roomState.activeBattles.delete(playerId)
+    let winData
+    try {
+      winData = await handleBattleWin(playerId, battleState)
+    } catch (err) {
+      console.error(`handleBattleWin failed on turn 1 for player ${playerId}:`, err)
+      return errorResult('start_battle', 'You won, but a server error prevented rewards from being saved.')
+    }
+    const rewardParts = [`+${winData.xpAwarded} XP`, `+${winData.goldAwarded} Gold`]
+    if (winData.droppedItems.length > 0) rewardParts.push(`+${winData.droppedItems.join(', ')}`)
+    playerEvents.push({
+      event: 'battle:victory',
+      payload: {
+        enemyName: enemy.name,
+        xpAwarded: winData.xpAwarded,
+        goldAwarded: winData.goldAwarded,
+        droppedItems: winData.droppedItems,
+        lastTurnResult: firstTurn,
+        message: `You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
+      },
+    })
+  } else if (newPlayerHp <= 0) {
+    // Defeat check
+    battleState.end()
+    roomState.activeBattles.delete(playerId)
+    try {
+      await handleBattleDefeat(playerId)
+    } catch (err) {
+      console.error(`handleBattleDefeat failed on turn 1 for player ${playerId}:`, err)
+    }
+    playerEvents.push({
+      event: 'battle:defeat',
+      payload: {
+        enemyName: enemy.name,
+        respawnRoomId: '999',
+        playerHp: 1,
+        message: `The ${enemy.name} overwhelms you. You black out...`,
+      },
+    })
+  }
+
+  const broadcastMsg = isAdvantageTurn
+    ? `${player.username} is attacked by a ${enemy.name}!`
+    : `${player.username} engages a ${enemy.name}!`
+
   return {
     success: true,
     action: 'start_battle',
-    playerEvent: {
-      event: 'battle:started',
-      payload: {
-        ...snapshot,
-        enemyDescription: enemy.description,
-        playerHp: playerStats.hp,
-        playerHpMax: playerStats.hpMax,
-      },
-    },
+    playerEvents,
     broadcastEvents: [
       {
         event: 'action:feedback',
         targetRoomId: roomState.roomId,
-        payload: makeFeedback('start_battle', 'info', `${player.username} engages a ${enemy.name}!`),
+        payload: makeFeedback('start_battle', 'info', broadcastMsg),
       },
     ],
   }
@@ -225,8 +352,13 @@ async function executePlayerAttack(action, playerId, roomState) {
         playerHpMax: updatedPlayer.hpMax,
         playerDealtDamage: turnResult.playerDealtDamage,
         enemyDealtDamage: turnResult.enemyDealtDamage,
+        playerRaw: turnResult.playerRaw,
+        enemyRaw: turnResult.enemyRaw,
         playerBlocked: turnResult.playerBlocked,
         enemyBlocked: turnResult.enemyBlocked,
+        playerStrMax: turnResult.playerStrMax,
+        playerDefMax: turnResult.playerDefMax,
+        enemyStrMax: turnResult.enemyStrMax,
         multiplayerBonus: turnResult.multiplayerBonus,
         bonusPercent: turnResult.bonusPercent,
         message: parts.join(' '),

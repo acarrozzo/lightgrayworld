@@ -66,6 +66,8 @@ export default function GameInterface() {
     clearBattle,
   } = useGameStore()
   const { updateRoomItems } = useGameStore()
+  const equippedWeapon = inventory.find(item => item.isEquipped && item.slot === 'WEAPON')
+  const weaponIconName = equippedWeapon?.template.metadata?.icon ?? equippedWeapon?.template.slug ?? null
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(false)
@@ -2069,14 +2071,21 @@ export default function GameInterface() {
 
     const cleanupStarted = socketHandlers.onBattleStarted((payload) => {
       setBattleStarted({
+        isAdvantageTurn: payload.isAdvantageTurn,
         enemySlug: payload.enemySlug,
         enemyName: payload.enemyName,
+        enemyIcon: payload.enemyIcon,
+        enemyLevel: payload.enemyLevel,
+        enemyAtt: payload.enemyAtt,
+        enemyDef: payload.enemyDef,
         enemyCurrentHp: payload.enemyCurrentHp,
         enemyMaxHp: payload.enemyMaxHp,
         turnCount: payload.turnCount,
         canFlee: payload.canFlee,
         playerHp: payload.playerHp,
         playerHpMax: payload.playerHpMax,
+        playerStr: payload.playerStr,
+        playerDef: payload.playerDef,
       })
       const { addNotification } = useNotificationStore.getState()
       if (payload.isAggressive) {
@@ -2096,6 +2105,13 @@ export default function GameInterface() {
         playerHpMax: payload.playerHpMax,
         playerDealtDamage: payload.playerDealtDamage,
         enemyDealtDamage: payload.enemyDealtDamage,
+        playerRaw: payload.playerRaw,
+        enemyRaw: payload.enemyRaw,
+        playerStrMax: payload.playerStrMax,
+        playerDefMax: payload.playerDefMax,
+        enemyStrMax: payload.enemyStrMax,
+        playerBlocked: payload.playerBlocked,
+        enemyBlocked: payload.enemyBlocked,
         multiplayerBonus: payload.multiplayerBonus,
         bonusPercent: payload.bonusPercent,
       })
@@ -2103,35 +2119,52 @@ export default function GameInterface() {
     })
 
     const cleanupVictory = socketHandlers.onBattleVictory((payload) => {
-      clearBattle()
-      const currentPlayer = useGameStore.getState().player
-      if (currentPlayer) {
-        setPlayer({
-          ...currentPlayer,
-          xp: (currentPlayer.xp ?? 0) + payload.xpAwarded,
-          currency: (currentPlayer.currency ?? 0) + payload.goldAwarded,
-        })
+      const applyVictory = () => {
+        clearBattle()
+        const currentPlayer = useGameStore.getState().player
+        if (currentPlayer) {
+          setPlayer({
+            ...currentPlayer,
+            xp: (currentPlayer.xp ?? 0) + payload.xpAwarded,
+            currency: (currentPlayer.currency ?? 0) + payload.goldAwarded,
+          })
+        }
+        appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-victory' })
+        const { addNotification } = useNotificationStore.getState()
+        addNotification({ message: `Victory! +${payload.xpAwarded} XP  +${payload.goldAwarded} Gold${payload.droppedItems.length > 0 ? `  +${payload.droppedItems.join(', ')}` : ''}`, outcome: 'success', action: 'battle' })
+        if (payload.droppedItems.length > 0) {
+          const headers = useGameStore.getState().getAuthHeaders()
+          fetch('/api/game/room/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({}) }).catch(() => {})
+        }
       }
-      appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-victory' })
-      const { addNotification } = useNotificationStore.getState()
-      addNotification({ message: `Victory! +${payload.xpAwarded} XP  +${payload.goldAwarded} Gold${payload.droppedItems.length > 0 ? `  +${payload.droppedItems.join(', ')}` : ''}`, outcome: 'success', action: 'battle' })
-      // Refresh inventory if items dropped
-      if (payload.droppedItems.length > 0) {
-        const headers = useGameStore.getState().getAuthHeaders()
-        fetch('/api/game/room/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({}) }).catch(() => {})
+      // If enemy died on the first turn, let the panel show the result briefly
+      const turnCount = useGameStore.getState().battle.turnCount
+      if (turnCount <= 1) {
+        setTimeout(applyVictory, 1500)
+      } else {
+        applyVictory()
       }
     })
 
     const cleanupDefeat = socketHandlers.onBattleDefeat((payload) => {
-      clearBattle()
-      if (payload.playerHp !== undefined) {
-        setPlayer({ ...useGameStore.getState().player!, hp: payload.playerHp })
+      const applyDefeat = () => {
+        clearBattle()
+        if (payload.playerHp !== undefined) {
+          setPlayer({ ...useGameStore.getState().player!, hp: payload.playerHp })
+        }
+        appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-defeat' })
+        const { addNotification } = useNotificationStore.getState()
+        addNotification({ message: `Defeated! Respawning at The Lobby...`, outcome: 'failure', action: 'battle' })
+        setRoomEnemies([])
+        handleAction({ type: 'teleport', data: { toRoomId: payload.respawnRoomId ?? '999' } })
       }
-      appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-defeat' })
-      const { addNotification } = useNotificationStore.getState()
-      addNotification({ message: `Defeated! Respawning at The Lobby...`, outcome: 'failure', action: 'battle' })
-      setRoomEnemies([])
-      handleAction({ type: 'teleport', data: { toRoomId: payload.respawnRoomId ?? '999' } })
+      // If player died on the first turn, let the panel show the result briefly
+      const turnCount = useGameStore.getState().battle.turnCount
+      if (turnCount <= 1) {
+        setTimeout(applyDefeat, 1500)
+      } else {
+        applyDefeat()
+      }
     })
 
     const cleanupFled = socketHandlers.onBattleFled((payload) => {
@@ -2922,6 +2955,11 @@ export default function GameInterface() {
                                   onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
                                   onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
                                   isActing={isLoadingRoom}
+                                  playerName={player.username}
+                                  playerLevel={player.level}
+                                  playerMp={player.mp}
+                                  playerMpMax={player.mpMax}
+                                  weaponIconName={weaponIconName}
                                 />
                               </div>
                             )}
@@ -2947,7 +2985,7 @@ export default function GameInterface() {
                         </div>
 
                         {/* D-pad */}
-                        <div className="flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50">
+                        <div className={`flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50 ${battle.isInBattle ? 'hidden' : ''}`}>
                           {/* Teleport button - left edge */}
                           <div className="absolute left-4 top-4 flex flex-row md:flex-col gap-2 z-10">
                             <button

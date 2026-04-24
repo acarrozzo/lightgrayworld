@@ -38,10 +38,10 @@ async function handleEatRedberry(playerId, roomState, playerItemId) {
     return createErrorResult('eat', 'This action can only be used on redberries')
   }
 
-  // Calculate new HP (increase by 1, capped at hpMax)
+  // Calculate new HP (increase by 5, capped at hpMax)
   const currentHp = player.hp ?? 0
   const hpMax = player.hpMax ?? 10
-  const newHp = Math.min(hpMax, currentHp + 1)
+  const newHp = Math.min(hpMax, currentHp + 5)
 
   try {
     // Remove item from inventory and update HP in database
@@ -74,7 +74,7 @@ async function handleEatRedberry(playerId, roomState, playerItemId) {
     // Get updated inventory
     const updatedInventory = await getPlayerInventory(playerId)
 
-    const message = `You eat the redberry. You gain 1 HP.`
+    const message = `You eat the redberry. You gain 5 HP.`
     const hpChange = newHp - currentHp
 
     const data = {
@@ -192,6 +192,147 @@ async function handleEatFlower(playerId, roomState, playerItemId) {
   }
 }
 
+async function handleEatBlueberry(playerId, roomState, playerItemId) {
+  const player = roomState.players.get(playerId)
+  if (!player) return createErrorResult('eat', 'Player not found in this room')
+  if (!playerItemId) return createErrorResult('eat', 'Item ID is required')
+
+  roomState.touchActivity()
+
+  const inventory = await getPlayerInventory(playerId)
+  const item = inventory.find((item) => item.id === playerItemId)
+  if (!item) return createErrorResult('eat', 'Item not found in your inventory')
+  if (item.template.slug !== 'blueberry') return createErrorResult('eat', 'This action can only be used on blueberries')
+
+  const currentMp = player.mp ?? 0
+  const mpMax = player.mpMax ?? 10
+  const newMp = Math.min(mpMax, currentMp + 5)
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (item.quantity === 1) {
+        await tx.playerItem.delete({ where: { id: playerItemId } })
+      } else {
+        await tx.playerItem.update({ where: { id: playerItemId }, data: { quantity: item.quantity - 1 } })
+      }
+      await tx.user.update({ where: { id: playerId }, data: { mp: newMp } })
+    })
+
+    roomState.updatePlayer(playerId, (state) => ({ ...state, mp: newMp }))
+    const updatedInventory = await getPlayerInventory(playerId)
+    const mpChange = newMp - currentMp
+    const message = `You eat the blueberry. You gain ${mpChange} MP.`
+
+    return {
+      success: true,
+      action: 'eat',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload('eat', 'success', message, {
+          roomId: roomState.roomId, mp: newMp, mpChange, inventory: updatedInventory,
+        }),
+      },
+    }
+  } catch (error) {
+    console.error('Error eating blueberry:', error)
+    return createErrorResult('eat', 'Failed to eat the blueberry')
+  }
+}
+
+async function handleDrinkRedPotion(playerId, roomState, playerItemId) {
+  const player = roomState.players.get(playerId)
+  if (!player) return createErrorResult('drink', 'Player not found in this room')
+  if (!playerItemId) return createErrorResult('drink', 'Item ID is required')
+
+  roomState.touchActivity()
+
+  const inventory = await getPlayerInventory(playerId)
+  const item = inventory.find((item) => item.id === playerItemId)
+  if (!item) return createErrorResult('drink', 'Item not found in your inventory')
+  if (item.template.slug !== 'red-potion') return createErrorResult('drink', 'This action can only be used on red potions')
+
+  const currentHp = player.hp ?? 0
+  const hpMax = player.hpMax ?? 10
+  const newHp = Math.min(hpMax, currentHp + 100)
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (item.quantity === 1) {
+        await tx.playerItem.delete({ where: { id: playerItemId } })
+      } else {
+        await tx.playerItem.update({ where: { id: playerItemId }, data: { quantity: item.quantity - 1 } })
+      }
+      await tx.user.update({ where: { id: playerId }, data: { hp: newHp } })
+    })
+
+    roomState.updatePlayer(playerId, (state) => ({ ...state, hp: newHp }))
+    const updatedInventory = await getPlayerInventory(playerId)
+    const hpChange = newHp - currentHp
+    const message = `You drink the red potion. You gain ${hpChange} HP.`
+
+    return {
+      success: true,
+      action: 'drink',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload('drink', 'success', message, {
+          roomId: roomState.roomId, hp: newHp, hpChange, inventory: updatedInventory,
+        }),
+      },
+    }
+  } catch (error) {
+    console.error('Error drinking red potion:', error)
+    return createErrorResult('drink', 'Failed to drink the red potion')
+  }
+}
+
+async function handleDrinkBluePotion(playerId, roomState, playerItemId) {
+  const player = roomState.players.get(playerId)
+  if (!player) return createErrorResult('drink', 'Player not found in this room')
+  if (!playerItemId) return createErrorResult('drink', 'Item ID is required')
+
+  roomState.touchActivity()
+
+  const inventory = await getPlayerInventory(playerId)
+  const item = inventory.find((item) => item.id === playerItemId)
+  if (!item) return createErrorResult('drink', 'Item not found in your inventory')
+  if (item.template.slug !== 'blue-potion') return createErrorResult('drink', 'This action can only be used on blue potions')
+
+  const currentMp = player.mp ?? 0
+  const mpMax = player.mpMax ?? 10
+  const newMp = Math.min(mpMax, currentMp + 100)
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (item.quantity === 1) {
+        await tx.playerItem.delete({ where: { id: playerItemId } })
+      } else {
+        await tx.playerItem.update({ where: { id: playerItemId }, data: { quantity: item.quantity - 1 } })
+      }
+      await tx.user.update({ where: { id: playerId }, data: { mp: newMp } })
+    })
+
+    roomState.updatePlayer(playerId, (state) => ({ ...state, mp: newMp }))
+    const updatedInventory = await getPlayerInventory(playerId)
+    const mpChange = newMp - currentMp
+    const message = `You drink the blue potion. You gain ${mpChange} MP.`
+
+    return {
+      success: true,
+      action: 'drink',
+      playerEvent: {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload('drink', 'success', message, {
+          roomId: roomState.roomId, mp: newMp, mpChange, inventory: updatedInventory,
+        }),
+      },
+    }
+  } catch (error) {
+    console.error('Error drinking blue potion:', error)
+    return createErrorResult('drink', 'Failed to drink the blue potion')
+  }
+}
+
 const ITEM_ACTIONS = {
   'welcome-book': {
     'read book': {
@@ -211,6 +352,15 @@ const ITEM_ACTIONS = {
   },
   'redberry': {
     'eat': handleEatRedberry,
+  },
+  'blueberry': {
+    'eat': handleEatBlueberry,
+  },
+  'red-potion': {
+    'drink': handleDrinkRedPotion,
+  },
+  'blue-potion': {
+    'drink': handleDrinkBluePotion,
   },
 }
 

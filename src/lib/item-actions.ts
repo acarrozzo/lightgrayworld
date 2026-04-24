@@ -15,6 +15,15 @@ export const ITEM_ACTIONS: Record<string, ItemAction[]> = {
   'redberry': [
     { action: 'eat', label: 'Eat', icon: 'redberry', className: 'bg-red-500/70 hover:bg-red-500' },
   ],
+  'blueberry': [
+    { action: 'eat', label: 'Eat', icon: 'blueberry', className: 'bg-blue-500/70 hover:bg-blue-500' },
+  ],
+  'red-potion': [
+    { action: 'drink', label: 'Drink', icon: 'red-potion', className: 'bg-red-600/70 hover:bg-red-600' },
+  ],
+  'blue-potion': [
+    { action: 'drink', label: 'Drink', icon: 'blue-potion', className: 'bg-blue-600/70 hover:bg-blue-600' },
+  ],
 }
 
 /**
