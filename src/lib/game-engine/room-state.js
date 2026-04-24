@@ -813,15 +813,21 @@ class RoomState {
       data.toast = toastMessage
     }
 
+    const playerEvents = [
+      {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('complete_quest', 'success', `Quest completed: ${questTitle}.${rewardText}`, data),
+      },
+    ]
+
+    if (result.levelUp?.leveled) {
+      playerEvents.push({ event: 'player:level-up', payload: result.levelUp })
+    }
+
     return {
       success: true,
       action: 'complete_quest',
-      playerEvents: [
-        {
-          event: 'action:feedback',
-          payload: this.createFeedbackPayload('complete_quest', 'success', `Quest completed: ${questTitle}.${rewardText}`, data),
-        },
-      ],
+      playerEvents,
     }
   }
 

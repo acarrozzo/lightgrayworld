@@ -19,11 +19,18 @@ async function handleAcceptQuest(request: AuthenticatedRequest) {
     }
 
     const user = request.user
-    const questProgress = await acceptQuest(user.id, questId)
+    const result = await acceptQuest(user.id, questId) as { success: boolean; error?: string; questProgress?: any }
+
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error || 'Failed to accept quest' },
+        { status: 400 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
-      quest: questProgress,
+      quest: result.questProgress,
     })
   } catch (error) {
     console.error('Accept quest error:', error)
