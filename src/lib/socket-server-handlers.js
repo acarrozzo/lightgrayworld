@@ -20,6 +20,38 @@ const LAST_ACTIVE_PERSIST_INTERVAL = 60 * 1000
 const { createWorldFeedEvent } = require('./services/world-feed-event-service.js')
 const { createIdleDetectionService } = require('./services/idle-detection-service.js')
 
+async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
+  const roomEnemyConfig = getRoomEnemies(toRoom)
+  if (!roomEnemyConfig) return
+
+  const aggressiveSlug = roomEnemyConfig.enemies.find((slug) => {
+    const e = getEnemy(slug)
+    return e && e.isAggressive
+  })
+  if (!aggressiveSlug) return
+
+  const destRoomState = gameEngine.getOrCreateRoom(toRoom)
+  if (destRoomState.activeBattles.has(player.id)) return
+
+  try {
+    await gameEngine.processUserAction({
+      playerId: player.id,
+      roomId: toRoom,
+      action: { type: 'start_battle', data: { enemySlug: aggressiveSlug } },
+    })
+    console.log(`[Socket] Auto-battle started: ${player.username} vs ${aggressiveSlug} in room ${toRoom}`)
+  } catch (err) {
+    console.error('[Socket] Failed to auto-start battle:', err)
+    socket.emit('action:feedback', {
+      action: 'start_battle',
+      message: 'An enemy is here but failed to engage. Try attacking manually.',
+      outcome: 'failure',
+      ts: Date.now(),
+      success: false,
+    })
+  }
+}
+
 function emitActionFeedback(socket, payload) {
   const ts = payload.ts || Date.now()
   const success = payload.outcome === 'success'
@@ -492,7 +524,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           roomId: fromRoom,
           action: {
             type: 'move',
-            data: { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData, direction },
+            data: { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData, direction, directionValidated: true },
           },
         })
 
@@ -554,29 +586,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             data: result?.data || { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData },
           })
 
-          // Aggressive enemy auto-battle trigger
-          const roomEnemyConfig = getRoomEnemies(toRoom)
-          if (roomEnemyConfig) {
-            const aggressiveSlug = roomEnemyConfig.enemies.find((slug) => {
-              const e = getEnemy(slug)
-              return e && e.isAggressive
-            })
-            if (aggressiveSlug) {
-              const destRoomState = gameEngine.getOrCreateRoom(toRoom)
-              if (!destRoomState.activeBattles.has(player.id)) {
-                try {
-                  await gameEngine.processUserAction({
-                    playerId: player.id,
-                    roomId: toRoom,
-                    action: { type: 'start_battle', data: { enemySlug: aggressiveSlug } },
-                  })
-                  console.log(`[Socket] Auto-battle started: ${player.username} vs ${aggressiveSlug} in room ${toRoom}`)
-                } catch (err) {
-                  console.error('[Socket] Failed to auto-start battle:', err)
-                }
-              }
-            }
-          }
+          await maybeStartAutoBattle({ socket, player, toRoom, gameEngine })
         } else {
           console.log(`[Socket] Movement failed or blocked, not transitioning player room`)
           // The action:feedback event will be emitted by the engine with the error/modal
@@ -801,13 +811,35 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             enemies: destEnemies,
           }
 
-          await transitionPlayerRoom({ player, fromRoom, toRoom: toRoomId, exitDirection: null, entryDirection: null, isTeleport: true })
-
-          socket.emit('action:confirmed', {
-            action: 'move',
-            success: true,
-            data: { fromRoom, toRoom: toRoomId, toRoomName: destinationRoom.name, roomData: normalizedRoomData },
+          const result = await gameEngine.processUserAction({
+            playerId: player.id,
+            roomId: fromRoom,
+            action: {
+              type: 'move',
+              data: {
+                fromRoom,
+                toRoom: toRoomId,
+                toRoomName: destinationRoom.name,
+                roomData: normalizedRoomData,
+                direction: null,
+                directionValidated: true,
+              },
+            },
           })
+
+          if (result && result.success === true) {
+            await transitionPlayerRoom({ player, fromRoom, toRoom: toRoomId, exitDirection: null, entryDirection: null, isTeleport: true })
+
+            socket.emit('action:confirmed', {
+              action: 'move',
+              success: true,
+              data: result?.data || { fromRoom, toRoom: toRoomId, toRoomName: destinationRoom.name, roomData: normalizedRoomData },
+            })
+
+            await maybeStartAutoBattle({ socket, player, toRoom: toRoomId, gameEngine })
+          } else {
+            emitActionFeedback(socket, { action: 'teleport', message: result?.message || 'Teleport failed', outcome: 'failure' })
+          }
           return
         }
 
@@ -829,7 +861,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
         socket.emit('action:confirmed', {
           action: actionType,
-          success: true,
+          success: result?.success ?? false,
           data: result?.data,
         })
       } catch (error) {

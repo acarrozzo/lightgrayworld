@@ -93,15 +93,6 @@ class GameEngine {
     // Update cached mirror (not authoritative source)
     this.currentWorldTickNumber = tickId
     this.nextWorldTickAt = nextTickAt
-    // Broadcast global world tick for all clients (authoritative countdown)
-    this.io.emit('world:tick', {
-      tickNumber: tickId,
-      tickId: tickId, // for backwards compatibility with GameFeed
-      timestamp: tickTimestamp,
-      nextTickAt,
-      tickIntervalMs: this.tickClock.tickMs,
-      roomId: 'global', // indicate this is a global tick, not room-specific
-    })
     const roomStats = []
     let activeRooms = 0
     let roomsWithUpdates = 0
@@ -165,17 +156,6 @@ class GameEngine {
       actionType === 'chat' ||
       (typeof actionType === 'string' && actionType.startsWith('talk'))
 
-    if (!isChatAction) {
-      prisma.user
-        .update({ where: { id: playerId }, data: { clicks: { increment: 1 } }, select: { clicks: true } })
-        .then(({ clicks }) => {
-          this.emitToPlayer(playerId, 'player:clicks-update', { clicks })
-        })
-        .catch((err) => {
-          console.error('[GameEngine] Failed to increment clicks for player', playerId, err)
-        })
-    }
-
     return this.playerQueue.enqueueAction(
       playerId,
       async () => {
@@ -193,6 +173,17 @@ class GameEngine {
           currentTickNumber,
           nextTickAt
         )
+
+        if (!isChatAction) {
+          prisma.user
+            .update({ where: { id: playerId }, data: { clicks: { increment: 1 } }, select: { clicks: true } })
+            .then(({ clicks }) => {
+              this.emitToPlayer(playerId, 'player:clicks-update', { clicks })
+            })
+            .catch((err) => {
+              console.error('[GameEngine] Failed to increment clicks for player', playerId, err)
+            })
+        }
 
         this.handleActionResult({ roomId, playerId, result })
         return result
@@ -216,9 +207,6 @@ class GameEngine {
         console.log(`[GameEngine] Emitting player event: ${event} to player ${playerId}`)
         this.emitToPlayer(playerId, event, payload)
       })
-    } else if (result.playerEvent) {
-      console.log(`[GameEngine] Emitting player event: ${result.playerEvent.event} to player ${playerId}`)
-      this.emitToPlayer(playerId, result.playerEvent.event, result.playerEvent.payload)
     }
 
     if (result.roomEvent) {

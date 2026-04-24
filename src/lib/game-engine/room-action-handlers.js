@@ -157,27 +157,29 @@ const ROOM_ACTIONS = {
         return {
           success: true,
           action: 'talk to old man',
-          playerEvent: {
-            event: 'action:feedback',
-            payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man.', {
-              roomId: roomState.roomId,
-              showModal: true,
-              modalContent: {
-                type: 'icon',
-                icon: 'npc-oldman',
-                iconColor: 'yellow-400',
-                title: 'Old Man',
-                header: 'Well met, traveler!',
-                message: [
-                  "Hey there young whippersnapper, I could use the help of a bright adventurer like yourself. ",
-                  "Bring me a yellow flower from the flower patch to the north and you will do this old man a great favor."
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man.', {
+                roomId: roomState.roomId,
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'npc-oldman',
+                  iconColor: 'yellow-400',
+                  title: 'Old Man',
+                  header: 'Well met, traveler!',
+                  message: [
+                    "Hey there young whippersnapper, I could use the help of a bright adventurer like yourself. ",
+                    "Bring me a yellow flower from the flower patch to the north and you will do this old man a great favor."
+                  ],
+                },
+                buttons: [
+                  { label: 'I can bring you a flower', direction: 'complete_quest:quest_001' },
                 ],
-              },
-              buttons: [
-                { label: 'I can bring you a flower', direction: 'complete_quest:quest_001' },
-              ],
-            }),
-          },
+              }),
+            },
+          ],
         }
       }
 
@@ -193,43 +195,47 @@ const ROOM_ACTIONS = {
           return {
             success: true,
             action: 'talk to old man',
-            playerEvent: {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man with the flower.', {
-                roomId: roomState.roomId,
-                showModal: true,
-                modalContent: {
-                  type: 'icon',
-                  icon: 'npc-oldman',
-                  iconColor: 'yellow-400',
-                  title: 'Talk to Old Man',
-                  message: 'The Old Man\'s eyes light up as he sees the yellow flower in your hand. "Perfect! That\'s exactly what I needed. Thank you so much, traveler!"',
-                },
-                buttons: [
-                  { label: 'Complete Quest', direction: 'complete_quest:quest_002' },
-                ],
-              }),
-            },
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man with the flower.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-oldman',
+                    iconColor: 'yellow-400',
+                    title: 'Talk to Old Man',
+                    message: 'The Old Man\'s eyes light up as he sees the yellow flower in your hand. "Perfect! That\'s exactly what I needed. Thank you so much, traveler!"',
+                  },
+                  buttons: [
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_002' },
+                  ],
+                }),
+              },
+            ],
           }
         } else {
           // Player doesn't have flower - show reminder
           return {
             success: true,
             action: 'talk to old man',
-            playerEvent: {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
-                roomId: roomState.roomId,
-                showModal: true,
-                modalContent: {
-                  type: 'icon',
-                  icon: 'npc-oldman',
-                  iconColor: 'yellow-400',
-                  title: 'Talk to Old Man',
-                  message: 'The Old Man looks at you expectantly. "Have you found that yellow flower yet? You can find them in the flower patch to the north. Just bring me one when you have it!"',
-                },
-              }),
-            },
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-oldman',
+                    iconColor: 'yellow-400',
+                    title: 'Talk to Old Man',
+                    message: 'The Old Man looks at you expectantly. "Have you found that yellow flower yet? You can find them in the flower patch to the north. Just bring me one when you have it!"',
+                  },
+                }),
+              },
+            ],
           }
         }
       }
@@ -240,22 +246,24 @@ const ROOM_ACTIONS = {
       return {
         success: true,
         action: 'talk to old man',
-        playerEvent: {
-          event: 'action:feedback',
-          payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
-            roomId: roomState.roomId,
-            showModal: true,
-            modalContent: {
-              type: 'icon',
-              icon: 'npc-oldman',
-              iconColor: 'yellow-400',
-              title: 'Talk to Old Man',
-              message: quest002Progress && quest002Progress.completed
-                ? 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."'
-                : 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
-            },
-          }),
-        },
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: {
+                type: 'icon',
+                icon: 'npc-oldman',
+                iconColor: 'yellow-400',
+                title: 'Talk to Old Man',
+                message: quest002Progress && quest002Progress.completed
+                  ? 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."'
+                  : 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
+              },
+            }),
+          },
+        ],
       }
     },
   },
@@ -273,23 +281,25 @@ const ROOM_ACTIONS = {
         return {
           success: true,
           action: 'talk to young soldier',
-          playerEvent: {
-            event: 'action:feedback',
-            payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
-              roomId: roomState.roomId,
-              showModal: true,
-              modalContent: {
-                type: 'icon',
-                icon: 'npc-youngsoldier',
-                iconColor: 'blue-400',
-                title: 'Talk to Young Soldier',
-                message: 'The Young Soldier turns to face you with a determined look. "Greetings, traveler! I see you\'ve spoken with the Old Man. He\'s a wise one, but let me give you some advice: in this world, you need to be prepared. Make sure you\'re properly armed before you venture too far."',
-              },
-              buttons: [
-                { label: 'Continue', direction: 'complete_quest:quest_003' },
-              ],
-            }),
-          },
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
+                roomId: roomState.roomId,
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'npc-youngsoldier',
+                  iconColor: 'blue-400',
+                  title: 'Talk to Young Soldier',
+                  message: 'The Young Soldier turns to face you with a determined look. "Greetings, traveler! I see you\'ve spoken with the Old Man. He\'s a wise one, but let me give you some advice: in this world, you need to be prepared. Make sure you\'re properly armed before you venture too far."',
+                },
+                buttons: [
+                  { label: 'Continue', direction: 'complete_quest:quest_003' },
+                ],
+              }),
+            },
+          ],
         }
       }
 
@@ -305,43 +315,47 @@ const ROOM_ACTIONS = {
           return {
             success: true,
             action: 'talk to young soldier',
-            playerEvent: {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
-                roomId: roomState.roomId,
-                showModal: true,
-                modalContent: {
-                  type: 'icon',
-                  icon: 'npc-youngsoldier',
-                  iconColor: 'blue-400',
-                  title: 'Talk to Young Soldier',
-                  message: 'The Young Soldier nods approvingly as he sees your weapon. "Good. Now you\'re armed. That\'s much better. You\'ll need that if you plan to explore beyond these safe areas."',
-                },
-                buttons: [
-                  { label: 'Complete Quest', direction: 'complete_quest:quest_004' },
-                ],
-              }),
-            },
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-youngsoldier',
+                    iconColor: 'blue-400',
+                    title: 'Talk to Young Soldier',
+                    message: 'The Young Soldier nods approvingly as he sees your weapon. "Good. Now you\'re armed. That\'s much better. You\'ll need that if you plan to explore beyond these safe areas."',
+                  },
+                  buttons: [
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_004' },
+                  ],
+                }),
+              },
+            ],
           }
         } else {
           // Player doesn't have MAIN_HAND item equipped - show reminder
           return {
             success: true,
             action: 'talk to young soldier',
-            playerEvent: {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to the Young Soldier.', {
-                roomId: roomState.roomId,
-                showModal: true,
-                modalContent: {
-                  type: 'icon',
-                  icon: 'npc-youngsoldier',
-                  iconColor: 'blue-400',
-                  title: 'Talk to Young Soldier',
-                  message: 'The Young Soldier looks at you with concern. "You\'re still unarmed? That\'s dangerous. Open your inventory and equip something into your Main Hand. You can\'t rely on your fists forever."',
-                },
-              }),
-            },
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to the Young Soldier.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-youngsoldier',
+                    iconColor: 'blue-400',
+                    title: 'Talk to Young Soldier',
+                    message: 'The Young Soldier looks at you with concern. "You\'re still unarmed? That\'s dangerous. Open your inventory and equip something into your Main Hand. You can\'t rely on your fists forever."',
+                  },
+                }),
+              },
+            ],
           }
         }
       }
@@ -350,22 +364,24 @@ const ROOM_ACTIONS = {
       return {
         success: true,
         action: 'talk to young soldier',
-        playerEvent: {
-          event: 'action:feedback',
-          payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to the Young Soldier.', {
-            roomId: roomState.roomId,
-            showModal: true,
-            modalContent: {
-              type: 'icon',
-              icon: 'npc-youngsoldier',
-              iconColor: 'blue-400',
-              title: 'Talk to Young Soldier',
-              message: quest004Progress && quest004Progress.completed
-                ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
-                : 'The Young Soldier stands at attention. "Help out the Old Man first and then come back to me."Hello there Young Adventurer. I\'m a Young Soldier sent here from Domus to assist you. Feel free to take any of the training weapons here."',
-            },
-          }),
-        },
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to the Young Soldier.', {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: {
+                type: 'icon',
+                icon: 'npc-youngsoldier',
+                iconColor: 'blue-400',
+                title: 'Talk to Young Soldier',
+                message: quest004Progress && quest004Progress.completed
+                  ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
+                  : 'The Young Soldier stands at attention. "Help out the Old Man first and then come back to me."Hello there Young Adventurer. I\'m a Young Soldier sent here from Domus to assist you. Feel free to take any of the training weapons here."',
+              },
+            }),
+          },
+        ],
       }
     },
   },
@@ -430,19 +446,21 @@ const ROOM_ACTIONS = {
       return {
         success: true,
         action: 'view shop',
-        playerEvent: {
-          event: 'action:feedback',
-          payload: createActionFeedbackPayload('view shop', 'success', 'You open the shop interface.', {
-            roomId: roomState.roomId,
-            showModal: true,
-            modalContent: {
-              type: 'shop',
-              shopItems,
-              playerCurrency: player.currency,
-              playerInventory: inventory,
-            },
-          }),
-        },
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('view shop', 'success', 'You open the shop interface.', {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: {
+                type: 'shop',
+                shopItems,
+                playerCurrency: player.currency,
+                playerInventory: inventory,
+              },
+            }),
+          },
+        ],
       }
     },
   },
@@ -540,10 +558,12 @@ function executeBasicDisplay(actionName, message, playerId, roomState, showModal
   return {
     success: true,
     action: actionName,
-    playerEvent: {
-      event: 'action:feedback',
-      payload: createActionFeedbackPayload(actionName, 'success', message, data),
-    },
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(actionName, 'success', message, data),
+      },
+    ],
   }
 }
 
@@ -555,10 +575,12 @@ function createErrorResult(action, message) {
     success: false,
     action,
     message,
-    playerEvent: {
-      event: 'action:feedback',
-      payload: createActionFeedbackPayload(action, 'failure', message),
-    },
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(action, 'failure', message),
+      },
+    ],
   }
 }
 
@@ -628,14 +650,16 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
           success: false,
           action: actionName,
           message,
-          playerEvent: {
-            event: 'action:feedback',
-            payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
-              roomId: roomState.roomId,
-              remaining: 0,
-              secondsUntilReset,
-            }),
-          },
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
+                roomId: roomState.roomId,
+                remaining: 0,
+                secondsUntilReset,
+              }),
+            },
+          ],
         }
       }
 
@@ -676,14 +700,16 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
           success: false,
           action: actionName,
           message,
-          playerEvent: {
-            event: 'action:feedback',
-            payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
-              roomId: roomState.roomId,
-              remaining: 0,
-              secondsUntilReset,
-            }),
-          },
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
+                roomId: roomState.roomId,
+                remaining: 0,
+                secondsUntilReset,
+              }),
+            },
+          ],
         }
       }
     } else {
@@ -722,14 +748,16 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
           success: false,
           action: actionName,
           message,
-          playerEvent: {
-            event: 'action:feedback',
-            payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
-              roomId: roomState.roomId,
-              remaining: 0,
-              secondsUntilReset,
-            }),
-          },
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
+                roomId: roomState.roomId,
+                remaining: 0,
+                secondsUntilReset,
+              }),
+            },
+          ],
         }
       }
     }
@@ -801,10 +829,12 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
   return {
     success,
     action: actionName,
-    playerEvent: {
-      event: 'action:feedback',
-      payload: createActionFeedbackPayload(actionName, outcome, message, data),
-    },
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(actionName, outcome, message, data),
+      },
+    ],
   }
 }
 

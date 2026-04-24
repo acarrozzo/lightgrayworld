@@ -2,6 +2,7 @@ const { prisma } = require('../db-client')
 const { rand } = require('./battle-calculator')
 const { randomUUID } = require('crypto')
 const { checkAndApplyLevelUp } = require('./services/leveling-service')
+const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 
 async function handleBattleWin(playerId, battleState) {
   const enemy = battleState.enemy
@@ -33,26 +34,49 @@ async function handleBattleWin(playerId, battleState) {
     create: { userId: playerId, monster: enemy.slug, kills: 1 },
   })
 
-  // Add item drops (respects maxPerPlayer)
+  // Add item drops (batched to minimise DB round-trips)
   const droppedItems = []
-  for (const slug of droppedSlugs) {
-    const template = await prisma.itemTemplate.findUnique({ where: { slug } })
-    if (!template) {
-      console.error(`handleBattleWin: item template not found for slug "${slug}"`)
-      continue
-    }
-
-    if (template.maxPerPlayer !== null) {
-      const existing = await prisma.playerItem.findFirst({
-        where: { playerId, templateId: template.id },
-      })
-      if (existing) continue
-    }
-
-    await prisma.playerItem.create({
-      data: { id: randomUUID(), playerId, templateId: template.id, quantity: 1 },
+  if (droppedSlugs.length > 0) {
+    // 1 read: fetch all templates at once
+    const templates = await prisma.itemTemplate.findMany({
+      where: { slug: { in: droppedSlugs } },
     })
-    droppedItems.push(template.name)
+    const templateBySlug = new Map(templates.map((t) => [t.slug, t]))
+
+    // Identify which templates have a maxPerPlayer cap
+    const cappedTemplateIds = templates
+      .filter((t) => t.maxPerPlayer !== null)
+      .map((t) => t.id)
+
+    // 1 read: check existing player items for all capped templates at once
+    const existingCapped = cappedTemplateIds.length > 0
+      ? await prisma.playerItem.findMany({
+          where: { playerId, templateId: { in: cappedTemplateIds } },
+          select: { templateId: true },
+        })
+      : []
+    const ownedTemplateIds = new Set(existingCapped.map((i) => i.templateId))
+
+    // Determine which slugs can actually be granted
+    const toCreate = []
+    for (const slug of droppedSlugs) {
+      const template = templateBySlug.get(slug)
+      if (!template) {
+        console.error(`handleBattleWin: item template not found for slug "${slug}"`)
+        continue
+      }
+      if (template.maxPerPlayer !== null && ownedTemplateIds.has(template.id)) continue
+      toCreate.push(template)
+    }
+
+    // 1 write: create all new items in one call
+    if (toCreate.length > 0) {
+      await prisma.playerItem.createMany({
+        data: toCreate.map((t) => ({ id: randomUUID(), playerId, templateId: t.id, quantity: 1 })),
+        skipDuplicates: true,
+      })
+      toCreate.forEach((t) => droppedItems.push(t.name))
+    }
   }
 
   await prisma.battleLog.create({
@@ -84,7 +108,7 @@ async function handleBattleDefeat(playerId, battleState) {
       hp: 1,
       inFight: false,
       deaths: { increment: 1 },
-      currentRoom: '999',
+      currentRoom: RESPAWN_ROOM_ID,
     },
   })
 

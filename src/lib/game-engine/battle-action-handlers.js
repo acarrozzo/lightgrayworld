@@ -4,6 +4,7 @@ const { rand, resolveTurn, getOtherCombatantCount } = require('./battle-calculat
 const { handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
 const { getRoomEnemies } = require('../game-data/room-enemies')
+const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 
 function makeFeedback(action, outcome, message, data = {}) {
   const ts = Date.now()
@@ -23,10 +24,12 @@ function errorResult(action, message) {
     success: false,
     action,
     message,
-    playerEvent: {
-      event: 'action:feedback',
-      payload: makeFeedback(action, 'failure', message),
-    },
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: makeFeedback(action, 'failure', message),
+      },
+    ],
   }
 }
 
@@ -216,7 +219,7 @@ async function executeStartBattle(action, playerId, roomState) {
       event: 'battle:defeat',
       payload: {
         enemyName: enemy.name,
-        respawnRoomId: '999',
+        respawnRoomId: RESPAWN_ROOM_ID,
         playerHp: 1,
         message: `The ${enemy.name} overwhelms you. You black out...`,
         summary: {
@@ -368,30 +371,32 @@ async function executePlayerAttack(action, playerId, roomState) {
     return {
       success: true,
       action: 'player_attack',
-      playerEvent: {
-        event: 'battle:defeat',
-        payload: {
-          enemyName: battleState.enemyName,
-          respawnRoomId: '999',
-          playerHp: 1,
-          message: `The ${battleState.enemyName} overwhelms you. You black out...`,
-          summary: {
-            outcome: 'LOSS',
+      playerEvents: [
+        {
+          event: 'battle:defeat',
+          payload: {
             enemyName: battleState.enemyName,
-            enemyIcon: battleState.enemy.icon,
-            enemySlug: battleState.enemySlug,
-            turnsCount: battleState.turnCount,
-            totalDamageDealt: battleState.totalDamageDealt,
-            totalDamageReceived: battleState.totalDamageReceived,
-            maxSingleHit: battleState.maxSingleHit,
-            xpEarned: 0,
-            goldEarned: 0,
-            itemsDropped: [],
-            multiplayerBonus: battleState.multiplayerBonusUsed,
-          lastTurn: battleState.lastTurnResult,
+            respawnRoomId: RESPAWN_ROOM_ID,
+            playerHp: 1,
+            message: `The ${battleState.enemyName} overwhelms you. You black out...`,
+            summary: {
+              outcome: 'LOSS',
+              enemyName: battleState.enemyName,
+              enemyIcon: battleState.enemy.icon,
+              enemySlug: battleState.enemySlug,
+              turnsCount: battleState.turnCount,
+              totalDamageDealt: battleState.totalDamageDealt,
+              totalDamageReceived: battleState.totalDamageReceived,
+              maxSingleHit: battleState.maxSingleHit,
+              xpEarned: 0,
+              goldEarned: 0,
+              itemsDropped: [],
+              multiplayerBonus: battleState.multiplayerBonusUsed,
+              lastTurn: battleState.lastTurnResult,
+            },
           },
         },
-      },
+      ],
       // Bug fix #4: notify room of defeat
       broadcastEvents: [
         {
@@ -417,26 +422,28 @@ async function executePlayerAttack(action, playerId, roomState) {
   return {
     success: true,
     action: 'player_attack',
-    playerEvent: {
-      event: 'battle:turn',
-      payload: {
-        ...snapshot,
-        playerHp: newHp,
-        playerHpMax: updatedPlayer.hpMax,
-        playerDealtDamage: turnResult.playerDealtDamage,
-        enemyDealtDamage: turnResult.enemyDealtDamage,
-        playerRaw: turnResult.playerRaw,
-        enemyRaw: turnResult.enemyRaw,
-        playerBlocked: turnResult.playerBlocked,
-        enemyBlocked: turnResult.enemyBlocked,
-        playerStrMax: turnResult.playerStrMax,
-        playerDefMax: turnResult.playerDefMax,
-        enemyStrMax: turnResult.enemyStrMax,
-        multiplayerBonus: turnResult.multiplayerBonus,
-        bonusPercent: turnResult.bonusPercent,
-        message: parts.join(' '),
+    playerEvents: [
+      {
+        event: 'battle:turn',
+        payload: {
+          ...snapshot,
+          playerHp: newHp,
+          playerHpMax: updatedPlayer.hpMax,
+          playerDealtDamage: turnResult.playerDealtDamage,
+          enemyDealtDamage: turnResult.enemyDealtDamage,
+          playerRaw: turnResult.playerRaw,
+          enemyRaw: turnResult.enemyRaw,
+          playerBlocked: turnResult.playerBlocked,
+          enemyBlocked: turnResult.enemyBlocked,
+          playerStrMax: turnResult.playerStrMax,
+          playerDefMax: turnResult.playerDefMax,
+          enemyStrMax: turnResult.enemyStrMax,
+          multiplayerBonus: turnResult.multiplayerBonus,
+          bonusPercent: turnResult.bonusPercent,
+          message: parts.join(' '),
+        },
       },
-    },
+    ],
   }
 }
 
@@ -460,10 +467,12 @@ async function executePlayerFlee(action, playerId, roomState) {
   return {
     success: true,
     action: 'player_flee',
-    playerEvent: {
-      event: 'battle:fled',
-      payload: { message: 'You managed to escape!' },
-    },
+    playerEvents: [
+      {
+        event: 'battle:fled',
+        payload: { message: 'You managed to escape!' },
+      },
+    ],
   }
 }
 

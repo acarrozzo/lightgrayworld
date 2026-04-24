@@ -148,13 +148,15 @@ class RoomState {
     return {
       success: true,
       action: 'pickup_item',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('pickup_item', 'success', result.message, {
-          inventory: result.inventory,
-          roomItems: result.roomItems,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('pickup_item', 'success', result.message, {
+            inventory: result.inventory,
+            roomItems: result.roomItems,
+          }),
+        },
+      ],
       broadcastEvents: [
         {
           event: 'room:items:update',
@@ -190,13 +192,15 @@ class RoomState {
     return {
       success: true,
       action: 'drop_item',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('drop_item', 'success', result.message, {
-          inventory: result.inventory,
-          roomItems: result.roomItems,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('drop_item', 'success', result.message, {
+            inventory: result.inventory,
+            roomItems: result.roomItems,
+          }),
+        },
+      ],
       broadcastEvents: [
         {
           event: 'room:items:update',
@@ -230,10 +234,11 @@ class RoomState {
     }
 
     const direction = action.data?.direction
+    const directionValidated = action.data?.directionValidated === true
 
     // 1. REACHABILITY VALIDATION (primary constraint)
-    // Verify that the source room has an exit in the direction that leads to the destination
-    if (direction) {
+    // Skip if the socket handler already validated the direction (avoids redundant DB fetch)
+    if (direction && !directionValidated) {
       try {
         const sourceRoom = await prisma.room.findUnique({
           where: { roomId: fromRoom },
@@ -280,14 +285,16 @@ class RoomState {
         return {
           success: false,
           action: 'move',
-          playerEvent: {
-            event: 'action:feedback',
-            payload: this.createFeedbackPayload('move', 'failure', message, {
-              roomId: this.roomId,
-              showModal: true,
-              modalContent: gate.modalContent || message,
-            }),
-          },
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: this.createFeedbackPayload('move', 'failure', message, {
+                roomId: this.roomId,
+                showModal: true,
+                modalContent: gate.modalContent || message,
+              }),
+            },
+          ],
         }
       }
     }
@@ -306,10 +313,12 @@ class RoomState {
       success: true,
       action: 'move',
       data: { fromRoom, toRoom, toRoomName, roomData },
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('move', 'success', message, { toRoom, toRoomName, roomData, direction }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('move', 'success', message, { toRoom, toRoomName, roomData, direction }),
+        },
+      ],
       broadcastEvents: [
         {
           event: 'room:player-moved',
@@ -394,10 +403,12 @@ class RoomState {
     return {
       success: true,
       action: 'search',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('search', 'success', 'You search the room and find nothing.'),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('search', 'success', 'You search the room and find nothing.'),
+        },
+      ],
     }
   }
 
@@ -405,6 +416,11 @@ class RoomState {
     const player = this.players.get(playerId)
     if (!player) {
       return this.createErrorResult('rest', 'Player not found in this room')
+    }
+
+    const activeBattle = this.activeBattles.get(playerId)
+    if (activeBattle && activeBattle.isActive) {
+      return this.createErrorResult('rest', 'You cannot rest during combat.')
     }
 
     this.touchActivity()
@@ -420,12 +436,14 @@ class RoomState {
     return {
       success: true,
       action: 'rest',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('rest', 'success', `You recover ${recovered} HP.`, {
-          hp: newHp,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('rest', 'success', `You recover ${recovered} HP.`, {
+            hp: newHp,
+          }),
+        },
+      ],
     }
   }
 
@@ -443,13 +461,15 @@ class RoomState {
     return {
       success: true,
       action: 'look',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('look', 'success', message, {
-          roomId: this.roomId,
-          playerCount: this.players.size,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('look', 'success', message, {
+            roomId: this.roomId,
+            playerCount: this.players.size,
+          }),
+        },
+      ],
     }
   }
 
@@ -481,14 +501,16 @@ class RoomState {
     return {
       success: true,
       action: 'examine_item',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('examine_item', 'success', message, {
-          roomId: this.roomId,
-          itemName,
-          itemDescription,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('examine_item', 'success', message, {
+            roomId: this.roomId,
+            itemName,
+            itemDescription,
+          }),
+        },
+      ],
     }
   }
 
@@ -520,13 +542,15 @@ class RoomState {
     return {
       success: true,
       action: 'examine_player_item',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('examine_player_item', 'success', message, {
-          itemName,
-          itemDescription,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('examine_player_item', 'success', message, {
+            itemName,
+            itemDescription,
+          }),
+        },
+      ],
     }
   }
 
@@ -599,13 +623,15 @@ class RoomState {
     return {
       success: true,
       action: 'equip_item',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('equip_item', 'success', result.message, {
-          inventory: result.inventory,
-          player: result.player,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('equip_item', 'success', result.message, {
+            inventory: result.inventory,
+            player: result.player,
+          }),
+        },
+      ],
     }
   }
 
@@ -631,13 +657,15 @@ class RoomState {
     return {
       success: true,
       action: 'unequip_item',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('unequip_item', 'success', result.message, {
-          inventory: result.inventory,
-          player: result.player,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('unequip_item', 'success', result.message, {
+            inventory: result.inventory,
+            player: result.player,
+          }),
+        },
+      ],
     }
   }
 
@@ -684,13 +712,15 @@ class RoomState {
     return {
       success: true,
       action: 'accept_quest',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('accept_quest', 'success', `Quest accepted: ${questTitle}`, {
-          roomId: this.roomId,
-          quests: await require('./services/quest-service').getAllQuestProgress(playerId),
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('accept_quest', 'success', `Quest accepted: ${questTitle}`, {
+            roomId: this.roomId,
+            quests: await require('./services/quest-service').getAllQuestProgress(playerId),
+          }),
+        },
+      ],
     }
   }
 
@@ -786,10 +816,12 @@ class RoomState {
     return {
       success: true,
       action: 'complete_quest',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload('complete_quest', 'success', `Quest completed: ${questTitle}.${rewardText}`, data),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('complete_quest', 'success', `Quest completed: ${questTitle}.${rewardText}`, data),
+        },
+      ],
     }
   }
 
@@ -811,10 +843,12 @@ class RoomState {
       success: false,
       action,
       message,
-      playerEvent: {
-        event: 'action:feedback',
-        payload: this.createFeedbackPayload(action, 'failure', message),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload(action, 'failure', message),
+        },
+      ],
     }
   }
 

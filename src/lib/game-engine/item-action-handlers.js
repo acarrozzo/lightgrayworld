@@ -87,10 +87,12 @@ async function handleEatRedberry(playerId, roomState, playerItemId) {
     return {
       success: true,
       action: 'eat',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: createActionFeedbackPayload('eat', 'success', message, data),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('eat', 'success', message, data),
+        },
+      ],
     }
   } catch (error) {
     console.error('Error eating redberry:', error)
@@ -181,10 +183,12 @@ async function handleEatFlower(playerId, roomState, playerItemId) {
     return {
       success: true,
       action: 'eat',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: createActionFeedbackPayload('eat', 'success', message, data),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('eat', 'success', message, data),
+        },
+      ],
     }
   } catch (error) {
     console.error('Error eating flower:', error)
@@ -226,12 +230,14 @@ async function handleEatBlueberry(playerId, roomState, playerItemId) {
     return {
       success: true,
       action: 'eat',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: createActionFeedbackPayload('eat', 'success', message, {
-          roomId: roomState.roomId, mp: newMp, mpChange, inventory: updatedInventory,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('eat', 'success', message, {
+            roomId: roomState.roomId, mp: newMp, mpChange, inventory: updatedInventory,
+          }),
+        },
+      ],
     }
   } catch (error) {
     console.error('Error eating blueberry:', error)
@@ -273,12 +279,14 @@ async function handleDrinkRedPotion(playerId, roomState, playerItemId) {
     return {
       success: true,
       action: 'drink',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: createActionFeedbackPayload('drink', 'success', message, {
-          roomId: roomState.roomId, hp: newHp, hpChange, inventory: updatedInventory,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('drink', 'success', message, {
+            roomId: roomState.roomId, hp: newHp, hpChange, inventory: updatedInventory,
+          }),
+        },
+      ],
     }
   } catch (error) {
     console.error('Error drinking red potion:', error)
@@ -320,12 +328,14 @@ async function handleDrinkBluePotion(playerId, roomState, playerItemId) {
     return {
       success: true,
       action: 'drink',
-      playerEvent: {
-        event: 'action:feedback',
-        payload: createActionFeedbackPayload('drink', 'success', message, {
-          roomId: roomState.roomId, mp: newMp, mpChange, inventory: updatedInventory,
-        }),
-      },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('drink', 'success', message, {
+            roomId: roomState.roomId, mp: newMp, mpChange, inventory: updatedInventory,
+          }),
+        },
+      ],
     }
   } catch (error) {
     console.error('Error drinking blue potion:', error)
@@ -457,10 +467,12 @@ function executeBasicDisplay(actionName, message, playerId, roomState, showModal
   return {
     success: true,
     action: actionName,
-    playerEvent: {
-      event: 'action:feedback',
-      payload: createActionFeedbackPayload(actionName, 'success', message, data),
-    },
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(actionName, 'success', message, data),
+      },
+    ],
   }
 }
 
@@ -472,10 +484,12 @@ function createErrorResult(action, message) {
     success: false,
     action,
     message,
-    playerEvent: {
-      event: 'action:feedback',
-      payload: createActionFeedbackPayload(action, 'failure', message),
-    },
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(action, 'failure', message),
+      },
+    ],
   }
 }
 
@@ -518,10 +532,12 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
   return {
     success: true,
     action: actionName,
-    playerEvent: {
-      event: 'action:feedback',
-      payload: createActionFeedbackPayload(actionName, 'success', message, data),
-    },
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(actionName, 'success', message, data),
+      },
+    ],
   }
 }
 
