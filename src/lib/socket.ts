@@ -111,6 +111,15 @@ export interface BattleFledPayload {
   message: string
 }
 
+export interface LevelUpPayload {
+  newLevel: number
+  cpGained: number
+  tpGained: number
+  spGained: number
+  hpGained: number
+  mpGained: number
+}
+
 export interface SocketEvents {
   // Client to server events
   'player-login': (data: Record<string, never>) => void
@@ -137,6 +146,7 @@ export interface SocketEvents {
   'battle:victory': (payload: BattleVictoryPayload) => void
   'battle:defeat': (payload: BattleDefeatPayload) => void
   'battle:fled': (payload: BattleFledPayload) => void
+  'player:level-up': (payload: LevelUpPayload) => void
 }
 
 export interface PlayerInfo {
@@ -269,6 +279,8 @@ export const SOCKET_EVENTS = {
   BATTLE_VICTORY: 'battle:victory',
   BATTLE_DEFEAT: 'battle:defeat',
   BATTLE_FLED: 'battle:fled',
+  PLAYER_LEVEL_UP: 'player:level-up',
+  PLAYER_CLICKS_UPDATE: 'player:clicks-update',
 } as const
 
 let io: Server<SocketEvents> | null = null

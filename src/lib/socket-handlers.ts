@@ -15,6 +15,7 @@ import {
   BattleVictoryPayload,
   BattleDefeatPayload,
   BattleFledPayload,
+  LevelUpPayload,
 } from './socket'
 
 // Centralized socket event handlers to reduce duplication
@@ -177,6 +178,10 @@ export class SocketEventHandlers {
 
   onBattleFled(handler: (payload: BattleFledPayload) => void): () => void {
     return this.on(SOCKET_EVENTS.BATTLE_FLED, handler)
+  }
+
+  onPlayerLevelUp(handler: (payload: LevelUpPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.PLAYER_LEVEL_UP, handler)
   }
 
   // Cleanup all listeners

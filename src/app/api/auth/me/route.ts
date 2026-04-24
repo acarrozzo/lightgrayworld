@@ -55,6 +55,8 @@ async function handleGetMe(request: AuthenticatedRequest) {
       defMod: freshUser.defMod,
       uIcon: freshUser.uIcon,
       uIconColor: freshUser.uIconColor,
+      clicks: freshUser.clicks,
+      deaths: freshUser.deaths,
     }
 
     return NextResponse.json({

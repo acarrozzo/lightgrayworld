@@ -23,7 +23,7 @@ model User {
   isActive                  Boolean         @default(true)
   clicks                    Int             @default(0)
   deaths                    Int             @default(0)
-  level                     Int             @default(0)
+  level                     Int             @default(1)
   xp                        Int             @default(0)
   cp                        Int             @default(0)
   tp                        Int             @default(0)

@@ -240,6 +240,11 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
               <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} />
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <StatBox label="Clicks" value={(player.clicks ?? 0).toLocaleString()} subtle />
+              <StatBox label="Deaths" value={(player.deaths ?? 0).toLocaleString()} subtle />
+            </div>
+
             {/* Equipment Display */}
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Equipment</h4>

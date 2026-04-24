@@ -85,6 +85,8 @@ export async function POST(request: NextRequest) {
         defMod: true,
         uIcon: true,
         uIconColor: true,
+        clicks: true,
+        deaths: true,
       },
     })
 
@@ -116,6 +118,8 @@ export async function POST(request: NextRequest) {
       defMod: freshUser!.defMod,
       uIcon: freshUser!.uIcon,
       uIconColor: freshUser!.uIconColor ?? DEFAULT_AVATAR_COLOR,
+      clicks: freshUser!.clicks,
+      deaths: freshUser!.deaths,
     })
 
     return NextResponse.json(authResponse)

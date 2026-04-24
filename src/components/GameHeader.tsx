@@ -15,12 +15,13 @@ interface GameHeaderProps {
   magMod?: number
   def?: number
   defMod?: number
+  clicks?: number
   onCharacterClick?: () => void
   isConnected?: boolean
   onRefresh?: () => void
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, str, strMod, dex, dexMod, mag, magMod, def, defMod, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, str, strMod, dex, dexMod, mag, magMod, def, defMod, clicks, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
   return (
     <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-1 shadow-sm">
       <div className="flex w-full items-center justify-between">
@@ -52,6 +53,9 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, st
         
         {/* Center - Title */}
         <div className="flex items-center gap-2 text-center absolute left-1/2 -translate-x-1/2">
+          {clicks !== undefined && (
+            <span className="text-[10px] text-gray-500 font-normal tabular-nums">{clicks.toLocaleString()}</span>
+          )}
           <h1 className="text-sm font-medium text-white tracking-tight">Light Gray</h1>
           <span className="text-[10px] text-gray-500 font-normal">v0.1.5</span>
         </div>

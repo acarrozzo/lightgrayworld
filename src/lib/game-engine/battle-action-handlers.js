@@ -200,6 +200,9 @@ async function executeStartBattle(action, playerId, roomState) {
         },
       },
     })
+    if (winData.levelUp?.leveled) {
+      playerEvents.push({ event: 'player:level-up', payload: winData.levelUp })
+    }
   } else if (newPlayerHp <= 0) {
     // Defeat check
     battleState.end()
@@ -296,10 +299,8 @@ async function executePlayerAttack(action, playerId, roomState) {
     if (winData.droppedItems.length > 0) rewardParts.push(`+${winData.droppedItems.join(', ')}`)
     const winMsg = `You defeated the ${battleState.enemyName}! ${rewardParts.join('  ')}`
 
-    return {
-      success: true,
-      action: 'player_attack',
-      playerEvent: {
+    const victoryEvents = [
+      {
         event: 'battle:victory',
         payload: {
           enemyName: battleState.enemyName,
@@ -321,10 +322,19 @@ async function executePlayerAttack(action, playerId, roomState) {
             goldEarned: winData.goldAwarded,
             itemsDropped: winData.droppedItems,
             multiplayerBonus: battleState.multiplayerBonusUsed,
-          lastTurn: battleState.lastTurnResult,
+            lastTurn: battleState.lastTurnResult,
           },
         },
       },
+    ]
+    if (winData.levelUp?.leveled) {
+      victoryEvents.push({ event: 'player:level-up', payload: winData.levelUp })
+    }
+
+    return {
+      success: true,
+      action: 'player_attack',
+      playerEvents: victoryEvents,
       // Bug fix #4: notify room of victory
       broadcastEvents: [
         {

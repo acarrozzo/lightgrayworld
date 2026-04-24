@@ -1,6 +1,7 @@
 const { prisma } = require('../db-client')
 const { rand } = require('./battle-calculator')
 const { randomUUID } = require('crypto')
+const { checkAndApplyLevelUp } = require('./services/leveling-service')
 
 async function handleBattleWin(playerId, battleState) {
   const enemy = battleState.enemy
@@ -71,7 +72,9 @@ async function handleBattleWin(playerId, battleState) {
     },
   })
 
-  return { xpAwarded, goldAwarded, droppedItems }
+  const levelUp = await checkAndApplyLevelUp(playerId)
+
+  return { xpAwarded, goldAwarded, droppedItems, levelUp }
 }
 
 async function handleBattleDefeat(playerId, battleState) {

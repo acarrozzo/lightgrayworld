@@ -32,6 +32,8 @@ export interface AuthUser {
   defMod?: number
   uIcon: string
   uIconColor: string
+  clicks?: number
+  deaths?: number
 }
 
 interface TokenPayload {

@@ -19,13 +19,18 @@ async function handleCompleteQuest(request: AuthenticatedRequest) {
     }
 
     const user = request.user
-    const result = await completeQuest(user.id, questId) as { success: boolean; error?: string; player?: any; inventory?: any; quests?: any }
+    const result = await completeQuest(user.id, questId) as { success: boolean; error?: string; player?: any; inventory?: any; quests?: any; levelUp?: any }
 
     if (!result.success) {
       return NextResponse.json(
         { success: false, error: result.error },
         { status: 400 }
       )
+    }
+
+    if (result.levelUp?.leveled) {
+      const engine = (globalThis as any).gameEngine
+      engine?.emitToPlayer(user.id, 'player:level-up', result.levelUp)
     }
 
     return NextResponse.json({

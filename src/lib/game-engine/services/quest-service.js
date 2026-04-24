@@ -2,6 +2,7 @@ const { prisma } = require('../../db-client')
 const { playerHasItem, getPlayerInventory, removeItemBySlug } = require('./inventory-service')
 const { getItemBySlug } = require('./inventory-service')
 const QUESTS = require('../../game-data/quests.json')
+const { checkAndApplyLevelUp } = require('./leveling-service')
 
 /**
  * Get quest definition from registry
@@ -433,6 +434,9 @@ async function completeQuest(playerId, questId) {
     startedQuestIds = effectResult.startedQuestIds || []
   }
 
+  // Check for level-up after XP was granted
+  const levelUp = await checkAndApplyLevelUp(playerId)
+
   // Get updated inventory
   const inventory = await getPlayerInventory(playerId)
 
@@ -445,6 +449,7 @@ async function completeQuest(playerId, questId) {
     inventory,
     quests,
     startedQuestIds,
+    levelUp,
   }
 }
 

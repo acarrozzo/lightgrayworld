@@ -1,6 +1,7 @@
 const { TickClock, WORLD_TICK_MS } = require('./tick-clock')
 const { RoomState } = require('./room-state')
 const { PlayerActionQueue } = require('./player-action-queue')
+const { prisma } = require('../db-client')
 
 class GameEngine {
   constructor(io, tickMs = WORLD_TICK_MS) {
@@ -159,6 +160,22 @@ class GameEngine {
       throw new Error('processUserAction requires playerId, roomId, and action')
     }
 
+    const actionType = action?.type
+    const isChatAction =
+      actionType === 'chat' ||
+      (typeof actionType === 'string' && actionType.startsWith('talk'))
+
+    if (!isChatAction) {
+      prisma.user
+        .update({ where: { id: playerId }, data: { clicks: { increment: 1 } }, select: { clicks: true } })
+        .then(({ clicks }) => {
+          this.emitToPlayer(playerId, 'player:clicks-update', { clicks })
+        })
+        .catch((err) => {
+          console.error('[GameEngine] Failed to increment clicks for player', playerId, err)
+        })
+    }
+
     return this.playerQueue.enqueueAction(
       playerId,
       async () => {
@@ -169,7 +186,7 @@ class GameEngine {
         }
         const currentTickNumber = this.tickClock.getCurrentTickId()
         const nextTickAt = this.tickClock.getNextTickTimestamp()
-        
+
         const result = await room.executeAction(
           action,
           playerId,

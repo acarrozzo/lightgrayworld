@@ -42,6 +42,8 @@ import SettingsPanel from './game-interface/panels/SettingsPanel'
 import DMPanel from './game-interface/panels/DMPanel'
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
+import LevelUpAlert from './LevelUpAlert'
+import type { LevelUpPayload } from '@/lib/socket'
 
 export default function GameInterface() {
   const {
@@ -73,6 +75,7 @@ export default function GameInterface() {
   const weaponIconName = equippedWeapon?.template.metadata?.icon ?? equippedWeapon?.template.slug ?? null
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
+  const [levelUpData, setLevelUpData] = useState<LevelUpPayload | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
@@ -2179,12 +2182,23 @@ export default function GameInterface() {
       addNotification({ message: payload.message, outcome: 'info', action: 'battle' })
     })
 
+    const cleanupLevelUp = socketHandlers.onPlayerLevelUp((payload) => {
+      setLevelUpData(payload)
+    })
+
+    const cleanupClicksUpdate = socketHandlers.on<{ clicks: number }>('player:clicks-update', (payload) => {
+      const { player: currentPlayer, setPlayer: sp } = useGameStore.getState()
+      if (currentPlayer) sp({ ...currentPlayer, clicks: payload.clicks })
+    })
+
     return () => {
       cleanupStarted()
       cleanupTurn()
       cleanupVictory()
       cleanupDefeat()
       cleanupFled()
+      cleanupLevelUp()
+      cleanupClicksUpdate()
     }
   }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, setBattleResult, appendWorldFeed, handleAction])
 
@@ -2793,6 +2807,7 @@ export default function GameInterface() {
         magMod={player?.magMod}
         def={player?.def}
         defMod={player?.defMod}
+        clicks={player?.clicks}
         onCharacterClick={() => setLeftSidebarOpen((prev) => !prev)}
         isConnected={socket?.connected ?? false}
         onRefresh={() => window.location.reload()}
@@ -2952,6 +2967,12 @@ export default function GameInterface() {
                                   Refresh
                                 </button>
                               </div>
+                            )}
+                            {levelUpData && (
+                              <LevelUpAlert
+                                data={levelUpData}
+                                onClose={() => setLevelUpData(null)}
+                              />
                             )}
                             {(battle.isInBattle || battleResult) && (
                               <div className="px-4 pt-4">

@@ -35,6 +35,8 @@ const selectPlayerFields = {
   defMod: true,
   uIcon: true,
   uIconColor: true,
+  clicks: true,
+  deaths: true,
 } as const
 
 export const PUT = withAuth(async (request: AuthenticatedRequest) => {
