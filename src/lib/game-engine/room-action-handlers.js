@@ -360,7 +360,63 @@ const ROOM_ACTIONS = {
         }
       }
 
-      // Quest_004 completed or missing - show idle dialog
+      // Quest_004 completed, check quest_005 status
+      const quest005Progress = await getQuestProgress(playerId, 'quest_005')
+
+      if (quest005Progress && !quest005Progress.completed) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_005')
+        const killCount = quest005Progress.progress
+        const killTarget = 5
+
+        if (requirements.met) {
+          return {
+            success: true,
+            action: 'talk to young soldier',
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-youngsoldier',
+                    iconColor: 'blue-400',
+                    title: 'Talk to Young Soldier',
+                    message: 'The Young Soldier grins as you return. "Five Sand Crabs — impressive! You\'re no longer just an adventurer with a weapon, you\'re one who knows how to use it. I think you\'re ready to explore this world."',
+                  },
+                  buttons: [
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_005' },
+                  ],
+                }),
+              },
+            ],
+          }
+        } else {
+          return {
+            success: true,
+            action: 'talk to young soldier',
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-youngsoldier',
+                    iconColor: 'blue-400',
+                    title: 'Talk to Young Soldier',
+                    message: `The Young Soldier crosses his arms. "The Rocky Beach is to the south — you'll find Sand Crabs there. Come back when you've defeated five of them. You're at ${killCount} of ${killTarget} so far."`,
+                  },
+                }),
+              },
+            ],
+          }
+        }
+      }
+
+      // Quest_005 completed or missing - show idle dialog
       return {
         success: true,
         action: 'talk to young soldier',
@@ -375,9 +431,11 @@ const ROOM_ACTIONS = {
                 icon: 'npc-youngsoldier',
                 iconColor: 'blue-400',
                 title: 'Talk to Young Soldier',
-                message: quest004Progress && quest004Progress.completed
-                  ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
-                  : 'The Young Soldier stands at attention. "Help out the Old Man first and then come back to me."Hello there Young Adventurer. I\'m a Young Soldier sent here from Domus to assist you. Feel free to take any of the training weapons here."',
+                message: quest005Progress && quest005Progress.completed
+                  ? 'The Young Soldier gives you a proud nod. "You\'ve proven yourself out there. Stay sharp and keep pushing further into the world."'
+                  : quest004Progress && quest004Progress.completed
+                    ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
+                    : 'The Young Soldier stands at attention. "Help out the Old Man first and then come back to me. Hello there Young Adventurer. I\'m a Young Soldier sent here from Domus to assist you. Feel free to take any of the training weapons here."',
               },
             }),
           },

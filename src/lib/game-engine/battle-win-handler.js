@@ -3,6 +3,7 @@ const { rand } = require('./battle-calculator')
 const { randomUUID } = require('crypto')
 const { checkAndApplyLevelUp } = require('./services/leveling-service')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
+const { getQuestDef } = require('./services/quest-service')
 
 async function handleBattleWin(playerId, battleState) {
   const enemy = battleState.enemy
@@ -33,6 +34,24 @@ async function handleBattleWin(playerId, battleState) {
     update: { kills: { increment: 1 } },
     create: { userId: playerId, monster: enemy.slug, kills: 1 },
   })
+
+  // Increment progress on any active killCount quests targeting this enemy
+  const activeQuestProgress = await prisma.questProgress.findMany({
+    where: { userId: playerId, completed: false },
+  })
+  for (const qp of activeQuestProgress) {
+    const def = getQuestDef(qp.questId)
+    if (!def) continue
+    for (const req of def.requirements || []) {
+      if (req.type === 'killCount' && req.enemySlug === enemy.slug && qp.progress < req.count) {
+        await prisma.questProgress.update({
+          where: { id: qp.id },
+          data: { progress: { increment: 1 } },
+        })
+        break
+      }
+    }
+  }
 
   // Add item drops (batched to minimise DB round-trips)
   const droppedItems = []

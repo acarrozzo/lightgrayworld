@@ -71,14 +71,15 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
     return Math.min(100, Math.max(0, (player.mp / Math.max(player.mpMax, 1)) * 100))
   }, [player.mp, player.mpMax])
 
-  const xpTarget = useMemo(() => {
-    const nextLevel = Math.max(player.level + 1, 1)
-    return nextLevel * nextLevel * 100
-  }, [player.level])
-
-  const xpCurrent = player.xp ?? 0
-  const xpProgress = Math.min(100, Math.max(0, (xpCurrent / Math.max(xpTarget, 1)) * 100))
-  const xpNeeded = Math.max(0, xpTarget - xpCurrent)
+  const { xpInLevel, xpRange, xpPct } = useMemo(() => {
+    const level = player.level ?? 1
+    const xpFromLevel = (level ** 3) * 2
+    const xpForLevel = ((level + 1) ** 3) * 2
+    const xpInLevel = Math.max(0, (player.xp ?? 0) - xpFromLevel)
+    const xpRange = xpForLevel - xpFromLevel
+    const xpPct = Math.min(100, Math.floor((xpInLevel / Math.max(xpRange, 1)) * 100))
+    return { xpInLevel, xpRange, xpPct }
+  }, [player.level, player.xp])
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
@@ -216,9 +217,9 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                     />
                     <StatBar
                       label="XP"
-                      value={`${xpCurrent.toLocaleString()} need ${xpNeeded.toLocaleString()}`}
-                      percentage={xpProgress}
-                      gradient="from-amber-400 via-yellow-400 to-orange-400"
+                      value={`${xpInLevel} / ${xpRange} xp (${xpPct}%)`}
+                      percentage={xpPct}
+                      gradient="from-green-500 via-emerald-500 to-green-600"
                     />
                   </div>
                 </div>

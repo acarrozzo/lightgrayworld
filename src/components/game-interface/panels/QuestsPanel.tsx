@@ -250,8 +250,11 @@ export default function QuestsPanel({
                           if (questDef.completionMode === 'turn_in' && questDef.requirements) {
                             const hasAllRequirements = questDef.requirements.every((req: any) => {
                               if (req.type === 'hasItem') {
-                                const item = inventory.find(i => i.template.slug === req.itemSlug)
+                                const item = inventory.find((i: any) => i.template.slug === req.itemSlug)
                                 return item && item.quantity >= (req.quantity || 1)
+                              }
+                              if (req.type === 'killCount') {
+                                return quest.progress >= req.count
                               }
                               return false
                             })
@@ -293,10 +296,21 @@ export default function QuestsPanel({
                                   </div>
                                 )}
                               </div>
+                              {questDef.requirements?.some((req: any) => req.type === 'killCount') && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-500 text-sm">Progress:</span>
+                                  <span className="text-gray-300 text-sm">
+                                    {questDef.requirements
+                                      .filter((req: any) => req.type === 'killCount')
+                                      .map((req: any) => `${Math.min(quest.progress, req.count)}/${req.count} ${req.displayName} defeated`)
+                                      .join(', ')}
+                                  </span>
+                                </div>
+                              )}
                               {isReadyToTurnIn && questDef.giver && (
                                 <div className="pt-2 border-t border-gray-700/50">
                                   <p className="text-yellow-400 text-sm font-medium">
-                                    Ready to turn in — return to {questDef.giver.roomId === '003' ? 'the Old Man' : `Room ${questDef.giver.roomId}`} to complete the quest.
+                                    Ready to turn in — return to {questDef.giver.name} to complete the quest.
                                   </p>
                                 </div>
                               )}

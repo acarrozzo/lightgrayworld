@@ -270,6 +270,20 @@ async function checkQuestRequirements(playerId, questId) {
           },
         }
       }
+    } else if (requirement.type === 'killCount') {
+      const { enemySlug, count } = requirement
+      const questProgress = await getQuestProgress(playerId, questId)
+      const current = questProgress ? questProgress.progress : 0
+      if (current < count) {
+        return {
+          met: false,
+          details: {
+            enemySlug,
+            requiredKills: count,
+            currentKills: current,
+          },
+        }
+      }
     } else if (requirement.type === 'hasEquippedInSlot') {
       const { slot, notDefault } = requirement
       if (!slot) {

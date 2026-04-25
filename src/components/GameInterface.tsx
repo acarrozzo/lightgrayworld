@@ -76,6 +76,9 @@ export default function GameInterface() {
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [levelUpData, setLevelUpData] = useState<LevelUpPayload | null>(null)
+  const [xpGain, setXpGain] = useState<number | null>(null)
+  const [xpGainKey, setXpGainKey] = useState(0)
+  const xpGainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
@@ -155,6 +158,13 @@ export default function GameInterface() {
   const appendWorldFeed = useCallback((entry: WorldFeedEntryInput) => {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
+  }, [])
+
+  const triggerXpGain = useCallback((amount: number) => {
+    if (xpGainTimerRef.current) clearTimeout(xpGainTimerRef.current)
+    setXpGain(amount)
+    setXpGainKey(k => k + 1)
+    xpGainTimerRef.current = setTimeout(() => setXpGain(null), 2500)
   }, [])
   
   // Clear new items on mount - after refresh, nothing should be "new"
@@ -1506,9 +1516,11 @@ export default function GameInterface() {
       if (payload?.data?.player) {
         const currentPlayer = playerRef.current
         if (currentPlayer) {
+          const newXp = payload.data.player.xp
+          const oldXp = currentPlayer.xp ?? 0
+          if (typeof newXp === 'number' && newXp > oldXp) triggerXpGain(newXp - oldXp)
           setPlayer({ ...currentPlayer, ...payload.data.player })
         } else {
-          // Fallback: if no current player, use the payload player (shouldn't happen normally)
           setPlayer(payload.data.player)
         }
       }
@@ -2137,6 +2149,7 @@ export default function GameInterface() {
           })
         }
         appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-victory' })
+        if (payload.xpAwarded > 0) triggerXpGain(payload.xpAwarded)
         const { addNotification } = useNotificationStore.getState()
         addNotification({ message: `Victory! +${payload.xpAwarded} XP  +${payload.goldAwarded} Gold${payload.droppedItems.length > 0 ? `  +${payload.droppedItems.join(', ')}` : ''}`, outcome: 'success', action: 'battle' })
         if (payload.droppedItems.length > 0) {
@@ -2184,6 +2197,22 @@ export default function GameInterface() {
 
     const cleanupLevelUp = socketHandlers.onPlayerLevelUp((payload) => {
       setLevelUpData(payload)
+      const { player: currentPlayer, setPlayer: sp } = useGameStore.getState()
+      if (currentPlayer) {
+        const newHpMax = (currentPlayer.hpMax ?? 0) + payload.hpGained
+        const newMpMax = (currentPlayer.mpMax ?? 0) + payload.mpGained
+        sp({
+          ...currentPlayer,
+          level: payload.newLevel,
+          hpMax: newHpMax,
+          mpMax: newMpMax,
+          hp: newHpMax,
+          mp: newMpMax,
+          cp: (currentPlayer.cp ?? 0) + payload.cpGained,
+          tp: (currentPlayer.tp ?? 0) + payload.tpGained,
+          sp: (currentPlayer.sp ?? 0) + payload.spGained,
+        })
+      }
     })
 
     const cleanupClicksUpdate = socketHandlers.on<{ clicks: number }>('player:clicks-update', (payload) => {
@@ -2792,20 +2821,19 @@ export default function GameInterface() {
       />
       <NotificationContainer />
       
-      <GameHeader 
+      <GameHeader
         playerName={player?.username}
         level={player?.level}
         hp={player?.hp}
         hpMax={player?.hpMax}
         mp={player?.mp}
         mpMax={player?.mpMax}
-        str={player?.str}
+        xp={player?.xp}
+        xpGain={xpGain}
+        xpGainKey={xpGainKey}
         strMod={player?.strMod}
-        dex={player?.dex}
         dexMod={player?.dexMod}
-        mag={player?.mag}
         magMod={player?.magMod}
-        def={player?.def}
         defMod={player?.defMod}
         clicks={player?.clicks}
         onCharacterClick={() => setLeftSidebarOpen((prev) => !prev)}

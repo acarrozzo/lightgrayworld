@@ -109,6 +109,45 @@
         "type": "xp",
         "amount": 5
       }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_005"
+      }
+    ]
+  },
+  "quest_005": {
+    "number": 5,
+    "title": "Prove Your Strength",
+    "summary": "The Young Soldier wants to see that you can handle yourself in a real fight.",
+    "objective": "Defeat 5 Sand Crabs at the Rocky Beach.",
+    "nextStep": "Head to the Rocky Beach and defeat 5 Sand Crabs, then return to the Young Soldier.",
+    "giver": {
+      "npcId": "young_soldier",
+      "roomId": "003c",
+      "name": "Young Soldier",
+      "icon": "npc-youngsoldier"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "sand-crab",
+        "count": 5,
+        "displayName": "Sand Crabs"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 20
+      },
+      {
+        "type": "xp",
+        "amount": 10
+      }
     ]
   }
 }
