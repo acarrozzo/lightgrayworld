@@ -67,7 +67,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                   <span className="text-blue-400">{mp}/{mpMax}</span>
                 )}
                 {xp !== undefined && level !== undefined && (
-                  <span className="text-gray-400">{xp} <span className="text-green-400">{xpPct}%</span></span>
+                  <span><span className="text-green-400">{xpPct}%</span> <span className="text-gray-400">need {xpNeeded - xpInLevel}</span></span>
                 )}
                 {xpGain != null && xpGain > 0 && (
                   <span

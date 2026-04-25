@@ -51,7 +51,7 @@ async function executeStartBattle(action, playerId, roomState) {
     return errorResult('start_battle', 'You are already in a battle.')
   }
 
-  const { enemySlug } = action.data || {}
+  const { enemySlug, isAutoInitiated = false } = action.data || {}
   if (!enemySlug) return errorResult('start_battle', 'No enemy specified.')
 
   const roomConfig = getRoomEnemies(roomState.roomId)
@@ -75,7 +75,7 @@ async function executeStartBattle(action, playerId, roomState) {
   roomState.touchActivity()
 
   // ─── Resolve first turn immediately ──────────────────────────────────────
-  const isAdvantageTurn = enemy.isAggressive
+  const isAdvantageTurn = enemy.isAggressive && isAutoInitiated
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
   const bonus = 1 + otherCombatants * 0.1
   const effectiveStr = Math.max(1, Math.floor(battleState.baseStr * bonus))

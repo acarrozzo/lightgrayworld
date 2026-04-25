@@ -66,14 +66,15 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
     return Math.min(100, Math.max(0, (player.mp / Math.max(player.mpMax, 1)) * 100))
   }, [player.mp, player.mpMax])
 
-  const { xpInLevel, xpRange, xpPct } = useMemo(() => {
+  const { xpInLevel, xpRange, xpPct, xpRemaining } = useMemo(() => {
     const level = player.level ?? 1
     const xpFromLevel = (level ** 3) * 2
     const xpForLevel = ((level + 1) ** 3) * 2
     const xpInLevel = Math.max(0, (player.xp ?? 0) - xpFromLevel)
     const xpRange = xpForLevel - xpFromLevel
     const xpPct = Math.min(100, Math.floor((xpInLevel / Math.max(xpRange, 1)) * 100))
-    return { xpInLevel, xpRange, xpPct }
+    const xpRemaining = Math.max(0, xpRange - xpInLevel)
+    return { xpInLevel, xpRange, xpPct, xpRemaining }
   }, [player.level, player.xp])
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
@@ -212,7 +213,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                     />
                     <StatBar
                       label="XP"
-                      value={<><span className="text-gray-400">{player.xp ?? 0}</span> <span className="text-green-400">{xpPct}%</span></>}
+                      value={<><span className="text-green-400">{xpPct}%</span> <span className="text-gray-400">need {xpRemaining}</span></>}
                       percentage={xpPct}
                       gradient="from-green-500 via-emerald-500 to-green-600"
                     />

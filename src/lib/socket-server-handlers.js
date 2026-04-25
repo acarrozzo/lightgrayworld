@@ -37,7 +37,7 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
     await gameEngine.processUserAction({
       playerId: player.id,
       roomId: toRoom,
-      action: { type: 'start_battle', data: { enemySlug: aggressiveSlug } },
+      action: { type: 'start_battle', data: { enemySlug: aggressiveSlug, isAutoInitiated: true } },
     })
     console.log(`[Socket] Auto-battle started: ${player.username} vs ${aggressiveSlug} in room ${toRoom}`)
   } catch (err) {
