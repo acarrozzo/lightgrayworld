@@ -1,7 +1,7 @@
 'use client'
 
 import { Player, useGameStore, InventoryItem } from '@/lib/game-state'
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import AvatarSelectionModal from '@/components/AvatarSelectionModal'
 import StatAllocationModal from '@/components/StatAllocationModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
@@ -205,19 +205,19 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                   <div className="space-y-3">
                     <StatBar
                       label="HP"
-                      value={`${player.hp}/${player.hpMax}`}
+                      value={<span className="text-white">{player.hp}/{player.hpMax}</span>}
                       percentage={hpPercent}
                       gradient="from-rose-500 via-red-500 to-rose-600"
                     />
                     <StatBar
                       label="MP"
-                      value={`${player.mp}/${player.mpMax}`}
+                      value={<span className="text-white">{player.mp}/{player.mpMax}</span>}
                       percentage={mpPercent}
                       gradient="from-sky-500 via-blue-500 to-indigo-500"
                     />
                     <StatBar
                       label="XP"
-                      value={`${xpInLevel} / ${xpRange} xp (${xpPct}%)`}
+                      value={<><span className="text-gray-400">{player.xp ?? 0}</span> <span className="text-green-400">{xpPct}%</span></>}
                       percentage={xpPct}
                       gradient="from-green-500 via-emerald-500 to-green-600"
                     />
@@ -383,7 +383,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
 
 interface StatBarProps {
   label: string
-  value: string
+  value: React.ReactNode
   percentage: number
   gradient: string
 }
@@ -393,7 +393,7 @@ function StatBar({ label, value, percentage, gradient }: StatBarProps) {
     <div>
       <div className="flex justify-between text-xs text-gray-400 mb-1">
         <span>{label}</span>
-        <span className="text-white font-medium">{value}</span>
+        <span className="font-medium">{value}</span>
       </div>
       <div className="h-3 rounded-full bg-gray-800/80 overflow-hidden">
         <div
