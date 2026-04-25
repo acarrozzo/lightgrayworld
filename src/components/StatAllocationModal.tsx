@@ -27,6 +27,13 @@ const STAT_DESCRIPTIONS: Record<string, string> = {
   def: 'Physical and magical resistance',
 }
 
+const STAT_COLORS: Record<string, { text: string; activeBorder: string; btnActive: string }> = {
+  str: { text: 'text-red-400',     activeBorder: 'border-red-500',     btnActive: 'border-red-500 bg-gray-800 text-white hover:bg-red-600/20'     },
+  dex: { text: 'text-emerald-400', activeBorder: 'border-emerald-500', btnActive: 'border-emerald-500 bg-gray-800 text-white hover:bg-emerald-600/20' },
+  mag: { text: 'text-sky-400',     activeBorder: 'border-sky-500',     btnActive: 'border-sky-500 bg-gray-800 text-white hover:bg-sky-600/20'     },
+  def: { text: 'text-amber-400',   activeBorder: 'border-amber-500',   btnActive: 'border-amber-500 bg-gray-800 text-white hover:bg-amber-600/20'   },
+}
+
 type StatName = 'str' | 'dex' | 'mag' | 'def'
 
 interface StatControlProps {
@@ -52,53 +59,45 @@ function StatControl({
 }: StatControlProps) {
   const label = STAT_LABELS[statKey] || statKey.toUpperCase()
   const description = STAT_DESCRIPTIONS[statKey] || ''
+  const color = STAT_COLORS[statKey]
   const canIncrement = availableCp > totalPending && !isAllocating
   const canDecrement = pendingAmount > 0 && !isAllocating
   const newValue = currentValue + pendingAmount
 
   return (
-    <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6">
+    <div className={`bg-gray-900/70 border rounded-2xl p-6 ${pendingAmount > 0 ? color.activeBorder : 'border-gray-800'}`}>
       <div className="text-center mb-4">
-        <p className="text-lg font-semibold text-white">{label}</p>
+        <p className={`text-lg font-semibold ${color.text}`}>{label}</p>
         <p className="text-xs text-gray-400 mt-1">{description}</p>
       </div>
-      
+
       <div className="flex items-center justify-center gap-4 mb-4">
         <button
           type="button"
           onClick={() => onDecrement(statKey)}
           disabled={!canDecrement}
           className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xl font-bold transition-all ${
-            canDecrement
-              ? 'border-gray-600 bg-gray-800 text-white hover:border-indigo-500 hover:bg-indigo-600/20'
-              : 'border-gray-800 bg-gray-900/50 text-gray-600 cursor-not-allowed'
+            canDecrement ? color.btnActive : 'border-gray-800 bg-gray-900/50 text-gray-600 cursor-not-allowed'
           }`}
         >
           −
         </button>
-        
+
         <div className="text-center min-w-[80px]">
-          <div className="text-3xl font-bold text-indigo-400">{newValue}</div>
-          {pendingAmount > 0 && (
-            <div className="text-xs text-emerald-400 mt-1">
-              +{pendingAmount}
-            </div>
-          )}
-          {pendingAmount === 0 && (
-            <div className="text-xs text-gray-500 mt-1">
-              {currentValue}
-            </div>
+          <div className={`text-3xl font-bold ${color.text}`}>{newValue}</div>
+          {pendingAmount > 0 ? (
+            <div className="text-xs text-emerald-400 mt-1">+{pendingAmount}</div>
+          ) : (
+            <div className="text-xs text-gray-500 mt-1">{currentValue}</div>
           )}
         </div>
-        
+
         <button
           type="button"
           onClick={() => onIncrement(statKey)}
           disabled={!canIncrement}
           className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xl font-bold transition-all ${
-            canIncrement
-              ? 'border-gray-600 bg-gray-800 text-white hover:border-indigo-500 hover:bg-indigo-600/20'
-              : 'border-gray-800 bg-gray-900/50 text-gray-600 cursor-not-allowed'
+            canIncrement ? color.btnActive : 'border-gray-800 bg-gray-900/50 text-gray-600 cursor-not-allowed'
           }`}
         >
           +

@@ -1,7 +1,7 @@
 'use client'
 
 import { InventoryItem } from '@/lib/game-state'
-import { useMemo, useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import InventoryDropButton from './InventoryDropButton'
 import { getItemActions, resolveItemIcon } from '@/lib/item-actions'
 import Icon from './Icon'
@@ -29,34 +29,32 @@ type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | '
  * Returns empty string if no mods or invalid metadata.
  * Example: "+5 STR, +2 MAG" or "+1 STR, -5 MAG"
  */
-function formatStatMods(metadata: any): string {
-  if (!metadata || typeof metadata !== 'object') {
-    return ''
-  }
+const STAT_MOD_COLORS: Record<string, string> = {
+  str: 'text-red-400',
+  dex: 'text-emerald-400',
+  mag: 'text-sky-400',
+  def: 'text-amber-400',
+}
 
+function renderStatMods(metadata: any): React.ReactNode {
+  if (!metadata || typeof metadata !== 'object') return null
   const statMods = metadata.statMods
-  if (!statMods || typeof statMods !== 'object') {
-    return ''
-  }
+  if (!statMods || typeof statMods !== 'object') return null
 
-  const parts: string[] = []
   const statOrder = ['str', 'dex', 'mag', 'def'] as const
-  const statLabels: Record<string, string> = {
-    str: 'STR',
-    dex: 'DEX',
-    mag: 'MAG',
-    def: 'DEF',
-  }
+  const statLabels: Record<string, string> = { str: 'STR', dex: 'DEX', mag: 'MAG', def: 'DEF' }
 
+  const parts: React.ReactNode[] = []
   for (const stat of statOrder) {
     const value = statMods[stat]
     if (typeof value === 'number' && value !== 0) {
       const sign = value > 0 ? '+' : ''
-      parts.push(`${sign}${value} ${statLabels[stat]}`)
+      const color = value > 0 ? STAT_MOD_COLORS[stat] : 'text-red-800'
+      if (parts.length > 0) parts.push(<span key={`${stat}-sep`} className="text-gray-500">, </span>)
+      parts.push(<span key={stat} className={color}>{sign}{value} {statLabels[stat]}</span>)
     }
   }
-
-  return parts.join(', ')
+  return parts.length > 0 ? <>{parts}</> : null
 }
 
 export default function InventoryDisplay({
@@ -357,11 +355,9 @@ export default function InventoryDisplay({
                             
                             {/* Stat mods */}
                             {(() => {
-                              const modText = formatStatMods(item.template.metadata)
-                              return modText ? (
-                                <div className="text-blue-400 text-sm font-bold mb-1">
-                                  {modText}
-                                </div>
+                              const mods = renderStatMods(item.template.metadata)
+                              return mods ? (
+                                <div className="text-sm font-bold mb-1">{mods}</div>
                               ) : null
                             })()}
                             
@@ -533,11 +529,9 @@ export default function InventoryDisplay({
                   
                   {/* Stat mods */}
                   {(() => {
-                    const modText = formatStatMods(item.template.metadata)
-                    return modText ? (
-                      <div className="text-blue-400 text-sm font-bold mb-1">
-                        {modText}
-                      </div>
+                    const mods = renderStatMods(item.template.metadata)
+                    return mods ? (
+                      <div className="text-sm font-bold mb-1">{mods}</div>
                     ) : null
                   })()}
                   

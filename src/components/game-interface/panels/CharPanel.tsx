@@ -7,6 +7,8 @@ import StatAllocationModal from '@/components/StatAllocationModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { EquipSlot } from '@prisma/client'
+import Icon from '@/components/Icon'
+import { resolveItemIcon } from '@/lib/item-actions'
 
 type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
 
@@ -17,39 +19,32 @@ interface CharPanelProps {
   onClose?: () => void
 }
 
-/**
- * Format stat modifiers from item metadata as a comma-separated string.
- * Returns empty string if no mods or invalid metadata.
- * Example: "+5 STR, +2 MAG" or "+1 STR, -5 MAG"
- */
-function formatStatMods(metadata: any): string {
-  if (!metadata || typeof metadata !== 'object') {
-    return ''
-  }
+const STAT_MOD_COLORS: Record<string, string> = {
+  str: 'text-red-400',
+  dex: 'text-emerald-400',
+  mag: 'text-sky-400',
+  def: 'text-amber-400',
+}
 
+function renderStatMods(metadata: any): React.ReactNode {
+  if (!metadata || typeof metadata !== 'object') return null
   const statMods = metadata.statMods
-  if (!statMods || typeof statMods !== 'object') {
-    return ''
-  }
+  if (!statMods || typeof statMods !== 'object') return null
 
-  const parts: string[] = []
   const statOrder = ['str', 'dex', 'mag', 'def'] as const
-  const statLabels: Record<string, string> = {
-    str: 'STR',
-    dex: 'DEX',
-    mag: 'MAG',
-    def: 'DEF',
-  }
+  const statLabels: Record<string, string> = { str: 'STR', dex: 'DEX', mag: 'MAG', def: 'DEF' }
 
+  const parts: React.ReactNode[] = []
   for (const stat of statOrder) {
     const value = statMods[stat]
     if (typeof value === 'number' && value !== 0) {
       const sign = value > 0 ? '+' : ''
-      parts.push(`${sign}${value} ${statLabels[stat]}`)
+      const color = value > 0 ? STAT_MOD_COLORS[stat] : 'text-red-800'
+      if (parts.length > 0) parts.push(<span key={`${stat}-sep`} className="text-gray-500">, </span>)
+      parts.push(<span key={stat} className={color}>{sign}{value} {statLabels[stat]}</span>)
     }
   }
-
-  return parts.join(', ')
+  return parts.length > 0 ? <>{parts}</> : null
 }
 
 export default function CharPanel({ player, onAction, onSwitchToInventory, onClose }: CharPanelProps) {
@@ -226,24 +221,27 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <StatBox label="Core Points" value={player.cp ?? 0} />
-              <StatBox label="Training Points" value={player.tp ?? 0} />
-              <StatBox label="Skill Points" value={player.sp ?? 0} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <StatBox label="PT" value={player.physicalTraining ?? 0} subtle />
-              <StatBox label="MT" value={player.mentalTraining ?? 0} subtle />
-            </div>
-
-            <div>
-              <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <StatBox label="Clicks" value={(player.clicks ?? 0).toLocaleString()} subtle />
-              <StatBox label="Deaths" value={(player.deaths ?? 0).toLocaleString()} subtle />
+            {/* Core Stats */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Core Stats</h4>
+                {(player.cp ?? 0) > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setStatModalOpen(true)}
+                    disabled={!isLoggedIn}
+                    className="px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
+                  >
+                    Spend CP ({player.cp ?? 0})
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                <StatDisplay label="STR" core={player.str ?? 0} mod={player.strMod ?? 0} compact color="text-red-400" />
+                <StatDisplay label="DEX" core={player.dex ?? 0} mod={player.dexMod ?? 0} compact color="text-emerald-400" />
+                <StatDisplay label="MAG" core={player.mag ?? 0} mod={player.magMod ?? 0} compact color="text-sky-400" />
+                <StatDisplay label="DEF" core={player.def ?? 0} mod={player.defMod ?? 0} compact color="text-amber-400" />
+              </div>
             </div>
 
             {/* Equipment Display */}
@@ -265,6 +263,10 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                 <EquipmentSlot
                   slot={EquipSlot.OFF_HAND}
                   item={equippedBySlot.get(EquipSlot.OFF_HAND)}
+                  ghostItem={(() => {
+                    const main = equippedBySlot.get(EquipSlot.MAIN_HAND)
+                    return main && (main.template.metadata as any)?.isTwoHanded ? main : undefined
+                  })()}
                   onUnequip={(playerItemId) =>
                     onAction?.({
                       type: 'unequip_item',
@@ -322,41 +324,18 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Core Stats</h4>
-                {(player.cp ?? 0) > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setStatModalOpen(true)}
-                    disabled={!isLoggedIn}
-                    className="px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
-                  >
-                    Spend Core Points ({player.cp ?? 0})
-                  </button>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <StatDisplay
-                  label="STR"
-                  core={player.str ?? 0}
-                  mod={player.strMod ?? 0}
-                />
-                <StatDisplay
-                  label="DEX"
-                  core={player.dex ?? 0}
-                  mod={player.dexMod ?? 0}
-                />
-                <StatDisplay
-                  label="MAG"
-                  core={player.mag ?? 0}
-                  mod={player.magMod ?? 0}
-                />
-                <StatDisplay
-                  label="DEF"
-                  core={player.def ?? 0}
-                  mod={player.defMod ?? 0}
-                />
+            {/* Core Points Group */}
+            <div className="space-y-1.5">
+              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Points</h4>
+              <div className="grid grid-cols-3 gap-1.5">
+                <StatBox label="Core" value={player.cp ?? 0} compact />
+                <StatBox label="Training" value={player.tp ?? 0} compact />
+                <StatBox label="Skill" value={player.sp ?? 0} compact />
+                <StatBox label="PT" value={player.physicalTraining ?? 0} compact subtle />
+                <StatBox label="MT" value={player.mentalTraining ?? 0} compact subtle />
+                <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} compact />
+                <StatBox label="Clicks" value={(player.clicks ?? 0).toLocaleString()} compact subtle />
+                <StatBox label="Deaths" value={(player.deaths ?? 0).toLocaleString()} compact subtle />
               </div>
             </div>
           </div>
@@ -411,11 +390,11 @@ interface StatBoxProps {
   subtle?: boolean
 }
 
-function StatBox({ label, value, subtle = false }: StatBoxProps) {
+function StatBox({ label, value, subtle = false, compact = false }: StatBoxProps & { compact?: boolean }) {
   return (
-    <div className={`rounded-2xl border px-4 py-3 text-center ${subtle ? 'border-gray-800/70 bg-gray-900/60' : 'border-gray-800/80 bg-gray-900/80'}`}>
-      <p className="text-xs uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="text-lg font-semibold text-white mt-1">{value}</p>
+    <div className={`rounded-xl border text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'} ${subtle ? 'border-gray-800/70 bg-gray-900/60' : 'border-gray-800/80 bg-gray-900/80'}`}>
+      <p className="text-xs uppercase tracking-wide text-gray-400 leading-none">{label}</p>
+      <p className={`font-semibold text-white ${compact ? 'text-base mt-0.5' : 'text-lg mt-1'}`}>{value}</p>
     </div>
   )
 }
@@ -426,14 +405,14 @@ interface StatDisplayProps {
   mod: number
 }
 
-function StatDisplay({ label, core, mod }: StatDisplayProps) {
+function StatDisplay({ label, core, mod, compact = false, color }: StatDisplayProps & { compact?: boolean; color?: string }) {
   const effective = core + mod
-  
+
   return (
-    <div className="rounded-2xl border border-gray-800/80 bg-gray-900/80 px-4 py-3 text-center">
-      <p className="text-xs uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="text-2xl font-semibold text-white mt-1">{effective}</p>
-      <p className="text-xs text-gray-500 mt-0.5">{core}</p>
+    <div className={`rounded-xl border border-gray-800/80 bg-gray-900/80 text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'}`}>
+      <p className={`text-xs uppercase tracking-wide leading-none ${color ?? 'text-gray-400'}`}>{label}</p>
+      <p className={`font-semibold ${color ?? 'text-white'} ${compact ? 'text-lg mt-0.5' : 'text-2xl mt-1'}`}>{effective}</p>
+      <p className="text-xs text-gray-500 leading-none">{core}</p>
     </div>
   )
 }
@@ -441,27 +420,52 @@ function StatDisplay({ label, core, mod }: StatDisplayProps) {
 interface EquipmentSlotProps {
   slot: EquipSlot
   item?: InventoryItem
+  ghostItem?: InventoryItem
   onUnequip: (playerItemId: string) => void
   onSwitchToInventory?: () => void
 }
 
-function EquipmentSlot({ slot, item, onUnequip, onSwitchToInventory }: EquipmentSlotProps) {
+function EquipmentSlot({ slot, item, ghostItem, onUnequip, onSwitchToInventory }: EquipmentSlotProps) {
   const slotName = slot.replace(/_/g, ' ')
-  
+
   if (item) {
-    const modText = formatStatMods(item.template.metadata)
-    
+    const mods = renderStatMods(item.template.metadata)
+    const icon = resolveItemIcon(item.template.metadata as { icon?: string } | null, item.template.slug ?? '')
+
     return (
       <button
         onClick={() => onSwitchToInventory?.()}
-        className="rounded-lg border border-gray-800/80 bg-gray-900/80 px-3 py-2 text-left hover:bg-gray-800/80 transition-colors"
+        className="rounded-lg border border-gray-800/80 bg-gray-900/80 px-3 py-2 text-left hover:bg-gray-800/80 transition-colors flex items-center gap-2"
       >
-        <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
-        <p className="text-sm font-medium text-white mt-0.5 truncate">{item.template.name}</p>
-        {modText && (
-          <p className="text-blue-400 text-xs mt-0.5">{modText}</p>
-        )}
+        <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-gray-700/40 border border-gray-600/30">
+          <Icon name={icon} size={22} className="text-gray-300" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
+          <p className="text-sm font-medium text-white truncate">{item.template.name}</p>
+          {mods && <p className="text-xs">{mods}</p>}
+        </div>
       </button>
+    )
+  }
+
+  if (ghostItem) {
+    const ghostMods = renderStatMods(ghostItem.template.metadata)
+    const ghostIcon = resolveItemIcon(ghostItem.template.metadata as { icon?: string } | null, ghostItem.template.slug ?? '')
+
+    return (
+      <div className="rounded-lg border border-gray-800/80 bg-gray-900/80 px-3 py-2 cursor-default select-none">
+        <div className="flex items-center gap-2 opacity-35">
+          <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-gray-700/40 border border-gray-600/30">
+            <Icon name={ghostIcon} size={22} className="text-gray-300" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
+            <p className="text-sm font-medium text-white truncate">{ghostItem.template.name}</p>
+            {ghostMods && <p className="text-xs">{ghostMods}</p>}
+          </div>
+        </div>
+      </div>
     )
   }
 

@@ -122,6 +122,10 @@ async function executeStartBattle(action, playerId, roomState) {
 
   const startPayload = {
     ...snapshot,
+    // Use the pre-damage enemy HP so the client renders the enemy at full health
+    // before the turn animation plays. getSnapshot() reflects post-damage state,
+    // which would be 0 on a 1-turn kill and prevent the HP bar drain from showing.
+    enemyCurrentHp: snapshot.enemyCurrentHp > 0 ? snapshot.enemyCurrentHp : snapshot.enemyMaxHp,
     enemyIcon: enemy.icon,
     enemyLevel: enemy.level,
     enemyAtt: enemy.att,

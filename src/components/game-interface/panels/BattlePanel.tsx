@@ -19,10 +19,16 @@ interface BattlePanelProps {
   weaponName: string | null
 }
 
-function HpBar({ current, max, color, rtl = false }: { current: number; max: number; color: string; rtl?: boolean }) {
+function HpBar({ current, max, color, rtl = false, initialPct }: { current: number; max: number; color: string; rtl?: boolean; initialPct?: number }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0
-  const prevPct = useRef(pct)
-  const [damagePct, setDamagePct] = useState(0)
+  // initialPct lets the caller seed the "previous" percentage so the drain
+  // animation fires on the first render even when current is already 0 at mount
+  // (e.g. 1-turn kills where the server sends post-damage state).
+  const prevPct = useRef(initialPct ?? pct)
+  const [damagePct, setDamagePct] = useState<number>(() => {
+    const init = initialPct ?? pct
+    return init > pct ? init - pct : 0
+  })
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -281,7 +287,7 @@ export default function BattlePanel({
             {battle.enemyLevel !== null && <LevelBadge level={battle.enemyLevel} />}
           </div>
           <div className="flex items-center gap-2 w-full">
-            <HpBar current={battle.enemyCurrentHp} max={battle.enemyMaxHp} color="bg-red-500" rtl />
+            <HpBar current={battle.enemyCurrentHp} max={battle.enemyMaxHp} color="bg-red-500" rtl initialPct={100} />
             <span className="text-[11px] text-red-300 w-14 tabular-nums text-right flex-shrink-0">
               {battle.enemyCurrentHp}/{battle.enemyMaxHp}
             </span>

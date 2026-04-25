@@ -2118,25 +2118,31 @@ export default function GameInterface() {
     })
 
     const cleanupTurn = socketHandlers.onBattleTurn((payload) => {
-      updateBattleTurn({
-        enemyCurrentHp: payload.enemyCurrentHp,
-        enemyMaxHp: payload.enemyMaxHp,
-        turnCount: payload.turnCount,
-        canFlee: payload.canFlee,
-        playerHp: payload.playerHp,
-        playerHpMax: payload.playerHpMax,
-        playerDealtDamage: payload.playerDealtDamage,
-        enemyDealtDamage: payload.enemyDealtDamage,
-        playerRaw: payload.playerRaw,
-        enemyRaw: payload.enemyRaw,
-        playerStrMax: payload.playerStrMax,
-        playerDefMax: payload.playerDefMax,
-        enemyStrMax: payload.enemyStrMax,
-        playerBlocked: payload.playerBlocked,
-        enemyBlocked: payload.enemyBlocked,
-        multiplayerBonus: payload.multiplayerBonus,
-        bonusPercent: payload.bonusPercent,
-      })
+      // Skip when enemy or player HP hits 0 — victory/defeat handlers own that
+      // update with proper setTimeout(0) timing to avoid React 18 batching
+      // collapsing the initial render (setBattleStarted) and the HP=0 render
+      // into one, which would prevent the HpBar animation from firing.
+      if (payload.enemyCurrentHp > 0 && payload.playerHp > 0) {
+        updateBattleTurn({
+          enemyCurrentHp: payload.enemyCurrentHp,
+          enemyMaxHp: payload.enemyMaxHp,
+          turnCount: payload.turnCount,
+          canFlee: payload.canFlee,
+          playerHp: payload.playerHp,
+          playerHpMax: payload.playerHpMax,
+          playerDealtDamage: payload.playerDealtDamage,
+          enemyDealtDamage: payload.enemyDealtDamage,
+          playerRaw: payload.playerRaw,
+          enemyRaw: payload.enemyRaw,
+          playerStrMax: payload.playerStrMax,
+          playerDefMax: payload.playerDefMax,
+          enemyStrMax: payload.enemyStrMax,
+          playerBlocked: payload.playerBlocked,
+          enemyBlocked: payload.enemyBlocked,
+          multiplayerBonus: payload.multiplayerBonus,
+          bonusPercent: payload.bonusPercent,
+        })
+      }
       appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-turn' })
     })
 
@@ -2161,13 +2167,31 @@ export default function GameInterface() {
           fetch('/api/game/room/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({}) }).catch(() => {})
         }
       }
-      // If enemy died on the first turn, let the panel show the result briefly
-      const turnCount = useGameStore.getState().battle.turnCount
-      if (turnCount <= 1) {
-        setTimeout(applyVictory, 1500)
-      } else {
-        applyVictory()
-      }
+      const lt = payload.summary?.lastTurn
+      setTimeout(() => {
+        const b = useGameStore.getState().battle
+        const buildUpdate = (enemyHp: number) => ({
+          enemyCurrentHp: enemyHp,
+          enemyMaxHp: b.enemyMaxHp,
+          turnCount: b.turnCount,
+          canFlee: b.canFlee,
+          playerHp: b.playerHp,
+          playerHpMax: b.playerHpMax,
+          playerDealtDamage: lt?.playerDealtDamage ?? 0,
+          enemyDealtDamage: lt?.enemyDealtDamage ?? 0,
+          playerRaw: lt?.playerRaw ?? null,
+          enemyRaw: lt?.enemyRaw ?? 0,
+          playerStrMax: lt?.playerStrMax ?? b.playerStrMax ?? 0,
+          playerDefMax: lt?.playerDefMax ?? b.playerDefMax ?? 0,
+          enemyStrMax: lt?.enemyStrMax ?? b.enemyStrMax ?? 0,
+          playerBlocked: lt?.playerBlocked ?? 0,
+          enemyBlocked: lt?.enemyBlocked ?? 0,
+          multiplayerBonus: lt?.multiplayerBonus ?? false,
+          bonusPercent: lt?.bonusPercent ?? 0,
+        })
+        updateBattleTurn(buildUpdate(0))
+      }, 0)
+      setTimeout(applyVictory, 900)
     })
 
     const cleanupDefeat = socketHandlers.onBattleDefeat((payload) => {
@@ -2183,13 +2207,31 @@ export default function GameInterface() {
         setRoomEnemies([])
         handleAction({ type: 'teleport', data: { toRoomId: payload.respawnRoomId ?? '999' } })
       }
-      // If player died on the first turn, let the panel show the result briefly
-      const turnCount = useGameStore.getState().battle.turnCount
-      if (turnCount <= 1) {
-        setTimeout(applyDefeat, 1500)
-      } else {
-        applyDefeat()
-      }
+      // Same macrotask-deferral as victory: ensure setBattleStarted renders first.
+      const lt = payload.summary?.lastTurn
+      setTimeout(() => {
+        const b = useGameStore.getState().battle
+        updateBattleTurn({
+          enemyCurrentHp: b.enemyCurrentHp,
+          enemyMaxHp: b.enemyMaxHp,
+          turnCount: b.turnCount,
+          canFlee: b.canFlee,
+          playerHp: 0,
+          playerHpMax: b.playerHpMax,
+          playerDealtDamage: lt?.playerDealtDamage ?? 0,
+          enemyDealtDamage: lt?.enemyDealtDamage ?? 0,
+          playerRaw: lt?.playerRaw ?? null,
+          enemyRaw: lt?.enemyRaw ?? 0,
+          playerStrMax: lt?.playerStrMax ?? b.playerStrMax ?? 0,
+          playerDefMax: lt?.playerDefMax ?? b.playerDefMax ?? 0,
+          enemyStrMax: lt?.enemyStrMax ?? b.enemyStrMax ?? 0,
+          playerBlocked: lt?.playerBlocked ?? 0,
+          enemyBlocked: lt?.enemyBlocked ?? 0,
+          multiplayerBonus: lt?.multiplayerBonus ?? false,
+          bonusPercent: lt?.bonusPercent ?? 0,
+        })
+      }, 0)
+      setTimeout(applyDefeat, 900)
     })
 
     const cleanupFled = socketHandlers.onBattleFled((payload) => {
