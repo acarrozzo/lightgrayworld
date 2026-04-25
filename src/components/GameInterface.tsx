@@ -20,6 +20,7 @@ import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
 import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
+import { resolveItemIcon } from '@/lib/item-actions'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 import { useNotificationStore } from '@/store/notificationStore'
@@ -71,8 +72,11 @@ export default function GameInterface() {
     clearBattleResult,
   } = useGameStore()
   const { updateRoomItems } = useGameStore()
-  const equippedWeapon = inventory.find(item => item.isEquipped && item.slot === 'WEAPON')
-  const weaponIconName = equippedWeapon?.template.metadata?.icon ?? equippedWeapon?.template.slug ?? null
+  const equippedWeapon = inventory.find(item => item.isEquipped && item.slot === 'MAIN_HAND')
+  const weaponIconName = equippedWeapon
+    ? resolveItemIcon(equippedWeapon.template.metadata as { icon?: string } | null, equippedWeapon.template.slug ?? '')
+    : 'equipment-fists'
+  const weaponName = equippedWeapon?.template.name ?? null
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [levelUpData, setLevelUpData] = useState<LevelUpPayload | null>(null)
@@ -3016,6 +3020,7 @@ export default function GameInterface() {
                                   playerMp={player.mp}
                                   playerMpMax={player.mpMax}
                                   weaponIconName={weaponIconName}
+                                  weaponName={weaponName}
                                 />
                               </div>
                             )}

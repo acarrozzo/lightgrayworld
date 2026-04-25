@@ -1,3 +1,24 @@
+import { IconMappings } from '@/lib/icon-mappings'
+
+export function resolveItemIcon(metadata: { icon?: string } | null | undefined, slug: string): string {
+  if (metadata?.icon) {
+    const iconName = metadata.icon
+    if (IconMappings[iconName as keyof typeof IconMappings]) return iconName
+    const equipmentIcon = `equipment-${iconName}`
+    if (IconMappings[equipmentIcon as keyof typeof IconMappings]) return equipmentIcon
+  }
+  if (slug) {
+    const normalizedSlug = slug.replace(/[-\s]/g, '').toLowerCase()
+    if (IconMappings[slug as keyof typeof IconMappings]) return slug
+    if (IconMappings[normalizedSlug as keyof typeof IconMappings]) return normalizedSlug
+    const equipmentSlug = `equipment-${slug}`
+    if (IconMappings[equipmentSlug as keyof typeof IconMappings]) return equipmentSlug
+    const equipmentNormalized = `equipment-${normalizedSlug}`
+    if (IconMappings[equipmentNormalized as keyof typeof IconMappings]) return equipmentNormalized
+  }
+  return 'inv'
+}
+
 export interface ItemAction {
   action: string
   label: string

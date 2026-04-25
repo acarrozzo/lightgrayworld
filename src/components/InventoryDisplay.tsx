@@ -3,14 +3,13 @@
 import { InventoryItem } from '@/lib/game-state'
 import { useMemo, useState, useEffect } from 'react'
 import InventoryDropButton from './InventoryDropButton'
-import { getItemActions } from '@/lib/item-actions'
+import { getItemActions, resolveItemIcon } from '@/lib/item-actions'
 import Icon from './Icon'
 import { ItemType, EquipSlot } from '@prisma/client'
 import {
   getItemDisplayOrder,
   getItemOrderIndex,
 } from '@/lib/inventory-utils'
-import { IconMappings } from '@/lib/icon-mappings'
 
 interface InventoryDisplayProps {
   inventory: InventoryItem[]
@@ -24,57 +23,6 @@ interface InventoryDisplayProps {
 }
 
 type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
-
-/**
- * Resolve item icon name with fallback logic.
- * Tries: metadata.icon -> slug -> equipment-prefixed slug -> default
- */
-function resolveItemIcon(metadata: any, slug: string): string {
-  // First, try metadata.icon if provided
-  if (metadata?.icon) {
-    const iconName = metadata.icon
-    // Check if icon exists in mappings
-    if (IconMappings[iconName as keyof typeof IconMappings]) {
-      return iconName
-    }
-    // Try with equipment- prefix
-    const equipmentIcon = `equipment-${iconName}`
-    if (IconMappings[equipmentIcon as keyof typeof IconMappings]) {
-      return equipmentIcon
-    }
-  }
-  
-  // Fallback to slug
-  if (slug) {
-    // Normalize slug: remove hyphens and spaces, convert to lowercase
-    const normalizedSlug = slug.replace(/[-\s]/g, '').toLowerCase()
-    
-    // Try slug as-is
-    if (IconMappings[slug as keyof typeof IconMappings]) {
-      return slug
-    }
-    
-    // Try normalized slug
-    if (IconMappings[normalizedSlug as keyof typeof IconMappings]) {
-      return normalizedSlug
-    }
-    
-    // Try with equipment- prefix (original slug)
-    const equipmentSlug = `equipment-${slug}`
-    if (IconMappings[equipmentSlug as keyof typeof IconMappings]) {
-      return equipmentSlug
-    }
-    
-    // Try with equipment- prefix (normalized slug)
-    const equipmentNormalized = `equipment-${normalizedSlug}`
-    if (IconMappings[equipmentNormalized as keyof typeof IconMappings]) {
-      return equipmentNormalized
-    }
-  }
-  
-  // Default fallback
-  return 'inv'
-}
 
 /**
  * Format stat modifiers from item metadata as a comma-separated string.

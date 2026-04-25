@@ -2,6 +2,7 @@
 
 import { BattleState, BattleResult } from '@/lib/game-state'
 import Icon from '@/components/Icon'
+import { useEffect, useRef, useState } from 'react'
 
 interface BattlePanelProps {
   battle: BattleState
@@ -15,12 +16,35 @@ interface BattlePanelProps {
   playerMp: number
   playerMpMax: number
   weaponIconName: string | null
+  weaponName: string | null
 }
 
 function HpBar({ current, max, color, rtl = false }: { current: number; max: number; color: string; rtl?: boolean }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0
+  const prevPct = useRef(pct)
+  const [damagePct, setDamagePct] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (pct < prevPct.current) {
+      setDamagePct(prevPct.current - pct)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setDamagePct(0), 700)
+    }
+    prevPct.current = pct
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [pct])
+
   return (
     <div className="relative w-full bg-gray-700/60 rounded-full h-2">
+      {damagePct > 0 && (
+        <div
+          className="bg-yellow-400 h-2 rounded-full absolute top-0 transition-all duration-500"
+          style={rtl
+            ? { right: `${pct}%`, width: `${damagePct}%` }
+            : { left: `${pct}%`, width: `${damagePct}%` }}
+        />
+      )}
       <div
         className={`${color} h-2 rounded-full absolute top-0 transition-all duration-300 ${rtl ? 'right-0' : 'left-0'}`}
         style={{ width: `${pct}%` }}
@@ -55,7 +79,41 @@ function StatRow({ label, value, highlight = false }: { label: string; value: st
   )
 }
 
-function BattleResultCard({ result, weaponIconName, onDismiss }: { result: BattleResult; weaponIconName: string | null; onDismiss: () => void }) {
+function EnemyIcon({ iconName, isDead }: { iconName: string; isDead: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div style={{ transform: isDead ? 'scaleX(-1) scaleY(-1)' : 'scaleX(-1)' }}>
+        <Icon
+          name={iconName}
+          size={isDead ? 88 : 76}
+          className={isDead ? 'text-red-500' : 'text-white opacity-75'}
+        />
+      </div>
+      {isDead && (
+        <span className="text-red-500 font-bold text-xs tracking-widest uppercase">DEAD</span>
+      )}
+    </div>
+  )
+}
+
+function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean }) {
+  return (
+    <div className="flex-shrink-0 flex items-center gap-1">
+      <Icon name={weaponIconName ?? 'equipment-fists'} size={76} className="text-white opacity-75" />
+      <Icon name="attack" size={28} className="text-red-800/60" />
+      {!enemyIsDead && (
+        <div style={{ transform: 'scaleX(-1)' }}>
+          <Icon name="attack" size={28} className="text-red-800/60" />
+        </div>
+      )}
+      <div style={{ minWidth: 88 }} className="flex justify-center">
+        {enemyIcon && <EnemyIcon iconName={enemyIcon} isDead={enemyIsDead} />}
+      </div>
+    </div>
+  )
+}
+
+function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { result: BattleResult; weaponIconName: string | null; weaponName: string | null; onDismiss: () => void }) {
   const isWin = result.outcome === 'WIN'
   const lt = result.lastTurn
   const wasAdvantageTurn = lt?.playerRaw === null
@@ -64,25 +122,10 @@ function BattleResultCard({ result, weaponIconName, onDismiss }: { result: Battl
     <div className={`border ${isWin ? 'border-green-700/60' : 'border-red-800/60'} bg-gray-900/95 rounded-lg overflow-hidden shadow-lg`}>
 
       {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-3 ${isWin ? 'bg-green-900/30' : 'bg-red-900/20'} border-b border-gray-800/60`}>
-        <div className="flex items-center gap-2">
-          {result.enemyIcon && <Icon name={result.enemyIcon} size={22} className="text-white opacity-70" />}
-          <div>
-            <p className={`text-base font-bold ${isWin ? 'text-green-300' : 'text-red-400'}`}>
-              {isWin ? 'Victory!' : 'Defeated'}
-            </p>
-            <p className="text-xs text-gray-400">{result.enemyName}</p>
-          </div>
-        </div>
-        <button
-          onClick={onDismiss}
-          className="text-gray-500 hover:text-white transition-colors p-1 rounded"
-          aria-label="Dismiss"
-        >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </button>
+      <div className={`relative flex items-center justify-center px-4 py-2 ${isWin ? 'bg-green-900/40' : 'bg-red-900/30'} border-b ${isWin ? 'border-green-700/50' : 'border-red-800/50'}`}>
+        <p className={`text-sm font-black tracking-widest uppercase ${isWin ? 'text-green-300' : 'text-red-400'}`}>
+          {isWin ? 'Victory' : 'Defeated'}
+        </p>
       </div>
 
       {/* Last turn replay */}
@@ -100,7 +143,7 @@ function BattleResultCard({ result, weaponIconName, onDismiss }: { result: Battl
                 </p>
                 <p className="text-xs text-gray-400">
                   Final strike with{' '}
-                  <span className="text-red-300 font-semibold">{weaponIconName ?? 'fists'}</span>
+                  <span className="text-red-300 font-semibold">{weaponName ?? 'fists'}</span>
                 </p>
                 <p className="text-3xl font-bold text-red-400 leading-tight">{lt.playerDealtDamage}</p>
               </>
@@ -108,22 +151,24 @@ function BattleResultCard({ result, weaponIconName, onDismiss }: { result: Battl
           </div>
 
           {/* Icons */}
-          <div className="flex-shrink-0 flex items-center gap-1">
-            {weaponIconName && <Icon name={weaponIconName} size={38} className="text-white opacity-75" />}
-            <Swoosh />
-            {result.enemyIcon && <Icon name={result.enemyIcon} size={38} className="text-white opacity-75" />}
-          </div>
+          <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={isWin} />
 
           {/* Enemy side */}
           <div className="flex-1 flex flex-col items-end gap-0.5 min-w-0">
-            <p className="text-xs text-gray-500 text-right">
-              <span className="text-gray-600 mr-1">(max {lt.enemyStrMax})</span>
-              {lt.enemyRaw} &minus; {lt.playerBlocked} = {lt.enemyDealtDamage}
-            </p>
-            <p className="text-xs text-gray-400 text-right">
-              <span className="text-yellow-300 font-semibold">{result.enemyName}</span> attacks for
-            </p>
-            <p className="text-3xl font-bold text-yellow-400 leading-tight text-right">{lt.enemyDealtDamage}</p>
+            {isWin ? (
+              <p className="text-sm font-bold text-red-500 text-right">{result.enemyName}</p>
+            ) : (
+              <>
+                <p className="text-xs text-gray-500 text-right">
+                  <span className="text-gray-600 mr-1">(max {lt.enemyStrMax})</span>
+                  {lt.enemyRaw} &minus; {lt.playerBlocked} = {lt.enemyDealtDamage}
+                </p>
+                <p className="text-xs text-gray-400 text-right">
+                  <span className="text-yellow-300 font-semibold">{result.enemyName}</span> attacks for
+                </p>
+                <p className="text-3xl font-bold text-yellow-400 leading-tight text-right">{lt.enemyDealtDamage}</p>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -141,7 +186,7 @@ function BattleResultCard({ result, weaponIconName, onDismiss }: { result: Battl
 
       {/* Rewards (win only) */}
       {isWin && (
-        <div className="px-4 py-3 space-y-1.5">
+        <div className="px-4 py-3 space-y-1.5 border-b border-gray-800/60">
           <StatRow label="XP earned" value={`+${result.xpEarned}`} />
           <StatRow label="Gold earned" value={`+${result.goldEarned}`} />
           {result.itemsDropped.length > 0 ? (
@@ -154,6 +199,16 @@ function BattleResultCard({ result, weaponIconName, onDismiss }: { result: Battl
           )}
         </div>
       )}
+
+      {/* Close */}
+      <div className="px-4 py-4 flex justify-center">
+        <button
+          onClick={onDismiss}
+          className={`w-full py-3 rounded-lg text-sm font-black tracking-widest uppercase transition-all duration-150 ${isWin ? 'bg-green-700/80 hover:bg-green-600 text-white' : 'bg-red-900/60 hover:bg-red-800 text-red-200'}`}
+        >
+          Close
+        </button>
+      </div>
 
     </div>
   )
@@ -171,9 +226,10 @@ export default function BattlePanel({
   playerMp,
   playerMpMax,
   weaponIconName,
+  weaponName,
 }: BattlePanelProps) {
   if (!battle.isInBattle && battleResult) {
-    return <BattleResultCard result={battleResult} weaponIconName={weaponIconName} onDismiss={onDismissResult} />
+    return <BattleResultCard result={battleResult} weaponIconName={weaponIconName} weaponName={weaponName} onDismiss={onDismissResult} />
   }
 
   if (!battle.isInBattle) return null
@@ -181,6 +237,7 @@ export default function BattlePanel({
   const turnsUntilFlee = Math.max(0, 10 - battle.turnCount)
   const hasPlayerFormula = battle.playerRaw !== null
   const hasEnemyFormula = battle.enemyRaw !== null
+  const enemyIsDead = battle.enemyCurrentHp <= 0
 
   return (
     <div className="border border-red-900/60 bg-gray-900/90 rounded-lg overflow-hidden shadow-lg">
@@ -256,7 +313,7 @@ export default function BattlePanel({
               </p>
               <p className="text-xs text-gray-400">
                 You attack with your{' '}
-                <span className="text-red-300 font-semibold">{weaponIconName ?? 'fists'}</span>
+                <span className="text-red-300 font-semibold">{weaponName ?? 'fists'}</span>
               </p>
               <p className="text-3xl font-bold text-red-400 leading-tight">{battle.lastPlayerDamage ?? 0}</p>
             </>
@@ -267,18 +324,12 @@ export default function BattlePanel({
           )}
         </div>
 
-        <div className="flex-shrink-0 flex items-center gap-1">
-          {weaponIconName && (
-            <Icon name={weaponIconName} size={38} className="text-white opacity-75" />
-          )}
-          <Swoosh />
-          {battle.enemyIcon && (
-            <Icon name={battle.enemyIcon} size={38} className="text-white opacity-75" />
-          )}
-        </div>
+        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} />
 
         <div className="flex-1 flex flex-col items-end gap-0.5 min-w-0">
-          {hasEnemyFormula ? (
+          {enemyIsDead ? (
+            <p className="text-sm font-bold text-red-500 text-right">{battle.enemyName}</p>
+          ) : hasEnemyFormula ? (
             <>
               <p className="text-xs text-gray-500 text-right">
                 <span className="text-gray-600 mr-1">(max {battle.enemyStrMax})</span>
@@ -299,7 +350,7 @@ export default function BattlePanel({
 
       {battle.multiplayerBonus && (
         <div className="px-4 pb-2">
-          <p className="text-xs text-blue-400">Group bonus: +{battle.bonusPercent}% to stats</p>
+          <p className="text-xs text-blue-400">Group bonus: +{battle.bonusPercent}%</p>
         </div>
       )}
 
