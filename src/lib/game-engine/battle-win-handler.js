@@ -5,20 +5,24 @@ const { checkAndApplyLevelUp } = require('./services/leveling-service')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 const { getQuestDef } = require('./services/quest-service')
 
-async function handleBattleWin(playerId, battleState) {
+// Pure calculation — no DB. Call this before any awaits to get rewards for immediate client emission.
+function calcBattleWinRewards(battleState) {
   const enemy = battleState.enemy
   const goldAwarded = rand(enemy.goldMin, enemy.goldMax)
   const xpAwarded = enemy.xpReward
-
-  // Roll drops
   const droppedSlugs = []
   for (const drop of enemy.drops) {
-    if (Math.random() <= drop.chance) {
-      droppedSlugs.push(drop.itemSlug)
-    }
+    if (Math.random() <= drop.chance) droppedSlugs.push(drop.itemSlug)
   }
+  return { xpAwarded, goldAwarded, droppedSlugs }
+}
 
-  // Persist XP, gold, clear fight flag
+// All DB writes for a battle win. Returns { droppedItems (names), levelUp }.
+// Fire this as a background promise — do not await before emitting battle:victory.
+async function persistBattleWin(playerId, battleState, rewards) {
+  const { xpAwarded, goldAwarded, droppedSlugs } = rewards
+  const enemy = battleState.enemy
+
   await prisma.user.update({
     where: { id: playerId },
     data: {
@@ -28,14 +32,12 @@ async function handleBattleWin(playerId, battleState) {
     },
   })
 
-  // Record kill
   await prisma.killList.upsert({
     where: { userId_monster: { userId: playerId, monster: enemy.slug } },
     update: { kills: { increment: 1 } },
     create: { userId: playerId, monster: enemy.slug, kills: 1 },
   })
 
-  // Increment progress on any active killCount quests targeting this enemy
   const activeQuestProgress = await prisma.questProgress.findMany({
     where: { userId: playerId, completed: false },
   })
@@ -53,21 +55,17 @@ async function handleBattleWin(playerId, battleState) {
     }
   }
 
-  // Add item drops (batched to minimise DB round-trips)
   const droppedItems = []
   if (droppedSlugs.length > 0) {
-    // 1 read: fetch all templates at once
     const templates = await prisma.itemTemplate.findMany({
       where: { slug: { in: droppedSlugs } },
     })
     const templateBySlug = new Map(templates.map((t) => [t.slug, t]))
 
-    // Identify which templates have a maxPerPlayer cap
     const cappedTemplateIds = templates
       .filter((t) => t.maxPerPlayer !== null)
       .map((t) => t.id)
 
-    // 1 read: check existing player items for all capped templates at once
     const existingCapped = cappedTemplateIds.length > 0
       ? await prisma.playerItem.findMany({
           where: { playerId, templateId: { in: cappedTemplateIds } },
@@ -76,19 +74,17 @@ async function handleBattleWin(playerId, battleState) {
       : []
     const ownedTemplateIds = new Set(existingCapped.map((i) => i.templateId))
 
-    // Determine which slugs can actually be granted
     const toCreate = []
     for (const slug of droppedSlugs) {
       const template = templateBySlug.get(slug)
       if (!template) {
-        console.error(`handleBattleWin: item template not found for slug "${slug}"`)
+        console.error(`persistBattleWin: item template not found for slug "${slug}"`)
         continue
       }
       if (template.maxPerPlayer !== null && ownedTemplateIds.has(template.id)) continue
       toCreate.push(template)
     }
 
-    // 1 write: create all new items in one call
     if (toCreate.length > 0) {
       await prisma.playerItem.createMany({
         data: toCreate.map((t) => ({ id: randomUUID(), playerId, templateId: t.id, quantity: 1 })),
@@ -117,7 +113,13 @@ async function handleBattleWin(playerId, battleState) {
 
   const levelUp = await checkAndApplyLevelUp(playerId)
 
-  return { xpAwarded, goldAwarded, droppedItems, levelUp }
+  return { droppedItems, levelUp }
+}
+
+async function handleBattleWin(playerId, battleState) {
+  const rewards = calcBattleWinRewards(battleState)
+  const { droppedItems, levelUp } = await persistBattleWin(playerId, battleState, rewards)
+  return { xpAwarded: rewards.xpAwarded, goldAwarded: rewards.goldAwarded, droppedItems, levelUp }
 }
 
 async function handleBattleDefeat(playerId, battleState) {
@@ -149,4 +151,4 @@ async function handleBattleDefeat(playerId, battleState) {
   })
 }
 
-module.exports = { handleBattleWin, handleBattleDefeat }
+module.exports = { calcBattleWinRewards, persistBattleWin, handleBattleWin, handleBattleDefeat }

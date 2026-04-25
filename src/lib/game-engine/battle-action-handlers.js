@@ -1,7 +1,7 @@
 const { prisma } = require('../db-client')
 const { BattleState } = require('./battle-state')
 const { rand, resolveTurn, getOtherCombatantCount } = require('./battle-calculator')
-const { handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
+const { calcBattleWinRewards, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
 const { getRoomEnemies } = require('../game-data/room-enemies')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
@@ -169,25 +169,23 @@ async function executeStartBattle(action, playerId, roomState) {
   ]
 
   // Victory check (only possible on player-initiated turn)
+  let startBattleBackgroundWork
   if (!isAdvantageTurn && battleState.isEnemyDead()) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
-    let winData
-    try {
-      winData = await handleBattleWin(playerId, battleState)
-    } catch (err) {
-      console.error(`handleBattleWin failed on turn 1 for player ${playerId}:`, err)
-      return errorResult('start_battle', 'You won, but a server error prevented rewards from being saved.')
-    }
-    const rewardParts = [`+${winData.xpAwarded} XP`, `+${winData.goldAwarded} Gold`]
-    if (winData.droppedItems.length > 0) rewardParts.push(`+${winData.droppedItems.join(', ')}`)
+
+    const rewards = calcBattleWinRewards(battleState)
+    const { xpAwarded, goldAwarded, droppedSlugs } = rewards
+
+    const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]
+    if (droppedSlugs.length > 0) rewardParts.push(`+${droppedSlugs.join(', ')}`)
     playerEvents.push({
       event: 'battle:victory',
       payload: {
         enemyName: enemy.name,
-        xpAwarded: winData.xpAwarded,
-        goldAwarded: winData.goldAwarded,
-        droppedItems: winData.droppedItems,
+        xpAwarded,
+        goldAwarded,
+        droppedItems: droppedSlugs,
         lastTurnResult: firstTurn,
         message: `You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
         summary: {
@@ -199,17 +197,21 @@ async function executeStartBattle(action, playerId, roomState) {
           totalDamageDealt: battleState.totalDamageDealt,
           totalDamageReceived: battleState.totalDamageReceived,
           maxSingleHit: battleState.maxSingleHit,
-          xpEarned: winData.xpAwarded,
-          goldEarned: winData.goldAwarded,
-          itemsDropped: winData.droppedItems,
+          xpEarned: xpAwarded,
+          goldEarned: goldAwarded,
+          itemsDropped: droppedSlugs,
           multiplayerBonus: battleState.multiplayerBonusUsed,
           lastTurn: battleState.lastTurnResult,
         },
       },
     })
-    if (winData.levelUp?.leveled) {
-      playerEvents.push({ event: 'player:level-up', payload: winData.levelUp })
-    }
+
+    startBattleBackgroundWork = persistBattleWin(playerId, battleState, rewards)
+      .then(({ levelUp }) => levelUp?.leveled ? [{ event: 'player:level-up', payload: levelUp }] : [])
+      .catch((err) => {
+        console.error(`persistBattleWin failed on turn 1 for player ${playerId}:`, err)
+        return []
+      })
   } else if (newPlayerHp <= 0) {
     // Defeat check
     battleState.end()
@@ -252,6 +254,7 @@ async function executeStartBattle(action, playerId, roomState) {
   return {
     success: true,
     action: 'start_battle',
+    backgroundWork: startBattleBackgroundWork,
     playerEvents,
     broadcastEvents: [
       {
@@ -288,61 +291,56 @@ async function executePlayerAttack(action, playerId, roomState) {
   // Victory check
   if (battleState.isEnemyDead()) {
     battleState.end()
-
-    let winData
-    try {
-      winData = await handleBattleWin(playerId, battleState)
-    } catch (err) {
-      console.error(`handleBattleWin failed for player ${playerId}:`, err)
-      // Still need to clear the battle so the player isn't stuck
-      roomState.activeBattles.delete(playerId)
-      return errorResult('player_attack', 'You won, but a server error prevented rewards from being saved. Please contact support.')
-    }
-
-    // Bug fix #1: delete from activeBattles only after win handler succeeds
     roomState.activeBattles.delete(playerId)
 
-    const rewardParts = [`+${winData.xpAwarded} XP`, `+${winData.goldAwarded} Gold`]
-    if (winData.droppedItems.length > 0) rewardParts.push(`+${winData.droppedItems.join(', ')}`)
+    // Compute rewards synchronously — no DB — so we can emit victory immediately
+    const rewards = calcBattleWinRewards(battleState)
+    const { xpAwarded, goldAwarded, droppedSlugs } = rewards
+
+    const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]
+    if (droppedSlugs.length > 0) rewardParts.push(`+${droppedSlugs.join(', ')}`)
     const winMsg = `You defeated the ${battleState.enemyName}! ${rewardParts.join('  ')}`
 
-    const victoryEvents = [
-      {
-        event: 'battle:victory',
-        payload: {
-          enemyName: battleState.enemyName,
-          xpAwarded: winData.xpAwarded,
-          goldAwarded: winData.goldAwarded,
-          droppedItems: winData.droppedItems,
-          lastTurnResult: turnResult,
-          message: winMsg,
-          summary: {
-            outcome: 'WIN',
-            enemyName: battleState.enemyName,
-            enemyIcon: battleState.enemy.icon,
-            enemySlug: battleState.enemySlug,
-            turnsCount: battleState.turnCount,
-            totalDamageDealt: battleState.totalDamageDealt,
-            totalDamageReceived: battleState.totalDamageReceived,
-            maxSingleHit: battleState.maxSingleHit,
-            xpEarned: winData.xpAwarded,
-            goldEarned: winData.goldAwarded,
-            itemsDropped: winData.droppedItems,
-            multiplayerBonus: battleState.multiplayerBonusUsed,
-            lastTurn: battleState.lastTurnResult,
-          },
-        },
-      },
-    ]
-    if (winData.levelUp?.leveled) {
-      victoryEvents.push({ event: 'player:level-up', payload: winData.levelUp })
-    }
+    // Fire DB persistence in the background; level-up event emitted via backgroundWork
+    const backgroundWork = persistBattleWin(playerId, battleState, rewards)
+      .then(({ levelUp }) => levelUp?.leveled ? [{ event: 'player:level-up', payload: levelUp }] : [])
+      .catch((err) => {
+        console.error(`persistBattleWin failed for player ${playerId}:`, err)
+        return []
+      })
 
     return {
       success: true,
       action: 'player_attack',
-      playerEvents: victoryEvents,
-      // Bug fix #4: notify room of victory
+      backgroundWork,
+      playerEvents: [
+        {
+          event: 'battle:victory',
+          payload: {
+            enemyName: battleState.enemyName,
+            xpAwarded,
+            goldAwarded,
+            droppedItems: droppedSlugs,
+            lastTurnResult: turnResult,
+            message: winMsg,
+            summary: {
+              outcome: 'WIN',
+              enemyName: battleState.enemyName,
+              enemyIcon: battleState.enemy.icon,
+              enemySlug: battleState.enemySlug,
+              turnsCount: battleState.turnCount,
+              totalDamageDealt: battleState.totalDamageDealt,
+              totalDamageReceived: battleState.totalDamageReceived,
+              maxSingleHit: battleState.maxSingleHit,
+              xpEarned: xpAwarded,
+              goldEarned: goldAwarded,
+              itemsDropped: droppedSlugs,
+              multiplayerBonus: battleState.multiplayerBonusUsed,
+              lastTurn: battleState.lastTurnResult,
+            },
+          },
+        },
+      ],
       broadcastEvents: [
         {
           event: 'action:feedback',

@@ -209,6 +209,15 @@ class GameEngine {
       })
     }
 
+    if (result.backgroundWork) {
+      result.backgroundWork.then((extraEvents) => {
+        extraEvents.forEach(({ event, payload }) => {
+          console.log(`[GameEngine] Emitting deferred event: ${event} to player ${playerId}`)
+          this.emitToPlayer(playerId, event, payload)
+        })
+      })
+    }
+
     if (result.roomEvent) {
       console.log(`[GameEngine] Emitting room event: ${result.roomEvent.event} to room ${roomId}`)
       this.io.to(`room-${roomId}`).emit(result.roomEvent.event, result.roomEvent.payload)
