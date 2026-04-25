@@ -126,7 +126,7 @@ async function executeStartBattle(action, playerId, roomState) {
     // before the turn animation plays. getSnapshot() reflects post-damage state,
     // which would be 0 on a 1-turn kill and prevent the HP bar drain from showing.
     enemyCurrentHp: snapshot.enemyCurrentHp > 0 ? snapshot.enemyCurrentHp : snapshot.enemyMaxHp,
-    enemyIcon: enemy.icon,
+    enemyIcon: enemy.name,
     enemyLevel: enemy.level,
     enemyAtt: enemy.att,
     enemyDef: enemy.def,
@@ -191,7 +191,7 @@ async function executeStartBattle(action, playerId, roomState) {
         summary: {
           outcome: 'WIN',
           enemyName: enemy.name,
-          enemyIcon: enemy.icon,
+          enemyIcon: enemy.name,
           enemySlug: enemy.slug,
           turnsCount: battleState.turnCount,
           totalDamageDealt: battleState.totalDamageDealt,
@@ -231,7 +231,7 @@ async function executeStartBattle(action, playerId, roomState) {
         summary: {
           outcome: 'LOSS',
           enemyName: enemy.name,
-          enemyIcon: enemy.icon,
+          enemyIcon: enemy.name,
           enemySlug: enemy.slug,
           turnsCount: battleState.turnCount,
           totalDamageDealt: battleState.totalDamageDealt,
@@ -326,7 +326,7 @@ async function executePlayerAttack(action, playerId, roomState) {
             summary: {
               outcome: 'WIN',
               enemyName: battleState.enemyName,
-              enemyIcon: battleState.enemy.icon,
+              enemyIcon: battleState.enemyName,
               enemySlug: battleState.enemySlug,
               turnsCount: battleState.turnCount,
               totalDamageDealt: battleState.totalDamageDealt,
@@ -384,7 +384,7 @@ async function executePlayerAttack(action, playerId, roomState) {
             summary: {
               outcome: 'LOSS',
               enemyName: battleState.enemyName,
-              enemyIcon: battleState.enemy.icon,
+              enemyIcon: battleState.enemyName,
               enemySlug: battleState.enemySlug,
               turnsCount: battleState.turnCount,
               totalDamageDealt: battleState.totalDamageDealt,

@@ -86,15 +86,17 @@ function StatRow({ label, value, highlight = false }: { label: string; value: st
 }
 
 function EnemyIcon({ iconName, isDead }: { iconName: string; isDead: boolean }) {
+  const size = isDead ? 88 : 76
   return (
     <div className="flex flex-col items-center gap-1">
-      <div style={{ transform: isDead ? 'scaleX(-1) scaleY(-1)' : 'scaleX(-1)' }}>
-        <Icon
-          name={iconName}
-          size={isDead ? 88 : 76}
-          className={isDead ? 'text-red-500' : 'text-white opacity-75'}
-        />
-      </div>
+      <img
+        src={`/icons/enemy/${encodeURIComponent(iconName)}.svg`}
+        alt={iconName}
+        width={size}
+        height={size}
+        style={{ transform: isDead ? 'scaleX(-1) scaleY(-1)' : 'scaleX(-1)' }}
+        className={`object-contain brightness-0 invert${isDead ? ' opacity-50' : ' opacity-75'}`}
+      />
       {isDead && (
         <span className="text-red-500 font-bold text-xs tracking-widest uppercase">DEAD</span>
       )}
