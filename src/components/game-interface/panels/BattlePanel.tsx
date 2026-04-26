@@ -66,8 +66,9 @@ function HpBar({ current, max, color, rtl = false, initialPct }: { current: numb
 
 function LevelBadge({ level }: { level: number }) {
   return (
-    <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-yellow-500 text-black text-[10px] font-bold flex-shrink-0 leading-none">
-      {level}
+    <span className="inline-flex items-baseline gap-0.5 px-1.5 py-0.5 rounded border border-gray-600/50 bg-gray-800/60 shrink-0">
+      <span className="text-[9px] font-semibold text-gray-500 uppercase tracking-wide leading-none">Lv</span>
+      <span className="text-sm font-black text-gray-200 leading-none tabular-nums">{level}</span>
     </span>
   )
 }
@@ -347,56 +348,76 @@ export default function BattlePanel({
       </div>
 
       {/* ── Overview header ── */}
-      <div className="flex items-stretch px-4 pt-3 pb-3 gap-4 border-b border-gray-800/60">
+      <div className="flex items-stretch px-3 pt-3 pb-3 gap-3 border-b border-gray-800/60">
 
         {/* Player column */}
-        <div className="flex-1 flex flex-col gap-1.5 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <LevelBadge level={playerLevel} />
-            <span className="text-sm font-bold text-white truncate">{playerName}</span>
-          </div>
+        <div className="flex-1 flex flex-col gap-2 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-red-300 w-14 tabular-nums">{battle.playerHp}/{battle.playerHpMax}</span>
+            <LevelBadge level={playerLevel} />
+            <span className="text-base font-black text-white truncate tracking-tight">{playerName}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-black tabular-nums leading-none" style={{ color: '#f87171', textShadow: '0 0 12px #ef444450' }}>{battle.playerHp}</span>
+              <span className="text-xs text-gray-600 font-semibold">/ {battle.playerHpMax} HP</span>
+            </div>
             <HpBar current={battle.playerHp} max={battle.playerHpMax} color="bg-red-500" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-blue-300 w-14 tabular-nums">{playerMp}/{playerMpMax}</span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-baseline gap-1">
+              <span className="text-base font-bold tabular-nums leading-none text-blue-400">{playerMp}</span>
+              <span className="text-xs text-gray-600 font-semibold">/ {playerMpMax} MP</span>
+            </div>
             <HpBar current={playerMp} max={playerMpMax} color="bg-blue-500" />
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
-            <span>STR</span>
-            <span className="text-yellow-400 font-semibold">{battle.playerStrMax ?? '—'}</span>
-            <span>DEF</span>
-            <span className="text-yellow-400 font-semibold">{battle.playerDefMax ?? '—'}</span>
+          <div className="flex items-center gap-3 pt-0.5">
+            <div className="flex flex-col items-center">
+              <span className="text-[9px] text-gray-600 uppercase tracking-widest leading-none">STR</span>
+              <span className="text-sm font-black text-yellow-400 leading-none">{battle.playerStrMax ?? '—'}</span>
+            </div>
+            <div className="w-px h-6 bg-gray-700/60" />
+            <div className="flex flex-col items-center">
+              <span className="text-[9px] text-gray-600 uppercase tracking-widest leading-none">DEF</span>
+              <span className="text-sm font-black text-yellow-400 leading-none">{battle.playerDefMax ?? '—'}</span>
+            </div>
           </div>
         </div>
 
-        {/* VS badge */}
-        <div className="flex-shrink-0 flex items-center justify-center">
-          <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center border border-gray-700/60">
-            <span className="text-sm font-black text-white tracking-wider">VS</span>
-          </div>
+        {/* VS divider */}
+        <div className="flex-shrink-0 flex flex-col items-center justify-center gap-1 px-1">
+          <div className="flex-1 w-px bg-gray-800" />
+          <span className="text-[11px] font-black text-gray-600 tracking-widest">VS</span>
+          <div className="flex-1 w-px bg-gray-800" />
         </div>
 
         {/* Enemy column */}
-        <div className="flex-1 flex flex-col items-end gap-1.5 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold text-white truncate">{battle.enemyName}</span>
+        <div className="flex-1 flex flex-col items-end gap-2 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-base font-black text-white truncate tracking-tight">{battle.enemyName}</span>
             {battle.enemyLevel !== null && <LevelBadge level={battle.enemyLevel} />}
           </div>
-          <div className="flex items-center gap-2 w-full">
+          <div className="flex flex-col gap-1 w-full">
+            <div className="flex items-baseline justify-end gap-1">
+              <span className="text-2xl font-black tabular-nums leading-none" style={{ color: '#f87171', textShadow: '0 0 12px #ef444450' }}>{battle.enemyCurrentHp}</span>
+              <span className="text-xs text-gray-600 font-semibold">/ {battle.enemyMaxHp} HP</span>
+            </div>
             <HpBar current={battle.enemyCurrentHp} max={battle.enemyMaxHp} color="bg-red-500" rtl initialPct={100} />
-            <span className="text-[11px] text-red-300 w-14 tabular-nums text-right flex-shrink-0">
-              {battle.enemyCurrentHp}/{battle.enemyMaxHp}
-            </span>
           </div>
-          {/* spacer to align with player's MP row */}
-          <div className="h-2" />
-          <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
-            <span>eATT</span>
-            <span className="text-yellow-400 font-semibold">{battle.enemyAtt ?? '—'}</span>
-            <span>eDEF</span>
-            <span className="text-yellow-400 font-semibold">{battle.enemyDef ?? '—'}</span>
+          {/* spacer to match player MP block */}
+          <div className="flex flex-col gap-1 w-full opacity-0 pointer-events-none" aria-hidden>
+            <div className="flex items-baseline gap-1"><span className="text-base leading-none">0</span></div>
+            <HpBar current={0} max={1} color="bg-blue-500" />
+          </div>
+          <div className="flex items-center gap-3 pt-0.5">
+            <div className="flex flex-col items-center">
+              <span className="text-[9px] text-gray-600 uppercase tracking-widest leading-none">ATT</span>
+              <span className="text-sm font-black text-yellow-400 leading-none">{battle.enemyAtt ?? '—'}</span>
+            </div>
+            <div className="w-px h-6 bg-gray-700/60" />
+            <div className="flex flex-col items-center">
+              <span className="text-[9px] text-gray-600 uppercase tracking-widest leading-none">DEF</span>
+              <span className="text-sm font-black text-yellow-400 leading-none">{battle.enemyDef ?? '—'}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -407,27 +428,27 @@ export default function BattlePanel({
       </div>
 
       {/* ── Combat visualization row ── */}
-      <div className="flex items-center px-4 pb-3 gap-2">
-        <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+      <div className="flex items-center px-3 pb-3 gap-2">
+
+        {/* Player side */}
+        <div className="flex-1 flex flex-col gap-1 min-w-0">
           {hasPlayerFormula ? (
             <>
-              <p className="text-xs text-gray-500">
+              <p className="text-[10px] text-gray-600 tabular-nums">
                 {battle.playerRaw} &minus; {battle.enemyBlocked} = {battle.lastPlayerDamage ?? 0}
-                <span className="text-gray-600 ml-1">(max {battle.playerStrMax})</span>
+                <span className="ml-1">(max {battle.playerStrMax})</span>
               </p>
               <p className="text-xs text-gray-400">
-                You attack with your{' '}
-                <span className="text-red-300 font-semibold">{weaponName ?? 'fists'}</span>
+                You attack with your <span className="text-red-300 font-semibold">{weaponName ?? 'fists'}</span>
               </p>
-              <p className="text-3xl font-bold text-red-400 leading-tight">{battle.lastPlayerDamage ?? 0}</p>
+              <p className="text-4xl font-black text-red-400 leading-none tabular-nums" style={{ textShadow: '0 0 16px #ef444460' }}>
+                {battle.lastPlayerDamage ?? 0}
+              </p>
             </>
           ) : lastUsedItemName ? (
-            <>
-              <p className="text-xs text-gray-400">
-                You used your{' '}
-                <span className="text-green-300 font-semibold">{lastUsedItemName}</span>
-              </p>
-            </>
+            <p className="text-xs text-gray-400">
+              You used your <span className="text-green-300 font-semibold">{lastUsedItemName}</span>
+            </p>
           ) : battle.isAdvantageTurn ? (
             <p className="text-xs text-gray-500 italic">You were ambushed entering the room</p>
           ) : (
@@ -437,21 +458,22 @@ export default function BattlePanel({
 
         <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} />
 
-        <div className="flex-1 flex flex-col items-end gap-0.5 min-w-0">
+        {/* Enemy side */}
+        <div className="flex-1 flex flex-col items-end gap-1 min-w-0">
           {enemyIsDead ? (
             <p className="text-sm font-bold text-red-500 text-right">{battle.enemyName}</p>
           ) : hasEnemyFormula ? (
             <>
-              <p className="text-xs text-gray-500 text-right">
-                <span className="text-gray-600 mr-1">(max {battle.enemyStrMax})</span>
+              <p className="text-[10px] text-gray-600 text-right tabular-nums">
+                <span className="mr-1">(max {battle.enemyStrMax})</span>
                 {battle.enemyRaw} &minus; {battle.playerBlocked} = {battle.lastEnemyDamage ?? 0}
               </p>
               <p className="text-xs text-gray-400 text-right">
-                The{' '}
-                <span className="text-yellow-300 font-semibold">{battle.enemyName}</span>{' '}
-                attacks you for
+                The <span className="text-yellow-300 font-semibold">{battle.enemyName}</span> attacks you for
               </p>
-              <p className="text-3xl font-bold text-yellow-400 leading-tight text-right">{battle.lastEnemyDamage ?? 0}</p>
+              <p className="text-4xl font-black text-yellow-400 leading-none tabular-nums text-right" style={{ textShadow: '0 0 16px #eab30860' }}>
+                {battle.lastEnemyDamage ?? 0}
+              </p>
             </>
           ) : (
             <p className="text-xs text-gray-600 italic text-right">…</p>
