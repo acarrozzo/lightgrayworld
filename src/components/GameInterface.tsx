@@ -3055,6 +3055,7 @@ export default function GameInterface() {
                                   battleResult={battleResult}
                                   onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
                                   onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
+                                  onUseItem={(itemId, action) => socketHandlers.sendGameAction({ type: 'use_item', data: { playerItemId: itemId, action } })}
                                   onDismissResult={clearBattleResult}
                                   isActing={isLoadingRoom}
                                   playerName={player.username}
@@ -3063,6 +3064,7 @@ export default function GameInterface() {
                                   playerMpMax={player.mpMax}
                                   weaponIconName={weaponIconName}
                                   weaponName={weaponName}
+                                  inventory={inventory}
                                 />
                               </div>
                             )}

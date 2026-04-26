@@ -1,14 +1,18 @@
 'use client'
 
-import { BattleState, BattleResult } from '@/lib/game-state'
+import { BattleState, BattleResult, InventoryItem } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 import { useEffect, useRef, useState } from 'react'
+import { getItemActions, resolveItemIcon } from '@/lib/item-actions'
+
+type BattleTab = 'actions' | 'spells' | 'items'
 
 interface BattlePanelProps {
   battle: BattleState
   battleResult: BattleResult | null
   onAttack: () => void
   onFlee: () => void
+  onUseItem: (itemId: string, action: string) => void
   onDismissResult: () => void
   isActing: boolean
   playerName: string
@@ -17,6 +21,7 @@ interface BattlePanelProps {
   playerMpMax: number
   weaponIconName: string | null
   weaponName: string | null
+  inventory: InventoryItem[]
 }
 
 function HpBar({ current, max, color, rtl = false, initialPct }: { current: number; max: number; color: string; rtl?: boolean; initialPct?: number }) {
@@ -126,98 +131,164 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
   const lt = result.lastTurn
   const wasAdvantageTurn = lt?.playerRaw === null
 
-  return (
-    <div className={`border ${isWin ? 'border-green-700/60' : 'border-red-800/60'} bg-gray-900/95 rounded-lg overflow-hidden shadow-lg`}>
+  if (isWin) {
+    return (
+      <div className="rounded-xl overflow-hidden shadow-2xl border border-green-500/70"
+        style={{ background: 'linear-gradient(160deg, #001a0a 0%, #002a10 40%, #001a0a 100%)' }}
+      >
+        {/* Header */}
+        <div className="relative flex items-center justify-center px-4 py-2.5 border-b border-green-700/40"
+          style={{ background: 'linear-gradient(90deg, transparent, #14532d30, #16a34a30, #14532d30, transparent)' }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base" style={{ filter: 'drop-shadow(0 0 6px #22c55e)' }}>⚔</span>
+            <p className="text-base font-black tracking-widest uppercase"
+              style={{ color: '#4ade80', textShadow: '0 0 16px #22c55e80, 0 0 32px #22c55e40' }}
+            >
+              Victory!
+            </p>
+            <span className="text-base" style={{ filter: 'drop-shadow(0 0 6px #22c55e)' }}>⚔</span>
+          </div>
+          <button onClick={onDismiss} className="absolute right-3 text-gray-600 hover:text-green-300 transition-colors p-1 rounded" aria-label="Dismiss">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
+        {/* Last turn + enemy */}
+        {lt && (
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-green-900/40">
+            <div className="flex-1 min-w-0">
+              {wasAdvantageTurn ? (
+                <p className="text-xs text-gray-500 italic">Ambush entry</p>
+              ) : (
+                <>
+                  <p className="text-xs text-gray-500">Final blow with <span className="text-red-300 font-semibold">{weaponName ?? 'fists'}</span></p>
+                  <p className="text-2xl font-black text-red-400 leading-tight" style={{ textShadow: '0 0 10px #ef444460' }}>{lt.playerDealtDamage}</p>
+                  <p className="text-[10px] text-gray-600">{lt.playerRaw} − {lt.enemyBlocked} = {lt.playerDealtDamage}</p>
+                </>
+              )}
+            </div>
+            <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={true} />
+            <div className="flex-1 flex flex-col items-end min-w-0">
+              <p className="text-xs font-bold text-red-500 text-right">{result.enemyName}</p>
+              <p className="text-xs text-gray-600 text-right">defeated</p>
+            </div>
+          </div>
+        )}
+
+        {/* Rewards */}
+        <div className="px-4 py-2.5 border-b border-green-900/40">
+          <div className="grid grid-cols-3 gap-2">
+            <RewardChip label="XP" value={`+${result.xpEarned}`} color="#4ade80" glow="#22c55e" />
+            <RewardChip label="Gold" value={`+${result.goldEarned}`} color="#fde047" glow="#eab308" />
+            {result.itemsDropped.length > 0
+              ? <RewardChip label="Dropped" value={result.itemsDropped.join(', ')} color="#c4b5fd" glow="#8b5cf6" small />
+              : <RewardChip label="Dropped" value="None" color="#4b5563" glow="#374151" />
+            }
+          </div>
+          {result.multiplayerBonus && (
+            <p className="text-[10px] text-blue-400 text-center mt-1">Group bonus active</p>
+          )}
+        </div>
+
+        {/* Secondary stats */}
+        <div className="px-4 py-2 flex items-center justify-between text-[11px] text-gray-500 border-b border-green-900/30">
+          <span>{result.turnsCount} turns</span>
+          <span>Dealt {result.totalDamageDealt}</span>
+          <span>Took {result.totalDamageReceived}</span>
+          <span>Best {result.maxSingleHit}</span>
+        </div>
+
+        {/* Close */}
+        <div className="px-4 py-2.5">
+          <button
+            onClick={onDismiss}
+            className="w-full py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all duration-150 text-black"
+            style={{ background: 'linear-gradient(90deg, #16a34a, #22c55e, #16a34a)', boxShadow: '0 0 12px #22c55e40' }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Defeat
+  return (
+    <div className="rounded-xl overflow-hidden shadow-2xl border border-red-800/70"
+      style={{ background: 'linear-gradient(160deg, #1a0000 0%, #2a0808 40%, #1a0000 100%)' }}
+    >
       {/* Header */}
-      <div className={`relative flex items-center justify-center px-4 py-2 ${isWin ? 'bg-green-900/40' : 'bg-red-900/30'} border-b ${isWin ? 'border-green-700/50' : 'border-red-800/50'}`}>
-        <p className={`text-sm font-black tracking-widest uppercase ${isWin ? 'text-green-300' : 'text-red-400'}`}>
-          {isWin ? 'Victory' : 'Defeated'}
+      <div className="relative flex items-center justify-center px-4 py-2.5 border-b border-red-800/40"
+        style={{ background: 'linear-gradient(90deg, transparent, #7f1d1d30, #dc262630, #7f1d1d30, transparent)' }}
+      >
+        <p className="text-base font-black tracking-widest uppercase"
+          style={{ color: '#f87171', textShadow: '0 0 16px #ef444480' }}
+        >
+          Defeated
         </p>
+        <button onClick={onDismiss} className="absolute right-3 text-gray-600 hover:text-red-300 transition-colors p-1 rounded" aria-label="Dismiss">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
-      {/* Last turn replay */}
+      {/* Last turn */}
       {lt && (
-        <div className="flex items-center px-4 py-3 gap-2 border-b border-gray-800/60">
-          {/* Player side */}
-          <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+        <div className="flex items-center gap-3 px-4 py-2 border-b border-red-900/40">
+          <div className="flex-1 min-w-0">
             {wasAdvantageTurn ? (
-              <p className="text-xs text-gray-500 italic">You were ambushed entering the room</p>
+              <p className="text-xs text-gray-500 italic">Ambush entry</p>
             ) : (
               <>
-                <p className="text-xs text-gray-500">
-                  {lt.playerRaw} &minus; {lt.enemyBlocked} = {lt.playerDealtDamage}
-                  <span className="text-gray-600 ml-1">(max {lt.playerStrMax})</span>
-                </p>
-                <p className="text-xs text-gray-400">
-                  Final strike with{' '}
-                  <span className="text-red-300 font-semibold">{weaponName ?? 'fists'}</span>
-                </p>
-                <p className="text-3xl font-bold text-red-400 leading-tight">{lt.playerDealtDamage}</p>
+                <p className="text-xs text-gray-500">Your strike</p>
+                <p className="text-xl font-black text-red-400 leading-tight">{lt.playerDealtDamage}</p>
               </>
             )}
           </div>
-
-          {/* Icons */}
-          <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={isWin} />
-
-          {/* Enemy side */}
-          <div className="flex-1 flex flex-col items-end gap-0.5 min-w-0">
-            {isWin ? (
-              <p className="text-sm font-bold text-red-500 text-right">{result.enemyName}</p>
-            ) : (
-              <>
-                <p className="text-xs text-gray-500 text-right">
-                  <span className="text-gray-600 mr-1">(max {lt.enemyStrMax})</span>
-                  {lt.enemyRaw} &minus; {lt.playerBlocked} = {lt.enemyDealtDamage}
-                </p>
-                <p className="text-xs text-gray-400 text-right">
-                  <span className="text-yellow-300 font-semibold">{result.enemyName}</span> attacks for
-                </p>
-                <p className="text-3xl font-bold text-yellow-400 leading-tight text-right">{lt.enemyDealtDamage}</p>
-              </>
-            )}
+          <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={false} />
+          <div className="flex-1 flex flex-col items-end min-w-0">
+            <p className="text-xs text-gray-400 text-right"><span className="text-yellow-300 font-semibold">{result.enemyName}</span> hit</p>
+            <p className="text-xl font-black text-yellow-400 leading-tight text-right">{lt.enemyDealtDamage}</p>
           </div>
         </div>
       )}
 
       {/* Stats */}
-      <div className="px-4 py-3 space-y-1.5 border-b border-gray-800/60">
-        <StatRow label="Turns" value={result.turnsCount} />
+      <div className="px-4 py-2.5 space-y-1 border-b border-red-900/40">
+        <StatRow label="Turns survived" value={result.turnsCount} />
         <StatRow label="Damage dealt" value={result.totalDamageDealt} />
         <StatRow label="Damage received" value={result.totalDamageReceived} />
         <StatRow label="Biggest hit" value={result.maxSingleHit} highlight />
         {result.multiplayerBonus && (
-          <p className="text-xs text-blue-400 pt-0.5">Group bonus was active</p>
+          <p className="text-[10px] text-blue-400">Group bonus active</p>
         )}
       </div>
 
-      {/* Rewards (win only) */}
-      {isWin && (
-        <div className="px-4 py-3 space-y-1.5 border-b border-gray-800/60">
-          <StatRow label="XP earned" value={`+${result.xpEarned}`} />
-          <StatRow label="Gold earned" value={`+${result.goldEarned}`} />
-          {result.itemsDropped.length > 0 ? (
-            <div className="flex items-start justify-between text-sm">
-              <span className="text-gray-400">Items</span>
-              <span className="text-green-300 font-semibold text-right">{result.itemsDropped.join(', ')}</span>
-            </div>
-          ) : (
-            <StatRow label="Items" value="No drops" />
-          )}
-        </div>
-      )}
-
       {/* Close */}
-      <div className="px-4 py-4 flex justify-center">
+      <div className="px-4 py-2.5">
         <button
           onClick={onDismiss}
-          className={`w-full py-3 rounded-lg text-sm font-black tracking-widest uppercase transition-all duration-150 ${isWin ? 'bg-green-700/80 hover:bg-green-600 text-white' : 'bg-red-900/60 hover:bg-red-800 text-red-200'}`}
+          className="w-full py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all duration-150 text-red-200"
+          style={{ background: 'linear-gradient(90deg, #7f1d1d, #991b1b, #7f1d1d)' }}
         >
-          Close
+          Respawn
         </button>
       </div>
+    </div>
+  )
+}
 
+function RewardChip({ label, value, color, glow, small }: { label: string; value: string; color: string; glow: string; small?: boolean }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-lg py-2 px-1 border"
+      style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', borderColor: `${glow}40`, boxShadow: `inset 0 1px 0 ${glow}20` }}
+    >
+      <span className={`${small ? 'text-[10px] leading-tight text-center' : 'text-base tabular-nums'} font-black`} style={{ color, textShadow: `0 0 10px ${glow}70` }}>{value}</span>
+      <span className="text-[10px] text-gray-500 tracking-wide">{label}</span>
     </div>
   )
 }
@@ -227,6 +298,7 @@ export default function BattlePanel({
   battleResult,
   onAttack,
   onFlee,
+  onUseItem,
   onDismissResult,
   isActing,
   playerName,
@@ -235,7 +307,17 @@ export default function BattlePanel({
   playerMpMax,
   weaponIconName,
   weaponName,
+  inventory,
 }: BattlePanelProps) {
+  const [activeTab, setActiveTab] = useState<BattleTab>('actions')
+  const [lastUsedItemName, setLastUsedItemName] = useState<string | null>(null)
+
+  const hasPlayerFormula = battle.playerRaw !== null
+
+  useEffect(() => {
+    if (hasPlayerFormula) setLastUsedItemName(null)
+  }, [hasPlayerFormula])
+
   if (!battle.isInBattle && battleResult) {
     return <BattleResultCard result={battleResult} weaponIconName={weaponIconName} weaponName={weaponName} onDismiss={onDismissResult} />
   }
@@ -243,12 +325,26 @@ export default function BattlePanel({
   if (!battle.isInBattle) return null
 
   const turnsUntilFlee = Math.max(0, 10 - battle.turnCount)
-  const hasPlayerFormula = battle.playerRaw !== null
   const hasEnemyFormula = battle.enemyRaw !== null
   const enemyIsDead = battle.enemyCurrentHp <= 0
 
+  const consumables = inventory.filter(
+    (item) => item.template.type === 'CONSUMABLE' && getItemActions(item.template.slug).length > 0
+  )
+
   return (
     <div className="border border-red-900/60 bg-gray-900/90 rounded-lg overflow-hidden shadow-lg">
+
+      {/* ── In Battle header ── */}
+      <div className="flex flex-col items-center justify-center px-4 py-2 border-b border-red-900/40"
+        style={{ background: 'linear-gradient(90deg, transparent, #7f1d1d30, #dc262630, #7f1d1d30, transparent)' }}
+      >
+        <p className="text-sm font-black tracking-widest uppercase"
+          style={{ color: '#f87171', textShadow: '0 0 16px #ef444480' }}
+        >
+          In Battle
+        </p>
+      </div>
 
       {/* ── Overview header ── */}
       <div className="flex items-stretch px-4 pt-3 pb-3 gap-4 border-b border-gray-800/60">
@@ -306,7 +402,7 @@ export default function BattlePanel({
       </div>
 
       {/* ── Turn indicator ── */}
-      <div className="flex items-center justify-center px-4 py-1 border-b border-gray-800/60">
+      <div className="flex items-center justify-center px-4 py-1">
         <span className="text-[11px] text-gray-600 uppercase tracking-widest">Turn <span className="text-gray-400 font-semibold">{battle.turnCount}</span></span>
       </div>
 
@@ -324,6 +420,13 @@ export default function BattlePanel({
                 <span className="text-red-300 font-semibold">{weaponName ?? 'fists'}</span>
               </p>
               <p className="text-3xl font-bold text-red-400 leading-tight">{battle.lastPlayerDamage ?? 0}</p>
+            </>
+          ) : lastUsedItemName ? (
+            <>
+              <p className="text-xs text-gray-400">
+                You used your{' '}
+                <span className="text-green-300 font-semibold">{lastUsedItemName}</span>
+              </p>
             </>
           ) : battle.isAdvantageTurn ? (
             <p className="text-xs text-gray-500 italic">You were ambushed entering the room</p>
@@ -362,23 +465,102 @@ export default function BattlePanel({
         </div>
       )}
 
-      {/* ── Action buttons ── */}
-      <div className="flex gap-3 px-4 pb-3 pt-2 border-t border-gray-800/50">
-        <button
-          onClick={onAttack}
-          disabled={isActing}
-          className="flex-1 py-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold transition-all duration-150"
-        >
-          {isActing ? '...' : 'Attack'}
-        </button>
-        <button
-          onClick={onFlee}
-          disabled={isActing || !battle.canFlee}
-          title={battle.canFlee ? 'Flee from battle' : `Flee available in ${turnsUntilFlee} turn${turnsUntilFlee !== 1 ? 's' : ''}`}
-          className="flex-1 py-2 bg-gray-700/80 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-all duration-150"
-        >
-          {battle.canFlee ? 'Flee' : `Flee (${turnsUntilFlee})`}
-        </button>
+      {/* ── Tabbed action panel ── */}
+      <div className="border-t border-gray-800/50">
+        {/* Tab bar */}
+        <div className="flex gap-2 px-3 pt-2.5 pb-2">
+          {(['actions', 'spells', 'items'] as BattleTab[]).map((tab) => {
+            const activeClasses =
+              tab === 'actions' ? 'border-red-500 bg-red-500/10 text-red-300' :
+              tab === 'spells'  ? 'border-blue-500 bg-blue-500/10 text-blue-300' :
+                                  'border-yellow-500 bg-yellow-500/10 text-yellow-300'
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 h-8 text-xs font-medium uppercase tracking-wider rounded-lg border transition-all duration-200 shadow-sm ${
+                  activeTab === tab
+                    ? activeClasses
+                    : 'border-gray-600 bg-transparent text-gray-400 hover:border-gray-500 hover:text-gray-300 hover:bg-gray-800/30'
+                }`}
+              >
+                {tab}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Actions tab */}
+        {activeTab === 'actions' && (
+          <div className="px-3 pb-3 pt-1 flex flex-col gap-2">
+            <div className="flex gap-2">
+              <button
+                onClick={onAttack}
+                disabled={isActing}
+                className="flex-1 py-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold transition-all duration-150"
+              >
+                {isActing ? '...' : 'Attack'}
+              </button>
+              <button
+                disabled={isActing}
+                className="flex-1 py-2 bg-yellow-600/80 hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold transition-all duration-150"
+              >
+                Defend
+              </button>
+            </div>
+            <button
+              onClick={onFlee}
+              disabled={isActing || !battle.canFlee}
+              title={battle.canFlee ? 'Flee from battle' : `Flee available in ${turnsUntilFlee} turn${turnsUntilFlee !== 1 ? 's' : ''}`}
+              className="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 py-0.5 underline underline-offset-2"
+            >
+              {battle.canFlee ? 'Flee' : `Flee (${turnsUntilFlee} turns)`}
+            </button>
+          </div>
+        )}
+
+        {/* Spells tab */}
+        {activeTab === 'spells' && (
+          <div className="px-4 pb-4 pt-4 flex items-center justify-center">
+            <p className="text-xs text-gray-600 italic">No spells learned yet.</p>
+          </div>
+        )}
+
+        {/* Items tab */}
+        {activeTab === 'items' && (
+          <div className="px-4 pb-3 pt-2 flex flex-col gap-1.5 max-h-36 overflow-y-auto">
+            {consumables.length === 0 ? (
+              <p className="text-xs text-gray-600 italic py-2">No items available.</p>
+            ) : (
+              consumables.map((item) => {
+                const actions = getItemActions(item.template.slug)
+                const primaryAction = actions[0]
+                const iconName = resolveItemIcon(item.template.metadata ?? null, item.template.slug)
+                return (
+                  <div key={item.id} className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setLastUsedItemName(item.template.name)
+                        onUseItem(item.id, primaryAction.action)
+                      }}
+                      disabled={isActing}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold text-white transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 ${primaryAction.className ?? 'bg-indigo-600/80 hover:bg-indigo-600'}`}
+                    >
+                      {primaryAction.effect ?? primaryAction.label}
+                    </button>
+                    <Icon name={iconName} size={20} className="text-white opacity-70 flex-shrink-0" />
+                    <span className="flex-1 text-xs text-gray-300 truncate">
+                      {item.template.name}
+                      {item.quantity > 1 && (
+                        <span className="text-gray-500 ml-1">×{item.quantity}</span>
+                      )}
+                    </span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

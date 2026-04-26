@@ -24,6 +24,7 @@ export interface ItemAction {
   label: string
   icon?: string
   className?: string
+  effect?: string
 }
 
 export const ITEM_ACTIONS: Record<string, ItemAction[]> = {
@@ -31,19 +32,19 @@ export const ITEM_ACTIONS: Record<string, ItemAction[]> = {
     { action: 'read book', label: 'Read Book', icon: 'book', className: 'bg-blue-600/70 hover:bg-blue-600' },
   ],
   'flower': [
-    { action: 'eat', label: 'Eat', icon: 'flower', className: 'bg-amber-400/70 hover:bg-amber-400' },
+    { action: 'eat', label: 'Eat', icon: 'flower', className: 'bg-amber-400/70 hover:bg-amber-400', effect: '−1 HP' },
   ],
   'redberry': [
-    { action: 'eat', label: 'Eat', icon: 'redberry', className: 'bg-red-500/70 hover:bg-red-500' },
+    { action: 'eat', label: 'Eat', icon: 'redberry', className: 'bg-red-500/70 hover:bg-red-500', effect: '+5 HP' },
   ],
   'blueberry': [
-    { action: 'eat', label: 'Eat', icon: 'blueberry', className: 'bg-blue-500/70 hover:bg-blue-500' },
+    { action: 'eat', label: 'Eat', icon: 'blueberry', className: 'bg-blue-500/70 hover:bg-blue-500', effect: '+5 MP' },
   ],
   'red-potion': [
-    { action: 'drink', label: 'Drink', icon: 'red-potion', className: 'bg-red-600/70 hover:bg-red-600' },
+    { action: 'drink', label: 'Drink', icon: 'red-potion', className: 'bg-red-600/70 hover:bg-red-600', effect: '+100 HP' },
   ],
   'blue-potion': [
-    { action: 'drink', label: 'Drink', icon: 'blue-potion', className: 'bg-blue-600/70 hover:bg-blue-600' },
+    { action: 'drink', label: 'Drink', icon: 'blue-potion', className: 'bg-blue-600/70 hover:bg-blue-600', effect: '+100 MP' },
   ],
 }
 
