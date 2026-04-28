@@ -110,13 +110,13 @@ const ROOM_ACTIONS = {
     },
     'open gold chest': {
       showModal: true,
-      message: 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
+      message: 'The gold chest is locked. You need a Gold Key to open it. You can get one from Robert.',
       modalContent: {
         title: 'You try to open the gold chest',
         type: 'icon',
         icon: 'chest',
         iconColor: 'amber-500/90',
-        message: 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
+        message: 'The gold chest is locked. You need a Gold Key to open it. You can get one from Robert.',
       },
     },
   },
@@ -267,7 +267,7 @@ const ROOM_ACTIONS = {
       }
     },
   },
-  '003c': {
+  '007': {
     'talk to young soldier': async (playerId, roomState) => {
       const { getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
 
@@ -284,15 +284,15 @@ const ROOM_ACTIONS = {
           playerEvents: [
             {
               event: 'action:feedback',
-              payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
+              payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach Robert.', {
                 roomId: roomState.roomId,
                 showModal: true,
                 modalContent: {
                   type: 'icon',
                   icon: 'npc-youngsoldier',
                   iconColor: 'blue-400',
-                  title: 'Talk to Young Soldier',
-                  message: 'The Young Soldier turns to face you with a determined look. "Greetings, traveler! I see you\'ve spoken with the Old Man. He\'s a wise one, but let me give you some advice: in this world, you need to be prepared. Make sure you\'re properly armed before you venture too far."',
+                  title: 'Talk to Robert',
+                  message: 'Robert turns to face you with a determined look. "Greetings, traveler! I see you\'ve spoken with the Old Man. He\'s a wise one, but let me give you some advice: in this world, you need to be prepared. Make sure you\'re properly armed before you venture too far."',
                 },
                 buttons: [
                   { label: 'Continue', direction: 'complete_quest:quest_003' },
@@ -318,15 +318,15 @@ const ROOM_ACTIONS = {
             playerEvents: [
               {
                 event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
+                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach Robert.', {
                   roomId: roomState.roomId,
                   showModal: true,
                   modalContent: {
                     type: 'icon',
                     icon: 'npc-youngsoldier',
                     iconColor: 'blue-400',
-                    title: 'Talk to Young Soldier',
-                    message: 'The Young Soldier nods approvingly as he sees your weapon. "Good. Now you\'re armed. That\'s much better. You\'ll need that if you plan to explore beyond these safe areas."',
+                    title: 'Talk to Robert',
+                    message: 'Robert nods approvingly as he sees your weapon. "Good. Now you\'re armed. That\'s much better. You\'ll need that if you plan to explore beyond these safe areas."',
                   },
                   buttons: [
                     { label: 'Complete Quest', direction: 'complete_quest:quest_004' },
@@ -343,15 +343,15 @@ const ROOM_ACTIONS = {
             playerEvents: [
               {
                 event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to the Young Soldier.', {
+                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to Robert.', {
                   roomId: roomState.roomId,
                   showModal: true,
                   modalContent: {
                     type: 'icon',
                     icon: 'npc-youngsoldier',
                     iconColor: 'blue-400',
-                    title: 'Talk to Young Soldier',
-                    message: 'The Young Soldier looks at you with concern. "You\'re still unarmed? That\'s dangerous. Open your inventory and equip something into your Main Hand. You can\'t rely on your fists forever."',
+                    title: 'Talk to Robert',
+                    message: 'Robert looks at you with concern. "You\'re still unarmed? That\'s dangerous. Open your inventory and equip something into your Main Hand. You can\'t rely on your fists forever."',
                   },
                 }),
               },
@@ -375,15 +375,15 @@ const ROOM_ACTIONS = {
             playerEvents: [
               {
                 event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
+                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach Robert.', {
                   roomId: roomState.roomId,
                   showModal: true,
                   modalContent: {
                     type: 'icon',
                     icon: 'npc-youngsoldier',
                     iconColor: 'blue-400',
-                    title: 'Talk to Young Soldier',
-                    message: 'The Young Soldier grins as you return. "Five Sand Crabs — impressive! You\'re no longer just an adventurer with a weapon, you\'re one who knows how to use it. I think you\'re ready to explore this world."',
+                    title: 'Talk to Robert',
+                    message: 'Robert grins as you return. "Five Sand Crabs — impressive! You\'re no longer just an adventurer with a weapon, you\'re one who knows how to use it. I think you\'re ready to explore this world."',
                   },
                   buttons: [
                     { label: 'Complete Quest', direction: 'complete_quest:quest_005' },
@@ -399,15 +399,15 @@ const ROOM_ACTIONS = {
             playerEvents: [
               {
                 event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
+                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach Robert.', {
                   roomId: roomState.roomId,
                   showModal: true,
                   modalContent: {
                     type: 'icon',
                     icon: 'npc-youngsoldier',
                     iconColor: 'blue-400',
-                    title: 'Talk to Young Soldier',
-                    message: `The Young Soldier crosses his arms. "The Rocky Beach is to the south — you'll find Sand Crabs there. Come back when you've defeated five of them. You're at ${killCount} of ${killTarget} so far."`,
+                    title: 'Talk to Robert',
+                    message: `Robert crosses his arms. "The Rocky Beach is to the south — you'll find Sand Crabs there. Come back when you've defeated five of them. You're at ${killCount} of ${killTarget} so far."`,
                   },
                 }),
               },
@@ -423,19 +423,19 @@ const ROOM_ACTIONS = {
         playerEvents: [
           {
             event: 'action:feedback',
-            payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to the Young Soldier.', {
+            payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to Robert.', {
               roomId: roomState.roomId,
               showModal: true,
               modalContent: {
                 type: 'icon',
                 icon: 'npc-youngsoldier',
                 iconColor: 'blue-400',
-                title: 'Talk to Young Soldier',
+                title: 'Talk to Robert',
                 message: quest005Progress && quest005Progress.completed
-                  ? 'The Young Soldier gives you a proud nod. "You\'ve proven yourself out there. Stay sharp and keep pushing further into the world."'
+                  ? 'Robert gives you a proud nod. "You\'ve proven yourself out there. Stay sharp and keep pushing further into the world."'
                   : quest004Progress && quest004Progress.completed
-                    ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
-                    : 'The Young Soldier stands at attention. "Help out the Old Man first and then come back to me. Hello there Young Adventurer. I\'m a Young Soldier sent here from Domus to assist you. Feel free to take any of the training weapons here."',
+                    ? 'Robert gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
+                    : 'Robert stands at attention. "Help out the Old Man first and then come back to me. Hello there Young Adventurer. I\'m Robert, a soldier sent here from Domus to assist you. Feel free to take any of the training weapons here."',
               },
             }),
           },

@@ -59,14 +59,14 @@
   },
   "quest_003": {
     "number": 3,
-    "title": "Talk to the Young Soldier",
-    "summary": "A young soldier nearby looks like they have advice.",
-    "objective": "Talk to the Young Soldier in Room 003c.",
-    "nextStep": "Go to Room 003c and talk to the Young Soldier.",
+    "title": "Talk to Robert",
+    "summary": "A soldier named Robert nearby looks like they have advice.",
+    "objective": "Talk to Robert in Room 007.",
+    "nextStep": "Go to Room 007 and talk to Robert.",
     "giver": {
       "npcId": "young_soldier",
-      "roomId": "003c",
-      "name": "Young Soldier",
+      "roomId": "007",
+      "name": "Robert",
       "icon": "npc-youngsoldier"
     },
     "completionMode": "turn_in",
@@ -87,8 +87,8 @@
     "nextStep": "Open Inventory and equip something into Main Hand.",
     "giver": {
       "npcId": "young_soldier",
-      "roomId": "003c",
-      "name": "Young Soldier",
+      "roomId": "007",
+      "name": "Robert",
       "icon": "npc-youngsoldier"
     },
     "completionMode": "turn_in",
@@ -120,13 +120,13 @@
   "quest_005": {
     "number": 5,
     "title": "Prove Your Strength",
-    "summary": "The Young Soldier wants to see that you can handle yourself in a real fight.",
+    "summary": "Robert wants to see that you can handle yourself in a real fight.",
     "objective": "Defeat 5 Sand Crabs at the Rocky Beach.",
-    "nextStep": "Head to the Rocky Beach and defeat 5 Sand Crabs, then return to the Young Soldier.",
+    "nextStep": "Head to the Rocky Beach and defeat 5 Sand Crabs, then return to Robert.",
     "giver": {
       "npcId": "young_soldier",
-      "roomId": "003c",
-      "name": "Young Soldier",
+      "roomId": "007",
+      "name": "Robert",
       "icon": "npc-youngsoldier"
     },
     "completionMode": "turn_in",

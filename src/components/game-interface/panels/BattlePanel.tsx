@@ -337,10 +337,10 @@ export default function BattlePanel({
     <div className="border border-red-900/60 bg-gray-900/90 rounded-lg overflow-hidden shadow-lg">
 
       {/* ── In Battle header ── */}
-      <div className="flex flex-col items-center justify-center px-4 py-2 border-b border-red-900/40"
+      <div className="flex flex-col items-center justify-center px-4 py-1 border-b border-red-900/40"
         style={{ background: 'linear-gradient(90deg, transparent, #7f1d1d30, #dc262630, #7f1d1d30, transparent)' }}
       >
-        <p className="text-sm font-black tracking-widest uppercase"
+        <p className="text-xs font-black tracking-widest uppercase"
           style={{ color: '#f87171', textShadow: '0 0 16px #ef444480' }}
         >
           In Battle
@@ -490,20 +490,24 @@ export default function BattlePanel({
       {/* ── Tabbed action panel ── */}
       <div className="border-t border-gray-800/50">
         {/* Tab bar */}
-        <div className="flex gap-2 px-3 pt-2.5 pb-2">
+        <div className="flex px-3 pt-2.5">
           {(['actions', 'spells', 'items'] as BattleTab[]).map((tab) => {
-            const activeClasses =
-              tab === 'actions' ? 'border-red-500 bg-red-500/10 text-red-300' :
-              tab === 'spells'  ? 'border-blue-500 bg-blue-500/10 text-blue-300' :
-                                  'border-yellow-500 bg-yellow-500/10 text-yellow-300'
+            const activeColor =
+              tab === 'actions' ? 'border-red-500 text-red-300 hover:border-red-500 hover:text-red-300' :
+              tab === 'spells'  ? 'border-blue-500 text-blue-300 hover:border-blue-500 hover:text-blue-300' :
+                                  'border-yellow-500 text-yellow-300 hover:border-yellow-500 hover:text-yellow-300'
+            const hoverColor =
+              tab === 'actions' ? 'hover:border-red-500/50 hover:text-red-300/70' :
+              tab === 'spells'  ? 'hover:border-blue-500/50 hover:text-blue-300/70' :
+                                  'hover:border-yellow-500/50 hover:text-yellow-300/70'
             return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 h-8 text-xs font-medium uppercase tracking-wider rounded-lg border transition-all duration-200 shadow-sm ${
+                className={`flex-1 h-8 text-xs font-medium uppercase tracking-wider border-b-2 transition-all duration-200 ${
                   activeTab === tab
-                    ? activeClasses
-                    : 'border-gray-600 bg-transparent text-gray-400 hover:border-gray-500 hover:text-gray-300 hover:bg-gray-800/30'
+                    ? activeColor
+                    : `border-transparent text-gray-500 ${hoverColor}`
                 }`}
               >
                 {tab}
@@ -511,6 +515,7 @@ export default function BattlePanel({
             )
           })}
         </div>
+        <div className="pt-2" />
 
         {/* Actions tab */}
         {activeTab === 'actions' && (

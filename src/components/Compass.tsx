@@ -264,7 +264,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
     ? '/img/lightgray_map_the_lobby.jpg'
     : isSolarOffice
     ? '/img/lightgray_map_solar_office.jpg'
-    : '/img/lightgray_map_grassyfield_main.jpg'
+    : '/img/lightgray_map_grassyfield_main_s1.jpg'
   const mapPosition = isRoomZero || isLobby || isSolarOffice
     ? 'center'
     : (isTransitioning ? targetPosition : currentPosition)

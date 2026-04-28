@@ -6,6 +6,8 @@ const { equipItem, unequipItem } = require('./services/equipment-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
 const { executeStartBattle, executePlayerAttack, executePlayerFlee } = require('./battle-action-handlers')
+const { getRoomEnemies } = require('../game-data/room-enemies')
+const { getEnemy } = require('../game-data/enemies')
 
 class RoomState {
   constructor(roomId) {
@@ -87,6 +89,8 @@ class RoomState {
     
     // Otherwise, fall back to standard actions
     switch (action.type) {
+      case 'attack':
+        return await this.executeAttack(playerId)
       case 'start_battle':
         return await executeStartBattle(action, playerId, this)
       case 'player_attack':
@@ -390,6 +394,39 @@ class RoomState {
         },
       ],
     }
+  }
+
+  async executeAttack(playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('attack', 'Player not found in this room')
+    }
+
+    const activeBattle = this.activeBattles.get(playerId)
+    if (activeBattle && activeBattle.isActive) {
+      return await executePlayerAttack({ type: 'player_attack' }, playerId, this)
+    }
+
+    const roomEnemyData = getRoomEnemies(this.roomId)
+    const slugs = roomEnemyData?.enemies ?? []
+    const enemies = slugs.map((s) => getEnemy(s)).filter(Boolean)
+    const target = enemies.find((e) => e.isAggressive) ?? enemies[0] ?? null
+
+    if (!target) {
+      this.touchActivity()
+      return {
+        success: true,
+        action: 'attack',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload('attack', 'info', 'Nothing to attack here.'),
+          },
+        ],
+      }
+    }
+
+    return await executeStartBattle({ type: 'start_battle', data: { enemySlug: target.slug } }, playerId, this)
   }
 
   executeSearch(playerId) {

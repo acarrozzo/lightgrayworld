@@ -54,7 +54,7 @@ export type MapConfigEntry = {
 
 // Map configuration
 export const MAP_CONFIG: MapConfigEntry[] = [
-  { id: 'grassy-field', src: '/img/lightgray_map_grassyfield_main.jpg', title: 'Grassy Field', flag: 'grassyFieldMap' },
+  { id: 'grassy-field', src: '/img/lightgray_map_grassyfield_main_s1.jpg', title: 'Grassy Field', flag: 'grassyFieldMap' },
   { id: 'grassy-field-underground', src: '/img/lightgray_map_grassyfield_underground.jpg', title: 'Grassy Field Underground', flag: 'grassyFieldUndergroundMap' },
   { id: 'room-zero', src: '/img/lightgray_map_roomzero.jpg', title: 'Room Zero', flag: 'roomZeroMap' },
   { id: 'lobby', src: '/img/lightgray_map_the_lobby.jpg', title: 'The Lobby', flag: 'lobbyMap' },

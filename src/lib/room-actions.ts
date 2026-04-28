@@ -24,9 +24,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'attack dummy', label: 'Attack Dummy', icon: 'sword1', className: 'bg-red-500/70 hover:bg-red-500' },
     { action: 'cook meat', label: 'Cook Meat', icon: 'fire', className: 'bg-orange-600 hover:bg-orange-700' },
   ],
-  '003c': [
-    { action: 'talk to young soldier', label: 'Talk to Young Soldier', icon: 'npc-youngsoldier', className: 'bg-blue-600 hover:bg-blue-700' },
-  ],
+  '003c': [],
   '004': [],
   '005': [
     { action: 'pick blueberry', label: 'Pick Blueberry', icon: 'blueberry', className: 'bg-blue-600 hover:bg-blue-700' },
@@ -36,7 +34,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '007': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
-    { action: 'search', label: 'Search', icon: 'aim', className: 'bg-green-600 hover:bg-green-700' },
+    { action: 'talk to young soldier', label: 'Talk to Robert', icon: 'npc-youngsoldier', className: 'bg-blue-600 hover:bg-blue-700' },
   ],
   '020': [
     { action: 'rest', label: 'Rest at Waterfall', icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
