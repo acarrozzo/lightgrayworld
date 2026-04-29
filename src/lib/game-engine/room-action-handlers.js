@@ -928,6 +928,17 @@ async function executeEffects(effects, playerId) {
       continue
     }
 
+    if (effect.type === 'grantCurrency') {
+      const { prisma } = require('../db-client')
+      const amount = effect.amount || 0
+      await prisma.user.update({
+        where: { id: playerId },
+        data: { currency: { increment: amount } },
+      })
+      results.push({ success: true, amount })
+      continue
+    }
+
     results.push({ success: false, message: `Unknown effect type: ${effect.type}` })
   }
 

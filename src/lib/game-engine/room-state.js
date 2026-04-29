@@ -1,13 +1,46 @@
 const { executeRoomAction } = require('./room-action-handlers')
 const { executeItemAction } = require('./item-action-handlers')
 const { pickupRoomItem, dropRoomItem, getRoomItems } = require('./services/room-item-service')
-const { getPlayerInventory } = require('./services/inventory-service')
+const { getPlayerInventory, grantItemOnce } = require('./services/inventory-service')
 const { equipItem, unequipItem } = require('./services/equipment-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
 const { executeStartBattle, executePlayerAttack, executePlayerFlee } = require('./battle-action-handlers')
 const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('../game-data/room-enemies')
 const { getEnemy } = require('../game-data/enemies')
+
+const SEARCH_LOOT_TABLES = {
+  '003b': {
+    failMessage: 'You search the cabin basement but find nothing.',
+    entries: [
+      { message: 'You search the cabin basement and find a Blueberry!', effect: { type: 'grantItem', itemSlug: 'blueberry', quantity: 1 } },
+      { message: 'You search the cabin basement and find 2 Redberries!', effect: { type: 'grantItem', itemSlug: 'redberry', quantity: 2 } },
+      { message: 'You search the cabin basement and find some Cooked Meat!', effect: { type: 'grantItem', itemSlug: 'cooked-meat', quantity: 1 } },
+      { message: 'You search the cabin basement and find a Crossbow Bolt!', effect: { type: 'grantItem', itemSlug: 'crossbow-bolt', quantity: 1 } },
+      { message: (amount) => `You search the cabin basement and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 5, max: 25 } },
+      { message: (amount) => `You search the cabin basement and find ${amount} Arrows!`, effect: { type: 'grantItem', itemSlug: 'arrow', minQty: 2, maxQty: 5 } },
+      { message: 'You search the cabin basement and find a Mace!', effect: { type: 'grantItem', itemSlug: 'mace', quantity: 1 } },
+      { message: 'You search the cabin basement and find a Red Potion!', effect: { type: 'grantItem', itemSlug: 'red-potion', quantity: 1 } },
+      { message: 'You search the cabin basement and find a Dagger!', effect: { type: 'grantItem', itemSlug: 'dagger', quantity: 1 } },
+      { message: 'You search the cabin basement and find a Long Sword!', effect: { type: 'grantItem', itemSlug: 'long-sword', quantity: 1 } },
+    ],
+  },
+  '003bb': {
+    failMessage: 'You search the destroyed basement but find nothing.',
+    entries: [
+      { message: 'You search the destroyed basement and find a Blueberry!', effect: { type: 'grantItem', itemSlug: 'blueberry', quantity: 1 } },
+      { message: 'You search the destroyed basement and find 2 Redberries!', effect: { type: 'grantItem', itemSlug: 'redberry', quantity: 2 } },
+      { message: 'You search the destroyed basement and find some Cooked Meat!', effect: { type: 'grantItem', itemSlug: 'cooked-meat', quantity: 1 } },
+      { message: 'You search the destroyed basement and find a Crossbow Bolt!', effect: { type: 'grantItem', itemSlug: 'crossbow-bolt', quantity: 1 } },
+      { message: (amount) => `You search the destroyed basement and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 10, max: 30 } },
+      { message: (amount) => `You search the destroyed basement and find ${amount} Arrows!`, effect: { type: 'grantItem', itemSlug: 'arrow', minQty: 2, maxQty: 5 } },
+      { message: 'You search the destroyed basement and find a Mace!', effect: { type: 'grantItem', itemSlug: 'mace', quantity: 1 } },
+      { message: 'You search the destroyed basement and find a Red Potion!', effect: { type: 'grantItem', itemSlug: 'red-potion', quantity: 1 } },
+      { message: 'You search the destroyed basement and find a Dagger!', effect: { type: 'grantItem', itemSlug: 'dagger', quantity: 1 } },
+      { message: 'You search the destroyed basement and find a Long Sword!', effect: { type: 'grantItem', itemSlug: 'long-sword', quantity: 1 } },
+    ],
+  },
+}
 
 // Actions that consume a "turn" and may trigger a spawn check in probabilistic rooms.
 // Free actions (chat, look, examine_*, accept_quest, complete_quest) do not.
@@ -169,7 +202,7 @@ class RoomState {
       case 'chat':
         return this.executeChat(action, playerId)
       case 'search':
-        result = this.executeSearch(playerId)
+        result = await this.executeSearch(playerId)
         break
       case 'rest':
         result = await this.executeRest(playerId)
@@ -552,7 +585,7 @@ class RoomState {
     return await executeStartBattle({ type: 'start_battle', data: { enemySlug: target.slug } }, playerId, this)
   }
 
-  executeSearch(playerId) {
+  async executeSearch(playerId) {
     const player = this.players.get(playerId)
     if (!player) {
       return this.createErrorResult('search', 'Player not found in this room')
@@ -560,13 +593,69 @@ class RoomState {
 
     this.touchActivity()
 
+    const lootTable = SEARCH_LOOT_TABLES[this.roomId]
+    if (!lootTable) {
+      return {
+        success: true,
+        action: 'search',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload('search', 'success', 'You search the room and find nothing.'),
+          },
+        ],
+      }
+    }
+
+    // 50% success chance
+    if (Math.random() < 0.5) {
+      return {
+        success: true,
+        action: 'search',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload('search', 'info', lootTable.failMessage),
+          },
+        ],
+      }
+    }
+
+    // Roll loot
+    const roll = Math.floor(Math.random() * lootTable.entries.length)
+    const entry = lootTable.entries[roll]
+    let message
+
+    let updatedInventory = null
+
+    if (entry.effect.type === 'grantCurrency') {
+      const amount = Math.floor(Math.random() * (entry.effect.max - entry.effect.min + 1)) + entry.effect.min
+      message = entry.message(amount)
+      await prisma.user.update({
+        where: { id: playerId },
+        data: { currency: { increment: amount } },
+      })
+    } else if (entry.effect.type === 'grantItem') {
+      let qty = entry.effect.quantity || 1
+      if (entry.effect.minQty != null && entry.effect.maxQty != null) {
+        qty = Math.floor(Math.random() * (entry.effect.maxQty - entry.effect.minQty + 1)) + entry.effect.minQty
+        message = entry.message(qty)
+      } else {
+        message = entry.message
+      }
+      const result = await grantItemOnce(playerId, entry.effect.itemSlug, qty)
+      updatedInventory = result.inventory ?? null
+    }
+
     return {
       success: true,
       action: 'search',
       playerEvents: [
         {
           event: 'action:feedback',
-          payload: this.createFeedbackPayload('search', 'success', 'You search the room and find nothing.'),
+          payload: this.createFeedbackPayload('search', 'success', message, {
+            ...(updatedInventory ? { inventory: updatedInventory } : {}),
+          }),
         },
       ],
     }
