@@ -339,6 +339,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             isActive: true,
             uIcon: true,
             uIconColor: true,
+            grassyFieldUndergroundMap: true,
           },
         })
 
@@ -360,6 +361,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           isActive: dbPlayer.isActive,
           uIcon: dbPlayer.uIcon ?? null,
           uIconColor: dbPlayer.uIconColor ?? null,
+          grassyFieldUndergroundMap: dbPlayer.grassyFieldUndergroundMap,
           socketId: socket.id,
           lastActive: new Date(),
         }
@@ -577,6 +579,20 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           } catch (error) {
             console.error('[Socket] Error saving entry/exit messages:', error)
             // Don't fail the movement if message saving fails
+          }
+
+          // Unlock underground map on first entry to any underground room
+          const isUndergroundRoom = toRoom.startsWith('003b') || toRoom.startsWith('28') || toRoom.startsWith('012')
+          if (isUndergroundRoom && !player.grassyFieldUndergroundMap) {
+            try {
+              await prisma.user.update({
+                where: { id: player.id },
+                data: { grassyFieldUndergroundMap: true },
+              })
+              player.grassyFieldUndergroundMap = true
+            } catch (error) {
+              console.error('[Socket] Error setting grassyFieldUndergroundMap:', error)
+            }
           }
 
           console.log(`[Socket] Emitting action:confirmed to player`)

@@ -35,7 +35,8 @@ export const getMapIdForRoom = (roomId: string): string => {
   if (roomId === '000') return 'room-zero'
   if (roomId === '999') return 'lobby'
   if (roomId === '088') return 'solar-office'
-  return 'grassy-field' // Default for grassy field rooms
+  if (roomId.startsWith('003b') || roomId.startsWith('28') || roomId.startsWith('012')) return 'grassy-field-underground'
+  return 'grassy-field'
 }
 
 // Helper function to get unlocked maps - all maps are available to everyone

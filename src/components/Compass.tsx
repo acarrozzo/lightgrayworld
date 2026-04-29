@@ -47,8 +47,11 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     '021': '-455px -245px',    // Pajama Shaman
     '088': 'center',            // Solar Office
     '999': 'center',            // The Lobby
+    // Grassy Field Underground rooms (coordinates relative to underground map image)
+    '003b':  '-245px -455px',   // Cabin Basement
+    '003bb': '-140px -455px',   // Destroyed Basement
   }
-  
+
   return roomMapPositions[roomId || '000'] || '-350px -350px' // Default to center
 }
 
@@ -78,6 +81,7 @@ const getBackgroundColorClasses = (color: string): { base: string; hover: string
     'yellow-600': { base: 'bg-yellow-600/90', hover: 'hover:bg-yellow-500' },
     'yellow-700': { base: 'bg-yellow-700/90', hover: 'hover:bg-yellow-600' },
     'dirt': { base: 'bg-yellow-700/90', hover: 'hover:bg-yellow-600' },
+    'brown': { base: 'bg-amber-900/90', hover: 'hover:bg-amber-800' },
     'yellow-800': { base: 'bg-yellow-800/90', hover: 'hover:bg-yellow-700' },
     'yellow-900': { base: 'bg-yellow-900/90', hover: 'hover:bg-yellow-800' },
     'red-50': { base: 'bg-red-50/90', hover: 'hover:bg-red-50' },
@@ -258,17 +262,20 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
   const isRoomZero = room.roomId === '000'
   const isLobby = room.roomId === '999'
   const isSolarOffice = room.roomId === '088'
+  const isUnderground = room.roomId?.startsWith('003b') || room.roomId?.startsWith('28') || room.roomId?.startsWith('012')
   const mapBackground = isRoomZero
     ? '/img/lightgray_map_roomzero.jpg'
     : isLobby
     ? '/img/lightgray_map_the_lobby.jpg'
     : isSolarOffice
     ? '/img/lightgray_map_solar_office.jpg'
+    : isUnderground
+    ? '/img/lightgray_map_grassyfield_underground_s1.jpg'
     : '/img/lightgray_map_grassyfield_main_s1.jpg'
   const mapPosition = isRoomZero || isLobby || isSolarOffice
     ? 'center'
     : (isTransitioning ? targetPosition : currentPosition)
-  const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : isSolarOffice ? 'Solar Office' : 'Grassy Field'
+  const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : isSolarOffice ? 'Solar Office' : isUnderground ? 'Grassy Field Underground' : 'Grassy Field'
 
   const directions: Direction[] = [
     { key: 'northwest', label: 'NW', position: 'top-left', rotation: 315 },

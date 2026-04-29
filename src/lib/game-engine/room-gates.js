@@ -34,6 +34,33 @@ const ROOM_GATES = {
       },
     },
   },
+  '003': {
+    'down': {
+      check: async (playerId) => {
+        const user = await prisma.user.findUnique({
+          where: { id: playerId },
+          select: { level: true },
+        })
+        if (user?.level >= 5) return true
+        const mainHandItem = await prisma.playerItem.findFirst({
+          where: {
+            playerId,
+            isEquipped: true,
+            slot: 'MAIN_HAND',
+          },
+        })
+        return !!mainHandItem
+      },
+      message: "It's dark and dangerous down there. You need a weapon equipped or to be at least level 5 before heading into the basement.",
+      modalContent: {
+        title: 'The basement stairs are dangerous',
+        type: 'icon',
+        icon: 'npc-dwarfguard',
+        iconColor: 'amber-500',
+        message: "It's dark and dangerous down there. You need a weapon equipped or to be at least level 5 before heading into the basement.",
+      },
+    },
+  },
   '020': {
     'northwest': {
       check: async (playerId) => {
