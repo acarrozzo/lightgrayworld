@@ -1755,6 +1755,13 @@ export default function GameInterface() {
             buttons: buttons,
           })
         }
+      } else if (payload?.action === 'enemy_spawn') {
+        // A probabilistic enemy has appeared in the room — update the enemy display.
+        if (payload?.data?.enemy) {
+          setRoomEnemies([payload.data.enemy])
+        }
+        const { addNotification } = useNotificationStore.getState()
+        addNotification({ message: messageText, outcome: 'danger', action: 'enemy_spawn' })
       } else {
         // Trigger notification for room actions (only if not showing modal)
         // Skip notifications for movement actions and equip_item (handled above)
@@ -2150,6 +2157,7 @@ export default function GameInterface() {
       const applyVictory = () => {
         if (payload.summary) setBattleResult(payload.summary)
         clearBattle()
+        if ((payload as any).clearRoomEnemies) setRoomEnemies([])
         const currentPlayer = useGameStore.getState().player
         if (currentPlayer) {
           setPlayer({

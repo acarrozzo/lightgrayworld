@@ -3,6 +3,7 @@ const { BattleState } = require('./battle-state')
 const { rand, resolveTurn, getOtherCombatantCount } = require('./battle-calculator')
 const { calcBattleWinRewards, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
+const { isProbabilistic } = require('../game-data/room-enemies')
 const { getRoomEnemies } = require('../game-data/room-enemies')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 
@@ -54,9 +55,16 @@ async function executeStartBattle(action, playerId, roomState) {
   const { enemySlug, isAutoInitiated = false } = action.data || {}
   if (!enemySlug) return errorResult('start_battle', 'No enemy specified.')
 
-  const roomConfig = getRoomEnemies(roomState.roomId)
-  if (!roomConfig || !roomConfig.enemies.includes(enemySlug)) {
-    return errorResult('start_battle', 'That enemy is not here.')
+  if (isProbabilistic(roomState.roomId)) {
+    const activeSlug = roomState.getPlayerActiveEnemy(playerId)
+    if (activeSlug !== enemySlug) {
+      return errorResult('start_battle', 'That enemy is not here.')
+    }
+  } else {
+    const roomConfig = getRoomEnemies(roomState.roomId)
+    if (!roomConfig || !roomConfig.enemies.includes(enemySlug)) {
+      return errorResult('start_battle', 'That enemy is not here.')
+    }
   }
 
   const enemy = getEnemy(enemySlug)
@@ -173,6 +181,7 @@ async function executeStartBattle(action, playerId, roomState) {
   if (!isAdvantageTurn && battleState.isEnemyDead()) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
+    roomState.setPlayerGraceTurn(playerId)
 
     const rewards = calcBattleWinRewards(battleState)
     const { xpAwarded, goldAwarded, droppedSlugs } = rewards
@@ -188,6 +197,7 @@ async function executeStartBattle(action, playerId, roomState) {
         droppedItems: droppedSlugs,
         lastTurnResult: firstTurn,
         message: `You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
+        clearRoomEnemies: isProbabilistic(roomState.roomId),
         summary: {
           outcome: 'WIN',
           enemyName: enemy.name,
@@ -292,6 +302,9 @@ async function executePlayerAttack(action, playerId, roomState) {
   if (battleState.isEnemyDead()) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
+    // 1-turn grace: the next turn action skips the spawn check so the player isn't
+    // immediately thrown into another fight without warning.
+    roomState.setPlayerGraceTurn(playerId)
 
     // Compute rewards synchronously — no DB — so we can emit victory immediately
     const rewards = calcBattleWinRewards(battleState)
@@ -323,6 +336,7 @@ async function executePlayerAttack(action, playerId, roomState) {
             droppedItems: droppedSlugs,
             lastTurnResult: turnResult,
             message: winMsg,
+            clearRoomEnemies: isProbabilistic(roomState.roomId),
             summary: {
               outcome: 'WIN',
               enemyName: battleState.enemyName,
@@ -363,6 +377,8 @@ async function executePlayerAttack(action, playerId, roomState) {
   if (newHp <= 0) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
+    // Player respawns to a different room — clear their enemy slot so it doesn't carry over.
+    roomState.clearPlayerEnemyState(playerId)
 
     try {
       await handleBattleDefeat(playerId, battleState)

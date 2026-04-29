@@ -5,7 +5,7 @@ const {
   ROOM_ITEMS_SELECT,
   normalizeRoomData,
 } = require('./game-engine/services/room-normalization.js')
-const { getRoomEnemies } = require('./game-data/room-enemies.js')
+const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('./game-data/room-enemies.js')
 const { getEnemy } = require('./game-data/enemies.js')
 
 // Constants
@@ -21,6 +21,48 @@ const { createWorldFeedEvent } = require('./services/world-feed-event-service.js
 const { createIdleDetectionService } = require('./services/idle-detection-service.js')
 
 async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
+  if (isProbabilistic(toRoom)) {
+    const destRoomState = gameEngine.getOrCreateRoom(toRoom)
+    const slug = rollRoomEnemy(toRoom)
+    destRoomState.setPlayerActiveEnemy(player.id, slug)
+
+    if (!slug) return
+
+    const enemy = getEnemy(slug)
+    if (!enemy) return
+
+    // Always notify the player that an enemy has appeared on entry.
+    emitActionFeedback(socket, {
+      action: 'enemy_spawn',
+      message: `A ${enemy.name} is here!`,
+      outcome: 'danger',
+      data: { enemySlug: slug, enemyName: enemy.name, enemy },
+    })
+
+    if (!enemy.isAggressive) return
+
+    if (destRoomState.activeBattles.has(player.id)) return
+    try {
+      await gameEngine.processUserAction({
+        playerId: player.id,
+        roomId: toRoom,
+        action: { type: 'start_battle', data: { enemySlug: slug, isAutoInitiated: true } },
+      })
+      console.log(`[Socket] Auto-battle started: ${player.username} vs ${slug} in room ${toRoom}`)
+    } catch (err) {
+      console.error('[Socket] Failed to auto-start battle:', err)
+      socket.emit('action:feedback', {
+        action: 'start_battle',
+        message: 'An enemy is here but failed to engage. Try attacking manually.',
+        outcome: 'failure',
+        ts: Date.now(),
+        success: false,
+      })
+    }
+    return
+  }
+
+  // Static rooms: always-present enemy logic.
   const roomEnemyConfig = getRoomEnemies(toRoom)
   if (!roomEnemyConfig) return
 
@@ -497,11 +539,14 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           return
         }
 
-        // Attach enemy data to the destination room
+        // Attach enemy data to the destination room.
+        // Probabilistic rooms start with no enemies — the spawn roll happens in maybeStartAutoBattle
+        // after the move succeeds, and the client is notified via an enemy_spawn action:feedback.
         const destEnemyConfig = getRoomEnemies(toRoom)
-        const destEnemies = destEnemyConfig
-          ? destEnemyConfig.enemies.map((slug) => getEnemy(slug)).filter(Boolean)
-          : []
+        const destEnemies =
+          destEnemyConfig && !isProbabilistic(toRoom)
+            ? destEnemyConfig.enemies.map((slug) => getEnemy(slug)).filter(Boolean)
+            : []
 
         // Use the room data which includes respawned items
         const normalizedRoomData = {

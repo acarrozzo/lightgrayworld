@@ -6,14 +6,31 @@ const { equipItem, unequipItem } = require('./services/equipment-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
 const { executeStartBattle, executePlayerAttack, executePlayerFlee } = require('./battle-action-handlers')
-const { getRoomEnemies } = require('../game-data/room-enemies')
+const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('../game-data/room-enemies')
 const { getEnemy } = require('../game-data/enemies')
+
+// Actions that consume a "turn" and may trigger a spawn check in probabilistic rooms.
+// Free actions (chat, look, examine_*, accept_quest, complete_quest) do not.
+// attack and move are handled separately (attack triggers battle directly; move triggers on entry).
+const TURN_ACTIONS = new Set([
+  'rest',
+  'search',
+  'use_item',
+  'equip_item',
+  'unequip_item',
+  'pickup_item',
+  'drop_item',
+])
 
 class RoomState {
   constructor(roomId) {
     this.roomId = roomId
     this.players = new Map()
     this.activeBattles = new Map()
+    // Per-player enemy state for probabilistic rooms.
+    // Map<playerId, { slug: string|null, graceTurn: boolean }>
+    // slug null = rolled, no enemy present. Key absent = not yet rolled (entry pending).
+    this.playerEnemyState = new Map()
     this.lastActionAt = null
     this.lastTickPlayerCount = null
     this.lastAmbientHintAt = 0
@@ -26,12 +43,55 @@ class RoomState {
 
   removePlayer(playerId) {
     this.players.delete(playerId)
+    this.playerEnemyState.delete(playerId)
     const battle = this.activeBattles.get(playerId)
     if (battle) {
       battle.end()
       this.activeBattles.delete(playerId)
       prisma.user.update({ where: { id: playerId }, data: { inFight: false } }).catch(() => {})
     }
+  }
+
+  // --- Per-player enemy state helpers (probabilistic rooms) ---
+
+  getPlayerActiveEnemy(playerId) {
+    return this.playerEnemyState.get(playerId)?.slug ?? null
+  }
+
+  setPlayerActiveEnemy(playerId, slug) {
+    this.playerEnemyState.set(playerId, { slug, graceTurn: false })
+  }
+
+  // Called immediately after a battle victory — next turn action skips the spawn check.
+  setPlayerGraceTurn(playerId) {
+    this.playerEnemyState.set(playerId, { slug: null, graceTurn: true })
+  }
+
+  clearPlayerEnemyState(playerId) {
+    this.playerEnemyState.delete(playerId)
+  }
+
+  // Runs the spawn check for probabilistic rooms after a turn action completes.
+  // Returns { slug, enemy } if something spawned, or null.
+  maybeSpawnEnemy(playerId) {
+    if (!isProbabilistic(this.roomId)) return null
+
+    const battle = this.activeBattles.get(playerId)
+    if (battle?.isActive) return null
+
+    const state = this.playerEnemyState.get(playerId)
+    if (state?.graceTurn) {
+      this.playerEnemyState.set(playerId, { slug: null, graceTurn: false })
+      return null
+    }
+    if (state?.slug) return null
+
+    const slug = rollRoomEnemy(this.roomId)
+    this.setPlayerActiveEnemy(playerId, slug)
+    if (!slug) return null
+
+    const enemy = getEnemy(slug)
+    return enemy ? { slug, enemy } : null
   }
 
   updatePlayer(playerId, updater) {
@@ -81,13 +141,14 @@ class RoomState {
       currentTickNumber,
       nextTickAt
     )
-    
+
     // If room-specific handler returned a result, use it
     if (roomSpecificResult !== null) {
       return roomSpecificResult
     }
-    
+
     // Otherwise, fall back to standard actions
+    let result
     switch (action.type) {
       case 'attack':
         return await this.executeAttack(playerId)
@@ -98,17 +159,21 @@ class RoomState {
       case 'player_flee':
         return await executePlayerFlee(action, playerId, this)
       case 'pickup_item':
-        return this.executePickupItem(action, playerId)
+        result = await this.executePickupItem(action, playerId)
+        break
       case 'drop_item':
-        return this.executeDropItem(action, playerId)
+        result = await this.executeDropItem(action, playerId)
+        break
       case 'move':
         return await this.executeMove(action, playerId)
       case 'chat':
         return this.executeChat(action, playerId)
       case 'search':
-        return this.executeSearch(playerId)
+        result = this.executeSearch(playerId)
+        break
       case 'rest':
-        return await this.executeRest(playerId)
+        result = await this.executeRest(playerId)
+        break
       case 'look':
         return this.executeLook(action, playerId)
       case 'examine_item':
@@ -116,11 +181,14 @@ class RoomState {
       case 'examine_player_item':
         return this.executeExaminePlayerItem(action, playerId)
       case 'use_item':
-        return this.executeUseItem(action, playerId, currentTickNumber, nextTickAt)
+        result = await this.executeUseItem(action, playerId, currentTickNumber, nextTickAt)
+        break
       case 'equip_item':
-        return this.executeEquipItem(action, playerId)
+        result = await this.executeEquipItem(action, playerId)
+        break
       case 'unequip_item':
-        return this.executeUnequipItem(action, playerId)
+        result = await this.executeUnequipItem(action, playerId)
+        break
       case 'accept_quest':
         return await this.executeAcceptQuest(action, playerId)
       case 'complete_quest':
@@ -128,6 +196,53 @@ class RoomState {
       default:
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
     }
+
+    // After a TURN_ACTION completes, check for enemy spawn in probabilistic rooms.
+    if (result?.success && TURN_ACTIONS.has(action.type)) {
+      result = await this.appendSpawnEvents(result, playerId)
+    }
+
+    return result
+  }
+
+  // Runs the spawn check and appends enemy notification (and auto-battle) events to the result.
+  async appendSpawnEvents(result, playerId) {
+    const spawned = this.maybeSpawnEnemy(playerId)
+    if (!spawned) return result
+
+    const { slug, enemy } = spawned
+    const enemyName = enemy.name
+
+    const spawnFeedback = {
+      event: 'action:feedback',
+      payload: this.createFeedbackPayload(
+        'enemy_spawn',
+        'danger',
+        `A ${enemyName} emerges from the darkness!`,
+        { enemySlug: slug, enemyName, enemy }
+      ),
+    }
+
+    result = {
+      ...result,
+      playerEvents: [...(result.playerEvents ?? []), spawnFeedback],
+    }
+
+    if (enemy.isAggressive) {
+      const battleResult = await executeStartBattle(
+        { type: 'start_battle', data: { enemySlug: slug, isAutoInitiated: true } },
+        playerId,
+        this
+      )
+      if (battleResult?.playerEvents?.length) {
+        result = {
+          ...result,
+          playerEvents: [...result.playerEvents, ...battleResult.playerEvents],
+        }
+      }
+    }
+
+    return result
   }
 
   async executePickupItem(action, playerId) {
@@ -407,10 +522,18 @@ class RoomState {
       return await executePlayerAttack({ type: 'player_attack' }, playerId, this)
     }
 
-    const roomEnemyData = getRoomEnemies(this.roomId)
-    const slugs = roomEnemyData?.enemies ?? []
-    const enemies = slugs.map((s) => getEnemy(s)).filter(Boolean)
-    const target = enemies.find((e) => e.isAggressive) ?? enemies[0] ?? null
+    let target = null
+
+    if (isProbabilistic(this.roomId)) {
+      // For probabilistic rooms, use the player's currently spawned enemy.
+      const activeSlug = this.getPlayerActiveEnemy(playerId)
+      target = activeSlug ? getEnemy(activeSlug) : null
+    } else {
+      const roomEnemyData = getRoomEnemies(this.roomId)
+      const slugs = roomEnemyData?.enemies ?? []
+      const enemies = slugs.map((s) => getEnemy(s)).filter(Boolean)
+      target = enemies.find((e) => e.isAggressive) ?? enemies[0] ?? null
+    }
 
     if (!target) {
       this.touchActivity()
