@@ -75,8 +75,8 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1) {
     where: { playerId, templateId: template.id },
   })
 
-  // Enforce maxPerPlayer (defaults to maxStack when provided)
-  const limit = template.maxPerPlayer ?? template.maxStack ?? quantity
+  // Enforce maxPerPlayer/maxStack; if neither is set there's no cap
+  const limit = template.maxPerPlayer ?? template.maxStack ?? Infinity
   const currentQty = existing?.quantity ?? 0
 
   if (currentQty >= limit) {

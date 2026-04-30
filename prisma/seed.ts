@@ -134,6 +134,7 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
+      hasSearch: true,
       directionColors: { west: 'dirt' }
     },
     {
@@ -160,6 +161,7 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
+      hasSearch: true,
       directionColors: { east: 'dirt' }
     },
     {
@@ -564,8 +566,8 @@ async function main() {
       name: 'Dagger',
       description: 'A sharp, lightweight dagger perfect for quick strikes.',
       type: ItemType.EQUIPMENT,
-      maxStack: 1,
-      maxPerPlayer: 1,
+      maxStack: 1000,
+      maxPerPlayer: 1000,
       value: 10,
       equipSlot: EquipSlot.MAIN_HAND,
       metadata: { statMods: { str: 1 } },
@@ -668,8 +670,8 @@ async function main() {
       name: 'Mace',
       description: 'A heavy mace with a solid metal head, perfect for crushing armor.',
       type: ItemType.EQUIPMENT,
-      maxStack: 1,
-      maxPerPlayer: 1,
+      maxStack: 1000,
+      maxPerPlayer: 1000,
       value: 10,
       equipSlot: EquipSlot.MAIN_HAND,
       metadata: { statMods: { str: 5, mag: 2 } },
@@ -791,8 +793,8 @@ async function main() {
       name: 'Long Sword',
       description: 'A sturdy long sword with good reach and solid damage.',
       type: ItemType.EQUIPMENT,
-      maxStack: 1,
-      maxPerPlayer: 1,
+      maxStack: 1000,
+      maxPerPlayer: 1000,
       value: 80,
       equipSlot: EquipSlot.MAIN_HAND,
       metadata: { statMods: { str: 8 } },

@@ -208,6 +208,7 @@ model Room {
   down             String?
   hasFire          Boolean    @default(false)
   hasCraftingTable Boolean    @default(false)
+  hasSearch        Boolean    @default(false)
   subtitle         String     @default("This is it. The world is yours.")
   subtitlePosition String     @default("below")
   nameColor        String?

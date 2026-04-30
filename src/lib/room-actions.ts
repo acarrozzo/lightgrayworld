@@ -24,6 +24,12 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'attack dummy', label: 'Attack Dummy', icon: 'sword1', className: 'bg-red-500/70 hover:bg-red-500' },
     { action: 'cook meat', label: 'Cook Meat', icon: 'fire', className: 'bg-orange-600 hover:bg-orange-700' },
   ],
+  '003b': [
+    { action: 'search', label: 'Search', icon: 'search', className: 'bg-yellow-500/70 hover:bg-yellow-400 text-black font-semibold' },
+  ],
+  '003bb': [
+    { action: 'search', label: 'Search', icon: 'search', className: 'bg-yellow-500/70 hover:bg-yellow-400 text-black font-semibold' },
+  ],
   '003c': [],
   '004': [],
   '005': [

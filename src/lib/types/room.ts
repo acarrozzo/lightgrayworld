@@ -46,6 +46,7 @@ export interface RoomView extends RoomViewNavigation {
   description: string
   dangerLevel: number
   isSafe: boolean
+  hasSearch?: boolean
   players: any[]
   items: RoomItemView[]
   npcs: any[]

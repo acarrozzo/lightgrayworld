@@ -226,57 +226,44 @@ export default function RoomBox({
           {roomEnemies.map((enemy) => (
             <div
               key={enemy.slug}
-              className={`inline-flex flex-col rounded-lg border ${enemy.isAggressive ? 'border-red-800/50 bg-red-950/20' : 'border-gray-700/40 bg-gray-800/40'}`}
+              className={`inline-flex items-center gap-3 rounded-lg border px-3 py-2 ${enemy.isAggressive ? 'border-red-800/50 bg-red-950/20' : 'border-gray-700/40 bg-gray-800/40'}`}
             >
-              {/* Header: icon + name/level + badge + attack */}
-              <div className="flex items-center gap-3 px-3 pt-3 pb-2">
-                <img
-                  src={`/icons/enemy/${encodeURIComponent(enemy.name)}.svg`}
-                  alt={enemy.name}
-                  className="w-10 h-10 rounded shrink-0 object-contain brightness-0 invert"
-                />
-                <div className="min-w-0">
+              <img
+                src={`/icons/enemy/${encodeURIComponent(enemy.name)}.svg`}
+                alt={enemy.name}
+                className="w-12 h-12 shrink-0 object-contain brightness-0 invert"
+              />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-sm font-semibold truncate ${enemy.isAggressive ? 'text-red-200' : 'text-gray-200'}`}>
+                    {enemy.name}
+                  </span>
                   {enemy.isAggressive ? (
-                    <span className="text-[10px] font-bold text-red-400 bg-red-900/30 border border-red-800/40 px-1 py-px rounded">
+                    <span className="text-[10px] font-bold text-red-400 bg-red-900/30 border border-red-800/40 px-1 rounded shrink-0">
                       HOSTILE
                     </span>
                   ) : (
-                    <span className="text-[10px] text-gray-500 bg-gray-800/60 px-1 py-px rounded">
+                    <span className="text-[10px] text-gray-500 bg-gray-800/60 px-1 rounded shrink-0">
                       neutral
                     </span>
                   )}
-                  <span className={`block text-sm font-semibold truncate ${enemy.isAggressive ? 'text-red-200' : 'text-gray-200'}`}>
-                    {enemy.name}
-                  </span>
-                  <span className="text-xs text-gray-400">Lv. {enemy.level}</span>
                 </div>
-                <div className="ml-3 shrink-0">
-                  <button
-                    onClick={() => onAction({ type: 'start_battle', data: { enemySlug: enemy.slug } })}
-                    disabled={isInBattle || isLoadingRoom}
-                    title={isInBattle ? 'You are already in combat' : `Attack the ${enemy.name}`}
-                    className="px-3 py-0.5 text-xs font-semibold bg-red-700/60 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-md transition-all duration-150"
-                  >
-                    Attack
-                  </button>
+                <div className="flex items-center gap-2.5 text-xs mt-0.5">
+                  <span className="text-white font-bold text-sm">Lv. {enemy.level}</span>
+                  <span className="text-gray-700">·</span>
+                  <span className="text-gray-500">HP <span className="font-semibold text-green-400">{enemy.hp}</span></span>
+                  <span className="text-gray-500">ATT <span className="font-semibold text-red-400">{enemy.att}</span></span>
+                  <span className="text-gray-500">DEF <span className="font-semibold text-amber-400">{enemy.def}</span></span>
                 </div>
               </div>
-
-              {/* Stats row */}
-              <div className={`flex items-center gap-4 px-3 py-2 border-t text-xs ${enemy.isAggressive ? 'border-red-900/40' : 'border-gray-700/40'}`}>
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-500">HP</span>
-                  <span className="font-semibold text-gray-200">{enemy.hp}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-500">ATT</span>
-                  <span className="font-semibold text-orange-300">{enemy.att}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-500">DEF</span>
-                  <span className="font-semibold text-blue-300">{enemy.def}</span>
-                </div>
-              </div>
+              <button
+                onClick={() => onAction({ type: 'start_battle', data: { enemySlug: enemy.slug } })}
+                disabled={isInBattle || isLoadingRoom}
+                title={isInBattle ? 'You are already in combat' : `Attack the ${enemy.name}`}
+                className="ml-1 shrink-0 px-3 py-1 text-xs font-semibold bg-red-700/60 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-md transition-all duration-150"
+              >
+                Attack
+              </button>
             </div>
           ))}
         </div>
@@ -310,10 +297,57 @@ export default function RoomBox({
         actionResult={actionResult}
       />
 
-      {/* More Actions Section */}
+      {/* Basic Actions */}
       <div className="mt-6 pt-4">
-        {/* Top-left border above More Actions */}
         <div className="w-32 border-t border-gray-800/50 mb-4"></div>
+        <div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                console.log('[ActionButton] Attack button clicked')
+                onAction('attack')
+              }}
+              disabled={isLoadingRoom}
+              className="px-3 py-1 bg-red-500/70 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+            >
+              {isLoadingRoom && currentAction === 'attack' ? '...' : 'Attack'}
+            </button>
+            <button
+              onClick={() => {
+                console.log('[ActionButton] Search button clicked')
+                onAction('search')
+              }}
+              disabled={isLoadingRoom}
+              className="px-3 py-1 bg-amber-500/70 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+            >
+              {isLoadingRoom && currentAction === 'search' ? '...' : 'Search'}
+            </button>
+            <button
+              onClick={() => {
+                console.log('[ActionButton] Rest button clicked')
+                onAction('rest')
+              }}
+              disabled={isLoadingRoom}
+              className="px-3 py-1 bg-green-500/70 hover:bg-green-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+            >
+              {isLoadingRoom && currentAction === 'rest' ? '...' : 'Rest'}
+            </button>
+            <button
+              onClick={() => {
+                console.log('[ActionButton] Look button clicked')
+                onAction('look')
+              }}
+              disabled={isLoadingRoom}
+              className="px-3 py-1 bg-blue-500/70 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
+            >
+              {isLoadingRoom && currentAction === 'look' ? '...' : 'Look'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* More Actions Section */}
+      <div className="mt-4">
         <div className="flex flex-col gap-4">
           {/* Collapsible Header */}
           <button
@@ -334,52 +368,6 @@ export default function RoomBox({
           {/* Collapsible Content */}
           {isMoreActionsExpanded && (
             <div className="flex flex-col gap-4">
-              {/* Basic Actions */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-300 mb-2">Basic Actions</h3>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => {
-                      console.log('[ActionButton] Attack button clicked')
-                      onAction('attack')
-                    }}
-                    disabled={isLoadingRoom}
-                    className="px-3 py-1 bg-red-500/70 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                  >
-                    {isLoadingRoom && currentAction === 'attack' ? '...' : 'Attack'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('[ActionButton] Search button clicked')
-                      onAction('search')
-                    }}
-                    disabled={isLoadingRoom}
-                    className="px-3 py-1 bg-amber-500/70 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                  >
-                    {isLoadingRoom && currentAction === 'search' ? '...' : 'Search'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('[ActionButton] Rest button clicked')
-                      onAction('rest')
-                    }}
-                    disabled={isLoadingRoom}
-                    className="px-3 py-1 bg-green-500/70 hover:bg-green-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                  >
-                    {isLoadingRoom && currentAction === 'rest' ? '...' : 'Rest'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('[ActionButton] Look button clicked')
-                      onAction('look')
-                    }}
-                    disabled={isLoadingRoom}
-                    className="px-3 py-1 bg-blue-500/70 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-                  >
-                    {isLoadingRoom && currentAction === 'look' ? '...' : 'Look'}
-                  </button>
-                </div>
-              </div>
               {/* Teleport */}
               <div>
                 <h3 className="text-sm font-medium text-gray-300 mb-2">Teleport to:</h3>
