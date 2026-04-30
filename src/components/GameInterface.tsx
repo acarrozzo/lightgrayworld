@@ -1761,7 +1761,7 @@ export default function GameInterface() {
           setRoomEnemies([payload.data.enemy])
         }
         const { addNotification } = useNotificationStore.getState()
-        addNotification({ message: messageText, outcome: 'danger', action: 'enemy_spawn' })
+        addNotification({ message: messageText, outcome: 'failure', action: 'enemy_spawn' })
       } else {
         // Trigger notification for room actions (only if not showing modal)
         // Skip notifications for movement actions and equip_item (handled above)
