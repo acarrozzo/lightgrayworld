@@ -694,6 +694,16 @@ export default function FeedPanel({
     return () => container.removeEventListener('scroll', handleScroll)
   }, [handleScroll])
 
+  // Scroll to bottom on initial mount
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      const container = listRef.current
+      if (container) {
+        container.scrollTop = container.scrollHeight
+      }
+    })
+  }, [])
+
   // Auto-scroll when new entries arrive if user is near bottom
   const prevLengthRef = useRef(entries.length)
   useEffect(() => {

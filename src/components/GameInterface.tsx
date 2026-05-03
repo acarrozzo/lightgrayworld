@@ -85,8 +85,18 @@ export default function GameInterface() {
   const xpGainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false)
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const saved = localStorage.getItem('leftSidebarOpen')
+    if (saved !== null) return JSON.parse(saved)
+    return window.innerWidth >= 768
+  })
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const saved = localStorage.getItem('rightSidebarOpen')
+    if (saved !== null) return JSON.parse(saved)
+    return window.innerWidth >= 768
+  })
   const [leftPanelType, setLeftPanelType] = useState<string>('char')
   const [rightPanelType, setRightPanelType] = useState<string>('feed')
   const [leftDropdownOpen, setLeftDropdownOpen] = useState(false)
@@ -320,32 +330,15 @@ export default function GameInterface() {
     }
   }, [getAuthHeaders, isLoggedIn, updateCapCache, worldTick, setWorldTick])
 
-  // Load sidebar state from localStorage on mount
-  // Default to open on desktop (md breakpoint and above) if no preference is saved
+  // Load panel type preferences from localStorage on mount
   useEffect(() => {
-    const savedLeftSidebar = localStorage.getItem('leftSidebarOpen')
-    const savedRightSidebar = localStorage.getItem('rightSidebarOpen')
     const savedLeftPanelType = localStorage.getItem('leftPanelType')
     const savedRightPanelType = localStorage.getItem('rightPanelType')
-    
-    if (savedLeftSidebar !== null) {
-      setLeftSidebarOpen(JSON.parse(savedLeftSidebar))
-    } else if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      // Default to open on desktop if no preference
-      setLeftSidebarOpen(true)
-    }
-    
-    if (savedRightSidebar !== null) {
-      setRightSidebarOpen(JSON.parse(savedRightSidebar))
-    } else if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      // Default to open on desktop if no preference
-      setRightSidebarOpen(true)
-    }
-    
+
     if (savedLeftPanelType) {
       setLeftPanelType(savedLeftPanelType)
     }
-    
+
     if (savedRightPanelType) {
       setRightPanelType(savedRightPanelType)
     }
