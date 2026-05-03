@@ -554,8 +554,8 @@ export default function GameInterface() {
     const handleResize = () => {
       if (typeof window !== 'undefined' && window.innerWidth < 768) {
         // Close both sidebars when on mobile (using functional updates to avoid dependencies)
-        setLeftSidebarOpen((prev) => prev ? false : prev)
-        setRightSidebarOpen((prev) => prev ? false : prev)
+        setLeftSidebarOpen((prev: boolean) => prev ? false : prev)
+        setRightSidebarOpen((prev: boolean) => prev ? false : prev)
       }
     }
 
