@@ -454,7 +454,7 @@ export default function BattlePanel({
               You used your <span className="text-green-300 font-semibold">{lastUsedItemName}</span>
             </p>
           ) : battle.isAdvantageTurn ? (
-            <p className="text-xs text-gray-500 italic">You were ambushed entering the room</p>
+            <p className="text-xs text-gray-500 italic">You are attacked</p>
           ) : (
             <p className="text-xs text-gray-600 italic">Waiting for first strike…</p>
           )}

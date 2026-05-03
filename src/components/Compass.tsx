@@ -34,6 +34,7 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     '001': '-350px -350px',    // Grassy Field Crossroads
     '002': '-350px -455px',    // Grassy Field South
     '003': '-245px -455px',    // Wood Cabin
+    '013': '-140px -560px',    // Marsh Behind the Cabin
     '003c': '-140px -455px',   // Young Soldier
     '004': '-245px -350px',    // Flower Patch
     '005': '-350px -245px',    // Grassy Field North
