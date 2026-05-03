@@ -13,6 +13,9 @@ class GameEngine {
       maxQueueLength: 5,
     })
     this.playerSockets = new Map()
+    // Map<playerId, Map<roomId, enemySlug>> — enemies waiting for a player when they return to a room.
+    // Populated on room exit, consumed on room entry, cleared on disconnect.
+    this.persistedEnemies = new Map()
     this.lastMetricsLoggedAt = 0
     this.lastTickProfile = null
     // Cached mirror of tick state (not authoritative - use tickClock methods instead)
@@ -72,6 +75,7 @@ class GameEngine {
       room.removePlayer(playerId)
     }
     this.playerQueue.clearPlayer(playerId, { rejectPending: true })
+    this.persistedEnemies.delete(playerId)
     console.log(`[GameEngine] Player ${playerId} unregistered and action queue cleared`)
     this.playerSockets.delete(playerId)
   }
@@ -242,6 +246,7 @@ class GameEngine {
         playerState: result.transfer.playerState,
         fromRoomId: result.transfer.fromRoomId || roomId,
         toRoomId: result.transfer.toRoomId,
+        fromRoomEnemySlug: result.transfer.fromRoomEnemySlug,
       })
     }
   }
@@ -258,9 +263,16 @@ class GameEngine {
     }
   }
 
-  transferPlayer({ playerState, fromRoomId, toRoomId }) {
+  transferPlayer({ playerState, fromRoomId, toRoomId, fromRoomEnemySlug }) {
     if (!playerState?.id || !toRoomId) {
       return
+    }
+
+    if (fromRoomEnemySlug) {
+      if (!this.persistedEnemies.has(playerState.id)) {
+        this.persistedEnemies.set(playerState.id, new Map())
+      }
+      this.persistedEnemies.get(playerState.id).set(fromRoomId, fromRoomEnemySlug)
     }
 
     const fromRoom = this.rooms.get(fromRoomId)
@@ -270,6 +282,12 @@ class GameEngine {
 
     const destinationRoom = this.getOrCreateRoom(toRoomId)
     destinationRoom.addPlayer({ ...playerState, roomId: toRoomId })
+
+    const persistedSlug = this.persistedEnemies.get(playerState.id)?.get(toRoomId)
+    if (persistedSlug) {
+      destinationRoom.setPlayerActiveEnemy(playerState.id, persistedSlug)
+      this.persistedEnemies.get(playerState.id).delete(toRoomId)
+    }
   }
 
   maybeLogMetrics(tickId, elapsed) {

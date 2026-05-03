@@ -91,6 +91,13 @@ class RoomState {
     return this.playerEnemyState.get(playerId)?.slug ?? null
   }
 
+  // Returns the active enemy slug only when a real enemy is present (not null, not grace turn).
+  // Used by GameEngine to decide whether to persist the enemy across room transitions.
+  getPlayerEnemySlug(playerId) {
+    const state = this.playerEnemyState.get(playerId)
+    return state?.slug ?? null
+  }
+
   setPlayerActiveEnemy(playerId, slug) {
     this.playerEnemyState.set(playerId, { slug, graceTurn: false })
   }
@@ -455,6 +462,7 @@ class RoomState {
     console.log(`[RoomState:${this.roomId}] executeMove - ${player.username} moving from ${fromRoom} to ${toRoom}`)
 
     this.touchActivity()
+    const departingEnemySlug = this.getPlayerEnemySlug(playerId)
     this.removePlayer(playerId)
 
     const toRoomName = action.data?.toRoomName || toRoom
@@ -496,6 +504,7 @@ class RoomState {
       transfer: {
         toRoomId: toRoom,
         fromRoomId: this.roomId,
+        fromRoomEnemySlug: departingEnemySlug,
         playerState: {
           ...player,
           roomId: toRoom,

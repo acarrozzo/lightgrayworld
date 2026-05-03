@@ -23,8 +23,14 @@ const { createIdleDetectionService } = require('./services/idle-detection-servic
 async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
   if (isProbabilistic(toRoom)) {
     const destRoomState = gameEngine.getOrCreateRoom(toRoom)
-    const slug = rollRoomEnemy(toRoom)
-    destRoomState.setPlayerActiveEnemy(player.id, slug)
+
+    // Use a persisted enemy if transferPlayer already restored one for this room,
+    // otherwise roll for a new spawn.
+    let slug = destRoomState.getPlayerActiveEnemy(player.id)
+    if (!slug) {
+      slug = rollRoomEnemy(toRoom)
+      destRoomState.setPlayerActiveEnemy(player.id, slug)
+    }
 
     if (!slug) return
 

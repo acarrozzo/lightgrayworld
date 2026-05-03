@@ -2,11 +2,21 @@
 // Static rooms always have their enemy present.
 // Probabilistic rooms use spawnChance + weighted enemy selection per player turn.
 //
+// Room 016: — 50% spawn, rat 33% / giant rat 33% / sand crab 34%
 // Room 018: Rocky Beach — Sand Crab 25% spawn chance
 // Room 019: Sand Crab Nest — Sand Crab (always present)
 // Room 003b: Cabin Basement — 50% spawn, rat 90% / giant rat 10%
 // Room 003bb: Destroyed Basement — 50% spawn, rat 10% / giant rat 90%
 const ROOM_ENEMIES = {
+  '016': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 33 },
+      { slug: 'giant-rat', weight: 33 },
+      { slug: 'sand-crab', weight: 34 },
+    ],
+  },
   '018': {
     probabilistic: true,
     spawnChance: 0.25,
