@@ -240,9 +240,115 @@ const ROOM_ACTIONS = {
         }
       }
 
-      // Quest_002 completed or missing - show post-quest friendly dialog
-      // Optional fallback: if quest_002 missing (old accounts), we could offer it here
-      // For now, just show friendly dialog
+      // Check quest_006 (Rat Problem)
+      const quest006Progress = await getQuestProgress(playerId, 'quest_006')
+
+      if (quest006Progress && !quest006Progress.completed) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_006')
+
+        if (requirements.met) {
+          return {
+            success: true,
+            action: 'talk to old man',
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-oldman',
+                    iconColor: 'yellow-400',
+                    title: 'Talk to Old Man',
+                    message: 'The Old Man\'s face lights up with relief. "You did it! Those wretched rats have been down there for weeks. I can\'t thank you enough, traveler."',
+                  },
+                  buttons: [
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_006' },
+                  ],
+                }),
+              },
+            ],
+          }
+        } else {
+          return {
+            success: true,
+            action: 'talk to old man',
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-oldman',
+                    iconColor: 'yellow-400',
+                    title: 'Talk to Old Man',
+                    message: 'The Old Man wrings his hands nervously. "Those giant rats are still down there in my basement! Head down and clear them out — I can\'t rest until they\'re gone."',
+                  },
+                }),
+              },
+            ],
+          }
+        }
+      }
+
+      // Check quest_007 (The Gator)
+      const quest007Progress = await getQuestProgress(playerId, 'quest_007')
+
+      if (quest007Progress && !quest007Progress.completed) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_007')
+
+        if (requirements.met) {
+          return {
+            success: true,
+            action: 'talk to old man',
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-oldman',
+                    iconColor: 'yellow-400',
+                    title: 'Talk to Old Man',
+                    message: 'The Old Man claps his hands together. "That gator has been terrorizing this marsh for years! You\'ve done this whole area a great service, friend."',
+                  },
+                  buttons: [
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_007' },
+                  ],
+                }),
+              },
+            ],
+          }
+        } else {
+          return {
+            success: true,
+            action: 'talk to old man',
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-oldman',
+                    iconColor: 'yellow-400',
+                    title: 'Talk to Old Man',
+                    message: 'The Old Man leans on his cane and peers toward the marsh. "That gator is still out there in the swamp. Head southwest into the marsh and deal with it when you\'re ready."',
+                  },
+                }),
+              },
+            ],
+          }
+        }
+      }
+
+      // All quests done or missing - friendly fallback
       return {
         success: true,
         action: 'talk to old man',
@@ -257,9 +363,11 @@ const ROOM_ACTIONS = {
                 icon: 'npc-oldman',
                 iconColor: 'yellow-400',
                 title: 'Talk to Old Man',
-                message: quest002Progress && quest002Progress.completed
-                  ? 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."'
-                  : 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
+                message: quest007Progress?.completed
+                  ? 'The Old Man rocks contentedly in his chair. "The rats are gone, the gator is dealt with, and my wife got her flower. You\'ve been a true blessing, traveler."'
+                  : quest002Progress?.completed
+                    ? 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."'
+                    : 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
               },
             }),
           },

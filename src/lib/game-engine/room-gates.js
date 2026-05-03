@@ -37,6 +37,11 @@ const ROOM_GATES = {
   '003': {
     'down': {
       check: async (playerId) => {
+        const flowerQuest = await prisma.questProgress.findUnique({
+          where: { userId_questId: { userId: playerId, questId: 'quest_002' } },
+          select: { completed: true },
+        })
+        if (!flowerQuest?.completed) return false
         const user = await prisma.user.findUnique({
           where: { id: playerId },
           select: { level: true },
@@ -51,13 +56,30 @@ const ROOM_GATES = {
         })
         return !!mainHandItem
       },
-      message: "It's dark and dangerous down there. You need a weapon equipped or to be at least level 5 before heading into the basement.",
+      message: "The Old Man warns you the basement is overrun with rats. Help him with his wife's flower first, then he'll let you head down.",
       modalContent: {
-        title: 'The basement stairs are dangerous',
+        title: 'The basement stairs are blocked',
         type: 'icon',
-        icon: 'npc-dwarfguard',
+        icon: 'npc-oldman',
         iconColor: 'amber-500',
-        message: "It's dark and dangerous down there. You need a weapon equipped or to be at least level 5 before heading into the basement.",
+        message: "The Old Man warns you the basement is overrun with rats. Help him with his wife's flower first, then he'll let you head down.",
+      },
+    },
+    'southwest': {
+      check: async (playerId) => {
+        const ratQuest = await prisma.questProgress.findUnique({
+          where: { userId_questId: { userId: playerId, questId: 'quest_006' } },
+          select: { completed: true },
+        })
+        return !!ratQuest?.completed
+      },
+      message: "The marsh path is overgrown and treacherous. The Old Man says he'll clear the way once you've dealt with his rat problem.",
+      modalContent: {
+        title: 'The marsh path is blocked',
+        type: 'icon',
+        icon: 'npc-oldman',
+        iconColor: 'amber-500',
+        message: "The marsh path is overgrown and treacherous. The Old Man says he'll clear the way once you've dealt with his rat problem.",
       },
     },
   },

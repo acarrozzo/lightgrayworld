@@ -55,6 +55,12 @@
         "type": "xp",
         "amount": 5
       }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_006"
+      }
     ]
   },
   "quest_003": {
@@ -121,8 +127,8 @@
     "number": 5,
     "title": "Prove Your Strength",
     "summary": "Robert wants to see that you can handle yourself in a real fight.",
-    "objective": "Defeat 5 Sand Crabs at the Rocky Beach.",
-    "nextStep": "Head to the Rocky Beach and defeat 5 Sand Crabs, then return to Robert.",
+    "objective": "Defeat 2 Sand Crabs at the Rocky Beach.",
+    "nextStep": "Head to the Rocky Beach and defeat 2 Sand Crabs, then return to Robert.",
     "giver": {
       "npcId": "young_soldier",
       "roomId": "007",
@@ -134,7 +140,7 @@
       {
         "type": "killCount",
         "enemySlug": "sand-crab",
-        "count": 5,
+        "count": 2,
         "displayName": "Sand Crabs"
       }
     ],
@@ -147,6 +153,78 @@
       {
         "type": "xp",
         "amount": 10
+      }
+    ]
+  },
+  "quest_006": {
+    "number": 6,
+    "title": "Rat Problem",
+    "summary": "The Old Man's basement has been overrun with giant rats. He needs someone brave enough to deal with them.",
+    "objective": "Defeat 2 Giant Rats in the Cabin Basement.",
+    "nextStep": "Head down into the Cabin Basement and defeat 2 Giant Rats, then return to the Old Man.",
+    "giver": {
+      "npcId": "old_man",
+      "roomId": "003",
+      "name": "Old Man",
+      "icon": "npc-oldman"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "giant-rat",
+        "count": 2,
+        "displayName": "Giant Rats"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 15
+      },
+      {
+        "type": "xp",
+        "amount": 8
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_007"
+      }
+    ]
+  },
+  "quest_007": {
+    "number": 7,
+    "title": "The Gator",
+    "summary": "With the rats cleared out, the Old Man turns his attention to a bigger problem — a massive gator lurking in the marsh behind his cabin.",
+    "objective": "Defeat the Gator in the Marsh behind the cabin.",
+    "nextStep": "Head southwest into the Marsh and defeat the Gator, then return to the Old Man.",
+    "giver": {
+      "npcId": "old_man",
+      "roomId": "003",
+      "name": "Old Man",
+      "icon": "npc-oldman"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "gator",
+        "count": 1,
+        "displayName": "Gator"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 30
+      },
+      {
+        "type": "xp",
+        "amount": 20
       }
     ]
   }

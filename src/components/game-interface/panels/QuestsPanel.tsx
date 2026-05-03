@@ -35,7 +35,7 @@ interface KillEntry {
   kills: number
 }
 
-type Tab = 'quests' | 'battle-log' | 'kill-list'
+type Tab = 'quests' | 'completed-quests' | 'kill-list' | 'battle-log'
 
 interface QuestsPanelProps {
   quests: Quest[]
@@ -212,176 +212,169 @@ export default function QuestsPanel({
         <h3 className="text-lg font-semibold text-white mb-3">Quests & Records</h3>
         <div className="flex border-b border-gray-700/60">
           <TabButton active={activeTab === 'quests'} onClick={() => setActiveTab('quests')}>Quests</TabButton>
-          <TabButton active={activeTab === 'battle-log'} onClick={() => setActiveTab('battle-log')}>Battle Log</TabButton>
+          <TabButton active={activeTab === 'completed-quests'} onClick={() => setActiveTab('completed-quests')}>Completed</TabButton>
           <TabButton active={activeTab === 'kill-list'} onClick={() => setActiveTab('kill-list')}>Kill List</TabButton>
+          <TabButton active={activeTab === 'battle-log'} onClick={() => setActiveTab('battle-log')}>Battle Log</TabButton>
         </div>
       </div>
 
       <div className="p-4 sm:p-6 pt-4 space-y-4">
 
-        {/* ── Quests tab ── */}
+        {/* ── Quests tab (active only) ── */}
         {activeTab === 'quests' && (
           <>
             {isLoadingQuests ? (
               <div className="text-gray-400 text-sm">Unraveling your quest log...</div>
-            ) : quests.length === 0 ? (
-              <div className="text-gray-400 text-sm">No quests.</div>
-            ) : (
-              <div className="space-y-6">
-                {/* Active Quests */}
-                {(() => {
-                  const sortedQuests = [...quests].sort((a, b) => {
-                    const aDef = QUESTS[a.questId as keyof typeof QUESTS]
-                    const bDef = QUESTS[b.questId as keyof typeof QUESTS]
-                    const aNum = aDef?.number || 999
-                    const bNum = bDef?.number || 999
-                    return aNum - bNum
-                  })
-                  const activeQuests = sortedQuests.filter(q => !q.completed)
-                  return activeQuests.length > 0 ? (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-300 mb-3">Active</h4>
-                      <div className="space-y-4">
-                        {activeQuests.map((quest) => {
-                          const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
-                          if (!questDef) return null
+            ) : (() => {
+              const activeQuests = [...quests]
+                .sort((a, b) => {
+                  const aNum = QUESTS[a.questId as keyof typeof QUESTS]?.number || 999
+                  const bNum = QUESTS[b.questId as keyof typeof QUESTS]?.number || 999
+                  return aNum - bNum
+                })
+                .filter(q => !q.completed)
 
-                          let isReadyToTurnIn = false
-                          if (questDef.completionMode === 'turn_in' && questDef.requirements) {
-                            const hasAllRequirements = questDef.requirements.every((req: any) => {
-                              if (req.type === 'hasItem') {
-                                const item = inventory.find((i: any) => i.template.slug === req.itemSlug)
-                                return item && item.quantity >= (req.quantity || 1)
-                              }
-                              if (req.type === 'killCount') {
-                                return quest.progress >= req.count
-                              }
-                              return false
-                            })
-                            isReadyToTurnIn = hasAllRequirements
-                          }
+              if (activeQuests.length === 0) {
+                return <div className="text-gray-400 text-sm">No active quests.</div>
+              }
 
-                          return (
-                            <div
-                              key={quest.id}
-                              className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  {questDef.giver?.name && (
-                                    <p className="text-gray-500 text-xs mb-1">{questDef.giver.name}</p>
-                                  )}
-                                  <h4 className="text-white font-semibold text-base">{questDef.title}</h4>
-                                  <p className="text-gray-400 text-sm mt-1">{questDef.summary}</p>
-                                </div>
-                                <span className="px-2 py-1 bg-blue-900/50 border border-blue-700/50 text-blue-300 text-xs font-semibold rounded">
-                                  Active
-                                </span>
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-500 text-sm">Objective:</span>
-                                  <span className="text-gray-300 text-sm">{questDef.objective}</span>
-                                </div>
-                                {questDef.rewards && questDef.rewards.length > 0 && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-gray-500 text-sm">Reward:</span>
-                                    <span className="text-gray-300 text-sm">
-                                      {questDef.rewards.map((r: any) => {
-                                        if (r.type === 'currency') return `${r.amount} Gold`
-                                        if (r.type === 'xp') return `${r.amount} XP`
-                                        return ''
-                                      }).filter(Boolean).join(', ')}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                              {questDef.requirements?.some((req: any) => req.type === 'killCount') && (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-500 text-sm">Progress:</span>
-                                  <span className="text-gray-300 text-sm">
-                                    {questDef.requirements
-                                      .filter((req: any) => req.type === 'killCount')
-                                      .map((req: any) => `${Math.min(quest.progress, req.count)}/${req.count} ${req.displayName} defeated`)
-                                      .join(', ')}
-                                  </span>
-                                </div>
-                              )}
-                              {isReadyToTurnIn && questDef.giver && (
-                                <div className="pt-2 border-t border-gray-700/50">
-                                  <p className="text-yellow-400 text-sm font-medium">
-                                    Ready to turn in — return to {questDef.giver.name} to complete the quest.
-                                  </p>
-                                </div>
-                              )}
-                              {questDef.nextStep && (
-                                <div className="pt-2 border-t border-gray-700/50">
-                                  <p className="text-gray-500 text-xs mt-2">Next: {questDef.nextStep}</p>
-                                </div>
-                              )}
+              return (
+                <div className="space-y-4">
+                  {activeQuests.map((quest) => {
+                    const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
+                    if (!questDef) return null
+
+                    let isReadyToTurnIn = false
+                    if (questDef.completionMode === 'turn_in' && questDef.requirements) {
+                      isReadyToTurnIn = questDef.requirements.every((req: any) => {
+                        if (req.type === 'hasItem') {
+                          const item = inventory.find((i: any) => i.template.slug === req.itemSlug)
+                          return item && item.quantity >= (req.quantity || 1)
+                        }
+                        if (req.type === 'killCount') return quest.progress >= req.count
+                        return false
+                      })
+                    }
+
+                    return (
+                      <div key={quest.id} className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            {questDef.giver?.name && (
+                              <p className="text-gray-500 text-xs mb-1">{questDef.giver.name}</p>
+                            )}
+                            <h4 className="text-white font-semibold text-base">{questDef.title}</h4>
+                            <p className="text-gray-400 text-sm mt-1">{questDef.summary}</p>
+                          </div>
+                          <span className="px-2 py-1 bg-blue-900/50 border border-blue-700/50 text-blue-300 text-xs font-semibold rounded">
+                            Active
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 text-sm">Objective:</span>
+                            <span className="text-gray-300 text-sm">{questDef.objective}</span>
+                          </div>
+                          {questDef.rewards && questDef.rewards.length > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500 text-sm">Reward:</span>
+                              <span className="text-gray-300 text-sm">
+                                {questDef.rewards.map((r: any) => {
+                                  if (r.type === 'currency') return `${r.amount} Gold`
+                                  if (r.type === 'xp') return `${r.amount} XP`
+                                  return ''
+                                }).filter(Boolean).join(', ')}
+                              </span>
                             </div>
-                          )
-                        })}
+                          )}
+                        </div>
+                        {questDef.requirements?.some((req: any) => req.type === 'killCount') && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 text-sm">Progress:</span>
+                            <span className="text-gray-300 text-sm">
+                              {questDef.requirements
+                                .filter((req: any) => req.type === 'killCount')
+                                .map((req: any) => `${Math.min(quest.progress, req.count)}/${req.count} ${req.displayName} defeated`)
+                                .join(', ')}
+                            </span>
+                          </div>
+                        )}
+                        {isReadyToTurnIn && questDef.giver && (
+                          <div className="pt-2 border-t border-gray-700/50">
+                            <p className="text-green-400 text-sm font-medium">
+                              Ready to turn in — return to {questDef.giver.name} to complete the quest.
+                            </p>
+                          </div>
+                        )}
+                        {questDef.nextStep && (
+                          <div className="pt-2 border-t border-gray-700/50">
+                            <p className="text-gray-500 text-xs mt-2">Next: {questDef.nextStep}</p>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ) : null
-                })()}
+                    )
+                  })}
+                </div>
+              )
+            })()}
+          </>
+        )}
 
-                {/* Completed Quests */}
-                {(() => {
-                  const sortedQuests = [...quests].sort((a, b) => {
-                    const aDef = QUESTS[a.questId as keyof typeof QUESTS]
-                    const bDef = QUESTS[b.questId as keyof typeof QUESTS]
-                    const aNum = aDef?.number || 999
-                    const bNum = bDef?.number || 999
-                    return aNum - bNum
-                  })
-                  const completedQuests = sortedQuests.filter(q => q.completed)
-                  return completedQuests.length > 0 ? (
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-300 mb-3">Completed</h4>
-                      <div className="space-y-4">
-                        {completedQuests.map((quest) => {
-                          const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
-                          if (!questDef) return null
-                          return (
-                            <div
-                              key={quest.id}
-                              className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3 opacity-75"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  {questDef.giver?.name && (
-                                    <p className="text-gray-500 text-xs mb-1">{questDef.giver.name}</p>
-                                  )}
-                                  <h4 className="text-white font-semibold text-base">{questDef.title}</h4>
-                                  <p className="text-gray-400 text-sm mt-1">{questDef.summary}</p>
-                                </div>
-                                <span className="px-2 py-1 bg-green-900/50 border border-green-700/50 text-green-300 text-xs font-semibold rounded">
-                                  Completed
-                                </span>
-                              </div>
-                              {questDef.rewards && questDef.rewards.length > 0 && (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-500 text-sm">Reward:</span>
-                                  <span className="text-gray-300 text-sm">
-                                    {questDef.rewards.map((r: any) => {
-                                      if (r.type === 'currency') return `${r.amount} Gold`
-                                      if (r.type === 'xp') return `${r.amount} XP`
-                                      return ''
-                                    }).filter(Boolean).join(', ')}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          )
-                        })}
+        {/* ── Completed Quests tab ── */}
+        {activeTab === 'completed-quests' && (
+          <>
+            {isLoadingQuests ? (
+              <div className="text-gray-400 text-sm">Loading...</div>
+            ) : (() => {
+              const completedQuests = [...quests]
+                .sort((a, b) => {
+                  const aNum = QUESTS[a.questId as keyof typeof QUESTS]?.number || 999
+                  const bNum = QUESTS[b.questId as keyof typeof QUESTS]?.number || 999
+                  return aNum - bNum
+                })
+                .filter(q => q.completed)
+
+              if (completedQuests.length === 0) {
+                return <div className="text-gray-400 text-sm">No completed quests yet.</div>
+              }
+
+              return (
+                <div className="space-y-4">
+                  {completedQuests.map((quest) => {
+                    const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
+                    if (!questDef) return null
+                    return (
+                      <div key={quest.id} className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3 opacity-75">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            {questDef.giver?.name && (
+                              <p className="text-gray-500 text-xs mb-1">{questDef.giver.name}</p>
+                            )}
+                            <h4 className="text-white font-semibold text-base">{questDef.title}</h4>
+                            <p className="text-gray-400 text-sm mt-1">{questDef.summary}</p>
+                          </div>
+                          <span className="px-2 py-1 bg-green-900/50 border border-green-700/50 text-green-300 text-xs font-semibold rounded">
+                            Done
+                          </span>
+                        </div>
+                        {questDef.rewards && questDef.rewards.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 text-sm">Reward:</span>
+                            <span className="text-gray-300 text-sm">
+                              {questDef.rewards.map((r: any) => {
+                                if (r.type === 'currency') return `${r.amount} Gold`
+                                if (r.type === 'xp') return `${r.amount} XP`
+                                return ''
+                              }).filter(Boolean).join(', ')}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ) : null
-                })()}
-              </div>
-            )}
+                    )
+                  })}
+                </div>
+              )
+            })()}
 
             {!isLoadingQuests && (
               <div className="mt-6 pt-4 border-t border-gray-700/50">
@@ -400,14 +393,14 @@ export default function QuestsPanel({
           </>
         )}
 
-        {/* ── Battle Log tab ── */}
-        {activeTab === 'battle-log' && (
-          <BattleLogTab getAuthHeaders={getAuthHeaders} />
-        )}
-
         {/* ── Kill List tab ── */}
         {activeTab === 'kill-list' && (
           <KillListTab getAuthHeaders={getAuthHeaders} />
+        )}
+
+        {/* ── Battle Log tab ── */}
+        {activeTab === 'battle-log' && (
+          <BattleLogTab getAuthHeaders={getAuthHeaders} />
         )}
       </div>
     </div>
