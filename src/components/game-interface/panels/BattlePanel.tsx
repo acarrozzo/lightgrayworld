@@ -110,11 +110,15 @@ function EnemyIcon({ iconName, isDead }: { iconName: string; isDead: boolean }) 
   )
 }
 
-function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean }) {
+function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean; isPlayerAttacking: boolean }) {
   return (
     <div className="flex-shrink-0 flex items-center gap-1">
-      <Icon name={weaponIconName ?? 'equipment-fists'} size={76} className="text-white opacity-75" />
-      <Icon name="attack" size={28} className="text-red-800/60" />
+      {isPlayerAttacking && (
+        <>
+          <Icon name={weaponIconName ?? 'equipment-fists'} size={76} className="text-white opacity-75" />
+          <Icon name="attack" size={28} className="text-red-800/60" />
+        </>
+      )}
       {!enemyIsDead && (
         <div style={{ transform: 'scaleX(-1)' }}>
           <Icon name="attack" size={28} className="text-red-800/60" />
@@ -456,7 +460,7 @@ export default function BattlePanel({
           )}
         </div>
 
-        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} />
+        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} isPlayerAttacking={hasPlayerFormula} />
 
         {/* Enemy side */}
         <div className="flex-1 flex flex-col items-end gap-1 min-w-0">

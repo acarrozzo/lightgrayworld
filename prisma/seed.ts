@@ -146,7 +146,7 @@ async function main() {
       subtitleColor: 'gray-500',
       icon: 'basement2',
       iconColor: 'gray-600',
-      description: 'The basement is completely destroyed and waterlogged. There is rat crap everywhere. In between battles, you can rest to regain lost hit points or search the rubble for anything that may be useful.',
+      description: 'The basement is completely destroyed and waterlogged. There is rat waste everywhere. In between battles, you can rest to regain lost hit points or search the rubble for anything that may be useful.',
       dangerLevel: 2,
       isSafe: false,
       north: null,
