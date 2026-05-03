@@ -43,6 +43,8 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     '015': '-35px -140px',     // On the Beach Sandy shores
     '016': '-35px -245px',     // On the Beach by a Giant Rock
     '017': '-35px -350px',     // Abandoned Docks
+    '018': '-35px -455px',     // Rocky Beach
+    '019': '-35px -560px',     // Sand Crab Nest
     '020': '-245px -245px',    // Healing Springs
     '021': '-455px -245px',    // Pajama Shaman
     '088': 'center',            // Solar Office
