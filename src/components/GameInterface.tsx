@@ -535,11 +535,6 @@ export default function GameInterface() {
             e.preventDefault()
             setRightSidebarOpen(!rightSidebarOpen)
             break
-          case 'Escape':
-            e.preventDefault()
-            setLeftSidebarOpen(false)
-            setRightSidebarOpen(false)
-            break
         }
       }
     }
@@ -547,6 +542,19 @@ export default function GameInterface() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [leftSidebarOpen, rightSidebarOpen])
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        if (centerActiveTab !== 'explore') {
+          e.preventDefault()
+          setCenterActiveTab('explore')
+        }
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [centerActiveTab])
 
   // Auto-close sidebars on mobile (< 768px) to prevent dark curtain overlay
   useEffect(() => {
