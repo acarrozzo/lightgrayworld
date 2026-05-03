@@ -92,8 +92,8 @@ async function executeStartBattle(action, playerId, roomState) {
   let firstTurn
   if (isAdvantageTurn) {
     // Enemy gets a free hit — player was entering the room, no counter-attack
-    const enemyRaw = rand(Math.floor(enemy.att * 0.6), enemy.att)
-    const playerBlock = rand(Math.floor(effectiveDef * 0.6), effectiveDef)
+    const enemyRaw = rand(Math.floor(enemy.att * 0.5), enemy.att)
+    const playerBlock = rand(Math.floor(effectiveDef * 0.5), effectiveDef)
     const enemyFinal = Math.max(0, enemyRaw - playerBlock)
     firstTurn = {
       playerDealtDamage: 0,

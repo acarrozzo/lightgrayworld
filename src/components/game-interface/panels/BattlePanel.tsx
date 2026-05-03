@@ -175,7 +175,7 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
                 </>
               )}
             </div>
-            <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={true} />
+            <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={true} isPlayerAttacking={!wasAdvantageTurn} />
             <div className="flex-1 flex flex-col items-end min-w-0">
               <p className="text-xs font-bold text-red-500 text-right">{result.enemyName}</p>
               <p className="text-xs text-gray-600 text-right">defeated</p>
@@ -254,7 +254,7 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
               </>
             )}
           </div>
-          <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={false} />
+          <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={false} isPlayerAttacking={!wasAdvantageTurn} />
           <div className="flex-1 flex flex-col items-end min-w-0">
             <p className="text-xs text-gray-400 text-right"><span className="text-yellow-300 font-semibold">{result.enemyName}</span> hit</p>
             <p className="text-xl font-black text-yellow-400 leading-tight text-right">{lt.enemyDealtDamage}</p>

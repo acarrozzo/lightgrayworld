@@ -18,13 +18,13 @@ function resolveTurn(battleState, otherCombatants) {
   const enemy = battleState.enemy
 
   // Player attacks enemy
-  const playerRaw = rand(Math.floor(effectiveStr * 0.6), effectiveStr)
-  const enemyBlock = rand(Math.floor(enemy.def * 0.6), enemy.def)
+  const playerRaw = rand(Math.floor(effectiveStr * 0.5), effectiveStr)
+  const enemyBlock = rand(Math.floor(enemy.def * 0.5), enemy.def)
   const playerFinal = Math.max(1, playerRaw - enemyBlock)
 
   // Enemy attacks player
-  const enemyRaw = rand(Math.floor(enemy.att * 0.6), enemy.att)
-  const playerBlock = rand(Math.floor(effectiveDef * 0.6), effectiveDef)
+  const enemyRaw = rand(Math.floor(enemy.att * 0.5), enemy.att)
+  const playerBlock = rand(Math.floor(effectiveDef * 0.5), effectiveDef)
   const enemyFinal = Math.max(0, enemyRaw - playerBlock)
 
   return {

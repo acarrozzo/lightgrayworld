@@ -302,7 +302,7 @@ export default function InventoryDisplay({
                 <h4 className="text-sm font-semibold text-gray-300 px-2">
                   {tab.label.charAt(0).toUpperCase() + tab.label.slice(1)} ({categoryItems.length})
                 </h4>
-                <div className="grid grid-cols-1 @sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   {categoryItems.map((item) => {
                       const isNewItem = showNewItems && newItemIds.has(item.id)
                       const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
@@ -310,7 +310,7 @@ export default function InventoryDisplay({
                       // Resolve icon with fallback logic
                       const metadata = item.template.metadata as { icon?: string } | null
                       const itemIcon = resolveItemIcon(metadata, item.template.slug || '')
-                      
+
                       return (
                         <div
                           key={item.id}
@@ -323,22 +323,17 @@ export default function InventoryDisplay({
                           {isNewItem && (
                             <span className="absolute left-2 top-2 w-2 h-2 bg-red-500 rounded-full z-10 shadow-lg shadow-red-500/50 border border-red-400/50"></span>
                           )}
-                          {item.isEquipped && (
-                            <span className="absolute right-2 top-2 px-2 py-1 bg-gradient-to-r from-green-500/90 to-green-600/90 text-white text-[10px] font-bold rounded-md shadow-lg shadow-green-500/30 z-10 border border-green-400/50">
-                              EQUIPPED
-                            </span>
-                          )}
-                          
+
                           {/* Item icon on the left */}
-                          <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-gray-700/30 border border-gray-600/30">
+                          <div className="flex-shrink-0 flex items-center justify-center w-20 h-20 rounded-lg bg-gray-700/30 border border-gray-600/30">
                             <Icon
                               name={itemIcon}
-                              size={32}
+                              size={64}
                               color="current"
                               className="text-gray-300"
                             />
                           </div>
-                          
+
                           {/* Content area */}
                           <div className="flex-1 min-w-0">
                             {/* Top row: Item name with quantity */}
@@ -352,7 +347,7 @@ export default function InventoryDisplay({
                                 </span>
                               )}
                             </div>
-                            
+
                             {/* Stat mods */}
                             {(() => {
                               const mods = renderStatMods(item.template.metadata)
@@ -360,32 +355,37 @@ export default function InventoryDisplay({
                                 <div className="text-sm font-bold mb-1">{mods}</div>
                               ) : null
                             })()}
-                            
+
                             {/* Description */}
                             {item.template.description && (
                               <div className="text-gray-400 text-xs mb-2 line-clamp-2 leading-relaxed">
                                 {item.template.description}
                               </div>
                             )}
-                            
+
                             {/* Bottom row: Action buttons on left, value and drop/examine button on right */}
                             <div className="flex items-center justify-between gap-2 mt-1">
                               <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
                                 {/* Unequip button - show if item is equipped */}
                                 {item.isEquipped && (
-                                  <button
-                                    onClick={() => {
-                                      onClearNewItem?.(item.id)
-                                      onAction?.({
-                                        type: 'unequip_item',
-                                        data: { playerItemId: item.id },
-                                      })
-                                    }}
-                                    className="px-3 py-1.5 text-sm font-semibold text-white bg-red-600/80 hover:bg-red-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
-                                  >
-                                    <Icon name="equipment-shortsword" size={12} color="current" />
-                                    <span className="hidden sm:inline">Unequip</span>
-                                  </button>
+                                  <>
+                                    <span className="px-2 py-1 bg-gradient-to-r from-green-500/90 to-green-600/90 text-white text-[10px] font-bold rounded-md shadow-lg shadow-green-500/30 border border-green-400/50 flex-shrink-0">
+                                      EQUIPPED
+                                    </span>
+                                    <button
+                                      onClick={() => {
+                                        onClearNewItem?.(item.id)
+                                        onAction?.({
+                                          type: 'unequip_item',
+                                          data: { playerItemId: item.id },
+                                        })
+                                      }}
+                                      className="px-3 py-1.5 text-sm font-semibold text-white bg-red-600/80 hover:bg-red-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
+                                    >
+                                      <Icon name="equipment-shortsword" size={12} color="current" />
+                                      <span className="hidden sm:inline">Unequip</span>
+                                    </button>
+                                  </>
                                 )}
                                 {/* Equip button - show if item has equipSlot and is not already equipped */}
                                 {item.template.equipSlot !== null && !item.isEquipped && (
@@ -476,7 +476,7 @@ export default function InventoryDisplay({
         </div>
       ) : (
         // Show flat list for specific category tabs
-        <div className="grid grid-cols-1 @sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {filteredItems.map((item) => {
             const isNewItem = showNewItems && newItemIds.has(item.id)
             const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
@@ -497,17 +497,12 @@ export default function InventoryDisplay({
                 {isNewItem && (
                   <span className="absolute left-1 top-1 w-1.5 h-1.5 bg-red-500 rounded-full z-10"></span>
                 )}
-                {item.isEquipped && (
-                  <span className="absolute right-2 top-2 px-2 py-1 bg-gradient-to-r from-green-500/90 to-green-600/90 text-white text-[10px] font-bold rounded-md shadow-lg shadow-green-500/30 z-10 border border-green-400/50">
-                    EQUIPPED
-                  </span>
-                )}
-                
+
                 {/* Item icon on the left */}
-                <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-gray-700/30 border border-gray-600/30">
+                <div className="flex-shrink-0 flex items-center justify-center w-20 h-20 rounded-lg bg-gray-700/30 border border-gray-600/30">
                   <Icon
                     name={itemIcon}
-                    size={32}
+                    size={64}
                     color="current"
                     className="text-gray-300"
                   />
@@ -547,19 +542,24 @@ export default function InventoryDisplay({
                     <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
                       {/* Unequip button - show if item is equipped */}
                       {item.isEquipped && (
-                        <button
-                          onClick={() => {
-                            onClearNewItem?.(item.id)
-                            onAction?.({
-                              type: 'unequip_item',
-                              data: { playerItemId: item.id },
-                            })
-                          }}
-                          className="px-3 py-1.5 text-sm font-semibold text-white bg-red-600/80 hover:bg-red-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
-                        >
-                          <Icon name="equipment-shortsword" size={12} color="current" />
-                          <span className="hidden sm:inline">Unequip</span>
-                        </button>
+                        <>
+                          <span className="px-2 py-1 bg-gradient-to-r from-green-500/90 to-green-600/90 text-white text-[10px] font-bold rounded-md shadow-lg shadow-green-500/30 border border-green-400/50 flex-shrink-0">
+                            EQUIPPED
+                          </span>
+                          <button
+                            onClick={() => {
+                              onClearNewItem?.(item.id)
+                              onAction?.({
+                                type: 'unequip_item',
+                                data: { playerItemId: item.id },
+                              })
+                            }}
+                            className="px-3 py-1.5 text-sm font-semibold text-white bg-red-600/80 hover:bg-red-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
+                          >
+                            <Icon name="equipment-shortsword" size={12} color="current" />
+                            <span className="hidden sm:inline">Unequip</span>
+                          </button>
+                        </>
                       )}
                       {/* Equip button - show if item has equipSlot and is not already equipped */}
                       {item.template.equipSlot !== null && !item.isEquipped && (
