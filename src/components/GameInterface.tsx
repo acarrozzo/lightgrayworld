@@ -2942,7 +2942,7 @@ export default function GameInterface() {
             {/* Header with toggle button */}
             <div className={`flex items-center gap-3 p-4 bg-gray-900/95 backdrop-blur-sm flex-shrink-0 border-b border-gray-800/50 ${leftDropdownOpen ? 'overflow-visible z-10 relative' : ''}`}>
               <button
-                onClick={() => setLeftSidebarOpen((prev) => !prev)}
+                onClick={() => setLeftSidebarOpen((prev: boolean) => !prev)}
                 className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                 title="Close"
                 aria-label="Close panel"
@@ -3361,7 +3361,7 @@ export default function GameInterface() {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
-                  onClick={() => setRightSidebarOpen((prev) => !prev)}
+                  onClick={() => setRightSidebarOpen((prev: boolean) => !prev)}
                   className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                   title="Close"
                   aria-label="Close panel"
