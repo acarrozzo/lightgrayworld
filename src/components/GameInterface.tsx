@@ -2906,7 +2906,7 @@ export default function GameInterface() {
         magMod={player?.magMod}
         defMod={player?.defMod}
         clicks={player?.clicks}
-        onCharacterClick={() => setLeftSidebarOpen((prev) => !prev)}
+        onCharacterClick={() => setLeftSidebarOpen((prev: boolean) => !prev)}
         isConnected={socket?.connected ?? false}
         onRefresh={() => window.location.reload()}
       />
