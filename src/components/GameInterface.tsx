@@ -1516,6 +1516,10 @@ export default function GameInterface() {
         setInventory(payload.data.inventory)
       }
 
+      if (payload?.data?.quests) {
+        setQuests(payload.data.quests)
+      }
+
       // Update player state if provided in action feedback (e.g., from equip/unequip, quest completion)
       // Merge partial updates instead of replacing entire state to preserve fields like hp, hpMax, mp, mpMax, level, currentRoom
       if (payload?.data?.player) {
@@ -1883,6 +1887,17 @@ export default function GameInterface() {
       cleanupRoomMoves()
     }
   }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed, updateCapCache, worldTick])
+
+  // Fetch quests on login so quest subtitles are available immediately
+  useEffect(() => {
+    if (!isLoggedIn || !player) return
+    let cancelled = false
+    fetch('/api/game/quests/progress', { headers: getAuthHeaders() })
+      .then((res) => res.json())
+      .then((data) => { if (!cancelled && data.success) setQuests(data.quests || []) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [isLoggedIn, player?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch quests when quest tab is opened
   useEffect(() => {
@@ -3094,6 +3109,7 @@ export default function GameInterface() {
                             currentAction={action}
                             roomEnemies={roomEnemies}
                             isInBattle={battle.isInBattle}
+                            quests={quests}
                           />
                           </div>
                         </div>

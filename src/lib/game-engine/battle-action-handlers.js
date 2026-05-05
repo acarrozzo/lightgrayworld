@@ -316,7 +316,21 @@ async function executePlayerAttack(action, playerId, roomState) {
 
     // Fire DB persistence in the background; level-up event emitted via backgroundWork
     const backgroundWork = persistBattleWin(playerId, battleState, rewards)
-      .then(({ levelUp }) => levelUp?.leveled ? [{ event: 'player:level-up', payload: levelUp }] : [])
+      .then(({ levelUp, updatedQuests }) => {
+        const events = []
+        if (levelUp?.leveled) events.push({ event: 'player:level-up', payload: levelUp })
+        if (updatedQuests) events.push({
+          event: 'action:feedback',
+          payload: {
+            action: 'quest_progress',
+            message: '',
+            outcome: 'info',
+            ts: Date.now(),
+            data: { quests: updatedQuests },
+          },
+        })
+        return events
+      })
       .catch((err) => {
         console.error(`persistBattleWin failed for player ${playerId}:`, err)
         return []

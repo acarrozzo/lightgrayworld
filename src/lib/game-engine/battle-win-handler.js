@@ -41,6 +41,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
   const activeQuestProgress = await prisma.questProgress.findMany({
     where: { userId: playerId, completed: false },
   })
+  let killQuestUpdated = false
   for (const qp of activeQuestProgress) {
     const def = getQuestDef(qp.questId)
     if (!def) continue
@@ -50,6 +51,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
           where: { id: qp.id },
           data: { progress: { increment: 1 } },
         })
+        killQuestUpdated = true
         break
       }
     }
@@ -113,7 +115,13 @@ async function persistBattleWin(playerId, battleState, rewards) {
 
   const levelUp = await checkAndApplyLevelUp(playerId)
 
-  return { droppedItems, levelUp }
+  let updatedQuests = null
+  if (killQuestUpdated) {
+    const { getAllQuestProgress } = require('./services/quest-service')
+    updatedQuests = await getAllQuestProgress(playerId)
+  }
+
+  return { droppedItems, levelUp, updatedQuests }
 }
 
 async function handleBattleWin(playerId, battleState) {

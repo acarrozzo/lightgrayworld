@@ -164,6 +164,7 @@ interface RoomBoxProps {
   currentAction?: string
   roomEnemies?: RoomEnemy[]
   isInBattle?: boolean
+  quests?: Array<{ id: string; questId: string; progress: number; completed: boolean }>
 }
 
 export default function RoomBox({
@@ -179,6 +180,7 @@ export default function RoomBox({
   currentAction = '',
   roomEnemies = [],
   isInBattle = false,
+  quests = [],
 }: RoomBoxProps) {
   const subtitleText = (room.subtitle ?? 'This is it. The world is yours.').trim()
   const hasSubtitle = subtitleText.length > 0
@@ -295,6 +297,7 @@ export default function RoomBox({
         className="mt-2"
         worldTick={worldTick}
         actionResult={actionResult}
+        quests={quests}
       />
 
       {/* Basic Actions */}
