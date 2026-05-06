@@ -135,7 +135,7 @@ export default function GameInterface() {
   } | undefined>(undefined)
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
-  const [quests, setQuests] = useState<Array<{ id: string; questId: string; progress: number; completed: boolean }>>([])
+  const [quests, setQuests] = useState<Array<{ id: string; questId: string; progress: number; completed: boolean; data?: { accepted?: boolean } | null }>>([])
   const [isLoadingQuests, setIsLoadingQuests] = useState(false)
   const [isResettingQuests, setIsResettingQuests] = useState(false)
   const [forceFeedFilter, setForceFeedFilter] = useState<'chat' | undefined>(undefined)

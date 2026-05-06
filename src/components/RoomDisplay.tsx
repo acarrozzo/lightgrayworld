@@ -5,74 +5,16 @@ import { Loader2 } from 'lucide-react'
 import type { Player } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
-import QUESTS from '@/lib/game-data/quests.json'
 import { DEFAULT_AVATAR_COLOR, DEFAULT_PLAYER_AVATAR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import ItemDropdownButton from './ItemDropdownButton'
 import Icon from './Icon'
+import NpcQuestCard from './NpcQuestCard'
 
 type CapStatus = 'known' | 'loading' | 'error' | 'unavailable'
 
-type QuestProgress = { id: string; questId: string; progress: number; completed: boolean }
+type QuestProgress = { id: string; questId: string; progress: number; completed: boolean; data?: { accepted?: boolean } | null }
 
-type QuestInfo = {
-  description: string
-  badge: string
-  buttonClass: string
-  badgeClass: string
-}
-
-function getQuestInfo(questIds: string[], quests: QuestProgress[]): QuestInfo | null {
-  if (!questIds.length) return null
-
-  const relevant = quests.filter((q) => questIds.includes(q.questId))
-  const active = relevant.filter((q) => !q.completed)
-
-  if (relevant.length === 0) return {
-    description: '',
-    badge: 'New Quest',
-    buttonClass: 'bg-yellow-600 hover:bg-yellow-500',
-    badgeClass: 'bg-white/20 text-white',
-  }
-
-  if (active.length === 0) return {
-    description: '',
-    badge: 'Completed',
-    buttonClass: 'bg-green-900 hover:bg-green-800',
-    badgeClass: 'bg-green-700/50 text-green-300',
-  }
-
-  for (const quest of active) {
-    const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
-    if (!questDef) continue
-    const reqs = questDef.requirements as Array<{ type: string; quantity?: number; count?: number }> | undefined
-    const isReady =
-      !reqs?.length ||
-      reqs.every((req) => {
-        if (req.type === 'hasItem') return quest.progress >= (req.quantity ?? 1)
-        if (req.type === 'killCount') return quest.progress >= (req.count ?? 1)
-        if (req.type === 'hasEquippedInSlot') return quest.progress >= 1
-        return false
-      })
-    if (isReady) return {
-      description: questDef.objective,
-      badge: 'Ready to Turn In',
-      buttonClass: 'bg-green-600 hover:bg-green-500',
-      badgeClass: 'bg-green-400/25 text-green-200',
-    }
-  }
-
-  const firstActive = active[0]
-  const firstDef = QUESTS[firstActive.questId as keyof typeof QUESTS]
-  if (firstDef) return {
-    description: firstDef.objective,
-    badge: 'In Progress',
-    buttonClass: 'bg-yellow-600 hover:bg-yellow-500',
-    badgeClass: 'bg-yellow-400/25 text-yellow-200',
-  }
-
-  return null
-}
 
 interface RoomDisplayProps {
   room: any
@@ -126,6 +68,7 @@ export default function RoomDisplay({
     return state.capCache[key] || null
   })
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null)
+  const [loadingQuestId, setLoadingQuestId] = useState<string | null>(null)
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null)
   const [remainingCap, setRemainingCap] = useState<number | null>(null)
   const [maxCap, setMaxCap] = useState<number | null>(null)
@@ -384,6 +327,18 @@ export default function RoomDisplay({
     }
   }
 
+  const handleQuestTurnIn = async (questId: string) => {
+    if (!onAction || loadingQuestId) return
+    setLoadingQuestId(questId)
+    try {
+      await onAction({ type: 'complete_quest', data: { questId } })
+    } catch (error) {
+      console.error('Quest turn-in error:', error)
+    } finally {
+      setLoadingQuestId(null)
+    }
+  }
+
   const shouldShowCap = Boolean(capConfig && maxCap)
 
   // Filter out berry actions from the main action buttons list
@@ -567,13 +522,11 @@ export default function RoomDisplay({
       )}
 
       {(() => {
-        const questActions = filteredRoomActions.filter((a) => a.questIds?.length && getQuestInfo(a.questIds, quests))
-        const regularActions = filteredRoomActions.filter((a) => !a.questIds?.length || !getQuestInfo(a.questIds, quests))
+        const npcActions = filteredRoomActions.filter((a) => a.questIds?.length)
+        const regularActions = filteredRoomActions.filter((a) => !a.questIds?.length)
 
         const renderButton = (actionItem: import('@/lib/room-actions').RoomAction) => {
           const isViewShop = actionItem.action === 'view shop'
-          const questInfo = actionItem.questIds?.length ? getQuestInfo(actionItem.questIds, quests) : null
-          const isQuestButton = !!questInfo
           return (
             <button
               key={actionItem.action}
@@ -582,48 +535,38 @@ export default function RoomDisplay({
               className={`${
                 isViewShop
                   ? 'px-4 py-3 rounded-md text-base font-semibold text-white transition-all flex items-center gap-2 border-2 border-amber-400/50 shadow-lg hover:shadow-xl'
-                  : isQuestButton
-                  ? 'w-full max-w-[600px] px-4 py-3 rounded-md text-sm text-white transition-colors flex items-center gap-3'
                   : 'px-3 py-2 rounded-md text-sm text-white transition-colors flex items-center gap-2'
               } ${
                 isPerformingAction === actionItem.action
                   ? 'bg-gray-700 cursor-wait'
-                  : isQuestButton
-                  ? questInfo.buttonClass
                   : actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
               }`}
             >
               {actionItem.icon && (
                 <Icon
                   name={actionItem.icon}
-                  size={isViewShop ? 20 : isQuestButton ? 28 : 16}
+                  size={isViewShop ? 20 : 16}
                   color="current"
                 />
               )}
-              <span className="flex flex-col items-start flex-1 min-w-0">
-                <span>{actionItem.label}</span>
-                {questInfo?.description && (
-                  <span className="text-xs font-normal text-white/70">
-                    {questInfo.description}
-                  </span>
-                )}
-              </span>
-              {questInfo && (
-                <span className={`ml-auto shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${questInfo.badgeClass}`}>
-                  {questInfo.badge}
-                </span>
-              )}
+              <span>{actionItem.label}</span>
             </button>
           )
         }
 
         return (
           <div className="mt-4 flex flex-col gap-2">
-            {questActions.length > 0 && (
-              <div className="flex flex-col gap-2">
-                {questActions.map(renderButton)}
-              </div>
-            )}
+            {npcActions.map((actionItem) => (
+              <NpcQuestCard
+                key={actionItem.action}
+                npcName={actionItem.label}
+                npcIcon={actionItem.icon ?? ''}
+                questIds={actionItem.questIds ?? []}
+                quests={quests}
+                onTurnIn={handleQuestTurnIn}
+                loadingQuestId={loadingQuestId ?? undefined}
+              />
+            ))}
             {regularActions.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {regularActions.map(renderButton)}

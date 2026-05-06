@@ -940,8 +940,8 @@ class RoomState {
 
     this.touchActivity()
 
-    const { acceptQuest, getQuestDef } = require('./services/quest-service')
-    
+    const { playerAcceptQuest, getQuestDef } = require('./services/quest-service')
+
     // Load quest definition early to validate room context
     const questDef = getQuestDef(questId)
     if (!questDef) {
@@ -958,27 +958,41 @@ class RoomState {
       return this.createErrorResult('accept_quest', `You need to speak to ${npcName} to do that.`)
     }
 
-    // Client-triggered quest acceptance always validates room (system: false)
-    const result = await acceptQuest(playerId, questId, choiceId, { system: false })
+    // playerAcceptQuest: sets data.accepted=true, immediately completes no-requirement quests
+    const result = await playerAcceptQuest(playerId, questId)
 
     if (!result.success) {
       return this.createErrorResult('accept_quest', result.error || 'Failed to accept quest')
     }
 
-    const questTitle = questDef ? questDef.title : questId
+    const questTitle = questDef.title || questId
+    // If the quest was immediately completed (no requirements), include full reward data
+    const isCompleted = result.player != null
+    const feedbackMessage = isCompleted
+      ? `Quest completed: ${questTitle}`
+      : `Quest accepted: ${questTitle}`
+
+    const data = {
+      roomId: this.roomId,
+      quests: result.quests,
+      ...(isCompleted ? { player: result.player, inventory: result.inventory } : {}),
+    }
+
+    const playerEvents = [
+      {
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload('accept_quest', 'success', feedbackMessage, data),
+      },
+    ]
+
+    if (result.levelUp?.leveled) {
+      playerEvents.push({ event: 'player:level-up', payload: result.levelUp })
+    }
 
     return {
       success: true,
       action: 'accept_quest',
-      playerEvents: [
-        {
-          event: 'action:feedback',
-          payload: this.createFeedbackPayload('accept_quest', 'success', `Quest accepted: ${questTitle}`, {
-            roomId: this.roomId,
-            quests: await require('./services/quest-service').getAllQuestProgress(playerId),
-          }),
-        },
-      ],
+      playerEvents,
     }
   }
 

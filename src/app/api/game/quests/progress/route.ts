@@ -40,6 +40,29 @@ async function handleGetProgress(request: AuthenticatedRequest) {
       }
     }
     
+    // Backfill quest_008 for players who completed quest_006 before quest_008 was added
+    const quest008 = await getQuestProgress(user.id, 'quest_008')
+    if (!quest008) {
+      try {
+        const quest006 = await getQuestProgress(user.id, 'quest_006')
+        if ((quest006 as any)?.completed) {
+          const { randomUUID } = require('crypto')
+          await prisma.questProgress.create({
+            data: {
+              id: randomUUID(),
+              userId: user.id,
+              questId: 'quest_008',
+              progress: 0,
+              completed: false,
+              data: undefined,
+            },
+          })
+        }
+      } catch (error) {
+        console.error('Failed to backfill quest_008:', error)
+      }
+    }
+
     const quests = await getAllQuestProgress(user.id)
 
     return NextResponse.json({

@@ -1,6 +1,8 @@
 {
   "quest_001": {
     "number": 1,
+    "questType": "main",
+    "level": 1,
     "title": "Talk to the Old Man",
     "summary": "Find the Old Man in his cozy wood cabin.",
     "objective": "Talk to the Old Man in his cabin.",
@@ -27,6 +29,8 @@
   },
   "quest_002": {
     "number": 2,
+    "questType": "main",
+    "level": 1,
     "title": "A Flower for my Wife",
     "summary": "The Old Man sure is romantic. Help him pick a flower for his wife.",
     "objective": "Bring a Yellow Flower to the Old Man.",
@@ -65,14 +69,16 @@
   },
   "quest_003": {
     "number": 3,
-    "title": "Talk to Robert",
-    "summary": "A soldier named Robert nearby looks like they have advice.",
-    "objective": "Talk to Robert in Room 007.",
-    "nextStep": "Go to Room 007 and talk to Robert.",
+    "questType": "main",
+    "level": 1,
+    "title": "Talk to the Young Soldier",
+    "summary": "A young soldier nearby looks like they have advice.",
+    "objective": "Talk to the Young Soldier in Room 007.",
+    "nextStep": "Go to Room 007 and talk to the Young Soldier.",
     "giver": {
       "npcId": "young_soldier",
       "roomId": "007",
-      "name": "Robert",
+      "name": "Young Soldier",
       "icon": "npc-youngsoldier"
     },
     "completionMode": "turn_in",
@@ -87,6 +93,8 @@
   },
   "quest_004": {
     "number": 4,
+    "questType": "main",
+    "level": 1,
     "title": "Equip a Weapon",
     "summary": "The soldier insists you should arm yourself.",
     "objective": "Equip any item in your Main Hand (not fists).",
@@ -94,7 +102,7 @@
     "giver": {
       "npcId": "young_soldier",
       "roomId": "007",
-      "name": "Robert",
+      "name": "Young Soldier",
       "icon": "npc-youngsoldier"
     },
     "completionMode": "turn_in",
@@ -125,14 +133,16 @@
   },
   "quest_005": {
     "number": 5,
+    "questType": "main",
+    "level": 1,
     "title": "Prove Your Strength",
-    "summary": "Robert wants to see that you can handle yourself in a real fight.",
+    "summary": "The Young Soldier wants to see that you can handle yourself in a real fight.",
     "objective": "Defeat 2 Sand Crabs at the Rocky Beach.",
     "nextStep": "Head to the Rocky Beach and defeat 2 Sand Crabs, then return to Robert.",
     "giver": {
       "npcId": "young_soldier",
       "roomId": "007",
-      "name": "Robert",
+      "name": "Young Soldier",
       "icon": "npc-youngsoldier"
     },
     "completionMode": "turn_in",
@@ -158,6 +168,8 @@
   },
   "quest_006": {
     "number": 6,
+    "questType": "main",
+    "level": 1,
     "title": "Rat Problem",
     "summary": "The Old Man's basement has been overrun with giant rats. He needs someone brave enough to deal with them.",
     "objective": "Defeat 2 Giant Rats in the Cabin Basement.",
@@ -192,11 +204,17 @@
       {
         "type": "startQuest",
         "questId": "quest_007"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_008"
       }
     ]
   },
   "quest_007": {
     "number": 7,
+    "questType": "main",
+    "level": 1,
     "title": "The Gator",
     "summary": "With the rats cleared out, the Old Man turns his attention to a bigger problem — a massive gator lurking in the marsh behind his cabin.",
     "objective": "Defeat the Gator in the Marsh behind the cabin.",
@@ -227,6 +245,40 @@
         "amount": 20
       }
     ]
+  },
+  "quest_008": {
+    "number": 8,
+    "questType": "side",
+    "level": 1,
+    "title": "Blueberry Jam",
+    "summary": "The Old Man has a craving for his wife's famous blueberry jam. He needs a good haul of fresh blueberries.",
+    "objective": "Bring 10 Blueberries to the Old Man.",
+    "nextStep": "Gather 10 Blueberries from the blueberry patch, then return to the Old Man.",
+    "giver": {
+      "npcId": "old_man",
+      "roomId": "003",
+      "name": "Old Man",
+      "icon": "npc-oldman"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "blueberry",
+        "quantity": 10
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 12
+      },
+      {
+        "type": "xp",
+        "amount": 8
+      }
+    ],
+    "onComplete": []
   }
 }
-

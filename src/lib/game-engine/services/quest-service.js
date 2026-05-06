@@ -154,8 +154,8 @@ async function acceptQuest(playerId, questId, choiceId = null, options = { syste
     }
   }
 
-  // One-quest-per-NPC gating (skip if system-started)
-  if (!options.system && questDef.giver && questDef.giver.npcId) {
+  // One-main-quest-per-NPC gating (skip if system-started or if new quest is a side quest)
+  if (!options.system && questDef.questType !== 'side' && questDef.giver && questDef.giver.npcId) {
     const activeQuests = await prisma.questProgress.findMany({
       where: {
         userId: playerId,
@@ -170,10 +170,16 @@ async function acceptQuest(playerId, questId, choiceId = null, options = { syste
       }
 
       const activeQuestDef = getQuestDef(activeQuest.questId)
-      if (activeQuestDef && activeQuestDef.giver && activeQuestDef.giver.npcId === questDef.giver.npcId) {
-        return { 
-          success: false, 
-          error: `You already have a quest from ${questDef.giver.npcId === 'old_man' ? 'the Old Man' : questDef.giver.npcId}.` 
+      // Only block on main quest conflicts — side quests from the same NPC are always allowed
+      if (
+        activeQuestDef &&
+        activeQuestDef.questType !== 'side' &&
+        activeQuestDef.giver &&
+        activeQuestDef.giver.npcId === questDef.giver.npcId
+      ) {
+        return {
+          success: false,
+          error: `You already have a quest from ${questDef.giver.npcId === 'old_man' ? 'the Old Man' : questDef.giver.npcId}.`
         }
       }
     }
@@ -190,7 +196,7 @@ async function acceptQuest(playerId, questId, choiceId = null, options = { syste
       questId: questId,
       progress: 0,
       completed: false,
-      data: data,
+      data,
     },
   })
 
@@ -479,6 +485,41 @@ async function getAllQuestProgress(playerId) {
   })
 }
 
+/**
+ * Player explicitly accepts a quest shown on the NPC card.
+ * - Sets data.accepted = true so the quest moves from Accept → In Progress state.
+ * - For quests with no requirements (talk quests), immediately completes them and
+ *   runs onComplete effects so the chain advances in a single click.
+ * @param {string} playerId
+ * @param {string} questId
+ * @returns {Promise<Object>}
+ */
+async function playerAcceptQuest(playerId, questId) {
+  const questDef = getQuestDef(questId)
+  if (!questDef) return { success: false, error: 'Quest not found' }
+
+  const questProgress = await getQuestProgress(playerId, questId)
+  if (!questProgress) return { success: false, error: 'Quest not available' }
+  if (questProgress.completed) return { success: false, error: 'Quest already completed' }
+
+  const existingData = (questProgress.data && typeof questProgress.data === 'object') ? questProgress.data : {}
+
+  // Mark as player-accepted
+  await prisma.questProgress.update({
+    where: { id: questProgress.id },
+    data: { data: { ...existingData, accepted: true } },
+  })
+
+  // No requirements — complete immediately so the chain advances
+  const hasRequirements = questDef.requirements && questDef.requirements.length > 0
+  if (!hasRequirements) {
+    return completeQuest(playerId, questId)
+  }
+
+  const updatedProgress = await getAllQuestProgress(playerId)
+  return { success: true, quests: updatedProgress }
+}
+
 module.exports = {
   getQuestDef,
   listQuestDefs,
@@ -488,4 +529,5 @@ module.exports = {
   completeQuest,
   getAllQuestProgress,
   runQuestEffects,
+  playerAcceptQuest,
 }
