@@ -2951,17 +2951,17 @@ export default function GameInterface() {
                 {renderIcon(getPanelIcon(leftPanelType), getPanelColor(leftPanelType), false)}
               </button>
               <div className="flex items-center gap-2 flex-1">
-                <h2 className="text-sm font-semibold text-white">{getPanelLabel(leftPanelType)}</h2>
                 <div className="relative flex-shrink-0" ref={leftDropdownRef}>
                   <button
                     data-left-dropdown-button
                     onClick={() => setLeftDropdownOpen((prev) => !prev)}
-                    className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                    className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center gap-1.5 relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                     title="Select panel"
                     aria-label="Select panel"
                   >
-                    <ChevronDown 
-                      size={12} 
+                    <span className="text-sm font-semibold text-white">{getPanelLabel(leftPanelType)}</span>
+                    <ChevronDown
+                      size={12}
                       className={`transition-transform duration-200 ${leftDropdownOpen ? 'rotate-180' : ''}`}
                     />
                   </button>
@@ -3316,15 +3316,15 @@ export default function GameInterface() {
             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800/60 bg-gray-900/80 flex-shrink-0">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <h2 className="text-sm font-semibold text-gray-100 truncate">{getPanelLabel(rightPanelType)}</h2>
                   <div className="relative flex-shrink-0" ref={rightDropdownRef}>
                     <button
                       data-right-dropdown-button
                       onClick={() => setRightDropdownOpen((prev) => !prev)}
-                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center gap-1.5 relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
                       title="Select panel"
                       aria-label="Select panel"
                     >
+                      <span className="text-sm font-semibold text-gray-100 truncate">{getPanelLabel(rightPanelType)}</span>
                       <ChevronDown
                         size={12}
                         className={`transition-transform duration-200 ${rightDropdownOpen ? 'rotate-180' : ''}`}
