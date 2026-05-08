@@ -98,6 +98,7 @@ export async function GET(request: NextRequest) {
         subtitleColor: true,
         icon: true,
         iconColor: true,
+        iconSize: true,
         directionColors: true,
         description: true,
         dangerLevel: true,

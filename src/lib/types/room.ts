@@ -42,6 +42,7 @@ export interface RoomView extends RoomViewNavigation {
   subtitleColor?: string | null
   icon?: string | null
   iconColor?: string | null
+  iconSize?: string | null
   directionColors?: Record<string, string> | null
   description: string
   dangerLevel: number

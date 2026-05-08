@@ -35,7 +35,8 @@ export const getMapIdForRoom = (roomId: string): string => {
   if (roomId === '000') return 'room-zero'
   if (roomId === '999') return 'lobby'
   if (roomId === '088') return 'solar-office'
-  if (roomId.startsWith('003b') || roomId.startsWith('28') || roomId === '012b') return 'grassy-field-underground'
+  const scorpionDungeon = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
+  if (roomId.startsWith('003b') || roomId.startsWith('28') || scorpionDungeon.includes(roomId)) return 'grassy-field-underground'
   return 'grassy-field'
 }
 

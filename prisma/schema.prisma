@@ -214,7 +214,8 @@ model Room {
   nameColor        String?
   subtitleColor    String?
   icon             String?
-  iconColor         String?
+  iconColor        String?
+  iconSize         String?
   directionColors   Json?
   npcs             NPC[]
   items            RoomItem[]

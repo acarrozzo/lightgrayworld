@@ -244,6 +244,7 @@ async function fetchRoomWithColors(prisma, roomId) {
       subtitleColor: true,
       icon: true,
       iconColor: true,
+      iconSize: true,
       directionColors: true,
       description: true,
       dangerLevel: true,
@@ -633,7 +634,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
 
           // Unlock underground map on first entry to any underground room
-          const isUndergroundRoom = toRoom.startsWith('003b') || toRoom.startsWith('28') || toRoom === '012b'
+          const scorpionDungeon = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
+          const isUndergroundRoom = toRoom.startsWith('003b') || toRoom.startsWith('28') || scorpionDungeon.includes(toRoom)
           if (isUndergroundRoom && !player.grassyFieldUndergroundMap) {
             try {
               await prisma.user.update({

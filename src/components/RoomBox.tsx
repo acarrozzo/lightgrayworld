@@ -182,6 +182,14 @@ export default function RoomBox({
   isInBattle = false,
   quests = [],
 }: RoomBoxProps) {
+  const iconSizeClasses: Record<string, string> = {
+    sm: 'w-12 h-12 sm:w-20 sm:h-20',
+    md: 'w-20 h-20 sm:w-32 sm:h-32',
+    lg: 'w-24 h-24 sm:w-40 sm:h-40',
+    xl: 'w-36 h-36 sm:w-60 sm:h-60',
+  }
+  const iconClassName = iconSizeClasses[room.iconSize ?? ''] ?? iconSizeClasses.sm
+
   const subtitleText = (room.subtitle ?? 'This is it. The world is yours.').trim()
   const hasSubtitle = subtitleText.length > 0
   const subtitlePlacement = room.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
@@ -202,7 +210,7 @@ export default function RoomBox({
       {/* Header with icon and two-line title */}
       <div className="flex items-center gap-4">
         <div className={getTextColorClass(room.iconColor, 'yellow-400')}>
-          <Icon name={room.icon || 'sun'} className="w-12 sm:w-20 h-12 sm:h-20" color="current" />
+          <Icon name={room.icon || 'sun'} className={iconClassName} color="current" />
         </div>
         <div className="flex-1">
           {hasSubtitle && subtitlePlacement === 'above' && (

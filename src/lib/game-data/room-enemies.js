@@ -8,6 +8,12 @@
 // Room 019: Sand Crab Nest — Sand Crab (always present)
 // Room 003b: Cabin Basement — 50% spawn, rat 90% / giant rat 10%
 // Room 003bb: Destroyed Basement — 50% spawn, rat 10% / giant rat 90%
+// Room 008: Spider Cave Entrance — Spider 60% spawn chance
+// Room 009: Spider Cave #009 — 60% spawn, spider 50% / scorpion 50%
+// Room 010: Spider Cave #010 — Giant Spider 60% spawn chance
+// Room 011: Spider Cave #011 — 60% spawn, scorpion 70% / spider 30%
+// Room 012: Scorpion Pit — Alpha Scorpion 70% spawn chance
+// Room 012b: Scorpion Pit (alt) — Alpha Scorpion 70% spawn chance
 const ROOM_ENEMIES = {
   '013': {
     probabilistic: true,
@@ -20,9 +26,9 @@ const ROOM_ENEMIES = {
     probabilistic: true,
     spawnChance: 0.5,
     enemies: [
-      { slug: 'rat', weight: 33 },
-      { slug: 'giant-rat', weight: 33 },
-      { slug: 'sand-crab', weight: 34 },
+      { slug: 'rat', weight: 25 },
+      { slug: 'giant-rat', weight: 25 },
+      { slug: 'sand-crab', weight: 50 },
     ],
   },
   '018': {
@@ -32,7 +38,7 @@ const ROOM_ENEMIES = {
       { slug: 'sand-crab', weight: 100 },
     ],
   },
-  '019': { enemies: ['sand-crab'] },
+  '019': { enemies: ['sand-crab'] }, // always present
   '003b': {
     probabilistic: true,
     spawnChance: 0.5,
@@ -47,6 +53,51 @@ const ROOM_ENEMIES = {
     enemies: [
       { slug: 'rat', weight: 10 },
       { slug: 'giant-rat', weight: 90 },
+    ],
+  },
+  '008': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'spider', weight: 100 },
+    ],
+  },
+  '009': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'spider', weight: 50 },
+      { slug: 'scorpion', weight: 50 },
+    ],
+  },
+  '010': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'giant-spider', weight: 100 },
+    ],
+  },
+  '011': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'scorpion', weight: 70 },
+      { slug: 'spider', weight: 30 },
+    ],
+  },
+  '012': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'giant-spider', weight: 30 },
+      { slug: 'alpha-scorpion', weight: 70 },
+    ],
+  },
+  '012b': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'alpha-scorpion', weight: 100 },
     ],
   },
 }

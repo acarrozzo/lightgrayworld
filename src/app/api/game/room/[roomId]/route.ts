@@ -33,6 +33,7 @@ async function handleGetRoom(request: AuthenticatedRequest) {
         subtitleColor: true,
         icon: true,
         iconColor: true,
+        iconSize: true,
         directionColors: true,
         description: true,
         dangerLevel: true,
