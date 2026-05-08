@@ -470,7 +470,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { south: 'gray-600' }
     },
     {
       roomId: '008',
@@ -495,7 +496,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { north: 'grass', south: 'gray-600', east: 'gray-600' }
     },
     {
       roomId: '009',
@@ -520,7 +522,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { north: 'gray-600', east: 'gray-600' }
     },
     {
       roomId: '010',
@@ -545,7 +548,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { north: 'gray-600', west: 'gray-600' }
     },
     {
       roomId: '011',
@@ -570,7 +574,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { south: 'gray-600', east: 'gray-600', west: 'gray-600' }
     },
     {
       roomId: '012',
@@ -595,7 +600,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { west: 'gray-600', down: 'red-900' }
     },
     {
       roomId: '012b',
@@ -620,7 +626,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { up: 'gray-600', south: 'red-900' }
     },
     {
       roomId: '012c',
@@ -645,7 +652,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { north: 'red-900', northwest: 'red-900' }
     },
     {
       roomId: '012d',
@@ -670,7 +678,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { north: 'red-900' }
     },
     {
       roomId: '012e',
@@ -696,7 +705,8 @@ async function main() {
       southeast: '012c',
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { north: 'red-900', south: 'red-900', southeast: 'red-900' }
     },
     {
       roomId: '012f',
@@ -722,7 +732,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { south: 'red-900', northeast: 'red-900' }
     },
     {
       roomId: '012g',
@@ -748,7 +759,8 @@ async function main() {
       southeast: null,
       southwest: '012f',
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { north: 'red-900', southwest: 'red-900' }
     },
     {
       roomId: '012h',
@@ -774,7 +786,8 @@ async function main() {
       southeast: null,
       southwest: null,
       hasFire: false,
-      hasCraftingTable: false
+      hasCraftingTable: false,
+      directionColors: { south: 'red-900' }
     },
     {
       roomId: '020',
