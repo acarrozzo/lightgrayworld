@@ -35,7 +35,7 @@ export const getMapIdForRoom = (roomId: string): string => {
   if (roomId === '000') return 'room-zero'
   if (roomId === '999') return 'lobby'
   if (roomId === '088') return 'solar-office'
-  if (roomId.startsWith('003b') || roomId.startsWith('28') || roomId.startsWith('012')) return 'grassy-field-underground'
+  if (roomId.startsWith('003b') || roomId.startsWith('28') || roomId === '012b') return 'grassy-field-underground'
   return 'grassy-field'
 }
 

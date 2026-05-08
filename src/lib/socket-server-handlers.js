@@ -633,7 +633,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
 
           // Unlock underground map on first entry to any underground room
-          const isUndergroundRoom = toRoom.startsWith('003b') || toRoom.startsWith('28') || toRoom.startsWith('012')
+          const isUndergroundRoom = toRoom.startsWith('003b') || toRoom.startsWith('28') || toRoom === '012b'
           if (isUndergroundRoom && !player.grassyFieldUndergroundMap) {
             try {
               await prisma.user.update({

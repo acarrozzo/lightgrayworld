@@ -53,6 +53,14 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     // Grassy Field Underground rooms (coordinates relative to underground map image)
     '003b':  '-245px -455px',   // Cabin Basement
     '003bb': '-140px -455px',   // Destroyed Basement
+    // Spider Cave rooms (overworld map, 105px grid steps from 007 at -455 -455)
+    '008': '-455px -560px',     // Spider Cave Exit (south of 007)
+    '009': '-455px -665px',     // Spider Cave #009 (south of 008)
+    '010': '-560px -665px',     // Spider Cave #010 (east of 009)
+    '011': '-560px -560px',     // Spider Cave #011 (east of 008 / north of 010)
+    '012': '-665px -560px',     // Above the Scorpion Pit (east of 011)
+    // Scorpion Pit underground (same grid position as 012, underground map)
+    '012b': '-665px -560px',    // Scorpion Pit
   }
 
   return roomMapPositions[roomId || '000'] || '-350px -350px' // Default to center
@@ -265,7 +273,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
   const isRoomZero = room.roomId === '000'
   const isLobby = room.roomId === '999'
   const isSolarOffice = room.roomId === '088'
-  const isUnderground = room.roomId?.startsWith('003b') || room.roomId?.startsWith('28') || room.roomId?.startsWith('012')
+  const isUnderground = room.roomId?.startsWith('003b') || room.roomId?.startsWith('28') || room.roomId === '012b'
   const mapBackground = isRoomZero
     ? '/img/lightgray_map_roomzero.jpg'
     : isLobby
