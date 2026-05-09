@@ -14,6 +14,12 @@
 // Room 011: Spider Cave #011 — 60% spawn, scorpion 70% / spider 30%
 // Room 012: Scorpion Pit — Alpha Scorpion 70% spawn chance
 // Room 012b: Scorpion Pit (alt) — Alpha Scorpion 70% spawn chance
+// Room 012c: Scorpion Pit (deep) — 60% spawn, alpha-scorpion 80% / scorpion-guard 20%
+// Room 012d: Narrow Passage — Giant Rat 60% spawn chance
+// Room 012e: Scorpion — Scorpion Guard 60% spawn chance
+// Room 012f: Wide Antechamber — Mammoth Scorpion 60% spawn chance
+// Room 012g: Scorpion Queen Chamber — Scorpion Queen 60% spawn chance
+// Room 012h: Scorpion King Throne — Scorpion King 60% spawn chance
 const ROOM_ENEMIES = {
   '013': {
     probabilistic: true,
@@ -74,7 +80,8 @@ const ROOM_ENEMIES = {
     probabilistic: true,
     spawnChance: 0.5,
     enemies: [
-      { slug: 'giant-spider', weight: 100 },
+      { slug: 'giant-spider', weight: 70 },
+      { slug: 'scorpion', weight: 30 },
     ],
   },
   '011': {
@@ -89,8 +96,8 @@ const ROOM_ENEMIES = {
     probabilistic: true,
     spawnChance: 0.5,
     enemies: [
-      { slug: 'giant-spider', weight: 30 },
-      { slug: 'alpha-scorpion', weight: 70 },
+      { slug: 'giant-spider', weight: 50 },
+      { slug: 'alpha-scorpion', weight: 50 },
     ],
   },
   '012b': {
@@ -98,6 +105,49 @@ const ROOM_ENEMIES = {
     spawnChance: 0.6,
     enemies: [
       { slug: 'alpha-scorpion', weight: 100 },
+    ],
+  },
+  '012c': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'alpha-scorpion', weight: 80 },
+      { slug: 'scorpion-guard', weight: 20 },
+    ],
+  },
+  '012d': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'giant-rat', weight: 100 },
+    ],
+  },
+  '012e': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'scorpion-guard', weight: 100 },
+    ],
+  },
+  '012f': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'mammoth-scorpion', weight: 100 },
+    ],
+  },
+  '012g': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'scorpion-queen', weight: 100 },
+    ],
+  },
+  '012h': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'scorpion-king', weight: 100 },
     ],
   },
 }
