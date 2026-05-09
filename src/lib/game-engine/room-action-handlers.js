@@ -572,6 +572,59 @@ const ROOM_ACTIONS = {
       determineOutcome: ({ success }) => (success ? 'success' : 'info'),
     },
   },
+  '012d': {
+    'pull lever': async (playerId) => {
+      const { pullLever, isLeverPulled, getRoomStateNote, getRoomActionOverrides } = require('./lever-state')
+      const leverId = '012d-lever'
+
+      if (isLeverPulled(playerId, leverId)) {
+        return {
+          success: true,
+          action: 'pull lever',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('pull lever', 'info', 'The lever is already down.', {
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'lever-down',
+                  iconColor: 'gray-500',
+                  title: 'Lever',
+                  message: 'The lever is already pulled down. It can\'t be pushed back up.',
+                },
+                stateNote: getRoomStateNote(playerId, '012d'),
+                actionOverrides: getRoomActionOverrides(playerId, '012d'),
+              }),
+            },
+          ],
+        }
+      }
+
+      pullLever(playerId, leverId)
+      return {
+        success: true,
+        action: 'pull lever',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('pull lever', 'success', 'You pull the lever down. A distant clunk echoes through the stone to the north.', {
+              showModal: true,
+              modalContent: {
+                type: 'icon',
+                icon: 'lever-down',
+                iconColor: 'green-400',
+                title: 'You pull the lever down.',
+                message: 'You pull the lever down. A distant clunk echoes through the stone to the north.',
+              },
+              stateNote: getRoomStateNote(playerId, '012d'),
+              actionOverrides: getRoomActionOverrides(playerId, '012d'),
+            }),
+          },
+        ],
+      }
+    },
+  },
   '006': {
     'view shop': async (playerId, roomState) => {
       const { prisma } = require('../db-client')

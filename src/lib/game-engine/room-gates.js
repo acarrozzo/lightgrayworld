@@ -102,6 +102,26 @@ const ROOM_GATES = {
       },
     },
   },
+  '012f': {
+    'northeast': {
+      check: async (playerId) => {
+        const { isLeverPulled } = require('./lever-state')
+        return isLeverPulled(playerId, '012d-lever')
+      },
+      message: "The passage is sealed shut. You need to find a way to unlock it from below.",
+      modalContent: {
+        title: 'The passage is sealed',
+        type: 'icon',
+        icon: 'sign-metal2',
+        iconColor: 'red-400',
+        message: "The passage to the Scorpion Nest is sealed shut. A control mechanism somewhere below must unlock it.",
+      },
+      onPass: async (playerId) => {
+        const { resetLever } = require('./lever-state')
+        resetLever(playerId, '012d-lever')
+      },
+    },
+  },
 }
 
 /**
@@ -128,6 +148,7 @@ async function checkRoomGate(roomId, direction, playerId) {
   return {
     allowed,
     gate,
+    onPass: allowed && gate.onPass ? gate.onPass : null,
   }
 }
 

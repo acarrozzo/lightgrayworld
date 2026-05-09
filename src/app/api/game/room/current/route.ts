@@ -175,8 +175,12 @@ export async function GET(request: NextRequest) {
       ? roomEnemyConfig.enemies.map((slug: string) => getEnemy(slug)).filter(Boolean)
       : []
 
+    const { getRoomStateNote, getRoomActionOverrides } = require('@/lib/game-engine/lever-state')
+    const stateNote = user ? getRoomStateNote(user.id, roomId) : null
+    const actionOverrides = user ? getRoomActionOverrides(user.id, roomId) : null
+
     const payload: Record<string, unknown> = {
-      room: { ...normalizedRoom, enemies: roomEnemies },
+      room: { ...normalizedRoom, enemies: roomEnemies, stateNote, actionOverrides },
     }
 
     if (user) {

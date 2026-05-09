@@ -445,6 +445,10 @@ export default function RoomDisplay({
         </div>
       )}
 
+      {room.stateNote && (
+        <div className="mt-2 text-xs text-amber-300/80 italic">{room.stateNote}</div>
+      )}
+
       {shouldShowCap && capStatus !== 'unavailable' && (
         <div className={`mt-3 relative flex items-center gap-3 p-3 rounded-md bg-gray-900/70 border ${getBerryBorderColor()}`}>
           {berryAction && !(capStatus === 'known' && remainingCap === 0) && capStatus !== 'loading' && (
@@ -527,6 +531,8 @@ export default function RoomDisplay({
 
         const renderButton = (actionItem: import('@/lib/room-actions').RoomAction) => {
           const isViewShop = actionItem.action === 'view shop'
+          const override = room.actionOverrides?.[actionItem.action]
+          const resolvedIcon = override?.icon ?? actionItem.icon
           return (
             <button
               key={actionItem.action}
@@ -539,12 +545,12 @@ export default function RoomDisplay({
               } ${
                 isPerformingAction === actionItem.action
                   ? 'bg-gray-700 cursor-wait'
-                  : actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
+                  : override?.className || actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
               }`}
             >
-              {actionItem.icon && (
+              {resolvedIcon && (
                 <Icon
-                  name={actionItem.icon}
+                  name={resolvedIcon}
                   size={isViewShop ? 20 : 16}
                   color="current"
                 />

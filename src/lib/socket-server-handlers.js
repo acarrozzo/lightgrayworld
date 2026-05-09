@@ -7,6 +7,7 @@ const {
 } = require('./game-engine/services/room-normalization.js')
 const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('./game-data/room-enemies.js')
 const { getEnemy } = require('./game-data/enemies.js')
+const { getRoomStateNote, getRoomActionOverrides, clearPlayerLevers } = require('./game-engine/lever-state.js')
 
 // Constants
 const ACTION_QUEUE_ERRORS = {
@@ -562,6 +563,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
           npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
           enemies: destEnemies,
+          stateNote: getRoomStateNote(player.id, toRoom),
+          actionOverrides: getRoomActionOverrides(player.id, toRoom),
         }
         const toRoomName = destinationRoom.name
 
@@ -1011,6 +1014,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
         }
         lastActivityPersistedAt.delete(player.id)
+        clearPlayerLevers(player.id)
 
         console.log(`Player ${player.username} disconnected`)
 

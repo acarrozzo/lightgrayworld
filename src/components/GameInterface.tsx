@@ -1546,6 +1546,14 @@ export default function GameInterface() {
         updateRoomItems(currentRoomRef.current.roomId, normalizeRoomItems(payload.data.roomItems))
       }
 
+      if ((payload?.data?.stateNote !== undefined || payload?.data?.actionOverrides !== undefined) && currentRoomRef.current) {
+        setCurrentRoom({
+          ...currentRoomRef.current,
+          ...(payload.data.stateNote !== undefined && { stateNote: payload.data.stateNote }),
+          ...(payload.data.actionOverrides !== undefined && { actionOverrides: payload.data.actionOverrides }),
+        })
+      }
+
       // Update cap cache from action result (action results always win)
       if (currentRoomRef.current?.roomId && payload?.data?.remaining !== undefined) {
         const actionKey = payload?.action

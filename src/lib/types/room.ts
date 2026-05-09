@@ -48,6 +48,8 @@ export interface RoomView extends RoomViewNavigation {
   dangerLevel: number
   isSafe: boolean
   hasSearch?: boolean
+  stateNote?: string | null
+  actionOverrides?: Record<string, { className?: string; icon?: string }> | null
   players: any[]
   items: RoomItemView[]
   npcs: any[]

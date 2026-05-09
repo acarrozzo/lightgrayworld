@@ -16,6 +16,9 @@ export const CLIENT_ROOM_GATES: Record<string, Record<string, boolean>> = {
   '020': {
     'northwest': true,
   },
+  '012f': {
+    'northeast': true,
+  },
 }
 
 // Command shorthand mapping

@@ -440,7 +440,7 @@ class RoomState {
         console.log(`[RoomState:${this.roomId}] executeMove - Gate blocked ${player.username} from ${fromRoom} going ${direction}`)
         const gate = gateResult.gate
         const message = gate.message || "You cannot pass through this way."
-        
+
         return {
           success: false,
           action: 'move',
@@ -455,6 +455,9 @@ class RoomState {
             },
           ],
         }
+      }
+      if (gateResult?.onPass) {
+        await gateResult.onPass(playerId)
       }
     }
 
