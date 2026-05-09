@@ -474,7 +474,7 @@ const ROOM_ACTIONS = {
       if (quest005Progress && !quest005Progress.completed) {
         const requirements = await checkQuestRequirements(playerId, 'quest_005')
         const killCount = quest005Progress.progress
-        const killTarget = 5
+        const killTarget = 2
 
         if (requirements.met) {
           return {
@@ -491,7 +491,7 @@ const ROOM_ACTIONS = {
                     icon: 'npc-youngsoldier',
                     iconColor: 'blue-400',
                     title: 'Young Soldier',
-                    message: 'The Young Soldier grins as you return. "Five Sand Crabs — impressive! You\'re no longer just an adventurer with a weapon, you\'re one who knows how to use it. I think you\'re ready to explore this world."',
+                    message: 'The Young Soldier grins as you return. "Two Sand Crabs — impressive! You\'re no longer just an adventurer with a weapon, you\'re one who knows how to use it. I think you\'re ready to explore this world."',
                   },
                   buttons: [
                     { label: 'Complete Quest', direction: 'complete_quest:quest_005' },
@@ -515,7 +515,7 @@ const ROOM_ACTIONS = {
                     icon: 'npc-youngsoldier',
                     iconColor: 'blue-400',
                     title: 'Young Soldier',
-                    message: `The Young Soldier crosses his arms. "The Rocky Beach is to the south — you'll find Sand Crabs there. Come back when you've defeated five of them. You're at ${killCount} of ${killTarget} so far."`,
+                    message: `The Young Soldier crosses his arms. "The Rocky Beach is to the south — you'll find Sand Crabs there. Come back when you've defeated two of them. You're at ${killCount} of ${killTarget} so far."`,
                   },
                 }),
               },

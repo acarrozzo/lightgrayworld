@@ -327,11 +327,11 @@ export default function RoomDisplay({
     }
   }
 
-  const handleQuestTurnIn = async (questId: string) => {
+  const handleQuestTurnIn = async (questId: string, npcAction: string) => {
     if (!onAction || loadingQuestId) return
     setLoadingQuestId(questId)
     try {
-      await onAction({ type: 'complete_quest', data: { questId } })
+      await onAction(npcAction)
     } catch (error) {
       console.error('Quest turn-in error:', error)
     } finally {
@@ -569,7 +569,7 @@ export default function RoomDisplay({
                 npcIcon={actionItem.icon ?? ''}
                 questIds={actionItem.questIds ?? []}
                 quests={quests}
-                onTurnIn={handleQuestTurnIn}
+                onTurnIn={(questId) => handleQuestTurnIn(questId, actionItem.action)}
                 loadingQuestId={loadingQuestId ?? undefined}
               />
             ))}
