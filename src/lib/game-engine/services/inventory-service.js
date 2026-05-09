@@ -23,6 +23,7 @@ async function getPlayerInventory(playerId, tx = null) {
           canSell: true,
           canDrop: true,
           equipSlot: true,
+          weaponCategory: true,
           metadata: true,
         },
       },

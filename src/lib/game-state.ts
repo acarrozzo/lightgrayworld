@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { RoomView, RoomItemView } from '@/lib/types/room'
-import { EquipSlot } from '@prisma/client'
+import { EquipSlot, WeaponCategory } from '@prisma/client'
 
 export interface Player {
   id: string
@@ -58,6 +58,7 @@ export interface InventoryItem {
     canSell?: boolean
     canDrop?: boolean
     equipSlot?: EquipSlot | null
+    weaponCategory?: WeaponCategory | null
     metadata?: { icon?: string; statMods?: { str?: number; dex?: number; mag?: number; def?: number } } | null
   }
 }

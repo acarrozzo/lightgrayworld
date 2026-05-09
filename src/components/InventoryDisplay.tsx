@@ -5,7 +5,7 @@ import React, { useMemo, useState, useEffect } from 'react'
 import InventoryDropButton from './InventoryDropButton'
 import { getItemActions, resolveItemIcon } from '@/lib/item-actions'
 import Icon from './Icon'
-import { ItemType, EquipSlot } from '@prisma/client'
+import { ItemType, EquipSlot, WeaponCategory } from '@prisma/client'
 import {
   getItemDisplayOrder,
   getItemOrderIndex,
@@ -23,6 +23,20 @@ interface InventoryDisplayProps {
 }
 
 type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
+type WeaponTypeFilter = 'all' | 'melee' | 'ranged'
+type HandednessFilter = 'all' | '1h' | '2h'
+type SortStat = 'none' | 'str' | 'dex' | 'mag' | 'def'
+
+function statSortComparator(a: InventoryItem, b: InventoryItem, stat: string): number {
+  const aVal = (a.template.metadata as any)?.statMods?.[stat] ?? 0
+  const bVal = (b.template.metadata as any)?.statMods?.[stat] ?? 0
+  const aPositive = aVal > 0
+  const bPositive = bVal > 0
+  if (aPositive && !bPositive) return -1
+  if (!aPositive && bPositive) return 1
+  if (!aPositive && !bPositive) return 0
+  return bVal - aVal
+}
 
 /**
  * Format stat modifiers from item metadata as a comma-separated string.
@@ -68,6 +82,9 @@ export default function InventoryDisplay({
   initialFilter,
 }: InventoryDisplayProps) {
   const [activeTab, setActiveTab] = useState<FilterTab>(initialFilter || 'all')
+  const [weaponTypeFilter, setWeaponTypeFilter] = useState<WeaponTypeFilter>('all')
+  const [handednessFilter, setHandednessFilter] = useState<HandednessFilter>('all')
+  const [sortStat, setSortStat] = useState<SortStat>('none')
 
   // Sync activeTab with initialFilter prop changes
   useEffect(() => {
@@ -75,6 +92,14 @@ export default function InventoryDisplay({
       setActiveTab(initialFilter)
     }
   }, [initialFilter])
+
+  // Reset sub-filters when leaving main tab
+  useEffect(() => {
+    if (activeTab !== 'main') {
+      setWeaponTypeFilter('all')
+      setHandednessFilter('all')
+    }
+  }, [activeTab])
 
   // Get item display order map (memoized)
   const itemOrderMap = useMemo(() => getItemDisplayOrder(), [])
@@ -92,7 +117,15 @@ export default function InventoryDisplay({
         filtered = [...inventory]
         break
       case 'main':
-        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.MAIN_HAND)
+        filtered = inventory.filter(item => {
+          if (item.template.equipSlot !== EquipSlot.MAIN_HAND) return false
+          if (weaponTypeFilter === 'melee' && item.template.weaponCategory !== WeaponCategory.MELEE) return false
+          if (weaponTypeFilter === 'ranged' && item.template.weaponCategory !== WeaponCategory.RANGED) return false
+          const isTwoHanded = (item.template.metadata as any)?.isTwoHanded === true
+          if (handednessFilter === '1h' && isTwoHanded) return false
+          if (handednessFilter === '2h' && !isTwoHanded) return false
+          return true
+        })
         break
       case 'off':
         filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.OFF_HAND)
@@ -117,21 +150,19 @@ export default function InventoryDisplay({
         break
     }
 
-    // Sort items by seed.ts order
-    filtered.sort((a, b) => {
-      const orderA = getItemOrderIndex(a.template.slug, itemOrderMap)
-      const orderB = getItemOrderIndex(b.template.slug, itemOrderMap)
-      
-      // If both have same order (or both missing), sort alphabetically by name
-      if (orderA === orderB) {
-        return a.template.name.localeCompare(b.template.name)
-      }
-      
-      return orderA - orderB
-    })
+    if (sortStat !== 'none') {
+      filtered.sort((a, b) => statSortComparator(a, b, sortStat))
+    } else {
+      filtered.sort((a, b) => {
+        const orderA = getItemOrderIndex(a.template.slug, itemOrderMap)
+        const orderB = getItemOrderIndex(b.template.slug, itemOrderMap)
+        if (orderA === orderB) return a.template.name.localeCompare(b.template.name)
+        return orderA - orderB
+      })
+    }
 
     return filtered
-  }, [inventory, activeTab, itemOrderMap])
+  }, [inventory, activeTab, weaponTypeFilter, handednessFilter, sortStat, itemOrderMap])
 
   // Group items by category when 'all' tab is selected
   const groupedItems = useMemo(() => {
@@ -170,23 +201,22 @@ export default function InventoryDisplay({
       }
     }
 
-    // Sort items within each group
     const categoryOrder: FilterTab[] = ['main', 'off', 'head', 'body', 'hands', 'feet', 'consumables', 'misc']
     for (const category of categoryOrder) {
-      groups[category].sort((a, b) => {
-        const orderA = getItemOrderIndex(a.template.slug, itemOrderMap)
-        const orderB = getItemOrderIndex(b.template.slug, itemOrderMap)
-        
-        if (orderA === orderB) {
-          return a.template.name.localeCompare(b.template.name)
-        }
-        
-        return orderA - orderB
-      })
+      if (sortStat !== 'none') {
+        groups[category].sort((a, b) => statSortComparator(a, b, sortStat))
+      } else {
+        groups[category].sort((a, b) => {
+          const orderA = getItemOrderIndex(a.template.slug, itemOrderMap)
+          const orderB = getItemOrderIndex(b.template.slug, itemOrderMap)
+          if (orderA === orderB) return a.template.name.localeCompare(b.template.name)
+          return orderA - orderB
+        })
+      }
     }
 
     return groups
-  }, [inventory, activeTab, itemOrderMap])
+  }, [inventory, activeTab, sortStat, itemOrderMap])
 
   // Calculate item counts for each category
   const categoryCounts = useMemo(() => {
@@ -283,6 +313,76 @@ export default function InventoryDisplay({
         })}
       </div>
 
+      {/* Stat sort */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] text-gray-500 uppercase tracking-wide flex-shrink-0">Sort</span>
+        {(['none', 'str', 'dex', 'mag', 'def'] as SortStat[]).map((s) => {
+          const activeClasses: Record<SortStat, string> = {
+            none: 'bg-gray-600/80 hover:bg-gray-600 text-white border-gray-500/50',
+            str:  'bg-red-500/20 hover:bg-red-500/30 text-red-400 border-red-500/40',
+            dex:  'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border-emerald-500/40',
+            mag:  'bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 border-sky-500/40',
+            def:  'bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-amber-500/40',
+          }
+          const inactiveTextClasses: Record<string, string> = {
+            str: 'text-red-400/50',
+            dex: 'text-emerald-400/50',
+            mag: 'text-sky-400/50',
+            def: 'text-amber-400/50',
+          }
+          const isActive = sortStat === s
+          return (
+            <button
+              key={s}
+              onClick={() => setSortStat(s)}
+              className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 border ${
+                isActive
+                  ? activeClasses[s]
+                  : `bg-gray-800/50 hover:bg-gray-800/70 border-gray-700/50 hover:border-gray-600/50 ${s === 'none' ? 'text-gray-400' : inactiveTextClasses[s]}`
+              }`}
+            >
+              {s === 'none' ? '—' : s.toUpperCase()}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Main hand sub-filters */}
+      {activeTab === 'main' && (
+        <div className="flex gap-4 flex-wrap pb-1">
+          <div className="flex gap-1.5">
+            {(['all', 'melee', 'ranged'] as WeaponTypeFilter[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setWeaponTypeFilter(f)}
+                className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
+                  weaponTypeFilter === f
+                    ? 'bg-violet-600/70 hover:bg-violet-600 text-white border border-violet-500/50'
+                    : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-400 border border-gray-700/50 hover:border-gray-600/50'
+                }`}
+              >
+                {f === 'all' ? 'All Types' : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            {(['all', '1h', '2h'] as HandednessFilter[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setHandednessFilter(f)}
+                className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
+                  handednessFilter === f
+                    ? 'bg-amber-600/70 hover:bg-amber-600 text-white border border-amber-500/50'
+                    : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-400 border border-gray-700/50 hover:border-gray-600/50'
+                }`}
+              >
+                {f === 'all' ? 'All Hands' : f.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Filtered Items */}
       {(!inventory || inventory.length === 0) ? (
         <div className="text-gray-400 text-sm">
@@ -347,6 +447,19 @@ export default function InventoryDisplay({
                                 </span>
                               )}
                             </div>
+
+                            {/* Weapon type / handedness */}
+                            {item.template.weaponCategory && (
+                              <div className="flex gap-1 items-center mb-1">
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+                                  {item.template.weaponCategory === WeaponCategory.RANGED ? 'Ranged' : 'Melee'}
+                                </span>
+                                <span className="text-gray-600 text-[10px]">·</span>
+                                <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+                                  {(item.template.metadata as any)?.isTwoHanded ? '2H' : '1H'}
+                                </span>
+                              </div>
+                            )}
 
                             {/* Stat mods */}
                             {(() => {
@@ -522,6 +635,19 @@ export default function InventoryDisplay({
                     )}
                   </div>
                   
+                  {/* Weapon type / handedness */}
+                  {item.template.weaponCategory && (
+                    <div className="flex gap-1 items-center mb-1">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+                        {item.template.weaponCategory === WeaponCategory.RANGED ? 'Ranged' : 'Melee'}
+                      </span>
+                      <span className="text-gray-600 text-[10px]">·</span>
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+                        {(item.template.metadata as any)?.isTwoHanded ? '2H' : '1H'}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Stat mods */}
                   {(() => {
                     const mods = renderStatMods(item.template.metadata)

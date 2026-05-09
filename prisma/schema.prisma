@@ -369,8 +369,9 @@ model ItemTemplate {
   value        Int          @default(10)
   canSell      Boolean      @default(true)
   canDrop      Boolean      @default(true)
-  equipSlot    EquipSlot?
-  metadata     Json?
+  equipSlot      EquipSlot?
+  weaponCategory WeaponCategory?
+  metadata       Json?
   PlayerItem   PlayerItem[]
   RoomItem     RoomItem[]
 }
@@ -437,4 +438,9 @@ enum EquipSlot {
   BODY
   HANDS
   FEET
+}
+
+enum WeaponCategory {
+  MELEE
+  RANGED
 }

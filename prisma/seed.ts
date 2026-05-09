@@ -1,4 +1,4 @@
-import { PrismaClient, ItemType, EquipSlot } from '@prisma/client'
+import { PrismaClient, ItemType, EquipSlot, WeaponCategory } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -965,6 +965,7 @@ async function main() {
       maxPerPlayer: 1000,
       value: 50,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 1 } },
     },
     {
@@ -977,6 +978,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 50,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { icon: 'equipment-shortsword', statMods: { str: 4 } },
     },
     {
@@ -1069,6 +1071,7 @@ async function main() {
       maxPerPlayer: 1000,
       value: 400,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 4, mag: 2 } },
     },
     {
@@ -1081,6 +1084,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 400,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 7 } },
     },
     {
@@ -1153,6 +1157,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 200, def: 100 } },
     },
     {
@@ -1192,6 +1197,7 @@ async function main() {
       maxPerPlayer: 1000,
       value: 400,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 5 } },
     },
     {
@@ -1204,6 +1210,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 50,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 3 } },
     },
     {
@@ -1216,6 +1223,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 400,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 4, def: 2 } },
     },
     {
@@ -1228,6 +1236,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 400,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 6, def: -2 } },
     },
     {
@@ -1240,6 +1249,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 1200,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 7, def: 6 } },
     },
     {
@@ -1252,6 +1262,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 1200,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 6, mag: 4 } },
     },
     {
@@ -1264,6 +1275,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 1200,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 8 } },
     },
     {
@@ -1276,6 +1288,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 3000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 9, def: 2, mag: 2 } },
     },
     {
@@ -1288,6 +1301,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 200,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { mag: 3 } },
     },
     {
@@ -1300,6 +1314,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 400,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 1, mag: 5 } },
     },
     {
@@ -1312,6 +1327,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 800,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: -2, mag: 9 } },
     },
     {
@@ -1324,6 +1340,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { mag: 8 } },
     },
     {
@@ -1336,6 +1353,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 5, mag: 10 } },
     },
     {
@@ -1348,6 +1366,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: -5, def: -5, mag: 15 } },
     },
     {
@@ -1360,6 +1379,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 8000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 14 } },
     },
     {
@@ -1372,6 +1392,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 15, mag: 5 } },
     },
     {
@@ -1384,6 +1405,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 11 } },
     },
     {
@@ -1396,6 +1418,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 5000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 13, mag: -3 } },
     },
     {
@@ -1408,6 +1431,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 50000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { statMods: { str: 17, def: 7, mag: 7 } },
     },
     {
@@ -1420,6 +1444,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 100,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 6 } },
     },
     {
@@ -1432,6 +1457,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 800,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 11, def: -2 } },
     },
     {
@@ -1444,6 +1470,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 900,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 13, mag: -5 } },
     },
     {
@@ -1456,6 +1483,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 1000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 9, mag: 3 } },
     },
     {
@@ -1468,6 +1496,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 2500,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 11, def: 11 } },
     },
     {
@@ -1480,6 +1509,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 5000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 13, mag: 2, def: 2 } },
     },
     {
@@ -1492,6 +1522,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 17 } },
     },
     {
@@ -1504,6 +1535,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 2000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 4, mag: 4 } },
     },
     {
@@ -1516,6 +1548,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 2000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 6, mag: 6 } },
     },
     {
@@ -1528,6 +1561,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 5000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 9, mag: 9 } },
     },
     {
@@ -1540,6 +1574,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 20000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 13, mag: 13 } },
     },
     {
@@ -1552,6 +1587,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 5000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 16, def: 20 } },
     },
     {
@@ -1564,6 +1600,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 15000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 25, mag: 5, def: 5 } },
     },
     {
@@ -1576,6 +1613,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 8000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 35, mag: -10, def: -10 } },
     },
     {
@@ -1588,6 +1626,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 50000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
       metadata: { isTwoHanded: true, statMods: { str: 35, mag: 10, def: 35 } },
     },
     {
@@ -1756,6 +1795,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 10000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.RANGED,
       metadata: { statMods: { dex: 3 } },
     },
     {
@@ -1768,6 +1808,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 30000,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.RANGED,
       metadata: { statMods: { dex: 7, mag: 7 } },
     },
     {
@@ -1780,6 +1821,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 800,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.RANGED,
       metadata: { isTwoHanded: true, statMods: { dex: 8, def: 4 } },
     },
     {
@@ -1792,6 +1834,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 1500,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.RANGED,
       metadata: { isTwoHanded: true, statMods: { dex: 9, def: 9 } },
     },
     {
@@ -1804,6 +1847,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 1500,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.RANGED,
       metadata: { isTwoHanded: true, statMods: { dex: 9, mag: 2 } },
     },
     {
@@ -1816,6 +1860,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 1500,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.RANGED,
       metadata: { isTwoHanded: true, statMods: { dex: 11 } },
     },
     {
@@ -1828,6 +1873,7 @@ async function main() {
       maxPerPlayer: 1,
       value: 1200,
       equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.RANGED,
       metadata: { isTwoHanded: true, statMods: { dex: 13 } },
     },
   ]
