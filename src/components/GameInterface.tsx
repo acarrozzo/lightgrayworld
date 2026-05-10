@@ -20,6 +20,7 @@ import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
 import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
+import { getNpcActionForQuest } from '@/lib/room-actions'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
@@ -60,6 +61,9 @@ export default function GameInterface() {
     getCachedRoom,
     inventory,
     setInventory,
+    killList,
+    setKillList,
+    incrementKill,
     logout,
     updateCapCache,
     getCapCache,
@@ -1520,6 +1524,19 @@ export default function GameInterface() {
         setQuests(payload.data.quests)
       }
 
+      // After quest completion, auto-trigger NPC dialog for the first newly started quest
+      if (payload?.action === 'complete_quest' && success) {
+        const startedQuestIds: string[] = payload?.data?.questChain?.startedQuestIds ?? []
+        if (startedQuestIds.length > 0) {
+          const npcAction = getNpcActionForQuest(startedQuestIds[0])
+          if (npcAction) {
+            setTimeout(() => {
+              socketHandlers.sendGameAction({ type: npcAction, data: { introOnly: true } })
+            }, 800)
+          }
+        }
+      }
+
       // Update player state if provided in action feedback (e.g., from equip/unequip, quest completion)
       // Merge partial updates instead of replacing entire state to preserve fields like hp, hpMax, mp, mpMax, level, currentRoom
       if (payload?.data?.player) {
@@ -1896,13 +1913,17 @@ export default function GameInterface() {
     }
   }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed, updateCapCache, worldTick])
 
-  // Fetch quests on login so quest subtitles are available immediately
+  // Fetch quests and kill list on login so they're available immediately
   useEffect(() => {
     if (!isLoggedIn || !player) return
     let cancelled = false
     fetch('/api/game/quests/progress', { headers: getAuthHeaders() })
       .then((res) => res.json())
       .then((data) => { if (!cancelled && data.success) setQuests(data.quests || []) })
+      .catch(() => {})
+    fetch('/api/player/kill-list', { headers: getAuthHeaders() })
+      .then((res) => res.json())
+      .then((data) => { if (!cancelled && data.success) setKillList(data.kills || []) })
       .catch(() => {})
     return () => { cancelled = true }
   }, [isLoggedIn, player?.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -2180,6 +2201,7 @@ export default function GameInterface() {
     const cleanupVictory = socketHandlers.onBattleVictory((payload) => {
       const applyVictory = () => {
         if (payload.summary) setBattleResult(payload.summary)
+        if (payload.summary?.enemySlug) incrementKill(payload.summary.enemySlug)
         clearBattle()
         if ((payload as any).clearRoomEnemies) setRoomEnemies([])
         const currentPlayer = useGameStore.getState().player
@@ -3118,6 +3140,7 @@ export default function GameInterface() {
                             roomEnemies={roomEnemies}
                             isInBattle={battle.isInBattle}
                             quests={quests}
+                            killList={killList}
                           />
                           </div>
                         </div>

@@ -165,6 +165,7 @@ interface RoomBoxProps {
   roomEnemies?: RoomEnemy[]
   isInBattle?: boolean
   quests?: Array<{ id: string; questId: string; progress: number; completed: boolean }>
+  killList?: { monster: string; kills: number }[]
 }
 
 export default function RoomBox({
@@ -181,6 +182,7 @@ export default function RoomBox({
   roomEnemies = [],
   isInBattle = false,
   quests = [],
+  killList = [],
 }: RoomBoxProps) {
   const iconSizeClasses: Record<string, string> = {
     sm: 'w-12 h-12 sm:w-20 sm:h-20',
@@ -306,6 +308,7 @@ export default function RoomBox({
         worldTick={worldTick}
         actionResult={actionResult}
         quests={quests}
+        killList={killList}
       />
 
       {/* Basic Actions */}

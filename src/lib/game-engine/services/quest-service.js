@@ -278,8 +278,11 @@ async function checkQuestRequirements(playerId, questId) {
       }
     } else if (requirement.type === 'killCount') {
       const { enemySlug, count } = requirement
-      const questProgress = await getQuestProgress(playerId, questId)
-      const current = questProgress ? questProgress.progress : 0
+      const killEntry = await prisma.killList.findUnique({
+        where: { userId_monster: { userId: playerId, monster: enemySlug } },
+        select: { kills: true },
+      })
+      const current = killEntry?.kills ?? 0
       if (current < count) {
         return {
           met: false,

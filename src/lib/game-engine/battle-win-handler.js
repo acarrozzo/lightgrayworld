@@ -3,7 +3,6 @@ const { rand } = require('./battle-calculator')
 const { randomUUID } = require('crypto')
 const { checkAndApplyLevelUp } = require('./services/leveling-service')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
-const { getQuestDef } = require('./services/quest-service')
 
 // Pure calculation — no DB. Call this before any awaits to get rewards for immediate client emission.
 function calcBattleWinRewards(battleState) {
@@ -38,24 +37,6 @@ async function persistBattleWin(playerId, battleState, rewards) {
     create: { userId: playerId, monster: enemy.slug, kills: 1 },
   })
 
-  const activeQuestProgress = await prisma.questProgress.findMany({
-    where: { userId: playerId, completed: false },
-  })
-  let killQuestUpdated = false
-  for (const qp of activeQuestProgress) {
-    const def = getQuestDef(qp.questId)
-    if (!def) continue
-    for (const req of def.requirements || []) {
-      if (req.type === 'killCount' && req.enemySlug === enemy.slug && qp.progress < req.count) {
-        await prisma.questProgress.update({
-          where: { id: qp.id },
-          data: { progress: { increment: 1 } },
-        })
-        killQuestUpdated = true
-        break
-      }
-    }
-  }
 
   const droppedItems = []
   if (droppedSlugs.length > 0) {
@@ -115,13 +96,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
 
   const levelUp = await checkAndApplyLevelUp(playerId)
 
-  let updatedQuests = null
-  if (killQuestUpdated) {
-    const { getAllQuestProgress } = require('./services/quest-service')
-    updatedQuests = await getAllQuestProgress(playerId)
-  }
-
-  return { droppedItems, levelUp, updatedQuests }
+  return { droppedItems, levelUp }
 }
 
 async function handleBattleWin(playerId, battleState) {

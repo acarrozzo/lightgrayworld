@@ -1,9 +1,9 @@
 'use client'
 
 import { useMemo } from 'react'
-import { CheckCircle } from 'lucide-react'
+import { CheckCircle, MessageCircle } from 'lucide-react'
 import QUESTS from '@/lib/game-data/quests.json'
-import { useGameStore } from '@/lib/game-state'
+import { useGameStore, type KillEntry } from '@/lib/game-state'
 import Icon from './Icon'
 
 type QuestDef = {
@@ -41,18 +41,22 @@ interface NpcQuestCardProps {
   npcIcon: string
   questIds: string[]
   quests: QuestProgress[]
+  killList: KillEntry[]
   onTurnIn: (questId: string) => void
+  onTalk?: (questId: string) => void
   loadingQuestId?: string
 }
 
 function getRequirementProgress(
   req: NonNullable<QuestDef['requirements']>[number],
   progress: number,
-  inventory: ReturnType<typeof useGameStore.getState>['inventory']
+  inventory: ReturnType<typeof useGameStore.getState>['inventory'],
+  killList: KillEntry[]
 ): { met: boolean; current: number; total: number; label?: string } {
   if (req.type === 'killCount') {
     const total = req.count ?? 1
-    return { met: progress >= total, current: Math.min(progress, total), total, label: req.displayName }
+    const current = killList.find((k) => k.monster === req.enemySlug)?.kills ?? 0
+    return { met: current >= total, current: Math.min(current, total), total, label: req.displayName }
   }
   if (req.type === 'hasItem') {
     const total = req.quantity ?? 1
@@ -72,7 +76,8 @@ function getRequirementProgress(
 function resolveQuestState(
   questDef: QuestDef,
   progress: QuestProgress,
-  inventory: ReturnType<typeof useGameStore.getState>['inventory']
+  inventory: ReturnType<typeof useGameStore.getState>['inventory'],
+  killList: KillEntry[]
 ): { state: QuestState; progressLabel?: string } {
   if (progress.completed) return { state: 'completed' }
 
@@ -83,7 +88,7 @@ function resolveQuestState(
   const progressParts: string[] = []
 
   for (const req of reqs) {
-    const result = getRequirementProgress(req, progress.progress, inventory)
+    const result = getRequirementProgress(req, progress.progress, inventory, killList)
     if (!result.met) allMet = false
     if (req.type === 'killCount') {
       progressParts.push(`${result.current}/${result.total} ${result.label ?? req.enemySlug}`)
@@ -101,7 +106,9 @@ export default function NpcQuestCard({
   npcIcon,
   questIds,
   quests,
+  killList,
   onTurnIn,
+  onTalk,
   loadingQuestId,
 }: NpcQuestCardProps) {
   const inventory = useGameStore((s) => s.inventory)
@@ -116,7 +123,7 @@ export default function NpcQuestCard({
       const progress = quests.find((q) => q.questId === questId)
       if (!progress) continue // hidden if locked (no QuestProgress record)
 
-      const { state, progressLabel } = resolveQuestState(questDef, progress, inventory)
+      const { state, progressLabel } = resolveQuestState(questDef, progress, inventory, killList)
       result.push({ questDef, progress, state, progressLabel })
     }
 
@@ -132,7 +139,7 @@ export default function NpcQuestCard({
     })
 
     return result
-  }, [questIds, quests, inventory])
+  }, [questIds, quests, inventory, killList])
 
   if (visibleQuests.length === 0) return null
 
@@ -191,12 +198,23 @@ export default function NpcQuestCard({
               {isCompleted ? (
                 <CheckCircle size={18} className="shrink-0 text-green-600" />
               ) : isInProgress ? (
-                <span className="shrink-0 text-xs text-gray-500 font-medium">In Progress</span>
+                <div className="shrink-0 flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">In Progress</span>
+                  {onTalk && (
+                    <button
+                      onClick={() => onTalk(progress.questId)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white bg-gray-700/60 hover:bg-gray-600/80 transition-colors"
+                    >
+                      <MessageCircle size={16} />
+                      Talk to {npcName}
+                    </button>
+                  )}
+                </div>
               ) : (
                 <button
                   disabled={!isActionable || isLoading}
                   onClick={() => onTurnIn(progress.questId)}
-                  className={`shrink-0 px-3 py-1 rounded text-xs font-semibold transition-colors ${buttonClass} ${
+                  className={`shrink-0 px-3 py-2 rounded-md text-sm font-semibold transition-colors ${buttonClass} ${
                     isLoading ? 'opacity-60 cursor-wait' : ''
                   }`}
                 >

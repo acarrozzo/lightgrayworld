@@ -144,8 +144,9 @@ const ROOM_ACTIONS = {
     'ex cabin': "You examine the cabin. It's warm and cozy, with a cooking fire burning and the Old Man rocking in his chair.",
     'attack dummy': 'You attack the training dummy. Your weapon strikes true!',
     'cook meat': 'You cook the meat over the fire. It smells delicious!',
-    'talk to old man': async (playerId, roomState) => {
+    'talk to old man': async (playerId, roomState, actionData = {}) => {
       const { getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
+      const introOnly = !!actionData.introOnly
 
       roomState.touchActivity()
 
@@ -190,7 +191,7 @@ const ROOM_ACTIONS = {
       if (quest002Progress && !quest002Progress.completed) {
         const requirements = await checkQuestRequirements(playerId, 'quest_002')
 
-        if (requirements.met) {
+        if (requirements.met && !introOnly) {
           // Player has flower - show completion prompt
           return {
             success: true,
@@ -246,7 +247,7 @@ const ROOM_ACTIONS = {
       if (quest006Progress && !quest006Progress.completed) {
         const requirements = await checkQuestRequirements(playerId, 'quest_006')
 
-        if (requirements.met) {
+        if (requirements.met && !introOnly) {
           return {
             success: true,
             action: 'talk to old man',
@@ -300,7 +301,7 @@ const ROOM_ACTIONS = {
       if (quest007Progress && !quest007Progress.completed) {
         const requirements = await checkQuestRequirements(playerId, 'quest_007')
 
-        if (requirements.met) {
+        if (requirements.met && !introOnly) {
           return {
             success: true,
             action: 'talk to old man',
@@ -376,8 +377,9 @@ const ROOM_ACTIONS = {
     },
   },
   '007': {
-    'talk to young soldier': async (playerId, roomState) => {
+    'talk to young soldier': async (playerId, roomState, actionData = {}) => {
       const { getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
+      const introOnly = !!actionData.introOnly
 
       roomState.touchActivity()
 
@@ -418,7 +420,7 @@ const ROOM_ACTIONS = {
       if (quest004Progress && !quest004Progress.completed) {
         const requirements = await checkQuestRequirements(playerId, 'quest_004')
 
-        if (requirements.met) {
+        if (requirements.met && !introOnly) {
           // Player has equipped MAIN_HAND item - show completion prompt
           return {
             success: true,
@@ -476,7 +478,7 @@ const ROOM_ACTIONS = {
         const killCount = quest005Progress.progress
         const killTarget = 2
 
-        if (requirements.met) {
+        if (requirements.met && !introOnly) {
           return {
             success: true,
             action: 'talk to young soldier',
@@ -693,7 +695,7 @@ const ROOM_ACTIONS = {
  * @param {RoomState} roomState - The room state instance
  * @returns {Object|null} Action result object or null if action not found
  */
-async function executeRoomAction(roomId, action, playerId, roomState, currentTickNumber, nextTickAt) {
+async function executeRoomAction(roomId, action, playerId, roomState, currentTickNumber, nextTickAt, actionData = {}) {
   const normalizedAction = action.toLowerCase().trim()
   const roomActions = ROOM_ACTIONS[roomId]
 
@@ -708,7 +710,7 @@ async function executeRoomAction(roomId, action, playerId, roomState, currentTic
   }
 
   if (typeof handler === 'function') {
-    return await handler(playerId, roomState)
+    return await handler(playerId, roomState, actionData)
   }
 
   if (typeof handler === 'string') {

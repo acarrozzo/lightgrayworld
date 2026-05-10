@@ -173,13 +173,15 @@ class RoomState {
   async executeAction(action, playerId, currentTickNumber, nextTickAt) {
     // First, check if this is a room-specific action
     const actionName = action.type || action
+    const actionData = typeof action === 'object' ? (action.data ?? {}) : {}
     const roomSpecificResult = await executeRoomAction(
       this.roomId,
       actionName,
       playerId,
       this,
       currentTickNumber,
-      nextTickAt
+      nextTickAt,
+      actionData
     )
 
     // If room-specific handler returned a result, use it

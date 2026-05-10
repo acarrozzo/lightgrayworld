@@ -79,3 +79,18 @@ export function isActionAvailableForRoom(roomId: string, action: string): boolea
   return actions.some((a) => a.action.toLowerCase() === action.toLowerCase())
 }
 
+/**
+ * Find the NPC talk action string that covers a given quest ID.
+ * Returns the action string (e.g. "talk to old man") or null if not found.
+ */
+export function getNpcActionForQuest(questId: string): string | null {
+  for (const actions of Object.values(ROOM_ACTIONS)) {
+    for (const action of actions) {
+      if (action.questIds?.includes(questId)) {
+        return action.action
+      }
+    }
+  }
+  return null
+}
+

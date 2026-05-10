@@ -157,12 +157,18 @@ export interface BattleResult {
   lastTurn: BattleLastTurn | null
 }
 
+export interface KillEntry {
+  monster: string
+  kills: number
+}
+
 export interface GameState {
   // Player state
   player: Player | null
   isLoggedIn: boolean
   token: string | null
   inventory: InventoryItem[]
+  killList: KillEntry[]
 
   // Room state
   currentRoom: Room | null
@@ -186,6 +192,8 @@ export interface GameState {
   // Actions
   setPlayer: (player: Player | null) => void
   setInventory: (inventory: InventoryItem[]) => void
+  setKillList: (kills: KillEntry[]) => void
+  incrementKill: (monster: string) => void
   setCurrentRoom: (room: Room | null) => void
   setRoomPlayers: (players: Player[]) => void
   setLoading: (loading: boolean) => void
@@ -216,6 +224,7 @@ export const useGameStore = create<GameState>()(
       isLoggedIn: false,
       token: null,
       inventory: [],
+      killList: [],
       currentRoom: null,
       roomPlayers: [],
       roomCache: {},
@@ -229,6 +238,15 @@ export const useGameStore = create<GameState>()(
       // Actions
       setPlayer: (player) => set({ player }),
       setInventory: (inventory) => set({ inventory }),
+      setKillList: (killList) => set({ killList }),
+      incrementKill: (monster) =>
+        set((state) => {
+          const existing = state.killList.find((k) => k.monster === monster)
+          if (existing) {
+            return { killList: state.killList.map((k) => k.monster === monster ? { ...k, kills: k.kills + 1 } : k) }
+          }
+          return { killList: [...state.killList, { monster, kills: 1 }] }
+        }),
       setCurrentRoom: (currentRoom) => set({ currentRoom }),
       setRoomPlayers: (roomPlayers) => set({ roomPlayers }),
       setLoading: (isLoading) => set({ isLoading }),

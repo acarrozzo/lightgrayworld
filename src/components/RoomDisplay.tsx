@@ -33,6 +33,7 @@ interface RoomDisplayProps {
   }
   actionResult?: any
   quests?: QuestProgress[]
+  killList?: { monster: string; kills: number }[]
 }
 
 export default function RoomDisplay({
@@ -48,6 +49,7 @@ export default function RoomDisplay({
   worldTick,
   actionResult,
   quests = [],
+  killList = [],
 }: RoomDisplayProps) {
   // Subscribe to cap cache entry for this room/action using Zustand selector
   // This ensures the component re-renders when the cache updates
@@ -569,7 +571,9 @@ export default function RoomDisplay({
                 npcIcon={actionItem.icon ?? ''}
                 questIds={actionItem.questIds ?? []}
                 quests={quests}
+                killList={killList}
                 onTurnIn={(questId) => handleQuestTurnIn(questId, actionItem.action)}
+                onTalk={(questId) => handleQuestTurnIn(questId, actionItem.action)}
                 loadingQuestId={loadingQuestId ?? undefined}
               />
             ))}
