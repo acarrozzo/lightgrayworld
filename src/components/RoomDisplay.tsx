@@ -333,7 +333,7 @@ export default function RoomDisplay({
     if (!onAction || loadingQuestId) return
     setLoadingQuestId(questId)
     try {
-      await onAction(npcAction)
+      await onAction({ type: npcAction, data: { questId } })
     } catch (error) {
       console.error('Quest turn-in error:', error)
     } finally {

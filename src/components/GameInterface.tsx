@@ -1531,8 +1531,8 @@ export default function GameInterface() {
           const npcAction = getNpcActionForQuest(startedQuestIds[0])
           if (npcAction) {
             setTimeout(() => {
-              socketHandlers.sendGameAction({ type: npcAction, data: { introOnly: true } })
-            }, 800)
+              socketHandlers.sendGameAction({ type: npcAction, data: { introOnly: true, questId: startedQuestIds[0] } })
+            }, 300)
           }
         }
       }

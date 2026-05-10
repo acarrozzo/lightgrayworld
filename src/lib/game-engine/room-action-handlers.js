@@ -147,6 +147,7 @@ const ROOM_ACTIONS = {
     'talk to old man': async (playerId, roomState, actionData = {}) => {
       const { getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
       const introOnly = !!actionData.introOnly
+      const targetQuestId = actionData.questId ?? null
 
       roomState.touchActivity()
 
@@ -298,7 +299,7 @@ const ROOM_ACTIONS = {
       // Check quest_007 (The Gator)
       const quest007Progress = await getQuestProgress(playerId, 'quest_007')
 
-      if (quest007Progress && !quest007Progress.completed) {
+      if (quest007Progress && !quest007Progress.completed && (!targetQuestId || targetQuestId === 'quest_007')) {
         const requirements = await checkQuestRequirements(playerId, 'quest_007')
 
         if (requirements.met && !introOnly) {
@@ -349,6 +350,60 @@ const ROOM_ACTIONS = {
         }
       }
 
+      // Check quest_008 (Blueberry Jam)
+      const quest008Progress = await getQuestProgress(playerId, 'quest_008')
+
+      if (quest008Progress && !quest008Progress.completed && (!targetQuestId || targetQuestId === 'quest_008')) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_008')
+
+        if (requirements.met && !introOnly) {
+          return {
+            success: true,
+            action: 'talk to old man',
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man with the blueberries.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-oldman',
+                    iconColor: 'yellow-400',
+                    title: 'Old Man',
+                    message: 'The Old Man\'s eyes go wide. "Well I\'ll be — you actually got \'em! Those\'ll make the finest jam this side of the bayou. My wife is going to be absolutely delighted, I tell you."',
+                  },
+                  buttons: [
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_008' },
+                  ],
+                }),
+              },
+            ],
+          }
+        } else {
+          return {
+            success: true,
+            action: 'talk to old man',
+            playerEvents: [
+              {
+                event: 'action:feedback',
+                payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'npc-oldman',
+                    iconColor: 'yellow-400',
+                    title: 'Old Man',
+                    message: 'The Old Man leans back with a wistful look. "My wife makes the most wonderful blueberry jam, but we\'re fresh out of berries. Head over to the blueberry patch and bring me back ten of \'em when you get a chance."',
+                  },
+                }),
+              },
+            ],
+          }
+        }
+      }
+
       // All quests done or missing - friendly fallback
       return {
         success: true,
@@ -364,11 +419,13 @@ const ROOM_ACTIONS = {
                 icon: 'npc-oldman',
                 iconColor: 'yellow-400',
                 title: 'Old Man',
-                message: quest007Progress?.completed
-                  ? 'The Old Man rocks contentedly in his chair. "The rats are gone, the gator is dealt with, and my wife got her flower. You\'ve been a true blessing, traveler."'
-                  : quest002Progress?.completed
-                    ? 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."'
-                    : 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
+                message: quest008Progress?.completed
+                  ? 'The Old Man rocks contentedly in his chair. "The gator\'s gone, the rats are gone, and my wife\'s got her jam. You\'ve been a true blessing to this old man, traveler."'
+                  : quest007Progress?.completed
+                    ? 'The Old Man rocks contentedly in his chair. "The rats are gone, the gator is dealt with, and my wife got her flower. You\'ve been a true blessing, traveler."'
+                    : quest002Progress?.completed
+                      ? 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."'
+                      : 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
               },
             }),
           },
