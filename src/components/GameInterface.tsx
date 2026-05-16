@@ -20,7 +20,6 @@ import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
 import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
-import { getNpcActionForQuest } from '@/lib/room-actions'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
@@ -42,6 +41,7 @@ import ChatPanel from './game-interface/panels/ChatPanel'
 import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
 import DMPanel from './game-interface/panels/DMPanel'
+import QuestCompleteRewards, { type QuestCompleteData } from './QuestCompleteRewards'
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
 import LevelUpAlert from './LevelUpAlert'
@@ -1524,18 +1524,6 @@ export default function GameInterface() {
         setQuests(payload.data.quests)
       }
 
-      // After quest completion, auto-trigger NPC dialog for the first newly started quest
-      if (payload?.action === 'complete_quest' && success) {
-        const startedQuestIds: string[] = payload?.data?.questChain?.startedQuestIds ?? []
-        if (startedQuestIds.length > 0) {
-          const npcAction = getNpcActionForQuest(startedQuestIds[0])
-          if (npcAction) {
-            setTimeout(() => {
-              socketHandlers.sendGameAction({ type: npcAction, data: { introOnly: true, questId: startedQuestIds[0] } })
-            }, 300)
-          }
-        }
-      }
 
       // Update player state if provided in action feedback (e.g., from equip/unequip, quest completion)
       // Merge partial updates instead of replacing entire state to preserve fields like hp, hpMax, mp, mpMax, level, currentRoom
@@ -1736,14 +1724,19 @@ export default function GameInterface() {
               const messageContent = modalContent.message || messageText
               const isMessageArray = Array.isArray(messageContent)
               
+              const questCompleteData: QuestCompleteData | null =
+                payload?.action === 'complete_quest' && payload?.data?.questComplete
+                  ? (payload.data.questComplete as QuestCompleteData)
+                  : null
+
               renderedContent = (
                 <div className="flex flex-col items-center justify-center gap-6 py-8">
-                  <Icon 
-                    name={modalContent.icon} 
-                    size={200} 
+                  <Icon
+                    name={modalContent.icon}
+                    size={200}
                     className={iconColorClass}
                   />
-                  <div className="text-center max-w-md">
+                  <div className="text-center max-w-md w-full">
                     {modalContent.header && (
                       <h3 className="text-gray-100 text-lg font-semibold mb-4">
                         {modalContent.header}
@@ -1759,6 +1752,9 @@ export default function GameInterface() {
                       <p className="text-gray-200 text-base leading-relaxed">
                         {messageContent}
                       </p>
+                    )}
+                    {questCompleteData && (
+                      <QuestCompleteRewards data={questCompleteData} />
                     )}
                   </div>
                 </div>
@@ -2813,7 +2809,7 @@ export default function GameInterface() {
       <div className="min-h-dvh bg-gray-950 text-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-indigo-500/50 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400 text-sm">Loading room data...</p>
+          <p className="text-gray-400 text-sm">Loading world data...</p>
         </div>
       </div>
     )

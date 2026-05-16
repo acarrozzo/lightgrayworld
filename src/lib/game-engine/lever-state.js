@@ -39,7 +39,7 @@ function getRoomStateNote(playerId, roomId) {
     const pulled = isLeverPulled(playerId, '012d-lever')
     return pulled
       ? 'The northeast passage is open.'
-      : 'The northeast passage is sealed. A lever somewhere below must control it.'
+      : 'The northeast passage is sealed.'
   }
   return null
 }

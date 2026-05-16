@@ -1077,11 +1077,34 @@ class RoomState {
       toastMessage = formattedMessage
     }
 
+    // Build new quest titles for the rewards panel
+    const newQuestTitles = (result.startedQuestIds || [])
+      .map(id => {
+        const def = getQuestDef(id)
+        return def ? `(${def.number}) ${def.title}` : null
+      })
+      .filter(Boolean)
+
     const data = {
       roomId: this.roomId,
       quests: result.quests,
       inventory: result.inventory,
       player: result.player,
+      showModal: true,
+      modalContent: {
+        type: 'icon',
+        icon: questDef.giver?.icon || 'scroll',
+        iconColor: 'yellow-400',
+        title: questDef.giver?.name || 'Quest Complete',
+        header: 'Quest Complete!',
+        message: questDef.title,
+      },
+      questComplete: {
+        questTitle: questDef.title,
+        rewards: questDef.rewards || [],
+        levelUp: result.levelUp?.leveled ? result.levelUp : null,
+        newQuestTitles,
+      },
     }
 
     // Add quest chain data if quests were started
