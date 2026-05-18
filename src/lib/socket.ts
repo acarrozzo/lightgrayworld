@@ -281,6 +281,8 @@ export const SOCKET_EVENTS = {
   BATTLE_FLED: 'battle:fled',
   PLAYER_LEVEL_UP: 'player:level-up',
   PLAYER_CLICKS_UPDATE: 'player:clicks-update',
+  PLAYER_IDLE: 'player-idle',
+  PLAYER_RETURNED: 'player-returned',
 } as const
 
 let io: Server<SocketEvents> | null = null

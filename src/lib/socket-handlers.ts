@@ -184,6 +184,14 @@ export class SocketEventHandlers {
     return this.on(SOCKET_EVENTS.PLAYER_LEVEL_UP, handler)
   }
 
+  onPlayerIdle(handler: (payload: { id: string; username: string; roomId: string; lastSeen: number }) => void): () => void {
+    return this.on(SOCKET_EVENTS.PLAYER_IDLE, handler)
+  }
+
+  onPlayerReturned(handler: (payload: { id: string; username: string; roomId: string }) => void): () => void {
+    return this.on(SOCKET_EVENTS.PLAYER_RETURNED, handler)
+  }
+
   // Cleanup all listeners
   cleanup(): void {
     if (this.socket) {

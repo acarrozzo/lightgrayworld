@@ -3,7 +3,7 @@ const { createWorldFeedEvent } = require('./world-feed-event-service.js')
 const FIVE_MINUTES_MS = 5 * 60 * 1000
 const CHECK_INTERVAL_MS = 30 * 1000
 
-function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_MS, intervalMs = CHECK_INTERVAL_MS } = {}) {
+function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_MS, intervalMs = CHECK_INTERVAL_MS, onStateChange } = {}) {
   if (!activePlayers || typeof activePlayers.forEach !== 'function') {
     throw new Error('IdleDetectionService requires an activePlayers Map')
   }
@@ -37,6 +37,7 @@ function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_
         snapshot.set(player.id, {
           username: player.username || 'Unknown',
           lastActive: lastActiveTs,
+          currentRoom: player.currentRoom || null,
         })
       }
     })
@@ -57,9 +58,11 @@ function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_
       if (isIdle && !state.isIdle) {
         idleStateByUser.set(userId, { isIdle: true })
         await safeCreateEvent(userId, data.username, 'idle')
+        if (onStateChange) onStateChange(userId, data.username, data.currentRoom, true)
       } else if (!isIdle && state.isIdle) {
         idleStateByUser.set(userId, { isIdle: false })
         await safeCreateEvent(userId, data.username, 'return')
+        if (onStateChange) onStateChange(userId, data.username, data.currentRoom, false)
       } else {
         idleStateByUser.set(userId, { isIdle })
       }

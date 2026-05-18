@@ -76,9 +76,14 @@ async function handleGetRoom(request: AuthenticatedRequest) {
     const normalizedRoom = normalizeRoomData(room)
     const activePlayers = normalizedRoom?.players?.filter((player) => player.isActive) || []
 
+    const { getGhostsForRoom } = require('@/lib/services/ghost-player-store')
+    const activePlayerIds = new Set(activePlayers.map((p: { id: string }) => p.id))
+    const ghosts = getGhostsForRoom(actualRoomId).filter((g: { id: string }) => !activePlayerIds.has(g.id))
+
     return NextResponse.json({
       room: normalizedRoom ? { ...normalizedRoom, players: activePlayers } : null,
-      players: activePlayers
+      players: activePlayers,
+      roomGhosts: ghosts,
     })
   } catch (error) {
     console.error('Room fetch error:', error)

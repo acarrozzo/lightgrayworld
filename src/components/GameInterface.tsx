@@ -784,7 +784,12 @@ export default function GameInterface() {
       
       if (response.ok) {
         const roomData = await response.json()
-        const roomPlayers = Array.isArray(roomData.players) ? roomData.players : []
+        const activePlayers = Array.isArray(roomData.players) ? roomData.players : []
+        const ghosts = Array.isArray(roomData.roomGhosts)
+          ? roomData.roomGhosts.map((g: any) => ({ ...g, presenceStatus: g.status ?? 'disconnected' }))
+          : []
+        const activeIds = new Set(activePlayers.map((p: { id: string }) => p.id))
+        const roomPlayers = [...activePlayers, ...ghosts.filter((g: { id: string }) => !activeIds.has(g.id))]
         const normalizedRoom = normalizeRoom({
           ...roomData.room,
           players: roomPlayers,
@@ -1821,6 +1826,16 @@ export default function GameInterface() {
       if (payload?.inventory) {
         setInventory(payload.inventory)
       }
+      if (Array.isArray(payload?.roomGhosts) && payload.roomGhosts.length > 0) {
+        const currentRoomPlayers = useGameStore.getState().roomPlayers
+        const activeIds = new Set(currentRoomPlayers.map((p) => p.id))
+        const newGhosts = payload.roomGhosts
+          .filter((g: { id: string }) => !activeIds.has(g.id))
+          .map((g: any) => ({ ...g, presenceStatus: g.status ?? 'disconnected' }))
+        if (newGhosts.length > 0) {
+          setRoomPlayers([...currentRoomPlayers, ...newGhosts])
+        }
+      }
     })
 
     const cleanupRoomMoves = socketHandlers.onRoomPlayerMoved((event) => {
@@ -2342,9 +2357,14 @@ export default function GameInterface() {
       }
 
       const currentRoomPlayers = useGameStore.getState().roomPlayers
-      const alreadyPresent = currentRoomPlayers.some((playerItem) => playerItem.id === playerInfo.id)
-      if (!alreadyPresent) {
-        setRoomPlayers([...currentRoomPlayers, playerInfo])
+      const existingIndex = currentRoomPlayers.findIndex((playerItem) => playerItem.id === playerInfo.id)
+      if (existingIndex === -1) {
+        setRoomPlayers([...currentRoomPlayers, { ...playerInfo, presenceStatus: 'active' as const }])
+      } else {
+        // Re-activate a ghost entry
+        const updated = [...currentRoomPlayers]
+        updated[existingIndex] = { ...playerInfo, presenceStatus: 'active' as const, lastSeen: undefined }
+        setRoomPlayers(updated)
       }
 
       const isSelf = Boolean(currentPlayer && playerInfo.id === currentPlayer.id)
@@ -2376,7 +2396,20 @@ export default function GameInterface() {
       }
 
       const currentRoomPlayers = useGameStore.getState().roomPlayers
-      setRoomPlayers(currentRoomPlayers.filter((playerItem) => playerItem.id !== playerData.id))
+
+      if (playerData.reason === 'disconnect' && playerData.ghostData) {
+        // Replace the active entry with a disconnected ghost
+        setRoomPlayers(
+          currentRoomPlayers.map((p) =>
+            p.id === playerData.id
+              ? { ...playerData.ghostData, presenceStatus: 'disconnected' as const, lastSeen: playerData.lastSeen ?? Date.now() }
+              : p
+          )
+        )
+      } else {
+        // Player moved to another room — remove entirely
+        setRoomPlayers(currentRoomPlayers.filter((playerItem) => playerItem.id !== playerData.id))
+      }
 
       const isSelf = Boolean(currentPlayer && playerData.id === currentPlayer.id)
       const exitDirection = playerData.exitDirection
@@ -2397,9 +2430,39 @@ export default function GameInterface() {
       })
     })
 
+    const cleanupPlayerIdle = socketHandlers.onPlayerIdle((data) => {
+      const activeRoom = currentRoomRef.current
+      if (!activeRoom || data.roomId !== activeRoom.roomId) return
+
+      const currentRoomPlayers = useGameStore.getState().roomPlayers
+      setRoomPlayers(
+        currentRoomPlayers.map((p) =>
+          p.id === data.id
+            ? { ...p, presenceStatus: 'idle' as const, lastSeen: data.lastSeen }
+            : p
+        )
+      )
+    })
+
+    const cleanupPlayerReturned = socketHandlers.onPlayerReturned((data) => {
+      const activeRoom = currentRoomRef.current
+      if (!activeRoom || data.roomId !== activeRoom.roomId) return
+
+      const currentRoomPlayers = useGameStore.getState().roomPlayers
+      setRoomPlayers(
+        currentRoomPlayers.map((p) =>
+          p.id === data.id
+            ? { ...p, presenceStatus: 'active' as const, lastSeen: undefined }
+            : p
+        )
+      )
+    })
+
     return () => {
       cleanupPlayerJoined()
       cleanupPlayerLeft()
+      cleanupPlayerIdle()
+      cleanupPlayerReturned()
     }
   }, [socket, socketHandlers, appendWorldFeed])
 

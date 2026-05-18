@@ -20,6 +20,7 @@ const ACTION_TIMEOUT_MESSAGE = 'Action timed out after 5000ms.'
 const LAST_ACTIVE_PERSIST_INTERVAL = 60 * 1000
 const { createWorldFeedEvent } = require('./services/world-feed-event-service.js')
 const { createIdleDetectionService } = require('./services/idle-detection-service.js')
+const { addGhost, removeGhost, getGhostsForRoom } = require('./services/ghost-player-store.js')
 
 async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
   if (isProbabilistic(toRoom)) {
@@ -192,6 +193,7 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) 
         username: player.username,
         exitDirection: exitDirection || null,
         isTeleport: isTeleport || false,
+        reason: 'move',
       })
     }
 
@@ -200,6 +202,9 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) 
       roomPlayers.set(toRoom, new Set())
     }
     roomPlayers.get(toRoom).add(socket.id)
+
+    // Clear any ghost entry for this player in the destination room
+    removeGhost(toRoom, player.id)
 
     socket.to(`room-${toRoom}`).emit(SOCKET_EVENTS.PLAYER_JOINED, {
       id: player.id,
@@ -318,7 +323,33 @@ function buildDirectionPhrase(direction, context) {
 
 // Setup socket handlers
 function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers, userIdToSocketIds = new Map()) {
-  const idleDetectionService = createIdleDetectionService({ activePlayers })
+  const idleDetectionService = createIdleDetectionService({
+    activePlayers,
+    onStateChange: (userId, username, roomId, isIdle) => {
+      if (!roomId) return
+      if (isIdle) {
+        // Find full player data for the ghost entry
+        let playerData = null
+        for (const p of activePlayers.values()) {
+          if (p.id === userId) { playerData = p; break }
+        }
+        if (playerData) addGhost(roomId, playerData, 'idle')
+        io.to(`room-${roomId}`).emit(SOCKET_EVENTS.PLAYER_IDLE, {
+          id: userId,
+          username,
+          roomId,
+          lastSeen: Date.now(),
+        })
+      } else {
+        removeGhost(roomId, userId)
+        io.to(`room-${roomId}`).emit(SOCKET_EVENTS.PLAYER_RETURNED, {
+          id: userId,
+          username,
+          roomId,
+        })
+      }
+    },
+  })
   idleDetectionService.start()
   const lastActivityPersistedAt = new Map()
 
@@ -444,6 +475,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           socket.join(`room-${playerData.currentRoom}`)
           roomSet.add(socket.id)
 
+          // Clear any existing ghost for this player in their room (they're back)
+          removeGhost(playerData.currentRoom, playerData.id)
+
           socket.to(`room-${playerData.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_JOINED, {
             id: playerData.id,
             username: playerData.username,
@@ -478,9 +512,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
         // Send initial inventory snapshot to client
         const inventory = await getPlayerInventory(playerData.id)
+        const roomGhosts = getGhostsForRoom(playerData.currentRoom).filter((g) => g.id !== playerData.id)
         socket.emit('login:success', {
           player: playerData,
           inventory,
+          roomGhosts,
         })
 
         recordWorldFeedEventSafe({
@@ -994,11 +1030,30 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         }
         gameEngine.unregisterPlayer(player.id, player.currentRoom)
 
+        addGhost(player.currentRoom, player, 'disconnected')
+
         socket.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_LEFT, {
           id: player.id,
           username: player.username,
-          exitDirection: null, // No direction info on disconnect
-          isTeleport: false, // Disconnect is not a teleport
+          exitDirection: null,
+          isTeleport: false,
+          reason: 'disconnect',
+          lastSeen: Date.now(),
+          ghostData: {
+            id: player.id,
+            username: player.username,
+            level: player.level,
+            hp: player.hp,
+            hpMax: player.hpMax,
+            mp: player.mp,
+            mpMax: player.mpMax,
+            currentRoom: player.currentRoom,
+            uIcon: player.uIcon ?? null,
+            uIconColor: player.uIconColor ?? null,
+            isActive: false,
+            status: 'disconnected',
+            lastSeen: Date.now(),
+          },
         })
 
         if (roomPlayers.has(player.currentRoom)) {

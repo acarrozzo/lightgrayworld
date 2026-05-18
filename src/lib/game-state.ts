@@ -30,6 +30,8 @@ export interface Player {
   defMod?: number
   uIcon?: string
   uIconColor?: string
+  presenceStatus?: 'active' | 'idle' | 'disconnected'
+  lastSeen?: number
   clicks?: number
   deaths?: number
   grassyFieldMap?: boolean

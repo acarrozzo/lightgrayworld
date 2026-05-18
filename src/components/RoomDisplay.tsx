@@ -81,8 +81,18 @@ export default function RoomDisplay({
   const lastTickRef = useRef<number | null>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
   const otherUsers = useMemo(
-    () => roomPlayers.filter((player) => player.id !== currentPlayerId),
+    () => {
+      const now = Date.now()
+      return roomPlayers.filter((player) => {
+        if (player.id === currentPlayerId) return false
+        if (player.presenceStatus !== 'active' && player.lastSeen) {
+          return now - player.lastSeen < TWENTY_FOUR_HOURS_MS
+        }
+        return true
+      })
+    },
     [roomPlayers, currentPlayerId]
   )
 
@@ -637,19 +647,43 @@ interface PlayerCardProps {
   disabled?: boolean
 }
 
+function formatTimeAgo(ts: number): string {
+  const seconds = Math.floor((Date.now() - ts) / 1000)
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
 function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatar = useColoredAvatar(avatarKey, avatarColor)
+
+  const presence = player.presenceStatus ?? 'active'
+  const isIdle = presence === 'idle'
+  const isDisconnected = presence === 'disconnected'
+
+  const containerClass = [
+    'group flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-white transition-all overflow-hidden',
+    isDisconnected
+      ? 'border-slate-600/20 bg-slate-700/10 opacity-35 grayscale hover:border-slate-500/40 hover:opacity-50'
+      : isIdle
+        ? 'border-amber-500/20 bg-amber-900/10 opacity-60 hover:border-amber-400/50 hover:bg-amber-500/15'
+        : 'border-slate-500/30 bg-slate-500/10 hover:border-violet-400 hover:bg-violet-500/25',
+    disabled ? 'cursor-not-allowed opacity-50' : '',
+  ].filter(Boolean).join(' ')
 
   return (
     <button
       type="button"
       onClick={onInspect}
       disabled={disabled}
-      className="group flex items-center gap-2 rounded-lg border border-slate-500/30 bg-slate-500/10 px-2.5 py-1.5 text-left text-white transition-all hover:border-violet-400 hover:bg-violet-500/25 disabled:cursor-not-allowed disabled:opacity-50 overflow-hidden"
+      className={containerClass}
     >
-      <div className="flex h-12 w-8 items-center justify-center">
+      <div className="relative flex h-12 w-8 items-center justify-center flex-shrink-0">
         {coloredAvatar ? (
           <div
             className="h-12 w-8"
@@ -658,10 +692,24 @@ function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
         ) : (
           <span className="text-[10px] text-violet-200/70">...</span>
         )}
+        {isIdle && (
+          <span className="absolute -top-0.5 -right-1 text-[9px] leading-none" title="Idle">
+            💤
+          </span>
+        )}
+        {isDisconnected && (
+          <span className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-slate-500 border border-slate-700 block" title="Offline" />
+        )}
       </div>
-      <div className="leading-tight">
+      <div className="leading-tight min-w-0">
         <div className="text-xs font-semibold text-white/90 truncate max-w-[110px]">{player.username}</div>
         <div className="text-[10px] uppercase tracking-[0.15em] text-violet-200/80">Lvl {player.level}</div>
+        {isIdle && player.lastSeen && (
+          <div className="text-[9px] text-amber-400/80 mt-0.5">Idle {formatTimeAgo(player.lastSeen)}</div>
+        )}
+        {isDisconnected && player.lastSeen && (
+          <div className="text-[9px] text-slate-400/80 mt-0.5">Offline {formatTimeAgo(player.lastSeen)}</div>
+        )}
       </div>
     </button>
   )

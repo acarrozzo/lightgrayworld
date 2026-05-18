@@ -25,6 +25,8 @@ const SOCKET_EVENTS = {
   WORLD_ACTIVITY: 'world:activity',
   DIRECT_MESSAGE: 'direct-message',
   USER_LOGOUT: 'user:logout',
+  PLAYER_IDLE: 'player-idle',
+  PLAYER_RETURNED: 'player-returned',
 }
 
 function setSocketIO(ioInstance) {
