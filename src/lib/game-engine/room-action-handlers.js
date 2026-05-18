@@ -151,11 +151,11 @@ const ROOM_ACTIONS = {
 
       roomState.touchActivity()
 
-      // Check quest_001 status first
-      const quest001Progress = await getQuestProgress(playerId, 'quest_001')
-      
-      // If quest_001 exists and is not completed, show forced completion
-      if (quest001Progress && !quest001Progress.completed) {
+      // Check quest_oldman_000 status first
+      const questOldman000Progress = await getQuestProgress(playerId, 'quest_oldman_000')
+
+      // If quest_oldman_000 exists and is not completed, show forced completion
+      if (questOldman000Progress && !questOldman000Progress.completed) {
         return {
           success: true,
           action: 'talk to old man',
@@ -177,7 +177,7 @@ const ROOM_ACTIONS = {
                   ],
                 },
                 buttons: [
-                  { label: 'I can bring you a flower', direction: 'complete_quest:quest_001' },
+                  { label: 'I can bring you a flower', direction: 'complete_quest:quest_oldman_000' },
                 ],
               }),
             },
@@ -185,12 +185,12 @@ const ROOM_ACTIONS = {
         }
       }
 
-      // Quest_001 is completed, check quest_002 status
-      const quest002Progress = await getQuestProgress(playerId, 'quest_002')
+      // quest_oldman_000 is completed, check quest_oldman_001 status
+      const questOldman001Progress = await getQuestProgress(playerId, 'quest_oldman_001')
 
-      // If quest_002 exists and is not completed
-      if (quest002Progress && !quest002Progress.completed) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_002')
+      // If quest_oldman_001 exists and is not completed
+      if (questOldman001Progress && !questOldman001Progress.completed) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_oldman_001')
 
         if (requirements.met && !introOnly) {
           // Player has flower - show completion prompt
@@ -211,7 +211,7 @@ const ROOM_ACTIONS = {
                     message: 'The Old Man\'s eyes light up as he sees the yellow flower in your hand. "Perfect! That\'s exactly what I needed. Thank you so much, traveler!"',
                   },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_002' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_001' },
                   ],
                 }),
               },
@@ -242,11 +242,11 @@ const ROOM_ACTIONS = {
         }
       }
 
-      // Check quest_006 (Rat Problem)
-      const quest006Progress = await getQuestProgress(playerId, 'quest_006')
+      // Check quest_oldman_002 (Rat Problem)
+      const questOldman002Progress = await getQuestProgress(playerId, 'quest_oldman_002')
 
-      if (quest006Progress && !quest006Progress.completed) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_006')
+      if (questOldman002Progress && !questOldman002Progress.completed) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_oldman_002')
 
         if (requirements.met && !introOnly) {
           return {
@@ -266,7 +266,7 @@ const ROOM_ACTIONS = {
                     message: 'The Old Man\'s face lights up with relief. "You did it! Those wretched rats have been down there for weeks. I can\'t thank you enough, traveler."',
                   },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_006' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_002' },
                   ],
                 }),
               },
@@ -296,11 +296,11 @@ const ROOM_ACTIONS = {
         }
       }
 
-      // Check quest_007 (The Gator)
-      const quest007Progress = await getQuestProgress(playerId, 'quest_007')
+      // Check quest_oldman_003 (The Gator)
+      const questOldman003Progress = await getQuestProgress(playerId, 'quest_oldman_003')
 
-      if (quest007Progress && !quest007Progress.completed && (!targetQuestId || targetQuestId === 'quest_007')) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_007')
+      if (questOldman003Progress && !questOldman003Progress.completed && (!targetQuestId || targetQuestId === 'quest_oldman_003')) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_oldman_003')
 
         if (requirements.met && !introOnly) {
           return {
@@ -320,7 +320,7 @@ const ROOM_ACTIONS = {
                     message: 'The Old Man claps his hands together. "That gator has been terrorizing this marsh for years! You\'ve done this whole area a great service, friend."',
                   },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_007' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_003' },
                   ],
                 }),
               },
@@ -350,11 +350,11 @@ const ROOM_ACTIONS = {
         }
       }
 
-      // Check quest_008 (Blueberry Jam)
-      const quest008Progress = await getQuestProgress(playerId, 'quest_008')
+      // Check quest_oldman_004 (Blueberry Jam)
+      const questOldman004Progress = await getQuestProgress(playerId, 'quest_oldman_004')
 
-      if (quest008Progress && !quest008Progress.completed && (!targetQuestId || targetQuestId === 'quest_008')) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_008')
+      if (questOldman004Progress && !questOldman004Progress.completed && (!targetQuestId || targetQuestId === 'quest_oldman_004')) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_oldman_004')
 
         if (requirements.met && !introOnly) {
           return {
@@ -374,7 +374,7 @@ const ROOM_ACTIONS = {
                     message: 'The Old Man\'s eyes go wide. "Well I\'ll be — you actually got \'em! Those\'ll make the finest jam this side of the bayou. My wife is going to be absolutely delighted, I tell you."',
                   },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_008' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_004' },
                   ],
                 }),
               },
@@ -419,11 +419,11 @@ const ROOM_ACTIONS = {
                 icon: 'npc-oldman',
                 iconColor: 'yellow-400',
                 title: 'Old Man',
-                message: quest008Progress?.completed
+                message: questOldman004Progress?.completed
                   ? 'The Old Man rocks contentedly in his chair. "The gator\'s gone, the rats are gone, and my wife\'s got her jam. You\'ve been a true blessing to this old man, traveler."'
-                  : quest007Progress?.completed
+                  : questOldman003Progress?.completed
                     ? 'The Old Man rocks contentedly in his chair. "The rats are gone, the gator is dealt with, and my wife got her flower. You\'ve been a true blessing, traveler."'
-                    : quest002Progress?.completed
+                    : questOldman001Progress?.completed
                       ? 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."'
                       : 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
               },
@@ -440,11 +440,11 @@ const ROOM_ACTIONS = {
 
       roomState.touchActivity()
 
-      // Check quest_003 status first
-      const quest003Progress = await getQuestProgress(playerId, 'quest_003')
+      // Check quest_youngsoldier_000 status first
+      const questYoungsoldier000Progress = await getQuestProgress(playerId, 'quest_youngsoldier_000')
 
-      // If quest_003 active (exists, not completed)
-      if (quest003Progress && !quest003Progress.completed) {
+      // If quest_youngsoldier_000 active (exists, not completed)
+      if (questYoungsoldier000Progress && !questYoungsoldier000Progress.completed) {
         return {
           success: true,
           action: 'talk to young soldier',
@@ -462,7 +462,7 @@ const ROOM_ACTIONS = {
                   message: 'The Young Soldier turns to face you with a determined look. "Greetings, traveler! I see you\'ve spoken with the Old Man. He\'s a wise one, but let me give you some advice: in this world, you need to be prepared. Make sure you\'re properly armed before you venture too far."',
                 },
                 buttons: [
-                  { label: 'Continue', direction: 'complete_quest:quest_003' },
+                  { label: 'Continue', direction: 'complete_quest:quest_youngsoldier_000' },
                 ],
               }),
             },
@@ -470,12 +470,12 @@ const ROOM_ACTIONS = {
         }
       }
 
-      // Quest_003 is completed, check quest_004 status
-      const quest004Progress = await getQuestProgress(playerId, 'quest_004')
+      // quest_youngsoldier_000 is completed, check quest_youngsoldier_001 status
+      const questYoungsoldier001Progress = await getQuestProgress(playerId, 'quest_youngsoldier_001')
 
-      // If quest_004 active (exists, not completed)
-      if (quest004Progress && !quest004Progress.completed) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_004')
+      // If quest_youngsoldier_001 active (exists, not completed)
+      if (questYoungsoldier001Progress && !questYoungsoldier001Progress.completed) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_youngsoldier_001')
 
         if (requirements.met && !introOnly) {
           // Player has equipped MAIN_HAND item - show completion prompt
@@ -496,7 +496,7 @@ const ROOM_ACTIONS = {
                     message: 'The Young Soldier nods approvingly as he sees your weapon. "Good. Now you\'re armed. That\'s much better. You\'ll need that if you plan to explore beyond these safe areas."',
                   },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_004' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_youngsoldier_001' },
                   ],
                 }),
               },
@@ -527,12 +527,12 @@ const ROOM_ACTIONS = {
         }
       }
 
-      // Quest_004 completed, check quest_005 status
-      const quest005Progress = await getQuestProgress(playerId, 'quest_005')
+      // quest_youngsoldier_001 completed, check quest_youngsoldier_002 status
+      const questYoungsoldier002Progress = await getQuestProgress(playerId, 'quest_youngsoldier_002')
 
-      if (quest005Progress && !quest005Progress.completed) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_005')
-        const killCount = quest005Progress.progress
+      if (questYoungsoldier002Progress && !questYoungsoldier002Progress.completed) {
+        const requirements = await checkQuestRequirements(playerId, 'quest_youngsoldier_002')
+        const killCount = questYoungsoldier002Progress.progress
         const killTarget = 2
 
         if (requirements.met && !introOnly) {
@@ -553,7 +553,7 @@ const ROOM_ACTIONS = {
                     message: 'The Young Soldier grins as you return. "Two Sand Crabs — impressive! You\'re no longer just an adventurer with a weapon, you\'re one who knows how to use it. I think you\'re ready to explore this world."',
                   },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_005' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_youngsoldier_002' },
                   ],
                 }),
               },
@@ -598,9 +598,9 @@ const ROOM_ACTIONS = {
                 icon: 'npc-youngsoldier',
                 iconColor: 'blue-400',
                 title: 'Young Soldier',
-                message: quest005Progress && quest005Progress.completed
+                message: questYoungsoldier002Progress && questYoungsoldier002Progress.completed
                   ? 'The Young Soldier gives you a proud nod. "You\'ve proven yourself out there. Stay sharp and keep pushing further into the world."'
-                  : quest004Progress && quest004Progress.completed
+                  : questYoungsoldier001Progress && questYoungsoldier001Progress.completed
                     ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
                     : 'The Young Soldier stands at attention. "Help out the Old Man first and then come back to me. Hello there, Young Adventurer. I\'m a soldier sent here from Domus to assist you. Feel free to take any of the training weapons here."',
               },

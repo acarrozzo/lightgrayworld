@@ -1,0 +1,9 @@
+-- Rename quest IDs from numeric format to arc-based format
+UPDATE "QuestProgress" SET "questId" = 'quest_oldman_000' WHERE "questId" = 'quest_001';
+UPDATE "QuestProgress" SET "questId" = 'quest_oldman_001' WHERE "questId" = 'quest_002';
+UPDATE "QuestProgress" SET "questId" = 'quest_oldman_002' WHERE "questId" = 'quest_006';
+UPDATE "QuestProgress" SET "questId" = 'quest_oldman_003' WHERE "questId" = 'quest_007';
+UPDATE "QuestProgress" SET "questId" = 'quest_oldman_004' WHERE "questId" = 'quest_008';
+UPDATE "QuestProgress" SET "questId" = 'quest_youngsoldier_000' WHERE "questId" = 'quest_003';
+UPDATE "QuestProgress" SET "questId" = 'quest_youngsoldier_001' WHERE "questId" = 'quest_004';
+UPDATE "QuestProgress" SET "questId" = 'quest_youngsoldier_002' WHERE "questId" = 'quest_005';

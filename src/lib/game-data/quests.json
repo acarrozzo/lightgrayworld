@@ -1,5 +1,5 @@
 {
-  "quest_001": {
+  "quest_oldman_000": {
     "number": 1,
     "questType": "main",
     "level": 1,
@@ -19,15 +19,15 @@
     "onComplete": [
       {
         "type": "startQuest",
-        "questId": "quest_002"
+        "questId": "quest_oldman_001"
       },
       {
         "type": "startQuest",
-        "questId": "quest_003"
+        "questId": "quest_youngsoldier_000"
       }
     ]
   },
-  "quest_002": {
+  "quest_oldman_001": {
     "number": 2,
     "questType": "main",
     "level": 1,
@@ -63,11 +63,11 @@
     "onComplete": [
       {
         "type": "startQuest",
-        "questId": "quest_006"
+        "questId": "quest_oldman_002"
       }
     ]
   },
-  "quest_003": {
+  "quest_youngsoldier_000": {
     "number": 3,
     "questType": "main",
     "level": 1,
@@ -87,11 +87,11 @@
     "onComplete": [
       {
         "type": "startQuest",
-        "questId": "quest_004"
+        "questId": "quest_youngsoldier_001"
       }
     ]
   },
-  "quest_004": {
+  "quest_youngsoldier_001": {
     "number": 4,
     "questType": "main",
     "level": 1,
@@ -127,11 +127,11 @@
     "onComplete": [
       {
         "type": "startQuest",
-        "questId": "quest_005"
+        "questId": "quest_youngsoldier_002"
       }
     ]
   },
-  "quest_005": {
+  "quest_youngsoldier_002": {
     "number": 5,
     "questType": "main",
     "level": 1,
@@ -166,7 +166,7 @@
       }
     ]
   },
-  "quest_006": {
+  "quest_oldman_002": {
     "number": 6,
     "questType": "main",
     "level": 1,
@@ -203,15 +203,15 @@
     "onComplete": [
       {
         "type": "startQuest",
-        "questId": "quest_007"
+        "questId": "quest_oldman_003"
       },
       {
         "type": "startQuest",
-        "questId": "quest_008"
+        "questId": "quest_oldman_004"
       }
     ]
   },
-  "quest_007": {
+  "quest_oldman_003": {
     "number": 7,
     "questType": "main",
     "level": 1,
@@ -246,7 +246,7 @@
       }
     ]
   },
-  "quest_008": {
+  "quest_oldman_004": {
     "number": 8,
     "questType": "side",
     "level": 1,

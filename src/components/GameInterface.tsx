@@ -1201,7 +1201,7 @@ export default function GameInterface() {
     }
 
     // Parse quest actions with questId (and optional choiceId)
-    // Format: accept_quest:quest_002 or accept_quest:quest_002:polite
+    // Format: accept_quest:quest_oldman_001 or accept_quest:quest_oldman_001:polite
     if (normalizedAction.startsWith('accept_quest:')) {
       const parts = normalizedAction.split(':')
       const questId = parts[1]
@@ -1212,7 +1212,7 @@ export default function GameInterface() {
       }
     }
 
-    // Format: complete_quest:quest_002
+    // Format: complete_quest:quest_oldman_001
     if (normalizedAction.startsWith('complete_quest:')) {
       const parts = normalizedAction.split(':')
       const questId = parts[1]

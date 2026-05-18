@@ -17,12 +17,12 @@ async function handleResetQuests(request: AuthenticatedRequest) {
       },
     })
 
-    // Create quest_001 as active (not completed, progress 0)
+    // Create quest_oldman_000 as active (not completed, progress 0)
     await prisma.questProgress.create({
       data: {
         id: randomUUID(),
         userId: user.id,
-        questId: 'quest_001',
+        questId: 'quest_oldman_000',
         progress: 0,
         completed: false,
       },

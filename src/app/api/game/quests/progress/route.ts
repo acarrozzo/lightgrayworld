@@ -10,48 +10,48 @@ async function handleGetProgress(request: AuthenticatedRequest) {
   try {
     const user = request.user
     
-    // Lazy-ensure quest_001 exists for existing users
-    const quest001 = await getQuestProgress(user.id, 'quest_001')
-    if (!quest001) {
+    // Lazy-ensure quest_oldman_000 exists for existing users
+    const questOldman000 = await getQuestProgress(user.id, 'quest_oldman_000')
+    if (!questOldman000) {
       try {
         const { randomUUID } = require('crypto')
-        
-        // Check if downstream quests exist (quest_002, quest_003, or quest_004)
-        const quest002 = await getQuestProgress(user.id, 'quest_002')
-        const quest003 = await getQuestProgress(user.id, 'quest_003')
-        const quest004 = await getQuestProgress(user.id, 'quest_004')
-        
-        // If any downstream quest exists, create quest_001 as completed (prevents stuck state)
+
+        // Check if downstream quests exist (quest_oldman_001, quest_youngsoldier_000, or quest_youngsoldier_001)
+        const questOldman001 = await getQuestProgress(user.id, 'quest_oldman_001')
+        const questYoungsoldier000 = await getQuestProgress(user.id, 'quest_youngsoldier_000')
+        const questYoungsoldier001 = await getQuestProgress(user.id, 'quest_youngsoldier_001')
+
+        // If any downstream quest exists, create quest_oldman_000 as completed (prevents stuck state)
         // Otherwise, create it as active (for new users)
-        const shouldComplete = !!(quest002 || quest003 || quest004)
-        
+        const shouldComplete = !!(questOldman001 || questYoungsoldier000 || questYoungsoldier001)
+
         await prisma.questProgress.create({
           data: {
             id: randomUUID(),
             userId: user.id,
-            questId: 'quest_001',
+            questId: 'quest_oldman_000',
             progress: shouldComplete ? 1 : 0,
             completed: shouldComplete,
           },
         })
       } catch (error) {
-        console.error('Failed to lazy-ensure quest_001:', error)
+        console.error('Failed to lazy-ensure quest_oldman_000:', error)
         // Continue even if creation fails
       }
     }
-    
-    // Backfill quest_008 for players who completed quest_006 before quest_008 was added
-    const quest008 = await getQuestProgress(user.id, 'quest_008')
-    if (!quest008) {
+
+    // Backfill quest_oldman_004 for players who completed quest_oldman_002 before quest_oldman_004 was added
+    const questOldman004 = await getQuestProgress(user.id, 'quest_oldman_004')
+    if (!questOldman004) {
       try {
-        const quest006 = await getQuestProgress(user.id, 'quest_006')
-        if ((quest006 as any)?.completed) {
+        const questOldman002 = await getQuestProgress(user.id, 'quest_oldman_002')
+        if ((questOldman002 as any)?.completed) {
           const { randomUUID } = require('crypto')
           await prisma.questProgress.create({
             data: {
               id: randomUUID(),
               userId: user.id,
-              questId: 'quest_008',
+              questId: 'quest_oldman_004',
               progress: 0,
               completed: false,
               data: undefined,
@@ -59,7 +59,7 @@ async function handleGetProgress(request: AuthenticatedRequest) {
           })
         }
       } catch (error) {
-        console.error('Failed to backfill quest_008:', error)
+        console.error('Failed to backfill quest_oldman_004:', error)
       }
     }
 

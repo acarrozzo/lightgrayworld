@@ -20,7 +20,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'bg-red-600 hover:bg-red-700' },
   ],
   '003': [
-    { action: 'talk to old man', label: 'Old Man', icon: 'npc-oldman', className: 'bg-yellow-600 hover:bg-yellow-700', questIds: ['quest_001', 'quest_002', 'quest_006', 'quest_007', 'quest_008'] },
+    { action: 'talk to old man', label: 'Old Man', icon: 'npc-oldman', className: 'bg-yellow-600 hover:bg-yellow-700', questIds: ['quest_oldman_000', 'quest_oldman_001', 'quest_oldman_002', 'quest_oldman_003', 'quest_oldman_004'] },
     { action: 'ex cabin', label: 'Examine Cabin', icon: 'cabin2', className: 'bg-gray-600 hover:bg-gray-700' },
     { action: 'attack dummy', label: 'Attack Dummy', icon: 'sword1', className: 'bg-red-500/70 hover:bg-red-500' },
     { action: 'cook meat', label: 'Cook Meat', icon: 'fire', className: 'bg-orange-600 hover:bg-orange-700' },
@@ -47,7 +47,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '007': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
-    { action: 'talk to young soldier', label: 'Young Soldier', icon: 'npc-youngsoldier', className: 'bg-blue-600 hover:bg-blue-700', questIds: ['quest_003', 'quest_004', 'quest_005'] },
+    { action: 'talk to young soldier', label: 'Young Soldier', icon: 'npc-youngsoldier', className: 'bg-blue-600 hover:bg-blue-700', questIds: ['quest_youngsoldier_000', 'quest_youngsoldier_001', 'quest_youngsoldier_002'] },
   ],
   '020': [
     { action: 'rest', label: 'Rest at Waterfall', icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },

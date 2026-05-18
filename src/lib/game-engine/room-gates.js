@@ -38,7 +38,7 @@ const ROOM_GATES = {
     'down': {
       check: async (playerId) => {
         const flowerQuest = await prisma.questProgress.findUnique({
-          where: { userId_questId: { userId: playerId, questId: 'quest_002' } },
+          where: { userId_questId: { userId: playerId, questId: 'quest_oldman_001' } },
           select: { completed: true },
         })
         if (!flowerQuest?.completed) return false
@@ -68,7 +68,7 @@ const ROOM_GATES = {
     'southwest': {
       check: async (playerId) => {
         const ratQuest = await prisma.questProgress.findUnique({
-          where: { userId_questId: { userId: playerId, questId: 'quest_006' } },
+          where: { userId_questId: { userId: playerId, questId: 'quest_oldman_002' } },
           select: { completed: true },
         })
         return !!ratQuest?.completed
