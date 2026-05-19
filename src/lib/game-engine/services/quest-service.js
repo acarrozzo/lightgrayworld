@@ -457,14 +457,12 @@ async function completeQuest(playerId, questId) {
     startedQuestIds = effectResult.startedQuestIds || []
   }
 
-  // Check for level-up after XP was granted
-  const levelUp = await checkAndApplyLevelUp(playerId)
-
-  // Get updated inventory
-  const inventory = await getPlayerInventory(playerId)
-
-  // Get updated quests list
-  const quests = await getAllQuestProgress(playerId)
+  // Run post-transaction reads in parallel
+  const [levelUp, inventory, quests] = await Promise.all([
+    checkAndApplyLevelUp(playerId),
+    getPlayerInventory(playerId),
+    getAllQuestProgress(playerId),
+  ])
 
   return {
     success: true,

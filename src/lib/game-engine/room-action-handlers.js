@@ -145,7 +145,7 @@ const ROOM_ACTIONS = {
     'attack dummy': 'You attack the training dummy. Your weapon strikes true!',
     'cook meat': 'You cook the meat over the fire. It smells delicious!',
     'talk to old man': async (playerId, roomState, actionData = {}) => {
-      const { getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
+      const { getQuestProgress, checkQuestRequirements, getQuestDef } = require('./services/quest-service')
       const introOnly = !!actionData.introOnly
       const targetQuestId = actionData.questId ?? null
 
@@ -210,8 +210,14 @@ const ROOM_ACTIONS = {
                     title: 'Old Man',
                     message: 'The Old Man\'s eyes light up as he sees the yellow flower in your hand. "Perfect! That\'s exactly what I needed. Thank you so much, traveler!"',
                   },
+                  questComplete: {
+                    questTitle: getQuestDef('quest_oldman_001').title,
+                    rewards: getQuestDef('quest_oldman_001').rewards || [],
+                    levelUp: null,
+                    newQuestTitles: [],
+                  },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_001' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_001', primary: true },
                   ],
                 }),
               },
@@ -265,8 +271,14 @@ const ROOM_ACTIONS = {
                     title: 'Old Man',
                     message: 'The Old Man\'s face lights up with relief. "You did it! Those wretched rats have been down there for weeks. I can\'t thank you enough, traveler."',
                   },
+                  questComplete: {
+                    questTitle: getQuestDef('quest_oldman_002').title,
+                    rewards: getQuestDef('quest_oldman_002').rewards || [],
+                    levelUp: null,
+                    newQuestTitles: [],
+                  },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_002' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_002', primary: true },
                   ],
                 }),
               },
@@ -319,8 +331,14 @@ const ROOM_ACTIONS = {
                     title: 'Old Man',
                     message: 'The Old Man claps his hands together. "That gator has been terrorizing this marsh for years! You\'ve done this whole area a great service, friend."',
                   },
+                  questComplete: {
+                    questTitle: getQuestDef('quest_oldman_003').title,
+                    rewards: getQuestDef('quest_oldman_003').rewards || [],
+                    levelUp: null,
+                    newQuestTitles: [],
+                  },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_003' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_003', primary: true },
                   ],
                 }),
               },
@@ -373,8 +391,14 @@ const ROOM_ACTIONS = {
                     title: 'Old Man',
                     message: 'The Old Man\'s eyes go wide. "Well I\'ll be — you actually got \'em! Those\'ll make the finest jam this side of the bayou. My wife is going to be absolutely delighted, I tell you."',
                   },
+                  questComplete: {
+                    questTitle: getQuestDef('quest_oldman_004').title,
+                    rewards: getQuestDef('quest_oldman_004').rewards || [],
+                    levelUp: null,
+                    newQuestTitles: [],
+                  },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_004' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_004', primary: true },
                   ],
                 }),
               },
@@ -435,7 +459,7 @@ const ROOM_ACTIONS = {
   },
   '007': {
     'talk to young soldier': async (playerId, roomState, actionData = {}) => {
-      const { getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
+      const { getQuestProgress, checkQuestRequirements, getQuestDef } = require('./services/quest-service')
       const introOnly = !!actionData.introOnly
 
       roomState.touchActivity()
@@ -495,8 +519,14 @@ const ROOM_ACTIONS = {
                     title: 'Young Soldier',
                     message: 'The Young Soldier nods approvingly as he sees your weapon. "Good. Now you\'re armed. That\'s much better. You\'ll need that if you plan to explore beyond these safe areas."',
                   },
+                  questComplete: {
+                    questTitle: getQuestDef('quest_youngsoldier_001').title,
+                    rewards: getQuestDef('quest_youngsoldier_001').rewards || [],
+                    levelUp: null,
+                    newQuestTitles: [],
+                  },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_youngsoldier_001' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_youngsoldier_001', primary: true },
                   ],
                 }),
               },
@@ -552,8 +582,14 @@ const ROOM_ACTIONS = {
                     title: 'Young Soldier',
                     message: 'The Young Soldier grins as you return. "Two Sand Crabs — impressive! You\'re no longer just an adventurer with a weapon, you\'re one who knows how to use it. I think you\'re ready to explore this world."',
                   },
+                  questComplete: {
+                    questTitle: getQuestDef('quest_youngsoldier_002').title,
+                    rewards: getQuestDef('quest_youngsoldier_002').rewards || [],
+                    levelUp: null,
+                    newQuestTitles: [],
+                  },
                   buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_youngsoldier_002' },
+                    { label: 'Complete Quest', direction: 'complete_quest:quest_youngsoldier_002', primary: true },
                   ],
                 }),
               },

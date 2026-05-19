@@ -39,6 +39,12 @@ export default function QuestCompleteRewards({ data }: Props) {
 
   return (
     <div className="mt-2 border-t border-gray-700/60 pt-4 pb-2">
+      {data.questTitle && (
+        <div className="mb-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-green-400 mb-0.5">Quest Completed</p>
+          <p className="text-sm font-semibold text-gray-300">{data.questTitle}</p>
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-3">
         <Icon name="trophy" size={16} className="text-yellow-400" />
         <span className="text-xs font-semibold uppercase tracking-wider text-yellow-400">

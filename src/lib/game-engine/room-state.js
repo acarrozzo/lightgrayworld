@@ -1090,7 +1090,7 @@ class RoomState {
       quests: result.quests,
       inventory: result.inventory,
       player: result.player,
-      showModal: true,
+      showModal: false,
       modalContent: {
         type: 'icon',
         icon: questDef.giver?.icon || 'scroll',

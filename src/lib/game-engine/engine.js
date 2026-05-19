@@ -9,7 +9,7 @@ class GameEngine {
     this.tickClock = new TickClock(tickMs)
     this.rooms = new Map()
     this.playerQueue = new PlayerActionQueue({
-      timeoutMs: 5000,
+      timeoutMs: 15000,
       maxQueueLength: 5,
     })
     this.playerSockets = new Map()

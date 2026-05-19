@@ -96,7 +96,7 @@ export default function ActionModal({
           )}
         </div>
 
-        <div className="border-t border-gray-700/50 px-4 py-3 flex items-center justify-end gap-2">
+        <div className="border-t border-gray-700/50 px-4 py-3 flex items-center justify-center gap-2">
           {buttons && buttons.length > 0 ? (
             buttons.map((button, index) => (
               <button
@@ -106,7 +106,7 @@ export default function ActionModal({
                 data-close-on-action={button.closeOnAction !== false}
                 onClick={() => handleButtonClick(button.direction, button.closeOnAction !== false)}
                 className={button.primary
-                  ? "rounded bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                  ? "rounded bg-blue-600 px-6 py-2 text-base font-semibold text-white transition-colors hover:bg-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                   : "rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
                 }
               >

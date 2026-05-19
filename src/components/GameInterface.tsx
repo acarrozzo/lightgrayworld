@@ -1730,7 +1730,7 @@ export default function GameInterface() {
               const isMessageArray = Array.isArray(messageContent)
               
               const questCompleteData: QuestCompleteData | null =
-                payload?.action === 'complete_quest' && payload?.data?.questComplete
+                payload?.data?.questComplete
                   ? (payload.data.questComplete as QuestCompleteData)
                   : null
 
