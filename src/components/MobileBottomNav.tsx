@@ -26,7 +26,7 @@ export default function MobileBottomNav({
     <nav
       role="tablist"
       aria-label="Main navigation"
-      className="md:hidden flex-shrink-0 flex items-stretch bg-gray-900/95 backdrop-blur-sm border-t border-gray-800/60 pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden flex-shrink-0 flex items-stretch bg-gray-900/95 backdrop-blur-sm border-t border-gray-800/60 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id
@@ -43,7 +43,7 @@ export default function MobileBottomNav({
             aria-selected={isActive}
             aria-label={label}
             onClick={() => handleClick(tab.id)}
-            className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 transition-colors duration-150 ${iconColorClass} ${activeRingClass} ${
+            className={`relative flex-1 min-w-0 min-h-[56px] flex flex-col items-center justify-center gap-1 px-1 py-2 transition-colors duration-150 ${iconColorClass} ${activeRingClass} ${
               isActive ? '' : 'hover:bg-gray-800/40'
             }`}
           >
