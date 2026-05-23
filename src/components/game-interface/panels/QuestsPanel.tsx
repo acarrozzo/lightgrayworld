@@ -47,14 +47,22 @@ interface QuestsPanelProps {
   onClose: () => void
 }
 
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+const QUEST_SUB_TABS: { id: Tab; label: string }[] = [
+  { id: 'quests', label: 'Quests' },
+  { id: 'completed-quests', label: 'Completed' },
+  { id: 'kill-list', label: 'Kill List' },
+  { id: 'battle-log', label: 'Battle Log' },
+]
+
+function SubTabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`flex-1 py-2 text-xs font-semibold transition-colors duration-150 ${
+      className={`px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center rounded-lg shadow-sm hover:shadow flex-shrink-0 ${
         active
-          ? 'text-white border-b-2 border-blue-500'
-          : 'text-gray-500 hover:text-gray-300 border-b-2 border-transparent'
+          ? 'border-1 border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
+          : 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
       }`}
     >
       {children}
@@ -198,27 +206,31 @@ export default function QuestsPanel({
   const getAuthHeaders = useGameStore((s) => s.getAuthHeaders)
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full flex flex-col min-h-0">
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+        className="absolute top-2 right-3 z-30 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
         title="Close"
         aria-label="Close"
       >
         <X size={20} />
       </button>
 
-      <div className="p-4 sm:p-6 pb-0">
-        <h3 className="text-lg font-semibold text-white mb-3">Quests & Records</h3>
-        <div className="flex border-b border-gray-700/60">
-          <TabButton active={activeTab === 'quests'} onClick={() => setActiveTab('quests')}>Quests</TabButton>
-          <TabButton active={activeTab === 'completed-quests'} onClick={() => setActiveTab('completed-quests')}>Completed</TabButton>
-          <TabButton active={activeTab === 'kill-list'} onClick={() => setActiveTab('kill-list')}>Kill List</TabButton>
-          <TabButton active={activeTab === 'battle-log'} onClick={() => setActiveTab('battle-log')}>Battle Log</TabButton>
+      <div className="flex gap-2 border-b border-gray-700/50 pl-4 pr-12 md:pr-12 py-2 flex-shrink-0">
+        <div className="flex-1 flex items-center justify-center gap-2 flex-nowrap overflow-x-auto">
+          {QUEST_SUB_TABS.map((tab) => (
+            <SubTabButton
+              key={tab.id}
+              active={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </SubTabButton>
+          ))}
         </div>
       </div>
 
-      <div className="p-4 sm:p-6 pt-4 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
 
         {/* ── Quests tab (active only) ── */}
         {activeTab === 'quests' && (

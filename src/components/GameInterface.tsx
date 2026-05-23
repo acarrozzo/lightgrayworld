@@ -15,7 +15,7 @@ import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageSquareText, Mail, Map } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageSquareText, Map } from 'lucide-react'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
@@ -38,10 +38,9 @@ import CharPanel from './game-interface/panels/CharPanel'
 import InventoryPanel from './game-interface/panels/InventoryPanel'
 import QuestsPanel from './game-interface/panels/QuestsPanel'
 import MapPanel from './game-interface/panels/MapPanel'
-import ChatPanel from './game-interface/panels/ChatPanel'
 import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
-import DMPanel from './game-interface/panels/DMPanel'
+import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/PlayersPanel'
 import QuestCompleteRewards, { type QuestCompleteData } from './QuestCompleteRewards'
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
@@ -139,6 +138,7 @@ export default function GameInterface() {
     tickIntervalMs: number
   } | undefined>(undefined)
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
+  const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('players')
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
   const [quests, setQuests] = useState<Array<{ id: string; questId: string; progress: number; completed: boolean; data?: { accepted?: boolean } | null }>>([])
   const [isLoadingQuests, setIsLoadingQuests] = useState(false)
@@ -1296,7 +1296,8 @@ export default function GameInterface() {
       })
     }
     setSelectedThread(otherUserId)
-    setCenterActiveTab('dm')
+    setPlayersSubTab('dm')
+    setCenterActiveTab('players')
   }, [])
 
   const handleCustomAction = async (e: React.FormEvent, mode: InputMode) => {
@@ -2660,7 +2661,6 @@ export default function GameInterface() {
     quests: { label: 'Quests', icon: 'trophy', color: 'gold' },
     map: { label: 'Map', icon: <Map size={14} />, color: 'sky' },
     players: { label: 'Players', icon: <MessageSquare size={14} />, color: 'pink' },
-    dm: { label: 'DM', icon: <Mail size={14} />, color: 'amber' },
     feed: { label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'blue' },
     settings: { label: 'Settings', icon: <SettingsIcon size={14} />, color: 'gray' },
   }
@@ -2814,16 +2814,13 @@ export default function GameInterface() {
         )
       case 'players':
         return (
-          <ChatPanel
+          <PlayersPanel
+            activeSubTab={playersSubTab}
+            onSubTabChange={setPlayersSubTab}
+            unreadDmCount={totalDmUnread}
             onOpenWorldChat={handleOpenWorldChat}
             onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
-          />
-        )
-      case 'dm':
-        return (
-          <DMPanel
-            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
-            onMessageSent={(payload) => {
+            onDMMessageSent={(payload) => {
               appendDMFeed('to', payload.recipientUsername || 'Unknown', payload.message)
             }}
           />
@@ -2862,7 +2859,7 @@ export default function GameInterface() {
           />
         )
     }
-  }, [player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed])
+  }, [player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread])
 
   const handleCenterTabChange = useCallback((tabId: string | null) => {
     setCenterActiveTab(tabId || 'explore')
@@ -2870,6 +2867,11 @@ export default function GameInterface() {
     if (tabId === 'map' && currentRoomRef.current?.roomId) {
       const mapIdForCurrentRoom = getMapIdForRoom(currentRoomRef.current.roomId)
       setCurrentMapId(mapIdForCurrentRoom)
+    }
+
+    if (tabId === 'players') {
+      const unread = useDMStore.getState().getTotalUnreadCount()
+      setPlayersSubTab(unread > 0 ? 'dm' : 'players')
     }
 
     if (tabId !== 'inventory') {
@@ -3067,23 +3069,15 @@ export default function GameInterface() {
       label: 'Players',
       icon: <MessageSquare size={14} />,
       color: 'pink',
-      content: (
-        <ChatPanel
-          onOpenWorldChat={handleOpenWorldChat}
-          onClose={() => setCenterActiveTab('explore')}
-        />
-      ),
-    },
-    {
-      id: 'dm',
-      label: 'DM',
-      icon: <Mail size={14} />,
-      color: 'amber',
       badge: totalDmUnread > 0 ? totalDmUnread : undefined,
       content: (
-        <DMPanel
+        <PlayersPanel
+          activeSubTab={playersSubTab}
+          onSubTabChange={setPlayersSubTab}
+          unreadDmCount={totalDmUnread}
+          onOpenWorldChat={handleOpenWorldChat}
           onClose={() => setCenterActiveTab('explore')}
-          onMessageSent={(payload) => {
+          onDMMessageSent={(payload) => {
             appendDMFeed('to', payload.recipientUsername || 'Unknown', payload.message)
           }}
         />
