@@ -43,7 +43,7 @@ interface NpcQuestCardProps {
   quests: QuestProgress[]
   killList: KillEntry[]
   onTurnIn: (questId: string) => void
-  onTalk?: (questId: string) => void
+  onTalk: (questId: string) => void
   loadingQuestId?: string
 }
 
@@ -161,12 +161,7 @@ export default function NpcQuestCard({
           const isTurnIn = state === 'turn_in'
           const isInProgress = state === 'in_progress'
           const isCompleted = state === 'completed'
-          const isActionable = isTalk || isTurnIn
-
-          const buttonLabel = isTalk ? `Talk to ${npcName}` : 'Turn In'
-          const buttonClass = isActionable
-            ? 'bg-green-600 hover:bg-green-500 text-white'
-            : 'bg-gray-700 text-gray-400 cursor-default'
+          const canTurnIn = isTurnIn
 
           return (
             <div key={progress.questId} className="flex items-center gap-3 px-3 py-2.5">
@@ -197,29 +192,44 @@ export default function NpcQuestCard({
               {/* CTA */}
               {isCompleted ? (
                 <CheckCircle size={18} className="shrink-0 text-green-600" />
-              ) : isInProgress ? (
-                <div className="shrink-0 flex items-center gap-2">
-                  <span className="text-xs text-gray-500 font-medium">In Progress</span>
-                  {onTalk && (
-                    <button
-                      onClick={() => onTalk(progress.questId)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-white bg-gray-700/60 hover:bg-gray-600/80 transition-colors"
-                    >
-                      <MessageCircle size={16} />
-                      Talk to {npcName}
-                    </button>
-                  )}
-                </div>
-              ) : (
+              ) : isTalk ? (
+                // No-requirement quests: Talk only — completion happens via modal button
                 <button
-                  disabled={!isActionable || isLoading}
-                  onClick={() => onTurnIn(progress.questId)}
-                  className={`shrink-0 px-3 py-2 rounded-md text-sm font-semibold transition-colors ${buttonClass} ${
+                  disabled={isLoading}
+                  onClick={() => onTalk(progress.questId)}
+                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors bg-indigo-600 hover:bg-indigo-500 text-white ${
                     isLoading ? 'opacity-60 cursor-wait' : ''
                   }`}
                 >
-                  {isLoading ? '...' : buttonLabel}
+                  <MessageCircle size={16} />
+                  {isLoading ? '...' : `Talk to ${npcName}`}
                 </button>
+              ) : (
+                // Quests with requirements: Talk (always enabled) + Turn In (enabled when met)
+                <div className="shrink-0 flex items-center gap-2">
+                  <button
+                    disabled={isLoading}
+                    onClick={() => onTalk(progress.questId)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-300 hover:text-white bg-gray-700/60 hover:bg-gray-600/80 ${
+                      isLoading ? 'opacity-60 cursor-wait' : ''
+                    }`}
+                  >
+                    <MessageCircle size={16} />
+                    Talk
+                  </button>
+                  <button
+                    disabled={!canTurnIn || isLoading}
+                    onClick={() => canTurnIn && onTurnIn(progress.questId)}
+                    title={isInProgress && progressLabel ? `Still needed: ${progressLabel}` : undefined}
+                    className={`px-3 py-2 rounded-md text-sm font-semibold transition-colors ${
+                      canTurnIn
+                        ? 'bg-green-600 hover:bg-green-500 text-white'
+                        : 'bg-gray-700/60 text-gray-500 cursor-not-allowed'
+                    } ${isLoading ? 'opacity-60 cursor-wait' : ''}`}
+                  >
+                    {isLoading ? '...' : 'Turn In'}
+                  </button>
+                </div>
               )}
             </div>
           )

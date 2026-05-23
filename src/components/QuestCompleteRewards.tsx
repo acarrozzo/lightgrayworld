@@ -14,11 +14,16 @@ interface LevelUp {
   newLevel: number
 }
 
+export interface NewQuestEntry {
+  title: string
+  objective: string | null
+}
+
 export interface QuestCompleteData {
   questTitle: string
   rewards: Reward[]
   levelUp: LevelUp | null
-  newQuestTitles: string[]
+  newQuestTitles: (string | NewQuestEntry)[]
 }
 
 interface Props {
@@ -95,12 +100,19 @@ export default function QuestCompleteRewards({ data }: Props) {
                 New {newQuestTitles.length === 1 ? 'Quest' : 'Quests'}
               </span>
             </div>
-            <ul className="space-y-0.5 pl-1">
-              {newQuestTitles.map((title, i) => (
-                <li key={i} className="text-sm text-purple-200">
-                  {title}
-                </li>
-              ))}
+            <ul className="space-y-1.5 pl-1">
+              {newQuestTitles.map((entry, i) => {
+                const title = typeof entry === 'string' ? entry : entry.title
+                const objective = typeof entry === 'string' ? null : entry.objective
+                return (
+                  <li key={i}>
+                    <div className="text-sm text-purple-200">{title}</div>
+                    {objective && (
+                      <div className="text-xs text-purple-300/60 mt-0.5">{objective}</div>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           </div>
         )}

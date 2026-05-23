@@ -339,11 +339,23 @@ export default function RoomDisplay({
     }
   }
 
-  const handleQuestTurnIn = async (questId: string, npcAction: string) => {
+  const handleQuestTalk = async (questId: string, npcAction: string) => {
     if (!onAction || loadingQuestId) return
     setLoadingQuestId(questId)
     try {
-      await onAction({ type: npcAction, data: { questId } })
+      await onAction({ type: npcAction, data: { questId, introOnly: true } })
+    } catch (error) {
+      console.error('Quest talk error:', error)
+    } finally {
+      setLoadingQuestId(null)
+    }
+  }
+
+  const handleQuestTurnIn = async (questId: string) => {
+    if (!onAction || loadingQuestId) return
+    setLoadingQuestId(questId)
+    try {
+      await onAction({ type: 'complete_quest', data: { questId } })
     } catch (error) {
       console.error('Quest turn-in error:', error)
     } finally {
@@ -582,8 +594,8 @@ export default function RoomDisplay({
                 questIds={actionItem.questIds ?? []}
                 quests={quests}
                 killList={killList}
-                onTurnIn={(questId) => handleQuestTurnIn(questId, actionItem.action)}
-                onTalk={(questId) => handleQuestTurnIn(questId, actionItem.action)}
+                onTalk={(questId) => handleQuestTalk(questId, actionItem.action)}
+                onTurnIn={(questId) => handleQuestTurnIn(questId)}
                 loadingQuestId={loadingQuestId ?? undefined}
               />
             ))}
