@@ -3469,7 +3469,8 @@ export default function GameInterface() {
         tabs={centerTabs}
         activeTab={centerActiveTab}
         onTabChange={handleCenterTabChange}
-        fallbackLabels={{ settings: 'Settings' }}
+        fallbackLabels={{ players: 'Players', feed: 'Feed', settings: 'Settings' }}
+        overflowAfter={5}
       />
     </div>
   )
