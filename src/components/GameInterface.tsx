@@ -10,6 +10,7 @@ import RoomBox, { type RoomEnemy } from './RoomBox'
 import BattlePanel from './game-interface/panels/BattlePanel'
 import Compass from './Compass'
 import TabContainer, { type TabConfig } from './TabContainer'
+import MobileBottomNav from './MobileBottomNav'
 import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
@@ -2863,6 +2864,20 @@ export default function GameInterface() {
     }
   }, [player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed])
 
+  const handleCenterTabChange = useCallback((tabId: string | null) => {
+    setCenterActiveTab(tabId || 'explore')
+
+    if (tabId === 'map' && currentRoomRef.current?.roomId) {
+      const mapIdForCurrentRoom = getMapIdForRoom(currentRoomRef.current.roomId)
+      setCurrentMapId(mapIdForCurrentRoom)
+    }
+
+    if (tabId !== 'inventory') {
+      setInventoryFilter(undefined)
+      setNewItemIds(new Set())
+    }
+  }, [])
+
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
   }
@@ -2877,6 +2892,240 @@ export default function GameInterface() {
       </div>
     )
   }
+
+  const centerTabs: TabConfig[] = [
+    {
+      id: 'explore',
+      label: 'Explore',
+      icon: 'world',
+      color: 'blue',
+      content: (
+        <div className="flex flex-col flex-1 min-h-0 h-full">
+          <div className="flex-1 min-h-0 overflow-y-auto h-full">
+            <div className="max-w-4xl mx-auto w-full">
+              {!socket?.connected && (
+                <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-gray-800/60 bg-gray-900/80">
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                    <span>Not Connected</span>
+                  </div>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2 text-md font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
+                    aria-label="Refresh page"
+                    title="Refresh page"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              )}
+              {levelUpData && (
+                <LevelUpAlert
+                  data={levelUpData}
+                  onClose={() => setLevelUpData(null)}
+                />
+              )}
+              {(battle.isInBattle || battleResult) && (
+                <div className="px-4 pt-4">
+                  <BattlePanel
+                    battle={battle}
+                    battleResult={battleResult}
+                    onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
+                    onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
+                    onUseItem={(itemId, action) => socketHandlers.sendGameAction({ type: 'use_item', data: { playerItemId: itemId, action } })}
+                    onDismissResult={clearBattleResult}
+                    isActing={isLoadingRoom}
+                    playerName={player.username}
+                    playerLevel={player.level}
+                    playerMp={player.mp}
+                    playerMpMax={player.mpMax}
+                    weaponIconName={weaponIconName}
+                    weaponName={weaponName}
+                    inventory={inventory}
+                  />
+                </div>
+              )}
+              <RoomBox
+                room={currentRoom}
+                roomPlayers={roomPlayers}
+                currentPlayerId={player.id}
+                onAction={handleAction}
+                onOpenPlayerProfile={handleOpenPlayerProfile}
+                onRefreshCaps={() => {
+                  if (currentRoom?.roomId) {
+                    hydrateRoomCaps(currentRoom.roomId, roomLoadSequenceRef.current)
+                  }
+                }}
+                worldTick={worldTick}
+                actionResult={actionResult}
+                isLoadingRoom={isLoadingRoom}
+                currentAction={action}
+                roomEnemies={roomEnemies}
+                isInBattle={battle.isInBattle}
+                quests={quests}
+                killList={killList}
+              />
+            </div>
+          </div>
+
+          {/* D-pad */}
+          <div className={`flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50 ${battle.isInBattle ? 'hidden' : ''}`}>
+            {/* Teleport button - left edge */}
+            <div className="absolute left-4 top-4 flex flex-row md:flex-col gap-2 z-10">
+              <button
+                type="button"
+                onClick={handleOpenTeleport}
+                className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
+                title="Open Teleport"
+                aria-label="Open Teleport"
+              >
+                <span className="block md:hidden">
+                  <Icon name="ironskin" size={16} />
+                </span>
+                <span className="hidden md:inline">Teleport</span>
+              </button>
+            </div>
+            {/* Compass */}
+            <div className="flex items-center justify-center">
+              <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={() => setCenterActiveTab('map')} onOpenTeleport={handleOpenTeleport} isMoveInProgress={isMoveInProgress} />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'char',
+      label: 'Char',
+      icon: 'character',
+      color: 'violet',
+      content: (
+        <CharPanel
+          player={player}
+          onAction={handleAction}
+          onSwitchToInventory={handleSwitchToInventory}
+          onClose={() => setCenterActiveTab('explore')}
+        />
+      ),
+    },
+    {
+      id: 'inventory',
+      label: 'Inv',
+      icon: 'inv',
+      color: 'green',
+      badge: newItemIds.size > 0 ? newItemIds.size : undefined,
+      content: (
+        <InventoryPanel
+          inventory={inventory}
+          onAction={handleAction}
+          initialFilter={inventoryFilter}
+          newItemIds={newItemIds}
+          onClearNewItem={(itemId) => {
+            setNewItemIds(prev => {
+              const updated = new Set(prev)
+              updated.delete(itemId)
+              return updated
+            })
+          }}
+          onClose={() => setCenterActiveTab('explore')}
+        />
+      ),
+    },
+    {
+      id: 'quests',
+      label: 'Quests',
+      icon: 'trophy',
+      color: 'gold',
+      badge: hasQuestUpdate ? true : undefined,
+      content: (
+        <QuestsPanel
+          quests={quests}
+          isLoadingQuests={isLoadingQuests}
+          isResettingQuests={isResettingQuests}
+          isLoggedIn={isLoggedIn}
+          inventory={inventory}
+          onResetQuests={handleResetQuests}
+          onClose={() => setCenterActiveTab('explore')}
+        />
+      ),
+    },
+    {
+      id: 'map',
+      label: 'Map',
+      icon: <Map size={14} />,
+      color: 'sky',
+      content: (
+        <MapPanel
+          currentMapId={currentMapId}
+          availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
+          onMapChange={handleMapChange}
+          onClose={() => setCenterActiveTab('explore')}
+        />
+      ),
+    },
+    {
+      id: 'players',
+      label: 'Players',
+      icon: <MessageSquare size={14} />,
+      color: 'pink',
+      content: (
+        <ChatPanel
+          onOpenWorldChat={handleOpenWorldChat}
+          onClose={() => setCenterActiveTab('explore')}
+        />
+      ),
+    },
+    {
+      id: 'dm',
+      label: 'DM',
+      icon: <Mail size={14} />,
+      color: 'amber',
+      badge: totalDmUnread > 0 ? totalDmUnread : undefined,
+      content: (
+        <DMPanel
+          onClose={() => setCenterActiveTab('explore')}
+          onMessageSent={(payload) => {
+            appendDMFeed('to', payload.recipientUsername || 'Unknown', payload.message)
+          }}
+        />
+      ),
+    },
+    {
+      id: 'feed',
+      label: 'Feed',
+      icon: <MessageSquareText size={14} />,
+      color: 'blue',
+      content: (
+        <FeedPanel
+          currentRoomId={currentRoom?.roomId}
+          currentRoomName={currentRoom?.name}
+          isConnected={socket?.connected ?? false}
+          onClose={() => setCenterActiveTab('explore')}
+          onOpenSettings={() => setCenterActiveTab('settings')}
+          customAction={customAction}
+          onCustomActionChange={setCustomAction}
+          onCustomActionSubmit={handleCustomAction}
+          isLoadingRoom={isLoadingRoom}
+          customActionInputRef={customActionInputRef}
+          onUnreadCountChange={setUnreadCount}
+          forceInputMode={forceWorldChatMode}
+          forceFilter={forceFeedFilter}
+          forceChatSubFilter={forceFeedChatSubFilter}
+        />
+      ),
+    },
+    {
+      id: 'settings',
+      label: '',
+      icon: <SettingsIcon size={14} />,
+      color: 'gray',
+      content: (
+        <SettingsPanel
+          onLogout={handleLogoutFlow}
+          onClose={() => setCenterActiveTab('explore')}
+        />
+      ),
+    },
+  ]
 
   return (
     <div className="h-dvh bg-gray-950 text-white flex flex-col overflow-hidden">
@@ -3129,257 +3378,10 @@ export default function GameInterface() {
                     )}
                   </button>
                 }
-                tabs={[
-                  {
-                    id: 'explore',
-                    label: 'Explore',
-                    icon: 'world',
-                    color: 'blue',
-                    content: (
-                      <div className="flex flex-col flex-1 min-h-0 h-full">
-                        <div className="flex-1 min-h-0 overflow-y-auto h-full">
-                          <div className="max-w-4xl mx-auto w-full">
-                            {!socket?.connected && (
-                              <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-gray-800/60 bg-gray-900/80">
-                                <div className="flex items-center gap-2 text-xs text-gray-400">
-                                  <span className="w-2 h-2 rounded-full bg-red-500" />
-                                  <span>Not Connected</span>
-                                </div>
-                                <button
-                                  onClick={() => window.location.reload()}
-                                  className="px-6 py-2 text-md font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
-                                  aria-label="Refresh page"
-                                  title="Refresh page"
-                                >
-                                  Refresh
-                                </button>
-                              </div>
-                            )}
-                            {levelUpData && (
-                              <LevelUpAlert
-                                data={levelUpData}
-                                onClose={() => setLevelUpData(null)}
-                              />
-                            )}
-                            {(battle.isInBattle || battleResult) && (
-                              <div className="px-4 pt-4">
-                                <BattlePanel
-                                  battle={battle}
-                                  battleResult={battleResult}
-                                  onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
-                                  onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
-                                  onUseItem={(itemId, action) => socketHandlers.sendGameAction({ type: 'use_item', data: { playerItemId: itemId, action } })}
-                                  onDismissResult={clearBattleResult}
-                                  isActing={isLoadingRoom}
-                                  playerName={player.username}
-                                  playerLevel={player.level}
-                                  playerMp={player.mp}
-                                  playerMpMax={player.mpMax}
-                                  weaponIconName={weaponIconName}
-                                  weaponName={weaponName}
-                                  inventory={inventory}
-                                />
-                              </div>
-                            )}
-                            <RoomBox
-                            room={currentRoom}
-                            roomPlayers={roomPlayers}
-                            currentPlayerId={player.id}
-                            onAction={handleAction}
-                            onOpenPlayerProfile={handleOpenPlayerProfile}
-                            onRefreshCaps={() => {
-                              if (currentRoom?.roomId) {
-                                hydrateRoomCaps(currentRoom.roomId, roomLoadSequenceRef.current)
-                              }
-                            }}
-                            worldTick={worldTick}
-                            actionResult={actionResult}
-                            isLoadingRoom={isLoadingRoom}
-                            currentAction={action}
-                            roomEnemies={roomEnemies}
-                            isInBattle={battle.isInBattle}
-                            quests={quests}
-                            killList={killList}
-                          />
-                          </div>
-                        </div>
-
-                        {/* D-pad */}
-                        <div className={`flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50 ${battle.isInBattle ? 'hidden' : ''}`}>
-                          {/* Teleport button - left edge */}
-                          <div className="absolute left-4 top-4 flex flex-row md:flex-col gap-2 z-10">
-                            <button
-                              type="button"
-                              onClick={handleOpenTeleport}
-                              className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
-                              title="Open Teleport"
-                              aria-label="Open Teleport"
-                            >
-                              <span className="block md:hidden">
-                                <Icon name="ironskin" size={16} />
-                              </span>
-                              <span className="hidden md:inline">Teleport</span>
-                            </button>
-                          </div>
-                          {/* Compass */}
-                          <div className="flex items-center justify-center">
-                            <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={() => setCenterActiveTab('map')} onOpenTeleport={handleOpenTeleport} isMoveInProgress={isMoveInProgress} />
-                          </div>
-                        </div>
-                      </div>
-                    ),
-                  },
-                  {
-                    id: 'char',
-                    label: 'Char',
-                    icon: 'character',
-                    color: 'violet',
-                    content: (
-                      <CharPanel
-                        player={player}
-                        onAction={handleAction}
-                        onSwitchToInventory={handleSwitchToInventory}
-                        onClose={() => setCenterActiveTab('explore')}
-                      />
-                    ),
-                  },
-                  {
-                    id: 'inventory',
-                    label: 'Inv',
-                    icon: 'inv',
-                    color: 'green',
-                    badge: newItemIds.size > 0 ? newItemIds.size : undefined,
-                    content: (
-                      <InventoryPanel
-                        inventory={inventory}
-                        onAction={handleAction}
-                        initialFilter={inventoryFilter}
-                        newItemIds={newItemIds}
-                        onClearNewItem={(itemId) => {
-                          setNewItemIds(prev => {
-                            const updated = new Set(prev)
-                            updated.delete(itemId)
-                            return updated
-                          })
-                        }}
-                        onClose={() => setCenterActiveTab('explore')}
-                      />
-                    ),
-                  },
-                  {
-                    id: 'quests',
-                    label: 'Quests',
-                    icon: 'trophy',
-                    color: 'gold',
-                    badge: hasQuestUpdate ? true : undefined,
-                    content: (
-                      <QuestsPanel
-                        quests={quests}
-                        isLoadingQuests={isLoadingQuests}
-                        isResettingQuests={isResettingQuests}
-                        isLoggedIn={isLoggedIn}
-                        inventory={inventory}
-                        onResetQuests={handleResetQuests}
-                        onClose={() => setCenterActiveTab('explore')}
-                      />
-                    ),
-                  },
-                  {
-                    id: 'map',
-                    label: 'Map',
-                    icon: <Map size={14} />,
-                    color: 'sky',
-                    content: (
-                      <MapPanel
-                        currentMapId={currentMapId}
-                        availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
-                        onMapChange={handleMapChange}
-                        onClose={() => setCenterActiveTab('explore')}
-                      />
-                    ),
-                  },
-                  {
-                    id: 'players',
-                    label: 'Players',
-                    icon: <MessageSquare size={14} />,
-                    color: 'pink',
-                    content: (
-                      <ChatPanel
-                        onOpenWorldChat={handleOpenWorldChat}
-                        onClose={() => setCenterActiveTab('explore')}
-                      />
-                    ),
-                  },
-                  {
-                    id: 'dm',
-                    label: 'DM',
-                    icon: <Mail size={14} />,
-                    color: 'amber',
-                    badge: totalDmUnread > 0 ? totalDmUnread : undefined,
-                    content: (
-                      <DMPanel
-                        onClose={() => setCenterActiveTab('explore')}
-                        onMessageSent={(payload) => {
-                          appendDMFeed('to', payload.recipientUsername || 'Unknown', payload.message)
-                        }}
-                      />
-                    ),
-                  },
-                  {
-                    id: 'feed',
-                    label: 'Feed',
-                    icon: <MessageSquareText size={14} />,
-                    color: 'blue',
-                    content: (
-                      <FeedPanel
-                        currentRoomId={currentRoom?.roomId}
-                        currentRoomName={currentRoom?.name}
-                        isConnected={socket?.connected ?? false}
-                        onClose={() => setCenterActiveTab('explore')}
-                        onOpenSettings={() => setCenterActiveTab('settings')}
-                        customAction={customAction}
-                        onCustomActionChange={setCustomAction}
-                        onCustomActionSubmit={handleCustomAction}
-                        isLoadingRoom={isLoadingRoom}
-                        customActionInputRef={customActionInputRef}
-                        onUnreadCountChange={setUnreadCount}
-                        forceInputMode={forceWorldChatMode}
-                        forceFilter={forceFeedFilter}
-                        forceChatSubFilter={forceFeedChatSubFilter}
-                      />
-                    ),
-                  },
-                  {
-                    id: 'settings',
-                    label: '',
-                    icon: <SettingsIcon size={14} />,
-                    color: 'gray',
-                    content: (
-                      <SettingsPanel
-                        onLogout={handleLogoutFlow}
-                        onClose={() => setCenterActiveTab('explore')}
-                      />
-                    ),
-                  },
-                ]}
+                tabs={centerTabs}
                 defaultTab="explore"
                 activeTab={centerActiveTab}
-                onTabChange={(tabId) => {
-                  setCenterActiveTab(tabId || 'explore')
-                  
-                  // When map tab is opened, default to the player's current map
-                  if (tabId === 'map' && currentRoom?.roomId) {
-                    const mapIdForCurrentRoom = getMapIdForRoom(currentRoom.roomId)
-                    setCurrentMapId(mapIdForCurrentRoom)
-                  }
-                  
-                  // Clear inventory filter when switching away from inventory tab
-                  if (tabId !== 'inventory') {
-                    setInventoryFilter(undefined)
-                    // Clear new items badge when leaving inventory tab
-                    setNewItemIds(new Set())
-                  }
-                }}
+                onTabChange={handleCenterTabChange}
                 containerClassName="flex-1 min-h-0"
                 contentClassName="flex-1 min-h-0 overflow-hidden"
               />
@@ -3468,6 +3470,13 @@ export default function GameInterface() {
         </div>
 
       </div>
+
+      <MobileBottomNav
+        tabs={centerTabs}
+        activeTab={centerActiveTab}
+        onTabChange={handleCenterTabChange}
+        fallbackLabels={{ settings: 'Settings' }}
+      />
     </div>
   )
 }
