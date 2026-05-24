@@ -1558,9 +1558,10 @@ export default function GameInterface() {
         updateRoomItems(currentRoomRef.current.roomId, normalizeRoomItems(payload.data.roomItems))
       }
 
-      if ((payload?.data?.stateNote !== undefined || payload?.data?.actionOverrides !== undefined) && currentRoomRef.current) {
+      if ((payload?.data?.stateNote !== undefined || payload?.data?.actionOverrides !== undefined || payload?.data?.roomPatch !== undefined) && currentRoomRef.current) {
         setCurrentRoom({
           ...currentRoomRef.current,
+          ...(payload.data.roomPatch && typeof payload.data.roomPatch === 'object' ? payload.data.roomPatch : {}),
           ...(payload.data.stateNote !== undefined && { stateNote: payload.data.stateNote }),
           ...(payload.data.actionOverrides !== undefined && { actionOverrides: payload.data.actionOverrides }),
         })

@@ -8,6 +8,11 @@ const {
 const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('./game-data/room-enemies.js')
 const { getEnemy } = require('./game-data/enemies.js')
 const { getRoomStateNote, getRoomActionOverrides, clearPlayerLevers } = require('./game-engine/lever-state.js')
+const {
+  getRoomStateNote: getSearchRevealStateNote,
+  getExitOverlay: getSearchRevealExitOverlay,
+  clearPlayerReveals,
+} = require('./game-engine/search-reveal-state.js')
 
 // Constants
 const ACTION_QUEUE_ERRORS = {
@@ -593,13 +598,17 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             : []
 
         // Use the room data which includes respawned items
+        const leverStateNote = getRoomStateNote(player.id, toRoom)
+        const searchRevealStateNote = getSearchRevealStateNote(player.id, toRoom)
+        const exitOverlay = getSearchRevealExitOverlay(player.id, toRoom)
         const normalizedRoomData = {
           ...destinationRoom,
+          ...(exitOverlay || {}),
           players: Array.isArray(destinationRoom.players) ? destinationRoom.players : [],
           items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
           npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
           enemies: destEnemies,
-          stateNote: getRoomStateNote(player.id, toRoom),
+          stateNote: leverStateNote || searchRevealStateNote || null,
           actionOverrides: getRoomActionOverrides(player.id, toRoom),
         }
         const toRoomName = destinationRoom.name
@@ -1070,6 +1079,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         }
         lastActivityPersistedAt.delete(player.id)
         clearPlayerLevers(player.id)
+        clearPlayerReveals(player.id)
 
         console.log(`Player ${player.username} disconnected`)
 

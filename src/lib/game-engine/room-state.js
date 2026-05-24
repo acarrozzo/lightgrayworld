@@ -8,6 +8,7 @@ const { prisma } = require('../db-client')
 const { executeStartBattle, executePlayerAttack, executePlayerFlee } = require('./battle-action-handlers')
 const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('../game-data/room-enemies')
 const { getEnemy } = require('../game-data/enemies')
+const { getRevealDefinition, markRevealed, clearRevealed } = require('./search-reveal-state')
 
 const SEARCH_LOOT_TABLES = {
   '003b': {
@@ -72,11 +73,17 @@ class RoomState {
   addPlayer(playerState) {
     if (!playerState?.id) return
     this.players.set(playerState.id, { ...playerState })
+    if (getRevealDefinition(this.roomId)) {
+      clearRevealed(playerState.id, this.roomId)
+    }
   }
 
   removePlayer(playerId) {
     this.players.delete(playerId)
     this.playerEnemyState.delete(playerId)
+    if (getRevealDefinition(this.roomId)) {
+      clearRevealed(playerId, this.roomId)
+    }
     const battle = this.activeBattles.get(playerId)
     if (battle) {
       battle.end()
@@ -443,6 +450,10 @@ class RoomState {
         const gate = gateResult.gate
         const message = gate.message || "You cannot pass through this way."
 
+        if (gate.silent) {
+          return this.createErrorResult('move', message)
+        }
+
         return {
           success: false,
           action: 'move',
@@ -606,6 +617,24 @@ class RoomState {
     }
 
     this.touchActivity()
+
+    const revealDef = getRevealDefinition(this.roomId)
+    if (revealDef) {
+      markRevealed(playerId, this.roomId)
+      return {
+        success: true,
+        action: 'search',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload('search', 'success', revealDef.successMessage, {
+              stateNote: revealDef.stateNote,
+              roomPatch: { [revealDef.direction]: revealDef.toRoom },
+            }),
+          },
+        ],
+      }
+    }
 
     const lootTable = SEARCH_LOOT_TABLES[this.roomId]
     if (!lootTable) {

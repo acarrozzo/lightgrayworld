@@ -187,6 +187,14 @@ const getBackgroundColorClasses = (color: string): { base: string; hover: string
   return colorMap[color] || { base: `bg-${color}/90`, hover: `hover:bg-${color}` }
 }
 
+// Per-room directions that should render as "no exit" on the compass even though
+// the underlying room data has a destination. The click still works — only the
+// visual treatment is suppressed. Useful for hidden back-doors.
+const HIDDEN_EXITS: Record<string, string[]> = {
+  '017': ['southeast'],
+  '019': ['northeast'],
+}
+
 const getDirectionColorClasses = (directionKey: string, directionColors: any, isAvailable: boolean): string => {
   if (!isAvailable) {
     return 'bg-gray-900/50 hover:bg-gray-900/70 border-gray-800/30 opacity-50'
@@ -333,7 +341,8 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
 
           {/* Direction buttons */}
           {directions.map((dir) => {
-            const isAvailable = !!room[dir.key]
+            const hiddenForRoom = HIDDEN_EXITS[room.roomId] ?? []
+            const isAvailable = !!room[dir.key] && !hiddenForRoom.includes(dir.key)
             const positionClasses = {
               'top-left': 'top-8.5 left-8.5',
               'top-center': 'top-1 left-1/2 transform -translate-x-1/2',
@@ -374,8 +383,9 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
         {/* Vertical directions (up/down) */}
         <div className="absolute left-2 top-1/2 transform -translate-y-1/2 flex flex-col gap-2">
           {verticalDirections.map((dir) => {
-            const isAvailable = !!room[dir.key]
-            
+            const hiddenForRoom = HIDDEN_EXITS[room.roomId] ?? []
+            const isAvailable = !!room[dir.key] && !hiddenForRoom.includes(dir.key)
+
             const isDisabled = isNavigating || isMoveInProgress
             const showSpinner = isMoveInProgress && isAvailable
             

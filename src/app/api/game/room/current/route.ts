@@ -176,11 +176,24 @@ export async function GET(request: NextRequest) {
       : []
 
     const { getRoomStateNote, getRoomActionOverrides } = require('@/lib/game-engine/lever-state')
-    const stateNote = user ? getRoomStateNote(user.id, roomId) : null
+    const {
+      getRoomStateNote: getSearchRevealStateNote,
+      getExitOverlay: getSearchRevealExitOverlay,
+    } = require('@/lib/game-engine/search-reveal-state')
+    const leverStateNote = user ? getRoomStateNote(user.id, roomId) : null
+    const searchRevealStateNote = user ? getSearchRevealStateNote(user.id, roomId) : null
+    const stateNote = leverStateNote || searchRevealStateNote || null
     const actionOverrides = user ? getRoomActionOverrides(user.id, roomId) : null
+    const exitOverlay = user ? getSearchRevealExitOverlay(user.id, roomId) : null
 
     const payload: Record<string, unknown> = {
-      room: { ...normalizedRoom, enemies: roomEnemies, stateNote, actionOverrides },
+      room: {
+        ...normalizedRoom,
+        ...(exitOverlay || {}),
+        enemies: roomEnemies,
+        stateNote,
+        actionOverrides,
+      },
     }
 
     if (user) {

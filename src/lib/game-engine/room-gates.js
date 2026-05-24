@@ -35,6 +35,14 @@ const ROOM_GATES = {
     },
   },
   '003': {
+    'west': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '003')
+      },
+      message: "You don't see an exit in that direction.",
+      silent: true,
+    },
     'down': {
       check: async (playerId) => {
         const flowerQuest = await prisma.questProgress.findUnique({
