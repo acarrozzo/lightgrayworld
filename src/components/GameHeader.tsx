@@ -36,12 +36,12 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
     <>
       <style>{`
         @keyframes xpFloat {
-          0%   { opacity: 1; transform: translateY(0px); }
+          0%   { opacity: 1;  transform: translateY(0px); }
           60%  { opacity: 1; transform: translateY(-6px); }
           100% { opacity: 0; transform: translateY(-12px); }
         }
       `}</style>
-      <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-1 shadow-sm">
+      <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-2.5 shadow-sm">
         <div className="flex w-full items-center justify-between">
 
           {/* Left side - Player stats */}
