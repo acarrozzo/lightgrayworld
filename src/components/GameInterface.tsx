@@ -26,7 +26,7 @@ import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 import { useNotificationStore } from '@/store/notificationStore'
 import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
-import NotificationContainer from './NotificationContainer'
+import ActivityTicker from './ActivityTicker'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
@@ -1502,23 +1502,13 @@ export default function GameInterface() {
           const equippedItem = updatedInventory.find((item: any) => item.id === pendingEquip.playerItemId && item.isEquipped)
           const itemName = equippedItem?.template.name || messageText.replace(/^Equipped\s+/i, '').replace(/\.$/, '') || 'item'
           
-          // Show toast with undo button
           const { addNotification } = useNotificationStore.getState()
           addNotification({
             message: `Equipped ${itemName}`,
             outcome: 'success',
             action: 'equip_item',
-            onUndo: () => {
-              // Undo: unequip the item
-              handleAction({
-                type: 'unequip_item',
-                data: { playerItemId: pendingEquip.playerItemId },
-              })
-              pendingEquipActionRef.current = null
-            },
           })
-          
-          // Clear pending equip action
+
           pendingEquipActionRef.current = null
         }
       }
@@ -3222,8 +3212,6 @@ export default function GameInterface() {
           }
         }}
       />
-      <NotificationContainer />
-      
       <GameHeader
         playerName={player?.username}
         level={player?.level}
@@ -3243,7 +3231,8 @@ export default function GameInterface() {
         isConnected={socket?.connected ?? false}
         onRefresh={() => window.location.reload()}
       />
-      
+      <ActivityTicker />
+
       <div className="flex flex-1 overflow-hidden relative min-h-0">
         {/* Overlay backdrop for mobile */}
         {(leftSidebarOpen || rightSidebarOpen) && (

@@ -62,8 +62,8 @@ export default function SettingsModal({
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <section className="mb-8">
-            <h3 className="text-lg font-semibold text-white">Notifications</h3>
-            <p className="text-sm text-gray-400">Control in-app notifications for room actions.</p>
+            <h3 className="text-lg font-semibold text-white">Activity Bar</h3>
+            <p className="text-sm text-gray-400">Show recent action results in a slim bar at the bottom of the screen.</p>
 
             <div className="mt-4 flex items-center gap-4">
               <label
@@ -94,12 +94,12 @@ export default function SettingsModal({
                   </div>
                 </div>
                 <span className="text-sm text-gray-200">
-                  {enabled ? 'Notifications enabled' : 'Notifications disabled'}
+                  {enabled ? 'Activity bar visible' : 'Activity bar hidden'}
                 </span>
               </label>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              When enabled, you'll receive toast notifications for actions like picking up items, dropping items, and interacting with room objects.
+              When enabled, recent actions (battles, quests, pickups, equip, messages) appear in a slim bar at the bottom of the screen. Click the bar to view recent history.
             </p>
           </section>
 
