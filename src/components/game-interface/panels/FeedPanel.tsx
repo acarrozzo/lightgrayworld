@@ -981,6 +981,7 @@ export default function FeedPanel({
         )}
       </div>
 
+      <div className="relative flex flex-col flex-1 min-h-0">
       <div ref={listRef} className={`worldFeedEntries flex-1 overflow-y-auto pb-6 bg-gray-950/80 ${
         filter === 'chat' && chatSubFilter === 'room-chat' ? 'px-3 pt-2' : 'px-2 pt-1'
       }`}>
@@ -1266,6 +1267,24 @@ export default function FeedPanel({
               </div>
             )
           })
+        )}
+      </div>
+
+        {!isNearBottom && isScrollable && (
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            aria-label="Jump to bottom"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-600/95 hover:bg-indigo-500 text-white text-xs font-medium shadow-lg shadow-black/40 border border-indigo-400/60 transition-colors"
+          >
+            <ChevronDown size={14} className="shrink-0" />
+            <span>Jump to bottom</span>
+            {unreadCount > 0 && (
+              <span className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-white text-indigo-700 text-[10px] font-bold tabular-nums">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
         )}
       </div>
 
