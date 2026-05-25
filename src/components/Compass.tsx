@@ -48,6 +48,9 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     '019': '-35px -560px',     // Sand Crab Nest
     '020': '-245px -245px',    // Healing Springs
     '021': '-455px -245px',    // Pajama Shaman
+    '026': '-350px -560px',    // Stone Path South (south of 002)
+    '027': '-350px -665px',    // Dwarf Guard - Gate to the Rocky Flats (south of 026)
+    '028': '-245px -665px',    // Bat Cave Entrance (southwest of 026, west of 027)
     '088': 'center',            // Solar Office
     '999': 'center',            // The Lobby
     // Grassy Field Underground rooms (coordinates relative to underground map image)
@@ -67,6 +70,16 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     '012f': '-560px -455px',    // Scorpion Hall (north of 012e)
     '012g': '-665px -350px',    // Scorpion Queen Nest (northeast of 012f)
     '012h': '-665px -245px',    // Scorpion Throne Room (north of 012g)
+    // Bat Cave underground (entry via 028.down = 028b)
+    // Row alignment: 028h shares row Y=-455 with 003bb/003b (cabin basements)
+    '028b': '-245px -665px',    // Bat Cave EXIT (col 3, bottom row)
+    '028c': '-350px -665px',    // Abandoned Workshop (col 4, bottom row)
+    '028d': '-245px -560px',    // Bat Cave hub (col 3, middle row; north of 028b)
+    '028e': '-140px -665px',    // Bat Nest (col 2, bottom row)
+    '028f': '-140px -560px',    // Salamander Cavern (col 2, middle row; north of 028e)
+    '028g': '-35px -560px',     // Goblin Tracks (col 1, middle row; west of 028f)
+    '028h': '-35px -455px',     // Goblin Dead End (col 1, same row as 003bb/003b)
+    '028i': '-35px -350px',     // Goblin Hideout (col 1, top; directly N of 028h)
   }
 
   return roomMapPositions[roomId || '000'] || '-350px -350px' // Default to center
@@ -288,7 +301,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
   const isLobby = room.roomId === '999'
   const isSolarOffice = room.roomId === '088'
   const scorpionDungeonRooms = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
-  const isUnderground = room.roomId?.startsWith('003b') || room.roomId?.startsWith('28') || scorpionDungeonRooms.includes(room.roomId)
+  const isUnderground = room.roomId?.startsWith('003b') || (room.roomId?.startsWith('028') && room.roomId !== '028') || scorpionDungeonRooms.includes(room.roomId)
   const mapBackground = isRoomZero
     ? '/img/lightgray_map_roomzero.jpg'
     : isLobby

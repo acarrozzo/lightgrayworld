@@ -683,7 +683,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
           // Unlock underground map on first entry to any underground room
           const scorpionDungeon = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
-          const isUndergroundRoom = toRoom.startsWith('003b') || toRoom.startsWith('28') || scorpionDungeon.includes(toRoom)
+          const isUndergroundRoom = toRoom.startsWith('003b') || (toRoom.startsWith('028') && toRoom !== '028') || scorpionDungeon.includes(toRoom)
           if (isUndergroundRoom && !player.grassyFieldUndergroundMap) {
             try {
               await prisma.user.update({
