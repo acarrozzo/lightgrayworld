@@ -620,6 +620,19 @@ class RoomState {
 
     const revealDef = getRevealDefinition(this.roomId)
     if (revealDef) {
+      const chance = revealDef.chance ?? 1
+      if (Math.random() >= chance) {
+        return {
+          success: true,
+          action: 'search',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: this.createFeedbackPayload('search', 'info', revealDef.failMessage),
+            },
+          ],
+        }
+      }
       markRevealed(playerId, this.roomId)
       return {
         success: true,

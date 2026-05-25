@@ -60,6 +60,9 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '019': [
     { action: 'teleport to grassy field', label: 'Teleport to Grassy Field', icon: 'world', className: 'bg-green-500/70 hover:bg-green-600' },
   ],
+  '028h': [
+    { action: 'search', label: 'Search', icon: 'eye', className: 'bg-yellow-500/70 hover:bg-yellow-400' },
+  ],
   '999': [
     { action: 'teleport to grassy field', label: 'Teleport to the Grassy Field', icon: 'world', className: 'bg-green-500/70  hover:bg-green-600' },
   ],

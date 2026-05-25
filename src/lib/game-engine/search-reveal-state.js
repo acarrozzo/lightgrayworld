@@ -32,6 +32,8 @@ function clearPlayerReveals(playerId) {
  * - toRoom: the destination of that direction
  * - successMessage: shown via action:feedback when the reveal fires
  * - stateNote: persistent hint text shown in the room while revealed
+ * - chance (optional): probability in [0,1] that a search reveals the exit; defaults to 1 (always reveals)
+ * - failMessage (optional): shown when a chance-based reveal misses; required if chance < 1
  */
 const REVEAL_DEFINITIONS = {
   '003': {
@@ -39,6 +41,14 @@ const REVEAL_DEFINITIONS = {
     toRoom: '003c',
     successMessage: 'You notice a draft beside the fireplace. Crouching down, you find a narrow opening behind the stones — a tunnel sloping upward into darkness.',
     stateNote: 'A tunnel opening is visible beside the fireplace.',
+  },
+  '028h': {
+    direction: 'north',
+    toRoom: '028i',
+    chance: 0.5,
+    successMessage: 'You run your hands along the slabs and feel a cold draft drifting through the bones. Behind a jagged stone you uncover a crawlspace — the goblins\' real path leads north.',
+    failMessage: 'You sift through the bones and scraps but find nothing of interest. The stone walls give up no secrets this time.',
+    stateNote: 'A crawlspace gapes open behind the northern slab.',
   },
 }
 

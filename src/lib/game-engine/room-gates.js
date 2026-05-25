@@ -110,6 +110,16 @@ const ROOM_GATES = {
       },
     },
   },
+  '028h': {
+    'north': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '028h')
+      },
+      message: "You don't see an exit in that direction.",
+      silent: true,
+    },
+  },
   '012f': {
     'northeast': {
       check: async (playerId) => {
