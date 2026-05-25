@@ -189,7 +189,7 @@ async function main() {
       southwest: '019',
       hasFire: false,
       hasCraftingTable: false,
-      directionColors: { east: 'sand', northwest: 'sand', southwest: 'sand' }
+      directionColors: { east: 'grass', northwest: 'sand', southwest: 'sand' }
     },
     {
       roomId: '004',

@@ -135,10 +135,10 @@
     "number": 5,
     "questType": "main",
     "level": 1,
-    "title": "Prove Your Strength",
-    "summary": "The Young Soldier wants to see that you can handle yourself in a real fight.",
+    "title": "Crab Cleanup",
+    "summary": "The Young Soldier says Sand Crabs have been swarming the Rocky Beach and need to be thinned out.",
     "objective": "Defeat 2 Sand Crabs at the Rocky Beach.",
-    "nextStep": "Head to the Rocky Beach and defeat 2 Sand Crabs, then return to Robert.",
+    "nextStep": "Head to the Rocky Beach, clean up 2 Sand Crabs, then return to Robert.",
     "giver": {
       "npcId": "young_soldier",
       "roomId": "007",
