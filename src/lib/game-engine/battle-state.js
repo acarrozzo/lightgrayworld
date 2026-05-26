@@ -1,5 +1,5 @@
 class BattleState {
-  constructor({ playerId, roomId, enemy, playerStats }) {
+  constructor({ playerId, roomId, enemy, playerStats, equippedWeaponCategory = null }) {
     this.playerId = playerId
     this.roomId = roomId
     this.enemySlug = enemy.slug
@@ -9,7 +9,10 @@ class BattleState {
     this.enemy = enemy
 
     this.baseStr = Math.max(1, (playerStats.str || 0) + (playerStats.strMod || 0))
+    this.baseDex = Math.max(1, (playerStats.dex || 0) + (playerStats.dexMod || 0))
+    this.baseMag = Math.max(1, (playerStats.mag || 0) + (playerStats.magMod || 0))
     this.baseDef = Math.max(1, (playerStats.def || 0) + (playerStats.defMod || 0))
+    this.equippedWeaponCategory = equippedWeaponCategory || 'MELEE'
 
     this.turnCount = 0
     this.canFlee = false
@@ -23,9 +26,14 @@ class BattleState {
     this.lastTurnResult = null
   }
 
-  updateStats(playerStats) {
+  updateStats(playerStats, equippedWeaponCategory) {
     this.baseStr = Math.max(1, (playerStats.str || 0) + (playerStats.strMod || 0))
+    this.baseDex = Math.max(1, (playerStats.dex || 0) + (playerStats.dexMod || 0))
+    this.baseMag = Math.max(1, (playerStats.mag || 0) + (playerStats.magMod || 0))
     this.baseDef = Math.max(1, (playerStats.def || 0) + (playerStats.defMod || 0))
+    if (equippedWeaponCategory !== undefined) {
+      this.equippedWeaponCategory = equippedWeaponCategory || 'MELEE'
+    }
   }
 
   incrementTurn() {

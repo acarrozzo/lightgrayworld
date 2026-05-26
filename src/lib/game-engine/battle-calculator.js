@@ -11,35 +11,94 @@ function getOtherCombatantCount(roomState, excludePlayerId) {
   return count
 }
 
-function resolveTurn(battleState, otherCombatants) {
+function pickPlayerOffensiveStat(battleState) {
+  const cat = battleState.equippedWeaponCategory || 'MELEE'
+  return cat === 'RANGED' ? battleState.baseDex : battleState.baseStr
+}
+
+function pickPlayerDefensiveStat(battleState, enemy) {
+  const enemyDmgType = enemy.damageType || 'MELEE'
+  if (enemyDmgType === 'RANGED') return battleState.baseDex
+  if (enemyDmgType === 'MAGIC') return battleState.baseMag
+  return battleState.baseDef
+}
+
+function resolvePlayerAttack(battleState, otherCombatants) {
   const bonus = 1 + otherCombatants * 0.1
-  const effectiveStr = Math.max(1, Math.floor(battleState.baseStr * bonus))
-  const effectiveDef = Math.max(1, Math.floor(battleState.baseDef * bonus))
   const enemy = battleState.enemy
+  const weaponCat = battleState.equippedWeaponCategory || 'MELEE'
+  const offStat = pickPlayerOffensiveStat(battleState)
+  const effectiveOff = Math.max(1, Math.floor(offStat * bonus))
 
-  // Player attacks enemy
-  const playerRaw = rand(Math.floor(effectiveStr * 0.5), effectiveStr)
+  if (enemy.isFlying && weaponCat === 'MELEE') {
+    return {
+      playerRaw: 0,
+      enemyBlock: 0,
+      playerFinal: 0,
+      effectiveOff,
+      weaponCategory: weaponCat,
+      missedFlyingMelee: true,
+    }
+  }
+
+  const playerRaw = rand(Math.floor(effectiveOff * 0.5), effectiveOff)
   const enemyBlock = rand(Math.floor(enemy.def * 0.5), enemy.def)
-  const playerFinal = Math.max(1, playerRaw - enemyBlock)
-
-  // Enemy attacks player
-  const enemyRaw = rand(Math.floor(enemy.att * 0.5), enemy.att)
-  const playerBlock = rand(Math.floor(effectiveDef * 0.5), effectiveDef)
-  const enemyFinal = Math.max(0, enemyRaw - playerBlock)
-
   return {
-    playerDealtDamage: playerFinal,
-    enemyDealtDamage: enemyFinal,
     playerRaw,
-    enemyRaw,
-    enemyBlocked: enemyBlock,
-    playerBlocked: playerBlock,
-    playerStrMax: effectiveStr,
-    playerDefMax: effectiveDef,
-    enemyStrMax: enemy.att,
-    multiplayerBonus: otherCombatants > 0,
-    bonusPercent: otherCombatants * 10,
+    enemyBlock,
+    playerFinal: Math.max(1, playerRaw - enemyBlock),
+    effectiveOff,
+    weaponCategory: weaponCat,
+    missedFlyingMelee: false,
   }
 }
 
-module.exports = { rand, resolveTurn, getOtherCombatantCount }
+function resolveEnemyAttack(battleState, otherCombatants) {
+  const bonus = 1 + otherCombatants * 0.1
+  const enemy = battleState.enemy
+  const enemyDmgType = enemy.damageType || 'MELEE'
+  const defStat = pickPlayerDefensiveStat(battleState, enemy)
+  const effectiveDef = Math.max(1, Math.floor(defStat * bonus))
+
+  const enemyRaw = rand(Math.floor(enemy.att * 0.5), enemy.att)
+  const playerBlock = rand(Math.floor(effectiveDef * 0.5), effectiveDef)
+  return {
+    enemyRaw,
+    playerBlock,
+    enemyFinal: Math.max(0, enemyRaw - playerBlock),
+    effectiveDef,
+    enemyDamageType: enemyDmgType,
+  }
+}
+
+function resolveTurn(battleState, otherCombatants) {
+  const player = resolvePlayerAttack(battleState, otherCombatants)
+  const enemyAtk = resolveEnemyAttack(battleState, otherCombatants)
+
+  return {
+    playerDealtDamage: player.playerFinal,
+    enemyDealtDamage: enemyAtk.enemyFinal,
+    playerRaw: player.playerRaw,
+    enemyRaw: enemyAtk.enemyRaw,
+    enemyBlocked: player.enemyBlock,
+    playerBlocked: enemyAtk.playerBlock,
+    playerStrMax: player.effectiveOff,
+    playerDefMax: enemyAtk.effectiveDef,
+    enemyStrMax: battleState.enemy.att,
+    multiplayerBonus: otherCombatants > 0,
+    bonusPercent: otherCombatants * 10,
+    missedFlyingMelee: player.missedFlyingMelee,
+    weaponCategory: player.weaponCategory,
+    enemyDamageType: enemyAtk.enemyDamageType,
+  }
+}
+
+module.exports = {
+  rand,
+  resolveTurn,
+  resolvePlayerAttack,
+  resolveEnemyAttack,
+  pickPlayerOffensiveStat,
+  pickPlayerDefensiveStat,
+  getOtherCombatantCount,
+}

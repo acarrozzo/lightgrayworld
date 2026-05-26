@@ -2181,6 +2181,9 @@ export default function GameInterface() {
           enemyBlocked: payload.enemyBlocked,
           multiplayerBonus: payload.multiplayerBonus,
           bonusPercent: payload.bonusPercent,
+          missedFlyingMelee: payload.missedFlyingMelee,
+          weaponCategory: payload.weaponCategory,
+          enemyDamageType: payload.enemyDamageType,
         })
       }
       appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-turn' })
@@ -2933,6 +2936,7 @@ export default function GameInterface() {
                     playerMpMax={player.mpMax}
                     weaponIconName={weaponIconName}
                     weaponName={weaponName}
+                    weaponCategory={(equippedWeapon?.template.weaponCategory as 'MELEE' | 'RANGED' | null | undefined) ?? null}
                     inventory={inventory}
                   />
                 </div>

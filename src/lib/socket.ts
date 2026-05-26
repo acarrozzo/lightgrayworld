@@ -56,6 +56,9 @@ export interface BattleTurnPayload extends BattleSnapshot {
   enemyStrMax: number
   multiplayerBonus: boolean
   bonusPercent: number
+  missedFlyingMelee?: boolean
+  weaponCategory?: 'MELEE' | 'RANGED' | null
+  enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
   message: string
 }
 
@@ -71,6 +74,9 @@ export interface BattleLastTurn {
   enemyStrMax: number
   multiplayerBonus: boolean
   bonusPercent: number
+  missedFlyingMelee?: boolean
+  weaponCategory?: 'MELEE' | 'RANGED' | null
+  enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
 }
 
 export interface BattleSummary {

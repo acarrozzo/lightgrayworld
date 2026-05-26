@@ -99,6 +99,9 @@ export interface BattleState {
   enemyBlocked: number | null
   multiplayerBonus: boolean
   bonusPercent: number
+  missedFlyingMelee: boolean
+  weaponCategory: 'MELEE' | 'RANGED' | null
+  enemyDamageType: 'MELEE' | 'RANGED' | 'MAGIC' | null
 }
 
 const INITIAL_BATTLE_STATE: BattleState = {
@@ -127,6 +130,9 @@ const INITIAL_BATTLE_STATE: BattleState = {
   enemyBlocked: null,
   multiplayerBonus: false,
   bonusPercent: 0,
+  missedFlyingMelee: false,
+  weaponCategory: null,
+  enemyDamageType: null,
 }
 
 export interface BattleLastTurn {
@@ -141,6 +147,9 @@ export interface BattleLastTurn {
   enemyStrMax: number
   multiplayerBonus: boolean
   bonusPercent: number
+  missedFlyingMelee?: boolean
+  weaponCategory?: 'MELEE' | 'RANGED' | null
+  enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
 }
 
 export interface BattleResult {
@@ -212,7 +221,7 @@ export interface GameState {
   getCapCache: (roomId: string, actionKey: string) => CapCacheEntry | null
   clearCapCache: (roomId?: string) => void
   setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
-  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number }) => void
+  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null }) => void
   clearBattle: () => void
   setBattleResult: (result: BattleResult) => void
   clearBattleResult: () => void
@@ -400,6 +409,9 @@ export const useGameStore = create<GameState>()(
             enemyBlocked: payload.enemyBlocked,
             multiplayerBonus: payload.multiplayerBonus,
             bonusPercent: payload.bonusPercent,
+            missedFlyingMelee: payload.missedFlyingMelee ?? false,
+            weaponCategory: payload.weaponCategory ?? null,
+            enemyDamageType: payload.enemyDamageType ?? null,
           },
           player: state.player ? { ...state.player, hp: payload.playerHp } : state.player,
         })),

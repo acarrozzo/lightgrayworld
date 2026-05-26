@@ -21,6 +21,7 @@ interface BattlePanelProps {
   playerMpMax: number
   weaponIconName: string | null
   weaponName: string | null
+  weaponCategory: 'MELEE' | 'RANGED' | null
   inventory: InventoryItem[]
 }
 
@@ -110,13 +111,14 @@ function EnemyIcon({ iconName, isDead }: { iconName: string; isDead: boolean }) 
   )
 }
 
-function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean; isPlayerAttacking: boolean }) {
+function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking, isRanged = false }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean; isPlayerAttacking: boolean; isRanged?: boolean }) {
+  const playerArrowColor = isRanged ? 'text-green-800/60' : 'text-red-800/60'
   return (
     <div className="flex-shrink-0 flex items-center gap-1">
       {isPlayerAttacking && (
         <>
           <Icon name={weaponIconName ?? 'equipment-fists'} size={76} className="text-white opacity-75" />
-          <Icon name="attack" size={28} className="text-red-800/60" />
+          <Icon name="attack" size={28} className={playerArrowColor} />
         </>
       )}
       {!enemyIsDead && (
@@ -135,6 +137,7 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
   const isWin = result.outcome === 'WIN'
   const lt = result.lastTurn
   const wasAdvantageTurn = lt?.playerRaw === null
+  const lastBlowRanged = lt?.weaponCategory === 'RANGED'
 
   if (isWin) {
     return (
@@ -169,13 +172,18 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
                 <p className="text-xs text-gray-500 italic">Ambush entry</p>
               ) : (
                 <>
-                  <p className="text-xs text-gray-500">Final blow with <span className="text-red-300 font-semibold">{weaponName ?? 'fists'}</span></p>
-                  <p className="text-2xl font-black text-red-400 leading-tight" style={{ textShadow: '0 0 10px #ef444460' }}>{lt.playerDealtDamage}</p>
+                  <p className="text-xs text-gray-500">Final blow with <span className={`font-semibold ${lastBlowRanged ? 'text-green-300' : 'text-red-300'}`}>{weaponName ?? 'fists'}</span></p>
+                  <p
+                    className={`text-2xl font-black leading-tight ${lastBlowRanged ? 'text-green-400' : 'text-red-400'}`}
+                    style={{ textShadow: lastBlowRanged ? '0 0 10px #22c55e60' : '0 0 10px #ef444460' }}
+                  >
+                    {lt.playerDealtDamage}
+                  </p>
                   <p className="text-[10px] text-gray-600">{lt.playerRaw} − {lt.enemyBlocked} = {lt.playerDealtDamage}</p>
                 </>
               )}
             </div>
-            <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={true} isPlayerAttacking={!wasAdvantageTurn} />
+            <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={true} isPlayerAttacking={!wasAdvantageTurn} isRanged={lastBlowRanged} />
             <div className="flex-1 flex flex-col items-end min-w-0">
               <p className="text-xs font-bold text-red-500 text-right">{result.enemyName}</p>
               <p className="text-xs text-gray-600 text-right">defeated</p>
@@ -250,11 +258,11 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
             ) : (
               <>
                 <p className="text-xs text-gray-500">Your strike</p>
-                <p className="text-xl font-black text-red-400 leading-tight">{lt.playerDealtDamage}</p>
+                <p className={`text-xl font-black leading-tight ${lastBlowRanged ? 'text-green-400' : 'text-red-400'}`}>{lt.playerDealtDamage}</p>
               </>
             )}
           </div>
-          <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={false} isPlayerAttacking={!wasAdvantageTurn} />
+          <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={false} isPlayerAttacking={!wasAdvantageTurn} isRanged={lastBlowRanged} />
           <div className="flex-1 flex flex-col items-end min-w-0">
             <p className="text-xs text-gray-400 text-right"><span className="text-yellow-300 font-semibold">{result.enemyName}</span> hit</p>
             <p className="text-xl font-black text-yellow-400 leading-tight text-right">{lt.enemyDealtDamage}</p>
@@ -312,11 +320,13 @@ export default function BattlePanel({
   playerMpMax,
   weaponIconName,
   weaponName,
+  weaponCategory,
   inventory,
 }: BattlePanelProps) {
   const [activeTab, setActiveTab] = useState<BattleTab>('actions')
   const [lastUsedItemName, setLastUsedItemName] = useState<string | null>(null)
 
+  const isRanged = weaponCategory === 'RANGED'
   const hasPlayerFormula = battle.playerRaw !== null
 
   useEffect(() => {
@@ -376,8 +386,8 @@ export default function BattlePanel({
           </div>
           <div className="flex items-center gap-3 pt-0.5">
             <div className="flex flex-col items-center">
-              <span className="text-[9px] text-gray-600 uppercase tracking-widest leading-none">STR</span>
-              <span className="text-sm font-black text-yellow-400 leading-none">{battle.playerStrMax ?? '—'}</span>
+              <span className={`text-[9px] uppercase tracking-widest leading-none ${isRanged ? 'text-green-600' : 'text-red-700'}`}>{isRanged ? 'DEX' : 'STR'}</span>
+              <span className={`text-sm font-black leading-none ${isRanged ? 'text-green-400' : 'text-red-400'}`}>{battle.playerStrMax ?? '—'}</span>
             </div>
             <div className="w-px h-6 bg-gray-700/60" />
             <div className="flex flex-col items-center">
@@ -436,16 +446,29 @@ export default function BattlePanel({
 
         {/* Player side */}
         <div className="flex-1 flex flex-col gap-1 min-w-0">
-          {hasPlayerFormula ? (
+          {battle.missedFlyingMelee ? (
+            <>
+              <p className="text-[10px] text-gray-600 italic">Out of reach</p>
+              <p className="text-xs text-gray-400">
+                Your <span className={`font-semibold ${isRanged ? 'text-green-300' : 'text-red-300'}`}>{weaponName ?? 'fists'}</span> swing through empty air — the {battle.enemyName} is airborne!
+              </p>
+              <p className="text-2xl font-black text-gray-500 leading-none tabular-nums italic">
+                MISS
+              </p>
+            </>
+          ) : hasPlayerFormula ? (
             <>
               <p className="text-[10px] text-gray-600 tabular-nums">
                 {battle.playerRaw} &minus; {battle.enemyBlocked} = {battle.lastPlayerDamage ?? 0}
                 <span className="ml-1">(max {battle.playerStrMax})</span>
               </p>
               <p className="text-xs text-gray-400">
-                You attack with your <span className="text-red-300 font-semibold">{weaponName ?? 'fists'}</span>
+                You attack with your <span className={`font-semibold ${isRanged ? 'text-green-300' : 'text-red-300'}`}>{weaponName ?? 'fists'}</span>
               </p>
-              <p className="text-4xl font-black text-red-400 leading-none tabular-nums" style={{ textShadow: '0 0 16px #ef444460' }}>
+              <p
+                className={`text-4xl font-black leading-none tabular-nums ${isRanged ? 'text-green-400' : 'text-red-400'}`}
+                style={{ textShadow: isRanged ? '0 0 16px #22c55e60' : '0 0 16px #ef444460' }}
+              >
                 {battle.lastPlayerDamage ?? 0}
               </p>
             </>
@@ -460,7 +483,7 @@ export default function BattlePanel({
           )}
         </div>
 
-        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} isPlayerAttacking={hasPlayerFormula} />
+        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} isPlayerAttacking={hasPlayerFormula} isRanged={isRanged} />
 
         {/* Enemy side */}
         <div className="flex-1 flex flex-col items-end gap-1 min-w-0">
@@ -496,12 +519,18 @@ export default function BattlePanel({
         {/* Tab bar */}
         <div className="flex px-3 pt-2.5">
           {(['actions', 'spells', 'items'] as BattleTab[]).map((tab) => {
+            const actionsActive = isRanged
+              ? 'border-green-500 text-green-300 hover:border-green-500 hover:text-green-300'
+              : 'border-red-500 text-red-300 hover:border-red-500 hover:text-red-300'
+            const actionsHover = isRanged
+              ? 'hover:border-green-500/50 hover:text-green-300/70'
+              : 'hover:border-red-500/50 hover:text-red-300/70'
             const activeColor =
-              tab === 'actions' ? 'border-red-500 text-red-300 hover:border-red-500 hover:text-red-300' :
+              tab === 'actions' ? actionsActive :
               tab === 'spells'  ? 'border-blue-500 text-blue-300 hover:border-blue-500 hover:text-blue-300' :
                                   'border-yellow-500 text-yellow-300 hover:border-yellow-500 hover:text-yellow-300'
             const hoverColor =
-              tab === 'actions' ? 'hover:border-red-500/50 hover:text-red-300/70' :
+              tab === 'actions' ? actionsHover :
               tab === 'spells'  ? 'hover:border-blue-500/50 hover:text-blue-300/70' :
                                   'hover:border-yellow-500/50 hover:text-yellow-300/70'
             return (
@@ -528,7 +557,7 @@ export default function BattlePanel({
               <button
                 onClick={onAttack}
                 disabled={isActing}
-                className="flex-1 py-2 bg-red-700/80 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold transition-all duration-150"
+                className={`flex-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold transition-all duration-150 ${isRanged ? 'bg-green-700/80 hover:bg-green-600' : 'bg-red-700/80 hover:bg-red-600'}`}
               >
                 {isActing ? '...' : 'Attack'}
               </button>

@@ -1,6 +1,6 @@
 const { prisma } = require('../db-client')
 const { BattleState } = require('./battle-state')
-const { rand, resolveTurn, getOtherCombatantCount } = require('./battle-calculator')
+const { resolveTurn, resolveEnemyAttack, getOtherCombatantCount } = require('./battle-calculator')
 const { calcBattleWinRewards, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
 const { isProbabilistic } = require('../game-data/room-enemies')
@@ -42,6 +42,15 @@ async function fetchPlayerStats(playerId) {
   })
 }
 
+// Fetch the equipped MAIN_HAND weapon category. Returns 'MELEE' | 'RANGED' | null (null = unarmed).
+async function fetchEquippedWeaponCategory(playerId) {
+  const item = await prisma.playerItem.findFirst({
+    where: { playerId, isEquipped: true, slot: 'MAIN_HAND' },
+    select: { ItemTemplate: { select: { weaponCategory: true } } },
+  })
+  return item?.ItemTemplate?.weaponCategory || null
+}
+
 // ─── start_battle ───────────────────────────────────────────────────────────
 
 async function executeStartBattle(action, playerId, roomState) {
@@ -76,7 +85,8 @@ async function executeStartBattle(action, playerId, roomState) {
   // Bug fix #5: prevent dead players from initiating combat
   if (playerStats.hp <= 0) return errorResult('start_battle', 'You cannot fight while dead.')
 
-  const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats })
+  const equippedWeaponCategory = await fetchEquippedWeaponCategory(playerId)
+  const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats, equippedWeaponCategory })
   roomState.activeBattles.set(playerId, battleState)
 
   await prisma.user.update({ where: { id: playerId }, data: { inFight: true } })
@@ -85,30 +95,28 @@ async function executeStartBattle(action, playerId, roomState) {
   // ─── Resolve first turn immediately ──────────────────────────────────────
   const isAdvantageTurn = enemy.isAggressive && isAutoInitiated
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
-  const bonus = 1 + otherCombatants * 0.1
-  const effectiveStr = Math.max(1, Math.floor(battleState.baseStr * bonus))
-  const effectiveDef = Math.max(1, Math.floor(battleState.baseDef * bonus))
 
   let firstTurn
   if (isAdvantageTurn) {
     // Enemy gets a free hit — player was entering the room, no counter-attack
-    const enemyRaw = rand(Math.floor(enemy.att * 0.5), enemy.att)
-    const playerBlock = rand(Math.floor(effectiveDef * 0.5), effectiveDef)
-    const enemyFinal = Math.max(0, enemyRaw - playerBlock)
+    const enemyAtk = resolveEnemyAttack(battleState, otherCombatants)
     firstTurn = {
       playerDealtDamage: 0,
-      enemyDealtDamage: enemyFinal,
+      enemyDealtDamage: enemyAtk.enemyFinal,
       playerRaw: null,
-      enemyRaw,
+      enemyRaw: enemyAtk.enemyRaw,
       enemyBlocked: 0,
-      playerBlocked: playerBlock,
-      playerStrMax: effectiveStr,
-      playerDefMax: effectiveDef,
+      playerBlocked: enemyAtk.playerBlock,
+      playerStrMax: Math.max(1, Math.floor(battleState.baseStr * (1 + otherCombatants * 0.1))),
+      playerDefMax: enemyAtk.effectiveDef,
       enemyStrMax: enemy.att,
       multiplayerBonus: otherCombatants > 0,
       bonusPercent: otherCombatants * 10,
+      missedFlyingMelee: false,
+      weaponCategory: battleState.equippedWeaponCategory,
+      enemyDamageType: enemyAtk.enemyDamageType,
     }
-    battleState.recordTurn(0, enemyFinal, otherCombatants > 0, firstTurn)
+    battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, firstTurn)
   } else {
     // Player-initiated — normal full turn
     firstTurn = resolveTurn(battleState, otherCombatants)
@@ -146,9 +154,14 @@ async function executeStartBattle(action, playerId, roomState) {
     playerDef: battleState.baseDef,
   }
 
-  const attackDesc = isAdvantageTurn
-    ? `You enter the area and the ${enemy.name} immediately attacks!`
-    : `You strike the ${enemy.name} for ${firstTurn.playerDealtDamage} damage.`
+  let attackDesc
+  if (isAdvantageTurn) {
+    attackDesc = `You enter the area and the ${enemy.name} immediately attacks!`
+  } else if (firstTurn.missedFlyingMelee) {
+    attackDesc = `Your swing passes through empty air — the ${enemy.name} is out of reach!`
+  } else {
+    attackDesc = `You strike the ${enemy.name} for ${firstTurn.playerDealtDamage} damage.`
+  }
   const defenseDesc = firstTurn.enemyDealtDamage === 0
     ? `The ${enemy.name} attacks but you block it!`
     : `The ${enemy.name} hits you for ${firstTurn.enemyDealtDamage} damage.`
@@ -168,6 +181,9 @@ async function executeStartBattle(action, playerId, roomState) {
     enemyStrMax: firstTurn.enemyStrMax,
     multiplayerBonus: firstTurn.multiplayerBonus,
     bonusPercent: firstTurn.bonusPercent,
+    missedFlyingMelee: firstTurn.missedFlyingMelee,
+    weaponCategory: firstTurn.weaponCategory,
+    enemyDamageType: firstTurn.enemyDamageType,
     message: [attackDesc, defenseDesc].join(' '),
   }
 
@@ -287,9 +303,12 @@ async function executePlayerAttack(action, playerId, roomState) {
     return errorResult('player_attack', 'You are not in a battle.')
   }
 
-  const liveStats = await fetchPlayerStats(playerId)
+  const [liveStats, liveWeaponCategory] = await Promise.all([
+    fetchPlayerStats(playerId),
+    fetchEquippedWeaponCategory(playerId),
+  ])
   if (!liveStats) return errorResult('player_attack', 'Could not load your stats.')
-  battleState.updateStats(liveStats)
+  battleState.updateStats(liveStats, liveWeaponCategory)
 
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
   const turnResult = resolveTurn(battleState, otherCombatants)
@@ -433,8 +452,13 @@ async function executePlayerAttack(action, playerId, roomState) {
   // Fight continues
   const snapshot = battleState.getSnapshot()
   const parts = []
-  parts.push(`You strike the ${battleState.enemyName} for ${turnResult.playerDealtDamage} damage.`)
-  if (turnResult.multiplayerBonus) parts[0] += ` (+${turnResult.bonusPercent}% group bonus)`
+  if (turnResult.missedFlyingMelee) {
+    parts.push(`Your swing passes through empty air — the ${battleState.enemyName} is out of reach!`)
+  } else {
+    let strikeMsg = `You strike the ${battleState.enemyName} for ${turnResult.playerDealtDamage} damage.`
+    if (turnResult.multiplayerBonus) strikeMsg += ` (+${turnResult.bonusPercent}% group bonus)`
+    parts.push(strikeMsg)
+  }
   if (turnResult.enemyDealtDamage === 0) {
     parts.push(`The ${battleState.enemyName} attacks but you block it!`)
   } else {
@@ -462,6 +486,9 @@ async function executePlayerAttack(action, playerId, roomState) {
           enemyStrMax: turnResult.enemyStrMax,
           multiplayerBonus: turnResult.multiplayerBonus,
           bonusPercent: turnResult.bonusPercent,
+          missedFlyingMelee: turnResult.missedFlyingMelee,
+          weaponCategory: turnResult.weaponCategory,
+          enemyDamageType: turnResult.enemyDamageType,
           message: parts.join(' '),
         },
       },
