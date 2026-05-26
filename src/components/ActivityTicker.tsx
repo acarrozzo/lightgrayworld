@@ -14,6 +14,30 @@ const entryAccent = (entry: WorldFeedEntry) => {
   return 'bg-blue-400'
 }
 
+const renderEntry = (entry: WorldFeedEntry): React.ReactNode => {
+  if (!entry.actor) return entry.message
+  if (entry.type === 'dm') return entry.message
+  if (entry.eventType) return entry.message
+
+  const speaker = entry.isSelf ? `${entry.actor} (you)` : entry.actor
+
+  if (entry.type === 'world') {
+    return (
+      <>
+        {speaker} shouts: <span className="text-emerald-400">{entry.message}</span>
+      </>
+    )
+  }
+  if (entry.type === 'room') {
+    return (
+      <>
+        {speaker} says: <span className="text-purple-400">{entry.message}</span>
+      </>
+    )
+  }
+  return entry.message
+}
+
 const formatRelative = (ts: number, now: number) => {
   const diff = Math.max(0, now - ts)
   if (diff < 5_000) return 'now'
@@ -113,7 +137,7 @@ export default function ActivityTicker() {
               key={displayedId ?? 'empty'}
               className={`min-w-0 truncate text-xs animate-[tickerFadeIn_0.25s_ease-out] ${isIdle ? 'text-gray-500' : 'text-gray-200'}`}
             >
-              {latest.message}
+              {renderEntry(latest)}
             </span>
             <span className="flex-shrink-0 text-[10px] text-gray-500 tabular-nums">
               {formatRelative(latest.ts, now)}
@@ -144,7 +168,7 @@ export default function ActivityTicker() {
                     className={`flex-shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${entryAccent(entry)}`}
                     aria-hidden="true"
                   />
-                  <span className="flex-1 min-w-0 whitespace-normal break-words">{entry.message}</span>
+                  <span className="flex-1 min-w-0 whitespace-normal break-words">{renderEntry(entry)}</span>
                   <span className="flex-shrink-0 mt-0.5 text-[10px] text-gray-500 tabular-nums">
                     {formatRelative(entry.ts, now)}
                   </span>
