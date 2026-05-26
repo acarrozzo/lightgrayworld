@@ -426,6 +426,7 @@ export default function UnifiedFeedPanel({
   const [unreadCount, setUnreadCount] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const prevIsOpenRef = useRef(isOpen)
+  const pinToBottomUntilRef = useRef(0)
   const [settings, setSettings] = useState<WorldFeedSettings>(() => createDefaultSettings())
   const [settingsHydrated, setSettingsHydrated] = useState(false)
   const settingsKey = useMemo(() => getSettingsKey(userId), [userId])
@@ -700,7 +701,7 @@ export default function UnifiedFeedPanel({
     return () => container.removeEventListener('scroll', handleScroll)
   }, [handleScroll])
 
-  // Auto-scroll when new entries arrive if user is near bottom
+  // Auto-scroll when new entries arrive if user is near bottom (or pin window is active)
   const prevLengthRef = useRef(entries.length)
   useEffect(() => {
     const container = listRef.current
@@ -709,7 +710,8 @@ export default function UnifiedFeedPanel({
     if (!container) return
 
     if (entries.length > prevLength) {
-      if (isNearBottom) {
+      const isPinning = Date.now() < pinToBottomUntilRef.current
+      if (isNearBottom || isPinning) {
         scrollToBottom()
       } else {
         // Get new entries
@@ -769,6 +771,14 @@ export default function UnifiedFeedPanel({
   const handleLoadMore = () => {
     if (!canLoadMore) return
     setVisibleCount((prev) => prev + LOAD_MORE_STEP)
+  }
+
+  const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
+    pinToBottomUntilRef.current = Date.now() + 1500
+    onCustomActionSubmit(e, inputMode)
+    // Pin immediately so the submit feels anchored, and pin again as follow-up
+    // entries arrive (handled in the entries-length effect).
+    requestAnimationFrame(scrollToBottom)
   }
 
 
@@ -1367,7 +1377,7 @@ export default function UnifiedFeedPanel({
           })}
         </div>
 
-        <form onSubmit={(e) => onCustomActionSubmit(e, inputMode)} className="flex flex-col gap-2 w-full">
+        <form onSubmit={handleFormSubmit} className="flex flex-col gap-2 w-full">
           <div className="flex gap-2 w-full">
             <input
               ref={customActionInputRef ?? undefined}

@@ -24,8 +24,8 @@ import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
-import { useNotificationStore } from '@/store/notificationStore'
 import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
+import { useTickerStore } from '@/store/tickerStore'
 import ActivityTicker from './ActivityTicker'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
@@ -924,7 +924,7 @@ export default function GameInterface() {
   }, [player?.id])
 
   useEffect(() => {
-    const { setUser } = useNotificationStore.getState()
+    const { setUser } = useTickerStore.getState()
     setUser(player?.id ?? null)
   }, [player?.id])
 
@@ -1279,6 +1279,8 @@ export default function GameInterface() {
       type: 'dm',
       message: `DM ${direction} ${username}: ${snippet}`,
       ts: Date.now(),
+      direction,
+      actor: username,
     })
   }, [appendWorldFeed])
 
@@ -1492,23 +1494,10 @@ export default function GameInterface() {
       if (payload?.action === 'equip_item' && success) {
         const pendingEquip = pendingEquipActionRef.current
         if (pendingEquip) {
-          // Update inventory first so we can find the item
+          // Update inventory so the UI reflects the new equipped state
           if (payload?.data?.inventory) {
             setInventory(payload.data.inventory)
           }
-          
-          // Find the item in the updated inventory to get its name
-          const updatedInventory = payload?.data?.inventory || inventory
-          const equippedItem = updatedInventory.find((item: any) => item.id === pendingEquip.playerItemId && item.isEquipped)
-          const itemName = equippedItem?.template.name || messageText.replace(/^Equipped\s+/i, '').replace(/\.$/, '') || 'item'
-          
-          const { addNotification } = useNotificationStore.getState()
-          addNotification({
-            message: `Equipped ${itemName}`,
-            outcome: 'success',
-            action: 'equip_item',
-          })
-
           pendingEquipActionRef.current = null
         }
       }
@@ -1676,17 +1665,27 @@ export default function GameInterface() {
         }
       }
 
-      const isMoveAction = payload?.action === 'move'
+      const action = payload?.action
+      const isMoveAction = action === 'move'
       const travelDirection = isMoveAction && payload?.data?.direction ? payload.data.direction : undefined
-      
+
+      let eventType: string | undefined
+      if (isMoveAction) eventType = 'room-travel'
+      else if (action === 'teleport') eventType = 'teleport'
+      else if (action === 'equip_item') eventType = 'equip'
+      else if (action === 'enemy_spawn') eventType = 'enemy-spawn'
+      else if (action) eventType = 'action-feedback'
+
       appendWorldFeed({
         type: 'action',
+        isSelf: true,
         message: messageText,
         roomId: payload?.data?.roomId || payload?.roomId || currentRoomRef.current?.roomId,
         ts: timestampMs,
         outcome,
-        eventType: isMoveAction ? 'room-travel' : undefined,
+        eventType,
         direction: travelDirection,
+        actor: action,
       })
 
       // Check if action should open a modal
@@ -1784,30 +1783,18 @@ export default function GameInterface() {
         if (payload?.data?.enemy) {
           setRoomEnemies([payload.data.enemy])
         }
-        const { addNotification } = useNotificationStore.getState()
-        addNotification({ message: messageText, outcome: 'failure', action: 'enemy_spawn' })
-      } else {
-        // Trigger notification for room actions (only if not showing modal)
-        // Skip notifications for movement actions and equip_item (handled above)
-        if (payload?.action !== 'move' && payload?.action !== 'equip_item') {
-          const { addNotification } = useNotificationStore.getState()
-          addNotification({
-            message: messageText,
-            outcome,
-            action: payload?.action,
-          })
-        }
       }
 
       // Handle quest chain toast (show even if modal is open)
       if (payload?.data?.questChain) {
         const toastMessage = payload.data.toast || payload.data.questChain.message
         if (toastMessage) {
-          const { addNotification } = useNotificationStore.getState()
-          addNotification({
-            message: toastMessage,
+          appendWorldFeed({
+            type: 'action',
+            isSelf: true,
+            eventType: 'quest-chain',
             outcome: 'success',
-            action: 'quest_chain',
+            message: toastMessage,
           })
         }
         setHasQuestUpdate(true)
@@ -2129,12 +2116,6 @@ export default function GameInterface() {
         unreadCount: threadsByUserId[payload.senderId]?.unreadCount ?? 0,
       })
 
-      const { addNotification } = useNotificationStore.getState()
-      addNotification({
-        message: `DM from ${payload.senderUsername}: ${payload.message.length > 80 ? `${payload.message.slice(0, 79)}...` : payload.message}`,
-        outcome: 'info',
-        action: 'direct_message',
-      })
       appendDMFeed('from', payload.senderUsername, payload.message)
     })
 
@@ -2165,12 +2146,15 @@ export default function GameInterface() {
         playerStr: payload.playerStr,
         playerDef: payload.playerDef,
       })
-      const { addNotification } = useNotificationStore.getState()
-      if (payload.isAggressive) {
-        addNotification({ message: `A ${payload.enemyName} attacks you!`, outcome: 'failure', action: 'battle' })
-      } else {
-        addNotification({ message: `You engage the ${payload.enemyName}!`, outcome: 'info', action: 'battle' })
-      }
+      appendWorldFeed({
+        type: 'room',
+        isSelf: true,
+        eventType: 'battle-started',
+        outcome: payload.isAggressive ? 'failure' : 'info',
+        message: payload.isAggressive
+          ? `A ${payload.enemyName} attacks you!`
+          : `You engage the ${payload.enemyName}!`,
+      })
     })
 
     const cleanupTurn = socketHandlers.onBattleTurn((payload) => {
@@ -2216,10 +2200,15 @@ export default function GameInterface() {
             currency: (currentPlayer.currency ?? 0) + payload.goldAwarded,
           })
         }
-        appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-victory' })
+        appendWorldFeed({
+          type: 'room',
+          isSelf: true,
+          eventType: 'battle-victory',
+          outcome: 'success',
+          message: `Victory! +${payload.xpAwarded} XP  +${payload.goldAwarded} Gold${payload.droppedItems.length > 0 ? `  +${payload.droppedItems.join(', ')}` : ''}`,
+          ts: Date.now(),
+        })
         if (payload.xpAwarded > 0) triggerXpGain(payload.xpAwarded)
-        const { addNotification } = useNotificationStore.getState()
-        addNotification({ message: `Victory! +${payload.xpAwarded} XP  +${payload.goldAwarded} Gold${payload.droppedItems.length > 0 ? `  +${payload.droppedItems.join(', ')}` : ''}`, outcome: 'success', action: 'battle' })
         if (payload.droppedItems.length > 0) {
           const headers = useGameStore.getState().getAuthHeaders()
           fetch('/api/game/room/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({}) }).catch(() => {})
@@ -2259,9 +2248,14 @@ export default function GameInterface() {
         if (payload.playerHp !== undefined) {
           setPlayer({ ...useGameStore.getState().player!, hp: payload.playerHp })
         }
-        appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-defeat' })
-        const { addNotification } = useNotificationStore.getState()
-        addNotification({ message: `Defeated! Respawning at The Lobby...`, outcome: 'failure', action: 'battle' })
+        appendWorldFeed({
+          type: 'room',
+          isSelf: true,
+          eventType: 'battle-defeat',
+          outcome: 'failure',
+          message: `Defeated! Respawning at The Lobby...`,
+          ts: Date.now(),
+        })
         setRoomEnemies([])
         handleAction({ type: 'teleport', data: { toRoomId: payload.respawnRoomId ?? '999' } })
       }
@@ -2294,9 +2288,14 @@ export default function GameInterface() {
 
     const cleanupFled = socketHandlers.onBattleFled((payload) => {
       clearBattle()
-      appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-fled' })
-      const { addNotification } = useNotificationStore.getState()
-      addNotification({ message: payload.message, outcome: 'info', action: 'battle' })
+      appendWorldFeed({
+        type: 'room',
+        isSelf: true,
+        eventType: 'battle-fled',
+        outcome: 'info',
+        message: payload.message,
+        ts: Date.now(),
+      })
     })
 
     const cleanupLevelUp = socketHandlers.onPlayerLevelUp((payload) => {

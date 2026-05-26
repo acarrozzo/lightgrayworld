@@ -2,21 +2,16 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import { useNotificationStore, type Notification } from '@/store/notificationStore'
+import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
+import { useTickerStore } from '@/store/tickerStore'
 
 const IDLE_MS = 6000
 const MAX_HISTORY = 20
 
-const outcomeAccent = (outcome: Notification['outcome']) => {
-  switch (outcome) {
-    case 'success':
-      return 'bg-emerald-400'
-    case 'failure':
-      return 'bg-red-400'
-    case 'info':
-    default:
-      return 'bg-blue-400'
-  }
+const entryAccent = (entry: WorldFeedEntry) => {
+  if (entry.outcome === 'success') return 'bg-emerald-400'
+  if (entry.outcome === 'failure' || entry.level === 'error') return 'bg-red-400'
+  return 'bg-blue-400'
 }
 
 const formatRelative = (ts: number, now: number) => {
@@ -28,15 +23,15 @@ const formatRelative = (ts: number, now: number) => {
 }
 
 export default function ActivityTicker() {
-  const enabled = useNotificationStore((state) => state.enabled)
-  const notifications = useNotificationStore((state) => state.notifications)
+  const enabled = useTickerStore((state) => state.enabled)
+  const entries = useWorldFeedStore((state) => state.entries)
 
   const [expanded, setExpanded] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [displayedId, setDisplayedId] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const latest = notifications.length > 0 ? notifications[notifications.length - 1] : null
+  const latest = entries.length > 0 ? entries[entries.length - 1] : null
   const latestId = latest?.id ?? null
   const latestTs = latest?.ts ?? 0
 
@@ -71,12 +66,12 @@ export default function ActivityTicker() {
     return () => document.removeEventListener('keydown', handleKey)
   }, [expanded])
 
-  const hasHistory = notifications.length > 0
+  const hasHistory = entries.length > 0
   const isIdle = !latest || now - latestTs > IDLE_MS
 
   const history = useMemo(() => {
-    return [...notifications].slice(-MAX_HISTORY).reverse()
-  }, [notifications])
+    return [...entries].slice(-MAX_HISTORY).reverse()
+  }, [entries])
 
   if (!enabled) return null
 
@@ -111,7 +106,7 @@ export default function ActivityTicker() {
         {latest ? (
           <div className="flex items-center gap-2 max-w-full min-w-0">
             <span
-              className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${outcomeAccent(latest.outcome)} ${isIdle ? 'opacity-40' : ''}`}
+              className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${entryAccent(latest)} ${isIdle ? 'opacity-40' : ''}`}
               aria-hidden="true"
             />
             <span
@@ -143,14 +138,14 @@ export default function ActivityTicker() {
               {history.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-200"
+                  className="flex items-start gap-2 px-3 py-1.5 text-xs text-gray-200"
                 >
                   <span
-                    className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${outcomeAccent(entry.outcome)}`}
+                    className={`flex-shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${entryAccent(entry)}`}
                     aria-hidden="true"
                   />
-                  <span className="flex-1 min-w-0 truncate">{entry.message}</span>
-                  <span className="flex-shrink-0 text-[10px] text-gray-500 tabular-nums">
+                  <span className="flex-1 min-w-0 whitespace-normal break-words">{entry.message}</span>
+                  <span className="flex-shrink-0 mt-0.5 text-[10px] text-gray-500 tabular-nums">
                     {formatRelative(entry.ts, now)}
                   </span>
                 </div>

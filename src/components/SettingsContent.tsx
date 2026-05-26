@@ -1,6 +1,6 @@
 'use client'
 
-import { useNotificationStore } from '@/store/notificationStore'
+import { useTickerStore } from '@/store/tickerStore'
 import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
 
 interface SettingsContentProps {
@@ -8,12 +8,12 @@ interface SettingsContentProps {
 }
 
 export default function SettingsContent({ onLogout }: SettingsContentProps) {
-  const enabled = useNotificationStore((state) => state.enabled)
-  const setEnabled = useNotificationStore((state) => state.setEnabled)
+  const enabled = useTickerStore((state) => state.enabled)
+  const setEnabled = useTickerStore((state) => state.setEnabled)
   const fontFamily = useFontPreferenceStore((state) => state.fontFamily)
   const setFontFamily = useFontPreferenceStore((state) => state.setFontFamily)
 
-  const handleToggleNotifications = () => {
+  const handleToggleTicker = () => {
     setEnabled(!enabled)
   }
 
@@ -25,15 +25,15 @@ export default function SettingsContent({ onLogout }: SettingsContentProps) {
 
         <div className="mt-4 flex items-center gap-4">
           <label
-            htmlFor="notification-toggle"
+            htmlFor="ticker-toggle"
             className="flex items-center gap-3 cursor-pointer"
           >
             <div className="relative">
               <input
-                id="notification-toggle"
+                id="ticker-toggle"
                 type="checkbox"
                 checked={enabled}
-                onChange={handleToggleNotifications}
+                onChange={handleToggleTicker}
                 className="sr-only"
               />
               <div
