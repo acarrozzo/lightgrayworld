@@ -271,8 +271,8 @@ export default function InventoryDisplay({
 
   const tabs: Array<{ id: FilterTab; label: string }> = [
     { id: 'all', label: 'ALL' },
-    { id: 'main', label: 'main' },
-    { id: 'off', label: 'off' },
+    { id: 'main', label: 'main hand' },
+    { id: 'off', label: 'off hand' },
     { id: 'head', label: 'head' },
     { id: 'body', label: 'body' },
     { id: 'hands', label: 'hands' },

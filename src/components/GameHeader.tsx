@@ -10,17 +10,19 @@ interface GameHeaderProps {
   xp?: number
   xpGain?: number | null
   xpGainKey?: number
-  strMod?: number
-  dexMod?: number
-  magMod?: number
-  defMod?: number
+  str?: number
+  dex?: number
+  mag?: number
+  def?: number
   clicks?: number
   onCharacterClick?: () => void
   isConnected?: boolean
   onRefresh?: () => void
+  panelsOpen?: boolean
+  onTogglePanels?: () => void
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, strMod, dexMod, magMod, defMod, clicks, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, clicks, onCharacterClick, isConnected, onRefresh, panelsOpen, onTogglePanels }: GameHeaderProps) {
   let xpInLevel = 0
   let xpNeeded = 1
   let xpPct = 0
@@ -88,6 +90,24 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
               <span className="text-[10px] text-gray-500 font-normal tabular-nums">{clicks.toLocaleString()}</span>
             )}
             <h1 className="text-sm font-medium text-white tracking-tight">Light Gray</h1>
+            {onTogglePanels && (
+              <button
+                onClick={onTogglePanels}
+                aria-label={panelsOpen ? 'Hide side panels' : 'Show side panels'}
+                title={panelsOpen ? 'Hide side panels' : 'Show side panels'}
+                className="hidden lg:inline-flex items-center justify-center w-4 h-4 rounded-sm text-gray-500 hover:text-gray-200 hover:bg-gray-800/60 transition-colors"
+              >
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <rect x="0.5" y="1.5" width="11" height="9" rx="1" stroke="currentColor" strokeWidth="1" />
+                  {panelsOpen ? (
+                    <>
+                      <line x1="3.5" y1="1.5" x2="3.5" y2="10.5" stroke="currentColor" strokeWidth="1" />
+                      <line x1="8.5" y1="1.5" x2="8.5" y2="10.5" stroke="currentColor" strokeWidth="1" />
+                    </>
+                  ) : null}
+                </svg>
+              </button>
+            )}
             <span className="text-[10px] text-gray-500 font-normal">v0.1.5</span>
           </div>
 
@@ -95,28 +115,28 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
           <div className="flex-1 flex justify-end items-center gap-3 text-xs">
             {/* Stats group */}
             <div className="hidden md:flex items-center gap-2">
-              {strMod !== undefined && (
+              {str !== undefined && (
                 <>
                   <span className="text-gray-500 hidden lg:inline">STR </span>
-                  <span className="text-red-400">{strMod}</span>
+                  <span className="text-red-400">{str}</span>
                 </>
               )}
-              {dexMod !== undefined && (
+              {dex !== undefined && (
                 <>
                   <span className="text-gray-500 hidden lg:inline">DEX </span>
-                  <span className="text-green-400">{dexMod}</span>
+                  <span className="text-green-400">{dex}</span>
                 </>
               )}
-              {magMod !== undefined && (
+              {mag !== undefined && (
                 <>
                   <span className="text-gray-500 hidden lg:inline">MAG </span>
-                  <span className="text-blue-400">{magMod}</span>
+                  <span className="text-blue-400">{mag}</span>
                 </>
               )}
-              {defMod !== undefined && (
+              {def !== undefined && (
                 <>
                   <span className="text-gray-500 hidden lg:inline">DEF </span>
-                  <span className="text-yellow-400">{defMod}</span>
+                  <span className="text-yellow-400">{def}</span>
                 </>
               )}
             </div>

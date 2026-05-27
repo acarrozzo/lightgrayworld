@@ -3233,14 +3233,24 @@ export default function GameInterface() {
         xp={player?.xp}
         xpGain={xpGain}
         xpGainKey={xpGainKey}
-        strMod={player?.strMod}
-        dexMod={player?.dexMod}
-        magMod={player?.magMod}
-        defMod={player?.defMod}
+        str={player ? (player.str ?? 0) + (player.strMod ?? 0) : undefined}
+        dex={player ? (player.dex ?? 0) + (player.dexMod ?? 0) : undefined}
+        mag={player ? (player.mag ?? 0) + (player.magMod ?? 0) : undefined}
+        def={player ? (player.def ?? 0) + (player.defMod ?? 0) : undefined}
         clicks={player?.clicks}
         onCharacterClick={() => setLeftSidebarOpen((prev: boolean) => !prev)}
         isConnected={socket?.connected ?? false}
         onRefresh={() => window.location.reload()}
+        panelsOpen={leftSidebarOpen || rightSidebarOpen}
+        onTogglePanels={() => {
+          if (leftSidebarOpen || rightSidebarOpen) {
+            setLeftSidebarOpen(false)
+            setRightSidebarOpen(false)
+          } else {
+            setLeftSidebarOpen(true)
+            setRightSidebarOpen(true)
+          }
+        }}
       />
       <ActivityTicker />
 
