@@ -252,6 +252,11 @@ async function equipItem(playerId, playerItemId) {
     message: `Equipped ${playerItem.ItemTemplate.name}`,
     inventory,
     player,
+    item: {
+      slug: playerItem.ItemTemplate.slug,
+      name: playerItem.ItemTemplate.name,
+      metadata: playerItem.ItemTemplate.metadata || null,
+    },
   }
 }
 
@@ -272,6 +277,7 @@ async function unequipItem(playerId, playerItemId) {
           id: true,
           slug: true,
           name: true,
+          metadata: true,
         },
       },
     },
@@ -345,6 +351,11 @@ async function unequipItem(playerId, playerItemId) {
     message: `Unequipped ${playerItem.ItemTemplate.name}`,
     inventory,
     player,
+    item: {
+      slug: playerItem.ItemTemplate.slug,
+      name: playerItem.ItemTemplate.name,
+      metadata: playerItem.ItemTemplate.metadata || null,
+    },
   }
 }
 

@@ -324,14 +324,13 @@ export default function BattlePanel({
   inventory,
 }: BattlePanelProps) {
   const [activeTab, setActiveTab] = useState<BattleTab>('actions')
-  const [lastUsedItemName, setLastUsedItemName] = useState<string | null>(null)
 
   const isRanged = weaponCategory === 'RANGED'
   const hasPlayerFormula = battle.playerRaw !== null
-
-  useEffect(() => {
-    if (hasPlayerFormula) setLastUsedItemName(null)
-  }, [hasPlayerFormula])
+  const supportAction = battle.actionMeta
+  const supportIconName = supportAction
+    ? resolveItemIcon(supportAction.itemMetadata ?? null, supportAction.itemSlug)
+    : null
 
   if (!battle.isInBattle && battleResult) {
     return <BattleResultCard result={battleResult} weaponIconName={weaponIconName} weaponName={weaponName} onDismiss={onDismissResult} />
@@ -446,7 +445,31 @@ export default function BattlePanel({
 
         {/* Player side */}
         <div className="flex-1 flex flex-col gap-1 min-w-0">
-          {battle.missedFlyingMelee ? (
+          {supportAction ? (
+            <>
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest">
+                {supportAction.kind === 'equip_item' ? 'Equipped'
+                  : supportAction.kind === 'unequip_item' ? 'Unequipped'
+                  : 'Used'}
+              </p>
+              <p className="text-xs text-gray-400">
+                You {supportAction.actionVerb} your <span className="text-indigo-300 font-semibold">{supportAction.itemName}</span>
+              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                {supportIconName && (
+                  <Icon name={supportIconName} size={36} className="text-indigo-300 flex-shrink-0" />
+                )}
+                {supportAction.effectText && (
+                  <p
+                    className="text-2xl font-black text-indigo-300 leading-none tabular-nums"
+                    style={{ textShadow: '0 0 16px #818cf860' }}
+                  >
+                    {supportAction.effectText}
+                  </p>
+                )}
+              </div>
+            </>
+          ) : battle.missedFlyingMelee ? (
             <>
               <p className="text-[10px] text-gray-600 italic">Out of reach</p>
               <p className="text-xs text-gray-400">
@@ -472,10 +495,6 @@ export default function BattlePanel({
                 {battle.lastPlayerDamage ?? 0}
               </p>
             </>
-          ) : lastUsedItemName ? (
-            <p className="text-xs text-gray-400">
-              You used your <span className="text-green-300 font-semibold">{lastUsedItemName}</span>
-            </p>
           ) : battle.isAdvantageTurn ? (
             <p className="text-xs text-gray-500 italic">You are attacked</p>
           ) : (
@@ -599,10 +618,7 @@ export default function BattlePanel({
                 return (
                   <div key={item.id} className="flex items-center gap-2">
                     <button
-                      onClick={() => {
-                        setLastUsedItemName(item.template.name)
-                        onUseItem(item.id, primaryAction.action)
-                      }}
+                      onClick={() => onUseItem(item.id, primaryAction.action)}
                       disabled={isActing}
                       className={`px-2.5 py-1 rounded text-xs font-semibold text-white transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 ${primaryAction.className ?? 'bg-indigo-600/80 hover:bg-indigo-600'}`}
                     >

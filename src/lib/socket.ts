@@ -42,6 +42,15 @@ export interface BattleStartedPayload extends BattleSnapshot {
   isAggressive?: boolean
 }
 
+export interface BattleSupportActionMeta {
+  kind: 'use_item' | 'equip_item' | 'unequip_item'
+  itemSlug: string
+  itemName: string
+  itemMetadata: { icon?: string } | null
+  actionVerb: string
+  effectText: string | null
+}
+
 export interface BattleTurnPayload extends BattleSnapshot {
   playerHp: number
   playerHpMax: number
@@ -51,7 +60,7 @@ export interface BattleTurnPayload extends BattleSnapshot {
   enemyRaw: number
   playerBlocked: number
   enemyBlocked: number
-  playerStrMax: number
+  playerStrMax: number | null
   playerDefMax: number
   enemyStrMax: number
   multiplayerBonus: boolean
@@ -59,6 +68,7 @@ export interface BattleTurnPayload extends BattleSnapshot {
   missedFlyingMelee?: boolean
   weaponCategory?: 'MELEE' | 'RANGED' | null
   enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
+  actionMeta?: BattleSupportActionMeta | null
   message: string
 }
 

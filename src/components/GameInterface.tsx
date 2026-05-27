@@ -971,6 +971,13 @@ export default function GameInterface() {
     const actionType = typeof actionInput === 'string' ? actionInput : actionInput.type
     const actionData = typeof actionInput === 'string' ? undefined : actionInput.data
 
+    // While in battle, any dispatched action returns the player to the explore
+    // tab so the BattlePanel (which only renders on explore) is visible for the
+    // resulting turn animation.
+    if (battle.isInBattle && centerActiveTab !== 'explore') {
+      setCenterActiveTab('explore')
+    }
+
     console.log('[handleAction] Called with action:', actionType, 'data:', actionData)
     setAction(actionType)
     setActionResult(null)
@@ -2184,6 +2191,7 @@ export default function GameInterface() {
           missedFlyingMelee: payload.missedFlyingMelee,
           weaponCategory: payload.weaponCategory,
           enemyDamageType: payload.enemyDamageType,
+          actionMeta: payload.actionMeta ?? null,
         })
       }
       appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-turn' })

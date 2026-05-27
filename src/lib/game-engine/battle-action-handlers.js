@@ -496,6 +496,150 @@ async function executePlayerAttack(action, playerId, roomState) {
   }
 }
 
+// ─── support turn (in-battle use_item / equip_item / unequip_item) ─────────
+//
+// Player spends their turn on a non-attack action (drink potion, swap weapon).
+// The enemy still gets a full counterattack. Returns event(s) the caller appends
+// to its own result. If the counterattack drops player HP to 0, the battle ends
+// with the standard defeat flow.
+async function resolveSupportTurn(playerId, roomState, actionMeta) {
+  const battleState = roomState.activeBattles.get(playerId)
+  if (!battleState || !battleState.isActive) return { playerEvents: [] }
+
+  const player = roomState.players.get(playerId)
+  const playerName = player?.username || 'Player'
+
+  const [liveStats, liveWeaponCategory] = await Promise.all([
+    fetchPlayerStats(playerId),
+    fetchEquippedWeaponCategory(playerId),
+  ])
+  if (!liveStats) return { playerEvents: [] }
+  battleState.updateStats(liveStats, liveWeaponCategory)
+
+  const otherCombatants = getOtherCombatantCount(roomState, playerId)
+  const enemyAtk = resolveEnemyAttack(battleState, otherCombatants)
+
+  battleState.incrementTurn()
+  const turnRecord = {
+    playerDealtDamage: 0,
+    enemyDealtDamage: enemyAtk.enemyFinal,
+    playerRaw: null,
+    enemyRaw: enemyAtk.enemyRaw,
+    enemyBlocked: 0,
+    playerBlocked: enemyAtk.playerBlock,
+    playerStrMax: null,
+    playerDefMax: enemyAtk.effectiveDef,
+    enemyStrMax: battleState.enemy.att,
+    multiplayerBonus: otherCombatants > 0,
+    bonusPercent: otherCombatants * 10,
+    missedFlyingMelee: false,
+    weaponCategory: battleState.equippedWeaponCategory,
+    enemyDamageType: enemyAtk.enemyDamageType,
+  }
+  battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, turnRecord)
+
+  const updatedPlayer = await prisma.user.update({
+    where: { id: playerId },
+    data: { hp: { decrement: enemyAtk.enemyFinal } },
+    select: { hp: true, hpMax: true },
+  })
+  const newHp = Math.max(0, updatedPlayer.hp)
+
+  // Build the action description string for the battle:turn message.
+  const actionDesc = describeSupportAction(actionMeta)
+  const defenseDesc = enemyAtk.enemyFinal === 0
+    ? `The ${battleState.enemyName} attacks but you block it!`
+    : `The ${battleState.enemyName} hits you for ${enemyAtk.enemyFinal} damage.`
+
+  // Defeat path: enemy counterattack killed the player
+  if (newHp <= 0) {
+    battleState.end()
+    roomState.activeBattles.delete(playerId)
+    roomState.clearPlayerEnemyState(playerId)
+    try {
+      await handleBattleDefeat(playerId, battleState)
+    } catch (err) {
+      console.error(`handleBattleDefeat failed during support turn for player ${playerId}:`, err)
+    }
+    return {
+      playerEvents: [
+        {
+          event: 'battle:defeat',
+          payload: {
+            enemyName: battleState.enemyName,
+            respawnRoomId: RESPAWN_ROOM_ID,
+            playerHp: 1,
+            message: `The ${battleState.enemyName} overwhelms you. You black out...`,
+            summary: {
+              outcome: 'LOSS',
+              enemyName: battleState.enemyName,
+              enemyIcon: battleState.enemyName,
+              enemySlug: battleState.enemySlug,
+              turnsCount: battleState.turnCount,
+              totalDamageDealt: battleState.totalDamageDealt,
+              totalDamageReceived: battleState.totalDamageReceived,
+              maxSingleHit: battleState.maxSingleHit,
+              xpEarned: 0,
+              goldEarned: 0,
+              itemsDropped: [],
+              multiplayerBonus: battleState.multiplayerBonusUsed,
+              lastTurn: battleState.lastTurnResult,
+            },
+          },
+        },
+      ],
+      broadcastEvents: [
+        {
+          event: 'action:feedback',
+          targetRoomId: roomState.roomId,
+          payload: makeFeedback(actionMeta.kind, 'info', `${playerName} was defeated by the ${battleState.enemyName}...`),
+        },
+      ],
+    }
+  }
+
+  const snapshot = battleState.getSnapshot()
+  return {
+    playerEvents: [
+      {
+        event: 'battle:turn',
+        payload: {
+          ...snapshot,
+          playerHp: newHp,
+          playerHpMax: updatedPlayer.hpMax,
+          playerDealtDamage: 0,
+          enemyDealtDamage: enemyAtk.enemyFinal,
+          playerRaw: null,
+          enemyRaw: enemyAtk.enemyRaw,
+          playerBlocked: enemyAtk.playerBlock,
+          enemyBlocked: 0,
+          playerStrMax: null,
+          playerDefMax: enemyAtk.effectiveDef,
+          enemyStrMax: battleState.enemy.att,
+          multiplayerBonus: otherCombatants > 0,
+          bonusPercent: otherCombatants * 10,
+          missedFlyingMelee: false,
+          weaponCategory: battleState.equippedWeaponCategory,
+          enemyDamageType: enemyAtk.enemyDamageType,
+          actionMeta,
+          message: [actionDesc, defenseDesc].join(' '),
+        },
+      },
+    ],
+  }
+}
+
+function describeSupportAction(meta) {
+  if (!meta) return 'You take a moment.'
+  const name = meta.itemName || 'item'
+  const effect = meta.effectText ? ` (${meta.effectText})` : ''
+  if (meta.kind === 'equip_item') return `You equip the ${name}.`
+  if (meta.kind === 'unequip_item') return `You unequip the ${name}.`
+  const verb = meta.actionVerb || 'use'
+  // Capitalize the verb's past-tense-ish form for "use" → "use the X"
+  return `You ${verb} the ${name}${effect}.`
+}
+
 // ─── player_flee ─────────────────────────────────────────────────────────────
 
 async function executePlayerFlee(action, playerId, roomState) {
@@ -525,4 +669,4 @@ async function executePlayerFlee(action, playerId, roomState) {
   }
 }
 
-module.exports = { executeStartBattle, executePlayerAttack, executePlayerFlee }
+module.exports = { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn }

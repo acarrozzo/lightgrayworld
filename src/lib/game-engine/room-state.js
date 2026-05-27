@@ -5,7 +5,7 @@ const { getPlayerInventory, grantItemOnce } = require('./services/inventory-serv
 const { equipItem, unequipItem } = require('./services/equipment-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
-const { executeStartBattle, executePlayerAttack, executePlayerFlee } = require('./battle-action-handlers')
+const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn } = require('./battle-action-handlers')
 const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('../game-data/room-enemies')
 const { getEnemy } = require('../game-data/enemies')
 const { getRevealDefinition, markRevealed, clearRevealed } = require('./search-reveal-state')
@@ -41,6 +41,35 @@ const SEARCH_LOOT_TABLES = {
       { message: 'You search the destroyed basement and find a Long Sword!', effect: { type: 'grantItem', itemSlug: 'long-sword', quantity: 1 } },
     ],
   },
+}
+
+// Pull a short "+5 HP" / "−1 HP" / "+10 MP" effect string out of an item action
+// result so we can show it next to the action description on the battle panel.
+function extractEffectText(result) {
+  const data = result?.playerEvents?.[0]?.payload?.data
+  if (!data) return null
+  if (typeof data.hpChange === 'number' && data.hpChange !== 0) {
+    const sign = data.hpChange > 0 ? '+' : ''
+    return `${sign}${data.hpChange} HP`
+  }
+  if (typeof data.mpChange === 'number' && data.mpChange !== 0) {
+    const sign = data.mpChange > 0 ? '+' : ''
+    return `${sign}${data.mpChange} MP`
+  }
+  return null
+}
+
+// Combine the original action result with the support-turn events. If the
+// support turn ended the battle with defeat, that takes over.
+function mergeSupportTurnIntoResult(base, supportTurn) {
+  if (!supportTurn || (!supportTurn.playerEvents?.length && !supportTurn.broadcastEvents?.length)) {
+    return base
+  }
+  return {
+    ...base,
+    playerEvents: [...(base.playerEvents ?? []), ...(supportTurn.playerEvents ?? [])],
+    broadcastEvents: [...(base.broadcastEvents ?? []), ...(supportTurn.broadcastEvents ?? [])],
+  }
 }
 
 // Actions that consume a "turn" and may trigger a spawn check in probabilistic rooms.
@@ -888,6 +917,10 @@ class RoomState {
       return this.createErrorResult('use_item', 'Item slug not found')
     }
 
+    // Capture item identity before the action runs — the item may be consumed.
+    const itemName = item.template.name
+    const itemMetadata = item.template.metadata || null
+
     // Execute the item-specific action
     const itemActionResult = await executeItemAction(
       itemSlug,
@@ -901,6 +934,20 @@ class RoomState {
 
     if (itemActionResult === null) {
       return this.createErrorResult('use_item', `Action "${itemAction}" is not available for this item`)
+    }
+
+    // If the player is in battle, the item use also costs a turn — the enemy strikes.
+    if (itemActionResult.success && this.activeBattles.get(playerId)?.isActive) {
+      const effectText = extractEffectText(itemActionResult)
+      const supportTurn = await resolveSupportTurn(playerId, this, {
+        kind: 'use_item',
+        itemSlug,
+        itemName,
+        itemMetadata,
+        actionVerb: itemAction,
+        effectText,
+      })
+      return mergeSupportTurnIntoResult(itemActionResult, supportTurn)
     }
 
     return itemActionResult
@@ -925,7 +972,7 @@ class RoomState {
       return this.createErrorResult('equip_item', result.message)
     }
 
-    return {
+    const baseResult = {
       success: true,
       action: 'equip_item',
       playerEvents: [
@@ -938,6 +985,20 @@ class RoomState {
         },
       ],
     }
+
+    if (this.activeBattles.get(playerId)?.isActive) {
+      const supportTurn = await resolveSupportTurn(playerId, this, {
+        kind: 'equip_item',
+        itemSlug: result.item?.slug,
+        itemName: result.item?.name,
+        itemMetadata: result.item?.metadata ?? null,
+        actionVerb: 'equip',
+        effectText: null,
+      })
+      return mergeSupportTurnIntoResult(baseResult, supportTurn)
+    }
+
+    return baseResult
   }
 
   async executeUnequipItem(action, playerId) {
@@ -959,7 +1020,7 @@ class RoomState {
       return this.createErrorResult('unequip_item', result.message)
     }
 
-    return {
+    const baseResult = {
       success: true,
       action: 'unequip_item',
       playerEvents: [
@@ -972,6 +1033,20 @@ class RoomState {
         },
       ],
     }
+
+    if (this.activeBattles.get(playerId)?.isActive) {
+      const supportTurn = await resolveSupportTurn(playerId, this, {
+        kind: 'unequip_item',
+        itemSlug: result.item?.slug,
+        itemName: result.item?.name,
+        itemMetadata: result.item?.metadata ?? null,
+        actionVerb: 'unequip',
+        effectText: null,
+      })
+      return mergeSupportTurnIntoResult(baseResult, supportTurn)
+    }
+
+    return baseResult
   }
 
   async executeAcceptQuest(action, playerId) {
