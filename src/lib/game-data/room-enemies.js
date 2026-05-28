@@ -20,9 +20,14 @@
 // Room 012f: Wide Antechamber — Mammoth Scorpion 60% spawn chance
 // Room 012g: Scorpion Queen Chamber — Scorpion Queen 60% spawn chance
 // Room 012h: Scorpion King Throne — Scorpion King 60% spawn chance
-// Room 028b: Bat Cave EXIT — 50% spawn, bat 50% / giant-rat 50%
-// Room 028c: Abandoned Workshop — 50% spawn, bat 50% / giant-rat 50%
-// Room 028d: Bat Cave — 50% spawn, bat 50% / giant-rat 50%
+// Room 028b: Bat Cave EXIT — 50% spawn, bat 100%
+// Room 028c: Abandoned Workshop — 50% spawn, bat 100%
+// Room 028d: Bat Cave — 50% spawn, bat 90% / golden-bat 10%
+// Room 028e: Bat Nest — 100% spawn, bat 90% / golden-bat 10%
+// Room 028f: Salamander Cavern — 50% spawn, salamander 90% / golden-bat 10%
+// Room 028g: Goblin Tracks — 50% spawn, goblin 80% / goblin-bandit 20%
+// Room 028h: Goblin Dead End — 50% spawn, goblin-bandit 80% / goblin 20%
+// Room 028i: Goblin Hideout — 100% spawn, goblin-chief 100%
 const ROOM_ENEMIES = {
   '013': {
     probabilistic: true,
@@ -157,24 +162,61 @@ const ROOM_ENEMIES = {
     probabilistic: true,
     spawnChance: 0.5,
     enemies: [
-      { slug: 'bat', weight: 50 },
-      { slug: 'giant-rat', weight: 50 },
+      { slug: 'bat', weight: 100 },
     ],
   },
   '028c': {
     probabilistic: true,
     spawnChance: 0.5,
     enemies: [
-      { slug: 'bat', weight: 50 },
-      { slug: 'giant-rat', weight: 50 },
+      { slug: 'bat', weight: 100 },
     ],
   },
   '028d': {
     probabilistic: true,
     spawnChance: 0.5,
     enemies: [
-      { slug: 'bat', weight: 50 },
-      { slug: 'giant-rat', weight: 50 },
+      { slug: 'bat', weight: 90 },
+      { slug: 'golden-bat', weight: 10 },
+    ],
+  },
+  '028e': {
+    probabilistic: true,
+    spawnChance: 1.0,
+    enemies: [
+      { slug: 'bat', weight: 90 },
+      { slug: 'golden-bat', weight: 10 },
+    ],
+  },
+  '028f': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'salamander', weight: 90 },
+      { slug: 'golden-bat', weight: 10 },
+    ],
+  },
+  '028g': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'goblin', weight: 80 },
+      { slug: 'goblin-bandit', weight: 20 },
+    ],
+  },
+  '028h': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'goblin-bandit', weight: 80 },
+      { slug: 'goblin', weight: 20 },
+    ],
+  },
+  '028i': {
+    probabilistic: true,
+    spawnChance: 1.0,
+    enemies: [
+      { slug: 'goblin-chief', weight: 100 },
     ],
   },
 }
