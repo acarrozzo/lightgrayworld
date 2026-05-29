@@ -12,6 +12,25 @@ const { prisma } = require('../db-client')
  * - modalContent: optional structured modal content
  */
 const ROOM_GATES = {
+  '002': {
+    'south': {
+      check: async (playerId) => {
+        const crabQuest = await prisma.questProgress.findUnique({
+          where: { userId_questId: { userId: playerId, questId: 'quest_youngsoldier_002' } },
+          select: { completed: true },
+        })
+        return !!crabQuest?.completed
+      },
+      message: "The stone path south is unsafe - Sand Crabs have overrun the Rocky Beach. Speak to the Young Soldier about clearing them out first.",
+      modalContent: {
+        title: 'A Field Guard blocks the stone path south',
+        type: 'icon',
+        icon: 'npc-dwarfguard',
+        iconColor: 'amber-500',
+        message: "The stone path south is unsafe - Sand Crabs have overrun the Rocky Beach. Speak to the Young Soldier about clearing them out first.",
+      },
+    },
+  },
   '004': {
     'west': {
       check: async (playerId) => {

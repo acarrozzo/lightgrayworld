@@ -10,6 +10,9 @@ export type TravelDirectionKey = (typeof TRAVEL_DIRECTION_KEYS)[number]
  * Used to skip optimistic updates for gated exits
  */
 export const CLIENT_ROOM_GATES: Record<string, Record<string, boolean>> = {
+  '002': {
+    'south': true,
+  },
   '003': {
     'west': true,
   },
