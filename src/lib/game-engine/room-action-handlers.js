@@ -638,7 +638,7 @@ const ROOM_ACTIONS = {
                   ? 'The Young Soldier gives you a proud nod. "You\'ve proven yourself out there. Stay sharp and keep pushing further into the world."'
                   : questYoungsoldier001Progress && questYoungsoldier001Progress.completed
                     ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
-                    : 'The Young Soldier stands at attention. "Help out the Old Man first and then come back to me. Hello there, Young Adventurer. I\'m a soldier sent here from Domus to assist you. Feel free to take any of the training weapons here."',
+                    : 'The Young Soldier holds up a hand before you can speak. "Hold on there, traveler. I\'m a soldier sent here from Domus to assist you, but before I can help, you should go speak with the Old Man in his cabin first. Come back to me once you\'ve talked with him."',
               },
             }),
           },

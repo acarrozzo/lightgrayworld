@@ -11,7 +11,7 @@ import { resolveItemIcon } from '@/lib/item-actions'
 import { EquipSlot } from '@prisma/client'
 import { ChevronLeft } from 'lucide-react'
 
-type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
+type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'ring' | 'neck' | 'consumables' | 'misc'
 
 interface GameSidebarProps {
   player: Player
@@ -109,6 +109,10 @@ export default function GameSidebar({ player, onClose, onToggle, isOpen, onActio
         return 'hands'
       case EquipSlot.FEET:
         return 'feet'
+      case EquipSlot.RING:
+        return 'ring'
+      case EquipSlot.NECK:
+        return 'neck'
       default:
         return 'all'
     }

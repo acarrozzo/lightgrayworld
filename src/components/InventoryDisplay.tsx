@@ -22,7 +22,7 @@ interface InventoryDisplayProps {
   initialFilter?: FilterTab
 }
 
-type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
+type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'ring' | 'neck' | 'consumables' | 'misc'
 type WeaponTypeFilter = 'all' | 'melee' | 'ranged'
 type HandednessFilter = 'all' | '1h' | '2h'
 type SortStat = 'none' | 'str' | 'dex' | 'mag' | 'def'
@@ -142,6 +142,12 @@ export default function InventoryDisplay({
       case 'feet':
         filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.FEET)
         break
+      case 'ring':
+        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.RING)
+        break
+      case 'neck':
+        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.NECK)
+        break
       case 'consumables':
         filtered = inventory.filter(item => item.template.type === ItemType.CONSUMABLE)
         break
@@ -177,6 +183,8 @@ export default function InventoryDisplay({
       body: [],
       hands: [],
       feet: [],
+      ring: [],
+      neck: [],
       consumables: [],
       misc: [],
     }
@@ -194,6 +202,10 @@ export default function InventoryDisplay({
         groups.hands.push(item)
       } else if (item.template.equipSlot === EquipSlot.FEET) {
         groups.feet.push(item)
+      } else if (item.template.equipSlot === EquipSlot.RING) {
+        groups.ring.push(item)
+      } else if (item.template.equipSlot === EquipSlot.NECK) {
+        groups.neck.push(item)
       } else if (item.template.type === ItemType.CONSUMABLE) {
         groups.consumables.push(item)
       } else {
@@ -201,7 +213,7 @@ export default function InventoryDisplay({
       }
     }
 
-    const categoryOrder: FilterTab[] = ['main', 'off', 'head', 'body', 'hands', 'feet', 'consumables', 'misc']
+    const categoryOrder: FilterTab[] = ['main', 'off', 'head', 'body', 'hands', 'feet', 'ring', 'neck', 'consumables', 'misc']
     for (const category of categoryOrder) {
       if (sortStat !== 'none') {
         groups[category].sort((a, b) => statSortComparator(a, b, sortStat))
@@ -229,6 +241,8 @@ export default function InventoryDisplay({
         body: 0,
         hands: 0,
         feet: 0,
+        ring: 0,
+        neck: 0,
         consumables: 0,
         misc: 0,
       }
@@ -242,6 +256,8 @@ export default function InventoryDisplay({
       body: 0,
       hands: 0,
       feet: 0,
+      ring: 0,
+      neck: 0,
       consumables: 0,
       misc: 0,
     }
@@ -259,6 +275,10 @@ export default function InventoryDisplay({
         counts.hands++
       } else if (item.template.equipSlot === EquipSlot.FEET) {
         counts.feet++
+      } else if (item.template.equipSlot === EquipSlot.RING) {
+        counts.ring++
+      } else if (item.template.equipSlot === EquipSlot.NECK) {
+        counts.neck++
       } else if (item.template.type === ItemType.CONSUMABLE) {
         counts.consumables++
       } else {
@@ -277,6 +297,8 @@ export default function InventoryDisplay({
     { id: 'body', label: 'body' },
     { id: 'hands', label: 'hands' },
     { id: 'feet', label: 'feet' },
+    { id: 'ring', label: 'ring' },
+    { id: 'neck', label: 'neck' },
     { id: 'consumables', label: 'consumables' },
     { id: 'misc', label: 'misc' },
   ]

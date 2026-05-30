@@ -8,10 +8,11 @@ class BattleState {
     this.enemyMaxHp = enemy.hp
     this.enemy = enemy
 
-    this.baseStr = Math.max(1, (playerStats.str || 0) + (playerStats.strMod || 0))
-    this.baseDex = Math.max(1, (playerStats.dex || 0) + (playerStats.dexMod || 0))
-    this.baseMag = Math.max(1, (playerStats.mag || 0) + (playerStats.magMod || 0))
-    this.baseDef = Math.max(1, (playerStats.def || 0) + (playerStats.defMod || 0))
+    // Keep the true value (mods can push a stat negative) — combat rolls guard the range
+    this.baseStr = (playerStats.str || 0) + (playerStats.strMod || 0)
+    this.baseDex = (playerStats.dex || 0) + (playerStats.dexMod || 0)
+    this.baseMag = (playerStats.mag || 0) + (playerStats.magMod || 0)
+    this.baseDef = (playerStats.def || 0) + (playerStats.defMod || 0)
     this.equippedWeaponCategory = equippedWeaponCategory || 'MELEE'
 
     this.turnCount = 0
@@ -27,10 +28,10 @@ class BattleState {
   }
 
   updateStats(playerStats, equippedWeaponCategory) {
-    this.baseStr = Math.max(1, (playerStats.str || 0) + (playerStats.strMod || 0))
-    this.baseDex = Math.max(1, (playerStats.dex || 0) + (playerStats.dexMod || 0))
-    this.baseMag = Math.max(1, (playerStats.mag || 0) + (playerStats.magMod || 0))
-    this.baseDef = Math.max(1, (playerStats.def || 0) + (playerStats.defMod || 0))
+    this.baseStr = (playerStats.str || 0) + (playerStats.strMod || 0)
+    this.baseDex = (playerStats.dex || 0) + (playerStats.dexMod || 0)
+    this.baseMag = (playerStats.mag || 0) + (playerStats.magMod || 0)
+    this.baseDef = (playerStats.def || 0) + (playerStats.defMod || 0)
     if (equippedWeaponCategory !== undefined) {
       this.equippedWeaponCategory = equippedWeaponCategory || 'MELEE'
     }

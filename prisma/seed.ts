@@ -459,7 +459,7 @@ async function main() {
       subtitleColor: 'gray-600',
       icon: 'cave1',
       iconColor: 'gray-600',
-      description: 'Robert, a brave soldier, has set up a training area in the Grassy Field. Some weapons and dummies are arranged for practice. A dark cave can be seen to the south. There is a sign here.',
+      description: 'Training swords and shields stand ready for use, and a young soldier is here to guide you through your training. A dark cave can be seen to the south. There is a sign here.',
       dangerLevel: 0,
       isSafe: false,
       north: '006',
@@ -1423,6 +1423,102 @@ async function main() {
       value: 500,
       equipSlot: EquipSlot.HEAD,
       metadata: { statMods: { str: 1, dex: 1, mag: 1 } },
+    },
+    {
+      id: 'ring-of-str_001',
+      slug: 'ring-of-str',
+      name: 'Ring of Strength',
+      description: 'A simple band that bolsters the wearer’s physical strength.',
+      type: ItemType.EQUIPMENT,
+      maxStack: 99,
+      maxPerPlayer: 99,
+      value: 100,
+      equipSlot: EquipSlot.RING,
+      metadata: { icon: 'ring', statMods: { str: 1 } },
+    },
+    {
+      id: 'ring-of-dex_001',
+      slug: 'ring-of-dex',
+      name: 'Ring of Dexterity',
+      description: 'A simple band that sharpens the wearer’s dexterity.',
+      type: ItemType.EQUIPMENT,
+      maxStack: 99,
+      maxPerPlayer: 99,
+      value: 100,
+      equipSlot: EquipSlot.RING,
+      metadata: { icon: 'ring', statMods: { dex: 1 } },
+    },
+    {
+      id: 'ring-of-mag_001',
+      slug: 'ring-of-mag',
+      name: 'Ring of Magic',
+      description: 'A simple band that deepens the wearer’s magical power.',
+      type: ItemType.EQUIPMENT,
+      maxStack: 99,
+      maxPerPlayer: 99,
+      value: 100,
+      equipSlot: EquipSlot.RING,
+      metadata: { icon: 'ring', statMods: { mag: 1 } },
+    },
+    {
+      id: 'ring-of-def_001',
+      slug: 'ring-of-def',
+      name: 'Ring of Defense',
+      description: 'A simple band that hardens the wearer’s defenses.',
+      type: ItemType.EQUIPMENT,
+      maxStack: 99,
+      maxPerPlayer: 99,
+      value: 100,
+      equipSlot: EquipSlot.RING,
+      metadata: { icon: 'ring', statMods: { def: 1 } },
+    },
+    {
+      id: 'soldiers-ring_001',
+      slug: 'soldiers-ring',
+      name: 'Soldier’s Ring',
+      description: 'A battle-worn ring favored by soldiers, strengthening both attack and defense.',
+      type: ItemType.EQUIPMENT,
+      maxStack: 99,
+      maxPerPlayer: 99,
+      value: 400,
+      equipSlot: EquipSlot.RING,
+      metadata: { icon: 'ring', statMods: { str: 2, def: 2 } },
+    },
+    {
+      id: 'wooden-necklace_001',
+      slug: 'wooden-necklace',
+      name: 'Wooden Necklace',
+      description: 'A carved wooden necklace that offers modest protection.',
+      type: ItemType.EQUIPMENT,
+      maxStack: 99,
+      maxPerPlayer: 99,
+      value: 150,
+      equipSlot: EquipSlot.NECK,
+      metadata: { icon: 'necklace', statMods: { def: 5 } },
+    },
+    {
+      id: 'bone-necklace_001',
+      slug: 'bone-necklace',
+      name: 'Bone Necklace',
+      description: 'A necklace strung with bone, hardening the wearer’s defenses.',
+      type: ItemType.EQUIPMENT,
+      maxStack: 99,
+      maxPerPlayer: 99,
+      value: 300,
+      equipSlot: EquipSlot.NECK,
+      metadata: { icon: 'necklace', statMods: { def: 10 } },
+    },
+    {
+      id: 'stone-necklace_001',
+      slug: 'stone-necklace',
+      name: 'Stone Necklace',
+      description: 'A heavy stone necklace that grants formidable protection.',
+      type: ItemType.EQUIPMENT,
+      maxStack: 99,
+      maxPerPlayer: 99,
+      value: 500,
+      equipSlot: EquipSlot.NECK,
+      metadata: { icon: 'necklace', statMods: { def: 15 } },
     },
     {
       id: 'red-hood_001',
@@ -2733,6 +2829,52 @@ async function main() {
         roomId: '020',
         templateId,
         quantity: 1,
+        autoRespawn: true,
+      },
+    })
+  }
+
+  // Seed rings in room 027 (idempotent) - 2 of each
+  const room027Rings = [
+    'ring-of-str_001',
+    'ring-of-dex_001',
+    'ring-of-mag_001',
+    'ring-of-def_001',
+    'soldiers-ring_001',
+  ]
+
+  for (const templateId of room027Rings) {
+    await prisma.roomItem.deleteMany({
+      where: { roomId: '027', templateId },
+    })
+
+    await prisma.roomItem.create({
+      data: {
+        roomId: '027',
+        templateId,
+        quantity: 2,
+        autoRespawn: true,
+      },
+    })
+  }
+
+  // Seed necklaces in room 027 (idempotent) - 2 of each
+  const room027Necklaces = [
+    'wooden-necklace_001',
+    'bone-necklace_001',
+    'stone-necklace_001',
+  ]
+
+  for (const templateId of room027Necklaces) {
+    await prisma.roomItem.deleteMany({
+      where: { roomId: '027', templateId },
+    })
+
+    await prisma.roomItem.create({
+      data: {
+        roomId: '027',
+        templateId,
+        quantity: 2,
         autoRespawn: true,
       },
     })

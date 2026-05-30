@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import InventoryDisplay from '@/components/InventoryDisplay'
 import type { InventoryItem } from '@/lib/game-state'
 
-type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
+type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'ring' | 'neck' | 'consumables' | 'misc'
 
 interface InventoryPanelProps {
   inventory: InventoryItem[]

@@ -36,6 +36,14 @@ type QuestProgress = {
 
 type QuestState = 'talk' | 'in_progress' | 'turn_in' | 'completed'
 
+/**
+ * Sentinel questId used when talking to an NPC that has no unlocked quests yet
+ * (e.g. the Young Soldier before you've spoken to the Old Man). The backend
+ * talk handler ignores the questId in this state and returns its intro/redirect
+ * dialogue, so any non-real id works as long as it's used consistently here.
+ */
+export const PRE_QUEST_TALK_ID = '__pretalk__'
+
 interface NpcQuestCardProps {
   npcName: string
   npcIcon: string
@@ -127,6 +135,18 @@ export default function NpcQuestCard({
       result.push({ questDef, progress, state, progressLabel })
     }
 
+    // No unlocked quests yet (e.g. the Young Soldier before you've talked to the
+    // Old Man). Show a single Talk row through the normal display — the backend
+    // returns the appropriate "talk to the Old Man first" dialogue.
+    if (result.length === 0) {
+      result.push({
+        questDef: { title: `Talk to ${npcName}`, questType: 'main', number: 0, level: 1, objective: '', giver: { npcId: '', roomId: '', name: npcName, icon: npcIcon } },
+        progress: { id: PRE_QUEST_TALK_ID, questId: PRE_QUEST_TALK_ID, progress: 0, completed: false },
+        state: 'talk',
+      })
+      return result
+    }
+
     // Sort: main quests first (by number), then side quests by level then number
     result.sort((a, b) => {
       const aIsMain = a.questDef.questType === 'main'
@@ -139,7 +159,7 @@ export default function NpcQuestCard({
     })
 
     return result
-  }, [questIds, quests, inventory, killList])
+  }, [questIds, quests, inventory, killList, npcName, npcIcon])
 
   if (visibleQuests.length === 0) return null
 

@@ -152,7 +152,7 @@ export default function GameInterface() {
     isOpen: false,
     player: null,
   })
-  type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
+  type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'ring' | 'neck' | 'consumables' | 'misc'
   const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
   const [hasQuestUpdate, setHasQuestUpdate] = useState(false)

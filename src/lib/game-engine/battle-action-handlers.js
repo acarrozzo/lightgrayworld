@@ -107,7 +107,7 @@ async function executeStartBattle(action, playerId, roomState) {
       enemyRaw: enemyAtk.enemyRaw,
       enemyBlocked: 0,
       playerBlocked: enemyAtk.playerBlock,
-      playerStrMax: Math.max(1, Math.floor(battleState.baseStr * (1 + otherCombatants * 0.1))),
+      playerStrMax: Math.floor(battleState.baseStr * (1 + otherCombatants * 0.1)),
       playerDefMax: enemyAtk.effectiveDef,
       enemyStrMax: enemy.att,
       multiplayerBonus: otherCombatants > 0,

@@ -1,5 +1,8 @@
-function rand(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min
+function rand(a, b) {
+  // Tolerate inverted ranges — a negative stat makes the low bound exceed the high one
+  const lo = Math.min(a, b)
+  const hi = Math.max(a, b)
+  return Math.floor(Math.random() * (hi - lo + 1)) + lo
 }
 
 // Count other players in the same room who also have an active battle
@@ -28,7 +31,8 @@ function resolvePlayerAttack(battleState, otherCombatants) {
   const enemy = battleState.enemy
   const weaponCat = battleState.equippedWeaponCategory || 'MELEE'
   const offStat = pickPlayerOffensiveStat(battleState)
-  const effectiveOff = Math.max(1, Math.floor(offStat * bonus))
+  // True effective stat — may be negative when mods outweigh the base stat
+  const effectiveOff = Math.floor(offStat * bonus)
 
   if (enemy.isFlying && weaponCat === 'MELEE') {
     return {
@@ -41,12 +45,13 @@ function resolvePlayerAttack(battleState, otherCombatants) {
     }
   }
 
+  // Negative STR rolls negative — it can't heal the enemy, so playerFinal floors at 0 below
   const playerRaw = rand(Math.floor(effectiveOff * 0.5), effectiveOff)
   const enemyBlock = rand(Math.floor(enemy.def * 0.5), enemy.def)
   return {
     playerRaw,
     enemyBlock,
-    playerFinal: Math.max(1, playerRaw - enemyBlock),
+    playerFinal: Math.max(0, playerRaw - enemyBlock),
     effectiveOff,
     weaponCategory: weaponCat,
     missedFlyingMelee: false,
@@ -58,9 +63,11 @@ function resolveEnemyAttack(battleState, otherCombatants) {
   const enemy = battleState.enemy
   const enemyDmgType = enemy.damageType || 'MELEE'
   const defStat = pickPlayerDefensiveStat(battleState, enemy)
-  const effectiveDef = Math.max(1, Math.floor(defStat * bonus))
+  // True effective stat — may be negative when mods outweigh the base stat
+  const effectiveDef = Math.floor(defStat * bonus)
 
   const enemyRaw = rand(Math.floor(enemy.att * 0.5), enemy.att)
+  // Negative DEF rolls negative, so enemyRaw - playerBlock grows — you take extra damage
   const playerBlock = rand(Math.floor(effectiveDef * 0.5), effectiveDef)
   return {
     enemyRaw,

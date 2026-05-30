@@ -10,7 +10,7 @@ import { EquipSlot } from '@prisma/client'
 import Icon from '@/components/Icon'
 import { resolveItemIcon } from '@/lib/item-actions'
 
-type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'consumables' | 'misc'
+type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'ring' | 'neck' | 'consumables' | 'misc'
 
 interface CharPanelProps {
   player: Player
@@ -108,6 +108,10 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
         return 'hands'
       case EquipSlot.FEET:
         return 'feet'
+      case EquipSlot.RING:
+        return 'ring'
+      case EquipSlot.NECK:
+        return 'neck'
       default:
         return 'all'
     }
@@ -321,6 +325,29 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                     })
                   }
                   onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.FEET))}
+                />
+                {/* Row 4: RING */}
+                <EquipmentSlot
+                  slot={EquipSlot.RING}
+                  item={equippedBySlot.get(EquipSlot.RING)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.RING))}
+                />
+                <EquipmentSlot
+                  slot={EquipSlot.NECK}
+                  item={equippedBySlot.get(EquipSlot.NECK)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.NECK))}
                 />
               </div>
             </div>

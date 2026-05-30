@@ -31,6 +31,8 @@ const PLAYER_ITEM_SLOT_MAP: Record<string, string> = {
   BODY: 'body',
   HANDS: 'hands',
   FEET: 'feet',
+  RING: 'ring1',
+  NECK: 'neck',
 }
 
 async function handleGetPublicProfile(request: AuthenticatedRequest) {
