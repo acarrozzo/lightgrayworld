@@ -1724,14 +1724,21 @@ export default function GameInterface() {
                 // The opacity modifier (e.g., /70) will be preserved: 'gray-500/70' -> 'text-gray-500/70'
                 iconColorClass = `text-${iconColorClass}`
               }
-              // Handle message as array (paragraphs) or string
-              const messageContent = modalContent.message || messageText
-              const isMessageArray = Array.isArray(messageContent)
-              
               const questCompleteData: QuestCompleteData | null =
                 payload?.data?.questComplete
                   ? (payload.data.questComplete as QuestCompleteData)
                   : null
+
+              // Handle message as array (paragraphs) or string.
+              // For quest-complete modals, suppress the message line entirely when
+              // no dialog is provided (the rewards panel already shows the quest title),
+              // rather than falling back to the raw feedback text.
+              const messageContent = modalContent.message
+                ? modalContent.message
+                : questCompleteData
+                  ? null
+                  : messageText
+              const isMessageArray = Array.isArray(messageContent)
 
               renderedContent = (
                 <div className="flex flex-col items-center justify-center gap-6 py-8">
@@ -1752,11 +1759,11 @@ export default function GameInterface() {
                           <p key={index}>{paragraph}</p>
                         ))}
                       </div>
-                    ) : (
+                    ) : messageContent ? (
                       <p className="text-gray-200 text-base leading-relaxed">
                         {messageContent}
                       </p>
-                    )}
+                    ) : null}
                     {questCompleteData && (
                       <QuestCompleteRewards data={questCompleteData} />
                     )}

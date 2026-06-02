@@ -35,6 +35,127 @@ function formatTimeRemaining(seconds) {
 }
 
 /**
+ * Fill {progress} / {count} placeholders in a reminder dialog using the
+ * requirement-check details (kill counts, item quantities, etc.).
+ */
+function renderReminderDialog(quest, requirements) {
+  const text = quest.reminderDialog || ''
+  if (!text.includes('{')) return text
+  const details = (requirements && requirements.details) || {}
+  const firstReq = (quest.requirements && quest.requirements[0]) || {}
+  const progress = details.currentKills ?? details.currentQuantity ?? 0
+  const count =
+    details.requiredKills ?? details.requiredQuantity ?? firstReq.count ?? firstReq.quantity ?? 0
+  return text.replace(/\{progress\}/g, progress).replace(/\{count\}/g, count)
+}
+
+/**
+ * Resolve an NPC's idle dialog (no active quest) from an ordered, priority list.
+ * Each entry is { ifCompleted: questId | null, message }. The first entry whose
+ * quest is completed wins; an entry with ifCompleted === null is the default.
+ */
+function resolveIdleDialog(idleDialogs, progressById) {
+  for (const entry of idleDialogs || []) {
+    if (entry.ifCompleted === null || entry.ifCompleted === undefined) return entry.message
+    if (progressById[entry.ifCompleted]?.completed) return entry.message
+  }
+  return ''
+}
+
+/**
+ * Build a generic "talk to NPC" handler driven entirely by quest data.
+ *
+ * For the NPC's quests (sorted by number) it finds the active one — honoring
+ * a clicked `targetQuestId` when several are active at once — and renders:
+ *  - a turn-in prompt (completionDialog + "Complete Quest" button) when the
+ *    requirements are met (and the player isn't just viewing via introOnly), or
+ *  - a reminder (reminderDialog) otherwise.
+ * When no quest is active it shows an idle dialog from `npc.idleDialogs`.
+ *
+ * All dialog text lives in quests.json; this factory carries only the NPC's
+ * presentation (icon/color/title) and its idle-dialog cascade.
+ */
+function createNpcTalkHandler(npc) {
+  return async (playerId, roomState, actionData = {}) => {
+    const { listQuestsByGiver, getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
+    const introOnly = !!actionData.introOnly
+    const targetQuestId = actionData.questId ?? null
+
+    roomState.touchActivity()
+
+    const npcModal = (extra = {}) => ({
+      type: 'icon',
+      icon: npc.icon,
+      iconColor: npc.iconColor,
+      title: npc.title,
+      ...extra,
+    })
+    const feedback = (message, data) =>
+      createActionFeedbackPayload(npc.action, 'success', message, { roomId: roomState.roomId, showModal: true, ...data })
+    const result = payload => ({ success: true, action: npc.action, playerEvents: [{ event: 'action:feedback', payload }] })
+
+    const quests = listQuestsByGiver(npc.npcId)
+
+    const progressById = {}
+    for (const quest of quests) {
+      progressById[quest.id] = await getQuestProgress(playerId, quest.id)
+    }
+
+    const activeQuests = quests.filter(quest => {
+      const progress = progressById[quest.id]
+      return progress && !progress.completed
+    })
+
+    // Prefer a specifically-clicked quest when multiple are active at once;
+    // otherwise take the first active quest by number.
+    let activeQuest = null
+    if (targetQuestId) {
+      activeQuest = activeQuests.find(quest => quest.id === targetQuestId) || null
+    }
+    if (!activeQuest) {
+      activeQuest = activeQuests[0] || null
+    }
+
+    if (activeQuest) {
+      const requirements = await checkQuestRequirements(playerId, activeQuest.id)
+      const hasRequirements = (activeQuest.requirements || []).length > 0
+      // Show the turn-in prompt when requirements are met. `introOnly` (viewing a
+      // quest from the list) suppresses it — but only for quests that actually have
+      // requirements, so requirement-less intro quests still offer their button.
+      const showTurnIn = requirements.met && (!introOnly || !hasRequirements)
+
+      if (showTurnIn) {
+        return result(
+          feedback(`You approach the ${npc.title}.`, {
+            modalContent: npcModal({ message: activeQuest.completionDialog }),
+            questComplete: {
+              questTitle: activeQuest.title,
+              rewards: activeQuest.rewards || [],
+              levelUp: null,
+              newQuestTitles: [],
+            },
+            buttons: [{ label: 'Complete Quest', direction: `complete_quest:${activeQuest.id}`, primary: true }],
+          })
+        )
+      }
+
+      return result(
+        feedback(`You talk to the ${npc.title}.`, {
+          modalContent: npcModal({ message: renderReminderDialog(activeQuest, requirements) }),
+        })
+      )
+    }
+
+    // No active quest — show the NPC's idle dialog.
+    return result(
+      feedback(`You talk to the ${npc.title}.`, {
+        modalContent: npcModal({ message: resolveIdleDialog(npc.idleDialogs, progressById) }),
+      })
+    )
+  }
+}
+
+/**
  * Map of room IDs to room-specific actions. Each action entry can be either:
  * - A string message (handled by executeBasicDisplay)
  * - A custom function (playerId, roomState) => actionResult
@@ -144,507 +265,54 @@ const ROOM_ACTIONS = {
     'ex cabin': "You examine the cabin. It's warm and cozy, with a cooking fire burning and the Old Man rocking in his chair.",
     'attack dummy': 'You attack the training dummy. Your weapon strikes true!',
     'cook meat': 'You cook the meat over the fire. It smells delicious!',
-    'talk to old man': async (playerId, roomState, actionData = {}) => {
-      const { getQuestProgress, checkQuestRequirements, getQuestDef } = require('./services/quest-service')
-      const introOnly = !!actionData.introOnly
-      const targetQuestId = actionData.questId ?? null
-
-      roomState.touchActivity()
-
-      // Check quest_oldman_000 status first
-      const questOldman000Progress = await getQuestProgress(playerId, 'quest_oldman_000')
-
-      // If quest_oldman_000 exists and is not completed, show forced completion
-      if (questOldman000Progress && !questOldman000Progress.completed) {
-        return {
-          success: true,
-          action: 'talk to old man',
-          playerEvents: [
-            {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man.', {
-                roomId: roomState.roomId,
-                showModal: true,
-                modalContent: {
-                  type: 'icon',
-                  icon: 'npc-oldman',
-                  iconColor: 'yellow-400',
-                  title: 'Old Man',
-                  header: 'Well met, traveler!',
-                  message: [
-                    "Hey there young whippersnapper, I could use the help of a bright adventurer like yourself. ",
-                    "Bring me a yellow flower from the flower patch to the north and you will do this old man a great favor."
-                  ],
-                },
-                buttons: [
-                  { label: 'I can bring you a flower', direction: 'complete_quest:quest_oldman_000' },
-                ],
-              }),
-            },
-          ],
-        }
-      }
-
-      // quest_oldman_000 is completed, check quest_oldman_001 status
-      const questOldman001Progress = await getQuestProgress(playerId, 'quest_oldman_001')
-
-      // If quest_oldman_001 exists and is not completed
-      if (questOldman001Progress && !questOldman001Progress.completed) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_oldman_001')
-
-        if (requirements.met && !introOnly) {
-          // Player has flower - show completion prompt
-          return {
-            success: true,
-            action: 'talk to old man',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man with the flower.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-oldman',
-                    iconColor: 'yellow-400',
-                    title: 'Old Man',
-                    message: 'The Old Man\'s eyes light up as he sees the yellow flower in your hand. "Perfect! That\'s exactly what I needed. Thank you so much, traveler!"',
-                  },
-                  questComplete: {
-                    questTitle: getQuestDef('quest_oldman_001').title,
-                    rewards: getQuestDef('quest_oldman_001').rewards || [],
-                    levelUp: null,
-                    newQuestTitles: [],
-                  },
-                  buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_001', primary: true },
-                  ],
-                }),
-              },
-            ],
-          }
-        } else {
-          // Player doesn't have flower - show reminder
-          return {
-            success: true,
-            action: 'talk to old man',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-oldman',
-                    iconColor: 'yellow-400',
-                    title: 'Old Man',
-                    message: 'The Old Man looks at you expectantly. "Have you found that yellow flower yet? You can find them in the flower patch to the north. Just bring me one when you have it!"',
-                  },
-                }),
-              },
-            ],
-          }
-        }
-      }
-
-      // Check quest_oldman_002 (Rat Problem)
-      const questOldman002Progress = await getQuestProgress(playerId, 'quest_oldman_002')
-
-      if (questOldman002Progress && !questOldman002Progress.completed) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_oldman_002')
-
-        if (requirements.met && !introOnly) {
-          return {
-            success: true,
-            action: 'talk to old man',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-oldman',
-                    iconColor: 'yellow-400',
-                    title: 'Old Man',
-                    message: 'The Old Man\'s face lights up with relief. "You did it! Those wretched rats have been down there for weeks. I can\'t thank you enough, traveler."',
-                  },
-                  questComplete: {
-                    questTitle: getQuestDef('quest_oldman_002').title,
-                    rewards: getQuestDef('quest_oldman_002').rewards || [],
-                    levelUp: null,
-                    newQuestTitles: [],
-                  },
-                  buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_002', primary: true },
-                  ],
-                }),
-              },
-            ],
-          }
-        } else {
-          return {
-            success: true,
-            action: 'talk to old man',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-oldman',
-                    iconColor: 'yellow-400',
-                    title: 'Old Man',
-                    message: 'The Old Man wrings his hands nervously. "Those giant rats are still down there in my basement! Head down and clear them out — I can\'t rest until they\'re gone."',
-                  },
-                }),
-              },
-            ],
-          }
-        }
-      }
-
-      // Check quest_oldman_003 (The Gator)
-      const questOldman003Progress = await getQuestProgress(playerId, 'quest_oldman_003')
-
-      if (questOldman003Progress && !questOldman003Progress.completed && (!targetQuestId || targetQuestId === 'quest_oldman_003')) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_oldman_003')
-
-        if (requirements.met && !introOnly) {
-          return {
-            success: true,
-            action: 'talk to old man',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-oldman',
-                    iconColor: 'yellow-400',
-                    title: 'Old Man',
-                    message: 'The Old Man claps his hands together. "That gator has been terrorizing this marsh for years! You\'ve done this whole area a great service, friend."',
-                  },
-                  questComplete: {
-                    questTitle: getQuestDef('quest_oldman_003').title,
-                    rewards: getQuestDef('quest_oldman_003').rewards || [],
-                    levelUp: null,
-                    newQuestTitles: [],
-                  },
-                  buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_003', primary: true },
-                  ],
-                }),
-              },
-            ],
-          }
-        } else {
-          return {
-            success: true,
-            action: 'talk to old man',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-oldman',
-                    iconColor: 'yellow-400',
-                    title: 'Old Man',
-                    message: 'The Old Man leans on his cane and peers toward the marsh. "That gator is still out there in the swamp. Head southwest into the marsh and deal with it when you\'re ready."',
-                  },
-                }),
-              },
-            ],
-          }
-        }
-      }
-
-      // Check quest_oldman_004 (Blueberry Jam)
-      const questOldman004Progress = await getQuestProgress(playerId, 'quest_oldman_004')
-
-      if (questOldman004Progress && !questOldman004Progress.completed && (!targetQuestId || targetQuestId === 'quest_oldman_004')) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_oldman_004')
-
-        if (requirements.met && !introOnly) {
-          return {
-            success: true,
-            action: 'talk to old man',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to old man', 'success', 'You approach the Old Man with the blueberries.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-oldman',
-                    iconColor: 'yellow-400',
-                    title: 'Old Man',
-                    message: 'The Old Man\'s eyes go wide. "Well I\'ll be — you actually got \'em! Those\'ll make the finest jam this side of the bayou. My wife is going to be absolutely delighted, I tell you."',
-                  },
-                  questComplete: {
-                    questTitle: getQuestDef('quest_oldman_004').title,
-                    rewards: getQuestDef('quest_oldman_004').rewards || [],
-                    levelUp: null,
-                    newQuestTitles: [],
-                  },
-                  buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_oldman_004', primary: true },
-                  ],
-                }),
-              },
-            ],
-          }
-        } else {
-          return {
-            success: true,
-            action: 'talk to old man',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-oldman',
-                    iconColor: 'yellow-400',
-                    title: 'Old Man',
-                    message: 'The Old Man leans back with a wistful look. "My wife makes the most wonderful blueberry jam, but we\'re fresh out of berries. Head over to the blueberry patch and bring me back ten of \'em when you get a chance."',
-                  },
-                }),
-              },
-            ],
-          }
-        }
-      }
-
-      // All quests done or missing - friendly fallback
-      return {
-        success: true,
-        action: 'talk to old man',
-        playerEvents: [
-          {
-            event: 'action:feedback',
-            payload: createActionFeedbackPayload('talk to old man', 'success', 'You talk to the Old Man.', {
-              roomId: roomState.roomId,
-              showModal: true,
-              modalContent: {
-                type: 'icon',
-                icon: 'npc-oldman',
-                iconColor: 'yellow-400',
-                title: 'Old Man',
-                message: questOldman004Progress?.completed
-                  ? 'The Old Man rocks contentedly in his chair. "The gator\'s gone, the rats are gone, and my wife\'s got her jam. You\'ve been a true blessing to this old man, traveler."'
-                  : questOldman003Progress?.completed
-                    ? 'The Old Man rocks contentedly in his chair. "The rats are gone, the gator is dealt with, and my wife got her flower. You\'ve been a true blessing, traveler."'
-                    : questOldman001Progress?.completed
-                      ? 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."'
-                      : 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
-              },
-            }),
-          },
-        ],
-      }
-    },
+    'talk to old man': createNpcTalkHandler({
+      npcId: 'old_man',
+      action: 'talk to old man',
+      icon: 'npc-oldman',
+      iconColor: 'yellow-400',
+      title: 'Old Man',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_oldman_004',
+          message: 'The Old Man rocks contentedly in his chair. "The gator\'s gone, the rats are gone, and my wife\'s got her jam. You\'ve been a true blessing to this old man, traveler."',
+        },
+        {
+          ifCompleted: 'quest_oldman_003',
+          message: 'The Old Man rocks contentedly in his chair. "The rats are gone, the gator is dealt with, and my wife got her flower. You\'ve been a true blessing, traveler."',
+        },
+        {
+          ifCompleted: 'quest_oldman_001',
+          message: 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."',
+        },
+        {
+          ifCompleted: null,
+          message: 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
+        },
+      ],
+    }),
   },
   '007': {
-    'talk to young soldier': async (playerId, roomState, actionData = {}) => {
-      const { getQuestProgress, checkQuestRequirements, getQuestDef } = require('./services/quest-service')
-      const introOnly = !!actionData.introOnly
-
-      roomState.touchActivity()
-
-      // Check quest_youngsoldier_000 status first
-      const questYoungsoldier000Progress = await getQuestProgress(playerId, 'quest_youngsoldier_000')
-
-      // If quest_youngsoldier_000 active (exists, not completed)
-      if (questYoungsoldier000Progress && !questYoungsoldier000Progress.completed) {
-        return {
-          success: true,
-          action: 'talk to young soldier',
-          playerEvents: [
-            {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
-                roomId: roomState.roomId,
-                showModal: true,
-                modalContent: {
-                  type: 'icon',
-                  icon: 'npc-youngsoldier',
-                  iconColor: 'blue-400',
-                  title: 'Young Soldier',
-                  message: 'The Young Soldier turns to face you with a determined look. "Greetings, traveler! I see you\'ve spoken with the Old Man. He\'s a wise one, but let me give you some advice: in this world, you need to be prepared. Make sure you\'re properly armed before you venture too far."',
-                },
-                buttons: [
-                  { label: 'Continue', direction: 'complete_quest:quest_youngsoldier_000' },
-                ],
-              }),
-            },
-          ],
-        }
-      }
-
-      // quest_youngsoldier_000 is completed, check quest_youngsoldier_001 status
-      const questYoungsoldier001Progress = await getQuestProgress(playerId, 'quest_youngsoldier_001')
-
-      // If quest_youngsoldier_001 active (exists, not completed)
-      if (questYoungsoldier001Progress && !questYoungsoldier001Progress.completed) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_youngsoldier_001')
-
-        if (requirements.met && !introOnly) {
-          // Player has equipped MAIN_HAND item - show completion prompt
-          return {
-            success: true,
-            action: 'talk to young soldier',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-youngsoldier',
-                    iconColor: 'blue-400',
-                    title: 'Young Soldier',
-                    message: 'The Young Soldier nods approvingly as he sees your weapon. "Good. Now you\'re armed. That\'s much better. You\'ll need that if you plan to explore beyond these safe areas."',
-                  },
-                  questComplete: {
-                    questTitle: getQuestDef('quest_youngsoldier_001').title,
-                    rewards: getQuestDef('quest_youngsoldier_001').rewards || [],
-                    levelUp: null,
-                    newQuestTitles: [],
-                  },
-                  buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_youngsoldier_001', primary: true },
-                  ],
-                }),
-              },
-            ],
-          }
-        } else {
-          // Player doesn't have MAIN_HAND item equipped - show reminder
-          return {
-            success: true,
-            action: 'talk to young soldier',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to the Young Soldier.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-youngsoldier',
-                    iconColor: 'blue-400',
-                    title: 'Young Soldier',
-                    message: 'the Young Soldier looks at you with concern. "You\'re still unarmed? That\'s dangerous. Open your inventory and equip something into your Main Hand. You can\'t rely on your fists forever."',
-                  },
-                }),
-              },
-            ],
-          }
-        }
-      }
-
-      // quest_youngsoldier_001 completed, check quest_youngsoldier_002 status
-      const questYoungsoldier002Progress = await getQuestProgress(playerId, 'quest_youngsoldier_002')
-
-      if (questYoungsoldier002Progress && !questYoungsoldier002Progress.completed) {
-        const requirements = await checkQuestRequirements(playerId, 'quest_youngsoldier_002')
-        const killCount = questYoungsoldier002Progress.progress
-        const killTarget = 2
-
-        if (requirements.met && !introOnly) {
-          return {
-            success: true,
-            action: 'talk to young soldier',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-youngsoldier',
-                    iconColor: 'blue-400',
-                    title: 'Young Soldier',
-                    message: 'The Young Soldier grins as you return. "Two Sand Crabs — impressive! You\'re no longer just an adventurer with a weapon, you\'re one who knows how to use it. I think you\'re ready to explore this world."',
-                  },
-                  questComplete: {
-                    questTitle: getQuestDef('quest_youngsoldier_002').title,
-                    rewards: getQuestDef('quest_youngsoldier_002').rewards || [],
-                    levelUp: null,
-                    newQuestTitles: [],
-                  },
-                  buttons: [
-                    { label: 'Complete Quest', direction: 'complete_quest:quest_youngsoldier_002', primary: true },
-                  ],
-                }),
-              },
-            ],
-          }
-        } else {
-          return {
-            success: true,
-            action: 'talk to young soldier',
-            playerEvents: [
-              {
-                event: 'action:feedback',
-                payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You approach the Young Soldier.', {
-                  roomId: roomState.roomId,
-                  showModal: true,
-                  modalContent: {
-                    type: 'icon',
-                    icon: 'npc-youngsoldier',
-                    iconColor: 'blue-400',
-                    title: 'Young Soldier',
-                    message: `The Young Soldier crosses his arms. "The Rocky Beach is to the south — you'll find Sand Crabs there. Come back when you've defeated two of them. You're at ${killCount} of ${killTarget} so far."`,
-                  },
-                }),
-              },
-            ],
-          }
-        }
-      }
-
-      // Quest_005 completed or missing - show idle dialog
-      return {
-        success: true,
-        action: 'talk to young soldier',
-        playerEvents: [
-          {
-            event: 'action:feedback',
-            payload: createActionFeedbackPayload('talk to young soldier', 'success', 'You talk to the Young Soldier.', {
-              roomId: roomState.roomId,
-              showModal: true,
-              modalContent: {
-                type: 'icon',
-                icon: 'npc-youngsoldier',
-                iconColor: 'blue-400',
-                title: 'Young Soldier',
-                message: questYoungsoldier002Progress && questYoungsoldier002Progress.completed
-                  ? 'The Young Soldier gives you a proud nod. "You\'ve proven yourself out there. Stay sharp and keep pushing further into the world."'
-                  : questYoungsoldier001Progress && questYoungsoldier001Progress.completed
-                    ? 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."'
-                    : 'The Young Soldier holds up a hand before you can speak. "Hold on there, traveler. I\'m a soldier sent here from Domus to assist you, but before I can help, you should go speak with the Old Man in his cabin first. Come back to me once you\'ve talked with him."',
-              },
-            }),
-          },
-        ],
-      }
-    },
+    'talk to young soldier': createNpcTalkHandler({
+      npcId: 'young_soldier',
+      action: 'talk to young soldier',
+      icon: 'npc-youngsoldier',
+      iconColor: 'blue-400',
+      title: 'Young Soldier',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_youngsoldier_002',
+          message: 'The Young Soldier gives you a proud nod. "You\'ve proven yourself out there. Stay sharp and keep pushing further into the world."',
+        },
+        {
+          ifCompleted: 'quest_youngsoldier_001',
+          message: 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."',
+        },
+        {
+          ifCompleted: null,
+          message: '"Hail Wanderer. I\'m a soldier sent here to assist you, but before I can help, you need to speak with the Old Man in his cabin west of here."',
+        },
+      ],
+    }),
   },
   '004': {},
   '005': {

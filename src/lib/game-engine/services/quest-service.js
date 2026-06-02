@@ -22,6 +22,19 @@ function listQuestDefs() {
 }
 
 /**
+ * List quests given by a specific NPC, sorted by number.
+ * Each entry includes its quest id so callers can look up progress / build actions.
+ * @param {string} npcId - The quest giver's npcId
+ * @returns {Array} Array of { id, ...questDef } sorted by number
+ */
+function listQuestsByGiver(npcId) {
+  return Object.entries(QUESTS)
+    .filter(([, def]) => def.giver && def.giver.npcId === npcId)
+    .map(([id, def]) => ({ id, ...def }))
+    .sort((a, b) => a.number - b.number)
+}
+
+/**
  * Get quest progress for a player
  * @param {string} playerId - The player's ID
  * @param {string} questId - The quest ID
@@ -341,6 +354,22 @@ async function checkQuestRequirements(playerId, questId) {
           }
         }
       }
+    } else if (requirement.type === 'level') {
+      const { minLevel = 0 } = requirement
+      const user = await prisma.user.findUnique({
+        where: { id: playerId },
+        select: { level: true },
+      })
+      const current = user?.level ?? 0
+      if (current < minLevel) {
+        return {
+          met: false,
+          details: {
+            requiredLevel: minLevel,
+            currentLevel: current,
+          },
+        }
+      }
     }
   }
 
@@ -524,6 +553,7 @@ async function playerAcceptQuest(playerId, questId) {
 module.exports = {
   getQuestDef,
   listQuestDefs,
+  listQuestsByGiver,
   getQuestProgress,
   acceptQuest,
   checkQuestRequirements,

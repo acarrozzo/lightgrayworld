@@ -1214,7 +1214,7 @@ class RoomState {
         iconColor: 'yellow-400',
         title: questDef.giver?.name || 'Quest Complete',
         header: 'Quest Complete!',
-        message: questDef.title,
+        message: questDef.completionDialog || null,
       },
       questComplete: {
         questTitle: questDef.title,

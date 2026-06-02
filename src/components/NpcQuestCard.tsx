@@ -22,6 +22,7 @@ type QuestDef = {
     slot?: string
     notDefault?: boolean
     enemySlug?: string
+    minLevel?: number
   }>
   [key: string]: unknown
 }
@@ -44,6 +45,14 @@ type QuestState = 'talk' | 'in_progress' | 'turn_in' | 'completed'
  */
 export const PRE_QUEST_TALK_ID = '__pretalk__'
 
+/**
+ * The two intro "talk to the NPC" quests. They carry a trivially-met `level`
+ * requirement (so their data shape matches every other quest), but in the
+ * journal we collapse them to a single "Talk to {npc}" button that completes
+ * the quest in one click — the secondary Talk + Turn In buttons are hidden.
+ */
+const TALK_COMPLETE_QUEST_IDS = new Set(['quest_oldman_000', 'quest_youngsoldier_000'])
+
 interface NpcQuestCardProps {
   npcName: string
   npcIcon: string
@@ -59,8 +68,13 @@ function getRequirementProgress(
   req: NonNullable<QuestDef['requirements']>[number],
   progress: number,
   inventory: ReturnType<typeof useGameStore.getState>['inventory'],
-  killList: KillEntry[]
+  killList: KillEntry[],
+  playerLevel: number
 ): { met: boolean; current: number; total: number; label?: string } {
+  if (req.type === 'level') {
+    const min = req.minLevel ?? 0
+    return { met: playerLevel >= min, current: 1, total: 1 }
+  }
   if (req.type === 'killCount') {
     const total = req.count ?? 1
     const current = killList.find((k) => k.monster === req.enemySlug)?.kills ?? 0
@@ -85,7 +99,8 @@ function resolveQuestState(
   questDef: QuestDef,
   progress: QuestProgress,
   inventory: ReturnType<typeof useGameStore.getState>['inventory'],
-  killList: KillEntry[]
+  killList: KillEntry[],
+  playerLevel: number
 ): { state: QuestState; progressLabel?: string } {
   if (progress.completed) return { state: 'completed' }
 
@@ -96,7 +111,7 @@ function resolveQuestState(
   const progressParts: string[] = []
 
   for (const req of reqs) {
-    const result = getRequirementProgress(req, progress.progress, inventory, killList)
+    const result = getRequirementProgress(req, progress.progress, inventory, killList, playerLevel)
     if (!result.met) allMet = false
     if (req.type === 'killCount') {
       progressParts.push(`${result.current}/${result.total} ${result.label ?? req.enemySlug}`)
@@ -120,6 +135,7 @@ export default function NpcQuestCard({
   loadingQuestId,
 }: NpcQuestCardProps) {
   const inventory = useGameStore((s) => s.inventory)
+  const playerLevel = useGameStore((s) => s.player?.level ?? 0)
 
   const visibleQuests = useMemo(() => {
     const result: Array<{ questDef: QuestDef; progress: QuestProgress; state: QuestState; progressLabel?: string }> = []
@@ -131,7 +147,7 @@ export default function NpcQuestCard({
       const progress = quests.find((q) => q.questId === questId)
       if (!progress) continue // hidden if locked (no QuestProgress record)
 
-      const { state, progressLabel } = resolveQuestState(questDef, progress, inventory, killList)
+      const { state, progressLabel } = resolveQuestState(questDef, progress, inventory, killList, playerLevel)
       result.push({ questDef, progress, state, progressLabel })
     }
 
@@ -159,7 +175,7 @@ export default function NpcQuestCard({
     })
 
     return result
-  }, [questIds, quests, inventory, killList, npcName, npcIcon])
+  }, [questIds, quests, inventory, killList, playerLevel, npcName, npcIcon])
 
   if (visibleQuests.length === 0) return null
 
@@ -182,6 +198,9 @@ export default function NpcQuestCard({
           const isInProgress = state === 'in_progress'
           const isCompleted = state === 'completed'
           const canTurnIn = isTurnIn
+          // Intro "talk to NPC" quests: collapse to a single button that completes
+          // in one click, hiding the secondary Talk + Turn In buttons.
+          const isTalkComplete = !isCompleted && TALK_COMPLETE_QUEST_IDS.has(progress.questId)
 
           return (
             <div key={progress.questId} className="flex items-center gap-3 px-3 py-2.5">
@@ -212,6 +231,18 @@ export default function NpcQuestCard({
               {/* CTA */}
               {isCompleted ? (
                 <CheckCircle size={18} className="shrink-0 text-green-600" />
+              ) : isTalkComplete ? (
+                // Intro quests: single button that completes in one click.
+                <button
+                  disabled={isLoading}
+                  onClick={() => onTurnIn(progress.questId)}
+                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors bg-indigo-600 hover:bg-indigo-500 text-white ${
+                    isLoading ? 'opacity-60 cursor-wait' : ''
+                  }`}
+                >
+                  <MessageCircle size={16} />
+                  {isLoading ? '...' : `Talk to ${npcName}`}
+                </button>
               ) : isTalk ? (
                 // No-requirement quests: Talk only — completion happens via modal button
                 <button
