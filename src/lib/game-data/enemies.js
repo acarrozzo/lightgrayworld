@@ -1,6 +1,7 @@
 const ENEMIES = [
   {
     slug: 'rat',
+    zone: 'Grassy Field',
     name: 'Rat',
     description: 'A scraggly vermin with yellowed teeth.',
     icon: 'enemy-Rat',
@@ -8,7 +9,7 @@ const ENEMIES = [
     hp: 3,
     att: 1,
     def: 1,
-    isAggressive: false,
+    isAggressive: true,
     isFriendly: false,
     isFlying: false,
     damageType: 'MELEE',
@@ -18,7 +19,27 @@ const ENEMIES = [
     drops: [{ itemSlug: 'dagger', chance: 0.50 }],
   },
   {
+    slug: 'sand-crab',
+    zone: 'Grassy Field',
+    name: 'Sand Crab',
+    description: 'A large crab with a hardened shell, scuttling sideways across the sand.',
+    icon: 'enemy-SandCrab',
+    level: 2,
+    hp: 3,
+    att: 2,
+    def: 2,
+    isAggressive: true,
+    isFriendly: false,
+    isFlying: false,
+    damageType: 'MELEE',
+    xpReward: 2,
+    goldMin: 1,
+    goldMax: 2,
+    drops: [{ itemSlug: 'dagger', chance: 0.60 }],
+  },
+  {
     slug: 'giant-rat',
+    zone: 'Grassy Field',
     name: 'Giant Rat',
     description: 'A massive, foul-smelling rodent with red eyes.',
     icon: 'enemy-GiantRat',
@@ -37,9 +58,10 @@ const ENEMIES = [
   },
   {
     slug: 'gator',
+    zone: 'Grassy Field',
     name: 'Gator',
     description: 'A massive reptile lurking in the marsh, coiled and ready to strike.',
-    icon: 'Gator',
+    icon: 'enemy-Gator',
     level: 5,
     hp: 100,
     att: 8,
@@ -54,25 +76,8 @@ const ENEMIES = [
     drops: [{ itemSlug: 'padded-armor', chance: 1.0 }],
   },
   {
-    slug: 'sand-crab',
-    name: 'Sand Crab',
-    description: 'A large crab with a hardened shell, scuttling sideways across the sand.',
-    icon: 'enemy-SandCrab',
-    level: 2,
-    hp: 3,
-    att: 2,
-    def: 2,
-    isAggressive: false,
-    isFriendly: false,
-    isFlying: false,
-    damageType: 'MELEE',
-    xpReward: 2,
-    goldMin: 1,
-    goldMax: 2,
-    drops: [{ itemSlug: 'dagger', chance: 0.60 }],
-  },
-  {
     slug: 'spider',
+    zone: 'Spider Cave',
     name: 'Spider',
     description: 'A skittering cave spider with venom-tipped fangs.',
     icon: 'enemy-Spider',
@@ -91,6 +96,7 @@ const ENEMIES = [
   },
   {
     slug: 'scorpion',
+    zone: 'Spider Cave',
     name: 'Scorpion',
     description: 'An armored scorpion with a barbed tail poised to strike.',
     icon: 'enemy-Scorpion',
@@ -109,6 +115,7 @@ const ENEMIES = [
   },
   {
     slug: 'giant-spider',
+    zone: 'Spider Cave',
     name: 'Giant Spider',
     description: 'A massive spider that fills the tunnel with its sprawling legs.',
     icon: 'enemy-GiantSpider',
@@ -127,6 +134,7 @@ const ENEMIES = [
   },
   {
     slug: 'alpha-scorpion',
+    zone: 'Spider Cave',
     name: 'Alpha Scorpion',
     description: 'A colossal scorpion, larger and more lethal than any of its kin.',
     icon: 'enemy-AlphaScorpion',
@@ -145,6 +153,7 @@ const ENEMIES = [
   },
   {
     slug: 'scorpion-guard',
+    zone: 'Scorpion Pit',
     name: 'Scorpion Guard',
     description: 'A disciplined scorpion hardened by pit combat, standing watch at the dungeon\'s edge.',
     icon: 'enemy-ScorpionGuard',
@@ -163,6 +172,7 @@ const ENEMIES = [
   },
   {
     slug: 'mammoth-scorpion',
+    zone: 'Scorpion Pit',
     name: 'Mammoth Scorpion',
     description: 'An enormous scorpion whose armored bulk fills the tunnel. Its tail strike shakes the walls.',
     icon: 'enemy-MammothScorpion',
@@ -181,6 +191,7 @@ const ENEMIES = [
   },
   {
     slug: 'scorpion-queen',
+    zone: 'Scorpion Pit',
     name: 'Scorpion Queen',
     description: 'The matriarch of the pit. Her venom dissolves stone and her rage is absolute.',
     icon: 'enemy-ScorpionQueen',
@@ -199,6 +210,7 @@ const ENEMIES = [
   },
   {
     slug: 'scorpion-king',
+    zone: 'Scorpion Pit',
     name: 'Scorpion King',
     description: 'The apex predator of the dungeon. Ancient, enormous, and merciless — none who have faced him have returned.',
     icon: 'enemy-ScorpionKing',
@@ -217,6 +229,7 @@ const ENEMIES = [
   },
   {
     slug: 'bat',
+    zone: 'Bat Cave',
     name: 'Bat',
     description: 'A leathery-winged bat that swoops from the cavern shadows with shrill, piercing cries.',
     icon: 'enemy-Bat',
@@ -235,6 +248,7 @@ const ENEMIES = [
   },
   {
     slug: 'golden-bat',
+    zone: 'Bat Cave',
     name: 'Golden Bat',
     description: 'A rare bat with shimmering gold-flecked fur. Faster and far more vicious than its lesser kin.',
     icon: 'enemy-GoldenBat',
@@ -253,6 +267,7 @@ const ENEMIES = [
   },
   {
     slug: 'salamander',
+    zone: 'Bat Cave',
     name: 'Salamander',
     description: 'A thick-bodied cave salamander with damp, mottled skin and a sluggish but punishing bite.',
     icon: 'enemy-Salamander',
@@ -271,6 +286,7 @@ const ENEMIES = [
   },
   {
     slug: 'goblin',
+    zone: 'Bat Cave',
     name: 'Goblin',
     description: 'A wiry green-skinned goblin clutching a crude blade. Snarls and lunges without warning.',
     icon: 'enemy-Goblin',
@@ -289,6 +305,7 @@ const ENEMIES = [
   },
   {
     slug: 'goblin-bandit',
+    zone: 'Bat Cave',
     name: 'Goblin Bandit',
     description: 'A scarred goblin wrapped in stolen leathers, wielding a notched short blade with practiced cruelty.',
     icon: 'enemy-GoblinBandit',
@@ -307,6 +324,7 @@ const ENEMIES = [
   },
   {
     slug: 'goblin-chief',
+    zone: 'Bat Cave',
     name: 'Goblin Chief',
     description: 'The brutal warlord of the goblin tribe. Massive for his kind, draped in bone trophies and roaring for blood.',
     icon: 'enemy-GoblinChief',
