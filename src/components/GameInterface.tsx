@@ -1532,11 +1532,15 @@ export default function GameInterface() {
         }
       }
 
-      // Update player HP if provided in action feedback
-      if (typeof payload?.data?.hp === 'number') {
+      // Update player HP and/or MP if provided in action feedback
+      if (typeof payload?.data?.hp === 'number' || typeof payload?.data?.mp === 'number') {
         const currentPlayer = playerRef.current
         if (currentPlayer) {
-          setPlayer({ ...currentPlayer, hp: payload.data.hp })
+          setPlayer({
+            ...currentPlayer,
+            ...(typeof payload.data.hp === 'number' && { hp: payload.data.hp }),
+            ...(typeof payload.data.mp === 'number' && { mp: payload.data.mp }),
+          })
         }
       }
 

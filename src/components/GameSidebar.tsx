@@ -213,12 +213,14 @@ export default function GameSidebar({ player, onClose, onToggle, isOpen, onActio
                       value={`${player.hp}/${player.hpMax}`}
                       percentage={hpPercent}
                       gradient="from-rose-500 via-red-500 to-rose-600"
+                      overMax={player.hp > player.hpMax}
                     />
                     <StatBar
                       label="MP"
                       value={`${player.mp}/${player.mpMax}`}
                       percentage={mpPercent}
                       gradient="from-sky-500 via-blue-500 to-indigo-500"
+                      overMax={player.mp > player.mpMax}
                     />
                     <StatBar
                       label="XP"
@@ -373,14 +375,15 @@ interface StatBarProps {
   value: string
   percentage: number
   gradient: string
+  overMax?: boolean
 }
 
-function StatBar({ label, value, percentage, gradient }: StatBarProps) {
+function StatBar({ label, value, percentage, gradient, overMax }: StatBarProps) {
   return (
     <div>
       <div className="flex justify-between text-xs text-gray-400 mb-1">
         <span>{label}</span>
-        <span className="text-white font-medium">{value}</span>
+        <span className={`font-medium ${overMax ? 'text-yellow-400' : 'text-white'}`}>{value}</span>
       </div>
       <div className="h-3 rounded-full bg-gray-800/80 overflow-hidden">
         <div

@@ -759,13 +759,48 @@ class RoomState {
 
     this.touchActivity()
 
-    const healAmount = Math.max(1, Math.floor((player.hpMax ?? 10) * 0.1))
-    const startingHp = player.hp ?? 0
-    const newHp = Math.min(player.hpMax ?? 10, startingHp + healAmount)
-    const recovered = Math.max(0, newHp - startingHp)
+    const hpMax = player.hpMax ?? 10
+    const mpMax = player.mpMax ?? 2
+    const pt = player.physicalTraining ?? 1
+    const mt = player.mentalTraining ?? 1
 
-    this.updatePlayer(playerId, (state) => ({ ...state, hp: newHp }))
-    await prisma.user.update({ where: { id: playerId }, data: { hp: newHp } })
+    let newHp, newMp, message
+
+    if (this.roomId === '999') {
+      newHp = hpMax
+      newMp = mpMax
+      message = 'You rest and fully restore your HP and MP.'
+    } else if (this.roomId === '020') {
+      newHp = hpMax + 10
+      newMp = mpMax + 10
+      message = 'The waterfall washes over you. Your HP and MP are fully restored and then some.'
+    } else {
+      newHp = Math.min(hpMax, (player.hp ?? 0) + pt)
+      newMp = Math.min(mpMax, (player.mp ?? 0) + mt)
+      const hpGained = Math.max(0, newHp - (player.hp ?? 0))
+      const mpGained = Math.max(0, newMp - (player.mp ?? 0))
+
+      if (hpGained === 0 && mpGained === 0) {
+        return {
+          success: true,
+          action: 'rest',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: this.createFeedbackPayload('rest', 'success', 'You already have full HP and MP.', { hp: newHp, mp: newMp }),
+            },
+          ],
+        }
+      }
+
+      const parts = []
+      if (hpGained > 0) parts.push(`${hpGained} HP`)
+      if (mpGained > 0) parts.push(`${mpGained} MP`)
+      message = `You recover ${parts.join(' and ')}.`
+    }
+
+    this.updatePlayer(playerId, (state) => ({ ...state, hp: newHp, mp: newMp }))
+    await prisma.user.update({ where: { id: playerId }, data: { hp: newHp, mp: newMp } })
 
     return {
       success: true,
@@ -773,9 +808,7 @@ class RoomState {
       playerEvents: [
         {
           event: 'action:feedback',
-          payload: this.createFeedbackPayload('rest', 'success', `You recover ${recovered} HP.`, {
-            hp: newHp,
-          }),
+          payload: this.createFeedbackPayload('rest', 'success', message, { hp: newHp, mp: newMp }),
         },
       ],
     }
