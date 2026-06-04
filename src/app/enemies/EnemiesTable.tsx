@@ -19,7 +19,7 @@ export type EnemyRow = {
   isAggressive: boolean
   isFlying: boolean
   isFriendly: boolean
-  drops: { name: string; chance: number }[]
+  drops: { name: string; chance: number; tag?: 'always' | 'first-kill' }[]
 }
 
 // Sortable columns. `get` pulls the value used for comparison.
@@ -122,8 +122,23 @@ export default function EnemiesTable({
         </span>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-gray-800">
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-2">
+        {sorted.length === 0 && (
+          <p className="py-6 text-center text-gray-500 text-sm">No enemies match this filter.</p>
+        )}
+        {groups
+          ? groups.map((g) => (
+              <div key={g.zone}>
+                <p className="px-1 py-2 text-xs font-semibold uppercase tracking-wide text-gray-400">{g.zone}</p>
+                {g.rows.map((r) => <EnemyCard key={r.slug} r={r} />)}
+              </div>
+            ))
+          : sorted.map((r) => <EnemyCard key={r.slug} r={r} />)}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-800">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-gray-900 text-left text-xs uppercase tracking-wide text-gray-500">
@@ -196,20 +211,76 @@ function EnemyTr({ r }: { r: EnemyRow }) {
           {r.isFriendly && <Tag>friendly</Tag>}
         </div>
       </td>
-      <td className="px-3 py-2 text-right text-gray-400">{r.level}</td>
-      <td className="px-3 py-2 text-right text-gray-300">{r.hp}</td>
+      <td className="px-3 py-2 text-right text-yellow-400">{r.level}</td>
+      <td className="px-3 py-2 text-right text-red-400">{r.hp}</td>
       <td className="px-3 py-2 text-right text-gray-300">{r.att}</td>
       <td className="px-3 py-2 text-right text-gray-300">{r.def}</td>
-      <td className="px-3 py-2 text-right text-gray-300">{r.xp}</td>
+      <td className="px-3 py-2 text-right text-green-400">{r.xp}</td>
       <td className="px-3 py-2 text-right text-gray-400">
         {r.goldMin}–{r.goldMax}
       </td>
       <td className="px-3 py-2 text-gray-400">
         {r.drops.length === 0
           ? '—'
-          : r.drops.map((d) => `${d.name} (${d.chance}%)`).join(', ')}
+          : r.drops.map((d, i) => {
+              const [label, nameColor] =
+                d.tag === 'always'     ? ['always', 'text-blue-400'] :
+                d.tag === 'first-kill' ? ['1st',    'text-green-400'] :
+                                         [`${d.chance}%`, 'text-gray-300']
+              return (
+                <span key={i}>
+                  {i > 0 && <span className="text-gray-600">, </span>}
+                  <span className={nameColor}>{d.name}</span>
+                  <span className="text-gray-500"> ({label})</span>
+                </span>
+              )
+            })}
       </td>
     </tr>
+  )
+}
+
+function EnemyCard({ r }: { r: EnemyRow }) {
+  return (
+    <div className="rounded-lg border border-gray-800 bg-gray-900/30 px-3 py-2.5 text-sm">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon name={r.icon} size={20} />
+        <span className="font-medium text-gray-100">{r.name}</span>
+        {r.isFlying && <Tag>flying</Tag>}
+        {r.isFriendly && <Tag>friendly</Tag>}
+      </div>
+      <div className="grid grid-cols-6 gap-1 text-center text-xs mb-2">
+        {[
+          { label: 'Lvl', value: r.level, color: 'text-yellow-400' },
+          { label: 'HP',  value: r.hp,    color: 'text-red-400' },
+          { label: 'ATT', value: r.att,   color: 'text-gray-300' },
+          { label: 'DEF', value: r.def,   color: 'text-gray-300' },
+          { label: 'XP',  value: r.xp,    color: 'text-green-400' },
+          { label: 'Gold', value: `${r.goldMin}–${r.goldMax}`, color: 'text-gray-400' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="flex flex-col gap-0.5">
+            <span className="text-gray-600 uppercase tracking-wide" style={{ fontSize: '10px' }}>{label}</span>
+            <span className={color}>{value}</span>
+          </div>
+        ))}
+      </div>
+      {r.drops.length > 0 && (
+        <div className="text-xs text-gray-400 flex flex-wrap gap-x-2 gap-y-0.5">
+          {r.drops.map((d, i) => {
+            const [label, nameColor] =
+              d.tag === 'always'     ? ['always', 'text-blue-400'] :
+              d.tag === 'first-kill' ? ['1st',    'text-green-400'] :
+                                       [`${d.chance}%`, 'text-gray-300']
+            return (
+              <span key={i}>
+                <span className={nameColor}>{d.name}</span>
+                <span className="text-gray-500"> ({label})</span>
+              </span>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
 

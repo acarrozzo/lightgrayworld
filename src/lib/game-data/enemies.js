@@ -1,3 +1,15 @@
+// Drop system shape:
+//   drops.main      — mutually-exclusive weighted roll: at most ONE item drops per kill.
+//                     `chance` values are laid end-to-end; if they sum to < 1.0 the remainder is "no drop".
+//   drops.always    — array of slugs that drop on EVERY kill (in addition to the main roll).
+//   drops.firstKill — array of slugs that drop only on the player's FIRST kill of this enemy.
+const STANDARD_MAIN_DROP = [
+  { itemSlug: 'redberry', chance: 0.25 },
+  { itemSlug: 'blueberry', chance: 0.25 },
+  { itemSlug: 'dagger', chance: 0.25 },
+  { itemSlug: 'raw meat', chance: 0.25 },
+]
+
 const ENEMIES = [
   {
     slug: 'rat',
@@ -16,7 +28,7 @@ const ENEMIES = [
     xpReward: 1,
     goldMin: 1,
     goldMax: 3,
-    drops: [{ itemSlug: 'dagger', chance: 0.50 }],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'sand-crab',
@@ -35,7 +47,7 @@ const ENEMIES = [
     xpReward: 2,
     goldMin: 1,
     goldMax: 2,
-    drops: [{ itemSlug: 'dagger', chance: 0.60 }],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'giant-rat',
@@ -54,7 +66,7 @@ const ENEMIES = [
     xpReward: 3,
     goldMin: 3,
     goldMax: 8,
-    drops: [{ itemSlug: 'dagger', chance: 0.65 }],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'gator',
@@ -73,7 +85,7 @@ const ENEMIES = [
     xpReward: 20,
     goldMin: 10,
     goldMax: 100,
-    drops: [{ itemSlug: 'padded-armor', chance: 1.0 }],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'spider',
@@ -92,7 +104,7 @@ const ENEMIES = [
     xpReward: 2,
     goldMin: 1,
     goldMax: 5,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP, firstKill: ['dagger'], always: ['dagger'] },
   },
   {
     slug: 'scorpion',
@@ -111,7 +123,7 @@ const ENEMIES = [
     xpReward: 4,
     goldMin: 2,
     goldMax: 10,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP, firstKill: ['dagger'], always: ['dagger'] },
   },
   {
     slug: 'giant-spider',
@@ -130,7 +142,7 @@ const ENEMIES = [
     xpReward: 6,
     goldMin: 5,
     goldMax: 10,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'alpha-scorpion',
@@ -149,8 +161,11 @@ const ENEMIES = [
     xpReward: 8,
     goldMin: 10,
     goldMax: 20,
-    drops: [],
-  },
+    drops: { 
+      always: ['training-armor'] ,
+      firstKill: ['dagger'], 
+      main: STANDARD_MAIN_DROP, }
+    },
   {
     slug: 'scorpion-guard',
     zone: 'Scorpion Pit',
@@ -168,7 +183,7 @@ const ENEMIES = [
     xpReward: 10,
     goldMin: 20,
     goldMax: 30,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'mammoth-scorpion',
@@ -187,7 +202,7 @@ const ENEMIES = [
     xpReward: 25,
     goldMin: 30,
     goldMax: 60,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'scorpion-queen',
@@ -206,7 +221,7 @@ const ENEMIES = [
     xpReward: 150,
     goldMin: 200,
     goldMax: 500,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'scorpion-king',
@@ -225,7 +240,7 @@ const ENEMIES = [
     xpReward: 300,
     goldMin: 500,
     goldMax: 1000,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'bat',
@@ -244,7 +259,7 @@ const ENEMIES = [
     xpReward: 3,
     goldMin: 5,
     goldMax: 20,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'golden-bat',
@@ -263,7 +278,7 @@ const ENEMIES = [
     xpReward: 10,
     goldMin: 100,
     goldMax: 300,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'salamander',
@@ -282,7 +297,7 @@ const ENEMIES = [
     xpReward: 9,
     goldMin: 5,
     goldMax: 30,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'goblin',
@@ -301,7 +316,7 @@ const ENEMIES = [
     xpReward: 7,
     goldMin: 5,
     goldMax: 10,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'goblin-bandit',
@@ -320,7 +335,7 @@ const ENEMIES = [
     xpReward: 12,
     goldMin: 20,
     goldMax: 40,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
   {
     slug: 'goblin-chief',
@@ -339,7 +354,7 @@ const ENEMIES = [
     xpReward: 30,
     goldMin: 100,
     goldMax: 200,
-    drops: [],
+    drops: { main: STANDARD_MAIN_DROP },
   },
 ]
 

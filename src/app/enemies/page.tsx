@@ -10,7 +10,12 @@ export const metadata = {
 
 // Enemy data is the canonical source — imported live from the game-data module
 // so this page never drifts out of date when enemies are added or edited.
-type EnemyDrop = { itemSlug: string; chance: number }
+type EnemyDropEntry = { itemSlug: string; chance: number }
+type EnemyDrops = {
+  main?: EnemyDropEntry[]
+  always?: string[]
+  firstKill?: string[]
+}
 type Enemy = {
   slug: string
   zone: string
@@ -26,7 +31,7 @@ type Enemy = {
   xpReward: number
   goldMin: number
   goldMax: number
-  drops: EnemyDrop[]
+  drops: EnemyDrops
 }
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: Enemy[] }
@@ -44,12 +49,26 @@ function prettifySlug(slug: string): string {
     .join(' ')
 }
 
+// Collect all slugs from all three drop lists on one enemy.
+function allDropSlugs(drops: EnemyDrops): string[] {
+  return [
+    ...(drops.main ?? []).map((d) => d.itemSlug),
+    ...(drops.always ?? []),
+    ...(drops.firstKill ?? []),
+  ]
+}
+
+// Consolidate main drop entries by slug, summing their chances.
+function consolidateMain(entries: EnemyDropEntry[]): { itemSlug: string; chance: number }[] {
+  const map = new Map<string, number>()
+  for (const e of entries) map.set(e.itemSlug, (map.get(e.itemSlug) ?? 0) + e.chance)
+  return Array.from(map.entries()).map(([itemSlug, chance]) => ({ itemSlug, chance }))
+}
+
 export default async function EnemiesPage() {
   // Resolve drop item slugs to their canonical display names from the DB,
   // so renaming an item in the source updates the name shown here too.
-  const dropSlugs = Array.from(
-    new Set(ENEMIES.flatMap((e) => e.drops.map((d) => d.itemSlug)))
-  )
+  const dropSlugs = Array.from(new Set(ENEMIES.flatMap((e) => allDropSlugs(e.drops))))
   const items = dropSlugs.length
     ? await prisma.itemTemplate.findMany({
         where: { slug: { in: dropSlugs } },
@@ -58,29 +77,41 @@ export default async function EnemiesPage() {
     : []
   const itemNameBySlug = new Map(items.map((i) => [i.slug, i.name]))
 
+  function resolveName(slug: string) {
+    return itemNameBySlug.get(slug) ?? prettifySlug(slug)
+  }
+
   // Build serializable rows for the client table (drop names resolved here).
   // `order` preserves the source-file order — the default sort.
-  const rows: EnemyRow[] = ENEMIES.map((e, i) => ({
-    order: i,
-    slug: e.slug,
-    zone: e.zone || 'Unsorted',
-    name: e.name,
-    icon: e.icon,
-    level: e.level,
-    hp: e.hp,
-    att: e.att,
-    def: e.def,
-    xp: e.xpReward,
-    goldMin: e.goldMin,
-    goldMax: e.goldMax,
-    isAggressive: e.isAggressive,
-    isFlying: e.isFlying,
-    isFriendly: e.isFriendly,
-    drops: e.drops.map((d) => ({
-      name: itemNameBySlug.get(d.itemSlug) ?? prettifySlug(d.itemSlug),
-      chance: Math.round(d.chance * 100),
-    })),
-  }))
+  const rows: EnemyRow[] = ENEMIES.map((e, i) => {
+    const { main = [], always = [], firstKill = [] } = e.drops
+    const drops: EnemyRow['drops'] = [
+      ...always.map((slug) => ({ name: resolveName(slug), chance: 100, tag: 'always' as const })),
+      ...firstKill.map((slug) => ({ name: resolveName(slug), chance: 100, tag: 'first-kill' as const })),
+      ...consolidateMain(main).map((d) => ({
+        name: resolveName(d.itemSlug),
+        chance: Math.round(d.chance * 100),
+      })),
+    ]
+    return {
+      order: i,
+      slug: e.slug,
+      zone: e.zone || 'Unsorted',
+      name: e.name,
+      icon: e.icon,
+      level: e.level,
+      hp: e.hp,
+      att: e.att,
+      def: e.def,
+      xp: e.xpReward,
+      goldMin: e.goldMin,
+      goldMax: e.goldMax,
+      isAggressive: e.isAggressive,
+      isFlying: e.isFlying,
+      isFriendly: e.isFriendly,
+      drops,
+    }
+  })
 
   // Ordered list of zones present in the data.
   const zones = Array.from(new Set(rows.map((r) => r.zone))).sort((a, b) => {
@@ -91,7 +122,7 @@ export default async function EnemiesPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200">
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-gray-100">Bestiary</h1>
           <p className="mt-1 text-sm text-gray-400">

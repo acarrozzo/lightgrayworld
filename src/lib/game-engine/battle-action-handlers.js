@@ -1,7 +1,7 @@
 const { prisma } = require('../db-client')
 const { BattleState } = require('./battle-state')
 const { resolveTurn, resolveEnemyAttack, getOtherCombatantCount } = require('./battle-calculator')
-const { calcBattleWinRewards, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
+const { calcBattleWinRewards, getPriorKills, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
 const { isProbabilistic } = require('../game-data/room-enemies')
 const { getRoomEnemies } = require('../game-data/room-enemies')
@@ -199,7 +199,8 @@ async function executeStartBattle(action, playerId, roomState) {
     roomState.activeBattles.delete(playerId)
     roomState.setPlayerGraceTurn(playerId)
 
-    const rewards = calcBattleWinRewards(battleState)
+    const isFirstKill = (await getPriorKills(playerId, enemy.slug)) === 0
+    const rewards = calcBattleWinRewards(battleState, isFirstKill)
     const { xpAwarded, goldAwarded, droppedSlugs } = rewards
 
     const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]
@@ -325,8 +326,10 @@ async function executePlayerAttack(action, playerId, roomState) {
     // immediately thrown into another fight without warning.
     roomState.setPlayerGraceTurn(playerId)
 
-    // Compute rewards synchronously — no DB — so we can emit victory immediately
-    const rewards = calcBattleWinRewards(battleState)
+    // Compute rewards synchronously — no DB — so we can emit victory immediately.
+    // First-kill detection needs the pre-increment kill count, so read it before persisting.
+    const isFirstKill = (await getPriorKills(playerId, battleState.enemy.slug)) === 0
+    const rewards = calcBattleWinRewards(battleState, isFirstKill)
     const { xpAwarded, goldAwarded, droppedSlugs } = rewards
 
     const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]

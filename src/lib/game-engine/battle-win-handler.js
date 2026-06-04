@@ -4,15 +4,57 @@ const { randomUUID } = require('crypto')
 const { checkAndApplyLevelUp } = require('./services/leveling-service')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 
+// Read the player's existing kill count for an enemy. 0 means this is their first kill.
+// Must be called BEFORE persistBattleWin increments the kill count.
+async function getPriorKills(playerId, slug) {
+  const record = await prisma.killList.findUnique({
+    where: { userId_monster: { userId: playerId, monster: slug } },
+    select: { kills: true },
+  })
+  return record?.kills ?? 0
+}
+
+// Resolve which item slugs drop from a single kill.
+//   drops.main      — mutually-exclusive weighted roll: at most ONE item. `chance` values are
+//                     laid end-to-end as bands; if they sum to < 1.0 the remainder is "no drop".
+//   drops.always    — every slug drops on every kill.
+//   drops.firstKill — every slug drops, but only on the player's first kill of this enemy.
+// Returns a de-duplicated array (one item template can only be granted once per kill).
+function resolveDrops(enemy, isFirstKill) {
+  const drops = enemy.drops || {}
+  const slugs = []
+
+  const main = drops.main || []
+  if (main.length > 0) {
+    const roll = Math.random()
+    let cumulative = 0
+    for (const entry of main) {
+      cumulative += entry.chance
+      if (roll < cumulative) {
+        slugs.push(entry.itemSlug)
+        break
+      }
+    }
+    if (cumulative > 1.000001) {
+      console.warn(`resolveDrops: main drop chances for "${enemy.slug}" sum to ${cumulative} (> 1.0); later entries may never roll`)
+    }
+  }
+
+  for (const slug of drops.always || []) slugs.push(slug)
+  if (isFirstKill) {
+    for (const slug of drops.firstKill || []) slugs.push(slug)
+  }
+
+  return [...new Set(slugs)]
+}
+
 // Pure calculation — no DB. Call this before any awaits to get rewards for immediate client emission.
-function calcBattleWinRewards(battleState) {
+// `isFirstKill` must be derived from getPriorKills() before this enemy's kill count is incremented.
+function calcBattleWinRewards(battleState, isFirstKill = false) {
   const enemy = battleState.enemy
   const goldAwarded = rand(enemy.goldMin, enemy.goldMax)
   const xpAwarded = enemy.xpReward
-  const droppedSlugs = []
-  for (const drop of enemy.drops) {
-    if (Math.random() <= drop.chance) droppedSlugs.push(drop.itemSlug)
-  }
+  const droppedSlugs = resolveDrops(enemy, isFirstKill)
   return { xpAwarded, goldAwarded, droppedSlugs }
 }
 
@@ -100,7 +142,8 @@ async function persistBattleWin(playerId, battleState, rewards) {
 }
 
 async function handleBattleWin(playerId, battleState) {
-  const rewards = calcBattleWinRewards(battleState)
+  const isFirstKill = (await getPriorKills(playerId, battleState.enemy.slug)) === 0
+  const rewards = calcBattleWinRewards(battleState, isFirstKill)
   const { droppedItems, levelUp } = await persistBattleWin(playerId, battleState, rewards)
   return { xpAwarded: rewards.xpAwarded, goldAwarded: rewards.goldAwarded, droppedItems, levelUp }
 }
@@ -134,4 +177,4 @@ async function handleBattleDefeat(playerId, battleState) {
   })
 }
 
-module.exports = { calcBattleWinRewards, persistBattleWin, handleBattleWin, handleBattleDefeat }
+module.exports = { calcBattleWinRewards, resolveDrops, getPriorKills, persistBattleWin, handleBattleWin, handleBattleDefeat }
