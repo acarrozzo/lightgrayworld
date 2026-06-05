@@ -4,6 +4,7 @@ import { Player, useGameStore, InventoryItem } from '@/lib/game-state'
 import React, { useMemo, useState } from 'react'
 import AvatarSelectionModal from '@/components/AvatarSelectionModal'
 import StatAllocationModal from '@/components/StatAllocationModal'
+import TrainingAllocationModal from '@/components/TrainingAllocationModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { EquipSlot } from '@prisma/client'
@@ -55,6 +56,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
   const [isAvatarModalOpen, setAvatarModalOpen] = useState(false)
   const [isSavingAvatar, setIsSavingAvatar] = useState(false)
   const [isStatModalOpen, setStatModalOpen] = useState(false)
+  const [isTrainingModalOpen, setTrainingModalOpen] = useState(false)
 
   const hpPercent = useMemo(() => {
     if (!player.hpMax) return 0
@@ -156,6 +158,10 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
     setPlayer(updatedPlayer)
   }
 
+  const handleTrainingAllocated = (updatedPlayer: Player) => {
+    setPlayer(updatedPlayer)
+  }
+
   return (
     <>
       <div className="relative w-full h-full">
@@ -230,16 +236,31 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Core Stats</h4>
-                {(player.cp ?? 0) > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setStatModalOpen(true)}
-                    disabled={!isLoggedIn}
-                    className="px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
-                  >
-                    Spend CP ({player.cp ?? 0})
-                  </button>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {(player.tp ?? 0) > 0 && (
+                    <span className="relative inline-flex">
+                      <span className="absolute inset-[2px] rounded-lg bg-yellow-400/60 animate-ping-slow" />
+                      <button
+                        type="button"
+                        onClick={() => setTrainingModalOpen(true)}
+                        disabled={!isLoggedIn}
+                        className="relative px-2.5 py-1 text-xs font-semibold text-gray-900 bg-yellow-400/90 hover:bg-yellow-300 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
+                      >
+                        Spend TP ({player.tp ?? 0})
+                      </button>
+                    </span>
+                  )}
+                  {(player.cp ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setStatModalOpen(true)}
+                      disabled={!isLoggedIn}
+                      className="px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
+                    >
+                      Spend CP ({player.cp ?? 0})
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 <StatDisplay label="STR" core={player.str ?? 0} mod={player.strMod ?? 0} compact color="text-red-400" />
@@ -383,6 +404,12 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
         player={player}
         onClose={() => setStatModalOpen(false)}
         onStatAllocated={handleStatAllocated}
+      />
+      <TrainingAllocationModal
+        isOpen={isTrainingModalOpen}
+        player={player}
+        onClose={() => setTrainingModalOpen(false)}
+        onTrainingAllocated={handleTrainingAllocated}
       />
     </>
   )
