@@ -1,6 +1,7 @@
 const { prisma } = require('../../db-client')
-const { getPlayerInventory, getItemBySlug } = require('./inventory-service')
+const { getPlayerInventory } = require('./inventory-service')
 const { normalizeRoomItems } = require('./room-normalization.js')
+const { ROOM_LOOT } = require('../config/room-loot')
 
 /**
  * Pluralize an item name
@@ -244,64 +245,72 @@ async function getRoomItems(roomId) {
 /**
  * Ensure all auto-respawn items exist in the given room.
  * This function checks each item that should auto-respawn and creates it if missing.
- * 
- * Since RoomItems are deleted when picked up, we use a known configuration mapping
- * to determine which items should exist in each room. For each item in the room's
- * configuration, we check if it exists and create it if missing.
- * 
+ *
+ * The set of items that belong in each room is defined declaratively in
+ * config/room-loot.js (the same source of truth used by the seed). Since
+ * RoomItems are deleted when fully picked up, we check each configured
+ * auto-respawn item individually and recreate it if missing.
+ *
  * Note: This checks each item individually, so items will respawn even if other
  * auto-respawn items are still present in the room.
- * 
+ *
  * @param {string} roomId - The room ID to check for auto-respawn items
  * @returns {Promise<void>}
  */
 async function ensureAutoRespawnItems(roomId) {
   try {
-    const knownAutoRespawnItems = {
-      '001': ['welcome-book'],
-      '004': ['flower'],
-      '006': ['shovel'],
-      '007': ['short-sword'],
-      '020': ['mace', 'bo', 'basic-shield', 'blue-hood', 'padded-armor', 'black-gloves', 'black-boots'],
-      '088': ['master-sword'],
-    }
-    
-    const itemsToCheck = knownAutoRespawnItems[roomId]
-    if (!itemsToCheck || itemsToCheck.length === 0) {
-      // No known auto-respawn items for this room
+    const itemsToCheck = ROOM_LOOT.filter(
+      (entry) => entry.roomId === roomId && entry.autoRespawn !== false
+    )
+    if (itemsToCheck.length === 0) {
+      // No auto-respawn items configured for this room
       return
     }
-    
-    // For each known auto-respawn item, check if it exists and create if missing
-    for (const itemSlug of itemsToCheck) {
-      const template = await getItemBySlug(itemSlug)
+
+    // Batch all reads instead of querying per-item: one lookup for the
+    // templates and one for the room's existing items. This keeps a large
+    // loot table (e.g. the Solar Office) from firing ~100 sequential queries
+    // on every room entry.
+    const slugs = itemsToCheck.map((entry) => entry.slug)
+    const templates = await prisma.itemTemplate.findMany({
+      where: { slug: { in: slugs } },
+      select: { id: true, slug: true },
+    })
+    const templateBySlug = new Map(templates.map((t) => [t.slug, t]))
+
+    const existingItems = await prisma.roomItem.findMany({
+      where: { roomId, templateId: { in: templates.map((t) => t.id) } },
+      select: { templateId: true },
+    })
+    const existingTemplateIds = new Set(existingItems.map((item) => item.templateId))
+
+    const { randomUUID } = require('crypto')
+    const toCreate = []
+    for (const entry of itemsToCheck) {
+      const template = templateBySlug.get(entry.slug)
       if (!template) {
-        console.warn(`[ensureAutoRespawnItems] Template not found for slug: ${itemSlug}`)
+        console.warn(`[ensureAutoRespawnItems] Template not found for slug: ${entry.slug}`)
         continue
       }
-      
-      // Check if this item currently exists in the room
-      const existingItem = await prisma.roomItem.findFirst({
-        where: {
-          roomId,
-          templateId: template.id,
-        },
-      })
-      
-      // If the item doesn't exist, create it with autoRespawn: true
-      if (!existingItem) {
-        const { randomUUID } = require('crypto')
-        await prisma.roomItem.create({
-          data: {
-            id: randomUUID(),
-            roomId,
-            templateId: template.id,
-            quantity: 1,
-            autoRespawn: true,
-          },
-        })
-        console.log(`[ensureAutoRespawnItems] Created ${itemSlug} in room ${roomId}`)
+      if (existingTemplateIds.has(template.id)) {
+        continue
       }
+      toCreate.push({
+        id: randomUUID(),
+        roomId,
+        templateId: template.id,
+        quantity: entry.quantity ?? 1,
+        autoRespawn: true,
+      })
+    }
+
+    if (toCreate.length > 0) {
+      await prisma.roomItem.createMany({ data: toCreate })
+      console.log(
+        `[ensureAutoRespawnItems] Created ${toCreate.length} item(s) in room ${roomId}: ${toCreate
+          .map((item) => item.templateId)
+          .join(', ')}`
+      )
     }
   } catch (error) {
     console.error(`[ensureAutoRespawnItems] Error ensuring auto-respawn items for room ${roomId}:`, error)

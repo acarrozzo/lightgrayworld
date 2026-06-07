@@ -1,5 +1,6 @@
 import { PrismaClient, ItemType, EquipSlot, WeaponCategory } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import { ROOM_LOOT } from '../src/lib/game-engine/config/room-loot'
 
 const prisma = new PrismaClient()
 
@@ -2752,207 +2753,40 @@ async function main() {
     })
   }
 
-  // Seed room items (idempotent)
+  // Seed room items from the shared declarative config (config/room-loot.ts),
+  // the same source of truth used by runtime auto-respawn. Idempotent: every
+  // room referenced in the config is cleared and rebuilt from ROOM_LOOT, so
+  // removing a line here also removes the item on the next seed.
+  const slugToTemplateId = new Map(itemTemplates.map((t) => [t.slug, t.id]))
+
+  // Rooms to clear: every room referenced in the config, plus any room that
+  // still holds auto-respawn items but has since been removed from the config
+  // (so de-listing a room actually empties it on reseed).
+  const lootRoomIds = new Set(ROOM_LOOT.map((entry) => entry.roomId))
+  const managedRooms = await prisma.roomItem.findMany({
+    where: { autoRespawn: true },
+    select: { roomId: true },
+    distinct: ['roomId'],
+  })
+  for (const { roomId } of managedRooms) lootRoomIds.add(roomId)
+
   await prisma.roomItem.deleteMany({
-    where: { roomId: '001', templateId: 'welcome-book' },
+    where: { roomId: { in: [...lootRoomIds] } },
   })
 
-  await prisma.roomItem.create({
-    data: {
-      roomId: '001',
-      templateId: 'welcome-book',
-      quantity: 1,
-      autoRespawn: true,
-    },
-  })
-
-  // Seed shovel in room 006 (idempotent)
-  await prisma.roomItem.deleteMany({
-    where: { roomId: '006', templateId: 'shovel_001' },
-  })
-
-  await prisma.roomItem.create({
-    data: {
-      roomId: '006',
-      templateId: 'shovel_001',
-      quantity: 1,
-      autoRespawn: true,
-    },
-  })
-
-  // Seed flower in room 004 (idempotent)
-  await prisma.roomItem.deleteMany({
-    where: { roomId: '004', templateId: 'flower_001' },
-  })
-
-  await prisma.roomItem.create({
-    data: {
-      roomId: '004',
-      templateId: 'flower_001',
-      quantity: 1,
-      autoRespawn: true,
-    },
-  })
-
-  // Seed short sword in room 007 (idempotent)
-  await prisma.roomItem.deleteMany({
-    where: { roomId: '007', templateId: 'short-sword_001' },
-  })
-
-  await prisma.roomItem.create({
-    data: {
-      roomId: '007',
-      templateId: 'short-sword_001',
-      quantity: 1,
-      autoRespawn: true,
-    },
-  })
-
-  // Seed equipment items in room 020 (idempotent)
-  const room020Items = [
-    'mace_001',
-    'bo_001',
-    'basic-shield_001',
-    'blue-hood_001',
-    'padded-armor_001',
-    'black-gloves_001',
-    'black-boots_001',
-  ]
-
-  for (const templateId of room020Items) {
-    await prisma.roomItem.deleteMany({
-      where: { roomId: '020', templateId },
-    })
+  for (const entry of ROOM_LOOT) {
+    const templateId = slugToTemplateId.get(entry.slug)
+    if (!templateId) {
+      console.warn(`⚠️  [room-loot] No item template found for slug "${entry.slug}" (room ${entry.roomId}) — skipping`)
+      continue
+    }
 
     await prisma.roomItem.create({
       data: {
-        roomId: '020',
+        roomId: entry.roomId,
         templateId,
-        quantity: 1,
-        autoRespawn: true,
-      },
-    })
-  }
-
-  // Seed rings in room 027 (idempotent) - 2 of each
-  const room027Rings = [
-    'ring-of-str_001',
-    'ring-of-dex_001',
-    'ring-of-mag_001',
-    'ring-of-def_001',
-    'soldiers-ring_001',
-  ]
-
-  for (const templateId of room027Rings) {
-    await prisma.roomItem.deleteMany({
-      where: { roomId: '027', templateId },
-    })
-
-    await prisma.roomItem.create({
-      data: {
-        roomId: '027',
-        templateId,
-        quantity: 2,
-        autoRespawn: true,
-      },
-    })
-  }
-
-  // Seed necklaces in room 027 (idempotent) - 2 of each
-  const room027Necklaces = [
-    'wooden-necklace_001',
-    'bone-necklace_001',
-    'stone-necklace_001',
-  ]
-
-  for (const templateId of room027Necklaces) {
-    await prisma.roomItem.deleteMany({
-      where: { roomId: '027', templateId },
-    })
-
-    await prisma.roomItem.create({
-      data: {
-        roomId: '027',
-        templateId,
-        quantity: 2,
-        autoRespawn: true,
-      },
-    })
-  }
-
-  // Remove weapons no longer placed in room 088
-  await prisma.roomItem.deleteMany({
-    where: {
-      roomId: '088',
-      templateId: { in: ['nunchaku_001', 'three-chained-flail_001', 'gray-wand_001', 'demon-dagger_001', 'bastard-sword_001'] },
-    },
-  })
-
-  // Seed weapons in room 088 - Solar Office (idempotent)
-  const room088Items = [
-    'master-sword_001',
-    'great-white-sword_001',
-    'hammerhead-hammer_001',
-    'bone-cudgel_001',
-    'bone-knuckles_001',
-    'great-sword_001',
-    'boomerang_001',
-    'chakram_001',
-    'wooden-bow_001',
-    'hunter-bow_001',
-    'short-bow_001',
-    'long-bow_001',
-    'crossbow_001',
-    'red-mini-shield_001',
-    'green-mini-shield_001',
-    'blue-mini-shield_001',
-    'starter-orb_001',
-    'training-shield_001',
-    'basic-shield_001',
-    'buckler_001',
-    'wooden-shield_001',
-    'kite-shield_001',
-    'hunter-shield_001',
-    'off-hand-dagger_001',
-    'tower-shield_001',
-    'glowing-orb_001',
-    'enchanted-orb_001',
-    'training-helmet_001',
-    'basic-hood_001',
-    'horned-helmet_001',
-    'barbarian-helmet_001',
-    'wizard-hat_001',
-    'battle-helm_001',
-    'victorias-hood_001',
-    'scorpion-hood_001',
-    'training-armor_001',
-    'pajamas_001',
-    'black-robe_001',
-    'leather-armor_001',
-    'turtle-shell_001',
-    'sasquatch-cloak_001',
-    'training-gloves_001',
-    'glowing-brace_001',
-    'leather-gloves_001',
-    'hunter-gloves_001',
-    'troll-gloves_001',
-    'training-boots_001',
-    'slippers_001',
-    'troll-boots_001',
-    'bone-boots_001',
-  ]
-
-  for (const templateId of room088Items) {
-    await prisma.roomItem.deleteMany({
-      where: { roomId: '088', templateId },
-    })
-
-    await prisma.roomItem.create({
-      data: {
-        roomId: '088',
-        templateId,
-        quantity: 1,
-        autoRespawn: true,
+        quantity: entry.quantity ?? 1,
+        autoRespawn: entry.autoRespawn ?? true,
       },
     })
   }
