@@ -5,6 +5,8 @@ import type { Room, Player } from '@/lib/game-state'
 import Icon from './Icon'
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import ActionFlyout from './ActionFlyout'
+import { useActionFlyout } from '@/hooks/useActionFlyout'
 
 // Copied from the previous GameFeed helper to ensure Tailwind picks up dynamic color classes
 export const getTextColorClass = (color?: string | null, defaultColor: string = 'green-400'): string => {
@@ -197,6 +199,9 @@ export default function RoomBox({
   const subtitlePlacement = room.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
   const [isMoreActionsExpanded, setIsMoreActionsExpanded] = useState(false)
 
+  // Flyout showing the latest action result anchored to the basic-action buttons.
+  const { activeFlyoutAction, flyoutRootRef, dismissFlyout } = useActionFlyout(actionResult)
+
   const availableDirections = useMemo(
     () => DIRECTIONS.filter((dir) => typeof room[dir as DirectionKey] === 'string' && room[dir as DirectionKey]),
     [room]
@@ -316,46 +321,35 @@ export default function RoomBox({
         <div className="w-32 border-t border-gray-800/50 mb-4"></div>
         <div>
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => {
-                console.log('[ActionButton] Attack button clicked')
-                onAction('attack')
-              }}
-              disabled={isLoadingRoom}
-              className="px-3 py-1 bg-red-500/70 hover:bg-red-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-            >
-              {isLoadingRoom && currentAction === 'attack' ? '...' : 'Attack'}
-            </button>
-            <button
-              onClick={() => {
-                console.log('[ActionButton] Search button clicked')
-                onAction('search')
-              }}
-              disabled={isLoadingRoom}
-              className="px-3 py-1 bg-amber-500/70 hover:bg-amber-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-            >
-              {isLoadingRoom && currentAction === 'search' ? '...' : 'Search'}
-            </button>
-            <button
-              onClick={() => {
-                console.log('[ActionButton] Rest button clicked')
-                onAction('rest')
-              }}
-              disabled={isLoadingRoom}
-              className="px-3 py-1 bg-green-500/70 hover:bg-green-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-            >
-              {isLoadingRoom && currentAction === 'rest' ? '...' : 'Rest'}
-            </button>
-            <button
-              onClick={() => {
-                console.log('[ActionButton] Look button clicked')
-                onAction('look')
-              }}
-              disabled={isLoadingRoom}
-              className="px-3 py-1 bg-blue-500/70 hover:bg-blue-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow"
-            >
-              {isLoadingRoom && currentAction === 'look' ? '...' : 'Look'}
-            </button>
+            {([
+              { action: 'attack', label: 'Attack', className: 'bg-red-500/70 hover:bg-red-500' },
+              { action: 'search', label: 'Search', className: 'bg-amber-500/70 hover:bg-amber-500' },
+              { action: 'rest', label: 'Rest', className: 'bg-green-500/70 hover:bg-green-500' },
+              { action: 'look', label: 'Look', className: 'bg-blue-500/70 hover:bg-blue-500' },
+            ] as const).map(({ action, label, className }) => {
+              const showFlyout = activeFlyoutAction === action
+              return (
+                <div
+                  key={action}
+                  ref={showFlyout ? flyoutRootRef : undefined}
+                  className="relative"
+                >
+                  {showFlyout && actionResult && (
+                    <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
+                  )}
+                  <button
+                    onClick={() => {
+                      console.log(`[ActionButton] ${label} button clicked`)
+                      onAction(action)
+                    }}
+                    disabled={isLoadingRoom}
+                    className={`px-3 py-1 ${className} disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow`}
+                  >
+                    {isLoadingRoom && currentAction === action ? '...' : label}
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>

@@ -10,6 +10,8 @@ import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import ItemDropdownButton from './ItemDropdownButton'
 import Icon from './Icon'
 import NpcQuestCard from './NpcQuestCard'
+import ActionFlyout from './ActionFlyout'
+import { useActionFlyout } from '@/hooks/useActionFlyout'
 
 type CapStatus = 'known' | 'loading' | 'error' | 'unavailable'
 
@@ -80,6 +82,27 @@ export default function RoomDisplay({
   const [retryAttempted, setRetryAttempted] = useState(false)
   const lastTickRef = useRef<number | null>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Action result flyout: shows the latest action's result text anchored to the
+  // button that triggered it (mirrors the world feed / ActivityTicker). The four
+  // basic actions are owned by RoomBox's persistent buttons, so we skip them here
+  // to avoid showing two flyouts for the same result.
+  const { activeFlyoutAction, flyoutRootRef, dismissFlyout } = useActionFlyout(actionResult)
+  const BASIC_FLYOUT_ACTIONS = ['attack', 'search', 'rest', 'look']
+  const ITEM_FLYOUT_ACTIONS = ['pickup_item', 'examine_item']
+  const flyoutActionForButton = (action: string) =>
+    activeFlyoutAction === action && !BASIC_FLYOUT_ACTIONS.includes(action)
+
+  // Item actions: the button can disappear (item picked up), so we capture the
+  // button's screen rect at click time and pin the flyout to that frozen spot.
+  const itemButtonRefs = useRef<Map<string, HTMLElement>>(new Map())
+  const itemFlyoutRectRef = useRef<{ top: number; left: number } | null>(null)
+  const captureItemRect = (itemId: string) => {
+    const el = itemButtonRefs.current.get(itemId)
+    const rect = el?.getBoundingClientRect()
+    itemFlyoutRectRef.current = rect ? { top: rect.top, left: rect.left } : null
+  }
+  const showItemFlyout = ITEM_FLYOUT_ACTIONS.includes(activeFlyoutAction ?? '')
 
   const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
   const otherUsers = useMemo(
@@ -404,6 +427,8 @@ export default function RoomDisplay({
   const handlePickupItem = async (item: any, quantity: number = 1) => {
     if (!onAction || isPerformingAction) return
 
+    captureItemRect(item.id)
+
     const actionPayload = {
       type: 'pickup_item',
       data: {
@@ -424,6 +449,8 @@ export default function RoomDisplay({
 
   const handleExamineItem = async (item: any) => {
     if (!onAction || isPerformingAction) return
+
+    captureItemRect(item.id)
 
     const actionPayload = {
       type: 'examine_item',
@@ -476,18 +503,26 @@ export default function RoomDisplay({
       {shouldShowCap && capStatus !== 'unavailable' && (
         <div className={`mt-3 relative flex items-center gap-3 p-3 rounded-md bg-gray-900/70 border ${getBerryBorderColor()}`}>
           {berryAction && !(capStatus === 'known' && remainingCap === 0) && capStatus !== 'loading' && (
-            <button
-              onClick={() => handleAction(berryAction.action)}
-              disabled={isPerformingAction === berryAction.action || capStatus === 'error' || remainingCap === 0}
-              className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 flex items-center gap-2 ${
-                isPerformingAction === berryAction.action
-                  ? 'bg-gray-700 cursor-wait'
-                  : berryAction.className || 'bg-indigo-600 hover:bg-indigo-500'
-              } ${remainingCap === 0 || capStatus === 'error' ? 'opacity-50' : ''}`}
+            <div
+              ref={flyoutActionForButton(berryAction.action) ? flyoutRootRef : undefined}
+              className="relative flex-shrink-0"
             >
-              {berryAction.icon && <Icon name={berryAction.icon} size={16} color="current" />}
-              {berryAction.label}
-            </button>
+              {flyoutActionForButton(berryAction.action) && actionResult && (
+                <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
+              )}
+              <button
+                onClick={() => handleAction(berryAction.action)}
+                disabled={isPerformingAction === berryAction.action || capStatus === 'error' || remainingCap === 0}
+                className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 flex items-center gap-2 ${
+                  isPerformingAction === berryAction.action
+                    ? 'bg-gray-700 cursor-wait'
+                    : berryAction.className || 'bg-indigo-600 hover:bg-indigo-500'
+                } ${remainingCap === 0 || capStatus === 'error' ? 'opacity-50' : ''}`}
+              >
+                {berryAction.icon && <Icon name={berryAction.icon} size={16} color="current" />}
+                {berryAction.label}
+              </button>
+            </div>
           )}
           <div className="flex items-center gap-3 flex-wrap">
             <div className={`text-sm ${getBerryTextColor()}`}>
@@ -557,30 +592,39 @@ export default function RoomDisplay({
           const isViewShop = actionItem.action === 'view shop'
           const override = room.actionOverrides?.[actionItem.action]
           const resolvedIcon = override?.icon ?? actionItem.icon
+          const showFlyout = flyoutActionForButton(actionItem.action)
           return (
-            <button
+            <div
               key={actionItem.action}
-              onClick={() => handleAction(actionItem.action)}
-              disabled={isPerformingAction === actionItem.action}
-              className={`${
-                isViewShop
-                  ? 'px-4 py-3 rounded-md text-base font-semibold text-white transition-all flex items-center gap-2 border-2 border-amber-400/50 shadow-lg hover:shadow-xl'
-                  : 'px-3 py-2 rounded-md text-sm text-white transition-colors flex items-center gap-2'
-              } ${
-                isPerformingAction === actionItem.action
-                  ? 'bg-gray-700 cursor-wait'
-                  : override?.className || actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
-              }`}
+              ref={showFlyout ? flyoutRootRef : undefined}
+              className="relative"
             >
-              {resolvedIcon && (
-                <Icon
-                  name={resolvedIcon}
-                  size={isViewShop ? 20 : 16}
-                  color="current"
-                />
+              {showFlyout && actionResult && (
+                <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
               )}
-              <span>{actionItem.label}</span>
-            </button>
+              <button
+                onClick={() => handleAction(actionItem.action)}
+                disabled={isPerformingAction === actionItem.action}
+                className={`${
+                  isViewShop
+                    ? 'px-4 py-3 rounded-md text-base font-semibold text-white transition-all flex items-center gap-2 border-2 border-amber-400/50 shadow-lg hover:shadow-xl'
+                    : 'px-3 py-2 rounded-md text-sm text-white transition-colors flex items-center gap-2'
+                } ${
+                  isPerformingAction === actionItem.action
+                    ? 'bg-gray-700 cursor-wait'
+                    : override?.className || actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
+                }`}
+              >
+                {resolvedIcon && (
+                  <Icon
+                    name={resolvedIcon}
+                    size={isViewShop ? 20 : 16}
+                    color="current"
+                  />
+                )}
+                <span>{actionItem.label}</span>
+              </button>
+            </div>
           )
         }
 
@@ -613,19 +657,36 @@ export default function RoomDisplay({
           <div className="text-sm text-gray-300 mb-2">Items here:</div>
           <div className="flex flex-wrap gap-2">
             {room.items.map((item: any) => (
-              <ItemDropdownButton
+              <div
                 key={item.id}
-                item={item}
-                onPickup={(quantity) => handlePickupItem(item, quantity)}
-                onExamine={() => handleExamineItem(item)}
-                disabled={
-                  isPerformingAction === `pickup-${item.id}` ||
-                  isPerformingAction === `examine-${item.id}`
-                }
-              />
+                ref={(el) => {
+                  if (el) itemButtonRefs.current.set(item.id, el)
+                  else itemButtonRefs.current.delete(item.id)
+                }}
+              >
+                <ItemDropdownButton
+                  item={item}
+                  onPickup={(quantity) => handlePickupItem(item, quantity)}
+                  onExamine={() => handleExamineItem(item)}
+                  disabled={
+                    isPerformingAction === `pickup-${item.id}` ||
+                    isPerformingAction === `examine-${item.id}`
+                  }
+                />
+              </div>
             ))}
           </div>
         </div>
+      )}
+
+      {/* Item-action flyout: pinned to the clicked button's last screen position
+          (the button may be gone after a pickup). */}
+      {showItemFlyout && actionResult && itemFlyoutRectRef.current && (
+        <ActionFlyout
+          result={actionResult}
+          anchorRect={itemFlyoutRectRef.current}
+          onDismiss={dismissFlyout}
+        />
       )}
 
       {showPlayers && otherUsers.length > 0 && (

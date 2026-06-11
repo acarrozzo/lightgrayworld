@@ -4,15 +4,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { useTickerStore } from '@/store/tickerStore'
+import { entryAccent, formatRelative } from './feed/activityFormat'
 
 const IDLE_MS = 6000
 const MAX_HISTORY = 20
-
-const entryAccent = (entry: WorldFeedEntry) => {
-  if (entry.outcome === 'success') return 'bg-emerald-400'
-  if (entry.outcome === 'failure' || entry.level === 'error') return 'bg-red-400'
-  return 'bg-blue-400'
-}
 
 const renderEntry = (entry: WorldFeedEntry): React.ReactNode => {
   if (!entry.actor) return entry.message
@@ -36,14 +31,6 @@ const renderEntry = (entry: WorldFeedEntry): React.ReactNode => {
     )
   }
   return entry.message
-}
-
-const formatRelative = (ts: number, now: number) => {
-  const diff = Math.max(0, now - ts)
-  if (diff < 5_000) return 'now'
-  if (diff < 60_000) return `${Math.floor(diff / 1000)}s`
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`
-  return `${Math.floor(diff / 3_600_000)}h`
 }
 
 export default function ActivityTicker() {
