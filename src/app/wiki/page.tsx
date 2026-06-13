@@ -1,0 +1,41 @@
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+import Link from 'next/link'
+import WikiNav from '@/components/WikiNav'
+
+export const metadata = {
+  title: 'Light Gray RPG Wiki',
+  description: 'The Light Gray RPG wiki — browse enemies and items.',
+}
+
+const PAGES = [
+  { href: '/enemies', label: 'Bestiary', description: 'Every enemy, with their stats and drops.' },
+  { href: '/items', label: 'Item Compendium', description: 'Every item, with their stats, value, and properties.' },
+]
+
+export default function WikiHomePage() {
+  return (
+    <div className="min-h-screen bg-gray-950 text-gray-200">
+      <WikiNav active="home" />
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <header className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-100">Light Gray RPG Wiki</h1>
+        </header>
+        <ul className="flex flex-col gap-3">
+          {PAGES.map((page) => (
+            <li key={page.href}>
+              <Link
+                href={page.href}
+                className="block rounded border border-gray-800 bg-gray-900 px-4 py-3 transition-colors hover:border-gray-700 hover:bg-gray-800"
+              >
+                <span className="text-base font-medium text-gray-100">{page.label}</span>
+                <span className="mt-1 block text-sm text-gray-400">{page.description}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
