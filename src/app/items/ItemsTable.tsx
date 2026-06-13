@@ -73,11 +73,35 @@ export default function ItemsTable({
 
   const getVal = SORTERS[sortKey]
 
+  // Whether the view matches the default page view (All tab, grouped by
+  // category, items in seed-file order). Used to disable the reset control
+  // when there's nothing to reset.
+  const isDefaultView = tab === 'All' && grouped && sortKey === 'source' && sortDir === 'asc'
+
+  // Restore the default display: no category filter, grouped by category, and
+  // items in their original seed-file order (not alphabetical).
+  function resetView() {
+    setTab('All')
+    setGrouped(true)
+    setSortKey('source')
+    setSortDir('asc')
+  }
+
+  // Header clicks cycle through three states: descending → ascending → none.
+  // The first click sorts highest-first; the "none" state reverts to the
+  // default sort (seed-file order). Clicking a different column starts a fresh
+  // descending sort on that column.
   function clickHeader(key: SortKey) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
+    if (key !== sortKey) {
       setSortKey(key)
+      setSortDir('desc')
+      return
+    }
+    if (sortDir === 'desc') {
+      setSortDir('asc')
+    } else {
+      // Third click: clear the sort back to the default seed order.
+      setSortKey('source')
       setSortDir('asc')
     }
   }
@@ -134,6 +158,14 @@ export default function ItemsTable({
           />
           Group by category
         </label>
+
+        <button
+          onClick={resetView}
+          disabled={isDefaultView}
+          className="rounded border border-gray-800 bg-gray-900 px-3 py-1 text-sm text-gray-400 transition-colors hover:border-gray-700 hover:text-gray-200 disabled:cursor-default disabled:opacity-40 disabled:hover:border-gray-800 disabled:hover:text-gray-400"
+        >
+          Reset view
+        </button>
 
         <span className="ml-auto text-xs text-gray-500">{sorted.length} shown</span>
       </div>
