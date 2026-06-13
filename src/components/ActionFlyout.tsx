@@ -55,9 +55,16 @@ export default function ActionFlyout({ result, anchorRef, anchorRect, onDismiss 
       setPos({ top: rect.top - GAP, left: clampLeft(rect.left) })
     }
     updatePosition()
+    // When the flyout moves to a *different* button it remounts here, and this
+    // layout effect can run before the new anchor button's wrapper ref is
+    // attached — leaving anchorRef.current null and pos unset, so nothing shows.
+    // Retry on the next frame once refs are committed.
+    let raf = 0
+    if (!anchorRef?.current) raf = requestAnimationFrame(updatePosition)
     window.addEventListener('scroll', updatePosition, true)
     window.addEventListener('resize', updatePosition)
     return () => {
+      if (raf) cancelAnimationFrame(raf)
       window.removeEventListener('scroll', updatePosition, true)
       window.removeEventListener('resize', updatePosition)
     }
