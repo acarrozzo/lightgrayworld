@@ -63,6 +63,11 @@ export function useActionFlyout(actionResult?: {
       // Ignore clicks on the anchor button or inside the (portaled) flyout itself.
       if (flyoutRootRef.current && flyoutRootRef.current.contains(target)) return
       if (target.closest?.('[data-action-flyout]')) return
+      // Ignore taps on any action button: tapping another action button should
+      // transition the flyout to that button (handled by the result effect), not
+      // force-dismiss it to null — which would clobber the incoming flyout and
+      // leave the new action with no flyout at all.
+      if (target.closest?.('[data-action-button]')) return
       dismissFlyout()
     }
     const handleKey = (e: KeyboardEvent) => {

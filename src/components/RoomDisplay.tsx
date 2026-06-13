@@ -511,6 +511,7 @@ export default function RoomDisplay({
                 <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
               )}
               <button
+                data-action-button
                 onClick={() => handleAction(berryAction.action)}
                 disabled={isPerformingAction === berryAction.action || capStatus === 'error' || remainingCap === 0}
                 className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 flex items-center gap-2 ${
@@ -603,6 +604,7 @@ export default function RoomDisplay({
                 <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
               )}
               <button
+                data-action-button
                 onClick={() => handleAction(actionItem.action)}
                 disabled={isPerformingAction === actionItem.action}
                 className={`${

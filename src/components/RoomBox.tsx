@@ -338,6 +338,7 @@ export default function RoomBox({
                     <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
                   )}
                   <button
+                    data-action-button
                     onClick={() => {
                       console.log(`[ActionButton] ${label} button clicked`)
                       onAction(action)
