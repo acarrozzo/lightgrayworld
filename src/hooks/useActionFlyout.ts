@@ -49,7 +49,13 @@ export function useActionFlyout(actionResult?: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionResult?.timestamp, actionResult?.action, actionResult?.source])
 
-  // Dismiss on click-outside / Escape (matches ActivityTicker behavior).
+  // Dismiss on click-outside / Escape.
+  // NOTE: we listen on `click` (not `mousedown`) so a single tap "clicks through"
+  // to the underlying button. On touch devices, dismissing on `mousedown` unmounts
+  // the flyout mid-gesture, which makes mobile browsers cancel the follow-up `click`
+  // on the tapped button — forcing the user to tap twice. By the time `click` fires
+  // (bubble phase, after the button's own onClick), the gesture is already committed,
+  // so the same tap both activates the button and closes the flyout.
   useEffect(() => {
     if (!activeFlyoutAction) return
     const handleClickOutside = (e: MouseEvent) => {
@@ -62,10 +68,10 @@ export function useActionFlyout(actionResult?: {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') dismissFlyout()
     }
-    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('click', handleClickOutside)
     document.addEventListener('keydown', handleKey)
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('click', handleClickOutside)
       document.removeEventListener('keydown', handleKey)
     }
   }, [activeFlyoutAction])
