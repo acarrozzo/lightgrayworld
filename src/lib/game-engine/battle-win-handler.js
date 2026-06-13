@@ -1,7 +1,7 @@
 const { prisma } = require('../db-client')
 const { rand } = require('./battle-calculator')
-const { randomUUID } = require('crypto')
 const { checkAndApplyLevelUp } = require('./services/leveling-service')
+const { grantItemOnce } = require('./services/inventory-service')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 
 // Read the player's existing kill count for an enemy. 0 means this is their first kill.
@@ -87,35 +87,18 @@ async function persistBattleWin(playerId, battleState, rewards) {
     })
     const templateBySlug = new Map(templates.map((t) => [t.slug, t]))
 
-    const cappedTemplateIds = templates
-      .filter((t) => t.maxPerPlayer !== null)
-      .map((t) => t.id)
-
-    const existingCapped = cappedTemplateIds.length > 0
-      ? await prisma.playerItem.findMany({
-          where: { playerId, templateId: { in: cappedTemplateIds } },
-          select: { templateId: true },
-        })
-      : []
-    const ownedTemplateIds = new Set(existingCapped.map((i) => i.templateId))
-
-    const toCreate = []
+    // Grant drops through grantItemOnce so they merge into existing stacks
+    // (respecting maxStack / maxPerPlayer) instead of creating duplicate rows.
     for (const slug of droppedSlugs) {
       const template = templateBySlug.get(slug)
       if (!template) {
         console.error(`persistBattleWin: item template not found for slug "${slug}"`)
         continue
       }
-      if (template.maxPerPlayer !== null && ownedTemplateIds.has(template.id)) continue
-      toCreate.push(template)
-    }
-
-    if (toCreate.length > 0) {
-      await prisma.playerItem.createMany({
-        data: toCreate.map((t) => ({ id: randomUUID(), playerId, templateId: t.id, quantity: 1 })),
-        skipDuplicates: true,
-      })
-      toCreate.forEach((t) => droppedItems.push(t.name))
+      const result = await grantItemOnce(playerId, slug, 1)
+      if (result.granted) {
+        droppedItems.push(template.name)
+      }
     }
   }
 

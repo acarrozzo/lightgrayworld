@@ -439,7 +439,7 @@ export default function InventoryDisplay({
                           className={`relative rounded-lg border px-4 py-3 shadow-md hover:shadow-lg transition-all duration-200 flex gap-3 ${
                             item.isEquipped
                               ? 'border-green-500/70 bg-gradient-to-br from-green-900/30 via-green-800/20 to-green-900/20 hover:from-green-900/40 hover:via-green-800/30 hover:to-green-900/30 hover:border-green-500/90 shadow-green-500/10'
-                              : 'border-gray-700/40 bg-gray-800/30 hover:bg-gray-800/50 hover:border-gray-700/60 backdrop-blur-sm'
+                              : 'border-gray-700/40 bg-gray-800/30 hover:bg-gray-800/50 hover:border-gray-700/60'
                           }`}
                         >
                           {isNewItem && (
@@ -626,7 +626,7 @@ export default function InventoryDisplay({
                 className={`relative rounded-lg border px-4 py-3 shadow-md hover:shadow-lg transition-all duration-200 flex gap-3 ${
                   item.isEquipped
                     ? 'border-green-500/70 bg-gradient-to-br from-green-900/30 via-green-800/20 to-green-900/20 hover:from-green-900/40 hover:via-green-800/30 hover:to-green-900/30 hover:border-green-500/90 shadow-green-500/10'
-                    : 'border-gray-700/40 bg-gray-800/30 hover:bg-gray-800/50 hover:border-gray-700/60 backdrop-blur-sm'
+                    : 'border-gray-700/40 bg-gray-800/30 hover:bg-gray-800/50 hover:border-gray-700/60'
                 }`}
               >
                 {isNewItem && (
