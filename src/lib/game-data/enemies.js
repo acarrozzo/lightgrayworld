@@ -241,7 +241,14 @@ const ENEMIES = [
     xpReward: 10,
     goldMin: 20,
     goldMax: 30,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      main: [
+        { itemSlug: 'red-potion', chance: 0.25, min: 2, max: 4 },
+        { itemSlug: 'club', chance: 0.25 },
+        { itemSlug: 'kite-shield', chance: 0.25 },
+        { itemSlug: 'basic-helmet', chance: 0.25 },
+      ],
+    },
   },
   {
     slug: 'mammoth-scorpion',
@@ -260,7 +267,14 @@ const ENEMIES = [
     xpReward: 25,
     goldMin: 30,
     goldMax: 60,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      main: [
+        { itemSlug: 'ring-of-str', chance: 0.25 },
+        { itemSlug: 'blue-potion', chance: 0.25, min: 2, max: 4 },
+        { itemSlug: 'tower-shield', chance: 0.25 },
+        { itemSlug: 'padded-armor', chance: 0.25 },
+      ],
+    },
   },
   {
     slug: 'scorpion-queen',
