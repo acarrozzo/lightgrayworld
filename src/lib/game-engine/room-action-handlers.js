@@ -446,6 +446,12 @@ const ROOM_ACTIONS = {
       }
     },
   },
+  '020': {
+    'rest at waterfall': async (playerId, roomState) => roomState.executeWaterfallRest(playerId),
+  },
+  '999': {
+    'rest in lobby': async (playerId, roomState) => roomState.executeLobbyRest(playerId),
+  },
 }
 
 /**

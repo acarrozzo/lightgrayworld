@@ -101,6 +101,92 @@ async function handleEatRedberry(playerId, roomState, playerItemId) {
 }
 
 /**
+ * Build a handler for an HP-restoring consumable (e.g. raw/cooked meat).
+ * Mirrors handleEatRedberry: removes 1 item, heals up to hpMax, persists, syncs memory.
+ */
+function makeEatHpConsumable(slug, displayName, healAmount) {
+  return async function (playerId, roomState, playerItemId) {
+    const player = roomState.players.get(playerId)
+    if (!player) {
+      return createErrorResult('eat', 'Player not found in this room')
+    }
+
+    if (!playerItemId) {
+      return createErrorResult('eat', 'Item ID is required')
+    }
+
+    roomState.touchActivity()
+
+    const inventory = await getPlayerInventory(playerId)
+    const item = inventory.find((item) => item.id === playerItemId)
+
+    if (!item) {
+      return createErrorResult('eat', 'Item not found in your inventory')
+    }
+
+    if (item.template.slug !== slug) {
+      return createErrorResult('eat', `This action can only be used on ${displayName}`)
+    }
+
+    // Heal by healAmount, capped at hpMax
+    const currentHp = player.hp ?? 0
+    const hpMax = player.hpMax ?? 10
+    const newHp = Math.min(hpMax, currentHp + healAmount)
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (item.quantity === 1) {
+          await tx.playerItem.delete({ where: { id: playerItemId } })
+        } else {
+          await tx.playerItem.update({
+            where: { id: playerItemId },
+            data: { quantity: item.quantity - 1 },
+          })
+        }
+
+        await tx.user.update({
+          where: { id: playerId },
+          data: { hp: newHp },
+        })
+      })
+
+      roomState.updatePlayer(playerId, (state) => ({
+        ...state,
+        hp: newHp,
+      }))
+
+      const updatedInventory = await getPlayerInventory(playerId)
+      const hpChange = newHp - currentHp
+      const message = `You eat the ${displayName}. You gain ${hpChange} HP.`
+
+      const data = {
+        roomId: roomState.roomId,
+        hp: newHp,
+        hpChange: hpChange,
+        inventory: updatedInventory,
+      }
+
+      return {
+        success: true,
+        action: 'eat',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('eat', 'success', message, data),
+          },
+        ],
+      }
+    } catch (error) {
+      console.error(`Error eating ${displayName}:`, error)
+      return createErrorResult('eat', `Failed to eat the ${displayName}`)
+    }
+  }
+}
+
+const handleEatRawMeat = makeEatHpConsumable('raw-meat', 'raw meat', 25)
+const handleEatCookedMeat = makeEatHpConsumable('cooked-meat', 'cooked meat', 50)
+
+/**
  * Handler for eating a flower - removes item and decreases HP
  */
 async function handleEatFlower(playerId, roomState, playerItemId) {
@@ -365,6 +451,12 @@ const ITEM_ACTIONS = {
   },
   'blueberry': {
     'eat': handleEatBlueberry,
+  },
+  'raw-meat': {
+    'eat': handleEatRawMeat,
+  },
+  'cooked-meat': {
+    'eat': handleEatCookedMeat,
   },
   'red-potion': {
     'drink': handleDrinkRedPotion,

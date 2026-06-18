@@ -12,11 +12,33 @@ export const metadata = {
 
 // Enemy data is the canonical source — imported live from the game-data module
 // so this page never drifts out of date when enemies are added or edited.
-type EnemyDropEntry = { itemSlug: string; chance: number }
+// A drop quantity may be fixed (`qty`) or a random range (`min`/`max`). Both `main`
+// and `always` entries can carry these.
+type QtyShape = { qty?: number; min?: number; max?: number }
+type EnemyDropEntry = { itemSlug: string; chance: number } & QtyShape
+// `always` entries are a slug string (qty 1) or an object with a slug + quantity.
+type AlwaysDrop = string | ({ itemSlug: string } & QtyShape)
 type EnemyDrops = {
   main?: EnemyDropEntry[]
-  always?: string[]
+  always?: AlwaysDrop[]
   firstKill?: string[]
+}
+
+// Human-readable quantity suffix ("" for 1, " ×2" fixed, " ×1-3" range).
+function qtyLabel(entry: QtyShape): string {
+  if (entry.min != null || entry.max != null) {
+    const min = entry.min ?? 1
+    const max = entry.max ?? min
+    return min === max ? (max > 1 ? ` ×${max}` : '') : ` ×${min}-${max}`
+  }
+  const qty = entry.qty ?? 1
+  return qty > 1 ? ` ×${qty}` : ''
+}
+
+// Normalize an `always` entry to its slug plus a quantity suffix.
+function normalizeAlways(entry: AlwaysDrop): { slug: string; qtyLabel: string } {
+  if (typeof entry === 'string') return { slug: entry, qtyLabel: '' }
+  return { slug: entry.itemSlug, qtyLabel: qtyLabel(entry) }
 }
 type Enemy = {
   slug: string
@@ -55,16 +77,20 @@ function prettifySlug(slug: string): string {
 function allDropSlugs(drops: EnemyDrops): string[] {
   return [
     ...(drops.main ?? []).map((d) => d.itemSlug),
-    ...(drops.always ?? []),
+    ...(drops.always ?? []).map((a) => normalizeAlways(a).slug),
     ...(drops.firstKill ?? []),
   ]
 }
 
-// Consolidate main drop entries by slug, summing their chances.
-function consolidateMain(entries: EnemyDropEntry[]): { itemSlug: string; chance: number }[] {
-  const map = new Map<string, number>()
-  for (const e of entries) map.set(e.itemSlug, (map.get(e.itemSlug) ?? 0) + e.chance)
-  return Array.from(map.entries()).map(([itemSlug, chance]) => ({ itemSlug, chance }))
+// Consolidate main drop entries by slug, summing their chances. Keeps the first
+// entry's quantity label (a given slug normally appears once).
+function consolidateMain(entries: EnemyDropEntry[]): { itemSlug: string; chance: number; qtyLabel: string }[] {
+  const map = new Map<string, { chance: number; qtyLabel: string }>()
+  for (const e of entries) {
+    const prev = map.get(e.itemSlug)
+    map.set(e.itemSlug, { chance: (prev?.chance ?? 0) + e.chance, qtyLabel: prev?.qtyLabel || qtyLabel(e) })
+  }
+  return Array.from(map.entries()).map(([itemSlug, v]) => ({ itemSlug, ...v }))
 }
 
 export default async function EnemiesPage() {
@@ -88,10 +114,13 @@ export default async function EnemiesPage() {
   const rows: EnemyRow[] = ENEMIES.map((e, i) => {
     const { main = [], always = [], firstKill = [] } = e.drops
     const drops: EnemyRow['drops'] = [
-      ...always.map((slug) => ({ name: resolveName(slug), chance: 100, tag: 'always' as const })),
+      ...always.map((a) => {
+        const { slug, qtyLabel } = normalizeAlways(a)
+        return { name: `${resolveName(slug)}${qtyLabel}`, chance: 100, tag: 'always' as const }
+      }),
       ...firstKill.map((slug) => ({ name: resolveName(slug), chance: 100, tag: 'first-kill' as const })),
       ...consolidateMain(main).map((d) => ({
-        name: resolveName(d.itemSlug),
+        name: `${resolveName(d.itemSlug)}${d.qtyLabel}`,
         chance: Math.round(d.chance * 100),
       })),
     ]

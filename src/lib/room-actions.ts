@@ -44,7 +44,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'talk to young soldier', label: 'Young Soldier', icon: 'npc-youngsoldier', className: 'bg-blue-600 hover:bg-blue-700', questIds: ['quest_youngsoldier_000', 'quest_youngsoldier_001', 'quest_youngsoldier_002'] },
   ],
   '020': [
-    { action: 'rest', label: 'Rest at Waterfall', icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
+    { action: 'rest at waterfall', label: 'Rest at Waterfall', icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
   ],
   '021': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
@@ -57,6 +57,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'search', label: 'Search', icon: 'eye', className: 'bg-yellow-500/70 hover:bg-yellow-400' },
   ],
   '999': [
+    { action: 'rest in lobby', label: 'Rest at the Fountain', icon: 'heal', className: 'bg-green-600 hover:bg-green-700' },
     { action: 'teleport to grassy field', label: 'Teleport to the Grassy Field', icon: 'world', className: 'bg-green-500/70  hover:bg-green-600' },
   ],
 }

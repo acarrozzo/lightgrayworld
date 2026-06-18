@@ -66,10 +66,14 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
               {/* HP / MP / XP */}
               <div className="flex items-center gap-2">
                 {hp !== undefined && hpMax !== undefined && (
-                  <span className="text-red-400">{hp}/{hpMax}</span>
+                  <span className="text-red-400">
+                    <span className={hp > hpMax ? 'text-yellow-400' : undefined}>{hp}</span>/{hpMax}
+                  </span>
                 )}
                 {mp !== undefined && mpMax !== undefined && (
-                  <span className="text-blue-400">{mp}/{mpMax}</span>
+                  <span className="text-blue-400">
+                    <span className={mp > mpMax ? 'text-yellow-400' : undefined}>{mp}</span>/{mpMax}
+                  </span>
                 )}
                 {xpGain != null && xpGain > 0 && (
                   <span

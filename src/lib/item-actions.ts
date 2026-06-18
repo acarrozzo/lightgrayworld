@@ -40,6 +40,12 @@ export const ITEM_ACTIONS: Record<string, ItemAction[]> = {
   'blueberry': [
     { action: 'eat', label: 'Eat', icon: 'blueberry', className: 'bg-blue-500/70 hover:bg-blue-500', effect: '+5 MP' },
   ],
+  'raw-meat': [
+    { action: 'eat', label: 'Eat', icon: 'uncooked-meat', className: 'bg-rose-700/70 hover:bg-rose-700', effect: '+25 HP' },
+  ],
+  'cooked-meat': [
+    { action: 'eat', label: 'Eat', icon: 'cooked-meat', className: 'bg-amber-600/70 hover:bg-amber-600', effect: '+50 HP' },
+  ],
   'red-potion': [
     { action: 'drink', label: 'Drink', icon: 'red-potion', className: 'bg-red-600/70 hover:bg-red-600', effect: '+100 HP' },
   ],

@@ -1,13 +1,17 @@
 // Drop system shape:
 //   drops.main      — mutually-exclusive weighted roll: at most ONE item drops per kill.
 //                     `chance` values are laid end-to-end; if they sum to < 1.0 the remainder is "no drop".
-//   drops.always    — array of slugs that drop on EVERY kill (in addition to the main roll).
+//                     A winning entry drops qty 1 unless it carries `qty` (fixed) or `min`/`max`
+//                     (random qty rolled in [min, max] inclusive).
+//   drops.always    — items that drop on EVERY kill (in addition to the main roll). Each entry is
+//                     either a slug string (qty 1), { itemSlug, qty } (fixed qty), or
+//                     { itemSlug, min, max } (random qty rolled in [min, max] inclusive).
 //   drops.firstKill — array of slugs that drop only on the player's FIRST kill of this enemy.
 const STANDARD_MAIN_DROP = [
   { itemSlug: 'redberry', chance: 0.25 },
   { itemSlug: 'blueberry', chance: 0.25 },
   { itemSlug: 'dagger', chance: 0.25 },
-  { itemSlug: 'raw meat', chance: 0.25 },
+  { itemSlug: 'raw-meat', chance: 0.25 },
 ]
 
 const ENEMIES = [
@@ -28,7 +32,15 @@ const ENEMIES = [
     xpReward: 1,
     goldMin: 1,
     goldMax: 3,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      main: [
+        { itemSlug: 'string', chance: 0.25 },
+        { itemSlug: 'redberry', chance: 0.25, min: 1, max: 2 },
+        { itemSlug: 'dagger', chance: 0.25 },
+        { itemSlug: 'blueberry', chance: 0.25 },
+      ],
+      always: [{ itemSlug: 'raw-meat', qty: 1 }],
+    },
   },
   {
     slug: 'sand-crab',
@@ -47,7 +59,7 @@ const ENEMIES = [
     xpReward: 2,
     goldMin: 1,
     goldMax: 2,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: { main: STANDARD_MAIN_DROP, firstKill: ['training-helmet'], always: [{ itemSlug: 'raw-meat', qty: 1 }] },
   },
   {
     slug: 'giant-rat',
@@ -66,7 +78,15 @@ const ENEMIES = [
     xpReward: 3,
     goldMin: 3,
     goldMax: 8,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      main: [
+        { itemSlug: 'ring-of-def', chance: 0.25 },
+        { itemSlug: 'redberry', chance: 0.25, min: 1, max: 3 },
+        { itemSlug: 'blueberry', chance: 0.25, min: 1, max: 2 },
+        { itemSlug: 'red-potion', chance: 0.25 },
+      ],
+      always: [{ itemSlug: 'raw-meat', min: 1, max: 3 }],
+    },
   },
   {
     slug: 'gator',
@@ -85,7 +105,16 @@ const ENEMIES = [
     xpReward: 20,
     goldMin: 10,
     goldMax: 100,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      main: [
+        { itemSlug: 'padded-armor', chance: 0.25 },
+        { itemSlug: 'club', chance: 0.25 },
+        { itemSlug: 'ring-of-str', chance: 0.25 },
+        { itemSlug: 'ring-of-def', chance: 0.25 },
+      ],
+      firstKill: ['training-armor'],
+      always: [{ itemSlug: 'raw-meat', qty: 5 }],
+    },
   },
   {
     slug: 'spider',
@@ -104,7 +133,15 @@ const ENEMIES = [
     xpReward: 2,
     goldMin: 1,
     goldMax: 5,
-    drops: { main: STANDARD_MAIN_DROP, firstKill: ['dagger'], always: ['dagger'] },
+    drops: {
+      main: [
+        { itemSlug: 'raw-meat', chance: 0.25, qty: 2 },
+        { itemSlug: 'basic-shield', chance: 0.25 },
+        { itemSlug: 'redberry', chance: 0.25, qty: 2 },
+        { itemSlug: 'blueberry', chance: 0.25, qty: 2 },
+      ],
+      firstKill: ['training-gloves'],
+    },
   },
   {
     slug: 'scorpion',
@@ -123,7 +160,15 @@ const ENEMIES = [
     xpReward: 4,
     goldMin: 2,
     goldMax: 10,
-    drops: { main: STANDARD_MAIN_DROP, firstKill: ['dagger'], always: ['dagger'] },
+    drops: {
+      main: [
+        { itemSlug: 'dagger', chance: 0.25 },
+        { itemSlug: 'blueberry', chance: 0.25, qty: 2 },
+        { itemSlug: 'basic-staff', chance: 0.25 },
+        { itemSlug: 'basic-hood', chance: 0.25 },
+      ],
+      firstKill: ['training-boots'],
+    },
   },
   {
     slug: 'giant-spider',
@@ -142,7 +187,15 @@ const ENEMIES = [
     xpReward: 6,
     goldMin: 5,
     goldMax: 10,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      main: [
+        { itemSlug: 'red-boots', chance: 0.25 },
+        { itemSlug: 'mace', chance: 0.25 },
+        { itemSlug: 'redberry', chance: 0.25, min: 2, max: 6 },
+        { itemSlug: 'dagger', chance: 0.25 },
+      ],
+      firstKill: ['broad-sword'],
+    },
   },
   {
     slug: 'alpha-scorpion',
@@ -161,11 +214,16 @@ const ENEMIES = [
     xpReward: 8,
     goldMin: 10,
     goldMax: 20,
-    drops: { 
-      always: ['training-armor'] ,
-      firstKill: ['dagger'], 
-      main: STANDARD_MAIN_DROP, }
+    drops: {
+      main: [
+        { itemSlug: 'basic-hood', chance: 0.25 },
+        { itemSlug: 'red-hood', chance: 0.25 },
+        { itemSlug: 'green-hood', chance: 0.25 },
+        { itemSlug: 'blue-hood', chance: 0.25 },
+      ],
+      firstKill: ['long-sword'],
     },
+  },
   {
     slug: 'scorpion-guard',
     zone: 'Scorpion Pit',
