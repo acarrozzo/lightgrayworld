@@ -1,7 +1,7 @@
 const { prisma } = require('../db-client')
 const { rand } = require('./battle-calculator')
 const { checkAndApplyLevelUp } = require('./services/leveling-service')
-const { grantItemOnce } = require('./services/inventory-service')
+const { grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 
 // Read the player's existing kill count for an enemy. 0 means this is their first kill.
@@ -78,7 +78,10 @@ function calcBattleWinRewards(battleState, isFirstKill = false) {
   return { xpAwarded, goldAwarded, drops, droppedSlugs }
 }
 
-// All DB writes for a battle win. Returns { droppedItems (names), levelUp }.
+// All DB writes for a battle win. Returns { droppedItems (names), levelUp, inventory }.
+// `inventory` is the player's refreshed inventory after grants (null when nothing dropped),
+// so callers can push it to the client — the battle:victory event is emitted before this
+// background work commits, so the client's inventory would otherwise be stale.
 // Fire this as a background promise — do not await before emitting battle:victory.
 async function persistBattleWin(playerId, battleState, rewards) {
   const { xpAwarded, goldAwarded, drops } = rewards
@@ -101,6 +104,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
 
 
   const droppedItems = []
+  let inventory = null
   if (drops.length > 0) {
     const templates = await prisma.itemTemplate.findMany({
       where: { slug: { in: drops.map((d) => d.slug) } },
@@ -120,6 +124,8 @@ async function persistBattleWin(playerId, battleState, rewards) {
         droppedItems.push(qty > 1 ? `${template.name} x${qty}` : template.name)
       }
     }
+    // Refresh once after all grants so the client can sync without a stale read.
+    inventory = await getPlayerInventory(playerId)
   }
 
   await prisma.battleLog.create({
@@ -141,14 +147,14 @@ async function persistBattleWin(playerId, battleState, rewards) {
 
   const levelUp = await checkAndApplyLevelUp(playerId)
 
-  return { droppedItems, levelUp }
+  return { droppedItems, levelUp, inventory }
 }
 
 async function handleBattleWin(playerId, battleState) {
   const isFirstKill = (await getPriorKills(playerId, battleState.enemy.slug)) === 0
   const rewards = calcBattleWinRewards(battleState, isFirstKill)
-  const { droppedItems, levelUp } = await persistBattleWin(playerId, battleState, rewards)
-  return { xpAwarded: rewards.xpAwarded, goldAwarded: rewards.goldAwarded, droppedItems, levelUp }
+  const { droppedItems, levelUp, inventory } = await persistBattleWin(playerId, battleState, rewards)
+  return { xpAwarded: rewards.xpAwarded, goldAwarded: rewards.goldAwarded, droppedItems, levelUp, inventory }
 }
 
 async function handleBattleDefeat(playerId, battleState) {

@@ -1836,6 +1836,12 @@ export default function GameInterface() {
       }
     })
 
+    const cleanupInventoryUpdate = socketHandlers.onInventoryUpdate((payload) => {
+      if (Array.isArray(payload?.inventory)) {
+        setInventory(payload.inventory)
+      }
+    })
+
     const cleanupRoomMoves = socketHandlers.onRoomPlayerMoved((event) => {
       console.log('[GameInterface] Received room:player-moved event:', event)
       const currentPlayer = playerRef.current
@@ -1918,6 +1924,7 @@ export default function GameInterface() {
     return () => {
       cleanupActionFeedback()
       cleanupLoginSuccess()
+      cleanupInventoryUpdate()
       cleanupRoomMoves()
     }
   }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed, updateCapCache, worldTick])
@@ -2231,10 +2238,8 @@ export default function GameInterface() {
           ts: Date.now(),
         })
         if (payload.xpAwarded > 0) triggerXpGain(payload.xpAwarded)
-        if (payload.droppedItems.length > 0) {
-          const headers = useGameStore.getState().getAuthHeaders()
-          fetch('/api/game/room/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify({}) }).catch(() => {})
-        }
+        // Inventory is refreshed via the inventory:update socket event emitted from the
+        // server's background persistence (drops commit after this victory event fires).
       }
       const lt = payload.summary?.lastTurn
       setTimeout(() => {

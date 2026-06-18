@@ -234,7 +234,14 @@ async function executeStartBattle(action, playerId, roomState) {
     })
 
     startBattleBackgroundWork = persistBattleWin(playerId, battleState, rewards)
-      .then(({ levelUp }) => levelUp?.leveled ? [{ event: 'player:level-up', payload: levelUp }] : [])
+      .then(({ levelUp, inventory }) => {
+        const events = []
+        // Drops are persisted after battle:victory is emitted, so push the refreshed
+        // inventory once the grants commit — otherwise the client never sees the items.
+        if (inventory) events.push({ event: 'inventory:update', payload: { inventory } })
+        if (levelUp?.leveled) events.push({ event: 'player:level-up', payload: levelUp })
+        return events
+      })
       .catch((err) => {
         console.error(`persistBattleWin failed on turn 1 for player ${playerId}:`, err)
         return []
@@ -338,8 +345,11 @@ async function executePlayerAttack(action, playerId, roomState) {
 
     // Fire DB persistence in the background; level-up event emitted via backgroundWork
     const backgroundWork = persistBattleWin(playerId, battleState, rewards)
-      .then(({ levelUp }) => {
+      .then(({ levelUp, inventory }) => {
         const events = []
+        // Drops are persisted after battle:victory is emitted, so push the refreshed
+        // inventory once the grants commit — otherwise the client never sees the items.
+        if (inventory) events.push({ event: 'inventory:update', payload: { inventory } })
         if (levelUp?.leveled) events.push({ event: 'player:level-up', payload: levelUp })
         return events
       })

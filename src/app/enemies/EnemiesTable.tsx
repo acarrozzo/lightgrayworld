@@ -159,6 +159,8 @@ export default function EnemiesTable({
                   <SortArrow active={sortKey === col.key} dir={sortDir} />
                 </th>
               ))}
+              <th className="px-3 py-2 font-medium">1st</th>
+              <th className="px-3 py-2 font-medium">Always</th>
               <th className="px-3 py-2 font-medium">Drops</th>
             </tr>
           </thead>
@@ -170,7 +172,7 @@ export default function EnemiesTable({
               : sorted.map((r) => <EnemyTr key={r.slug} r={r} />)}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-gray-500">
+                <td colSpan={10} className="px-3 py-6 text-center text-gray-500">
                   No enemies match this filter.
                 </td>
               </tr>
@@ -187,7 +189,7 @@ function GroupBlock({ zone, rows }: { zone: string; rows: EnemyRow[] }) {
     <>
       <tr className="border-t border-gray-800 bg-gray-900/70">
         <td
-          colSpan={8}
+          colSpan={10}
           className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400"
         >
           {zone}
@@ -201,6 +203,9 @@ function GroupBlock({ zone, rows }: { zone: string; rows: EnemyRow[] }) {
 }
 
 function EnemyTr({ r }: { r: EnemyRow }) {
+  const alwaysDrops = r.drops.filter((d) => d.tag === 'always')
+  const firstDrops = r.drops.filter((d) => d.tag === 'first-kill')
+  const chanceDrops = r.drops.filter((d) => !d.tag)
   return (
     <tr className="border-t border-gray-800 odd:bg-gray-900/30">
       <td className="px-3 py-2">
@@ -219,22 +224,36 @@ function EnemyTr({ r }: { r: EnemyRow }) {
       <td className="px-3 py-2 text-right text-gray-400">
         {r.goldMin}–{r.goldMax}
       </td>
+      <td className="px-3 py-2 text-green-400">
+        {firstDrops.length === 0
+          ? <span className="text-gray-600">—</span>
+          : firstDrops.map((d, i) => (
+              <span key={i}>
+                {i > 0 && <span className="text-gray-600">, </span>}
+                {d.name}
+              </span>
+            ))}
+      </td>
+      <td className="px-3 py-2 text-blue-400">
+        {alwaysDrops.length === 0
+          ? <span className="text-gray-600">—</span>
+          : alwaysDrops.map((d, i) => (
+              <span key={i}>
+                {i > 0 && <span className="text-gray-600">, </span>}
+                {d.name}
+              </span>
+            ))}
+      </td>
       <td className="px-3 py-2 text-gray-400">
-        {r.drops.length === 0
+        {chanceDrops.length === 0
           ? '—'
-          : r.drops.map((d, i) => {
-              const [label, nameColor] =
-                d.tag === 'always'     ? ['always', 'text-blue-400'] :
-                d.tag === 'first-kill' ? ['1st',    'text-green-400'] :
-                                         [`${d.chance}%`, 'text-gray-300']
-              return (
-                <span key={i}>
-                  {i > 0 && <span className="text-gray-600">, </span>}
-                  <span className={nameColor}>{d.name}</span>
-                  <span className="text-gray-500"> ({label})</span>
-                </span>
-              )
-            })}
+          : chanceDrops.map((d, i) => (
+              <span key={i}>
+                {i > 0 && <span className="text-gray-600">, </span>}
+                <span className="text-gray-300">{d.name}</span>
+                <span className="text-gray-500"> ({d.chance}%)</span>
+              </span>
+            ))}
       </td>
     </tr>
   )

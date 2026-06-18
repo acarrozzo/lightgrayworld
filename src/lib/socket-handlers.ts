@@ -136,6 +136,10 @@ export class SocketEventHandlers {
     return this.on('login:success', handler)
   }
 
+  onInventoryUpdate(handler: (payload: { inventory: any[] }) => void): () => void {
+    return this.on('inventory:update', handler)
+  }
+
   onActionConfirmed(handler: (payload: ActionConfirmation) => void): () => void {
     return this.on(SOCKET_EVENTS.ACTION_CONFIRMED, handler)
   }
