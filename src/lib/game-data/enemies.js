@@ -192,9 +192,8 @@ const ENEMIES = [
         { itemSlug: 'red-boots', chance: 0.25 },
         { itemSlug: 'mace', chance: 0.25 },
         { itemSlug: 'redberry', chance: 0.25, min: 2, max: 6 },
-        { itemSlug: 'dagger', chance: 0.25 },
+        { itemSlug: 'broad-sword', chance: 0.25 },
       ],
-      firstKill: ['broad-sword'],
     },
   },
   {

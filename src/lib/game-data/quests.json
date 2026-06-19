@@ -92,9 +92,9 @@
     "level": 1,
     "title": "Talk to the Young Soldier",
     "summary": "A young soldier nearby looks like they have advice.",
-    "objective": "Talk to the Young Soldier in Room 007.",
+    "objective": "Talk to the Young Soldier east of here.",
     "nextStep": "Go to Room 007 and talk to the Young Soldier.",
-    "reminderDialog": "A Young Soldier in Room 007 looks like he has advice worth hearing. Go and talk to him.",
+    "reminderDialog": "The Young Soldier has some advice worth hearing. Go and talk to him.",
     "completionDialog": "Good to meet you, Wanderer. Heed my advice and you'll go far out here. Now — let's see about getting you properly equipped.",
     "giver": {
       "npcId": "young_soldier",

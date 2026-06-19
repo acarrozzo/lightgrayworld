@@ -301,15 +301,15 @@ const ROOM_ACTIONS = {
       idleDialogs: [
         {
           ifCompleted: 'quest_youngsoldier_002',
-          message: 'The Young Soldier gives you a proud nod. "You\'ve proven yourself out there. Stay sharp and keep pushing further into the world."',
+          message: 'Sand crabs. Amateur hour."',
         },
         {
           ifCompleted: 'quest_youngsoldier_001',
-          message: 'The Young Soldier gives you a respectful nod. "You\'re well-prepared now. Good luck on your adventures, traveler."',
+          message: 'Wow, look at you, you can pick up a sword. I can\'t believe we\'re giving exp for this.',
         },
         {
           ifCompleted: null,
-          message: '"Hail Wanderer. I\'m a soldier sent here to assist you, but before I can help, you need to speak with the Old Man in his cabin west of here."',
+          message: '"What are you doing talking to me? You\'re supposed to talk to the Old Man west of here first."',
         },
       ],
     }),

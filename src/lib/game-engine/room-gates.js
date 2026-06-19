@@ -31,6 +31,28 @@ const ROOM_GATES = {
       },
     },
   },
+  '007': {
+    'south': {
+      check: async (playerId) => {
+        const mainHandItem = await prisma.playerItem.findFirst({
+          where: {
+            playerId,
+            isEquipped: true,
+            slot: 'MAIN_HAND',
+          },
+        })
+        return !!mainHandItem
+      },
+      message: "Whoa, slow down killer. You can't enter the Spider Cave without a weapon!",
+      modalContent: {
+        title: 'The Young Soldier blocks the way to the Spider Cave',
+        type: 'icon',
+        icon: 'npc-youngsoldier',
+        iconColor: 'blue-400',
+        message: "Whoa, slow down killer. You can't enter the Spider Cave without a weapon!",
+      },
+    },
+  },
   '004': {
     'west': {
       check: async (playerId) => {
