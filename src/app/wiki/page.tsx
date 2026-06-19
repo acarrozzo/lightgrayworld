@@ -12,6 +12,7 @@ export const metadata = {
 const PAGES = [
   { href: '/enemies', label: 'Bestiary', description: 'Every enemy, with their stats and drops.' },
   { href: '/items', label: 'Item Compendium', description: 'Every item, with their stats, value, and properties.' },
+  { href: '/quests', label: 'Quests', description: 'Every quest, grouped by giver, with objectives, requirements, and rewards.' },
 ]
 
 export default function WikiHomePage() {

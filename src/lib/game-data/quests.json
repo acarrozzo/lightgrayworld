@@ -209,7 +209,7 @@
   "quest_oldman_002": {
     "number": 6,
     "questType": "main",
-    "level": 1,
+    "level": 3,
     "title": "Rat Problem",
     "summary": "The Old Man's basement has been overrun with giant rats. He needs someone brave enough to deal with them.",
     "objective": "Defeat 2 Giant Rats in the Cabin Basement.",
@@ -256,7 +256,7 @@
   "quest_oldman_003": {
     "number": 7,
     "questType": "main",
-    "level": 1,
+    "level": 5,
     "title": "The Gator",
     "summary": "With the rats cleared out, the Old Man turns his attention to a bigger problem — a massive gator lurking in the marsh behind his cabin.",
     "objective": "Defeat the Gator in the Marsh behind the cabin.",

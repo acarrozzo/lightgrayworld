@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Home, Skull, Sword, type LucideIcon } from 'lucide-react'
+import { Home, Skull, Sword, ScrollText, type LucideIcon } from 'lucide-react'
 
 // Top navigation bar shared across the Light Gray Wiki pages.
 // To add a new wiki page, add an entry here and pass its `key` as the
@@ -8,6 +8,7 @@ const NAV_ITEMS: { key: string; href: string; label: string; icon: LucideIcon }[
   { key: 'home', href: '/wiki', label: 'Home', icon: Home },
   { key: 'enemies', href: '/enemies', label: 'Bestiary', icon: Skull },
   { key: 'items', href: '/items', label: 'Item Compendium', icon: Sword },
+  { key: 'quests', href: '/quests', label: 'Quests', icon: ScrollText },
 ]
 
 export default function WikiNav({ active }: { active: string }) {
