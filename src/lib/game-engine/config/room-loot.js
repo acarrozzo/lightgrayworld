@@ -46,6 +46,9 @@ const ROOM_LOOT = [
   // Room 088 — Solar Office
   { roomId: '088', slug: 'master-sword' },
   { roomId: '088', slug: 'enchanted-orb' },
+
+  // Room 019 — Sand Crab Nest
+  { roomId: '019', slug: 'bo' },
 ]
 
 module.exports = { ROOM_LOOT }
