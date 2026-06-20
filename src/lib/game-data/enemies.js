@@ -6,7 +6,9 @@
 //   drops.always    — items that drop on EVERY kill (in addition to the main roll). Each entry is
 //                     either a slug string (qty 1), { itemSlug, qty } (fixed qty), or
 //                     { itemSlug, min, max } (random qty rolled in [min, max] inclusive).
-//   drops.firstKill — array of slugs that drop only on the player's FIRST kill of this enemy.
+//   drops.firstKill — array of slugs that drop while the player does NOT already own the item.
+//                     Typically earned on the first kill, but re-drops on later kills if the
+//                     player no longer holds the item (sold/dropped), and stops once owned again.
 const STANDARD_MAIN_DROP = [
   { itemSlug: 'redberry', chance: 0.25 },
   { itemSlug: 'blueberry', chance: 0.25 },

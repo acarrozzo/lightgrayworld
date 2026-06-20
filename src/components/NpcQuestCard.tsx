@@ -53,6 +53,32 @@ export const PRE_QUEST_TALK_ID = '__pretalk__'
  */
 const TALK_COMPLETE_QUEST_IDS = new Set(['quest_oldman_000', 'quest_youngsoldier_000'])
 
+/** "training-helmet" -> "Training Helmet". Fallback when no nicer name is available. */
+function humanizeSlug(slug: string): string {
+  return slug
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+/**
+ * Display name for an item-collection requirement. The client has no item
+ * catalog, so resolve in order of fidelity: an explicit `displayName` on the
+ * requirement (author override, same convention as killCount), then the name
+ * from a copy the player already owns, then a humanized slug. Works for any
+ * item without per-quest data.
+ */
+function resolveItemLabel(
+  slug: string,
+  displayName: string | undefined,
+  inventory: ReturnType<typeof useGameStore.getState>['inventory']
+): string {
+  if (displayName) return displayName
+  const owned = inventory.find((i) => i.template.slug === slug)
+  return owned?.template.name ?? humanizeSlug(slug)
+}
+
 interface NpcQuestCardProps {
   npcName: string
   npcIcon: string
@@ -85,7 +111,8 @@ function getRequirementProgress(
     const current = inventory
       .filter((i) => i.template.slug === req.itemSlug)
       .reduce((sum, i) => sum + i.quantity, 0)
-    return { met: current >= total, current: Math.min(current, total), total }
+    const label = resolveItemLabel(req.itemSlug ?? '', req.displayName, inventory)
+    return { met: current >= total, current: Math.min(current, total), total, label }
   }
   if (req.type === 'hasEquippedInSlot') {
     const equipped = inventory.find((i) => i.isEquipped && i.slot === req.slot)
@@ -116,12 +143,12 @@ function resolveQuestState(
     if (req.type === 'killCount') {
       progressParts.push(`${result.current}/${result.total} ${result.label ?? req.enemySlug}`)
     } else if (req.type === 'hasItem') {
-      progressParts.push(`${result.current}/${result.total} ${req.itemSlug}`)
+      progressParts.push(`${result.current}/${result.total} ${result.label ?? req.itemSlug}`)
     }
   }
 
   if (allMet) return { state: 'turn_in' }
-  return { state: 'in_progress', progressLabel: progressParts.join(', ') }
+  return { state: 'in_progress', progressLabel: progressParts.join('\n') }
 }
 
 export default function NpcQuestCard({
@@ -221,7 +248,7 @@ export default function NpcQuestCard({
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-white truncate">{questDef.title}</div>
                 {isInProgress && progressLabel && (
-                  <div className="text-xs text-white/50 mt-0.5">{progressLabel}</div>
+                  <div className="text-xs text-white/50 mt-0.5 whitespace-pre-line">{progressLabel}</div>
                 )}
                 {isTurnIn && (
                   <div className="text-xs text-green-400/70 mt-0.5 truncate">{questDef.objective}</div>

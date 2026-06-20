@@ -301,11 +301,11 @@ const ROOM_ACTIONS = {
       idleDialogs: [
         {
           ifCompleted: 'quest_youngsoldier_002',
-          message: 'Sand crabs. Amateur hour."',
+          message: 'Well I actually didn\'t think you would find all four, but it was still pretty easy.',
         },
         {
           ifCompleted: 'quest_youngsoldier_001',
-          message: 'Wow, look at you, you can pick up a sword. I can\'t believe we\'re giving exp for this.',
+          message: 'Wow, you can pick up a sword. I can\'t believe we\'re giving XP for this.',
         },
         {
           ifCompleted: null,

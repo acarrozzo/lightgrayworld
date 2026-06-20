@@ -4,14 +4,17 @@ const { checkAndApplyLevelUp } = require('./services/leveling-service')
 const { grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 
-// Read the player's existing kill count for an enemy. 0 means this is their first kill.
-// Must be called BEFORE persistBattleWin increments the kill count.
-async function getPriorKills(playerId, slug) {
-  const record = await prisma.killList.findUnique({
-    where: { userId_monster: { userId: playerId, monster: slug } },
-    select: { kills: true },
+// Of this enemy's firstKill slugs, return the set the player already owns (equipped copies
+// included). firstKill items only drop for slugs NOT in this set, so a player who lost a piece
+// can re-earn it. Returns an empty set when the enemy has no firstKill drops.
+async function getOwnedFirstKillSlugs(playerId, enemy) {
+  const slugs = (enemy.drops && enemy.drops.firstKill) || []
+  if (slugs.length === 0) return new Set()
+  const rows = await prisma.playerItem.findMany({
+    where: { playerId, ItemTemplate: { slug: { in: slugs } } },
+    select: { ItemTemplate: { select: { slug: true } } },
   })
-  return record?.kills ?? 0
+  return new Set(rows.map((r) => r.ItemTemplate.slug))
 }
 
 // Resolve which item slugs drop from a single kill.
@@ -19,11 +22,15 @@ async function getPriorKills(playerId, slug) {
 //                     laid end-to-end as bands; if they sum to < 1.0 the remainder is "no drop".
 //   drops.always    — items that drop on every kill. Each entry is a slug string (qty 1),
 //                     { itemSlug, qty } (fixed qty), or { itemSlug, min, max } (random qty in range).
-//   drops.firstKill — every slug drops, but only on the player's first kill of this enemy.
+//   drops.firstKill — every slug drops, but only while the player does not already own the item.
+//                     `ownedSlugs` is the set of firstKill slugs the player currently has
+//                     (including equipped copies). This is an ownership failsafe rather than a
+//                     strict first-kill gate: a piece that was sold or dropped will drop again
+//                     on the next kill, and stops dropping once the player holds it.
 // Returns a de-duplicated array (one item template can only be granted once per kill).
 // Returns merged drops as [{ slug, qty }], with one row per distinct slug (quantities summed
 // when the same item is granted by more than one source, e.g. the main roll and an `always` entry).
-function resolveDrops(enemy, isFirstKill) {
+function resolveDrops(enemy, ownedSlugs = new Set()) {
   const drops = enemy.drops || {}
   // Preserve first-seen order while summing quantities per slug.
   const qtyBySlug = new Map()
@@ -59,20 +66,22 @@ function resolveDrops(enemy, isFirstKill) {
     else add(entry.itemSlug, rollQty(entry))
   }
 
-  if (isFirstKill) {
-    for (const slug of drops.firstKill || []) add(slug, 1)
+  // firstKill items drop only while the player doesn't already own them (ownership failsafe).
+  for (const slug of drops.firstKill || []) {
+    if (!ownedSlugs.has(slug)) add(slug, 1)
   }
 
   return [...qtyBySlug.entries()].map(([slug, qty]) => ({ slug, qty }))
 }
 
 // Pure calculation — no DB. Call this before any awaits to get rewards for immediate client emission.
-// `isFirstKill` must be derived from getPriorKills() before this enemy's kill count is incremented.
-function calcBattleWinRewards(battleState, isFirstKill = false) {
+// `ownedFirstKillSlugs` must be derived from getOwnedFirstKillSlugs() so firstKill drops are
+// skipped for items the player already holds.
+function calcBattleWinRewards(battleState, ownedFirstKillSlugs = new Set()) {
   const enemy = battleState.enemy
   const goldAwarded = rand(enemy.goldMin, enemy.goldMax)
   const xpAwarded = enemy.xpReward
-  const drops = resolveDrops(enemy, isFirstKill)
+  const drops = resolveDrops(enemy, ownedFirstKillSlugs)
   // Flat display strings for immediate client emit; qty > 1 gets an "xN" suffix.
   const droppedSlugs = drops.map((d) => (d.qty > 1 ? `${d.slug} x${d.qty}` : d.slug))
   return { xpAwarded, goldAwarded, drops, droppedSlugs }
@@ -151,8 +160,8 @@ async function persistBattleWin(playerId, battleState, rewards) {
 }
 
 async function handleBattleWin(playerId, battleState) {
-  const isFirstKill = (await getPriorKills(playerId, battleState.enemy.slug)) === 0
-  const rewards = calcBattleWinRewards(battleState, isFirstKill)
+  const ownedFirstKillSlugs = await getOwnedFirstKillSlugs(playerId, battleState.enemy)
+  const rewards = calcBattleWinRewards(battleState, ownedFirstKillSlugs)
   const { droppedItems, levelUp, inventory } = await persistBattleWin(playerId, battleState, rewards)
   return { xpAwarded: rewards.xpAwarded, goldAwarded: rewards.goldAwarded, droppedItems, levelUp, inventory }
 }
@@ -186,4 +195,4 @@ async function handleBattleDefeat(playerId, battleState) {
   })
 }
 
-module.exports = { calcBattleWinRewards, resolveDrops, getPriorKills, persistBattleWin, handleBattleWin, handleBattleDefeat }
+module.exports = { calcBattleWinRewards, resolveDrops, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat }

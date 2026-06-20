@@ -1,9 +1,25 @@
+import QUESTS from './game-data/quests.json'
+
 export interface RoomAction {
   action: string
   label: string
   icon?: string
   className?: string
   questIds?: string[]
+}
+
+/**
+ * All quest IDs given by an NPC, ordered by their `number`. Derived from
+ * quests.json (the single source of truth) so any quest with the matching
+ * `giver.npcId` — including ones started later via onComplete effects —
+ * surfaces in the NPC's room panel automatically, with no parallel list to
+ * keep in sync here.
+ */
+export function questIdsForNpc(npcId: string): string[] {
+  return Object.entries(QUESTS as Record<string, { giver?: { npcId?: string }; number?: number }>)
+    .filter(([, def]) => def.giver?.npcId === npcId)
+    .sort((a, b) => (a[1].number ?? 0) - (b[1].number ?? 0))
+    .map(([id]) => id)
 }
 
 export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
@@ -20,7 +36,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'bg-red-600 hover:bg-red-700' },
   ],
   '003': [
-    { action: 'talk to old man', label: 'Old Man', icon: 'npc-oldman', className: 'bg-yellow-600 hover:bg-yellow-700', questIds: ['quest_oldman_000', 'quest_oldman_001', 'quest_oldman_002', 'quest_oldman_003', 'quest_oldman_004'] },
+    { action: 'talk to old man', label: 'Old Man', icon: 'npc-oldman', className: 'bg-yellow-600 hover:bg-yellow-700', questIds: questIdsForNpc('old_man') },
     { action: 'ex cabin', label: 'Examine Cabin', icon: 'cabin2', className: 'bg-gray-600 hover:bg-gray-700' },
     { action: 'attack dummy', label: 'Attack Dummy', icon: 'sword1', className: 'bg-red-500/70 hover:bg-red-500' },
     { action: 'cook meat', label: 'Cook Meat', icon: 'fire', className: 'bg-orange-600 hover:bg-orange-700' },
@@ -41,7 +57,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '007': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
-    { action: 'talk to young soldier', label: 'Young Soldier', icon: 'npc-youngsoldier', className: 'bg-blue-600 hover:bg-blue-700', questIds: ['quest_youngsoldier_000', 'quest_youngsoldier_001', 'quest_youngsoldier_002'] },
+    { action: 'talk to young soldier', label: 'Young Soldier', icon: 'npc-youngsoldier', className: 'bg-blue-600 hover:bg-blue-700', questIds: questIdsForNpc('young_soldier') },
   ],
   '020': [
     { action: 'rest at waterfall', label: 'Rest at Waterfall', icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },

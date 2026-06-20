@@ -8,7 +8,7 @@
     "objective": "Talk to the Old Man in his cabin.",
     "nextStep": "Go to the cabin (Room 003) and speak with the Old Man. His cabin is to the southwest of the Grassy Field Crossroads.",
     "reminderDialog": "You haven't met the Old Man yet. Head to his cabin (Room 003), southwest of the Grassy Field Crossroads, and introduce yourself.",
-    "completionDialog": "It's good to have you here, Wanderer. An old man like me can always use a hand.",
+    "completionDialog": "Hey! Another Wanderer! I love having you guys around. An old man like me could always use a hand. First, can you bring me a flower.",
     "giver": {
       "npcId": "old_man",
       "roomId": "003",
@@ -133,10 +133,10 @@
     "level": 1,
     "title": "Equip a Weapon",
     "summary": "The soldier insists you should arm yourself.",
-    "objective": "Equip any item in your Main Hand (not fists).",
+    "objective": "Equip any weapon in your Main Hand.",
     "nextStep": "Open Inventory and equip something into Main Hand.",
     "reminderDialog": "This is so easy. Just pick up and equip a weapon. Open your INV and equip a weapon in your Main Hand, the higher the STR the better.",
-    "completionDialog": "Wow, look at you, you can pick up a sword. I can't believe we're giving exp for this.",
+    "completionDialog": "Wow, you can pick up a sword. I can't believe we're giving XP for this.",
     "giver": {
       "npcId": "young_soldier",
       "roomId": "007",
@@ -166,12 +166,16 @@
       {
         "type": "startQuest",
         "questId": "quest_youngsoldier_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_youngsoldier_003"
       }
     ]
   },
   "quest_youngsoldier_002": {
     "number": 5,
-    "questType": "main",
+    "questType": "side",
     "level": 1,
     "title": "Crab Cleanup",
     "summary": "The Young Soldier says Sand Crabs have been swarming the Rocky Beach and need to be thinned out.",
@@ -203,6 +207,57 @@
       {
         "type": "xp",
         "amount": 10
+      }
+    ]
+  },
+  "quest_youngsoldier_003": {
+    "number": 9,
+    "questType": "main",
+    "level": 1,
+    "title": "Training Armor Pro",
+    "summary": "The Young Soldier says a true recruit earns their full set of training armor by hunting the creatures that carry each piece.",
+    "objective": "Collect all 4 pieces of training armor: Helmet, Armor, Gloves, and Boots.",
+    "nextStep": "Defeat a Sand Crab for the Training Helmet, a Gator for the Training Armor, a Spider for the Training Gloves, and a Scorpion for the Training Boots. Then return to the Young Soldier.",
+    "reminderDialog": "Still missing some gear? Each beast drops one piece: the Sand Crab carries the Helmet, the Gator the Armor, the Spider the Gloves, and the Scorpion the Boots. Come back once you've got all four.",
+    "completionDialog": "Now THAT is a proper recruit. Full kit, head to toe. You wear it well, Wanderer.",
+    "giver": {
+      "npcId": "young_soldier",
+      "roomId": "007",
+      "name": "Young Soldier",
+      "icon": "npc-youngsoldier"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "training-helmet",
+        "quantity": 1
+      },
+      {
+        "type": "hasItem",
+        "itemSlug": "training-armor",
+        "quantity": 1
+      },
+      {
+        "type": "hasItem",
+        "itemSlug": "training-gloves",
+        "quantity": 1
+      },
+      {
+        "type": "hasItem",
+        "itemSlug": "training-boots",
+        "quantity": 1
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 100
+      },
+      {
+        "type": "xp",
+        "amount": 50
       }
     ]
   },
