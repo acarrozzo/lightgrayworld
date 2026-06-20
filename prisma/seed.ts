@@ -2063,6 +2063,15 @@ async function main() {
       value: 1,
     },
     {
+      id: 'scorpion-tail_001',
+      slug: 'scorpion-tail',
+      name: 'Scorpion Tail',
+      description: 'A barbed scorpion tail, still tipped with venom. A common crafting material.',
+      type: ItemType.MISC,
+      maxStack: 100,
+      value: 1,
+    },
+    {
       id: 'arrow_001',
       slug: 'arrow',
       name: 'Arrow',

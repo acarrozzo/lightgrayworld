@@ -142,6 +142,7 @@ const ENEMIES = [
         { itemSlug: 'redberry', chance: 0.25, qty: 2 },
         { itemSlug: 'blueberry', chance: 0.25, qty: 2 },
       ],
+      always: ['scorpion-tail'],
       firstKill: ['training-gloves'],
     },
   },
@@ -169,6 +170,7 @@ const ENEMIES = [
         { itemSlug: 'basic-staff', chance: 0.25 },
         { itemSlug: 'basic-hood', chance: 0.25 },
       ],
+      always: ['scorpion-tail'],
       firstKill: ['training-boots'],
     },
   },
@@ -196,6 +198,7 @@ const ENEMIES = [
         { itemSlug: 'redberry', chance: 0.25, min: 2, max: 6 },
         { itemSlug: 'broad-sword', chance: 0.25 },
       ],
+      always: ['scorpion-tail'],
     },
   },
   {
@@ -222,6 +225,7 @@ const ENEMIES = [
         { itemSlug: 'green-hood', chance: 0.25 },
         { itemSlug: 'blue-hood', chance: 0.25 },
       ],
+      always: [{ itemSlug: 'scorpion-tail', qty: 2 }],
       firstKill: ['long-sword'],
     },
   },
@@ -249,6 +253,7 @@ const ENEMIES = [
         { itemSlug: 'kite-shield', chance: 0.25 },
         { itemSlug: 'basic-helmet', chance: 0.25 },
       ],
+      always: [{ itemSlug: 'scorpion-tail', qty: 3 }],
     },
   },
   {
@@ -275,6 +280,7 @@ const ENEMIES = [
         { itemSlug: 'tower-shield', chance: 0.25 },
         { itemSlug: 'padded-armor', chance: 0.25 },
       ],
+      always: [{ itemSlug: 'scorpion-tail', qty: 4 }],
     },
   },
   {
@@ -294,7 +300,7 @@ const ENEMIES = [
     xpReward: 150,
     goldMin: 200,
     goldMax: 500,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: { main: STANDARD_MAIN_DROP, always: [{ itemSlug: 'scorpion-tail', qty: 5 }] },
   },
   {
     slug: 'scorpion-king',
@@ -313,7 +319,7 @@ const ENEMIES = [
     xpReward: 300,
     goldMin: 500,
     goldMax: 1000,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: { main: STANDARD_MAIN_DROP, always: [{ itemSlug: 'scorpion-tail', qty: 10 }] },
   },
   {
     slug: 'bat',

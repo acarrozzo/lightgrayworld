@@ -204,6 +204,11 @@ export default function QuestsPanel({
 }: QuestsPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>('quests')
   const getAuthHeaders = useGameStore((s) => s.getAuthHeaders)
+  const killList = useGameStore((s) => s.killList)
+
+  // killCount progress is tracked in the kill list, not on quest.progress (which stays 0 for these quests)
+  const getKillCount = (enemySlug: string) =>
+    killList.find((k) => k.monster === enemySlug)?.kills ?? 0
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0">
@@ -263,7 +268,7 @@ export default function QuestsPanel({
                           const item = inventory.find((i: any) => i.template.slug === req.itemSlug)
                           return item && item.quantity >= (req.quantity || 1)
                         }
-                        if (req.type === 'killCount') return quest.progress >= req.count
+                        if (req.type === 'killCount') return getKillCount(req.enemySlug) >= req.count
                         return false
                       })
                     }
@@ -306,7 +311,7 @@ export default function QuestsPanel({
                             <span className="text-gray-300 text-sm">
                               {questDef.requirements
                                 .filter((req: any) => req.type === 'killCount')
-                                .map((req: any) => `${Math.min(quest.progress, req.count)}/${req.count} ${req.displayName} defeated`)
+                                .map((req: any) => `${Math.min(getKillCount(req.enemySlug), req.count)}/${req.count} ${req.displayName} defeated`)
                                 .join(', ')}
                             </span>
                           </div>
