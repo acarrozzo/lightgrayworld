@@ -12,7 +12,7 @@
 const STANDARD_MAIN_DROP = [
   { itemSlug: 'redberry', chance: 0.25 },
   { itemSlug: 'blueberry', chance: 0.25 },
-  { itemSlug: 'dagger', chance: 0.25 },
+  { itemSlug: 'red-potion', chance: 0.25 },
   { itemSlug: 'raw-meat', chance: 0.25 },
 ]
 

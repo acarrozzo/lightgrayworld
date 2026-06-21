@@ -6,6 +6,15 @@ import ItemsTable, { type ItemRow } from './ItemsTable'
 import WikiNav from '@/components/WikiNav'
 import { resolveItemIcon } from '@/lib/item-actions'
 
+// Source data — where equipable items come from in the world. Required live so
+// the column tracks any change to room loot or enemy drop tables.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { ROOM_LOOT } = require('@/lib/game-engine/config/room-loot') as {
+  ROOM_LOOT: { roomId: string; slug: string; quantity?: number }[]
+}
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: EnemySource[] }
+
 export const metadata = {
   title: 'Item Compendium — Light Gray RPG',
   description: 'Every item in Light Gray RPG, with their stats, value, and properties.',
@@ -64,6 +73,85 @@ type ItemMetadata = {
   statMods?: { str?: number; dex?: number; mag?: number; def?: number }
 }
 
+// --- Enemy drop source shapes (mirrors the Bestiary's resolution) -----------
+type QtyShape = { qty?: number; min?: number; max?: number }
+type EnemyDropEntry = { itemSlug: string; chance: number } & QtyShape
+type AlwaysDrop = string | ({ itemSlug: string } & QtyShape)
+type EnemyDrops = { main?: EnemyDropEntry[]; always?: AlwaysDrop[]; firstKill?: string[] }
+type EnemySource = { name: string; drops: EnemyDrops }
+
+// Human-readable quantity suffix ("" for 1, " ×2" fixed, " ×1-3" range).
+function qtyLabel(entry: QtyShape): string {
+  if (entry.min != null || entry.max != null) {
+    const min = entry.min ?? 1
+    const max = entry.max ?? min
+    return min === max ? (max > 1 ? ` ×${max}` : '') : ` ×${min}-${max}`
+  }
+  const qty = entry.qty ?? 1
+  return qty > 1 ? ` ×${qty}` : ''
+}
+
+// Normalize an `always` entry to its slug plus a quantity suffix.
+function normalizeAlways(entry: AlwaysDrop): { slug: string; qtyLabel: string } {
+  if (typeof entry === 'string') return { slug: entry, qtyLabel: '' }
+  return { slug: entry.itemSlug, qtyLabel: qtyLabel(entry) }
+}
+
+// Consolidate main drop entries by slug, summing their chances.
+function consolidateMain(entries: EnemyDropEntry[]): { itemSlug: string; chance: number; qtyLabel: string }[] {
+  const map = new Map<string, { chance: number; qtyLabel: string }>()
+  for (const e of entries) {
+    const prev = map.get(e.itemSlug)
+    map.set(e.itemSlug, { chance: (prev?.chance ?? 0) + e.chance, qtyLabel: prev?.qtyLabel || qtyLabel(e) })
+  }
+  return Array.from(map.entries()).map(([itemSlug, v]) => ({ itemSlug, ...v }))
+}
+
+// Build a slug → sources map from room loot and enemy drop tables. `roomNames`
+// resolves a roomId to its friendly name. An item slug only appears here if
+// something in the world places or drops it.
+function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['sources']> {
+  const sources = new Map<string, ItemRow['sources']>()
+  const ensure = (slug: string) => {
+    let s = sources.get(slug)
+    if (!s) {
+      s = { rooms: [], enemies: [] }
+      sources.set(slug, s)
+    }
+    return s
+  }
+
+  // Rooms — consolidate duplicate roomId/slug entries by summing quantity.
+  const roomQty = new Map<string, { roomId: string; quantity: number }>()
+  for (const entry of ROOM_LOOT) {
+    const key = `${entry.slug}|${entry.roomId}`
+    const prev = roomQty.get(key)
+    roomQty.set(key, { roomId: entry.roomId, quantity: (prev?.quantity ?? 0) + (entry.quantity ?? 1) })
+  }
+  for (const [key, { roomId, quantity }] of roomQty) {
+    const slug = key.split('|')[0]
+    const name = roomNames.get(roomId) ?? `Room ${roomId}`
+    ensure(slug).rooms.push({ label: quantity > 1 ? `${name} ×${quantity}` : name })
+  }
+
+  // Enemies — firstKill, always, then weighted main rolls (as a percentage).
+  for (const enemy of ENEMIES) {
+    const { main = [], always = [], firstKill = [] } = enemy.drops ?? {}
+    for (const slug of firstKill) {
+      ensure(slug).enemies.push({ name: enemy.name, label: 'first-kill' })
+    }
+    for (const a of always) {
+      const { slug, qtyLabel } = normalizeAlways(a)
+      ensure(slug).enemies.push({ name: enemy.name, label: `100%${qtyLabel}` })
+    }
+    for (const d of consolidateMain(main)) {
+      ensure(d.itemSlug).enemies.push({ name: enemy.name, label: `${Math.round(d.chance * 100)}%${d.qtyLabel}` })
+    }
+  }
+
+  return sources
+}
+
 export default async function ItemsPage() {
   const items = await prisma.itemTemplate.findMany({
     orderBy: { id: 'asc' },
@@ -82,15 +170,25 @@ export default async function ItemsPage() {
     },
   })
 
+  // Resolve roomId → friendly name so room sources read nicely.
+  const dbRooms = await prisma.room.findMany({ select: { roomId: true, name: true } })
+  const roomNames = new Map(dbRooms.map((r) => [r.roomId, r.name]))
+  const sourceMap = buildSourceMap(roomNames)
+
   const rows: ItemRow[] = items.map((item, i) => {
     const meta = (item.metadata ?? {}) as ItemMetadata
     const stats = meta.statMods ?? {}
     const group = groupFor(item, meta)
     const isWeapon = group === '1H' || group === '2H' || group === 'Ranged'
+    // Equipable = wields a weapon category or occupies an equip slot.
+    // Consumables and misc items are excluded from source resolution.
+    const equipable = item.weaponCategory != null || item.equipSlot != null
     return {
       order: i,
       slug: item.slug,
       name: item.name,
+      equipable,
+      sources: equipable ? sourceMap.get(item.slug) ?? { rooms: [], enemies: [] } : { rooms: [], enemies: [] },
       // Resolve icons the same way the inventory UI does: prefer metadata.icon,
       // then fall back to slug-based sprite lookup (e.g. `equipment-${slug}`),
       // finally a generic icon. Without this, items lacking metadata.icon show

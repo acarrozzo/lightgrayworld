@@ -20,6 +20,11 @@ export type ItemRow = {
   maxPerPlayer: number | null
   canSell: boolean
   canDrop: boolean
+  equipable: boolean // weapon or armor — only these resolve world sources
+  sources: {
+    rooms: { label: string }[] // e.g. "Sand Crab Nest" or "Room 027 ×2"
+    enemies: { name: string; label: string }[] // e.g. { name: "Rat", label: "25%" }
+  }
 }
 
 // Sortable columns. `get` pulls the value used for comparison.
@@ -52,6 +57,11 @@ const STAT_COLOR: Record<'str' | 'dex' | 'mag' | 'def', string> = {
 // Groups that count as weapons — used by the "All Weapons" tab.
 const WEAPON_GROUPS = ['1H', '2H', 'Ranged']
 
+// An equipable item with no room or enemy source — "not available yet".
+function isUnavailable(r: ItemRow): boolean {
+  return r.equipable && r.sources.rooms.length === 0 && r.sources.enemies.length === 0
+}
+
 export default function ItemsTable({
   rows,
   groups,
@@ -61,6 +71,10 @@ export default function ItemsTable({
 }) {
   const [tab, setTab] = useState<string>('All')
   const [grouped, setGrouped] = useState<boolean>(true)
+  const [hideUnavailable, setHideUnavailable] = useState<boolean>(false)
+
+  // Whether any unavailable items exist at all — hide the toggle if not.
+  const hasUnavailable = useMemo(() => rows.some(isUnavailable), [rows])
 
   // Tab list: All, then "All Weapons" (if any weapons exist), then every group
   // in source order.
@@ -76,13 +90,15 @@ export default function ItemsTable({
   // Whether the view matches the default page view (All tab, grouped by
   // category, items in seed-file order). Used to disable the reset control
   // when there's nothing to reset.
-  const isDefaultView = tab === 'All' && grouped && sortKey === 'source' && sortDir === 'asc'
+  const isDefaultView =
+    tab === 'All' && grouped && !hideUnavailable && sortKey === 'source' && sortDir === 'asc'
 
   // Restore the default display: no category filter, grouped by category, and
   // items in their original seed-file order (not alphabetical).
   function resetView() {
     setTab('All')
     setGrouped(true)
+    setHideUnavailable(false)
     setSortKey('source')
     setSortDir('asc')
   }
@@ -108,10 +124,12 @@ export default function ItemsTable({
 
   // Filter, then sort.
   const filtered = useMemo(() => {
-    if (tab === 'All') return rows
-    if (tab === 'All Weapons') return rows.filter((r) => WEAPON_GROUPS.includes(r.group))
-    return rows.filter((r) => r.group === tab)
-  }, [rows, tab])
+    let result = rows
+    if (tab === 'All Weapons') result = rows.filter((r) => WEAPON_GROUPS.includes(r.group))
+    else if (tab !== 'All') result = rows.filter((r) => r.group === tab)
+    if (hideUnavailable) result = result.filter((r) => !isUnavailable(r))
+    return result
+  }, [rows, tab, hideUnavailable])
   const sorted = useMemo(() => {
     const mult = sortDir === 'asc' ? 1 : -1
     return [...filtered].sort((a, b) => (getVal(a) - getVal(b)) * mult)
@@ -158,6 +176,18 @@ export default function ItemsTable({
           />
           Group by category
         </label>
+
+        {hasUnavailable && (
+          <label className="flex items-center gap-2 text-sm text-gray-400">
+            <input
+              type="checkbox"
+              checked={hideUnavailable}
+              onChange={(e) => setHideUnavailable(e.target.checked)}
+              className="accent-gray-500"
+            />
+            Hide unavailable
+          </label>
+        )}
 
         <button
           onClick={resetView}
@@ -212,6 +242,7 @@ export default function ItemsTable({
                 </th>
               ))}
               <th className="px-3 py-2 font-medium">Flags</th>
+              <th className="px-3 py-2 font-medium">Source</th>
             </tr>
           </thead>
           <tbody>
@@ -220,7 +251,7 @@ export default function ItemsTable({
               : sorted.map((r) => <ItemTr key={r.slug} r={r} />)}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
+                <td colSpan={8} className="px-3 py-6 text-center text-gray-500">
                   No items match this filter.
                 </td>
               </tr>
@@ -237,7 +268,7 @@ function GroupBlock({ group, rows }: { group: string; rows: ItemRow[] }) {
     <>
       <tr className="border-t border-gray-800 bg-gray-900/70">
         <td
-          colSpan={7}
+          colSpan={8}
           className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400"
         >
           {group} <span className="text-gray-600">· {rows.length}</span>
@@ -251,8 +282,10 @@ function GroupBlock({ group, rows }: { group: string; rows: ItemRow[] }) {
 }
 
 function ItemTr({ r }: { r: ItemRow }) {
+  // Dim the whole row when an equipable item has no known world source.
+  const dim = isUnavailable(r)
   return (
-    <tr className="border-t border-gray-800 odd:bg-gray-900/30">
+    <tr className={`border-t border-gray-800 odd:bg-gray-900/30 ${dim ? 'opacity-50' : ''}`}>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           <ItemIcon icon={r.icon} />
@@ -268,13 +301,21 @@ function ItemTr({ r }: { r: ItemRow }) {
       <td className="px-3 py-2">
         <Flags r={r} />
       </td>
+      <td className="px-3 py-2">
+        <SourceCell r={r} />
+      </td>
     </tr>
   )
 }
 
 function ItemCard({ r }: { r: ItemRow }) {
+  const dim = isUnavailable(r)
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900/30 px-3 py-2.5 text-sm">
+    <div
+      className={`rounded-lg border border-gray-800 bg-gray-900/30 px-3 py-2.5 text-sm ${
+        dim ? 'opacity-50' : ''
+      }`}
+    >
       <div className="flex items-center gap-2 mb-2">
         <ItemIcon icon={r.icon} />
         <span className="font-medium text-gray-100">{r.name}</span>
@@ -303,6 +344,11 @@ function ItemCard({ r }: { r: ItemRow }) {
         ))}
       </div>
       <Flags r={r} />
+      {r.equipable && (
+        <div className="mt-2 border-t border-gray-800 pt-2">
+          <SourceCell r={r} />
+        </div>
+      )}
     </div>
   )
 }
@@ -311,6 +357,47 @@ function ItemCard({ r }: { r: ItemRow }) {
 function statCell(value: number, key: 'str' | 'dex' | 'mag' | 'def') {
   if (!value) return <span className="text-gray-700">—</span>
   return <span className={STAT_COLOR[key]}>{value}</span>
+}
+
+// Where an equipable item comes from: enemy drops (with chance) and rooms.
+// Non-equipable items (consumables/misc) show a plain dash — sources aren't
+// resolved for them. Equipable items with no source show "not available yet".
+function SourceCell({ r }: { r: ItemRow }) {
+  if (!r.equipable) return <span className="text-gray-700">—</span>
+
+  const { rooms, enemies } = r.sources
+  if (rooms.length === 0 && enemies.length === 0) {
+    return <span className="text-[11px] italic text-gray-500">not available yet</span>
+  }
+
+  return (
+    <div className="flex flex-col gap-1 text-[11px]">
+      {enemies.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-gray-600 uppercase tracking-wide" style={{ fontSize: '10px' }}>
+            Drops
+          </span>
+          {enemies.map((e, i) => (
+            <span key={i} className="text-gray-300">
+              {e.name} <span className="text-gray-500">{e.label}</span>
+            </span>
+          ))}
+        </div>
+      )}
+      {rooms.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-gray-600 uppercase tracking-wide" style={{ fontSize: '10px' }}>
+            Found in
+          </span>
+          {rooms.map((rm, i) => (
+            <span key={i} className="text-gray-300">
+              {rm.label}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function Flags({ r }: { r: ItemRow }) {
