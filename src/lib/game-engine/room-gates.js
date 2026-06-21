@@ -34,22 +34,19 @@ const ROOM_GATES = {
   '007': {
     'south': {
       check: async (playerId) => {
-        const mainHandItem = await prisma.playerItem.findFirst({
-          where: {
-            playerId,
-            isEquipped: true,
-            slot: 'MAIN_HAND',
-          },
+        const ratQuest = await prisma.questProgress.findUnique({
+          where: { userId_questId: { userId: playerId, questId: 'quest_oldman_002' } },
+          select: { completed: true },
         })
-        return !!mainHandItem
+        return !!ratQuest?.completed
       },
-      message: "Whoa, slow down killer. You can't enter the Spider Cave without a weapon!",
+      message: "Whoa, slow down killer. Help the Old Man with his rat problem before you head into the Spider Cave!",
       modalContent: {
         title: 'The Young Soldier blocks the way to the Spider Cave',
         type: 'icon',
         icon: 'npc-youngsoldier',
         iconColor: 'blue-400',
-        message: "Whoa, slow down killer. You can't enter the Spider Cave without a weapon!",
+        message: "Whoa, slow down killer. Help the Old Man with his rat problem before you head into the Spider Cave!",
       },
     },
   },

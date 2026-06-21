@@ -1,7 +1,5 @@
 const { prisma } = require('../../db-client')
 
-const HP_PER_LEVEL = 5
-const MP_PER_LEVEL = 3
 const MAX_SP_PER_LEVEL = 20
 
 function getNextLevelXP(level) {
@@ -17,12 +15,23 @@ function getPrevLevelXP(level) {
 async function checkAndApplyLevelUp(userId) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { level: true, xp: true, cp: true, tp: true, sp: true, hpMax: true, mpMax: true },
+    select: {
+      level: true,
+      xp: true,
+      cp: true,
+      tp: true,
+      sp: true,
+      hpMax: true,
+      mpMax: true,
+      physicalTraining: true,
+      mentalTraining: true,
+    },
   })
 
   if (!user) return { leveled: false }
 
   let { level, xp, cp, tp, sp, hpMax, mpMax } = user
+  const { physicalTraining, mentalTraining } = user
   let cpGained = 0
   let tpGained = 0
   let spGained = 0
@@ -35,13 +44,13 @@ async function checkAndApplyLevelUp(userId) {
     cp += 1
     tp += 1
     sp += spThisLevel
-    hpMax += HP_PER_LEVEL
-    mpMax += MP_PER_LEVEL
+    hpMax += physicalTraining
+    mpMax += mentalTraining
     cpGained += 1
     tpGained += 1
     spGained += spThisLevel
-    hpGained += HP_PER_LEVEL
-    mpGained += MP_PER_LEVEL
+    hpGained += physicalTraining
+    mpGained += mentalTraining
   }
 
   if (cpGained === 0) return { leveled: false }

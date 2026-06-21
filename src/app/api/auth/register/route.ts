@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
           create: {}
         },
         uIconColor: randomColor,
-        cp: 4, // Give new users 4 Core Points
+        cp: 1, // Give new users 1 Core Point (total CP earned aligns with level)
       },
       include: { equipment: true }
     })

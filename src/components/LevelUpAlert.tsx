@@ -58,7 +58,7 @@ export default function LevelUpAlert({ data, onClose }: LevelUpAlertProps) {
       <div className="px-4 pb-5 flex flex-col items-center gap-2">
         <div className="grid grid-cols-3 gap-2 w-full">
           <StatGrant label="Core Points" value={`+${data.cpGained}`} unit="CP" color="#93c5fd" glow="#3b82f6" />
-          <StatGrant label="Talent Points" value={`+${data.tpGained}`} unit="TP" color="#c4b5fd" glow="#8b5cf6" />
+          <StatGrant label="Training Points" value={`+${data.tpGained}`} unit="TP" color="#c4b5fd" glow="#8b5cf6" />
           <StatGrant label="Skill Points" value={`+${data.spGained}`} unit="SP" color="#86efac" glow="#22c55e" />
         </div>
         <div className="grid grid-cols-2 gap-2 w-full">
