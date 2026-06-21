@@ -2828,6 +2828,7 @@ export default function GameInterface() {
             currentMapId={currentMapId}
             availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
             onMapChange={handleMapChange}
+            onOpenTeleport={handleOpenTeleport}
             onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
           />
         )
