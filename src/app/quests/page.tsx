@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/prisma'
 import QuestsList, { type QuestGroup, type QuestRow } from './QuestsList'
-import WikiNav from '@/components/WikiNav'
+import WorldToolNav from '@/components/WorldToolNav'
 
 export const metadata = {
   title: 'Quests — Light Gray RPG',
@@ -183,7 +183,7 @@ export default async function QuestsPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200">
-      <WikiNav active="quests" />
+      <WorldToolNav active="quests" />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-gray-100">Quests</h1>

@@ -1,26 +1,26 @@
 import Link from 'next/link'
 import { Home, Skull, Sword, ScrollText, Map, type LucideIcon } from 'lucide-react'
 
-// Top navigation bar shared across the Light Gray Wiki pages.
-// To add a new wiki page, add an entry here and pass its `key` as the
+// Top navigation bar shared across the Light Gray World Tool pages.
+// To add a new World Tool page, add an entry here and pass its `key` as the
 // `active` prop from that page.
 const NAV_ITEMS: { key: string; href: string; label: string; icon: LucideIcon }[] = [
-  { key: 'home', href: '/wiki', label: 'Home', icon: Home },
+  { key: 'home', href: '/world-tool', label: 'Home', icon: Home },
   { key: 'enemies', href: '/enemies', label: 'Bestiary', icon: Skull },
   { key: 'items', href: '/items', label: 'Item Compendium', icon: Sword },
   { key: 'quests', href: '/quests', label: 'Quests', icon: ScrollText },
   { key: 'rooms', href: '/rooms', label: 'World Atlas', icon: Map },
 ]
 
-export default function WikiNav({ active }: { active: string }) {
+export default function WorldToolNav({ active }: { active: string }) {
   return (
     <nav className="border-b border-gray-800 bg-gray-900">
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
         <Link
-          href="/wiki"
+          href="/world-tool"
           className="text-base font-bold text-gray-100 hover:text-white"
         >
-          Light Gray RPG Wiki
+          Light Gray World Tool
         </Link>
         <div className="flex items-center gap-1.5 sm:gap-2">
           {NAV_ITEMS.map((item) => {

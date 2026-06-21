@@ -1,5 +1,5 @@
 const { prisma } = require('../../db-client')
-const { playerHasItem, getPlayerInventory, removeItemBySlug } = require('./inventory-service')
+const { playerHasItem, getPlayerInventory, removeItemBySlug, grantItemOnce } = require('./inventory-service')
 const { getItemBySlug } = require('./inventory-service')
 const QUESTS = require('../../game-data/quests.json')
 const { checkAndApplyLevelUp } = require('./leveling-service')
@@ -430,6 +430,13 @@ async function completeQuest(playerId, questId) {
           currencyIncrement += reward.amount || 0
         } else if (reward.type === 'xp') {
           xpIncrement += reward.amount || 0
+        } else if (reward.type === 'item') {
+          // Grant inside the transaction so item rewards stay atomic with
+          // requirement-consume and completion.
+          const grantResult = await grantItemOnce(playerId, reward.itemSlug, reward.quantity || 1, tx)
+          if (!grantResult.granted) {
+            throw new Error(`Failed to grant ${reward.itemSlug}: ${grantResult.reason}`)
+          }
         }
       }
     }

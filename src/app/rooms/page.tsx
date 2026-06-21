@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/prisma'
-import WikiNav from '@/components/WikiNav'
+import WorldToolNav from '@/components/WorldToolNav'
 import { resolveItemIcon } from '@/lib/item-actions'
 import RoomAtlas, {
   type RoomNode,
@@ -337,7 +337,7 @@ export default async function RoomsPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-950 text-gray-200">
-      <WikiNav active="rooms" />
+      <WorldToolNav active="rooms" />
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-8">
         <header className="mb-4">
           <h1 className="text-2xl font-bold text-gray-100">World Atlas</h1>

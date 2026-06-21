@@ -175,13 +175,13 @@
   },
   "quest_youngsoldier_002": {
     "number": 5,
-    "questType": "side",
+    "questType": "main",
     "level": 1,
-    "title": "Crab Cleanup",
-    "summary": "The Young Soldier says Sand Crabs have been swarming the Rocky Beach and need to be thinned out.",
-    "objective": "Defeat 2 Sand Crabs at the Rocky Beach.",
-    "nextStep": "Head to the Rocky Beach, clean up 2 Sand Crabs, then return to Robert.",
-    "reminderDialog": "The beach west of here is overrun with sand crabs. Come back when you've defeated two of them.",
+    "title": "Collect the Scorpion Tails",
+    "summary": "The Young Soldier needs Scorpion Tails to prove you can handle the creatures beyond the beach.",
+    "objective": "Collect 5 Scorpion Tails for the Young Soldier.",
+    "nextStep": "Hunt Scorpions for their tails, gather 5 of them, then return to the Young Soldier.",
+    "reminderDialog": "Still short on tails? Bring me 5 Scorpion Tails and I'll know you're ready.",
     "completionDialog": "Very well Wanderer. You're no longer just an adventurer with a weapon, you're one who knows how to use it. I think you're ready to explore this world.\"",
     "giver": {
       "npcId": "young_soldier",
@@ -192,27 +192,37 @@
     "completionMode": "turn_in",
     "requirements": [
       {
-        "type": "killCount",
-        "enemySlug": "sand-crab",
-        "count": 2,
-        "displayName": "Sand Crabs"
+        "type": "hasItem",
+        "itemSlug": "scorpion-tail",
+        "quantity": 5,
+        "displayName": "Scorpion Tails"
       }
     ],
-    "consumeRequirementsOnComplete": false,
+    "consumeRequirementsOnComplete": true,
     "rewards": [
       {
         "type": "currency",
-        "amount": 20
+        "amount": 100
       },
       {
         "type": "xp",
-        "amount": 10
+        "amount": 50
+      },
+      {
+        "type": "item",
+        "itemSlug": "soldiers-armor",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "gold-key",
+        "quantity": 1
       }
     ]
   },
   "quest_youngsoldier_003": {
     "number": 9,
-    "questType": "main",
+    "questType": "side",
     "level": 1,
     "title": "Training Armor Pro",
     "summary": "The Young Soldier says a true recruit earns their full set of training armor by hunting the creatures that carry each piece.",
@@ -295,6 +305,11 @@
       {
         "type": "xp",
         "amount": 8
+      },
+      {
+        "type": "item",
+        "itemSlug": "cooked-meat",
+        "quantity": 5
       }
     ],
     "onComplete": [

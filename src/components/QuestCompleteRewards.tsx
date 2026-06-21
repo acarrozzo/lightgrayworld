@@ -7,6 +7,7 @@ interface Reward {
   type: 'xp' | 'currency' | string
   amount?: number
   name?: string
+  quantity?: number
 }
 
 interface LevelUp {
@@ -88,7 +89,9 @@ export default function QuestCompleteRewards({ data }: Props) {
         {itemRewards.map((item, i) => (
           <div key={i} className="flex items-center justify-center gap-3 rounded-md bg-gray-800/60 px-3 py-2">
             <Icon name="inv" size={20} className="text-green-400 shrink-0" />
-            <span className="text-sm font-semibold text-green-300">{item.name || 'Item'}</span>
+            <span className="text-sm font-semibold text-green-300">
+              {item.name || 'Item'}{item.quantity && item.quantity > 1 ? ` x${item.quantity}` : ''}
+            </span>
           </div>
         ))}
 

@@ -299,6 +299,14 @@ export default function QuestsPanel({
                                 {questDef.rewards.map((r: any) => {
                                   if (r.type === 'currency') return `${r.amount} Gold`
                                   if (r.type === 'xp') return `${r.amount} XP`
+                                  if (r.type === 'item') {
+                                    const name = String(r.itemSlug || '')
+                                      .split('-')
+                                      .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+                                      .join(' ')
+                                    const qty = r.quantity || 1
+                                    return qty > 1 ? `${name} x${qty}` : name
+                                  }
                                   return ''
                                 }).filter(Boolean).join(', ')}
                               </span>

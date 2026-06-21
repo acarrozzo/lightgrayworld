@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/prisma'
 import ItemsTable, { type ItemRow } from './ItemsTable'
-import WikiNav from '@/components/WikiNav'
+import WorldToolNav from '@/components/WorldToolNav'
 import { resolveItemIcon } from '@/lib/item-actions'
 
 // Source data — where equipable items come from in the world. Required live so
@@ -218,7 +218,7 @@ export default async function ItemsPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200">
-      <WikiNav active="items" />
+      <WorldToolNav active="items" />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-6">
           <h1 className="text-2xl font-bold text-gray-100">Item Compendium</h1>

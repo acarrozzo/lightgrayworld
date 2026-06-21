@@ -2,11 +2,11 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import WikiNav from '@/components/WikiNav'
+import WorldToolNav from '@/components/WorldToolNav'
 
 export const metadata = {
-  title: 'Light Gray RPG Wiki',
-  description: 'The Light Gray RPG wiki — browse enemies and items.',
+  title: 'Light Gray World Tool',
+  description: 'The Light Gray World Tool — browse enemies and items.',
 }
 
 const PAGES = [
@@ -16,13 +16,13 @@ const PAGES = [
   { href: '/rooms', label: 'World Atlas', description: 'Two compass-oriented maps (overworld & underground) — enemies, spawn logic, NPCs, loot, actions, gates, and secrets.' },
 ]
 
-export default function WikiHomePage() {
+export default function WorldToolHomePage() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200">
-      <WikiNav active="home" />
+      <WorldToolNav active="home" />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-100">Light Gray RPG Wiki</h1>
+          <h1 className="text-2xl font-bold text-gray-100">Light Gray World Tool</h1>
         </header>
         <ul className="flex flex-col gap-3">
           {PAGES.map((page) => (

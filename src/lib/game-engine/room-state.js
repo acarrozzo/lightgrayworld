@@ -1,7 +1,7 @@
 const { executeRoomAction } = require('./room-action-handlers')
 const { executeItemAction } = require('./item-action-handlers')
 const { pickupRoomItem, dropRoomItem, getRoomItems } = require('./services/room-item-service')
-const { getPlayerInventory, grantItemOnce } = require('./services/inventory-service')
+const { getPlayerInventory, grantItemOnce, getItemBySlug } = require('./services/inventory-service')
 const { equipItem, unequipItem } = require('./services/equipment-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
@@ -1244,14 +1244,26 @@ class RoomState {
 
     const questTitle = questDef ? questDef.title : questId
 
-    // Build rewards message
+    // Build rewards message. Item rewards are enriched with their template name
+    // (and icon) so the completion modal and feedback text can display them.
     const rewards = questDef?.rewards || []
+    const enrichedRewards = []
     const rewardMessages = []
     for (const reward of rewards) {
       if (reward.type === 'currency') {
+        enrichedRewards.push(reward)
         rewardMessages.push(`${reward.amount} gold`)
       } else if (reward.type === 'xp') {
+        enrichedRewards.push(reward)
         rewardMessages.push(`${reward.amount} XP`)
+      } else if (reward.type === 'item') {
+        const template = await getItemBySlug(reward.itemSlug)
+        const name = template?.name || reward.itemSlug
+        const quantity = reward.quantity || 1
+        enrichedRewards.push({ ...reward, name, quantity, icon: template?.icon || null })
+        rewardMessages.push(quantity > 1 ? `${name} x${quantity}` : name)
+      } else {
+        enrichedRewards.push(reward)
       }
     }
     const rewardText = rewardMessages.length > 0 ? ` You received: ${rewardMessages.join(', ')}.` : ''
@@ -1305,7 +1317,7 @@ class RoomState {
       },
       questComplete: {
         questTitle: questDef.title,
-        rewards: questDef.rewards || [],
+        rewards: enrichedRewards,
         levelUp: result.levelUp?.leveled ? result.levelUp : null,
         newQuestTitles,
       },

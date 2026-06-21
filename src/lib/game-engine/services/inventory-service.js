@@ -66,13 +66,14 @@ async function playerHasItem(playerId, itemSlug) {
 /**
  * Grant an item respecting maxPerPlayer and stacking rules.
  */
-async function grantItemOnce(playerId, itemSlug, quantity = 1) {
+async function grantItemOnce(playerId, itemSlug, quantity = 1, tx = null) {
+  const client = tx || prisma
   const template = await getItemBySlug(itemSlug)
   if (!template) {
     return { granted: false, reason: 'Item not found', inventory: null }
   }
 
-  const existing = await prisma.playerItem.findFirst({
+  const existing = await client.playerItem.findFirst({
     where: { playerId, templateId: template.id },
   })
 
@@ -84,13 +85,15 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1) {
     return {
       granted: false,
       reason: 'Max quantity reached for this item',
-      inventory: await getPlayerInventory(playerId),
+      // Skip the inventory refetch when running inside a caller's transaction;
+      // the caller refetches once the transaction commits.
+      inventory: tx ? null : await getPlayerInventory(playerId),
     }
   }
 
   if (existing) {
     const newQty = Math.min(currentQty + quantity, limit)
-    await prisma.playerItem.update({
+    await client.playerItem.update({
       where: { id: existing.id },
       data: {
         quantity: newQty,
@@ -100,7 +103,7 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1) {
   } else {
     // Generate a unique ID for the new PlayerItem (schema doesn't have @default)
     const { randomUUID } = require('crypto')
-    await prisma.playerItem.create({
+    await client.playerItem.create({
       data: {
         id: randomUUID(),
         playerId,
@@ -110,12 +113,10 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1) {
     })
   }
 
-  const inventory = await getPlayerInventory(playerId)
-
   return {
     granted: true,
     reason: 'Item granted',
-    inventory,
+    inventory: tx ? null : await getPlayerInventory(playerId),
   }
 }
 
