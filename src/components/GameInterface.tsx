@@ -45,6 +45,7 @@ import QuestCompleteRewards, { type QuestCompleteData } from './QuestCompleteRew
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
 import LevelUpAlert from './LevelUpAlert'
+import TrainingAllocationModal from './TrainingAllocationModal'
 import type { LevelUpPayload } from '@/lib/socket'
 
 export default function GameInterface() {
@@ -84,6 +85,7 @@ export default function GameInterface() {
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [levelUpData, setLevelUpData] = useState<LevelUpPayload | null>(null)
+  const [isTrainingModalOpen, setTrainingModalOpen] = useState(false)
   const [xpGain, setXpGain] = useState<number | null>(null)
   const [xpGainKey, setXpGainKey] = useState(0)
   const xpGainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -2942,6 +2944,10 @@ export default function GameInterface() {
                 <LevelUpAlert
                   data={levelUpData}
                   onClose={() => setLevelUpData(null)}
+                  onTrainNow={() => {
+                    setLevelUpData(null)
+                    setTrainingModalOpen(true)
+                  }}
                 />
               )}
               {(battle.isInBattle || battleResult) && (
@@ -3172,6 +3178,12 @@ export default function GameInterface() {
         player={playerProfileModal.player}
         onInspect={handleProfileInspect}
         onMessage={handleProfileMessage}
+      />
+      <TrainingAllocationModal
+        isOpen={isTrainingModalOpen}
+        player={player}
+        onClose={() => setTrainingModalOpen(false)}
+        onTrainingAllocated={(updatedPlayer) => setPlayer(updatedPlayer)}
       />
       <ShopModal
         isOpen={isShopModalOpen}

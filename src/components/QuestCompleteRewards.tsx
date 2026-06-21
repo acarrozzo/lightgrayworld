@@ -8,6 +8,7 @@ interface Reward {
   amount?: number
   name?: string
   quantity?: number
+  highlighted?: boolean
 }
 
 interface LevelUp {
@@ -36,7 +37,10 @@ export default function QuestCompleteRewards({ data }: Props) {
 
   const xpReward = rewards.find(r => r.type === 'xp')
   const currencyReward = rewards.find(r => r.type === 'currency')
-  const itemRewards = rewards.filter(r => r.type === 'item')
+  // Featured (highlighted) items render first with special styling.
+  const itemRewards = rewards
+    .filter(r => r.type === 'item')
+    .sort((a, b) => (b.highlighted ? 1 : 0) - (a.highlighted ? 1 : 0))
 
   const hasContent =
     xpReward || currencyReward || itemRewards.length > 0 || levelUp || newQuestTitles.length > 0
@@ -86,14 +90,32 @@ export default function QuestCompleteRewards({ data }: Props) {
           </div>
         )}
 
-        {itemRewards.map((item, i) => (
-          <div key={i} className="flex items-center justify-center gap-3 rounded-md bg-gray-800/60 px-3 py-2">
-            <Icon name="inv" size={20} className="text-green-400 shrink-0" />
-            <span className="text-sm font-semibold text-green-300">
-              {item.name || 'Item'}{item.quantity && item.quantity > 1 ? ` x${item.quantity}` : ''}
-            </span>
-          </div>
-        ))}
+        {itemRewards.map((item, i) =>
+          item.highlighted ? (
+            <div
+              key={i}
+              className="flex flex-col items-center justify-center gap-1 rounded-md border border-amber-400/60 bg-gradient-to-b from-amber-500/20 to-amber-600/10 px-3 py-2.5 shadow-[0_0_12px_rgba(251,191,36,0.35)]"
+            >
+              <div className="flex items-center gap-1.5">
+                <Icon name="trophy" size={14} className="text-amber-300" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Rare Find</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <Icon name="inv" size={20} className="text-amber-200 shrink-0" />
+                <span className="text-sm font-bold text-amber-100">
+                  {item.name || 'Item'}{item.quantity && item.quantity > 1 ? ` x${item.quantity}` : ''}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div key={i} className="flex items-center justify-center gap-3 rounded-md bg-gray-800/60 px-3 py-2">
+              <Icon name="inv" size={20} className="text-green-400 shrink-0" />
+              <span className="text-sm font-semibold text-green-300">
+                {item.name || 'Item'}{item.quantity && item.quantity > 1 ? ` x${item.quantity}` : ''}
+              </span>
+            </div>
+          )
+        )}
 
         {newQuestTitles.length > 0 && (
           <div className="mt-1 rounded-md bg-gray-800/60 px-3 py-2">

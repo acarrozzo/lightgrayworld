@@ -57,6 +57,7 @@ async function handleGetMe(request: AuthenticatedRequest) {
       uIconColor: freshUser.uIconColor,
       clicks: freshUser.clicks,
       deaths: freshUser.deaths,
+      chest1: freshUser.chest1,
     }
 
     return NextResponse.json({

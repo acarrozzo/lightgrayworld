@@ -25,7 +25,7 @@ const { ENEMIES } = require(path.join(ROOT, 'src/lib/game-data/enemies.js'))
 
 // EquipSlot enum from prisma/schema.prisma — kept in sync manually (small, rarely changes).
 const EQUIP_SLOTS = new Set(['MAIN_HAND', 'OFF_HAND', 'HEAD', 'BODY', 'HANDS', 'FEET', 'RING', 'NECK'])
-const REWARD_TYPES = new Set(['currency', 'xp'])
+const REWARD_TYPES = new Set(['currency', 'xp', 'item'])
 const REQUIREMENT_TYPES = new Set(['hasItem', 'killCount', 'hasEquippedInSlot', 'level'])
 const EFFECT_TYPES = new Set(['startQuest', 'completeQuest'])
 
@@ -76,7 +76,13 @@ for (const [id, q] of Object.entries(QUESTS)) {
   }
 
   for (const reward of q.rewards ?? []) {
-    if (!REWARD_TYPES.has(reward.type)) err(id, `unknown reward type "${reward.type}"`)
+    if (!REWARD_TYPES.has(reward.type)) {
+      err(id, `unknown reward type "${reward.type}"`)
+      continue
+    }
+    if (reward.type === 'item' && !itemSlugs.has(reward.itemSlug)) {
+      err(id, `item reward references unknown item slug "${reward.itemSlug}"`)
+    }
   }
 
   // onAccept + onComplete effects may reference other quests by id.

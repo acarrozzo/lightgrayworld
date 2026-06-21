@@ -229,16 +229,214 @@ const ROOM_ACTIONS = {
         { label: 'southwest', direction: 'southwest' }
       ]
     },
-    'open gold chest': {
-      showModal: true,
-      message: 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
-      modalContent: {
-        title: 'You try to open the gold chest',
-        type: 'icon',
-        icon: 'chest',
-        iconColor: 'amber-500/90',
-        message: 'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
-      },
+    'open gold chest': async (playerId, roomState) => {
+      const { prisma } = require('../db-client')
+      const {
+        playerHasItem,
+        removeItemBySlug,
+        grantItemOnce,
+        getPlayerInventory,
+        getItemBySlug,
+      } = require('./services/inventory-service')
+      const { checkAndApplyLevelUp } = require('./services/leveling-service')
+
+      roomState.touchActivity()
+
+      // Reward table. The boomerang is the featured drop. Shared by the open
+      // flow and the "already opened" reminder so they never drift apart.
+      const xpAmount = 50
+      const itemRewards = [
+        { itemSlug: 'red-potion', quantity: 3 },
+        { itemSlug: 'cooked-meat', quantity: 5 },
+        { itemSlug: 'glowing-brace', quantity: 1 },
+        { itemSlug: 'boomerang', quantity: 1, highlighted: true },
+      ]
+
+      // Build the enriched item reward list for the rewards modal. Gold is
+      // omitted here because it is rolled randomly per open — callers that know
+      // the exact amount (the open flow) append their own currency entry.
+      const buildEnrichedItemRewards = async () => {
+        const rewards = [{ type: 'xp', amount: xpAmount }]
+        for (const reward of itemRewards) {
+          const template = await getItemBySlug(reward.itemSlug)
+          rewards.push({
+            type: 'item',
+            itemSlug: reward.itemSlug,
+            name: template?.name || reward.itemSlug,
+            quantity: reward.quantity,
+            highlighted: !!reward.highlighted,
+          })
+        }
+        return rewards
+      }
+
+      // `chest1` is the persistent per-player "gold chest opened" flag. It is the
+      // source of truth for re-opens and is reserved for gating future events.
+      const flagRow = await prisma.user.findUnique({
+        where: { id: playerId },
+        select: { chest1: true },
+      })
+
+      // Already opened: remind the player what they got, but never re-grant.
+      if (flagRow?.chest1) {
+        return {
+          success: true,
+          action: 'open gold chest',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload(
+                'open gold chest',
+                'info',
+                'You have already opened the gold chest.',
+                {
+                  roomId: roomState.roomId,
+                  showModal: true,
+                  modalContent: {
+                    type: 'icon',
+                    icon: 'chest2',
+                    iconColor: 'amber-500/90',
+                    title: 'The gold chest stands open',
+                    header: 'Already Opened',
+                    message:
+                      'You have already cleared this chest of its hoard of gold and XP. Here is what it held:',
+                  },
+                  questComplete: {
+                    questTitle: '',
+                    rewards: await buildEnrichedItemRewards(),
+                    levelUp: null,
+                    newQuestTitles: [],
+                  },
+                }
+              ),
+            },
+          ],
+        }
+      }
+
+      const lockedFeedback = () => ({
+        success: false,
+        action: 'open gold chest',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(
+              'open gold chest',
+              'info',
+              'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
+              {
+                roomId: roomState.roomId,
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'chest',
+                  iconColor: 'amber-500/90',
+                  title: 'You try to open the gold chest',
+                  message:
+                    'The gold chest is locked. You need a Gold Key to open it. You can get one from the Young Soldier.',
+                },
+              }
+            ),
+          },
+        ],
+      })
+
+      // The Gold Key is a one-time, maxPerPlayer:1 quest reward gating the first
+      // open. After this, the persistent `chest1` flag (set below) gates re-opens.
+      const hasKey = await playerHasItem(playerId, 'gold-key')
+      if (!hasKey) {
+        return lockedFeedback()
+      }
+
+      const goldAmount = 100 + Math.floor(Math.random() * 101) // 100–200
+
+      // Consume the key, grant items, apply gold/xp, and set the opened flag
+      // atomically so a partial failure never leaves the player keyless, looted,
+      // or with an inconsistent flag.
+      let updatedUser
+      try {
+        updatedUser = await prisma.$transaction(async (tx) => {
+          const removed = await removeItemBySlug(playerId, 'gold-key', 1, tx)
+          if (!removed.success) {
+            throw new Error('GOLD_KEY_MISSING')
+          }
+          for (const reward of itemRewards) {
+            const granted = await grantItemOnce(playerId, reward.itemSlug, reward.quantity, tx)
+            if (!granted.granted) {
+              throw new Error(`Failed to grant ${reward.itemSlug}: ${granted.reason}`)
+            }
+          }
+          return tx.user.update({
+            where: { id: playerId },
+            data: {
+              currency: { increment: goldAmount },
+              xp: { increment: xpAmount },
+              chest1: true,
+            },
+            select: { id: true, currency: true, xp: true, chest1: true },
+          })
+        })
+      } catch (err) {
+        // Key vanished between the check and the transaction — treat as still locked.
+        if (err.message === 'GOLD_KEY_MISSING') {
+          return lockedFeedback()
+        }
+        return createErrorResult('open gold chest', 'Something went wrong opening the chest. Please try again.')
+      }
+
+      // Mirror quest completion: detect level-up and refetch inventory after commit.
+      const [levelUp, inventory] = await Promise.all([
+        checkAndApplyLevelUp(playerId),
+        getPlayerInventory(playerId),
+      ])
+
+      // Enrich rewards for the rewards modal (same shape as quest completion).
+      // Insert the exact rolled gold after the XP entry; items come from the
+      // shared builder so the haul matches the "already opened" reminder.
+      const enrichedRewards = await buildEnrichedItemRewards()
+      enrichedRewards.splice(1, 0, { type: 'currency', amount: goldAmount })
+
+      const playerEvents = [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload(
+            'open gold chest',
+            'success',
+            'You unlock the gold chest with the Gold Key. It creaks open, revealing a glittering hoard!',
+            {
+              roomId: roomState.roomId,
+              inventory,
+              player: updatedUser,
+              showModal: true,
+              modalContent: {
+                type: 'icon',
+                icon: 'chest',
+                iconColor: 'amber-500/90',
+                title: 'You open the gold chest',
+                header: 'Gold Chest Unlocked!',
+                message: 'The Gold Key turns with a heavy click. Inside, a glittering hoard awaits!',
+              },
+              // questTitle left empty so the modal shows "Rewards" without a quest header.
+              questComplete: {
+                questTitle: '',
+                rewards: enrichedRewards,
+                levelUp: levelUp?.leveled ? levelUp : null,
+                newQuestTitles: [],
+              },
+            }
+          ),
+        },
+      ]
+
+      if (levelUp?.leveled) {
+        playerEvents.push({ event: 'player:level-up', payload: levelUp })
+      }
+
+      return {
+        success: true,
+        action: 'open gold chest',
+        playerEvents,
+      }
     },
   },
   '002': {

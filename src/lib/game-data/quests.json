@@ -210,11 +210,6 @@
       },
       {
         "type": "item",
-        "itemSlug": "soldiers-armor",
-        "quantity": 1
-      },
-      {
-        "type": "item",
         "itemSlug": "gold-key",
         "quantity": 1
       }
@@ -268,6 +263,11 @@
       {
         "type": "xp",
         "amount": 50
+      },
+      {
+        "type": "item",
+        "itemSlug": "soldiers-armor",
+        "quantity": 1
       }
     ]
   },

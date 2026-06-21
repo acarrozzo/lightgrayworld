@@ -34,6 +34,7 @@ export interface Player {
   lastSeen?: number
   clicks?: number
   deaths?: number
+  chest1?: boolean
   grassyFieldMap?: boolean
   grassyFieldUndergroundMap?: boolean
   roomZeroMap?: boolean

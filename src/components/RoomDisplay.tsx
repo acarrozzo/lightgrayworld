@@ -53,6 +53,9 @@ export default function RoomDisplay({
   quests = [],
   killList = [],
 }: RoomDisplayProps) {
+  // Persisted "gold chest opened" flag (chest1) — drives the opened-button look.
+  const goldChestOpened = useGameStore((state) => state.player?.chest1 ?? false)
+
   // Subscribe to cap cache entry for this room/action using Zustand selector
   // This ensures the component re-renders when the cache updates
   const capConfig = useMemo(() => {
@@ -592,7 +595,12 @@ export default function RoomDisplay({
         const renderButton = (actionItem: import('@/lib/room-actions').RoomAction) => {
           const isViewShop = actionItem.action === 'view shop'
           const override = room.actionOverrides?.[actionItem.action]
-          const resolvedIcon = override?.icon ?? actionItem.icon
+          // Show the gold chest as opened once looted. Still clickable so the
+          // player can re-open the reminder of what they got.
+          const isOpenedGoldChest = actionItem.action === 'open gold chest' && goldChestOpened
+          const resolvedIcon = isOpenedGoldChest ? 'chest2' : (override?.icon ?? actionItem.icon)
+          const resolvedLabel = isOpenedGoldChest ? 'Gold Chest (Opened)' : actionItem.label
+          const openedClassName = 'bg-emerald-700/70 hover:bg-emerald-700'
           const showFlyout = flyoutActionForButton(actionItem.action)
           return (
             <div
@@ -614,7 +622,9 @@ export default function RoomDisplay({
                 } ${
                   isPerformingAction === actionItem.action
                     ? 'bg-gray-700 cursor-wait'
-                    : override?.className || actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
+                    : isOpenedGoldChest
+                      ? openedClassName
+                      : override?.className || actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
                 }`}
               >
                 {resolvedIcon && (
@@ -624,7 +634,7 @@ export default function RoomDisplay({
                     color="current"
                   />
                 )}
-                <span>{actionItem.label}</span>
+                <span>{resolvedLabel}</span>
               </button>
             </div>
           )

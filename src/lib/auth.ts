@@ -34,6 +34,7 @@ export interface AuthUser {
   uIconColor: string
   clicks?: number
   deaths?: number
+  chest1?: boolean
 }
 
 interface TokenPayload {

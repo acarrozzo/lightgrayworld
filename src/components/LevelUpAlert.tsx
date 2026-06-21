@@ -5,9 +5,10 @@ import { LevelUpPayload } from '@/lib/socket'
 interface LevelUpAlertProps {
   data: LevelUpPayload
   onClose: () => void
+  onTrainNow: () => void
 }
 
-export default function LevelUpAlert({ data, onClose }: LevelUpAlertProps) {
+export default function LevelUpAlert({ data, onClose, onTrainNow }: LevelUpAlertProps) {
   return (
     <div className="mx-4 mt-4 rounded-xl overflow-hidden shadow-2xl border border-yellow-500/80"
       style={{ background: 'linear-gradient(160deg, #1a1200 0%, #2a1a00 40%, #1a1200 100%)' }}
@@ -65,6 +66,19 @@ export default function LevelUpAlert({ data, onClose }: LevelUpAlertProps) {
           <StatGrant label="Max HP" value={`+${data.hpGained}`} unit="HP" color="#fca5a5" glow="#ef4444" />
           <StatGrant label="Max MP" value={`+${data.mpGained}`} unit="MP" color="#67e8f9" glow="#06b6d4" />
         </div>
+
+        <button
+          type="button"
+          onClick={onTrainNow}
+          className="mt-4 w-full rounded-lg py-3 px-4 font-black tracking-widest uppercase text-sm transition-all"
+          style={{
+            background: 'linear-gradient(135deg, #b45309, #f59e0b, #b45309)',
+            color: '#1a1200',
+            boxShadow: '0 0 20px #f59e0b66, inset 0 1px 0 #fde04780',
+          }}
+        >
+          Train Now
+        </button>
       </div>
     </div>
   )

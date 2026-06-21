@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
         uIconColor: true,
         clicks: true,
         deaths: true,
+        chest1: true,
       },
     })
 
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest) {
       uIconColor: freshUser!.uIconColor ?? DEFAULT_AVATAR_COLOR,
       clicks: freshUser!.clicks,
       deaths: freshUser!.deaths,
+      chest1: freshUser!.chest1,
     })
 
     return NextResponse.json(authResponse)
