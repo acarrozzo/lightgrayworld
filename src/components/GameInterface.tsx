@@ -3004,6 +3004,15 @@ export default function GameInterface() {
                 </span>
                 <span className="hidden md:inline">Teleport</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setCenterActiveTab('map')}
+                className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
+                title="Open Map"
+                aria-label="Open Map"
+              >
+                Map
+              </button>
             </div>
             {/* Compass */}
             <div className="flex items-center justify-center">
@@ -3079,6 +3088,7 @@ export default function GameInterface() {
           availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
           onMapChange={handleMapChange}
           onClose={() => setCenterActiveTab('explore')}
+          onOpenTeleport={() => { setCenterActiveTab('explore'); handleOpenTeleport() }}
         />
       ),
     },

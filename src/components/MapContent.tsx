@@ -445,7 +445,7 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
           {isZoomed ? 'Reset View' : 'Zoom In'}
         </button>
         
-        <div className="flex min-h-[60vh] items-center justify-center py-4">
+        <div className="flex h-full items-center justify-center py-4">
           <div
             className={`${isZoomed ? 'cursor-grab' : ''}`}
             onPointerDown={handlePointerDown}
@@ -479,7 +479,7 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
                 transition: !isDragging ? 'transform 0.2s ease-out' : 'none',
                 userSelect: 'none',
                 pointerEvents: isZoomed ? 'none' : 'auto',
-                maxHeight: isZoomed ? 'none' : 'calc(85vh - 200px)',
+                maxHeight: isZoomed ? 'none' : '100%',
               }}
               draggable={false}
             />
