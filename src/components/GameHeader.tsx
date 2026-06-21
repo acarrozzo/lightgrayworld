@@ -118,7 +118,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
           {/* Right side - Stats and Connection Status */}
           <div className="flex-1 flex justify-end items-center gap-3 text-xs">
             {/* Stats group */}
-            <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-2">
               {str !== undefined && (
                 <>
                   <span className="text-gray-500 hidden lg:inline">STR </span>

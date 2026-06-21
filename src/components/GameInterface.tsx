@@ -477,7 +477,7 @@ export default function GameInterface() {
   useEffect(() => {
     if (!leftSidebarScrollRef.current) return
     
-    // Find the actual scrollable element inside GameSidebar (the div with overflow-y-auto and p-4)
+    // Find the actual scrollable element inside the left sidebar (the div with overflow-y-auto and p-4)
     const scrollableElement = leftSidebarScrollRef.current.querySelector('div.overflow-y-auto.p-4') as HTMLElement ||
                               leftSidebarScrollRef.current.querySelector('.overflow-y-auto') as HTMLElement
     

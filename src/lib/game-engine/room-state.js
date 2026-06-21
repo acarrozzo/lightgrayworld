@@ -746,126 +746,96 @@ class RoomState {
     }
   }
 
-  async executeRest(playerId) {
+  // Shared rest implementation.
+  //   - Standard rest (overchargeBonus 0): recovers physical/mental training amounts, capped at max.
+  //   - Overcharge rest (overchargeBonus > 0): sets HP/MP to max + bonus.
+  async applyRest(playerId, { action, overchargeBonus = 0, overchargeMessage } = {}) {
     const player = this.players.get(playerId)
     if (!player) {
-      return this.createErrorResult('rest', 'Player not found in this room')
+      return this.createErrorResult(action, 'Player not found in this room')
     }
 
     const activeBattle = this.activeBattles.get(playerId)
     if (activeBattle && activeBattle.isActive) {
-      return this.createErrorResult('rest', 'You cannot rest during combat.')
+      return this.createErrorResult(action, 'You cannot rest during combat.')
     }
 
     this.touchActivity()
 
     const hpMax = player.hpMax ?? 10
     const mpMax = player.mpMax ?? 2
-    const pt = player.physicalTraining ?? 1
-    const mt = player.mentalTraining ?? 1
 
-    const newHp = Math.min(hpMax, (player.hp ?? 0) + pt)
-    const newMp = Math.min(mpMax, (player.mp ?? 0) + mt)
-    const hpGained = Math.max(0, newHp - (player.hp ?? 0))
-    const mpGained = Math.max(0, newMp - (player.mp ?? 0))
+    let newHp
+    let newMp
+    let message
 
-    if (hpGained === 0 && mpGained === 0) {
-      return {
-        success: true,
-        action: 'rest',
-        playerEvents: [
-          {
-            event: 'action:feedback',
-            payload: this.createFeedbackPayload('rest', 'success', 'You already have full HP and MP.', { hp: newHp, mp: newMp }),
-          },
-        ],
+    if (overchargeBonus > 0) {
+      newHp = hpMax + overchargeBonus
+      newMp = mpMax + overchargeBonus
+      message = overchargeMessage ?? `Your HP and MP are fully restored, plus an extra +${overchargeBonus} to each.`
+    } else {
+      const pt = player.physicalTraining ?? 1
+      const mt = player.mentalTraining ?? 1
+
+      newHp = Math.min(hpMax, (player.hp ?? 0) + pt)
+      newMp = Math.min(mpMax, (player.mp ?? 0) + mt)
+      const hpGained = Math.max(0, newHp - (player.hp ?? 0))
+      const mpGained = Math.max(0, newMp - (player.mp ?? 0))
+
+      if (hpGained === 0 && mpGained === 0) {
+        return {
+          success: true,
+          action,
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: this.createFeedbackPayload(action, 'success', 'You already have full HP and MP.', { hp: newHp, mp: newMp }),
+            },
+          ],
+        }
       }
-    }
 
-    const parts = []
-    if (hpGained > 0) parts.push(`${hpGained} HP`)
-    if (mpGained > 0) parts.push(`${mpGained} MP`)
-    const message = `You recover ${parts.join(' and ')}.`
+      const parts = []
+      if (hpGained > 0) parts.push(`${hpGained} HP`)
+      if (mpGained > 0) parts.push(`${mpGained} MP`)
+      message = `You recover ${parts.join(' and ')}.`
+    }
 
     this.updatePlayer(playerId, (state) => ({ ...state, hp: newHp, mp: newMp }))
     await prisma.user.update({ where: { id: playerId }, data: { hp: newHp, mp: newMp } })
 
     return {
       success: true,
-      action: 'rest',
+      action,
       playerEvents: [
         {
           event: 'action:feedback',
-          payload: this.createFeedbackPayload('rest', 'success', message, { hp: newHp, mp: newMp }),
+          payload: this.createFeedbackPayload(action, 'success', message, { hp: newHp, mp: newMp }),
         },
       ],
     }
+  }
+
+  async executeRest(playerId) {
+    return this.applyRest(playerId, { action: 'rest' })
   }
 
   // Lobby (room 999) rest: overcharges HP and MP to 10 above their max.
   async executeLobbyRest(playerId) {
-    const player = this.players.get(playerId)
-    if (!player) {
-      return this.createErrorResult('rest in lobby', 'Player not found in this room')
-    }
-
-    const activeBattle = this.activeBattles.get(playerId)
-    if (activeBattle && activeBattle.isActive) {
-      return this.createErrorResult('rest in lobby', 'You cannot rest during combat.')
-    }
-
-    this.touchActivity()
-
-    const newHp = (player.hpMax ?? 10) + 10
-    const newMp = (player.mpMax ?? 2) + 10
-    const message = 'You rest near the fountain. Your HP and MP are fully restored, plus an extra +10 to each.'
-
-    this.updatePlayer(playerId, (state) => ({ ...state, hp: newHp, mp: newMp }))
-    await prisma.user.update({ where: { id: playerId }, data: { hp: newHp, mp: newMp } })
-
-    return {
-      success: true,
+    return this.applyRest(playerId, {
       action: 'rest in lobby',
-      playerEvents: [
-        {
-          event: 'action:feedback',
-          payload: this.createFeedbackPayload('rest in lobby', 'success', message, { hp: newHp, mp: newMp }),
-        },
-      ],
-    }
+      overchargeBonus: 10,
+      overchargeMessage: 'You rest near the fountain. Your HP and MP are fully restored, plus an extra +10 to each.',
+    })
   }
 
   // Waterfall (room 020) rest: overcharges HP and MP to 10 above their max.
   async executeWaterfallRest(playerId) {
-    const player = this.players.get(playerId)
-    if (!player) {
-      return this.createErrorResult('rest at waterfall', 'Player not found in this room')
-    }
-
-    const activeBattle = this.activeBattles.get(playerId)
-    if (activeBattle && activeBattle.isActive) {
-      return this.createErrorResult('rest at waterfall', 'You cannot rest during combat.')
-    }
-
-    this.touchActivity()
-
-    const newHp = (player.hpMax ?? 10) + 10
-    const newMp = (player.mpMax ?? 2) + 10
-    const message = 'You rest near the fountain. Your HP and MP are fully restored, plus an extra +10 to each.'
-
-    this.updatePlayer(playerId, (state) => ({ ...state, hp: newHp, mp: newMp }))
-    await prisma.user.update({ where: { id: playerId }, data: { hp: newHp, mp: newMp } })
-
-    return {
-      success: true,
+    return this.applyRest(playerId, {
       action: 'rest at waterfall',
-      playerEvents: [
-        {
-          event: 'action:feedback',
-          payload: this.createFeedbackPayload('rest at waterfall', 'success', message, { hp: newHp, mp: newMp }),
-        },
-      ],
-    }
+      overchargeBonus: 10,
+      overchargeMessage: 'You rest beneath the waterfall. Your HP and MP are fully restored, plus an extra +10 to each.',
+    })
   }
 
   executeLook(action, playerId) {

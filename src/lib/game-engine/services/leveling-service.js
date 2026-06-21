@@ -44,13 +44,15 @@ async function checkAndApplyLevelUp(userId) {
     cp += 1
     tp += 1
     sp += spThisLevel
-    hpMax += physicalTraining
-    mpMax += mentalTraining
+    const hpThisLevel = 1 + (physicalTraining * 2)
+    const mpThisLevel = 1 + (mentalTraining * 2)
+    hpMax += hpThisLevel
+    mpMax += mpThisLevel
     cpGained += 1
     tpGained += 1
     spGained += spThisLevel
-    hpGained += physicalTraining
-    mpGained += mentalTraining
+    hpGained += hpThisLevel
+    mpGained += mpThisLevel
   }
 
   if (cpGained === 0) return { leveled: false }
