@@ -877,5 +877,6 @@ async function executeEffects(effects, playerId) {
 
 module.exports = {
   executeRoomAction,
+  ROOM_ACTIONS,
 }
 
