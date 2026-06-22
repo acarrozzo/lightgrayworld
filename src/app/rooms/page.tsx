@@ -73,19 +73,20 @@ const DIRECTIONS = [
 type Direction = (typeof DIRECTIONS)[number]
 const VERTICAL = new Set<Direction>(['up', 'down'])
 
-// The world is presented as two cardinal-grid maps that mirror the in-game map
-// backgrounds (Grassy Field main vs. Grassy Field Underground). This MUST match
-// the `isUnderground` predicate the game uses in Compass.tsx / socket-server-
-// handlers.js — only the deep dungeons are "underground"; the spider cave and
-// the bat-cave mouth (028) stay on the main overworld map. Links between the two
-// maps become portal markers.
+// The world is presented as cardinal-grid maps that mirror the in-game map
+// backgrounds. The overworld ("Grassy Field") is one tab; the three underground
+// areas each get their own tab: the Cabin Basement (003b*), the Scorpion Pit
+// (the deep scorpion dungeon), and the Bat Cave (028*). The bat-cave mouth (028)
+// stays on the main overworld map. Links between maps become portal markers.
 const SCORPION_DUNGEON = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
-const isUnderground = (roomId: string): boolean =>
-  roomId.startsWith('003b') || (roomId.startsWith('028') && roomId !== '028') || SCORPION_DUNGEON.includes(roomId)
-// Isolated special rooms that don't belong to either map.
+// Isolated special rooms that don't belong to any map.
 const EXCLUDED = new Set(['000', '999', '088'])
-const mapOf = (roomId: string): 'overworld' | 'underground' =>
-  isUnderground(roomId) ? 'underground' : 'overworld'
+const mapOf = (roomId: string): 'overworld' | 'cabin_basement' | 'scorpion_pit' | 'bat_cave' => {
+  if (roomId.startsWith('003b')) return 'cabin_basement'
+  if (SCORPION_DUNGEON.includes(roomId)) return 'scorpion_pit'
+  if (roomId.startsWith('028') && roomId !== '028') return 'bat_cave'
+  return 'overworld'
+}
 
 function prettifySlug(slug: string): string {
   return slug

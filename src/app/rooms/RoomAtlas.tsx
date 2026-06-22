@@ -7,7 +7,7 @@ import { Flame, Hammer, Search, Skull, Coins, Users, Zap, Lock, Eye, X } from 'l
 // ---------------------------------------------------------------------------
 // Serializable shapes built by the server component (page.tsx).
 // ---------------------------------------------------------------------------
-export type MapId = 'overworld' | 'underground'
+export type MapId = 'overworld' | 'cabin_basement' | 'scorpion_pit' | 'bat_cave'
 export type ExitInfo = {
   direction: string
   to: string
@@ -69,7 +69,7 @@ export type RoomEdge = {
 // ---------------------------------------------------------------------------
 const CELL = 170
 const CARD_W = 120
-const CARD_H = 56
+const CARD_H = 120
 const PAD = CELL // empty border around the laid-out grid
 
 const OFFSETS: Record<string, { dc: number; dr: number }> = {
@@ -216,7 +216,30 @@ function bounds(positions: Map<string, Placed>) {
 
 const MAP_LABEL: Record<MapId, string> = {
   overworld: 'Grassy Field',
-  underground: 'Grassy Field Underground',
+  cabin_basement: 'Cabin Basement',
+  scorpion_pit: 'Scorpion Pit',
+  bat_cave: 'Bat Cave',
+}
+
+// Tab order shown across the top of the atlas.
+const MAP_ORDER: MapId[] = ['overworld', 'cabin_basement', 'scorpion_pit', 'bat_cave']
+
+// Greedy word-wrap so a room's full name fits inside the card without ellipsis.
+// maxChars is tuned to the card width (~120px) at the 11px label font.
+function wrapName(name: string, maxChars = 16): string[] {
+  const words = name.split(/\s+/)
+  const lines: string[] = []
+  let line = ''
+  for (const w of words) {
+    if (!line) line = w
+    else if ((line + ' ' + w).length <= maxChars) line += ' ' + w
+    else {
+      lines.push(line)
+      line = w
+    }
+  }
+  if (line) lines.push(line)
+  return lines
 }
 
 export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: RoomEdge[] }) {
@@ -229,11 +252,18 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
 
   // Per-map layouts (pixel centers) computed once.
   const layouts = useMemo(() => {
-    const byMap: Record<MapId, Set<string>> = { overworld: new Set(), underground: new Set() }
+    const byMap: Record<MapId, Set<string>> = {
+      overworld: new Set(),
+      cabin_basement: new Set(),
+      scorpion_pit: new Set(),
+      bat_cave: new Set(),
+    }
     for (const n of nodes) byMap[n.map].add(n.roomId)
     return {
       overworld: layoutMap(byMap.overworld, nodeById),
-      underground: layoutMap(byMap.underground, nodeById),
+      cabin_basement: layoutMap(byMap.cabin_basement, nodeById),
+      scorpion_pit: layoutMap(byMap.scorpion_pit, nodeById),
+      bat_cave: layoutMap(byMap.bat_cave, nodeById),
     }
   }, [nodes, nodeById])
 
@@ -372,7 +402,7 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
       <div className="flex min-h-[560px] flex-1 flex-col overflow-hidden rounded border border-gray-800 bg-gray-900/30">
         {/* Map tabs */}
         <div className="flex items-center gap-1 border-b border-gray-800 bg-gray-900/70 px-3 pt-2">
-          {(['overworld', 'underground'] as MapId[]).map((m) => (
+          {MAP_ORDER.map((m) => (
             <button
               key={m}
               onClick={() => setActiveMap(m)}
@@ -474,8 +504,20 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
                     <text x={14} y={20} fontSize={12} fontWeight={700} fill="#e5e7eb">
                       #{n.roomId}
                     </text>
+                    {/* danger level badge */}
+                    <g transform={`translate(${CARD_W - 21},15)`}>
+                      <title>{n.isSafe ? 'Safe zone' : `Danger level ${n.dangerLevel}`}</title>
+                      <circle r={9} fill={color} />
+                      <text textAnchor="middle" y={3.5} fontSize={11} fontWeight={700} fill="#0f1623">
+                        {n.isSafe ? '✓' : n.dangerLevel}
+                      </text>
+                    </g>
                     <text x={14} y={38} fontSize={11} fill="#cbd5e1">
-                      {n.name.length > 17 ? n.name.slice(0, 16) + '…' : n.name}
+                      {wrapName(n.name).map((line, i) => (
+                        <tspan key={i} x={14} dy={i === 0 ? 0 : 13}>
+                          {line}
+                        </tspan>
+                      ))}
                     </text>
                     {/* content glyphs */}
                     <g transform={`translate(14,${CARD_H - 9})`}>
@@ -487,8 +529,9 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
                     {portals &&
                       (() => {
                         const portal = portals[0]
-                        const down = portal.direction === 'down' || portal.toMap === 'underground'
-                        const label = portal.toMap === 'underground' ? 'Underground' : 'Surface'
+                        // Heading to the overworld is "up"; into any cave is "down".
+                        const down = portal.direction === 'down' || portal.toMap !== 'overworld'
+                        const label = MAP_LABEL[portal.toMap]
                         return (
                           <g
                             transform={`translate(${CARD_W / 2},${CARD_H + 13})`}

@@ -13,7 +13,7 @@ const PAGES = [
   { href: '/enemies', label: 'Bestiary', description: 'Every enemy, with their stats and drops.' },
   { href: '/items', label: 'Item Compendium', description: 'Every item, with their stats, value, and properties.' },
   { href: '/quests', label: 'Quests', description: 'Every quest, grouped by giver, with objectives, requirements, and rewards.' },
-  { href: '/rooms', label: 'World Atlas', description: 'Two compass-oriented maps (overworld & underground) — enemies, spawn logic, NPCs, loot, actions, gates, and secrets.' },
+  { href: '/rooms', label: 'World Atlas', description: 'Compass-oriented maps (Grassy Field plus the Cabin Basement, Scorpion Pit, and Bat Cave) — enemies, spawn logic, NPCs, loot, actions, gates, and secrets.' },
 ]
 
 export default function WorldToolHomePage() {

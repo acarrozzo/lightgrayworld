@@ -28,8 +28,10 @@ const ROOM_LOOT = [
   { roomId: '006', slug: 'shovel' },
 
   // Room 007 — training grounds
-  { roomId: '007', slug: 'training-shield' },
+  { roomId: '027', slug: 'red-potion' },
   { roomId: '007', slug: 'training-sword' },
+  { roomId: '007', slug: 'training-shield' },
+  { roomId: '007', slug: 'training-2h-sword' },
 
   // Room 027 — rings (2 of each)
   { roomId: '027', slug: 'ring-of-str', quantity: 2 },
