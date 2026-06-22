@@ -15,19 +15,19 @@ const ROOM_GATES = {
   '002': {
     'south': {
       check: async (playerId) => {
-        const crabQuest = await prisma.questProgress.findUnique({
-          where: { userId_questId: { userId: playerId, questId: 'quest_youngsoldier_002' } },
-          select: { completed: true },
+        const user = await prisma.user.findUnique({
+          where: { id: playerId },
+          select: { chest1: true },
         })
-        return !!crabQuest?.completed
+        return !!user?.chest1
       },
-      message: "The stone path south is locked. Speak to the Young Soldier to unlock the way.",
+      message: "The stone path south is locked. Get the gold key from the Young Soldier and open the gold chest to claim the boomerang.",
       modalContent: {
         title: 'A Field Guard blocks the stone path south',
         type: 'icon',
         icon: 'npc-dwarfguard',
         iconColor: 'amber-500',
-        message: "The stone path south is locked. Speak to the Young Soldier to unlock the way.",
+        message: "The stone path south is locked. Get the gold key from the Young Soldier and open the gold chest to claim the boomerang.",
       },
     },
   },
