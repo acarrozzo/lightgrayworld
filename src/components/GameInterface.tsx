@@ -2022,9 +2022,17 @@ export default function GameInterface() {
       return
     }
 
-    // Compare previous inventory with new inventory to find new items
-    const previousItemIds = new Set(previousInventoryRef.current.map(item => item.id))
-    const newItems = inventory.filter(item => !previousItemIds.has(item.id))
+    // Compare previous inventory with new inventory to find new items.
+    // Flag an item as new if its id wasn't present before, OR if its
+    // quantity increased (e.g. picking up more of an existing stack).
+    const previousQuantities: Record<string, number> = {}
+    for (const item of previousInventoryRef.current) {
+      previousQuantities[item.id] = item.quantity
+    }
+    const newItems = inventory.filter(item => {
+      const previousQuantity = previousQuantities[item.id]
+      return previousQuantity === undefined || item.quantity > previousQuantity
+    })
     
     if (newItems.length > 0) {
       // Add new item IDs to the set
@@ -2038,6 +2046,20 @@ export default function GameInterface() {
     // Update previous inventory ref
     previousInventoryRef.current = inventory
   }, [inventory])
+
+  // Clear "new item" markers when the player LEAVES the inventory tab.
+  // The dots must remain visible the entire time the inventory tab is open
+  // (including items picked up while viewing) so the player can see exactly
+  // which items are new; they only clear once the player navigates away.
+  const previousCenterTabRef = useRef(centerActiveTab)
+  useEffect(() => {
+    const leftInventoryTab =
+      previousCenterTabRef.current === 'inventory' && centerActiveTab !== 'inventory'
+    previousCenterTabRef.current = centerActiveTab
+    if (leftInventoryTab) {
+      setNewItemIds(prev => (prev.size > 0 ? new Set() : prev))
+    }
+  }, [centerActiveTab])
 
   // Clear forceWorldChatMode after it's been applied
   useEffect(() => {

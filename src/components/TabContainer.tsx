@@ -3,6 +3,7 @@
 import { useState, ReactNode, useEffect, useRef, useCallback } from 'react'
 import React from 'react'
 import Icon from './Icon'
+import NotificationBadge from './NotificationBadge'
 import { ChevronDown } from 'lucide-react'
 import { getTabIconColorClass, getTabButtonColorClasses } from '@/lib/tabColors'
 
@@ -374,15 +375,7 @@ export default function TabContainer({
                     )
                   )}
                   {tab.label}
-                  {tab.badge && (
-                    <span className={`absolute -top-1 -right-1 bg-red-500 rounded-full border border-gray-900 flex items-center justify-center ${
-                      typeof tab.badge === 'number' 
-                        ? 'min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white' 
-                        : 'w-2 h-2'
-                    }`}>
-                      {typeof tab.badge === 'number' && tab.badge > 0 ? (tab.badge > 99 ? '99+' : tab.badge) : ''}
-                    </span>
-                  )}
+                  <NotificationBadge value={tab.badge} className="absolute -top-1 -right-1" />
                 </button>
                 {isFirstExploreTab && (
                   <span className="w-1 h-1 rounded-full bg-gray-600 flex-shrink-0" aria-hidden="true" />
@@ -446,15 +439,7 @@ export default function TabContainer({
                           )
                         )}
                         <span className="flex-1 text-left">{tab.label || 'Settings'}</span>
-                        {tab.badge && (
-                          <span className={`bg-red-500 rounded-full border border-gray-900 flex items-center justify-center ${
-                            typeof tab.badge === 'number' 
-                              ? 'min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white' 
-                              : 'w-2 h-2'
-                          }`}>
-                            {typeof tab.badge === 'number' && tab.badge > 0 ? (tab.badge > 99 ? '99+' : tab.badge) : ''}
-                          </span>
-                        )}
+                        <NotificationBadge value={tab.badge} />
                       </button>
                     )
                   })}

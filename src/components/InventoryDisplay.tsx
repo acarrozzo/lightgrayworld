@@ -3,6 +3,7 @@
 import { InventoryItem } from '@/lib/game-state'
 import React, { useMemo, useState, useEffect } from 'react'
 import InventoryDropButton from './InventoryDropButton'
+import NotificationBadge from './NotificationBadge'
 import { getItemActions, resolveItemIcon } from '@/lib/item-actions'
 import Icon from './Icon'
 import { ItemType, EquipSlot, WeaponCategory } from '@prisma/client'
@@ -26,6 +27,27 @@ type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | '
 type WeaponTypeFilter = 'all' | 'melee' | 'ranged'
 type HandednessFilter = 'all' | '1h' | '2h'
 type SortStat = 'none' | 'str' | 'dex' | 'mag' | 'def'
+
+type ItemCategory = Exclude<FilterTab, 'all'>
+
+/**
+ * Classify an inventory item into its filter category. Single source of truth
+ * for category grouping, counts, and new-item indicators.
+ */
+function getItemCategory(item: InventoryItem): ItemCategory {
+  switch (item.template.equipSlot) {
+    case EquipSlot.MAIN_HAND: return 'main'
+    case EquipSlot.OFF_HAND: return 'off'
+    case EquipSlot.HEAD: return 'head'
+    case EquipSlot.BODY: return 'body'
+    case EquipSlot.HANDS: return 'hands'
+    case EquipSlot.FEET: return 'feet'
+    case EquipSlot.RING: return 'ring'
+    case EquipSlot.NECK: return 'neck'
+  }
+  if (item.template.type === ItemType.CONSUMABLE) return 'consumables'
+  return 'misc'
+}
 
 function statSortComparator(a: InventoryItem, b: InventoryItem, stat: string): number {
   const aVal = (a.template.metadata as any)?.statMods?.[stat] ?? 0
@@ -190,27 +212,7 @@ export default function InventoryDisplay({
     }
 
     for (const item of inventory) {
-      if (item.template.equipSlot === EquipSlot.MAIN_HAND) {
-        groups.main.push(item)
-      } else if (item.template.equipSlot === EquipSlot.OFF_HAND) {
-        groups.off.push(item)
-      } else if (item.template.equipSlot === EquipSlot.HEAD) {
-        groups.head.push(item)
-      } else if (item.template.equipSlot === EquipSlot.BODY) {
-        groups.body.push(item)
-      } else if (item.template.equipSlot === EquipSlot.HANDS) {
-        groups.hands.push(item)
-      } else if (item.template.equipSlot === EquipSlot.FEET) {
-        groups.feet.push(item)
-      } else if (item.template.equipSlot === EquipSlot.RING) {
-        groups.ring.push(item)
-      } else if (item.template.equipSlot === EquipSlot.NECK) {
-        groups.neck.push(item)
-      } else if (item.template.type === ItemType.CONSUMABLE) {
-        groups.consumables.push(item)
-      } else {
-        groups.misc.push(item)
-      }
+      groups[getItemCategory(item)].push(item)
     }
 
     const categoryOrder: FilterTab[] = ['main', 'off', 'head', 'body', 'hands', 'feet', 'ring', 'neck', 'consumables', 'misc']
@@ -263,31 +265,28 @@ export default function InventoryDisplay({
     }
 
     for (const item of inventory) {
-      if (item.template.equipSlot === EquipSlot.MAIN_HAND) {
-        counts.main++
-      } else if (item.template.equipSlot === EquipSlot.OFF_HAND) {
-        counts.off++
-      } else if (item.template.equipSlot === EquipSlot.HEAD) {
-        counts.head++
-      } else if (item.template.equipSlot === EquipSlot.BODY) {
-        counts.body++
-      } else if (item.template.equipSlot === EquipSlot.HANDS) {
-        counts.hands++
-      } else if (item.template.equipSlot === EquipSlot.FEET) {
-        counts.feet++
-      } else if (item.template.equipSlot === EquipSlot.RING) {
-        counts.ring++
-      } else if (item.template.equipSlot === EquipSlot.NECK) {
-        counts.neck++
-      } else if (item.template.type === ItemType.CONSUMABLE) {
-        counts.consumables++
-      } else {
-        counts.misc++
-      }
+      counts[getItemCategory(item)]++
     }
 
     return counts
   }, [inventory])
+
+  // Count new items per category so the filter buttons can surface a numbered
+  // badge mirroring the per-item indicator and the main INV tab badge.
+  const newItemCountsByCategory = useMemo(() => {
+    const counts: Partial<Record<ItemCategory, number>> = {}
+    if (!showNewItems || !newItemIds || newItemIds.size === 0) {
+      return counts
+    }
+
+    for (const item of inventory) {
+      if (!newItemIds.has(item.id)) continue
+      const category = getItemCategory(item)
+      counts[category] = (counts[category] || 0) + 1
+    }
+
+    return counts
+  }, [inventory, newItemIds, showNewItems])
 
   const tabs: Array<{ id: FilterTab; label: string }> = [
     { id: 'all', label: 'ALL' },
@@ -308,20 +307,22 @@ export default function InventoryDisplay({
       {showHeading && <h3 className="text-lg font-semibold text-white">Inventory</h3>}
       
       {/* Filter Tabs */}
-      <div className={`flex gap-2 flex-wrap overflow-x-auto pb-2}`}>
+      <div className="flex gap-2 flex-wrap pt-1 pb-2">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id
           const count = categoryCounts[tab.id]
+          const newItemCount = tab.id === 'all' ? 0 : (newItemCountsByCategory[tab.id] || 0)
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-3 py-1.5 text-xs font-medium rounded transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+              className={`relative px-3 py-1.5 text-xs font-medium rounded transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
                 isActive
                   ? 'bg-blue-500/70 hover:bg-blue-500 text-white border border-blue-400/50'
                   : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-300 border border-gray-700/50 hover:border-gray-600/50'
               }`}
             >
+              <NotificationBadge value={newItemCount} className="absolute -left-1 -top-1 z-10" />
               <span>{tab.label}</span>
               {count > 0 && (
                 <span className={`text-[10px] font-normal ${
