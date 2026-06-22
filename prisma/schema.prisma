@@ -363,8 +363,7 @@ model ItemTemplate {
   name         String
   description  String
   type         ItemType
-  maxStack     Int          @default(99)
-  maxPerPlayer Int?
+  max          Int          @default(99)
   weight       Float?
   value        Int          @default(10)
   canSell      Boolean      @default(true)

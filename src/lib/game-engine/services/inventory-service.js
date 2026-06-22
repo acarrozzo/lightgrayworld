@@ -17,8 +17,7 @@ async function getPlayerInventory(playerId, tx = null) {
           name: true,
           description: true,
           type: true,
-          maxStack: true,
-          maxPerPlayer: true,
+          max: true,
           value: true,
           canSell: true,
           canDrop: true,
@@ -64,7 +63,7 @@ async function playerHasItem(playerId, itemSlug) {
 }
 
 /**
- * Grant an item respecting maxPerPlayer and stacking rules.
+ * Grant an item respecting the item's max and stacking rules.
  */
 async function grantItemOnce(playerId, itemSlug, quantity = 1, tx = null) {
   const client = tx || prisma
@@ -77,8 +76,8 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1, tx = null) {
     where: { playerId, templateId: template.id },
   })
 
-  // Enforce maxPerPlayer/maxStack; if neither is set there's no cap
-  const limit = template.maxPerPlayer ?? template.maxStack ?? Infinity
+  // Enforce the item's max; if it isn't set there's no cap
+  const limit = template.max ?? Infinity
   const currentQty = existing?.quantity ?? 0
 
   if (currentQty >= limit) {

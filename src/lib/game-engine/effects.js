@@ -6,7 +6,7 @@ const {
 } = require('./services/inventory-service')
 
 /**
- * Effect: Grant a personal item, respecting maxPerPlayer.
+ * Effect: Grant a personal item, respecting the item's max.
  * Returns effect result with updated inventory snapshot.
  */
 async function grantPersonalItemOnce(playerId, itemSlug, quantity = 1) {

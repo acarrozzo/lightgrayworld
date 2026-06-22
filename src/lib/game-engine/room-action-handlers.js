@@ -341,7 +341,7 @@ const ROOM_ACTIONS = {
         ],
       })
 
-      // The Gold Key is a one-time, maxPerPlayer:1 quest reward gating the first
+      // The Gold Key is a one-time, max:1 quest reward gating the first
       // open. After this, the persistent `chest1` flag (set below) gates re-opens.
       const hasKey = await playerHasItem(playerId, 'gold-key')
       if (!hasKey) {

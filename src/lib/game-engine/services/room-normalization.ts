@@ -1,4 +1,13 @@
 import type { ItemTemplate, Prisma, EquipSlot } from '@prisma/client'
+import { ROOM_LOOT } from '../config/room-loot'
+
+// Canonical room-item display order: the position each (roomId, slug) holds in
+// the ROOM_LOOT seed config. Prisma can't order by a config array, so room
+// queries fetch unordered and normalizeRoomItems() sorts here — keeping the
+// in-game room, the loot panel, and the World Atlas tool all in seed order.
+const ROOM_LOOT_ORDER = new Map<string, number>(
+  ROOM_LOOT.map((l, i) => [`${l.roomId}::${l.slug}`, i] as const),
+)
 
 export const ROOM_ITEMS_SELECT = {
   items: {
@@ -21,11 +30,6 @@ export const ROOM_ITEMS_SELECT = {
           metadata: true,
         },
       },
-    },
-    orderBy: {
-      ItemTemplate: {
-        name: 'asc'
-      }
     },
   },
 } as const satisfies Prisma.RoomSelect
@@ -82,9 +86,18 @@ export type NormalizedRoomData<T extends RoomLike> = Omit<T, 'items'> & {
 export function normalizeRoomItems(rawItems: RoomLike['items']): NormalizedRoomItem[] {
   if (!Array.isArray(rawItems)) return []
 
+  // Order by ROOM_LOOT seed position; config items first (in config order),
+  // then anything else (e.g. player-dropped) alphabetically by name.
+  const ordered = [...rawItems].sort((a, b) => {
+    const ia = ROOM_LOOT_ORDER.get(`${a?.roomId}::${a?.ItemTemplate?.slug}`) ?? Infinity
+    const ib = ROOM_LOOT_ORDER.get(`${b?.roomId}::${b?.ItemTemplate?.slug}`) ?? Infinity
+    if (ia !== ib) return ia - ib
+    return (a?.ItemTemplate?.name ?? '').localeCompare(b?.ItemTemplate?.name ?? '')
+  })
+
   const normalized: NormalizedRoomItem[] = []
 
-  for (const item of rawItems) {
+  for (const item of ordered) {
     if (!item?.ItemTemplate) {
       console.warn('[room-normalization] Skipping room item missing ItemTemplate', {
         id: item?.id,

@@ -121,7 +121,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
     const templateBySlug = new Map(templates.map((t) => [t.slug, t]))
 
     // Grant drops through grantItemOnce so they merge into existing stacks
-    // (respecting maxStack / maxPerPlayer) instead of creating duplicate rows.
+    // (respecting the item's max) instead of creating duplicate rows.
     for (const { slug, qty } of drops) {
       const template = templateBySlug.get(slug)
       if (!template) {

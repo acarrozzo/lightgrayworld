@@ -71,7 +71,7 @@ async function handleBuy(request: AuthenticatedRequest) {
     })
 
     const currentQty = existing?.quantity ?? 0
-    const limit = template.maxPerPlayer ?? template.maxStack ?? quantity
+    const limit = template.max ?? quantity
 
     if (currentQty + quantity > limit) {
       return NextResponse.json(

@@ -3,11 +3,6 @@ const { getPlayerInventory } = require('./inventory-service')
 const { normalizeRoomItems } = require('./room-normalization.js')
 const { ROOM_LOOT } = require('../config/room-loot')
 
-// Canonical display order for room loot: the position each (roomId, slug) holds
-// in the ROOM_LOOT seed config. Used to sort getRoomItems() so the in-game room
-// matches the seed order (and the World Atlas tool, which is config-driven).
-const ROOM_LOOT_ORDER = new Map(ROOM_LOOT.map((l, i) => [`${l.roomId}::${l.slug}`, i]))
-
 /**
  * Pluralize an item name
  * @param {string} name - The item name
@@ -99,7 +94,7 @@ async function pickupRoomItem(playerId, roomItemId, quantity, playerCurrentRoom)
   })
 
   const currentPlayerQty = existingPlayerItem?.quantity || 0
-  const maxAllowed = template.maxPerPlayer ?? template.maxStack
+  const maxAllowed = template.max ?? Infinity
 
   if (currentPlayerQty + quantity > maxAllowed) {
     return {
@@ -237,15 +232,6 @@ async function getRoomItems(roomId) {
         },
       },
     },
-  })
-
-  // Sort by seed (ROOM_LOOT) order so the room matches the config / Atlas tool.
-  // Items not in the config (e.g. player-dropped) sort after, alphabetically.
-  items.sort((a, b) => {
-    const ia = ROOM_LOOT_ORDER.get(`${a.roomId}::${a.ItemTemplate.slug}`) ?? Infinity
-    const ib = ROOM_LOOT_ORDER.get(`${b.roomId}::${b.ItemTemplate.slug}`) ?? Infinity
-    if (ia !== ib) return ia - ib
-    return a.ItemTemplate.name.localeCompare(b.ItemTemplate.name)
   })
 
   return normalizeRoomItems(items)

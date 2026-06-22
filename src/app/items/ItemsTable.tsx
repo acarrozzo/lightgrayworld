@@ -16,8 +16,7 @@ export type ItemRow = {
   dex: number
   mag: number
   def: number
-  maxStack: number
-  maxPerPlayer: number | null
+  max: number
   canSell: boolean
   canDrop: boolean
   equipable: boolean // weapon or armor — only these resolve world sources
@@ -405,8 +404,7 @@ function Flags({ r }: { r: ItemRow }) {
     <div className="flex flex-wrap gap-1 text-[10px] text-gray-500">
       {!r.canSell && <Tag>no-sell</Tag>}
       {!r.canDrop && <Tag>no-drop</Tag>}
-      {r.maxStack > 1 && <Tag>stack {r.maxStack.toLocaleString()}</Tag>}
-      {r.maxPerPlayer != null && <Tag>max {r.maxPerPlayer.toLocaleString()}</Tag>}
+      {r.max > 1 && <Tag>max {r.max.toLocaleString()}</Tag>}
     </div>
   )
 }
