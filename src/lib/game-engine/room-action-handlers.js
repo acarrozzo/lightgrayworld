@@ -156,6 +156,28 @@ function createNpcTalkHandler(npc) {
 }
 
 /**
+ * Static chest loot tables, keyed by roomId then action name. Hoisted out of the
+ * individual chest handlers so they are a single source of truth: the handlers
+ * read their rewards from here, and the World Tool's Item Compendium indexes
+ * them to show which chest an item comes from. `label` is the friendly chest
+ * name shown in the item-source column.
+ */
+const CHEST_LOOT = {
+  '001': {
+    'open gold chest': {
+      label: 'Gold Chest',
+      xp: 50,
+      items: [
+        { itemSlug: 'red-potion', quantity: 3 },
+        { itemSlug: 'cooked-meat', quantity: 5 },
+        { itemSlug: 'glowing-brace', quantity: 1 },
+        { itemSlug: 'boomerang', quantity: 1, highlighted: true },
+      ],
+    },
+  },
+}
+
+/**
  * Map of room IDs to room-specific actions. Each action entry can be either:
  * - A string message (handled by executeBasicDisplay)
  * - A custom function (playerId, roomState) => actionResult
@@ -195,7 +217,7 @@ const ROOM_ACTIONS = {
         heading: { 
           text: 'Grassy Field Directory', 
           parts: ['Grassy Field', 'Directory'],
-          description: 'Welcome! This directory shows nearby locations you can explore. Click the direction buttons to travel there.'
+          description: 'Welcome! This directory shows nearby locations you can explore.'
         },
         locations: [
           { 
@@ -221,13 +243,7 @@ const ROOM_ACTIONS = {
         ],
         questMessage: "Visit the OLD MAN at the cabin to start your first quest.",
         questMessageDescription: 'The Old Man will give you your first quest and help you learn the basics of the game.'
-      },
-      buttons: [
-        { label: 'northwest', direction: 'northwest' },
-        { label: 'northeast', direction: 'northeast' },
-        { label: 'west', direction: 'west' },
-        { label: 'southwest', direction: 'southwest' }
-      ]
+      }
     },
     'open gold chest': async (playerId, roomState) => {
       const { prisma } = require('../db-client')
@@ -242,15 +258,10 @@ const ROOM_ACTIONS = {
 
       roomState.touchActivity()
 
-      // Reward table. The boomerang is the featured drop. Shared by the open
-      // flow and the "already opened" reminder so they never drift apart.
-      const xpAmount = 50
-      const itemRewards = [
-        { itemSlug: 'red-potion', quantity: 3 },
-        { itemSlug: 'cooked-meat', quantity: 5 },
-        { itemSlug: 'glowing-brace', quantity: 1 },
-        { itemSlug: 'boomerang', quantity: 1, highlighted: true },
-      ]
+      // Reward table. The boomerang is the featured drop. Pulled from the shared
+      // CHEST_LOOT registry so the open flow, the "already opened" reminder, and
+      // the World Tool's source index never drift apart.
+      const { xp: xpAmount, items: itemRewards } = CHEST_LOOT['001']['open gold chest']
 
       // Build the enriched item reward list for the rewards modal. Gold is
       // omitted here because it is rolled randomly per open — callers that know
@@ -1076,5 +1087,6 @@ async function executeEffects(effects, playerId) {
 module.exports = {
   executeRoomAction,
   ROOM_ACTIONS,
+  CHEST_LOOT,
 }
 

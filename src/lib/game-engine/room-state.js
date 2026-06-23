@@ -1391,4 +1391,5 @@ class RoomState {
 
 module.exports = {
   RoomState,
+  SEARCH_LOOT_TABLES,
 }

@@ -19,10 +19,13 @@ export type ItemRow = {
   max: number
   canSell: boolean
   canDrop: boolean
-  equipable: boolean // weapon or armor — only these resolve world sources
+  equipable: boolean // weapon or armor
   sources: {
     rooms: { label: string }[] // e.g. "Sand Crab Nest" or "Room 027 ×2"
     enemies: { name: string; label: string }[] // e.g. { name: "Rat", label: "25%" }
+    quests: { label: string }[] // quest title, e.g. "Rat Problem ×5"
+    chests: { label: string }[] // chest name, e.g. "Gold Chest ×3"
+    searches: { label: string }[] // room name searched, e.g. "Cabin Basement"
   }
 }
 
@@ -56,9 +59,15 @@ const STAT_COLOR: Record<'str' | 'dex' | 'mag' | 'def', string> = {
 // Groups that count as weapons — used by the "All Weapons" tab.
 const WEAPON_GROUPS = ['1H', '2H', 'Ranged']
 
-// An equipable item with no room or enemy source — "not available yet".
+// Total number of resolved sources across every source type.
+function sourceCount(r: ItemRow): number {
+  const s = r.sources
+  return s.rooms.length + s.enemies.length + s.quests.length + s.chests.length + s.searches.length
+}
+
+// An equipable item with no source anywhere — "not available yet".
 function isUnavailable(r: ItemRow): boolean {
-  return r.equipable && r.sources.rooms.length === 0 && r.sources.enemies.length === 0
+  return r.equipable && sourceCount(r) === 0
 }
 
 export default function ItemsTable({
@@ -343,7 +352,7 @@ function ItemCard({ r }: { r: ItemRow }) {
         ))}
       </div>
       <Flags r={r} />
-      {r.equipable && (
+      {sourceCount(r) > 0 && (
         <div className="mt-2 border-t border-gray-800 pt-2">
           <SourceCell r={r} />
         </div>
@@ -358,15 +367,35 @@ function statCell(value: number, key: 'str' | 'dex' | 'mag' | 'def') {
   return <span className={STAT_COLOR[key]}>{value}</span>
 }
 
-// Where an equipable item comes from: enemy drops (with chance) and rooms.
-// Non-equipable items (consumables/misc) show a plain dash — sources aren't
-// resolved for them. Equipable items with no source show "not available yet".
-function SourceCell({ r }: { r: ItemRow }) {
-  if (!r.equipable) return <span className="text-gray-700">—</span>
+// A labelled row of source chips ("Drops", "Found in", "Quest", …). Renders
+// nothing when the list is empty.
+function SourceGroup({ label, items }: { label: string; items: { label: string }[] }) {
+  if (items.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <span className="text-gray-600 uppercase tracking-wide" style={{ fontSize: '10px' }}>
+        {label}
+      </span>
+      {items.map((it, i) => (
+        <span key={i} className="text-gray-300">
+          {it.label}
+        </span>
+      ))}
+    </div>
+  )
+}
 
-  const { rooms, enemies } = r.sources
-  if (rooms.length === 0 && enemies.length === 0) {
-    return <span className="text-[11px] italic text-gray-500">not available yet</span>
+// Where an item comes from: enemy drops (with chance), room pickups, quest
+// rewards, chests, and room searches. Equipable items with no source show
+// "not available yet"; other sourceless items show a plain dash.
+function SourceCell({ r }: { r: ItemRow }) {
+  const { rooms, enemies, quests, chests, searches } = r.sources
+  if (sourceCount(r) === 0) {
+    return r.equipable ? (
+      <span className="text-[11px] italic text-gray-500">not available yet</span>
+    ) : (
+      <span className="text-gray-700">—</span>
+    )
   }
 
   return (
@@ -383,18 +412,10 @@ function SourceCell({ r }: { r: ItemRow }) {
           ))}
         </div>
       )}
-      {rooms.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="text-gray-600 uppercase tracking-wide" style={{ fontSize: '10px' }}>
-            Found in
-          </span>
-          {rooms.map((rm, i) => (
-            <span key={i} className="text-gray-300">
-              {rm.label}
-            </span>
-          ))}
-        </div>
-      )}
+      <SourceGroup label="Found in" items={rooms} />
+      <SourceGroup label="Quest" items={quests} />
+      <SourceGroup label="Chest" items={chests} />
+      <SourceGroup label="Search" items={searches} />
     </div>
   )
 }
@@ -404,7 +425,7 @@ function Flags({ r }: { r: ItemRow }) {
     <div className="flex flex-wrap gap-1 text-[10px] text-gray-500">
       {!r.canSell && <Tag>no-sell</Tag>}
       {!r.canDrop && <Tag>no-drop</Tag>}
-      {r.max > 1 && <Tag>max {r.max.toLocaleString()}</Tag>}
+      {r.max > 0 && <Tag>max {r.max.toLocaleString()}</Tag>}
     </div>
   )
 }

@@ -14,6 +14,18 @@ const { ROOM_LOOT } = require('@/lib/game-engine/config/room-loot') as {
 }
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: EnemySource[] }
+// Chest loot tables (keyed by roomId → action) and the room-search loot tables
+// — read live so the source column reflects any change to either.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { CHEST_LOOT } = require('@/lib/game-engine/room-action-handlers') as {
+  CHEST_LOOT: Record<string, Record<string, ChestLoot>>
+}
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { SEARCH_LOOT_TABLES } = require('@/lib/game-engine/room-state') as {
+  SEARCH_LOOT_TABLES: Record<string, SearchTable>
+}
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const QUESTS = require('@/lib/game-data/quests.json') as Record<string, QuestDef>
 
 export const metadata = {
   title: 'Item Compendium — Light Gray RPG',
@@ -80,6 +92,22 @@ type AlwaysDrop = string | ({ itemSlug: string } & QtyShape)
 type EnemyDrops = { main?: EnemyDropEntry[]; always?: AlwaysDrop[]; firstKill?: string[] }
 type EnemySource = { name: string; drops: EnemyDrops }
 
+// --- Quest / chest / search source shapes -----------------------------------
+type QuestReward = { type: string; itemSlug?: string; quantity?: number }
+type QuestDef = { title: string; rewards?: QuestReward[] }
+type ChestItem = { itemSlug: string; quantity?: number }
+type ChestLoot = { label: string; items: ChestItem[] }
+// Search entries grant an item, currency, or nothing. We only index item grants;
+// quantity may be fixed (`quantity`) or a range (`minQty`/`maxQty`).
+type SearchEffect = {
+  type: string
+  itemSlug?: string
+  quantity?: number
+  minQty?: number
+  maxQty?: number
+}
+type SearchTable = { entries: { effect?: SearchEffect }[] }
+
 // Human-readable quantity suffix ("" for 1, " ×2" fixed, " ×1-3" range).
 function qtyLabel(entry: QtyShape): string {
   if (entry.min != null || entry.max != null) {
@@ -115,7 +143,7 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
   const ensure = (slug: string) => {
     let s = sources.get(slug)
     if (!s) {
-      s = { rooms: [], enemies: [] }
+      s = { rooms: [], enemies: [], quests: [], chests: [], searches: [] }
       sources.set(slug, s)
     }
     return s
@@ -146,6 +174,39 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
     }
     for (const d of consolidateMain(main)) {
       ensure(d.itemSlug).enemies.push({ name: enemy.name, label: `${Math.round(d.chance * 100)}%${d.qtyLabel}` })
+    }
+  }
+
+  // Fixed-quantity suffix ("" for 1, " ×3" otherwise).
+  const fixedQty = (qty?: number) => (qty && qty > 1 ? ` ×${qty}` : '')
+
+  // Quests — item rewards. The quest title is the friendly source label.
+  for (const quest of Object.values(QUESTS)) {
+    for (const reward of quest.rewards ?? []) {
+      if (reward.type !== 'item' || !reward.itemSlug) continue
+      ensure(reward.itemSlug).quests.push({ label: `${quest.title}${fixedQty(reward.quantity)}` })
+    }
+  }
+
+  // Chests — every item in each chest's loot table.
+  for (const roomChests of Object.values(CHEST_LOOT)) {
+    for (const chest of Object.values(roomChests)) {
+      for (const item of chest.items ?? []) {
+        ensure(item.itemSlug).chests.push({ label: `${chest.label}${fixedQty(item.quantity)}` })
+      }
+    }
+  }
+
+  // Room search — distinct item slugs per loot table, labelled by room name.
+  // Quantity ranges aren't shown (search odds are only roughly knowable).
+  for (const [roomId, table] of Object.entries(SEARCH_LOOT_TABLES)) {
+    const name = roomNames.get(roomId) ?? `Room ${roomId}`
+    const seen = new Set<string>()
+    for (const entry of table.entries ?? []) {
+      const slug = entry.effect?.itemSlug
+      if (!slug || entry.effect?.type !== 'grantItem' || seen.has(slug)) continue
+      seen.add(slug)
+      ensure(slug).searches.push({ label: name })
     }
   }
 
@@ -180,14 +241,15 @@ export default async function ItemsPage() {
     const group = groupFor(item, meta)
     const isWeapon = group === '1H' || group === '2H' || group === 'Ranged'
     // Equipable = wields a weapon category or occupies an equip slot.
-    // Consumables and misc items are excluded from source resolution.
     const equipable = item.weaponCategory != null || item.equipSlot != null
+    // Sources resolve for every item now — consumables and misc can come from
+    // quests, chests, and room searches, not just weapons/armor.
     return {
       order: i,
       slug: item.slug,
       name: item.name,
       equipable,
-      sources: equipable ? sourceMap.get(item.slug) ?? { rooms: [], enemies: [] } : { rooms: [], enemies: [] },
+      sources: sourceMap.get(item.slug) ?? { rooms: [], enemies: [], quests: [], chests: [], searches: [] },
       // Resolve icons the same way the inventory UI does: prefer metadata.icon,
       // then fall back to slug-based sprite lookup (e.g. `equipment-${slug}`),
       // finally a generic icon. Without this, items lacking metadata.icon show
