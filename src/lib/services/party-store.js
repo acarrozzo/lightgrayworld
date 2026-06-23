@@ -204,6 +204,7 @@ module.exports = {
   onDeath,
   isMember,
   isLeader,
+  getLeaderId,
   getLeaderMemberIds,
   getParty,
 }

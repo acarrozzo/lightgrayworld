@@ -186,7 +186,7 @@ async function recordWorldFeedEventSafe({ userId, username, eventType }) {
 }
 
 // Create room transition function
-function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) {
+function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers, broadcastRoomPartyState) {
   return async ({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport = false }) => {
     if (!toRoom || fromRoom === toRoom) {
       return
@@ -225,11 +225,14 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers) 
       isActive: true,
       uIcon: player.uIcon ?? null,
       uIconColor: player.uIconColor ?? null,
+      partyLeaderId: partyStore.getLeaderId(player.id),
       entryDirection: entryDirection || null,
       isTeleport: isTeleport || false,
     })
 
     player.currentRoom = toRoom
+    // Re-broadcast party groupings so the mover (and the room) see current parties.
+    if (broadcastRoomPartyState) broadcastRoomPartyState(toRoom)
     activePlayers.set(socket.id, player)
 
     try {
@@ -368,6 +371,30 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     return null
   }
 
+  // Compute the party-leader mapping for the given room, used by the client to group
+  // co-located players by their party (including parties the viewer isn't part of).
+  const buildRoomPartyState = (roomId) => {
+    const socketIds = roomPlayers.get(roomId)
+    const members = []
+    if (socketIds) {
+      for (const sid of socketIds) {
+        const p = activePlayers.get(sid)
+        if (p) members.push({ id: p.id, partyLeaderId: partyStore.getLeaderId(p.id) })
+      }
+    }
+    return members
+  }
+
+  // Broadcast the current room's party groupings to everyone in it. Call after any
+  // event that changes who-is-partied-with-whom among co-located players.
+  const broadcastRoomPartyState = (roomId) => {
+    if (!roomId) return
+    io.to(`room-${roomId}`).emit(SOCKET_EVENTS.ROOM_PARTY_STATE, {
+      roomId,
+      members: buildRoomPartyState(roomId),
+    })
+  }
+
   const toPartyInfo = (p) => ({
     id: p.id,
     username: p.username,
@@ -412,7 +439,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         for (const sid of getSocketIdsForUser(memberId)) {
           const memberSocket = io.sockets.sockets.get(sid)
           if (!memberSocket) continue
-          const memberTransition = createTransitionPlayerRoom(prisma, memberSocket, activePlayers, roomPlayers)
+          const memberTransition = createTransitionPlayerRoom(prisma, memberSocket, activePlayers, roomPlayers, broadcastRoomPartyState)
           await memberTransition({ player: memberPlayer, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
           // Dedicated event: the member didn't initiate this move, so the normal
           // action:confirmed/feedback path (which requires a pending move) would ignore it.
@@ -466,7 +493,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     console.log('[Server] Listening for player login event:', SOCKET_EVENTS.PLAYER_LOGIN)
 
     const emitQueueAwareError = createEmitQueueAwareError(socket)
-    const transitionPlayerRoom = createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers)
+    const transitionPlayerRoom = createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers, broadcastRoomPartyState)
     const touchPlayerActivity = (player) => {
       if (!player || !player.id) {
         return
@@ -598,9 +625,12 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             isActive: true,
             uIcon: playerData.uIcon ?? null,
             uIconColor: playerData.uIconColor ?? null,
+            partyLeaderId: partyStore.getLeaderId(playerData.id),
             entryDirection: null, // No direction info on initial login
             isTeleport: false, // Login is not a teleport
           })
+          // Update existing room occupants' view to include the newcomer's grouping.
+          broadcastRoomPartyState(playerData.currentRoom)
         }
 
         gameEngine.registerPlayer({
@@ -625,6 +655,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           player: playerData,
           inventory,
           roomGhosts,
+          // Initial party groupings for this room (covers the listener-attach race
+          // where a room broadcast would fire before the client is listening).
+          roomPartyState: buildRoomPartyState(playerData.currentRoom),
         })
 
         recordWorldFeedEventSafe({
@@ -1204,6 +1237,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
       const res = partyStore.follow(toPartyInfo(player), toPartyInfo(target))
       if (!res.ok) emitPartyError(res.error)
+      else broadcastRoomPartyState(player.currentRoom)
     })
 
     // Leave your current party (or disband it if you're the leader).
@@ -1212,6 +1246,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       if (!player) return
       touchPlayerActivity(player)
       partyStore.leave(player.id)
+      broadcastRoomPartyState(player.currentRoom)
     })
 
     // Leader removes a member.
@@ -1223,6 +1258,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       if (!memberId) return
       const res = partyStore.remove(player.id, memberId)
       if (!res.ok) emitPartyError(res.error)
+      else broadcastRoomPartyState(player.currentRoom)
     })
 
     // Handle explicit logout
@@ -1308,6 +1344,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         }
 
         activePlayers.delete(socket.id)
+        // If they led a party, surviving members' grouping changed — refresh the room.
+        broadcastRoomPartyState(player.currentRoom)
         const socketSet = userIdToSocketIds.get(player.id)
         if (socketSet) {
           socketSet.delete(socket.id)

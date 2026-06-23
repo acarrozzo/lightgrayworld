@@ -32,6 +32,8 @@ export interface Player {
   uIcon?: string
   uIconColor?: string
   presenceStatus?: 'active' | 'idle' | 'disconnected'
+  /** Leader id of the party this player belongs to (self if they lead); null/undefined = solo. */
+  partyLeaderId?: string | null
   lastSeen?: number
   clicks?: number
   deaths?: number

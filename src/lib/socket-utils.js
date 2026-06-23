@@ -35,6 +35,7 @@ const SOCKET_EVENTS = {
   USER_LOGOUT: 'user:logout',
   PLAYER_IDLE: 'player-idle',
   PLAYER_RETURNED: 'player-returned',
+  ROOM_PARTY_STATE: 'room:party-state',
 }
 
 function setSocketIO(ioInstance) {

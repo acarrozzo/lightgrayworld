@@ -198,6 +198,7 @@ export interface SocketEvents {
   'party:removed': (payload: Record<string, never>) => void
   'party:error': (payload: PartyErrorPayload) => void
   'party:pulled': (payload: PartyPulledPayload) => void
+  'room:party-state': (payload: RoomPartyStatePayload) => void
 }
 
 export interface PlayerInfo {
@@ -212,8 +213,14 @@ export interface PlayerInfo {
   isActive: boolean
   uIcon?: string | null
   uIconColor?: string | null
+  partyLeaderId?: string | null
   entryDirection?: string | null
   isTeleport?: boolean
+}
+
+export interface RoomPartyStatePayload {
+  roomId: string
+  members: { id: string; partyLeaderId: string | null }[]
 }
 
 export interface ChatMessage {
@@ -342,6 +349,7 @@ export const SOCKET_EVENTS = {
   PLAYER_CLICKS_UPDATE: 'player:clicks-update',
   PLAYER_IDLE: 'player-idle',
   PLAYER_RETURNED: 'player-returned',
+  ROOM_PARTY_STATE: 'room:party-state',
 } as const
 
 let io: Server<SocketEvents> | null = null

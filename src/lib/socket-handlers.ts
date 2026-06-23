@@ -19,6 +19,7 @@ import {
   PartySnapshot,
   PartyErrorPayload,
   PartyPulledPayload,
+  RoomPartyStatePayload,
 } from './socket'
 
 // Centralized socket event handlers to reduce duplication
@@ -230,6 +231,10 @@ export class SocketEventHandlers {
 
   onPartyPulled(handler: (payload: PartyPulledPayload) => void): () => void {
     return this.on(SOCKET_EVENTS.PARTY_PULLED, handler)
+  }
+
+  onRoomPartyState(handler: (payload: RoomPartyStatePayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.ROOM_PARTY_STATE, handler)
   }
 
   // Cleanup all listeners

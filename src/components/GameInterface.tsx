@@ -181,6 +181,15 @@ export default function GameInterface() {
   const lastLoginSocketId = useRef<string | null>(null)
   const playerRef = useRef(player)
   const currentRoomRef = useRef(currentRoom)
+  // Authoritative live roster for a specific room: playerId -> party leaderId|null.
+  // Its keys ARE the set of players truly socket-present in that room, so it doubles as
+  // a presence source to (a) survive REST reloads that lack party affiliation and
+  // (b) prune stale DB-listed players who aren't actually connected here.
+  // (Record, not Map — `Map` is shadowed by a lucide-react icon import in this file.)
+  const roomPartyLeadersRef = useRef<{ roomId: string | null; leaders: Record<string, string | null> }>({
+    roomId: null,
+    leaders: {},
+  })
   const customActionInputRef = useRef<HTMLInputElement>(null)
   const moveSequenceRef = useRef(0) // Tracks move actions (not room loads)
   const roomLoadSequenceRef = useRef(0) // Tracks room load requests
@@ -194,6 +203,43 @@ export default function GameInterface() {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
   }, [])
+
+  // Reconcile a player list against a known-authoritative live roster for the same room:
+  // stamp partyLeaderId on real occupants, drop active/idle players who aren't actually
+  // connected here (stale DB rows), and preserve intentional 'disconnected' ghosts.
+  const reconcileWithRoster = useCallback(
+    (players: Player[], leaders: Record<string, string | null>): Player[] => {
+      return players
+        .filter((p) => p.id in leaders || p.presenceStatus === 'disconnected')
+        .map((p) => (p.id in leaders ? { ...p, partyLeaderId: leaders[p.id] ?? null } : p))
+    },
+    []
+  )
+
+  // Apply the cached roster onto a freshly-loaded (REST) player list. Only acts when the
+  // cached roster is for this same room, so a room change can't prune the new room's list.
+  const stampPartyLeaders = useCallback(
+    (players: Player[], roomId: string): Player[] => {
+      const cache = roomPartyLeadersRef.current
+      if (cache.roomId !== roomId || Object.keys(cache.leaders).length === 0) return players
+      return reconcileWithRoster(players, cache.leaders)
+    },
+    [reconcileWithRoster]
+  )
+
+  // Apply a full room roster from the socket layer: cache it (room-scoped) and reconcile
+  // the players currently in the store when it's the room we're actually viewing.
+  const applyRoomPartyState = useCallback(
+    (roomId: string, members: { id: string; partyLeaderId: string | null }[]) => {
+      const leaders: Record<string, string | null> = {}
+      for (const m of members) leaders[m.id] = m.partyLeaderId
+      roomPartyLeadersRef.current = { roomId, leaders }
+      if (currentRoomRef.current?.roomId !== roomId) return
+      const currentRoomPlayers = useGameStore.getState().roomPlayers
+      setRoomPlayers(reconcileWithRoster(currentRoomPlayers, leaders))
+    },
+    [reconcileWithRoster, setRoomPlayers]
+  )
 
   const triggerXpGain = useCallback((amount: number) => {
     if (xpGainTimerRef.current) clearTimeout(xpGainTimerRef.current)
@@ -739,7 +785,7 @@ export default function GameInterface() {
         // Commit ALL state changes atomically (guarded by sequence)
         cacheRoom(normalizedRoom)
         setCurrentRoom(normalizedRoom)
-        setRoomPlayers(normalizedRoom.players)
+        setRoomPlayers(stampPartyLeaders(normalizedRoom.players, normalizedRoom.roomId))
         setRoomEnemies((providedRoomData as any).enemies || [])
 
         if (player && player.currentRoom !== normalizedRoom.roomId) {
@@ -826,7 +872,7 @@ export default function GameInterface() {
         if (normalizedRoom) {
           cacheRoom(normalizedRoom)
           setCurrentRoom(normalizedRoom)
-          setRoomPlayers(roomPlayers)
+          setRoomPlayers(stampPartyLeaders(roomPlayers, normalizedRoom.roomId))
           setRoomEnemies(Array.isArray(roomData.room?.enemies) ? roomData.room.enemies : [])
         }
 
@@ -1850,6 +1896,9 @@ export default function GameInterface() {
           setRoomPlayers([...currentRoomPlayers, ...newGhosts])
         }
       }
+      if (Array.isArray(payload?.roomPartyState) && payload?.player?.currentRoom) {
+        applyRoomPartyState(payload.player.currentRoom, payload.roomPartyState)
+      }
     })
 
     const cleanupInventoryUpdate = socketHandlers.onInventoryUpdate((payload) => {
@@ -2413,6 +2462,12 @@ export default function GameInterface() {
         return
       }
 
+      // Keep the live-roster cache in sync so a REST reload before the next
+      // room:party-state broadcast doesn't prune this just-arrived player.
+      if (roomPartyLeadersRef.current.roomId === activeRoom.roomId) {
+        roomPartyLeadersRef.current.leaders[playerInfo.id] = playerInfo.partyLeaderId ?? null
+      }
+
       const currentRoomPlayers = useGameStore.getState().roomPlayers
       const existingIndex = currentRoomPlayers.findIndex((playerItem) => playerItem.id === playerInfo.id)
       if (existingIndex === -1) {
@@ -2587,14 +2642,22 @@ export default function GameInterface() {
       })
     })
 
+    // Live party groupings for everyone in the room (including parties we're not in).
+    const cleanupRoomPartyState = socketHandlers.onRoomPartyState((payload) => {
+      const activeRoom = currentRoomRef.current
+      if (!activeRoom || payload.roomId !== activeRoom.roomId) return
+      applyRoomPartyState(payload.roomId, payload.members)
+    })
+
     return () => {
       cleanupUpdated()
       cleanupDisbanded()
       cleanupRemoved()
       cleanupError()
       cleanupPulled()
+      cleanupRoomPartyState()
     }
-  }, [socket, socketHandlers, setParty, clearParty, appendWorldFeed, setPlayer])
+  }, [socket, socketHandlers, setParty, clearParty, appendWorldFeed, setPlayer, applyRoomPartyState])
 
   useEffect(() => {
     console.log('[GameInterface] Socket state:', {
@@ -3096,9 +3159,12 @@ export default function GameInterface() {
                 party={party}
                 roomPlayers={roomPlayers}
                 currentPlayerId={player.id}
+                currentPlayer={player}
                 onFollow={handleFollowPlayer}
                 onLeave={handleLeaveParty}
                 onRemove={handleRemovePartyMember}
+                onInspect={(p) => handleOpenPlayerProfile(p as Player)}
+                onMessage={handleProfileMessage}
               />
               <RoomBox
                 room={currentRoom}
