@@ -41,6 +41,7 @@ import MapPanel from './game-interface/panels/MapPanel'
 import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
 import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/PlayersPanel'
+import PartyPanel from './game-interface/panels/PartyPanel'
 import QuestCompleteRewards, { type QuestCompleteData } from './QuestCompleteRewards'
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
@@ -75,6 +76,9 @@ export default function GameInterface() {
     clearBattle,
     setBattleResult,
     clearBattleResult,
+    party,
+    setParty,
+    clearParty,
   } = useGameStore()
   const { updateRoomItems } = useGameStore()
   const equippedWeapon = inventory.find(item => item.isEquipped && item.slot === 'MAIN_HAND')
@@ -164,6 +168,16 @@ export default function GameInterface() {
   const [roomEnemies, setRoomEnemies] = useState<RoomEnemy[]>([])
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
+  const isPartyMember = !!party && !!player && party.leaderId !== player.id
+  const handleFollowPlayer = useCallback((targetId: string) => {
+    socketHandlers.followPlayer(targetId)
+  }, [socketHandlers])
+  const handleLeaveParty = useCallback(() => {
+    socketHandlers.leaveParty()
+  }, [socketHandlers])
+  const handleRemovePartyMember = useCallback((memberId: string) => {
+    socketHandlers.removePartyMember(memberId)
+  }, [socketHandlers])
   const lastLoginSocketId = useRef<string | null>(null)
   const playerRef = useRef(player)
   const currentRoomRef = useRef(currentRoom)
@@ -2509,6 +2523,79 @@ export default function GameInterface() {
     }
   }, [socket, socketHandlers, appendWorldFeed])
 
+  // Party events
+  useEffect(() => {
+    if (!socket) return
+
+    const cleanupUpdated = socketHandlers.onPartyUpdated((payload) => {
+      setParty(payload)
+    })
+
+    const cleanupDisbanded = socketHandlers.onPartyDisbanded(() => {
+      clearParty()
+    })
+
+    const cleanupRemoved = socketHandlers.onPartyRemoved(() => {
+      clearParty()
+      appendWorldFeed({
+        type: 'room',
+        isSelf: true,
+        eventType: 'party',
+        outcome: 'info',
+        message: 'You were removed from the party.',
+        ts: Date.now(),
+      })
+    })
+
+    const cleanupError = socketHandlers.onPartyError((payload) => {
+      appendWorldFeed({
+        type: 'room',
+        isSelf: true,
+        eventType: 'party',
+        outcome: 'failure',
+        message: payload.message,
+        ts: Date.now(),
+      })
+    })
+
+    // Leader pulled us to a new room — we didn't initiate this move, so apply it
+    // authoritatively (the normal move path is gated on a pending move we never set).
+    const cleanupPulled = socketHandlers.onPartyPulled((payload) => {
+      if (!payload?.toRoom) return
+      pendingMoveRef.current = null
+      enteredViaCacheRoomIdRef.current = null
+      setIsMoveInProgress(false)
+
+      const currentPlayer = playerRef.current
+      if (currentPlayer && currentPlayer.currentRoom !== payload.toRoom) {
+        setPlayer({ ...currentPlayer, currentRoom: payload.toRoom })
+      }
+
+      loadRoomDataRef.current?.({
+        isTransition: true,
+        travel: { toRoomId: payload.toRoom },
+        roomData: payload.roomData,
+      })
+
+      appendWorldFeed({
+        type: 'room',
+        isSelf: true,
+        eventType: 'party',
+        outcome: 'info',
+        message: payload.toRoomName ? `Your party travels to ${payload.toRoomName}.` : 'Your party travels together.',
+        ts: Date.now(),
+      })
+    })
+
+    return () => {
+      cleanupUpdated()
+      cleanupDisbanded()
+      cleanupRemoved()
+      cleanupError()
+      cleanupPulled()
+    }
+  }, [socket, socketHandlers, setParty, clearParty, appendWorldFeed, setPlayer])
+
   useEffect(() => {
     console.log('[GameInterface] Socket state:', {
       socket: !!socket,
@@ -2662,8 +2749,19 @@ export default function GameInterface() {
   }, [])
 
   const handleOpenTeleport = useCallback(() => {
+    if (isPartyMember) {
+      appendWorldFeed({
+        type: 'room',
+        isSelf: true,
+        eventType: 'party',
+        outcome: 'info',
+        message: 'You are following your party. Leave the party to move freely.',
+        ts: Date.now(),
+      })
+      return
+    }
     setIsTeleportModalOpen(true)
-  }, [])
+  }, [isPartyMember, appendWorldFeed])
 
   const handleTeleport = useCallback((roomId: string) => {
     handleAction({ type: 'teleport', data: { toRoomId: roomId } })
@@ -2994,11 +3092,20 @@ export default function GameInterface() {
                   />
                 </div>
               )}
+              <PartyPanel
+                party={party}
+                roomPlayers={roomPlayers}
+                currentPlayerId={player.id}
+                onFollow={handleFollowPlayer}
+                onLeave={handleLeaveParty}
+                onRemove={handleRemovePartyMember}
+              />
               <RoomBox
                 room={currentRoom}
                 roomPlayers={roomPlayers}
                 currentPlayerId={player.id}
                 onAction={handleAction}
+                isPartyMember={isPartyMember}
                 onOpenPlayerProfile={handleOpenPlayerProfile}
                 onRefreshCaps={() => {
                   if (currentRoom?.roomId) {

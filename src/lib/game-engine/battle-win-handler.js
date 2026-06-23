@@ -3,6 +3,7 @@ const { rand } = require('./battle-calculator')
 const { checkAndApplyLevelUp } = require('./services/leveling-service')
 const { grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
+const partyStore = require('../services/party-store')
 
 // Of this enemy's firstKill slugs, return the set the player already owns (equipped copies
 // included). firstKill items only drop for slugs NOT in this set, so a player who lost a piece
@@ -193,6 +194,9 @@ async function handleBattleDefeat(playerId, battleState) {
       multiplayerBonus: battleState.multiplayerBonusUsed,
     },
   })
+
+  // Death respawns the player to another room; they can't stay pinned to a party.
+  partyStore.onDeath(playerId)
 }
 
 module.exports = { calcBattleWinRewards, resolveDrops, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat }

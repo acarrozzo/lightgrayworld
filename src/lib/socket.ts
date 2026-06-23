@@ -136,6 +136,33 @@ export interface LevelUpPayload {
   mpGained: number
 }
 
+export interface PartyMemberInfo {
+  id: string
+  username: string
+  level: number
+  uIcon?: string | null
+  uIconColor?: string | null
+}
+
+export interface PartySnapshot {
+  leaderId: string
+  leader: PartyMemberInfo
+  members: PartyMemberInfo[]
+  size: number
+  maxSize: number
+}
+
+export interface PartyErrorPayload {
+  message: string
+}
+
+export interface PartyPulledPayload {
+  fromRoom?: string
+  toRoom: string
+  toRoomName?: string
+  roomData?: Record<string, any>
+}
+
 export interface SocketEvents {
   // Client to server events
   'player-login': (data: Record<string, never>) => void
@@ -143,6 +170,9 @@ export interface SocketEvents {
   'send-room-chat-message': (data: { message: string; roomId: string }) => void
   'game-action': (data: { action: string }) => void
   'user:logout': () => void
+  'party:follow': (data: { targetId: string }) => void
+  'party:leave': () => void
+  'party:remove': (data: { memberId: string }) => void
 
   // Server to client events
   'player-joined': (player: PlayerInfo) => void
@@ -163,6 +193,11 @@ export interface SocketEvents {
   'battle:defeat': (payload: BattleDefeatPayload) => void
   'battle:fled': (payload: BattleFledPayload) => void
   'player:level-up': (payload: LevelUpPayload) => void
+  'party:updated': (payload: PartySnapshot) => void
+  'party:disbanded': (payload: Record<string, never>) => void
+  'party:removed': (payload: Record<string, never>) => void
+  'party:error': (payload: PartyErrorPayload) => void
+  'party:pulled': (payload: PartyPulledPayload) => void
 }
 
 export interface PlayerInfo {
@@ -276,8 +311,16 @@ export const SOCKET_EVENTS = {
   SEND_ROOM_CHAT_MESSAGE: 'send-room-chat-message',
   GAME_ACTION: 'game-action',
   USER_LOGOUT: 'user:logout',
-  
+  PARTY_FOLLOW: 'party:follow',
+  PARTY_LEAVE: 'party:leave',
+  PARTY_REMOVE: 'party:remove',
+
   // Server to client
+  PARTY_UPDATED: 'party:updated',
+  PARTY_DISBANDED: 'party:disbanded',
+  PARTY_REMOVED: 'party:removed',
+  PARTY_ERROR: 'party:error',
+  PARTY_PULLED: 'party:pulled',
   PLAYER_JOINED: 'player-joined',
   PLAYER_LEFT: 'player-left',
   CHAT_MESSAGE: 'chat-message',

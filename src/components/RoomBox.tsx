@@ -166,6 +166,7 @@ interface RoomBoxProps {
   currentAction?: string
   roomEnemies?: RoomEnemy[]
   isInBattle?: boolean
+  isPartyMember?: boolean
   quests?: Array<{ id: string; questId: string; progress: number; completed: boolean }>
   killList?: { monster: string; kills: number }[]
 }
@@ -183,6 +184,7 @@ export default function RoomBox({
   currentAction = '',
   roomEnemies = [],
   isInBattle = false,
+  isPartyMember = false,
   quests = [],
   killList = [],
 }: RoomBoxProps) {
@@ -208,7 +210,7 @@ export default function RoomBox({
   )
 
   const handleDirection = (dir: DirectionKey) => {
-    if (!onAction) return
+    if (!onAction || isPartyMember) return
     onAction(dir)
   }
 
@@ -288,16 +290,23 @@ export default function RoomBox({
 
       {/* Direction Buttons */}
       {availableDirections.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {availableDirections.map((dir) => (
-            <button
-              key={dir}
-              onClick={() => handleDirection(dir)}
-              className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 text-white rounded-lg text-sm transition-all duration-200"
-            >
-              {dir.charAt(0).toUpperCase() + dir.slice(1)}
-            </button>
-          ))}
+        <div className="space-y-1">
+          <div className="flex flex-wrap gap-2">
+            {availableDirections.map((dir) => (
+              <button
+                key={dir}
+                onClick={() => handleDirection(dir)}
+                disabled={isPartyMember}
+                title={isPartyMember ? 'Following your party — leave to move freely' : undefined}
+                className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-all duration-200"
+              >
+                {dir.charAt(0).toUpperCase() + dir.slice(1)}
+              </button>
+            ))}
+          </div>
+          {isPartyMember && (
+            <p className="text-[11px] text-blue-400/70">Following your party — leave to move freely.</p>
+          )}
         </div>
       )}
 

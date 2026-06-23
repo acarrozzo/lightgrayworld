@@ -338,7 +338,7 @@ export default function BattlePanel({
 
   if (!battle.isInBattle) return null
 
-  const turnsUntilFlee = Math.max(0, 10 - battle.turnCount)
+  const turnsUntilFlee = Math.max(0, 3 - battle.turnCount)
   const hasEnemyFormula = battle.enemyRaw !== null
   const enemyIsDead = battle.enemyCurrentHp <= 0
 
@@ -590,10 +590,10 @@ export default function BattlePanel({
             <button
               onClick={onFlee}
               disabled={isActing || !battle.canFlee}
-              title={battle.canFlee ? 'Flee from battle' : `Flee available in ${turnsUntilFlee} turn${turnsUntilFlee !== 1 ? 's' : ''}`}
+              title={battle.canFlee ? 'Retreat from battle' : `Retreat available in ${turnsUntilFlee} turn${turnsUntilFlee !== 1 ? 's' : ''}`}
               className="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 py-0.5 underline underline-offset-2"
             >
-              {battle.canFlee ? 'Flee' : `Flee (${turnsUntilFlee} turns)`}
+              {battle.canFlee ? 'Retreat' : `Retreat (${turnsUntilFlee} turns)`}
             </button>
           </div>
         )}

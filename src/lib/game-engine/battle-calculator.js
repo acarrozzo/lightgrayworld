@@ -5,13 +5,24 @@ function rand(a, b) {
   return Math.floor(Math.random() * (hi - lo + 1)) + lo
 }
 
-// Count other players in the same room who also have an active battle
+const partyStore = require('../services/party-store')
+
+// Count other players in the same room who either have an active battle OR are in
+// the player's party (party members are pinned to the same room, so presence counts).
 function getOtherCombatantCount(roomState, excludePlayerId) {
-  let count = 0
+  const counted = new Set()
   for (const [pid, battle] of roomState.activeBattles.entries()) {
-    if (pid !== excludePlayerId && battle.isActive) count++
+    if (pid !== excludePlayerId && battle.isActive) counted.add(pid)
   }
-  return count
+
+  const party = partyStore.getParty(excludePlayerId)
+  if (party && roomState.players) {
+    for (const pid of party.memberIds) {
+      if (pid !== excludePlayerId && roomState.players.has(pid)) counted.add(pid)
+    }
+  }
+
+  return counted.size
 }
 
 function pickPlayerOffensiveStat(battleState) {
@@ -46,8 +57,8 @@ function resolvePlayerAttack(battleState, otherCombatants) {
   }
 
   // Negative STR rolls negative — it can't heal the enemy, so playerFinal floors at 0 below
-  const playerRaw = rand(Math.floor(effectiveOff * 0.5), effectiveOff)
-  const enemyBlock = rand(Math.floor(enemy.def * 0.5), enemy.def)
+  const playerRaw = rand(0, effectiveOff)
+  const enemyBlock = rand(0, enemy.def)
   return {
     playerRaw,
     enemyBlock,
@@ -66,9 +77,9 @@ function resolveEnemyAttack(battleState, otherCombatants) {
   // True effective stat — may be negative when mods outweigh the base stat
   const effectiveDef = Math.floor(defStat * bonus)
 
-  const enemyRaw = rand(Math.floor(enemy.att * 0.5), enemy.att)
+  const enemyRaw = rand(0, enemy.att)
   // Negative DEF rolls negative, so enemyRaw - playerBlock grows — you take extra damage
-  const playerBlock = rand(Math.floor(effectiveDef * 0.5), effectiveDef)
+  const playerBlock = rand(0, effectiveDef)
   return {
     enemyRaw,
     playerBlock,

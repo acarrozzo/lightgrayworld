@@ -9,8 +9,16 @@ const SOCKET_EVENTS = {
   SEND_CHAT_MESSAGE: 'send-chat-message',
   SEND_ROOM_CHAT_MESSAGE: 'send-room-chat-message',
   GAME_ACTION: 'game-action',
-  
+  PARTY_FOLLOW: 'party:follow',
+  PARTY_LEAVE: 'party:leave',
+  PARTY_REMOVE: 'party:remove',
+
   // Server to client
+  PARTY_UPDATED: 'party:updated',
+  PARTY_DISBANDED: 'party:disbanded',
+  PARTY_REMOVED: 'party:removed',
+  PARTY_ERROR: 'party:error',
+  PARTY_PULLED: 'party:pulled',
   PLAYER_JOINED: 'player-joined',
   PLAYER_LEFT: 'player-left',
   CHAT_MESSAGE: 'chat-message',

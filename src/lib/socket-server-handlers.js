@@ -1,5 +1,7 @@
 // Shared socket handling logic for server.js and socket-server.js
-const { SOCKET_EVENTS } = require('./socket-utils.js')
+const { SOCKET_EVENTS, getSocketIdsForUser } = require('./socket-utils.js')
+const partyStore = require('./services/party-store.js')
+const { checkRoomGate } = require('./game-engine/room-gates.js')
 const { getPlayerInventory } = require('./game-engine/services/inventory-service.js')
 const {
   ROOM_ITEMS_SELECT,
@@ -358,6 +360,107 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
   idleDetectionService.start()
   const lastActivityPersistedAt = new Map()
 
+  // Find an online player's live state by user id (activePlayers is keyed by socket id).
+  const findActivePlayerById = (playerId) => {
+    for (const p of activePlayers.values()) {
+      if (p.id === playerId) return p
+    }
+    return null
+  }
+
+  const toPartyInfo = (p) => ({
+    id: p.id,
+    username: p.username,
+    level: p.level ?? 1,
+    uIcon: p.uIcon ?? null,
+    uIconColor: p.uIconColor ?? null,
+  })
+
+  // After a party leader travels, pull every same-room member into the destination.
+  // Members are pinned to the leader, so this is the only way they move.
+  const pullPartyMembers = async ({
+    leaderId,
+    fromRoom,
+    toRoom,
+    toRoomName,
+    normalizedRoomData,
+    direction,
+    exitDirection,
+    entryDirection,
+    isTeleport,
+  }) => {
+    const memberIds = partyStore.getLeaderMemberIds(leaderId)
+    if (!memberIds.length) return
+
+    for (const memberId of memberIds) {
+      const memberPlayer = findActivePlayerById(memberId)
+      if (!memberPlayer) continue // offline (should already be detached)
+      if (memberPlayer.currentRoom !== fromRoom) continue // not co-located
+      if ((memberPlayer.hp ?? 0) <= 0) continue // dead — being respawned/dropped
+
+      try {
+        const result = await gameEngine.processUserAction({
+          playerId: memberId,
+          roomId: fromRoom,
+          action: {
+            type: 'move',
+            data: { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData, direction, directionValidated: true },
+          },
+        })
+        if (!result || result.success !== true) continue
+
+        for (const sid of getSocketIdsForUser(memberId)) {
+          const memberSocket = io.sockets.sockets.get(sid)
+          if (!memberSocket) continue
+          const memberTransition = createTransitionPlayerRoom(prisma, memberSocket, activePlayers, roomPlayers)
+          await memberTransition({ player: memberPlayer, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
+          // Dedicated event: the member didn't initiate this move, so the normal
+          // action:confirmed/feedback path (which requires a pending move) would ignore it.
+          memberSocket.emit(SOCKET_EVENTS.PARTY_PULLED, {
+            fromRoom,
+            toRoom,
+            toRoomName,
+            roomData: normalizedRoomData,
+          })
+          await maybeStartAutoBattle({ socket: memberSocket, player: memberPlayer, toRoom, gameEngine })
+        }
+      } catch (err) {
+        console.error(`[Party] Failed to pull member ${memberId} from ${fromRoom} to ${toRoom}:`, err)
+      }
+    }
+  }
+
+  // True if any same-room member of this leader's party is locked in battle.
+  const partyMemberInBattle = (leaderId, roomId) => {
+    const memberIds = partyStore.getLeaderMemberIds(leaderId)
+    if (!memberIds.length) return false
+    const roomState = gameEngine.getOrCreateRoom(roomId)
+    for (const memberId of memberIds) {
+      const battle = roomState.activeBattles.get(memberId)
+      if (battle && battle.isActive) return true
+    }
+    return false
+  }
+
+  // If a same-room member can't pass the gate the leader is using, return who/why.
+  // Gates are per-player (weapon/quest/level/wings/lever/reveal), so a member may fail
+  // a gate the leader passed. Only directional moves have gates (teleport bypasses them).
+  const partyMemberGateBlocked = async (leaderId, fromRoom, direction) => {
+    if (!direction) return null
+    const memberIds = partyStore.getLeaderMemberIds(leaderId)
+    if (!memberIds.length) return null
+    for (const memberId of memberIds) {
+      const memberPlayer = findActivePlayerById(memberId)
+      if (!memberPlayer || memberPlayer.currentRoom !== fromRoom) continue
+      if ((memberPlayer.hp ?? 0) <= 0) continue
+      const gateResult = await checkRoomGate(fromRoom, direction, memberId)
+      if (gateResult && !gateResult.allowed) {
+        return { memberName: memberPlayer.username, message: gateResult.gate?.message || 'cannot pass this way.' }
+      }
+    }
+    return null
+  }
+
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id)
     console.log('[Server] Listening for player login event:', SOCKET_EVENTS.PLAYER_LOGIN)
@@ -552,6 +655,16 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
       touchPlayerActivity(player)
 
+      // Party members are pinned to their leader — they can't travel on their own.
+      if (partyStore.isMember(player.id)) {
+        emitActionFeedback(socket, {
+          action: 'move',
+          message: 'You are following your party. Leave the party to move freely.',
+          outcome: 'failure',
+        })
+        return
+      }
+
       const fromRoom = data?.fromRoom || player.currentRoom
       const toRoom = data?.toRoom
 
@@ -562,6 +675,16 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         emitActionFeedback(socket, {
           action: 'move',
           message: 'Destination room missing',
+          outcome: 'failure',
+        })
+        return
+      }
+
+      // A leader can't travel while any same-room party member is still in battle.
+      if (partyStore.isLeader(player.id) && partyMemberInBattle(player.id, fromRoom)) {
+        emitActionFeedback(socket, {
+          action: 'move',
+          message: 'You cannot travel while a party member is in battle.',
           outcome: 'failure',
         })
         return
@@ -619,6 +742,19 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // Calculate directions for entry/exit notifications
         const exitDirection = sourceRoom ? findDirectionKey(sourceRoom, toRoom) : null
         const entryDirection = destinationRoom ? findDirectionKey(destinationRoom, fromRoom) : null
+
+        // A leader can't travel through a gate a party member can't pass — keep the party together.
+        if (partyStore.isLeader(player.id)) {
+          const gateBlock = await partyMemberGateBlocked(player.id, fromRoom, direction)
+          if (gateBlock) {
+            emitActionFeedback(socket, {
+              action: 'move',
+              message: `Your party can't go that way — ${gateBlock.memberName}: ${gateBlock.message}`,
+              outcome: 'failure',
+            })
+            return
+          }
+        }
 
         console.log(`[Socket] Calling gameEngine.processUserAction for ${player.username}`)
         const result = await gameEngine.processUserAction({
@@ -704,6 +840,21 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           })
 
           await maybeStartAutoBattle({ socket, player, toRoom, gameEngine })
+
+          // Pull any party members along with the leader.
+          if (partyStore.isLeader(player.id)) {
+            await pullPartyMembers({
+              leaderId: player.id,
+              fromRoom,
+              toRoom,
+              toRoomName,
+              normalizedRoomData,
+              direction,
+              exitDirection,
+              entryDirection,
+              isTeleport,
+            })
+          }
         } else {
           console.log(`[Socket] Movement failed or blocked, not transitioning player room`)
           // The action:feedback event will be emitted by the engine with the error/modal
@@ -899,6 +1050,15 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
       try {
         if (actionType === 'teleport') {
+          if (partyStore.isMember(player.id)) {
+            emitActionFeedback(socket, {
+              action: 'teleport',
+              message: 'You are following your party. Leave the party to move freely.',
+              outcome: 'failure',
+            })
+            return
+          }
+
           const toRoomId = actionData?.toRoomId
           if (!toRoomId) {
             emitActionFeedback(socket, { action: 'teleport', message: 'No destination specified', outcome: 'failure' })
@@ -906,6 +1066,15 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
 
           const fromRoom = player.currentRoom
+
+          if (partyStore.isLeader(player.id) && partyMemberInBattle(player.id, fromRoom)) {
+            emitActionFeedback(socket, {
+              action: 'teleport',
+              message: 'You cannot travel while a party member is in battle.',
+              outcome: 'failure',
+            })
+            return
+          }
           const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service')
           await ensureAutoRespawnItems(toRoomId)
 
@@ -954,6 +1123,20 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             })
 
             await maybeStartAutoBattle({ socket, player, toRoom: toRoomId, gameEngine })
+
+            if (partyStore.isLeader(player.id)) {
+              await pullPartyMembers({
+                leaderId: player.id,
+                fromRoom,
+                toRoom: toRoomId,
+                toRoomName: destinationRoom.name,
+                normalizedRoomData,
+                direction: null,
+                exitDirection: null,
+                entryDirection: null,
+                isTeleport: true,
+              })
+            }
           } else {
             emitActionFeedback(socket, { action: 'teleport', message: result?.message || 'Teleport failed', outcome: 'failure' })
           }
@@ -992,6 +1175,56 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       }
     })
 
+    // ─── Party events ──────────────────────────────────────────────────────
+    const emitPartyError = (message) => {
+      socket.emit(SOCKET_EVENTS.PARTY_ERROR, { message })
+    }
+
+    // Follow another player in the same room (joins their party as a member).
+    socket.on(SOCKET_EVENTS.PARTY_FOLLOW, (data = {}) => {
+      const player = activePlayers.get(socket.id)
+      if (!player) return
+      touchPlayerActivity(player)
+
+      const targetId = data?.targetId
+      if (!targetId || targetId === player.id) {
+        emitPartyError('Invalid target.')
+        return
+      }
+
+      const target = findActivePlayerById(targetId)
+      if (!target) {
+        emitPartyError('That player is not available.')
+        return
+      }
+      if (target.currentRoom !== player.currentRoom) {
+        emitPartyError('You must be in the same room to follow someone.')
+        return
+      }
+
+      const res = partyStore.follow(toPartyInfo(player), toPartyInfo(target))
+      if (!res.ok) emitPartyError(res.error)
+    })
+
+    // Leave your current party (or disband it if you're the leader).
+    socket.on(SOCKET_EVENTS.PARTY_LEAVE, () => {
+      const player = activePlayers.get(socket.id)
+      if (!player) return
+      touchPlayerActivity(player)
+      partyStore.leave(player.id)
+    })
+
+    // Leader removes a member.
+    socket.on(SOCKET_EVENTS.PARTY_REMOVE, (data = {}) => {
+      const player = activePlayers.get(socket.id)
+      if (!player) return
+      touchPlayerActivity(player)
+      const memberId = data?.memberId
+      if (!memberId) return
+      const res = partyStore.remove(player.id, memberId)
+      if (!res.ok) emitPartyError(res.error)
+    })
+
     // Handle explicit logout
     socket.on(SOCKET_EVENTS.USER_LOGOUT, async () => {
       const player = activePlayers.get(socket.id)
@@ -1018,6 +1251,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         eventType: 'logout',
       })
 
+      partyStore.onDisconnect(player.id)
+
       socket.emit('auth:logout', { success: true })
       const socketSet = userIdToSocketIds.get(player.id)
       if (socketSet) {
@@ -1038,6 +1273,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           console.log(`[Socket] Cleared action queue for player ${player.username}`)
         }
         gameEngine.unregisterPlayer(player.id, player.currentRoom)
+
+        // Drop from any party (disbands it if they were leading).
+        partyStore.onDisconnect(player.id)
 
         addGhost(player.currentRoom, player, 'disconnected')
 

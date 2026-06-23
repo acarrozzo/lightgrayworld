@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { RoomView, RoomItemView } from '@/lib/types/room'
 import { EquipSlot, WeaponCategory } from '@prisma/client'
+import { PartySnapshot } from '@/lib/socket'
 
 export interface Player {
   id: string
@@ -204,6 +205,9 @@ export interface GameState {
   // Battle state
   battle: BattleState
 
+  // Party state (ephemeral; null when not in a party)
+  party: PartySnapshot | null
+
   // Post-battle result (shown after battle ends, null when dismissed)
   battleResult: BattleResult | null
 
@@ -236,6 +240,8 @@ export interface GameState {
   clearBattle: () => void
   setBattleResult: (result: BattleResult) => void
   clearBattleResult: () => void
+  setParty: (party: PartySnapshot | null) => void
+  clearParty: () => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -253,6 +259,7 @@ export const useGameStore = create<GameState>()(
       roomFactSeq: {},
       capCache: {},
       battle: { ...INITIAL_BATTLE_STATE },
+      party: null,
       battleResult: null,
       isLoading: false,
       error: null,
@@ -311,6 +318,7 @@ export const useGameStore = create<GameState>()(
         roomCache: {},
         capCache: {},
         battle: { ...INITIAL_BATTLE_STATE },
+        party: null,
         battleResult: null,
         error: null
       }),
@@ -434,6 +442,10 @@ export const useGameStore = create<GameState>()(
       setBattleResult: (result) => set({ battleResult: result }),
 
       clearBattleResult: () => set({ battleResult: null }),
+
+      setParty: (party) => set({ party }),
+
+      clearParty: () => set({ party: null }),
 
       clearCapCache: (roomId) => {
         if (roomId) {

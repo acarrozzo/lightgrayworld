@@ -662,8 +662,8 @@ async function executePlayerFlee(action, playerId, roomState) {
   }
 
   if (!battleState.canFlee) {
-    const turnsLeft = 10 - battleState.turnCount
-    return errorResult('player_flee', `You cannot flee yet. Fight for ${turnsLeft} more turn${turnsLeft !== 1 ? 's' : ''}.`)
+    const turnsLeft = 3 - battleState.turnCount
+    return errorResult('player_flee', `You cannot retreat yet. Fight for ${turnsLeft} more turn${turnsLeft !== 1 ? 's' : ''}.`)
   }
 
   battleState.end()

@@ -39,7 +39,7 @@ class BattleState {
 
   incrementTurn() {
     this.turnCount++
-    if (this.turnCount >= 10) this.canFlee = true
+    if (this.turnCount >= 3) this.canFlee = true
   }
 
   recordTurn(playerDealt, enemyDealt, hadMultiplayerBonus, fullTurnResult = null) {

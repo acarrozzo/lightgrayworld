@@ -16,6 +16,9 @@ import {
   BattleDefeatPayload,
   BattleFledPayload,
   LevelUpPayload,
+  PartySnapshot,
+  PartyErrorPayload,
+  PartyPulledPayload,
 } from './socket'
 
 // Centralized socket event handlers to reduce duplication
@@ -194,6 +197,39 @@ export class SocketEventHandlers {
 
   onPlayerReturned(handler: (payload: { id: string; username: string; roomId: string }) => void): () => void {
     return this.on(SOCKET_EVENTS.PLAYER_RETURNED, handler)
+  }
+
+  // ─── Party ───────────────────────────────────────────────────────────────
+  followPlayer(targetId: string): boolean {
+    return this.emit(SOCKET_EVENTS.PARTY_FOLLOW, { targetId })
+  }
+
+  leaveParty(): boolean {
+    return this.emit(SOCKET_EVENTS.PARTY_LEAVE, {})
+  }
+
+  removePartyMember(memberId: string): boolean {
+    return this.emit(SOCKET_EVENTS.PARTY_REMOVE, { memberId })
+  }
+
+  onPartyUpdated(handler: (payload: PartySnapshot) => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_UPDATED, handler)
+  }
+
+  onPartyDisbanded(handler: () => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_DISBANDED, handler)
+  }
+
+  onPartyRemoved(handler: () => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_REMOVED, handler)
+  }
+
+  onPartyError(handler: (payload: PartyErrorPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_ERROR, handler)
+  }
+
+  onPartyPulled(handler: (payload: PartyPulledPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_PULLED, handler)
   }
 
   // Cleanup all listeners
