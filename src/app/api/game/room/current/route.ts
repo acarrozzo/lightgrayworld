@@ -141,6 +141,14 @@ export async function GET(request: NextRequest) {
       isActive: boolean
       uIcon: string | null
       uIconColor: string | null
+      str: number
+      dex: number
+      mag: number
+      def: number
+      strMod: number
+      dexMod: number
+      magMod: number
+      defMod: number
     }> = []
 
     if (user) {
@@ -159,8 +167,17 @@ export async function GET(request: NextRequest) {
           mpMax: true,
           currentRoom: true,
           isActive: true,
+          inFight: true,
           uIcon: true,
           uIconColor: true,
+          str: true,
+          dex: true,
+          mag: true,
+          def: true,
+          strMod: true,
+          dexMod: true,
+          magMod: true,
+          defMod: true,
         },
       })
     }

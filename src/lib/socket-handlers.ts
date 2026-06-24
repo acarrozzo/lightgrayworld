@@ -200,6 +200,25 @@ export class SocketEventHandlers {
     return this.on(SOCKET_EVENTS.PLAYER_RETURNED, handler)
   }
 
+  onPlayerBattleStatus(
+    handler: (payload: { id: string; roomId: string; inBattle: boolean }) => void
+  ): () => void {
+    return this.on(SOCKET_EVENTS.PLAYER_BATTLE_STATUS, handler)
+  }
+
+  onPlayerVitals(
+    handler: (payload: {
+      id: string
+      roomId: string
+      hp?: number
+      hpMax?: number
+      mp?: number
+      mpMax?: number
+    }) => void
+  ): () => void {
+    return this.on(SOCKET_EVENTS.PLAYER_VITALS, handler)
+  }
+
   // ─── Party ───────────────────────────────────────────────────────────────
   followPlayer(targetId: string): boolean {
     return this.emit(SOCKET_EVENTS.PARTY_FOLLOW, { targetId })

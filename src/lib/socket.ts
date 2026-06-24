@@ -213,6 +213,14 @@ export interface PlayerInfo {
   isActive: boolean
   uIcon?: string | null
   uIconColor?: string | null
+  str?: number | null
+  dex?: number | null
+  mag?: number | null
+  def?: number | null
+  strMod?: number | null
+  dexMod?: number | null
+  magMod?: number | null
+  defMod?: number | null
   partyLeaderId?: string | null
   entryDirection?: string | null
   isTeleport?: boolean
@@ -349,6 +357,8 @@ export const SOCKET_EVENTS = {
   PLAYER_CLICKS_UPDATE: 'player:clicks-update',
   PLAYER_IDLE: 'player-idle',
   PLAYER_RETURNED: 'player-returned',
+  PLAYER_BATTLE_STATUS: 'player-battle-status',
+  PLAYER_VITALS: 'player-vitals',
   ROOM_PARTY_STATE: 'room:party-state',
 } as const
 

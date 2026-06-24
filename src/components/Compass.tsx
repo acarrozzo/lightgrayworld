@@ -369,7 +369,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
 
             const isDisabled = isNavigating || isMoveInProgress
             const showSpinner = isMoveInProgress && isAvailable
-            
+
             return (
               <button
                 key={dir.key}
@@ -401,7 +401,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
 
             const isDisabled = isNavigating || isMoveInProgress
             const showSpinner = isMoveInProgress && isAvailable
-            
+
             return (
               <button
                 key={dir.key}

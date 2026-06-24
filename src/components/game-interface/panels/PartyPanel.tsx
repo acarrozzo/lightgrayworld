@@ -85,6 +85,35 @@ function MiniBars({ stats }: { stats?: Player }) {
   )
 }
 
+// Effective stat = base allocation + equipment modifier (matches combat's baseStr).
+function effective(base?: number | null, mod?: number | null): number | undefined {
+  if (base == null && mod == null) return undefined
+  return (base ?? 0) + (mod ?? 0)
+}
+
+function CoreStats({ stats }: { stats?: Player }) {
+  if (!stats) return null
+  // The four core stats may be absent on stale/ghost snapshots; skip rendering then.
+  // Value colors match the core-stat palette used in CharPanel.
+  const entries: { label: string; value?: number; color: string }[] = [
+    { label: 'STR', value: effective(stats.str, stats.strMod), color: 'text-red-400' },
+    { label: 'DEX', value: effective(stats.dex, stats.dexMod), color: 'text-emerald-400' },
+    { label: 'MAG', value: effective(stats.mag, stats.magMod), color: 'text-sky-400' },
+    { label: 'DEF', value: effective(stats.def, stats.defMod), color: 'text-amber-400' },
+  ]
+  if (entries.every((e) => e.value == null)) return null
+  return (
+    <div className="mt-0.5 flex items-center gap-2">
+      {entries.map((e) => (
+        <span key={e.label} className="flex items-center gap-0.5 text-[9px] tabular-nums">
+          <span className="text-gray-500 uppercase tracking-wide">{e.label}</span>
+          <span className={e.color}>{e.value ?? '–'}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function ActionButton({
   label,
   onClick,
@@ -124,6 +153,10 @@ function PlayerStatRow({
   // Disconnected players read as faded; idle players keep full opacity (tag only).
   const dimmed = row.stats?.presenceStatus === 'disconnected'
   const highlightName = row.role === 'leader' || row.isLeader || row.isSelf
+  // A player who belongs to a party but doesn't lead it: you can only follow the
+  // leader, so suppress the Follow button on non-leader members.
+  const isPartyMemberNotLeader =
+    !!row.stats?.partyLeaderId && row.stats.partyLeaderId !== row.id
 
   return (
     <div className={`flex items-center gap-2 px-1.5 py-1 ${dimmed ? 'opacity-50' : ''}`}>
@@ -131,19 +164,37 @@ function PlayerStatRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          {(row.role === 'leader' || row.isLeader) && (
-            <span className="text-[10px] text-yellow-400" title="Party leader">★</span>
-          )}
           <span className={`truncate text-xs ${highlightName ? 'text-gray-200 font-medium' : 'text-gray-300'}`}>
             {row.username}
           </span>
           <span className="text-[10px] text-gray-500">Lv{row.level}</span>
-          {row.isSelf && <span className="text-[9px] text-blue-400/80">you</span>}
+          {row.isSelf && (
+            <span className="rounded-sm border border-blue-400/60 bg-blue-500/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-blue-200">
+              You
+            </span>
+          )}
+          {(row.role === 'leader' || row.isLeader) && (
+            <span
+              className="rounded-sm border border-yellow-400/50 bg-yellow-400/15 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-yellow-300"
+              title="Party leader"
+            >
+              Leader
+            </span>
+          )}
+          {row.stats?.inBattle && (
+            <span
+              className="rounded-sm border border-red-400/60 bg-red-500/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-red-200"
+              title="Currently in battle"
+            >
+              In Battle
+            </span>
+          )}
           {row.stats?.presenceStatus === 'idle' && (
             <span className="text-[9px] text-yellow-600/80">idle</span>
           )}
         </div>
         <MiniBars stats={row.stats} />
+        <CoreStats stats={row.stats} />
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
@@ -167,7 +218,7 @@ function PlayerStatRow({
             onClick={() => onMessage({ id: row.id, username: row.username })}
           />
         )}
-        {!row.isSelf && row.role === 'here' && onFollow && (
+        {!row.isSelf && row.role === 'here' && onFollow && !isPartyMemberNotLeader && (
           <ActionButton label="Follow" variant="follow" onClick={() => onFollow(row.id)} />
         )}
         {row.role === 'member' && onRemove && (
@@ -255,7 +306,12 @@ export default function PartyPanel({
   const soloRows: RowData[] = []
   for (const [key, rows] of byLeader) {
     if (key.startsWith('party:') && rows.length >= 2) {
-      foreignParties.push({ leaderId: key.slice('party:'.length), rows })
+      const leaderId = key.slice('party:'.length)
+      // Always render the leader first within a foreign party group.
+      const ordered = [...rows].sort((a, b) =>
+        a.id === leaderId ? -1 : b.id === leaderId ? 1 : 0
+      )
+      foreignParties.push({ leaderId, rows: ordered })
     } else {
       soloRows.push(...rows)
     }
@@ -284,7 +340,7 @@ export default function PartyPanel({
   return (
     <div className="rounded-lg border border-blue-900/40 bg-blue-950/10 p-3 space-y-2">
       {inParty && party && (
-        <div className="rounded-md border border-blue-800/30 bg-blue-900/10 p-2 space-y-1.5">
+        <div className="rounded-md border border-blue-500/50 bg-blue-900/15 p-2 space-y-1.5 shadow-[0_0_0_1px_rgba(59,130,246,0.15)] ring-1 ring-blue-500/20">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-blue-300">
               Party <span className="text-[10px] text-gray-500">({party.size}/{party.maxSize})</span>

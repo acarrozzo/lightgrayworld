@@ -32,6 +32,8 @@ export interface Player {
   uIcon?: string
   uIconColor?: string
   presenceStatus?: 'active' | 'idle' | 'disconnected'
+  /** True while this player is in an active battle (mirrors the server `inFight` flag). */
+  inBattle?: boolean
   /** Leader id of the party this player belongs to (self if they lead); null/undefined = solo. */
   partyLeaderId?: string | null
   lastSeen?: number

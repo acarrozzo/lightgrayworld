@@ -211,6 +211,47 @@ class GameEngine {
         console.log(`[GameEngine] Emitting player event: ${event} to player ${playerId}`)
         this.emitToPlayer(playerId, event, payload)
       })
+
+      // Mirror battle lifecycle to the rest of the room so other players can show an
+      // "in battle" tag. A terminal event (victory/defeat/fled) wins over 'battle:started'
+      // for the 1-turn-kill case where both fire in the same result.
+      const events = result.playerEvents.map((e) => e.event)
+      const enteredBattle = events.includes('battle:started')
+      const leftBattle =
+        events.includes('battle:victory') ||
+        events.includes('battle:defeat') ||
+        events.includes('battle:fled')
+      if (enteredBattle || leftBattle) {
+        this.io
+          .to(`room-${roomId}`)
+          .emit('player-battle-status', { id: playerId, roomId, inBattle: enteredBattle && !leftBattle })
+      }
+
+      // Mirror the player's vitals to the room so other players' HP/MP bars stay live
+      // whenever they change — battle damage, rest, healing springs, consumables, etc.
+      // HP/MP land in different shapes by handler: battle puts them at the payload top
+      // level (playerHp/playerHpMax/...), while rest and item handlers nest them in
+      // payload.data (hp/hpMax/mp/mpMax). Merge the latest value of each field seen
+      // across this action's events so the broadcast reflects the final state.
+      let latestVitals = null
+      const pick = (top, nested) => (typeof top === 'number' ? top : typeof nested === 'number' ? nested : undefined)
+      for (const { payload } of result.playerEvents) {
+        if (!payload) continue
+        const d = payload.data || {}
+        const hp = pick(payload.playerHp, d.hp)
+        const hpMax = pick(payload.playerHpMax, d.hpMax)
+        const mp = pick(payload.playerMp, d.mp)
+        const mpMax = pick(payload.playerMpMax, d.mpMax)
+        if (hp === undefined && hpMax === undefined && mp === undefined && mpMax === undefined) continue
+        if (!latestVitals) latestVitals = { id: playerId, roomId }
+        if (hp !== undefined) latestVitals.hp = hp
+        if (hpMax !== undefined) latestVitals.hpMax = hpMax
+        if (mp !== undefined) latestVitals.mp = mp
+        if (mpMax !== undefined) latestVitals.mpMax = mpMax
+      }
+      if (latestVitals) {
+        this.io.to(`room-${roomId}`).emit('player-vitals', latestVitals)
+      }
     }
 
     if (result.backgroundWork) {

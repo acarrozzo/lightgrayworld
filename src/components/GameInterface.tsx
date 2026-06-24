@@ -847,7 +847,9 @@ export default function GameInterface() {
       
       if (response.ok) {
         const roomData = await response.json()
-        const activePlayers = Array.isArray(roomData.players) ? roomData.players : []
+        const activePlayers = Array.isArray(roomData.players)
+          ? roomData.players.map((p: any) => ({ ...p, inBattle: p?.inBattle ?? p?.inFight ?? false }))
+          : []
         const ghosts = Array.isArray(roomData.roomGhosts)
           ? roomData.roomGhosts.map((g: any) => ({ ...g, presenceStatus: g.status ?? 'disconnected' }))
           : []
@@ -2570,11 +2572,46 @@ export default function GameInterface() {
       )
     })
 
+    const cleanupPlayerBattleStatus = socketHandlers.onPlayerBattleStatus((data) => {
+      const activeRoom = currentRoomRef.current
+      if (!activeRoom || data.roomId !== activeRoom.roomId) return
+
+      const currentRoomPlayers = useGameStore.getState().roomPlayers
+      setRoomPlayers(
+        currentRoomPlayers.map((p) =>
+          p.id === data.id ? { ...p, inBattle: data.inBattle } : p
+        )
+      )
+    })
+
+    const cleanupPlayerVitals = socketHandlers.onPlayerVitals((data) => {
+      const activeRoom = currentRoomRef.current
+      if (!activeRoom || data.roomId !== activeRoom.roomId) return
+
+      const currentRoomPlayers = useGameStore.getState().roomPlayers
+      // Only touch the affected row; skip the state update entirely if values are unchanged
+      // so we don't re-render the player panels on no-op turns.
+      const target = currentRoomPlayers.find((p) => p.id === data.id)
+      if (!target) return
+      const next: Partial<typeof target> = {}
+      if (typeof data.hp === 'number' && data.hp !== target.hp) next.hp = data.hp
+      if (typeof data.hpMax === 'number' && data.hpMax !== target.hpMax) next.hpMax = data.hpMax
+      if (typeof data.mp === 'number' && data.mp !== target.mp) next.mp = data.mp
+      if (typeof data.mpMax === 'number' && data.mpMax !== target.mpMax) next.mpMax = data.mpMax
+      if (Object.keys(next).length === 0) return
+
+      setRoomPlayers(
+        currentRoomPlayers.map((p) => (p.id === data.id ? { ...p, ...next } : p))
+      )
+    })
+
     return () => {
       cleanupPlayerJoined()
       cleanupPlayerLeft()
       cleanupPlayerIdle()
       cleanupPlayerReturned()
+      cleanupPlayerBattleStatus()
+      cleanupPlayerVitals()
     }
   }, [socket, socketHandlers, appendWorldFeed])
 
@@ -2626,10 +2663,14 @@ export default function GameInterface() {
         setPlayer({ ...currentPlayer, currentRoom: payload.toRoom })
       }
 
+      // Do NOT reuse payload.roomData here: it's a snapshot the server captured
+      // before the party entered the room, so its player list is stale/empty (the
+      // follower ends up with no roomPlayers → "stats unavailable"), and its per-user
+      // room state was computed for the leader, not this member. Omitting roomData
+      // forces a fresh authoritative fetch for the correct room and user.
       loadRoomDataRef.current?.({
         isTransition: true,
         travel: { toRoomId: payload.toRoom },
-        roomData: payload.roomData,
       })
 
       appendWorldFeed({
