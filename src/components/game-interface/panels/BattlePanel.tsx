@@ -371,15 +371,21 @@ export default function BattlePanel({
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black tabular-nums leading-none" style={{ color: '#f87171', textShadow: '0 0 12px #ef444450' }}>{battle.playerHp}</span>
+              <span className="text-2xl font-black tabular-nums leading-none" style={{ color: '#f87171', textShadow: '0 0 12px #ef444450' }}>{Math.min(battle.playerHp, battle.playerHpMax)}</span>
               <span className="text-xs text-gray-600 font-semibold">/ {battle.playerHpMax} HP</span>
+              {battle.playerHp > battle.playerHpMax && (
+                <span className="text-xs font-bold text-yellow-400 tabular-nums">+{battle.playerHp - battle.playerHpMax}</span>
+              )}
             </div>
             <HpBar current={battle.playerHp} max={battle.playerHpMax} color="bg-red-500" />
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-1">
-              <span className="text-base font-bold tabular-nums leading-none text-blue-400">{playerMp}</span>
+              <span className="text-base font-bold tabular-nums leading-none text-blue-400">{Math.min(playerMp, playerMpMax)}</span>
               <span className="text-xs text-gray-600 font-semibold">/ {playerMpMax} MP</span>
+              {playerMp > playerMpMax && (
+                <span className="text-xs font-bold text-yellow-400 tabular-nums">+{playerMp - playerMpMax}</span>
+              )}
             </div>
             <HpBar current={playerMp} max={playerMpMax} color="bg-blue-500" />
           </div>

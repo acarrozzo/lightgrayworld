@@ -775,12 +775,16 @@ class RoomState {
       message = overchargeMessage ?? `Your HP and MP are fully restored, plus an extra +${overchargeBonus} to each.`
     } else {
       const pt = player.physicalTraining ?? 1
-      const mt = player.mentalTraining ?? 1
+      const mt = player.mentalTraining ?? 0
+      const curHp = player.hp ?? 0
+      const curMp = player.mp ?? 0
 
-      newHp = Math.min(hpMax, (player.hp ?? 0) + pt)
-      newMp = Math.min(mpMax, (player.mp ?? 0) + mt)
-      const hpGained = Math.max(0, newHp - (player.hp ?? 0))
-      const mpGained = Math.max(0, newMp - (player.mp ?? 0))
+      // Recovery only ever increases vitals. If the player is overcharged
+      // (hp/mp above max), preserve the overcharge instead of capping it away.
+      newHp = Math.max(curHp, Math.min(hpMax, curHp + pt))
+      newMp = Math.max(curMp, Math.min(mpMax, curMp + mt))
+      const hpGained = Math.max(0, newHp - curHp)
+      const mpGained = Math.max(0, newMp - curMp)
 
       if (hpGained === 0 && mpGained === 0) {
         return {

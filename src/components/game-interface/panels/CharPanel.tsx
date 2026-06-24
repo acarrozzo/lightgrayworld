@@ -211,13 +211,13 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                   <div className="space-y-3">
                     <StatBar
                       label="HP"
-                      value={<span className="text-white"><span className={player.hp > player.hpMax ? 'text-yellow-400' : undefined}>{player.hp}</span>/{player.hpMax}</span>}
+                      value={<span className="text-white">{Math.min(player.hp, player.hpMax)}/{player.hpMax}{player.hp > player.hpMax && <span className="text-yellow-400"> +{player.hp - player.hpMax}</span>}</span>}
                       percentage={hpPercent}
                       gradient="from-rose-500 via-red-500 to-rose-600"
                     />
                     <StatBar
                       label="MP"
-                      value={<span className="text-white"><span className={player.mp > player.mpMax ? 'text-yellow-400' : undefined}>{player.mp}</span>/{player.mpMax}</span>}
+                      value={<span className="text-white">{Math.min(player.mp, player.mpMax)}/{player.mpMax}{player.mp > player.mpMax && <span className="text-yellow-400"> +{player.mp - player.mpMax}</span>}</span>}
                       percentage={mpPercent}
                       gradient="from-sky-500 via-blue-500 to-indigo-500"
                     />

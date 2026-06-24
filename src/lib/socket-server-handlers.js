@@ -510,7 +510,22 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
       const now = Date.now()
       player.lastActive = new Date(now)
-      idleDetectionService.markUserActive(player.id)
+      const wasIdle = idleDetectionService.markUserActive(player.id)
+
+      // Any action means the player is no longer idle. Broadcast the return
+      // immediately (and clear their ghost) rather than waiting for the next
+      // idle-detection tick, which markUserActive would otherwise suppress.
+      if (wasIdle && player.currentRoom) {
+        removeGhost(player.currentRoom, player.id)
+        io.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_RETURNED, {
+          id: player.id,
+          username: player.username,
+          roomId: player.currentRoom,
+        })
+        createWorldFeedEvent({ userId: player.id, username: player.username, eventType: 'return' }).catch((error) => {
+          console.error('[Socket] Failed to create return world feed event', error)
+        })
+      }
 
       const lastPersisted = lastActivityPersistedAt.get(player.id) || 0
       if (now - lastPersisted >= LAST_ACTIVE_PERSIST_INTERVAL) {
@@ -572,6 +587,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             dexMod: true,
             magMod: true,
             defMod: true,
+            physicalTraining: true,
+            mentalTraining: true,
             grassyFieldUndergroundMap: true,
           },
         })
@@ -602,6 +619,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           dexMod: dbPlayer.dexMod,
           magMod: dbPlayer.magMod,
           defMod: dbPlayer.defMod,
+          physicalTraining: dbPlayer.physicalTraining,
+          mentalTraining: dbPlayer.mentalTraining,
           grassyFieldUndergroundMap: dbPlayer.grassyFieldUndergroundMap,
           socketId: socket.id,
           lastActive: new Date(),
@@ -675,6 +694,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           mp: playerData.mp,
           mpMax: playerData.mpMax,
           level: playerData.level,
+          physicalTraining: playerData.physicalTraining,
+          mentalTraining: playerData.mentalTraining,
           socketId: socket.id,
         })
         console.log(`[Server] Registered ${playerData.username} with engine in room ${playerData.currentRoom}`)

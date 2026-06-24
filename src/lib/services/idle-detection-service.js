@@ -92,9 +92,14 @@ function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_
     }
   }
 
+  // Marks a user active. Returns true if the user was previously flagged idle
+  // (so callers can immediately broadcast a return transition instead of
+  // waiting for the next runCheck tick).
   function markUserActive(userId) {
-    if (!userId) return
+    if (!userId) return false
+    const wasIdle = idleStateByUser.get(userId)?.isIdle === true
     idleStateByUser.set(userId, { isIdle: false })
+    return wasIdle
   }
 
   return {
