@@ -1135,6 +1135,15 @@ async function main() {
       value: 10,
     },
     {
+      id: 'bat-wing_001',
+      slug: 'bat-wing',
+      name: 'Bat Wing',
+      description: 'A thin, leathery wing torn from a cave bat. A common crafting material.',
+      type: ItemType.MISC,
+      max: 99999,
+      value: 5,
+    },
+    {
       id: 'welcome-book',
       slug: 'welcome-book',
       name: 'Welcome Book',

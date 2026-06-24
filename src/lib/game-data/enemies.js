@@ -338,7 +338,15 @@ const ENEMIES = [
     xpReward: 3,
     goldMin: 5,
     goldMax: 20,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      always: ['bat-wing'],
+      main: [
+        { itemSlug: 'blueberry', chance: 0.25, min: 1, max: 3 },
+        { itemSlug: 'long-sword', chance: 0.25 },
+        { itemSlug: 'arrow', chance: 0.25, min: 2, max: 5 },
+        { itemSlug: 'crossbow-bolt', chance: 0.25, min: 2, max: 5 },
+      ],
+    },
   },
   {
     slug: 'golden-bat',
@@ -357,7 +365,15 @@ const ENEMIES = [
     xpReward: 10,
     goldMin: 100,
     goldMax: 300,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      always: [{ itemSlug: 'bat-wing', qty: 2 }],
+      main: [
+        { itemSlug: 'red-potion', chance: 0.25, min: 1, max: 3 },
+        { itemSlug: 'green-gloves', chance: 0.25 },
+        { itemSlug: 'blue-potion', chance: 0.25, min: 1, max: 3 },
+        { itemSlug: 'ring-of-dex', chance: 0.25 },
+      ],
+    },
   },
   {
     slug: 'salamander',
@@ -376,7 +392,15 @@ const ENEMIES = [
     xpReward: 9,
     goldMin: 5,
     goldMax: 30,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      always: ['raw-meat'],
+      main: [
+        { itemSlug: 'blueberry', chance: 0.25, min: 5, max: 15 },
+        { itemSlug: 'bo-staff', chance: 0.25 },
+        { itemSlug: 'arrow', chance: 0.25, min: 5, max: 15 },
+        { itemSlug: 'ring-of-mag', chance: 0.25 },
+      ],
+    },
   },
   {
     slug: 'goblin',
@@ -395,7 +419,14 @@ const ENEMIES = [
     xpReward: 7,
     goldMin: 5,
     goldMax: 10,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      main: [
+        { itemSlug: 'redberry', chance: 0.25, min: 5, max: 15 },
+        { itemSlug: 'dagger', chance: 0.25 },
+        { itemSlug: 'basic-helmet', chance: 0.25 },
+        { itemSlug: 'black-gloves', chance: 0.25 },
+      ],
+    },
   },
   {
     slug: 'goblin-bandit',
@@ -414,7 +445,17 @@ const ENEMIES = [
     xpReward: 12,
     goldMin: 20,
     goldMax: 40,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      main: [
+        { itemSlug: 'buckler', chance: 0.25 },
+        { itemSlug: 'red-hood', chance: 0.0625 },
+        { itemSlug: 'blue-hood', chance: 0.0625 },
+        { itemSlug: 'green-hood', chance: 0.0625 },
+        { itemSlug: 'basic-hood', chance: 0.0625 },
+        { itemSlug: 'wrist-bracers', chance: 0.25 },
+        { itemSlug: 'black-boots', chance: 0.25 },
+      ],
+    },
   },
   {
     slug: 'goblin-chief',
@@ -433,7 +474,14 @@ const ENEMIES = [
     xpReward: 30,
     goldMin: 100,
     goldMax: 200,
-    drops: { main: STANDARD_MAIN_DROP },
+    drops: {
+      main: [
+        { itemSlug: 'green-cloak', chance: 0.25 },
+        { itemSlug: 'warhammer', chance: 0.25 },
+        { itemSlug: 'flail', chance: 0.25 },
+        { itemSlug: 'morning-star', chance: 0.25 },
+      ],
+    },
   },
 ]
 
