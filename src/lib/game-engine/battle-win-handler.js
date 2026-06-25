@@ -85,7 +85,12 @@ function calcBattleWinRewards(battleState, ownedFirstKillSlugs = new Set()) {
   const drops = resolveDrops(enemy, ownedFirstKillSlugs)
   // Flat display strings for immediate client emit; qty > 1 gets an "xN" suffix.
   const droppedSlugs = drops.map((d) => (d.qty > 1 ? `${d.slug} x${d.qty}` : d.slug))
-  return { xpAwarded, goldAwarded, drops, droppedSlugs }
+  // Rich per-drop detail for the victory card (not persisted). `firstKill` flags a slug
+  // configured as a first-kill reward — these dropped only because the player didn't own it,
+  // so the UI can give them extra emphasis.
+  const firstKillSet = new Set((enemy.drops && enemy.drops.firstKill) || [])
+  const dropDetails = drops.map((d) => ({ slug: d.slug, qty: d.qty, firstKill: firstKillSet.has(d.slug) }))
+  return { xpAwarded, goldAwarded, drops, droppedSlugs, dropDetails }
 }
 
 // All DB writes for a battle win. Returns { droppedItems (names), levelUp, inventory }.

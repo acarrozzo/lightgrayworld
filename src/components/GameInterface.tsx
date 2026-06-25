@@ -3233,8 +3233,8 @@ export default function GameInterface() {
 
           {/* D-pad */}
           <div className={`flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50 ${battle.isInBattle ? 'hidden' : ''}`}>
-            {/* Teleport button - left edge */}
-            <div className="absolute left-4 top-4 flex flex-row md:flex-col gap-2 z-10">
+            {/* Teleport / Map buttons - right edge */}
+            <div className="absolute right-4 top-4 flex flex-col gap-2 z-10">
               <button
                 type="button"
                 onClick={handleOpenTeleport}
@@ -3242,9 +3242,7 @@ export default function GameInterface() {
                 title="Open Teleport"
                 aria-label="Open Teleport"
               >
-                <span className="block md:hidden">
-                  <Icon name="ironskin" size={16} />
-                </span>
+                <Icon name="ironskin" size={16} />
                 <span className="hidden md:inline">Teleport</span>
               </button>
               <button
@@ -3254,7 +3252,8 @@ export default function GameInterface() {
                 title="Open Map"
                 aria-label="Open Map"
               >
-                Map
+                <Map className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden md:inline">Map</span>
               </button>
             </div>
             {/* Compass */}

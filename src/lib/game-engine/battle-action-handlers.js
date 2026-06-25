@@ -201,7 +201,7 @@ async function executeStartBattle(action, playerId, roomState) {
 
     const ownedFirstKillSlugs = await getOwnedFirstKillSlugs(playerId, enemy)
     const rewards = calcBattleWinRewards(battleState, ownedFirstKillSlugs)
-    const { xpAwarded, goldAwarded, droppedSlugs } = rewards
+    const { xpAwarded, goldAwarded, droppedSlugs, dropDetails } = rewards
 
     const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]
     if (droppedSlugs.length > 0) rewardParts.push(`+${droppedSlugs.join(', ')}`)
@@ -227,6 +227,7 @@ async function executeStartBattle(action, playerId, roomState) {
           xpEarned: xpAwarded,
           goldEarned: goldAwarded,
           itemsDropped: droppedSlugs,
+          dropDetails,
           multiplayerBonus: battleState.multiplayerBonusUsed,
           lastTurn: battleState.lastTurnResult,
         },
@@ -337,7 +338,7 @@ async function executePlayerAttack(action, playerId, roomState) {
     // firstKill drops are gated on current ownership, so read what the player already holds first.
     const ownedFirstKillSlugs = await getOwnedFirstKillSlugs(playerId, battleState.enemy)
     const rewards = calcBattleWinRewards(battleState, ownedFirstKillSlugs)
-    const { xpAwarded, goldAwarded, droppedSlugs } = rewards
+    const { xpAwarded, goldAwarded, droppedSlugs, dropDetails } = rewards
 
     const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]
     if (droppedSlugs.length > 0) rewardParts.push(`+${droppedSlugs.join(', ')}`)
@@ -385,6 +386,7 @@ async function executePlayerAttack(action, playerId, roomState) {
               xpEarned: xpAwarded,
               goldEarned: goldAwarded,
               itemsDropped: droppedSlugs,
+              dropDetails,
               multiplayerBonus: battleState.multiplayerBonusUsed,
               lastTurn: battleState.lastTurnResult,
             },

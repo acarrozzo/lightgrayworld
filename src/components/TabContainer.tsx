@@ -510,7 +510,7 @@ export default function TabContainer({
       {/* Tab Content */}
       {activeTab && (
         <div className={`flex-1 flex flex-col overflow-y-auto min-h-0 ${contentClassName}`}>
-          <div className={`flex flex-col min-h-0 ${activeTab === 'map' ? 'w-full' : 'max-w-4xl mx-auto h-full w-full'}`}>
+          <div className={`flex flex-col min-h-0 ${activeTab === 'map' || activeTab === 'explore' ? 'w-full h-full' : 'max-w-4xl mx-auto h-full w-full'}`}>
             {renderTabContent()}
           </div>
         </div>

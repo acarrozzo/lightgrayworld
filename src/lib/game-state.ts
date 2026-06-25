@@ -180,8 +180,15 @@ export interface BattleResult {
   xpEarned: number
   goldEarned: number
   itemsDropped: string[]
+  dropDetails?: BattleDropDetail[]
   multiplayerBonus: boolean
   lastTurn: BattleLastTurn | null
+}
+
+export interface BattleDropDetail {
+  slug: string
+  qty: number
+  firstKill: boolean
 }
 
 export interface KillEntry {

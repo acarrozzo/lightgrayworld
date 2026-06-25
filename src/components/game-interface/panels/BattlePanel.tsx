@@ -83,11 +83,12 @@ function Swoosh() {
   )
 }
 
-function StatRow({ label, value, highlight = false }: { label: string; value: string | number; highlight?: boolean }) {
+// Compact label/value pair for the victory stats card (turns, dealt, took, best).
+function StatChip({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-gray-400">{label}</span>
-      <span className={highlight ? 'text-yellow-300 font-bold' : 'text-white font-semibold'}>{value}</span>
+    <div className="flex items-baseline gap-1.5">
+      <span className="text-[9px] uppercase tracking-wide text-gray-600">{label}</span>
+      <span className="text-xs font-bold text-gray-300 tabular-nums">{value}</span>
     </div>
   )
 }
@@ -133,6 +134,76 @@ function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking
   )
 }
 
+// Turn a slug ("goblin-cloak") into a readable label ("Goblin Cloak").
+function prettifyDropName(slug: string): string {
+  return slug
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+// A vertical reward tile (icon over value/label) that matches the loot-card shape so XP/Gold
+// sit in the same row as the dropped items.
+function RewardTile({ icon, value, label, color, glow }: { icon: string; value: string; label: string; color: string; glow: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-lg border px-3 py-2 min-w-[72px]"
+      style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', borderColor: `${glow}40`, boxShadow: `inset 0 1px 0 ${glow}20` }}
+    >
+      <span style={{ color, filter: `drop-shadow(0 0 6px ${glow}70)` }}>
+        <Icon name={icon} size={32} />
+      </span>
+      <span className="mt-1 text-base font-black tabular-nums leading-none" style={{ color, textShadow: `0 0 10px ${glow}70` }}>{value}</span>
+      <span className="text-[10px] text-gray-500 tracking-wide">{label}</span>
+    </div>
+  )
+}
+
+// Rewards showcase: dropped loot plus XP/Gold, all in one centered row. firstKill drops lead
+// the row and get extra emphasis.
+function DropsShowcase({ result }: { result: BattleResult }) {
+  // Prefer the rich dropDetails payload; fall back to plain slug strings from older events.
+  const rawDrops = result.dropDetails && result.dropDetails.length > 0
+    ? result.dropDetails
+    : result.itemsDropped.map((s) => {
+        const m = s.match(/^(.*?)\s*x(\d+)$/)
+        return { slug: m ? m[1] : s, qty: m ? Number(m[2]) : 1, firstKill: false }
+      })
+  // Show "First only" drops first so the rarest reward leads the row.
+  const drops = [...rawDrops].sort((a, b) => Number(b.firstKill) - Number(a.firstKill))
+
+  return (
+    <div className="px-4 pt-3 pb-1 flex flex-col items-center">
+      <span className="text-[10px] tracking-[0.2em] uppercase text-purple-300/70 mb-2">Rewards</span>
+      <div className="flex flex-wrap items-stretch justify-center gap-2">
+        {drops.map((d, i) => {
+          const icon = resolveItemIcon(null, d.slug)
+          return (
+            <div
+              key={`${d.slug}-${i}`}
+              className={`relative flex flex-col items-center justify-center rounded-lg border px-3 py-2 min-w-[72px] ${d.firstKill ? 'animate-pulse' : ''}`}
+              style={d.firstKill
+                ? { background: 'linear-gradient(135deg, #2a1a00, #3a2400)', borderColor: '#fbbf2480', boxShadow: '0 0 16px #f59e0b50, inset 0 1px 0 #fbbf2430' }
+                : { background: 'linear-gradient(135deg, #14102a, #1e1838)', borderColor: '#8b5cf640', boxShadow: 'inset 0 1px 0 #8b5cf620' }}
+            >
+              {d.firstKill && (
+                <span className="opacity-0 absolute -top-2 px-1.5 py-px rounded-full text-[8px] font-black tracking-wider uppercase text-black whitespace-nowrap"
+                  style={{ background: 'linear-gradient(90deg, #f59e0b, #fcd34d, #f59e0b)', boxShadow: '0 0 8px #f59e0b80' }}>
+                  New
+                </span>
+              )}
+              <Icon name={icon} size={d.firstKill ? 40 : 32} className={d.firstKill ? 'text-amber-200' : 'text-purple-200'} />
+              <span className={`mt-1 text-[10px] font-semibold leading-tight text-center ${d.firstKill ? 'text-amber-200' : 'text-purple-200'}`}>
+                {prettifyDropName(d.slug)}{d.qty > 1 ? ` ×${d.qty}` : ''}
+              </span>
+            </div>
+          )
+        })}
+        <RewardTile icon="trophy" value={`+${result.xpEarned}`} label="XP" color="#4ade80" glow="#22c55e" />
+        <RewardTile icon="coin" value={`+${result.goldEarned}`} label="Gold" color="#fde047" glow="#eab308" />
+      </div>
+    </div>
+  )
+}
+
 function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { result: BattleResult; weaponIconName: string | null; weaponName: string | null; onDismiss: () => void }) {
   const isWin = result.outcome === 'WIN'
   const lt = result.lastTurn
@@ -164,54 +235,70 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
           </button>
         </div>
 
-        {/* Last turn + enemy */}
+        {/* Final blow + enemy defeated — two compact cards, each holding its own icon */}
         {lt && (
-          <div className="flex items-center gap-3 px-4 py-2 border-b border-green-900/40">
-            <div className="flex-1 min-w-0">
-              {wasAdvantageTurn ? (
-                <p className="text-xs text-gray-500 italic">Ambush entry</p>
-              ) : (
-                <>
-                  <p className="text-xs text-gray-500">Final blow with <span className={`font-semibold ${lastBlowRanged ? 'text-green-300' : 'text-red-300'}`}>{weaponName ?? 'fists'}</span></p>
-                  <p
-                    className={`text-2xl font-black leading-tight ${lastBlowRanged ? 'text-green-400' : 'text-red-400'}`}
-                    style={{ textShadow: lastBlowRanged ? '0 0 10px #22c55e60' : '0 0 10px #ef444460' }}
-                  >
-                    {lt.playerDealtDamage}
-                  </p>
-                  <p className="text-[10px] text-gray-600">{lt.playerRaw} − {lt.enemyBlocked} = {lt.playerDealtDamage}</p>
-                </>
+          <div className="flex items-stretch gap-2 px-4 py-2 border-b border-green-900/40">
+            {/* Final blow card */}
+            <div className="flex-1 min-w-0 rounded-lg border border-green-800/40 px-2.5 py-2 flex items-center gap-2.5"
+              style={{ background: 'linear-gradient(135deg, #0a1f12, #06160c)' }}
+            >
+              {!wasAdvantageTurn && (
+                <Icon name={weaponIconName ?? 'equipment-fists'} size={44} className="text-white opacity-80 flex-shrink-0" />
               )}
+              <div className="min-w-0">
+                {wasAdvantageTurn ? (
+                  <p className="text-[11px] text-gray-500 italic">Ambush entry</p>
+                ) : (
+                  <>
+                    <p className="text-[10px] text-gray-500 leading-tight truncate">Final blow · <span className={`font-semibold ${lastBlowRanged ? 'text-green-300' : 'text-red-300'}`}>{weaponName ?? 'fists'}</span></p>
+                    <p
+                      className={`text-xl font-black leading-tight ${lastBlowRanged ? 'text-green-400' : 'text-red-400'}`}
+                      style={{ textShadow: lastBlowRanged ? '0 0 10px #22c55e60' : '0 0 10px #ef444460' }}
+                    >
+                      {lt.playerDealtDamage}
+                    </p>
+                    <p className="text-[9px] text-gray-600 leading-tight">{lt.playerRaw} − {lt.enemyBlocked} = {lt.playerDealtDamage}</p>
+                  </>
+                )}
+              </div>
             </div>
-            <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={true} isPlayerAttacking={!wasAdvantageTurn} isRanged={lastBlowRanged} />
-            <div className="flex-1 flex flex-col items-end min-w-0">
-              <p className="text-xs font-bold text-red-500 text-right">{result.enemyName}</p>
-              <p className="text-xs text-gray-600 text-right">defeated</p>
+            {/* Battle stats card — sits between the two cards */}
+            <div className="flex-shrink-0 rounded-lg border border-green-900/50 px-3 py-2 grid grid-cols-2 gap-x-4 gap-y-0.5 content-center"
+              style={{ background: 'linear-gradient(135deg, #0c1a10, #08120a)' }}
+            >
+              <StatChip label="Turns" value={result.turnsCount} />
+              <StatChip label="Damage Took" value={result.totalDamageReceived} />
+              <StatChip label="Best Hit" value={result.maxSingleHit} />
+              <StatChip label="Damage Dealt" value={result.totalDamageDealt} />
+            </div>
+            {/* Enemy defeated card */}
+            <div className="flex-1 min-w-0 rounded-lg border border-red-900/40 px-2.5 py-2 flex items-center justify-end gap-2.5"
+              style={{ background: 'linear-gradient(135deg, #1f0a0a, #160606)' }}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-red-500 text-right leading-tight truncate">{result.enemyName}</p>
+                <p className="text-[10px] text-gray-600 text-right tracking-wide uppercase">defeated</p>
+              </div>
+              {result.enemyIcon && (
+                <img
+                  src={`/icons/enemy/${encodeURIComponent(result.enemyIcon)}.svg`}
+                  alt={result.enemyName}
+                  width={52}
+                  height={52}
+                  style={{ transform: 'scaleX(-1) scaleY(-1)' }}
+                  className="object-contain brightness-0 invert opacity-50 flex-shrink-0"
+                />
+              )}
             </div>
           </div>
         )}
 
-        {/* Rewards */}
-        <div className="px-4 py-2.5 border-b border-green-900/40">
-          <div className="grid grid-cols-3 gap-2">
-            <RewardChip label="XP" value={`+${result.xpEarned}`} color="#4ade80" glow="#22c55e" />
-            <RewardChip label="Gold" value={`+${result.goldEarned}`} color="#fde047" glow="#eab308" />
-            {result.itemsDropped.length > 0
-              ? <RewardChip label="Dropped" value={result.itemsDropped.join(', ')} color="#c4b5fd" glow="#8b5cf6" small />
-              : <RewardChip label="Dropped" value="None" color="#4b5563" glow="#374151" />
-            }
-          </div>
+        {/* Rewards — loot + XP + Gold, all in one row */}
+        <div className="pb-2 border-b border-green-900/40">
+          <DropsShowcase result={result} />
           {result.multiplayerBonus && (
             <p className="text-[10px] text-blue-400 text-center mt-1">Group bonus active</p>
           )}
-        </div>
-
-        {/* Secondary stats */}
-        <div className="px-4 py-2 flex items-center justify-between text-[11px] text-gray-500 border-b border-green-900/30">
-          <span>{result.turnsCount} turns</span>
-          <span>Dealt {result.totalDamageDealt}</span>
-          <span>Took {result.totalDamageReceived}</span>
-          <span>Best {result.maxSingleHit}</span>
         </div>
 
         {/* Close */}
@@ -249,37 +336,78 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
         </button>
       </div>
 
-      {/* Last turn */}
+      {/* Big skull, dead center */}
+      <div className="flex flex-col items-center px-6 pt-4 pb-3 border-b border-red-900/40">
+        <span style={{ color: '#f87171', filter: 'drop-shadow(0 0 18px #ef444480)' }}>
+          <Icon name="skull" size={88} />
+        </span>
+        <h2 className="mt-3 text-lg font-black tracking-wide uppercase"
+          style={{ color: '#f87171', textShadow: '0 0 16px #ef444480' }}
+        >
+          HP &lt; 0 = Dead!
+        </h2>
+        <p className="mt-2 text-sm text-gray-400 text-center">Well it happens to the best of us.</p>
+        <p className="mt-1 text-sm text-gray-400 text-center">When your health gets low make sure to heal yourself by drinking a red potion, eating some cooked meat, casting a heal spell, etc.</p>
+        <p className="mt-2 text-sm text-center font-semibold" style={{ color: '#fde047', textShadow: '0 0 10px #eab30860' }}>
+          Your health has been replenished and you have been teleported to the Plane of Rebirth (The Lobby).
+        </p>
+      </div>
+
+      {/* Your strike + stats + enemy hit — three cards, each holding its own icon */}
       {lt && (
-        <div className="flex items-center gap-3 px-4 py-2 border-b border-red-900/40">
-          <div className="flex-1 min-w-0">
-            {wasAdvantageTurn ? (
-              <p className="text-xs text-gray-500 italic">Ambush entry</p>
-            ) : (
-              <>
-                <p className="text-xs text-gray-500">Your strike</p>
-                <p className={`text-xl font-black leading-tight ${lastBlowRanged ? 'text-green-400' : 'text-red-400'}`}>{lt.playerDealtDamage}</p>
-              </>
+        <div className="flex items-stretch gap-2 px-4 py-2 border-b border-red-900/40">
+          {/* Your strike card */}
+          <div className="flex-1 min-w-0 rounded-lg border border-green-900/40 px-2.5 py-2 flex items-center gap-2.5"
+            style={{ background: 'linear-gradient(135deg, #0a1f12, #06160c)' }}
+          >
+            {!wasAdvantageTurn && (
+              <Icon name={weaponIconName ?? 'equipment-fists'} size={44} className="text-white opacity-80 flex-shrink-0" />
             )}
+            <div className="min-w-0">
+              {wasAdvantageTurn ? (
+                <p className="text-[11px] text-gray-500 italic">Ambush entry</p>
+              ) : (
+                <>
+                  <p className="text-[10px] text-gray-500 leading-tight truncate">Your strike · <span className={`font-semibold ${lastBlowRanged ? 'text-green-300' : 'text-red-300'}`}>{weaponName ?? 'fists'}</span></p>
+                  <p className={`text-xl font-black leading-tight ${lastBlowRanged ? 'text-green-400' : 'text-red-400'}`}>{lt.playerDealtDamage}</p>
+                </>
+              )}
+            </div>
           </div>
-          <CombatIcons weaponIconName={weaponIconName} enemyIcon={result.enemyIcon} enemyIsDead={false} isPlayerAttacking={!wasAdvantageTurn} isRanged={lastBlowRanged} />
-          <div className="flex-1 flex flex-col items-end min-w-0">
-            <p className="text-xs text-gray-400 text-right"><span className="text-yellow-300 font-semibold">{result.enemyName}</span> hit</p>
-            <p className="text-xl font-black text-yellow-400 leading-tight text-right">{lt.enemyDealtDamage}</p>
+          {/* Battle stats card — sits between the two cards */}
+          <div className="flex-shrink-0 rounded-lg border border-red-900/50 px-3 py-2 grid grid-cols-2 gap-x-4 gap-y-0.5 content-center"
+            style={{ background: 'linear-gradient(135deg, #1a0c0c, #120808)' }}
+          >
+            <StatChip label="Turns" value={result.turnsCount} />
+            <StatChip label="Dealt" value={result.totalDamageDealt} />
+            <StatChip label="Took" value={result.totalDamageReceived} />
+            <StatChip label="Best" value={result.maxSingleHit} />
+          </div>
+          {/* Enemy hit card */}
+          <div className="flex-1 min-w-0 rounded-lg border border-yellow-900/40 px-2.5 py-2 flex items-center justify-end gap-2.5"
+            style={{ background: 'linear-gradient(135deg, #1f1a0a, #161206)' }}
+          >
+            <div className="min-w-0">
+              <p className="text-[10px] text-gray-400 text-right leading-tight truncate"><span className="text-yellow-300 font-semibold">{result.enemyName}</span> hit</p>
+              <p className="text-xl font-black text-yellow-400 leading-tight text-right">{lt.enemyDealtDamage}</p>
+            </div>
+            {result.enemyIcon && (
+              <img
+                src={`/icons/enemy/${encodeURIComponent(result.enemyIcon)}.svg`}
+                alt={result.enemyName}
+                width={52}
+                height={52}
+                style={{ transform: 'scaleX(-1)' }}
+                className="object-contain brightness-0 invert opacity-75 flex-shrink-0"
+              />
+            )}
           </div>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="px-4 py-2.5 space-y-1 border-b border-red-900/40">
-        <StatRow label="Turns survived" value={result.turnsCount} />
-        <StatRow label="Damage dealt" value={result.totalDamageDealt} />
-        <StatRow label="Damage received" value={result.totalDamageReceived} />
-        <StatRow label="Biggest hit" value={result.maxSingleHit} highlight />
-        {result.multiplayerBonus && (
-          <p className="text-[10px] text-blue-400">Group bonus active</p>
-        )}
-      </div>
+      {result.multiplayerBonus && (
+        <p className="px-4 py-1.5 text-[10px] text-blue-400 text-center border-b border-red-900/40">Group bonus active</p>
+      )}
 
       {/* Close */}
       <div className="px-4 py-2.5">
@@ -288,20 +416,9 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
           className="w-full py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all duration-150 text-red-200"
           style={{ background: 'linear-gradient(90deg, #7f1d1d, #991b1b, #7f1d1d)' }}
         >
-          Respawn
+          That hurt
         </button>
       </div>
-    </div>
-  )
-}
-
-function RewardChip({ label, value, color, glow, small }: { label: string; value: string; color: string; glow: string; small?: boolean }) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-lg py-2 px-1 border"
-      style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', borderColor: `${glow}40`, boxShadow: `inset 0 1px 0 ${glow}20` }}
-    >
-      <span className={`${small ? 'text-[10px] leading-tight text-center' : 'text-base tabular-nums'} font-black`} style={{ color, textShadow: `0 0 10px ${glow}70` }}>{value}</span>
-      <span className="text-[10px] text-gray-500 tracking-wide">{label}</span>
     </div>
   )
 }
