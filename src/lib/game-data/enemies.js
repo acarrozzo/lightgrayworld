@@ -476,11 +476,12 @@ const ENEMIES = [
     goldMax: 200,
     drops: {
       main: [
-        { itemSlug: 'green-cloak', chance: 0.25 },
+        { itemSlug: 'long-bow', chance: 0.25 },
         { itemSlug: 'warhammer', chance: 0.25 },
         { itemSlug: 'flail', chance: 0.25 },
         { itemSlug: 'morning-star', chance: 0.25 },
       ],
+      firstKill: ['goblin-cloak'],
     },
   },
 ]

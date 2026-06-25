@@ -1601,6 +1601,17 @@ async function main() {
       metadata: { statMods: { dex: 5, def: 5 } },
     },
     {
+      id: 'goblin-cloak_001',
+      slug: 'goblin-cloak',
+      name: 'Goblin Cloak',
+      description: 'A rugged cloak stripped from the goblin chief, reinforced with bone and hide.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 1000,
+      equipSlot: EquipSlot.BODY,
+      metadata: { statMods: { str: 3, dex: 3, def: 3 } },
+    },
+    {
       id: 'black-robe_001',
       slug: 'black-robe',
       name: 'Black Robe',
