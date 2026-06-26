@@ -6,9 +6,14 @@ interface LevelUpAlertProps {
   data: LevelUpPayload
   onClose: () => void
   onTrainNow: () => void
+  onSpendCorePoints: () => void
+  /** Total Training Points available to spend */
+  tpAvailable: number
+  /** Total Core Points available to spend */
+  cpAvailable: number
 }
 
-export default function LevelUpAlert({ data, onClose, onTrainNow }: LevelUpAlertProps) {
+export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoints, tpAvailable, cpAvailable }: LevelUpAlertProps) {
   return (
     <div className="mx-4 mt-4 rounded-xl overflow-hidden shadow-2xl border border-yellow-500/80"
       style={{ background: 'linear-gradient(160deg, #1a1200 0%, #2a1a00 40%, #1a1200 100%)' }}
@@ -67,18 +72,32 @@ export default function LevelUpAlert({ data, onClose, onTrainNow }: LevelUpAlert
           <StatGrant label="Max MP" value={`+${data.mpGained}`} unit="MP" color="#67e8f9" glow="#06b6d4" />
         </div>
 
-        <button
-          type="button"
-          onClick={onTrainNow}
-          className="mt-4 w-full rounded-lg py-3 px-4 font-black tracking-widest uppercase text-sm transition-all"
-          style={{
-            background: 'linear-gradient(135deg, #b45309, #f59e0b, #b45309)',
-            color: '#1a1200',
-            boxShadow: '0 0 20px #f59e0b66, inset 0 1px 0 #fde04780',
-          }}
-        >
-          Train Now
-        </button>
+        <div className="mt-4 w-full flex gap-2">
+          <button
+            type="button"
+            onClick={onTrainNow}
+            className="flex-[2] rounded-lg py-3 px-4 font-black tracking-widest uppercase text-sm transition-all"
+            style={{
+              background: 'linear-gradient(135deg, #b45309, #f59e0b, #b45309)',
+              color: '#1a1200',
+              boxShadow: '0 0 20px #f59e0b66, inset 0 1px 0 #fde04780',
+            }}
+          >
+            Train Now ({tpAvailable})
+          </button>
+          <button
+            type="button"
+            onClick={onSpendCorePoints}
+            className="flex-1 rounded-lg py-3 px-3 font-black tracking-widest uppercase text-xs transition-all"
+            style={{
+              background: 'linear-gradient(135deg, #1e3a8a, #3b82f6, #1e3a8a)',
+              color: '#0b1220',
+              boxShadow: '0 0 20px #3b82f666, inset 0 1px 0 #93c5fd80',
+            }}
+          >
+            Spend Core Points ({cpAvailable})
+          </button>
+        </div>
       </div>
     </div>
   )

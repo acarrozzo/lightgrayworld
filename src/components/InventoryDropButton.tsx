@@ -15,6 +15,7 @@ interface InventoryDropButtonProps {
       description?: string
       canDrop?: boolean
       equipSlot?: string | null
+      metadata?: unknown
     }
     quantity: number
   }
@@ -35,7 +36,7 @@ export default function InventoryDropButton({
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLDivElement>(null)
 
-  const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
+  const itemActions = item.template.slug ? getItemActions(item.template.slug, item.template.metadata as any) : []
 
   // Close dropdown when clicking outside
   useEffect(() => {

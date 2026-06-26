@@ -428,7 +428,7 @@ export default function InventoryDisplay({
                 <div className="grid grid-cols-1 gap-3">
                   {categoryItems.map((item) => {
                       const isNewItem = showNewItems && newItemIds.has(item.id)
-                      const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
+                      const itemActions = item.template.slug ? getItemActions(item.template.slug, item.template.metadata as any) : []
                       const itemValue = item.template.value ?? 0
                       // Resolve icon with fallback logic
                       const metadata = item.template.metadata as { icon?: string } | null
@@ -615,7 +615,7 @@ export default function InventoryDisplay({
         <div className="grid grid-cols-1 gap-3">
           {filteredItems.map((item) => {
             const isNewItem = showNewItems && newItemIds.has(item.id)
-            const itemActions = item.template.slug ? getItemActions(item.template.slug) : []
+            const itemActions = item.template.slug ? getItemActions(item.template.slug, item.template.metadata as any) : []
             const itemValue = item.template.value ?? 0
             // Resolve icon with fallback logic
             const metadata = item.template.metadata as { icon?: string } | null

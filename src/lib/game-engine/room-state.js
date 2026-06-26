@@ -990,7 +990,8 @@ class RoomState {
       this,
       currentTickNumber,
       nextTickAt,
-      playerItemId
+      playerItemId,
+      item
     )
 
     if (itemActionResult === null) {

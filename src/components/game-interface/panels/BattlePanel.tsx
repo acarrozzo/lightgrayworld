@@ -460,7 +460,7 @@ export default function BattlePanel({
   const enemyIsDead = battle.enemyCurrentHp <= 0
 
   const consumables = inventory.filter(
-    (item) => item.template.type === 'CONSUMABLE' && getItemActions(item.template.slug).length > 0
+    (item) => item.template.type === 'CONSUMABLE' && getItemActions(item.template.slug, item.template.metadata as any).length > 0
   )
 
   return (
@@ -735,7 +735,7 @@ export default function BattlePanel({
               <p className="text-xs text-gray-600 italic py-2">No items available.</p>
             ) : (
               consumables.map((item) => {
-                const actions = getItemActions(item.template.slug)
+                const actions = getItemActions(item.template.slug, item.template.metadata as any)
                 const primaryAction = actions[0]
                 const iconName = resolveItemIcon(item.template.metadata ?? null, item.template.slug)
                 return (

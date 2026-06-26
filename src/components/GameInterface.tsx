@@ -47,6 +47,7 @@ import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
 import LevelUpAlert from './LevelUpAlert'
 import TrainingAllocationModal from './TrainingAllocationModal'
+import StatAllocationModal from './StatAllocationModal'
 import type { LevelUpPayload } from '@/lib/socket'
 
 export default function GameInterface() {
@@ -90,6 +91,7 @@ export default function GameInterface() {
   const [actionResult, setActionResult] = useState<any>(null)
   const [levelUpData, setLevelUpData] = useState<LevelUpPayload | null>(null)
   const [isTrainingModalOpen, setTrainingModalOpen] = useState(false)
+  const [isStatModalOpen, setStatModalOpen] = useState(false)
   const [xpGain, setXpGain] = useState<number | null>(null)
   const [xpGainKey, setXpGainKey] = useState(0)
   const xpGainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -3168,11 +3170,11 @@ export default function GameInterface() {
               {levelUpData && (
                 <LevelUpAlert
                   data={levelUpData}
+                  tpAvailable={player?.tp ?? 0}
+                  cpAvailable={player?.cp ?? 0}
                   onClose={() => setLevelUpData(null)}
-                  onTrainNow={() => {
-                    setLevelUpData(null)
-                    setTrainingModalOpen(true)
-                  }}
+                  onTrainNow={() => setTrainingModalOpen(true)}
+                  onSpendCorePoints={() => setStatModalOpen(true)}
                 />
               )}
               {(battle.isInBattle || battleResult) && (
@@ -3420,6 +3422,12 @@ export default function GameInterface() {
         player={player}
         onClose={() => setTrainingModalOpen(false)}
         onTrainingAllocated={(updatedPlayer) => setPlayer(updatedPlayer)}
+      />
+      <StatAllocationModal
+        isOpen={isStatModalOpen}
+        player={player}
+        onClose={() => setStatModalOpen(false)}
+        onStatAllocated={(updatedPlayer) => setPlayer(updatedPlayer)}
       />
       <ShopModal
         isOpen={isShopModalOpen}
