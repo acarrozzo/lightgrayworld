@@ -133,6 +133,9 @@ async function executeStartBattle(action, playerId, roomState) {
     select: { hp: true, hpMax: true },
   })
   const newPlayerHp = Math.max(0, updatedPlayer.hp)
+  // Mirror the new HP into the in-memory room state so non-battle reads (e.g. rest)
+  // don't operate on a stale, pre-damage value.
+  roomState.updatePlayer(playerId, (state) => ({ ...state, hp: newPlayerHp }))
 
   const snapshot = battleState.getSnapshot()
 
@@ -256,6 +259,8 @@ async function executeStartBattle(action, playerId, roomState) {
     } catch (err) {
       console.error(`handleBattleDefeat failed on turn 1 for player ${playerId}:`, err)
     }
+    // handleBattleDefeat resets DB hp to 1 on respawn — keep the map aligned.
+    roomState.updatePlayer(playerId, (state) => ({ ...state, hp: 1 }))
     playerEvents.push({
       event: 'battle:defeat',
       payload: {
@@ -410,6 +415,9 @@ async function executePlayerAttack(action, playerId, roomState) {
     select: { hp: true, hpMax: true },
   })
   const newHp = Math.max(0, updatedPlayer.hp)
+  // Mirror the new HP into the in-memory room state so non-battle reads (e.g. rest)
+  // don't operate on a stale, pre-damage value.
+  roomState.updatePlayer(playerId, (state) => ({ ...state, hp: newHp }))
 
   // Death check
   if (newHp <= 0) {
@@ -423,6 +431,8 @@ async function executePlayerAttack(action, playerId, roomState) {
     } catch (err) {
       console.error(`handleBattleDefeat failed for player ${playerId}:`, err)
     }
+    // handleBattleDefeat resets DB hp to 1 on respawn — keep the map aligned.
+    roomState.updatePlayer(playerId, (state) => ({ ...state, hp: 1 }))
 
     return {
       success: true,
@@ -559,6 +569,9 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     select: { hp: true, hpMax: true },
   })
   const newHp = Math.max(0, updatedPlayer.hp)
+  // Mirror the new HP into the in-memory room state so non-battle reads (e.g. rest)
+  // don't operate on a stale, pre-damage value.
+  roomState.updatePlayer(playerId, (state) => ({ ...state, hp: newHp }))
 
   // Build the action description string for the battle:turn message.
   const actionDesc = describeSupportAction(actionMeta)
@@ -576,6 +589,8 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     } catch (err) {
       console.error(`handleBattleDefeat failed during support turn for player ${playerId}:`, err)
     }
+    // handleBattleDefeat resets DB hp to 1 on respawn — keep the map aligned.
+    roomState.updatePlayer(playerId, (state) => ({ ...state, hp: 1 }))
     return {
       playerEvents: [
         {

@@ -762,8 +762,20 @@ class RoomState {
 
     this.touchActivity()
 
-    const hpMax = player.hpMax ?? 10
-    const mpMax = player.mpMax ?? 2
+    // Read live vitals from the DB, not the in-memory players map. Battle damage
+    // only writes to the DB (see battle-action-handlers), so the in-memory hp/mp
+    // can be stale-high after a fight. Resting off the stale value would report a
+    // full/overcharged heal while leaving the real (low) DB hp untouched.
+    const liveStats = await prisma.user.findUnique({
+      where: { id: playerId },
+      select: { hp: true, mp: true, hpMax: true, mpMax: true, physicalTraining: true, mentalTraining: true },
+    })
+    if (!liveStats) {
+      return this.createErrorResult(action, 'Could not load your stats.')
+    }
+
+    const hpMax = liveStats.hpMax ?? player.hpMax ?? 10
+    const mpMax = liveStats.mpMax ?? player.mpMax ?? 2
 
     let newHp
     let newMp
@@ -774,10 +786,10 @@ class RoomState {
       newMp = mpMax + overchargeBonus
       message = overchargeMessage ?? `Your HP and MP are fully restored, plus an extra +${overchargeBonus} to each.`
     } else {
-      const pt = player.physicalTraining ?? 1
-      const mt = player.mentalTraining ?? 0
-      const curHp = player.hp ?? 0
-      const curMp = player.mp ?? 0
+      const pt = liveStats.physicalTraining ?? player.physicalTraining ?? 1
+      const mt = liveStats.mentalTraining ?? player.mentalTraining ?? 0
+      const curHp = liveStats.hp ?? 0
+      const curMp = liveStats.mp ?? 0
 
       // Recovery only ever increases vitals. If the player is overcharged
       // (hp/mp above max), preserve the overcharge instead of capping it away.
@@ -787,6 +799,8 @@ class RoomState {
       const mpGained = Math.max(0, newMp - curMp)
 
       if (hpGained === 0 && mpGained === 0) {
+        // Keep the in-memory map aligned with the live DB values we just read.
+        this.updatePlayer(playerId, (state) => ({ ...state, hp: newHp, mp: newMp }))
         return {
           success: true,
           action,
