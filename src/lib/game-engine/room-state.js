@@ -6,7 +6,7 @@ const { equipItem, unequipItem } = require('./services/equipment-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
 const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn } = require('./battle-action-handlers')
-const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('../game-data/room-enemies')
+const { getRoomEnemies, isProbabilistic, getRoomPriorityEnemy, rollRoomEnemyGroup } = require('../game-data/room-enemies')
 const { getEnemy } = require('../game-data/enemies')
 const { getRevealDefinition, markRevealed, clearRevealed } = require('./search-reveal-state')
 
@@ -91,8 +91,9 @@ class RoomState {
     this.players = new Map()
     this.activeBattles = new Map()
     // Per-player enemy state for probabilistic rooms.
-    // Map<playerId, { slug: string|null, graceTurn: boolean }>
-    // slug null = rolled, no enemy present. Key absent = not yet rolled (entry pending).
+    // Map<playerId, { roster: string[] }>
+    // roster = the set of enemy slugs currently present; out of battle the player may
+    // attack any of them. Empty roster = no enemies present. Key absent = not yet rolled.
     this.playerEnemyState = new Map()
     this.lastActionAt = null
     this.lastTickPlayerCount = null
@@ -122,52 +123,89 @@ class RoomState {
   }
 
   // --- Per-player enemy state helpers (probabilistic rooms) ---
+  //
+  // Enemies present for a player are a flat roster: out of battle the player may
+  // attack any of them. Index 0 is the default target for the bare 'attack' action
+  // and there is no post-battle grace.
 
+  // A present enemy slug (roster[0]), used as a default target for the bare
+  // 'attack' action.
   getPlayerActiveEnemy(playerId) {
-    return this.playerEnemyState.get(playerId)?.slug ?? null
+    return this.playerEnemyState.get(playerId)?.roster?.[0] ?? null
   }
 
-  // Returns the active enemy slug only when a real enemy is present (not null, not grace turn).
-  // Used by GameEngine to decide whether to persist the enemy across room transitions.
+  // Returns a present enemy slug (roster[0]), or null.
   getPlayerEnemySlug(playerId) {
-    const state = this.playerEnemyState.get(playerId)
-    return state?.slug ?? null
+    return this.playerEnemyState.get(playerId)?.roster?.[0] ?? null
+  }
+
+  // The full list of enemies currently present for this player.
+  getPlayerEnemyRoster(playerId) {
+    return this.playerEnemyState.get(playerId)?.roster ?? []
   }
 
   setPlayerActiveEnemy(playerId, slug) {
-    this.playerEnemyState.set(playerId, { slug, graceTurn: false })
+    this.playerEnemyState.set(playerId, { roster: slug ? [slug] : [] })
   }
 
-  // Called immediately after a battle victory — next turn action skips the spawn check.
-  setPlayerGraceTurn(playerId) {
-    this.playerEnemyState.set(playerId, { slug: null, graceTurn: true })
+  // Seeds the full roster of present enemies (used on room entry to place a fresh
+  // wave, or to restore a roster persisted across a room transition).
+  setPlayerEnemyRoster(playerId, slugs) {
+    this.playerEnemyState.set(playerId, { roster: Array.isArray(slugs) ? slugs : [] })
+  }
+
+  // Removes one defeated enemy (by slug) from the roster after a battle win.
+  // No grace period — the next turn action can immediately provoke another enemy.
+  // Returns the number still present.
+  removeEnemyFromRoster(playerId, slug) {
+    const state = this.playerEnemyState.get(playerId)
+    const roster = state?.roster ? [...state.roster] : []
+    const idx = roster.indexOf(slug)
+    if (idx !== -1) roster.splice(idx, 1)
+    this.playerEnemyState.set(playerId, { roster })
+    return roster.length
   }
 
   clearPlayerEnemyState(playerId) {
     this.playerEnemyState.delete(playerId)
   }
 
-  // Runs the spawn check for probabilistic rooms after a turn action completes.
-  // Returns { slug, enemy } if something spawned, or null.
+  // True if any aggressive enemy is present in the player's roster. Used to block
+  // movement — the player cannot leave while hostiles remain.
+  hasHostileEnemies(playerId) {
+    return this.getPlayerEnemyRoster(playerId).some((slug) => getEnemy(slug)?.isAggressive)
+  }
+
+  // Picks the HOSTILE (aggressive) enemy to engage the player first, or null.
+  // The room's designated `priority` enemy strikes first when it is present and
+  // aggressive; otherwise a random present hostile is chosen.
+  pickHostileTarget(slugs) {
+    const hostiles = slugs.filter((slug) => getEnemy(slug)?.isAggressive)
+    if (!hostiles.length) return null
+    const prioritySlug = getRoomPriorityEnemy(this.roomId)
+    if (prioritySlug && hostiles.includes(prioritySlug)) return prioritySlug
+    return hostiles[Math.floor(Math.random() * hostiles.length)]
+  }
+
+  // Rolls a fresh wave (the whole group at once) only when nothing is present.
+  // Returns { spawned: string[] } for a newly-rolled wave, or null otherwise.
   maybeSpawnEnemy(playerId) {
     if (!isProbabilistic(this.roomId)) return null
 
     const battle = this.activeBattles.get(playerId)
     if (battle?.isActive) return null
 
-    const state = this.playerEnemyState.get(playerId)
-    if (state?.graceTurn) {
-      this.playerEnemyState.set(playerId, { slug: null, graceTurn: false })
-      return null
-    }
-    if (state?.slug) return null
+    // Enemies already present — no new wave (engagement handled by caller).
+    if (this.playerEnemyState.get(playerId)?.roster?.length) return null
 
-    const slug = rollRoomEnemy(this.roomId)
-    this.setPlayerActiveEnemy(playerId, slug)
-    if (!slug) return null
+    const group = rollRoomEnemyGroup(this.roomId)
+    this.playerEnemyState.set(playerId, { roster: group })
+    return group.length ? { spawned: group } : null
+  }
 
-    const enemy = getEnemy(slug)
-    return enemy ? { slug, enemy } : null
+  // Maps a list of enemy slugs to full enemy objects (for client display payloads).
+  buildEnemyList(slugs) {
+    return slugs.map((slug) => getEnemy(slug)).filter(Boolean)
   }
 
   updatePlayer(playerId, updater) {
@@ -283,39 +321,57 @@ class RoomState {
     return result
   }
 
-  // Runs the spawn check and appends enemy notification (and auto-battle) events to the result.
+  // After a turn action: resolve enemy presence and append notification / auto-battle
+  // events. Announces a freshly-rolled wave (all enemies at once), then — if any hostile
+  // enemy is present — a random one of them attacks the player. No post-battle grace.
   async appendSpawnEvents(result, playerId) {
+    if (!isProbabilistic(this.roomId)) return result
+
+    const battle = this.activeBattles.get(playerId)
+    if (battle?.isActive) return result
+
     const spawned = this.maybeSpawnEnemy(playerId)
-    if (!spawned) return result
 
-    const { slug, enemy } = spawned
-    const enemyName = enemy.name
+    const roster = this.getPlayerEnemyRoster(playerId)
+    if (!roster.length) return result
 
-    const spawnFeedback = {
-      event: 'action:feedback',
-      payload: this.createFeedbackPayload(
-        'enemy_spawn',
-        'danger',
-        `A ${enemyName} emerges from the darkness!`,
-        { enemySlug: slug, enemyName, enemy }
-      ),
+    // Announce a freshly-rolled wave (the whole group at once).
+    if (spawned?.spawned?.length) {
+      const enemies = this.buildEnemyList(roster)
+      const names = enemies.map((e) => e.name)
+      const message = enemies.length === 1
+        ? `A ${names[0]} emerges from the darkness!`
+        : `${enemies.length} enemies emerge from the darkness: ${names.join(', ')}!`
+
+      result = {
+        ...result,
+        playerEvents: [
+          ...(result.playerEvents ?? []),
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload(
+              'enemy_spawn',
+              'danger',
+              message,
+              { enemySlug: roster[0], enemyName: enemies[0]?.name, enemy: enemies[0], enemies }
+            ),
+          },
+        ],
+      }
     }
 
-    result = {
-      ...result,
-      playerEvents: [...(result.playerEvents ?? []), spawnFeedback],
-    }
-
-    if (enemy.isAggressive) {
+    // The priority (or a random) present hostile enemy attacks the player.
+    const targetSlug = this.pickHostileTarget(roster)
+    if (targetSlug) {
       const battleResult = await executeStartBattle(
-        { type: 'start_battle', data: { enemySlug: slug, isAutoInitiated: true } },
+        { type: 'start_battle', data: { enemySlug: targetSlug, isAutoInitiated: true } },
         playerId,
         this
       )
       if (battleResult?.playerEvents?.length) {
         result = {
           ...result,
-          playerEvents: [...result.playerEvents, ...battleResult.playerEvents],
+          playerEvents: [...(result.playerEvents ?? []), ...battleResult.playerEvents],
         }
       }
     }
@@ -423,6 +479,12 @@ class RoomState {
       return this.createErrorResult('move', 'You cannot leave while in combat. Fight or flee.')
     }
 
+    // Cannot leave while any hostile (aggressive) enemy is still present. Passive
+    // enemies do not block movement and persist with the player across the move.
+    if (this.hasHostileEnemies(playerId)) {
+      return this.createErrorResult('move', 'You cannot leave while hostile enemies are here. Defeat them first.')
+    }
+
     const fromRoom = action.data?.fromRoom || this.roomId
     const toRoom = action.data?.toRoom
     if (!toRoom) {
@@ -507,7 +569,9 @@ class RoomState {
     console.log(`[RoomState:${this.roomId}] executeMove - ${player.username} moving from ${fromRoom} to ${toRoom}`)
 
     this.touchActivity()
-    const departingEnemySlug = this.getPlayerEnemySlug(playerId)
+    // Persist the full roster (passive enemies only — hostiles block the move above)
+    // so the same wave is restored if the player returns to this room.
+    const departingEnemyRoster = this.getPlayerEnemyRoster(playerId)
     this.removePlayer(playerId)
 
     const toRoomName = action.data?.toRoomName || toRoom
@@ -549,7 +613,7 @@ class RoomState {
       transfer: {
         toRoomId: toRoom,
         fromRoomId: this.roomId,
-        fromRoomEnemySlug: departingEnemySlug,
+        fromRoomEnemyRoster: departingEnemyRoster,
         playerState: {
           ...player,
           roomId: toRoom,

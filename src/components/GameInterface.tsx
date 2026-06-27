@@ -1863,8 +1863,12 @@ export default function GameInterface() {
           })
         }
       } else if (payload?.action === 'enemy_spawn') {
-        // A probabilistic enemy has appeared in the room — update the enemy display.
-        if (payload?.data?.enemy) {
+        // A probabilistic wave has appeared — show the full ordered list of present
+        // enemies (front enemy is fought first). Fall back to the single enemy for
+        // older payloads that don't include the list.
+        if (Array.isArray(payload?.data?.enemies) && payload.data.enemies.length > 0) {
+          setRoomEnemies(payload.data.enemies)
+        } else if (payload?.data?.enemy) {
           setRoomEnemies([payload.data.enemy])
         }
       }
@@ -2311,7 +2315,13 @@ export default function GameInterface() {
         if (payload.summary) setBattleResult(payload.summary)
         if (payload.summary?.enemySlug) incrementKill(payload.summary.enemySlug)
         clearBattle()
-        if ((payload as any).clearRoomEnemies) setRoomEnemies([])
+        // Clear the room display only when the whole wave is defeated; otherwise show
+        // the enemies still present (the next front enemy steps up).
+        if ((payload as any).clearRoomEnemies) {
+          setRoomEnemies([])
+        } else if (Array.isArray((payload as any).remainingEnemies)) {
+          setRoomEnemies((payload as any).remainingEnemies)
+        }
         const currentPlayer = useGameStore.getState().player
         if (currentPlayer) {
           setPlayer({
@@ -2414,6 +2424,12 @@ export default function GameInterface() {
         message: payload.message,
         ts: Date.now(),
       })
+      // Retreat to the room the player came from, reusing the normal move pipeline
+      // (the 'teleport' action is the client's "move to an explicit room id" primitive).
+      const returnRoomId = payload.returnRoomId
+      if (returnRoomId && returnRoomId !== currentRoomRef.current?.roomId) {
+        handleAction({ type: 'teleport', data: { toRoomId: returnRoomId } })
+      }
     })
 
     const cleanupLevelUp = socketHandlers.onPlayerLevelUp((payload) => {

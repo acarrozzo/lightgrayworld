@@ -287,7 +287,7 @@ class GameEngine {
         playerState: result.transfer.playerState,
         fromRoomId: result.transfer.fromRoomId || roomId,
         toRoomId: result.transfer.toRoomId,
-        fromRoomEnemySlug: result.transfer.fromRoomEnemySlug,
+        fromRoomEnemyRoster: result.transfer.fromRoomEnemyRoster,
       })
     }
   }
@@ -304,16 +304,18 @@ class GameEngine {
     }
   }
 
-  transferPlayer({ playerState, fromRoomId, toRoomId, fromRoomEnemySlug }) {
+  transferPlayer({ playerState, fromRoomId, toRoomId, fromRoomEnemyRoster }) {
     if (!playerState?.id || !toRoomId) {
       return
     }
 
-    if (fromRoomEnemySlug) {
+    // Persist the full enemy roster the player leaves behind, so returning to the
+    // room restores the same wave instead of rolling a fresh one.
+    if (Array.isArray(fromRoomEnemyRoster) && fromRoomEnemyRoster.length) {
       if (!this.persistedEnemies.has(playerState.id)) {
         this.persistedEnemies.set(playerState.id, new Map())
       }
-      this.persistedEnemies.get(playerState.id).set(fromRoomId, fromRoomEnemySlug)
+      this.persistedEnemies.get(playerState.id).set(fromRoomId, fromRoomEnemyRoster)
     }
 
     const fromRoom = this.rooms.get(fromRoomId)
@@ -324,9 +326,9 @@ class GameEngine {
     const destinationRoom = this.getOrCreateRoom(toRoomId)
     destinationRoom.addPlayer({ ...playerState, roomId: toRoomId })
 
-    const persistedSlug = this.persistedEnemies.get(playerState.id)?.get(toRoomId)
-    if (persistedSlug) {
-      destinationRoom.setPlayerActiveEnemy(playerState.id, persistedSlug)
+    const persistedRoster = this.persistedEnemies.get(playerState.id)?.get(toRoomId)
+    if (persistedRoster) {
+      destinationRoom.setPlayerEnemyRoster(playerState.id, persistedRoster)
       this.persistedEnemies.get(playerState.id).delete(toRoomId)
     }
   }

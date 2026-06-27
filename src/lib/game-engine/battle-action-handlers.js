@@ -65,8 +65,8 @@ async function executeStartBattle(action, playerId, roomState) {
   if (!enemySlug) return errorResult('start_battle', 'No enemy specified.')
 
   if (isProbabilistic(roomState.roomId)) {
-    const activeSlug = roomState.getPlayerActiveEnemy(playerId)
-    if (activeSlug !== enemySlug) {
+    const present = roomState.getPlayerEnemyRoster(playerId)
+    if (!present.includes(enemySlug)) {
       return errorResult('start_battle', 'That enemy is not here.')
     }
   } else {
@@ -200,7 +200,14 @@ async function executeStartBattle(action, playerId, roomState) {
   if (!isAdvantageTurn && battleState.isEnemyDead()) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
-    roomState.setPlayerGraceTurn(playerId)
+    // Remove the defeated enemy from the present set; any others remain (no grace).
+    // Only fully clear the room display when none are left.
+    let remainingCount = 0
+    let remainingEnemies = []
+    if (isProbabilistic(roomState.roomId)) {
+      remainingCount = roomState.removeEnemyFromRoster(playerId, enemySlug)
+      remainingEnemies = roomState.buildEnemyList(roomState.getPlayerEnemyRoster(playerId))
+    }
 
     const ownedFirstKillSlugs = await getOwnedFirstKillSlugs(playerId, enemy)
     const rewards = calcBattleWinRewards(battleState, ownedFirstKillSlugs)
@@ -217,7 +224,8 @@ async function executeStartBattle(action, playerId, roomState) {
         droppedItems: droppedSlugs,
         lastTurnResult: firstTurn,
         message: `You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
-        clearRoomEnemies: isProbabilistic(roomState.roomId),
+        clearRoomEnemies: isProbabilistic(roomState.roomId) && remainingCount === 0,
+        remainingEnemies,
         summary: {
           outcome: 'WIN',
           enemyName: enemy.name,
@@ -335,9 +343,14 @@ async function executePlayerAttack(action, playerId, roomState) {
   if (battleState.isEnemyDead()) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
-    // 1-turn grace: the next turn action skips the spawn check so the player isn't
-    // immediately thrown into another fight without warning.
-    roomState.setPlayerGraceTurn(playerId)
+    // Remove the defeated enemy from the present set; any others remain (no grace —
+    // the next turn action can immediately provoke another enemy).
+    let remainingCount = 0
+    let remainingEnemies = []
+    if (isProbabilistic(roomState.roomId)) {
+      remainingCount = roomState.removeEnemyFromRoster(playerId, battleState.enemySlug)
+      remainingEnemies = roomState.buildEnemyList(roomState.getPlayerEnemyRoster(playerId))
+    }
 
     // Compute rewards synchronously — no DB — so we can emit victory immediately.
     // firstKill drops are gated on current ownership, so read what the player already holds first.
@@ -378,7 +391,8 @@ async function executePlayerAttack(action, playerId, roomState) {
             droppedItems: droppedSlugs,
             lastTurnResult: turnResult,
             message: winMsg,
-            clearRoomEnemies: isProbabilistic(roomState.roomId),
+            clearRoomEnemies: isProbabilistic(roomState.roomId) && remainingCount === 0,
+            remainingEnemies,
             summary: {
               outcome: 'WIN',
               enemyName: battleState.enemyName,
@@ -685,7 +699,16 @@ async function executePlayerFlee(action, playerId, roomState) {
 
   battleState.end()
   roomState.activeBattles.delete(playerId)
+  // Fleeing abandons the room's enemies entirely: clear the roster so the retreat
+  // move isn't blocked by the "can't leave while hostiles are here" rule, and so a
+  // fresh wave rolls if the player ever returns.
+  roomState.clearPlayerEnemyState(playerId)
   await prisma.user.update({ where: { id: playerId }, data: { inFight: false } })
+
+  // The player retreats to the room they came from. The socket layer tracks each
+  // player's previous room and passes it in; null when there's no prior room (the
+  // client then simply stays put after escaping).
+  const returnRoomId = action?.data?.returnRoomId ?? null
 
   return {
     success: true,
@@ -693,7 +716,7 @@ async function executePlayerFlee(action, playerId, roomState) {
     playerEvents: [
       {
         event: 'battle:fled',
-        payload: { message: 'You managed to escape!' },
+        payload: { message: 'You managed to escape!', returnRoomId },
       },
     ],
   }

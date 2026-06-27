@@ -132,6 +132,9 @@ export interface BattleDefeatPayload {
 
 export interface BattleFledPayload {
   message: string
+  // The room the player retreats to on flee (the room they came from), or null
+  // when there's no prior room to fall back to.
+  returnRoomId?: string | null
 }
 
 export interface LevelUpPayload {

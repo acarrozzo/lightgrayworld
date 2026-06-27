@@ -242,9 +242,9 @@ export default function RoomBox({
       {/* Enemies in Room */}
       {roomEnemies.length > 0 && (
         <div className="space-y-2">
-          {roomEnemies.map((enemy) => (
+          {roomEnemies.map((enemy, index) => (
             <div
-              key={enemy.slug}
+              key={`${enemy.slug}-${index}`}
               className={`inline-flex items-center gap-3 rounded-lg border px-3 py-2 ${enemy.isAggressive ? 'border-red-800/50 bg-red-950/20' : 'border-gray-700/40 bg-gray-800/40'}`}
             >
               <img

@@ -8,7 +8,16 @@
 // Room 019: Sand Crab Nest — Sand Crab (always present)
 // Room 003b: Cabin Basement — 50% spawn, rat 90% / giant rat 10%
 // Room 003bb: Destroyed Basement — 50% spawn, rat 10% / giant rat 90%
-// Room 008: Spider Cave Entrance — Spider 60% spawn chance
+// Room 008: Spider Cave Entrance — 100% spawn, wave of 4: guaranteed spider + 3 random (spider/scorpion/giant-rat/rat); priority spider strikes first
+//
+// Config fields:
+//   probabilistic  — uses spawnChance + weighted pool (vs. static always-present `enemies: [...]`)
+//   spawnChance    — 0..1 chance a wave rolls at all
+//   maxEnemies     — wave size (default 1)
+//   guaranteed     — slugs that always lead the roster, in order
+//   priority       — slug that ambushes first on entry/spawn, but ONLY if present AND aggressive;
+//                    otherwise a random hostile is chosen (current fallback behavior)
+//   enemies        — weighted pool used to fill remaining roster slots
 // Room 009: Spider Cave #009 — 60% spawn, spider 50% / scorpion 50%
 // Room 010: Spider Cave #010 — Giant Spider 60% spawn chance
 // Room 011: Spider Cave #011 — 60% spawn, scorpion 70% / spider 30%
@@ -71,9 +80,15 @@ const ROOM_ENEMIES = {
   },
   '008': {
     probabilistic: true,
-    spawnChance: 0.5,
+    spawnChance: 1.0,
+    maxEnemies: 4,
+    guaranteed: ['spider'], // first enemy is always a spider; the rest fill in randomly
+    priority: 'spider', // the spider strikes first when present (and aggressive)
     enemies: [
-      { slug: 'spider', weight: 100 },
+      { slug: 'spider', weight: 25 },
+      { slug: 'scorpion', weight: 25 },
+      { slug: 'giant-rat', weight: 25 },
+      { slug: 'rat', weight: 25 },
     ],
   },
   '009': {
@@ -229,14 +244,16 @@ function isProbabilistic(roomId) {
   return ROOM_ENEMIES[roomId]?.probabilistic === true
 }
 
-// Returns a slug (string) or null. Rolls spawnChance first, then picks
-// an enemy by weight. Safe to call for any room — returns null for static rooms.
-function rollRoomEnemy(roomId) {
-  const config = ROOM_ENEMIES[roomId]
-  if (!config?.probabilistic) return null
+// The slug designated to attack first in a room, or null. Whether it actually
+// gets the first strike is gated on the enemy also being present and aggressive
+// (see RoomState.pickHostileTarget).
+function getRoomPriorityEnemy(roomId) {
+  return ROOM_ENEMIES[roomId]?.priority ?? null
+}
 
-  if (Math.random() > config.spawnChance) return null
-
+// Picks a single enemy slug from a probabilistic room's weighted pool.
+// Assumes the caller has already decided a spawn should happen.
+function pickWeightedEnemy(config) {
   const totalWeight = config.enemies.reduce((sum, e) => sum + e.weight, 0)
   let roll = Math.random() * totalWeight
   for (const entry of config.enemies) {
@@ -246,4 +263,45 @@ function rollRoomEnemy(roomId) {
   return config.enemies[config.enemies.length - 1].slug
 }
 
-module.exports = { ROOM_ENEMIES, getRoomEnemies, isProbabilistic, rollRoomEnemy }
+// Returns a slug (string) or null. Rolls spawnChance first, then picks
+// an enemy by weight. Safe to call for any room — returns null for static rooms.
+function rollRoomEnemy(roomId) {
+  const config = ROOM_ENEMIES[roomId]
+  if (!config?.probabilistic) return null
+
+  if (Math.random() > config.spawnChance) return null
+
+  return pickWeightedEnemy(config)
+}
+
+// Returns an ordered array of enemy slugs for a single spawn "wave", or [].
+// Rolls spawnChance once; on success builds a wave of `maxEnemies` enemies (default 1).
+// Any `guaranteed` slugs always lead the wave in order; the remaining slots are filled
+// with weighted random picks from the pool. Order is the queue order — index 0 is
+// fought first.
+function rollRoomEnemyGroup(roomId) {
+  const config = ROOM_ENEMIES[roomId]
+  if (!config?.probabilistic) return []
+
+  if (Math.random() > config.spawnChance) return []
+
+  const count = config.maxEnemies && config.maxEnemies > 0 ? config.maxEnemies : 1
+  const group = []
+
+  // Guaranteed lead enemies always appear first, in the order listed.
+  if (Array.isArray(config.guaranteed)) {
+    for (const slug of config.guaranteed) {
+      if (group.length >= count) break
+      group.push(slug)
+    }
+  }
+
+  // Fill the remaining slots with weighted random picks.
+  while (group.length < count) {
+    group.push(pickWeightedEnemy(config))
+  }
+
+  return group
+}
+
+module.exports = { ROOM_ENEMIES, getRoomEnemies, isProbabilistic, getRoomPriorityEnemy, rollRoomEnemy, rollRoomEnemyGroup }

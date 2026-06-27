@@ -7,7 +7,7 @@ const {
   ROOM_ITEMS_SELECT,
   normalizeRoomData,
 } = require('./game-engine/services/room-normalization.js')
-const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('./game-data/room-enemies.js')
+const { getRoomEnemies, isProbabilistic, rollRoomEnemyGroup } = require('./game-data/room-enemies.js')
 const { getEnemy } = require('./game-data/enemies.js')
 const { getRoomStateNote, getRoomActionOverrides, clearPlayerLevers } = require('./game-engine/lever-state.js')
 const {
@@ -34,11 +34,12 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
     const destRoomState = gameEngine.getOrCreateRoom(toRoom)
 
     // Use a persisted enemy if transferPlayer already restored one for this room,
-    // otherwise roll for a new spawn.
+    // otherwise roll a fresh wave (the whole group at once).
     let slug = destRoomState.getPlayerActiveEnemy(player.id)
     if (!slug) {
-      slug = rollRoomEnemy(toRoom)
-      destRoomState.setPlayerActiveEnemy(player.id, slug)
+      const group = rollRoomEnemyGroup(toRoom)
+      destRoomState.setPlayerEnemyRoster(player.id, group)
+      slug = group[0] || null
     }
 
     if (!slug) return
@@ -46,24 +47,33 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
     const enemy = getEnemy(slug)
     if (!enemy) return
 
-    // Always notify the player that an enemy has appeared on entry.
+    // Notify the player about every enemy present on entry; out of battle they may
+    // attack any of them.
+    const roster = destRoomState.getPlayerEnemyRoster(player.id)
+    const enemies = destRoomState.buildEnemyList(roster)
+    const names = enemies.map((e) => e.name)
+    const message = names.length <= 1
+      ? `A ${enemy.name} is here!`
+      : `${names.length} enemies are here: ${names.join(', ')}!`
     emitActionFeedback(socket, {
       action: 'enemy_spawn',
-      message: `A ${enemy.name} is here!`,
+      message,
       outcome: 'danger',
-      data: { enemySlug: slug, enemyName: enemy.name, enemy },
+      data: { enemySlug: slug, enemyName: enemy.name, enemy, enemies },
     })
 
-    if (!enemy.isAggressive) return
+    // A random present hostile enemy ambushes the player on entry.
+    const targetSlug = destRoomState.pickHostileTarget(roster)
+    if (!targetSlug) return
 
     if (destRoomState.activeBattles.has(player.id)) return
     try {
       await gameEngine.processUserAction({
         playerId: player.id,
         roomId: toRoom,
-        action: { type: 'start_battle', data: { enemySlug: slug, isAutoInitiated: true } },
+        action: { type: 'start_battle', data: { enemySlug: targetSlug, isAutoInitiated: true } },
       })
-      console.log(`[Socket] Auto-battle started: ${player.username} vs ${slug} in room ${toRoom}`)
+      console.log(`[Socket] Auto-battle started: ${player.username} vs ${targetSlug} in room ${toRoom}`)
     } catch (err) {
       console.error('[Socket] Failed to auto-start battle:', err)
       socket.emit('action:feedback', {
@@ -238,6 +248,8 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers, 
       isTeleport: isTeleport || false,
     })
 
+    // Remember where the player came from so a flee can retreat them back here.
+    player.previousRoom = fromRoom
     player.currentRoom = toRoom
     // Re-broadcast party groupings so the mover (and the room) see current parties.
     if (broadcastRoomPartyState) broadcastRoomPartyState(toRoom)
@@ -1235,6 +1247,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           if (currentRoom) {
             actionData = { ...actionData, roomName: currentRoom.name }
           }
+        }
+
+        // A successful flee retreats the player to the room they came from. Hand the
+        // engine the previous room so the battle:fled payload can tell the client
+        // where to navigate; the client then moves via the normal move pipeline.
+        if (actionType === 'player_flee') {
+          actionData = { ...actionData, returnRoomId: player.previousRoom ?? null }
         }
 
         const result = await gameEngine.processUserAction({
