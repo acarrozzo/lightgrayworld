@@ -213,7 +213,56 @@
         "itemSlug": "gold-key",
         "quantity": 1
       }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_youngsoldier_004"
+      }
     ]
+  },
+  "quest_youngsoldier_004": {
+    "number": 10,
+    "questType": "main",
+    "level": 10,
+    "title": "The Chief's Cloak",
+    "summary": "The Young Soldier wants the Goblin Chief's cloak. Apparently wearing it lets you walk into the Goblin Camp without the Goblin Titan tearing you apart.",
+    "objective": "Defeat the Goblin Chief in the Bat Cave and bring his cloak to the Young Soldier.",
+    "nextStep": "Head into the Bat Cave, hunt down the Goblin Chief, take his cloak, then bring it back to the Young Soldier.",
+    "reminderDialog": "Still no cloak? The Goblin Chief's holed up in the Bat Cave. Go poke him, take the cloak off his back, come back. It's really not complicated.",
+    "completionDialog": "Huh. You actually pulled it off. Whatever. Wear that thing and the Goblin Titan won't bother you on the way into the camp. Try not to lose it.",
+    "giver": {
+      "npcId": "young_soldier",
+      "roomId": "007",
+      "name": "Young Soldier",
+      "icon": "npc-youngsoldier"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "goblin-cloak",
+        "quantity": 1,
+        "displayName": "Goblin Cloak"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 1000
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "battle-axe",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
   },
   "quest_youngsoldier_003": {
     "number": 9,

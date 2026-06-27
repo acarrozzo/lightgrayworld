@@ -509,6 +509,10 @@ const ROOM_ACTIONS = {
       title: 'Young Soldier',
       idleDialogs: [
         {
+          ifCompleted: 'quest_youngsoldier_004',
+          message: 'You\'ve still got the cloak, good. The Goblin Camp\'s your problem now, not mine.',
+        },
+        {
           ifCompleted: 'quest_youngsoldier_002',
           message: 'Well I actually didn\'t think you would find all four, but it was still pretty easy.',
         },
