@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { getSellValue } from '@/lib/shop-pricing'
 
 interface InventorySellButtonProps {
   item: {
@@ -14,7 +13,11 @@ interface InventorySellButtonProps {
     }
     quantity: number
   }
-  onSell: (quantity: number) => void
+  /**
+   * Perform the sale. `anchor` is the bounding rect of the clicked button so
+   * the parent can float the result popover (ActionFlyout) above it.
+   */
+  onSell: (quantity: number, anchor: DOMRect) => void
   disabled?: boolean
 }
 
@@ -23,138 +26,58 @@ export default function InventorySellButton({
   onSell,
   disabled = false,
 }: InventorySellButtonProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const buttonRef = useRef<HTMLDivElement>(null)
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        buttonRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        !buttonRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false)
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside)
-      }
-    }
-  }, [isOpen])
-
-  const handleMainButtonClick = () => {
-    if (isDisabled) return
-    onSell(1)
-    setIsOpen(false)
-  }
-
-  const handleDropdownToggle = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (disabled) return
-    setIsOpen(!isOpen)
-  }
-
-  const handleSellHalf = () => {
-    if (isDisabled || item.quantity <= 1) return
-    const halfQuantity = Math.ceil(item.quantity / 2)
-    onSell(halfQuantity)
-    setIsOpen(false)
-  }
-
-  const handleSellAll = () => {
-    if (isDisabled || item.quantity <= 1) return
-    onSell(item.quantity)
-    setIsOpen(false)
-  }
-
-  const showQuantityOptions = item.quantity > 1
   const cannotSell = item.template.canSell === false
-  const isDisabled = disabled || cannotSell
 
-  // Calculate sell values (10% of item value)
-  const sellValuePerItem = Math.floor(item.template.value * 0.1)
-  const sellValue1 = sellValuePerItem
-  const sellValueHalf = Math.floor(sellValuePerItem * Math.ceil(item.quantity / 2))
-  const sellValueAll = Math.floor(sellValuePerItem * item.quantity)
+  if (cannotSell) {
+    return null
+  }
+
+  const quantity = item.quantity
+  const showQuantityOptions = quantity > 1
+
+  // Per-unit sell value (shared with the server + shop display)
+  const sellValuePerItem = getSellValue(item.template.value)
+  const halfQuantity = Math.ceil(quantity / 2)
+  const allButOneQuantity = quantity - 1
+
+  const handleSell = (qty: number, event: React.MouseEvent<HTMLButtonElement>) => {
+    if (disabled || qty < 1) return
+    onSell(qty, event.currentTarget.getBoundingClientRect())
+  }
+
+  // Buttons fill their cell so they look right whether the card is wide
+  // (one row) or narrow (the 2x2 grid below wraps the quantity options).
+  const btn =
+    'flex flex-col items-center justify-center w-full px-2 py-1 rounded-md text-white bg-green-600/80 hover:bg-green-600 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed leading-tight'
+
+  const SellOption = ({
+    label,
+    qty,
+    className = '',
+  }: {
+    label: string
+    qty: number
+    className?: string
+  }) => (
+    <button onClick={(e) => handleSell(qty, e)} disabled={disabled} className={`${btn} ${className}`}>
+      <span className="text-[11px] font-semibold whitespace-nowrap">{label}</span>
+      <span className="text-[10px] text-green-200/90">{sellValuePerItem * qty}g</span>
+    </button>
+  )
+
+  // Single-unit items only need one straightforward "Sell" button
+  if (!showQuantityOptions) {
+    return <SellOption label="Sell" qty={1} />
+  }
 
   return (
-    <div className="relative inline-block" ref={buttonRef}>
-      <div className="flex items-stretch">
-        {/* Main button - only show if item can be sold */}
-        {!cannotSell && (
-          <button
-            onClick={handleMainButtonClick}
-            disabled={disabled}
-            className="px-2 py-1 text-xs bg-green-600/70 hover:bg-green-600 rounded-l-md text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
-          >
-            Sell
-          </button>
-        )}
-        
-        {/* Dropdown toggle button */}
-        <button
-          onClick={handleDropdownToggle}
-          disabled={disabled}
-          className={`px-1.5 py-1 bg-green-600/70 hover:bg-green-600 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-            cannotSell ? 'rounded-md' : 'rounded-r-md border-l border-green-500/30'
-          }`}
-          aria-label="More options"
-        >
-          <ChevronDown size={12} className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
-        </button>
-      </div>
-
-      {/* Dropdown menu */}
-      {isOpen && (
-        <div
-          ref={dropdownRef}
-          className="absolute right-0 top-full mt-1 z-50 min-w-[160px] bg-gray-800 rounded-md shadow-lg border border-gray-700 overflow-hidden"
-        >
-          <div className="py-1">
-            {/* Sell options - only show if item can be sold */}
-            {!cannotSell && (
-              <>
-                <button
-                  onClick={handleMainButtonClick}
-                  disabled={disabled}
-                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
-                >
-                  <span>Sell 1</span>
-                  <span className="text-green-400 text-xs ml-2">{sellValue1}g</span>
-                </button>
-                
-                {showQuantityOptions && (
-                  <>
-                    <button
-                      onClick={handleSellHalf}
-                      disabled={disabled}
-                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
-                    >
-                      <span>Sell half</span>
-                      <span className="text-green-400 text-xs ml-2">{sellValueHalf}g</span>
-                    </button>
-                    <button
-                      onClick={handleSellAll}
-                      disabled={disabled}
-                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
-                    >
-                      <span>Sell all</span>
-                      <span className="text-green-400 text-xs ml-2">{sellValueAll}g</span>
-                    </button>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
+    <div className="grid grid-cols-2 gap-1 w-full">
+      <SellOption label="Sell 1" qty={1} />
+      <SellOption label="Half" qty={halfQuantity} />
+      <SellOption label="All but 1" qty={allButOneQuantity} />
+      {/* "Sell all" set apart with a subtle ring instead of spacing so it still
+          fills the grid cell at every width */}
+      <SellOption label="Sell all" qty={quantity} className="ring-1 ring-green-300/40" />
     </div>
   )
 }
-

@@ -612,8 +612,26 @@ const ROOM_ACTIONS = {
         return createErrorResult('view shop', 'Player not found')
       }
 
-      // Get shop items (dagger, red-potion, blue-potion)
-      const shopItemSlugs = ['dagger', 'red-potion', 'blue-potion']
+      // Items available to buy in this shop (organized by category in the UI)
+      const shopItemSlugs = [
+        // Main hand weapons
+        'dagger',
+        'basic-staff',
+        'mace',
+        'broad-sword',
+        'long-sword',
+        // Off hand
+        'kite-shield',
+        'buckler',
+        // Armor
+        'basic-hood',
+        'padded-armor',
+        'black-gloves',
+        'black-boots',
+        // Consumables
+        'red-potion',
+        'blue-potion',
+      ]
       const shopItems = await prisma.itemTemplate.findMany({
         where: {
           slug: { in: shopItemSlugs },
@@ -626,6 +644,10 @@ const ROOM_ACTIONS = {
           value: true,
           type: true,
           equipSlot: true,
+          // Included so the buy cards can render icons, stat mods and the
+          // weapon line just like the inventory/sell cards.
+          weaponCategory: true,
+          metadata: true,
         },
       })
 

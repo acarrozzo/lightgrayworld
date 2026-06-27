@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { getPlayerInventory } from '@/lib/game-engine/services/inventory-service'
+import { getSellValue } from '@/lib/shop-pricing'
 
 async function handleSell(request: AuthenticatedRequest) {
   try {
@@ -53,8 +54,8 @@ async function handleSell(request: AuthenticatedRequest) {
       )
     }
 
-    // Calculate sell value (10% of item value)
-    const sellValuePerItem = Math.floor(playerItem.ItemTemplate.value * 0.1)
+    // Calculate sell value
+    const sellValuePerItem = getSellValue(playerItem.ItemTemplate.value)
     const totalSellValue = sellValuePerItem * quantity
 
     // Perform transaction: remove item and add gold

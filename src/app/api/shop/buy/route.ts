@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { getPlayerInventory } from '@/lib/game-engine/services/inventory-service'
+import { getBuyPrice } from '@/lib/shop-pricing'
 
 async function handleBuy(request: AuthenticatedRequest) {
   try {
@@ -48,8 +49,8 @@ async function handleBuy(request: AuthenticatedRequest) {
       )
     }
 
-    // Calculate total cost
-    const totalCost = template.value * quantity
+    // Calculate total cost (buy price includes the shop markup)
+    const totalCost = getBuyPrice(template.value) * quantity
 
     // Check if player has enough gold
     if (player.currency < totalCost) {

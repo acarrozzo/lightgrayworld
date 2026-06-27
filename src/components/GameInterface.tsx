@@ -3439,69 +3439,119 @@ export default function GameInterface() {
         playerCurrency={shopModalData?.playerCurrency || player?.currency || 0}
         playerInventory={shopModalData?.playerInventory || inventory}
         onBuy={async (itemSlug: string, quantity?: number) => {
-          const response = await fetch('/api/shop/buy', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...getAuthHeaders(),
-            },
-            body: JSON.stringify({ itemSlug, quantity }),
-          })
-
-          const data = await response.json()
-
-          if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Failed to purchase item')
-          }
-
-          // Update inventory and currency
-          if (data.inventory) {
-            setInventory(data.inventory)
-          }
-          if (data.currency !== undefined && player) {
-            setPlayer({ ...player, currency: data.currency })
-          }
-
-          // Update shop modal data
-          if (shopModalData) {
-            setShopModalData({
-              ...shopModalData,
-              playerCurrency: data.currency,
-              playerInventory: data.inventory,
+          try {
+            const response = await fetch('/api/shop/buy', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders(),
+              },
+              body: JSON.stringify({ itemSlug, quantity }),
             })
+
+            const data = await response.json()
+
+            if (!response.ok || !data.success) {
+              throw new Error(data.message || 'Failed to purchase item')
+            }
+
+            // Update inventory and currency
+            if (data.inventory) {
+              setInventory(data.inventory)
+            }
+            if (data.currency !== undefined && player) {
+              setPlayer({ ...player, currency: data.currency })
+            }
+
+            // Update shop modal data
+            if (shopModalData) {
+              setShopModalData({
+                ...shopModalData,
+                playerCurrency: data.currency,
+                playerInventory: data.inventory,
+              })
+            }
+
+            // Surface in the world feed like every other action
+            appendWorldFeed({
+              type: 'action',
+              isSelf: true,
+              message: data.message,
+              ts: Date.now(),
+              outcome: 'success',
+              eventType: 'buy',
+            })
+
+            return data.message as string
+          } catch (err: any) {
+            const message = err?.message || 'Failed to purchase item'
+            appendWorldFeed({
+              type: 'action',
+              isSelf: true,
+              message,
+              ts: Date.now(),
+              outcome: 'failure',
+              eventType: 'buy',
+            })
+            throw err
           }
         }}
         onSell={async (playerItemId: string, quantity: number) => {
-          const response = await fetch('/api/shop/sell', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...getAuthHeaders(),
-            },
-            body: JSON.stringify({ playerItemId, quantity }),
-          })
-
-          const data = await response.json()
-
-          if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Failed to sell item')
-          }
-
-          // Update inventory and currency
-          if (data.inventory) {
-            setInventory(data.inventory)
-          }
-          if (data.currency !== undefined && player) {
-            setPlayer({ ...player, currency: data.currency })
-          }
-
-          // Update shop modal data
-          if (shopModalData) {
-            setShopModalData({
-              ...shopModalData,
-              playerCurrency: data.currency,
-              playerInventory: data.inventory,
+          try {
+            const response = await fetch('/api/shop/sell', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders(),
+              },
+              body: JSON.stringify({ playerItemId, quantity }),
             })
+
+            const data = await response.json()
+
+            if (!response.ok || !data.success) {
+              throw new Error(data.message || 'Failed to sell item')
+            }
+
+            // Update inventory and currency
+            if (data.inventory) {
+              setInventory(data.inventory)
+            }
+            if (data.currency !== undefined && player) {
+              setPlayer({ ...player, currency: data.currency })
+            }
+
+            // Update shop modal data
+            if (shopModalData) {
+              setShopModalData({
+                ...shopModalData,
+                playerCurrency: data.currency,
+                playerInventory: data.inventory,
+              })
+            }
+
+            // Surface in the world feed like every other action
+            appendWorldFeed({
+              type: 'action',
+              isSelf: true,
+              message: data.message,
+              ts: Date.now(),
+              outcome: 'success',
+              eventType: 'sell',
+            })
+
+            return data.message as string
+          } catch (err: any) {
+            const message = err?.message || 'Failed to sell item'
+            appendWorldFeed({
+              type: 'action',
+              isSelf: true,
+              message,
+              ts: Date.now(),
+              outcome: 'failure',
+              eventType: 'sell',
+            })
+            throw err
           }
         }}
       />
