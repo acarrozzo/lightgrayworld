@@ -15,6 +15,7 @@ import {
   type ItemCategory,
   type SortStat,
   getItemCategory,
+  getCraftingKind,
   sortItems,
   INVENTORY_TABS,
   CATEGORY_DISPLAY_ORDER,
@@ -33,6 +34,7 @@ interface InventoryDisplayProps {
 
 type WeaponTypeFilter = 'all' | 'melee' | 'ranged'
 type HandednessFilter = 'all' | '1h' | '2h'
+type CraftingKindFilter = 'all' | 'tool' | 'material'
 
 export default function InventoryDisplay({
   inventory,
@@ -47,6 +49,7 @@ export default function InventoryDisplay({
   const [activeTab, setActiveTab] = useState<FilterTab>(initialFilter || 'all')
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<WeaponTypeFilter>('all')
   const [handednessFilter, setHandednessFilter] = useState<HandednessFilter>('all')
+  const [craftingKindFilter, setCraftingKindFilter] = useState<CraftingKindFilter>('all')
   const [sortStat, setSortStat] = useState<SortStat>('none')
 
   // Sync activeTab with initialFilter prop changes
@@ -61,6 +64,9 @@ export default function InventoryDisplay({
     if (activeTab !== 'main') {
       setWeaponTypeFilter('all')
       setHandednessFilter('all')
+    }
+    if (activeTab !== 'crafting') {
+      setCraftingKindFilter('all')
     }
   }, [activeTab])
 
@@ -114,13 +120,21 @@ export default function InventoryDisplay({
       case 'consumables':
         filtered = inventory.filter(item => item.template.type === ItemType.CONSUMABLE)
         break
+      case 'crafting':
+        filtered = inventory.filter(item => {
+          const kind = getCraftingKind(item)
+          if (!kind) return false
+          if (craftingKindFilter !== 'all' && kind !== craftingKindFilter) return false
+          return true
+        })
+        break
       case 'misc':
-        filtered = inventory.filter(item => item.template.type === ItemType.MISC)
+        filtered = inventory.filter(item => getItemCategory(item) === 'misc')
         break
     }
 
     return sortItems(filtered, sortStat, itemOrderMap)
-  }, [inventory, activeTab, weaponTypeFilter, handednessFilter, sortStat, itemOrderMap])
+  }, [inventory, activeTab, weaponTypeFilter, handednessFilter, craftingKindFilter, sortStat, itemOrderMap])
 
   // Group items by category when 'all' tab is selected
   const groupedItems = useMemo(() => {
@@ -138,6 +152,7 @@ export default function InventoryDisplay({
       ring: [],
       neck: [],
       consumables: [],
+      crafting: [],
       misc: [],
     }
 
@@ -166,6 +181,7 @@ export default function InventoryDisplay({
         ring: 0,
         neck: 0,
         consumables: 0,
+        crafting: 0,
         misc: 0,
       }
     }
@@ -181,6 +197,7 @@ export default function InventoryDisplay({
       ring: 0,
       neck: 0,
       consumables: 0,
+      crafting: 0,
       misc: 0,
     }
 
@@ -363,6 +380,27 @@ export default function InventoryDisplay({
                 }`}
               >
                 {f === 'all' ? 'All Hands' : f.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Crafting sub-filters */}
+      {activeTab === 'crafting' && (
+        <div className="flex gap-4 flex-wrap pb-1">
+          <div className="flex gap-1.5">
+            {(['all', 'tool', 'material'] as CraftingKindFilter[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setCraftingKindFilter(f)}
+                className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
+                  craftingKindFilter === f
+                    ? 'bg-violet-600/70 hover:bg-violet-600 text-white border border-violet-500/50'
+                    : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-400 border border-gray-700/50 hover:border-gray-600/50'
+                }`}
+              >
+                {f === 'all' ? 'All Types' : f === 'tool' ? 'Tools' : 'Materials'}
               </button>
             ))}
           </div>

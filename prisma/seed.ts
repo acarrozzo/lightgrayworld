@@ -1194,6 +1194,7 @@ async function main() {
       type: ItemType.MISC,
       max: 1,
       value: 10,
+      metadata: { crafting: { kind: 'tool' } },
     },
     {
       id: 'dagger_001',
@@ -1253,6 +1254,7 @@ async function main() {
       type: ItemType.MISC,
       max: 99999,
       value: 10,
+      metadata: { crafting: { kind: 'material' } },
     },
     {
       id: 'sand_001',
@@ -1262,6 +1264,7 @@ async function main() {
       type: ItemType.MISC,
       max: 99999,
       value: 10,
+      metadata: { crafting: { kind: 'material' } },
     },
     {
       id: 'stone_001',
@@ -1271,6 +1274,7 @@ async function main() {
       type: ItemType.MISC,
       max: 99999,
       value: 10,
+      metadata: { crafting: { kind: 'material' } },
     },
     {
       id: 'wood_001',
@@ -1280,6 +1284,7 @@ async function main() {
       type: ItemType.MISC,
       max: 99999,
       value: 10,
+      metadata: { crafting: { kind: 'material' } },
     },
     {
       id: 'hatchet_001',
@@ -1289,6 +1294,7 @@ async function main() {
       type: ItemType.MISC,
       max: 1,
       value: 10,
+      metadata: { crafting: { kind: 'tool' } },
     },
     {
       id: 'pickaxe_001',
@@ -1298,6 +1304,17 @@ async function main() {
       type: ItemType.MISC,
       max: 1,
       value: 10,
+      metadata: { crafting: { kind: 'tool' } },
+    },
+    {
+      id: 'hammer_001',
+      slug: 'hammer',
+      name: 'Hammer',
+      description: 'A heavy hammer for building and crafting.',
+      type: ItemType.MISC,
+      max: 1,
+      value: 10,
+      metadata: { crafting: { kind: 'tool' } },
     },
     {
       id: 'mace_001',
@@ -1972,6 +1989,7 @@ async function main() {
       type: ItemType.MISC,
       max: 100,
       value: 1,
+      metadata: { crafting: { kind: 'material' } },
     },
     {
       id: 'scorpion-tail_001',

@@ -63,6 +63,7 @@ const GROUP_ORDER = [
   'Ring',
   'Neck',
   'Consumable',
+  'Crafting',
   'Misc',
 ]
 
@@ -76,6 +77,7 @@ function groupFor(
   if (item.weaponCategory === 'MELEE') return meta.isTwoHanded ? '2H' : '1H'
   if (item.type === 'CONSUMABLE') return 'Consumable'
   if (item.equipSlot && SLOT_LABELS[item.equipSlot]) return SLOT_LABELS[item.equipSlot]
+  if (meta.crafting?.kind) return 'Crafting'
   return 'Misc'
 }
 
@@ -83,6 +85,7 @@ type ItemMetadata = {
   icon?: string
   isTwoHanded?: boolean
   statMods?: { str?: number; dex?: number; mag?: number; def?: number }
+  crafting?: { kind?: 'tool' | 'material' }
 }
 
 // --- Enemy drop source shapes (mirrors the Bestiary's resolution) -----------

@@ -13,6 +13,7 @@ import {
   type FilterTab,
   type SortStat,
   getItemCategory,
+  getCraftingKind,
   sortItems,
   INVENTORY_TABS,
   CATEGORY_DISPLAY_ORDER,
@@ -73,6 +74,8 @@ type CategoryView = {
   visibleTabs: typeof INVENTORY_TABS
 }
 
+type CraftingKindFilter = 'all' | 'tool' | 'material'
+
 /** Group + sort a list of items into the inventory's category layout. */
 function buildCategoryView(
   items: InventoryItem[],
@@ -109,8 +112,10 @@ export default function ShopModal({
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy')
   const [buyFilter, setBuyFilter] = useState<FilterTab>('all')
   const [buySort, setBuySort] = useState<SortStat>('none')
+  const [buyCraftingKind, setBuyCraftingKind] = useState<CraftingKindFilter>('all')
   const [sellFilter, setSellFilter] = useState<FilterTab>('all')
   const [sellSort, setSellSort] = useState<SortStat>('none')
+  const [sellCraftingKind, setSellCraftingKind] = useState<CraftingKindFilter>('all')
   const [isBuying, setIsBuying] = useState(false)
   const [isSelling, setIsSelling] = useState(false)
   // Transient result popover anchored above the clicked buy/sell button. We
@@ -239,9 +244,16 @@ export default function ShopModal({
     setFilter: (tab: FilterTab) => void
     sort: SortStat
     setSort: (sort: SortStat) => void
+    craftingKind: CraftingKindFilter
+    setCraftingKind: (kind: CraftingKindFilter) => void
     renderFooter: (item: InventoryItem) => ReactNode
   }) => {
-    const { view, filter, setFilter, sort, setSort, renderFooter } = opts
+    const { view, filter, setFilter, sort, setSort, craftingKind, setCraftingKind, renderFooter } = opts
+    // Apply the tool/material sub-filter to the flat crafting list.
+    const flatItems = (view.groups.get(filter) || []).filter((item) => {
+      if (filter !== 'crafting' || craftingKind === 'all') return true
+      return getCraftingKind(item) === craftingKind
+    })
     return (
       <>
         {/* Filter tabs — same categories as the inventory */}
@@ -252,7 +264,10 @@ export default function ShopModal({
             return (
               <button
                 key={tab.id}
-                onClick={() => setFilter(tab.id)}
+                onClick={() => {
+                  setFilter(tab.id)
+                  if (tab.id !== 'crafting') setCraftingKind('all')
+                }}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
                   isActive
                     ? 'bg-blue-500/70 hover:bg-blue-500 text-white border border-blue-400/50'
@@ -272,6 +287,25 @@ export default function ShopModal({
 
         {/* Stat sort — shared with the inventory */}
         <StatSortControl value={sort} onChange={setSort} />
+
+        {/* Crafting sub-filters — mirror the inventory's tool/material chips */}
+        {filter === 'crafting' && (
+          <div className="flex gap-1.5 flex-wrap">
+            {(['all', 'tool', 'material'] as CraftingKindFilter[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setCraftingKind(f)}
+                className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
+                  craftingKind === f
+                    ? 'bg-violet-600/70 hover:bg-violet-600 text-white border border-violet-500/50'
+                    : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-400 border border-gray-700/50 hover:border-gray-600/50'
+                }`}
+              >
+                {f === 'all' ? 'All Types' : f === 'tool' ? 'Tools' : 'Materials'}
+              </button>
+            ))}
+          </div>
+        )}
 
         {filter === 'all' ? (
           // Grouped by category with headers, matching the inventory
@@ -298,7 +332,7 @@ export default function ShopModal({
         ) : (
           // Flat list for a specific category
           <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-            {(view.groups.get(filter) || []).map((item) => (
+            {flatItems.map((item) => (
               <ItemCardShell key={item.id} item={item} footer={renderFooter(item)} />
             ))}
           </div>
@@ -382,6 +416,8 @@ export default function ShopModal({
                   setFilter: setBuyFilter,
                   sort: buySort,
                   setSort: setBuySort,
+                  craftingKind: buyCraftingKind,
+                  setCraftingKind: setBuyCraftingKind,
                   renderFooter: renderBuyFooter,
                 })
               )}
@@ -400,6 +436,8 @@ export default function ShopModal({
                   setFilter: setSellFilter,
                   sort: sellSort,
                   setSort: setSellSort,
+                  craftingKind: sellCraftingKind,
+                  setCraftingKind: setSellCraftingKind,
                   renderFooter: renderSellFooter,
                 })
               )}

@@ -19,9 +19,22 @@ export type FilterTab =
   | 'ring'
   | 'neck'
   | 'consumables'
+  | 'crafting'
   | 'misc'
 
 export type ItemCategory = Exclude<FilterTab, 'all'>
+
+/** Sub-grouping for crafting items, tagged via metadata.crafting.kind. */
+export type CraftingKind = 'tool' | 'material'
+
+/**
+ * Return the crafting sub-kind for an item, or null if it isn't a crafting item.
+ * Single source of truth for the crafting category + its tool/material split.
+ */
+export function getCraftingKind(item: InventoryItem): CraftingKind | null {
+  const kind = (item.template.metadata as any)?.crafting?.kind
+  return kind === 'tool' || kind === 'material' ? kind : null
+}
 
 /**
  * Classify an inventory item into its filter category. Single source of truth
@@ -39,6 +52,7 @@ export function getItemCategory(item: InventoryItem): ItemCategory {
     case EquipSlot.NECK: return 'neck'
   }
   if (item.template.type === ItemType.CONSUMABLE) return 'consumables'
+  if (getCraftingKind(item)) return 'crafting'
   return 'misc'
 }
 
@@ -54,6 +68,7 @@ export const INVENTORY_TABS: Array<{ id: FilterTab; label: string }> = [
   { id: 'ring', label: 'ring' },
   { id: 'neck', label: 'neck' },
   { id: 'consumables', label: 'consumables' },
+  { id: 'crafting', label: 'crafting' },
   { id: 'misc', label: 'misc' },
 ]
 
