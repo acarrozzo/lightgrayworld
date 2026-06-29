@@ -1257,6 +1257,16 @@ async function main() {
       metadata: { crafting: { kind: 'material' } },
     },
     {
+      id: 'wheat_001',
+      slug: 'wheat',
+      name: 'Wheat',
+      description: 'A bundle of golden wheat, useful for crafting and cooking.',
+      type: ItemType.MISC,
+      max: 99999,
+      value: 10,
+      metadata: { crafting: { kind: 'material' } },
+    },
+    {
       id: 'sand_001',
       slug: 'sand',
       name: 'Sand',

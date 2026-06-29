@@ -155,12 +155,12 @@ interface RoomBoxProps {
   currentPlayerId?: string
   onAction: (action: string | { type: string; data?: any }) => void | Promise<void>
   onOpenPlayerProfile?: (player: Player) => void
-  gatherCooldown?: {
+  gatherCooldowns?: Array<{
     action: string
     cooldownSeconds: number
     secondsRemaining: number
     quantity?: number | null
-  } | null
+  }>
   worldTick?: {
     tickNumber: number
     nextTickAt: number
@@ -182,7 +182,7 @@ export default function RoomBox({
   currentPlayerId,
   onAction,
   onOpenPlayerProfile,
-  gatherCooldown,
+  gatherCooldowns,
   worldTick,
   actionResult,
   isLoadingRoom = false,
@@ -321,7 +321,7 @@ export default function RoomBox({
         currentPlayerId={currentPlayerId}
         onAction={onAction}
         onOpenPlayerProfile={onOpenPlayerProfile}
-        gatherCooldown={gatherCooldown}
+        gatherCooldowns={gatherCooldowns}
         showHeader={false}
         className="mt-2"
         worldTick={worldTick}

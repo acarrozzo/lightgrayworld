@@ -50,6 +50,14 @@ const ROOM_LOOT = [
 
   // Room 019 — Sand Crab Nest
   { roomId: '019', slug: 'bo' },
+
+  // Room 014 — pickaxe (for mining stone in room 015)
+  { roomId: '014', slug: 'pickaxe' },
+
+  // Room 028c — crafting tools
+  { roomId: '028c', slug: 'hammer' },
+  { roomId: '028c', slug: 'string' },
+  { roomId: '028c', slug: 'pickaxe' },
 ]
 
 module.exports = { ROOM_LOOT }

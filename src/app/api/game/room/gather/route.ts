@@ -11,9 +11,10 @@ const noCacheHeaders = {
 }
 
 /**
- * Returns the rolling gather cooldown status for a room (sand / berries):
- *   { gatherCooldown: { action, cooldownSeconds, secondsRemaining } | null }
- * Used to seed the in-room countdown on room entry. Lightweight by design.
+ * Returns the rolling gather cooldown status for a room (sand / dirt / stone /
+ * berries). A room can host more than one gather action, so this is an array:
+ *   { gatherCooldowns: Array<{ action, cooldownSeconds, secondsRemaining, quantity }> }
+ * Used to seed the in-room countdowns on room entry. Lightweight by design.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -34,19 +35,20 @@ export async function GET(request: NextRequest) {
       ? requestedRoomId
       : user.currentRoom || '001'
 
-    const payload: Record<string, unknown> = { gatherCooldown: null }
+    const payload: Record<string, unknown> = { gatherCooldowns: [] }
 
-    const { getGatherActionForRoom } = require('@/lib/game-engine/room-action-handlers')
+    const { getGatherActionsForRoom } = require('@/lib/game-engine/room-action-handlers')
     const { getCooldownRemaining } = require('@/lib/game-engine/services/action-cap-service')
-    const gather = getGatherActionForRoom(roomId)
-    if (gather) {
-      const secondsRemaining = await getCooldownRemaining(user.id, roomId, gather.action, gather.cooldownMs)
-      payload.gatherCooldown = {
-        action: gather.action,
-        cooldownSeconds: Math.ceil(gather.cooldownMs / 1000),
-        secondsRemaining,
-        quantity: gather.quantity ?? null,
-      }
+    const gathers = getGatherActionsForRoom(roomId)
+    if (gathers.length > 0) {
+      payload.gatherCooldowns = await Promise.all(
+        gathers.map(async (gather: { action: string; cooldownMs: number; quantity: number | null }) => ({
+          action: gather.action,
+          cooldownSeconds: Math.ceil(gather.cooldownMs / 1000),
+          secondsRemaining: await getCooldownRemaining(user.id, roomId, gather.action, gather.cooldownMs),
+          quantity: gather.quantity ?? null,
+        }))
+      )
     }
 
     return NextResponse.json(payload, { headers: noCacheHeaders })

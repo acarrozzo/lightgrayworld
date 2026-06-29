@@ -144,12 +144,12 @@ export default function GameInterface() {
     tickIntervalMs: number
   } | undefined>(undefined)
   // Rolling gather cooldown for the current room (sand / berries); null if none.
-  const [gatherCooldown, setGatherCooldown] = useState<{
+  const [gatherCooldowns, setGatherCooldowns] = useState<Array<{
     action: string
     cooldownSeconds: number
     secondsRemaining: number
     quantity: number | null
-  } | null>(null)
+  }>>([])
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
   const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('players')
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
@@ -306,7 +306,7 @@ export default function GameInterface() {
       // Guard: room may have changed during the await
       if (currentRoomRef.current?.roomId !== roomId) return
 
-      setGatherCooldown(data.gatherCooldown ?? null)
+      setGatherCooldowns(data.gatherCooldowns ?? [])
     } catch (error) {
       console.error(`[hydrateGatherCooldown] Error for room ${roomId}:`, error)
     }
@@ -345,11 +345,11 @@ export default function GameInterface() {
   // Hydrate the rolling gather cooldown whenever the current room changes.
   useEffect(() => {
     if (!currentRoom?.roomId) {
-      setGatherCooldown(null)
+      setGatherCooldowns([])
       return
     }
-    // Clear stale value from the previous room before fetching fresh status.
-    setGatherCooldown(null)
+    // Clear stale values from the previous room before fetching fresh status.
+    setGatherCooldowns([])
     hydrateGatherCooldown(currentRoom.roomId)
   }, [currentRoom?.roomId, hydrateGatherCooldown])
 
@@ -3041,7 +3041,7 @@ export default function GameInterface() {
                 onAction={handleAction}
                 isPartyMember={isPartyMember}
                 onOpenPlayerProfile={handleOpenPlayerProfile}
-                gatherCooldown={gatherCooldown}
+                gatherCooldowns={gatherCooldowns}
                 worldTick={worldTick}
                 actionResult={actionResult}
                 isLoadingRoom={isLoadingRoom}

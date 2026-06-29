@@ -21,12 +21,12 @@ interface RoomDisplayProps {
   currentPlayerId?: string
   onAction?: (action: string | { type: string; data?: any }) => void | Promise<void>
   onOpenPlayerProfile?: (player: Player) => void
-  gatherCooldown?: {
+  gatherCooldowns?: Array<{
     action: string
     cooldownSeconds: number
     secondsRemaining: number
     quantity?: number | null
-  } | null
+  }>
   showHeader?: boolean
   className?: string
   showPlayers?: boolean
@@ -44,7 +44,7 @@ export default function RoomDisplay({
   room,
   onAction,
   onOpenPlayerProfile,
-  gatherCooldown,
+  gatherCooldowns = [],
   roomPlayers = [],
   currentPlayerId,
   showHeader = true,
@@ -61,9 +61,10 @@ export default function RoomDisplay({
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null)
   const [loadingQuestId, setLoadingQuestId] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
-  // Live seconds remaining on the room's rolling gather cooldown (sand / berries).
-  // 0 (or null when no gather action) means the action is ready.
-  const [gatherRemaining, setGatherRemaining] = useState<number | null>(null)
+  // Live seconds remaining per rolling gather action (sand / dirt / stone / berries),
+  // keyed by action name. A room can host several gather actions at once; an entry
+  // of 0 (or absent) means that action is ready.
+  const [gatherRemaining, setGatherRemaining] = useState<Record<string, number>>({})
 
   // Action result flyout: shows the latest action's result text anchored to the
   // button that triggered it (mirrors the world feed / ActivityTicker). The four
@@ -133,35 +134,45 @@ export default function RoomDisplay({
     setIsMounted(true)
   }, [])
 
-  // The room's gather action (sand / berries), if any.
-  const gatherAction = gatherCooldown?.action ?? null
-  // How many items a single pick grants (shown in the ready state).
-  const gatherQuantity = gatherCooldown?.quantity ?? null
+  // Per-action gather metadata (cooldown window, quantity), keyed by action name.
+  const gatherByAction = useMemo(() => {
+    const map = new Map<string, { quantity?: number | null }>()
+    for (const g of gatherCooldowns) map.set(g.action, g)
+    return map
+  }, [gatherCooldowns])
 
-  // Seed the live countdown from the room's gather cooldown on room/data change.
+  // Seed the live countdowns from the room's gather cooldowns on room/data change.
   useEffect(() => {
-    setGatherRemaining(gatherCooldown ? gatherCooldown.secondsRemaining : null)
-  }, [gatherCooldown, room?.roomId])
+    const next: Record<string, number> = {}
+    for (const g of gatherCooldowns) next[g.action] = g.secondsRemaining
+    setGatherRemaining(next)
+  }, [gatherCooldowns, room?.roomId])
 
-  // Refresh the countdown from action feedback: a successful collect returns the
+  // Refresh a countdown from action feedback: a successful collect returns the
   // full window (secondsUntilReset); a too-early attempt returns what's left.
   useEffect(() => {
-    if (!gatherAction) return
-    if (actionResult?.action !== gatherAction) return
+    const action = actionResult?.action
+    if (!action || !gatherByAction.has(action)) return
     const secondsUntilReset = actionResult?.data?.secondsUntilReset
     if (typeof secondsUntilReset === 'number') {
-      setGatherRemaining(secondsUntilReset)
+      setGatherRemaining((prev) => ({ ...prev, [action]: secondsUntilReset }))
     }
-  }, [actionResult, gatherAction])
+  }, [actionResult, gatherByAction])
 
-  // Tick the gather countdown down to zero once per second.
+  // Tick every active gather countdown down to zero once per second.
   useEffect(() => {
     if (!isMounted) return
-    if (gatherRemaining === null || gatherRemaining <= 0) return
+    if (!Object.values(gatherRemaining).some((v) => v > 0)) return
     const interval = setInterval(() => {
       setGatherRemaining((prev) => {
-        if (prev === null || prev <= 1) return 0
-        return prev - 1
+        let changed = false
+        const next: Record<string, number> = {}
+        for (const [action, secs] of Object.entries(prev)) {
+          const decremented = secs <= 1 ? 0 : secs - 1
+          if (decremented !== secs) changed = true
+          next[action] = decremented
+        }
+        return changed ? next : prev
       })
     }, 1000)
     return () => clearInterval(interval)
@@ -214,9 +225,6 @@ export default function RoomDisplay({
       setLoadingQuestId(null)
     }
   }
-
-  // The gather action is on cooldown when there are seconds left to wait.
-  const gatherOnCooldown = Boolean(gatherAction && gatherRemaining !== null && gatherRemaining > 0)
 
   const handlePickupItem = async (item: any, quantity: number = 1) => {
     if (!onAction || isPerformingAction) return
@@ -310,8 +318,11 @@ export default function RoomDisplay({
           const showFlyout = flyoutActionForButton(actionItem.action)
           // Rolling gather action (sand / berries): disable while on cooldown and
           // show a live countdown beneath the button.
-          const isGather = actionItem.action === gatherAction
-          const isGatherLocked = isGather && gatherOnCooldown
+          const gatherInfo = gatherByAction.get(actionItem.action)
+          const isGather = Boolean(gatherInfo)
+          const gatherSecondsLeft = gatherRemaining[actionItem.action] ?? 0
+          const isGatherLocked = isGather && gatherSecondsLeft > 0
+          const gatherQuantity = gatherInfo?.quantity ?? null
           const gatherButton = (
             <button
               data-action-button
@@ -343,18 +354,29 @@ export default function RoomDisplay({
             <div
               key={actionItem.action}
               ref={showFlyout ? flyoutRootRef : undefined}
-              className="relative flex flex-col items-start gap-0.5"
+              className={`relative flex flex-col items-start gap-0.5 ${
+                isGather ? 'w-full' : ''
+              }`}
             >
               {showFlyout && actionResult && (
                 <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
               )}
               {isGather ? (
                 // Minimal container: button on the left, status/countdown to the right.
-                <div className="flex items-center gap-2 rounded-lg border border-gray-700/60 bg-gray-800/40 p-1.5">
+                // Gold while on cooldown, green when ready; border matches the text color.
+                <div
+                  className={`flex items-center gap-2 rounded-lg border bg-gray-800/40 p-1.5 ${
+                    isGatherLocked ? 'border-amber-400/50' : 'border-green-400/50'
+                  }`}
+                >
                   {gatherButton}
-                  <span className="text-xs text-gray-400 whitespace-nowrap pr-1">
+                  <span
+                    className={`text-xs whitespace-nowrap pr-1 ${
+                      isGatherLocked ? 'text-amber-400' : 'text-green-400'
+                    }`}
+                  >
                     {isGatherLocked
-                      ? formatTimeRemaining(gatherRemaining ?? 0)
+                      ? formatTimeRemaining(gatherSecondsLeft)
                       : `Ready to pick${gatherQuantity != null ? ` (${gatherQuantity})` : ''}`}
                   </span>
                 </div>

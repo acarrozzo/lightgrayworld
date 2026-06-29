@@ -195,7 +195,13 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs, quantity = 5, 
         const secondsRemaining = capInfo?.secondsUntilReset ?? 0
         return `No more ${itemNamePlural} right now. More will ${emptyVerb} in ${formatTimeRemaining(secondsRemaining)}.`
       }
-      return `You collect ${quantity} ${itemNamePlural}.`
+      // Running total of this resource in inventory after the grant, if available.
+      const inventory = effects?.[0]?.inventory
+      const entry = Array.isArray(inventory)
+        ? inventory.find((i) => i?.template?.slug === itemSlug)
+        : null
+      const total = entry?.quantity
+      return `You collect ${quantity} ${itemNamePlural}${typeof total === 'number' ? ` (${total})` : ''}.`
     },
     determineOutcome: ({ success }) => (success ? 'success' : 'info'),
   }
@@ -213,6 +219,49 @@ function makeSandAction() {
     toolRequired: 'shovel',
     emptyVerb: 'settle',
     missingToolMessage: 'You need a shovel to dig for sand here.',
+  })
+}
+
+/**
+ * Shovel dirt: a tool-gated gather action (room 014). Mirrors sand.
+ */
+function makeDirtAction() {
+  return makeGatherAction({
+    itemSlug: 'dirt',
+    itemNamePlural: 'dirt',
+    cooldownMs: 5 * 60 * 1000,
+    quantity: 5,
+    toolRequired: 'shovel',
+    emptyVerb: 'settle',
+    missingToolMessage: 'You need a shovel to dig for dirt here.',
+  })
+}
+
+/**
+ * Mine stone: a tool-gated gather action (room 015). Mirrors sand/dirt.
+ */
+function makeStoneAction() {
+  return makeGatherAction({
+    itemSlug: 'stone',
+    itemNamePlural: 'stone',
+    cooldownMs: 30 * 60 * 1000,
+    quantity: 5,
+    toolRequired: 'pickaxe',
+    emptyVerb: 'settle',
+    missingToolMessage: 'You need a pickaxe to mine stone here.',
+  })
+}
+
+/**
+ * Pick wheat: an untooled gather action (room 020). 5 every 60 minutes.
+ */
+function makeWheatAction() {
+  return makeGatherAction({
+    itemSlug: 'wheat',
+    itemNamePlural: 'wheat',
+    cooldownMs: 60 * 60 * 1000,
+    quantity: 5,
+    emptyVerb: 'grow',
   })
 }
 
@@ -565,7 +614,8 @@ const ROOM_ACTIONS = {
       emptyVerb: 'grow',
     }),
   },
-  '015': { 'shovel sand': makeSandAction() },
+  '014': { 'shovel dirt': makeDirtAction() },
+  '015': { 'shovel sand': makeSandAction(), 'mine stone': makeStoneAction() },
   '016': { 'shovel sand': makeSandAction() },
   '017': { 'shovel sand': makeSandAction() },
   '018': { 'shovel sand': makeSandAction() },
@@ -705,6 +755,7 @@ const ROOM_ACTIONS = {
   },
   '020': {
     'rest at waterfall': async (playerId, roomState) => roomState.executeWaterfallRest(playerId),
+    'pick wheat': makeWheatAction(),
   },
   '999': {
     'rest in lobby': async (playerId, roomState) => roomState.executeLobbyRest(playerId),
@@ -1011,17 +1062,28 @@ async function executeEffects(effects, playerId) {
  * client's in-room countdown so timing never has to be duplicated.
  */
 function getGatherActionForRoom(roomId) {
+  return getGatherActionsForRoom(roomId)[0] ?? null
+}
+
+/**
+ * All rolling-cooldown gather actions in a room (sand / dirt / stone / berries).
+ * A room can host more than one (e.g. shovel sand + mine stone), so this returns
+ * every match; the singular helper above is kept for callers that want the first.
+ * @returns {Array<{ action: string, cooldownMs: number, quantity: number|null }>}
+ */
+function getGatherActionsForRoom(roomId) {
   const actions = ROOM_ACTIONS[roomId]
-  if (!actions) return null
+  if (!actions) return []
+  const result = []
   for (const [action, def] of Object.entries(actions)) {
     if (def && typeof def === 'object' && def.cooldownMs) {
       const grant = Array.isArray(def.effects)
         ? def.effects.find((e) => e?.type === 'grantItem')
         : null
-      return { action, cooldownMs: def.cooldownMs, quantity: grant?.quantity ?? null }
+      result.push({ action, cooldownMs: def.cooldownMs, quantity: grant?.quantity ?? null })
     }
   }
-  return null
+  return result
 }
 
 module.exports = {
@@ -1029,5 +1091,6 @@ module.exports = {
   ROOM_ACTIONS,
   CHEST_LOOT,
   getGatherActionForRoom,
+  getGatherActionsForRoom,
 }
 

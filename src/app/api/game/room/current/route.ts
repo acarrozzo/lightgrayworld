@@ -222,17 +222,18 @@ export async function GET(request: NextRequest) {
       // the in-room countdown; null when the room has no gather action.
       if (roomId) {
         try {
-          const { getGatherActionForRoom } = require('@/lib/game-engine/room-action-handlers')
+          const { getGatherActionsForRoom } = require('@/lib/game-engine/room-action-handlers')
           const { getCooldownRemaining } = require('@/lib/game-engine/services/action-cap-service')
-          const gather = getGatherActionForRoom(roomId)
-          if (gather) {
-            const secondsRemaining = await getCooldownRemaining(user.id, roomId, gather.action, gather.cooldownMs)
-            payload.gatherCooldown = {
-              action: gather.action,
-              cooldownSeconds: Math.ceil(gather.cooldownMs / 1000),
-              secondsRemaining,
-              quantity: gather.quantity ?? null,
-            }
+          const gathers = getGatherActionsForRoom(roomId)
+          if (gathers.length > 0) {
+            payload.gatherCooldowns = await Promise.all(
+              gathers.map(async (gather: { action: string; cooldownMs: number; quantity: number | null }) => ({
+                action: gather.action,
+                cooldownSeconds: Math.ceil(gather.cooldownMs / 1000),
+                secondsRemaining: await getCooldownRemaining(user.id, roomId, gather.action, gather.cooldownMs),
+                quantity: gather.quantity ?? null,
+              }))
+            )
           }
         } catch (error) {
           console.error('[Room API] Error computing gather cooldown:', error)
