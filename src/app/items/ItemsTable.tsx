@@ -26,6 +26,7 @@ export type ItemRow = {
     quests: { label: string }[] // quest title, e.g. "Rat Problem ×5"
     chests: { label: string }[] // chest name, e.g. "Gold Chest ×3"
     searches: { label: string }[] // room name searched, e.g. "Cabin Basement"
+    gathers: { label: string }[] // gathered resource, e.g. "Beach ×5 · 5m · shovel"
   }
 }
 
@@ -62,7 +63,14 @@ const WEAPON_GROUPS = ['1H', '2H', 'Ranged']
 // Total number of resolved sources across every source type.
 function sourceCount(r: ItemRow): number {
   const s = r.sources
-  return s.rooms.length + s.enemies.length + s.quests.length + s.chests.length + s.searches.length
+  return (
+    s.rooms.length +
+    s.enemies.length +
+    s.quests.length +
+    s.chests.length +
+    s.searches.length +
+    s.gathers.length
+  )
 }
 
 // An equipable item with no source anywhere — "not available yet".
@@ -389,7 +397,7 @@ function SourceGroup({ label, items }: { label: string; items: { label: string }
 // rewards, chests, and room searches. Equipable items with no source show
 // "not available yet"; other sourceless items show a plain dash.
 function SourceCell({ r }: { r: ItemRow }) {
-  const { rooms, enemies, quests, chests, searches } = r.sources
+  const { rooms, enemies, quests, chests, searches, gathers } = r.sources
   if (sourceCount(r) === 0) {
     return r.equipable ? (
       <span className="text-[11px] italic text-gray-500">not available yet</span>
@@ -413,6 +421,7 @@ function SourceCell({ r }: { r: ItemRow }) {
         </div>
       )}
       <SourceGroup label="Found in" items={rooms} />
+      <SourceGroup label="Gather" items={gathers} />
       <SourceGroup label="Quest" items={quests} />
       <SourceGroup label="Chest" items={chests} />
       <SourceGroup label="Search" items={searches} />

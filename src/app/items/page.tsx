@@ -17,8 +17,9 @@ const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: EnemySource
 // Chest loot tables (keyed by roomId → action) and the room-search loot tables
 // — read live so the source column reflects any change to either.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { CHEST_LOOT } = require('@/lib/game-engine/room-action-handlers') as {
+const { CHEST_LOOT, ROOM_ACTIONS } = require('@/lib/game-engine/room-action-handlers') as {
   CHEST_LOOT: Record<string, Record<string, ChestLoot>>
+  ROOM_ACTIONS: Record<string, Record<string, RoomActionEntry>>
 }
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { SEARCH_LOOT_TABLES } = require('@/lib/game-engine/room-state') as {
@@ -111,6 +112,23 @@ type SearchEffect = {
 }
 type SearchTable = { entries: { effect?: SearchEffect }[] }
 
+// --- Gather (timed room resource) source shapes -----------------------------
+// A room action is a structured gather def, a plain message string, or a custom
+// handler function. Only the structured form (a cooldown + grantItem effect) is
+// a gatherable resource; the rest are narrowed out at runtime.
+type GatherEffect = { type: string; itemSlug?: string; quantity?: number }
+type GatherActionDef = { cooldownMs?: number; toolRequired?: string; effects?: GatherEffect[] }
+type RoomActionEntry = string | GatherActionDef | ((...args: never[]) => unknown)
+
+// Render a cooldown interval as a compact label ("5m", "30m", "1h", "1h30m").
+function formatCooldown(ms: number): string {
+  const totalMin = Math.round(ms / 60000)
+  if (totalMin < 60) return `${totalMin}m`
+  const hours = Math.floor(totalMin / 60)
+  const mins = totalMin % 60
+  return mins === 0 ? `${hours}h` : `${hours}h${mins}m`
+}
+
 // Human-readable quantity suffix ("" for 1, " ×2" fixed, " ×1-3" range).
 function qtyLabel(entry: QtyShape): string {
   if (entry.min != null || entry.max != null) {
@@ -146,7 +164,7 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
   const ensure = (slug: string) => {
     let s = sources.get(slug)
     if (!s) {
-      s = { rooms: [], enemies: [], quests: [], chests: [], searches: [] }
+      s = { rooms: [], enemies: [], quests: [], chests: [], searches: [], gathers: [] }
       sources.set(slug, s)
     }
     return s
@@ -213,6 +231,21 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
     }
   }
 
+  // Gather actions — timed room resource collection (sand, dirt, stone, wheat…).
+  // A gatherable resource is any structured room action with a cooldown and a
+  // grantItem effect; the label notes quantity, cooldown, and any tool gate.
+  for (const [roomId, actions] of Object.entries(ROOM_ACTIONS)) {
+    const name = roomNames.get(roomId) ?? `Room ${roomId}`
+    for (const def of Object.values(actions)) {
+      if (!def || typeof def !== 'object' || !def.cooldownMs) continue
+      const grant = def.effects?.find((e) => e.type === 'grantItem' && e.itemSlug)
+      if (!grant?.itemSlug) continue
+      const tool = def.toolRequired ? ` · ${def.toolRequired}` : ''
+      const label = `${name}${fixedQty(grant.quantity)} · ${formatCooldown(def.cooldownMs)}${tool}`
+      ensure(grant.itemSlug).gathers.push({ label })
+    }
+  }
+
   return sources
 }
 
@@ -252,7 +285,7 @@ export default async function ItemsPage() {
       slug: item.slug,
       name: item.name,
       equipable,
-      sources: sourceMap.get(item.slug) ?? { rooms: [], enemies: [], quests: [], chests: [], searches: [] },
+      sources: sourceMap.get(item.slug) ?? { rooms: [], enemies: [], quests: [], chests: [], searches: [], gathers: [] },
       // Resolve icons the same way the inventory UI does: prefer metadata.icon,
       // then fall back to slug-based sprite lookup (e.g. `equipment-${slug}`),
       // finally a generic icon. Without this, items lacking metadata.icon show
