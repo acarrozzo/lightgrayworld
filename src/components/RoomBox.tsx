@@ -159,6 +159,7 @@ interface RoomBoxProps {
     action: string
     cooldownSeconds: number
     secondsRemaining: number
+    quantity?: number | null
   } | null
   worldTick?: {
     tickNumber: number

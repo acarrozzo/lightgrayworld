@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
         action: gather.action,
         cooldownSeconds: Math.ceil(gather.cooldownMs / 1000),
         secondsRemaining,
+        quantity: gather.quantity ?? null,
       }
     }
 

@@ -148,6 +148,7 @@ export default function GameInterface() {
     action: string
     cooldownSeconds: number
     secondsRemaining: number
+    quantity: number | null
   } | null>(null)
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
   const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('players')

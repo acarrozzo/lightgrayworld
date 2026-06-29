@@ -1015,7 +1015,10 @@ function getGatherActionForRoom(roomId) {
   if (!actions) return null
   for (const [action, def] of Object.entries(actions)) {
     if (def && typeof def === 'object' && def.cooldownMs) {
-      return { action, cooldownMs: def.cooldownMs }
+      const grant = Array.isArray(def.effects)
+        ? def.effects.find((e) => e?.type === 'grantItem')
+        : null
+      return { action, cooldownMs: def.cooldownMs, quantity: grant?.quantity ?? null }
     }
   }
   return null

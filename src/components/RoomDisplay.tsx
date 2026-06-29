@@ -25,6 +25,7 @@ interface RoomDisplayProps {
     action: string
     cooldownSeconds: number
     secondsRemaining: number
+    quantity?: number | null
   } | null
   showHeader?: boolean
   className?: string
@@ -134,6 +135,8 @@ export default function RoomDisplay({
 
   // The room's gather action (sand / berries), if any.
   const gatherAction = gatherCooldown?.action ?? null
+  // How many items a single pick grants (shown in the ready state).
+  const gatherQuantity = gatherCooldown?.quantity ?? null
 
   // Seed the live countdown from the room's gather cooldown on room/data change.
   useEffect(() => {
@@ -309,6 +312,33 @@ export default function RoomDisplay({
           // show a live countdown beneath the button.
           const isGather = actionItem.action === gatherAction
           const isGatherLocked = isGather && gatherOnCooldown
+          const gatherButton = (
+            <button
+              data-action-button
+              onClick={() => handleAction(actionItem.action)}
+              disabled={isPerformingAction === actionItem.action || isGatherLocked}
+              className={`${
+                isViewShop
+                  ? 'px-4 py-3 rounded-md text-base font-semibold text-white transition-all flex items-center gap-2 border-2 border-amber-400/50 shadow-lg hover:shadow-xl'
+                  : 'px-3 py-2 rounded-md text-sm text-white transition-colors flex items-center gap-2'
+              } ${
+                isPerformingAction === actionItem.action
+                  ? 'bg-gray-700 cursor-wait'
+                  : isOpenedGoldChest
+                    ? openedClassName
+                    : override?.className || actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
+              } ${isGatherLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {resolvedIcon && (
+                <Icon
+                  name={resolvedIcon}
+                  size={isViewShop ? 20 : 16}
+                  color="current"
+                />
+              )}
+              <span>{resolvedLabel}</span>
+            </button>
+          )
           return (
             <div
               key={actionItem.action}
@@ -318,35 +348,18 @@ export default function RoomDisplay({
               {showFlyout && actionResult && (
                 <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
               )}
-              <button
-                data-action-button
-                onClick={() => handleAction(actionItem.action)}
-                disabled={isPerformingAction === actionItem.action || isGatherLocked}
-                className={`${
-                  isViewShop
-                    ? 'px-4 py-3 rounded-md text-base font-semibold text-white transition-all flex items-center gap-2 border-2 border-amber-400/50 shadow-lg hover:shadow-xl'
-                    : 'px-3 py-2 rounded-md text-sm text-white transition-colors flex items-center gap-2'
-                } ${
-                  isPerformingAction === actionItem.action
-                    ? 'bg-gray-700 cursor-wait'
-                    : isOpenedGoldChest
-                      ? openedClassName
-                      : override?.className || actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
-                } ${isGatherLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {resolvedIcon && (
-                  <Icon
-                    name={resolvedIcon}
-                    size={isViewShop ? 20 : 16}
-                    color="current"
-                  />
-                )}
-                <span>{resolvedLabel}</span>
-              </button>
-              {isGather && (
-                <span className="text-xs text-gray-400 pl-1">
-                  {isGatherLocked ? formatTimeRemaining(gatherRemaining ?? 0) : 'ready'}
-                </span>
+              {isGather ? (
+                // Minimal container: button on the left, status/countdown to the right.
+                <div className="flex items-center gap-2 rounded-lg border border-gray-700/60 bg-gray-800/40 p-1.5">
+                  {gatherButton}
+                  <span className="text-xs text-gray-400 whitespace-nowrap pr-1">
+                    {isGatherLocked
+                      ? formatTimeRemaining(gatherRemaining ?? 0)
+                      : `Ready to pick${gatherQuantity != null ? ` (${gatherQuantity})` : ''}`}
+                  </span>
+                </div>
+              ) : (
+                gatherButton
               )}
             </div>
           )
