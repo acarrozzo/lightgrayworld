@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Loader2 } from 'lucide-react'
 import type { Player } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
@@ -13,8 +12,6 @@ import NpcQuestCard from './NpcQuestCard'
 import ActionFlyout from './ActionFlyout'
 import { useActionFlyout } from '@/hooks/useActionFlyout'
 
-type CapStatus = 'known' | 'loading' | 'error' | 'unavailable'
-
 type QuestProgress = { id: string; questId: string; progress: number; completed: boolean; data?: { accepted?: boolean } | null }
 
 
@@ -24,7 +21,11 @@ interface RoomDisplayProps {
   currentPlayerId?: string
   onAction?: (action: string | { type: string; data?: any }) => void | Promise<void>
   onOpenPlayerProfile?: (player: Player) => void
-  onRefreshCaps?: () => void | Promise<void>
+  gatherCooldown?: {
+    action: string
+    cooldownSeconds: number
+    secondsRemaining: number
+  } | null
   showHeader?: boolean
   className?: string
   showPlayers?: boolean
@@ -42,7 +43,7 @@ export default function RoomDisplay({
   room,
   onAction,
   onOpenPlayerProfile,
-  onRefreshCaps,
+  gatherCooldown,
   roomPlayers = [],
   currentPlayerId,
   showHeader = true,
@@ -56,35 +57,12 @@ export default function RoomDisplay({
   // Persisted "gold chest opened" flag (chest1) — drives the opened-button look.
   const goldChestOpened = useGameStore((state) => state.player?.chest1 ?? false)
 
-  // Subscribe to cap cache entry for this room/action using Zustand selector
-  // This ensures the component re-renders when the cache updates
-  const capConfig = useMemo(() => {
-    if (!room?.roomId) return null
-    if (room.roomId === '002') {
-      return { action: 'pick redberry', maxPerTick: 5 }
-    }
-    if (room.roomId === '005') {
-      return { action: 'pick blueberry', maxPerTick: 3 }
-    }
-    return null
-  }, [room?.roomId])
-
-  const cachedCapEntry = useGameStore((state) => {
-    if (!capConfig || !room?.roomId) return null
-    const key = `${room.roomId}:${capConfig.action}`
-    return state.capCache[key] || null
-  })
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null)
   const [loadingQuestId, setLoadingQuestId] = useState<string | null>(null)
-  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null)
-  const [remainingCap, setRemainingCap] = useState<number | null>(null)
-  const [maxCap, setMaxCap] = useState<number | null>(null)
-  const [fallbackSecondsUntilReset, setFallbackSecondsUntilReset] = useState<number | null>(null)
   const [isMounted, setIsMounted] = useState(false)
-  const [capStatus, setCapStatus] = useState<CapStatus>('unavailable')
-  const [retryAttempted, setRetryAttempted] = useState(false)
-  const lastTickRef = useRef<number | null>(null)
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Live seconds remaining on the room's rolling gather cooldown (sand / berries).
+  // 0 (or null when no gather action) means the action is ready.
+  const [gatherRemaining, setGatherRemaining] = useState<number | null>(null)
 
   // Action result flyout: shows the latest action's result text anchored to the
   // button that triggered it (mirrors the world feed / ActivityTicker). The four
@@ -122,17 +100,6 @@ export default function RoomDisplay({
     [roomPlayers, currentPlayerId]
   )
 
-  // Extract and pluralize item name from action (e.g., "pick redberry" -> "redberries")
-  const getItemNamePlural = (action: string): string => {
-    if (!action) return ''
-    const itemName = action.replace(/^pick\s+/i, '')
-    // Handle berry -> berries, otherwise just add 's'
-    if (itemName.endsWith('berry')) {
-      return itemName.replace(/berry$/, 'berries')
-    }
-    return `${itemName}s`
-  }
-
   // Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
   const formatTimeRemaining = (seconds: number): string => {
     if (seconds <= 0) return '0s'
@@ -159,189 +126,45 @@ export default function RoomDisplay({
     return `${remainingSeconds}s`
   }
 
-  // Set maxCap when capConfig changes
-  useEffect(() => {
-    if (capConfig) {
-      setMaxCap(capConfig.maxPerTick)
-      setCapStatus('loading') // Start in loading state
-      setRetryAttempted(false)
-    } else {
-      setMaxCap(null)
-      setRemainingCap(null)
-      setCapStatus('unavailable')
-      setRetryAttempted(false)
-    }
-  }, [capConfig, room?.roomId]) // Reset when room changes
-
   // Track mount state to prevent hydration mismatches
   // Use useLayoutEffect for faster initialization on client
   useLayoutEffect(() => {
     setIsMounted(true)
   }, [])
 
-  // Initialize countdown from room.worldTick if worldTick prop is not available
+  // The room's gather action (sand / berries), if any.
+  const gatherAction = gatherCooldown?.action ?? null
+
+  // Seed the live countdown from the room's gather cooldown on room/data change.
   useEffect(() => {
-    if (!isMounted) return // Only run on client after mount
-    if (worldTick?.nextTickAt) {
-      // If we have worldTick prop, clear any room-based countdown
-      return
-    }
-    
-    const roomWorldTick = (room as any)?.worldTick
-    if (!roomWorldTick || !roomWorldTick.nextTickAt) {
-      // Clear countdown if no worldTick data available
-      setCountdownSeconds(null)
-      return
-    }
-    
-    const updateCountdown = () => {
-      const now = Date.now()
-      const remaining = Math.max(0, Math.ceil((roomWorldTick.nextTickAt - now) / 1000))
-      setCountdownSeconds(remaining)
-    }
-    
-    // Update immediately
-    updateCountdown()
-    
-    // Update every second
-    const interval = setInterval(updateCountdown, 1000)
-    return () => clearInterval(interval)
-  }, [room, worldTick, isMounted])
+    setGatherRemaining(gatherCooldown ? gatherCooldown.secondsRemaining : null)
+  }, [gatherCooldown, room?.roomId])
 
-  // Consolidated state management for remainingCap with priority order:
-  // 1. actionResult.data.remaining (highest priority - most recent from action execution)
-  // 2. Cap cache (primary source) - now subscribed via Zustand selector
-  // 3. room.actionCaps[actionKey] (fallback from API response)
-  // 4. Reset to maxPerTick when world tick increments (only if we have confirmed tick data)
+  // Refresh the countdown from action feedback: a successful collect returns the
+  // full window (secondsUntilReset); a too-early attempt returns what's left.
   useEffect(() => {
-    if (!capConfig || !room?.roomId) {
-      setRemainingCap(null)
-      return
+    if (!gatherAction) return
+    if (actionResult?.action !== gatherAction) return
+    const secondsUntilReset = actionResult?.data?.secondsUntilReset
+    if (typeof secondsUntilReset === 'number') {
+      setGatherRemaining(secondsUntilReset)
     }
+  }, [actionResult, gatherAction])
 
-    const actionKey = capConfig.action
-    const roomId = room.roomId
-
-    // Priority 1: Action result (most recent, from action execution) - always wins
-    if (actionResult?.action === actionKey && typeof actionResult?.data?.remaining === 'number') {
-      setRemainingCap(actionResult.data.remaining)
-      setCapStatus('known')
-      // Store secondsUntilReset from action result as fallback for countdown display
-      const secondsUntilReset = actionResult.data.secondsUntilReset
-      if (typeof secondsUntilReset === 'number') {
-        setFallbackSecondsUntilReset(secondsUntilReset)
-      }
-      return
-    }
-
-    // Priority 2: Cap cache (primary source) - now subscribed via Zustand selector
-    // This will automatically trigger re-renders when the cache updates
-    if (cachedCapEntry) {
-      const currentTickId = worldTick?.tickNumber ?? 0
-      const isRecent = cachedCapEntry.tickId === currentTickId
-      
-      if (cachedCapEntry.status === 'known' && isRecent) {
-        setRemainingCap(cachedCapEntry.remaining)
-        setCapStatus('known')
-        return
-      } else if (cachedCapEntry.status === 'known' && !isRecent) {
-        // Stale cache - show value but mark as refreshing
-        setRemainingCap(cachedCapEntry.remaining)
-        setCapStatus('loading')
-        return
-      } else if (cachedCapEntry.status === 'error') {
-        setRemainingCap(null)
-        setCapStatus('error')
-        return
-      } else if (cachedCapEntry.status === 'loading') {
-        setRemainingCap(null)
-        setCapStatus('loading')
-        return
-      }
-    }
-
-    // Priority 3: API data from room.actionCaps (fallback)
-    const fetchedRemaining = (room as any)?.actionCaps?.[actionKey]
-    if (typeof fetchedRemaining === 'number') {
-      setRemainingCap(fetchedRemaining)
-      setCapStatus('known')
-      return
-    }
-
-    // Priority 4: No data available - show loading state
-    setRemainingCap(null)
-    setCapStatus('loading')
-  }, [capConfig, room, actionResult, worldTick, cachedCapEntry])
-
-  // Retry logic: if cap remains loading beyond 3 seconds, trigger one re-fetch
+  // Tick the gather countdown down to zero once per second.
   useEffect(() => {
-    if (capStatus !== 'loading' || !capConfig || !room?.roomId || retryAttempted) {
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current)
-        retryTimeoutRef.current = null
-      }
-      return
-    }
-
-    retryTimeoutRef.current = setTimeout(() => {
-      if (capStatus === 'loading' && !retryAttempted && capConfig && room?.roomId) {
-        console.log(`[RoomDisplay] Cap still loading after 3s, triggering retry for ${capConfig.action}`)
-        setRetryAttempted(true)
-        // Trigger refresh by calling onRefreshCaps if available, otherwise fall back to look action
-        if (onRefreshCaps) {
-          onRefreshCaps()
-        } else if (onAction) {
-          onAction('look')
-        }
-        // If still loading after retry, will be marked as error by the cap status logic
-      }
-    }, 3000)
-
-    return () => {
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current)
-        retryTimeoutRef.current = null
-      }
-    }
-  }, [capStatus, capConfig, room, retryAttempted, onAction, onRefreshCaps])
-
-  // Handle countdown timer from worldTick prop
-  useEffect(() => {
-    if (!isMounted) return // Only run on client after mount
-    if (!worldTick || !worldTick.nextTickAt) return
-    
-    const updateCountdown = () => {
-      const now = Date.now()
-      const remaining = Math.max(0, Math.ceil((worldTick.nextTickAt - now) / 1000))
-      setCountdownSeconds(remaining)
-      // Clear fallback when we have real tick data
-      setFallbackSecondsUntilReset(null)
-    }
-    
-    // Update immediately
-    updateCountdown()
-    
-    // Update every second
-    const interval = setInterval(updateCountdown, 1000)
-    return () => clearInterval(interval)
-  }, [worldTick, isMounted])
-
-  // Update fallback countdown when worldTick is not available
-  useEffect(() => {
-    if (!isMounted) return // Only run on client after mount
-    if (worldTick || fallbackSecondsUntilReset === null) return
-    
-    const updateFallback = () => {
-      setFallbackSecondsUntilReset((prev) => {
-        if (prev === null || prev <= 0) return null
-        return Math.max(0, prev - 1)
+    if (!isMounted) return
+    if (gatherRemaining === null || gatherRemaining <= 0) return
+    const interval = setInterval(() => {
+      setGatherRemaining((prev) => {
+        if (prev === null || prev <= 1) return 0
+        return prev - 1
       })
-    }
-    
-    const interval = setInterval(updateFallback, 1000)
+    }, 1000)
     return () => clearInterval(interval)
-  }, [worldTick, fallbackSecondsUntilReset, isMounted])
-  
+  }, [isMounted, gatherRemaining])
+
+
   if (!room) {
     return (
       <div className="mt-4 p-4 bg-gray-800 rounded-lg">
@@ -389,43 +212,8 @@ export default function RoomDisplay({
     }
   }
 
-  const shouldShowCap = Boolean(capConfig && maxCap)
-
-  // Filter out berry actions from the main action buttons list
-  const filteredRoomActions = useMemo(() => {
-    if (!capConfig) return roomActions
-    return roomActions.filter((actionItem) => actionItem.action !== capConfig.action)
-  }, [roomActions, capConfig])
-
-  // Get the berry action for the button inside the container
-  const berryAction = useMemo(() => {
-    if (!capConfig) return null
-    return roomActions.find((actionItem) => actionItem.action === capConfig.action)
-  }, [roomActions, capConfig])
-
-  // Determine border color based on berry type
-  const getBerryBorderColor = (): string => {
-    if (!capConfig) return 'border-red-500/40'
-    if (capConfig.action === 'pick redberry') return 'border-red-500/40'
-    if (capConfig.action === 'pick blueberry') return 'border-blue-500/40'
-    return 'border-red-500/40'
-  }
-
-  // Determine text color based on berry type
-  const getBerryTextColor = (): string => {
-    if (!capConfig) return 'text-red-200'
-    if (capConfig.action === 'pick redberry') return 'text-red-200'
-    if (capConfig.action === 'pick blueberry') return 'text-blue-200'
-    return 'text-red-200'
-  }
-
-  // Determine spinner color based on berry type
-  const getBerrySpinnerColor = (): string => {
-    if (!capConfig) return 'text-red-500'
-    if (capConfig.action === 'pick redberry') return 'text-red-500'
-    if (capConfig.action === 'pick blueberry') return 'text-blue-500'
-    return 'text-red-500'
-  }
+  // The gather action is on cooldown when there are seconds left to wait.
+  const gatherOnCooldown = Boolean(gatherAction && gatherRemaining !== null && gatherRemaining > 0)
 
   const handlePickupItem = async (item: any, quantity: number = 1) => {
     if (!onAction || isPerformingAction) return
@@ -503,94 +291,9 @@ export default function RoomDisplay({
         <div className="mt-2 text-xs text-amber-300/80 italic">{room.stateNote}</div>
       )}
 
-      {shouldShowCap && capStatus !== 'unavailable' && (
-        <div className={`mt-3 relative flex items-center gap-3 p-3 rounded-md bg-gray-900/70 border ${getBerryBorderColor()}`}>
-          {berryAction && !(capStatus === 'known' && remainingCap === 0) && capStatus !== 'loading' && (
-            <div
-              ref={flyoutActionForButton(berryAction.action) ? flyoutRootRef : undefined}
-              className="relative flex-shrink-0"
-            >
-              {flyoutActionForButton(berryAction.action) && actionResult && (
-                <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
-              )}
-              <button
-                data-action-button
-                onClick={() => handleAction(berryAction.action)}
-                disabled={isPerformingAction === berryAction.action || capStatus === 'error' || remainingCap === 0}
-                className={`px-3 py-2 rounded-md text-sm text-white transition-colors flex-shrink-0 flex items-center gap-2 ${
-                  isPerformingAction === berryAction.action
-                    ? 'bg-gray-700 cursor-wait'
-                    : berryAction.className || 'bg-indigo-600 hover:bg-indigo-500'
-                } ${remainingCap === 0 || capStatus === 'error' ? 'opacity-50' : ''}`}
-              >
-                {berryAction.icon && <Icon name={berryAction.icon} size={16} color="current" />}
-                {berryAction.label}
-              </button>
-            </div>
-          )}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className={`text-sm ${getBerryTextColor()}`}>
-              {capStatus !== 'loading' && (
-                <>
-                  Available {getItemNamePlural(capConfig?.action || '')}:{' '}
-                </>
-              )}
-              {capStatus === 'loading' ? (
-                <span className="font-semibold text-gray-400 flex items-center gap-1">
-                  <Loader2 className={`h-3 w-3 animate-spin ${getBerrySpinnerColor()}`} />
-                  Searching the berry bush...
-                </span>
-              ) : capStatus === 'error' ? (
-                <span className="font-semibold text-red-400 flex items-center gap-2">
-                  Can't load caps
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setRetryAttempted(false)
-                      setCapStatus('loading')
-                      // Trigger refresh by calling onRefreshCaps if available
-                      if (onRefreshCaps) {
-                        onRefreshCaps()
-                      } else if (onAction) {
-                        onAction('look')
-                      }
-                    }}
-                    className="text-xs underline hover:text-red-300 focus:outline-none"
-                  >
-                    Refresh
-                  </button>
-                </span>
-              ) : (
-                <span className="font-semibold text-white">
-                  {remainingCap ?? '?'}
-                </span>
-              )}
-            </div>
-            {capStatus !== 'error' && capStatus !== 'loading' && (
-              <div className="text-sm text-gray-300">
-                Refresh in:{' '}
-                <span className="font-semibold">
-                  {(() => {
-                    // Use countdown from worldTick (prop or room data) if available
-                    if (countdownSeconds !== null) {
-                      return formatTimeRemaining(countdownSeconds)
-                    }
-                    // Fall back to secondsUntilReset from action result (same as feed message)
-                    if (fallbackSecondsUntilReset !== null) {
-                      return formatTimeRemaining(fallbackSecondsUntilReset)
-                    }
-                    return '...'
-                  })()}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {(() => {
-        const npcActions = filteredRoomActions.filter((a) => a.questIds?.length)
-        const regularActions = filteredRoomActions.filter((a) => !a.questIds?.length)
+        const npcActions = roomActions.filter((a) => a.questIds?.length)
+        const regularActions = roomActions.filter((a) => !a.questIds?.length)
 
         const renderButton = (actionItem: import('@/lib/room-actions').RoomAction) => {
           const isViewShop = actionItem.action === 'view shop'
@@ -602,11 +305,15 @@ export default function RoomDisplay({
           const resolvedLabel = isOpenedGoldChest ? 'Gold Chest (Opened)' : actionItem.label
           const openedClassName = 'bg-emerald-700/70 hover:bg-emerald-700'
           const showFlyout = flyoutActionForButton(actionItem.action)
+          // Rolling gather action (sand / berries): disable while on cooldown and
+          // show a live countdown beneath the button.
+          const isGather = actionItem.action === gatherAction
+          const isGatherLocked = isGather && gatherOnCooldown
           return (
             <div
               key={actionItem.action}
               ref={showFlyout ? flyoutRootRef : undefined}
-              className="relative"
+              className="relative flex flex-col items-start gap-0.5"
             >
               {showFlyout && actionResult && (
                 <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
@@ -614,7 +321,7 @@ export default function RoomDisplay({
               <button
                 data-action-button
                 onClick={() => handleAction(actionItem.action)}
-                disabled={isPerformingAction === actionItem.action}
+                disabled={isPerformingAction === actionItem.action || isGatherLocked}
                 className={`${
                   isViewShop
                     ? 'px-4 py-3 rounded-md text-base font-semibold text-white transition-all flex items-center gap-2 border-2 border-amber-400/50 shadow-lg hover:shadow-xl'
@@ -625,7 +332,7 @@ export default function RoomDisplay({
                     : isOpenedGoldChest
                       ? openedClassName
                       : override?.className || actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
-                }`}
+                } ${isGatherLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {resolvedIcon && (
                   <Icon
@@ -636,6 +343,11 @@ export default function RoomDisplay({
                 )}
                 <span>{resolvedLabel}</span>
               </button>
+              {isGather && (
+                <span className="text-xs text-gray-400 pl-1">
+                  {isGatherLocked ? formatTimeRemaining(gatherRemaining ?? 0) : 'ready'}
+                </span>
+              )}
             </div>
           )
         }

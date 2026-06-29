@@ -70,14 +70,6 @@ export interface InventoryItem {
   }
 }
 
-export interface CapCacheEntry {
-  remaining: number
-  capPerTick: number
-  tickId: number
-  lastUpdated: number
-  status: 'known' | 'loading' | 'error'
-}
-
 export interface BattleActionMeta {
   kind: 'use_item' | 'equip_item' | 'unequip_item'
   itemSlug: string
@@ -210,9 +202,6 @@ export interface GameState {
   roomCache: Record<string, Room>
   roomFactSeq: Record<string, number>
 
-  // Cap cache: key is `${roomId}:${actionKey}` -> CapCacheEntry
-  capCache: Record<string, CapCacheEntry>
-
   // Battle state
   battle: BattleState
 
@@ -243,9 +232,6 @@ export interface GameState {
   setRoomFactSeq: (roomId: string, seq: number) => void
   getRoomFactSeq: (roomId: string) => number
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
-  updateCapCache: (roomId: string, actionKey: string, entry: Partial<CapCacheEntry>) => void
-  getCapCache: (roomId: string, actionKey: string) => CapCacheEntry | null
-  clearCapCache: (roomId?: string) => void
   setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
   updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; actionMeta?: BattleActionMeta | null }) => void
   clearBattle: () => void
@@ -268,7 +254,6 @@ export const useGameStore = create<GameState>()(
       roomPlayers: [],
       roomCache: {},
       roomFactSeq: {},
-      capCache: {},
       battle: { ...INITIAL_BATTLE_STATE },
       party: null,
       battleResult: null,
@@ -327,7 +312,6 @@ export const useGameStore = create<GameState>()(
         currentRoom: null,
         roomPlayers: [],
         roomCache: {},
-        capCache: {},
         battle: { ...INITIAL_BATTLE_STATE },
         party: null,
         battleResult: null,
@@ -369,29 +353,6 @@ export const useGameStore = create<GameState>()(
       getRoomFactSeq: (roomId) => {
         const { roomFactSeq } = get()
         return roomFactSeq[roomId] || 0
-      },
-
-      updateCapCache: (roomId, actionKey, entry) => {
-        const key = `${roomId}:${actionKey}`
-        set((state) => {
-          const existing = state.capCache[key]
-          return {
-            capCache: {
-              ...state.capCache,
-              [key]: {
-                ...existing,
-                ...entry,
-                lastUpdated: Date.now(),
-              } as CapCacheEntry,
-            },
-          }
-        })
-      },
-
-      getCapCache: (roomId, actionKey) => {
-        const { capCache } = get()
-        const key = `${roomId}:${actionKey}`
-        return capCache[key] || null
       },
 
       setBattleStarted: (payload) =>
@@ -457,24 +418,6 @@ export const useGameStore = create<GameState>()(
       setParty: (party) => set({ party }),
 
       clearParty: () => set({ party: null }),
-
-      clearCapCache: (roomId) => {
-        if (roomId) {
-          // Clear all caps for a specific room
-          set((state) => {
-            const newCache: Record<string, CapCacheEntry> = {}
-            for (const [key, entry] of Object.entries(state.capCache)) {
-              if (!key.startsWith(`${roomId}:`)) {
-                newCache[key] = entry
-              }
-            }
-            return { capCache: newCache }
-          })
-        } else {
-          // Clear all caps
-          set({ capCache: {} })
-        }
-      },
     }),
     {
       name: 'game-storage', // unique name for localStorage key

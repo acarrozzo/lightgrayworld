@@ -279,7 +279,7 @@ export default async function RoomsPage() {
             .map((e) =>
               e.type === 'grantItem'
                 ? `grants ${e.quantity ?? 1}× ${prettifySlug(e.itemSlug ?? '')}` +
-                  (d.maxPerTick ? ` (max ${d.maxPerTick}/tick)` : '')
+                  (typeof d.cooldownMs === 'number' ? ` (every ${Math.round((d.cooldownMs as number) / 60000)}m)` : '')
                 : e.type ?? 'effect'
             )
             .join(', ')

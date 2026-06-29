@@ -65,8 +65,21 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
     { action: 'buy staff', label: 'Buy Staff', icon: 'equipment-basicstaff', className: 'bg-purple-600 hover:bg-purple-700' },
   ],
+  '015': [
+    { action: 'shovel sand', label: 'Shovel Sand', icon: 'shovel', className: 'bg-yellow-600/80 hover:bg-yellow-600' },
+  ],
+  '016': [
+    { action: 'shovel sand', label: 'Shovel Sand', icon: 'shovel', className: 'bg-yellow-600/80 hover:bg-yellow-600' },
+  ],
+  '017': [
+    { action: 'shovel sand', label: 'Shovel Sand', icon: 'shovel', className: 'bg-yellow-600/80 hover:bg-yellow-600' },
+  ],
+  '018': [
+    { action: 'shovel sand', label: 'Shovel Sand', icon: 'shovel', className: 'bg-yellow-600/80 hover:bg-yellow-600' },
+  ],
   '019': [
     { action: 'teleport to grassy field', label: 'Teleport to Grassy Field', icon: 'world', className: 'bg-green-500/70 hover:bg-green-600' },
+    { action: 'shovel sand', label: 'Shovel Sand', icon: 'shovel', className: 'bg-yellow-600/80 hover:bg-yellow-600' },
   ],
   '028h': [
     { action: 'search', label: 'Search', icon: 'eye', className: 'bg-yellow-500/70 hover:bg-yellow-400' },

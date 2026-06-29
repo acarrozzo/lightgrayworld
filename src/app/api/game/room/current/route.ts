@@ -216,39 +216,26 @@ export async function GET(request: NextRequest) {
     if (user) {
       payload.players = activePlayers
 
-      // Fetch action cap data for rooms with capped actions
-      const actionCaps: Record<string, number> = {}
       const gameEngine = (globalThis as any).gameEngine
 
-      if (gameEngine?.tickClock && roomId) {
-        // Always use TickClock methods - single source of truth
-        const currentTickNumber = gameEngine.tickClock.getCurrentTickId()
-
-        // Room 002: "pick redberry" (maxPerTick: 5)
-        if (roomId === '002') {
-          const { getRemainingCap } = require('@/lib/game-engine/services/action-cap-service')
-          try {
-            const remaining = await getRemainingCap(user.id, roomId, 'pick redberry', 5, currentTickNumber)
-            actionCaps['pick redberry'] = remaining
-          } catch (error) {
-            console.error('[Room API] Error fetching redberry cap:', error)
+      // Rolling-cooldown gather status for this room (sand / berries). Drives
+      // the in-room countdown; null when the room has no gather action.
+      if (roomId) {
+        try {
+          const { getGatherActionForRoom } = require('@/lib/game-engine/room-action-handlers')
+          const { getCooldownRemaining } = require('@/lib/game-engine/services/action-cap-service')
+          const gather = getGatherActionForRoom(roomId)
+          if (gather) {
+            const secondsRemaining = await getCooldownRemaining(user.id, roomId, gather.action, gather.cooldownMs)
+            payload.gatherCooldown = {
+              action: gather.action,
+              cooldownSeconds: Math.ceil(gather.cooldownMs / 1000),
+              secondsRemaining,
+            }
           }
+        } catch (error) {
+          console.error('[Room API] Error computing gather cooldown:', error)
         }
-
-        // Room 005: "pick blueberry" (maxPerTick: 3)
-        if (roomId === '005') {
-          const { getRemainingCap } = require('@/lib/game-engine/services/action-cap-service')
-          try {
-            const remaining = await getRemainingCap(user.id, roomId, 'pick blueberry', 3, currentTickNumber)
-            actionCaps['pick blueberry'] = remaining
-          } catch (error) {
-            console.error('[Room API] Error fetching blueberry cap:', error)
-          }
-        }
-      }
-
-      if (Object.keys(actionCaps).length > 0) {
-        payload.actionCaps = actionCaps
       }
 
       // Include world tick information for immediate countdown display

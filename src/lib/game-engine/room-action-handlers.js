@@ -3,8 +3,8 @@
  * Handles execution of actions that are unique to specific rooms
  */
 const { grantPersonalItemOnce } = require('./effects')
-const { grantItemOnce } = require('./services/inventory-service')
-const { checkAndIncrementCap, checkAndIncrementCapBulk, getRemainingCap } = require('./services/action-cap-service')
+const { grantItemOnce, playerHasItem } = require('./services/inventory-service')
+const { checkAndConsumeCooldown } = require('./services/action-cap-service')
 
 /**
  * Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
@@ -175,6 +175,45 @@ const CHEST_LOOT = {
       ],
     },
   },
+}
+
+/**
+ * Build a rolling-cooldown gather action: grants `quantity` of an item in one
+ * click, then locks for `cooldownMs` (window starts at the moment of collection,
+ * decoupled from the global world tick). Optionally requires a tool in inventory.
+ */
+function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs, quantity = 5, toolRequired = null, emptyVerb = 'appear', missingToolMessage = null }) {
+  return {
+    cooldownMs,
+    ...(toolRequired ? { toolRequired } : {}),
+    effects: [{ type: 'grantItem', itemSlug, quantity }],
+    generateMessage: (effects, capInfo) => {
+      if (capInfo?.missingTool) {
+        return missingToolMessage || `You need a ${capInfo.missingTool} to do that.`
+      }
+      if (!effects?.[0]?.success) {
+        const secondsRemaining = capInfo?.secondsUntilReset ?? 0
+        return `No more ${itemNamePlural} right now. More will ${emptyVerb} in ${formatTimeRemaining(secondsRemaining)}.`
+      }
+      return `You collect ${quantity} ${itemNamePlural}.`
+    },
+    determineOutcome: ({ success }) => (success ? 'success' : 'info'),
+  }
+}
+
+/**
+ * Shovel sand: a tool-gated gather action shared across the beach rooms.
+ */
+function makeSandAction() {
+  return makeGatherAction({
+    itemSlug: 'sand',
+    itemNamePlural: 'sand',
+    cooldownMs: 5 * 60 * 1000,
+    quantity: 5,
+    toolRequired: 'shovel',
+    emptyVerb: 'settle',
+    missingToolMessage: 'You need a shovel to dig for sand here.',
+  })
 }
 
 /**
@@ -451,24 +490,13 @@ const ROOM_ACTIONS = {
     },
   },
   '002': {
-    'pick redberry': {
-      maxPerTick: 5,
-      isCapped: true,
-      effects: [{ type: 'grantItem', itemSlug: 'redberry', quantity: 1 }],
-      generateMessage: (effects, capInfo) => {
-        if (!effects?.[0]?.success) {
-          const secondsRemaining = capInfo?.secondsUntilReset ?? 0
-          const timeFormatted = formatTimeRemaining(secondsRemaining)
-          return `No more redberries right now. More will grow in ${timeFormatted}.`
-        }
-        const quantity = capInfo?.quantity ?? 1
-        if (quantity === 1) {
-          return `You pick a ripe redberry. (${capInfo.remaining} picks remaining this tick)`
-        }
-        return `You pick ${quantity} ripe redberries. `
-      },
-      determineOutcome: ({ success }) => (success ? 'success' : 'info'),
-    },
+    'pick redberry': makeGatherAction({
+      itemSlug: 'redberry',
+      itemNamePlural: 'redberries',
+      cooldownMs: 15 * 60 * 1000,
+      quantity: 5,
+      emptyVerb: 'grow',
+    }),
   },
   '003': {
     'ex cabin': "You examine the cabin. It's warm and cozy, with a cooking fire burning and the Old Man rocking in his chair.",
@@ -529,25 +557,19 @@ const ROOM_ACTIONS = {
   },
   '004': {},
   '005': {
-    'pick blueberry': {
-      maxPerTick: 3,
-      isCapped: true,
-      effects: [{ type: 'grantItem', itemSlug: 'blueberry', quantity: 1 }],
-      generateMessage: (effects, capInfo) => {
-        if (!effects?.[0]?.success) {
-          const secondsRemaining = capInfo?.secondsUntilReset ?? 0
-          const timeFormatted = formatTimeRemaining(secondsRemaining)
-          return `No more blueberries right now. More will grow in ${timeFormatted}.`
-        }
-        const quantity = capInfo?.quantity ?? 1
-        if (quantity === 1) {
-          return `You pick a ripe blueberry. (${capInfo.remaining} picks remaining this tick)`
-        }
-        return `You pick ${quantity} ripe blueberries.)`
-      },
-      determineOutcome: ({ success }) => (success ? 'success' : 'info'),
-    },
+    'pick blueberry': makeGatherAction({
+      itemSlug: 'blueberry',
+      itemNamePlural: 'blueberries',
+      cooldownMs: 30 * 60 * 1000,
+      quantity: 5,
+      emptyVerb: 'grow',
+    }),
   },
+  '015': { 'shovel sand': makeSandAction() },
+  '016': { 'shovel sand': makeSandAction() },
+  '017': { 'shovel sand': makeSandAction() },
+  '018': { 'shovel sand': makeSandAction() },
+  '019': { 'shovel sand': makeSandAction() },
   '012d': {
     'pull lever': async (playerId) => {
       const { pullLever, isLeverPulled, getRoomStateNote, getRoomActionOverrides } = require('./lever-state')
@@ -825,191 +847,64 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
 
   roomState.touchActivity()
 
-  // Check if this is a berry action (pick redberry or pick blueberry)
-  const isBerryAction = actionName === 'pick redberry' || actionName === 'pick blueberry'
-  let berryQuantity = 0
-
-  let capResult = null
-
-  // Handle capped actions before running effects
-  if (definition.isCapped) {
-    if (!currentTickNumber && currentTickNumber !== 0) {
-      return createErrorResult(actionName, 'World tick unavailable. Please try again.')
-    }
-
-    // For berry actions, get remaining cap first and use bulk increment
-    if (isBerryAction) {
-      const remaining = await getRemainingCap(
-        playerId,
-        roomState.roomId,
-        actionName,
-        definition.maxPerTick,
-        currentTickNumber
-      )
-
-      if (remaining <= 0) {
-        const secondsUntilReset =
-          typeof nextTickAt === 'number'
-            ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
-            : null
-
-        const message = typeof definition.generateMessage === 'function'
-          ? definition.generateMessage([{ success: false }], {
-              remaining: 0,
-              secondsUntilReset,
-            })
-          : 'You cannot perform this action right now.'
-
-        const capExceededOutcome =
-          typeof definition.determineOutcome === 'function'
-            ? definition.determineOutcome({
-                success: false,
-                effectResults: [{ success: false }],
-                capInfo: { remaining: 0, secondsUntilReset },
-              }) || 'failure'
-            : 'failure'
-
-        return {
-          success: false,
-          action: actionName,
-          message,
-          playerEvents: [
-            {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
-                roomId: roomState.roomId,
-                remaining: 0,
-                secondsUntilReset,
-              }),
-            },
-          ],
-        }
-      }
-
-      // Use bulk increment to increment by the full remaining amount
-      berryQuantity = remaining
-      capResult = await checkAndIncrementCapBulk(
-        playerId,
-        roomState.roomId,
-        actionName,
-        definition.maxPerTick,
-        currentTickNumber,
-        remaining
-      )
-
-      if (!capResult.allowed) {
-        const secondsUntilReset =
-          typeof nextTickAt === 'number'
-            ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
-            : null
-
-        const message = typeof definition.generateMessage === 'function'
-          ? definition.generateMessage([{ success: false }], {
-              remaining: 0,
-              secondsUntilReset,
-            })
-          : 'You cannot perform this action right now.'
-
-        const capExceededOutcome =
-          typeof definition.determineOutcome === 'function'
-            ? definition.determineOutcome({
-                success: false,
-                effectResults: [{ success: false }],
-                capInfo: { remaining: 0, secondsUntilReset },
-              }) || 'failure'
-            : 'failure'
-
-        return {
-          success: false,
-          action: actionName,
-          message,
-          playerEvents: [
-            {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
-                roomId: roomState.roomId,
-                remaining: 0,
-                secondsUntilReset,
-              }),
-            },
-          ],
-        }
-      }
-    } else {
-      // For non-berry actions, use the standard single increment
-      capResult = await checkAndIncrementCap(
-        playerId,
-        roomState.roomId,
-        actionName,
-        definition.maxPerTick,
-        currentTickNumber
-      )
-
-      const secondsUntilReset =
-        typeof nextTickAt === 'number'
-          ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
-          : null
-
-      if (!capResult.allowed) {
-        const message = typeof definition.generateMessage === 'function'
-          ? definition.generateMessage([{ success: false }], {
-              remaining: 0,
-              secondsUntilReset,
-            })
-          : 'You cannot perform this action right now.'
-
-        const capExceededOutcome =
-          typeof definition.determineOutcome === 'function'
-            ? definition.determineOutcome({
-                success: false,
-                effectResults: [{ success: false }],
-                capInfo: { remaining: 0, secondsUntilReset },
-              }) || 'failure'
-            : 'failure'
-
-        return {
-          success: false,
-          action: actionName,
-          message,
-          playerEvents: [
-            {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload(actionName, capExceededOutcome, message, {
-                roomId: roomState.roomId,
-                remaining: 0,
-                secondsUntilReset,
-              }),
-            },
-          ],
-        }
+  // Tool requirement gate (e.g. a shovel is required to dig sand)
+  if (definition.toolRequired) {
+    const hasTool = await playerHasItem(playerId, definition.toolRequired)
+    if (!hasTool) {
+      const message = typeof definition.generateMessage === 'function'
+        ? definition.generateMessage([{ success: false, reason: 'missingTool' }], { missingTool: definition.toolRequired })
+        : `You need a ${definition.toolRequired} to do that.`
+      const outcome = typeof definition.determineOutcome === 'function'
+        ? definition.determineOutcome({ success: false, effectResults: [{ success: false }], capInfo: { missingTool: definition.toolRequired } }) || 'failure'
+        : 'failure'
+      return {
+        success: false,
+        action: actionName,
+        message,
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(actionName, outcome, message, { roomId: roomState.roomId }),
+          },
+        ],
       }
     }
-
-    roomState.touchActivity()
   }
 
-  // For berry actions, modify the effects to use the full quantity
-  let effects = Array.isArray(definition.effects) ? definition.effects : []
-  if (isBerryAction && berryQuantity > 0 && effects.length > 0) {
-    effects = effects.map(effect => ({
-      ...effect,
-      quantity: berryQuantity
-    }))
+  // Rolling cooldown gate: per-action window that starts when the player last
+  // collected (decoupled from the global world tick). Grants the full batch in
+  // one click, then locks until the window elapses.
+  let cooldownSeconds = null
+  if (definition.cooldownMs) {
+    const cd = await checkAndConsumeCooldown(playerId, roomState.roomId, actionName, definition.cooldownMs)
+    if (!cd.allowed) {
+      const capInfo = { remaining: 0, secondsUntilReset: cd.secondsRemaining }
+      const message = typeof definition.generateMessage === 'function'
+        ? definition.generateMessage([{ success: false }], capInfo)
+        : 'You cannot do that yet.'
+      const outcome = typeof definition.determineOutcome === 'function'
+        ? definition.determineOutcome({ success: false, effectResults: [{ success: false }], capInfo }) || 'failure'
+        : 'failure'
+      return {
+        success: false,
+        action: actionName,
+        message,
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(actionName, outcome, message, { roomId: roomState.roomId, remaining: 0, secondsUntilReset: cd.secondsRemaining }),
+          },
+        ],
+      }
+    }
+    cooldownSeconds = cd.secondsRemaining
   }
 
+  const effects = Array.isArray(definition.effects) ? definition.effects : []
   const { results: effectResults, inventory } = await executeEffects(effects, playerId)
 
-  const capInfo = definition.isCapped
-    ? {
-        remaining: capResult
-          ? Math.max(0, definition.maxPerTick - capResult.usedCount)
-          : 0,
-        secondsUntilReset:
-          typeof nextTickAt === 'number'
-            ? Math.max(0, Math.ceil((nextTickAt - Date.now()) / 1000))
-            : null,
-        ...(isBerryAction && berryQuantity > 0 ? { quantity: berryQuantity } : {}),
-      }
+  const capInfo = definition.cooldownMs
+    ? { remaining: 0, secondsUntilReset: cooldownSeconds }
     : null
 
   const message = typeof definition.generateMessage === 'function'
@@ -1110,9 +1005,26 @@ async function executeEffects(effects, playerId) {
   return { results, inventory: latestInventory }
 }
 
+/**
+ * Find the rolling-cooldown gather action (if any) defined for a room.
+ * Returns { action, cooldownMs } or null. Single source of truth for the
+ * client's in-room countdown so timing never has to be duplicated.
+ */
+function getGatherActionForRoom(roomId) {
+  const actions = ROOM_ACTIONS[roomId]
+  if (!actions) return null
+  for (const [action, def] of Object.entries(actions)) {
+    if (def && typeof def === 'object' && def.cooldownMs) {
+      return { action, cooldownMs: def.cooldownMs }
+    }
+  }
+  return null
+}
+
 module.exports = {
   executeRoomAction,
   ROOM_ACTIONS,
   CHEST_LOOT,
+  getGatherActionForRoom,
 }
 

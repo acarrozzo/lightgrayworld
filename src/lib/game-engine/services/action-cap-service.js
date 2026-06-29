@@ -2,6 +2,8 @@ const { prisma } = require('../../db-client')
 
 /**
  * Fetch or create the ActionCap record for a player/room/action tuple.
+ * The row is keyed by (playerId, roomId, actionKey) and stores the rolling
+ * gather cooldown's `lastActionAt` timestamp.
  */
 async function getOrCreateActionCap(playerId, roomId, actionKey) {
   const existing = await prisma.actionCap.findUnique({
@@ -19,170 +21,70 @@ async function getOrCreateActionCap(playerId, roomId, actionKey) {
       playerId,
       roomId,
       actionKey,
-      usedCount: 0,
-      lastTickNumber: 0,
     },
   })
 }
 
 /**
- * Apply lazy reset: if the stored tick differs from current, treat as reset.
+ * Rolling per-action cooldown gate (decoupled from the global world tick).
+ *
+ * The window is rolling: it starts the moment the player last performed the
+ * action. Used for gather actions that grant a batch in a single click and then
+ * lock for `cooldownMs` (e.g. shovel sand, pick berries).
  */
-function applyLazyReset(record, currentTickNumber) {
-  if (record.lastTickNumber === currentTickNumber) {
-    return record
-  }
-
-  return {
-    ...record,
-    usedCount: 0,
-    lastTickNumber: currentTickNumber,
-  }
-}
-
-/**
- * Check and increment the cap for a player/action within a room for the current tick.
- * Increments only when allowed.
- */
-async function checkAndIncrementCap(playerId, roomId, actionKey, maxCap, currentTickNumber) {
+async function checkAndConsumeCooldown(playerId, roomId, actionKey, cooldownMs) {
   if (!playerId || !roomId || !actionKey) {
-    throw new Error('checkAndIncrementCap requires playerId, roomId, and actionKey')
+    throw new Error('checkAndConsumeCooldown requires playerId, roomId, and actionKey')
   }
-  if (typeof maxCap !== 'number' || maxCap <= 0) {
-    throw new Error('checkAndIncrementCap requires a positive maxCap')
+  if (typeof cooldownMs !== 'number' || cooldownMs <= 0) {
+    throw new Error('checkAndConsumeCooldown requires a positive cooldownMs')
   }
-
-  console.log(`[ActionCap] checkAndIncrementCap called: player=${playerId}, room=${roomId}, action=${actionKey}, maxCap=${maxCap}, currentTick=${currentTickNumber}`)
 
   const record = await getOrCreateActionCap(playerId, roomId, actionKey)
-  console.log(`[ActionCap] Fetched record:`, record)
+  const now = Date.now()
 
-  const normalized = applyLazyReset(record, currentTickNumber)
-  console.log(`[ActionCap] After lazy reset:`, normalized)
-
-  if (normalized.usedCount >= maxCap) {
-    console.log(`[ActionCap] Cap reached: usedCount=${normalized.usedCount} >= maxCap=${maxCap}`)
-    return {
-      allowed: false,
-      remaining: 0,
-      usedCount: normalized.usedCount,
-      lastTickNumber: normalized.lastTickNumber,
+  if (record.lastActionAt) {
+    const elapsed = now - new Date(record.lastActionAt).getTime()
+    if (elapsed < cooldownMs) {
+      return {
+        allowed: false,
+        secondsRemaining: Math.ceil((cooldownMs - elapsed) / 1000),
+      }
     }
   }
 
-  const updated = await prisma.actionCap.update({
+  await prisma.actionCap.update({
     where: {
       playerId_roomId_actionKey: { playerId, roomId, actionKey },
     },
-    data: {
-      usedCount: normalized.usedCount + 1,
-      lastTickNumber: currentTickNumber,
-    },
+    data: { lastActionAt: new Date(now) },
   })
-
-  console.log(`[ActionCap] Updated record:`, updated)
-
-  const remaining = Math.max(0, maxCap - updated.usedCount)
-
-  console.log(`[ActionCap] Allowed: usedCount=${updated.usedCount}, remaining=${remaining}`)
 
   return {
     allowed: true,
-    remaining,
-    usedCount: updated.usedCount,
-    lastTickNumber: updated.lastTickNumber,
+    secondsRemaining: Math.ceil(cooldownMs / 1000),
   }
 }
 
 /**
- * Check and increment the cap by a bulk quantity for a player/action within a room for the current tick.
- * Increments only when allowed and quantity doesn't exceed remaining cap.
+ * Read-only remaining cooldown seconds for a rolling gate (for UI), 0 if ready.
  */
-async function checkAndIncrementCapBulk(playerId, roomId, actionKey, maxCap, currentTickNumber, quantity) {
+async function getCooldownRemaining(playerId, roomId, actionKey, cooldownMs) {
   if (!playerId || !roomId || !actionKey) {
-    throw new Error('checkAndIncrementCapBulk requires playerId, roomId, and actionKey')
+    throw new Error('getCooldownRemaining requires playerId, roomId, and actionKey')
   }
-  if (typeof maxCap !== 'number' || maxCap <= 0) {
-    throw new Error('checkAndIncrementCapBulk requires a positive maxCap')
-  }
-  if (typeof quantity !== 'number' || quantity <= 0) {
-    throw new Error('checkAndIncrementCapBulk requires a positive quantity')
-  }
-
-  console.log(`[ActionCap] checkAndIncrementCapBulk called: player=${playerId}, room=${roomId}, action=${actionKey}, maxCap=${maxCap}, currentTick=${currentTickNumber}, quantity=${quantity}`)
-
-  const record = await getOrCreateActionCap(playerId, roomId, actionKey)
-  console.log(`[ActionCap] Fetched record:`, record)
-
-  const normalized = applyLazyReset(record, currentTickNumber)
-  console.log(`[ActionCap] After lazy reset:`, normalized)
-
-  const remaining = Math.max(0, maxCap - normalized.usedCount)
-
-  if (quantity > remaining) {
-    console.log(`[ActionCap] Quantity exceeds remaining: quantity=${quantity} > remaining=${remaining}`)
-    return {
-      allowed: false,
-      remaining: 0,
-      usedCount: normalized.usedCount,
-      lastTickNumber: normalized.lastTickNumber,
-    }
-  }
-
-  if (normalized.usedCount >= maxCap) {
-    console.log(`[ActionCap] Cap reached: usedCount=${normalized.usedCount} >= maxCap=${maxCap}`)
-    return {
-      allowed: false,
-      remaining: 0,
-      usedCount: normalized.usedCount,
-      lastTickNumber: normalized.lastTickNumber,
-    }
-  }
-
-  const updated = await prisma.actionCap.update({
-    where: {
-      playerId_roomId_actionKey: { playerId, roomId, actionKey },
-    },
-    data: {
-      usedCount: normalized.usedCount + quantity,
-      lastTickNumber: currentTickNumber,
-    },
-  })
-
-  console.log(`[ActionCap] Updated record:`, updated)
-
-  const newRemaining = Math.max(0, maxCap - updated.usedCount)
-
-  console.log(`[ActionCap] Allowed: usedCount=${updated.usedCount}, remaining=${newRemaining}`)
-
-  return {
-    allowed: true,
-    remaining: newRemaining,
-    usedCount: updated.usedCount,
-    lastTickNumber: updated.lastTickNumber,
-  }
-}
-
-/**
- * Read-only cap status for UI (uses lazy reset semantics).
- */
-async function getRemainingCap(playerId, roomId, actionKey, maxCap, currentTickNumber) {
-  if (!playerId || !roomId || !actionKey) {
-    throw new Error('getRemainingCap requires playerId, roomId, and actionKey')
-  }
-  if (typeof maxCap !== 'number' || maxCap <= 0) {
-    throw new Error('getRemainingCap requires a positive maxCap')
+  if (typeof cooldownMs !== 'number' || cooldownMs <= 0) {
+    throw new Error('getCooldownRemaining requires a positive cooldownMs')
   }
 
   const record = await getOrCreateActionCap(playerId, roomId, actionKey)
-  const normalized = applyLazyReset(record, currentTickNumber)
+  if (!record.lastActionAt) return 0
 
-  return Math.max(0, maxCap - normalized.usedCount)
+  const elapsed = Date.now() - new Date(record.lastActionAt).getTime()
+  return Math.max(0, Math.ceil((cooldownMs - elapsed) / 1000))
 }
 
 module.exports = {
-  checkAndIncrementCap,
-  checkAndIncrementCapBulk,
-  getRemainingCap,
+  checkAndConsumeCooldown,
+  getCooldownRemaining,
 }
-
