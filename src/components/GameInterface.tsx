@@ -42,6 +42,8 @@ import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
 import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/PlayersPanel'
 import PartyPanel from './game-interface/panels/PartyPanel'
+import CraftingPanel from './game-interface/panels/CraftingPanel'
+import { isCraftingRoom } from '@/lib/game-data/crafting-recipes'
 import QuestCompleteRewards, { type QuestCompleteData } from './QuestCompleteRewards'
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
@@ -109,6 +111,10 @@ export default function GameInterface() {
   })
   const [leftPanelType, setLeftPanelType] = useState<string>('char')
   const [rightPanelType, setRightPanelType] = useState<string>('feed')
+  // Crafting panel (rooms 003 / 021): a local UI toggle that renders above the
+  // room info, like the battle panel. `craftingRecipeId` marks the in-flight craft.
+  const [isCraftingOpen, setIsCraftingOpen] = useState(false)
+  const [craftingRecipeId, setCraftingRecipeId] = useState<string | null>(null)
   const [leftDropdownOpen, setLeftDropdownOpen] = useState(false)
   const [rightDropdownOpen, setRightDropdownOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -352,6 +358,13 @@ export default function GameInterface() {
     setGatherCooldowns([])
     hydrateGatherCooldown(currentRoom.roomId)
   }, [currentRoom?.roomId, hydrateGatherCooldown])
+
+  // Close the crafting panel whenever the player leaves a crafting room.
+  useEffect(() => {
+    if (!currentRoom?.roomId || !isCraftingRoom(currentRoom.roomId)) {
+      setIsCraftingOpen(false)
+    }
+  }, [currentRoom?.roomId])
 
   useEffect(() => {
     if (!socket) return
@@ -880,7 +893,14 @@ export default function GameInterface() {
     setActionResult(null)
 
     const normalizedAction = actionType.toLowerCase()
-    
+
+    // "Open Crafting" is a pure client-side panel toggle — no server round-trip.
+    // The actual craft (type: 'craft') is dispatched from within the panel.
+    if (normalizedAction === 'open crafting') {
+      setIsCraftingOpen((prev) => !prev)
+      return
+    }
+
     // Handle "teleport to grassy field" string action - convert to teleport object format
     if (normalizedAction === 'teleport to grassy field') {
       console.log('[handleAction] Converting teleport to grassy field string to teleport object')
@@ -3034,6 +3054,24 @@ export default function GameInterface() {
                 onInspect={(p) => handleOpenPlayerProfile(p as Player)}
                 onMessage={handleProfileMessage}
               />
+              {isCraftingOpen && currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle && (
+                <div className="px-4 pt-4">
+                  <CraftingPanel
+                    roomId={currentRoom.roomId}
+                    inventory={inventory}
+                    craftingRecipeId={craftingRecipeId}
+                    actionResult={actionResult}
+                    onClose={() => setIsCraftingOpen(false)}
+                    onCraft={(recipeId, quantity) => {
+                      if (craftingRecipeId || quantity < 1) return
+                      setCraftingRecipeId(recipeId)
+                      Promise.resolve(
+                        handleAction({ type: 'craft', data: { recipeId, quantity } })
+                      ).finally(() => setCraftingRecipeId(null))
+                    }}
+                  />
+                </div>
+              )}
               <RoomBox
                 room={currentRoom}
                 roomPlayers={roomPlayers}

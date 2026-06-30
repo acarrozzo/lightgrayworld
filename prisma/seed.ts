@@ -1962,7 +1962,7 @@ async function main() {
       name: 'Crossbow Bolt',
       description: 'A short, heavy bolt for use with a crossbow.',
       type: ItemType.MISC,
-      max: 100,
+      max: 999,
       value: 2,
     },
     {
@@ -1971,7 +1971,7 @@ async function main() {
       name: 'Cooked Meat',
       description: 'A piece of cooked meat that restores 50 HP when consumed.',
       type: ItemType.CONSUMABLE,
-      max: 10,
+      max: 999,
       value: 5,
       metadata: {
         icon: 'cooked-meat',
@@ -1984,11 +1984,24 @@ async function main() {
       name: 'Raw Meat',
       description: 'A hunk of raw meat dropped by beasts. Restores 25 HP when eaten.',
       type: ItemType.CONSUMABLE,
-      max: 100,
+      max: 999,
       value: 2,
       metadata: {
         icon: 'uncooked-meat',
         consumable: { stat: 'hp', amount: 25, verb: 'eat' },
+      },
+    },
+    {
+      id: 'bread_001',
+      slug: 'bread',
+      name: 'Bread',
+      description: 'A freshly baked loaf of bread. Restores 15 HP when eaten.',
+      type: ItemType.CONSUMABLE,
+      max: 999,
+      value: 4,
+      metadata: {
+        icon: 'meatball',
+        consumable: { stat: 'hp', amount: 15, verb: 'eat' },
       },
     },
     {
@@ -1997,7 +2010,7 @@ async function main() {
       name: 'String',
       description: 'A length of coarse string. A common crafting material.',
       type: ItemType.MISC,
-      max: 100,
+      max: 999,
       value: 1,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -2007,7 +2020,7 @@ async function main() {
       name: 'Scorpion Tail',
       description: 'A barbed scorpion tail, still tipped with venom. A common crafting material.',
       type: ItemType.MISC,
-      max: 100,
+      max: 999,
       value: 1,
     },
     {
@@ -2016,7 +2029,7 @@ async function main() {
       name: 'Arrow',
       description: 'A wooden arrow with a steel tip, used with a bow.',
       type: ItemType.MISC,
-      max: 100,
+      max: 999,
       value: 1,
     },
     {

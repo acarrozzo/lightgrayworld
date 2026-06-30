@@ -3,8 +3,9 @@
  * Handles execution of actions that are unique to specific rooms
  */
 const { grantPersonalItemOnce } = require('./effects')
-const { grantItemOnce, playerHasItem } = require('./services/inventory-service')
+const { grantItemOnce, playerHasItem, removeItemBySlug, getPlayerInventory } = require('./services/inventory-service')
 const { checkAndConsumeCooldown } = require('./services/action-cap-service')
+const { getRecipeById, isCraftingRoom } = require('../game-data/crafting-recipes')
 
 /**
  * Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
@@ -264,6 +265,137 @@ function makeWheatAction() {
     emptyVerb: 'grow',
   })
 }
+
+/**
+ * Server-authoritative crafting handler. Shared by every crafting room (003 /
+ * 021): reads `actionData.recipeId` and an optional `actionData.quantity` (the
+ * number of times to run the recipe — 1 for "Craft", or the batch size for
+ * "Craft All"), re-validates the recipe is allowed in this room, then in a
+ * single transaction clamps the batch to what the player's materials and the
+ * output's stack cap actually allow, consumes the inputs, and grants the output.
+ * The client panel only renders availability — this is the gate that actually
+ * mutates inventory, so a stale or tampered client cannot dupe items.
+ */
+async function executeCraft(playerId, roomState, actionData = {}) {
+  const { prisma } = require('../db-client')
+  const { getItemBySlug } = require('./services/inventory-service')
+
+  roomState.touchActivity()
+
+  const action = 'craft'
+  const fail = (message, recipeId = null) => ({
+    success: false,
+    action,
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(action, 'failure', message, {
+          roomId: roomState.roomId,
+          ...(recipeId ? { recipeId } : {}),
+        }),
+      },
+    ],
+  })
+
+  const recipeId = actionData?.recipeId
+  const recipe = recipeId ? getRecipeById(recipeId) : null
+  if (!recipe || !isCraftingRoom(roomState.roomId)) {
+    return fail('You cannot craft that here.')
+  }
+
+  // Requested batch size. Floor + clamp to a sane ceiling; the transaction
+  // clamps further to what materials / stack cap allow.
+  const requested = Math.floor(Number(actionData?.quantity) || 1)
+  if (!Number.isFinite(requested) || requested < 1) {
+    return fail('Invalid craft amount.', recipe.id)
+  }
+
+  // Resolve the output template up front so we can name it in messages and
+  // honor its stacking cap before consuming anything.
+  const outputTemplate = await getItemBySlug(recipe.output.slug)
+  if (!outputTemplate) {
+    return fail('That recipe is currently unavailable.', recipe.id)
+  }
+
+  try {
+    const { inventory, crafted } = await prisma.$transaction(async (tx) => {
+      // 1. How many batches the player's materials support (min across inputs).
+      let feasible = requested
+      for (const input of recipe.inputs) {
+        const template = await getItemBySlug(input.slug)
+        if (!template) {
+          throw new CraftError('That recipe is currently unavailable.')
+        }
+        const owned = await tx.playerItem.findFirst({
+          where: { playerId, templateId: template.id },
+        })
+        const have = owned?.quantity ?? 0
+        if (have < input.qty) {
+          throw new CraftError(`You need ${input.qty} ${template.name} to craft ${recipe.label} (you have ${have}).`)
+        }
+        feasible = Math.min(feasible, Math.floor(have / input.qty))
+      }
+
+      // 2. Clamp again by how much output space remains under its stack cap.
+      const existingOutput = await tx.playerItem.findFirst({
+        where: { playerId, templateId: outputTemplate.id },
+      })
+      const outputLimit = outputTemplate.max ?? Infinity
+      const room = outputLimit === Infinity
+        ? feasible
+        : Math.floor((outputLimit - (existingOutput?.quantity ?? 0)) / recipe.output.qty)
+      if (room <= 0) {
+        throw new CraftError(`You already have the maximum number of ${outputTemplate.name}.`)
+      }
+      feasible = Math.min(feasible, room)
+
+      if (feasible < 1) {
+        throw new CraftError(`You don't have the materials to craft ${recipe.label}.`)
+      }
+
+      // 3. Consume inputs (qty × batches), then grant the output — all within
+      //    the transaction so any failure rolls the whole craft back.
+      for (const input of recipe.inputs) {
+        const removed = await removeItemBySlug(playerId, input.slug, input.qty * feasible, tx)
+        if (!removed.success) {
+          throw new CraftError('You no longer have the materials for that.')
+        }
+      }
+      const granted = await grantItemOnce(playerId, recipe.output.slug, recipe.output.qty * feasible, tx)
+      if (!granted.granted) {
+        throw new CraftError(granted.reason || 'Could not craft that item.')
+      }
+
+      return { inventory: await getPlayerInventory(playerId, tx), crafted: feasible * recipe.output.qty }
+    })
+
+    const message = `You craft ${crafted} ${outputTemplate.name}.`
+    return {
+      success: true,
+      action,
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload(action, 'success', message, {
+            roomId: roomState.roomId,
+            recipeId: recipe.id,
+            crafted,
+            inventory,
+          }),
+        },
+      ],
+    }
+  } catch (error) {
+    if (error instanceof CraftError) {
+      return fail(error.message, recipe.id)
+    }
+    console.error('Craft error:', error)
+    return fail('Something went wrong while crafting.', recipe.id)
+  }
+}
+
+/** Internal sentinel so craft validation failures roll back the transaction. */
+class CraftError extends Error {}
 
 /**
  * Map of room IDs to room-specific actions. Each action entry can be either:
@@ -550,7 +682,7 @@ const ROOM_ACTIONS = {
   '003': {
     'ex cabin': "You examine the cabin. It's warm and cozy, with a cooking fire burning and the Old Man rocking in his chair.",
     'attack dummy': 'You attack the training dummy. Your weapon strikes true!',
-    'cook meat': 'You cook the meat over the fire. It smells delicious!',
+    'craft': executeCraft,
     'talk to old man': createNpcTalkHandler({
       npcId: 'old_man',
       action: 'talk to old man',
@@ -756,6 +888,9 @@ const ROOM_ACTIONS = {
   '020': {
     'rest at waterfall': async (playerId, roomState) => roomState.executeWaterfallRest(playerId),
     'pick wheat': makeWheatAction(),
+  },
+  '021': {
+    'craft': executeCraft,
   },
   '999': {
     'rest in lobby': async (playerId, roomState) => roomState.executeLobbyRest(playerId),
@@ -1031,6 +1166,19 @@ async function executeEffects(effects, playerId) {
       results.push({
         success: result.granted,
         message: result.reason,
+        inventory: result.inventory,
+      })
+      if (result.inventory) {
+        latestInventory = result.inventory
+      }
+      continue
+    }
+
+    if (effect.type === 'consumeItem') {
+      const result = await removeItemBySlug(playerId, effect.itemSlug, effect.quantity || 1)
+      results.push({
+        success: result.success,
+        message: result.error,
         inventory: result.inventory,
       })
       if (result.inventory) {

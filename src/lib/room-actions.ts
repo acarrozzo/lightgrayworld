@@ -39,7 +39,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'talk to old man', label: 'Old Man', icon: 'npc-oldman', className: 'bg-yellow-600 hover:bg-yellow-700', questIds: questIdsForNpc('old_man') },
     { action: 'ex cabin', label: 'Examine Cabin', icon: 'cabin2', className: 'bg-gray-600 hover:bg-gray-700' },
     { action: 'attack dummy', label: 'Attack Dummy', icon: 'sword1', className: 'bg-red-500/70 hover:bg-red-500' },
-    { action: 'cook meat', label: 'Cook Meat', icon: 'fire', className: 'bg-orange-600 hover:bg-orange-700' },
+    { action: 'open crafting', label: 'Open Crafting', icon: 'fire', className: 'bg-orange-600 hover:bg-orange-700' },
   ],
   '003b': [],
   '003bb': [],
@@ -65,6 +65,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '021': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
     { action: 'buy staff', label: 'Buy Staff', icon: 'equipment-basicstaff', className: 'bg-purple-600 hover:bg-purple-700' },
+    { action: 'open crafting', label: 'Open Crafting', icon: 'fire', className: 'bg-orange-600 hover:bg-orange-700' },
   ],
   '014': [
     { action: 'shovel dirt', label: 'Shovel Dirt', icon: 'shovel', className: 'bg-amber-800 hover:bg-amber-700' },
