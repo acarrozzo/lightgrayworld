@@ -22,6 +22,30 @@ interface GameHeaderProps {
   onTogglePanels?: () => void
 }
 
+function StatBar({ pct, fillClass, label, value, over, className }: {
+  pct: number
+  fillClass: string
+  label: string
+  value: string
+  over?: boolean
+  className?: string
+}) {
+  return (
+    <div
+      className={`relative h-3.5 rounded bg-gray-700/70 overflow-hidden ${className ?? ''}`}
+      title={`${label} ${value}`}
+    >
+      <div
+        className={`h-full rounded transition-[width] duration-300 ${fillClass}`}
+        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+      />
+      <span className="absolute inset-0 flex items-center justify-center text-[10px] leading-none font-medium text-white/95 tabular-nums drop-shadow">
+        <span className={over ? 'font-bold' : ''}>{value}</span>
+      </span>
+    </div>
+  )
+}
+
 export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, clicks, onCharacterClick, isConnected, onRefresh, panelsOpen, onTogglePanels }: GameHeaderProps) {
   let xpInLevel = 0
   let xpNeeded = 1
@@ -56,22 +80,36 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
               >
                 <span className="text-gray-300 truncate">{playerName}</span>
                 {level !== undefined && (
-                  <span className="text-yellow-400 shrink-0">Lv.{level}</span>
-                )}
-                {xp !== undefined && level !== undefined && (
-                  <span className="text-green-400 shrink-0">{xpPct}%</span>
+                  <span className="text-yellow-400 shrink-0">{level}</span>
                 )}
                 {hp !== undefined && hpMax !== undefined && (
-                  <span className="shrink-0 text-red-400">
-                    <span className={hp > hpMax ? 'font-bold' : ''}>{hp}</span>
-                    /{hpMax}
-                  </span>
+                  <StatBar
+                    className="w-12 shrink-0"
+                    pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
+                    fillClass="bg-red-500"
+                    label="HP"
+                    value={`${hp}/${hpMax}`}
+                    over={hp > hpMax}
+                  />
                 )}
                 {mp !== undefined && mpMax !== undefined && (
-                  <span className="shrink-0 text-blue-400">
-                    <span className={mp > mpMax ? 'font-bold' : ''}>{mp}</span>
-                    /{mpMax}
-                  </span>
+                  <StatBar
+                    className="w-12 shrink-0"
+                    pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
+                    fillClass="bg-sky-500"
+                    label="MP"
+                    value={`${mp}/${mpMax}`}
+                    over={mp > mpMax}
+                  />
+                )}
+                {xp !== undefined && level !== undefined && (
+                  <StatBar
+                    className="w-10 shrink-0"
+                    pct={xpPct}
+                    fillClass="bg-green-500"
+                    label="XP"
+                    value={`${xpPct}%`}
+                  />
                 )}
                 {xpGain != null && xpGain > 0 && (
                   <span
@@ -103,32 +141,46 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
             {playerName && (
               <div
                 onClick={onCharacterClick}
-                className={`flex items-center gap-6 text-xs ${onCharacterClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                className={`flex items-center gap-2 text-xs ${onCharacterClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
               >
                 {/* Username and Level */}
                 <div className="hidden md:flex items-center gap-2">
                   <span className="text-gray-300">{playerName}</span>
                   {level !== undefined && (
-                    <span className="text-yellow-400">Lv.{level}</span>
-                  )}
-                  {xp !== undefined && level !== undefined && (
-                    <span className="text-green-400">{xpPct}%</span>
+                    <span className="text-yellow-400">{level}</span>
                   )}
                 </div>
 
                 {/* HP / MP / XP */}
                 <div className="flex items-center gap-2">
                   {hp !== undefined && hpMax !== undefined && (
-                    <span className="text-red-400">
-                      <span className={hp > hpMax ? 'font-bold' : ''}>{hp}</span>
-                      /{hpMax}
-                    </span>
+                    <StatBar
+                      className="w-16"
+                      pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
+                      fillClass="bg-red-500"
+                      label="HP"
+                      value={`${hp}/${hpMax}`}
+                      over={hp > hpMax}
+                    />
                   )}
                   {mp !== undefined && mpMax !== undefined && (
-                    <span className="text-blue-400">
-                      <span className={mp > mpMax ? 'font-bold' : ''}>{mp}</span>
-                      /{mpMax}
-                    </span>
+                    <StatBar
+                      className="w-16"
+                      pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
+                      fillClass="bg-sky-500"
+                      label="MP"
+                      value={`${mp}/${mpMax}`}
+                      over={mp > mpMax}
+                    />
+                  )}
+                  {xp !== undefined && level !== undefined && (
+                    <StatBar
+                      className="w-14"
+                      pct={xpPct}
+                      fillClass="bg-green-500"
+                      label="XP"
+                      value={`${xpPct}%`}
+                    />
                   )}
                   {xpGain != null && xpGain > 0 && (
                     <span
