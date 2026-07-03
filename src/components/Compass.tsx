@@ -110,7 +110,7 @@ const getBackgroundColorClasses = (color: string): { base: string; hover: string
     'yellow-500': { base: 'bg-yellow-500/90', hover: 'hover:bg-yellow-400' },
     'yellow-600': { base: 'bg-yellow-600/90', hover: 'hover:bg-yellow-500' },
     'yellow-700': { base: 'bg-yellow-700/90', hover: 'hover:bg-yellow-600' },
-    'dirt': { base: 'bg-yellow-700/90', hover: 'hover:bg-yellow-600' },
+    'dirt': { base: 'bg-taupe-600/90', hover: 'hover:bg-taupe-500' },
     'brown': { base: 'bg-amber-900/90', hover: 'hover:bg-amber-800' },
     'yellow-800': { base: 'bg-yellow-800/90', hover: 'hover:bg-yellow-700' },
     'yellow-900': { base: 'bg-yellow-900/90', hover: 'hover:bg-yellow-800' },

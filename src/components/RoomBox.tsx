@@ -52,7 +52,7 @@ export const getTextColorClass = (color?: string | null, defaultColor: string = 
     'yellow-500': 'text-yellow-500',
     'yellow-600': 'text-yellow-600',
     'yellow-700': 'text-yellow-700',
-    'dirt': 'text-yellow-700',
+    'dirt': 'text-taupe-600',
     'yellow-800': 'text-yellow-800',
     'yellow-900': 'text-yellow-900',
     'purple-50': 'text-purple-50',

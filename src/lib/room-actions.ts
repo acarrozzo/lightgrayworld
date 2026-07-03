@@ -68,7 +68,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'open crafting', label: 'Open Crafting', icon: 'fire', className: 'bg-orange-600 hover:bg-orange-700' },
   ],
   '014': [
-    { action: 'shovel dirt', label: 'Shovel Dirt', icon: 'shovel', className: 'bg-amber-800 hover:bg-amber-700' },
+    { action: 'shovel dirt', label: 'Shovel Dirt', icon: 'shovel', className: 'bg-taupe-600 hover:bg-taupe-500' },
   ],
   '015': [
     { action: 'shovel sand', label: 'Shovel Sand', icon: 'shovel', className: 'bg-yellow-600/80 hover:bg-yellow-600' },

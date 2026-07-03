@@ -11,6 +11,18 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-active: var(--font-geist-mono);
+
+  /* Custom taupe palette (warm grayish-brown) */
+  --color-taupe-50: #f8f6f3;
+  --color-taupe-100: #efe9e2;
+  --color-taupe-200: #ddd1c4;
+  --color-taupe-300: #c7b6a3;
+  --color-taupe-400: #ad9880;
+  --color-taupe-500: #9a8266;
+  --color-taupe-600: #8b7355;
+  --color-taupe-700: #6e5a43;
+  --color-taupe-800: #564636;
+  --color-taupe-900: #3e3228;
 }
 
 @media (prefers-color-scheme: dark) {

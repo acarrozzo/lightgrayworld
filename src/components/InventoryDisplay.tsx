@@ -34,7 +34,13 @@ interface InventoryDisplayProps {
 
 type WeaponTypeFilter = 'all' | 'melee' | 'ranged'
 type HandednessFilter = 'all' | '1h' | '2h'
-type CraftingKindFilter = 'all' | 'tool' | 'material'
+
+// Crafting items are shown in fixed subsections (materials first, then tools)
+// rather than via filter chips, so we render these in a stable order.
+const CRAFTING_SUBSECTIONS: Array<{ kind: 'material' | 'tool'; label: string }> = [
+  { kind: 'material', label: 'Materials' },
+  { kind: 'tool', label: 'Tools' },
+]
 
 export default function InventoryDisplay({
   inventory,
@@ -49,7 +55,6 @@ export default function InventoryDisplay({
   const [activeTab, setActiveTab] = useState<FilterTab>(initialFilter || 'all')
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<WeaponTypeFilter>('all')
   const [handednessFilter, setHandednessFilter] = useState<HandednessFilter>('all')
-  const [craftingKindFilter, setCraftingKindFilter] = useState<CraftingKindFilter>('all')
   const [sortStat, setSortStat] = useState<SortStat>('none')
 
   // Sync activeTab with initialFilter prop changes
@@ -64,9 +69,6 @@ export default function InventoryDisplay({
     if (activeTab !== 'main') {
       setWeaponTypeFilter('all')
       setHandednessFilter('all')
-    }
-    if (activeTab !== 'crafting') {
-      setCraftingKindFilter('all')
     }
   }, [activeTab])
 
@@ -121,12 +123,7 @@ export default function InventoryDisplay({
         filtered = inventory.filter(item => item.template.type === ItemType.CONSUMABLE)
         break
       case 'crafting':
-        filtered = inventory.filter(item => {
-          const kind = getCraftingKind(item)
-          if (!kind) return false
-          if (craftingKindFilter !== 'all' && kind !== craftingKindFilter) return false
-          return true
-        })
+        filtered = inventory.filter(item => getCraftingKind(item) !== null)
         break
       case 'misc':
         filtered = inventory.filter(item => getItemCategory(item) === 'misc')
@@ -134,7 +131,7 @@ export default function InventoryDisplay({
     }
 
     return sortItems(filtered, sortStat, itemOrderMap)
-  }, [inventory, activeTab, weaponTypeFilter, handednessFilter, craftingKindFilter, sortStat, itemOrderMap])
+  }, [inventory, activeTab, weaponTypeFilter, handednessFilter, sortStat, itemOrderMap])
 
   // Group items by category when 'all' tab is selected
   const groupedItems = useMemo(() => {
@@ -347,8 +344,10 @@ export default function InventoryDisplay({
         })}
       </div>
 
-      {/* Stat sort */}
-      <StatSortControl value={sortStat} onChange={setSortStat} />
+      {/* Stat sort — hidden for crafting items, which aren't stat-bearing gear */}
+      {activeTab !== 'crafting' && (
+        <StatSortControl value={sortStat} onChange={setSortStat} />
+      )}
 
       {/* Main hand sub-filters */}
       {activeTab === 'main' && (
@@ -380,27 +379,6 @@ export default function InventoryDisplay({
                 }`}
               >
                 {f === 'all' ? 'All Hands' : f.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Crafting sub-filters */}
-      {activeTab === 'crafting' && (
-        <div className="flex gap-4 flex-wrap pb-1">
-          <div className="flex gap-1.5">
-            {(['all', 'tool', 'material'] as CraftingKindFilter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setCraftingKindFilter(f)}
-                className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
-                  craftingKindFilter === f
-                    ? 'bg-violet-600/70 hover:bg-violet-600 text-white border border-violet-500/50'
-                    : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-400 border border-gray-700/50 hover:border-gray-600/50'
-                }`}
-              >
-                {f === 'all' ? 'All Types' : f === 'tool' ? 'Tools' : 'Materials'}
               </button>
             ))}
           </div>
@@ -444,6 +422,32 @@ export default function InventoryDisplay({
       ) : filteredItems.length === 0 ? (
         <div className="text-gray-400 text-sm">
           No items in this category.
+        </div>
+      ) : activeTab === 'crafting' ? (
+        // Crafting items grouped into Materials, then Tools subsections
+        <div className="space-y-4">
+          {CRAFTING_SUBSECTIONS.map(({ kind, label }) => {
+            const sectionItems = filteredItems.filter((item) => getCraftingKind(item) === kind)
+            if (sectionItems.length === 0) return null
+            return (
+              <div key={kind} className="space-y-2">
+                <h4 className="text-sm font-semibold text-gray-300 px-2">
+                  {label} ({sectionItems.length})
+                </h4>
+                <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
+                  {sectionItems.map((item) => (
+                    <ItemCardShell
+                      key={item.id}
+                      item={item}
+                      highlighted={item.isEquipped}
+                      newBadge={showNewItems && newItemIds.has(item.id)}
+                      footer={renderItemFooter(item)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       ) : (
         // Show flat list for specific category tabs
