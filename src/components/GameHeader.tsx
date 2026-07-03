@@ -44,51 +44,105 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
         }
       `}</style>
       <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-2.5 shadow-sm">
-        <div className="flex w-full items-center justify-between">
 
-          {/* Left side - Player stats */}
-          {playerName && (
-            <div
-              onClick={onCharacterClick}
-              className={`flex items-center gap-6 text-xs ${onCharacterClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-            >
-              {/* Username and Level */}
-              <div className="hidden md:flex items-center gap-2">
-                <span className="text-gray-300">{playerName}</span>
+        {/* Mobile layout - no branding. Left group: name · Lv · XP% · HP · MP. Right group: stats · connection dot */}
+        <div className="flex md:hidden w-full items-center justify-between gap-2.5 text-xs">
+          {/* Left group */}
+          <div className="flex items-center gap-2 min-w-0">
+            {playerName && (
+              <div
+                onClick={onCharacterClick}
+                className={`flex items-center gap-2 min-w-0 ${onCharacterClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+              >
+                <span className="text-gray-300 truncate">{playerName}</span>
                 {level !== undefined && (
-                  <span className="text-yellow-400">Lv.{level}</span>
+                  <span className="text-yellow-400 shrink-0">Lv.{level}</span>
                 )}
                 {xp !== undefined && level !== undefined && (
-                  <span className="text-green-400">{xpPct}%</span>
+                  <span className="text-green-400 shrink-0">{xpPct}%</span>
                 )}
-              </div>
-
-              {/* HP / MP / XP */}
-              <div className="flex items-center gap-2">
                 {hp !== undefined && hpMax !== undefined && (
-                  <span className="text-red-400">
-                    {Math.min(hp, hpMax)}/{hpMax}
-                    {hp > hpMax && <span className="text-yellow-400"> +{hp - hpMax}</span>}
+                  <span className="shrink-0 text-red-400">
+                    <span className={hp > hpMax ? 'font-bold' : ''}>{hp}</span>
+                    /{hpMax}
                   </span>
                 )}
                 {mp !== undefined && mpMax !== undefined && (
-                  <span className="text-blue-400">
-                    {Math.min(mp, mpMax)}/{mpMax}
-                    {mp > mpMax && <span className="text-yellow-400"> +{mp - mpMax}</span>}
+                  <span className="shrink-0 text-blue-400">
+                    <span className={mp > mpMax ? 'font-bold' : ''}>{mp}</span>
+                    /{mpMax}
                   </span>
                 )}
                 {xpGain != null && xpGain > 0 && (
                   <span
                     key={xpGainKey}
-                    className="text-yellow-400 font-bold pointer-events-none"
+                    className="text-yellow-400 font-bold pointer-events-none shrink-0"
                     style={{ animation: 'xpFloat 2.5s forwards' }}
                   >
                     +{xpGain} xp
                   </span>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Right group - core stats + connection dot */}
+          <div className="flex items-center gap-2 shrink-0">
+            {str !== undefined && <span className="text-red-400">{str}</span>}
+            {dex !== undefined && <span className="text-green-400">{dex}</span>}
+            {mag !== undefined && <span className="text-blue-400">{mag}</span>}
+            {def !== undefined && <span className="text-yellow-400">{def}</span>}
+          </div>
+        </div>
+
+        {/* Desktop layout */}
+        <div className="hidden md:flex w-full items-center justify-between">
+
+          {/* Left side - Player stats */}
+          <div className="flex items-center gap-6">
+            {playerName && (
+              <div
+                onClick={onCharacterClick}
+                className={`flex items-center gap-6 text-xs ${onCharacterClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+              >
+                {/* Username and Level */}
+                <div className="hidden md:flex items-center gap-2">
+                  <span className="text-gray-300">{playerName}</span>
+                  {level !== undefined && (
+                    <span className="text-yellow-400">Lv.{level}</span>
+                  )}
+                  {xp !== undefined && level !== undefined && (
+                    <span className="text-green-400">{xpPct}%</span>
+                  )}
+                </div>
+
+                {/* HP / MP / XP */}
+                <div className="flex items-center gap-2">
+                  {hp !== undefined && hpMax !== undefined && (
+                    <span className="text-red-400">
+                      <span className={hp > hpMax ? 'font-bold' : ''}>{hp}</span>
+                      /{hpMax}
+                    </span>
+                  )}
+                  {mp !== undefined && mpMax !== undefined && (
+                    <span className="text-blue-400">
+                      <span className={mp > mpMax ? 'font-bold' : ''}>{mp}</span>
+                      /{mpMax}
+                    </span>
+                  )}
+                  {xpGain != null && xpGain > 0 && (
+                    <span
+                      key={xpGainKey}
+                      className="text-yellow-400 font-bold pointer-events-none"
+                      style={{ animation: 'xpFloat 2.5s forwards' }}
+                    >
+                      +{xpGain} xp
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Center - Title */}
           <div className="flex items-center gap-2 text-center absolute left-1/2 -translate-x-1/2">
