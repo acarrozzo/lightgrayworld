@@ -27,7 +27,7 @@ const ENEMIES = [
     hp: 3,
     att: 1,
     def: 1,
-    isAggressive: true,
+    isAggressive: false,
     isFriendly: false,
     isFlying: false,
     damageType: 'MELEE',

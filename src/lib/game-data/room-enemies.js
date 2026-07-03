@@ -8,7 +8,7 @@
 // Room 019: Sand Crab Nest — Sand Crab (always present)
 // Room 003b: Cabin Basement — 50% spawn, rat 90% / giant rat 10%
 // Room 003bb: Destroyed Basement — 50% spawn, rat 10% / giant rat 90%
-// Room 008: Spider Cave Entrance — 100% spawn, wave of 4: guaranteed spider + 3 random (spider/scorpion/giant-rat/rat); priority spider strikes first
+// Room 008: Spider Cave Entrance — 50% spawn, spider 100%
 //
 // Config fields:
 //   probabilistic  — uses spawnChance + weighted pool (vs. static always-present `enemies: [...]`)
@@ -80,15 +80,9 @@ const ROOM_ENEMIES = {
   },
   '008': {
     probabilistic: true,
-    spawnChance: 1.0,
-    maxEnemies: 4,
-    guaranteed: ['spider'], // first enemy is always a spider; the rest fill in randomly
-    priority: 'spider', // the spider strikes first when present (and aggressive)
+    spawnChance: 0.5,
     enemies: [
-      { slug: 'spider', weight: 25 },
-      { slug: 'scorpion', weight: 25 },
-      { slug: 'giant-rat', weight: 25 },
-      { slug: 'rat', weight: 25 },
+      { slug: 'spider', weight: 100 },
     ],
   },
   '009': {
