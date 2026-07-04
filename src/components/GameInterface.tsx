@@ -1923,16 +1923,11 @@ export default function GameInterface() {
     }
 
     // Compare previous inventory with new inventory to find new items.
-    // Flag an item as new if its id wasn't present before, OR if its
-    // quantity increased (e.g. picking up more of an existing stack).
-    const previousQuantities: Record<string, number> = {}
-    for (const item of previousInventoryRef.current) {
-      previousQuantities[item.id] = item.quantity
-    }
-    const newItems = inventory.filter(item => {
-      const previousQuantity = previousQuantities[item.id]
-      return previousQuantity === undefined || item.quantity > previousQuantity
-    })
+    // Flag an item as new ONLY if its id wasn't present before (a genuinely
+    // new item). Picking up more of a stack you already own (a quantity
+    // increase) does NOT count as new and must not trigger the badge.
+    const previousIds = new Set(previousInventoryRef.current.map(item => item.id))
+    const newItems = inventory.filter(item => !previousIds.has(item.id))
     
     if (newItems.length > 0) {
       // Add new item IDs to the set
