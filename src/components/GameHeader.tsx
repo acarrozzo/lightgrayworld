@@ -79,9 +79,6 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                 className={`flex items-center gap-2 min-w-0 ${onCharacterClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
               >
                 <span className="text-gray-300 truncate">{playerName}</span>
-                {level !== undefined && (
-                  <span className="text-yellow-400 shrink-0">{level}</span>
-                )}
                 {hp !== undefined && hpMax !== undefined && (
                   <StatBar
                     className="w-12 shrink-0"
@@ -101,6 +98,9 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                     value={`${mp}/${mpMax}`}
                     over={mp > mpMax}
                   />
+                )}
+                {level !== undefined && (
+                  <span className="text-yellow-400 shrink-0">Lv. {level}</span>
                 )}
                 {xp !== undefined && level !== undefined && (
                   <StatBar
@@ -143,15 +143,12 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                 onClick={onCharacterClick}
                 className={`flex items-center gap-2 text-xs ${onCharacterClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
               >
-                {/* Username and Level */}
+                {/* Username */}
                 <div className="hidden md:flex items-center gap-2">
                   <span className="text-gray-300">{playerName}</span>
-                  {level !== undefined && (
-                    <span className="text-yellow-400">{level}</span>
-                  )}
                 </div>
 
-                {/* HP / MP / XP */}
+                {/* HP / MP / Level / XP */}
                 <div className="flex items-center gap-2">
                   {hp !== undefined && hpMax !== undefined && (
                     <StatBar
@@ -172,6 +169,9 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                       value={`${mp}/${mpMax}`}
                       over={mp > mpMax}
                     />
+                  )}
+                  {level !== undefined && (
+                    <span className="text-yellow-400">Lv. {level}</span>
                   )}
                   {xp !== undefined && level !== undefined && (
                     <StatBar
