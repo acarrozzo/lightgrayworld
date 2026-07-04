@@ -236,11 +236,11 @@ export default function InventoryDisplay({
       // One wrapping row: action buttons flow and wrap; the value + drop group is
       // pushed right with ml-auto and drops to its own line on narrow cards.
       <div className="flex flex-wrap items-center gap-2 mt-1">
-        {/* Unequip button - show if item is equipped */}
+        {/* Equipped status tag + Unequip button - show if item is equipped */}
         {item.isEquipped && (
           <>
-            <span className="px-2 py-1 bg-gradient-to-r from-green-500/90 to-green-600/90 text-white text-[10px] font-bold rounded-md shadow-lg shadow-green-500/30 border border-green-400/50 flex-shrink-0">
-              EQUIPPED
+            <span className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-full bg-green-500/15 text-green-300 border border-green-400/40 flex-shrink-0">
+              Equipped
             </span>
             <button
               onClick={() => {
@@ -249,8 +249,8 @@ export default function InventoryDisplay({
               }}
               className="px-3 py-1.5 text-sm font-semibold text-white bg-red-600/80 hover:bg-red-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
             >
-              <Icon name="equipment-shortsword" size={12} color="current" />
-              <span className="hidden sm:inline">Unequip</span>
+              <Icon name="arrow-down" size={12} color="current" />
+              <span>Unequip</span>
             </button>
           </>
         )}
@@ -263,8 +263,8 @@ export default function InventoryDisplay({
             }}
             className="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600/80 hover:bg-blue-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
           >
-            <Icon name="equipment-shortsword" size={12} color="current" />
-            <span className="hidden sm:inline">Equip</span>
+            <Icon name="arrow-up" size={12} color="current" />
+            <span>Equip</span>
           </button>
         )}
         {itemActions.map((itemAction) => (
@@ -283,7 +283,7 @@ export default function InventoryDisplay({
             title={itemAction.label}
           >
             {itemAction.icon && <Icon name={itemAction.icon} size={12} color="current" />}
-            <span className="hidden sm:inline">{itemAction.label}</span>
+            <span>{itemAction.label}</span>
           </button>
         ))}
         <div className="flex items-center gap-2 flex-shrink-0 ml-auto">

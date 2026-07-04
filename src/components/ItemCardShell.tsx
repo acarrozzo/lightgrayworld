@@ -61,7 +61,7 @@ export default function ItemCardShell({
             {item.template.name}
           </div>
           {item.quantity > 1 && (
-            <span className="text-gray-200 text-xs font-semibold border border-gray-600/50 bg-gray-700/60 px-1.5 py-0.5 rounded-md flex-shrink-0 shadow-sm">
+            <span className="text-amber-300 text-xs font-bold border border-amber-500/40 bg-amber-500/15 px-1.5 py-0.5 rounded-md flex-shrink-0 shadow-sm">
               x{item.quantity}
             </span>
           )}
