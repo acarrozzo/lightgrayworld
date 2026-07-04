@@ -115,6 +115,7 @@ export default function GameInterface() {
   // room info, like the battle panel. `craftingRecipeId` marks the in-flight craft.
   const [isCraftingOpen, setIsCraftingOpen] = useState(false)
   const [craftingRecipeId, setCraftingRecipeId] = useState<string | null>(null)
+  const craftingPanelRef = useRef<HTMLDivElement>(null)
   const [leftDropdownOpen, setLeftDropdownOpen] = useState(false)
   const [rightDropdownOpen, setRightDropdownOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
@@ -365,6 +366,15 @@ export default function GameInterface() {
       setIsCraftingOpen(false)
     }
   }, [currentRoom?.roomId])
+
+  // When crafting opens, jump the scroll to the top of the crafting container.
+  useEffect(() => {
+    if (!isCraftingOpen) return
+    const raf = requestAnimationFrame(() => {
+      craftingPanelRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [isCraftingOpen])
 
   useEffect(() => {
     if (!socket) return
@@ -3050,7 +3060,7 @@ export default function GameInterface() {
                 onMessage={handleProfileMessage}
               />
               {isCraftingOpen && currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle && (
-                <div className="px-4 pt-4">
+                <div ref={craftingPanelRef} className="px-4 pt-4 scroll-mt-4">
                   <CraftingPanel
                     roomId={currentRoom.roomId}
                     inventory={inventory}
@@ -3088,7 +3098,7 @@ export default function GameInterface() {
           </div>
 
           {/* D-pad */}
-          <div className={`flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50 ${battle.isInBattle ? 'hidden' : ''}`}>
+          <div className={`flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50 ${battle.isInBattle || isCraftingOpen ? 'hidden' : ''}`}>
             {/* Teleport / Map buttons - right edge */}
             <div className="absolute right-4 top-4 flex flex-col gap-2 z-10">
               <button
