@@ -9,6 +9,7 @@ const {
 } = require('./game-engine/services/room-normalization.js')
 const { getRoomEnemies, isProbabilistic, rollRoomEnemyGroup } = require('./game-data/room-enemies.js')
 const { getEnemy } = require('./game-data/enemies.js')
+const { loadRoomRoster } = require('./game-engine/services/room-roster-service.js')
 const { getRoomStateNote, getRoomActionOverrides, clearPlayerLevers } = require('./game-engine/lever-state.js')
 const {
   getRoomStateNote: getSearchRevealStateNote,
@@ -725,6 +726,25 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // where a room broadcast would fire before the client is listening).
           roomPartyState: buildRoomPartyState(playerData.currentRoom),
         })
+
+        // Restore any persisted enemy roster for the current room so a refresh resumes
+        // the exact wave that was there (full-HP battles) — this closes the "refresh to
+        // reset the room" exploit. If nothing is persisted (the room was empty or fully
+        // cleared), maybeStartAutoBattle rolls a fresh spawn check instead, same as
+        // entering the room. Restored aggressive enemies ambush with a free hit, same
+        // as walking in. Runs after login:success so the client has room context.
+        if (isProbabilistic(playerData.currentRoom)) {
+          try {
+            const savedRoster = await loadRoomRoster(playerData.id, playerData.currentRoom)
+            if (savedRoster && savedRoster.length) {
+              const destRoomState = gameEngine.getOrCreateRoom(playerData.currentRoom)
+              destRoomState.setPlayerEnemyRoster(playerData.id, savedRoster)
+            }
+          } catch (err) {
+            console.error('[Socket] Failed to restore persisted room roster:', err)
+          }
+        }
+        await maybeStartAutoBattle({ socket, player: playerData, toRoom: playerData.currentRoom, gameEngine })
 
         recordWorldFeedEventSafe({
           userId: playerData.id,

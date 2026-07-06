@@ -7,7 +7,7 @@
 // Room 018: Rocky Beach — Sand Crab 25% spawn chance
 // Room 019: Sand Crab Nest — Sand Crab (always present)
 // Room 003b: Cabin Basement — 50% spawn, rat 90% / giant rat 10%
-// Room 003bb: Destroyed Basement — 50% spawn, rat 10% / giant rat 90%
+// Room 003bb: Destroyed Basement — 50% spawn, wave of 3 (guaranteed 1 giant rat + 1 rat, 3rd weighted giant rat 90%)
 // Room 008: Spider Cave Entrance — 50% spawn, spider 100%
 //
 // Config fields:
@@ -73,6 +73,10 @@ const ROOM_ENEMIES = {
   '003bb': {
     probabilistic: true,
     spawnChance: 0.5,
+    maxEnemies: 3,
+    // Every wave always contains at least one giant rat AND one regular rat;
+    // the remaining slot is filled from the weighted pool below (usually a giant rat).
+    guaranteed: ['giant-rat', 'rat'],
     enemies: [
       { slug: 'rat', weight: 10 },
       { slug: 'giant-rat', weight: 90 },
@@ -298,4 +302,38 @@ function rollRoomEnemyGroup(roomId) {
   return group
 }
 
-module.exports = { ROOM_ENEMIES, getRoomEnemies, isProbabilistic, getRoomPriorityEnemy, rollRoomEnemy, rollRoomEnemyGroup }
+// Refills a partial (leftover) roster back toward the room's wave size on RE-ENTRY.
+// Given the enemies still present (e.g. a lone passive rat left after the giant rats
+// were killed), rolls spawnChance once; on success, tops the roster up to maxEnemies by
+// re-adding any missing `guaranteed` enemies first, then filling with weighted picks.
+// The existing leftover enemies are always kept. Returns the (possibly unchanged) roster.
+//   - Non-probabilistic rooms: returned unchanged.
+//   - Already at/over capacity, or spawnChance roll fails: returned unchanged.
+function topUpRoomEnemyGroup(roomId, existingRoster) {
+  const roster = Array.isArray(existingRoster) ? [...existingRoster] : []
+  const config = ROOM_ENEMIES[roomId]
+  if (!config?.probabilistic) return roster
+
+  const count = config.maxEnemies && config.maxEnemies > 0 ? config.maxEnemies : 1
+  if (roster.length >= count) return roster
+
+  // Only refill some of the time, matching the room's normal spawn cadence.
+  if (Math.random() > config.spawnChance) return roster
+
+  // Re-add guaranteed lead enemies that aren't already present, in order.
+  if (Array.isArray(config.guaranteed)) {
+    for (const slug of config.guaranteed) {
+      if (roster.length >= count) break
+      if (!roster.includes(slug)) roster.push(slug)
+    }
+  }
+
+  // Fill any remaining slots from the weighted pool.
+  while (roster.length < count) {
+    roster.push(pickWeightedEnemy(config))
+  }
+
+  return roster
+}
+
+module.exports = { ROOM_ENEMIES, getRoomEnemies, isProbabilistic, getRoomPriorityEnemy, rollRoomEnemy, rollRoomEnemyGroup, topUpRoomEnemyGroup }

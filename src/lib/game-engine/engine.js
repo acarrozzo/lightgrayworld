@@ -2,6 +2,7 @@ const { TickClock, WORLD_TICK_MS } = require('./tick-clock')
 const { RoomState } = require('./room-state')
 const { PlayerActionQueue } = require('./player-action-queue')
 const { prisma } = require('../db-client')
+const { topUpRoomEnemyGroup } = require('../game-data/room-enemies')
 
 class GameEngine {
   constructor(io, tickMs = WORLD_TICK_MS) {
@@ -328,7 +329,10 @@ class GameEngine {
 
     const persistedRoster = this.persistedEnemies.get(playerState.id)?.get(toRoomId)
     if (persistedRoster) {
-      destinationRoom.setPlayerEnemyRoster(playerState.id, persistedRoster)
+      // On re-entry, refill a partial leftover roster back toward the room's wave
+      // size (gated by spawnChance), re-adding any missing guaranteed enemies.
+      const refilledRoster = topUpRoomEnemyGroup(toRoomId, persistedRoster)
+      destinationRoom.setPlayerEnemyRoster(playerState.id, refilledRoster)
       this.persistedEnemies.get(playerState.id).delete(toRoomId)
     }
   }

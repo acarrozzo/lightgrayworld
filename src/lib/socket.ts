@@ -112,6 +112,21 @@ export interface BattleDropDetail {
   firstKill: boolean
 }
 
+// A room-enemy snapshot as sent to the client for the room roster display.
+// Structurally matches RoomEnemy in components/RoomBox.tsx.
+export interface RoomEnemySnapshot {
+  slug: string
+  name: string
+  description: string
+  icon: string
+  level: number
+  hp: number
+  att: number
+  def: number
+  isAggressive: boolean
+  isFriendly: boolean
+}
+
 export interface BattleVictoryPayload {
   enemyName: string
   xpAwarded: number
@@ -120,6 +135,10 @@ export interface BattleVictoryPayload {
   message: string
   lastTurnResult?: Record<string, any>
   summary?: BattleSummary
+  // Multi-enemy waves: the enemies still present after this kill, and whether the
+  // whole wave is cleared. Absent for static (non-probabilistic) rooms.
+  remainingEnemies?: RoomEnemySnapshot[]
+  clearRoomEnemies?: boolean
 }
 
 export interface BattleDefeatPayload {

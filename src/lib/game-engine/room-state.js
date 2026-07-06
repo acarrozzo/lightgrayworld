@@ -9,6 +9,7 @@ const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSuppo
 const { getRoomEnemies, isProbabilistic, getRoomPriorityEnemy, rollRoomEnemyGroup } = require('../game-data/room-enemies')
 const { getEnemy } = require('../game-data/enemies')
 const { getRevealDefinition, markRevealed, clearRevealed } = require('./search-reveal-state')
+const { saveRoomRoster } = require('./services/room-roster-service')
 
 const SEARCH_LOOT_TABLES = {
   '003b': {
@@ -128,6 +129,15 @@ class RoomState {
   // attack any of them. Index 0 is the default target for the bare 'attack' action
   // and there is no post-battle grace.
 
+  // Fire-and-forget: mirror this player's current in-memory roster to the DB so it
+  // survives a page refresh / reconnect. An empty roster deletes the persisted row.
+  // NOT called from removePlayer — a disconnect must leave the DB row intact so the
+  // roster can be restored on the next login.
+  syncRosterToDb(playerId) {
+    const slugs = this.playerEnemyState.get(playerId)?.roster ?? []
+    saveRoomRoster(playerId, this.roomId, slugs).catch(() => {})
+  }
+
   // A present enemy slug (roster[0]), used as a default target for the bare
   // 'attack' action.
   getPlayerActiveEnemy(playerId) {
@@ -146,12 +156,14 @@ class RoomState {
 
   setPlayerActiveEnemy(playerId, slug) {
     this.playerEnemyState.set(playerId, { roster: slug ? [slug] : [] })
+    this.syncRosterToDb(playerId)
   }
 
   // Seeds the full roster of present enemies (used on room entry to place a fresh
   // wave, or to restore a roster persisted across a room transition).
   setPlayerEnemyRoster(playerId, slugs) {
     this.playerEnemyState.set(playerId, { roster: Array.isArray(slugs) ? slugs : [] })
+    this.syncRosterToDb(playerId)
   }
 
   // Removes one defeated enemy (by slug) from the roster after a battle win.
@@ -163,11 +175,15 @@ class RoomState {
     const idx = roster.indexOf(slug)
     if (idx !== -1) roster.splice(idx, 1)
     this.playerEnemyState.set(playerId, { roster })
+    this.syncRosterToDb(playerId)
     return roster.length
   }
 
   clearPlayerEnemyState(playerId) {
     this.playerEnemyState.delete(playerId)
+    // Deletes the persisted row (roster now empty) so a cleared/abandoned room
+    // isn't restored on the next login.
+    this.syncRosterToDb(playerId)
   }
 
   // True if any aggressive enemy is present in the player's roster. Used to block
@@ -200,6 +216,9 @@ class RoomState {
 
     const group = rollRoomEnemyGroup(this.roomId)
     this.playerEnemyState.set(playerId, { roster: group })
+    // Persist only when a wave actually spawned; a miss leaves the (empty) state
+    // unchanged, so there's nothing new to write.
+    if (group.length) this.syncRosterToDb(playerId)
     return group.length ? { spawned: group } : null
   }
 
@@ -361,10 +380,14 @@ class RoomState {
     }
 
     // The priority (or a random) present hostile enemy attacks the player.
+    // The enemy only gets the ambush free hit when it FRESHLY spawned this turn
+    // (you were caught off guard). An enemy that was already present and known is
+    // engaged without advantage — consistent with a deliberate attack.
     const targetSlug = this.pickHostileTarget(roster)
     if (targetSlug) {
+      const isAmbush = Boolean(spawned?.spawned?.length)
       const battleResult = await executeStartBattle(
-        { type: 'start_battle', data: { enemySlug: targetSlug, isAutoInitiated: true } },
+        { type: 'start_battle', data: { enemySlug: targetSlug, isAutoInitiated: isAmbush } },
         playerId,
         this
       )

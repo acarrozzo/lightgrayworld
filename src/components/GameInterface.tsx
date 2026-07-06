@@ -904,6 +904,14 @@ export default function GameInterface() {
 
     const normalizedAction = actionType.toLowerCase()
 
+    // Movement dismisses any lingering victory summary (just close it — the
+    // destination room handles its own entry encounter). Battle-starting actions
+    // close it via the battle:started handler instead.
+    const MOVEMENT_ACTIONS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down', 'move', 'navigate', 'teleport']
+    if (MOVEMENT_ACTIONS.includes(normalizedAction)) {
+      clearBattleResult()
+    }
+
     // "Open Crafting" is a pure client-side panel toggle — no server round-trip.
     // The actual craft (type: 'craft') is dispatched from within the panel.
     if (normalizedAction === 'open crafting') {
@@ -2083,6 +2091,9 @@ export default function GameInterface() {
     if (!socket) return
 
     const cleanupStarted = socketHandlers.onBattleStarted((payload) => {
+      // A new battle beginning (manual attack, auto-advance, or a rest/search ambush)
+      // dismisses any lingering victory summary so it never blocks the next fight.
+      clearBattleResult()
       setBattleStarted({
         isAdvantageTurn: payload.isAdvantageTurn,
         enemySlug: payload.enemySlug,
@@ -2151,10 +2162,10 @@ export default function GameInterface() {
         clearBattle()
         // Clear the room display only when the whole wave is defeated; otherwise show
         // the enemies still present (the next front enemy steps up).
-        if ((payload as any).clearRoomEnemies) {
+        if (payload.clearRoomEnemies) {
           setRoomEnemies([])
-        } else if (Array.isArray((payload as any).remainingEnemies)) {
-          setRoomEnemies((payload as any).remainingEnemies)
+        } else if (Array.isArray(payload.remainingEnemies)) {
+          setRoomEnemies(payload.remainingEnemies)
         }
         const currentPlayer = useGameStore.getState().player
         if (currentPlayer) {
@@ -2263,6 +2274,10 @@ export default function GameInterface() {
       const returnRoomId = payload.returnRoomId
       if (returnRoomId && returnRoomId !== currentRoomRef.current?.roomId) {
         handleAction({ type: 'teleport', data: { toRoomId: returnRoomId } })
+      } else {
+        // Fleeing in place: the server abandoned the room's wave, so clear the
+        // local roster to match (otherwise the fled-from enemies linger on screen).
+        setRoomEnemies([])
       }
     })
 
@@ -2300,7 +2315,7 @@ export default function GameInterface() {
       cleanupLevelUp()
       cleanupClicksUpdate()
     }
-  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, setBattleResult, appendWorldFeed, handleAction])
+  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, setBattleResult, clearBattleResult, appendWorldFeed, handleAction])
 
   useEffect(() => {
     if (!socket) {
@@ -3035,7 +3050,17 @@ export default function GameInterface() {
                     onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
                     onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
                     onUseItem={(itemId, action) => socketHandlers.sendGameAction({ type: 'use_item', data: { playerItemId: itemId, action } })}
-                    onDismissResult={clearBattleResult}
+                    onDismissResult={() => {
+                      clearBattleResult()
+                      // Auto-advance: in a multi-enemy wave, engage the next aggressive
+                      // enemy still present instead of making the player hunt for the
+                      // Attack button (movement is blocked while a hostile remains).
+                      // Passive leftovers (e.g. rats) do not force a fight.
+                      const nextHostile = roomEnemies.find((e) => e.isAggressive)
+                      if (nextHostile) {
+                        handleAction({ type: 'start_battle', data: { enemySlug: nextHostile.slug } })
+                      }
+                    }}
                     isActing={isLoadingRoom}
                     playerName={player.username}
                     playerLevel={player.level}
