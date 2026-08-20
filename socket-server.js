@@ -1,13 +1,12 @@
 const { createServer } = require('http')
 const next = require('next')
 const { Server } = require('socket.io')
-const { PrismaClient } = require('@prisma/client')
 const { GameEngine } = require('./src/lib/game-engine/engine.js')
 const { setSocketIO, setUserSocketMap } = require('./src/lib/socket-utils.js')
 const { setupSocketHandlers } = require('./src/lib/socket-server-handlers.js')
 const { verifySocketToken } = require('./src/lib/token-verification.js')
 
-const prisma = new PrismaClient()
+const { prisma } = require('./src/lib/db-client.js')
 
 const PORT = process.env.PORT || 3000
 const HOST = process.env.HOST || '0.0.0.0'

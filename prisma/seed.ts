@@ -1,8 +1,17 @@
 import { PrismaClient, ItemType, EquipSlot, WeaponCategory } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { normalizeConnectionString } from '../src/lib/db-connection-string.js'
 import bcrypt from 'bcryptjs'
 import { ROOM_LOOT } from '../src/lib/game-engine/config/room-loot'
 
-const prisma = new PrismaClient()
+// Prisma 7 requires an explicit driver adapter. Seeding writes a lot of rows,
+// so prefer the direct (non-pooled) connection when one is configured.
+const adapter = new PrismaPg({
+  connectionString: normalizeConnectionString(
+    process.env.DIRECT_URL ?? process.env.DATABASE_URL
+  ),
+})
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
   console.log('🌱 Seeding database...')

@@ -4,10 +4,9 @@ const next = require('next')
 const { Server } = require('socket.io')
 const { setSocketIO, setUserSocketMap } = require('./src/lib/socket-utils.js')
 const { GameEngine } = require('./src/lib/game-engine/engine.js')
-const { PrismaClient } = require('@prisma/client')
 const { setupSocketHandlers } = require('./src/lib/socket-server-handlers.js')
 const { verifySocketToken } = require('./src/lib/token-verification.js')
-const prisma = new PrismaClient()
+const { prisma } = require('./src/lib/db-client.js')
 
 const dev = process.env.NODE_ENV !== 'production'
 const hostname = 'localhost'

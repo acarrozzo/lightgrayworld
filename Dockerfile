@@ -11,6 +11,8 @@ RUN apt-get update -qq && \
 
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
+# Prisma 7 resolves the schema path and connection URLs from this file
+COPY prisma.config.ts ./
 
 # Install all dependencies (needed for Prisma CLI) and generate Prisma client
 RUN npm ci && npx prisma generate
