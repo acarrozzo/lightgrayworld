@@ -33,12 +33,15 @@ function createPrismaClient() {
 }
 
 /** @type {import('@prisma/client').PrismaClient} */
-const prisma = globalForPrisma.prisma ?? createPrismaClient()
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
+function getPrisma() {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient()
+  }
+  return globalForPrisma.prisma
 }
 
 module.exports = {
-  prisma,
+  get prisma() {
+    return getPrisma()
+  },
 }
