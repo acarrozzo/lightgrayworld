@@ -12,7 +12,7 @@ export interface TabConfig {
   label: string
   icon?: string | ReactNode
   color?: string
-  content: ReactNode | ((isActive: boolean) => ReactNode)
+  content?: ReactNode | ((isActive: boolean) => ReactNode)
   badge?: boolean | number
 }
 
@@ -30,6 +30,7 @@ interface TabContainerProps {
   buttonPadding?: string
   leftElement?: ReactNode
   rightElement?: ReactNode
+  wrap?: boolean
 }
 
 export default function TabContainer({
@@ -46,6 +47,7 @@ export default function TabContainer({
   buttonPadding = 'px-2.5 py-1.5',
   leftElement,
   rightElement,
+  wrap = false,
 }: TabContainerProps) {
   const [internalActiveTab, setInternalActiveTab] = useState<string | null>(defaultTab ?? tabs[0]?.id ?? null)
   const activeTab = controlledActiveTab !== undefined ? controlledActiveTab : internalActiveTab
@@ -338,13 +340,13 @@ export default function TabContainer({
         )}
         
         {/* Centered tabs */}
-        <div ref={tabsContainerRef} className="flex-1 flex items-center justify-left md:justify-center gap-2 flex-nowrap px-0 lg:pr-[56px] xl:px-0">
+        <div ref={tabsContainerRef} className={`flex-1 flex items-center justify-left md:justify-center gap-2 px-0 ${wrap ? 'flex-wrap' : 'flex-nowrap lg:pr-[56px] xl:px-0'}`}>
           {/* max-w-[848px] lg:max-w-[904px] xl:max-w-[848px] */}
 
           {/* Render visible tabs */}
-          {visibleTabs.map((tab, index) => {
+          {(wrap ? tabs : visibleTabs).map((tab, index) => {
             const isActive = activeTab === tab.id
-            const isFirstExploreTab = index === 0 && tab.id === 'explore'
+            const isFirstExploreTab = !wrap && index === 0 && tab.id === 'explore'
             return (
               <React.Fragment key={tab.id}>
                 <button
@@ -356,25 +358,32 @@ export default function TabContainer({
                     }
                   }}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`${buttonPadding} h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 ${getButtonColorClasses(tab, isActive)}`}
+                  className={wrap
+                    ? `${buttonPadding} flex-1 basis-0 min-w-[56px] text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow ${getButtonColorClasses(tab, isActive)}`
+                    : `${buttonPadding} h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 ${getButtonColorClasses(tab, isActive)}`
+                  }
                 >
                   {tab.icon && (
                     typeof tab.icon === 'string' ? (
-                      <Icon 
-                        name={tab.icon} 
-                        size={14} 
-                        color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color === 'sky' ? 'sky' : tab.color)} 
-                        className={tab.label ? "mr-1" : ""} 
+                      <Icon
+                        name={tab.icon}
+                        size={wrap ? 18 : 14}
+                        color={isActive ? undefined : (tab.color === 'gold' ? 'yellow' : tab.color === 'sky' ? 'sky' : tab.color)}
+                        className={!wrap && tab.label ? "mr-1" : ""}
                       />
                     ) : (
-                      <span className={`${tab.label ? "mr-1" : ""} ${getIconColorClass(tab, isActive)}`}>
+                      <span className={`${!wrap && tab.label ? "mr-1" : ""} ${getIconColorClass(tab, isActive)}`}>
                         {React.cloneElement(tab.icon as React.ReactElement<any>, {
+                          size: wrap ? 18 : undefined,
                           className: `${getIconColorClass(tab, isActive)} ${((tab.icon as React.ReactElement<any>).props as any)?.className || ''}`.trim()
                         })}
                       </span>
                     )
                   )}
-                  {tab.label}
+                  {wrap
+                    ? <span className="leading-none">{tab.label || '\u00A0'}</span>
+                    : tab.label && <span>{tab.label}</span>
+                  }
                   <NotificationBadge value={tab.badge} className="absolute -top-1 -right-1" />
                 </button>
                 {isFirstExploreTab && (
@@ -385,7 +394,7 @@ export default function TabContainer({
           })}
           
           {/* Dropdown button for overflow tabs */}
-          {dropdownTabs.length > 0 && (
+          {!wrap && dropdownTabs.length > 0 && (
             <div className="relative flex-1" ref={dropdownRef}>
               <button
                 ref={(el) => {
@@ -451,7 +460,7 @@ export default function TabContainer({
         
         {/* Hidden tabs for measurement - outside flex container */}
         {/* Render all tabs here for accurate measurement, regardless of visibility state */}
-        <div className="absolute opacity-0 pointer-events-none" aria-hidden="true" style={{ visibility: 'hidden', position: 'absolute', top: '-9999px', left: '-9999px' }}>
+        {!wrap && <div className="absolute opacity-0 pointer-events-none" aria-hidden="true" style={{ visibility: 'hidden', position: 'absolute', top: '-9999px', left: '-9999px' }}>
           {tabs.map((tab) => {
             // Only render tabs that aren't currently visible (to avoid duplicate refs)
             if (visibleTabs.includes(tab)) return null
@@ -489,8 +498,8 @@ export default function TabContainer({
               </button>
             )
           })}
-        </div>
-        
+        </div>}
+
         {/* Right side elements */}
         <div ref={rightElementRef} className="flex items-center gap-2 flex-shrink-0">
           {rightElement}

@@ -12,11 +12,9 @@ import BattlePanel from './game-interface/panels/BattlePanel'
 import Compass from './Compass'
 import TabContainer, { type TabConfig } from './TabContainer'
 import MobileBottomNav from './MobileBottomNav'
-import InventoryDisplay from './InventoryDisplay'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
-import SettingsContent from './SettingsContent'
-import { Settings as SettingsIcon, ChevronLeft, ChevronRight, ChevronDown, MessageSquare, MessageSquareText, Map } from 'lucide-react'
+import { Settings as SettingsIcon, MessageSquare, MessageSquareText, Map } from 'lucide-react'
 import TeleportModal, { type TeleportLocation } from './TeleportModal'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
@@ -111,36 +109,16 @@ export default function GameInterface() {
   const xpGainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(() => {
-    if (typeof window === 'undefined') return false
-    const saved = localStorage.getItem('leftSidebarOpen')
-    if (saved !== null) return JSON.parse(saved)
-    return window.innerWidth >= 768
-  })
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(() => {
-    if (typeof window === 'undefined') return false
-    const saved = localStorage.getItem('rightSidebarOpen')
-    if (saved !== null) return JSON.parse(saved)
-    return window.innerWidth >= 768
-  })
-  const [leftPanelType, setLeftPanelType] = useState<string>('char')
-  const [rightPanelType, setRightPanelType] = useState<string>('feed')
   // Crafting panel (rooms 003 / 021): a local UI toggle that renders above the
   // room info, like the battle panel. `craftingRecipeId` marks the in-flight craft.
   const [isCraftingOpen, setIsCraftingOpen] = useState(false)
   const [craftingRecipeId, setCraftingRecipeId] = useState<string | null>(null)
   const craftingPanelRef = useRef<HTMLDivElement>(null)
-  const [leftDropdownOpen, setLeftDropdownOpen] = useState(false)
-  const [rightDropdownOpen, setRightDropdownOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const totalDmUnread = useDMStore((state) => state.getTotalUnreadCount())
-  const leftSidebarScrollRef = useRef<HTMLDivElement>(null)
-  const rightSidebarScrollRef = useRef<HTMLDivElement>(null)
-  const leftSidebarScrollPosition = useRef<number>(0)
-  const rightSidebarScrollPosition = useRef<number>(0)
-  const leftDropdownRef = useRef<HTMLDivElement>(null)
-  const rightDropdownRef = useRef<HTMLDivElement>(null)
   const [isTeleportModalOpen, setIsTeleportModalOpen] = useState(false)
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false)
+  const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(false)
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
   const [shopModalData, setShopModalData] = useState<{
     shopItems: Array<{ id: string; slug: string; name: string; description: string; value: number; type: string }>
@@ -333,20 +311,6 @@ export default function GameInterface() {
     }
   }, [getAuthHeaders, isLoggedIn])
 
-  // Load panel type preferences from localStorage on mount
-  useEffect(() => {
-    const savedLeftPanelType = localStorage.getItem('leftPanelType')
-    const savedRightPanelType = localStorage.getItem('rightPanelType')
-
-    if (savedLeftPanelType) {
-      setLeftPanelType(savedLeftPanelType)
-    }
-
-    if (savedRightPanelType) {
-      setRightPanelType(savedRightPanelType)
-    }
-  }, [])
-
   // Listen for world ticks to drive countdowns
   useEffect(() => {
     if (!socket) return
@@ -416,97 +380,6 @@ export default function GameInterface() {
     return cleanup
   }, [socket, socketHandlers, appendWorldFeed])
 
-  // Save sidebar state to localStorage (only on desktop to preserve preferences)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      localStorage.setItem('leftSidebarOpen', JSON.stringify(leftSidebarOpen))
-    }
-  }, [leftSidebarOpen])
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      localStorage.setItem('rightSidebarOpen', JSON.stringify(rightSidebarOpen))
-    }
-  }, [rightSidebarOpen])
-
-  useEffect(() => {
-    localStorage.setItem('leftPanelType', leftPanelType)
-  }, [leftPanelType])
-
-  useEffect(() => {
-    localStorage.setItem('rightPanelType', rightPanelType)
-  }, [rightPanelType])
-
-  // Preserve scroll positions when collapsing/expanding
-  useEffect(() => {
-    if (!leftSidebarScrollRef.current) return
-    
-    // Find the actual scrollable element inside the left sidebar (the div with overflow-y-auto and p-4)
-    const scrollableElement = leftSidebarScrollRef.current.querySelector('div.overflow-y-auto.p-4') as HTMLElement ||
-                              leftSidebarScrollRef.current.querySelector('.overflow-y-auto') as HTMLElement
-    
-    if (scrollableElement) {
-      if (leftSidebarOpen) {
-        // Restore scroll position when expanding (after transition)
-        const timeoutId = setTimeout(() => {
-          if (scrollableElement) {
-            scrollableElement.scrollTop = leftSidebarScrollPosition.current
-          }
-        }, 260) // Slightly after transition completes
-        return () => clearTimeout(timeoutId)
-      } else {
-        // Save scroll position when collapsing
-        leftSidebarScrollPosition.current = scrollableElement.scrollTop
-      }
-    }
-  }, [leftSidebarOpen])
-
-  useEffect(() => {
-    if (!rightSidebarScrollRef.current) return
-    
-    // Find the actual scrollable element inside UnifiedFeedPanel (worldFeedEntries)
-    const scrollableElement = rightSidebarScrollRef.current.querySelector('.worldFeedEntries') as HTMLElement
-    
-    if (scrollableElement) {
-      if (rightSidebarOpen) {
-        // Restore scroll position when expanding (after transition)
-        const timeoutId = setTimeout(() => {
-          if (scrollableElement) {
-            scrollableElement.scrollTop = rightSidebarScrollPosition.current
-          }
-        }, 260) // Slightly after transition completes
-        return () => clearTimeout(timeoutId)
-      } else {
-        // Save scroll position when collapsing
-        rightSidebarScrollPosition.current = scrollableElement.scrollTop
-      }
-    }
-  }, [rightSidebarOpen])
-
-  // Keyboard shortcuts for desktop
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle shortcuts on desktop (when sidebars are not always visible)
-      if (window.innerWidth >= 768) return
-      
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key) {
-          case '1':
-            e.preventDefault()
-            setLeftSidebarOpen(!leftSidebarOpen)
-            break
-          case '2':
-            e.preventDefault()
-            setRightSidebarOpen(!rightSidebarOpen)
-            break
-        }
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [leftSidebarOpen, rightSidebarOpen])
-
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
@@ -519,66 +392,6 @@ export default function GameInterface() {
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
   }, [centerActiveTab])
-
-  // Auto-close sidebars on mobile (< 768px) to prevent dark curtain overlay
-  useEffect(() => {
-    const handleResize = () => {
-      if (typeof window !== 'undefined' && window.innerWidth < 768) {
-        // Close both sidebars when on mobile (using functional updates to avoid dependencies)
-        setLeftSidebarOpen((prev: boolean) => prev ? false : prev)
-        setRightSidebarOpen((prev: boolean) => prev ? false : prev)
-      }
-    }
-
-    // Check on initial mount
-    handleResize()
-
-    // Listen for resize events with throttling for performance
-    let timeoutId: NodeJS.Timeout | null = null
-    const throttledHandleResize = () => {
-      if (timeoutId) return
-      timeoutId = setTimeout(() => {
-        handleResize()
-        timeoutId = null
-      }, 100)
-    }
-
-    window.addEventListener('resize', throttledHandleResize)
-
-    return () => {
-      window.removeEventListener('resize', throttledHandleResize)
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
-    }
-  }, [])
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        leftDropdownRef.current &&
-        !leftDropdownRef.current.contains(event.target as Node) &&
-        !(event.target as HTMLElement)?.closest('[data-left-dropdown-button]')
-      ) {
-        setLeftDropdownOpen(false)
-      }
-      if (
-        rightDropdownRef.current &&
-        !rightDropdownRef.current.contains(event.target as Node) &&
-        !(event.target as HTMLElement)?.closest('[data-right-dropdown-button]')
-      ) {
-        setRightDropdownOpen(false)
-      }
-    }
-
-    if (leftDropdownOpen || rightDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside)
-      }
-    }
-  }, [leftDropdownOpen, rightDropdownOpen])
 
   // Tab order for swipe navigation (matches the order in the tabs array)
   const tabOrder = ['explore', 'char', 'inventory', 'quests', 'map', 'players', 'feed', 'settings']
@@ -1219,14 +1032,13 @@ export default function GameInterface() {
   }
 
   const handleOpenWorldChat = () => {
-    setRightSidebarOpen(true)
+    setIsFeedPanelOpen(true)
     setForceFeedFilter('chat')
     setForceFeedChatSubFilter('all-chat')
     setForceWorldChatMode('world')
-    // Focus the input after sidebar opens
     setTimeout(() => {
       customActionInputRef.current?.focus()
-    }, 350) // Wait for sidebar animation to complete
+    }, 100)
   }
 
   const appendDMFeed = useCallback((direction: 'from' | 'to', username: string, message: string) => {
@@ -1990,26 +1802,24 @@ export default function GameInterface() {
 
   // Clear forceWorldChatMode after it's been applied
   useEffect(() => {
-    if (forceWorldChatMode && rightSidebarOpen) {
-      // Small delay to ensure the mode is set, then clear it
+    if (forceWorldChatMode && isFeedPanelOpen) {
       const timer = setTimeout(() => {
         setForceWorldChatMode(undefined)
       }, 100)
       return () => clearTimeout(timer)
     }
-  }, [forceWorldChatMode, rightSidebarOpen])
+  }, [forceWorldChatMode, isFeedPanelOpen])
 
   // Clear forceFeedFilter after it's been applied
   useEffect(() => {
-    if (forceFeedFilter && rightSidebarOpen) {
-      // Small delay to ensure the filter is set, then clear it
+    if (forceFeedFilter && isFeedPanelOpen) {
       const timer = setTimeout(() => {
         setForceFeedFilter(undefined)
         setForceFeedChatSubFilter(undefined)
       }, 100)
       return () => clearTimeout(timer)
     }
-  }, [forceFeedFilter, rightSidebarOpen])
+  }, [forceFeedFilter, isFeedPanelOpen])
 
   useEffect(() => {
     if (!socket) {
@@ -2748,6 +2558,14 @@ export default function GameInterface() {
     setIsTeleportModalOpen(true)
   }, [isPartyMember, appendWorldFeed])
 
+  const handleOpenMap = useCallback(() => {
+    if (currentRoomRef.current?.roomId) {
+      const mapIdForCurrentRoom = getMapIdForRoom(currentRoomRef.current.roomId)
+      setCurrentMapId(mapIdForCurrentRoom)
+    }
+    setIsMapModalOpen(true)
+  }, [])
+
   const handleTeleport = useCallback((roomId: string) => {
     handleAction({ type: 'teleport', data: { toRoomId: roomId } })
   }, [handleAction])
@@ -2778,124 +2596,17 @@ export default function GameInterface() {
     openDMThread(targetPlayer.id, targetPlayer.username)
   }, [openDMThread])
 
-  // Panel configuration
-  const panelConfig: Record<string, { label: string; icon: string | React.ReactNode; color: string }> = {
-    char: { label: 'Character', icon: 'character', color: 'violet' },
-    inventory: { label: 'Inventory', icon: 'inv', color: 'green' },
-    quests: { label: 'Quests', icon: 'trophy', color: 'gold' },
-    map: { label: 'Map', icon: <Map size={14} />, color: 'sky' },
-    players: { label: 'Players', icon: <MessageSquare size={14} />, color: 'pink' },
-    feed: { label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'blue' },
-    settings: { label: 'Settings', icon: <SettingsIcon size={14} />, color: 'gray' },
-  }
+  const renderActivePanel = useCallback(() => {
+    if (!player) return <div>Loading...</div>
 
-  const getPanelLabel = (panelType: string) => panelConfig[panelType]?.label || 'Character'
-  const getPanelIcon = (panelType: string) => panelConfig[panelType]?.icon || 'character'
-  const getPanelColor = (panelType: string) => panelConfig[panelType]?.color || 'purple'
-
-  // Helper function to get color class for ReactNode icons
-  const getIconColorClass = useCallback((color: string, isActive: boolean): string => {
-    if (isActive) {
-      // Active state uses -300 variants
-      const activeColorMap: Record<string, string> = {
-        sky: 'text-sky-300',
-        purple: 'text-purple-300',
-        blue: 'text-blue-300',
-        gray: 'text-gray-300',
-        gold: 'text-yellow-300',
-        yellow: 'text-yellow-300',
-        green: 'text-green-300',
-        red: 'text-red-300',
-        violet: 'text-violet-300',
-        pink: 'text-pink-300',
-        amber: 'text-amber-300',
-      }
-      return activeColorMap[color] || 'text-blue-300'
-    }
-    
-    // Inactive state uses -400 variants
-    const inactiveColorMap: Record<string, string> = {
-      sky: 'text-sky-400',
-      purple: 'text-purple-400',
-      blue: 'text-blue-400',
-      gray: 'text-gray-400',
-      gold: 'text-yellow-400',
-      yellow: 'text-yellow-400',
-      green: 'text-green-400',
-      red: 'text-red-400',
-      violet: 'text-violet-400',
-      pink: 'text-pink-400',
-      amber: 'text-amber-400',
-    }
-    
-    return inactiveColorMap[color] || 'text-gray-400'
-  }, [])
-
-  // Helper function to get button color classes for panel dropdowns (matches TabContainer.getButtonColorClasses)
-  const getPanelButtonColorClasses = useCallback((color: string, isActive: boolean): string => {
-    if (isActive) {
-      switch (color) {
-        case 'blue':
-          return 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
-        case 'green':
-          return 'bg-green-500/10 hover:bg-green-500/20 text-green-300'
-        case 'purple':
-          return 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-300'
-        case 'gold':
-          return 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
-        case 'red':
-          return 'bg-red-500/10 hover:bg-red-500/20 text-red-300'
-        case 'sky':
-          return 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-300'
-        case 'gray':
-          return 'bg-gray-500/10 hover:bg-gray-500/20 text-gray-300'
-        case 'violet':
-          return 'bg-violet-500/10 hover:bg-violet-500/20 text-violet-300'
-        case 'pink':
-          return 'bg-pink-500/10 hover:bg-pink-500/20 text-pink-300'
-        case 'amber':
-          return 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
-        default:
-          return 'bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
-      }
-    } else {
-      return 'bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
-    }
-  }, [])
-
-  // Helper function to render icon with proper colors
-  const renderIcon = useCallback((icon: string | React.ReactNode, color: string, isActive: boolean) => {
-    if (typeof icon === 'string') {
-      return (
-        <Icon 
-          name={icon} 
-          size={14} 
-          color={isActive ? undefined : (color === 'gold' ? 'yellow' : color === 'sky' ? 'sky' : color)} 
-        />
-      )
-    } else {
-      // Clone ReactNode and apply color class
-      const colorClass = getIconColorClass(color, isActive)
-      const iconElement = icon as React.ReactElement<{ className?: string; size?: number }>
-      return React.cloneElement(iconElement, {
-        className: `${colorClass} ${iconElement.props?.className || ''}`.trim(),
-        size: 14,
-      })
-    }
-  }, [getIconColorClass])
-
-  const renderPanelContent = useCallback((panelType: string, side: 'left' | 'right') => {
-    if (!player) {
-      return <div>Loading...</div>
-    }
-    
-    switch (panelType) {
+    switch (centerActiveTab) {
       case 'char':
         return (
           <CharPanel
             player={player}
             onAction={handleAction}
             onSwitchToInventory={handleSwitchToInventory}
+            onClose={() => setCenterActiveTab('explore')}
           />
         )
       case 'inventory':
@@ -2912,7 +2623,7 @@ export default function GameInterface() {
                 return updated
               })
             }}
-            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
+            onClose={() => setCenterActiveTab('explore')}
           />
         )
       case 'quests':
@@ -2924,17 +2635,7 @@ export default function GameInterface() {
             isLoggedIn={isLoggedIn}
             inventory={inventory}
             onResetQuests={handleResetQuests}
-            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
-          />
-        )
-      case 'map':
-        return (
-          <MapPanel
-            currentMapId={currentMapId}
-            availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
-            onMapChange={handleMapChange}
-            onOpenTeleport={handleOpenTeleport}
-            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
+            onClose={() => setCenterActiveTab('explore')}
           />
         )
       case 'players':
@@ -2944,7 +2645,7 @@ export default function GameInterface() {
             onSubTabChange={setPlayersSubTab}
             unreadDmCount={totalDmUnread}
             onOpenWorldChat={handleOpenWorldChat}
-            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
+            onClose={() => setCenterActiveTab('explore')}
             onDMMessageSent={(payload) => {
               appendDMFeed('to', payload.recipientUsername || 'Unknown', payload.message)
             }}
@@ -2972,27 +2673,16 @@ export default function GameInterface() {
         return (
           <SettingsPanel
             onLogout={handleLogoutFlow}
-            onClose={side === 'left' ? () => setLeftSidebarOpen(false) : () => setRightSidebarOpen(false)}
+            onClose={() => setCenterActiveTab('explore')}
           />
         )
       default:
-        return (
-          <CharPanel
-            player={player}
-            onAction={handleAction}
-            onSwitchToInventory={handleSwitchToInventory}
-          />
-        )
+        return null
     }
-  }, [player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread])
+  }, [centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, handleOpenTeleport])
 
   const handleCenterTabChange = useCallback((tabId: string | null) => {
     setCenterActiveTab(tabId || 'explore')
-
-    if (tabId === 'map' && currentRoomRef.current?.roomId) {
-      const mapIdForCurrentRoom = getMapIdForRoom(currentRoomRef.current.roomId)
-      setCurrentMapId(mapIdForCurrentRoom)
-    }
 
     if (tabId === 'players') {
       const unread = useDMStore.getState().getTotalUnreadCount()
@@ -3020,280 +2710,19 @@ export default function GameInterface() {
     )
   }
 
-  const centerTabs: TabConfig[] = [
-    {
-      id: 'explore',
-      label: 'Explore',
-      icon: 'world',
-      color: 'blue',
-      content: (
-        <div className="flex flex-col flex-1 min-h-0 h-full">
-          <div className="flex-1 min-h-0 overflow-y-auto h-full">
-            <div className="max-w-4xl mx-auto w-full">
-              {!socket?.connected && (
-                <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-gray-800/60 bg-gray-900/80">
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span className="w-2 h-2 rounded-full bg-red-500" />
-                    <span>Not Connected</span>
-                  </div>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="px-6 py-2 text-md font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
-                    aria-label="Refresh page"
-                    title="Refresh page"
-                  >
-                    Refresh
-                  </button>
-                </div>
-              )}
-              {levelUpData && (
-                <LevelUpAlert
-                  data={levelUpData}
-                  tpAvailable={player?.tp ?? 0}
-                  cpAvailable={player?.cp ?? 0}
-                  onClose={() => setLevelUpData(null)}
-                  onTrainNow={() => setTrainingModalOpen(true)}
-                  onSpendCorePoints={() => setStatModalOpen(true)}
-                />
-              )}
-              {(battle.isInBattle || battleResult) && (
-                <div className="px-4 pt-4">
-                  <BattlePanel
-                    battle={battle}
-                    battleResult={battleResult}
-                    onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
-                    onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
-                    onUseItem={(itemId, action) => socketHandlers.sendGameAction({ type: 'use_item', data: { playerItemId: itemId, action } })}
-                    onDismissResult={() => {
-                      clearBattleResult()
-                      // Auto-advance: in a multi-enemy wave, engage the next aggressive
-                      // enemy still present instead of making the player hunt for the
-                      // Attack button (movement is blocked while a hostile remains).
-                      // Passive leftovers (e.g. rats) do not force a fight.
-                      const nextHostile = roomEnemies.find((e) => e.isAggressive)
-                      if (nextHostile) {
-                        handleAction({ type: 'start_battle', data: { enemySlug: nextHostile.slug } })
-                      }
-                    }}
-                    isActing={isLoadingRoom}
-                    playerName={player.username}
-                    playerLevel={player.level}
-                    playerMp={player.mp}
-                    playerMpMax={player.mpMax}
-                    weaponIconName={weaponIconName}
-                    weaponName={weaponName}
-                    weaponCategory={(equippedWeapon?.template.weaponCategory as 'MELEE' | 'RANGED' | null | undefined) ?? null}
-                    inventory={inventory}
-                  />
-                </div>
-              )}
-              <PartyPanel
-                party={party}
-                roomPlayers={roomPlayers}
-                currentPlayerId={player.id}
-                currentPlayer={player}
-                onFollow={handleFollowPlayer}
-                onLeave={handleLeaveParty}
-                onRemove={handleRemovePartyMember}
-                onInspect={(p) => handleOpenPlayerProfile(p as Player)}
-                onMessage={handleProfileMessage}
-              />
-              {isCraftingOpen && currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle && (
-                <div ref={craftingPanelRef} className="px-4 pt-4 scroll-mt-4">
-                  <CraftingPanel
-                    roomId={currentRoom.roomId}
-                    inventory={inventory}
-                    craftingRecipeId={craftingRecipeId}
-                    actionResult={actionResult}
-                    onClose={() => setIsCraftingOpen(false)}
-                    onCraft={(recipeId, quantity) => {
-                      if (craftingRecipeId || quantity < 1) return
-                      setCraftingRecipeId(recipeId)
-                      Promise.resolve(
-                        handleAction({ type: 'craft', data: { recipeId, quantity } })
-                      ).finally(() => setCraftingRecipeId(null))
-                    }}
-                  />
-                </div>
-              )}
-              <RoomBox
-                room={currentRoom}
-                roomPlayers={roomPlayers}
-                currentPlayerId={player.id}
-                onAction={handleAction}
-                isPartyMember={isPartyMember}
-                onOpenPlayerProfile={handleOpenPlayerProfile}
-                gatherCooldowns={gatherCooldowns}
-                worldTick={worldTick}
-                actionResult={actionResult}
-                isLoadingRoom={isLoadingRoom}
-                currentAction={action}
-                roomEnemies={roomEnemies}
-                isInBattle={battle.isInBattle}
-                quests={quests}
-                killList={killList}
-              />
-            </div>
-          </div>
+  const panelTabs: TabConfig[] = [
+    { id: 'explore', label: 'Explore', icon: 'world', color: 'blue' },
+    { id: 'char', label: 'Char', icon: 'character', color: 'violet' },
+    { id: 'inventory', label: 'Inv', icon: 'inv', color: 'green', badge: newItemIds.size > 0 ? newItemIds.size : undefined },
+    { id: 'quests', label: 'Quests', icon: 'trophy', color: 'gold', badge: hasQuestUpdate ? true : undefined },
+    { id: 'players', label: 'Players', icon: <MessageSquare size={14} />, color: 'pink', badge: totalDmUnread > 0 ? totalDmUnread : undefined },
+    { id: 'settings', label: '', icon: <SettingsIcon size={14} />, color: 'gray' },
+  ]
 
-          {/* D-pad */}
-          <div className={`flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50 ${battle.isInBattle || isCraftingOpen ? 'hidden' : ''}`}>
-            {/* Teleport / Map buttons - right edge */}
-            <div className="absolute right-4 top-4 flex flex-col gap-2 z-10">
-              <button
-                type="button"
-                onClick={handleOpenTeleport}
-                className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
-                title="Open Teleport"
-                aria-label="Open Teleport"
-              >
-                <Icon name="ironskin" size={16} />
-                <span className="hidden md:inline">Teleport</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setCenterActiveTab('map')}
-                className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
-                title="Open Map"
-                aria-label="Open Map"
-              >
-                <Map className="h-4 w-4" aria-hidden="true" />
-                <span className="hidden md:inline">Map</span>
-              </button>
-            </div>
-            {/* Compass */}
-            <div className="flex items-center justify-center">
-              <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={() => setCenterActiveTab('map')} onOpenTeleport={handleOpenTeleport} isMoveInProgress={isMoveInProgress} />
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'char',
-      label: 'Char',
-      icon: 'character',
-      color: 'violet',
-      content: (
-        <CharPanel
-          player={player}
-          onAction={handleAction}
-          onSwitchToInventory={handleSwitchToInventory}
-          onClose={() => setCenterActiveTab('explore')}
-        />
-      ),
-    },
-    {
-      id: 'inventory',
-      label: 'Inv',
-      icon: 'inv',
-      color: 'green',
-      badge: newItemIds.size > 0 ? newItemIds.size : undefined,
-      content: (
-        <InventoryPanel
-          inventory={inventory}
-          onAction={handleAction}
-          initialFilter={inventoryFilter}
-          newItemIds={newItemIds}
-          onClearNewItem={(itemId) => {
-            setNewItemIds(prev => {
-              const updated = new Set(prev)
-              updated.delete(itemId)
-              return updated
-            })
-          }}
-          onClose={() => setCenterActiveTab('explore')}
-        />
-      ),
-    },
-    {
-      id: 'quests',
-      label: 'Quests',
-      icon: 'trophy',
-      color: 'gold',
-      badge: hasQuestUpdate ? true : undefined,
-      content: (
-        <QuestsPanel
-          quests={quests}
-          isLoadingQuests={isLoadingQuests}
-          isResettingQuests={isResettingQuests}
-          isLoggedIn={isLoggedIn}
-          inventory={inventory}
-          onResetQuests={handleResetQuests}
-          onClose={() => setCenterActiveTab('explore')}
-        />
-      ),
-    },
-    {
-      id: 'map',
-      label: 'Map',
-      icon: <Map size={14} />,
-      color: 'sky',
-      content: (
-        <MapPanel
-          currentMapId={currentMapId}
-          availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
-          onMapChange={handleMapChange}
-          onClose={() => setCenterActiveTab('explore')}
-          onOpenTeleport={() => { setCenterActiveTab('explore'); handleOpenTeleport() }}
-        />
-      ),
-    },
-    {
-      id: 'players',
-      label: 'Players',
-      icon: <MessageSquare size={14} />,
-      color: 'pink',
-      badge: totalDmUnread > 0 ? totalDmUnread : undefined,
-      content: (
-        <PlayersPanel
-          activeSubTab={playersSubTab}
-          onSubTabChange={setPlayersSubTab}
-          unreadDmCount={totalDmUnread}
-          onOpenWorldChat={handleOpenWorldChat}
-          onClose={() => setCenterActiveTab('explore')}
-          onDMMessageSent={(payload) => {
-            appendDMFeed('to', payload.recipientUsername || 'Unknown', payload.message)
-          }}
-        />
-      ),
-    },
-    {
-      id: 'feed',
-      label: 'Feed',
-      icon: <MessageSquareText size={14} />,
-      color: 'blue',
-      content: (
-        <FeedPanel
-          currentRoomId={currentRoom?.roomId}
-          currentRoomName={currentRoom?.name}
-          isConnected={socket?.connected ?? false}
-          onClose={() => setCenterActiveTab('explore')}
-          onOpenSettings={() => setCenterActiveTab('settings')}
-          customAction={customAction}
-          onCustomActionChange={setCustomAction}
-          onCustomActionSubmit={handleCustomAction}
-          isLoadingRoom={isLoadingRoom}
-          customActionInputRef={customActionInputRef}
-          onUnreadCountChange={setUnreadCount}
-          forceInputMode={forceWorldChatMode}
-          forceFilter={forceFeedFilter}
-          forceChatSubFilter={forceFeedChatSubFilter}
-        />
-      ),
-    },
-    {
-      id: 'settings',
-      label: '',
-      icon: <SettingsIcon size={14} />,
-      color: 'gray',
-      content: (
-        <SettingsPanel
-          onLogout={handleLogoutFlow}
-          onClose={() => setCenterActiveTab('explore')}
-        />
-      ),
-    },
+  // Mobile includes feed tab in bottom nav
+  const mobileTabs: TabConfig[] = [
+    ...panelTabs,
+    { id: 'feed', label: 'Feed', icon: <MessageSquareText size={14} />, color: 'blue', badge: unreadCount > 0 ? unreadCount : undefined },
   ]
 
   return (
@@ -3305,6 +2734,21 @@ export default function GameInterface() {
         onTeleport={handleTeleport}
         currentRoomId={currentRoom?.roomId}
       />
+      {isMapModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-gray-950/95 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+        >
+          <MapPanel
+            currentMapId={currentMapId}
+            availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
+            onMapChange={handleMapChange}
+            onOpenTeleport={handleOpenTeleport}
+            onClose={() => setIsMapModalOpen(false)}
+          />
+        </div>
+      )}
       <ActionModal
         isOpen={actionModal.isOpen}
         onClose={() => setActionModal({ isOpen: false, title: '', content: '' })}
@@ -3473,251 +2917,270 @@ export default function GameInterface() {
         mag={player ? (player.mag ?? 0) + (player.magMod ?? 0) : undefined}
         def={player ? (player.def ?? 0) + (player.defMod ?? 0) : undefined}
         clicks={player?.clicks}
-        onCharacterClick={() => setLeftSidebarOpen((prev: boolean) => !prev)}
+        onCharacterClick={() => handleCenterTabChange(centerActiveTab === 'char' ? null : 'char')}
         isConnected={socket?.connected ?? false}
         onRefresh={() => window.location.reload()}
-        panelsOpen={leftSidebarOpen || rightSidebarOpen}
-        onTogglePanels={() => {
-          if (leftSidebarOpen || rightSidebarOpen) {
-            setLeftSidebarOpen(false)
-            setRightSidebarOpen(false)
-          } else {
-            setLeftSidebarOpen(true)
-            setRightSidebarOpen(true)
-          }
-        }}
       />
       <ActivityTicker />
 
-      <div className="flex flex-1 overflow-hidden relative min-h-0">
-        {/* Overlay backdrop for mobile */}
-        {(leftSidebarOpen || rightSidebarOpen) && (
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-10 md:hidden transition-opacity duration-300"
-            onClick={() => {
-              setLeftSidebarOpen(false)
-              setRightSidebarOpen(false)
-            }}
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* Left: on desktop (lg+), tab bar at top; D-pad default, panel content when tab active */}
+        <div className="hidden lg:flex flex-col flex-shrink-0 w-[420px] border-r border-gray-800/50 bg-gray-900/95 min-h-0 overflow-hidden">
+          <TabContainer
+            tabs={panelTabs}
+            defaultTab="explore"
+            activeTab={centerActiveTab}
+            onTabChange={handleCenterTabChange}
+            containerClassName="!flex-none"
+            headerClassName="px-3 py-2"
+            buttonPadding="px-2 py-1"
+            wrap
           />
-        )}
-        
-
-        {/* Left Sidebar - Player Info */}
-        <div 
-          className={`
-            bg-gray-900/95 backdrop-blur-sm border-r border-gray-800/50 hidden lg:flex flex-col flex-shrink-0 h-full min-h-0 ${leftDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}
-            transition-all duration-[250ms] ease-out
-            ${leftSidebarOpen 
-              ? rightSidebarOpen
-                ? 'w-full md:w-[360px] xl:min-w-[360px] xl:max-w-[25%] translate-x-0'
-                : 'w-full md:w-[480px] xl:min-w-[480px] xl:max-w-[25%] translate-x-0'
-              : 'w-0 md:w-0 -translate-x-full md:translate-x-0'
-            }
-            absolute md:relative left-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none
-          `}
-        >
-          <div className={`flex flex-col h-full ${leftDropdownOpen ? 'overflow-visible' : ''}`}>
-            {/* Header with toggle button */}
-            <div className={`flex items-center gap-3 p-4 bg-gray-900/95 backdrop-blur-sm flex-shrink-0 border-b border-gray-800/50 ${leftDropdownOpen ? 'overflow-visible z-10 relative' : ''}`}>
-              <button
-                onClick={() => setLeftSidebarOpen((prev: boolean) => !prev)}
-                className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
-                title="Close"
-                aria-label="Close panel"
-              >
-                <ChevronLeft size={14} className="mr-0.5" />
-                {renderIcon(getPanelIcon(leftPanelType), getPanelColor(leftPanelType), false)}
-              </button>
-              <div className="flex items-center gap-2 flex-1">
-                <div className="relative flex-shrink-0" ref={leftDropdownRef}>
+          {centerActiveTab !== 'explore' ? (
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {renderActivePanel()}
+            </div>
+          ) : (
+            <div className={`flex-1 flex flex-col items-center justify-center p-4 ${battle.isInBattle || isCraftingOpen ? 'opacity-30 pointer-events-none' : ''}`}>
+              <div className="flex flex-col items-center gap-4">
+                <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={handleOpenMap} onOpenTeleport={handleOpenTeleport} isMoveInProgress={isMoveInProgress} />
+                <div className="flex gap-2 w-full max-w-[280px]">
                   <button
-                    data-left-dropdown-button
-                    onClick={() => setLeftDropdownOpen((prev) => !prev)}
-                    className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center gap-1.5 relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
-                    title="Select panel"
-                    aria-label="Select panel"
+                    type="button"
+                    onClick={handleOpenTeleport}
+                    className="px-2 py-1 flex-1 basis-0 min-w-[56px] text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                    title="Open Teleport"
+                    aria-label="Open Teleport"
                   >
-                    <span className="text-sm font-semibold text-white">{getPanelLabel(leftPanelType)}</span>
-                    <ChevronDown
-                      size={12}
-                      className={`transition-transform duration-200 ${leftDropdownOpen ? 'rotate-180' : ''}`}
-                    />
+                    <Icon name="ironskin" size={18} />
+                    <span className="leading-none">Teleport</span>
                   </button>
-                  
-                  {/* Dropdown menu */}
-                  {leftDropdownOpen && (
-                    <div className="absolute top-full left-0 mt-2 bg-gray-900/95 backdrop-blur-sm border border-gray-700/50 rounded-lg shadow-xl z-[100] min-w-[160px] py-1" style={{ position: 'absolute' }}>
-                      {Object.entries(panelConfig).map(([panelId, config]) => {
-                        const isActive = leftPanelType === panelId
-                        return (
-                          <button
-                            key={panelId}
-                            onClick={() => {
-                              setLeftPanelType(panelId)
-                              setLeftDropdownOpen(false)
-                            }}
-                            className={`w-full px-2.5 py-1.5 text-sm font-medium transition-all duration-200 flex items-center gap-2 rounded-lg first:rounded-t-lg last:rounded-b-lg ${
-                              isActive
-                                ? getPanelButtonColorClasses(config.color, true)
-                                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
-                            }`}
-                          >
-                            {renderIcon(config.icon, config.color, isActive)}
-                            <span className="flex-1 text-left">{config.label}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleOpenMap}
+                    className="px-2 py-1 flex-1 basis-0 min-w-[56px] text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
+                    title="Open Map"
+                    aria-label="Open Map"
+                  >
+                    <Map size={18} aria-hidden="true" />
+                    <span className="leading-none">Map</span>
+                  </button>
                 </div>
               </div>
-            </div>
-            <div ref={leftSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
-              {renderPanelContent(leftPanelType, 'left')}
-            </div>
-          </div>
-        </div>
-        
-        {/* Main Game Area */}
-        <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden flex-1">
-          {currentRoom && (
-            <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
-              <TabContainer
-                leftElement={
-                  <button
-                    onClick={() => setLeftSidebarOpen(true)}
-                    className={`hidden lg:flex group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${leftSidebarOpen ? 'lg:hidden' : ''}`}
-                    title={`Open ${getPanelLabel(leftPanelType).toLowerCase()} panel`}
-                    aria-label={`Open ${getPanelLabel(leftPanelType).toLowerCase()} panel`}
-                  >
-                    {renderIcon(getPanelIcon(leftPanelType), getPanelColor(leftPanelType), false)}
-                    <span className="opacity-0 -translate-x-2 max-w-0 overflow-hidden transition-all duration-200 md:group-hover:opacity-100 md:group-hover:translate-x-0 md:group-hover:max-w-[100px] whitespace-nowrap ml-1">
-                      {getPanelLabel(leftPanelType)}
-                    </span>
-                    <ChevronRight size={14} className="ml-0.5" />
-                  </button>
-                }
-                rightElement={
-                  <button
-                    onClick={() => setRightSidebarOpen(true)}
-                    className={`hidden xl:flex group px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 items-center justify-center relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300 ${rightSidebarOpen ? 'xl:hidden' : ''}`}
-                    title={`Open ${getPanelLabel(rightPanelType).toLowerCase()} panel`}
-                    aria-label={`Open ${getPanelLabel(rightPanelType).toLowerCase()} panel`}
-                  >
-                    <ChevronLeft size={14} className="mr-0.5" />
-                    <span className="opacity-0 translate-x-2 max-w-0 overflow-hidden transition-all duration-200 md:group-hover:opacity-100 md:group-hover:translate-x-0 md:group-hover:max-w-[120px] whitespace-nowrap">
-                      {getPanelLabel(rightPanelType)}
-                    </span>
-                    <span className="ml-1">
-                      {renderIcon(getPanelIcon(rightPanelType), getPanelColor(rightPanelType), false)}
-                    </span>
-                    {rightPanelType === 'feed' && unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-blue-500 rounded-full border border-gray-900 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white">
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </span>
-                    )}
-                  </button>
-                }
-                tabs={centerTabs}
-                defaultTab="explore"
-                activeTab={centerActiveTab}
-                onTabChange={handleCenterTabChange}
-                containerClassName="flex-1 min-h-0"
-                contentClassName="flex-1 min-h-0 overflow-hidden"
-              />
             </div>
           )}
         </div>
-        
-        {/* Right Sidebar - Tabbed Interface (Feed, World Chat, Room Chat) */}
-        <div 
-          className={`
-            rightColumn bg-gray-900/95 backdrop-blur-sm border-l border-gray-800/50 hidden xl:flex flex-col flex-shrink-0 h-full min-h-0 overflow-hidden
-            transition-all duration-[250ms] ease-out
-            ${rightSidebarOpen 
-              ? leftSidebarOpen
-                ? 'w-full md:w-[360px] xl:min-w-[360px] xl:max-w-[25%] translate-x-0'
-                : 'w-full md:w-[480px] xl:min-w-[480px] xl:max-w-[25%] translate-x-0'
-              : 'w-0 md:w-0 translate-x-full md:translate-x-0'
-            }
-            absolute md:relative right-0 top-0 bottom-0 z-20 shadow-xl md:shadow-none
-          `}
-        >
-          <div className="flex flex-col h-full">
-            {/* Header with toggle button */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800/60 bg-gray-900/80 flex-shrink-0">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="relative flex-shrink-0" ref={rightDropdownRef}>
-                    <button
-                      data-right-dropdown-button
-                      onClick={() => setRightDropdownOpen((prev) => !prev)}
-                      className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center gap-1.5 relative rounded-lg shadow-sm hover:shadow bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
-                      title="Select panel"
-                      aria-label="Select panel"
-                    >
-                      <span className="text-sm font-semibold text-gray-100 truncate">{getPanelLabel(rightPanelType)}</span>
-                      <ChevronDown
-                        size={12}
-                        className={`transition-transform duration-200 ${rightDropdownOpen ? 'rotate-180' : ''}`}
-                      />
-                    </button>
-                    
-                    {/* Dropdown menu */}
-                    {rightDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-2 bg-gray-900/95 backdrop-blur-sm border border-gray-700/50 rounded-lg shadow-xl z-[100] min-w-[160px] py-1">
-                        {Object.entries(panelConfig).map(([panelId, config]) => {
-                          const isActive = rightPanelType === panelId
-                          return (
-                            <button
-                              key={panelId}
-                              onClick={() => {
-                                setRightPanelType(panelId)
-                                setRightDropdownOpen(false)
-                              }}
-                              className={`w-full px-2.5 py-1.5 text-sm font-medium transition-all duration-200 flex items-center gap-2 rounded-lg first:rounded-t-lg last:rounded-b-lg ${
-                                isActive
-                                  ? getPanelButtonColorClasses(config.color, true)
-                                  : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
-                              }`}
-                              >
-                              {renderIcon(config.icon, config.color, isActive)}
-                              <span className="flex-1 text-left">{config.label}</span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => setRightSidebarOpen((prev: boolean) => !prev)}
-                  className="px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
-                  title="Close"
-                  aria-label="Close panel"
-                >
-                  {renderIcon(getPanelIcon(rightPanelType), getPanelColor(rightPanelType), false)}
-                  <ChevronRight size={14} className="ml-0.5" />
-                </button>
-              </div>
-            </div>
-            <div ref={rightSidebarScrollRef} className="flex-1 overflow-y-auto min-h-0">
-              {renderPanelContent(rightPanelType, 'right')}
+
+        {/* Mobile panel: full-width when a panel tab is active (< lg only) */}
+        {centerActiveTab !== 'explore' && (
+          <div className="flex flex-col flex-1 min-h-0 bg-gray-900/95 overflow-hidden lg:hidden">
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {renderActivePanel()}
             </div>
           </div>
+        )}
+
+        {/* Right (desktop) / Main (mobile): Explore area — always visible on desktop, only when explore tab active on mobile */}
+        <div className={`relative flex flex-col flex-1 min-w-0 min-h-0 h-full overflow-hidden ${centerActiveTab !== 'explore' ? 'hidden lg:flex' : 'flex'}`}>
+          {/* Feed toggle button — desktop only, top-right of explore area */}
+          <button
+            type="button"
+            onClick={() => setIsFeedPanelOpen(v => !v)}
+            className="hidden lg:flex absolute top-2 right-3 z-20 items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-700/50 bg-gray-900/80 hover:bg-gray-800/80 text-gray-400 hover:text-white transition-all duration-200 text-xs font-medium shadow-sm"
+            title={isFeedPanelOpen ? 'Close Feed' : 'Open Feed'}
+            aria-label={isFeedPanelOpen ? 'Close Feed' : 'Open Feed'}
+          >
+            <MessageSquareText size={14} />
+            {unreadCount > 0 && (
+              <span className="min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-[9px] font-semibold text-white flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+          {currentRoom && (
+            <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
+              <div className="flex-1 min-h-0 overflow-y-auto h-full">
+                <div className="max-w-4xl mx-auto w-full">
+                  {!socket?.connected && (
+                    <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-gray-800/60 bg-gray-900/80">
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        <span>Not Connected</span>
+                      </div>
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="px-6 py-2 text-md font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
+                        aria-label="Refresh page"
+                        title="Refresh page"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                  )}
+                  {levelUpData && (
+                    <LevelUpAlert
+                      data={levelUpData}
+                      tpAvailable={player?.tp ?? 0}
+                      cpAvailable={player?.cp ?? 0}
+                      onClose={() => setLevelUpData(null)}
+                      onTrainNow={() => setTrainingModalOpen(true)}
+                      onSpendCorePoints={() => setStatModalOpen(true)}
+                    />
+                  )}
+                  {(battle.isInBattle || battleResult) && (
+                    <div className="px-4 pt-4">
+                      <BattlePanel
+                        battle={battle}
+                        battleResult={battleResult}
+                        onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
+                        onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
+                        onUseItem={(itemId, action) => socketHandlers.sendGameAction({ type: 'use_item', data: { playerItemId: itemId, action } })}
+                        onDismissResult={() => {
+                          clearBattleResult()
+                          const nextHostile = roomEnemies.find((e) => e.isAggressive)
+                          if (nextHostile) {
+                            handleAction({ type: 'start_battle', data: { enemySlug: nextHostile.slug } })
+                          }
+                        }}
+                        isActing={isLoadingRoom}
+                        playerName={player.username}
+                        playerLevel={player.level}
+                        playerMp={player.mp}
+                        playerMpMax={player.mpMax}
+                        weaponIconName={weaponIconName}
+                        weaponName={weaponName}
+                        weaponCategory={(equippedWeapon?.template.weaponCategory as 'MELEE' | 'RANGED' | null | undefined) ?? null}
+                        inventory={inventory}
+                      />
+                    </div>
+                  )}
+                  <PartyPanel
+                    party={party}
+                    roomPlayers={roomPlayers}
+                    currentPlayerId={player.id}
+                    currentPlayer={player}
+                    onFollow={handleFollowPlayer}
+                    onLeave={handleLeaveParty}
+                    onRemove={handleRemovePartyMember}
+                    onInspect={(p) => handleOpenPlayerProfile(p as Player)}
+                    onMessage={handleProfileMessage}
+                  />
+                  {isCraftingOpen && currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle && (
+                    <div ref={craftingPanelRef} className="px-4 pt-4 scroll-mt-4">
+                      <CraftingPanel
+                        roomId={currentRoom.roomId}
+                        inventory={inventory}
+                        craftingRecipeId={craftingRecipeId}
+                        actionResult={actionResult}
+                        onClose={() => setIsCraftingOpen(false)}
+                        onCraft={(recipeId, quantity) => {
+                          if (craftingRecipeId || quantity < 1) return
+                          setCraftingRecipeId(recipeId)
+                          Promise.resolve(
+                            handleAction({ type: 'craft', data: { recipeId, quantity } })
+                          ).finally(() => setCraftingRecipeId(null))
+                        }}
+                      />
+                    </div>
+                  )}
+                  <RoomBox
+                    room={currentRoom}
+                    roomPlayers={roomPlayers}
+                    currentPlayerId={player.id}
+                    onAction={handleAction}
+                    isPartyMember={isPartyMember}
+                    onOpenPlayerProfile={handleOpenPlayerProfile}
+                    gatherCooldowns={gatherCooldowns}
+                    worldTick={worldTick}
+                    actionResult={actionResult}
+                    isLoadingRoom={isLoadingRoom}
+                    currentAction={action}
+                    roomEnemies={roomEnemies}
+                    isInBattle={battle.isInBattle}
+                    quests={quests}
+                    killList={killList}
+                  />
+                </div>
+              </div>
+
+              {/* D-pad — mobile/tablet only (< lg), hidden during battle/crafting */}
+              <div className={`lg:hidden flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50 ${battle.isInBattle || isCraftingOpen ? 'hidden' : ''}`}>
+                <div className="absolute right-4 top-4 flex flex-col gap-2 z-10">
+                  <button
+                    type="button"
+                    onClick={handleOpenTeleport}
+                    className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
+                    title="Open Teleport"
+                    aria-label="Open Teleport"
+                  >
+                    <Icon name="ironskin" size={16} />
+                    <span className="hidden md:inline">Teleport</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenMap}
+                    className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
+                    title="Open Map"
+                    aria-label="Open Map"
+                  >
+                    <Map className="h-4 w-4" aria-hidden="true" />
+                    <span className="hidden md:inline">Map</span>
+                  </button>
+                </div>
+                <div className="flex items-center justify-center">
+                  <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={handleOpenMap} onOpenTeleport={handleOpenTeleport} isMoveInProgress={isMoveInProgress} />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Right: Feed panel — desktop only */}
+        {isFeedPanelOpen && (
+          <div className="hidden lg:flex flex-col flex-shrink-0 w-[360px] border-l border-gray-800/50 bg-gray-900/95 min-h-0 overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800/50">
+              <span className="text-sm font-medium text-gray-300">Feed</span>
+              <button
+                type="button"
+                onClick={() => setIsFeedPanelOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+                title="Close Feed"
+                aria-label="Close Feed"
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <FeedPanel
+                currentRoomId={currentRoom?.roomId}
+                currentRoomName={currentRoom?.name}
+                isConnected={socket?.connected ?? false}
+                onOpenSettings={() => setCenterActiveTab('settings')}
+                customAction={customAction}
+                onCustomActionChange={setCustomAction}
+                onCustomActionSubmit={handleCustomAction}
+                isLoadingRoom={isLoadingRoom}
+                customActionInputRef={customActionInputRef}
+                onUnreadCountChange={setUnreadCount}
+                forceInputMode={forceWorldChatMode}
+                forceFilter={forceFeedFilter}
+                forceChatSubFilter={forceFeedChatSubFilter}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      <MobileBottomNav
-        tabs={centerTabs}
-        activeTab={centerActiveTab}
-        onTabChange={handleCenterTabChange}
-        fallbackLabels={{ players: 'Players', feed: 'Feed', settings: 'Settings' }}
-        overflowAfter={5}
-      />
+      {/* Mobile bottom nav — includes explore tab + overflow */}
+      <div className="lg:hidden">
+        <MobileBottomNav
+          tabs={mobileTabs}
+          activeTab={centerActiveTab}
+          onTabChange={handleCenterTabChange}
+          fallbackLabels={{ players: 'Players', feed: 'Feed', settings: 'Settings' }}
+          overflowAfter={5}
+        />
+      </div>
     </div>
   )
 }

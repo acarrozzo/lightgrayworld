@@ -394,7 +394,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
         </div>
 
         {/* Vertical directions (up/down) */}
-        <div className="absolute left-2 top-1/2 transform -translate-y-1/2 flex flex-col gap-2">
+        <div className="absolute -left-12 top-1/2 transform -translate-y-1/2 flex flex-col gap-2">
           {verticalDirections.map((dir) => {
             const hiddenForRoom = HIDDEN_EXITS[room.roomId] ?? []
             const isAvailable = !!room[dir.key] && !hiddenForRoom.includes(dir.key)
