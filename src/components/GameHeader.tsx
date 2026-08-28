@@ -220,7 +220,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                 </svg>
               </button>
             )}
-            <span className="text-[10px] text-gray-500 font-normal">v0.1.5</span>
+            <span className="text-[10px] text-gray-500 font-normal">v0.1.6</span> 
           </div>
 
           {/* Right side - Stats and Connection Status */}
