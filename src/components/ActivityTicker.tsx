@@ -103,9 +103,9 @@ export default function ActivityTicker() {
         onClick={toggleExpanded}
         disabled={!hasHistory}
         className={`
-          w-full h-7
+          w-full h-8
           flex items-center justify-center overflow-hidden
-          border-b border-gray-800/50 bg-gray-900/85 backdrop-blur-sm
+          border-b border-gray-800/40 bg-gray-900/90 backdrop-blur-sm
           px-3
           ${hasHistory ? 'cursor-pointer hover:bg-gray-800/85' : 'cursor-default'}
           focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/30

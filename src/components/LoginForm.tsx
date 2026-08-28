@@ -160,13 +160,13 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-gray-950">
+    <div className="min-h-dvh flex items-center justify-center bg-gray-950 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.06)_0%,transparent_70%)]">
       <div className="max-w-md w-full space-y-8 px-4">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-semibold text-white tracking-tight">
+          <h2 className="mt-6 text-center text-2xl font-light text-white/90 tracking-[0.25em] uppercase">
             Light Gray RPG
           </h2>
-          <p className="mt-3 text-center text-sm text-gray-400">
+          <p className="mt-3 text-center text-xs text-gray-500 tracking-wide">
             {isLogin ? 'Sign in to your account' : 'Create a new account'}
           </p>
         </div>

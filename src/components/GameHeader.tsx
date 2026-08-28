@@ -30,14 +30,14 @@ function StatBar({ pct, fillClass, label, value, over, className }: {
 }) {
   return (
     <div
-      className={`relative h-3.5 rounded bg-gray-700/70 overflow-hidden ${className ?? ''}`}
+      className={`relative h-4 rounded-full bg-gray-800/90 overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] ${className ?? ''}`}
       title={`${label} ${value}`}
     >
       <div
-        className={`h-full rounded transition-[width] duration-300 ${fillClass}`}
+        className={`h-full rounded-full transition-[width] duration-500 ease-out ${fillClass}`}
         style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
       />
-      <span className="absolute inset-0 flex items-center justify-center text-[10px] leading-none font-medium text-white/95 tabular-nums drop-shadow">
+      <span className="absolute inset-0 flex items-center justify-center text-[10px] leading-none font-semibold text-white tabular-nums drop-shadow-sm">
         <span className={over ? 'font-bold' : ''}>{value}</span>
       </span>
     </div>
@@ -65,7 +65,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
           100% { opacity: 0; transform: translateY(-12px); }
         }
       `}</style>
-      <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 px-4 sm:px-6 py-2.5 shadow-sm">
+      <header className="bg-gray-900/95 backdrop-blur-sm border-b border-gray-700/30 px-4 sm:px-6 py-2.5 shadow-lg shadow-black/20">
 
         {/* Mobile layout - no branding. Left group: name · Lv · XP% · HP · MP. Right group: stats · connection dot */}
         <div className="flex md:hidden w-full items-center justify-between gap-2.5 text-xs">
@@ -81,7 +81,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                   <StatBar
                     className="w-12 shrink-0"
                     pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
-                    fillClass="bg-red-500"
+                    fillClass="bg-gradient-to-r from-red-600 to-red-400"
                     label="HP"
                     value={`${hp}/${hpMax}`}
                     over={hp > hpMax}
@@ -91,7 +91,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                   <StatBar
                     className="w-12 shrink-0"
                     pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
-                    fillClass="bg-sky-500"
+                    fillClass="bg-gradient-to-r from-sky-600 to-sky-400"
                     label="MP"
                     value={`${mp}/${mpMax}`}
                     over={mp > mpMax}
@@ -104,7 +104,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                   <StatBar
                     className="w-10 shrink-0"
                     pct={xpPct}
-                    fillClass="bg-green-500"
+                    fillClass="bg-gradient-to-r from-emerald-600 to-emerald-400"
                     label="XP"
                     value={`${xpPct}%`}
                   />
@@ -152,7 +152,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                     <StatBar
                       className="w-16"
                       pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
-                      fillClass="bg-red-500"
+                      fillClass="bg-gradient-to-r from-red-600 to-red-400"
                       label="HP"
                       value={`${hp}/${hpMax}`}
                       over={hp > hpMax}
@@ -162,7 +162,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                     <StatBar
                       className="w-16"
                       pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
-                      fillClass="bg-sky-500"
+                      fillClass="bg-gradient-to-r from-sky-600 to-sky-400"
                       label="MP"
                       value={`${mp}/${mpMax}`}
                       over={mp > mpMax}
@@ -175,7 +175,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                     <StatBar
                       className="w-14"
                       pct={xpPct}
-                      fillClass="bg-green-500"
+                      fillClass="bg-gradient-to-r from-emerald-600 to-emerald-400"
                       label="XP"
                       value={`${xpPct}%`}
                     />
@@ -199,7 +199,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
             {clicks !== undefined && (
               <span className="text-[10px] text-gray-500 font-normal tabular-nums">{clicks.toLocaleString()}</span>
             )}
-            <h1 className="text-sm font-medium text-white tracking-tight">Light Gray</h1>
+            <h1 className="text-sm font-semibold text-gray-100 tracking-wide">Light Gray</h1>
             <span className="text-[10px] text-gray-500 font-normal">v0.1.6</span>
           </div>
 
@@ -236,13 +236,13 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
             {isConnected !== undefined && (
               <div className="hidden md:flex items-center gap-2 ml-4">
                 <div className="flex items-center gap-2 text-gray-400">
-                  <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                  <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]' : 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]'}`} />
                   <span className="text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
                 </div>
                 {!isConnected && onRefresh && (
                   <button
                     onClick={onRefresh}
-                    className="px-2 py-1 text-xs font-medium rounded-md bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
+                    className="px-2 py-1 text-xs font-medium rounded-md bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97]"
                     aria-label="Refresh page"
                     title="Refresh page"
                   >

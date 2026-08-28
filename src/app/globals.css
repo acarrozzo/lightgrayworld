@@ -81,7 +81,7 @@ body.font-mono {
 
 /* Refined focus styles */
 :focus-visible {
-  outline: 2px solid rgb(99 102 241);
+  outline: 2px solid rgb(99 102 241 / 0.6);
   outline-offset: 2px;
 }
 
@@ -89,30 +89,28 @@ body.font-mono {
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(75 85 99 / 0.9) rgb(31 41 55 / 0.3);
-  /*scrollbar-color: greenyellow  rgb(75 85 99 / 0.6);*/
+  scrollbar-color: rgb(75 85 99 / 0.4) transparent;
 }
 
 /* Webkit browsers (Chrome, Safari, Edge) */
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 *::-webkit-scrollbar-track {
-  background: rgb(31 41 55 / 0.3);
-  border-radius: 4px;
+  background: transparent;
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgb(75 85 99 / 0.6);
-  border-radius: 4px;
+  background: rgb(75 85 99 / 0.35);
+  border-radius: 9999px;
   border: 1px solid transparent;
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgb(107 114 128 / 0.8);
+  background: rgb(107 114 128 / 0.55);
   background-clip: padding-box;
 }
 

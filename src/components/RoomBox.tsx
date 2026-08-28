@@ -250,7 +250,7 @@ export default function RoomBox({
           {roomEnemies.map((enemy, index) => (
             <div
               key={`${enemy.slug}-${index}`}
-              className={`inline-flex items-center gap-3 rounded-lg border px-3 py-2 ${enemy.isAggressive ? 'border-red-800/50 bg-red-950/20' : 'border-gray-700/40 bg-gray-800/40'}`}
+              className={`inline-flex items-center gap-3 rounded-lg border px-3 py-2.5 ${enemy.isAggressive ? 'border-red-700/40 bg-red-950/30 shadow-sm shadow-red-950/20' : 'border-gray-700/30 bg-gray-800/30'}`}
             >
               <img
                 src={`/icons/enemy/${encodeURIComponent(enemy.name)}.svg`}
@@ -284,7 +284,7 @@ export default function RoomBox({
                 onClick={() => onAction({ type: 'start_battle', data: { enemySlug: enemy.slug } })}
                 disabled={isInBattle || isLoadingRoom}
                 title={isInBattle ? 'You are already in combat' : `Attack the ${enemy.name}`}
-                className="ml-1 shrink-0 px-3 py-1 text-xs font-semibold bg-red-700/60 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-md transition-all duration-150"
+                className="ml-1 shrink-0 px-3.5 py-1.5 text-xs font-semibold bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-md transition-all duration-150 shadow-sm active:scale-[0.97]"
               >
                 Attack
               </button>
@@ -303,7 +303,7 @@ export default function RoomBox({
                 onClick={() => handleDirection(dir)}
                 disabled={isPartyMember}
                 title={isPartyMember ? 'Following your party — leave to move freely' : undefined}
-                className="px-4 py-1.5 bg-gray-800/50 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-all duration-200"
+                className="px-4 py-1.5 bg-gray-800/60 hover:bg-gray-700/80 disabled:opacity-40 disabled:cursor-not-allowed text-gray-200 hover:text-white rounded-lg text-sm transition-all duration-200 border border-gray-700/30 hover:border-gray-600/50"
               >
                 {dir.charAt(0).toUpperCase() + dir.slice(1)}
               </button>
@@ -332,14 +332,14 @@ export default function RoomBox({
 
       {/* Basic Actions */}
       <div className="mt-6 pt-4">
-        <div className="w-32 border-t border-gray-800/50 mb-4"></div>
+        <div className="w-16 border-t border-gray-700/40 mb-4"></div>
         <div>
           <div className="flex flex-wrap gap-2">
             {([
-              { action: 'attack', label: 'Attack', className: 'bg-red-500/70 hover:bg-red-500' },
-              { action: 'search', label: 'Search', className: 'bg-amber-500/70 hover:bg-amber-500' },
-              { action: 'rest', label: 'Rest', className: 'bg-green-500/70 hover:bg-green-500' },
-              { action: 'look', label: 'Look', className: 'bg-blue-500/70 hover:bg-blue-500' },
+              { action: 'attack', label: 'Attack', className: 'bg-gradient-to-b from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 shadow-sm shadow-red-950/30' },
+              { action: 'search', label: 'Search', className: 'bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-sm shadow-amber-950/30' },
+              { action: 'rest', label: 'Rest', className: 'bg-gradient-to-b from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 shadow-sm shadow-green-950/30' },
+              { action: 'look', label: 'Look', className: 'bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 shadow-sm shadow-blue-950/30' },
             ] as const).map(({ action, label, className }) => {
               const showFlyout = activeFlyoutAction === action
               return (
@@ -358,7 +358,7 @@ export default function RoomBox({
                       onAction(action)
                     }}
                     disabled={isLoadingRoom}
-                    className={`px-3 py-1 ${className} disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-white rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow`}
+                    className={`px-4 py-1.5 ${className} disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
                   >
                     {isLoadingRoom && currentAction === action ? '...' : label}
                   </button>

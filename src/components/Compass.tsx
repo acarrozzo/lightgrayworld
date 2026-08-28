@@ -210,7 +210,7 @@ const HIDDEN_EXITS: Record<string, string[]> = {
 
 const getDirectionColorClasses = (directionKey: string, directionColors: any, isAvailable: boolean): string => {
   if (!isAvailable) {
-    return 'bg-gray-900/50 hover:bg-gray-900/70 border-gray-800/30 opacity-50'
+    return 'bg-gray-900/30 border-gray-800/20 opacity-25'
   }
 
   // Check if there's a custom color for this direction
@@ -218,11 +218,11 @@ const getDirectionColorClasses = (directionKey: string, directionColors: any, is
   
   if (customColor) {
     const colorClasses = getBackgroundColorClasses(customColor)
-    return `${colorClasses.base} ${colorClasses.hover} border-gray-700/50 hover:border-gray-500/50`
+    return `${colorClasses.base} ${colorClasses.hover} border-white/10 hover:border-white/20 shadow-sm`
   }
 
   // Default to green
-  return 'bg-green-600/90 hover:bg-green-500 border-gray-700/50 hover:border-gray-500/50'
+  return 'bg-gradient-to-b from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-500/30 hover:border-green-400/50 shadow-sm shadow-green-900/30'
 }
 
 export default function Compass({ room, onAction, onNavigateToMap, onOpenTeleport, isMoveInProgress = false }: CompassProps) {
@@ -342,7 +342,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
             <button
               type="button"
               onClick={() => onNavigateToMap?.()}
-              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-[1000ms] ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950 border-[10px] sm:border-[25px] border-solid border-gray-800/0 shadow-lg hover:shadow-xl"
+              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-[1000ms] ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950 border-[10px] sm:border-[25px] border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition

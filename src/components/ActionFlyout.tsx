@@ -90,7 +90,7 @@ export default function ActionFlyout({ result, anchorRef, anchorRect, onDismiss 
       className="fixed z-[60] -translate-y-full animate-[flyoutFadeIn_0.2s_ease-out]"
       style={{ top: pos.top, left: pos.left, width: FLYOUT_WIDTH }}
     >
-      <div className="relative rounded-md border border-gray-700/60 bg-gray-900/95 backdrop-blur-sm shadow-lg px-3 py-2">
+      <div className="relative rounded-lg border border-gray-700/40 bg-gray-900/95 backdrop-blur-sm shadow-xl shadow-black/30 px-3 py-2">
         <div className="flex items-start gap-2">
           <span
             className={`flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full ${accent}`}

@@ -2701,10 +2701,10 @@ export default function GameInterface() {
 
   if (!currentRoom || (isLoadingRoom && isInitialLoad)) {
     return (
-      <div className="min-h-dvh bg-gray-950 text-white flex items-center justify-center">
+      <div className="min-h-dvh bg-gray-950 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.04)_0%,transparent_70%)] text-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-indigo-500/50 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400 text-sm">Loading world data...</p>
+          <div className="w-8 h-8 border-2 border-indigo-400/40 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500 text-sm tracking-wide">Loading world data...</p>
         </div>
       </div>
     )
@@ -2925,7 +2925,7 @@ export default function GameInterface() {
 
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Left: on desktop (lg+), tab bar at top; D-pad default, panel content when tab active */}
-        <div className="hidden lg:flex flex-col flex-shrink-0 w-[420px] border-r border-gray-800/50 bg-gray-900/95 min-h-0 overflow-hidden">
+        <div className="hidden lg:flex flex-col flex-shrink-0 w-[420px] border-r border-gray-700/30 bg-gray-900/95 min-h-0 overflow-hidden">
           <TabContainer
             tabs={panelTabs}
             defaultTab="explore"
@@ -2941,31 +2941,38 @@ export default function GameInterface() {
               {renderActivePanel()}
             </div>
           ) : (
-            <div className={`flex-1 flex flex-col items-center justify-center p-4 ${battle.isInBattle || isCraftingOpen ? 'opacity-30 pointer-events-none' : ''}`}>
-              <div className="flex flex-col items-center gap-4">
+            <div className="flex-1 flex flex-col items-center justify-center p-4 relative">
+              <div className={`transition-opacity duration-300 ${battle.isInBattle || isCraftingOpen ? 'opacity-20 pointer-events-none' : ''}`}>
                 <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={handleOpenMap} onOpenTeleport={handleOpenTeleport} isMoveInProgress={isMoveInProgress} />
-                <div className="flex gap-2 w-full max-w-[280px]">
-                  <button
-                    type="button"
-                    onClick={handleOpenTeleport}
-                    className="px-2 py-1 flex-1 basis-0 min-w-[56px] text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
-                    title="Open Teleport"
-                    aria-label="Open Teleport"
-                  >
-                    <Icon name="ironskin" size={18} />
-                    <span className="leading-none">Teleport</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenMap}
-                    className="px-2 py-1 flex-1 basis-0 min-w-[56px] text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300"
-                    title="Open Map"
-                    aria-label="Open Map"
-                  >
-                    <Map size={18} aria-hidden="true" />
-                    <span className="leading-none">Map</span>
-                  </button>
+              </div>
+              {battle.isInBattle && (
+                <div className="pointer-events-none -mt-36 mb-20 z-10">
+                  <span className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-red-400/90 bg-gray-950/70 border border-red-500/25 rounded-lg backdrop-blur-sm">
+                    In Battle
+                  </span>
                 </div>
+              )}
+              <div className={`flex gap-2 w-full max-w-[280px] ${battle.isInBattle || isCraftingOpen ? 'mt-0' : 'mt-4'}`}>
+                <button
+                  type="button"
+                  onClick={handleOpenTeleport}
+                  className="px-2 py-1 flex-1 basis-0 min-w-[56px] text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow border-1 border-violet-600/50 hover:border-violet-500 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 hover:text-violet-300"
+                  title="Open Teleport"
+                  aria-label="Open Teleport"
+                >
+                  <Icon name="ironskin" size={18} />
+                  <span className="leading-none">Teleport</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenMap}
+                  className="px-2 py-1 flex-1 basis-0 min-w-[56px] text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow border-1 border-sky-600/50 hover:border-sky-500 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300"
+                  title="Open Map"
+                  aria-label="Open Map"
+                >
+                  <Map size={18} aria-hidden="true" />
+                  <span className="leading-none">Map</span>
+                </button>
               </div>
             </div>
           )}
@@ -3002,14 +3009,14 @@ export default function GameInterface() {
               <div className="flex-1 min-h-0 overflow-y-auto h-full">
                 <div className="max-w-4xl mx-auto w-full">
                   {!socket?.connected && (
-                    <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-gray-800/60 bg-gray-900/80">
+                    <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-gray-700/30 bg-gray-900/60">
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         <span className="w-2 h-2 rounded-full bg-red-500" />
                         <span>Not Connected</span>
                       </div>
                       <button
                         onClick={() => window.location.reload()}
-                        className="px-6 py-2 text-md font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 shadow-sm hover:shadow"
+                        className="px-6 py-2 text-md font-medium rounded-lg bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white transition-all duration-200 shadow-md shadow-indigo-950/40 hover:shadow-lg active:scale-[0.98]"
                         aria-label="Refresh page"
                         title="Refresh page"
                       >
@@ -3104,7 +3111,7 @@ export default function GameInterface() {
               </div>
 
               {/* D-pad — mobile/tablet only (< lg), hidden during battle/crafting */}
-              <div className={`lg:hidden flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-800/50 ${battle.isInBattle || isCraftingOpen ? 'hidden' : ''}`}>
+              <div className={`lg:hidden flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-700/30 ${battle.isInBattle || isCraftingOpen ? 'hidden' : ''}`}>
                 <div className="absolute right-4 top-4 flex flex-col gap-2 z-10">
                   <button
                     type="button"
@@ -3137,8 +3144,8 @@ export default function GameInterface() {
 
         {/* Right: Feed panel — desktop only */}
         {isFeedPanelOpen && (
-          <div className="hidden lg:flex flex-col flex-shrink-0 w-[360px] border-l border-gray-800/50 bg-gray-900/95 min-h-0 overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800/50">
+          <div className="hidden lg:flex flex-col flex-shrink-0 w-[360px] border-l border-gray-700/30 bg-gray-900/95 min-h-0 overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/30">
               <span className="text-sm font-medium text-gray-300">Feed</span>
               <button
                 type="button"

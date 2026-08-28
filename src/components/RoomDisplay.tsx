@@ -330,14 +330,14 @@ export default function RoomDisplay({
               disabled={isPerformingAction === actionItem.action || isGatherLocked}
               className={`${
                 isViewShop
-                  ? 'px-4 py-3 rounded-md text-base font-semibold text-white transition-all flex items-center gap-2 border-2 border-amber-400/50 shadow-lg hover:shadow-xl'
-                  : 'px-3 py-2 rounded-md text-sm text-white transition-colors flex items-center gap-2'
+                  ? 'px-4 py-3 rounded-lg text-base font-semibold text-white transition-all flex items-center gap-2 border-2 border-amber-400/40 shadow-lg shadow-amber-950/20 hover:shadow-xl hover:border-amber-400/60'
+                  : 'px-3 py-2 rounded-lg text-sm text-white transition-all duration-200 flex items-center gap-2 active:scale-[0.97]'
               } ${
                 isPerformingAction === actionItem.action
                   ? 'bg-gray-700 cursor-wait'
                   : isOpenedGoldChest
                     ? openedClassName
-                    : override?.className || actionItem.className || 'bg-indigo-600 hover:bg-indigo-500'
+                    : override?.className || actionItem.className || 'bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 shadow-sm'
               } ${isGatherLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {resolvedIcon && (
@@ -499,12 +499,12 @@ function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
   const isDisconnected = presence === 'disconnected'
 
   const containerClass = [
-    'group flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-white transition-all overflow-hidden',
+    'group flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-white transition-all duration-200 overflow-hidden active:scale-[0.98]',
     isDisconnected
       ? 'border-slate-600/20 bg-slate-700/10 opacity-35 grayscale hover:border-slate-500/40 hover:opacity-50'
       : isIdle
         ? 'border-amber-500/20 bg-amber-900/10 opacity-60 hover:border-amber-400/50 hover:bg-amber-500/15'
-        : 'border-slate-500/30 bg-slate-500/10 hover:border-violet-400 hover:bg-violet-500/25',
+        : 'border-slate-500/30 bg-slate-500/10 hover:border-violet-400 hover:bg-violet-500/20 shadow-sm hover:shadow-md hover:shadow-violet-500/10',
     disabled ? 'cursor-not-allowed opacity-50' : '',
   ].filter(Boolean).join(' ')
 

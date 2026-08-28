@@ -48,7 +48,7 @@ function HpBar({ current, max, color, rtl = false, initialPct }: { current: numb
   }, [pct])
 
   return (
-    <div className="relative w-full bg-gray-700/60 rounded-full h-2">
+    <div className="relative w-full bg-gray-800/80 rounded-full h-2 shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]">
       {damagePct > 0 && (
         <div
           className="bg-yellow-400 h-2 rounded-full absolute top-0 transition-all duration-500"
@@ -699,7 +699,7 @@ export default function BattlePanel({
               <button
                 onClick={onAttack}
                 disabled={isActing}
-                className={`flex-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold transition-all duration-150 ${isRanged ? 'bg-green-700/80 hover:bg-green-600' : 'bg-red-700/80 hover:bg-red-600'}`}
+                className={`flex-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold transition-all duration-150 active:scale-[0.97] ${isRanged ? 'bg-gradient-to-b from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 shadow-sm shadow-green-950/30' : 'bg-gradient-to-b from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 shadow-sm shadow-red-950/30'}`}
               >
                 {isActing ? '...' : 'Attack'}
               </button>

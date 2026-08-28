@@ -37,12 +37,12 @@ export default function TeleportModal({ isOpen, onClose, locations, onTeleport, 
       role="presentation"
     >
       <div
-        className="relative flex max-h-[85vh] w-[90vw] max-w-2xl flex-col overflow-hidden rounded-lg border border-gray-700/50 bg-gray-900 shadow-2xl"
+        className="relative flex max-h-[85vh] w-[90vw] max-w-2xl flex-col overflow-hidden rounded-xl border border-gray-700/30 bg-gray-900 shadow-2xl shadow-black/40"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="border-b border-gray-700/50">
+        <div className="border-b border-gray-700/30">
           <div className="flex items-center justify-between px-4 py-3">
             <h2 className="text-lg font-semibold text-white">Fast Travel</h2>
             <button
@@ -78,8 +78,8 @@ export default function TeleportModal({ isOpen, onClose, locations, onTeleport, 
                 }
                 // Default color for other locations
                 return isCurrentRoom
-                  ? 'bg-gray-800/50 border-gray-700/50'
-                  : 'bg-gray-800/70 hover:bg-gray-700/70 border-gray-700/50 hover:border-gray-600/50'
+                  ? 'bg-gray-800/50 border-gray-700/30'
+                  : 'bg-gray-800/70 hover:bg-gray-700/70 border-gray-700/30 hover:border-gray-600/50'
               }
               
               return (
@@ -118,11 +118,11 @@ export default function TeleportModal({ isOpen, onClose, locations, onTeleport, 
           </div>
         </div>
 
-        <div className="border-t border-gray-700/50 px-4 py-3 text-right">
+        <div className="border-t border-gray-700/30 px-4 py-3 text-right">
           <button
             type="button"
             onClick={onClose}
-            className="rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+            className="rounded-lg bg-gray-700/80 px-4 py-1.5 text-sm font-medium text-white transition-all duration-200 hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
           >
             Close
           </button>

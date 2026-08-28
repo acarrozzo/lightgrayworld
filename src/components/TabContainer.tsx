@@ -381,7 +381,7 @@ export default function TabContainer({
                     )
                   )}
                   {wrap
-                    ? <span className="leading-none">{tab.label || '\u00A0'}</span>
+                    ? <span className={`leading-none ${!tab.label ? 'invisible' : ''}`}>{tab.label || 'W'}</span>
                     : tab.label && <span>{tab.label}</span>
                   }
                   <NotificationBadge value={tab.badge} className="absolute -top-1 -right-1" />

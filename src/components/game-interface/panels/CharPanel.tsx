@@ -429,9 +429,9 @@ function StatBar({ label, value, percentage, gradient }: StatBarProps) {
         <span>{label}</span>
         <span className="font-medium">{value}</span>
       </div>
-      <div className="h-3 rounded-full bg-gray-800/80 overflow-hidden">
+      <div className="h-3 rounded-full bg-gray-800/80 overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
         <div
-          className={`h-full rounded-full bg-gradient-to-r ${gradient}`}
+          className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-[width] duration-500 ease-out`}
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -464,9 +464,9 @@ function StatDisplay({ label, core, mod, compact = false, color }: StatDisplayPr
   const effective = core + mod
 
   return (
-    <div className={`rounded-xl border border-gray-800/80 bg-gray-900/80 text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'}`}>
+    <div className={`rounded-xl border border-gray-700/40 bg-gray-900/60 text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'}`}>
       <p className={`text-xs uppercase tracking-wide leading-none ${color ?? 'text-gray-400'}`}>{label}</p>
-      <p className={`font-semibold ${color ?? 'text-white'} ${compact ? 'text-lg mt-0.5' : 'text-2xl mt-1'}`}>{effective}</p>
+      <p className={`font-bold ${color ?? 'text-white'} ${compact ? 'text-lg mt-0.5' : 'text-2xl mt-1'}`}>{effective}</p>
       <p className="text-xs text-gray-500 leading-none">{core}</p>
     </div>
   )

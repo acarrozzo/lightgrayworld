@@ -105,7 +105,7 @@ export default function MobileBottomNav({
   const moreColor = activeOverflowTab?.color || 'gray'
   const moreIconColorClass = getTabIconColorClass(moreColor, isOverflowActive)
   const moreActiveRingClass = isOverflowActive
-    ? 'before:absolute before:top-0 before:left-2 before:right-2 before:h-0.5 before:rounded-full before:bg-current'
+    ? 'before:absolute before:top-0 before:left-3 before:right-3 before:h-[3px] before:rounded-full before:bg-current'
     : ''
   const moreLabel = isOverflowActive && activeOverflowTab
     ? resolveLabel(activeOverflowTab) || 'More'
@@ -114,7 +114,7 @@ export default function MobileBottomNav({
   return (
     <div
       ref={containerRef}
-      className="flex-shrink-0 relative bg-gray-900/95 backdrop-blur-sm border-t border-gray-800/60 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+      className="flex-shrink-0 relative bg-gray-900/98 backdrop-blur-md border-t border-gray-700/30 shadow-[0_-4px_16px_rgba(0,0,0,0.3)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
     >
       {isOverflowOpen && (
         <div
@@ -167,7 +167,7 @@ export default function MobileBottomNav({
           const label = resolveLabel(tab)
           const iconColorClass = getTabIconColorClass(tab.color, isActive)
           const activeRingClass = isActive
-            ? 'before:absolute before:top-0 before:left-2 before:right-2 before:h-0.5 before:rounded-full before:bg-current'
+            ? 'before:absolute before:top-0 before:left-3 before:right-3 before:h-[3px] before:rounded-full before:bg-current'
             : ''
 
           return (

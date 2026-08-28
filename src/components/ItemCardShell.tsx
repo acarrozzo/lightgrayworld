@@ -41,7 +41,7 @@ export default function ItemCardShell({
       className={`relative rounded-lg border px-4 py-3 shadow-md hover:shadow-lg transition-all duration-200 flex gap-3 ${
         highlighted
           ? 'border-green-500/70 bg-gradient-to-br from-green-900/30 via-green-800/20 to-green-900/20 hover:from-green-900/40 hover:via-green-800/30 hover:to-green-900/30 hover:border-green-500/90 shadow-green-500/10'
-          : 'border-gray-700/40 bg-gray-800/30 hover:bg-gray-800/50 hover:border-gray-700/60'
+          : 'border-gray-700/30 bg-gray-800/25 hover:bg-gray-800/45 hover:border-gray-600/50'
       } ${className}`}
     >
       {newBadge && (

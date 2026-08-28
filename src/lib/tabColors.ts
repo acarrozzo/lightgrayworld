@@ -54,5 +54,5 @@ export function getTabButtonColorClasses(color: TabColor | string | undefined, i
       default: return 'border-1 border-indigo-500 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
     }
   }
-  return 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
+  return 'border border-gray-700/50 hover:border-gray-600 bg-transparent hover:bg-gray-800/40 text-gray-400 hover:text-gray-300'
 }
