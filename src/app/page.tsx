@@ -1,13 +1,22 @@
 'use client'
 
 import { useGameStore } from '@/lib/game-state'
+import { useShallow } from 'zustand/react/shallow'
 import { useEffect, useState } from 'react'
 import GameInterface from '@/components/GameInterface'
 import LoginForm from '@/components/LoginForm'
 import { isTokenValid, validateAndRefreshUser } from '@/lib/token-validation'
 
 export default function Home() {
-  const { isLoggedIn, isLoading, token, player, login, logout, setLoading } = useGameStore()
+  const { isLoggedIn, isLoading, token, player } = useGameStore(useShallow((s) => ({
+    isLoggedIn: s.isLoggedIn,
+    isLoading: s.isLoading,
+    token: s.token,
+    player: s.player,
+  })))
+  const login = useGameStore((s) => s.login)
+  const logout = useGameStore((s) => s.logout)
+  const setLoading = useGameStore((s) => s.setLoading)
   const [isInitializing, setIsInitializing] = useState(true)
   const [isHydrated, setIsHydrated] = useState(false)
 

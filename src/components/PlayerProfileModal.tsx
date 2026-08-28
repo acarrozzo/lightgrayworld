@@ -73,7 +73,7 @@ export default function PlayerProfileModal({
   onInspect,
   onMessage,
 }: PlayerProfileModalProps) {
-  const { getAuthHeaders } = useGameStore()
+  const getAuthHeaders = useGameStore((s) => s.getAuthHeaders)
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

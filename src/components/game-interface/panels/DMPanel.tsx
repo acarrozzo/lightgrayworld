@@ -48,7 +48,8 @@ function ThreadAvatar({ thread }: { thread: DMThread }) {
 }
 
 export default function DMPanel({ onClose, onMessageSent }: DMPanelProps) {
-  const { player, getAuthHeaders } = useGameStore()
+  const player = useGameStore((s) => s.player)
+  const getAuthHeaders = useGameStore((s) => s.getAuthHeaders)
   const {
     threadsByUserId,
     messagesByUserId,

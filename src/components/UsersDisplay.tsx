@@ -296,7 +296,8 @@ function UserCard({
 }
 
 export default function UsersDisplay() {
-  const { getAuthHeaders, player } = useGameStore()
+  const getAuthHeaders = useGameStore((s) => s.getAuthHeaders)
+  const player = useGameStore((s) => s.player)
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

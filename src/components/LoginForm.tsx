@@ -77,7 +77,9 @@ export default function LoginForm() {
     email: ''
   })
   const [usernameError, setUsernameError] = useState<string | null>(null)
-  const { setLoading, setError, login } = useGameStore()
+  const setLoading = useGameStore((s) => s.setLoading)
+  const setError = useGameStore((s) => s.setError)
+  const login = useGameStore((s) => s.login)
   const requireEmail = FEATURE_FLAGS.REQUIRE_EMAIL_ON_REGISTRATION
 
   const handleUsernameChange = (value: string) => {

@@ -2,6 +2,7 @@
 
 import { useGameStore } from '@/lib/game-state'
 import type { Room, Player } from '@/lib/game-state'
+import { useShallow } from 'zustand/react/shallow'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import React from 'react'
 import GameHeader from './GameHeader'
@@ -53,35 +54,48 @@ import StatAllocationModal from './StatAllocationModal'
 import type { LevelUpPayload } from '@/lib/socket'
 
 export default function GameInterface() {
+  // State selectors — only re-render when these specific values change
   const {
     player,
-    setPlayer,
     currentRoom,
     roomPlayers,
-    setCurrentRoom,
-    setRoomPlayers,
-    getAuthHeaders,
     isLoggedIn,
-    cacheRoom,
-    getCachedRoom,
     inventory,
-    setInventory,
     killList,
-    setKillList,
-    incrementKill,
-    logout,
     battle,
     battleResult,
-    setBattleStarted,
-    updateBattleTurn,
-    clearBattle,
-    setBattleResult,
-    clearBattleResult,
     party,
-    setParty,
-    clearParty,
-  } = useGameStore()
-  const { updateRoomItems } = useGameStore()
+  } = useGameStore(useShallow((s) => ({
+    player: s.player,
+    currentRoom: s.currentRoom,
+    roomPlayers: s.roomPlayers,
+    isLoggedIn: s.isLoggedIn,
+    inventory: s.inventory,
+    killList: s.killList,
+    battle: s.battle,
+    battleResult: s.battleResult,
+    party: s.party,
+  })))
+
+  // Actions — stable references, never cause re-renders
+  const setPlayer = useGameStore((s) => s.setPlayer)
+  const setCurrentRoom = useGameStore((s) => s.setCurrentRoom)
+  const setRoomPlayers = useGameStore((s) => s.setRoomPlayers)
+  const getAuthHeaders = useGameStore((s) => s.getAuthHeaders)
+  const cacheRoom = useGameStore((s) => s.cacheRoom)
+  const getCachedRoom = useGameStore((s) => s.getCachedRoom)
+  const setInventory = useGameStore((s) => s.setInventory)
+  const setKillList = useGameStore((s) => s.setKillList)
+  const incrementKill = useGameStore((s) => s.incrementKill)
+  const logout = useGameStore((s) => s.logout)
+  const setBattleStarted = useGameStore((s) => s.setBattleStarted)
+  const updateBattleTurn = useGameStore((s) => s.updateBattleTurn)
+  const clearBattle = useGameStore((s) => s.clearBattle)
+  const setBattleResult = useGameStore((s) => s.setBattleResult)
+  const clearBattleResult = useGameStore((s) => s.clearBattleResult)
+  const setParty = useGameStore((s) => s.setParty)
+  const clearParty = useGameStore((s) => s.clearParty)
+  const updateRoomItems = useGameStore((s) => s.updateRoomItems)
   const equippedWeapon = inventory.find(item => item.isEquipped && item.slot === 'MAIN_HAND')
   const weaponIconName = equippedWeapon
     ? resolveItemIcon(equippedWeapon.template.metadata as { icon?: string } | null, equippedWeapon.template.slug ?? '')
