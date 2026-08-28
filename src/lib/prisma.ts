@@ -9,6 +9,6 @@ export const prisma = new Proxy({} as PrismaClient, {
       const dbClient = require('./db-client')
       _prisma = dbClient.prisma as PrismaClient
     }
-    return (_prisma as Record<string | symbol, unknown>)[prop]
+    return (_prisma as unknown as Record<string | symbol, unknown>)[prop]
   },
 })
