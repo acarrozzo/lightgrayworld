@@ -51,6 +51,7 @@ export const TELEPORT_LOCATIONS: TeleportLocation[] = [
   { roomId: '001', name: 'Grassy Field', description: 'Grassy Field Crossroads' },
   { roomId: '000', name: 'Room Zero', description: 'The starting room' },
   { roomId: '088', name: 'Solar Office', description: 'A large, open-plan command office' },
+  { roomId: '104', name: 'Forest Crossroads', description: 'The central crossroads of the forest' },
 ]
 
 // Map configuration entry type
