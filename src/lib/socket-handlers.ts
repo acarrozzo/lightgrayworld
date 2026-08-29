@@ -20,6 +20,8 @@ import {
   PartyErrorPayload,
   PartyPulledPayload,
   RoomPartyStatePayload,
+  WorldPresenceSyncPayload,
+  WorldPresenceUpdatePayload,
 } from './socket'
 
 // Centralized socket event handlers to reduce duplication
@@ -254,6 +256,16 @@ export class SocketEventHandlers {
 
   onRoomPartyState(handler: (payload: RoomPartyStatePayload) => void): () => void {
     return this.on(SOCKET_EVENTS.ROOM_PARTY_STATE, handler)
+  }
+
+  // ─── Global presence (Players tab roster) ────────────────────────────────
+  // Full snapshot arrives once per login; deltas keep it current after that.
+  onWorldPresenceSync(handler: (payload: WorldPresenceSyncPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.WORLD_PRESENCE_SYNC, handler)
+  }
+
+  onWorldPresenceUpdate(handler: (payload: WorldPresenceUpdatePayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.WORLD_PRESENCE_UPDATE, handler)
   }
 
   // Cleanup all listeners

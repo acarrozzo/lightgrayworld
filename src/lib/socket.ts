@@ -228,6 +228,8 @@ export interface SocketEvents {
   'party:error': (payload: PartyErrorPayload) => void
   'party:pulled': (payload: PartyPulledPayload) => void
   'room:party-state': (payload: RoomPartyStatePayload) => void
+  'world:presence-sync': (payload: WorldPresenceSyncPayload) => void
+  'world:presence-update': (payload: WorldPresenceUpdatePayload) => void
 }
 
 export interface PlayerInfo {
@@ -254,6 +256,43 @@ export interface PlayerInfo {
   entryDirection?: string | null
   isTeleport?: boolean
 }
+
+/**
+ * One currently-connected player, as carried by the global presence feed.
+ *
+ * Presence is ephemeral and socket-derived: only players with a live socket
+ * appear here. The durable `User.isActive` column is deliberately NOT presence —
+ * it survives a crash and would strand players as permanently "online". Offline
+ * players are backfilled by the client from /api/users/list instead.
+ */
+export interface PresencePlayer {
+  id: string
+  username: string
+  level: number
+  hp: number
+  hpMax: number
+  mp: number
+  mpMax: number
+  currentRoom: string | null
+  uIcon?: string | null
+  uIconColor?: string | null
+  /** 'idle' mirrors the room-scoped idle detection; 'disconnected' never appears here. */
+  status: 'active' | 'idle'
+  inBattle: boolean
+  partyLeaderId?: string | null
+  lastSeen: number
+}
+
+/** Full roster snapshot, sent to a single socket on login. */
+export interface WorldPresenceSyncPayload {
+  players: PresencePlayer[]
+  serverTime: number
+}
+
+/** Incremental roster change, broadcast to every connected client. */
+export type WorldPresenceUpdatePayload =
+  | { type: 'upsert'; player: PresencePlayer; serverTime: number }
+  | { type: 'remove'; id: string; serverTime: number }
 
 export interface RoomPartyStatePayload {
   roomId: string
@@ -389,6 +428,8 @@ export const SOCKET_EVENTS = {
   PLAYER_BATTLE_STATUS: 'player-battle-status',
   PLAYER_VITALS: 'player-vitals',
   ROOM_PARTY_STATE: 'room:party-state',
+  WORLD_PRESENCE_SYNC: 'world:presence-sync',
+  WORLD_PRESENCE_UPDATE: 'world:presence-update',
 } as const
 
 let io: Server<SocketEvents> | null = null

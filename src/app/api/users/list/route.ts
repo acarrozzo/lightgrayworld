@@ -1,20 +1,46 @@
 export const runtime = 'nodejs'
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { COMMON_ERRORS } from '@/lib/error-handling'
+import { resolveEquipmentNames } from '@/lib/items/equipment-resolution'
+
+/**
+ * The player directory backing the Players tab roster.
+ *
+ * This is the *durable* half of the roster: every account that exists, with its last
+ * known room and `lastActive` timestamp. Who is online right now comes from the live
+ * presence feed (world:presence-sync / world:presence-update) instead — the client
+ * merges the two. `isActive` is still returned for compatibility, but it is a
+ * last-write flag, not presence, and the roster does not treat it as such.
+ */
+
+const DEFAULT_LIMIT = 100
+const MAX_LIMIT = 500
 
 async function handleGetUsers(request: AuthenticatedRequest) {
   try {
-    // Fetch all users with required fields, including room information and equipment
+    const url = new URL(request.url)
+
+    // Cursor pagination: `cursor` is the id of the last row from the previous page.
+    const rawLimit = Number.parseInt(url.searchParams.get('limit') ?? '', 10)
+    const limit = Number.isFinite(rawLimit)
+      ? Math.min(Math.max(rawLimit, 1), MAX_LIMIT)
+      : DEFAULT_LIMIT
+    const cursor = url.searchParams.get('cursor') || undefined
+
     const users = await prisma.user.findMany({
+      // Fetch one extra row to learn whether another page exists without a count query.
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: {
         id: true,
         username: true,
         level: true,
         currentRoom: true,
         isActive: true,
+        inFight: true,
         lastActive: true,
         hp: true,
         hpMax: true,
@@ -24,9 +50,15 @@ async function handleGetUsers(request: AuthenticatedRequest) {
         dex: true,
         mag: true,
         def: true,
+        strMod: true,
+        dexMod: true,
+        magMod: true,
+        defMod: true,
         currency: true,
         uIcon: true,
         uIconColor: true,
+        characterClass: true,
+        characterRace: true,
         createdAt: true,
         room: {
           select: {
@@ -55,112 +87,65 @@ async function handleGetUsers(request: AuthenticatedRequest) {
           },
         },
         PlayerItem: {
-          where: {
-            isEquipped: true,
-          },
+          where: { isEquipped: true },
           select: {
             slot: true,
             ItemTemplate: {
-              select: {
-                slug: true,
-                name: true,
-              },
+              select: { slug: true, name: true, metadata: true },
             },
           },
         },
       },
-      orderBy: {
-        createdAt: 'desc', // Default: newest first
-      },
+      // Stable ordering for the cursor; the client re-sorts for display anyway.
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     })
 
-    // Transform the data to include room name and equipment
-    const usersWithRoomInfo = users.map((user) => {
-      // Build equipment from PlayerItem (source of truth) or fallback to Equipment model
-      const equippedItems = user.PlayerItem || []
-      const equipmentFromItems: Record<string, string> = {}
-      
-      // Map PlayerItem slots to Equipment model keys
-      const slotMap: Record<string, string> = {
-        'MAIN_HAND': 'rightHand',
-        'OFF_HAND': 'leftHand',
-        'HEAD': 'head',
-        'BODY': 'body',
-        'HANDS': 'hands',
-        'FEET': 'feet',
-      }
-      
-      // Use PlayerItem data (preferred) or fallback to Equipment model
-      equippedItems.forEach((item) => {
-        if (item.slot && item.ItemTemplate && slotMap[item.slot]) {
-          equipmentFromItems[slotMap[item.slot]] = item.ItemTemplate.name
-        }
-      })
-      
-      // Fallback to Equipment model for slots not in PlayerItem
-      const equipmentData = user.equipment ? {
-        rightHand: equipmentFromItems.rightHand || user.equipment.rightHand,
-        leftHand: equipmentFromItems.leftHand || user.equipment.leftHand,
-        head: equipmentFromItems.head || user.equipment.head,
-        body: equipmentFromItems.body || user.equipment.body,
-        hands: equipmentFromItems.hands || user.equipment.hands,
-        feet: equipmentFromItems.feet || user.equipment.feet,
-        ring1: user.equipment.ring1,
-        ring2: user.equipment.ring2,
-        neck: user.equipment.neck,
-        artifact: user.equipment.artifact,
-        tech: user.equipment.tech,
-        companion: user.equipment.companion,
-        pet: user.equipment.pet,
-        mount: user.equipment.mount,
-        robot: user.equipment.robot,
-        aura: user.equipment.aura,
-      } : {
-        rightHand: equipmentFromItems.rightHand || 'fists',
-        leftHand: equipmentFromItems.leftHand || '- - -',
-        head: equipmentFromItems.head || '- - -',
-        body: equipmentFromItems.body || '- - -',
-        hands: equipmentFromItems.hands || '- - -',
-        feet: equipmentFromItems.feet || '- - -',
-        ring1: '- - -',
-        ring2: '- - -',
-        neck: '- - -',
-        artifact: '- - -',
-        tech: '- - -',
-        companion: '- - -',
-        pet: '- - -',
-        mount: '- - -',
-        robot: '- - -',
-        aura: '- - -',
-      }
-      
-      return {
-        id: user.id,
-        username: user.username,
-        level: user.level,
-        currentRoom: user.currentRoom,
-        roomName: user.room?.name || null,
-        isActive: user.isActive,
-        lastActive: user.lastActive.toISOString(),
-        hp: user.hp,
-        hpMax: user.hpMax,
-        mp: user.mp,
-        mpMax: user.mpMax,
-        str: user.str,
-        dex: user.dex,
-        mag: user.mag,
-        def: user.def,
-        currency: user.currency,
-        uIcon: user.uIcon,
-        uIconColor: user.uIconColor,
-        createdAt: user.createdAt.toISOString(),
-        equipment: equipmentData,
-      }
-    })
+    const hasMore = users.length > limit
+    const page = hasMore ? users.slice(0, limit) : users
+
+    // Presence reports a live room id, which may be somewhere the player's persisted
+    // row hasn't caught up to yet. Ship the whole id -> name map so the roster can
+    // name any room a player walks into without another round trip.
+    const rooms = await prisma.room.findMany({ select: { roomId: true, name: true } })
+    const roomNames = Object.fromEntries(rooms.map((room) => [room.roomId, room.name]))
+
+    const players = page.map((user) => ({
+      id: user.id,
+      username: user.username,
+      level: user.level,
+      currentRoom: user.currentRoom,
+      roomName: user.room?.name ?? roomNames[user.currentRoom] ?? null,
+      // Durable flag only — presence comes from the socket feed.
+      isActive: user.isActive,
+      inFight: user.inFight,
+      lastActive: user.lastActive.toISOString(),
+      hp: user.hp,
+      hpMax: user.hpMax,
+      mp: user.mp,
+      mpMax: user.mpMax,
+      str: user.str,
+      dex: user.dex,
+      mag: user.mag,
+      def: user.def,
+      strMod: user.strMod,
+      dexMod: user.dexMod,
+      magMod: user.magMod,
+      defMod: user.defMod,
+      currency: user.currency,
+      uIcon: user.uIcon,
+      uIconColor: user.uIconColor,
+      characterClass: user.characterClass,
+      characterRace: user.characterRace,
+      createdAt: user.createdAt.toISOString(),
+      equipment: resolveEquipmentNames(user),
+    }))
 
     return NextResponse.json({
       success: true,
-      users: usersWithRoomInfo,
+      users: players,
+      rooms: roomNames,
+      nextCursor: hasMore ? page[page.length - 1]?.id ?? null : null,
+      hasMore,
     })
   } catch (error) {
     console.error('Get users error:', error)
@@ -172,4 +157,3 @@ async function handleGetUsers(request: AuthenticatedRequest) {
 }
 
 export const GET = withAuth(handleGetUsers)
-

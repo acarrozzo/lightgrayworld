@@ -2,8 +2,7 @@
 
 import { Player } from '@/lib/game-state'
 import { PartySnapshot } from '@/lib/socket'
-import { useColoredAvatar } from '@/hooks/useColoredAvatar'
-import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
+import PlayerRow, { type PlayerRowAction, type PlayerRowData } from '@/components/player/PlayerRow'
 
 type InspectTarget = Pick<Player, 'id' | 'username' | 'level' | 'uIcon' | 'uIconColor'>
 
@@ -19,124 +18,12 @@ interface PartyPanelProps {
   onMessage?: (targetPlayer: Pick<Player, 'id' | 'username'>) => void
 }
 
-// Identity + role merged with live stats looked up from roomPlayers.
-interface RowData {
-  id: string
-  username: string
-  level: number
-  uIcon?: string | null
-  uIconColor?: string | null
-  /** Live stats, present only when the person is in the current room snapshot. */
-  stats?: Player
-  role: 'leader' | 'member' | 'here'
-  /** Marks the leader of a foreign party shown in the "Also here" section. */
-  isLeader?: boolean
-  /** Marks the viewing player's own row. */
-  isSelf?: boolean
-}
+// Identity + role merged with live stats looked up from roomPlayers. The row shape
+// itself lives in components/player/PlayerRow so the roster renders players the same way.
+type RowData = PlayerRowData & { role: 'leader' | 'member' | 'here' }
 
-function pct(cur: number, max: number): number {
-  if (!max || max <= 0) return 0
-  return Math.max(0, Math.min(100, Math.round((cur / max) * 100)))
-}
-
-function Avatar({ uIcon, uIconColor }: { uIcon?: string | null; uIconColor?: string | null }) {
-  const coloredAvatar = useColoredAvatar(uIcon || DEFAULT_PLAYER_AVATAR, uIconColor || DEFAULT_AVATAR_COLOR)
-  return (
-    <div className="relative flex h-7 w-5 items-center justify-center shrink-0">
-      {coloredAvatar ? (
-        <div className="h-7 w-5" dangerouslySetInnerHTML={{ __html: coloredAvatar }} />
-      ) : (
-        <span className="text-[10px] text-violet-200/70">…</span>
-      )}
-    </div>
-  )
-}
-
-function MiniBars({ stats }: { stats?: Player }) {
-  if (!stats) {
-    return <span className="text-[9px] text-gray-600 italic">stats unavailable</span>
-  }
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1">
-        <div className="h-1 w-10 rounded-full bg-gray-800/80 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-rose-500 to-rose-600"
-            style={{ width: `${pct(stats.hp, stats.hpMax)}%` }}
-          />
-        </div>
-        <span className="text-[9px] text-gray-500 tabular-nums">
-          {stats.hp}/{stats.hpMax}
-        </span>
-      </div>
-      <div className="flex items-center gap-1">
-        <div className="h-1 w-10 rounded-full bg-gray-800/80 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-500"
-            style={{ width: `${pct(stats.mp, stats.mpMax)}%` }}
-          />
-        </div>
-        <span className="text-[9px] text-gray-500 tabular-nums">
-          {stats.mp}/{stats.mpMax}
-        </span>
-      </div>
-    </div>
-  )
-}
-
-// Effective stat = base allocation + equipment modifier (matches combat's baseStr).
-function effective(base?: number | null, mod?: number | null): number | undefined {
-  if (base == null && mod == null) return undefined
-  return (base ?? 0) + (mod ?? 0)
-}
-
-function CoreStats({ stats }: { stats?: Player }) {
-  if (!stats) return null
-  // The four core stats may be absent on stale/ghost snapshots; skip rendering then.
-  // Value colors match the core-stat palette used in CharPanel.
-  const entries: { label: string; value?: number; color: string }[] = [
-    { label: 'STR', value: effective(stats.str, stats.strMod), color: 'text-red-400' },
-    { label: 'DEX', value: effective(stats.dex, stats.dexMod), color: 'text-emerald-400' },
-    { label: 'MAG', value: effective(stats.mag, stats.magMod), color: 'text-sky-400' },
-    { label: 'DEF', value: effective(stats.def, stats.defMod), color: 'text-amber-400' },
-  ]
-  if (entries.every((e) => e.value == null)) return null
-  return (
-    <div className="mt-0.5 flex items-center gap-2">
-      {entries.map((e) => (
-        <span key={e.label} className="flex items-center gap-0.5 text-[9px] tabular-nums">
-          <span className="text-gray-500 uppercase tracking-wide">{e.label}</span>
-          <span className={e.color}>{e.value ?? '–'}</span>
-        </span>
-      ))}
-    </div>
-  )
-}
-
-function ActionButton({
-  label,
-  onClick,
-  variant = 'plain',
-}: {
-  label: string
-  onClick: () => void
-  variant?: 'plain' | 'follow' | 'danger'
-}) {
-  const base = 'text-[10px] leading-none transition-colors'
-  const styles =
-    variant === 'follow'
-      ? 'px-1.5 py-0.5 rounded border border-blue-700/40 text-blue-300/90 hover:bg-blue-900/30 hover:text-blue-200'
-      : variant === 'danger'
-        ? 'text-red-400/70 hover:text-red-300'
-        : 'text-gray-400/80 hover:text-gray-200'
-  return (
-    <button onClick={onClick} className={`${base} ${styles}`}>
-      {label}
-    </button>
-  )
-}
-
+// Builds this surface's action set and hands it to the shared row. Party rows can
+// remove members and follow co-located players; the roster offers a different set.
 function PlayerStatRow({
   row,
   onFollow,
@@ -150,83 +37,36 @@ function PlayerStatRow({
   onInspect?: (targetPlayer: InspectTarget) => void
   onMessage?: (targetPlayer: Pick<Player, 'id' | 'username'>) => void
 }) {
-  // Disconnected players read as faded; idle players keep full opacity (tag only).
-  const dimmed = row.stats?.presenceStatus === 'disconnected'
-  const highlightName = row.role === 'leader' || row.isLeader || row.isSelf
   // A player who belongs to a party but doesn't lead it: you can only follow the
   // leader, so suppress the Follow button on non-leader members.
   const isPartyMemberNotLeader =
     !!row.stats?.partyLeaderId && row.stats.partyLeaderId !== row.id
 
-  return (
-    <div className={`flex items-center gap-2 px-1.5 py-1 ${dimmed ? 'opacity-50' : ''}`}>
-      <Avatar uIcon={row.uIcon} uIconColor={row.uIconColor} />
+  const actions: PlayerRowAction[] = []
+  if (onInspect) {
+    actions.push({
+      label: 'View',
+      onClick: () =>
+        onInspect({
+          id: row.id,
+          username: row.username,
+          level: row.level,
+          uIcon: row.uIcon ?? undefined,
+          uIconColor: row.uIconColor ?? undefined,
+        }),
+    })
+  }
+  if (!row.isSelf && onMessage) {
+    actions.push({ label: 'Msg', onClick: () => onMessage({ id: row.id, username: row.username }) })
+  }
+  if (!row.isSelf && row.role === 'here' && onFollow && !isPartyMemberNotLeader) {
+    actions.push({ label: 'Follow', variant: 'follow', onClick: () => onFollow(row.id) })
+  }
+  if (row.role === 'member' && onRemove) {
+    actions.push({ label: 'Remove', variant: 'danger', onClick: () => onRemove(row.id) })
+  }
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className={`truncate text-xs ${highlightName ? 'text-gray-200 font-medium' : 'text-gray-300'}`}>
-            {row.username}
-          </span>
-          <span className="text-[10px] text-gray-500">Lv{row.level}</span>
-          {row.isSelf && (
-            <span className="rounded-sm border border-blue-400/60 bg-blue-500/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-blue-200">
-              You
-            </span>
-          )}
-          {(row.role === 'leader' || row.isLeader) && (
-            <span
-              className="rounded-sm border border-yellow-400/50 bg-yellow-400/15 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-yellow-300"
-              title="Party leader"
-            >
-              Leader
-            </span>
-          )}
-          {row.stats?.inBattle && (
-            <span
-              className="rounded-sm border border-red-400/60 bg-red-500/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-red-200"
-              title="Currently in battle"
-            >
-              In Battle
-            </span>
-          )}
-          {row.stats?.presenceStatus === 'idle' && (
-            <span className="text-[9px] text-yellow-600/80">idle</span>
-          )}
-        </div>
-        <MiniBars stats={row.stats} />
-        <CoreStats stats={row.stats} />
-      </div>
-
-      <div className="flex items-center gap-1.5 shrink-0">
-        {onInspect && (
-          <ActionButton
-            label="View"
-            onClick={() =>
-              onInspect({
-                id: row.id,
-                username: row.username,
-                level: row.level,
-                uIcon: row.uIcon ?? undefined,
-                uIconColor: row.uIconColor ?? undefined,
-              })
-            }
-          />
-        )}
-        {!row.isSelf && onMessage && (
-          <ActionButton
-            label="Msg"
-            onClick={() => onMessage({ id: row.id, username: row.username })}
-          />
-        )}
-        {!row.isSelf && row.role === 'here' && onFollow && !isPartyMemberNotLeader && (
-          <ActionButton label="Follow" variant="follow" onClick={() => onFollow(row.id)} />
-        )}
-        {row.role === 'member' && onRemove && (
-          <ActionButton label="Remove" variant="danger" onClick={() => onRemove(row.id)} />
-        )}
-      </div>
-    </div>
-  )
+  return <PlayerRow row={row} actions={actions} />
 }
 
 export default function PartyPanel({

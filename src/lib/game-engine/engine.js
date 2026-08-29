@@ -3,6 +3,7 @@ const { RoomState } = require('./room-state')
 const { PlayerActionQueue } = require('./player-action-queue')
 const { prisma } = require('../db-client')
 const { topUpRoomEnemyGroup } = require('../game-data/room-enemies')
+const { updatePresence } = require('../services/presence-store')
 
 class GameEngine {
   constructor(io, tickMs = WORLD_TICK_MS) {
@@ -223,9 +224,13 @@ class GameEngine {
         events.includes('battle:defeat') ||
         events.includes('battle:fled')
       if (enteredBattle || leftBattle) {
+        const inBattle = enteredBattle && !leftBattle
         this.io
           .to(`room-${roomId}`)
-          .emit('player-battle-status', { id: playerId, roomId, inBattle: enteredBattle && !leftBattle })
+          .emit('player-battle-status', { id: playerId, roomId, inBattle })
+        // Same fact, global audience: the Players tab shows an "In Battle" tag for
+        // anyone in the world, not just people standing in the same room.
+        updatePresence(this.io, playerId, { inBattle })
       }
 
       // Mirror the player's vitals to the room so other players' HP/MP bars stay live
@@ -252,6 +257,14 @@ class GameEngine {
       }
       if (latestVitals) {
         this.io.to(`room-${roomId}`).emit('player-vitals', latestVitals)
+        // Keep the global roster's HP/MP bars live as well. updatePresence no-ops
+        // when nothing actually changed, so this does not add a broadcast per action.
+        updatePresence(this.io, playerId, {
+          hp: latestVitals.hp,
+          hpMax: latestVitals.hpMax,
+          mp: latestVitals.mp,
+          mpMax: latestVitals.mpMax,
+        })
       }
     }
 

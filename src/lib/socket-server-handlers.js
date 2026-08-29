@@ -29,6 +29,12 @@ const LAST_ACTIVE_PERSIST_INTERVAL = 60 * 1000
 const { createWorldFeedEvent } = require('./services/world-feed-event-service.js')
 const { createIdleDetectionService } = require('./services/idle-detection-service.js')
 const { addGhost, removeGhost, getGhostsForRoom } = require('./services/ghost-player-store.js')
+const {
+  announcePresence,
+  updatePresence,
+  departPresence,
+  buildPresenceSync,
+} = require('./services/presence-store.js')
 
 async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
   if (isProbabilistic(toRoom)) {
@@ -197,7 +203,7 @@ async function recordWorldFeedEventSafe({ userId, username, eventType }) {
 }
 
 // Create room transition function
-function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers, broadcastRoomPartyState) {
+function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlayers, broadcastRoomPartyState) {
   return async ({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport = false }) => {
     if (!toRoom || fromRoom === toRoom) {
       return
@@ -252,6 +258,9 @@ function createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers, 
     // Remember where the player came from so a flee can retreat them back here.
     player.previousRoom = fromRoom
     player.currentRoom = toRoom
+    // The room-scoped events above tell the two rooms involved; this tells everyone
+    // else's roster where the player went.
+    updatePresence(io, player.id, { currentRoom: toRoom, status: 'active' })
     // Re-broadcast party groupings so the mover (and the room) see current parties.
     if (broadcastRoomPartyState) broadcastRoomPartyState(toRoom)
     activePlayers.set(socket.id, player)
@@ -372,6 +381,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           roomId,
           lastSeen: Date.now(),
         })
+        updatePresence(io, userId, { status: 'idle' })
       } else {
         removeGhost(roomId, userId)
         io.to(`room-${roomId}`).emit(SOCKET_EVENTS.PLAYER_RETURNED, {
@@ -379,6 +389,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           username,
           roomId,
         })
+        updatePresence(io, userId, { status: 'active' })
       }
     },
   })
@@ -411,10 +422,16 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
   // event that changes who-is-partied-with-whom among co-located players.
   const broadcastRoomPartyState = (roomId) => {
     if (!roomId) return
+    const members = buildRoomPartyState(roomId)
     io.to(`room-${roomId}`).emit(SOCKET_EVENTS.ROOM_PARTY_STATE, {
       roomId,
-      members: buildRoomPartyState(roomId),
+      members,
     })
+    // Every party mutation (follow / leave / remove / disconnect) funnels through
+    // here, so this is the one place the global roster needs to learn about them.
+    for (const member of members) {
+      updatePresence(io, member.id, { partyLeaderId: member.partyLeaderId })
+    }
   }
 
   const toPartyInfo = (p) => ({
@@ -461,7 +478,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         for (const sid of getSocketIdsForUser(memberId)) {
           const memberSocket = io.sockets.sockets.get(sid)
           if (!memberSocket) continue
-          const memberTransition = createTransitionPlayerRoom(prisma, memberSocket, activePlayers, roomPlayers, broadcastRoomPartyState)
+          const memberTransition = createTransitionPlayerRoom(io, prisma, memberSocket, activePlayers, roomPlayers, broadcastRoomPartyState)
           await memberTransition({ player: memberPlayer, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
           // Dedicated event: the member didn't initiate this move, so the normal
           // action:confirmed/feedback path (which requires a pending move) would ignore it.
@@ -515,7 +532,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     console.log('[Server] Listening for player login event:', SOCKET_EVENTS.PLAYER_LOGIN)
 
     const emitQueueAwareError = createEmitQueueAwareError(socket)
-    const transitionPlayerRoom = createTransitionPlayerRoom(prisma, socket, activePlayers, roomPlayers, broadcastRoomPartyState)
+    const transitionPlayerRoom = createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlayers, broadcastRoomPartyState)
     const touchPlayerActivity = (player) => {
       if (!player || !player.id) {
         return
@@ -535,6 +552,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           username: player.username,
           roomId: player.currentRoom,
         })
+        updatePresence(io, player.id, { status: 'active' })
         createWorldFeedEvent({ userId: player.id, username: player.username, eventType: 'return' }).catch((error) => {
           console.error('[Socket] Failed to create return world feed event', error)
         })
@@ -647,6 +665,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         }
         userIdToSocketIds.get(playerData.id).add(socket.id)
         touchPlayerActivity(playerData)
+        announcePresence(io, playerData, { partyLeaderId: partyStore.getLeaderId(playerData.id) })
         console.log(`[Server] Player ${playerData.username} registered in activePlayers for socket ${socket.id}`)
         console.log(`[Server] activePlayers now has ${activePlayers.size} entries`)
 
@@ -728,6 +747,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // where a room broadcast would fire before the client is listening).
           roomPartyState: buildRoomPartyState(playerData.currentRoom),
         })
+
+        // Full global roster for the Players tab. Deltas (world:presence-update)
+        // follow on the same socket, so ordering guarantees no gap between the two.
+        socket.emit(SOCKET_EVENTS.WORLD_PRESENCE_SYNC, buildPresenceSync())
 
         // Restore any persisted enemy roster for the current room so a refresh resumes
         // the exact wave that was there (full-HP battles) — this closes the "refresh to
@@ -1461,6 +1484,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           if (socketSet.size === 0) {
             userIdToSocketIds.delete(player.id)
           }
+        }
+        // One account can hold several sockets (a second tab). Only the last one
+        // leaving takes the player off the global roster.
+        if (!userIdToSocketIds.has(player.id)) {
+          departPresence(io, player.id)
         }
         lastActivityPersistedAt.delete(player.id)
         clearPlayerLevers(player.id)

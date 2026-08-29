@@ -36,6 +36,8 @@ const SOCKET_EVENTS = {
   PLAYER_IDLE: 'player-idle',
   PLAYER_RETURNED: 'player-returned',
   ROOM_PARTY_STATE: 'room:party-state',
+  WORLD_PRESENCE_SYNC: 'world:presence-sync',
+  WORLD_PRESENCE_UPDATE: 'world:presence-update',
 }
 
 function setSocketIO(ioInstance) {

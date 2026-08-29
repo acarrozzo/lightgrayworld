@@ -4,8 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Player } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
-import { DEFAULT_AVATAR_COLOR, DEFAULT_PLAYER_AVATAR } from '@/lib/constants/avatars'
-import { useColoredAvatar } from '@/hooks/useColoredAvatar'
+import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
 import ItemDropdownButton from './ItemDropdownButton'
 import Icon from './Icon'
 import NpcQuestCard from './NpcQuestCard'
@@ -479,21 +478,7 @@ interface PlayerCardProps {
   disabled?: boolean
 }
 
-function formatTimeAgo(ts: number): string {
-  const seconds = Math.floor((Date.now() - ts) / 1000)
-  if (seconds < 60) return `${seconds}s ago`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
-}
-
 function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
-  const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
-  const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
-  const coloredAvatar = useColoredAvatar(avatarKey, avatarColor)
-
   const presence = player.presenceStatus ?? 'active'
   const isIdle = presence === 'idle'
   const isDisconnected = presence === 'disconnected'
@@ -516,14 +501,7 @@ function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
       className={containerClass}
     >
       <div className="relative flex h-12 w-8 items-center justify-center flex-shrink-0">
-        {coloredAvatar ? (
-          <div
-            className="h-12 w-8"
-            dangerouslySetInnerHTML={{ __html: coloredAvatar }}
-          />
-        ) : (
-          <span className="text-[10px] text-violet-200/70">...</span>
-        )}
+        <PlayerAvatar uIcon={player.uIcon} uIconColor={player.uIconColor} size="md" />
         {isIdle && (
           <span className="absolute -top-0.5 -right-1 text-[9px] leading-none" title="Idle">
             💤

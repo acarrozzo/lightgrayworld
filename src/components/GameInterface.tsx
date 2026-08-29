@@ -28,7 +28,6 @@ import ActivityTicker from './ActivityTicker'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
-import UsersDisplay from './UsersDisplay'
 import { MAP_CONFIG, TELEPORT_LOCATIONS } from './game-interface/constants'
 import { findTravelDirection, checkIfExitHasGate, normalizeCommand, getMapIdForRoom, getUnlockedMaps, formatDirectionPhrase } from './game-interface/utils'
 import { DirectoryContent } from './game-interface/DirectoryContent'
@@ -39,12 +38,13 @@ import MapPanel from './game-interface/panels/MapPanel'
 import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
 import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/PlayersPanel'
-import PartyPanel from './game-interface/panels/PartyPanel'
+import PartyStrip from './game-interface/PartyStrip'
 import CraftingPanel from './game-interface/panels/CraftingPanel'
 import { isCraftingRoom } from '@/lib/game-data/crafting-recipes'
 import QuestCompleteRewards, { type QuestCompleteData } from './QuestCompleteRewards'
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
+import { usePresenceStore } from '@/store/presenceStore'
 import LevelUpAlert from './LevelUpAlert'
 import TrainingAllocationModal from './TrainingAllocationModal'
 import StatAllocationModal from './StatAllocationModal'
@@ -115,6 +115,9 @@ export default function GameInterface() {
   const craftingPanelRef = useRef<HTMLDivElement>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const totalDmUnread = useDMStore((state) => state.getTotalUnreadCount())
+  const syncPresence = usePresenceStore((state) => state.syncPresence)
+  const upsertPresence = usePresenceStore((state) => state.upsertPresence)
+  const removePresence = usePresenceStore((state) => state.removePresence)
   const [exploreSubView, setExploreSubView] = useState<ExploreSubView>('compass')
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(false)
@@ -155,16 +158,25 @@ export default function GameInterface() {
     setCenterActiveTab('explore')
     setExploreSubView('compass')
   }, [])
-  const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('players')
+  const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('roster')
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
   const [quests, setQuests] = useState<Array<{ id: string; questId: string; progress: number; completed: boolean; data?: { accepted?: boolean } | null }>>([])
   const [isLoadingQuests, setIsLoadingQuests] = useState(false)
   const [isResettingQuests, setIsResettingQuests] = useState(false)
   const [forceFeedFilter, setForceFeedFilter] = useState<'chat' | undefined>(undefined)
   const [forceFeedChatSubFilter, setForceFeedChatSubFilter] = useState<'all-chat' | undefined>(undefined)
+  // Avatar fields are nullable here because roster and ranks rows come straight from
+  // the database, where the columns are nullable; room players carry them as optional.
+  // PlayerProfileModal already accepts both.
   const [playerProfileModal, setPlayerProfileModal] = useState<{
     isOpen: boolean
-    player: Pick<Player, 'id' | 'username' | 'level' | 'uIcon' | 'uIconColor'> | null
+    player: {
+      id: string
+      username: string
+      level: number
+      uIcon?: string | null
+      uIconColor?: string | null
+    } | null
   }>({
     isOpen: false,
     player: null,
@@ -2480,6 +2492,31 @@ export default function GameInterface() {
     }
   }, [socket, socketHandlers, setParty, clearParty, appendWorldFeed, setPlayer, applyRoomPartyState])
 
+  // Global presence feed — the Players tab roster. Room-scoped presence above keeps
+  // "Others here" live; this keeps the world-wide list live. Server-owned and
+  // ephemeral, so a disconnect simply stops the deltas until the next sync.
+  useEffect(() => {
+    if (!socket) return
+
+    const cleanupSync = socketHandlers.onWorldPresenceSync((payload) => {
+      syncPresence(payload.players ?? [], payload.serverTime ?? Date.now())
+    })
+
+    const cleanupUpdate = socketHandlers.onWorldPresenceUpdate((payload) => {
+      const serverTime = payload.serverTime ?? Date.now()
+      if (payload.type === 'remove') {
+        removePresence(payload.id, serverTime)
+        return
+      }
+      if (payload.player) upsertPresence(payload.player, serverTime)
+    })
+
+    return () => {
+      cleanupSync()
+      cleanupUpdate()
+    }
+  }, [socket, socketHandlers, syncPresence, upsertPresence, removePresence])
+
   useEffect(() => {
     console.log('[GameInterface] Socket state:', {
       socket: !!socket,
@@ -2659,6 +2696,11 @@ export default function GameInterface() {
     setExploreSubView('map')
   }, [syncMapToCurrentRoom])
 
+  const handleOpenPartyTab = useCallback(() => {
+    setPlayersSubTab('party')
+    setCenterActiveTab('players')
+  }, [])
+
   const handleTeleport = useCallback((roomId: string) => {
     handleAction({ type: 'teleport', data: { toRoomId: roomId } })
   }, [handleAction])
@@ -2689,18 +2731,27 @@ export default function GameInterface() {
     setInventoryFilter(filter)
   }, [])
 
-  const handleOpenPlayerProfile = useCallback((targetPlayer: Player) => {
-    setPlayerProfileModal({
-      isOpen: true,
-      player: {
-        id: targetPlayer.id,
-        username: targetPlayer.username,
-        level: targetPlayer.level,
-        uIcon: targetPlayer.uIcon,
-        uIconColor: targetPlayer.uIconColor,
-      },
-    })
-  }, [])
+  const handleOpenPlayerProfile = useCallback(
+    (targetPlayer: {
+      id: string
+      username: string
+      level: number
+      uIcon?: string | null
+      uIconColor?: string | null
+    }) => {
+      setPlayerProfileModal({
+        isOpen: true,
+        player: {
+          id: targetPlayer.id,
+          username: targetPlayer.username,
+          level: targetPlayer.level,
+          uIcon: targetPlayer.uIcon,
+          uIconColor: targetPlayer.uIconColor,
+        },
+      })
+    },
+    []
+  )
 
   const handleProfileInspect = useCallback((targetPlayer: Pick<Player, 'username'>) => {
     handleAction(`look at ${targetPlayer.username}`)
@@ -2764,6 +2815,15 @@ export default function GameInterface() {
             onDMMessageSent={(payload) => {
               appendDMFeed('to', payload.recipientUsername || 'Unknown', payload.message)
             }}
+            party={party}
+            roomPlayers={roomPlayers}
+            currentPlayerId={player.id}
+            currentPlayer={player}
+            onOpenProfile={handleOpenPlayerProfile}
+            onMessagePlayer={handleProfileMessage}
+            onFollowPlayer={handleFollowPlayer}
+            onLeaveParty={handleLeaveParty}
+            onRemovePartyMember={handleRemovePartyMember}
           />
         )
       case 'feed':
@@ -2805,7 +2865,7 @@ export default function GameInterface() {
 
     if (tabId === 'players') {
       const unread = useDMStore.getState().getTotalUnreadCount()
-      setPlayersSubTab(unread > 0 ? 'dm' : 'players')
+      setPlayersSubTab(unread > 0 ? 'dm' : 'roster')
     }
 
     if (tabId !== 'inventory') {
@@ -3164,16 +3224,13 @@ export default function GameInterface() {
                       />
                     </div>
                   )}
-                  <PartyPanel
+                  <PartyStrip
                     party={party}
                     roomPlayers={roomPlayers}
                     currentPlayerId={player.id}
-                    currentPlayer={player}
                     onFollow={handleFollowPlayer}
                     onLeave={handleLeaveParty}
-                    onRemove={handleRemovePartyMember}
-                    onInspect={(p) => handleOpenPlayerProfile(p as Player)}
-                    onMessage={handleProfileMessage}
+                    onManage={handleOpenPartyTab}
                   />
                   {isCraftingOpen && currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle && (
                     <div ref={craftingPanelRef} className="px-4 pt-4 scroll-mt-4">

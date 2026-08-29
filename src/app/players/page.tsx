@@ -4,30 +4,22 @@ export const dynamic = 'force-dynamic'
 import { prisma } from '@/lib/prisma'
 import PlayersTable, { type PlayerRow } from './PlayersTable'
 import WorldToolNav from '@/components/WorldToolNav'
+import { resolveEquipmentNames, type EquipmentSource } from '@/lib/items/equipment-resolution'
 
 export const metadata = {
   title: 'Players — Light Gray World Tool',
   description: 'Every player, with their level, vitals, equipment, and progression.',
 }
 
-// Equipment lives in two coexisting systems: the legacy `Equipment` relation
-// (string slots) and equipped `PlayerItem` rows (preferred). Resolve the three
-// slots we surface here the same way the public-profile route does — PlayerItem
-// overrides the Equipment fallback.
+// Both equipment systems (legacy `Equipment` string slots and equipped `PlayerItem`
+// rows) are merged by the shared resolver, so this page, the roster route, and the
+// public-profile route always agree about what someone is wearing.
 function resolveEquip(u: {
   equipment: { rightHand: string; head: string; body: string } | null
   PlayerItem: { slot: string | null; ItemTemplate: { name: string } | null }[]
 }) {
-  let weapon = u.equipment?.rightHand || 'fists'
-  let helmet = u.equipment?.head || '- - -'
-  let body = u.equipment?.body || '- - -'
-  for (const pi of u.PlayerItem) {
-    if (!pi.slot || !pi.ItemTemplate) continue
-    if (pi.slot === 'MAIN_HAND') weapon = pi.ItemTemplate.name
-    else if (pi.slot === 'HEAD') helmet = pi.ItemTemplate.name
-    else if (pi.slot === 'BODY') body = pi.ItemTemplate.name
-  }
-  return { weapon, helmet, body }
+  const names = resolveEquipmentNames(u as EquipmentSource)
+  return { weapon: names.rightHand, helmet: names.head, body: names.body }
 }
 
 export default async function PlayersPage() {

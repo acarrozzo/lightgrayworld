@@ -4,36 +4,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { COMMON_ERRORS } from '@/lib/error-handling'
-
-const EQUIPMENT_SLOT_DEFAULTS: Record<string, string> = {
-  rightHand: 'fists',
-  leftHand: '- - -',
-  head: '- - -',
-  body: '- - -',
-  hands: '- - -',
-  feet: '- - -',
-  ring1: '- - -',
-  ring2: '- - -',
-  neck: '- - -',
-  artifact: '- - -',
-  tech: '- - -',
-  companion: '- - -',
-  pet: '- - -',
-  mount: '- - -',
-  robot: '- - -',
-  aura: '- - -',
-}
-
-const PLAYER_ITEM_SLOT_MAP: Record<string, string> = {
-  MAIN_HAND: 'rightHand',
-  OFF_HAND: 'leftHand',
-  HEAD: 'head',
-  BODY: 'body',
-  HANDS: 'hands',
-  FEET: 'feet',
-  RING: 'ring1',
-  NECK: 'neck',
-}
+import { resolveEquipment } from '@/lib/items/equipment-resolution'
 
 async function handleGetPublicProfile(request: AuthenticatedRequest) {
   try {
@@ -106,25 +77,7 @@ async function handleGetPublicProfile(request: AuthenticatedRequest) {
       return NextResponse.json(COMMON_ERRORS.NOT_FOUND('User'), { status: 404 })
     }
 
-    const equipment: Record<string, { name: string; slug?: string; icon?: string }> = {}
-    for (const [slot, fallbackValue] of Object.entries(EQUIPMENT_SLOT_DEFAULTS)) {
-      const equipmentValue = user.equipment?.[slot as keyof typeof user.equipment]
-      equipment[slot] = {
-        name: equipmentValue || fallbackValue,
-      }
-    }
-
-    for (const equippedItem of user.PlayerItem) {
-      if (!equippedItem.slot || !equippedItem.ItemTemplate) continue
-      const mappedSlot = PLAYER_ITEM_SLOT_MAP[equippedItem.slot]
-      if (!mappedSlot) continue
-      const metadata = equippedItem.ItemTemplate.metadata as { icon?: string } | null
-      equipment[mappedSlot] = {
-        name: equippedItem.ItemTemplate.name,
-        slug: equippedItem.ItemTemplate.slug,
-        icon: metadata?.icon,
-      }
-    }
+    const equipment = resolveEquipment(user)
 
     return NextResponse.json({
       success: true,
