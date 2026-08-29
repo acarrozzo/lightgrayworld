@@ -125,6 +125,30 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     '135': '-560px -140px',     // Forest atop a Hill
     '136': '-665px -35px',      // Abandoned Troll Guard Post
     '137': '-560px -35px',      // Troll Base Camp
+    // Forest Underground - Kobold Lair (coordinates relative to forest underground map image)
+    '115a': '-140px -140px',     // Kobold Lair EXIT
+    '115b': '-35px -140px',      // Kobold Dead End
+    '115c': '-245px -140px',     // Kobold Twisted Path
+    '115d': '-140px -35px',      // Kobold Temple
+    '115e': '-350px -245px',     // Kobold Bloody Path
+    '115f': '-245px -245px',     // Kobold Hidden Chamber
+    '115g': '-455px -245px',     // Dark Courtyard
+    '115h': '-350px -350px',     // Control Room
+    '115i': '-560px -350px',     // Magic Altar
+    '115j': '-560px -245px',     // Champion Arena
+    '115k': '-560px -140px',     // Kobold Master Chambers
+    // Forest Underground - Ogre Lair
+    '111a': '-140px -560px',     // Ogre Lair EXIT
+    '111b': '-35px -560px',      // Goblin Tent
+    '111c': '-35px -665px',      // Rat's Nest
+    '111d': '-140px -665px',     // Hob Goblin Hut
+    '111e': '-245px -560px',     // Ogre Path
+    '111f': '-350px -665px',     // Orc Den
+    '111g': '-350px -560px',     // Ogre Yard
+    '111h': '-245px -455px',     // Ogre Treasure Room
+    '111i': '-455px -560px',     // Ogre Guard Room
+    '111j': '-560px -560px',     // Ogress Fire Altar
+    '111k': '-560px -665px',     // Ogre Lieutenant Quarters
   }
 
   return roomMapPositions[roomId || '000'] || '-350px -350px' // Default to center
@@ -347,14 +371,18 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
   const isLobby = room.roomId === '999'
   const isSolarOffice = room.roomId === '088'
   const scorpionDungeonRooms = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
+  const forestUndergroundRooms = ['111a','111b','111c','111d','111e','111f','111g','111h','111i','111j','111k','115a','115b','115c','115d','115e','115f','115g','115h','115i','115j','115k']
   const isUnderground = room.roomId?.startsWith('003b') || (room.roomId?.startsWith('028') && room.roomId !== '028') || scorpionDungeonRooms.includes(room.roomId)
-  const isForest = room.roomId?.startsWith('1')
+  const isForestUnderground = forestUndergroundRooms.includes(room.roomId)
+  const isForest = room.roomId?.startsWith('1') && !isForestUnderground
   const mapBackground = isRoomZero
     ? '/img/lightgray_map_roomzero.jpg'
     : isLobby
     ? '/img/lightgray_map_the_lobby.jpg'
     : isSolarOffice
     ? '/img/lightgray_map_solar_office.jpg'
+    : isForestUnderground
+    ? '/img/lightgray_map_forest_underground.jpg'
     : isUnderground
     ? '/img/lightgray_map_grassyfield_underground_s1.jpg'
     : isForest
@@ -363,7 +391,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
   const mapPosition = isRoomZero || isLobby || isSolarOffice
     ? 'center'
     : (isTransitioning ? targetPosition : currentPosition)
-  const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : isSolarOffice ? 'Solar Office' : isUnderground ? 'Grassy Field Underground' : isForest ? 'Forest' : 'Grassy Field'
+  const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : isSolarOffice ? 'Solar Office' : isForestUnderground ? 'Forest Underground' : isUnderground ? 'Grassy Field Underground' : isForest ? 'Forest' : 'Grassy Field'
 
   const directions: Direction[] = [
     { key: 'northwest', label: 'NW', position: 'top-left', rotation: 315 },

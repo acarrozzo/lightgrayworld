@@ -603,6 +603,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             physicalTraining: true,
             mentalTraining: true,
             grassyFieldUndergroundMap: true,
+            forestUndergroundMap: true,
           },
         })
 
@@ -635,6 +636,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           physicalTraining: dbPlayer.physicalTraining,
           mentalTraining: dbPlayer.mentalTraining,
           grassyFieldUndergroundMap: dbPlayer.grassyFieldUndergroundMap,
+          forestUndergroundMap: dbPlayer.forestUndergroundMap,
           socketId: socket.id,
           lastActive: new Date(),
         }
@@ -948,6 +950,20 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               player.grassyFieldUndergroundMap = true
             } catch (error) {
               console.error('[Socket] Error setting grassyFieldUndergroundMap:', error)
+            }
+          }
+
+          // Unlock forest underground map on first entry to any forest underground room
+          const forestUndergroundRooms = ['111a','111b','111c','111d','111e','111f','111g','111h','111i','111j','111k','115a','115b','115c','115d','115e','115f','115g','115h','115i','115j','115k']
+          if (forestUndergroundRooms.includes(toRoom) && !player.forestUndergroundMap) {
+            try {
+              await prisma.user.update({
+                where: { id: player.id },
+                data: { forestUndergroundMap: true },
+              })
+              player.forestUndergroundMap = true
+            } catch (error) {
+              console.error('[Socket] Error setting forestUndergroundMap:', error)
             }
           }
 

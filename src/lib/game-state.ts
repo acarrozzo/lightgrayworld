@@ -42,6 +42,7 @@ export interface Player {
   chest1?: boolean
   grassyFieldMap?: boolean
   grassyFieldUndergroundMap?: boolean
+  forestUndergroundMap?: boolean
   roomZeroMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean
