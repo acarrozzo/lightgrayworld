@@ -71,7 +71,10 @@ export default function ActivityTicker() {
   useEffect(() => {
     if (!expanded) return
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setExpanded(false)
+      if (e.key !== 'Escape') return
+      // Consume it so Escape collapses the ticker without also unwinding a tab.
+      e.stopPropagation()
+      setExpanded(false)
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)

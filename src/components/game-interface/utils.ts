@@ -49,6 +49,17 @@ export const getUnlockedMaps = (player: Player | null, currentRoomId: string | u
   return MAP_CONFIG
 }
 
+// Resolve the image + picker options for a map id. Shared by the sidebar map
+// sub-view and the full-screen MapPanel so the two cannot drift.
+export const resolveMapView = (currentMapId: string, availableMaps: MapConfigEntry[]) => {
+  const selected = MAP_CONFIG.find((m) => m.id === currentMapId)
+  return {
+    src: selected?.src || '',
+    title: selected?.title || 'Map',
+    options: availableMaps.map((map) => ({ id: map.id, src: map.src, title: map.title })),
+  }
+}
+
 // Helper function to format direction phrases for feed messages
 export const formatDirectionPhrase = (direction: string | null | undefined, context: 'enter' | 'exit'): string => {
   if (!direction) {

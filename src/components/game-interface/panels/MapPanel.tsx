@@ -1,8 +1,9 @@
 'use client'
 
 import { X } from 'lucide-react'
-import MapContent, { type MapOption } from '@/components/MapContent'
-import { MAP_CONFIG, type MapConfigEntry } from '../constants'
+import MapContent from '@/components/MapContent'
+import { type MapConfigEntry } from '../constants'
+import { resolveMapView } from '../utils'
 
 interface MapPanelProps {
   currentMapId: string
@@ -19,14 +20,7 @@ export default function MapPanel({
   onClose,
   onOpenTeleport,
 }: MapPanelProps) {
-  const selectedMap = MAP_CONFIG.find(m => m.id === currentMapId)
-  
-  // Convert MapConfigEntry[] to MapOption[] for MapContent
-  const mapOptions: MapOption[] = availableMaps.map(map => ({
-    id: map.id,
-    src: map.src,
-    title: map.title,
-  }))
+  const mapView = resolveMapView(currentMapId, availableMaps)
 
   return (
     <div className="flex flex-col w-full h-full">
@@ -40,9 +34,9 @@ export default function MapPanel({
           <X size={20} />
         </button>
         <MapContent
-          mapSrc={selectedMap?.src || ''}
-          mapTitle={selectedMap?.title || 'Map'}
-          availableMaps={mapOptions}
+          mapSrc={mapView.src}
+          mapTitle={mapView.title}
+          availableMaps={mapView.options}
           currentMapId={currentMapId}
           onMapChange={onMapChange}
         />

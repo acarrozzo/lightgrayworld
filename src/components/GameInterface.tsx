@@ -9,13 +9,12 @@ import GameHeader from './GameHeader'
 import { type InputMode } from './game-interface/panels/FeedPanel'
 import RoomBox, { type RoomEnemy } from './RoomBox'
 import BattlePanel from './game-interface/panels/BattlePanel'
-import Compass from './Compass'
 import TabContainer, { type TabConfig } from './TabContainer'
 import MobileBottomNav from './MobileBottomNav'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
-import { Settings as SettingsIcon, MessageSquare, MessageSquareText, Map } from 'lucide-react'
-import TeleportModal, { type TeleportLocation } from './TeleportModal'
+import { Settings as SettingsIcon, MessageSquare, MessageSquareText } from 'lucide-react'
+import ExplorePanel, { type ExploreSubView } from './game-interface/ExplorePanel'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
 import Icon from './Icon'
@@ -116,7 +115,7 @@ export default function GameInterface() {
   const craftingPanelRef = useRef<HTMLDivElement>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const totalDmUnread = useDMStore((state) => state.getTotalUnreadCount())
-  const [isTeleportModalOpen, setIsTeleportModalOpen] = useState(false)
+  const [exploreSubView, setExploreSubView] = useState<ExploreSubView>('compass')
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(false)
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
@@ -150,6 +149,12 @@ export default function GameInterface() {
     quantity: number | null
   }>>([])
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
+  // Returning to Explore always lands on the compass — a sub-view left open
+  // before switching tabs never greets you on the way back.
+  const goToExplore = useCallback(() => {
+    setCenterActiveTab('explore')
+    setExploreSubView('compass')
+  }, [])
   const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('players')
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
   const [quests, setQuests] = useState<Array<{ id: string; questId: string; progress: number; completed: boolean; data?: { accepted?: boolean } | null }>>([])
@@ -191,7 +196,6 @@ export default function GameInterface() {
   // Its keys ARE the set of players truly socket-present in that room, so it doubles as
   // a presence source to (a) survive REST reloads that lack party affiliation and
   // (b) prune stale DB-listed players who aren't actually connected here.
-  // (Record, not Map — `Map` is shadowed by a lucide-react icon import in this file.)
   const roomPartyLeadersRef = useRef<{ roomId: string | null; leaders: Record<string, string | null> }>({
     roomId: null,
     leaders: {},
@@ -380,18 +384,73 @@ export default function GameInterface() {
     return cleanup
   }, [socket, socketHandlers, appendWorldFeed])
 
+  // Escape unwinds one layer per press — overlays, then any open panel or tab,
+  // then the Explore sub-view — so repeated presses always end on the compass.
+  // Rewards that need acknowledging (level-up, battle summary) are deliberately
+  // not dismissible this way, and the feed side panel is a layout toggle rather
+  // than a layer.
   useEffect(() => {
+    const closeTopLayer = (): boolean => {
+      if (isShopModalOpen) {
+        setIsShopModalOpen(false)
+        setShopModalData(null)
+        return true
+      }
+      if (isTrainingModalOpen) {
+        setTrainingModalOpen(false)
+        return true
+      }
+      if (isStatModalOpen) {
+        setStatModalOpen(false)
+        return true
+      }
+      if (playerProfileModal.isOpen) {
+        setPlayerProfileModal({ isOpen: false, player: null })
+        return true
+      }
+      if (actionModal.isOpen) {
+        setActionModal({ isOpen: false, title: '', content: '' })
+        return true
+      }
+      if (isMapModalOpen) {
+        setIsMapModalOpen(false)
+        return true
+      }
+      if (isCraftingOpen) {
+        setIsCraftingOpen(false)
+        return true
+      }
+      if (centerActiveTab !== 'explore') {
+        goToExplore()
+        return true
+      }
+      if (exploreSubView !== 'compass') {
+        setExploreSubView('compass')
+        return true
+      }
+      return false
+    }
+
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
-        if (centerActiveTab !== 'explore') {
-          e.preventDefault()
-          setCenterActiveTab('explore')
-        }
+      if (e.key !== 'Escape' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return
+      if (closeTopLayer()) {
+        e.preventDefault()
       }
     }
     window.addEventListener('keydown', handleEsc)
     return () => window.removeEventListener('keydown', handleEsc)
-  }, [centerActiveTab])
+  }, [
+    centerActiveTab,
+    exploreSubView,
+    goToExplore,
+    isShopModalOpen,
+    isTrainingModalOpen,
+    isStatModalOpen,
+    playerProfileModal.isOpen,
+    actionModal.isOpen,
+    isMapModalOpen,
+    isCraftingOpen,
+  ])
 
   // Tab order for swipe navigation (matches the order in the tabs array)
   const tabOrder = ['explore', 'char', 'inventory', 'quests', 'map', 'players', 'feed', 'settings']
@@ -2573,32 +2632,57 @@ export default function GameInterface() {
     setCurrentMapId(mapId)
   }, [])
 
+  // Fast travel is a sub-view of Explore rather than a modal. The party and
+  // combat guards are surfaced inside the list (teleportBlockedReason) instead
+  // of refusing to open, so the control never looks dead.
   const handleOpenTeleport = useCallback(() => {
-    if (isPartyMember) {
-      appendWorldFeed({
-        type: 'room',
-        isSelf: true,
-        eventType: 'party',
-        outcome: 'info',
-        message: 'You are following your party. Leave the party to move freely.',
-        ts: Date.now(),
-      })
-      return
+    setCenterActiveTab('explore')
+    setExploreSubView('teleport')
+  }, [])
+
+  const syncMapToCurrentRoom = useCallback(() => {
+    if (currentRoomRef.current?.roomId) {
+      setCurrentMapId(getMapIdForRoom(currentRoomRef.current.roomId))
     }
-    setIsTeleportModalOpen(true)
-  }, [isPartyMember, appendWorldFeed])
+  }, [])
 
   const handleOpenMap = useCallback(() => {
-    if (currentRoomRef.current?.roomId) {
-      const mapIdForCurrentRoom = getMapIdForRoom(currentRoomRef.current.roomId)
-      setCurrentMapId(mapIdForCurrentRoom)
-    }
+    syncMapToCurrentRoom()
     setIsMapModalOpen(true)
-  }, [])
+  }, [syncMapToCurrentRoom])
+
+  // The sidebar is tall enough to hold the map inline; the overlay stays one
+  // click away via the sub-view's Fullscreen control.
+  const handleShowMap = useCallback(() => {
+    syncMapToCurrentRoom()
+    setCenterActiveTab('explore')
+    setExploreSubView('map')
+  }, [syncMapToCurrentRoom])
 
   const handleTeleport = useCallback((roomId: string) => {
     handleAction({ type: 'teleport', data: { toRoomId: roomId } })
   }, [handleAction])
+
+  // Both of these are refused server-side anyway — party followers in
+  // socket-server-handlers.js, movement in combat in room-state.js. The list
+  // states the reason and disables the destinations.
+  const teleportBlockedReason = isPartyMember
+    ? 'You are following your party. Leave the party to move freely.'
+    : battle.isInBattle
+    ? 'You cannot leave while in combat. Fight or flee.'
+    : null
+
+  // Fast travel closes itself once you have actually travelled, and never
+  // survives into a battle (movement is refused mid-combat regardless).
+  useEffect(() => {
+    setExploreSubView('compass')
+  }, [currentRoom?.roomId])
+
+  useEffect(() => {
+    if (battle.isInBattle) {
+      setExploreSubView('compass')
+    }
+  }, [battle.isInBattle])
 
   const handleSwitchToInventory = useCallback((filter?: FilterTab) => {
     setCenterActiveTab('inventory')
@@ -2636,7 +2720,7 @@ export default function GameInterface() {
             player={player}
             onAction={handleAction}
             onSwitchToInventory={handleSwitchToInventory}
-            onClose={() => setCenterActiveTab('explore')}
+            onClose={goToExplore}
           />
         )
       case 'inventory':
@@ -2653,7 +2737,7 @@ export default function GameInterface() {
                 return updated
               })
             }}
-            onClose={() => setCenterActiveTab('explore')}
+            onClose={goToExplore}
           />
         )
       case 'quests':
@@ -2666,7 +2750,7 @@ export default function GameInterface() {
             inventory={inventory}
             onResetQuests={handleResetQuests}
             onSkipToChest={handleSkipToChest}
-            onClose={() => setCenterActiveTab('explore')}
+            onClose={goToExplore}
           />
         )
       case 'players':
@@ -2676,7 +2760,7 @@ export default function GameInterface() {
             onSubTabChange={setPlayersSubTab}
             unreadDmCount={totalDmUnread}
             onOpenWorldChat={handleOpenWorldChat}
-            onClose={() => setCenterActiveTab('explore')}
+            onClose={goToExplore}
             onDMMessageSent={(payload) => {
               appendDMFeed('to', payload.recipientUsername || 'Unknown', payload.message)
             }}
@@ -2704,16 +2788,20 @@ export default function GameInterface() {
         return (
           <SettingsPanel
             onLogout={handleLogoutFlow}
-            onClose={() => setCenterActiveTab('explore')}
+            onClose={goToExplore}
           />
         )
       default:
         return null
     }
-  }, [centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, handleOpenTeleport])
+  }, [goToExplore, centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, handleOpenTeleport])
 
   const handleCenterTabChange = useCallback((tabId: string | null) => {
-    setCenterActiveTab(tabId || 'explore')
+    if (!tabId || tabId === 'explore') {
+      goToExplore()
+    } else {
+      setCenterActiveTab(tabId)
+    }
 
     if (tabId === 'players') {
       const unread = useDMStore.getState().getTotalUnreadCount()
@@ -2724,7 +2812,7 @@ export default function GameInterface() {
       setInventoryFilter(undefined)
       setNewItemIds(new Set())
     }
-  }, [])
+  }, [goToExplore])
 
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
@@ -2740,6 +2828,8 @@ export default function GameInterface() {
       </div>
     )
   }
+
+  const availableMaps = getUnlockedMaps(player, currentRoom?.roomId)
 
   const panelTabs: TabConfig[] = [
     { id: 'explore', label: 'Explore', icon: 'world', color: 'blue' },
@@ -2758,13 +2848,6 @@ export default function GameInterface() {
 
   return (
     <div className="h-dvh bg-gray-950 text-white flex flex-col overflow-hidden">
-      <TeleportModal
-        isOpen={isTeleportModalOpen}
-        onClose={() => setIsTeleportModalOpen(false)}
-        locations={TELEPORT_LOCATIONS}
-        onTeleport={handleTeleport}
-        currentRoomId={currentRoom?.roomId}
-      />
       {isMapModalOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col bg-gray-950/95 backdrop-blur-sm"
@@ -2773,9 +2856,12 @@ export default function GameInterface() {
         >
           <MapPanel
             currentMapId={currentMapId}
-            availableMaps={getUnlockedMaps(player, currentRoom?.roomId)}
+            availableMaps={availableMaps}
             onMapChange={handleMapChange}
-            onOpenTeleport={handleOpenTeleport}
+            onOpenTeleport={() => {
+              setIsMapModalOpen(false)
+              handleOpenTeleport()
+            }}
             onClose={() => setIsMapModalOpen(false)}
           />
         </div>
@@ -2963,7 +3049,7 @@ export default function GameInterface() {
             activeTab={centerActiveTab}
             onTabChange={handleCenterTabChange}
             containerClassName="!flex-none"
-            headerClassName="px-3 py-2"
+            headerClassName="px-3 pt-2 pb-1"
             buttonPadding="px-2 py-1"
             wrap
           />
@@ -2972,39 +3058,25 @@ export default function GameInterface() {
               {renderActivePanel()}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-4 relative">
-              <div className={`transition-opacity duration-300 ${battle.isInBattle || isCraftingOpen ? 'opacity-20 pointer-events-none' : ''}`}>
-                <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={handleOpenMap} onOpenTeleport={handleOpenTeleport} isMoveInProgress={isMoveInProgress} />
-              </div>
-              {battle.isInBattle && (
-                <div className="pointer-events-none -mt-36 mb-20 z-10">
-                  <span className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-red-400/90 bg-gray-950/70 border border-red-500/25 rounded-lg backdrop-blur-sm">
-                    In Battle
-                  </span>
-                </div>
-              )}
-              <div className={`flex gap-2 w-full max-w-[280px] ${battle.isInBattle || isCraftingOpen ? 'mt-0' : 'mt-4'}`}>
-                <button
-                  type="button"
-                  onClick={handleOpenTeleport}
-                  className="px-2 py-1 flex-1 basis-0 min-w-[56px] text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow border-1 border-violet-600/50 hover:border-violet-500 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 hover:text-violet-300"
-                  title="Open Teleport"
-                  aria-label="Open Teleport"
-                >
-                  <Icon name="ironskin" size={18} />
-                  <span className="leading-none">Teleport</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenMap}
-                  className="px-2 py-1 flex-1 basis-0 min-w-[56px] text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow border-1 border-sky-600/50 hover:border-sky-500 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300"
-                  title="Open Map"
-                  aria-label="Open Map"
-                >
-                  <Map size={18} aria-hidden="true" />
-                  <span className="leading-none">Map</span>
-                </button>
-              </div>
+            <div className="flex-1 flex flex-col min-h-0">
+              <ExplorePanel
+                variant="sidebar"
+                room={currentRoom}
+                subView={exploreSubView}
+                onSubViewChange={setExploreSubView}
+                onAction={handleAction}
+                onTeleport={handleTeleport}
+                teleportLocations={TELEPORT_LOCATIONS}
+                teleportBlockedReason={teleportBlockedReason}
+                onShowMap={handleShowMap}
+                onOpenMapFullscreen={handleOpenMap}
+                currentMapId={currentMapId}
+                availableMaps={availableMaps}
+                onMapChange={handleMapChange}
+                isMoveInProgress={isMoveInProgress}
+                isDimmed={battle.isInBattle || isCraftingOpen}
+                showBattleBadge={battle.isInBattle}
+              />
             </div>
           )}
         </div>
@@ -3142,32 +3214,23 @@ export default function GameInterface() {
               </div>
 
               {/* D-pad — mobile/tablet only (< lg), hidden during battle/crafting */}
-              <div className={`lg:hidden flex-shrink-0 p-4 relative flex flex-col gap-4 border-t border-gray-700/30 ${battle.isInBattle || isCraftingOpen ? 'hidden' : ''}`}>
-                <div className="absolute right-4 top-4 flex flex-col gap-2 z-10">
-                  <button
-                    type="button"
-                    onClick={handleOpenTeleport}
-                    className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
-                    title="Open Teleport"
-                    aria-label="Open Teleport"
-                  >
-                    <Icon name="ironskin" size={16} />
-                    <span className="hidden md:inline">Teleport</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleOpenMap}
-                    className="px-3 py-1.5 border border-blue-600/40 hover:border-blue-500/60 bg-transparent hover:bg-blue-900/20 rounded-lg flex items-center justify-center gap-2 transition-all duration-200 text-blue-400/70 hover:text-blue-300 text-sm font-medium whitespace-nowrap"
-                    title="Open Map"
-                    aria-label="Open Map"
-                  >
-                    <Map className="h-4 w-4" aria-hidden="true" />
-                    <span className="hidden md:inline">Map</span>
-                  </button>
-                </div>
-                <div className="flex items-center justify-center">
-                  <Compass room={currentRoom} onAction={handleAction} onNavigateToMap={handleOpenMap} onOpenTeleport={handleOpenTeleport} isMoveInProgress={isMoveInProgress} />
-                </div>
+              <div className={`lg:hidden flex-shrink-0 flex flex-col border-t border-gray-700/30 ${battle.isInBattle || isCraftingOpen ? 'hidden' : ''}`}>
+                <ExplorePanel
+                  variant="strip"
+                  room={currentRoom}
+                  subView={exploreSubView}
+                  onSubViewChange={setExploreSubView}
+                  onAction={handleAction}
+                  onTeleport={handleTeleport}
+                  teleportLocations={TELEPORT_LOCATIONS}
+                  teleportBlockedReason={teleportBlockedReason}
+                  onShowMap={handleShowMap}
+                  onOpenMapFullscreen={handleOpenMap}
+                  currentMapId={currentMapId}
+                  availableMaps={availableMaps}
+                  onMapChange={handleMapChange}
+                  isMoveInProgress={isMoveInProgress}
+                />
               </div>
             </div>
           )}

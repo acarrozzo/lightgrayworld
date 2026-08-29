@@ -91,7 +91,11 @@ export default function MobileBottomNav({
       }
     }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOverflowOpen(false)
+      if (e.key !== 'Escape') return
+      // Consume it: the overflow menu is the innermost layer, so Escape closes
+      // it without also unwinding the tab behind it.
+      e.stopPropagation()
+      setIsOverflowOpen(false)
     }
 
     document.addEventListener('pointerdown', handlePointerDown)

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import Icon from './Icon'
 import { ChevronDown } from 'lucide-react'
+import SubTabButton from './game-interface/SubTabButton'
 
 export interface MapOption {
   id: string
@@ -319,12 +320,12 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
       {/* Map Selector Buttons */}
       {availableMaps && availableMaps.length > 1 && (
         <div className="flex gap-2 border-b border-gray-700/50 pl-4 pr-12 md:pr-4 py-2 flex-shrink-0 relative">
-            <div ref={buttonsContainerRef} className="flex-1 flex items-center justify-center gap-2 flex-nowrap">
+            <div ref={buttonsContainerRef} className="flex-1 flex items-center justify-start gap-2 flex-nowrap">
               {/* Render visible buttons */}
               {visibleButtons.map((map) => {
                 const isActive = currentMapId === map.id
                 return (
-                  <button
+                  <SubTabButton
                     key={map.id}
                     ref={(el) => {
                       if (el) {
@@ -333,19 +334,15 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
                         buttonRefs.current.delete(map.id)
                       }
                     }}
-                    type="button"
+                    active={isActive}
+                    color="sky"
                     onClick={() => {
                       onMapChange?.(map.id)
                       setIsDropdownOpen(false)
                     }}
-                    className={`px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 ${
-                      isActive
-                        ? 'border-1 border-sky-500 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300'
-                        : 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
-                    }`}
                   >
                     {map.title}
-                  </button>
+                  </SubTabButton>
                 )
               })}
               
@@ -409,7 +406,7 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
                 
                 const isActive = currentMapId === map.id
                 return (
-                  <button
+                  <SubTabButton
                     key={`measure-${map.id}`}
                     ref={(el) => {
                       if (el) {
@@ -418,14 +415,11 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
                         buttonRefs.current.delete(map.id)
                       }
                     }}
-                    className={`px-2.5 py-1.5 h-8 text-sm font-medium flex items-center justify-center relative rounded-lg ${
-                      isActive
-                        ? 'border-1 border-sky-500 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300'
-                        : 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
-                    }`}
+                    active={isActive}
+                    color="sky"
                   >
                     {map.title}
-                  </button>
+                  </SubTabButton>
                 )
               })}
             </div>

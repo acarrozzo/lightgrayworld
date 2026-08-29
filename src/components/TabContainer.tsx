@@ -324,9 +324,16 @@ export default function TabContainer({
     return content
   }
 
-  // Determine if headerClassName overrides padding
-  const hasPaddingOverride = headerClassName && /p[xy]?-[0-9]|p-0/.test(headerClassName)
-  const defaultHeaderPadding = hasPaddingOverride ? 'pb-4' : 'p-4'
+  // Fill in only the padding axes the caller did not set. Emitting `pb-4`
+  // alongside a caller's own `py-*`/`pb-*` would quietly override it: equal
+  // specificity resolves by stylesheet order, where `pb-4` sorts last and wins
+  // no matter which class was written last in the string.
+  const hasAllPadding = /(^|\s)p-\d/.test(headerClassName)
+  const hasXPadding = hasAllPadding || /(^|\s)p[xlr]-\d/.test(headerClassName)
+  const hasYPadding = hasAllPadding || /(^|\s)p[ytb]-\d/.test(headerClassName)
+  const defaultHeaderPadding = [hasXPadding ? '' : 'px-4', hasYPadding ? '' : 'pt-4 pb-4']
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <div className={`flex-1 flex flex-col min-h-0 ${containerClassName}`}>

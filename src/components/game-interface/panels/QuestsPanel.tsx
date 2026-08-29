@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import QUESTS from '@/lib/game-data/quests.json'
 import type { InventoryItem } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
+import SubTabButton from '../SubTabButton'
 
 interface Quest {
   id: string
@@ -54,22 +55,6 @@ const QUEST_SUB_TABS: { id: Tab; label: string }[] = [
   { id: 'kill-list', label: 'Kill List' },
   { id: 'battle-log', label: 'Battle Log' },
 ]
-
-function SubTabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center rounded-lg shadow-sm hover:shadow flex-shrink-0 ${
-        active
-          ? 'border-1 border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
-          : 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
 
 function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string, string> }) {
   const [logs, setLogs] = useState<BattleLogEntry[]>([])
@@ -224,11 +209,12 @@ export default function QuestsPanel({
       </button>
 
       <div className="flex gap-2 border-b border-gray-700/50 pl-4 pr-12 md:pr-12 py-2 flex-shrink-0">
-        <div className="flex-1 flex items-center justify-center gap-2 flex-nowrap overflow-x-auto">
+        <div className="flex-1 flex items-center justify-start gap-2 flex-nowrap overflow-x-auto">
           {QUEST_SUB_TABS.map((tab) => (
             <SubTabButton
               key={tab.id}
               active={activeTab === tab.id}
+              color="gold"
               onClick={() => setActiveTab(tab.id)}
             >
               {tab.label}

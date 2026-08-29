@@ -1,5 +1,5 @@
 import type { Player } from '@/lib/game-state'
-import type { TeleportLocation } from '@/components/TeleportModal'
+import type { TeleportLocation } from '@/components/game-interface/TeleportList'
 
 export const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 

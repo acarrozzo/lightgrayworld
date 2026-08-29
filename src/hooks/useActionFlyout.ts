@@ -71,7 +71,10 @@ export function useActionFlyout(actionResult?: {
       dismissFlyout()
     }
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') dismissFlyout()
+      if (e.key !== 'Escape') return
+      // Consume it so Escape dismisses the flyout without also unwinding a tab.
+      e.stopPropagation()
+      dismissFlyout()
     }
     document.addEventListener('click', handleClickOutside)
     document.addEventListener('keydown', handleKey)
