@@ -217,6 +217,47 @@
     "onComplete": [
       {
         "type": "startQuest",
+        "questId": "quest_jacklumber_intro"
+      }
+    ]
+  },
+  "quest_jacklumber_intro": {
+    "number": 10,
+    "questType": "main",
+    "level": 1,
+    "title": "Talk to Jack Lumber",
+    "summary": "A lumberjack lives north of the Forest Gate. He might have work for a proven Wanderer.",
+    "objective": "Open the Gold Chest and talk to Jack Lumber in his cabin.",
+    "nextStep": "Use the Gold Key to open the Gold Chest at the Grassy Field Crossroads, then head northwest to Jack Lumber's cabin and speak with him.",
+    "reminderDialog": "You found me! But before we get to work, you should go open that gold chest back at the Crossroads. Come back after you've cracked it open.",
+    "completionDialog": "Ha! You cracked the chest! I knew you had it in you. I'm Jack Lumber — get it? Like Lumberjack! Listen, I've got some work that needs doing around here, and you look like just the Wanderer for the job.",
+    "giver": {
+      "npcId": "jack_lumber",
+      "roomId": "024",
+      "name": "Jack Lumber",
+      "icon": "npc-jacklumber"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasFlag",
+        "flag": "chest1"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 25
+      },
+      {
+        "type": "xp",
+        "amount": 25
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
         "questId": "quest_jacklumber_000"
       },
       {
@@ -230,7 +271,7 @@
     ]
   },
   "quest_jacklumber_000": {
-    "number": 10,
+    "number": 13,
     "questType": "main",
     "level": 10,
     "title": "The Chief's Cloak",

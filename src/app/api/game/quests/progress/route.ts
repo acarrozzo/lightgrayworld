@@ -66,25 +66,49 @@ async function handleGetProgress(request: AuthenticatedRequest) {
     // Backfill Jack Lumber quests for players who completed Scorpion Tails before the Jack quest chain was added
     const questScorpionTails = await getQuestProgress(user.id, 'quest_youngsoldier_002')
     if ((questScorpionTails as any)?.completed) {
-      const jackQuests = ['quest_jacklumber_000', 'quest_jacklumber_001', 'quest_jacklumber_002']
-      for (const questId of jackQuests) {
-        const existing = await getQuestProgress(user.id, questId)
-        if (!existing) {
-          try {
-            const { randomUUID } = require('crypto')
-            await prisma.questProgress.create({
+      // Backfill intro quest: if player already has any Jack quest, mark intro as completed.
+      // If they only have Scorpion Tails done (new flow), start intro as incomplete.
+      const existingIntro = await getQuestProgress(user.id, 'quest_jacklumber_intro')
+      if (!existingIntro) {
+        const anyJackQuest = await getQuestProgress(user.id, 'quest_jacklumber_000')
+        try {
+          const { randomUUID } = require('crypto')
+          await prisma.questProgress.create({
+            data: {
+              id: randomUUID(),
+              userId: user.id,
+              questId: 'quest_jacklumber_intro',
+              progress: anyJackQuest ? 1 : 0,
+              completed: !!anyJackQuest,
+            },
+          })
+        } catch (error) {
+          console.error('Failed to backfill quest_jacklumber_intro:', error)
+        }
+      }
+      // Only backfill the 3 Jack quests if the intro quest is completed
+      const introProgress = await getQuestProgress(user.id, 'quest_jacklumber_intro')
+      if ((introProgress as any)?.completed) {
+        const jackQuests = ['quest_jacklumber_000', 'quest_jacklumber_001', 'quest_jacklumber_002']
+        for (const questId of jackQuests) {
+          const existing = await getQuestProgress(user.id, questId)
+          if (!existing) {
+            try {
+              const { randomUUID } = require('crypto')
+              await prisma.questProgress.create({
               data: {
                 id: randomUUID(),
-                userId: user.id,
                 questId,
                 progress: 0,
                 completed: false,
+                userId: user.id,
               },
             })
           } catch (error) {
             console.error(`Failed to backfill ${questId}:`, error)
           }
         }
+      }
       }
     }
 

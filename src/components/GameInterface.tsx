@@ -1735,7 +1735,8 @@ export default function GameInterface() {
       const data = await response.json()
       
       if (data.success) {
-        // Refresh quests after reset
+        // Refresh quests and player state (chest1 was reset)
+        if (player) setPlayer({ ...player, chest1: false })
         const questResponse = await fetch('/api/game/quests/progress', {
           headers: getAuthHeaders(),
         })
@@ -1748,6 +1749,35 @@ export default function GameInterface() {
       }
     } catch (error) {
       console.error('Error resetting quests:', error)
+    } finally {
+      setIsResettingQuests(false)
+    }
+  }
+
+  const handleSkipToChest = async () => {
+    if (!isLoggedIn) return
+    setIsResettingQuests(true)
+    try {
+      const response = await fetch('/api/game/quests/reset?mode=skip-to-chest', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      })
+      const data = await response.json()
+      if (data.success) {
+        // Refresh quests and player state (chest1 was reset)
+        if (player) setPlayer({ ...player, chest1: false })
+        const questResponse = await fetch('/api/game/quests/progress', {
+          headers: getAuthHeaders(),
+        })
+        const questData = await questResponse.json()
+        if (questData.success) {
+          setQuests(questData.quests || [])
+        }
+      } else {
+        console.error('Failed to skip to chest:', data.error)
+      }
+    } catch (error) {
+      console.error('Error skipping to chest:', error)
     } finally {
       setIsResettingQuests(false)
     }
@@ -2635,6 +2665,7 @@ export default function GameInterface() {
             isLoggedIn={isLoggedIn}
             inventory={inventory}
             onResetQuests={handleResetQuests}
+            onSkipToChest={handleSkipToChest}
             onClose={() => setCenterActiveTab('explore')}
           />
         )

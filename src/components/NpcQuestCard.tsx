@@ -23,6 +23,7 @@ type QuestDef = {
     notDefault?: boolean
     enemySlug?: string
     minLevel?: number
+    flag?: string
   }>
   [key: string]: unknown
 }
@@ -51,7 +52,7 @@ export const PRE_QUEST_TALK_ID = '__pretalk__'
  * journal we collapse them to a single "Talk to {npc}" button that completes
  * the quest in one click — the secondary Talk + Turn In buttons are hidden.
  */
-const TALK_COMPLETE_QUEST_IDS = new Set(['quest_oldman_000', 'quest_youngsoldier_000'])
+const TALK_COMPLETE_QUEST_IDS = new Set(['quest_oldman_000', 'quest_youngsoldier_000', 'quest_jacklumber_intro'])
 
 /** "training-helmet" -> "Training Helmet". Fallback when no nicer name is available. */
 function humanizeSlug(slug: string): string {
@@ -117,6 +118,11 @@ function getRequirementProgress(
   if (req.type === 'hasEquippedInSlot') {
     const equipped = inventory.find((i) => i.isEquipped && i.slot === req.slot)
     const met = req.notDefault ? !!equipped : true
+    return { met, current: met ? 1 : 0, total: 1 }
+  }
+  if (req.type === 'hasFlag') {
+    const player = useGameStore.getState().player
+    const met = req.flag ? !!(player as any)?.[req.flag] : false
     return { met, current: met ? 1 : 0, total: 1 }
   }
   return { met: false, current: 0, total: 1 }
@@ -190,16 +196,8 @@ export default function NpcQuestCard({
       return result
     }
 
-    // Sort: main quests first (by number), then side quests by level then number
-    result.sort((a, b) => {
-      const aIsMain = a.questDef.questType === 'main'
-      const bIsMain = b.questDef.questType === 'main'
-      if (aIsMain !== bIsMain) return aIsMain ? -1 : 1
-      if (!aIsMain && a.questDef.level !== b.questDef.level) {
-        return a.questDef.level - b.questDef.level
-      }
-      return a.questDef.number - b.questDef.number
-    })
+    // Sort by quest number (authored order within each NPC's chain)
+    result.sort((a, b) => a.questDef.number - b.questDef.number)
 
     return result
   }, [questIds, quests, inventory, killList, playerLevel, npcName, npcIcon])
@@ -260,12 +258,15 @@ export default function NpcQuestCard({
                 <CheckCircle size={18} className="shrink-0 text-green-600" />
               ) : isTalkComplete ? (
                 // Intro quests: single button that completes in one click.
+                // Disabled when quest requirements aren't met yet (e.g. chest1 flag).
                 <button
-                  disabled={isLoading}
+                  disabled={isLoading || state === 'in_progress'}
                   onClick={() => onTurnIn(progress.questId)}
-                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors bg-indigo-600 hover:bg-indigo-500 text-white ${
-                    isLoading ? 'opacity-60 cursor-wait' : ''
-                  }`}
+                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    state === 'in_progress'
+                      ? 'bg-gray-700/60 text-gray-500 cursor-not-allowed'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  } ${isLoading ? 'opacity-60 cursor-wait' : ''}`}
                 >
                   <MessageCircle size={16} />
                   {isLoading ? '...' : `Talk to ${npcName}`}

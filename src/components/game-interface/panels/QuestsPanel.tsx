@@ -44,6 +44,7 @@ interface QuestsPanelProps {
   isLoggedIn: boolean
   inventory: InventoryItem[]
   onResetQuests: () => void
+  onSkipToChest: () => void
   onClose: () => void
 }
 
@@ -200,6 +201,7 @@ export default function QuestsPanel({
   isLoggedIn,
   inventory,
   onResetQuests,
+  onSkipToChest,
   onClose,
 }: QuestsPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>('quests')
@@ -402,7 +404,7 @@ export default function QuestsPanel({
             })()}
 
             {!isLoadingQuests && (
-              <div className="mt-6 pt-4 border-t border-gray-700/50">
+              <div className="mt-6 pt-4 border-t border-gray-700/50 space-y-3">
                 <button
                   onClick={onResetQuests}
                   disabled={isResettingQuests || !isLoggedIn}
@@ -410,8 +412,18 @@ export default function QuestsPanel({
                 >
                   {isResettingQuests ? 'Resetting...' : 'Reset Quests to Initial State'}
                 </button>
-                <p className="mt-2 text-xs text-gray-500 text-center">
-                  Resets all quests except Quest 001 (for testing)
+                <p className="mt-1 text-xs text-gray-500 text-center">
+                  Resets all quests and chest to initial state
+                </p>
+                <button
+                  onClick={onSkipToChest}
+                  disabled={isResettingQuests || !isLoggedIn}
+                  className="w-full px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-600/50 hover:border-amber-600/70 text-amber-400 hover:text-amber-300 text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isResettingQuests ? 'Resetting...' : 'Skip to Chest / Jack Flow'}
+                </button>
+                <p className="mt-1 text-xs text-gray-500 text-center">
+                  Completes Old Man &amp; Young Soldier quests, resets chest
                 </p>
               </div>
             )}

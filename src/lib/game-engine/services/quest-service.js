@@ -354,6 +354,20 @@ async function checkQuestRequirements(playerId, questId) {
           }
         }
       }
+    } else if (requirement.type === 'hasFlag') {
+      const { flag } = requirement
+      const user = await prisma.user.findUnique({
+        where: { id: playerId },
+        select: { [flag]: true },
+      })
+      if (!user?.[flag]) {
+        return {
+          met: false,
+          details: {
+            missingFlag: flag,
+          },
+        }
+      }
     } else if (requirement.type === 'level') {
       const { minLevel = 0 } = requirement
       const user = await prisma.user.findUnique({

@@ -84,6 +84,22 @@ function createNpcTalkHandler(npc) {
 
     roomState.touchActivity()
 
+    // Optional pre-check: if it fails, show a specific message and bail.
+    if (npc.preCheck) {
+      const passed = await npc.preCheck(playerId)
+      if (!passed) {
+        const npcModalObj = { type: 'icon', icon: npc.icon, iconColor: npc.iconColor, title: npc.title, message: npc.preCheckMessage || 'Come back later.' }
+        return {
+          success: true,
+          action: npc.action,
+          playerEvents: [{
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(npc.action, 'success', `You talk to the ${npc.title}.`, { roomId: roomState.roomId, showModal: true, modalContent: npcModalObj }),
+          }],
+        }
+      }
+    }
+
     const npcModal = (extra = {}) => ({
       type: 'icon',
       icon: npc.icon,
@@ -888,10 +904,20 @@ const ROOM_ACTIONS = {
       icon: 'npc-jacklumber',
       iconColor: 'green-400',
       title: 'Jack Lumber',
+      preCheck: async (playerId) => {
+        const { prisma } = require('../db-client')
+        const user = await prisma.user.findUnique({ where: { id: playerId }, select: { chest1: true } })
+        return !!user?.chest1
+      },
+      preCheckMessage: "\"How'd you get here? Go back and open that gold chest at the Crossroads first. Then we'll talk.\"",
       idleDialogs: [
         {
           ifCompleted: 'quest_jacklumber_000',
           message: '"The Forest Path is open! Get out there and see what\'s beyond the Grassy Field. And remember — keep that hatchet sharp and your bow ready!"',
+        },
+        {
+          ifCompleted: 'quest_jacklumber_intro',
+          message: '"You\'ve got work to do, Wanderer! Check your quests and get to it."',
         },
         {
           ifCompleted: null,

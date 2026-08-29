@@ -9,12 +9,85 @@ async function handleResetQuests(request: AuthenticatedRequest) {
   try {
     const user = request.user
     const { randomUUID } = require('crypto')
+    const url = new URL(request.url)
+    const mode = url.searchParams.get('mode')
 
-    // Delete all quest progress for the user
+    if (mode === 'skip-to-chest') {
+      // Complete all Old Man and Young Soldier quests, start Jack intro quest
+      await prisma.questProgress.deleteMany({
+        where: { userId: user.id },
+      })
+
+      // Reset chest1 flag
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { chest1: false },
+      })
+
+      const completedQuests = [
+        'quest_oldman_000', 'quest_oldman_001', 'quest_oldman_002',
+        'quest_oldman_003', 'quest_oldman_004',
+        'quest_youngsoldier_000', 'quest_youngsoldier_001',
+        'quest_youngsoldier_002', 'quest_youngsoldier_003',
+      ]
+
+      for (const questId of completedQuests) {
+        await prisma.questProgress.create({
+          data: {
+            id: randomUUID(),
+            userId: user.id,
+            questId,
+            progress: 1,
+            completed: true,
+          },
+        })
+      }
+
+      // Start Jack's intro quest (not completed)
+      await prisma.questProgress.create({
+        data: {
+          id: randomUUID(),
+          userId: user.id,
+          questId: 'quest_jacklumber_intro',
+          progress: 0,
+          completed: false,
+        },
+      })
+
+      // Grant a Gold Key so the player can open the chest
+      const goldKeyTemplate = await prisma.itemTemplate.findFirst({
+        where: { slug: 'gold-key' },
+      })
+      if (goldKeyTemplate) {
+        // Remove any existing gold keys first, then grant one
+        await prisma.playerItem.deleteMany({
+          where: { playerId: user.id, templateId: goldKeyTemplate.id },
+        })
+        await prisma.playerItem.create({
+          data: {
+            id: randomUUID(),
+            playerId: user.id,
+            templateId: goldKeyTemplate.id,
+            quantity: 1,
+          },
+        })
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Quests set to chest/Jack testing state',
+      })
+    }
+
+    // Default: full reset
     await prisma.questProgress.deleteMany({
-      where: {
-        userId: user.id,
-      },
+      where: { userId: user.id },
+    })
+
+    // Reset chest1 flag
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { chest1: false },
     })
 
     // Create quest_oldman_000 as active (not completed, progress 0)

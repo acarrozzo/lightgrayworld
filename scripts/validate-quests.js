@@ -26,7 +26,7 @@ const { ENEMIES } = require(path.join(ROOT, 'src/lib/game-data/enemies.js'))
 // EquipSlot enum from prisma/schema.prisma — kept in sync manually (small, rarely changes).
 const EQUIP_SLOTS = new Set(['MAIN_HAND', 'OFF_HAND', 'HEAD', 'BODY', 'HANDS', 'FEET', 'RING', 'NECK'])
 const REWARD_TYPES = new Set(['currency', 'xp', 'item'])
-const REQUIREMENT_TYPES = new Set(['hasItem', 'killCount', 'hasEquippedInSlot', 'level'])
+const REQUIREMENT_TYPES = new Set(['hasItem', 'killCount', 'hasEquippedInSlot', 'level', 'hasFlag'])
 const EFFECT_TYPES = new Set(['startQuest', 'completeQuest'])
 
 // Item slugs: every `slug: '...'` / `slug: "..."` literal in the seed. This is a

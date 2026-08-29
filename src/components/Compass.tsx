@@ -384,7 +384,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
     : isForestUnderground
     ? '/img/lightgray_map_forest_underground.jpg'
     : isUnderground
-    ? '/img/lightgray_map_grassyfield_underground_s1.jpg'
+    ? '/img/lightgray_map_grassyfield_underground.jpg'
     : isForest
     ? '/img/lightgray_map_forest_main.jpg'
     : '/img/lightgray_map_grassyfield_main_s1.jpg'

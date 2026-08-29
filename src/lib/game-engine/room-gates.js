@@ -129,6 +129,25 @@ const ROOM_GATES = {
       },
     },
   },
+  '006': {
+    'east': {
+      check: async (playerId) => {
+        const user = await prisma.user.findUnique({
+          where: { id: playerId },
+          select: { chest1: true },
+        })
+        return !!user?.chest1
+      },
+      message: "The road east is closed until you've opened the Gold Chest at the Crossroads.",
+      modalContent: {
+        title: 'A Field Guard blocks the road east',
+        type: 'icon',
+        icon: 'npc-dwarfguard',
+        iconColor: 'amber-500',
+        message: "\"The road east is closed until you've opened the Gold Chest at the Crossroads. Get the Gold Key from the Young Soldier and crack it open first.\"",
+      },
+    },
+  },
   '023': {
     'east': {
       check: async (playerId) => {
