@@ -68,5 +68,6 @@ export const MAP_CONFIG: MapConfigEntry[] = [
   { id: 'room-zero', src: '/img/lightgray_map_roomzero.jpg', title: 'Room Zero', flag: 'roomZeroMap' },
   { id: 'lobby', src: '/img/lightgray_map_the_lobby.jpg', title: 'The Lobby', flag: 'lobbyMap' },
   { id: 'solar-office', src: '/img/lightgray_map_solar_office.jpg', title: 'Solar Office', flag: 'solarOfficeMap' },
+  { id: 'forest', src: '/img/lightgray_map_forest_main.jpg', title: 'Forest' },
 ]
 

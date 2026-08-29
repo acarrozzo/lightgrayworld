@@ -80,6 +80,51 @@ const getRoomMapPosition = (roomId: string | undefined) => {
     '028g': '-35px -560px',     // Goblin Tracks (col 1, middle row; west of 028f)
     '028h': '-35px -455px',     // Goblin Dead End (col 1, same row as 003bb/003b)
     '028i': '-35px -350px',     // Goblin Hideout (col 1, top; directly N of 028h)
+    // East forest-edge rooms (overworld map, 105px grid steps east from 006)
+    '022': '-560px -350px',     // Dirt Road East (east of 006)
+    '023': '-665px -350px',     // Jack's Forest Gate (east of 022)
+    '024': '-665px -245px',     // Jack Lumber (north of 023)
+    '025': '-665px -140px',     // Goblin Woods (north of 024)
+    // Forest rooms (coordinates relative to forest map image)
+    '101': '-35px -350px',      // Forest Path (entry from west)
+    '102': '-140px -455px',     // Forest Path near a Cow Farm
+    '103': '-140px -350px',     // Freddie's Cow Farm
+    '103b': '-140px -245px',    // Cows (north of 103)
+    '103c': '-35px -245px',     // More Cows (west of 103b)
+    '104': '-245px -455px',     // Stone Path by a Forest Gate
+    '105': '-245px -350px',     // Traveling Wizard
+    '106': '-245px -560px',     // Traveling Warrior
+    '107': '-245px -665px',     // Stone Path by a Hill
+    '108': '-140px -665px',     // Dirt Path Behind a Hill
+    '109': '-35px -560px',      // Behind a Hill by a Cave
+    '110': '-35px -455px',      // Behind a Hill
+    '111': '-140px -560px',     // Ogre Cave
+    '112': '-245px -245px',     // Stone Path
+    '113': '-245px -140px',     // Stone Path
+    '114': '-245px -35px',      // Stone Path by a Magical Gate
+    '115': '-140px -140px',     // Kobold Lair
+    '116': '-350px -350px',     // Forest Entrance
+    '117': '-350px -245px',     // Under a Massive Tree
+    '118': '-350px -140px',     // Hunter Bill
+    '119': '-455px -35px',      // Forest by a Gold Chest
+    '120': '-455px -140px',     // Forest by a River
+    '121': '-455px -245px',     // Forest Clearing (hub)
+    '122': '-455px -350px',     // Forest Fork in the Road
+    '123': '-455px -455px',     // Forest Beaten Path
+    '124': '-455px -560px',     // Red Guard Tower
+    '125': '-560px -560px',     // Small Graveyard
+    '126': '-665px -560px',     // Forest by a Cliff
+    '127': '-665px -455px',     // Surrounded by Trees
+    '128': '-560px -455px',     // Forest Gnome Tree Hut
+    '129': '-665px -665px',     // Forest Dead End
+    '130': '-560px -245px',     // Abandoned Campsite
+    '131': '-560px -350px',     // Forest by a Lake
+    '132': '-665px -350px',     // Forest Rocky Path
+    '133': '-665px -245px',     // Forest Twisted Path
+    '134': '-665px -140px',     // Approaching Troll Territory
+    '135': '-560px -140px',     // Forest atop a Hill
+    '136': '-665px -35px',      // Abandoned Troll Guard Post
+    '137': '-560px -35px',      // Troll Base Camp
   }
 
   return roomMapPositions[roomId || '000'] || '-350px -350px' // Default to center
@@ -140,6 +185,7 @@ const getBackgroundColorClasses = (color: string): { base: string; hover: string
     'green-300': { base: 'bg-green-300/90', hover: 'hover:bg-green-200' },
     'green-400': { base: 'bg-green-400/90', hover: 'hover:bg-green-300' },
     'grass': { base: 'bg-green-400/90', hover: 'hover:bg-green-300' },
+    'forest': { base: 'bg-green-800/90', hover: 'hover:bg-green-700' },
     'green-500': { base: 'bg-green-500/90', hover: 'hover:bg-green-400' },
     'green-600': { base: 'bg-green-600/90', hover: 'hover:bg-green-500' },
     'green-700': { base: 'bg-green-700/90', hover: 'hover:bg-green-600' },
@@ -302,6 +348,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
   const isSolarOffice = room.roomId === '088'
   const scorpionDungeonRooms = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
   const isUnderground = room.roomId?.startsWith('003b') || (room.roomId?.startsWith('028') && room.roomId !== '028') || scorpionDungeonRooms.includes(room.roomId)
+  const isForest = room.roomId?.startsWith('1')
   const mapBackground = isRoomZero
     ? '/img/lightgray_map_roomzero.jpg'
     : isLobby
@@ -310,11 +357,13 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
     ? '/img/lightgray_map_solar_office.jpg'
     : isUnderground
     ? '/img/lightgray_map_grassyfield_underground_s1.jpg'
+    : isForest
+    ? '/img/lightgray_map_forest_main.jpg'
     : '/img/lightgray_map_grassyfield_main_s1.jpg'
   const mapPosition = isRoomZero || isLobby || isSolarOffice
     ? 'center'
     : (isTransitioning ? targetPosition : currentPosition)
-  const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : isSolarOffice ? 'Solar Office' : isUnderground ? 'Grassy Field Underground' : 'Grassy Field'
+  const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : isSolarOffice ? 'Solar Office' : isUnderground ? 'Grassy Field Underground' : isForest ? 'Forest' : 'Grassy Field'
 
   const directions: Direction[] = [
     { key: 'northwest', label: 'NW', position: 'top-left', rotation: 315 },
