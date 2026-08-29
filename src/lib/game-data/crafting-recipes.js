@@ -42,7 +42,7 @@
  */
 
 /** Rooms where the crafting panel is available. */
-const CRAFTING_ROOMS = ['003', '021']
+const CRAFTING_ROOMS = ['003', '021', '024']
 
 /**
  * Crafting stations, in display order. Recipes are grouped under these as
@@ -82,6 +82,15 @@ const CRAFTING_RECIPES = [
     blurb: 'Cook raw meat over the fire into a hearty meal.',
     inputs: [{ slug: 'raw-meat', qty: 1, name: 'Raw Meat', icon: 'uncooked-meat' }],
     output: { slug: 'cooked-meat', qty: 1, name: 'Cooked Meat', effect: 'Restores 50 HP', max: 999 },
+  },
+  {
+    id: 'wooden-bow',
+    label: 'Wooden Bow',
+    outputIcon: 'wooden-bow',
+    station: 'crafting-table',
+    blurb: 'Carve a simple bow from wood. Effective against flying enemies.',
+    inputs: [{ slug: 'wood', qty: 3, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'wooden-bow', qty: 1, name: 'Wooden Bow', effect: 'Ranged weapon', max: 1 },
   },
   {
     id: 'bread',

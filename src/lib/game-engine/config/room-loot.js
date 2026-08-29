@@ -51,6 +51,9 @@ const ROOM_LOOT = [
   // Room 019 — Sand Crab Nest
   { roomId: '019', slug: 'bo' },
 
+  // Room 024 — Jack Lumber's cabin (hatchet for chopping wood at tree farm)
+  { roomId: '024', slug: 'hatchet' },
+
   // Room 014 — pickaxe (for mining stone in room 015)
   { roomId: '014', slug: 'pickaxe' },
 

@@ -129,6 +129,25 @@ const ROOM_GATES = {
       },
     },
   },
+  '023': {
+    'east': {
+      check: async (playerId) => {
+        const quest = await prisma.questProgress.findUnique({
+          where: { userId_questId: { userId: playerId, questId: 'quest_jacklumber_000' } },
+          select: { completed: true },
+        })
+        return !!quest?.completed
+      },
+      message: "A Red Guard blocks the Forest Path. Complete Jack Lumber's quests before heading east.",
+      modalContent: {
+        title: 'A Red Guard blocks the Forest Path',
+        type: 'icon',
+        icon: 'npc-dwarfguard',
+        iconColor: 'red-400',
+        message: "\"You're not ready for the Forest yet. Go talk to Jack Lumber in his cabin to the north — complete his quests and I'll let you through.\"",
+      },
+    },
+  },
   '020': {
     'northwest': {
       check: async (playerId) => {

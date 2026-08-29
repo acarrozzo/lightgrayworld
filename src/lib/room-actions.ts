@@ -58,6 +58,13 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
     { action: 'talk to young soldier', label: 'Young Soldier', icon: 'npc-youngsoldier', className: 'bg-blue-600 hover:bg-blue-700', questIds: questIdsForNpc('young_soldier') },
   ],
+  '024': [
+    { action: 'talk to jack lumber', label: 'Jack Lumber', icon: 'npc-jacklumber', className: 'bg-green-600 hover:bg-green-700', questIds: questIdsForNpc('jack_lumber') },
+    { action: 'open crafting', label: 'Open Crafting', icon: 'craft', className: 'bg-orange-600 hover:bg-orange-700' },
+  ],
+  '025': [
+    { action: 'chop wood', label: 'Chop Wood', icon: 'wood', className: 'bg-amber-700 hover:bg-amber-600' },
+  ],
   '020': [
     { action: 'rest at waterfall', label: 'Rest at Waterfall', icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
     { action: 'pick wheat', label: 'Pick Wheat', icon: 'flower', className: 'bg-amber-500 hover:bg-amber-400' },

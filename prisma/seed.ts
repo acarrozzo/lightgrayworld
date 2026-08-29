@@ -2940,6 +2940,16 @@ async function main() {
       metadata: { crafting: { kind: 'material' } },
     },
     {
+      id: 'iron_001',
+      slug: 'iron',
+      name: 'Iron',
+      description: 'A piece of iron ore, useful for forging and crafting.',
+      type: ItemType.MISC,
+      max: 99999,
+      value: 15,
+      metadata: { crafting: { kind: 'material' } },
+    },
+    {
       id: 'hatchet_001',
       slug: 'hatchet',
       name: 'Hatchet',

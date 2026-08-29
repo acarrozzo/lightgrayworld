@@ -718,12 +718,8 @@ const ROOM_ACTIONS = {
       title: 'Young Soldier',
       idleDialogs: [
         {
-          ifCompleted: 'quest_youngsoldier_004',
-          message: 'You\'ve still got the cloak, good. The Goblin Camp\'s your problem now, not mine.',
-        },
-        {
           ifCompleted: 'quest_youngsoldier_002',
-          message: 'Well I actually didn\'t think you would find all four, but it was still pretty easy.',
+          message: 'You proved yourself, Wanderer. If you\'re looking for more work, head northwest to Jack Lumber\'s cabin. He\'s got quests that\'ll open the way to the Forest.',
         },
         {
           ifCompleted: 'quest_youngsoldier_001',
@@ -884,6 +880,37 @@ const ROOM_ACTIONS = {
         ],
       }
     },
+  },
+  '024': {
+    'talk to jack lumber': createNpcTalkHandler({
+      npcId: 'jack_lumber',
+      action: 'talk to jack lumber',
+      icon: 'npc-jacklumber',
+      iconColor: 'green-400',
+      title: 'Jack Lumber',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_jacklumber_000',
+          message: '"The Forest Path is open! Get out there and see what\'s beyond the Grassy Field. And remember — keep that hatchet sharp and your bow ready!"',
+        },
+        {
+          ifCompleted: null,
+          message: '"I\'m Jack Lumber, get it! Like Lumberjack! Come back when you\'ve proven yourself to the Young Soldier and I\'ll show you what I can do."',
+        },
+      ],
+    }),
+    'craft': executeCraft,
+  },
+  '025': {
+    'chop wood': makeGatherAction({
+      itemSlug: 'wood',
+      itemNamePlural: 'wood',
+      cooldownMs: 15 * 60 * 1000,
+      quantity: 5,
+      toolRequired: 'hatchet',
+      emptyVerb: 'grow',
+      missingToolMessage: 'You need a hatchet to chop wood here. There should be one at Jack\'s cabin to the south.',
+    }),
   },
   '020': {
     'rest at waterfall': async (playerId, roomState) => roomState.executeWaterfallRest(playerId),
