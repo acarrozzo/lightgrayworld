@@ -48,6 +48,7 @@ const SLOT_LABELS: Record<string, string> = {
   FEET: 'Feet',
   RING: 'Ring',
   NECK: 'Neck',
+  MOUNT: 'Mount',
 }
 
 // Display order for groups. Any group not listed here is appended afterward,

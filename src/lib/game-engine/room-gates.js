@@ -5,6 +5,28 @@
 const { prisma } = require('../db-client')
 
 /**
+ * Can the player fly right now?
+ *
+ * Two ways to be airborne, and the gates do not care which: the click-counted
+ * `wings` buff (a potion or the spell), or an equipped mount that flies — which
+ * today means the Stables' unicorn. A mount is a standing ability rather than a
+ * countdown, so a unicorn owner crosses the sewer river without stocking potions.
+ */
+async function playerCanFly(playerId) {
+  const user = await prisma.user.findUnique({
+    where: { id: playerId },
+    select: { wings: true },
+  })
+  if ((user?.wings ?? 0) >= 1) return true
+
+  const flyingMount = await prisma.playerItem.findFirst({
+    where: { playerId, isEquipped: true, slot: 'MOUNT' },
+    select: { ItemTemplate: { select: { metadata: true } } },
+  })
+  return flyingMount?.ItemTemplate?.metadata?.grantsFlight === true
+}
+
+/**
  * Has the player completed any one of the Red Guard Captain's three quests?
  * Gates the lookout-tower ladder in both directions (rooms 124 and 215).
  */
@@ -191,13 +213,7 @@ const ROOM_GATES = {
   },
   '020': {
     'northwest': {
-      check: async (playerId) => {
-        const user = await prisma.user.findUnique({
-          where: { id: playerId },
-          select: { wings: true },
-        })
-        return user?.wings >= 1
-      },
+      check: (playerId) => playerCanFly(playerId),
       message: "The path ahead is too treacherous. You need the ability to fly to traverse this route.",
       modalContent: {
         title: 'The path is blocked',
@@ -499,13 +515,7 @@ const ROOM_GATES = {
   // their wings lapse is not stranded past a one-way crossing.
   '232d': {
     'north': {
-      check: async (playerId) => {
-        const user = await prisma.user.findUnique({
-          where: { id: playerId },
-          select: { wings: true },
-        })
-        return user?.wings >= 1
-      },
+      check: (playerId) => playerCanFly(playerId),
       message: 'You will not be able to cross this sewer river unless you are flying. Find or buy a wings potion, or cast a wings spell.',
       modalContent: {
         title: 'A river of sewage blocks the way north',
@@ -518,13 +528,7 @@ const ROOM_GATES = {
   },
   '232y': {
     'south': {
-      check: async (playerId) => {
-        const user = await prisma.user.findUnique({
-          where: { id: playerId },
-          select: { wings: true },
-        })
-        return user?.wings >= 1
-      },
+      check: (playerId) => playerCanFly(playerId),
       message: 'You will not be able to cross back over this sewer river unless you are flying.',
       modalContent: {
         title: 'A river of sewage blocks the way south',

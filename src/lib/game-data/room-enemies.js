@@ -1114,9 +1114,8 @@ const ROOM_ENEMIES = {
     ],
   },
   // The back alleys and the shady end of town run `thief2.php` — the same lone
-  // Thief, but on a 1-in-15 roll. Legacy danger level 3. Room 237 (the Stables)
-  // also included thief2 in the original, but declared danger level 0 — the include
-  // was blanket paste across that file set, so the Stables stay safe here.
+  // Thief, but on a 1-in-15 roll. Legacy danger level 3, which the Stables share:
+  // they sit outside the Grand Gate, and a stall full of horses is worth robbing.
   '231': {
     probabilistic: true,
     spawnChance: 0.067,
@@ -1146,6 +1145,14 @@ const ROOM_ENEMIES = {
     ],
   },
   '236': {
+    probabilistic: true,
+    spawnChance: 0.067,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  // Room 237 — the Stables, outside the town wall on the Rocky Flats road.
+  '237': {
     probabilistic: true,
     spawnChance: 0.067,
     enemies: [

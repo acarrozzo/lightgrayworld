@@ -37,6 +37,10 @@ const getLocationColor = (name: string, isMuted: boolean) => {
     return isMuted
       ? 'bg-emerald-700/40 border-emerald-700/60'
       : 'bg-emerald-700/60 hover:bg-emerald-700/80 border-emerald-800/70 hover:border-emerald-700/90'
+  } else if (name === 'Red Town') {
+    return isMuted
+      ? 'bg-red-600/40 border-red-600/60'
+      : 'bg-red-600/60 hover:bg-red-600/80 border-red-700/70 hover:border-red-600/90'
   } else if (name === 'Room Zero') {
     return isMuted
       ? 'bg-gray-700/60 border-gray-600/70'

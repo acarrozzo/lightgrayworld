@@ -11,7 +11,7 @@ import { EquipSlot } from '@prisma/client'
 import Icon from '@/components/Icon'
 import { resolveItemIcon } from '@/lib/item-actions'
 
-type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'ring' | 'neck' | 'consumables' | 'misc'
+import type { FilterTab } from '@/lib/inventory-categories'
 
 interface CharPanelProps {
   player: Player
@@ -114,6 +114,8 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
         return 'ring'
       case EquipSlot.NECK:
         return 'neck'
+      case EquipSlot.MOUNT:
+        return 'mount'
       default:
         return 'all'
     }
@@ -369,6 +371,18 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                     })
                   }
                   onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.NECK))}
+                />
+                {/* Row 5: MOUNT */}
+                <EquipmentSlot
+                  slot={EquipSlot.MOUNT}
+                  item={equippedBySlot.get(EquipSlot.MOUNT)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.MOUNT))}
                 />
               </div>
             </div>

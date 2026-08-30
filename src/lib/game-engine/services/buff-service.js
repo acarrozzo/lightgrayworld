@@ -17,16 +17,22 @@
  *     which would silently wipe a buff.
  */
 
-// Flat bonus granted by an active stat buff. The original's reds/greens/blues/
-// yellows were all +20, and nothing else grants a stat buff yet.
-const STAT_BUFF_AMOUNT = 20
-
-/** Buff field -> the stat it boosts. Drives BattleState's bonus lookup. */
+/**
+ * Buff field -> what it boosts while it runs. Drives BattleState's bonus lookup.
+ *
+ * A field declares its own stats and its own magnitude because the original's
+ * buffs are not uniform: the reds/greens/blues/yellows capsules are +20 to a
+ * single stat for 100 clicks, while a cup of coffee is +10 to *all four* for 10.
+ * Duration still lives in the countdown column; this is the magnitude.
+ *
+ * @type {Record<string, { stats: string[], amount: number }>}
+ */
 const STAT_BUFF_FIELDS = {
-  buffStrClicks: 'str',
-  buffDexClicks: 'dex',
-  buffMagClicks: 'mag',
-  buffDefClicks: 'def',
+  buffStrClicks: { stats: ['str'], amount: 20 },
+  buffDexClicks: { stats: ['dex'], amount: 20 },
+  buffMagClicks: { stats: ['mag'], amount: 20 },
+  buffDefClicks: { stats: ['def'], amount: 20 },
+  buffCoffeeClicks: { stats: ['str', 'dex', 'mag', 'def'], amount: 10 },
 }
 
 /** Every countdown field, ability and stat alike. Order is not significant. */
@@ -43,8 +49,9 @@ const BUFF_SELECT = Object.fromEntries(BUFF_FIELDS.map((field) => [field, true])
 function getStatBuffBonuses(row) {
   const bonuses = { str: 0, dex: 0, mag: 0, def: 0 }
   if (!row) return bonuses
-  for (const [field, stat] of Object.entries(STAT_BUFF_FIELDS)) {
-    if ((row[field] || 0) > 0) bonuses[stat] += STAT_BUFF_AMOUNT
+  for (const [field, { stats, amount }] of Object.entries(STAT_BUFF_FIELDS)) {
+    if ((row[field] || 0) <= 0) continue
+    for (const stat of stats) bonuses[stat] += amount
   }
   return bonuses
 }
@@ -123,10 +130,10 @@ const BUFF_LABELS = {
   buffDexClicks: 'Dexterity',
   buffMagClicks: 'Magic',
   buffDefClicks: 'Defense',
+  buffCoffeeClicks: 'Coffee',
 }
 
 module.exports = {
-  STAT_BUFF_AMOUNT,
   STAT_BUFF_FIELDS,
   BUFF_FIELDS,
   BUFF_SELECT,

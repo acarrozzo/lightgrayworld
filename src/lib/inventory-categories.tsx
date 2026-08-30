@@ -18,6 +18,7 @@ export type FilterTab =
   | 'feet'
   | 'ring'
   | 'neck'
+  | 'mount'
   | 'consumables'
   | 'crafting'
   | 'misc'
@@ -50,6 +51,7 @@ export function getItemCategory(item: InventoryItem): ItemCategory {
     case EquipSlot.FEET: return 'feet'
     case EquipSlot.RING: return 'ring'
     case EquipSlot.NECK: return 'neck'
+    case EquipSlot.MOUNT: return 'mount'
   }
   if (item.template.type === ItemType.CONSUMABLE) return 'consumables'
   if (getCraftingKind(item)) return 'crafting'
@@ -67,6 +69,7 @@ export const INVENTORY_TABS: Array<{ id: FilterTab; label: string }> = [
   { id: 'feet', label: 'feet' },
   { id: 'ring', label: 'ring' },
   { id: 'neck', label: 'neck' },
+  { id: 'mount', label: 'mount' },
   { id: 'consumables', label: 'consumables' },
   { id: 'crafting', label: 'crafting' },
   { id: 'misc', label: 'misc' },

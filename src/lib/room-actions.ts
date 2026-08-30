@@ -198,6 +198,9 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'rest at fountain', label: 'Rest at Fountain', icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
     { action: 'open crafting', label: 'Open Crafting', icon: 'craft', className: 'bg-orange-600 hover:bg-orange-700' },
   ],
+  '214': [
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
   '215': [
     { action: 'talk to red guard captain', label: 'Red Guard Captain', icon: 'npc-redguardcaptain', className: 'bg-red-600 hover:bg-red-700', questIds: questIdsForNpc('red_guard_captain') },
   ],
@@ -225,7 +228,9 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'talk to wizard morty', label: 'Wizard Morty', icon: 'npc-wizard2', className: 'bg-purple-600 hover:bg-purple-700', questIds: questIdsForNpc('wizard_morty'), requiresCompletedQuest: 'quest_wizardsguild_000' },
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'bg-amber-500/80 hover:bg-amber-500' },
+    { action: 'grab pack', label: "Grab Wizard's Pack", icon: 'npc-wizard', className: 'bg-purple-700 hover:bg-purple-600' },
     { action: 'rest at wizard fire', label: "Rest at Wizard's Fire", icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
+    { action: 'teleport to kobold lair', label: 'Teleport to Kobold Lair', icon: 'world', className: 'bg-indigo-600 hover:bg-indigo-500', requiresCompletedQuest: 'quest_wizardsguild_000' },
   ],
   '226': [
     { action: 'talk to warrior recruiter', label: "Warrior's Guild Recruiter", icon: 'npc-warrior', className: 'bg-blue-600 hover:bg-blue-700', questIds: questIdsForNpc('warriors_guild_recruiter') },
@@ -234,6 +239,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'bg-amber-500/80 hover:bg-amber-500' },
     { action: 'grab pack', label: "Grab Warrior's Pack", icon: 'npc-warrior', className: 'bg-blue-700 hover:bg-blue-600' },
     { action: 'rest at warrior fire', label: "Rest at Warrior's Fire", icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
+    { action: 'teleport to ogre lair', label: 'Teleport to Ogre Lair', icon: 'world', className: 'bg-indigo-600 hover:bg-indigo-500', requiresCompletedQuest: 'quest_warriorsguild_000' },
   ],
   '227': [
     { action: 'view shop', label: 'View Shop', icon: 'sword1', className: 'bg-amber-500/80 hover:bg-amber-500' },
@@ -243,6 +249,9 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '236': [
     { action: 'view shop', label: 'View Shop', icon: 'shop', className: 'bg-gray-600 hover:bg-gray-500' },
+  ],
+  '237': [
+    { action: 'view shop', label: 'View Stables', icon: 'tent', className: 'bg-amber-500/80 hover:bg-amber-500' },
   ],
 
   // ==================== RED TOWN SEWERS / DEN / CATACOMBS ====================

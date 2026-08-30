@@ -19,7 +19,7 @@ interface CraftingPanelProps {
    * tier (Freddie's leather) is unlocked yet. The server re-checks it — this
    * just keeps the panel from advertising a craft that would be refused.
    */
-  quests?: { questId: string }[]
+  quests?: { questId: string; completed?: boolean }[]
   onCraft: (recipeId: string, quantity: number) => void
   onClose: () => void
   /** Recipe id currently being crafted (its buttons show a spinner / disable). */
@@ -44,6 +44,10 @@ export default function CraftingPanel({
 }: CraftingPanelProps) {
   const recipes = useMemo(() => getRecipesForRoom(roomId), [roomId])
   const startedQuestIds = useMemo(() => new Set(quests.map((q) => q.questId)), [quests])
+  const completedQuestIds = useMemo(
+    () => new Set(quests.filter((q) => q.completed).map((q) => q.questId)),
+    [quests]
+  )
 
   // The result flyout anchors to whichever recipe card the latest craft result
   // belongs to (all craft buttons share the action name 'craft', so we match on
@@ -81,9 +85,18 @@ export default function CraftingPanel({
   const missingTool = (recipe: Recipe) =>
     recipe.tool && qtyOf(recipe.tool.slug) < 1 ? recipe.tool : null
 
-  /** The quest a recipe is locked behind, while it is still locked. */
-  const lockedBy = (recipe: Recipe) =>
-    recipe.unlock && !startedQuestIds.has(recipe.unlock.questId) ? recipe.unlock : null
+  /**
+   * The quest a recipe is locked behind, while it is still locked. Most recipes
+   * unlock the moment the quest is accepted; ones marking `requireCompleted`
+   * (the chef's meatballs) stay locked until it is turned in.
+   */
+  const lockedBy = (recipe: Recipe) => {
+    if (!recipe.unlock) return null
+    const done = 'requireCompleted' in recipe.unlock && recipe.unlock.requireCompleted
+      ? completedQuestIds.has(recipe.unlock.questId)
+      : startedQuestIds.has(recipe.unlock.questId)
+    return done ? null : recipe.unlock
+  }
 
   // How many times this recipe can run right now — the min over inputs, then
   // clamped by remaining output stack space.

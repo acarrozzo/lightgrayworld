@@ -3020,7 +3020,7 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'sign-metal',
       iconColor: 'red-600',
-      description: 'The office is empty, no one is around. Head southwest to leave the Barracks, or north to visit the Captain up at the Lookout Tower.',
+      description: 'The office is empty, no one is around. A sign sits propped on the desk beside a bowl of spare rings. Head southwest to leave the Barracks, or north to visit the Captain up at the Lookout Tower.',
       dangerLevel: 0,
       north: '215',
       south: null,
@@ -3598,7 +3598,10 @@ async function main() {
       icon: 'tent',
       iconColor: 'red-500',
       description: 'A large selection of horses and other strong mounts are stalled here, available for purchase if you have the coin.',
-      dangerLevel: 0,
+      // The Stables ran the back-alley `thief2` set in the original — a lone
+      // Thief on a 1-in-15 roll. Mounts are worth stealing, and the stalls sit
+      // outside the town wall.
+      dangerLevel: 3,
       north: null,
       south: null,
       east: null,
@@ -4240,6 +4243,7 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
+      hasSearch: true,
       directionColors: { north: 'gray-600', south: 'gray-600', east: 'gray-600', west: 'gray-600' }
     },
     {
@@ -4361,7 +4365,10 @@ async function main() {
       name: 'Flower',
       description: 'A beautiful wildflower from the flower patch. Bitter to eat — costs 1 HP.',
       type: ItemType.MISC,
-      max: 1,
+      // Two, not one: the Plaza gardener's "Twice as Nice" wants a matched pair,
+      // and the Babylon Gardens will only let you pick a second one. A cap of 1
+      // made that quest impossible to hand in.
+      max: 2,
       value: 10,
       metadata: {
         icon: 'flower',
@@ -6031,6 +6038,23 @@ async function main() {
       },
     },
     {
+      id: 'coffee_001',
+      slug: 'coffee',
+      name: 'Coffee',
+      description: "A cup o' coffee from the Red Dining Room. +10 to every core stat for 10 clicks.",
+      type: ItemType.CONSUMABLE,
+      max: 99,
+      value: 50,
+      metadata: {
+        icon: 'coffee',
+        // A short, broad burst rather than the capsules' long single-stat one:
+        // all four stats at +10 for 10 clicks, exactly the original's line. The
+        // amount and the stat spread live on the buff field itself — see
+        // STAT_BUFF_FIELDS in game-engine/services/buff-service.js.
+        consumable: { verb: 'drink', buff: { field: 'buffCoffeeClicks', clicks: 10 } },
+      },
+    },
+    {
       id: 'purple-potion_001',
       slug: 'purple-potion',
       name: 'Purple Potion',
@@ -6689,6 +6713,106 @@ async function main() {
       value: 4000,
       equipSlot: EquipSlot.RING,
       metadata: { icon: 'ring', regen: { mp: 1 } },
+    },
+
+    // ---- Red Town Stables ----
+    // The original posted this board and never opened the shop: eight mounts,
+    // their prices and their stat lines, under a "COMING SOON". The prices and
+    // stats below are that board, unchanged — what is new is that you can now
+    // buy one and ride it. Mounts occupy their own equip slot, so a mount never
+    // competes with a weapon, a ring or a necklace; they are the single largest
+    // stat purchase in the game and priced accordingly (50k to 2m).
+    //
+    // `icon: 'tent'` is a placeholder standing in for real mount art.
+    {
+      id: 'pony_001',
+      slug: 'pony',
+      name: 'Pony',
+      description: 'A small, patient pony. Not fast, but it never complains. +20 to every core stat.',
+      type: ItemType.EQUIPMENT,
+      max: 1,
+      value: 50000,
+      equipSlot: EquipSlot.MOUNT,
+      metadata: { icon: 'tent', statMods: { str: 20, dex: 20, mag: 20, def: 20 } },
+    },
+    {
+      id: 'stallion_001',
+      slug: 'stallion',
+      name: 'Stallion',
+      description: 'Barded and bad-tempered, and it will walk through most things you point it at. +100 STR, +200 DEF.',
+      type: ItemType.EQUIPMENT,
+      max: 1,
+      value: 100000,
+      equipSlot: EquipSlot.MOUNT,
+      metadata: { icon: 'tent', statMods: { str: 100, def: 200 } },
+    },
+    {
+      id: 'clydesdale_001',
+      slug: 'clydesdale',
+      name: 'Clydesdale',
+      description: 'Feathered hooves the size of dinner plates and the shoulders to match. +200 STR.',
+      type: ItemType.EQUIPMENT,
+      max: 1,
+      value: 200000,
+      equipSlot: EquipSlot.MOUNT,
+      metadata: { icon: 'tent', statMods: { str: 200 } },
+    },
+    {
+      id: 'thoroughbred_001',
+      slug: 'thoroughbred',
+      name: 'Thoroughbred',
+      description: 'All leg and nerve. Gone before the stall door finishes swinging. +200 DEX.',
+      type: ItemType.EQUIPMENT,
+      max: 1,
+      value: 200000,
+      equipSlot: EquipSlot.MOUNT,
+      metadata: { icon: 'tent', statMods: { dex: 200 } },
+    },
+    {
+      id: 'donkey_001',
+      slug: 'donkey',
+      name: 'Donkey',
+      description: 'The stablehand swears it belonged to a wizard. It certainly stares like one. +100 MAG.',
+      type: ItemType.EQUIPMENT,
+      max: 1,
+      value: 200000,
+      equipSlot: EquipSlot.MOUNT,
+      metadata: { icon: 'tent', statMods: { mag: 100 } },
+    },
+    {
+      id: 'mule_001',
+      slug: 'mule',
+      name: 'Mule',
+      description: 'Immovable in every sense. Nothing that has hit it has yet persuaded it to move. +400 DEF.',
+      type: ItemType.EQUIPMENT,
+      max: 1,
+      value: 200000,
+      equipSlot: EquipSlot.MOUNT,
+      metadata: { icon: 'tent', statMods: { def: 400 } },
+    },
+    {
+      id: 'mustang_001',
+      slug: 'mustang',
+      name: 'Mustang',
+      description: 'Caught wild out past Rocky Flats and never entirely tamed. +100 to every core stat.',
+      type: ItemType.EQUIPMENT,
+      max: 1,
+      value: 500000,
+      equipSlot: EquipSlot.MOUNT,
+      metadata: { icon: 'tent', statMods: { str: 100, dex: 100, mag: 100, def: 100 } },
+    },
+    {
+      id: 'unicorn_001',
+      slug: 'unicorn',
+      name: 'Unicorn',
+      description: 'The last stall, and the reason anyone walks down here. It flies. +200 to every core stat.',
+      type: ItemType.EQUIPMENT,
+      max: 1,
+      value: 2000000,
+      equipSlot: EquipSlot.MOUNT,
+      // `grantsFlight` satisfies the same gates a wings potion does — see
+      // playerCanFly() in game-engine/room-gates.js. Riding it is flying.
+      metadata: { icon: 'tent', grantsFlight: true, statMods: { str: 200, dex: 200, mag: 200, def: 200 } },
     },
   ]
 

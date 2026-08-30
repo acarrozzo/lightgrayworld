@@ -68,6 +68,10 @@ const ROOM_LOOT = [
   { roomId: '028c', slug: 'pickaxe' },
 
   // ==================== RED TOWN ====================
+  // Room 208 — Rob's Farm. Legacy's `grab veggies` topped you up to five; as a
+  // room item the autoRespawn refill covers "come back if you run out".
+  { roomId: '208', slug: 'veggies', quantity: 5 },
+
   // Room 212 — the Red Guard Barracks weapon rack. Legacy offered these as three
   // separate "grab" buttons; as room items they use the shared pickup flow and the
   // autoRespawn refill covers the "come back for another" behaviour.
@@ -78,8 +82,17 @@ const ROOM_LOOT = [
   // Room 213 — Red Guard Living Quarters ("cooked meat that's up for grabs")
   { roomId: '213', slug: 'cooked-meat', quantity: 5 },
 
-  // Room 223 — Red Dining Room ("some food stuffs are available for you to take")
+  // Room 214 — the Red Guard Captain's office, and the bowl of spare rings on his
+  // desk. The sign says one each; the respawn is what makes "if you lose it, come
+  // back here for another free one" true.
+  { roomId: '214', slug: 'ring-of-strength-iii' },
+
+  // Room 223 — Red Dining Room ("some food stuffs are available for you to take").
+  // The full spread the original laid out: meat, veg and a pot of coffee, ten of
+  // each, all of it free.
   { roomId: '223', slug: 'cooked-meat', quantity: 5 },
+  { roomId: '223', slug: 'veggies', quantity: 10 },
+  { roomId: '223', slug: 'coffee', quantity: 10 },
 
   // Room 232m — the Thieve's Den bolt stash in the corner of the hangout
   { roomId: '232m', slug: 'crossbow-bolt', quantity: 25 },

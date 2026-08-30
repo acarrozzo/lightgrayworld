@@ -32,6 +32,8 @@
  *
  * @typedef {Object} RecipeUnlock
  * @property {string} questId  Quest that must have been started or completed.
+ * @property {boolean} [requireCompleted] When true, merely accepting the quest is
+ *                            not enough — it must be turned in.
  * @property {string} hint     One line telling the player where to unlock it.
  *
  * @typedef {Object} Recipe
@@ -51,8 +53,15 @@
  * @property {string} icon   Icon name for the section header.
  */
 
-/** Rooms where the crafting panel is available. */
-const CRAFTING_ROOMS = ['003', '021', '024']
+/**
+ * Rooms where the crafting panel is available.
+ *
+ * 210 is Red Town's Grand Square, which seeds `hasFire` and `hasCraftingTable`,
+ * renders an "Open Crafting" button and registers a `craft` handler — but was
+ * missing from this list, so every craft attempted there was refused with "You
+ * cannot craft that here."
+ */
+const CRAFTING_ROOMS = ['003', '021', '024', '210']
 
 /**
  * Crafting stations, in display order. Recipes are grouped under these as
@@ -129,6 +138,26 @@ const CRAFTING_RECIPES = [
     blurb: 'Grind wheat and bake it into bread.',
     inputs: [{ slug: 'wheat', qty: 2, name: 'Wheat', icon: 'flower' }],
     output: { slug: 'bread', qty: 1, name: 'Bread', effect: 'Restores 15 HP', max: 999 },
+  },
+  {
+    // The Town Hall Plaza chef's recipe. "Cookin up some Meat-a-balls" ends with
+    // him walking you through it start to finish and the quest already says you
+    // leave with the recipe in your head — this is that recipe. Five cooked meat
+    // for one 400 HP meatball, as the original priced it, and locked until the
+    // turn-in is done rather than merely accepted: he has not taught you anything
+    // until you have handed the meat over.
+    id: 'meatball',
+    label: 'Meatball',
+    outputIcon: 'steak',
+    station: 'fire',
+    blurb: "Roll and fry five pieces of cooked meat the way the Red Town chef showed you.",
+    unlock: {
+      questId: 'quest_townhallplaza_002',
+      requireCompleted: true,
+      hint: 'Find the Red Town chef in the Town Hall Plaza to learn how to cook meatballs.',
+    },
+    inputs: [{ slug: 'cooked-meat', qty: 5, name: 'Cooked Meat', icon: 'cooked-meat' }],
+    output: { slug: 'meatball', qty: 1, name: 'Meatball', effect: 'Restores 400 HP', max: 99 },
   },
 
   // ---- Leather working ----

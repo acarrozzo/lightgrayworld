@@ -94,6 +94,27 @@ const SEARCH_LOOT_TABLES = {
       { message: 'You search the Kobold Dead End and find a Blue Potion!', effect: { type: 'grantItem', itemSlug: 'blue-potion', quantity: 1 } },
     ],
   },
+
+  // ==================== RED TOWN SEWERS ====================
+  // The Sewer Oasis's stack of folded Black Robes. Whoever keeps this place dry
+  // also keeps spare clothes here, and the original never rolled for it — the
+  // search always finds them. One is enough, so it stops paying out while you are
+  // carrying one. (Legacy had the two branches the wrong way round and told a
+  // player with no robe that they were lucky to already have one; the intent is
+  // plain from the messages and is what is implemented here.)
+  '232x': {
+    chance: 1,
+    onlyWhileMissing: {
+      itemSlug: 'black-robe',
+      message: 'You search the Sewer Oasis and find a neat stack of folded Black Robes. Luckily, you already have one.',
+    },
+    entries: [
+      {
+        message: 'You search the Sewer Oasis and find a neat stack of folded Black Robes! You pick one up.',
+        effect: { type: 'grantItem', itemSlug: 'black-robe', quantity: 1 },
+      },
+    ],
+  },
 }
 
 // Pull a short "+5 HP" / "−1 HP" / "+10 MP" effect string out of an item action

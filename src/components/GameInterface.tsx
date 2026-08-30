@@ -30,6 +30,7 @@ import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import { MAP_CONFIG, TELEPORT_LOCATIONS } from './game-interface/constants'
+import type { FilterTab } from '@/lib/inventory-categories'
 import { findTravelDirection, checkIfExitHasGate, normalizeCommand, getMapIdForRoom, getUnlockedMaps, formatDirectionPhrase } from './game-interface/utils'
 import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
@@ -193,7 +194,6 @@ export default function GameInterface() {
     isOpen: false,
     player: null,
   })
-  type FilterTab = 'all' | 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'ring' | 'neck' | 'consumables' | 'misc'
   const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
   const [hasQuestUpdate, setHasQuestUpdate] = useState(false)
@@ -784,6 +784,13 @@ export default function GameInterface() {
     loadRoomDataRef.current = loadRoomData
   }, [loadRoomData])
 
+  // handleAction is redefined every render and the socket subscriptions below are
+  // deliberately long-lived, so they dispatch through this ref rather than
+  // capturing a render's copy of it.
+  useEffect(() => {
+    handleActionRef.current = handleAction
+  })
+
   useEffect(() => {
     if (player && isLoggedIn && !currentRoom) {
       // Only load room data if we don't already have it
@@ -796,6 +803,8 @@ export default function GameInterface() {
       loadRoomData({ requireAuth: false })
     }
   }, [isLoggedIn, isInitialLoad, loadRoomData])
+
+  const handleActionRef = useRef<(input: string | { type: string; data?: any }) => void>(() => {})
 
   const handleAction = async (actionInput: string | { type: string; data?: any }) => {
     const actionType = typeof actionInput === 'string' ? actionInput : actionInput.type
@@ -1355,6 +1364,17 @@ export default function GameInterface() {
 
       if (payload?.data?.inventory) {
         setInventory(payload.data.inventory)
+      }
+
+      // A server action that moves the player names its destination and lets the
+      // normal teleport pipeline do the moving (the guild lair teleports work this
+      // way, as flee and respawn already do). The server has already decided the
+      // move is allowed; this only carries it out.
+      if (success && payload?.data?.teleportRoomId) {
+        const destination = payload.data.teleportRoomId
+        if (destination !== currentRoomRef.current?.roomId) {
+          handleActionRef.current({ type: 'teleport', data: { toRoomId: destination } })
+        }
       }
 
       if (payload?.data?.quests) {

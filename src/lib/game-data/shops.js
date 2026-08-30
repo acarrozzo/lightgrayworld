@@ -94,6 +94,10 @@ const SHOPS = {
       'wand',
       'wizard-staff',
       'gray-wand',
+      // The guild's own forge work, and the reason a member shops here rather
+      // than at Adam's: a one-handed and a two-handed iron staff.
+      'iron-staff',
+      'iron-battle-staff',
       'wizard-hat',
       'gray-robe',
       'ring-of-magic-v',
@@ -143,6 +147,23 @@ const SHOPS = {
   '229': {
     name: "Vincenzo's Meat & Produce Stand",
     stock: ['cooked-meat', 'meatball', 'bluefish', 'veggies'],
+  },
+
+  // Red Town Stables, outside the Grand Gate. The original posted the board and
+  // left it "COMING SOON"; the stalls are open now, at the prices it advertised.
+  // Ordered cheapest first — this is a ladder you climb over a very long time.
+  '237': {
+    name: 'Red Town Stables',
+    stock: [
+      'pony',
+      'stallion',
+      'clydesdale',
+      'thoroughbred',
+      'donkey',
+      'mule',
+      'mustang',
+      'unicorn',
+    ],
   },
 
   // The Shady Shop, hidden behind the alley banners: ammunition by the sack,

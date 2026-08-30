@@ -620,7 +620,11 @@ async function executeCraft(playerId, roomState, actionData = {}) {
   if (recipe.unlock) {
     const { getQuestProgress } = require('./services/quest-service')
     const progress = await getQuestProgress(playerId, recipe.unlock.questId)
-    if (!progress) {
+    // Accepting the quest is enough for Freddie's leather tier — he hands you the
+    // technique with the job. The chef's meatballs set `requireCompleted`: he has
+    // not taught you anything until you have actually brought him the meat.
+    const unlocked = recipe.unlock.requireCompleted ? progress?.completed === true : !!progress
+    if (!unlocked) {
       return fail(recipe.unlock.hint, recipe.id)
     }
   }
@@ -1137,37 +1141,32 @@ function makeRepeatableChestHandler({
 }
 
 /**
- * The Warrior's Pack: the guild tops your consumables back up to a floor rather
+ * A guild supply pack: the guild tops your consumables back up to a floor rather
  * than handing out a fixed batch. Legacy behaviour exactly — it sets each of the
  * four supplies to its minimum if you are below it, and tells you it did nothing
  * if you are already stocked. That makes it a safety net rather than a farm.
+ *
+ * Both guilds run the same pack with their own colour of supplies: the warriors
+ * stock red (HP), the wizards blue (MP).
  */
-function makeWarriorPackHandler() {
-  const PACK = [
-    { slug: 'reds', floor: 3, label: 'reds' },
-    { slug: 'meatball', floor: 5, label: 'meatballs' },
-    { slug: 'red-potion', floor: 5, label: 'red potions' },
-    { slug: 'red-balm', floor: 1, label: 'red balm' },
-  ]
-
+function makeGuildPackHandler({ questId, label, icon, iconColor, joinMessage, pack }) {
   return async (playerId, roomState) => {
     const { getHeldQuantity, grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
 
     roomState.touchActivity()
 
-    const isMember = await makeGuildMemberCheck('quest_warriorsguild_000')(playerId)
+    const isMember = await makeGuildMemberCheck(questId)(playerId)
     if (!isMember) {
-      const message = 'Join the Warrior’s Guild to claim a Warrior’s Pack. Speak to the recruiter.'
       return {
         success: true,
         action: 'grab pack',
         playerEvents: [
           {
             event: 'action:feedback',
-            payload: createActionFeedbackPayload('grab pack', 'info', message, {
+            payload: createActionFeedbackPayload('grab pack', 'info', joinMessage, {
               roomId: roomState.roomId,
               showModal: true,
-              modalContent: { type: 'icon', icon: 'npc-warrior', iconColor: 'blue-400', title: "Warrior's Guild", message },
+              modalContent: { type: 'icon', icon, iconColor, title: label, message: joinMessage },
             }),
           },
         ],
@@ -1176,7 +1175,7 @@ function makeWarriorPackHandler() {
 
     const lines = []
     const granted = []
-    for (const entry of PACK) {
+    for (const entry of pack) {
       const held = await getHeldQuantity(playerId, entry.slug)
       const shortfall = entry.floor - held
       if (shortfall <= 0) {
@@ -1194,8 +1193,8 @@ function makeWarriorPackHandler() {
 
     const inventory = await getPlayerInventory(playerId)
     const message = granted.length
-      ? 'You replenish your Warrior’s Pack.'
-      : 'Your Warrior’s Pack is already full.'
+      ? `You replenish your ${label}.`
+      : `Your ${label} is already full.`
 
     return {
       success: true,
@@ -1209,15 +1208,87 @@ function makeWarriorPackHandler() {
             showModal: true,
             modalContent: {
               type: 'icon',
-              icon: 'npc-warrior',
-              iconColor: 'blue-400',
-              title: "Warrior's Pack",
+              icon,
+              iconColor,
+              title: label,
               message: lines.join('\n'),
             },
           }),
         },
       ],
     }
+  }
+}
+
+/** The Warrior's Guild pack: reds, meatballs, red potions, red balm. */
+const makeWarriorPackHandler = () =>
+  makeGuildPackHandler({
+    questId: 'quest_warriorsguild_000',
+    label: "Warrior's Pack",
+    icon: 'npc-warrior',
+    iconColor: 'blue-400',
+    joinMessage: 'Join the Warrior’s Guild to claim a Warrior’s Pack. Speak to the recruiter.',
+    pack: [
+      { slug: 'reds', floor: 3, label: 'reds' },
+      { slug: 'meatball', floor: 5, label: 'meatballs' },
+      { slug: 'red-potion', floor: 5, label: 'red potions' },
+      { slug: 'red-balm', floor: 1, label: 'red balm' },
+    ],
+  })
+
+/** The Wizard's Guild pack: the same four slots in blue. */
+const makeWizardPackHandler = () =>
+  makeGuildPackHandler({
+    questId: 'quest_wizardsguild_000',
+    label: "Wizard's Pack",
+    icon: 'npc-wizard',
+    iconColor: 'purple-400',
+    joinMessage: 'Join the Wizard’s Guild to claim a Wizard’s Pack. Speak to the recruiter.',
+    pack: [
+      { slug: 'blues', floor: 3, label: 'blues' },
+      { slug: 'bluefish', floor: 5, label: 'bluefish' },
+      { slug: 'blue-potion', floor: 5, label: 'blue potions' },
+      { slug: 'blue-balm', floor: 1, label: 'blue balm' },
+    ],
+  })
+
+/**
+ * A guild's lair teleport: the standing perk of membership, and the reason the
+ * hall is worth walking back to. Members only, refused in battle, and — like the
+ * flee and respawn paths — the move itself runs through the client's normal
+ * teleport dispatch so party pulls, room events and persistence all behave. The
+ * server decides *whether*; `teleportRoomId` only says *where*.
+ */
+function makeGuildTeleportHandler({ action, questId, toRoomId, label, icon, iconColor, joinMessage, message }) {
+  return async (playerId, roomState) => {
+    roomState.touchActivity()
+
+    const respond = (outcome, text, extra = {}) => ({
+      success: outcome === 'success',
+      action,
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload(action, outcome, text, {
+            roomId: roomState.roomId,
+            ...extra,
+          }),
+        },
+      ],
+    })
+
+    if (!(await makeGuildMemberCheck(questId)(playerId))) {
+      return respond('info', joinMessage, {
+        showModal: true,
+        modalContent: { type: 'icon', icon, iconColor, title: label, message: joinMessage },
+      })
+    }
+
+    if (roomState.activeBattles.get(playerId)?.isActive) {
+      return respond('failure', 'You cannot leave the room in the middle of battle!')
+    }
+
+    return respond('success', message, { teleportRoomId: toRoomId })
   }
 }
 
@@ -2183,6 +2254,17 @@ const ROOM_ACTIONS = {
         overchargeMessage: 'You rest at the Wizard’s Fire. Your HP and MP are fully restored, plus an extra +100 to each.',
       })
     },
+    'grab pack': makeWizardPackHandler(),
+    'teleport to kobold lair': makeGuildTeleportHandler({
+      action: 'teleport to kobold lair',
+      questId: 'quest_wizardsguild_000',
+      toRoomId: '115',
+      label: "Wizard's Guild",
+      icon: 'npc-wizard',
+      iconColor: 'purple-400',
+      joinMessage: 'Join the Wizard’s Guild to use its lair teleport. Speak to the recruiter.',
+      message: 'You teleport to the entrance of the Kobold Lair!',
+    }),
   },
 
   // --- Warrior's Guild (226): two quest givers, a stall, a fire and the Warrior's Pack ---
@@ -2280,6 +2362,16 @@ const ROOM_ACTIONS = {
       })
     },
     'grab pack': makeWarriorPackHandler(),
+    'teleport to ogre lair': makeGuildTeleportHandler({
+      action: 'teleport to ogre lair',
+      questId: 'quest_warriorsguild_000',
+      toRoomId: '111',
+      label: "Warrior's Guild",
+      icon: 'npc-warrior',
+      iconColor: 'blue-400',
+      joinMessage: 'Join the Warrior’s Guild to use its lair teleport. Speak to the recruiter.',
+      message: 'You teleport to the entrance of the Ogre Lair!',
+    }),
   },
 
   // --- Shops ---
@@ -2289,6 +2381,7 @@ const ROOM_ACTIONS = {
   '227': { 'view shop': makeShopHandler('227', { icon: 'sword1', iconColor: 'red-500' }) },
   '229': { 'view shop': makeShopHandler('229', { icon: 'steak', iconColor: 'red-500' }) },
   '236': { 'view shop': makeShopHandler('236', { icon: 'shop', iconColor: 'gray-500' }) },
+  '237': { 'view shop': makeShopHandler('237', { icon: 'tent', iconColor: 'red-500' }) },
 
   // --- Grand Square: the fountain, the crafting fire, and the town directory ---
   '210': {
@@ -2321,6 +2414,24 @@ const ROOM_ACTIONS = {
         ],
         questMessage: 'Guilds are scattered throughout the land, and always the best place to learn stronger skills and spells.',
         questMessageDescription: 'Both Red Town guilds take an initiation quest before they take you.',
+      },
+    },
+  },
+
+  // --- The Red Guard Captain's office: the sign over the bowl of spare rings.
+  // The ring itself is a room item (see config/room-loot.js), so picking it up
+  // uses the shared pickup flow and the autoRespawn refill is what makes "if you
+  // lose it, come back for another free one" true.
+  '214': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the sign on the Captain’s desk.',
+      modalContent: {
+        title: 'You read the sign',
+        type: 'icon',
+        icon: 'sign-metal',
+        iconColor: 'red-600',
+        message: 'FREE RING\n\nGrab a free Ring of Strength III out of the bowl. One each — and if you lose it, come back for another.',
       },
     },
   },

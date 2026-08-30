@@ -113,6 +113,9 @@ export default function InventoryDisplay({
       case 'feet':
         filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.FEET)
         break
+      case 'mount':
+        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.MOUNT)
+        break
       case 'ring':
         filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.RING)
         break
@@ -177,6 +180,7 @@ export default function InventoryDisplay({
         feet: 0,
         ring: 0,
         neck: 0,
+        mount: 0,
         consumables: 0,
         crafting: 0,
         misc: 0,
@@ -193,6 +197,7 @@ export default function InventoryDisplay({
       feet: 0,
       ring: 0,
       neck: 0,
+      mount: 0,
       consumables: 0,
       crafting: 0,
       misc: 0,

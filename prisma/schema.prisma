@@ -70,6 +70,7 @@ model User {
   buffDexClicks             Int             @default(0)
   buffMagClicks             Int             @default(0)
   buffDefClicks             Int             @default(0)
+  buffCoffeeClicks          Int             @default(0)
   hp                        Int             @default(10)
   hpMax                     Int             @default(10)
   mp                        Int             @default(2)
@@ -460,6 +461,7 @@ enum EquipSlot {
   FEET
   RING
   NECK
+  MOUNT
 }
 
 enum WeaponCategory {

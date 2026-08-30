@@ -19,6 +19,7 @@ const EQUIP_SLOTS: { key: string; label: string; def: string }[] = [
   { key: 'ring1', label: 'Ring 1', def: '- - -' },
   { key: 'ring2', label: 'Ring 2', def: '- - -' },
   { key: 'neck', label: 'Neck', def: '- - -' },
+  { key: 'mount', label: 'Mount', def: '- - -' },
   { key: 'artifact', label: 'Artifact', def: '- - -' },
 ]
 const PLAYER_ITEM_SLOT_MAP: Record<string, string> = {
@@ -30,6 +31,7 @@ const PLAYER_ITEM_SLOT_MAP: Record<string, string> = {
   FEET: 'feet',
   RING: 'ring1',
   NECK: 'neck',
+  MOUNT: 'mount',
 }
 
 function fmtDate(d: Date) {
