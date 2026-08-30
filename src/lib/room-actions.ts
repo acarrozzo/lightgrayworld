@@ -6,6 +6,16 @@ export interface RoomAction {
   icon?: string
   className?: string
   questIds?: string[]
+  /**
+   * Hide this action until the player has completed the named quest.
+   *
+   * Presentation only — the server gates the action itself (see the guild NPCs'
+   * `preCheck` in room-action-handlers.js), so hiding the button is never what
+   * makes it safe. It exists so an NPC who has nothing to say yet does not
+   * advertise themselves: both guilds show only their recruiter until you have
+   * actually joined.
+   */
+  requiresCompletedQuest?: string
 }
 
 /**
@@ -166,14 +176,14 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '225': [
     { action: 'talk to wizard recruiter', label: "Wizard's Guild Recruiter", icon: 'npc-wizard', className: 'bg-purple-600 hover:bg-purple-700', questIds: questIdsForNpc('wizards_guild_recruiter') },
-    { action: 'talk to wizard morty', label: 'Wizard Morty', icon: 'npc-wizard2', className: 'bg-purple-600 hover:bg-purple-700', questIds: questIdsForNpc('wizard_morty') },
+    { action: 'talk to wizard morty', label: 'Wizard Morty', icon: 'npc-wizard2', className: 'bg-purple-600 hover:bg-purple-700', questIds: questIdsForNpc('wizard_morty'), requiresCompletedQuest: 'quest_wizardsguild_000' },
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'bg-amber-500/80 hover:bg-amber-500' },
     { action: 'rest at wizard fire', label: "Rest at Wizard's Fire", icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
   ],
   '226': [
     { action: 'talk to warrior recruiter', label: "Warrior's Guild Recruiter", icon: 'npc-warrior', className: 'bg-blue-600 hover:bg-blue-700', questIds: questIdsForNpc('warriors_guild_recruiter') },
-    { action: 'talk to warrior pete', label: 'Warrior Pete', icon: 'npc-warrior2', className: 'bg-blue-600 hover:bg-blue-700', questIds: questIdsForNpc('warrior_pete') },
+    { action: 'talk to warrior pete', label: 'Warrior Pete', icon: 'npc-warrior2', className: 'bg-blue-600 hover:bg-blue-700', questIds: questIdsForNpc('warrior_pete'), requiresCompletedQuest: 'quest_warriorsguild_000' },
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'bg-amber-500/80 hover:bg-amber-500' },
     { action: 'grab pack', label: "Grab Warrior's Pack", icon: 'npc-warrior', className: 'bg-blue-700 hover:bg-blue-600' },

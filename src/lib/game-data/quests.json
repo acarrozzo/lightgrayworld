@@ -2,6 +2,7 @@
   "quest_oldman_000": {
     "number": 1,
     "questType": "main",
+    "isIntro": true,
     "level": 1,
     "title": "Talk to the Old Man",
     "summary": "Find the Old Man in his cozy wood cabin.",
@@ -89,6 +90,7 @@
   "quest_youngsoldier_000": {
     "number": 3,
     "questType": "main",
+    "isIntro": true,
     "level": 1,
     "title": "Talk to the Young Soldier",
     "summary": "A young soldier waits impatiently.",
@@ -224,6 +226,7 @@
   "quest_jacklumber_intro": {
     "number": 10,
     "questType": "main",
+    "isIntro": true,
     "level": 1,
     "title": "Talk to Jack Lumber",
     "summary": "A lumberjack lives north of the Forest Gate. He might have work for a proven Wanderer.",
@@ -604,6 +607,7 @@
   "quest_forestgnome_intro": {
     "number": 14,
     "questType": "main",
+    "isIntro": true,
     "level": 13,
     "title": "Talk to the Forest Gnome",
     "summary": "A gnome keeps a cozy tree hut deep in the Forest. He has work for a Wanderer — and a spare hatchet.",
@@ -798,6 +802,7 @@
   "quest_hunterbill_intro": {
     "number": 18,
     "questType": "main",
+    "isIntro": true,
     "level": 13,
     "title": "Talk to Hunter Bill",
     "summary": "A hunter keeps a camp under the canopy near the Forest entrance. He tracks everything that moves out here.",
@@ -969,6 +974,7 @@
   "quest_redguardcaptain_intro": {
     "number": 21,
     "questType": "main",
+    "isIntro": true,
     "level": 15,
     "title": "Talk to the Red Guard Captain",
     "summary": "The Captain runs Red Town's security from the lookout tower above the Barracks. He is not short of work.",
@@ -1169,6 +1175,7 @@
   "quest_townhallplaza_intro": {
     "number": 25,
     "questType": "main",
+    "isIntro": true,
     "level": 15,
     "title": "Talk to the People at the Plaza",
     "summary": "The Town Hall Plaza is full of citizens taking care of business — and several of them are offering rewards for help.",
@@ -1357,6 +1364,7 @@
   "quest_mayorrudolf_intro": {
     "number": 29,
     "questType": "main",
+    "isIntro": true,
     "level": 20,
     "title": "Talk to the Mayor",
     "summary": "Mayor Rudolf runs Red Town from the top floor of Town Hall. He has been waiting for someone capable.",
@@ -1446,6 +1454,7 @@
   "quest_warriorsguild_intro": {
     "number": 31,
     "questType": "main",
+    "isIntro": true,
     "level": 18,
     "title": "Talk to the Warrior's Guild Recruiter",
     "summary": "Sword and axe wielding warriors congregate outside the guild's massive stone hall. One of them is clearly recruiting.",
@@ -1540,6 +1549,7 @@
   "quest_warriorpete_intro": {
     "number": 33,
     "questType": "main",
+    "isIntro": true,
     "level": 20,
     "title": "Talk to Warrior Pete",
     "summary": "Now that you're in the guild, one of its warriors would like a word. He is not impressed.",
@@ -1729,6 +1739,7 @@
   "quest_wizardsguild_intro": {
     "number": 37,
     "questType": "main",
+    "isIntro": true,
     "level": 18,
     "title": "Talk to the Wizard's Guild Recruiter",
     "summary": "Robed men and women mingle outside the Wizard's Guild, talking magic and potions. One of them is watching you.",
@@ -1823,6 +1834,7 @@
   "quest_wizardmorty_intro": {
     "number": 39,
     "questType": "main",
+    "isIntro": true,
     "level": 20,
     "title": "Talk to Wizard Morty",
     "summary": "Now that you're in the guild, one of its wizards has some opinions about your abilities.",

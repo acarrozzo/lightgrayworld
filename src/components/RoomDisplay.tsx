@@ -196,7 +196,14 @@ export default function RoomDisplay({
     )
   }
 
-  const roomActions = getRoomActions(room.roomId)
+  // Actions can declare `requiresCompletedQuest` to stay hidden until the player
+  // has finished that quest — both guilds use it so only the recruiter shows
+  // until you have joined. Presentation only; the server gates the action too.
+  const roomActions = getRoomActions(room.roomId).filter(
+    (a) =>
+      !a.requiresCompletedQuest ||
+      quests.some((q) => q.questId === a.requiresCompletedQuest && q.completed)
+  )
 
   const handleAction = async (action: string) => {
     if (!onAction || isPerformingAction) return

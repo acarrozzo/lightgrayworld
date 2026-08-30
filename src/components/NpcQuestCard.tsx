@@ -47,8 +47,16 @@ export const PRE_QUEST_TALK_ID = '__pretalk__'
  * requirement (so their data shape matches every other quest), but in the
  * journal we collapse them to a single "Talk to {npc}" button that completes
  * the quest in one click — the secondary Talk + Turn In buttons are hidden.
+ *
+ * Derived from `isIntro` in quests.json rather than listed here, so adding a
+ * quest giver is a data change only. A hand-maintained list silently regressed
+ * every NPC added after it was written.
  */
-const TALK_COMPLETE_QUEST_IDS = new Set(['quest_oldman_000', 'quest_youngsoldier_000', 'quest_jacklumber_intro', 'quest_forestgnome_intro', 'quest_hunterbill_intro'])
+const TALK_COMPLETE_QUEST_IDS = new Set(
+  Object.entries(QUESTS as Record<string, { isIntro?: boolean }>)
+    .filter(([, def]) => def.isIntro)
+    .map(([id]) => id)
+)
 
 interface NpcQuestCardProps {
   npcName: string
