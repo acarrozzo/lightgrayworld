@@ -15,6 +15,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import { Settings as SettingsIcon, MessageSquare, MessageSquareText } from 'lucide-react'
 import ExplorePanel, { type ExploreSubView } from './game-interface/ExplorePanel'
+import { type BasicActionSurface } from './BasicActionButtons'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
 import Icon from './Icon'
@@ -141,6 +142,11 @@ export default function GameInterface() {
     content: '',
   })
   const [customAction, setCustomAction] = useState('')
+  // Attack / Search / Rest / Look render both in the room's More Actions section
+  // and beside the compass D-pad. This tracks which copy was last pressed so only
+  // that one shows the result flyout. Defaults to the D-pad, which is always
+  // visible, so results from typed commands still surface somewhere.
+  const [basicActionSurface, setBasicActionSurface] = useState<BasicActionSurface>('explore')
   const [worldTick, setWorldTick] = useState<{
     tickNumber: number
     nextTickAt: number
@@ -3159,6 +3165,11 @@ export default function GameInterface() {
                 isMoveInProgress={isMoveInProgress}
                 isDimmed={battle.isInBattle || isCraftingOpen}
                 showBattleBadge={battle.isInBattle}
+                actionResult={actionResult}
+                isLoadingRoom={isLoadingRoom}
+                currentAction={action}
+                activeActionSurface={basicActionSurface}
+                onActionSurfaceChange={setBasicActionSurface}
               />
             </div>
           )}
@@ -3289,6 +3300,8 @@ export default function GameInterface() {
                     isInBattle={battle.isInBattle}
                     quests={quests}
                     killList={killList}
+                    activeActionSurface={basicActionSurface}
+                    onActionSurfaceChange={setBasicActionSurface}
                   />
                 </div>
               </div>
@@ -3310,6 +3323,11 @@ export default function GameInterface() {
                   availableMaps={availableMaps}
                   onMapChange={handleMapChange}
                   isMoveInProgress={isMoveInProgress}
+                  actionResult={actionResult}
+                  isLoadingRoom={isLoadingRoom}
+                  currentAction={action}
+                  activeActionSurface={basicActionSurface}
+                  onActionSurfaceChange={setBasicActionSurface}
                 />
               </div>
             </div>

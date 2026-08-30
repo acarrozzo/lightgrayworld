@@ -10,6 +10,7 @@ import Icon from './Icon'
 import NpcQuestCard from './NpcQuestCard'
 import ActionFlyout from './ActionFlyout'
 import { useActionFlyout } from '@/hooks/useActionFlyout'
+import { BASIC_ACTION_NAMES } from './BasicActionButtons'
 
 type QuestProgress = { id: string; questId: string; progress: number; completed: boolean; data?: { accepted?: boolean } | null }
 
@@ -76,10 +77,10 @@ export default function RoomDisplay({
 
   // Action result flyout: shows the latest action's result text anchored to the
   // button that triggered it (mirrors the world feed / ActivityTicker). The four
-  // basic actions are owned by RoomBox's persistent buttons, so we skip them here
-  // to avoid showing two flyouts for the same result.
+  // basic actions are owned by BasicActionButtons (in More Actions and beside the
+  // D-pad), so we skip them here to avoid showing two flyouts for the same result.
   const { activeFlyoutAction, flyoutRootRef, dismissFlyout } = useActionFlyout(actionResult)
-  const BASIC_FLYOUT_ACTIONS = ['attack', 'search', 'rest', 'look']
+  const BASIC_FLYOUT_ACTIONS = BASIC_ACTION_NAMES
   const ITEM_FLYOUT_ACTIONS = ['pickup_item', 'examine_item']
   const flyoutActionForButton = (action: string) =>
     activeFlyoutAction === action && !BASIC_FLYOUT_ACTIONS.includes(action)

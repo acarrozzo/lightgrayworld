@@ -3,6 +3,7 @@
 import { Compass as CompassIcon, Map as MapIcon, Maximize2 } from 'lucide-react'
 import Icon from '@/components/Icon'
 import Compass from '@/components/Compass'
+import BasicActionButtons, { type BasicActionSurface } from '@/components/BasicActionButtons'
 import MapContent from '@/components/MapContent'
 import TeleportList, { type TeleportLocation } from './TeleportList'
 import SubTabButton from './SubTabButton'
@@ -37,6 +38,13 @@ interface ExplorePanelProps {
    * Map control opens the full-screen overlay directly.
    */
   variant?: 'sidebar' | 'strip'
+  /** Latest action result, for the flyout on the basic-action buttons. */
+  actionResult?: any
+  isLoadingRoom?: boolean
+  currentAction?: string
+  /** Basic-action flyout ownership — shared with the room's copy of the buttons. */
+  activeActionSurface?: BasicActionSurface
+  onActionSurfaceChange?: (surface: BasicActionSurface) => void
 }
 
 export default function ExplorePanel({
@@ -56,6 +64,11 @@ export default function ExplorePanel({
   isDimmed = false,
   showBattleBadge = false,
   variant = 'sidebar',
+  actionResult,
+  isLoadingRoom = false,
+  currentAction = '',
+  activeActionSurface = 'explore',
+  onActionSurfaceChange,
 }: ExplorePanelProps) {
   const isSidebar = variant === 'sidebar'
   // Only the sidebar is tall enough to hold a map; the mobile strip sends every
@@ -137,15 +150,40 @@ export default function ExplorePanel({
       ) : (
         <div
           className={`relative flex items-center justify-center ${
-            isSidebar ? 'flex-1 min-h-0 p-4' : 'px-4 py-3'
+            isSidebar ? 'flex-1 min-h-0 p-4' : 'px-2 py-3'
           }`}
         >
-          <div className={`transition-opacity duration-300 ${isDimmed ? 'opacity-20 pointer-events-none' : ''}`}>
+          {/* Desktop stacks the basic actions under the D-pad; the short mobile
+              strip puts them in a column beside it to save vertical space. The
+              Compass keeps a 48px left inset for its up/down buttons. */}
+          <div
+            className={`flex transition-opacity duration-300 ${
+              isSidebar ? 'flex-col items-center gap-4' : 'flex-row items-center justify-center gap-2'
+            } ${isDimmed ? 'opacity-20 pointer-events-none' : ''}`}
+          >
             <Compass
               room={room}
               onAction={onAction}
               onNavigateToMap={showMapHere}
               isMoveInProgress={isMoveInProgress}
+              className={
+                isSidebar
+                  ? 'w-full sm:max-w-[380px] max-w-[320px] mx-auto'
+                  : 'w-[272px] sm:w-[304px] shrink-0 pl-12'
+              }
+            />
+            <BasicActionButtons
+              surface="explore"
+              activeSurface={activeActionSurface}
+              onActionSurfaceChange={onActionSurfaceChange}
+              onAction={onAction}
+              actionResult={actionResult}
+              isLoadingRoom={isLoadingRoom}
+              currentAction={currentAction}
+              containerClassName={
+                isSidebar ? 'flex flex-wrap justify-center gap-2' : 'flex flex-col gap-1.5 shrink-0'
+              }
+              sizeClassName={isSidebar ? 'px-4 py-1.5 text-sm' : 'px-2.5 py-1.5 text-xs w-full'}
             />
           </div>
           {showBattleBadge && (

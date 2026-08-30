@@ -52,6 +52,10 @@ export default function ActionFlyout({ result, anchorRef, anchorRect, onDismiss 
       const el = anchorRef?.current
       if (!el) return
       const rect = el.getBoundingClientRect()
+      // The same anchor can be mounted twice at different breakpoints (the
+      // desktop and mobile D-pad copies). The hidden one reports an all-zero
+      // rect, so leave `pos` null and let only the visible copy render.
+      if (rect.width === 0 && rect.height === 0) return
       setPos({ top: rect.top - GAP, left: clampLeft(rect.left) })
     }
     updatePosition()

@@ -13,6 +13,12 @@ interface CompassProps {
   onNavigateToMap?: () => void
   onOpenTeleport?: () => void
   isMoveInProgress?: boolean
+  /**
+   * Overrides the outer sizing box. The default centres the D-pad in whatever
+   * column it is given; the mobile strip narrows it so the basic-action buttons
+   * fit beside it. Must leave 48px of left inset for the up/down buttons.
+   */
+  className?: string
 }
 
 interface Direction {
@@ -169,7 +175,14 @@ const getDirectionColorClasses = (directionKey: string, directionColors: any, is
   return 'bg-gradient-to-b from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 border-green-500/30 hover:border-green-400/50 shadow-sm shadow-green-900/30'
 }
 
-export default function Compass({ room, onAction, onNavigateToMap, onOpenTeleport, isMoveInProgress = false }: CompassProps) {
+export default function Compass({
+  room,
+  onAction,
+  onNavigateToMap,
+  onOpenTeleport,
+  isMoveInProgress = false,
+  className = 'w-full sm:max-w-[380px] max-w-[320px] mx-auto',
+}: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
   const [currentPosition, setCurrentPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
   const [targetPosition, setTargetPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
@@ -267,7 +280,7 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
   ]
 
   return (
-    <div className="compass w-full sm:max-w-[380px] max-w-[320px] mx-auto">
+    <div className={`compass ${className}`}>
       {/* Main D-pad */}
       <div className="relative">
         <div className="relative w-56 sm:w-64 h-56 sm:h-64 mx-auto">

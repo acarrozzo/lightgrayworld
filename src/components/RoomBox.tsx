@@ -5,8 +5,7 @@ import type { Room, Player } from '@/lib/game-state'
 import Icon from './Icon'
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import ActionFlyout from './ActionFlyout'
-import { useActionFlyout } from '@/hooks/useActionFlyout'
+import BasicActionButtons, { type BasicActionSurface } from './BasicActionButtons'
 
 // Copied from the previous GameFeed helper to ensure Tailwind picks up dynamic color classes
 export const getTextColorClass = (color?: string | null, defaultColor: string = 'green-400'): string => {
@@ -178,6 +177,9 @@ interface RoomBoxProps {
   isPartyMember?: boolean
   quests?: Array<{ id: string; questId: string; progress: number; completed: boolean }>
   killList?: { monster: string; kills: number }[]
+  /** Basic-action flyout ownership — shared with the compass copy of the buttons. */
+  activeActionSurface?: BasicActionSurface
+  onActionSurfaceChange?: (surface: BasicActionSurface) => void
 }
 
 export default function RoomBox({
@@ -196,6 +198,8 @@ export default function RoomBox({
   isPartyMember = false,
   quests = [],
   killList = [],
+  activeActionSurface = 'explore',
+  onActionSurfaceChange,
 }: RoomBoxProps) {
   const iconSizeClasses: Record<string, string> = {
     sm: 'w-12 h-12 sm:w-20 sm:h-20',
@@ -209,9 +213,6 @@ export default function RoomBox({
   const hasSubtitle = subtitleText.length > 0
   const subtitlePlacement = room.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
   const [isMoreActionsExpanded, setIsMoreActionsExpanded] = useState(false)
-
-  // Flyout showing the latest action result anchored to the basic-action buttons.
-  const { activeFlyoutAction, flyoutRootRef, dismissFlyout } = useActionFlyout(actionResult)
 
   const availableDirections = useMemo(
     () => DIRECTIONS.filter((dir) => typeof room[dir as DirectionKey] === 'string' && room[dir as DirectionKey]),
@@ -334,47 +335,9 @@ export default function RoomBox({
         killList={killList}
       />
 
-      {/* Basic Actions */}
+      {/* More Actions Section */}
       <div className="mt-6 pt-4">
         <div className="w-16 border-t border-gray-700/40 mb-4"></div>
-        <div>
-          <div className="flex flex-wrap gap-2">
-            {([
-              { action: 'attack', label: 'Attack', className: 'bg-gradient-to-b from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 shadow-sm shadow-red-950/30' },
-              { action: 'search', label: 'Search', className: 'bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-sm shadow-amber-950/30' },
-              { action: 'rest', label: 'Rest', className: 'bg-gradient-to-b from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 shadow-sm shadow-green-950/30' },
-              { action: 'look', label: 'Look', className: 'bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 shadow-sm shadow-blue-950/30' },
-            ] as const).map(({ action, label, className }) => {
-              const showFlyout = activeFlyoutAction === action
-              return (
-                <div
-                  key={action}
-                  ref={showFlyout ? flyoutRootRef : undefined}
-                  className="relative"
-                >
-                  {showFlyout && actionResult && (
-                    <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
-                  )}
-                  <button
-                    data-action-button
-                    onClick={() => {
-                      console.log(`[ActionButton] ${label} button clicked`)
-                      onAction(action)
-                    }}
-                    disabled={isLoadingRoom}
-                    className={`px-4 py-1.5 ${className} disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
-                  >
-                    {isLoadingRoom && currentAction === action ? '...' : label}
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* More Actions Section */}
-      <div className="mt-4">
         <div className="flex flex-col gap-4">
           {/* Collapsible Header */}
           <button
@@ -395,6 +358,21 @@ export default function RoomBox({
           {/* Collapsible Content */}
           {isMoreActionsExpanded && (
             <div className="flex flex-col gap-4">
+              {/* Basic actions — mirrored beside the compass D-pad, which is the
+                  copy that stays visible while this section is collapsed. */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-300 mb-2">Actions:</h3>
+                <BasicActionButtons
+                  surface="room"
+                  activeSurface={activeActionSurface}
+                  onActionSurfaceChange={onActionSurfaceChange}
+                  onAction={onAction}
+                  actionResult={actionResult}
+                  isLoadingRoom={isLoadingRoom}
+                  currentAction={currentAction}
+                />
+              </div>
+
               {/* Teleport */}
               <div>
                 <h3 className="text-sm font-medium text-gray-300 mb-2">Teleport to:</h3>
