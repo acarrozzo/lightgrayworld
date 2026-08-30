@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import WorldToolNav from '@/components/WorldToolNav'
 import { resolveItemIcon } from '@/lib/item-actions'
 import RoomAtlas, {
+  type MapId,
   type RoomNode,
   type RoomEdge,
   type ExitInfo,
@@ -74,17 +75,35 @@ type Direction = (typeof DIRECTIONS)[number]
 const VERTICAL = new Set<Direction>(['up', 'down'])
 
 // The world is presented as cardinal-grid maps that mirror the in-game map
-// backgrounds. The overworld ("Grassy Field") is one tab; the three underground
-// areas each get their own tab: the Cabin Basement (003b*), the Scorpion Pit
-// (the deep scorpion dungeon), and the Bat Cave (028*). The bat-cave mouth (028)
-// stays on the main overworld map. Links between maps become portal markers.
+// backgrounds, one tab per region. Overworld ("Grassy Field") plus its three
+// undergrounds — the Cabin Basement (003b*), the Scorpion Pit (the deep scorpion
+// dungeon) and the Bat Cave (028*) — then the Forest and its lairs, then Red Town
+// and the sewers beneath it. A region's surface entrance stays on the surface tab
+// (the bat-cave mouth 028, the Back Alley sewer 232), so links between maps become
+// portal markers. Mirrors getMapIdForRoom in components/game-interface/utils.ts.
 const SCORPION_DUNGEON = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
+const FOREST_UNDERGROUND = [
+  '111a', '111b', '111c', '111d', '111e', '111f', '111g', '111h', '111i', '111j', '111k',
+  '115a', '115b', '115c', '115d', '115e', '115f', '115g', '115h', '115i', '115j', '115k',
+]
+const RED_TOWN_SEWERS = [
+  '232a', '232b', '232c', '232d', '232e', '232f', '232g', '232h', '232i', '232j',
+  '232k', '232l', '232m', '232n', '232o', '232p', '232q', '232r', '232s', '232t',
+  '232u', '232v', '232w', '232x', '232y', '232z',
+]
 // Isolated special rooms that don't belong to any map.
 const EXCLUDED = new Set(['000', '999', '088'])
-const mapOf = (roomId: string): 'overworld' | 'cabin_basement' | 'scorpion_pit' | 'bat_cave' => {
+const mapOf = (roomId: string): MapId => {
   if (roomId.startsWith('003b')) return 'cabin_basement'
   if (SCORPION_DUNGEON.includes(roomId)) return 'scorpion_pit'
   if (roomId.startsWith('028') && roomId !== '028') return 'bat_cave'
+  if (FOREST_UNDERGROUND.includes(roomId)) return 'forest_underground'
+  if (RED_TOWN_SEWERS.includes(roomId)) return 'red_town_sewers'
+  // The Red Guard Captain's lookout tower belongs to the Forest map even though
+  // its room ID sits in the Red Town block.
+  if (roomId === '215') return 'forest'
+  if (roomId.startsWith('2')) return 'red_town'
+  if (roomId.startsWith('1')) return 'forest'
   return 'overworld'
 }
 

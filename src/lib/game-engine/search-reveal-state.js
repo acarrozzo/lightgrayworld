@@ -50,6 +50,57 @@ const REVEAL_DEFINITIONS = {
     failMessage: 'You sift through the bones and scraps but find nothing of interest. The stone walls give up no secrets this time.',
     stateNote: 'A crawlspace gapes open behind the northern slab.',
   },
+  // ==================== RED TOWN BACK ALLEYS ====================
+  // The original drove all three of these off one shared `shadysearch` session
+  // flag, so searching any one of them opened the others too. Per-room reveals
+  // fix that: each hidden door has to be found where it actually is.
+  '232': {
+    direction: 'south',
+    toRoom: '236',
+    chance: 0.5,
+    successMessage: 'You work along the alley wall behind the banners and find the boards give. Behind them is a narrow passage south, and lamplight at the far end of it.',
+    failMessage: 'You turn over crates and pull at the banners, but the alley gives up nothing this time.',
+    stateNote: 'A gap behind the banners opens onto a passage south.',
+  },
+  '233': {
+    direction: 'southeast',
+    toRoom: '232mm',
+    chance: 0.5,
+    successMessage: "You feel along the dark corner and your hand goes straight through the brickwork — a thief's passage, propped open and worn smooth by use, running southeast.",
+    failMessage: 'You feel your way around the dark corner and find nothing but wet brick. Worth another try.',
+    stateNote: "A thief's passage stands open to the southeast.",
+  },
+  '232mm': {
+    direction: 'northeast',
+    toRoom: '233',
+    successMessage: 'You find the catch on the inside of the passage. It opens northeast, back out into the alley.',
+    stateNote: 'The passage back to the alley is unlatched to the northeast.',
+  },
+
+  // ==================== RED TOWN SEWERS ====================
+  // Legacy 232b shared the `catacombssearch` flag with 232j, so finding one door
+  // silently opened the other. Split apart here. The pipe is a genuine one-way
+  // shortcut in the original — it drops you at 232k with no way back through it.
+  '232b': {
+    direction: 'east',
+    toRoom: '232k',
+    chance: 0.5,
+    successMessage: 'You climb the curve of the great pipe and find a split seam wide enough to squeeze into. It runs east, into somewhere much darker.',
+    failMessage: "It's too dark to make out much along the pipe. You should search again.",
+    stateNote: 'A split seam in the great pipe gapes open to the east.',
+  },
+  '232l': {
+    direction: 'southwest',
+    toRoom: '232m',
+    successMessage: 'You shove at the dead end and a whole section of wall swings inward on hinges. That was easy. A passage runs southwest.',
+    stateNote: 'The false wall stands open to the southwest.',
+  },
+  '232j': {
+    direction: 'northeast',
+    toRoom: '232p',
+    successMessage: 'You search along the great stone wall and find the mechanism buried under centuries of grime. The catacombs door grinds open to the northeast.',
+    stateNote: 'The catacombs stone door stands open to the northeast.',
+  },
 }
 
 function getRevealDefinition(roomId) {

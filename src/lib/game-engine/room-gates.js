@@ -216,6 +216,155 @@ const ROOM_GATES = {
       },
     },
   },
+
+  // ==================== RED TOWN ====================
+  // The Red Guard will not let an untested traveller into Red Town. The original
+  // checked the player's Ogre kill count, which the modern KillList tracks by slug.
+  '107': {
+    'south': {
+      check: async (playerId) => {
+        const kill = await prisma.killList.findUnique({
+          where: { userId_monster: { userId: playerId, monster: 'ogre' } },
+          select: { kills: true },
+        })
+        return (kill?.kills ?? 0) >= 1
+      },
+      message: 'A Red Guard stops you at the gate. To gain access to Red Town you must prove your worth by killing an Ogre.',
+      modalContent: {
+        title: 'A Red Guard blocks the road to Red Town',
+        type: 'icon',
+        icon: 'npc-dwarfguard',
+        iconColor: 'red-400',
+        message: '"Hold. Nobody walks into Red Town on my watch until they\'ve proven their worth against an Ogre. You\'ll find them in their lair, west of here."',
+      },
+    },
+  },
+  // The lookout tower is the Barracks' back door into Red Town, so it carries the
+  // same Ogre requirement — otherwise the ladder at 124 would walk a player straight
+  // past the gate at 107. The original gated this on the Red Guard Captain's quests;
+  // swap this check for those once that quest set lands.
+  '124': {
+    'south': {
+      check: async (playerId) => {
+        const kill = await prisma.killList.findUnique({
+          where: { userId_monster: { userId: playerId, monster: 'ogre' } },
+          select: { kills: true },
+        })
+        return (kill?.kills ?? 0) >= 1
+      },
+      message: "The Red Guard on the tower waves you off the ladder. Prove yourself against an Ogre first.",
+      modalContent: {
+        title: 'A Red Guard waves you off the tower ladder',
+        type: 'icon',
+        icon: 'npc-dwarfguard',
+        iconColor: 'red-400',
+        message: '"Captain\'s orders — the tower stays shut to anyone who hasn\'t put down an Ogre. Come back when you have."',
+      },
+    },
+  },
+  // Back-alley and sewer secret doors. The exits are hidden from the client by the
+  // search-reveal exit overlay; these gates are the server-side half, so a hand-sent
+  // move command cannot walk through a door the player has not found.
+  '232': {
+    'south': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '232')
+      },
+      message: "You don't see an exit in that direction.",
+      silent: true,
+    },
+  },
+  '233': {
+    'southeast': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '233')
+      },
+      message: "You don't see an exit in that direction.",
+      silent: true,
+    },
+  },
+  '232mm': {
+    'northeast': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '232mm')
+      },
+      message: "You don't see an exit in that direction.",
+      silent: true,
+    },
+  },
+  '232b': {
+    'east': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '232b')
+      },
+      message: "You don't see an exit in that direction.",
+      silent: true,
+    },
+  },
+  '232l': {
+    'southwest': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '232l')
+      },
+      message: "You don't see an exit in that direction.",
+      silent: true,
+    },
+  },
+  '232j': {
+    'northeast': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '232j')
+      },
+      message: "You don't see an exit in that direction.",
+      silent: true,
+    },
+  },
+  // The sewer river. Both banks are gated, so a player who flies across and lets
+  // their wings lapse is not stranded past a one-way crossing.
+  '232d': {
+    'north': {
+      check: async (playerId) => {
+        const user = await prisma.user.findUnique({
+          where: { id: playerId },
+          select: { wings: true },
+        })
+        return user?.wings >= 1
+      },
+      message: 'You will not be able to cross this sewer river unless you are flying. Find or buy a wings potion, or cast a wings spell.',
+      modalContent: {
+        title: 'A river of sewage blocks the way north',
+        type: 'icon',
+        icon: 'wings',
+        iconColor: 'blue-400',
+        message: 'You will not be able to cross this sewer river unless you are flying. Find or buy a wings potion, or cast a wings spell.',
+      },
+    },
+  },
+  '232y': {
+    'south': {
+      check: async (playerId) => {
+        const user = await prisma.user.findUnique({
+          where: { id: playerId },
+          select: { wings: true },
+        })
+        return user?.wings >= 1
+      },
+      message: 'You will not be able to cross back over this sewer river unless you are flying.',
+      modalContent: {
+        title: 'A river of sewage blocks the way south',
+        type: 'icon',
+        icon: 'wings',
+        iconColor: 'blue-400',
+        message: 'You will not be able to cross back over this sewer river unless you are flying. Find or buy a wings potion, or cast a wings spell.',
+      },
+    },
+  },
 }
 
 /**

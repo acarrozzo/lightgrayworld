@@ -7,7 +7,15 @@ import { Flame, Hammer, Search, Skull, Coins, Users, Zap, Lock, Eye, X } from 'l
 // ---------------------------------------------------------------------------
 // Serializable shapes built by the server component (page.tsx).
 // ---------------------------------------------------------------------------
-export type MapId = 'overworld' | 'cabin_basement' | 'scorpion_pit' | 'bat_cave'
+export type MapId =
+  | 'overworld'
+  | 'cabin_basement'
+  | 'scorpion_pit'
+  | 'bat_cave'
+  | 'forest'
+  | 'forest_underground'
+  | 'red_town'
+  | 'red_town_sewers'
 export type ExitInfo = {
   direction: string
   to: string
@@ -219,10 +227,24 @@ const MAP_LABEL: Record<MapId, string> = {
   cabin_basement: 'Cabin Basement',
   scorpion_pit: 'Scorpion Pit',
   bat_cave: 'Bat Cave',
+  forest: 'Forest',
+  forest_underground: 'Forest Underground',
+  red_town: 'Red Town',
+  red_town_sewers: 'Red Town Sewers',
 }
 
-// Tab order shown across the top of the atlas.
-const MAP_ORDER: MapId[] = ['overworld', 'cabin_basement', 'scorpion_pit', 'bat_cave']
+// Tab order shown across the top of the atlas — roughly the order a player meets
+// each region, with each region's underground directly after it.
+const MAP_ORDER: MapId[] = [
+  'overworld',
+  'cabin_basement',
+  'scorpion_pit',
+  'bat_cave',
+  'forest',
+  'forest_underground',
+  'red_town',
+  'red_town_sewers',
+]
 
 // Greedy word-wrap so a room's full name fits inside the card without ellipsis.
 // maxChars is tuned to the card width (~120px) at the 11px label font.
@@ -252,19 +274,11 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
 
   // Per-map layouts (pixel centers) computed once.
   const layouts = useMemo(() => {
-    const byMap: Record<MapId, Set<string>> = {
-      overworld: new Set(),
-      cabin_basement: new Set(),
-      scorpion_pit: new Set(),
-      bat_cave: new Set(),
-    }
+    const byMap = Object.fromEntries(MAP_ORDER.map((id) => [id, new Set<string>()])) as Record<MapId, Set<string>>
     for (const n of nodes) byMap[n.map].add(n.roomId)
-    return {
-      overworld: layoutMap(byMap.overworld, nodeById),
-      cabin_basement: layoutMap(byMap.cabin_basement, nodeById),
-      scorpion_pit: layoutMap(byMap.scorpion_pit, nodeById),
-      bat_cave: layoutMap(byMap.bat_cave, nodeById),
-    }
+    return Object.fromEntries(
+      MAP_ORDER.map((id) => [id, layoutMap(byMap[id], nodeById)])
+    ) as Record<MapId, Map<string, Placed>>
   }, [nodes, nodeById])
 
   const [activeMap, setActiveMap] = useState<MapId>('overworld')

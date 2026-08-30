@@ -62,7 +62,11 @@ const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: Enemy[] }
 
 // Display order for zones. Any zone not listed here is appended afterward,
 // and enemies without a zone fall into "Unsorted" — so nothing ever disappears.
-const ZONE_ORDER = ['Grassy Field', 'Spider Cave', 'Scorpion Pit', 'Bat Cave']
+const ZONE_ORDER = [
+  'Grassy Field', 'Spider Cave', 'Scorpion Pit', 'Bat Cave',
+  'Forest Path', 'Forest', 'Ogre Lair', 'Kobold Lair',
+  'Red Town Sewers', "Thieve's Den", 'The Catacombs',
+]
 
 // Turn a slug like "padded-armor" into "Padded Armor" — only used as a
 // fallback when a drop's item isn't found in the database.

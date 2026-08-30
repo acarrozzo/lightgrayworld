@@ -1,6 +1,6 @@
 import type { Room, Player } from '@/lib/game-state'
 import { TRAVEL_DIRECTION_KEYS, CLIENT_ROOM_GATES, COMMAND_SHORTHAND, MAP_CONFIG, type TravelDirectionKey, type MapConfigEntry } from './constants'
-import { getRoomMapMarker } from './room-map-positions'
+import { getRoomMapMarker, getRoomMapPosition } from './room-map-positions'
 
 export const findTravelDirection = (fromRoom: Room | null, toRoomId: string): TravelDirectionKey | undefined => {
   if (!fromRoom) {
@@ -31,6 +31,18 @@ export const normalizeCommand = (input: string): string => {
   return COMMAND_SHORTHAND[normalized] || normalized
 }
 
+/**
+ * Rooms below Red Town: the sewers proper, the Thieve's Den and the Catacombs.
+ * Listed explicitly rather than matched on a `232` prefix because two `232*`
+ * rooms live above ground on the Red Town map — the Back Alley by a Sewer (232)
+ * and the Thieve's Den Secret Entrance (232mm).
+ */
+const RED_TOWN_SEWER_ROOMS = new Set([
+  '232a', '232b', '232c', '232d', '232e', '232f', '232g', '232h', '232i', '232j',
+  '232k', '232l', '232m', '232n', '232o', '232p', '232q', '232r', '232s', '232t',
+  '232u', '232v', '232w', '232x', '232y', '232z',
+])
+
 // Helper function to determine which map corresponds to a room
 export const getMapIdForRoom = (roomId: string): string => {
   if (roomId === '000') return 'room-zero'
@@ -40,8 +52,23 @@ export const getMapIdForRoom = (roomId: string): string => {
   if (roomId.startsWith('003b') || (roomId.startsWith('028') && roomId !== '028') || scorpionDungeon.includes(roomId)) return 'grassy-field-underground'
   const forestUnderground = ['111a','111b','111c','111d','111e','111f','111g','111h','111i','111j','111k','115a','115b','115c','115d','115e','115f','115g','115h','115i','115j','115k']
   if (forestUnderground.includes(roomId)) return 'forest-underground'
+  if (RED_TOWN_SEWER_ROOMS.has(roomId)) return 'red-town-sewers'
+  // The Red Guard Captain's lookout tower is drawn on the Forest artwork even
+  // though its room ID belongs to the Red Town block.
+  if (roomId === '215') return 'forest'
+  if (roomId.startsWith('2')) return 'red-town'
   if (roomId.startsWith('1')) return 'forest'
   return 'grassy-field'
+}
+
+/**
+ * The map artwork, title and mini-map background-position for the map a room sits
+ * on. Shared by the compass mini-map and the full map view so the two cannot drift.
+ */
+export const getRoomMapView = (roomId: string | undefined) => {
+  const mapId = roomId ? getMapIdForRoom(roomId) : 'grassy-field'
+  const entry = MAP_CONFIG.find((m) => m.id === mapId) ?? MAP_CONFIG[0]
+  return { mapId, src: entry.src, title: entry.title, position: getRoomMapPosition(roomId) }
 }
 
 // Helper function to get unlocked maps - all maps are available to everyone

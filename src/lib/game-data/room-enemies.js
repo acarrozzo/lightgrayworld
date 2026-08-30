@@ -956,6 +956,632 @@ const ROOM_ENEMIES = {
       { slug: 'kobold-master', weight: 100 },
     ],
   },
+  // ==================== RED TOWN ====================
+  // Red Town streets: the legacy `thief.php` set — a lone Thief on a 1-in-50 roll.
+  // Rare enough to be flavour rather than a real obstacle, exactly as in the original.
+  '201': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '202': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '203': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '204': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '205': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '209': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '211': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '212': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '213': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '216': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '217': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '218': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '219': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '220': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '223': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '224': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '225': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '227': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '228': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '229': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '230': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '235': {
+    probabilistic: true,
+    spawnChance: 0.02,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  // The back alleys and the shady end of town run `thief2.php` — the same lone
+  // Thief, but on a 1-in-15 roll. Legacy danger level 3. Room 237 (the Stables)
+  // also included thief2 in the original, but declared danger level 0 — the include
+  // was blanket paste across that file set, so the Stables stay safe here.
+  '231': {
+    probabilistic: true,
+    spawnChance: 0.067,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '232': {
+    probabilistic: true,
+    spawnChance: 0.067,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '233': {
+    probabilistic: true,
+    spawnChance: 0.067,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '234': {
+    probabilistic: true,
+    spawnChance: 0.067,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '236': {
+    probabilistic: true,
+    spawnChance: 0.067,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  '232mm': {
+    probabilistic: true,
+    spawnChance: 0.067,
+    enemies: [
+      { slug: 'thief', weight: 100 },
+    ],
+  },
+  // ==================== RED TOWN SEWERS ====================
+  // The legacy `sewers.php` set: rand(1,35) with 17.5 hostile outcomes, so a 50%
+  // spawn chance. Weights are the legacy roll bands doubled so the Imp's extra
+  // 50/50 coin-flip lands on a whole number (35 total weight = 35 legacy slots).
+  '232a': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232b': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232c': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232d': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232e': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232f': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232g': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232h': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232i': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232j': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  // Room 232k had no battle set in the original — an omission, not a safe room; it sits between two sewer rooms at danger 8.
+  '232k': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232l': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  '232y': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'rat', weight: 2 },
+      { slug: 'giant-rat', weight: 2 },
+      { slug: 'thief', weight: 2 },
+      { slug: 'spider', weight: 2 },
+      { slug: 'snake', weight: 2 },
+      { slug: 'goblin', weight: 2 },
+      { slug: 'bat', weight: 2 },
+      { slug: 'golden-bat', weight: 2 },
+      { slug: 'salamander', weight: 2 },
+      { slug: 'skeleton', weight: 2 },
+      { slug: 'tarantula', weight: 4 },
+      { slug: 'sewer-rat', weight: 4 },
+      { slug: 'red-gator', weight: 4 },
+      { slug: 'flying-dung-beetle', weight: 2 },
+      { slug: 'imp', weight: 1 },
+    ],
+  },
+  // ==================== THIEVE'S DEN ====================
+  // The Den had no battle set wired up in the original even though its rooms carry
+  // danger levels 8/11/14. Filled in from the enemies the room text names: the
+  // hangout's card-players, the Brutes who "use this training room quite often",
+  // and the Master Thief guarding the treasure.
+  '232m': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'thief', weight: 50 },
+      { slug: 'thief-pickpocket', weight: 50 },
+    ],
+  },
+  '232n': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'thief-brute', weight: 70 },
+      { slug: 'thief-pickpocket', weight: 30 },
+    ],
+  },
+  '232o': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'master-thief', weight: 100 },
+    ],
+  },
+  // ==================== THE CATACOMBS ====================
+  // The legacy `catacombs.php` set: rand(1,10) with 6 hostile outcomes (0.6 spawn).
+  // Roll 6 splits three ways into Imp / Golden Bat / Skeleton Knight, which is why
+  // the Knight carries weight 4 out of 18 rather than 3.
+  '232p': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'skeleton', weight: 3 },
+      { slug: 'skeleton-archer', weight: 3 },
+      { slug: 'skeleton-knight', weight: 4 },
+      { slug: 'skeleton-sorcerer', weight: 3 },
+      { slug: 'ancient-skeleton', weight: 3 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'golden-bat', weight: 1 },
+    ],
+  },
+  '232q': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'skeleton', weight: 3 },
+      { slug: 'skeleton-archer', weight: 3 },
+      { slug: 'skeleton-knight', weight: 4 },
+      { slug: 'skeleton-sorcerer', weight: 3 },
+      { slug: 'ancient-skeleton', weight: 3 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'golden-bat', weight: 1 },
+    ],
+  },
+  '232r': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'skeleton', weight: 3 },
+      { slug: 'skeleton-archer', weight: 3 },
+      { slug: 'skeleton-knight', weight: 4 },
+      { slug: 'skeleton-sorcerer', weight: 3 },
+      { slug: 'ancient-skeleton', weight: 3 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'golden-bat', weight: 1 },
+    ],
+  },
+  '232s': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'skeleton', weight: 3 },
+      { slug: 'skeleton-archer', weight: 3 },
+      { slug: 'skeleton-knight', weight: 4 },
+      { slug: 'skeleton-sorcerer', weight: 3 },
+      { slug: 'ancient-skeleton', weight: 3 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'golden-bat', weight: 1 },
+    ],
+  },
+  '232t': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'skeleton', weight: 3 },
+      { slug: 'skeleton-archer', weight: 3 },
+      { slug: 'skeleton-knight', weight: 4 },
+      { slug: 'skeleton-sorcerer', weight: 3 },
+      { slug: 'ancient-skeleton', weight: 3 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'golden-bat', weight: 1 },
+    ],
+  },
+  '232u': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'skeleton', weight: 3 },
+      { slug: 'skeleton-archer', weight: 3 },
+      { slug: 'skeleton-knight', weight: 4 },
+      { slug: 'skeleton-sorcerer', weight: 3 },
+      { slug: 'ancient-skeleton', weight: 3 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'golden-bat', weight: 1 },
+    ],
+  },
+  '232z': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'skeleton', weight: 3 },
+      { slug: 'skeleton-archer', weight: 3 },
+      { slug: 'skeleton-knight', weight: 4 },
+      { slug: 'skeleton-sorcerer', weight: 3 },
+      { slug: 'ancient-skeleton', weight: 3 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'golden-bat', weight: 1 },
+    ],
+  },
+  // The Sacred Altar and the Sacrificial Chamber are the deep end (legacy danger 17)
+  // and likewise had no battle set. Weighted to the heaviest of the catacombs dead.
+  '232v': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'ancient-skeleton', weight: 50 },
+      { slug: 'skeleton-sorcerer', weight: 30 },
+      { slug: 'skeleton-knight', weight: 20 },
+    ],
+  },
+  '232w': {
+    probabilistic: true,
+    spawnChance: 0.6,
+    enemies: [
+      { slug: 'ancient-skeleton', weight: 50 },
+      { slug: 'skeleton-sorcerer', weight: 30 },
+      { slug: 'skeleton-knight', weight: 20 },
+    ],
+  },
+  // Room 232x (A Sewer Oasis) is deliberately absent: the original set its danger
+  // level to 0 and gave it no battle set — it is the one safe room down here.
 }
 
 function getRoomEnemies(roomId) {

@@ -5,6 +5,7 @@ import { useGameStore } from '@/lib/game-state'
 import { ArrowBigUp, ArrowBigUpDash } from 'lucide-react'
 import Icon from './Icon'
 import { getRoomMapPosition } from './game-interface/room-map-positions'
+import { getRoomMapView } from './game-interface/utils'
 
 interface CompassProps {
   room: any
@@ -240,31 +241,14 @@ export default function Compass({ room, onAction, onNavigateToMap, onOpenTelepor
 
   if (!room) return null
 
-  const isRoomZero = room.roomId === '000'
-  const isLobby = room.roomId === '999'
-  const isSolarOffice = room.roomId === '088'
-  const scorpionDungeonRooms = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
-  const forestUndergroundRooms = ['111a','111b','111c','111d','111e','111f','111g','111h','111i','111j','111k','115a','115b','115c','115d','115e','115f','115g','115h','115i','115j','115k']
-  const isUnderground = room.roomId?.startsWith('003b') || (room.roomId?.startsWith('028') && room.roomId !== '028') || scorpionDungeonRooms.includes(room.roomId)
-  const isForestUnderground = forestUndergroundRooms.includes(room.roomId)
-  const isForest = room.roomId?.startsWith('1') && !isForestUnderground
-  const mapBackground = isRoomZero
-    ? '/img/lightgray_map_roomzero.jpg'
-    : isLobby
-    ? '/img/lightgray_map_the_lobby.jpg'
-    : isSolarOffice
-    ? '/img/lightgray_map_solar_office.jpg'
-    : isForestUnderground
-    ? '/img/lightgray_map_forest_underground.jpg'
-    : isUnderground
-    ? '/img/lightgray_map_grassyfield_underground.jpg'
-    : isForest
-    ? '/img/lightgray_map_forest_main.jpg'
-    : '/img/lightgray_map_grassyfield_main_s1.jpg'
-  const mapPosition = isRoomZero || isLobby || isSolarOffice
+  // Artwork + title come from the shared region table (MAP_CONFIG via
+  // getMapIdForRoom), so the mini-map and the full map view always agree on which
+  // map a room belongs to. Only the pan is local, because it animates between rooms.
+  const { src: mapBackground, title: mapTitle } = getRoomMapView(room.roomId)
+  const isSingleRoomMap = room.roomId === '000' || room.roomId === '999' || room.roomId === '088'
+  const mapPosition = isSingleRoomMap
     ? 'center'
     : (isTransitioning ? targetPosition : currentPosition)
-  const mapTitle = isRoomZero ? 'Room Zero' : isLobby ? 'The Lobby' : isSolarOffice ? 'Solar Office' : isForestUnderground ? 'Forest Underground' : isUnderground ? 'Grassy Field Underground' : isForest ? 'Forest' : 'Grassy Field'
 
   const directions: Direction[] = [
     { key: 'northwest', label: 'NW', position: 'top-left', rotation: 315 },

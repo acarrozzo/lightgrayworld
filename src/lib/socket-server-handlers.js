@@ -332,6 +332,16 @@ async function fetchRoomWithColors(prisma, roomId) {
 // Direction finding helpers for entry/exit messages
 const DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down']
 
+// Rooms below Red Town (sewers, Thieve's Den, Catacombs). Listed explicitly rather
+// than matched on a `232` prefix: the Back Alley by a Sewer (232) and the Thieve's
+// Den Secret Entrance (232mm) are above ground on the Red Town map.
+// Mirrors RED_TOWN_SEWER_ROOMS in components/game-interface/utils.ts.
+const RED_TOWN_SEWER_ROOMS = [
+  '232a', '232b', '232c', '232d', '232e', '232f', '232g', '232h', '232i', '232j',
+  '232k', '232l', '232m', '232n', '232o', '232p', '232q', '232r', '232s', '232t',
+  '232u', '232v', '232w', '232x', '232y', '232z',
+]
+
 function findDirectionKey(room, targetRoomId) {
   if (!room || !targetRoomId) {
     return null
@@ -622,6 +632,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             mentalTraining: true,
             grassyFieldUndergroundMap: true,
             forestUndergroundMap: true,
+            redTownMap: true,
+            redTownSewersMap: true,
           },
         })
 
@@ -655,6 +667,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           mentalTraining: dbPlayer.mentalTraining,
           grassyFieldUndergroundMap: dbPlayer.grassyFieldUndergroundMap,
           forestUndergroundMap: dbPlayer.forestUndergroundMap,
+          redTownMap: dbPlayer.redTownMap,
+          redTownSewersMap: dbPlayer.redTownSewersMap,
           socketId: socket.id,
           lastActive: new Date(),
         }
@@ -987,6 +1001,35 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               player.forestUndergroundMap = true
             } catch (error) {
               console.error('[Socket] Error setting forestUndergroundMap:', error)
+            }
+          }
+
+          // Unlock the Red Town map on first entry to any Red Town room. Room 215
+          // (the Red Guard Captain's lookout) is deliberately excluded — it is drawn
+          // on the Forest map, and reaching it is not the same as reaching town.
+          const isRedTownRoom = toRoom.startsWith('2') && toRoom !== '215' && !RED_TOWN_SEWER_ROOMS.includes(toRoom)
+          if (isRedTownRoom && !player.redTownMap) {
+            try {
+              await prisma.user.update({
+                where: { id: player.id },
+                data: { redTownMap: true },
+              })
+              player.redTownMap = true
+            } catch (error) {
+              console.error('[Socket] Error setting redTownMap:', error)
+            }
+          }
+
+          // Unlock the sewers map on first entry to the sewers, Thieve's Den or Catacombs
+          if (RED_TOWN_SEWER_ROOMS.includes(toRoom) && !player.redTownSewersMap) {
+            try {
+              await prisma.user.update({
+                where: { id: player.id },
+                data: { redTownSewersMap: true },
+              })
+              player.redTownSewersMap = true
+            } catch (error) {
+              console.error('[Socket] Error setting redTownSewersMap:', error)
             }
           }
 

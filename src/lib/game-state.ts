@@ -43,6 +43,8 @@ export interface Player {
   grassyFieldMap?: boolean
   grassyFieldUndergroundMap?: boolean
   forestUndergroundMap?: boolean
+  redTownMap?: boolean
+  redTownSewersMap?: boolean
   roomZeroMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean

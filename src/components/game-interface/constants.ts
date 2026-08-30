@@ -25,6 +25,39 @@ export const CLIENT_ROOM_GATES: Record<string, Record<string, boolean>> = {
   '012f': {
     'northeast': true,
   },
+  // Red Town — the Red Guard's Ogre requirement on both roads in.
+  '107': {
+    'south': true,
+  },
+  '124': {
+    'south': true,
+  },
+  // Back-alley and sewer secret doors (hidden until searched).
+  '232': {
+    'south': true,
+  },
+  '233': {
+    'southeast': true,
+  },
+  '232mm': {
+    'northeast': true,
+  },
+  '232b': {
+    'east': true,
+  },
+  '232l': {
+    'southwest': true,
+  },
+  '232j': {
+    'northeast': true,
+  },
+  // The sewer river — both banks need wings.
+  '232d': {
+    'north': true,
+  },
+  '232y': {
+    'south': true,
+  },
 }
 
 // Command shorthand mapping
@@ -59,7 +92,7 @@ export type MapConfigEntry = {
   id: string
   src: string
   title: string
-  flag?: keyof Pick<Player, 'grassyFieldMap' | 'grassyFieldUndergroundMap' | 'forestUndergroundMap' | 'roomZeroMap' | 'lobbyMap' | 'solarOfficeMap'>
+  flag?: keyof Pick<Player, 'grassyFieldMap' | 'grassyFieldUndergroundMap' | 'forestUndergroundMap' | 'redTownMap' | 'redTownSewersMap' | 'roomZeroMap' | 'lobbyMap' | 'solarOfficeMap'>
 }
 
 // Map configuration
@@ -71,5 +104,7 @@ export const MAP_CONFIG: MapConfigEntry[] = [
   { id: 'solar-office', src: '/img/lightgray_map_solar_office.jpg', title: 'Solar Office', flag: 'solarOfficeMap' },
   { id: 'forest', src: '/img/lightgray_map_forest_main.jpg', title: 'Forest' },
   { id: 'forest-underground', src: '/img/lightgray_map_forest_underground.jpg', title: 'Forest Underground', flag: 'forestUndergroundMap' },
+  { id: 'red-town', src: '/img/lightgray_map_redtown_main.jpg', title: 'Red Town', flag: 'redTownMap' },
+  { id: 'red-town-sewers', src: '/img/lightgray_map_redtown_sewers.jpg', title: 'Red Town Sewers', flag: 'redTownSewersMap' },
 ]
 

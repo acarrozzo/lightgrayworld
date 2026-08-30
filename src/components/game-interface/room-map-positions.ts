@@ -135,6 +135,74 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '111i': { x: 455, y: 560 },  // Ogre Guard Room
   '111j': { x: 560, y: 560 },  // Ogress Fire Altar
   '111k': { x: 560, y: 665 },  // Ogre Lieutenant Quarters
+  // Red Guard Captain Forest Lookout — the tower bridging the Forest map and
+  // Red Town; it sits on the FOREST artwork, directly south of 124.
+  '215': { x: 455, y: 665 },  // Red Guard Captain - Forest Lookout
+  // Red Town (coordinates relative to the Red Town map image)
+  '201': { x: 245, y: 35 },  // On a Path to Red Town by a Forest Gate
+  '213': { x: 350, y: 35 },  // Red Guard Living Quarters
+  '214': { x: 455, y: 35 },  // Red Guard Captain's Office
+  '223': { x: 665, y: 35 },  // Red Dining Room
+  '207': { x: 35, y: 140 },  // Broccoli Rob's Veggie Stand
+  '203': { x: 140, y: 140 },  // On a Stone Path by a Farm
+  '212': { x: 350, y: 140 },  // Red Guard Barracks
+  '224': { x: 560, y: 140 },  // Babylon Gardens
+  '222': { x: 665, y: 140 },  // Mayor Rudolf — Town Hall Office
+  '208': { x: 35, y: 245 },  // Rob's Farm
+  '202': { x: 140, y: 245 },  // On a Stone Path by Red Town
+  '226': { x: 245, y: 245 },  // Warrior's Guild
+  '211': { x: 350, y: 245 },  // Red Town Warrior's Way
+  '216': { x: 455, y: 245 },  // Adam's General Store
+  '219': { x: 560, y: 245 },  // Red Town Church
+  '221': { x: 665, y: 245 },  // Town Hall Plaza
+  '205': { x: 35, y: 350 },  // Rocky Flats Gate
+  '204': { x: 140, y: 350 },  // Red Town Grand Gate
+  '209': { x: 245, y: 350 },  // Red Town Grand Path
+  '210': { x: 350, y: 350 },  // Red Town Grand Square (hub)
+  '217': { x: 455, y: 350 },  // Red Town Royal Road
+  '218': { x: 560, y: 350 },  // Red Town Courtyard (sewer entrance)
+  '220': { x: 665, y: 350 },  // Todd's Pub & Inn
+  '237': { x: 35, y: 455 },  // Red Town Stables
+  '227': { x: 245, y: 455 },  // Michael's Weapon Shop
+  '228': { x: 350, y: 455 },  // Wizards Way
+  '225': { x: 455, y: 455 },  // Wizard's Guild
+  '234': { x: 560, y: 455 },  // Back Alley Apartments
+  '235': { x: 665, y: 455 },  // Red Town Docks
+  '229': { x: 245, y: 560 },  // Vincenzo's Meat & Produce Stand
+  '230': { x: 350, y: 560 },  // Red Town South Gate
+  '231': { x: 455, y: 560 },  // Red Town Back Alley
+  '232': { x: 560, y: 560 },  // Back Alley by a Sewer
+  '233': { x: 665, y: 560 },  // Turn in the Back Alley
+  '232mm': { x: 35, y: 665 },  // Thieve's Den Secret Entrance
+  '236': { x: 560, y: 665 },  // Shady Shop (hidden south of 232)
+  // Red Town Sewers, Thieve’s Den and the Catacombs
+  // (coordinates relative to the Red Town Sewers map image)
+  '232v': { x: 35, y: 35 },  // The Catacombs Sacred Altar
+  '232u': { x: 140, y: 35 },  // The Catacombs Room of Skulls
+  '232r': { x: 245, y: 35 },  // The Catacombs Gallery
+  '232q': { x: 350, y: 35 },  // The Catacombs Library
+  '232z': { x: 455, y: 35 },  // Silver Vault
+  '232w': { x: 35, y: 140 },  // The Catacombs Sacrificial Chamber
+  '232t': { x: 140, y: 140 },  // The Catacombs Torture Chamber
+  '232s': { x: 245, y: 140 },  // The Catacombs Armory
+  '232p': { x: 350, y: 140 },  // The Catacombs EXIT
+  '232j': { x: 245, y: 245 },  // In the Sewer by the Catacombs
+  '232y': { x: 455, y: 245 },  // Across a Sewer River by a Gray Chest
+  '232k': { x: 140, y: 350 },  // It's Pitch Black in the Sewer
+  '232i': { x: 350, y: 350 },  // In the Sewer by a "Waterfall"
+  '232d': { x: 455, y: 350 },  // A Fork in the Sewer
+  '232c': { x: 560, y: 350 },  // North Sewer EXIT (up to 218)
+  '232h': { x: 245, y: 455 },  // Crossing the Sewer Path
+  '232x': { x: 350, y: 455 },  // A Sewer Oasis (safe)
+  '232e': { x: 455, y: 455 },  // Sewer Crossroads (hub)
+  '232b': { x: 665, y: 455 },  // By a Large Curved Pipe in the Sewer
+  '232l': { x: 140, y: 560 },  // At a Dead End in the Sewers
+  '232g': { x: 350, y: 560 },  // In the Sewer by a Smelly "Pond"
+  '232f': { x: 455, y: 560 },  // In the Sewer near the Exit
+  '232a': { x: 560, y: 560 },  // South Sewer EXIT (up to 232)
+  '232m': { x: 35, y: 665 },  // Thieve's Den Hangout
+  '232n': { x: 140, y: 665 },  // Thieve's Den Training Room
+  '232o': { x: 245, y: 665 },  // Thieve's Den Treasure Room
 }
 
 /** CSS `background-position` for the compass mini-map window. */

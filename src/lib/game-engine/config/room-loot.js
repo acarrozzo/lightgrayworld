@@ -66,6 +66,26 @@ const ROOM_LOOT = [
   { roomId: '028c', slug: 'hammer' },
   { roomId: '028c', slug: 'string' },
   { roomId: '028c', slug: 'pickaxe' },
+
+  // ==================== RED TOWN ====================
+  // Room 212 — the Red Guard Barracks weapon rack. Legacy offered these as three
+  // separate "grab" buttons; as room items they use the shared pickup flow and the
+  // autoRespawn refill covers the "come back for another" behaviour.
+  { roomId: '212', slug: 'mace' },
+  { roomId: '212', slug: 'long-sword' },
+  { roomId: '212', slug: 'warhammer' },
+
+  // Room 213 — Red Guard Living Quarters ("cooked meat that's up for grabs")
+  { roomId: '213', slug: 'cooked-meat', quantity: 5 },
+
+  // Room 223 — Red Dining Room ("some food stuffs are available for you to take")
+  { roomId: '223', slug: 'cooked-meat', quantity: 5 },
+
+  // Room 232m — the Thieve's Den bolt stash in the corner of the hangout
+  { roomId: '232m', slug: 'crossbow-bolt', quantity: 25 },
+
+  // Room 232y — the potions stacked beside the gray chest across the sewer river
+  { roomId: '232y', slug: 'red-potion', quantity: 3 },
 ]
 
 module.exports = { ROOM_LOOT }
