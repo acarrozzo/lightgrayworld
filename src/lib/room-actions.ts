@@ -115,8 +115,32 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   // Forest — berry bushes, Hunter Bill's camp, the Forest gold chest, and the
   // Forest Gnome's tree hut. The chop-wood button for every tree-bearing Forest
   // room is merged in below.
+  '103': [
+    { action: 'talk to freddie', label: 'Freddie', icon: 'npc-freddie', className: 'bg-amber-600 hover:bg-amber-700', questIds: questIdsForNpc('freddie') },
+    { action: 'pay toll', label: 'Pay Toll (50 gold)', icon: 'gate', className: 'bg-yellow-700/80 hover:bg-yellow-700' },
+    { action: 'get hammer', label: 'Get Hammer', icon: 'craft', className: 'bg-orange-600 hover:bg-orange-700' },
+  ],
+  '103c': [
+    { action: 'get wood', label: 'Get Wood', icon: 'wood', className: 'bg-amber-700 hover:bg-amber-600' },
+  ],
+  '104': [
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
+  '117': [
+    { action: 'get leather', label: 'Get Leather', icon: 'leather', className: 'bg-amber-800 hover:bg-amber-700' },
+  ],
   '120': [
     { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'bg-red-600 hover:bg-red-700' },
+    { action: 'grab ring', label: 'Grab Ring', icon: 'ring', className: 'bg-green-700 hover:bg-green-600' },
+  ],
+  '121': [
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
+  '124': [
+    { action: 'grab arrows', label: 'Grab Arrows', icon: 'arrow', className: 'bg-amber-600 hover:bg-amber-700' },
+  ],
+  '131': [
+    { action: 'fish', label: 'Fish the Lake', icon: 'fish', className: 'bg-blue-600 hover:bg-blue-700' },
   ],
   '125': [
     { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'bg-red-600 hover:bg-red-700' },
@@ -132,12 +156,34 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '118': [
     { action: 'talk to hunter bill', label: 'Hunter Bill', icon: 'npc-hunterbill', className: 'bg-green-600 hover:bg-green-700', questIds: questIdsForNpc('hunter_bill') },
+    { action: 'rest at camp', label: "Rest at Bill's Camp", icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
   ],
   '119': [
     { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'bg-amber-500/80 hover:bg-amber-500' },
   ],
   '128': [
     { action: 'talk to forest gnome', label: 'Forest Gnome', icon: 'npc-forestgnome', className: 'bg-green-600 hover:bg-green-700', questIds: questIdsForNpc('forest_gnome') },
+  ],
+
+  // ==================== FOREST UNDERGROUND ====================
+  // The two lair-mouth signs, the two treasure chests, and the Kobold Lair's
+  // control lever. The hidden ways in (111g's searched passage, 127/132's gap in
+  // the trees) need no button — Search is one of the four core actions RoomBox
+  // renders in every room.
+  '111': [
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
+  '115': [
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
+  '111h': [
+    { action: 'open chest', label: 'Open Treasure Chest', icon: 'chest', className: 'bg-amber-500/80 hover:bg-amber-500' },
+  ],
+  '115f': [
+    { action: 'open chest', label: 'Open Treasure Chest', icon: 'chest', className: 'bg-amber-500/80 hover:bg-amber-500' },
+  ],
+  '115h': [
+    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'bg-yellow-600/80 hover:bg-yellow-600' },
   ],
 
   // ==================== RED TOWN ====================

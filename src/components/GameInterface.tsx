@@ -3271,6 +3271,7 @@ export default function GameInterface() {
                       <CraftingPanel
                         roomId={currentRoom.roomId}
                         inventory={inventory}
+                        quests={quests}
                         craftingRecipeId={craftingRecipeId}
                         actionResult={actionResult}
                         onClose={() => setIsCraftingOpen(false)}

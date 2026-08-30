@@ -51,6 +51,10 @@ type RoomEnemyConfig = {
 type GateDef = {
   message?: string
   silent?: boolean
+  /** The exit is masked from the client until it is opened. */
+  hidden?: boolean
+  /** The exit is opened by a mechanism the player throws, not a search. */
+  lever?: boolean
   onPass?: unknown
   modalContent?: { title?: string }
 }
@@ -181,8 +185,12 @@ export default async function RoomsPage() {
     for (const { direction, to } of exitsByRoom.get(room.roomId) ?? []) {
       seenDirs.add(direction)
       const gate = gates[direction]
-      const hidden = !!reveal && reveal.direction === direction
-      const lever = !!gate?.onPass
+      // Hidden = the client never sees this exit until it is opened, whether by a
+      // search reveal or by a lever. `gate.lever` is declared, not inferred from
+      // `onPass` — a one-shot pass (Freddie's toll) also spends itself on the way
+      // through without being a mechanism the player throws.
+      const hidden = (!!reveal && reveal.direction === direction) || !!gate?.hidden
+      const lever = !!gate?.lever
       const exit: ExitInfo = {
         direction,
         to,

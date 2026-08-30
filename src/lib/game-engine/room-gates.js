@@ -224,6 +224,7 @@ const ROOM_GATES = {
         const { isLeverPulled } = require('./lever-state')
         return isLeverPulled(playerId, '012d-lever')
       },
+      lever: true,
       message: "The passage is sealed shut. You need to find a way to unlock it from below.",
       modalContent: {
         title: 'The passage is sealed',
@@ -235,6 +236,124 @@ const ROOM_GATES = {
       onPass: async (playerId) => {
         const { resetLever } = require('./lever-state')
         resetLever(playerId, '012d-lever')
+      },
+    },
+  },
+
+  // ==================== FOREST ====================
+  // Freddie charges 50 gold a trip to let you at his cows. Paying sets an
+  // ephemeral pass; walking through the gate spends it, so the next armful of
+  // leather costs another 50 — exactly what the original's `cowtoll` did.
+  '103': {
+    'north': {
+      check: async (playerId) => {
+        const { isLeverPulled, COW_TOLL } = require('./lever-state')
+        return isLeverPulled(playerId, COW_TOLL)
+      },
+      message: 'Freddie leans on the gate. You need to pay the 50 gold toll to enter the cow farm.',
+      modalContent: {
+        title: 'Freddie blocks the gate to the cow farm',
+        type: 'icon',
+        icon: 'npc-freddie',
+        iconColor: 'amber-400',
+        message: '"Hold up! Cows are mine, hides are mine, and the gate is fifty gold. Pay the toll and it swings right open."',
+      },
+      onPass: async (playerId) => {
+        const { resetLever, COW_TOLL } = require('./lever-state')
+        resetLever(playerId, COW_TOLL)
+      },
+    },
+  },
+  // The two ends of the hidden trail through the trees. The exits are masked from
+  // the client by the search-reveal overlay; these are the server-side half, so a
+  // hand-sent move cannot walk a passage the player has not found.
+  '127': {
+    'north': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '127')
+      },
+      message: "You don't see an exit to the north. You should try searching.",
+      silent: true,
+    },
+  },
+  '132': {
+    'south': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '132')
+      },
+      message: "You don't see an exit to the south. You should try searching.",
+      silent: true,
+    },
+  },
+
+  // ==================== FOREST UNDERGROUND ====================
+  // Ogre Yard -> Ogre Treasure Room, behind a search.
+  '111g': {
+    'northwest': {
+      check: async (playerId) => {
+        const { isRevealed } = require('./search-reveal-state')
+        return isRevealed(playerId, '111g')
+      },
+      message: "You don't see an exit to the northwest.",
+      silent: true,
+    },
+  },
+  // The Kobold Lair's false west wall, opened by the Control Room lever (115h).
+  // Hidden from the client by lever-state's exit overlay until it is thrown.
+  '115e': {
+    'west': {
+      check: async (playerId) => {
+        const { isLeverPulled, KOBOLD_SWITCH } = require('./lever-state')
+        return isLeverPulled(playerId, KOBOLD_SWITCH)
+      },
+      // Hidden as well as gated: lever-state's exit overlay masks the direction
+      // until the Control Room switch is thrown, so the wall reads as solid.
+      hidden: true,
+      lever: true,
+      message: "You don't see an exit to the west.",
+      silent: true,
+    },
+  },
+  // The two boss-room exit portals. Both are one-way shortcuts back to their
+  // lair's entrance chamber, inert until their boss is down — so the only way in
+  // is still the long walk, and the only way to shorten the walk out is to win.
+  '111k': {
+    'southeast': {
+      check: async (playerId) => {
+        const kill = await prisma.killList.findUnique({
+          where: { userId_monster: { userId: playerId, monster: 'ogre-lieutenant' } },
+          select: { kills: true },
+        })
+        return (kill?.kills ?? 0) >= 1
+      },
+      message: 'You cannot use the portal to the exit until you defeat the Ogre Lieutenant.',
+      modalContent: {
+        title: 'The portal is dormant',
+        type: 'icon',
+        icon: 'world',
+        iconColor: 'purple-400',
+        message: 'The portal hangs dead in the corner. It will not carry you out of here until the Ogre Lieutenant is dealt with.',
+      },
+    },
+  },
+  '115k': {
+    'northeast': {
+      check: async (playerId) => {
+        const kill = await prisma.killList.findUnique({
+          where: { userId_monster: { userId: playerId, monster: 'kobold-master' } },
+          select: { kills: true },
+        })
+        return (kill?.kills ?? 0) >= 1
+      },
+      message: 'You cannot use the portal to the exit until you defeat the Kobold Master.',
+      modalContent: {
+        title: 'The portal is dormant',
+        type: 'icon',
+        icon: 'world',
+        iconColor: 'purple-400',
+        message: 'The portal shimmers but will not open. The Kobold Master holds it shut, and will go on holding it until he cannot.',
       },
     },
   },

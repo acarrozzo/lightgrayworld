@@ -12,7 +12,12 @@ const { getEnemy } = require('./game-data/enemies.js')
 const { loadRoomRoster } = require('./game-engine/services/room-roster-service.js')
 const { applyRoomQuestTrigger } = require('./game-engine/quest-room-triggers.js')
 const { getAllQuestProgress } = require('./game-engine/services/quest-service.js')
-const { getRoomStateNote, getRoomActionOverrides, clearPlayerLevers } = require('./game-engine/lever-state.js')
+const {
+  getRoomStateNote,
+  getRoomActionOverrides,
+  clearPlayerLevers,
+  getExitOverlay: getLeverExitOverlay,
+} = require('./game-engine/lever-state.js')
 const {
   getRoomStateNote: getSearchRevealStateNote,
   getExitOverlay: getSearchRevealExitOverlay,
@@ -883,7 +888,12 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // Use the room data which includes respawned items
         const leverStateNote = getRoomStateNote(player.id, toRoom)
         const searchRevealStateNote = getSearchRevealStateNote(player.id, toRoom)
-        const exitOverlay = getSearchRevealExitOverlay(player.id, toRoom)
+        // Both overlays mask DB-canonical exits the player has not opened yet:
+        // search reveals (hidden passages) and levers (the Kobold false wall).
+        const exitOverlay = {
+          ...(getLeverExitOverlay(player.id, toRoom) || {}),
+          ...(getSearchRevealExitOverlay(player.id, toRoom) || {}),
+        }
         const normalizedRoomData = {
           ...destinationRoom,
           ...(exitOverlay || {}),

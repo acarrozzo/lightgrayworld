@@ -17,8 +17,9 @@ const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: EnemySource
 // Chest loot tables (keyed by roomId → action) and the room-search loot tables
 // — read live so the source column reflects any change to either.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { CHEST_LOOT, ROOM_ACTIONS } = require('@/lib/game-engine/room-action-handlers') as {
+const { CHEST_LOOT, REPEATABLE_CHEST_LOOT, ROOM_ACTIONS } = require('@/lib/game-engine/room-action-handlers') as {
   CHEST_LOOT: Record<string, Record<string, ChestLoot>>
+  REPEATABLE_CHEST_LOOT: RepeatableChest[]
   ROOM_ACTIONS: Record<string, Record<string, RoomActionEntry>>
 }
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -101,6 +102,10 @@ type QuestReward = { type: string; itemSlug?: string; quantity?: number }
 type QuestDef = { title: string; rewards?: QuestReward[] }
 type ChestItem = { itemSlug: string; quantity?: number }
 type ChestLoot = { label: string; items: ChestItem[]; randomItems?: ChestItem[] }
+// A repeatable chest rolls one entry out of each of its pools per open, and a
+// pool entry may declare a quantity range instead of a fixed count.
+type RepeatablePoolEntry = ChestItem & { quantityMin?: number; quantityMax?: number }
+type RepeatableChest = { roomId: string; action: string; label: string; pools?: RepeatablePoolEntry[][] }
 // Search entries grant an item, currency, or nothing. We only index item grants;
 // quantity may be fixed (`quantity`) or a range (`minQty`/`maxQty`).
 type SearchEffect = {
@@ -218,6 +223,21 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
       }
       for (const item of chest.randomItems ?? []) {
         ensure(item.itemSlug).chests.push({ label: `${chest.label} (random)` })
+      }
+    }
+  }
+
+  // Repeatable chests — one entry is rolled per pool on every open, so every
+  // entry is a real source. Labelled "(1 of N)" when its pool has alternatives.
+  for (const chest of REPEATABLE_CHEST_LOOT) {
+    for (const pool of chest.pools ?? []) {
+      for (const entry of pool) {
+        const qty =
+          entry.quantityMin != null && entry.quantityMax != null
+            ? ` ×${entry.quantityMin}-${entry.quantityMax}`
+            : fixedQty(entry.quantity)
+        const odds = pool.length > 1 ? ` (1 of ${pool.length})` : ''
+        ensure(entry.itemSlug).chests.push({ label: `${chest.label}${qty}${odds}` })
       }
     }
   }

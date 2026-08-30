@@ -289,6 +289,22 @@ async function checkQuestRequirements(playerId, questId) {
           },
         }
       }
+    } else if (requirement.type === 'hasAnyItem') {
+      // "Any one of these" — for goals that name a tier rather than a specific
+      // item (craft a piece of leather equipment, bring any silver weapon).
+      const { items = [], displayName } = requirement
+      const satisfied = items.find(
+        (entry) => (itemQuantities[entry.itemSlug] || 0) >= (entry.quantity ?? 1)
+      )
+      if (!satisfied) {
+        return {
+          met: false,
+          details: {
+            missingAnyOf: items.map((entry) => entry.itemSlug),
+            displayName,
+          },
+        }
+      }
     } else if (requirement.type === 'killCount') {
       const { enemySlug, count } = requirement
       const killEntry = await prisma.killList.findUnique({
@@ -429,6 +445,20 @@ async function completeQuest(playerId, questId) {
           const removeResult = await removeItemBySlug(playerId, itemSlug, quantity, tx)
           if (!removeResult.success) {
             throw new Error(`Failed to remove ${itemSlug}: ${removeResult.error}`)
+          }
+        } else if (requirement.type === 'hasAnyItem') {
+          // Take the first option the player actually satisfies, so a
+          // "bring any one of these" turn-in consumes exactly what it asked for.
+          const held = requirements.details?.itemQuantities ?? {}
+          const chosen = (requirement.items ?? []).find(
+            (entry) => (held[entry.itemSlug] || 0) >= (entry.quantity ?? 1)
+          )
+          if (!chosen) {
+            throw new Error('No qualifying item to consume for hasAnyItem requirement')
+          }
+          const removeResult = await removeItemBySlug(playerId, chosen.itemSlug, chosen.quantity ?? 1, tx)
+          if (!removeResult.success) {
+            throw new Error(`Failed to remove ${chosen.itemSlug}: ${removeResult.error}`)
           }
         }
       }

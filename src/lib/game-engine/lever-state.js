@@ -5,6 +5,22 @@
  */
 const activatedLevers = new Map()
 
+/**
+ * The Kobold Lair's Control Room switch (115h), which grinds open the false west
+ * wall of the Bloody Path (115e) onto the Hidden Chamber (115f). Session-scoped
+ * exactly like the original's `koboldswitch` flag: flip it, walk the lair, and
+ * it is gone again next session.
+ */
+const KOBOLD_SWITCH = '115h-lever'
+
+/**
+ * Freddie's cow-farm toll (103). Not a lever, but the same thing mechanically:
+ * an ephemeral per-player flag that opens one passage and is spent on use. The
+ * original kept it in `$_SESSION['cowtoll']` and cleared it the moment you went
+ * through the gate, so every trip north costs another 50 gold.
+ */
+const COW_TOLL = '103-cowtoll'
+
 function pullLever(playerId, leverId) {
   if (!activatedLevers.has(playerId)) {
     activatedLevers.set(playerId, new Set())
@@ -41,6 +57,28 @@ function getRoomStateNote(playerId, roomId) {
       ? 'The northeast passage is open.'
       : 'The northeast passage is sealed.'
   }
+  if (roomId === '115h') {
+    return isLeverPulled(playerId, KOBOLD_SWITCH)
+      ? 'The lever is DOWN. Something ground open behind the west wall of the lair.'
+      : 'A heavy lever stands against the wall, UP.'
+  }
+  if (roomId === '115e' && isLeverPulled(playerId, KOBOLD_SWITCH)) {
+    return 'The west wall stands open onto a hidden chamber.'
+  }
+  return null
+}
+
+/**
+ * Exits masked by an un-flipped lever, in the same shape search-reveal-state's
+ * overlay uses: `{ [direction]: null }` hides the DB-canonical exit until the
+ * mechanism is thrown. Only the Kobold Lair's false wall works this way — the
+ * Scorpion Nest passage (012f) is a visible door the player is told is sealed,
+ * whereas 115f is meant to be a room nobody knows is there.
+ */
+function getExitOverlay(playerId, roomId) {
+  if (roomId === '115e' && !isLeverPulled(playerId, KOBOLD_SWITCH)) {
+    return { west: null }
+  }
   return null
 }
 
@@ -57,7 +95,25 @@ function getRoomActionOverrides(playerId, roomId) {
         : { className: 'bg-yellow-600/80 hover:bg-yellow-600', icon: 'lever-up' },
     }
   }
+  if (roomId === '115h') {
+    const pulled = isLeverPulled(playerId, KOBOLD_SWITCH)
+    return {
+      'flip lever': pulled
+        ? { className: 'bg-green-700/80 hover:bg-green-700', icon: 'lever-down' }
+        : { className: 'bg-yellow-600/80 hover:bg-yellow-600', icon: 'lever-up' },
+    }
+  }
   return null
 }
 
-module.exports = { pullLever, resetLever, isLeverPulled, clearPlayerLevers, getRoomStateNote, getRoomActionOverrides }
+module.exports = {
+  pullLever,
+  resetLever,
+  isLeverPulled,
+  clearPlayerLevers,
+  getRoomStateNote,
+  getRoomActionOverrides,
+  getExitOverlay,
+  KOBOLD_SWITCH,
+  COW_TOLL,
+}

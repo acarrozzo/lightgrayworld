@@ -25,6 +25,7 @@ type Requirement = {
   type: string
   minLevel?: number
   itemSlug?: string
+  items?: { itemSlug: string; quantity?: number }[]
   quantity?: number
   enemySlug?: string
   count?: number
@@ -107,6 +108,12 @@ export default async function QuestsPage() {
       case 'hasItem': {
         const qty = r.quantity ?? 1
         return `Bring ${qty}× ${resolveItem(r.itemSlug ?? '')}`
+      }
+      case 'hasAnyItem': {
+        const names = (r.items ?? []).map(
+          (entry) => `${entry.quantity ?? 1}× ${resolveItem(entry.itemSlug)}`
+        )
+        return names.length ? `Bring any one of: ${names.join(', ')}` : 'Bring any qualifying item'
       }
       case 'killCount': {
         const count = r.count ?? 1

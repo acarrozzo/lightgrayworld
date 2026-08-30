@@ -1251,9 +1251,9 @@ async function main() {
       subtitlePosition: 'below',
       nameColor: 'forest',
       subtitleColor: 'dirt',
-      icon: 'treefarm',
-      iconColor: 'forest',
-      description: 'Freddie runs a cow farm and leather workshop here. His cows graze to the north.',
+      icon: 'npc-freddie',
+      iconColor: 'amber-400',
+      description: 'Freddie runs a cow farm and leather workshop here. His cows graze to the north, behind a gate he charges to open. A crate of spare hammers sits by the workshop door.',
       dangerLevel: 0,      north: '103b',
       south: '102',
       east: null,
@@ -1493,7 +1493,7 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'treefarm',
       iconColor: 'forest',
-      description: 'A dark cave entrance yawns before you. Signs warn of ogres below.',
+      description: 'A dark cave entrance yawns down into the rock. A crude sign is hammered into the stone beside it, warning of the ogres below.',
       dangerLevel: 0,      north: null,
       south: null,
       east: null,
@@ -1589,7 +1589,7 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'treefarm',
       iconColor: 'forest',
-      description: 'A dark opening in the ground marks the entrance to the Kobold Lair.',
+      description: 'A dark opening in the ground marks the entrance to the Kobold Lair. A weathered sign leans against the rim of the hole.',
       dangerLevel: 0,      north: null,
       south: null,
       east: null,
@@ -1637,7 +1637,7 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'treefarm',
       iconColor: 'forest',
-      description: 'A massive tree dominates this area. Its trunk is wider than a house.',
+      description: 'A massive tree dominates this area. Its trunk is wider than a house. Cured hides are stacked against the roots, free for the taking.',
       dangerLevel: 5,      north: '118',
       south: '116',
       east: '121',
@@ -1709,7 +1709,7 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'treefarm',
       iconColor: 'forest',
-      description: 'A crystal clear river flows through the forest here.',
+      description: 'A crystal clear river flows through the forest here. A ring lies half-buried in the silt at the water\'s edge.',
       dangerLevel: 5,      north: '119',
       south: '121',
       east: null,
@@ -1805,7 +1805,7 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'treefarm',
       iconColor: 'forest',
-      description: 'An old Red Guard tower rises above the trees. A ladder runs up its south face toward the lookout platform.',
+      description: 'An old Red Guard tower rises above the trees. A ladder runs up its south face toward the lookout platform, and bundles of arrows are stacked at its base.',
       dangerLevel: 5,      north: '123',
       south: '215',
       east: '125',
@@ -1877,8 +1877,10 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'treefarm',
       iconColor: 'forest',
-      description: 'Dense trees surround you on all sides.',
-      dangerLevel: 5,      north: null,
+      description: 'Dense trees surround you on all sides. The trunks to the north grow close enough to look solid, but the light behind them says otherwise.',
+      dangerLevel: 5,
+      // Hidden until searched — see REVEAL_DEFINITIONS['127'].
+      north: '132',
       south: '126',
       east: null,
       west: '128',
@@ -1890,7 +1892,8 @@ async function main() {
       southwest: '125',
       hasFire: false,
       hasCraftingTable: false,
-      directionColors: { south: 'forest', west: 'forest', southwest: 'forest' }
+      hasSearch: true,
+      directionColors: { south: 'forest', west: 'forest', southwest: 'forest', north: 'yellow-600' }
     },
     {
       roomId: '128',
@@ -1925,7 +1928,7 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'treefarm',
       iconColor: 'forest',
-      description: 'The path ends at a wall of tangled thorns and ancient trees.',
+      description: 'The path ends at a wall of tangled thorns and ancient trees. Something metal glints in the undergrowth whenever the light moves.',
       dangerLevel: 5,      north: '126',
       south: null,
       east: null,
@@ -1938,6 +1941,7 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
+      hasSearch: true,
       directionColors: { north: 'forest' }
     },
     {
@@ -1949,7 +1953,7 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'treefarm',
       iconColor: 'forest',
-      description: 'An abandoned campsite shows signs of recent use. Cold ashes fill a stone fire ring.',
+      description: 'An abandoned campsite shows signs of recent use. Cold ashes fill a stone fire ring, and whoever left did it in a hurry — packs and bedrolls are still strewn about.',
       dangerLevel: 5,      north: null,
       south: null,
       east: null,
@@ -1962,6 +1966,7 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
+      hasSearch: true,
       directionColors: { west: 'forest' }
     },
     {
@@ -1973,7 +1978,7 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'treefarm',
       iconColor: 'forest',
-      description: 'A peaceful lake reflects the forest canopy.',
+      description: 'A peaceful lake reflects the forest canopy. Bluefish rise in the shallows, close enough to reach.',
       dangerLevel: 5,      north: null,
       south: null,
       east: '132',
@@ -1997,9 +2002,11 @@ async function main() {
       subtitleColor: 'gray-400',
       icon: 'treefarm',
       iconColor: 'forest',
-      description: 'Rocky terrain makes the path difficult to traverse.',
-      dangerLevel: 5,      north: '133',
-      south: null,
+      description: 'Rocky terrain makes the path difficult to traverse. A gap in the trees to the south comes and goes depending on where you stand.',
+      dangerLevel: 5,
+      north: '133',
+      // Hidden until searched — see REVEAL_DEFINITIONS['132'].
+      south: '127',
       east: null,
       west: '131',
       up: null,
@@ -2010,7 +2017,8 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      directionColors: { north: 'forest', west: 'forest' }
+      hasSearch: true,
+      directionColors: { north: 'forest', west: 'forest', south: 'yellow-600' }
     },
     {
       roomId: '133',
@@ -2293,7 +2301,7 @@ async function main() {
       subtitleColor: 'red-800',
       icon: 'basement',
       iconColor: 'gray-600',
-      description: 'An open underground area where ogres train and spar. The ceiling is high enough to swing a club.',
+      description: 'An open underground area where ogres train and spar. The ceiling is high enough to swing a club. The northwest wall is stacked with crates and rubble, and a draft comes from somewhere behind it.',
       dangerLevel: 8,
       north: null,
       south: '111f',
@@ -2302,13 +2310,15 @@ async function main() {
       up: null,
       down: null,
       northeast: null,
-      northwest: null,
+      // Hidden until searched — see REVEAL_DEFINITIONS['111g'] in search-reveal-state.js,
+      // which masks this exit and the room gate that refuses it until it is found.
+      northwest: '111h',
       southeast: null,
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
       hasSearch: true,
-      directionColors: { south: 'gray-600', east: 'gray-700' }
+      directionColors: { south: 'gray-600', east: 'gray-700', northwest: 'yellow-600' }
     },
     {
       roomId: '111h',
@@ -2394,7 +2404,7 @@ async function main() {
       subtitleColor: 'red-800',
       icon: 'basement',
       iconColor: 'red-700',
-      description: 'The personal quarters of the Ogre Lieutenant. Trophies of defeated warriors adorn the walls. This is clearly the lair of a powerful warrior.',
+      description: 'The personal quarters of the Ogre Lieutenant. Trophies of defeated warriors adorn the walls. This is clearly the lair of a powerful warrior. A magical portal hangs in the southeast corner, dormant.',
       dangerLevel: 13,
       north: '111j',
       south: null,
@@ -2404,11 +2414,13 @@ async function main() {
       down: null,
       northeast: null,
       northwest: null,
-      southeast: null,
+      // The exit portal back to the Ogre Cave Exit. Gated on an Ogre Lieutenant kill
+      // (see ROOM_GATES['111k']) — the portal is inert until the boss is down.
+      southeast: '111a',
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      directionColors: { north: 'red-800' }
+      directionColors: { north: 'red-800', southeast: 'purple-400' }
     },
     // ==================== FOREST UNDERGROUND - KOBOLD LAIR ====================
     {
@@ -2521,12 +2533,14 @@ async function main() {
       subtitleColor: 'blue-800',
       icon: 'basement',
       iconColor: 'gray-600',
-      description: 'The stone floor is stained with old blood. This corridor has seen many battles.',
+      description: 'The stone floor is stained with old blood. This corridor has seen many battles. The west wall is a single unbroken slab, far too neat to be natural.',
       dangerLevel: 8,
       north: null,
       south: null,
       east: '115g',
-      west: null,
+      // Sealed until the Control Room lever (115h) is flipped — the exit is masked
+      // by lever-state's exit overlay and refused by ROOM_GATES['115e'] until then.
+      west: '115f',
       up: null,
       down: null,
       northeast: null,
@@ -2535,7 +2549,7 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      directionColors: { east: 'gray-700', northwest: 'gray-600', southeast: 'gray-700' }
+      directionColors: { east: 'gray-700', northwest: 'gray-600', southeast: 'gray-700', west: 'yellow-600' }
     },
     {
       roomId: '115f',
@@ -2671,7 +2685,7 @@ async function main() {
       subtitleColor: 'blue-800',
       icon: 'basement',
       iconColor: 'red-700',
-      description: 'The personal chambers of the Kobold Master. Arcane trophies and magical artifacts fill the room. A powerful magical presence dominates this space.',
+      description: 'The personal chambers of the Kobold Master. Arcane trophies and magical artifacts fill the room. A powerful magical presence dominates this space, and a dormant portal shimmers to the northeast.',
       dangerLevel: 13,
       north: null,
       south: '115j',
@@ -2679,13 +2693,15 @@ async function main() {
       west: null,
       up: null,
       down: null,
-      northeast: null,
+      // The exit portal back to the Kobold Lair Exit. Gated on a Kobold Master kill
+      // (see ROOM_GATES['115k']).
+      northeast: '115a',
       northwest: null,
       southeast: null,
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      directionColors: { south: 'red-800' }
+      directionColors: { south: 'red-800', northeast: 'purple-400' }
     },
     // ==================== RED TOWN ====================
     // Ported from the original game's r200/ room set and room-desc-extra.php.
@@ -6241,6 +6257,94 @@ async function main() {
       value: 12000,
       equipSlot: EquipSlot.RING,
       metadata: { icon: 'ring', regen: { mp: 3 } },
+    },
+
+    // ---- Tier III stat rings ----
+    // The Forest Underground's boss-chest rings: every open of the Ogre or Kobold
+    // treasure chest rolls one of these four alongside a weapon or armour piece.
+    // +3 apiece, sitting between the plain +1 bands and the +5 Thieve's Den set,
+    // and priced on the same curve.
+    {
+      id: 'ring-of-strength-iii_001',
+      slug: 'ring-of-strength-iii',
+      name: 'Ring of Strength III',
+      description: 'A third-order band of strength, worth three ordinary ones.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 6000,
+      equipSlot: EquipSlot.RING,
+      metadata: { icon: 'ring', statMods: { str: 3 } },
+    },
+    {
+      id: 'ring-of-dexterity-iii_001',
+      slug: 'ring-of-dexterity-iii',
+      name: 'Ring of Dexterity III',
+      description: 'A third-order band of dexterity, worth three ordinary ones.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 6000,
+      equipSlot: EquipSlot.RING,
+      metadata: { icon: 'ring', statMods: { dex: 3 } },
+    },
+    {
+      id: 'ring-of-magic-iii_001',
+      slug: 'ring-of-magic-iii',
+      name: 'Ring of Magic III',
+      description: 'A third-order band of magic, worth three ordinary ones.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 6000,
+      equipSlot: EquipSlot.RING,
+      metadata: { icon: 'ring', statMods: { mag: 3 } },
+    },
+    {
+      id: 'ring-of-defense-iii_001',
+      slug: 'ring-of-defense-iii',
+      name: 'Ring of Defense III',
+      description: 'A third-order band of defense, worth three ordinary ones.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 6000,
+      equipSlot: EquipSlot.RING,
+      metadata: { icon: 'ring', statMods: { def: 3 } },
+    },
+
+    // ---- Forest Underground boss-chest gear ----
+    // The Ogre Treasure Room's helmet and the Kobold Hidden Chamber's two staves.
+    {
+      id: 'iron-hood_001',
+      slug: 'iron-hood',
+      name: 'Iron Hood',
+      description: 'A mail hood of fine iron rings, favoured by ogre guards. Balanced across strength, dexterity and defense.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 2000,
+      equipSlot: EquipSlot.HEAD,
+      metadata: { statMods: { str: 3, dex: 3, def: 3 } },
+    },
+    {
+      id: 'iron-staff_001',
+      slug: 'iron-staff',
+      name: 'Iron Staff',
+      description: 'An iron-shod staff that channels magic and still hits like a bar of metal.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 3000,
+      equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
+      metadata: { statMods: { mag: 10, str: 3 } },
+    },
+    {
+      id: 'iron-battle-staff_001',
+      slug: 'iron-battle-staff',
+      name: 'Iron Battle Staff',
+      description: 'A two-handed iron battle staff. Equal parts spellcasting focus and blunt instrument.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 5000,
+      equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
+      metadata: { isTwoHanded: true, statMods: { mag: 12, str: 12 } },
     },
 
     // ---- Michael's Weapon Shop (the high end) ----

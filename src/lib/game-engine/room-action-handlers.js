@@ -370,9 +370,14 @@ const CHEST_LOOT = {
  * the declared quantity (what getGatherActionsForRoom reports to the UI) stays
  * the baseline; `resolve` upgrades it per player at execution time.
  */
-function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantity = 5, toolRequired = null, toolTiers = null, emptyVerb = 'appear', missingToolMessage = null, maxHeld = null, maxHeldMessage = null, readyLabel = null }) {
+function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantity = 5, toolRequired = null, toolTiers = null, emptyVerb = 'appear', missingToolMessage = null, maxHeld = null, maxHeldMessage = null, readyLabel = null, topUpTo = null, topUpMessage = null }) {
   const tiers = Array.isArray(toolTiers) && toolTiers.length > 0 ? toolTiers : null
   const baseQuantity = tiers ? tiers[tiers.length - 1].quantity : quantity
+  // A top-up node hands you back up to its number rather than a fixed batch, so
+  // it can never be farmed above that line. The original wrote these as
+  // `SET leather = 5` — a refill, not an addition — and the Forest's free
+  // supplies (leather, arrows, wood, the lake's fish) all work that way.
+  const cap = typeof topUpTo === 'number' ? topUpTo : maxHeld
 
   return {
     // Explicit marker: a gather is not always identifiable by its cooldown,
@@ -388,18 +393,26 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
     // themselves show that name; the rest fall back to a plain "Ready" plus the
     // batch size on the client.
     ...(readyLabel ? { readyLabel } : {}),
-    ...(typeof maxHeld === 'number'
+    ...(typeof cap === 'number'
       ? {
-          maxHeld,
+          maxHeld: cap,
           precondition: async (playerId) => {
             const held = await getHeldQuantity(playerId, itemSlug)
-            return held >= maxHeld
+            return held >= cap
               ? { allowed: false, capInfo: { atMaxHeld: true, held } }
               : { allowed: true }
           },
         }
       : {}),
-    effects: [{ type: 'grantItem', itemSlug, quantity: baseQuantity }],
+    effects: [{ type: 'grantItem', itemSlug, quantity: typeof topUpTo === 'number' ? topUpTo : baseQuantity }],
+    ...(typeof topUpTo === 'number'
+      ? {
+          resolve: async (playerId) => {
+            const held = await getHeldQuantity(playerId, itemSlug)
+            return { effects: [{ type: 'grantItem', itemSlug, quantity: Math.max(0, topUpTo - held) }], context: null }
+          },
+        }
+      : {}),
     ...(tiers
       ? {
           resolve: async (playerId) => {
@@ -422,7 +435,13 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
         return missingToolMessage || `You need a ${capInfo.missingTool} to do that.`
       }
       if (capInfo?.atMaxHeld) {
-        return maxHeldMessage || `You already have ${maxHeld} ${itemNamePlural}. Come back if you run low.`
+        return maxHeldMessage || `You already have ${cap} ${itemNamePlural}. Come back if you run low.`
+      }
+      if (typeof topUpTo === 'number' && effects?.[0]?.success) {
+        const collected = effects?.[0]?.quantity ?? 0
+        return topUpMessage
+          ? topUpMessage(collected, topUpTo)
+          : `You collect ${collected} ${itemNamePlural}, bringing you back up to ${topUpTo}.`
       }
       if (!effects?.[0]?.success) {
         if (!cooldownMs) return `No more ${itemNamePlural} here right now.`
@@ -523,6 +542,42 @@ function makeWheatAction() {
 }
 
 /**
+ * A free item you can only ever hold one of at a time: the Forest's replacement
+ * Ring of Dexterity III (120) and Freddie's spare hammer (103). The original's
+ * shape exactly — "you already have one, come back if you lose it" — so these
+ * cannot be farmed, only replaced. Kept as an action rather than a ROOM_LOOT
+ * drop because room items are shared and respawn per visit, which would make a
+ * +3 ring infinitely duplicable.
+ */
+function makeFreeItemAction({ itemSlug, itemName, capLabel, icon, iconColor = 'amber-400', grantMessage, alreadyHaveMessage }) {
+  return {
+    // A gather node with a cap of one: that is what "free replacement" means,
+    // and declaring it that way gets it a countdown-free cap badge in the room
+    // and a row in the World Tool's item-source index for free.
+    isGather: true,
+    // The badge beside the button reads "1 hammer left" / "1/1 hammer", so it
+    // wants the bare noun, not the article-carrying name the messages use.
+    itemNamePlural: capLabel ?? itemName,
+    maxHeld: 1,
+    precondition: async (playerId) => {
+      const held = await getHeldQuantity(playerId, itemSlug)
+      return held >= 1 ? { allowed: false, capInfo: { alreadyHeld: true } } : { allowed: true }
+    },
+    effects: [{ type: 'grantItem', itemSlug, quantity: 1 }],
+    generateMessage: (effects, capInfo) => {
+      if (capInfo?.alreadyHeld) {
+        return alreadyHaveMessage || `You already have ${itemName}. Come back here for another if you lose it.`
+      }
+      if (!effects?.[0]?.success) return `You cannot carry another ${itemName} right now.`
+      return grantMessage || `You pick up ${itemName}.`
+    },
+    determineOutcome: ({ success }) => (success ? 'success' : 'info'),
+    showModal: true,
+    modalContent: { type: 'icon', icon, iconColor, title: itemName, message: grantMessage },
+  }
+}
+
+/**
  * Server-authoritative crafting handler. Shared by every crafting room (003 /
  * 021): reads `actionData.recipeId` and an optional `actionData.quantity` (the
  * number of times to run the recipe — 1 for "Craft", or the batch size for
@@ -557,6 +612,20 @@ async function executeCraft(playerId, roomState, actionData = {}) {
   const recipe = recipeId ? getRecipeById(recipeId) : null
   if (!recipe || !isCraftingRoom(roomState.roomId)) {
     return fail('You cannot craft that here.')
+  }
+
+  // A recipe may be locked behind a quest (Freddie's leather tier) and/or need a
+  // tool held but not consumed (his hammer). Both are re-checked here, not just
+  // rendered by the panel, so neither can be skipped by a hand-sent craft.
+  if (recipe.unlock) {
+    const { getQuestProgress } = require('./services/quest-service')
+    const progress = await getQuestProgress(playerId, recipe.unlock.questId)
+    if (!progress) {
+      return fail(recipe.unlock.hint, recipe.id)
+    }
+  }
+  if (recipe.tool && !(await playerHasItem(playerId, recipe.tool.slug))) {
+    return fail(`You need a ${recipe.tool.name} to craft ${recipe.label}.`, recipe.id)
   }
 
   // Requested batch size. Floor + clamp to a sane ceiling; the transaction
@@ -899,6 +968,17 @@ function makeGoldChestHandler({ roomId, flagField, goldMin, goldMax, lockedMessa
  * `pools` is an array of item pools; one entry is rolled from each, so a chest
  * can hand out "a weapon AND a ring" rather than one of everything.
  */
+/**
+ * Every repeatable chest's loot, in declaration order. Populated by
+ * `makeRepeatableChestHandler` below; read by the World Tool's item pages so an
+ * item that only drops out of a lair chest still shows where it comes from.
+ *
+ * @type {Array<{ roomId: string, action: string, label: string, cooldownMs: number,
+ *                pools: Array<Array<{ itemSlug: string, quantity?: number,
+ *                                     quantityMin?: number, quantityMax?: number }>> }>}
+ */
+const REPEATABLE_CHEST_LOOT = []
+
 function makeRepeatableChestHandler({
   roomId,
   action,
@@ -912,6 +992,12 @@ function makeRepeatableChestHandler({
   iconColor = 'gray-400',
   openMessage,
 }) {
+  // Register the chest's contents alongside the handler. The handler itself is a
+  // closure, so without this the only record of what these chests hold would be
+  // inside it — and the World Tool's item-source index would quietly miss every
+  // repeatable chest in the game.
+  REPEATABLE_CHEST_LOOT.push({ roomId, action, label, cooldownMs, pools })
+
   return async (playerId, roomState) => {
     const { prisma } = require('../db-client')
     const { grantItemOnce, getPlayerInventory, getItemBySlug } = require('./services/inventory-service')
@@ -944,6 +1030,19 @@ function makeRepeatableChestHandler({
     const rolled = pools
       .map((pool) => (pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null))
       .filter(Boolean)
+      // A pool entry may declare a range instead of a fixed count (the lairs'
+      // "2-4 potions"). Roll it once here so the grant and the rewards modal
+      // report the same number.
+      .map((reward) =>
+        typeof reward.quantityMin === 'number' && typeof reward.quantityMax === 'number'
+          ? {
+              ...reward,
+              quantity:
+                reward.quantityMin +
+                Math.floor(Math.random() * (reward.quantityMax - reward.quantityMin + 1)),
+            }
+          : reward
+      )
     const goldAmount =
       goldMax > 0 ? goldMin + Math.floor(Math.random() * (goldMax - goldMin + 1)) : 0
 
@@ -1444,6 +1543,353 @@ const ROOM_ACTIONS = {
   // Berry bushes, at the exact rooms the original game placed them. Each bush's
   // batch size is the legacy per-room amount; the rolling cooldown replaces the
   // legacy "top up to N, re-pick forever" pattern.
+
+  // --- Freddie's Cow Farm (103) ---
+  // The farm gate is a toll, not a quest: 50 gold buys one trip north, and the
+  // gate spends the pass on the way through (see ROOM_GATES['103']).
+  '103': {
+    'talk to freddie': createNpcTalkHandler({
+      npcId: 'freddie',
+      action: 'talk to freddie',
+      icon: 'npc-freddie',
+      iconColor: 'amber-400',
+      title: 'Freddie',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_freddie_001',
+          message: '"Look at that — proper leatherwork." Freddie slaps the workbench. "Hides are still fifty gold a trip, mind. Hammer\'s free, though. Always is."',
+        },
+        {
+          ifCompleted: 'quest_freddie_intro',
+          message: '"Grab a hammer, pay the toll, take your five hides. Then find a crafting table and make something out of them."',
+        },
+        {
+          ifCompleted: null,
+          message: 'A wiry man in a leather apron looks up from a half-tanned hide. "Afternoon. Cows are through the gate. Gate\'s fifty gold."',
+        },
+      ],
+    }),
+    'pay toll': async (playerId, roomState) => {
+      const { prisma } = require('../db-client')
+      const { isLeverPulled, pullLever, COW_TOLL } = require('./lever-state')
+      const TOLL = 50
+      const action = 'pay toll'
+
+      roomState.touchActivity()
+
+      const say = (outcome, message) => ({
+        success: outcome === 'success',
+        action,
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(action, outcome, message, {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: { type: 'icon', icon: 'npc-freddie', iconColor: 'amber-400', title: 'Freddie', message },
+            }),
+          },
+        ],
+      })
+
+      if (isLeverPulled(playerId, COW_TOLL)) {
+        return say('info', 'You already paid the toll. Go north and get yourself some leather.')
+      }
+
+      // Charge and open in one conditional write, so two clicks in flight cannot
+      // both pass the balance check and take 100 gold for one trip.
+      let updated
+      try {
+        updated = await prisma.user.update({
+          where: { id: playerId, currency: { gte: TOLL } },
+          data: { currency: { decrement: TOLL } },
+          select: { id: true, currency: true },
+        })
+      } catch (error) {
+        // P2025 = the conditional update matched nothing, i.e. the balance check
+        // failed. Anything else is a real fault and should not read as "broke".
+        if (error?.code === 'P2025') {
+          return say('info', "You don't have 50 gold to pay the toll.")
+        }
+        console.error('[Cow Farm toll] Failed to charge toll:', error)
+        return createErrorResult(action, 'Something went wrong paying the toll. Please try again.')
+      }
+
+      pullLever(playerId, COW_TOLL)
+      const message = 'You hand Freddie 50 gold. The gate to the cow farm swings open.'
+      return {
+        success: true,
+        action,
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(action, 'success', message, {
+              roomId: roomState.roomId,
+              player: updated,
+              showModal: true,
+              modalContent: { type: 'icon', icon: 'npc-freddie', iconColor: 'amber-400', title: 'Freddie', message },
+            }),
+          },
+        ],
+      }
+    },
+    'get hammer': makeFreeItemAction({
+      itemSlug: 'hammer',
+      itemName: 'a hammer',
+      capLabel: 'hammer',
+      icon: 'craft',
+      iconColor: 'amber-500',
+      grantMessage: 'You take a hammer from the crate by the workshop door. You will need it to work leather.',
+      alreadyHaveMessage: 'You already have a hammer. If you lose it, come back here for another free one.',
+    }),
+  },
+
+  // --- More Cows (103c): the woodpile behind the farm ---
+  '103c': {
+    'get wood': makeGatherAction({
+      itemSlug: 'wood',
+      itemNamePlural: 'wood',
+      topUpTo: 5,
+      maxHeldMessage: "You can't pick up more than 5 pieces of wood here. Come back if you run low.",
+      topUpMessage: (collected) => `You grab a stack of ${collected} wood from behind the fence.`,
+    }),
+  },
+
+  // --- Forest Gate directory (104) ---
+  '104': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the Forest Path Directory.',
+      modalContent: {
+        title: 'You read the Forest Path Directory',
+        heading: {
+          text: 'Forest Path Directory',
+          parts: ['Forest Path', 'Directory'],
+          description: 'The crossroads of the whole Forest — every road out of it, and what waits down each one.',
+        },
+        locations: [
+          { name: 'Traveling Wizard', direction: 'north', description: 'Spell training, then on to the Kobold Lair, the Dark Forest and the Mountains.' },
+          { name: 'The Forest', direction: 'northeast', description: "Hunter Bill, the Forest Gnome, and more trees than you can chop." },
+          { name: "Freddie's Cow Farm", direction: 'west', description: 'Leather, a free hammer, and the road back to the Grassy Field.' },
+          { name: 'Traveling Warrior', direction: 'south', description: 'Skill training, then the Ogre Lair and the road to Red Town.' },
+        ],
+        questMessage: 'The Ogre Lair lies southwest and the Kobold Lair northwest. Both run deep, and both end in a boss worth a guild membership.',
+        questMessageDescription: 'Ogres drop strength and defense gear; kobolds drop magic gear. Pick your fight.',
+      },
+    },
+  },
+
+  // --- Forest Clearing directory (121) ---
+  '121': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the Forest Directory.',
+      modalContent: {
+        title: 'You read the Forest Directory',
+        heading: {
+          text: 'Forest Directory',
+          parts: ['Forest', 'Directory'],
+          description: 'Seven roads out of the clearing, and what is at the end of each.',
+        },
+        locations: [
+          { name: 'Gold Chest', direction: 'north', description: 'Past the river. Hunter Bill holds the key.' },
+          { name: 'Large Clearing', direction: 'west', description: 'A massive tree, and a stack of free leather under it.' },
+          { name: 'Abandoned Campsite', direction: 'east', description: 'Somebody left in a hurry. Worth searching.' },
+          { name: 'Forest Gnome', direction: 'south', description: 'A tree hut, three quests, and a spare hatchet.' },
+          { name: 'Hunter Bill', direction: 'northwest', description: 'Hunting quests, skills, and a fire that supercharges you.' },
+          { name: 'Forest Entrance', direction: 'southwest', description: 'Back to the stone path and the Forest Gate.' },
+          { name: 'Forest Lake', direction: 'southeast', description: 'Bluefish, and the path on toward the Dark Forest Gate.' },
+        ],
+        questMessage: 'Not every path out of this forest is on a map. Some of them you have to search for.',
+        questMessageDescription: 'The trees north of the deep forest look solid. They are not.',
+      },
+    },
+  },
+
+  // --- Under the Massive Tree (117): the leather stack ---
+  '117': {
+    'get leather': makeGatherAction({
+      itemSlug: 'leather',
+      itemNamePlural: 'leather',
+      topUpTo: 5,
+      maxHeldMessage: 'You already have 5 leather. Come back if you run low — for more than 5 you will have to hunt for it.',
+      topUpMessage: (collected) => `You pick up ${collected} pieces of leather from the stack under the tree.`,
+    }),
+  },
+
+  // --- Red Guard Tower (124): the arrow bundles at its base ---
+  '124': {
+    'grab arrows': makeGatherAction({
+      itemSlug: 'arrow',
+      itemNamePlural: 'arrows',
+      topUpTo: 50,
+      maxHeldMessage: 'You already have more than 50 arrows. Come back if you run low.',
+      topUpMessage: (collected) => `You grab a bundle of arrows from the guard stores. [ +${collected} arrows ]`,
+    }),
+  },
+
+  // --- Forest Lake (131): the bluefish shallows ---
+  '131': {
+    'fish': makeGatherAction({
+      itemSlug: 'bluefish',
+      itemNamePlural: 'bluefish',
+      topUpTo: 10,
+      maxHeldMessage: 'There are no more fish left in the lake. Come back later.',
+      topUpMessage: (collected) => `You fish in the lake and catch ${collected} bluefish.`,
+    }),
+  },
+
+  // ==================== FOREST UNDERGROUND ====================
+  // The two lair entrances warn you what is below and what it drops. Both signs
+  // are the original's word for word, in the modal the other directories use.
+  '111': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the sign hammered into the rock.',
+      modalContent: {
+        title: 'You read the sign',
+        heading: {
+          text: "Ogres Below!",
+          parts: ['Ogres', 'Below!'],
+          description: 'A crude board nailed over the mouth of the cave.',
+        },
+        locations: [
+          { name: 'Ogre Lair', direction: 'down', description: 'Goblins and rats near the entrance. Ogres, orcs and worse the deeper you go.' },
+        ],
+        questMessage: 'The enemies below generally drop STRENGTH and DEFENSE increasing equipment.',
+        questMessageDescription: "Defeat the Ogre Lieutenant to join the Warrior's Guild.",
+      },
+    },
+  },
+  '115': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the weathered sign.',
+      modalContent: {
+        title: 'You read the sign',
+        heading: {
+          text: 'Magical Kobolds Below!',
+          parts: ['Magical Kobolds', 'Below!'],
+          description: 'A weathered board propped against the rim of the hole.',
+        },
+        locations: [
+          { name: 'Kobold Lair', direction: 'down', description: 'Kobolds, shamans, ninjas and warlocks, and a temple full of them.' },
+        ],
+        questMessage: 'The enemies below generally drop MAGIC increasing equipment.',
+        questMessageDescription: "Defeat the Kobold Master to join the Wizard's Guild.",
+      },
+    },
+  },
+
+  // --- Ogre Treasure Room (111h) ---
+  // Behind the searched passage off the Ogre Yard. The original rolled a weapon
+  // or helmet AND a Tier III ring on every open, plus potions and coin, on a
+  // 100-click lock. Two pools reproduce that; the lock becomes an hour, the same
+  // window the Thieve's Den chest uses.
+  '111h': {
+    'open chest': makeRepeatableChestHandler({
+      roomId: '111h',
+      action: 'open chest',
+      label: 'Ogre Treasure Chest',
+      cooldownMs: 60 * 60 * 1000,
+      goldMin: 500,
+      goldMax: 1500,
+      xp: 200,
+      icon: 'chest',
+      iconColor: 'amber-500',
+      openMessage: 'You heave the lid off the ogres\' chest. Everything they have ever taken off anyone is in here.',
+      pools: [
+        [
+          { itemSlug: 'giant-club', quantity: 1, highlighted: true },
+          { itemSlug: 'warhammer', quantity: 1, highlighted: true },
+          { itemSlug: 'off-hand-dagger', quantity: 1, highlighted: true },
+          { itemSlug: 'iron-hood', quantity: 1, highlighted: true },
+        ],
+        [
+          { itemSlug: 'ring-of-strength-iii', quantity: 1 },
+          { itemSlug: 'ring-of-dexterity-iii', quantity: 1 },
+          { itemSlug: 'ring-of-magic-iii', quantity: 1 },
+          { itemSlug: 'ring-of-defense-iii', quantity: 1 },
+        ],
+        [{ itemSlug: 'red-potion', quantityMin: 2, quantityMax: 4 }],
+      ],
+    }),
+  },
+
+  // --- Kobold Hidden Chamber (115f) ---
+  // Behind the Control Room lever. Same shape as the ogres' chest, stocked with
+  // the magic-side gear the kobolds drop.
+  '115f': {
+    'open chest': makeRepeatableChestHandler({
+      roomId: '115f',
+      action: 'open chest',
+      label: 'Kobold Treasure Chest',
+      cooldownMs: 60 * 60 * 1000,
+      goldMin: 500,
+      goldMax: 1500,
+      xp: 200,
+      icon: 'chest',
+      iconColor: 'blue-300',
+      openMessage: 'The kobolds\' chest opens on a hoard nobody was ever meant to find.',
+      pools: [
+        [
+          { itemSlug: 'iron-staff', quantity: 1, highlighted: true },
+          { itemSlug: 'iron-battle-staff', quantity: 1, highlighted: true },
+          { itemSlug: 'tower-shield', quantity: 1, highlighted: true },
+          { itemSlug: 'gray-hood', quantity: 1, highlighted: true },
+        ],
+        [
+          { itemSlug: 'ring-of-strength-iii', quantity: 1 },
+          { itemSlug: 'ring-of-dexterity-iii', quantity: 1 },
+          { itemSlug: 'ring-of-magic-iii', quantity: 1 },
+          { itemSlug: 'ring-of-defense-iii', quantity: 1 },
+        ],
+        [{ itemSlug: 'blue-potion', quantityMin: 2, quantityMax: 4 }],
+      ],
+    }),
+  },
+
+  // --- Kobold Control Room (115h) ---
+  // One lever, one false wall. Session-scoped like the original's `koboldswitch`:
+  // the chamber has to be re-opened every time you come back down.
+  '115h': {
+    'flip lever': async (playerId, roomState) => {
+      const { pullLever, isLeverPulled, getRoomStateNote, getRoomActionOverrides, KOBOLD_SWITCH } = require('./lever-state')
+      const action = 'flip lever'
+
+      roomState.touchActivity()
+
+      const already = isLeverPulled(playerId, KOBOLD_SWITCH)
+      const message = already
+        ? 'You already flipped this switch. You have a feeling a doorway has opened up somewhere in this cave.'
+        : 'You flip the lever and hear grinding noises come from inside the west wall.'
+      if (!already) pullLever(playerId, KOBOLD_SWITCH)
+
+      return {
+        success: true,
+        action,
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(action, already ? 'info' : 'success', message, {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: {
+                type: 'icon',
+                icon: 'lever-down',
+                iconColor: already ? 'gray-500' : 'green-400',
+                title: 'Control Room Lever',
+                message,
+              },
+              stateNote: getRoomStateNote(playerId, '115h'),
+              actionOverrides: getRoomActionOverrides(playerId, '115h'),
+            }),
+          },
+        ],
+      }
+    },
+  },
+
   '120': {
     'pick redberry': makeGatherAction({
       itemSlug: 'redberry',
@@ -1451,6 +1897,15 @@ const ROOM_ACTIONS = {
       cooldownMs: 15 * 60 * 1000,
       quantity: 20,
       emptyVerb: 'grow',
+    }),
+    'grab ring': makeFreeItemAction({
+      itemSlug: 'ring-of-dexterity-iii',
+      itemName: 'a Ring of Dexterity III',
+      capLabel: 'Ring of Dexterity III',
+      icon: 'ring',
+      iconColor: 'green-400',
+      grantMessage: 'You pick a Ring of Dexterity III out of the silt at the river\'s edge. Somebody lost this a long time ago.',
+      alreadyHaveMessage: 'You already have a Ring of Dexterity III. If you lose it, come back here for another free one.',
     }),
   },
   '125': {
@@ -1490,6 +1945,14 @@ const ROOM_ACTIONS = {
     }),
   },
   '118': {
+    // Bill's fire supercharges rather than merely restoring — the original set
+    // hp/mp to max + 10 here, which is why hunters stage out of this camp.
+    'rest at camp': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest at camp',
+        overchargeBonus: 10,
+        overchargeMessage: "You rest at Hunter Bill's camp and supercharge yourself. Your HP and MP are fully restored, plus an extra +10 to each.",
+      }),
     'talk to hunter bill': createNpcTalkHandler({
       npcId: 'hunter_bill',
       action: 'talk to hunter bill',
@@ -2453,6 +2916,7 @@ module.exports = {
   executeRoomAction,
   ROOM_ACTIONS,
   CHEST_LOOT,
+  REPEATABLE_CHEST_LOOT,
   getGatherActionForRoom,
   getGatherActionsForRoom,
 }

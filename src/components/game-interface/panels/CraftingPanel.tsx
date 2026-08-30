@@ -14,6 +14,12 @@ type Recipe = ReturnType<typeof getRecipesForRoom>[number]
 interface CraftingPanelProps {
   roomId: string
   inventory: InventoryItem[]
+  /**
+   * The player's quest rows, used only to decide whether a quest-locked recipe
+   * tier (Freddie's leather) is unlocked yet. The server re-checks it — this
+   * just keeps the panel from advertising a craft that would be refused.
+   */
+  quests?: { questId: string }[]
   onCraft: (recipeId: string, quantity: number) => void
   onClose: () => void
   /** Recipe id currently being crafted (its buttons show a spinner / disable). */
@@ -30,12 +36,14 @@ interface CraftingPanelProps {
 export default function CraftingPanel({
   roomId,
   inventory,
+  quests = [],
   onCraft,
   onClose,
   craftingRecipeId = null,
   actionResult,
 }: CraftingPanelProps) {
   const recipes = useMemo(() => getRecipesForRoom(roomId), [roomId])
+  const startedQuestIds = useMemo(() => new Set(quests.map((q) => q.questId)), [quests])
 
   // The result flyout anchors to whichever recipe card the latest craft result
   // belongs to (all craft buttons share the action name 'craft', so we match on
@@ -69,9 +77,18 @@ export default function CraftingPanel({
     return { materials, tools }
   }, [inventory])
 
+  /** The tool a recipe needs but does not consume, and whether it's in the bag. */
+  const missingTool = (recipe: Recipe) =>
+    recipe.tool && qtyOf(recipe.tool.slug) < 1 ? recipe.tool : null
+
+  /** The quest a recipe is locked behind, while it is still locked. */
+  const lockedBy = (recipe: Recipe) =>
+    recipe.unlock && !startedQuestIds.has(recipe.unlock.questId) ? recipe.unlock : null
+
   // How many times this recipe can run right now — the min over inputs, then
   // clamped by remaining output stack space.
   const maxCraftableFor = (recipe: Recipe) => {
+    if (lockedBy(recipe) || missingTool(recipe)) return 0
     let perBatch = Infinity
     for (const input of recipe.inputs) {
       perBatch = Math.min(perBatch, Math.floor(qtyOf(input.slug) / input.qty))
@@ -88,6 +105,8 @@ export default function CraftingPanel({
   const renderCard = (recipe: Recipe) => {
     const maxCraftable = maxCraftableFor(recipe)
     const canCraft = maxCraftable >= 1
+    const locked = lockedBy(recipe)
+    const needsTool = missingTool(recipe)
     const outEntry = owned.get(recipe.output.slug)
     const held = outEntry?.quantity ?? 0
     const atMax =
@@ -142,9 +161,20 @@ export default function CraftingPanel({
           </div>
         </div>
 
+        {/* Why this recipe is unavailable, when it is not simply a material shortfall. */}
+        {locked && <div className="text-[11px] text-amber-400/90">{locked.hint}</div>}
+        {!locked && needsTool && (
+          <div className="text-[11px] text-amber-400/90">Needs a {needsTool.name} in your inventory.</div>
+        )}
+
         {/* Ingredient requirements: cost (have / need). */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
           <span className="text-[10px] uppercase tracking-wider text-gray-500">Cost:</span>
+          {recipe.tool && (
+            <span className={`text-xs ${needsTool ? 'text-red-400' : 'text-gray-300'}`}>
+              {recipe.tool.name} <span className="font-semibold">{needsTool ? '0/1' : '1/1'}</span>
+            </span>
+          )}
           {recipe.inputs.map((input) => {
             const have = qtyOf(input.slug)
             const enough = have >= input.qty

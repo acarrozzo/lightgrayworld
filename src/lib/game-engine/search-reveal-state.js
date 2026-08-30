@@ -50,6 +50,40 @@ const REVEAL_DEFINITIONS = {
     failMessage: 'You sift through the bones and scraps but find nothing of interest. The stone walls give up no secrets this time.',
     stateNote: 'A crawlspace gapes open behind the northern slab.',
   },
+  // ==================== FOREST ====================
+  // The two ends of the same hidden trail through the trees. The original drove
+  // both off one shared `forestsearch` session flag, so finding the gap at one
+  // end silently opened the other; per-room reveals mean each end has to be
+  // found where it actually is. 1-in-2 per search, as the original rolled it.
+  '127': {
+    direction: 'north',
+    toRoom: '132',
+    chance: 0.5,
+    successMessage: 'You push at the treeline and the trunks give way — what looked solid is two trees standing close. A passage runs north through them.',
+    failMessage: 'You search and find nothing but bark and bramble. You should try searching again.',
+    stateNote: 'A gap between the trees opens to the north.',
+  },
+  '132': {
+    direction: 'south',
+    toRoom: '127',
+    chance: 0.5,
+    successMessage: 'You work along the rocks and find where the trees part — a passage south, back into the deep forest.',
+    failMessage: 'You search and find nothing but bark and bramble. You should try searching again.',
+    stateNote: 'A gap between the trees opens to the south.',
+  },
+
+  // ==================== FOREST UNDERGROUND — OGRE LAIR ====================
+  // The way into the Ogre Treasure Room. 1-in-3 per search in the original,
+  // which is what makes the yard worth standing in while ogres come at you.
+  '111g': {
+    direction: 'northwest',
+    toRoom: '111h',
+    chance: 1 / 3,
+    successMessage: 'You haul the crates aside and find the draft was coming from a gap in the rock. A passage runs northwest, and it smells of coin.',
+    failMessage: 'You turn over crates and bones and find nothing, you should try searching again.',
+    stateNote: 'A hidden passage gapes open to the northwest.',
+  },
+
   // ==================== RED TOWN BACK ALLEYS ====================
   // The original drove all three of these off one shared `shadysearch` session
   // flag, so searching any one of them opened the others too. Per-room reveals

@@ -18,6 +18,13 @@
  * @type {Record<string, RoomTrigger>}
  */
 const QUEST_ROOM_TRIGGERS = {
+  // ==================== FOREST ====================
+  // Freddie's set is chained off Jack Lumber's last quest (the one that opens the
+  // Forest Path), which is how a new player hears about the cow farm. This is the
+  // safety net: anyone who was already past that point when Freddie was added
+  // still picks his quests up by walking onto the farm.
+  '103': { questId: 'quest_freddie_intro', npc: 'Freddie' },
+
   // ==================== RED TOWN ====================
   '215': { questId: 'quest_redguardcaptain_intro', npc: 'the Red Guard Captain' },
   '221': { questId: 'quest_townhallplaza_intro', npc: 'the people at the Plaza' },

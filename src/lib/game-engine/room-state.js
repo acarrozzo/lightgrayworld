@@ -42,6 +42,58 @@ const SEARCH_LOOT_TABLES = {
       { message: 'You search the destroyed basement and find a Long Sword!', effect: { type: 'grantItem', itemSlug: 'long-sword', quantity: 1 } },
     ],
   },
+
+  // ==================== FOREST ====================
+  // The Abandoned Campsite. Whoever left did not pack: a 1-in-2 search, then one
+  // of five things off the ground, exactly the spread the original rolled.
+  '130': {
+    chance: 0.5,
+    failMessage: 'You search the Abandoned Campsite and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the Abandoned Campsite and find a Bluefish!', effect: { type: 'grantItem', itemSlug: 'bluefish', quantity: 1 } },
+      { message: (amount) => `You search the Abandoned Campsite and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 50, max: 200 } },
+      { message: 'You search the Abandoned Campsite and find a Meatball!', effect: { type: 'grantItem', itemSlug: 'meatball', quantity: 1 } },
+      { message: 'You search the Abandoned Campsite and find a Purple Potion!', effect: { type: 'grantItem', itemSlug: 'purple-potion', quantity: 1 } },
+      { message: 'You search the Abandoned Campsite and find a Wings Potion!', effect: { type: 'grantItem', itemSlug: 'wings-potion', quantity: 1 } },
+    ],
+  },
+
+  // The Forest Dead End's iron hatchet. Not a loot roll so much as a one-off
+  // find: the hatchet is here for whoever does not have one, and the search
+  // stops paying out the moment you are carrying it. Losing it makes the dead
+  // end worth walking back to, which is the whole point of the room.
+  '129': {
+    chance: 0.5,
+    failMessage: 'You search the Forest and think you see something shiny in the bushes, you should search again.',
+    onlyWhileMissing: {
+      itemSlug: 'iron-hatchet',
+      message: 'You found an Iron Hatchet here once already. Come back if you ever lose it.',
+    },
+    entries: [
+      { message: 'You search the Forest and find an Iron Hatchet!', effect: { type: 'grantItem', itemSlug: 'iron-hatchet', quantity: 1 } },
+    ],
+  },
+
+  // ==================== FOREST UNDERGROUND ====================
+  // The two lived-in rooms down here — a hob goblin's hut and the kobolds' dead
+  // end. Both were 1-in-3 to find anything in the original, then a coin flip
+  // between berries and the matching potion.
+  '111d': {
+    chance: 1 / 3,
+    failMessage: 'You search the Hob Goblin Hut and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the Hob Goblin Hut and find 3 Redberries!', effect: { type: 'grantItem', itemSlug: 'redberry', quantity: 3 } },
+      { message: 'You search the Hob Goblin Hut and find a Red Potion!', effect: { type: 'grantItem', itemSlug: 'red-potion', quantity: 1 } },
+    ],
+  },
+  '115b': {
+    chance: 1 / 3,
+    failMessage: 'You search the Kobold Dead End and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the Kobold Dead End and find 3 Blueberries!', effect: { type: 'grantItem', itemSlug: 'blueberry', quantity: 3 } },
+      { message: 'You search the Kobold Dead End and find a Blue Potion!', effect: { type: 'grantItem', itemSlug: 'blue-potion', quantity: 1 } },
+    ],
+  },
 }
 
 // Pull a short "+5 HP" / "−1 HP" / "+10 MP" effect string out of an item action
@@ -779,8 +831,27 @@ class RoomState {
       }
     }
 
-    // 50% success chance
-    if (Math.random() < 0.5) {
+    // A one-off find (the Forest Dead End's iron hatchet) stops paying out once
+    // the player is carrying it, rather than rolling and silently capping.
+    if (lootTable.onlyWhileMissing) {
+      const { playerHasItem } = require('./services/inventory-service')
+      if (await playerHasItem(playerId, lootTable.onlyWhileMissing.itemSlug)) {
+        return {
+          success: true,
+          action: 'search',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: this.createFeedbackPayload('search', 'info', lootTable.onlyWhileMissing.message),
+            },
+          ],
+        }
+      }
+    }
+
+    // Chance of finding anything at all. Defaults to the 50/50 the first search
+    // rooms used; the authored rooms below set their own odds.
+    if (Math.random() >= (lootTable.chance ?? 0.5)) {
       return {
         success: true,
         action: 'search',

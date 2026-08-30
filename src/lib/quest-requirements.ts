@@ -13,6 +13,7 @@ import type { InventoryItem, KillEntry, Player } from '@/lib/game-state'
 export type QuestRequirement = {
   type: string
   itemSlug?: string
+  items?: { itemSlug: string; quantity?: number }[]
   quantity?: number
   count?: number
   displayName?: string
@@ -126,6 +127,33 @@ export function getRequirementProgress(
       total,
       label: resolveItemLabel(req.itemSlug ?? '', req.displayName, inventory),
       countable: true,
+    }
+  }
+
+  if (req.type === 'hasAnyItem') {
+    // Satisfied by any one entry. Progress reads off whichever entry the player
+    // is furthest along on, so a partial stack of one option still shows movement.
+    const entries = req.items ?? []
+    let best = { current: 0, total: 1 }
+    for (const entry of entries) {
+      const total = entry.quantity ?? 1
+      const current = inventory
+        .filter((i) => i.template.slug === entry.itemSlug)
+        .reduce((sum, i) => sum + i.quantity, 0)
+      if (current >= total) {
+        best = { current: total, total }
+        break
+      }
+      if (current / total > best.current / best.total) best = { current, total }
+    }
+    return {
+      ...base,
+      key: `any-item-${index}`,
+      met: entries.length > 0 && best.current >= best.total,
+      current: Math.min(best.current, best.total),
+      total: best.total,
+      label: req.displayName ?? 'Any one of a set of items',
+      countable: false,
     }
   }
 
