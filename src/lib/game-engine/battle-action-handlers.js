@@ -34,11 +34,13 @@ function errorResult(action, message) {
   }
 }
 
+const { BUFF_SELECT } = require('./services/buff-service')
+
 // Fetch the stats needed for BattleState from DB
 async function fetchPlayerStats(playerId) {
   return prisma.user.findUnique({
     where: { id: playerId },
-    select: { str: true, dex: true, mag: true, def: true, strMod: true, dexMod: true, magMod: true, defMod: true, hp: true, hpMax: true },
+    select: { str: true, dex: true, mag: true, def: true, strMod: true, dexMod: true, magMod: true, defMod: true, hp: true, hpMax: true, ...BUFF_SELECT },
   })
 }
 

@@ -100,7 +100,7 @@ type EnemySource = { name: string; drops: EnemyDrops }
 type QuestReward = { type: string; itemSlug?: string; quantity?: number }
 type QuestDef = { title: string; rewards?: QuestReward[] }
 type ChestItem = { itemSlug: string; quantity?: number }
-type ChestLoot = { label: string; items: ChestItem[] }
+type ChestLoot = { label: string; items: ChestItem[]; randomItems?: ChestItem[] }
 // Search entries grant an item, currency, or nothing. We only index item grants;
 // quantity may be fixed (`quantity`) or a range (`minQty`/`maxQty`).
 type SearchEffect = {
@@ -209,11 +209,15 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
     }
   }
 
-  // Chests — every item in each chest's loot table.
+  // Chests — every item in each chest's loot table, plus anything in its random
+  // bonus pool (one of which is rolled per open) so those items still show a source.
   for (const roomChests of Object.values(CHEST_LOOT)) {
     for (const chest of Object.values(roomChests)) {
       for (const item of chest.items ?? []) {
         ensure(item.itemSlug).chests.push({ label: `${chest.label}${fixedQty(item.quantity)}` })
+      }
+      for (const item of chest.randomItems ?? []) {
+        ensure(item.itemSlug).chests.push({ label: `${chest.label} (random)` })
       }
     }
   }

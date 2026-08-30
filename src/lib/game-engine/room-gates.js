@@ -5,6 +5,28 @@
 const { prisma } = require('../db-client')
 
 /**
+ * Has the player completed any one of the Red Guard Captain's three quests?
+ * Gates the lookout-tower ladder in both directions (rooms 124 and 215).
+ */
+async function captainQuestDone(playerId) {
+  const done = await prisma.questProgress.findFirst({
+    where: {
+      userId: playerId,
+      completed: true,
+      questId: {
+        in: [
+          'quest_redguardcaptain_001',
+          'quest_redguardcaptain_002',
+          'quest_redguardcaptain_003',
+        ],
+      },
+    },
+    select: { id: true },
+  })
+  return !!done
+}
+
+/**
  * Map of room gates by roomId and direction
  * Each gate definition includes:
  * - check: async function that validates criteria (returns boolean)
@@ -239,26 +261,55 @@ const ROOM_GATES = {
       },
     },
   },
-  // The lookout tower is the Barracks' back door into Red Town, so it carries the
-  // same Ogre requirement — otherwise the ladder at 124 would walk a player straight
-  // past the gate at 107. The original gated this on the Red Guard Captain's quests;
-  // swap this check for those once that quest set lands.
+  // The lookout tower is the Barracks' back door into Red Town, so the ladder is
+  // gated in both directions. The original opened it on completing ANY ONE of the
+  // Captain's three quests (room124.php and room215.php both checked quest11/12/13),
+  // which also means the tower can only be unlocked from the town side — you meet
+  // the Captain by walking up through the Barracks, never by climbing the ladder.
   '124': {
     'south': {
-      check: async (playerId) => {
-        const kill = await prisma.killList.findUnique({
-          where: { userId_monster: { userId: playerId, monster: 'ogre' } },
-          select: { kills: true },
-        })
-        return (kill?.kills ?? 0) >= 1
-      },
-      message: "The Red Guard on the tower waves you off the ladder. Prove yourself against an Ogre first.",
+      check: captainQuestDone,
+      message: "The Red Guard on the tower waves you off the ladder. Help the Captain out first.",
       modalContent: {
         title: 'A Red Guard waves you off the tower ladder',
         type: 'icon',
-        icon: 'npc-dwarfguard',
+        icon: 'npc-redguardcaptain',
         iconColor: 'red-400',
-        message: '"Captain\'s orders — the tower stays shut to anyone who hasn\'t put down an Ogre. Come back when you have."',
+        message: '"Captain\'s orders — the tower stays shut until you\'ve done something for him. His office is up through the Barracks, if you can find your way into town."',
+      },
+    },
+  },
+  '215': {
+    'north': {
+      check: captainQuestDone,
+      message: "You can't climb down into the Forest until you've completed one of the Captain's quests.",
+      modalContent: {
+        title: 'The Captain blocks the tower ladder',
+        type: 'icon',
+        icon: 'npc-redguardcaptain',
+        iconColor: 'red-400',
+        message: '"Not yet. Finish one of my jobs and the ladder is yours." He nods south. "Otherwise the Forest Path will take you round the long way."',
+      },
+    },
+  },
+  // Town Hall's private dining room opens once the Babylon Gardens chest is open —
+  // the Mayor's way of saying you have squared up with the town.
+  '222': {
+    'north': {
+      check: async (playerId) => {
+        const user = await prisma.user.findUnique({
+          where: { id: playerId },
+          select: { chest3: true },
+        })
+        return !!user?.chest3
+      },
+      message: "The dining room door is locked. Open the gold chest in the Babylon Gardens and the Mayor will unlock it.",
+      modalContent: {
+        title: 'The Red Dining Room is locked',
+        type: 'icon',
+        icon: 'npc-mayor',
+        iconColor: 'red-400',
+        message: '"That room is for people who have done this town a service." The Mayor gestures west. "Open the chest in the Gardens and we will call it settled."',
       },
     },
   },

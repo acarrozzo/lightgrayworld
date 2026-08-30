@@ -1547,6 +1547,181 @@ const ENEMIES = [
       ],
     },
   },
+
+  // ==================== THE CATACOMBS — the named dead ====================
+  // Omar and Victoria are the fixed bosses of the Sacrificial Chamber (232w) and
+  // the Sacred Altar (232v). Legacy stats carried over exactly.
+  //
+  // Their legacy trait flags have no modern equivalent and are dropped rather
+  // than faked: Victoria's eMagImm (magic immunity) and both of their eMag
+  // casting flags beyond damageType. Victoria keeps MAGIC damage, so she is
+  // defended against with MAG — the recognisable "bring your wits" shape —
+  // while Omar hits harder and armours heavier.
+  {
+    slug: 'omar-the-dead',
+    zone: 'The Catacombs',
+    name: 'Omar the Dead',
+    description: 'He was buried standing up, and has not sat down since. Every blow lands like a dropped headstone.',
+    icon: 'enemy-OmartheDead',
+    level: 17,
+    hp: 250,
+    att: 60,
+    def: 30,
+    isAggressive: true,
+    isFriendly: false,
+    isFlying: false,
+    damageType: 'MELEE',
+    xpReward: 150,
+    goldMin: 50,
+    goldMax: 200,
+    drops: {
+      main: [
+        { itemSlug: 'bone-knuckles', chance: 0.2 },
+        { itemSlug: 'bone-cudgel', chance: 0.2 },
+        { itemSlug: 'gray-matter', chance: 0.2 },
+        { itemSlug: 'red-balm', chance: 0.2 },
+      ],
+    },
+  },
+  {
+    slug: 'victoria-the-dead',
+    zone: 'The Catacombs',
+    name: 'Victoria the Dead',
+    description: 'She keeps the altar, and speaks the whole time she is killing you. None of it is to you.',
+    icon: 'enemy-VictoriatheDead',
+    level: 17,
+    hp: 250,
+    att: 50,
+    def: 15,
+    isAggressive: true,
+    isFriendly: false,
+    isFlying: false,
+    damageType: 'MAGIC',
+    xpReward: 150,
+    goldMin: 50,
+    goldMax: 200,
+    drops: {
+      main: [
+        { itemSlug: 'victorias-hood', chance: 0.2 },
+        { itemSlug: 'bone-boots', chance: 0.2 },
+        { itemSlug: 'gray-matter', chance: 0.2 },
+        { itemSlug: 'blue-balm', chance: 0.2 },
+      ],
+    },
+  },
+
+  // ==================== BLUE OCEAN — sharks ====================
+  // Warrior Pete's "Shark Hunter" targets. Defined here so the quest is complete
+  // the moment the Blue Ocean rooms land; nothing spawns them yet, which is the
+  // one thing standing between that quest and completion.
+  // Legacy eDexImm (dexterity immunity) and ePow (1-in-3 triple hit) have no
+  // modern equivalent and are dropped.
+  {
+    slug: 'hammerhead',
+    zone: 'Blue Ocean',
+    name: 'Hammerhead',
+    description: 'It turns its whole head to look at you, which is somehow worse than the teeth.',
+    icon: 'enemy-Hammerhead',
+    level: 20,
+    hp: 200,
+    att: 50,
+    def: 50,
+    isAggressive: true,
+    isFriendly: false,
+    isFlying: false,
+    damageType: 'MELEE',
+    xpReward: 200,
+    goldMin: 50,
+    goldMax: 200,
+    drops: {
+      main: [
+        { itemSlug: 'raw-meat', chance: 0.4, min: 2, max: 4 },
+        { itemSlug: 'bluefish', chance: 0.3 },
+        { itemSlug: 'gray-matter', chance: 0.1 },
+      ],
+    },
+  },
+  {
+    slug: 'great-white',
+    zone: 'Blue Ocean',
+    name: 'Great White',
+    description: 'The biggest thing in the water that still bothers to hunt.',
+    icon: 'enemy-GreatWhite',
+    level: 20,
+    hp: 250,
+    att: 60,
+    def: 40,
+    isAggressive: true,
+    isFriendly: false,
+    isFlying: false,
+    damageType: 'MELEE',
+    xpReward: 250,
+    goldMin: 100,
+    goldMax: 300,
+    drops: {
+      main: [
+        { itemSlug: 'raw-meat', chance: 0.4, min: 3, max: 5 },
+        { itemSlug: 'bluefish', chance: 0.3 },
+        { itemSlug: 'gray-matter', chance: 0.1 },
+      ],
+    },
+  },
+
+  // ==================== DARK FOREST — troll royalty ====================
+  // Warrior Pete's "True Troll Champion" and Wizard Morty's "Magic and the Troll
+  // Queen". Same note as the sharks: defined now, spawned when the Dark Forest
+  // lands. Legacy eRage / eMulti / eStrImm / eDexImm are dropped.
+  {
+    slug: 'troll-champion',
+    zone: 'Dark Forest',
+    name: 'Troll Champion',
+    description: 'The one the rest of the camp steps aside for. It has no armour and does not appear to need any.',
+    icon: 'enemy-TrollChampion',
+    level: 35,
+    hp: 500,
+    att: 100,
+    def: 10,
+    isAggressive: true,
+    isFriendly: false,
+    isFlying: false,
+    damageType: 'MELEE',
+    xpReward: 400,
+    goldMin: 100,
+    goldMax: 500,
+    drops: {
+      main: [
+        { itemSlug: 'troll-gloves', chance: 0.25 },
+        { itemSlug: 'troll-boots', chance: 0.25 },
+        { itemSlug: 'gray-matter', chance: 0.15 },
+        { itemSlug: 'red-balm', chance: 0.2 },
+      ],
+    },
+  },
+  {
+    slug: 'troll-queen',
+    zone: 'Dark Forest',
+    name: 'Troll Queen',
+    description: 'She does not swing at you. The air does, and it is very cold.',
+    icon: 'enemy-TrollQueen',
+    level: 40,
+    hp: 700,
+    att: 140,
+    def: 70,
+    isAggressive: true,
+    isFriendly: false,
+    isFlying: false,
+    damageType: 'MAGIC',
+    xpReward: 700,
+    goldMin: 300,
+    goldMax: 1000,
+    drops: {
+      main: [
+        { itemSlug: 'gray-matter', chance: 0.3 },
+        { itemSlug: 'purple-balm', chance: 0.25 },
+        { itemSlug: 'troll-gloves', chance: 0.2 },
+      ],
+    },
+  },
 ]
 
 function getEnemy(slug) {

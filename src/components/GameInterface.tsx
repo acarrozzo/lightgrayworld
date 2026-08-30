@@ -124,6 +124,7 @@ export default function GameInterface() {
   const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(true)
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
   const [shopModalData, setShopModalData] = useState<{
+    shopName?: string
     shopItems: Array<{ id: string; slug: string; name: string; description: string; value: number; type: string }>
     playerCurrency: number
     playerInventory: typeof inventory
@@ -1523,6 +1524,7 @@ export default function GameInterface() {
         if (modalContent && typeof modalContent === 'object' && !Array.isArray(modalContent) && modalContent.type === 'shop') {
           setIsShopModalOpen(true)
           setShopModalData({
+            shopName: modalContent.shopName,
             shopItems: modalContent.shopItems || [],
             playerCurrency: modalContent.playerCurrency || 0,
             playerInventory: modalContent.playerInventory || [],
@@ -2232,9 +2234,22 @@ export default function GameInterface() {
       }
     })
 
-    const cleanupClicksUpdate = socketHandlers.on<{ clicks: number }>('player:clicks-update', (payload) => {
+    // One per counted action. Carries the click count plus everything else that
+    // advances on a click: buff countdowns, and regenerated vitals when equipped
+    // gear moved them (see GameEngine.applyClickTick).
+    const cleanupClicksUpdate = socketHandlers.on<{
+      clicks: number
+      buffs?: Record<string, number>
+      hp?: number
+      mp?: number
+    }>('player:clicks-update', (payload) => {
       const { player: currentPlayer, setPlayer: sp } = useGameStore.getState()
-      if (currentPlayer) sp({ ...currentPlayer, clicks: payload.clicks })
+      if (!currentPlayer) return
+      const next = { ...currentPlayer, clicks: payload.clicks }
+      if (payload.buffs) next.buffs = payload.buffs
+      if (typeof payload.hp === 'number') next.hp = payload.hp
+      if (typeof payload.mp === 'number') next.mp = payload.mp
+      sp(next)
     })
 
     return () => {
@@ -2966,6 +2981,7 @@ export default function GameInterface() {
           setIsShopModalOpen(false)
           setShopModalData(null)
         }}
+        shopName={shopModalData?.shopName}
         shopItems={shopModalData?.shopItems || []}
         playerCurrency={shopModalData?.playerCurrency || player?.currency || 0}
         playerInventory={shopModalData?.playerInventory || inventory}

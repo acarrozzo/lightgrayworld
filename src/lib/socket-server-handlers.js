@@ -10,6 +10,8 @@ const {
 const { getRoomEnemies, isProbabilistic, rollRoomEnemyGroup } = require('./game-data/room-enemies.js')
 const { getEnemy } = require('./game-data/enemies.js')
 const { loadRoomRoster } = require('./game-engine/services/room-roster-service.js')
+const { applyRoomQuestTrigger } = require('./game-engine/quest-room-triggers.js')
+const { getAllQuestProgress } = require('./game-engine/services/quest-service.js')
 const { getRoomStateNote, getRoomActionOverrides, clearPlayerLevers } = require('./game-engine/lever-state.js')
 const {
   getRoomStateNote: getSearchRevealStateNote,
@@ -1031,6 +1033,28 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             } catch (error) {
               console.error('[Socket] Error setting redTownSewersMap:', error)
             }
+          }
+
+          // Quests that open by arriving somewhere (town quest givers). `toRoom`
+          // here is the engine-confirmed destination, not the client's request.
+          try {
+            const started = await applyRoomQuestTrigger(player.id, toRoom)
+            if (started) {
+              // The quest list rides on action:feedback's `data.quests`, which the
+              // client already folds into its store — no bespoke event needed.
+              const quests = await getAllQuestProgress(player.id)
+              socket.emit('action:feedback', {
+                action: 'quest started',
+                message: `You have work from ${started.npc}: ${started.quest.title}.`,
+                outcome: 'success',
+                ts: Date.now(),
+                timestamp: new Date().toISOString(),
+                success: true,
+                data: { roomId: toRoom, quests },
+              })
+            }
+          } catch (error) {
+            console.error('[Socket] Error applying room quest trigger:', error)
           }
 
           console.log(`[Socket] Emitting action:confirmed to player`)

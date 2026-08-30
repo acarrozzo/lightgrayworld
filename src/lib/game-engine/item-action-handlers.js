@@ -4,6 +4,7 @@
  */
 const { prisma } = require('../db-client')
 const { getPlayerInventory } = require('./services/inventory-service')
+const { applyBuff, BUFF_FIELDS, BUFF_LABELS } = require('./services/buff-service')
 
 /**
  * Map of item slugs to item-specific actions for NON-consumable items. Each
@@ -32,6 +33,42 @@ const STAT_COLUMNS = {
  * (e.g. HP already reduced by in-battle damage) rather than a stale in-memory
  * snapshot, and never overshoots the max or drops below 0.
  */
+/**
+ * Normalise a consumable's stat restoration into a list.
+ *
+ * The original single-stat shape `{ stat, amount }` is still honoured; items
+ * that restore both (veggies, purple potion/balm) declare
+ * `stats: [{ stat, amount }, ...]` instead.
+ */
+function readConsumableStats(consumable) {
+  if (Array.isArray(consumable.stats)) {
+    return consumable.stats
+      .map((entry) => ({
+        stat: entry.stat === 'mp' ? 'mp' : 'hp',
+        amount: Number(entry.amount) || 0,
+      }))
+      .filter((entry) => entry.amount !== 0)
+  }
+  const amount = Number(consumable.amount) || 0
+  if (!consumable.stat && !amount) return []
+  return [{ stat: consumable.stat === 'mp' ? 'mp' : 'hp', amount }]
+}
+
+/**
+ * Normalise a consumable's buff grants into a list of { field, clicks }.
+ * `buff: { field, clicks }` or `buffs: [{ field, clicks }, ...]`.
+ */
+function readConsumableBuffs(consumable) {
+  const raw = Array.isArray(consumable.buffs)
+    ? consumable.buffs
+    : consumable.buff
+      ? [consumable.buff]
+      : []
+  return raw
+    .filter((entry) => entry && BUFF_FIELDS.includes(entry.field))
+    .map((entry) => ({ field: entry.field, clicks: Math.max(0, Number(entry.clicks) || 0) }))
+}
+
 async function handleConsume(playerId, roomState, playerItemId, item, consumable) {
   const verb = consumable.verb || 'use'
 
@@ -44,17 +81,15 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
     return createErrorResult(verb, 'Player not found in this room')
   }
 
-  const stat = consumable.stat === 'mp' ? 'mp' : 'hp'
-  const amount = Number(consumable.amount) || 0
-  const cols = STAT_COLUMNS[stat]
-  const statLabel = STAT_LABELS[stat]
+  const statEffects = readConsumableStats(consumable)
+  const buffEffects = readConsumableBuffs(consumable)
   const displayName = (item.template.name || consumable.displayName || 'item').toLowerCase()
 
   roomState.touchActivity()
 
   try {
-    let prevVal = 0
-    let newVal = 0
+    const changes = {} // stat -> { prev, next }
+    const buffResults = [] // { field, clicks }
 
     await prisma.$transaction(async (tx) => {
       // Remove 1 of the item from inventory.
@@ -67,43 +102,65 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
         })
       }
 
-      // Atomic clamped stat change against the LIVE DB value. LEAST/GREATEST
-      // keep the result within [0, max] with no read-modify-write race. Column
-      // identifiers are from a fixed allow-list (STAT_COLUMNS), not user input.
-      const rows = await tx.$queryRawUnsafe(
-        `WITH prev AS (SELECT "${cols.val}" AS v FROM "User" WHERE id = $2)
-         UPDATE "User"
-         SET "${cols.val}" = GREATEST(0, LEAST("${cols.max}", "${cols.val}" + $1))
-         WHERE id = $2
-         RETURNING "${cols.val}" AS "newVal", (SELECT v FROM prev) AS "prevVal"`,
-        amount,
-        playerId
-      )
-      const row = rows[0] || {}
-      prevVal = Number(row.prevVal ?? 0)
-      newVal = Number(row.newVal ?? 0)
+      for (const { stat, amount } of statEffects) {
+        const cols = STAT_COLUMNS[stat]
+        // Atomic clamped stat change against the LIVE DB value. LEAST/GREATEST
+        // keep the result within [0, max] with no read-modify-write race. Column
+        // identifiers are from a fixed allow-list (STAT_COLUMNS), not user input.
+        const rows = await tx.$queryRawUnsafe(
+          `WITH prev AS (SELECT "${cols.val}" AS v FROM "User" WHERE id = $2)
+           UPDATE "User"
+           SET "${cols.val}" = GREATEST(0, LEAST("${cols.max}", "${cols.val}" + $1))
+           WHERE id = $2
+           RETURNING "${cols.val}" AS "newVal", (SELECT v FROM prev) AS "prevVal"`,
+          amount,
+          playerId
+        )
+        const row = rows[0] || {}
+        changes[stat] = { prev: Number(row.prevVal ?? 0), next: Number(row.newVal ?? 0) }
+      }
+
+      for (const { field, clicks } of buffEffects) {
+        const remaining = await applyBuff(tx, playerId, field, clicks)
+        buffResults.push({ field, clicks: remaining })
+      }
     })
 
-    // Mirror the new value into in-memory room state.
-    roomState.updatePlayer(playerId, (state) => ({ ...state, [stat]: newVal }))
+    // Mirror the new values into in-memory room state.
+    if (Object.keys(changes).length > 0) {
+      roomState.updatePlayer(playerId, (state) => {
+        const next = { ...state }
+        for (const [stat, { next: value }] of Object.entries(changes)) next[stat] = value
+        return next
+      })
+    }
 
     const updatedInventory = await getPlayerInventory(playerId)
-    const change = newVal - prevVal // signed: positive = gain, negative = loss
 
-    let message
-    if (change > 0) {
-      message = `You ${verb} the ${displayName}. You gain ${change} ${statLabel}.`
-    } else if (change < 0) {
-      message = `You ${verb} the ${displayName}. You lose ${-change} ${statLabel}.`
-    } else {
-      message = `You ${verb} the ${displayName}.`
+    const parts = []
+    for (const [stat, { prev, next }] of Object.entries(changes)) {
+      const delta = next - prev // signed: positive = gain, negative = loss
+      if (delta > 0) parts.push(`gain ${delta} ${STAT_LABELS[stat]}`)
+      else if (delta < 0) parts.push(`lose ${-delta} ${STAT_LABELS[stat]}`)
     }
+    for (const { field, clicks } of buffResults) {
+      parts.push(`${BUFF_LABELS[field] || field} for ${clicks} clicks`)
+    }
+
+    const message = parts.length
+      ? `You ${verb} the ${displayName}. You ${parts.join(', ')}.`
+      : `You ${verb} the ${displayName}.`
 
     const data = {
       roomId: roomState.roomId,
-      [stat]: newVal,
-      [`${stat}Change`]: change,
       inventory: updatedInventory,
+    }
+    for (const [stat, { prev, next }] of Object.entries(changes)) {
+      data[stat] = next
+      data[`${stat}Change`] = next - prev
+    }
+    if (buffResults.length > 0) {
+      data.buffs = Object.fromEntries(buffResults.map((b) => [b.field, b.clicks]))
     }
 
     if (consumable.modal) {

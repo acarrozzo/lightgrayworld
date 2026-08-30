@@ -38,6 +38,12 @@ export interface Player {
   partyLeaderId?: string | null
   lastSeen?: number
   clicks?: number
+  /**
+   * Click-counted buff countdowns, keyed by the User column that stores them
+   * (`wings`, `gills`, `buffStrClicks`, ...). Pushed on every counted action by
+   * `player:clicks-update`; a value of 0 (or an absent key) means inactive.
+   */
+  buffs?: Record<string, number>
   deaths?: number
   chest1?: boolean
   grassyFieldMap?: boolean

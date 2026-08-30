@@ -1561,23 +1561,22 @@ const ROOM_ENEMIES = {
     ],
   },
   // The Sacred Altar and the Sacrificial Chamber are the deep end (legacy danger 17)
-  // and likewise had no battle set. Weighted to the heaviest of the catacombs dead.
+  // and each has a named keeper rather than a battle set: room232v.php rolled
+  // Victoria the Dead on 4-in-10, room232w.php rolled Omar the Dead the same way.
+  // Both are Wizard Morty's quest targets, so they are fixed spawns — no other
+  // enemy shares their room, and the roll is the original's 40%.
   '232v': {
     probabilistic: true,
-    spawnChance: 0.6,
+    spawnChance: 0.4,
     enemies: [
-      { slug: 'ancient-skeleton', weight: 50 },
-      { slug: 'skeleton-sorcerer', weight: 30 },
-      { slug: 'skeleton-knight', weight: 20 },
+      { slug: 'victoria-the-dead', weight: 100 },
     ],
   },
   '232w': {
     probabilistic: true,
-    spawnChance: 0.6,
+    spawnChance: 0.4,
     enemies: [
-      { slug: 'ancient-skeleton', weight: 50 },
-      { slug: 'skeleton-sorcerer', weight: 30 },
-      { slug: 'skeleton-knight', weight: 20 },
+      { slug: 'omar-the-dead', weight: 100 },
     ],
   },
   // Room 232x (A Sewer Oasis) is deliberately absent: the original set its danger

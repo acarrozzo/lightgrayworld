@@ -84,8 +84,17 @@ const ROOM_LOOT = [
   // Room 232m — the Thieve's Den bolt stash in the corner of the hangout
   { roomId: '232m', slug: 'crossbow-bolt', quantity: 25 },
 
-  // Room 232y — the potions stacked beside the gray chest across the sewer river
+  // Room 232y — the potions stacked beside the gray chest across the sewer river.
+  // The wings potions are the legacy `get wings potion` restock: the only reason
+  // you got across the river was a wings potion, so the far bank keeps a supply
+  // to get you back. As a room item the autoRespawn refill covers the "come back
+  // if you run out" behaviour without a bespoke action.
   { roomId: '232y', slug: 'red-potion', quantity: 3 },
+  { roomId: '232y', slug: 'wings-potion', quantity: 5 },
+
+  // Room 232m — the Thieve's Den also keeps a wings potion stash; the Den is a
+  // dead end otherwise reachable only through the false wall.
+  { roomId: '232m', slug: 'red-potion', quantity: 3 },
 ]
 
 module.exports = { ROOM_LOOT }

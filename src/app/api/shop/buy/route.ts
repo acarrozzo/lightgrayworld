@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { getPlayerInventory } from '@/lib/game-engine/services/inventory-service'
 import { getBuyPrice } from '@/lib/shop-pricing'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { getShop, shopSellsItem } = require('@/lib/game-data/shops')
 
 async function handleBuy(request: AuthenticatedRequest) {
   try {
@@ -24,6 +26,39 @@ async function handleBuy(request: AuthenticatedRequest) {
       )
     }
 
+    // Get current player data. `currentRoom` is the server's own record of where
+    // the player is — never a room id supplied by the client.
+    const player = await prisma.user.findUnique({
+      where: { id: request.user.id },
+      select: { currency: true, currentRoom: true },
+    })
+
+    if (!player) {
+      return NextResponse.json(
+        { success: false, message: 'Player not found' },
+        { status: 404 }
+      )
+    }
+
+    // A purchase is only legal from the shop the player is standing in, and only
+    // for something that shop actually stocks. Without this, any authenticated
+    // client could name any slug in the game and buy it at base value from
+    // anywhere — the shop UI's stock list would be the only thing stopping them.
+    const shop = getShop(player.currentRoom)
+    if (!shop) {
+      return NextResponse.json(
+        { success: false, message: 'There is no shop here.' },
+        { status: 400 }
+      )
+    }
+
+    if (!shopSellsItem(player.currentRoom, itemSlug)) {
+      return NextResponse.json(
+        { success: false, message: `${shop.name} does not sell that.` },
+        { status: 400 }
+      )
+    }
+
     // Get item template
     const template = await prisma.itemTemplate.findUnique({
       where: { slug: itemSlug },
@@ -32,19 +67,6 @@ async function handleBuy(request: AuthenticatedRequest) {
     if (!template) {
       return NextResponse.json(
         { success: false, message: 'Item not found' },
-        { status: 404 }
-      )
-    }
-
-    // Get current player data
-    const player = await prisma.user.findUnique({
-      where: { id: request.user.id },
-      select: { currency: true },
-    })
-
-    if (!player) {
-      return NextResponse.json(
-        { success: false, message: 'Player not found' },
         { status: 404 }
       )
     }

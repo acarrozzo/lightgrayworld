@@ -129,6 +129,82 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '128': [
     { action: 'talk to forest gnome', label: 'Forest Gnome', icon: 'npc-forestgnome', className: 'bg-green-600 hover:bg-green-700', questIds: questIdsForNpc('forest_gnome') },
   ],
+
+  // ==================== RED TOWN ====================
+  // Seven quest givers, six shops, four chests, two rest points and the two
+  // directory signs. The server owns every one of these actions; this only
+  // renders the buttons.
+  '207': [
+    { action: 'view shop', label: 'View Shop', icon: 'veggies', className: 'bg-green-600 hover:bg-green-700' },
+  ],
+  '210': [
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+    { action: 'rest at fountain', label: 'Rest at Fountain', icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
+    { action: 'open crafting', label: 'Open Crafting', icon: 'craft', className: 'bg-orange-600 hover:bg-orange-700' },
+  ],
+  '215': [
+    { action: 'talk to red guard captain', label: 'Red Guard Captain', icon: 'npc-redguardcaptain', className: 'bg-red-600 hover:bg-red-700', questIds: questIdsForNpc('red_guard_captain') },
+  ],
+  '216': [
+    { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'bg-amber-500/80 hover:bg-amber-500' },
+  ],
+  '218': [
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
+  '220': [
+    { action: 'view shop', label: 'View Shop', icon: 'bar', className: 'bg-amber-500/80 hover:bg-amber-500' },
+  ],
+  '221': [
+    { action: 'talk to the people', label: 'Town Hall Plaza', icon: 'npc-townhallplaza', className: 'bg-red-600 hover:bg-red-700', questIds: questIdsForNpc('town_hall_plaza') },
+  ],
+  '222': [
+    { action: 'talk to mayor', label: 'Mayor Rudolf', icon: 'npc-mayor', className: 'bg-red-600 hover:bg-red-700', questIds: questIdsForNpc('mayor_rudolf') },
+  ],
+  '224': [
+    { action: 'pick flower', label: 'Pick Flower', icon: 'flower', className: 'bg-yellow-500/80 hover:bg-yellow-500' },
+    { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'bg-amber-500/80 hover:bg-amber-500' },
+  ],
+  '225': [
+    { action: 'talk to wizard recruiter', label: "Wizard's Guild Recruiter", icon: 'npc-wizard', className: 'bg-purple-600 hover:bg-purple-700', questIds: questIdsForNpc('wizards_guild_recruiter') },
+    { action: 'talk to wizard morty', label: 'Wizard Morty', icon: 'npc-wizard2', className: 'bg-purple-600 hover:bg-purple-700', questIds: questIdsForNpc('wizard_morty') },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+    { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'bg-amber-500/80 hover:bg-amber-500' },
+    { action: 'rest at wizard fire', label: "Rest at Wizard's Fire", icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
+  ],
+  '226': [
+    { action: 'talk to warrior recruiter', label: "Warrior's Guild Recruiter", icon: 'npc-warrior', className: 'bg-blue-600 hover:bg-blue-700', questIds: questIdsForNpc('warriors_guild_recruiter') },
+    { action: 'talk to warrior pete', label: 'Warrior Pete', icon: 'npc-warrior2', className: 'bg-blue-600 hover:bg-blue-700', questIds: questIdsForNpc('warrior_pete') },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+    { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'bg-amber-500/80 hover:bg-amber-500' },
+    { action: 'grab pack', label: "Grab Warrior's Pack", icon: 'npc-warrior', className: 'bg-blue-700 hover:bg-blue-600' },
+    { action: 'rest at warrior fire', label: "Rest at Warrior's Fire", icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
+  ],
+  '227': [
+    { action: 'view shop', label: 'View Shop', icon: 'sword1', className: 'bg-amber-500/80 hover:bg-amber-500' },
+  ],
+  '229': [
+    { action: 'view shop', label: 'View Shop', icon: 'steak', className: 'bg-amber-500/80 hover:bg-amber-500' },
+  ],
+  '236': [
+    { action: 'view shop', label: 'View Shop', icon: 'shop', className: 'bg-gray-600 hover:bg-gray-500' },
+  ],
+
+  // ==================== RED TOWN SEWERS / DEN / CATACOMBS ====================
+  // The hidden doors down here (232 / 233 / 232mm / 232b / 232j / 232l) need no
+  // entry: Search is a core action RoomBox renders in every room, and the
+  // search-reveal definitions do the rest.
+  '232o': [
+    { action: 'open treasure chest', label: 'Open Treasure Chest', icon: 'chest', className: 'bg-amber-500/80 hover:bg-amber-500' },
+  ],
+  '232x': [
+    { action: 'rest at oasis', label: 'Rest at the Oasis', icon: 'heal', className: 'bg-blue-600 hover:bg-blue-700' },
+  ],
+  '232y': [
+    { action: 'open gray chest', label: 'Open Gray Chest', icon: 'chest2', className: 'bg-gray-500 hover:bg-gray-400' },
+  ],
+  '232z': [
+    { action: 'open silver chest', label: 'Open Silver Chest', icon: 'chest2', className: 'bg-sky-500/80 hover:bg-sky-500' },
+  ],
 }
 
 /**

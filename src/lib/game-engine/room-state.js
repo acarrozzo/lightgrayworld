@@ -836,7 +836,7 @@ class RoomState {
   // Shared rest implementation.
   //   - Standard rest (overchargeBonus 0): recovers physical/mental training amounts, capped at max.
   //   - Overcharge rest (overchargeBonus > 0): sets HP/MP to max + bonus.
-  async applyRest(playerId, { action, overchargeBonus = 0, overchargeMessage } = {}) {
+  async applyRest(playerId, { action, overchargeBonus = 0, overchargeMessage, fullRestore = false, fullRestoreMessage } = {}) {
     const player = this.players.get(playerId)
     if (!player) {
       return this.createErrorResult(action, 'Player not found in this room')
@@ -872,6 +872,12 @@ class RoomState {
       newHp = hpMax + overchargeBonus
       newMp = mpMax + overchargeBonus
       message = overchargeMessage ?? `Your HP and MP are fully restored, plus an extra +${overchargeBonus} to each.`
+    } else if (fullRestore) {
+      // Restore to full without overcharging. An already-overcharged player
+      // keeps the overcharge — resting is never allowed to take vitals away.
+      newHp = Math.max(liveStats.hp ?? 0, hpMax)
+      newMp = Math.max(liveStats.mp ?? 0, mpMax)
+      message = fullRestoreMessage ?? 'Your HP and MP are fully restored.'
     } else {
       const pt = liveStats.physicalTraining ?? player.physicalTraining ?? 1
       const mt = liveStats.mentalTraining ?? player.mentalTraining ?? 0
@@ -1239,7 +1245,7 @@ class RoomState {
     }
 
     if (this.roomId !== questDef.giver.roomId) {
-      const npcName = this.getNpcFriendlyName(questDef.giver.npcId || 'the quest giver')
+      const npcName = this.getNpcFriendlyName(questDef.giver.npcId || 'the quest giver', questDef.giver)
       return this.createErrorResult('accept_quest', `You need to speak to ${npcName} to do that.`)
     }
 
@@ -1308,7 +1314,7 @@ class RoomState {
     }
 
     if (this.roomId !== questDef.giver.roomId) {
-      const npcName = this.getNpcFriendlyName(questDef.giver.npcId || 'the quest giver')
+      const npcName = this.getNpcFriendlyName(questDef.giver.npcId || 'the quest giver', questDef.giver)
       return this.createErrorResult('complete_quest', `You need to speak to ${npcName} to do that.`)
     }
 
@@ -1455,10 +1461,16 @@ class RoomState {
    * @param {string} npcId - The NPC ID
    * @returns {string} Friendly NPC name
    */
-  getNpcFriendlyName(npcId) {
-    if (npcId === 'old_man') {
-      return 'the Old Man'
-    }
+  /**
+   * Display name for a quest giver, for "you need to speak to X" messages.
+   *
+   * Reads `giver.name` from quests.json — the same field the NPC card renders —
+   * so a new quest giver never has to be registered in a second place. The
+   * npcId is only ever the last-resort fallback.
+   */
+  getNpcFriendlyName(npcId, giver = null) {
+    if (giver?.name) return giver.name
+    if (npcId === 'old_man') return 'the Old Man'
     return npcId
   }
 

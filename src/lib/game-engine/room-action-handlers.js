@@ -6,6 +6,7 @@ const { grantPersonalItemOnce } = require('./effects')
 const { grantItemOnce, playerHasItem, getHeldQuantity, removeItemBySlug, getPlayerInventory } = require('./services/inventory-service')
 const { checkAndConsumeCooldown } = require('./services/action-cap-service')
 const { getRecipeById, isCraftingRoom } = require('../game-data/crafting-recipes')
+const { getShop } = require('../game-data/shops')
 
 /**
  * Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
@@ -173,6 +174,121 @@ function createNpcTalkHandler(npc) {
 }
 
 /**
+ * Build a shop's `view shop` action from the shared registry (game-data/shops.js).
+ *
+ * The stock list lives in one place because two callers need it and must agree:
+ * this action (which renders the cards) and `api/shop/buy` (which decides whether
+ * a purchase is legal). Prices are never passed through here — the buy route
+ * charges `ItemTemplate.value` via shop-pricing, so what the card shows and what
+ * the player is charged come from the same column.
+ *
+ * `gate`, when given, is an async (playerId) => boolean run before the shop opens;
+ * the guild stalls use it so only members can browse.
+ */
+function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'basicshop', iconColor = 'amber-500' } = {}) {
+  return async (playerId, roomState) => {
+    const { prisma } = require('../db-client')
+    const { getPlayerInventory } = require('./services/inventory-service')
+
+    const shop = getShop(roomId)
+    if (!shop) {
+      return createErrorResult('view shop', 'There is no shop here.')
+    }
+
+    if (gate && !(await gate(playerId))) {
+      return {
+        success: true,
+        action: 'view shop',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('view shop', 'info', lockedMessage || 'The shop is closed to you.', {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: {
+                type: 'icon',
+                icon,
+                iconColor,
+                title: shop.name,
+                message: lockedMessage || 'The shop is closed to you.',
+              },
+            }),
+          },
+        ],
+      }
+    }
+
+    const player = await prisma.user.findUnique({
+      where: { id: playerId },
+      select: { currency: true },
+    })
+    if (!player) {
+      return createErrorResult('view shop', 'Player not found')
+    }
+
+    const templates = await prisma.itemTemplate.findMany({
+      where: { slug: { in: shop.stock } },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        value: true,
+        type: true,
+        equipSlot: true,
+        weaponCategory: true,
+        metadata: true,
+      },
+    })
+
+    // Preserve the registry's display order — findMany returns rows in whatever
+    // order Postgres likes, and the stock list is deliberately grouped.
+    const bySlug = new Map(templates.map((t) => [t.slug, t]))
+    const shopItems = shop.stock.map((slug) => bySlug.get(slug)).filter(Boolean)
+
+    const inventory = await getPlayerInventory(playerId)
+
+    roomState.touchActivity()
+
+    return {
+      success: true,
+      action: 'view shop',
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('view shop', 'success', `You browse ${shop.name}.`, {
+            roomId: roomState.roomId,
+            showModal: true,
+            modalContent: {
+              type: 'shop',
+              shopName: shop.name,
+              shopItems,
+              playerCurrency: player.currency,
+              playerInventory: inventory,
+            },
+          }),
+        },
+      ],
+    }
+  }
+}
+
+/**
+ * Is the player a member of the given guild? Membership is the guild's
+ * initiation quest being complete — the same fact the guild's `up` gate reads.
+ */
+function makeGuildMemberCheck(questId) {
+  return async (playerId) => {
+    const { prisma } = require('../db-client')
+    const progress = await prisma.questProgress.findUnique({
+      where: { userId_questId: { userId: playerId, questId } },
+      select: { completed: true },
+    })
+    return !!progress?.completed
+  }
+}
+
+/**
  * Static chest loot tables, keyed by roomId then action name. Hoisted out of the
  * individual chest handlers so they are a single source of truth: the handlers
  * read their rewards from here, and the World Tool's Item Compendium indexes
@@ -206,6 +322,37 @@ const CHEST_LOOT = {
         { itemSlug: 'blue-potion', quantity: 3 },
         { itemSlug: 'hunter-ring', quantity: 1, highlighted: true },
         { itemSlug: 'hunter-gloves', quantity: 1, highlighted: true },
+      ],
+    },
+  },
+  // Babylon Gardens gold chest, behind the Mayor's Gold Key. Legacy handed out
+  // 5 each of reds/greens/blues/yellows, both regen III rings, and one of twelve
+  // silver pieces rolled at random — `randomItems` is that roll.
+  '224': {
+    'open gold chest': {
+      label: 'Red Town Gold Chest',
+      xp: 300,
+      items: [
+        { itemSlug: 'reds', quantity: 5 },
+        { itemSlug: 'greens', quantity: 5 },
+        { itemSlug: 'blues', quantity: 5 },
+        { itemSlug: 'yellows', quantity: 5 },
+        { itemSlug: 'ring-of-health-regen-iii', quantity: 1, highlighted: true },
+        { itemSlug: 'ring-of-mana-regen-iii', quantity: 1, highlighted: true },
+      ],
+      randomItems: [
+        { itemSlug: 'silver-sword', quantity: 1 },
+        { itemSlug: 'silver-2h-sword', quantity: 1 },
+        { itemSlug: 'silver-boomerang', quantity: 1 },
+        { itemSlug: 'silver-bow', quantity: 1 },
+        { itemSlug: 'silver-crossbow', quantity: 1 },
+        { itemSlug: 'silver-shield', quantity: 1 },
+        { itemSlug: 'silver-helmet', quantity: 1 },
+        { itemSlug: 'silver-breastplate', quantity: 1 },
+        { itemSlug: 'silver-gauntlets', quantity: 1 },
+        { itemSlug: 'silver-boots', quantity: 1 },
+        { itemSlug: 'silver-ring', quantity: 1 },
+        { itemSlug: 'silver-necklace', quantity: 1 },
       ],
     },
   },
@@ -536,14 +683,24 @@ function makeGoldChestHandler({ roomId, flagField, goldMin, goldMax, lockedMessa
 
     roomState.touchActivity()
 
-    const { label, xp: xpAmount, items: itemRewards } = CHEST_LOOT[roomId]['open gold chest']
+    const { label, xp: xpAmount, items: itemRewards, randomItems } = CHEST_LOOT[roomId]['open gold chest']
+
+    // Some chests add one item drawn from a pool on top of their fixed haul
+    // (Babylon Gardens rolls one of the twelve silver pieces). Rolled once per
+    // open, before the transaction, so the granted item and the rewards modal
+    // can never disagree about what came out.
+    const rolledBonus =
+      Array.isArray(randomItems) && randomItems.length > 0
+        ? randomItems[Math.floor(Math.random() * randomItems.length)]
+        : null
 
     // Build the enriched item reward list for the rewards modal. Gold is
     // omitted here because it is rolled randomly per open — callers that know
     // the exact amount (the open flow) append their own currency entry.
-    const buildEnrichedItemRewards = async () => {
+    const buildEnrichedItemRewards = async (bonus = null) => {
       const rewards = [{ type: 'xp', amount: xpAmount }]
-      for (const reward of itemRewards) {
+      const entries = bonus ? [...itemRewards, { ...bonus, highlighted: true }] : itemRewards
+      for (const reward of entries) {
         const template = await getItemBySlug(reward.itemSlug)
         rewards.push({
           type: 'item',
@@ -640,7 +797,8 @@ function makeGoldChestHandler({ roomId, flagField, goldMin, goldMax, lockedMessa
         if (!removed.success) {
           throw new Error('GOLD_KEY_MISSING')
         }
-        for (const reward of itemRewards) {
+        const toGrant = rolledBonus ? [...itemRewards, rolledBonus] : itemRewards
+        for (const reward of toGrant) {
           const granted = await grantItemOnce(playerId, reward.itemSlug, reward.quantity, tx)
           if (!granted.granted) {
             throw new Error(`Failed to grant ${reward.itemSlug}: ${granted.reason}`)
@@ -661,6 +819,15 @@ function makeGoldChestHandler({ roomId, flagField, goldMin, goldMax, lockedMessa
       if (err.message === 'GOLD_KEY_MISSING') {
         return lockedFeedback()
       }
+      // A carry cap aborts the whole open, which rolls the transaction back —
+      // the key is still in the player's pack and the chest still shut, so the
+      // fix is to make room and try again rather than to lose the key.
+      if (/Max quantity reached/.test(err.message)) {
+        return createErrorResult(
+          'open gold chest',
+          'Your pack is too full to take everything in the chest. Make some room and try again — your Gold Key is untouched.'
+        )
+      }
       return createErrorResult('open gold chest', 'Something went wrong opening the chest. Please try again.')
     }
 
@@ -673,7 +840,7 @@ function makeGoldChestHandler({ roomId, flagField, goldMin, goldMax, lockedMessa
     // Enrich rewards for the rewards modal (same shape as quest completion).
     // Insert the exact rolled gold after the XP entry; items come from the
     // shared builder so the haul matches the "already opened" reminder.
-    const enrichedRewards = await buildEnrichedItemRewards()
+    const enrichedRewards = await buildEnrichedItemRewards(rolledBonus)
     enrichedRewards.splice(1, 0, { type: 'currency', amount: goldAmount })
 
     const playerEvents = [
@@ -718,6 +885,290 @@ function makeGoldChestHandler({ roomId, flagField, goldMin, goldMax, lockedMessa
       playerEvents,
     }
   }
+}
+
+/**
+ * Build a re-openable chest: one roll per `cooldownMs`, gold and XP plus one
+ * item drawn from each declared pool.
+ *
+ * The original gated these on a 100-click counter kept in the PHP session, so
+ * the timer died with the session and reset on every login. A rolling
+ * per-(player, room, action) cooldown is the modern equivalent that actually
+ * survives a reconnect — the same ActionCap row the gather nodes use.
+ *
+ * `pools` is an array of item pools; one entry is rolled from each, so a chest
+ * can hand out "a weapon AND a ring" rather than one of everything.
+ */
+function makeRepeatableChestHandler({
+  roomId,
+  action,
+  label,
+  cooldownMs,
+  goldMin = 0,
+  goldMax = 0,
+  xp = 0,
+  pools = [],
+  icon = 'chest2',
+  iconColor = 'gray-400',
+  openMessage,
+}) {
+  return async (playerId, roomState) => {
+    const { prisma } = require('../db-client')
+    const { grantItemOnce, getPlayerInventory, getItemBySlug } = require('./services/inventory-service')
+    const { checkAndApplyLevelUp } = require('./services/leveling-service')
+
+    roomState.touchActivity()
+
+    const cooldown = await checkAndConsumeCooldown(playerId, roomId, action, cooldownMs)
+    if (!cooldown.allowed) {
+      const wait = formatTimeRemaining(cooldown.secondsRemaining)
+      const message = `The ${label.toLowerCase()} will not budge. Someone has picked it clean for now — try again in ${wait}.`
+      return {
+        success: true,
+        action,
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(action, 'info', message, {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: { type: 'icon', icon, iconColor, title: label, message },
+            }),
+          },
+        ],
+      }
+    }
+
+    // Roll everything before writing, so the granted haul and the rewards modal
+    // are built from one set of results.
+    const rolled = pools
+      .map((pool) => (pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null))
+      .filter(Boolean)
+    const goldAmount =
+      goldMax > 0 ? goldMin + Math.floor(Math.random() * (goldMax - goldMin + 1)) : 0
+
+    let updatedUser
+    const capped = []
+    try {
+      updatedUser = await prisma.$transaction(async (tx) => {
+        for (const reward of rolled) {
+          const granted = await grantItemOnce(playerId, reward.itemSlug, reward.quantity ?? 1, tx)
+          // Being at an item's carry cap must not fail the open. The cooldown has
+          // already been consumed by this point, so throwing here would burn the
+          // timer and hand back nothing; instead the item is noted as left behind
+          // and the rest of the haul goes through.
+          if (!granted.granted) capped.push(reward.itemSlug)
+        }
+        if (goldAmount === 0 && xp === 0) {
+          return tx.user.findUnique({ where: { id: playerId }, select: { id: true, currency: true, xp: true } })
+        }
+        return tx.user.update({
+          where: { id: playerId },
+          data: {
+            ...(goldAmount > 0 ? { currency: { increment: goldAmount } } : {}),
+            ...(xp > 0 ? { xp: { increment: xp } } : {}),
+          },
+          select: { id: true, currency: true, xp: true },
+        })
+      })
+    } catch (err) {
+      console.error(`[${label}] Failed to grant chest contents:`, err)
+      return createErrorResult(action, 'Something went wrong opening the chest. Please try again.')
+    }
+
+    const [levelUp, inventory] = await Promise.all([
+      checkAndApplyLevelUp(playerId),
+      getPlayerInventory(playerId),
+    ])
+
+    const rewards = []
+    if (xp > 0) rewards.push({ type: 'xp', amount: xp })
+    if (goldAmount > 0) rewards.push({ type: 'currency', amount: goldAmount })
+    const cappedNames = []
+    for (const reward of rolled) {
+      const template = await getItemBySlug(reward.itemSlug)
+      const name = template?.name || reward.itemSlug
+      if (capped.includes(reward.itemSlug)) {
+        cappedNames.push(name)
+        continue
+      }
+      rewards.push({
+        type: 'item',
+        itemSlug: reward.itemSlug,
+        name,
+        quantity: reward.quantity ?? 1,
+        highlighted: !!reward.highlighted,
+      })
+    }
+
+    const baseMessage = openMessage || `You open the ${label.toLowerCase()}.`
+    const message = cappedNames.length
+      ? `${baseMessage} You are carrying as ${cappedNames.join(' and ')} as you can hold, and leave ${cappedNames.length > 1 ? 'those' : 'that'} behind.`
+      : baseMessage
+
+    const playerEvents = [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(action, 'success', message, {
+          roomId: roomState.roomId,
+          inventory,
+          player: updatedUser,
+          showModal: true,
+          modalContent: {
+            type: 'icon',
+            icon,
+            iconColor,
+            title: label,
+            header: `${label} Opened`,
+            message,
+          },
+          questComplete: {
+            questTitle: '',
+            rewards,
+            levelUp: levelUp?.leveled ? levelUp : null,
+            newQuestTitles: [],
+          },
+        }),
+      },
+    ]
+    if (levelUp?.leveled) playerEvents.push({ event: 'player:level-up', payload: levelUp })
+
+    return { success: true, action, playerEvents }
+  }
+}
+
+/**
+ * The Warrior's Pack: the guild tops your consumables back up to a floor rather
+ * than handing out a fixed batch. Legacy behaviour exactly — it sets each of the
+ * four supplies to its minimum if you are below it, and tells you it did nothing
+ * if you are already stocked. That makes it a safety net rather than a farm.
+ */
+function makeWarriorPackHandler() {
+  const PACK = [
+    { slug: 'reds', floor: 3, label: 'reds' },
+    { slug: 'meatball', floor: 5, label: 'meatballs' },
+    { slug: 'red-potion', floor: 5, label: 'red potions' },
+    { slug: 'red-balm', floor: 1, label: 'red balm' },
+  ]
+
+  return async (playerId, roomState) => {
+    const { getHeldQuantity, grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
+
+    roomState.touchActivity()
+
+    const isMember = await makeGuildMemberCheck('quest_warriorsguild_000')(playerId)
+    if (!isMember) {
+      const message = 'Join the Warrior’s Guild to claim a Warrior’s Pack. Speak to the recruiter.'
+      return {
+        success: true,
+        action: 'grab pack',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('grab pack', 'info', message, {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: { type: 'icon', icon: 'npc-warrior', iconColor: 'blue-400', title: "Warrior's Guild", message },
+            }),
+          },
+        ],
+      }
+    }
+
+    const lines = []
+    const granted = []
+    for (const entry of PACK) {
+      const held = await getHeldQuantity(playerId, entry.slug)
+      const shortfall = entry.floor - held
+      if (shortfall <= 0) {
+        lines.push(`You already have ${held} ${entry.label}.`)
+        continue
+      }
+      const result = await grantItemOnce(playerId, entry.slug, shortfall)
+      if (result.granted) {
+        lines.push(`You top up to ${entry.floor} ${entry.label}.`)
+        granted.push({ itemSlug: entry.slug, quantity: shortfall })
+      } else {
+        lines.push(`You could not carry any more ${entry.label}.`)
+      }
+    }
+
+    const inventory = await getPlayerInventory(playerId)
+    const message = granted.length
+      ? 'You replenish your Warrior’s Pack.'
+      : 'Your Warrior’s Pack is already full.'
+
+    return {
+      success: true,
+      action: 'grab pack',
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('grab pack', 'success', message, {
+            roomId: roomState.roomId,
+            inventory,
+            showModal: true,
+            modalContent: {
+              type: 'icon',
+              icon: 'npc-warrior',
+              iconColor: 'blue-400',
+              title: "Warrior's Pack",
+              message: lines.join('\n'),
+            },
+          }),
+        },
+      ],
+    }
+  }
+}
+
+/**
+ * Babylon Gardens' single flower.
+ *
+ * A deliberately strange rule kept from the original: you may only pick here if
+ * you are already carrying a flower, and never past two. It is the "Twice as
+ * Nice" quest's whole joke — the Plaza gardener wants a *matched pair*, so you
+ * have to bring the first one in from the Grassy Field yourself.
+ */
+async function pickGardenFlower(playerId, roomState) {
+  const { getHeldQuantity, grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
+
+  roomState.touchActivity()
+
+  const held = await getHeldQuantity(playerId, 'flower')
+  const respond = (outcome, message, extra = {}) => ({
+    success: outcome === 'success',
+    action: 'pick flower',
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload('pick flower', outcome, message, {
+          roomId: roomState.roomId,
+          showModal: true,
+          modalContent: { type: 'icon', icon: 'flower', iconColor: 'yellow-400', title: 'Babylon Gardens', message },
+          ...extra,
+        }),
+      },
+    ],
+  })
+
+  if (held <= 0) {
+    return respond(
+      'info',
+      "For some strange reason you cannot pick a flower here unless you already have one. Go and pick the first one out in the Grassy Field."
+    )
+  }
+  if (held >= 2) {
+    return respond('info', 'You already have two flowers. That is as many as anyone here needs.')
+  }
+
+  const granted = await grantItemOnce(playerId, 'flower', 1)
+  if (!granted.granted) {
+    return createErrorResult('pick flower', 'You could not pick the flower.')
+  }
+
+  const inventory = await getPlayerInventory(playerId)
+  return respond('success', 'You pick a second flower from the trellis. [ 2 total ]', { inventory })
 }
 
 /**
@@ -929,84 +1380,7 @@ const ROOM_ACTIONS = {
     },
   },
   '006': {
-    'view shop': async (playerId, roomState) => {
-      const { prisma } = require('../db-client')
-      const { getPlayerInventory } = require('./services/inventory-service')
-
-      // Get player data
-      const player = await prisma.user.findUnique({
-        where: { id: playerId },
-        select: { currency: true },
-      })
-
-      if (!player) {
-        return createErrorResult('view shop', 'Player not found')
-      }
-
-      // Items available to buy in this shop (organized by category in the UI)
-      const shopItemSlugs = [
-        // Main hand weapons
-        'dagger',
-        'basic-staff',
-        'mace',
-        'broad-sword',
-        'long-sword',
-        // Off hand
-        'kite-shield',
-        'buckler',
-        // Armor
-        'basic-hood',
-        'padded-armor',
-        'black-gloves',
-        'black-boots',
-        // Consumables
-        'red-potion',
-        'blue-potion',
-      ]
-      const shopItems = await prisma.itemTemplate.findMany({
-        where: {
-          slug: { in: shopItemSlugs },
-        },
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          description: true,
-          value: true,
-          type: true,
-          equipSlot: true,
-          // Included so the buy cards can render icons, stat mods and the
-          // weapon line just like the inventory/sell cards.
-          weaponCategory: true,
-          metadata: true,
-        },
-      })
-
-      // Get player inventory
-      const inventory = await getPlayerInventory(playerId)
-
-      roomState.touchActivity()
-
-      return {
-        success: true,
-        action: 'view shop',
-        playerEvents: [
-          {
-            event: 'action:feedback',
-            payload: createActionFeedbackPayload('view shop', 'success', 'You open the shop interface.', {
-              roomId: roomState.roomId,
-              showModal: true,
-              modalContent: {
-                type: 'shop',
-                shopItems,
-                playerCurrency: player.currency,
-                playerInventory: inventory,
-              },
-            }),
-          },
-        ],
-      }
-    },
+    'view shop': makeShopHandler('006'),
   },
   '024': {
     'talk to jack lumber': createNpcTalkHandler({
@@ -1171,6 +1545,468 @@ const ROOM_ACTIONS = {
       ],
     }),
   },
+  // ==================== RED TOWN ====================
+  // Seven quest givers across five rooms, six shops, four chests, two rest
+  // points and the town's two directory signs. Guild interiors (225a-h / 226a-f)
+  // are still skipped — the original moved every guild action down to the guild
+  // entrance, which is what these rooms do.
+
+  // --- Red Guard Captain, Forest Lookout (215) ---
+  '215': {
+    'talk to red guard captain': createNpcTalkHandler({
+      npcId: 'red_guard_captain',
+      action: 'talk to red guard captain',
+      icon: 'npc-redguardcaptain',
+      iconColor: 'red-500',
+      title: 'Red Guard Captain',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_redguardcaptain_003',
+          message: '"Thieves down, swords delivered, sewers thinned. The tower ladder is yours whenever you want the forest." The Captain goes back to watching the treeline.',
+        },
+        {
+          ifCompleted: 'quest_redguardcaptain_intro',
+          message: '"Still work on the board. Take them in whatever order suits you — the ladder opens the moment any one of them is done."',
+        },
+        {
+          ifCompleted: null,
+          message: 'The Captain keeps his eyes on the trees. "Unless you have business up here, mind the ladder on your way down."',
+        },
+      ],
+    }),
+  },
+
+  // --- Town Hall Plaza (221) ---
+  '221': {
+    'talk to the people': createNpcTalkHandler({
+      npcId: 'town_hall_plaza',
+      action: 'talk to the people',
+      icon: 'npc-townhallplaza',
+      iconColor: 'red-500',
+      title: 'Town Hall Plaza',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_townhallplaza_003',
+          message: 'The gardener waves, the chef shouts something about the meatballs, and Suzie holds her bear up for you to see. Nobody here needs anything else from you today.',
+        },
+        {
+          ifCompleted: 'quest_townhallplaza_intro',
+          message: 'The Plaza is as busy as ever. Flowers, meat, and one very upset little girl — take them in any order.',
+        },
+        {
+          ifCompleted: null,
+          message: 'People mill about the benches and tables, trading and passing through. Nobody has asked you for anything yet.',
+        },
+      ],
+    }),
+  },
+
+  // --- Mayor Rudolf, Town Hall Office (222) ---
+  '222': {
+    'talk to mayor': createNpcTalkHandler({
+      npcId: 'mayor_rudolf',
+      action: 'talk to mayor',
+      icon: 'npc-mayor',
+      iconColor: 'red-500',
+      title: 'Mayor Rudolf',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_mayorrudolf_000',
+          message: '"Red Town owes you a debt it cannot properly pay." The Mayor nods at the door west. "The Gardens chest is yours. And the dining room north is open to you now."',
+        },
+        {
+          ifCompleted: 'quest_mayorrudolf_intro',
+          message: '"The Scorpion King, when you are ready. Below the Spider Cave, out in the Grassy Field. The bounty stands."',
+        },
+        {
+          ifCompleted: null,
+          message: 'The Mayor works through a stack of paperwork without looking up. "Whatever it is, put it on the pile."',
+        },
+      ],
+    }),
+  },
+
+  // --- Wizard's Guild (225): two quest givers, a stall, a fire and the lair teleport ---
+  '225': {
+    'talk to wizard recruiter': createNpcTalkHandler({
+      npcId: 'wizards_guild_recruiter',
+      action: 'talk to wizard recruiter',
+      icon: 'npc-wizard',
+      iconColor: 'purple-400',
+      title: "Wizard's Guild Recruiter",
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_wizardsguild_000',
+          message: '"Welcome, member. The stall is open to you, the fire is yours to rest at, and Morty has been asking after you."',
+        },
+        {
+          ifCompleted: 'quest_wizardsguild_intro',
+          message: '"The Kobold Master, northwest in the Forest. Come back when it is done and the guild is yours."',
+        },
+        {
+          ifCompleted: null,
+          message: 'The robed crowd talks over you about potions and reagents. Nobody has offered you anything yet.',
+        },
+      ],
+    }),
+    'talk to wizard morty': createNpcTalkHandler({
+      npcId: 'wizard_morty',
+      action: 'talk to wizard morty',
+      icon: 'npc-wizard2',
+      iconColor: 'purple-400',
+      title: 'Wizard Morty',
+      preCheck: makeGuildMemberCheck('quest_wizardsguild_000'),
+      preCheckMessage: '"Members only." Morty does not look up. "Speak to the recruiter, put down the Kobold Master, then come back."',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_wizardmorty_003',
+          message: '"Gray matter, the dead of the Catacombs, and the Troll Queen herself." Morty finally looks impressed. "Alright. You are a powerful wizard."',
+        },
+        {
+          ifCompleted: 'quest_wizardmorty_intro',
+          message: '"Three things, remember. Take them in whatever order you like — they are all equally unpleasant."',
+        },
+        {
+          ifCompleted: null,
+          message: 'Morty stirs something and ignores you entirely.',
+        },
+      ],
+    }),
+    'view shop': makeShopHandler('225', {
+      gate: makeGuildMemberCheck('quest_wizardsguild_000'),
+      lockedMessage: 'The stall keeper shakes her head. "Guild members only. Speak to the recruiter."',
+      icon: 'npc-wizard',
+      iconColor: 'purple-400',
+    }),
+    'read sign': {
+      showModal: true,
+      message: "You read the Wizard's Guild sign.",
+      modalContent: {
+        title: "Wizard's Guild",
+        type: 'icon',
+        icon: 'npc-wizard',
+        iconColor: 'purple-400',
+        message:
+          'Do you want to bend fire and lightning to your will? To heal what should not heal, and unmake what should not be unmade? Then the Wizard’s Guild wants you.\n\nProve yourself by defeating the Kobold Master. Earn your place and you unlock stronger spells, elite gear and exclusive Wizard Quests.\n\nInitiation bonus: a Wizard Staff and a Wizard Hat. You will look the part immediately.',
+      },
+    },
+    'rest at wizard fire': async (playerId, roomState) => {
+      const isMember = await makeGuildMemberCheck('quest_wizardsguild_000')(playerId)
+      if (!isMember) {
+        return {
+          success: true,
+          action: 'rest at wizard fire',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('rest at wizard fire', 'info', 'Join the Wizard’s Guild to rest at its fire.', {
+                roomId: roomState.roomId,
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'npc-wizard',
+                  iconColor: 'purple-400',
+                  title: "Wizard's Guild",
+                  message: 'Join the Wizard’s Guild to rest at its fire. Speak to the recruiter.',
+                },
+              }),
+            },
+          ],
+        }
+      }
+      return roomState.applyRest(playerId, {
+        action: 'rest at wizard fire',
+        overchargeBonus: 100,
+        overchargeMessage: 'You rest at the Wizard’s Fire. Your HP and MP are fully restored, plus an extra +100 to each.',
+      })
+    },
+  },
+
+  // --- Warrior's Guild (226): two quest givers, a stall, a fire and the Warrior's Pack ---
+  '226': {
+    'talk to warrior recruiter': createNpcTalkHandler({
+      npcId: 'warriors_guild_recruiter',
+      action: 'talk to warrior recruiter',
+      icon: 'npc-warrior',
+      iconColor: 'blue-400',
+      title: "Warrior's Guild Recruiter",
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_warriorsguild_000',
+          message: '"Welcome, member. The rack is open to you, the fire is yours, and grab a pack on your way out. Pete has work if you want it."',
+        },
+        {
+          ifCompleted: 'quest_warriorsguild_intro',
+          message: '"The Ogre Lieutenant, southwest in the Forest. Come back when it is done and the guild is yours."',
+        },
+        {
+          ifCompleted: null,
+          message: 'The warriors outside the hall size you up and go back to their conversation.',
+        },
+      ],
+    }),
+    'talk to warrior pete': createNpcTalkHandler({
+      npcId: 'warrior_pete',
+      action: 'talk to warrior pete',
+      icon: 'npc-warrior2',
+      iconColor: 'blue-400',
+      title: 'Warrior Pete',
+      preCheck: makeGuildMemberCheck('quest_warriorsguild_000'),
+      preCheckMessage: '"Members only, friend." Pete jerks a thumb at the recruiter. "Put down the Ogre Lieutenant first."',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_warriorpete_003',
+          message: '"Knights, sharks and three Champions." Pete grins for the first time. "Fine. You’re a warrior. I’ll say it out loud and everything."',
+        },
+        {
+          ifCompleted: 'quest_warriorpete_intro',
+          message: '"Three things, any order. None of them are close by and none of them are easy. That’s rather the point."',
+        },
+        {
+          ifCompleted: null,
+          message: 'Pete leans on the weapon rack and says nothing.',
+        },
+      ],
+    }),
+    'view shop': makeShopHandler('226', {
+      gate: makeGuildMemberCheck('quest_warriorsguild_000'),
+      lockedMessage: 'The quartermaster folds his arms. "Guild members only. Talk to the recruiter."',
+      icon: 'npc-warrior',
+      iconColor: 'blue-400',
+    }),
+    'read sign': {
+      showModal: true,
+      message: "You read the Warrior's Guild sign.",
+      modalContent: {
+        title: "Warrior's Guild",
+        type: 'icon',
+        icon: 'npc-warrior',
+        iconColor: 'blue-400',
+        message:
+          'Do you love crushing enemies with massive warhammers and razor-sharp swords? Want to block devastating blows with an unbreakable shield? Dream of becoming the strongest warrior the world has ever known? Then the Warrior’s Guild wants you.\n\nProve your strength by defeating the Ogre Lieutenant. Earn your place, and you’ll unlock powerful skills, elite gear, and exclusive Warrior Quests.\n\nInitiation Bonus: TWO FREE SWORDS. Because one just isn’t enough.',
+      },
+    },
+    'rest at warrior fire': async (playerId, roomState) => {
+      const isMember = await makeGuildMemberCheck('quest_warriorsguild_000')(playerId)
+      if (!isMember) {
+        return {
+          success: true,
+          action: 'rest at warrior fire',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('rest at warrior fire', 'info', 'Join the Warrior’s Guild to rest at its fire.', {
+                roomId: roomState.roomId,
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'npc-warrior',
+                  iconColor: 'blue-400',
+                  title: "Warrior's Guild",
+                  message: 'Join the Warrior’s Guild to rest at its fire. Speak to the recruiter.',
+                },
+              }),
+            },
+          ],
+        }
+      }
+      return roomState.applyRest(playerId, {
+        action: 'rest at warrior fire',
+        overchargeBonus: 100,
+        overchargeMessage: 'You rest at the Warrior’s Fire and supercharge yourself. Your HP and MP are fully restored, plus an extra +100 to each.',
+      })
+    },
+    'grab pack': makeWarriorPackHandler(),
+  },
+
+  // --- Shops ---
+  '207': { 'view shop': makeShopHandler('207', { icon: 'veggies', iconColor: 'green-500' }) },
+  '216': { 'view shop': makeShopHandler('216') },
+  '220': { 'view shop': makeShopHandler('220', { icon: 'bar', iconColor: 'red-500' }) },
+  '227': { 'view shop': makeShopHandler('227', { icon: 'sword1', iconColor: 'red-500' }) },
+  '229': { 'view shop': makeShopHandler('229', { icon: 'steak', iconColor: 'red-500' }) },
+  '236': { 'view shop': makeShopHandler('236', { icon: 'shop', iconColor: 'gray-500' }) },
+
+  // --- Grand Square: the fountain, the crafting fire, and the town directory ---
+  '210': {
+    'rest at fountain': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest at fountain',
+        overchargeBonus: 25,
+        overchargeMessage: 'You rest at the fountain and supercharge yourself. Your HP and MP are fully restored, plus an extra +25 to each.',
+      }),
+    'craft': executeCraft,
+    'read sign': {
+      showModal: true,
+      message: 'You read the Red Town Directory.',
+      modalContent: {
+        title: 'You read the Red Town Directory',
+        heading: {
+          text: 'Red Town Directory',
+          parts: ['Red Town', 'Directory'],
+          description: 'Every road out of the Grand Square, and where it goes.',
+        },
+        locations: [
+          { name: 'Red Guard Barracks', direction: 'north', description: "The Captain's quests. Complete any one of them and the forest lookout opens to you." },
+          { name: 'Town Hall', direction: 'east', description: 'The Plaza, the Mayor, the Babylon Gardens and the gold chest.' },
+          { name: 'Wizards Way', direction: 'south', description: 'The south gate, Vincenzo’s stand, and the back alley down to the sewers.' },
+          { name: 'Town Exit', direction: 'west', description: 'The Grand Gate, the stables, and the road to Rocky Flats.' },
+          { name: "Adam's General Store", direction: 'northeast', description: 'The broadest stock in town.' },
+          { name: "Michael's Weapon Shop", direction: 'southwest', description: 'Blades from floor to ceiling, if you have the coin.' },
+          { name: "Warrior's Guild", direction: 'northwest', description: 'Skills, elite gear and exclusive quests — for members.' },
+          { name: "Wizard's Guild", direction: 'southeast', description: 'Spells, staves and exclusive quests — for members.' },
+        ],
+        questMessage: 'Guilds are scattered throughout the land, and always the best place to learn stronger skills and spells.',
+        questMessageDescription: 'Both Red Town guilds take an initiation quest before they take you.',
+      },
+    },
+  },
+
+  // --- Red Town Courtyard directory ---
+  '218': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the Red Town Courtyard Directory.',
+      modalContent: {
+        title: 'You read the Courtyard Directory',
+        heading: {
+          text: 'Red Courtyard Directory',
+          parts: ['Red Courtyard', 'Directory'],
+          description: 'The courtyard roads, and the open grate in the middle of it.',
+        },
+        locations: [
+          { name: 'Red Town Church', direction: 'north', description: 'Make peace. Or at least stand somewhere quiet.' },
+          { name: "Todd's Pub & Inn", direction: 'east', description: 'Rest, drink, and restock your potions.' },
+          { name: 'Back Alley', direction: 'south', description: 'Be wary of thieves.' },
+          { name: 'Grand Square', direction: 'west', description: 'The town centre, the crafting fire and both guilds.' },
+          { name: 'Town Hall', direction: 'northeast', description: 'Quests, the Mayor, and the gold chest.' },
+          { name: 'Red Town Docks', direction: 'southeast', description: 'Currently closed.' },
+          { name: 'Red Town Sewers', direction: 'down', description: 'Through the open grate. Bring a weapon.' },
+        ],
+        questMessage: 'The sewer grate in this courtyard is the northern way in. The back alley holds the other one.',
+        questMessageDescription: 'The Red Guard Captain pays for sewer vermin, if you were looking for a reason.',
+      },
+    },
+  },
+
+  // --- Babylon Gardens: the odd second flower, and the town's gold chest ---
+  '224': {
+    'pick flower': pickGardenFlower,
+    'open gold chest': makeGoldChestHandler({
+      roomId: '224',
+      flagField: 'chest3',
+      goldMin: 2000,
+      goldMax: 2000,
+      lockedMessage:
+        'The gold chest is locked. You need a Gold Key to open it — Mayor Rudolf hands one over for the Scorpion King, and his office is east of here and up.',
+    }),
+  },
+
+  // ==================== RED TOWN SEWERS ====================
+  // The one safe room down here, exactly as the original had it: danger level 0,
+  // no battle set, and a full restore rather than an overcharge.
+  '232x': {
+    'rest at oasis': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest at oasis',
+        fullRestore: true,
+        fullRestoreMessage: 'You rest at the Sewer Oasis. Clean water, dry stone, and air you can stand — your HP and MP are fully replenished.',
+      }),
+  },
+
+  // The gray chest across the sewer river, and the potions stacked beside it.
+  '232y': {
+    'open gray chest': makeRepeatableChestHandler({
+      roomId: '232y',
+      action: 'open gray chest',
+      label: 'Gray Chest',
+      cooldownMs: 60 * 60 * 1000,
+      goldMin: 100,
+      goldMax: 400,
+      xp: 75,
+      icon: 'chest2',
+      iconColor: 'gray-400',
+      openMessage: 'You lift the lid of the gray chest. Somebody restocks this thing, and you would rather not know who.',
+      pools: [
+        [
+          { itemSlug: 'red-potion', quantity: 4 },
+          { itemSlug: 'arrow', quantity: 25 },
+          { itemSlug: 'crossbow-bolt', quantity: 25 },
+          { itemSlug: 'ring-of-health-regen', quantity: 1, highlighted: true },
+          { itemSlug: 'ring-of-mana-regen', quantity: 1, highlighted: true },
+        ],
+      ],
+    }),
+  },
+
+  // ==================== THIEVE'S DEN ====================
+  // The treasure room. Legacy rolled a weapon/armour piece AND a Ring of X V on
+  // every open, which is why this chest declares two pools.
+  '232o': {
+    'open treasure chest': makeRepeatableChestHandler({
+      roomId: '232o',
+      action: 'open treasure chest',
+      label: "Thieve's Treasure Chest",
+      cooldownMs: 60 * 60 * 1000,
+      goldMin: 200,
+      goldMax: 600,
+      xp: 150,
+      icon: 'chest',
+      iconColor: 'amber-500',
+      openMessage: 'You throw back the lid of the treasure chest. Half of Red Town is in here.',
+      pools: [
+        [
+          { itemSlug: 'iron-boomerang', quantity: 1, highlighted: true },
+          { itemSlug: 'iron-bow', quantity: 1, highlighted: true },
+          { itemSlug: 'bandit-gloves', quantity: 1, highlighted: true },
+          { itemSlug: 'bandit-boots', quantity: 1, highlighted: true },
+        ],
+        [
+          { itemSlug: 'ring-of-strength-v', quantity: 1 },
+          { itemSlug: 'ring-of-dexterity-v', quantity: 1 },
+          { itemSlug: 'ring-of-magic-v', quantity: 1 },
+          { itemSlug: 'ring-of-defense-v', quantity: 1 },
+        ],
+      ],
+    }),
+  },
+
+  // ==================== THE CATACOMBS ====================
+  // The Silver Vault. The original wired up the click cooldown and the "try again
+  // later" message but never filled in the rewards — the chest opened onto
+  // nothing. Filled here from the silver set the Babylon Gardens chest rolls, at
+  // one piece per open, which is what a room called the Silver Vault ought to do.
+  '232z': {
+    'open silver chest': makeRepeatableChestHandler({
+      roomId: '232z',
+      action: 'open silver chest',
+      label: 'Silver Chest',
+      cooldownMs: 4 * 60 * 60 * 1000,
+      goldMin: 500,
+      goldMax: 1500,
+      xp: 300,
+      icon: 'chest2',
+      iconColor: 'blue-300',
+      openMessage: 'The silver chest opens without a sound, and the whole room brightens.',
+      pools: [
+        [
+          { itemSlug: 'silver-sword', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-2h-sword', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-boomerang', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-bow', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-crossbow', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-shield', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-helmet', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-breastplate', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-gauntlets', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-boots', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-ring', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-necklace', quantity: 1, highlighted: true },
+        ],
+      ],
+    }),
+  },
+
   '999': {
     'rest in lobby': async (playerId, roomState) => roomState.executeLobbyRest(playerId),
   },

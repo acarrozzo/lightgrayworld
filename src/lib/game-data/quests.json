@@ -959,6 +959,1054 @@
         "quantity": 1
       }
     ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_redguardcaptain_intro"
+      }
+    ]
+  },
+  "quest_redguardcaptain_intro": {
+    "number": 21,
+    "questType": "main",
+    "level": 15,
+    "title": "Talk to the Red Guard Captain",
+    "summary": "The Captain runs Red Town's security from the lookout tower above the Barracks. He is not short of work.",
+    "objective": "Talk to the Red Guard Captain at the Forest Lookout.",
+    "nextStep": "Head north from the Grand Square to the Warrior's Way, on to the Red Guard Barracks, then northeast through the Captain's office and up to the Lookout Tower (Room 215).",
+    "reminderDialog": "You haven't met the Red Guard Captain yet. He keeps watch from the Lookout Tower above the Barracks, north of the Grand Square.",
+    "completionDialog": "The Captain does not turn around. \"Finally. I need your help cleaning up this town.\" He gestures out over the treetops without looking at you. \"Three jobs. Take them in any order.\"",
+    "giver": {
+      "npcId": "red_guard_captain",
+      "roomId": "215",
+      "name": "Red Guard Captain",
+      "icon": "npc-redguardcaptain"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 100
+      },
+      {
+        "type": "xp",
+        "amount": 100
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_redguardcaptain_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_redguardcaptain_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_redguardcaptain_003"
+      }
+    ]
+  },
+  "quest_redguardcaptain_001": {
+    "number": 22,
+    "questType": "side",
+    "level": 15,
+    "title": "Bring 3 Thieves to Justice",
+    "summary": "Thieves work the roads and back alleys around Red Town. The Captain wants three of them dealt with.",
+    "objective": "Defeat 3 Thieves.",
+    "nextStep": "Thieves turn up anywhere in Red Town and along the stone paths — more often in the back alleys and the sewers. Take down three, then return to the Lookout Tower.",
+    "reminderDialog": "\"{progress} of {count} so far. They're out there — walk the roads and the alleys and they'll find you soon enough.\"",
+    "completionDialog": "\"Three fewer.\" The Captain finally turns round and hands you a crossbow, then two heavy quivers. \"Take these. You'll want the reach.\"",
+    "giver": {
+      "npcId": "red_guard_captain",
+      "roomId": "215",
+      "name": "Red Guard Captain",
+      "icon": "npc-redguardcaptain"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "thief",
+        "count": 3,
+        "displayName": "Thieves"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 300
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "crossbow",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "arrow",
+        "quantity": 50
+      },
+      {
+        "type": "item",
+        "itemSlug": "crossbow-bolt",
+        "quantity": 50
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_redguardcaptain_002": {
+    "number": 23,
+    "questType": "side",
+    "level": 15,
+    "title": "Swords for the Red Guard",
+    "summary": "The Red Guard is short on blades. Five long swords will do.",
+    "objective": "Bring 5 Long Swords to the Red Guard Captain.",
+    "nextStep": "Alpha Scorpions, Orcs, Kobolds and Tarantulas drop Long Swords. Adam's General Store and Michael's Weapon Shop both sell them if you'd rather save the time.",
+    "reminderDialog": "\"{progress} of {count} swords. Buy them from Adam or Michael, or take them off an Alpha Scorpion, Orc, Kobold or Tarantula — I don't much mind which.\"",
+    "completionDialog": "\"Five. That'll arm the night watch.\" He pulls an officer's helm off the rack and puts it in your hands. \"Elite issue. Don't lose it.\"",
+    "giver": {
+      "npcId": "red_guard_captain",
+      "roomId": "215",
+      "name": "Red Guard Captain",
+      "icon": "npc-redguardcaptain"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "long-sword",
+        "quantity": 5,
+        "displayName": "Long Swords"
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 300
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "battle-helm",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_redguardcaptain_003": {
+    "number": 24,
+    "questType": "main",
+    "level": 15,
+    "title": "Sewer Pest Control",
+    "summary": "The sewers under town are infested with mutated vermin. The Captain wants a sample of each exterminated.",
+    "objective": "Defeat a Tarantula, a Sewer Rat and a Red Gator.",
+    "nextStep": "The sewer entrances are in the Red Town Courtyard and in the back alley east of Wizards Way. All three live down there.",
+    "reminderDialog": "\"Still crawling down there. A Tarantula, a Sewer Rat and a Red Gator — one of each and I'll call it done.\"",
+    "completionDialog": "\"One of each. The sewers are a slightly less awful place.\" He hands over a flail with three spiked heads. \"Found it down there years ago. It suits you better than it ever suited me.\"",
+    "giver": {
+      "npcId": "red_guard_captain",
+      "roomId": "215",
+      "name": "Red Guard Captain",
+      "icon": "npc-redguardcaptain"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "tarantula",
+        "count": 1,
+        "displayName": "Tarantula"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "sewer-rat",
+        "count": 1,
+        "displayName": "Sewer Rat"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "red-gator",
+        "count": 1,
+        "displayName": "Red Gator"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 300
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "three-chained-flail",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_townhallplaza_intro": {
+    "number": 25,
+    "questType": "main",
+    "level": 15,
+    "title": "Talk to the People at the Plaza",
+    "summary": "The Town Hall Plaza is full of citizens taking care of business — and several of them are offering rewards for help.",
+    "objective": "Talk to the people at the Town Hall Plaza.",
+    "nextStep": "The Plaza (Room 221) is northeast of the Red Town Courtyard. Go and hear what the people there need.",
+    "reminderDialog": "You haven't spoken to anyone at the Plaza yet. It's northeast of the Red Town Courtyard.",
+    "completionDialog": "You barely make it three steps in. \"Help us! Please!\" A gardener, a chef and a couple with a crying child all start talking at once.",
+    "giver": {
+      "npcId": "town_hall_plaza",
+      "roomId": "221",
+      "name": "Town Hall Plaza",
+      "icon": "npc-townhallplaza"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 100
+      },
+      {
+        "type": "xp",
+        "amount": 100
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_townhallplaza_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_townhallplaza_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_townhallplaza_003"
+      }
+    ]
+  },
+  "quest_townhallplaza_001": {
+    "number": 26,
+    "questType": "side",
+    "level": 15,
+    "title": "Twice as Nice",
+    "summary": "The Plaza gardener wants a matched pair of flowers, and is oddly particular about where the second one comes from.",
+    "objective": "Bring 2 Flowers to the Town Hall Plaza.",
+    "nextStep": "Pick one in the Grassy Field flower patch, then pick the second from the Babylon Gardens — west of the Mayor's office, up from the Plaza.",
+    "reminderDialog": "\"Only {progress} of {count} flowers. One grows out in the Grassy Field, and you can pick the other right here in the Babylon Gardens.\"",
+    "completionDialog": "\"Two! A matched pair!\" The gardener is far more pleased than two flowers warrant, and presses a crate of potions on you — wings and gills both. \"For the places flowers don't grow.\"",
+    "giver": {
+      "npcId": "town_hall_plaza",
+      "roomId": "221",
+      "name": "Town Hall Plaza",
+      "icon": "npc-townhallplaza"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "flower",
+        "quantity": 2,
+        "displayName": "Flowers"
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 200
+      },
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "wings-potion",
+        "quantity": 5
+      },
+      {
+        "type": "item",
+        "itemSlug": "gills-potion",
+        "quantity": 5
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_townhallplaza_002": {
+    "number": 27,
+    "questType": "side",
+    "level": 15,
+    "title": "Cookin up some Meat-a-balls",
+    "summary": "The Plaza chef needs cooked meat, and will teach you what he does with it.",
+    "objective": "Bring 5 Cooked Meat to the Town Hall Plaza.",
+    "nextStep": "Many creatures drop raw meat. Cook it over any fire at a crafting table — there's one right in the Grand Square — and bring five cooked pieces back.",
+    "reminderDialog": "\"{progress} of {count} pieces! Cook the raw meat over a fire, eh? There's a good one in the Grand Square.\"",
+    "completionDialog": "\"Bellissimo!\" The chef takes the meat and walks you through it start to finish. You leave with five meatballs and the recipe in your head. They restore 400 HP a piece.",
+    "giver": {
+      "npcId": "town_hall_plaza",
+      "roomId": "221",
+      "name": "Town Hall Plaza",
+      "icon": "npc-townhallplaza"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "cooked-meat",
+        "quantity": 5,
+        "displayName": "Cooked Meat"
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 200
+      },
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "meatball",
+        "quantity": 5
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_townhallplaza_003": {
+    "number": 28,
+    "questType": "main",
+    "level": 15,
+    "title": "Stolen Teddy Bear",
+    "summary": "A little girl is crying in her parents' arms. Thieves took her teddy bear down into the sewers.",
+    "objective": "Defeat the Master Thief.",
+    "nextStep": "The Master Thief holds the Thieve's Den treasure room. Get into the sewers, find the false wall at the dead end — or the secret entrance off the back alley — and work your way in.",
+    "reminderDialog": "\"The Master Thief still has it. He's down in the Den, past the training room. Please — she hasn't slept.\"",
+    "completionDialog": "Little Suzie cheers when you hand over the stuffed animal, and will not let go of it again. Her parents press what they have on you — a ring off the father's hand and two jars of good balm. \"It isn't much. She hasn't slept in a week.\"",
+    "giver": {
+      "npcId": "town_hall_plaza",
+      "roomId": "221",
+      "name": "Town Hall Plaza",
+      "icon": "npc-townhallplaza"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "master-thief",
+        "count": 1,
+        "displayName": "Master Thief"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 500
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "ring-of-str",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "red-balm",
+        "quantity": 2
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_mayorrudolf_intro": {
+    "number": 29,
+    "questType": "main",
+    "level": 20,
+    "title": "Talk to the Mayor",
+    "summary": "Mayor Rudolf runs Red Town from the top floor of Town Hall. He has been waiting for someone capable.",
+    "objective": "Talk to Mayor Rudolf in the Town Hall Office.",
+    "nextStep": "The Mayor's office (Room 222) is north of the Town Hall Plaza.",
+    "reminderDialog": "You haven't met the Mayor yet. His office is at the top of Town Hall, north of the Plaza.",
+    "completionDialog": "The Mayor puts down his pen. \"The Scorpion King has brought fear to this town for far too long.\" He slides a bounty notice across the desk. \"Name your price when it's done.\"",
+    "giver": {
+      "npcId": "mayor_rudolf",
+      "roomId": "222",
+      "name": "Mayor Rudolf",
+      "icon": "npc-mayor"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_mayorrudolf_000"
+      }
+    ]
+  },
+  "quest_mayorrudolf_000": {
+    "number": 30,
+    "questType": "main",
+    "level": 20,
+    "title": "Scorpion King Bounty",
+    "summary": "The Mayor is offering the largest bounty in Red Town's history for the Scorpion King's head.",
+    "objective": "Defeat the Scorpion King.",
+    "nextStep": "The Scorpion King holds the throne room at the end of the lair below the Grassy Field Spider Cave. A lever down there opens the secret passage to him.",
+    "reminderDialog": "\"The Scorpion King still sits down there. His lair runs below the Spider Cave, out in the Grassy Field. Find the lever, find the passage, finish it.\"",
+    "completionDialog": "\"It's done.\" The Mayor counts out a sum that takes both hands, then adds a red stone talisman and a heavy gold key. \"That key opens the chest in the Babylon Gardens. West of this office, and down. You've earned whatever is in it.\"",
+    "giver": {
+      "npcId": "mayor_rudolf",
+      "roomId": "222",
+      "name": "Mayor Rudolf",
+      "icon": "npc-mayor"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "scorpion-king",
+        "count": 1,
+        "displayName": "Scorpion King"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 1000
+      },
+      {
+        "type": "item",
+        "itemSlug": "red-talisman",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "gold-key",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_warriorsguild_intro": {
+    "number": 31,
+    "questType": "main",
+    "level": 18,
+    "title": "Talk to the Warrior's Guild Recruiter",
+    "summary": "Sword and axe wielding warriors congregate outside the guild's massive stone hall. One of them is clearly recruiting.",
+    "objective": "Talk to the Warrior's Guild Recruiter.",
+    "nextStep": "The Warrior's Guild (Room 226) is northwest of the Grand Square.",
+    "reminderDialog": "You haven't spoken to the Warrior's Guild Recruiter yet. The guild is northwest of the Grand Square.",
+    "completionDialog": "The recruiter looks you up and down without much hurry. \"Slay the Ogre Lieutenant and prove you're a true Warrior. Do that and this door is yours.\"",
+    "giver": {
+      "npcId": "warriors_guild_recruiter",
+      "roomId": "226",
+      "name": "Warrior's Guild Recruiter",
+      "icon": "npc-warrior"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_warriorsguild_000"
+      }
+    ]
+  },
+  "quest_warriorsguild_000": {
+    "number": 32,
+    "questType": "main",
+    "level": 18,
+    "title": "Defeat the Ogre Lieutenant",
+    "summary": "The Warrior's Guild takes no one who has not put down the Ogre Lieutenant.",
+    "objective": "Defeat the Ogre Lieutenant.",
+    "nextStep": "The Ogre Lair is in the southwest of the Forest. Follow the path out of town north, then head west when you reach the Forest.",
+    "reminderDialog": "\"The Ogre Lieutenant is still breathing. His lair is southwest in the Forest. Come back when that's no longer true.\"",
+    "completionDialog": "\"Then you're one of us.\" The recruiter hauls two blades off the display rack — a bastard sword and a great sword — and hands them over. \"Signing bonus. The guild's skills and its quests are open to you now.\"",
+    "giver": {
+      "npcId": "warriors_guild_recruiter",
+      "roomId": "226",
+      "name": "Warrior's Guild Recruiter",
+      "icon": "npc-warrior"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "ogre-lieutenant",
+        "count": 1,
+        "displayName": "Ogre Lieutenant"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 500
+      },
+      {
+        "type": "currency",
+        "amount": 1000
+      },
+      {
+        "type": "item",
+        "itemSlug": "bastard-sword",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "great-sword",
+        "quantity": 1
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_warriorpete_intro"
+      }
+    ]
+  },
+  "quest_warriorpete_intro": {
+    "number": 33,
+    "questType": "main",
+    "level": 20,
+    "title": "Talk to Warrior Pete",
+    "summary": "Now that you're in the guild, one of its warriors would like a word. He is not impressed.",
+    "objective": "Talk to Warrior Pete at the Warrior's Guild.",
+    "nextStep": "Pete stands with the other guild warriors outside the hall (Room 226), northwest of the Grand Square.",
+    "reminderDialog": "You haven't spoken to Warrior Pete yet. He's outside the guild hall with the rest of them.",
+    "completionDialog": "Pete looks over from the weapon rack. \"You say you're a warrior, huh? I don't see it.\" He counts three things off on his fingers. \"Prove me wrong.\"",
+    "giver": {
+      "npcId": "warrior_pete",
+      "roomId": "226",
+      "name": "Warrior Pete",
+      "icon": "npc-warrior2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_warriorpete_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_warriorpete_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_warriorpete_003"
+      }
+    ]
+  },
+  "quest_warriorpete_001": {
+    "number": 34,
+    "questType": "side",
+    "level": 20,
+    "title": "Banish the Skeleton Knights",
+    "summary": "Skeleton Knights hold the Catacombs beneath Red Town. Pete wants three of them put back down.",
+    "objective": "Defeat 3 Skeleton Knights.",
+    "nextStep": "The Catacombs run west off the sewers. Head down into the sewers and northwest to the great stone wall, then search it for the door.",
+    "reminderDialog": "\"{progress} of {count}. They're in the Catacombs under town — through the sewers, northwest, past the stone door.\"",
+    "completionDialog": "\"Three back to hell.\" Pete tosses you a pair of knuckles carved out of something that used to walk. \"Bone Knuckles. Suits you.\"",
+    "giver": {
+      "npcId": "warrior_pete",
+      "roomId": "226",
+      "name": "Warrior Pete",
+      "icon": "npc-warrior2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "skeleton-knight",
+        "count": 3,
+        "displayName": "Skeleton Knights"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 800
+      },
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "bone-knuckles",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_warriorpete_002": {
+    "number": 35,
+    "questType": "side",
+    "level": 20,
+    "title": "Shark Hunter",
+    "summary": "Sharks infest the water below the Blue Ocean. Pete is holding two of the best swords in the guild for whoever hunts them.",
+    "objective": "Defeat a Great White and a Hammerhead.",
+    "nextStep": "The Blue Ocean lies west of the Grassy Field. Get beneath it with a Gills Potion or a Gills spell — both sharks are down there.",
+    "reminderDialog": "\"Still dry, I see. A Great White and a Hammerhead, both under the Blue Ocean. You'll need gills to get to them.\"",
+    "completionDialog": "\"Both of them.\" Pete brings out two swords he's clearly been sitting on for a while. \"Great White Sword and the Hammerhead Hammer. Best steel in the building.\"",
+    "giver": {
+      "npcId": "warrior_pete",
+      "roomId": "226",
+      "name": "Warrior Pete",
+      "icon": "npc-warrior2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "great-white",
+        "count": 1,
+        "displayName": "Great White"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "hammerhead",
+        "count": 1,
+        "displayName": "Hammerhead"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "great-white-sword",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "hammerhead-hammer",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_warriorpete_003": {
+    "number": 36,
+    "questType": "side",
+    "level": 20,
+    "title": "True Troll Champion",
+    "summary": "The Troll Champion is one of the strongest beasts in the Dark Forest. Pete wants three of them.",
+    "objective": "Defeat 3 Troll Champions.",
+    "nextStep": "Troll Champions hold the Dark Forest, north of the regular Forest.",
+    "reminderDialog": "\"{progress} of {count} Champions. They're in the Dark Forest, north of the regular one. Take your time — or don't, and see how that goes.\"",
+    "completionDialog": "\"Three Champions.\" Pete drags a suit of reforged plate out from under a bench. \"Made from the last lot. Wear it with some pride.\"",
+    "giver": {
+      "npcId": "warrior_pete",
+      "roomId": "226",
+      "name": "Warrior Pete",
+      "icon": "npc-warrior2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "troll-champion",
+        "count": 3,
+        "displayName": "Troll Champions"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "champion-armor",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_wizardsguild_intro": {
+    "number": 37,
+    "questType": "main",
+    "level": 18,
+    "title": "Talk to the Wizard's Guild Recruiter",
+    "summary": "Robed men and women mingle outside the Wizard's Guild, talking magic and potions. One of them is watching you.",
+    "objective": "Talk to the Wizard's Guild Recruiter.",
+    "nextStep": "The Wizard's Guild (Room 225) is southeast of the Grand Square.",
+    "reminderDialog": "You haven't spoken to the Wizard's Guild Recruiter yet. The guild is southeast of the Grand Square.",
+    "completionDialog": "The recruiter's attention settles on you all at once. \"Defeat the evil Kobold Master — at all costs. Then we can talk about what else you might learn here.\"",
+    "giver": {
+      "npcId": "wizards_guild_recruiter",
+      "roomId": "225",
+      "name": "Wizard's Guild Recruiter",
+      "icon": "npc-wizard"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_wizardsguild_000"
+      }
+    ]
+  },
+  "quest_wizardsguild_000": {
+    "number": 38,
+    "questType": "main",
+    "level": 18,
+    "title": "Defeat the Kobold Master",
+    "summary": "The Wizard's Guild takes no one who has not put down the Kobold Master.",
+    "objective": "Defeat the Kobold Master.",
+    "nextStep": "The Kobold Lair is in the northwest of the Forest. Follow the path out of town all the way north, then southwest when the path runs out.",
+    "reminderDialog": "\"The Kobold Master still holds his chambers. Northwest of the Forest. Magic will serve you better than steel down there.\"",
+    "completionDialog": "\"Then you are one of us.\" The recruiter hands you a staff and a pointed hat with no ceremony whatsoever. \"Signing bonus. The guild's spells and its quests are open to you.\"",
+    "giver": {
+      "npcId": "wizards_guild_recruiter",
+      "roomId": "225",
+      "name": "Wizard's Guild Recruiter",
+      "icon": "npc-wizard"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "kobold-master",
+        "count": 1,
+        "displayName": "Kobold Master"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 500
+      },
+      {
+        "type": "currency",
+        "amount": 1000
+      },
+      {
+        "type": "item",
+        "itemSlug": "wizard-staff",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "wizard-hat",
+        "quantity": 1
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_wizardmorty_intro"
+      }
+    ]
+  },
+  "quest_wizardmorty_intro": {
+    "number": 39,
+    "questType": "main",
+    "level": 20,
+    "title": "Talk to Wizard Morty",
+    "summary": "Now that you're in the guild, one of its wizards has some opinions about your abilities.",
+    "objective": "Talk to Wizard Morty at the Wizard's Guild.",
+    "nextStep": "Morty is among the robed crowd outside the guild (Room 225), southeast of the Grand Square.",
+    "reminderDialog": "You haven't spoken to Wizard Morty yet. He's outside the guild with the rest of them.",
+    "completionDialog": "\"So you think you're a powerful wizard, huh.\" Morty does not look up from whatever he is stirring. \"Three things. Then we'll see.\"",
+    "giver": {
+      "npcId": "wizard_morty",
+      "roomId": "225",
+      "name": "Wizard Morty",
+      "icon": "npc-wizard2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_wizardmorty_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_wizardmorty_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_wizardmorty_003"
+      }
+    ]
+  },
+  "quest_wizardmorty_001": {
+    "number": 40,
+    "questType": "side",
+    "level": 20,
+    "title": "Rare Gray Matter",
+    "summary": "Morty needs a piece of gray matter. Only rare creatures carry it.",
+    "objective": "Bring 1 Gray Matter to Wizard Morty.",
+    "nextStep": "Gray matter comes off rare enemies — the named dead in the Catacombs carry it, and so do the rarer things you'll meet as you travel.",
+    "reminderDialog": "\"No gray matter yet? Rare creatures drop it. Keep travelling and something unusual will cross your path eventually.\"",
+    "completionDialog": "Morty takes the lump, turns it over twice and does something to it you do not follow at all. What he hands back is a wand. \"Gray Wand. Try not to point it at anything you like.\"",
+    "giver": {
+      "npcId": "wizard_morty",
+      "roomId": "225",
+      "name": "Wizard Morty",
+      "icon": "npc-wizard2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "gray-matter",
+        "quantity": 1,
+        "displayName": "Gray Matter"
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 800
+      },
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "gray-wand",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "blue-potion",
+        "quantity": 5
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_wizardmorty_002": {
+    "number": 41,
+    "questType": "side",
+    "level": 20,
+    "title": "Omar & Victoria the Dead",
+    "summary": "Two named dead keep the deepest rooms of the Catacombs. Morty wants them both gone.",
+    "objective": "Defeat Omar the Dead and Victoria the Dead.",
+    "nextStep": "Both are deep in the Catacombs below Red Town — Victoria keeps the Sacred Altar, Omar the Sacrificial Chamber. Omar hits like a falling headstone; Victoria attacks with magic, so your MAG is what stands between you and her.",
+    "reminderDialog": "\"Still standing, are they. Victoria keeps the altar, Omar the chamber below it. Mind her casting — steel won't help you there.\"",
+    "completionDialog": "\"Both of them. Quietly, too.\" Morty passes you a pair of boots that are not entirely leather. \"Bone Boots. They were hers, before.\"",
+    "giver": {
+      "npcId": "wizard_morty",
+      "roomId": "225",
+      "name": "Wizard Morty",
+      "icon": "npc-wizard2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "omar-the-dead",
+        "count": 1,
+        "displayName": "Omar the Dead"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "victoria-the-dead",
+        "count": 1,
+        "displayName": "Victoria the Dead"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "bone-boots",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_wizardmorty_003": {
+    "number": 42,
+    "questType": "side",
+    "level": 20,
+    "title": "Magic and the Troll Queen",
+    "summary": "The Troll Queen holds the deep Dark Forest, and she is not the sort of thing you hit.",
+    "objective": "Defeat the Troll Queen.",
+    "nextStep": "Her nest is deep in the Dark Forest, far to the north. She fights with magic and shrugs off ordinary weapons — bring spells.",
+    "reminderDialog": "\"The Troll Queen still holds her nest. Far north, deep in the Dark Forest. Use magic on her. I cannot stress that enough.\"",
+    "completionDialog": "\"You actually did it.\" Morty produces a staff that is far too heavy for him to be holding so casually. \"Solomon Staff. It'll cost you some strength to carry — worth every point.\"",
+    "giver": {
+      "npcId": "wizard_morty",
+      "roomId": "225",
+      "name": "Wizard Morty",
+      "icon": "npc-wizard2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "troll-queen",
+        "count": 1,
+        "displayName": "Troll Queen"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 2000
+      },
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "solomon-staff",
+        "quantity": 1
+      }
+    ],
     "onComplete": []
   }
 }

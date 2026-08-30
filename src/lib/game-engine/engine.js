@@ -181,14 +181,9 @@ class GameEngine {
         )
 
         if (!isChatAction) {
-          prisma.user
-            .update({ where: { id: playerId }, data: { clicks: { increment: 1 } }, select: { clicks: true } })
-            .then(({ clicks }) => {
-              this.emitToPlayer(playerId, 'player:clicks-update', { clicks })
-            })
-            .catch((err) => {
-              console.error('[GameEngine] Failed to increment clicks for player', playerId, err)
-            })
+          this.applyClickTick(playerId, roomId).catch((err) => {
+            console.error('[GameEngine] Failed to apply click tick for player', playerId, err)
+          })
         }
 
         this.handleActionResult({ roomId, playerId, result })
@@ -199,6 +194,68 @@ class GameEngine {
         roomId,
       }
     )
+  }
+
+  /**
+   * Everything that advances once per counted action, in one place.
+   *
+   * The original game measured temporary effects in clicks rather than seconds
+   * ("fly for 100 clicks", "+5 hp / click"), so the click counter is also the
+   * clock for buff countdowns and gear regen. Chat is excluded upstream, the
+   * same exclusion the click counter has always used.
+   *
+   * Runs off the action's critical path (fire-and-forget from
+   * processUserAction) — a slow regen write must never delay the action
+   * result the player is waiting on.
+   */
+  async applyClickTick(playerId, roomId) {
+    const { tickBuffs, BUFF_LABELS } = require('./services/buff-service')
+    const { getEquippedRegen, applyRegenTick } = require('./services/regen-service')
+
+    const [{ clicks }, { buffs, expired }, regen] = await Promise.all([
+      prisma.user.update({
+        where: { id: playerId },
+        data: { clicks: { increment: 1 } },
+        select: { clicks: true },
+      }),
+      tickBuffs(prisma, playerId),
+      getEquippedRegen(playerId),
+    ])
+
+    const vitals = await applyRegenTick(playerId, regen)
+
+    // One event carries the whole tick to the acting player: the click count,
+    // the buff countdowns, and the regenerated vitals when gear moved them.
+    this.emitToPlayer(playerId, 'player:clicks-update', {
+      clicks,
+      buffs,
+      ...(vitals || {}),
+    })
+
+    if (vitals) {
+      // Keep the room panel and the global roster's HP/MP bars live for everyone
+      // else too — same path a battle turn's vitals take.
+      const room = this.rooms.get(roomId)
+      room?.updatePlayer?.(playerId, (state) => ({ ...state, hp: vitals.hp, mp: vitals.mp }))
+      if (this.io) {
+        this.io.to(`room-${roomId}`).emit('player-vitals', { id: playerId, roomId, ...vitals })
+        updatePresence(this.io, playerId, { hp: vitals.hp, mp: vitals.mp })
+      }
+    }
+
+    // Tell the player the moment an effect runs out — a wings potion lapsing
+    // mid-sewer is the difference between crossing the river and not.
+    for (const field of expired) {
+      this.emitToPlayer(playerId, 'action:feedback', {
+        action: 'buff expired',
+        message: `Your ${BUFF_LABELS[field] || field} effect has worn off.`,
+        outcome: 'info',
+        ts: Date.now(),
+        timestamp: new Date().toISOString(),
+        success: true,
+        data: { buffs },
+      })
+    }
   }
 
   handleActionResult({ roomId, playerId, result }) {

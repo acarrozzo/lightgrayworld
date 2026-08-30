@@ -35,6 +35,8 @@ interface ShopItem {
 interface ShopModalProps {
   isOpen: boolean
   onClose: () => void
+  /** The shop's own name, from the shop registry. Falls back to "Shop". */
+  shopName?: string
   shopItems: ShopItem[]
   playerCurrency: number
   playerInventory: InventoryItem[]
@@ -108,6 +110,7 @@ function buildCategoryView(
 export default function ShopModal({
   isOpen,
   onClose,
+  shopName,
   shopItems,
   playerCurrency,
   playerInventory,
@@ -355,7 +358,7 @@ export default function ShopModal({
         <div className="border-b border-gray-700/50">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-white">Shop</h2>
+              <h2 className="text-lg font-semibold text-white">{shopName || 'Shop'}</h2>
               <div className="flex items-center gap-2 px-3 py-1 bg-amber-900/30 border border-amber-800/50 rounded-md">
                 <Icon name="coin" size={16} className="text-amber-400" />
                 <span className="text-amber-300 font-medium">{playerCurrency}g</span>
