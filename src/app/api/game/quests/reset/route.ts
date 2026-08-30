@@ -18,10 +18,10 @@ async function handleResetQuests(request: AuthenticatedRequest) {
         where: { userId: user.id },
       })
 
-      // Reset chest1 flag
+      // Reset the gold-chest opened flags
       await prisma.user.update({
         where: { id: user.id },
-        data: { chest1: false },
+        data: { chest1: false, chest2: false },
       })
 
       const completedQuests = [
@@ -84,10 +84,10 @@ async function handleResetQuests(request: AuthenticatedRequest) {
       where: { userId: user.id },
     })
 
-    // Reset chest1 flag
+    // Reset the gold-chest opened flags
     await prisma.user.update({
       where: { id: user.id },
-      data: { chest1: false },
+      data: { chest1: false, chest2: false },
     })
 
     // Create quest_oldman_000 as active (not completed, progress 0)

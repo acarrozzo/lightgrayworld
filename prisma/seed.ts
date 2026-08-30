@@ -3497,6 +3497,17 @@ async function main() {
       metadata: { statMods: { dex: 3, def: 3 } },
     },
     {
+      id: 'hunter-ring_001',
+      slug: 'hunter-ring',
+      name: 'Hunter Ring',
+      description: 'A hunter’s band, worn smooth by years of bowstring and trail. Sharpens the hand that draws.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 5000,
+      equipSlot: EquipSlot.RING,
+      metadata: { icon: 'ring', statMods: { str: 3, dex: 3 } },
+    },
+    {
       id: 'hunter-gloves_001',
       slug: 'hunter-gloves',
       name: 'Hunter Gloves',

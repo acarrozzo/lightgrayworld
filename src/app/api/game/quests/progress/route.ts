@@ -161,6 +161,53 @@ async function handleGetProgress(request: AuthenticatedRequest) {
       }
     }
 
+    // Backfill the Hunter Bill chain for players who opened the Forest Path
+    // (finished Jack's Chief's Cloak) before this chain existed. Same shape as
+    // the Forest Gnome backfill above — both NPCs unlock on Forest entry.
+    if ((questChiefsCloak as any)?.completed) {
+      const existingBillIntro = await getQuestProgress(user.id, 'quest_hunterbill_intro')
+      if (!existingBillIntro) {
+        try {
+          const { randomUUID } = require('crypto')
+          await prisma.questProgress.create({
+            data: {
+              id: randomUUID(),
+              userId: user.id,
+              questId: 'quest_hunterbill_intro',
+              progress: 0,
+              completed: false,
+            },
+          })
+        } catch (error) {
+          console.error('Failed to backfill quest_hunterbill_intro:', error)
+        }
+      }
+
+      const billIntroProgress = await getQuestProgress(user.id, 'quest_hunterbill_intro')
+      if ((billIntroProgress as any)?.completed) {
+        const billQuests = ['quest_hunterbill_000', 'quest_hunterbill_001']
+        for (const questId of billQuests) {
+          const existing = await getQuestProgress(user.id, questId)
+          if (!existing) {
+            try {
+              const { randomUUID } = require('crypto')
+              await prisma.questProgress.create({
+                data: {
+                  id: randomUUID(),
+                  userId: user.id,
+                  questId,
+                  progress: 0,
+                  completed: false,
+                },
+              })
+            } catch (error) {
+              console.error(`Failed to backfill ${questId}:`, error)
+            }
+          }
+        }
+      }
+    }
+
     const quests = await getAllQuestProgress(user.id)
 
     return NextResponse.json({

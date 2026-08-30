@@ -47,12 +47,12 @@ type QuestState = 'talk' | 'in_progress' | 'turn_in' | 'completed'
 export const PRE_QUEST_TALK_ID = '__pretalk__'
 
 /**
- * The two intro "talk to the NPC" quests. They carry a trivially-met `level`
+ * The intro "talk to the NPC" quests. They carry a trivially-met `level`
  * requirement (so their data shape matches every other quest), but in the
  * journal we collapse them to a single "Talk to {npc}" button that completes
  * the quest in one click — the secondary Talk + Turn In buttons are hidden.
  */
-const TALK_COMPLETE_QUEST_IDS = new Set(['quest_oldman_000', 'quest_youngsoldier_000', 'quest_jacklumber_intro', 'quest_forestgnome_intro'])
+const TALK_COMPLETE_QUEST_IDS = new Set(['quest_oldman_000', 'quest_youngsoldier_000', 'quest_jacklumber_intro', 'quest_forestgnome_intro', 'quest_hunterbill_intro'])
 
 /** "training-helmet" -> "Training Helmet". Fallback when no nicer name is available. */
 function humanizeSlug(slug: string): string {

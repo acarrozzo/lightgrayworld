@@ -102,8 +102,9 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'teleport to grassy field', label: 'Teleport to the Grassy Field', icon: 'world', className: 'bg-green-500/70  hover:bg-green-600' },
   ],
 
-  // Forest — berry bushes and the Forest Gnome's tree hut. The chop-wood button
-  // for every tree-bearing Forest room is merged in below.
+  // Forest — berry bushes, Hunter Bill's camp, the Forest gold chest, and the
+  // Forest Gnome's tree hut. The chop-wood button for every tree-bearing Forest
+  // room is merged in below.
   '120': [
     { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'bg-red-600 hover:bg-red-700' },
   ],
@@ -118,6 +119,12 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '135': [
     { action: 'pick blueberry', label: 'Pick Blueberry', icon: 'blueberry', className: 'bg-blue-600 hover:bg-blue-700' },
+  ],
+  '118': [
+    { action: 'talk to hunter bill', label: 'Hunter Bill', icon: 'npc-hunterbill', className: 'bg-green-600 hover:bg-green-700', questIds: questIdsForNpc('hunter_bill') },
+  ],
+  '119': [
+    { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'bg-amber-500/80 hover:bg-amber-500' },
   ],
   '128': [
     { action: 'talk to forest gnome', label: 'Forest Gnome', icon: 'npc-forestgnome', className: 'bg-green-600 hover:bg-green-700', questIds: questIdsForNpc('forest_gnome') },

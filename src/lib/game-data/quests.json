@@ -315,6 +315,10 @@
       {
         "type": "startQuest",
         "questId": "quest_forestgnome_intro"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_hunterbill_intro"
       }
     ]
   },
@@ -785,6 +789,172 @@
       {
         "type": "item",
         "itemSlug": "troll-gloves",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_hunterbill_intro": {
+    "number": 18,
+    "questType": "main",
+    "level": 13,
+    "title": "Talk to Hunter Bill",
+    "summary": "A hunter keeps a camp under the canopy near the Forest entrance. He tracks everything that moves out here.",
+    "objective": "Talk to Hunter Bill at his camp.",
+    "nextStep": "Find Hunter Bill's camp (Room 118), north through the Forest Entrance and past the massive tree, and introduce yourself.",
+    "reminderDialog": "You haven't met Hunter Bill yet. His camp sits under the canopy near the Forest entrance — go and say hello.",
+    "completionDialog": "A wiry man looks up from a half-strung bow and grins. \"Yo! I just love being in nature.\" He nods at the trees. \"Stick around a while. There's things out there worth hunting, and I'll make it worth your trouble.\"",
+    "giver": {
+      "npcId": "hunter_bill",
+      "roomId": "118",
+      "name": "Hunter Bill",
+      "icon": "npc-hunterbill"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 50
+      },
+      {
+        "type": "xp",
+        "amount": 50
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_hunterbill_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_hunterbill_000"
+      }
+    ]
+  },
+  "quest_hunterbill_001": {
+    "number": 19,
+    "questType": "side",
+    "level": 13,
+    "title": "Bigfoot Sighting",
+    "summary": "Bigfoot is rarely seen — some say he doesn't exist at all. Bill says otherwise, and he wants proof.",
+    "objective": "Defeat Bigfoot.",
+    "nextStep": "Bigfoot turns up anywhere in the Forest, but only rarely. Keep hunting until he shows himself, then return to Bill's camp.",
+    "reminderDialog": "\"No Bigfoot yet? He's out there. Doesn't matter which part of the forest — keep walking it and he'll turn up eventually.\"",
+    "completionDialog": "Bill lets out a low whistle. \"You actually found him.\" He drags a heavy fur cloak out of his tent. \"Made this from the last one. Been waiting for somebody who'd earned it.\"",
+    "giver": {
+      "npcId": "hunter_bill",
+      "roomId": "118",
+      "name": "Hunter Bill",
+      "icon": "npc-hunterbill"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "bigfoot",
+        "count": 1,
+        "displayName": "Bigfoot"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 500
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "sasquatch-cloak",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_hunterbill_000": {
+    "number": 20,
+    "questType": "main",
+    "level": 13,
+    "title": "Forest Hunter",
+    "summary": "The forest animals are running rampant. Bill wants one of each taken down — and he'll part with a Gold Key for it.",
+    "objective": "Hunt a Wild Boar, Wolf, Coyote, Buck, Bear and Stag.",
+    "nextStep": "All six roam the Forest. Travel it until each one crosses your path, then return to Bill's camp.",
+    "reminderDialog": "\"Still got some hunting left. Wild Boar, Wolf, Coyote, Buck, Bear, Stag — one of each, and they're all in this forest somewhere.\"",
+    "completionDialog": "\"All six.\" Bill hands over a light, worn shield, then a heavy gold key. \"That key opens the gold chest northeast of here. Best gear in the forest is sitting in it.\"",
+    "giver": {
+      "npcId": "hunter_bill",
+      "roomId": "118",
+      "name": "Hunter Bill",
+      "icon": "npc-hunterbill"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "wild-boar",
+        "count": 1,
+        "displayName": "Wild Boar"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "wolf",
+        "count": 1,
+        "displayName": "Wolf"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "coyote",
+        "count": 1,
+        "displayName": "Coyote"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "buck",
+        "count": 1,
+        "displayName": "Buck"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "bear",
+        "count": 1,
+        "displayName": "Bear"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "stag",
+        "count": 1,
+        "displayName": "Stag"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 800
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "hunter-shield",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "gold-key",
         "quantity": 1
       }
     ],
