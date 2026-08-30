@@ -75,7 +75,8 @@ export default function PlayersPanel({
                 key={tab.id}
                 active={activeSubTab === tab.id}
                 color="pink"
-                onClick={() => onSubTabChange(tab.id)}
+                // Clicking the active sub-tab returns to Players, this panel's core content.
+                onClick={() => onSubTabChange(activeSubTab === tab.id ? 'roster' : tab.id)}
               >
                 {tab.label}
                 {showPartySize && (

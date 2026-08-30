@@ -163,6 +163,7 @@ interface RoomBoxProps {
     itemSlug?: string | null
     itemNamePlural?: string | null
     maxHeld?: number | null
+    readyLabel?: string | null
   }>
   worldTick?: {
     tickNumber: number

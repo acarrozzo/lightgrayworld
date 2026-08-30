@@ -5,6 +5,8 @@ import { X } from 'lucide-react'
 import QUESTS from '@/lib/game-data/quests.json'
 import type { InventoryItem } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
+import { areRequirementsMet } from '@/lib/quest-requirements'
+import QuestRequirements from '@/components/QuestRequirements'
 import SubTabButton from '../SubTabButton'
 
 interface Quest {
@@ -192,10 +194,8 @@ export default function QuestsPanel({
   const [activeTab, setActiveTab] = useState<Tab>('quests')
   const getAuthHeaders = useGameStore((s) => s.getAuthHeaders)
   const killList = useGameStore((s) => s.killList)
-
-  // killCount progress is tracked in the kill list, not on quest.progress (which stays 0 for these quests)
-  const getKillCount = (enemySlug: string) =>
-    killList.find((k) => k.monster === enemySlug)?.kills ?? 0
+  const player = useGameStore((s) => s.player)
+  const requirementContext = { inventory, killList, player }
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0">
@@ -215,7 +215,8 @@ export default function QuestsPanel({
               key={tab.id}
               active={activeTab === tab.id}
               color="gold"
-              onClick={() => setActiveTab(tab.id)}
+              // Clicking the active sub-tab returns to Quests, this panel's core content.
+              onClick={() => setActiveTab(activeTab === tab.id ? 'quests' : tab.id)}
             >
               {tab.label}
             </SubTabButton>
@@ -249,17 +250,12 @@ export default function QuestsPanel({
                     const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
                     if (!questDef) return null
 
-                    let isReadyToTurnIn = false
-                    if (questDef.completionMode === 'turn_in' && questDef.requirements) {
-                      isReadyToTurnIn = questDef.requirements.every((req: any) => {
-                        if (req.type === 'hasItem') {
-                          const item = inventory.find((i: any) => i.template.slug === req.itemSlug)
-                          return item && item.quantity >= (req.quantity || 1)
-                        }
-                        if (req.type === 'killCount') return getKillCount(req.enemySlug) >= req.count
-                        return false
-                      })
-                    }
+                    // Shared with the NPC card so the journal and the room agree
+                    // on what "ready" means for every requirement type.
+                    const isReadyToTurnIn =
+                      questDef.completionMode === 'turn_in' &&
+                      !!questDef.requirements &&
+                      areRequirementsMet(questDef.requirements, requirementContext)
 
                     return (
                       <div key={quest.id} className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3">
@@ -301,17 +297,7 @@ export default function QuestsPanel({
                             </div>
                           )}
                         </div>
-                        {questDef.requirements?.some((req: any) => req.type === 'killCount') && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-500 text-sm">Progress:</span>
-                            <span className="text-gray-300 text-sm">
-                              {questDef.requirements
-                                .filter((req: any) => req.type === 'killCount')
-                                .map((req: any) => `${Math.min(getKillCount(req.enemySlug), req.count)}/${req.count} ${req.displayName} defeated`)
-                                .join(', ')}
-                            </span>
-                          </div>
-                        )}
+                        <QuestRequirements requirements={questDef.requirements} variant="full" />
                         {isReadyToTurnIn && questDef.giver && (
                           <div className="pt-2 border-t border-gray-700/50">
                             <p className="text-green-400 text-sm font-medium">

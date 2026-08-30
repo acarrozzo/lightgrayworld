@@ -223,7 +223,7 @@ const CHEST_LOOT = {
  * the declared quantity (what getGatherActionsForRoom reports to the UI) stays
  * the baseline; `resolve` upgrades it per player at execution time.
  */
-function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantity = 5, toolRequired = null, toolTiers = null, emptyVerb = 'appear', missingToolMessage = null, maxHeld = null, maxHeldMessage = null }) {
+function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantity = 5, toolRequired = null, toolTiers = null, emptyVerb = 'appear', missingToolMessage = null, maxHeld = null, maxHeldMessage = null, readyLabel = null }) {
   const tiers = Array.isArray(toolTiers) && toolTiers.length > 0 ? toolTiers : null
   const baseQuantity = tiers ? tiers[tiers.length - 1].quantity : quantity
 
@@ -237,6 +237,10 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
     // Surfaced to the room UI so a capped node can label its own resource
     // ("3 wood left" / "5/5 wood") without the client hardcoding item names.
     itemNamePlural,
+    // What the ready-state badge calls this node ("Tree"). Nodes that name
+    // themselves show that name; the rest fall back to a plain "Ready" plus the
+    // batch size on the client.
+    ...(readyLabel ? { readyLabel } : {}),
     ...(typeof maxHeld === 'number'
       ? {
           maxHeld,
@@ -298,12 +302,13 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
  * 1 wood with a plain hatchet, 2 with an iron one — so wood is earned by walking
  * the forest tree to tree, and the Gnome's iron hatchet halves that walk.
  */
-function makeChopWoodAction({ missingToolMessage }) {
+function makeChopWoodAction({ missingToolMessage, readyLabel = 'Tree' }) {
   return makeGatherAction({
     itemSlug: 'wood',
     itemNamePlural: 'wood',
     cooldownMs: 15 * 60 * 1000,
     emptyVerb: 'grow',
+    readyLabel,
     toolTiers: [
       { slug: 'iron-hatchet', quantity: 2, label: 'iron hatchet' },
       { slug: 'hatchet', quantity: 1, label: 'hatchet' },
@@ -1182,12 +1187,27 @@ const FOREST_CHOP_WOOD_ROOMS = [
   '126', '127', '129', '130', '131', '132', '133', '134', '135', '136',
 ]
 
+/**
+ * The denser stands: these rooms host two trees instead of one. Each is a
+ * separate action key, so each carries its own rolling cooldown — the ActionCap
+ * row is keyed by (player, room, action) — and the pair doubles the room's wood
+ * without shortening anyone's timer.
+ */
+const FOREST_TWO_TREE_ROOMS = new Set(['117', '122', '124', '127', '129', '133', '134'])
+
+const CHOP_WOOD_MISSING_TOOL =
+  'You need a hatchet to chop these trees. The Forest Gnome keeps a spare one at his tree hut.'
+
 for (const roomId of FOREST_CHOP_WOOD_ROOMS) {
+  const twoTrees = FOREST_TWO_TREE_ROOMS.has(roomId)
   ROOM_ACTIONS[roomId] = {
     ...(ROOM_ACTIONS[roomId] || {}),
-    'chop wood': makeChopWoodAction({
-      missingToolMessage: 'You need a hatchet to chop these trees. The Forest Gnome keeps a spare one at his tree hut.',
-    }),
+    // The first tree keeps the original action key, so cooldowns already banked
+    // against 'chop wood' in these rooms survive the split.
+    'chop wood': makeChopWoodAction({ missingToolMessage: CHOP_WOOD_MISSING_TOOL }),
+    ...(twoTrees
+      ? { 'chop wood 2': makeChopWoodAction({ missingToolMessage: CHOP_WOOD_MISSING_TOOL }) }
+      : {}),
   }
 }
 
@@ -1567,7 +1587,8 @@ function getGatherActionForRoom(roomId) {
  * changes — no per-player query here, and nothing to go stale.
  *
  * @returns {Array<{ action: string, cooldownMs: number, quantity: number|null,
- *                   itemSlug: string|null, itemNamePlural: string|null, maxHeld: number|null }>}
+ *                   itemSlug: string|null, itemNamePlural: string|null, maxHeld: number|null,
+ *                   readyLabel: string|null }>}
  */
 function getGatherActionsForRoom(roomId) {
   const actions = ROOM_ACTIONS[roomId]
@@ -1585,6 +1606,7 @@ function getGatherActionsForRoom(roomId) {
         itemSlug: grant?.itemSlug ?? null,
         itemNamePlural: def.itemNamePlural ?? null,
         maxHeld: typeof def.maxHeld === 'number' ? def.maxHeld : null,
+        readyLabel: def.readyLabel ?? null,
       })
     }
   }

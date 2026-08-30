@@ -142,10 +142,20 @@ const FOREST_CHOP_WOOD_ROOMS = [
   '126', '127', '129', '130', '131', '132', '133', '134', '135', '136',
 ]
 
+/**
+ * Two-tree rooms. Mirrors FOREST_TWO_TREE_ROOMS in the engine: a second tree with
+ * its own action key, and so its own cooldown. Both read "Chop Wood / Tree" —
+ * they are two of the same thing, told apart by which one is still counting down.
+ */
+const FOREST_TWO_TREE_ROOMS = new Set(['117', '122', '124', '127', '129', '133', '134'])
+
+const CHOP_WOOD_BUTTON = { label: 'Chop Wood', icon: 'wood', className: 'bg-amber-700 hover:bg-amber-600' }
+
 for (const roomId of FOREST_CHOP_WOOD_ROOMS) {
   ROOM_ACTIONS[roomId] = [
     ...(ROOM_ACTIONS[roomId] ?? []),
-    { action: 'chop wood', label: 'Chop Wood', icon: 'wood', className: 'bg-amber-700 hover:bg-amber-600' },
+    { action: 'chop wood', ...CHOP_WOOD_BUTTON },
+    ...(FOREST_TWO_TREE_ROOMS.has(roomId) ? [{ action: 'chop wood 2', ...CHOP_WOOD_BUTTON }] : []),
   ]
 }
 

@@ -28,6 +28,7 @@ interface RoomDisplayProps {
     itemSlug?: string | null
     itemNamePlural?: string | null
     maxHeld?: number | null
+    readyLabel?: string | null
   }>
   showHeader?: boolean
   className?: string
@@ -330,6 +331,11 @@ export default function RoomDisplay({
           const isGather = Boolean(gatherInfo)
           const gatherSecondsLeft = gatherRemaining[actionItem.action] ?? 0
           const gatherQuantity = gatherInfo?.quantity ?? null
+          // A node that names itself ("Tree") shows just that name; anything else
+          // reports that it's ready, and how much a click is worth.
+          const gatherReadyLabel =
+            gatherInfo?.readyLabel ??
+            `Ready${gatherQuantity != null ? ` (${gatherQuantity})` : ''}`
           // Capped node: the player already holds all this node will give, so
           // say so up front instead of letting them click into a rejection.
           // Held count for a capped node, summed across rows to match the
@@ -343,7 +349,7 @@ export default function RoomDisplay({
                 )
               : 0
           const gatherAtMax = gatherCap != null && gatherHeld >= gatherCap
-          // A capped node reports its own fill instead of "Ready to pick": how
+          // A capped node reports its own fill instead of its ready badge: how
           // many more it will give ("3 wood left"), or that it's full ("5/5 wood").
           const gatherCapLabel =
             gatherCap != null
@@ -410,8 +416,7 @@ export default function RoomDisplay({
                       ? gatherCapLabel
                       : isGatherLocked
                         ? formatTimeRemaining(gatherSecondsLeft)
-                        : gatherCapLabel ??
-                          `Ready to pick${gatherQuantity != null ? ` (${gatherQuantity})` : ''}`}
+                        : gatherCapLabel ?? gatherReadyLabel}
                   </span>
                 </div>
               ) : (

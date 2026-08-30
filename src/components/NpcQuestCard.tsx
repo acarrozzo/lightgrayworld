@@ -4,6 +4,13 @@ import { useMemo } from 'react'
 import { CheckCircle, MessageCircle } from 'lucide-react'
 import QUESTS from '@/lib/game-data/quests.json'
 import { useGameStore, type KillEntry } from '@/lib/game-state'
+import {
+  areRequirementsMet,
+  getVisibleRequirementProgress,
+  type QuestRequirement,
+  type RequirementContext,
+} from '@/lib/quest-requirements'
+import QuestRequirements from './QuestRequirements'
 import Icon from './Icon'
 
 type QuestDef = {
@@ -13,18 +20,7 @@ type QuestDef = {
   title: string
   objective: string
   giver: { npcId: string; roomId: string; name: string; icon: string }
-  requirements?: Array<{
-    type: string
-    itemSlug?: string
-    quantity?: number
-    count?: number
-    displayName?: string
-    slot?: string
-    notDefault?: boolean
-    enemySlug?: string
-    minLevel?: number
-    flag?: string
-  }>
+  requirements?: QuestRequirement[]
   [key: string]: unknown
 }
 
@@ -54,32 +50,6 @@ export const PRE_QUEST_TALK_ID = '__pretalk__'
  */
 const TALK_COMPLETE_QUEST_IDS = new Set(['quest_oldman_000', 'quest_youngsoldier_000', 'quest_jacklumber_intro', 'quest_forestgnome_intro', 'quest_hunterbill_intro'])
 
-/** "training-helmet" -> "Training Helmet". Fallback when no nicer name is available. */
-function humanizeSlug(slug: string): string {
-  return slug
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ')
-}
-
-/**
- * Display name for an item-collection requirement. The client has no item
- * catalog, so resolve in order of fidelity: an explicit `displayName` on the
- * requirement (author override, same convention as killCount), then the name
- * from a copy the player already owns, then a humanized slug. Works for any
- * item without per-quest data.
- */
-function resolveItemLabel(
-  slug: string,
-  displayName: string | undefined,
-  inventory: ReturnType<typeof useGameStore.getState>['inventory']
-): string {
-  if (displayName) return displayName
-  const owned = inventory.find((i) => i.template.slug === slug)
-  return owned?.template.name ?? humanizeSlug(slug)
-}
-
 interface NpcQuestCardProps {
   npcName: string
   npcIcon: string
@@ -91,70 +61,22 @@ interface NpcQuestCardProps {
   loadingQuestId?: string
 }
 
-function getRequirementProgress(
-  req: NonNullable<QuestDef['requirements']>[number],
-  progress: number,
-  inventory: ReturnType<typeof useGameStore.getState>['inventory'],
-  killList: KillEntry[],
-  playerLevel: number
-): { met: boolean; current: number; total: number; label?: string } {
-  if (req.type === 'level') {
-    const min = req.minLevel ?? 0
-    return { met: playerLevel >= min, current: 1, total: 1 }
-  }
-  if (req.type === 'killCount') {
-    const total = req.count ?? 1
-    const current = killList.find((k) => k.monster === req.enemySlug)?.kills ?? 0
-    return { met: current >= total, current: Math.min(current, total), total, label: req.displayName }
-  }
-  if (req.type === 'hasItem') {
-    const total = req.quantity ?? 1
-    const current = inventory
-      .filter((i) => i.template.slug === req.itemSlug)
-      .reduce((sum, i) => sum + i.quantity, 0)
-    const label = resolveItemLabel(req.itemSlug ?? '', req.displayName, inventory)
-    return { met: current >= total, current: Math.min(current, total), total, label }
-  }
-  if (req.type === 'hasEquippedInSlot') {
-    const equipped = inventory.find((i) => i.isEquipped && i.slot === req.slot)
-    const met = req.notDefault ? !!equipped : true
-    return { met, current: met ? 1 : 0, total: 1 }
-  }
-  if (req.type === 'hasFlag') {
-    const player = useGameStore.getState().player
-    const met = req.flag ? !!(player as any)?.[req.flag] : false
-    return { met, current: met ? 1 : 0, total: 1 }
-  }
-  return { met: false, current: 0, total: 1 }
+/**
+ * Short text summary of what is still missing, used only for the disabled Turn
+ * In button's tooltip. The visible readout is <QuestRequirements />.
+ */
+function unmetSummary(questDef: QuestDef, ctx: RequirementContext): string {
+  return getVisibleRequirementProgress(questDef.requirements, ctx)
+    .filter((r) => !r.met)
+    .map((r) => (r.countable ? `${r.current}/${r.total} ${r.label}` : r.label))
+    .join(', ')
 }
 
-function resolveQuestState(
-  questDef: QuestDef,
-  progress: QuestProgress,
-  inventory: ReturnType<typeof useGameStore.getState>['inventory'],
-  killList: KillEntry[],
-  playerLevel: number
-): { state: QuestState; progressLabel?: string } {
-  if (progress.completed) return { state: 'completed' }
-
+function resolveQuestState(questDef: QuestDef, progress: QuestProgress, ctx: RequirementContext): QuestState {
+  if (progress.completed) return 'completed'
   const reqs = questDef.requirements ?? []
-  if (reqs.length === 0) return { state: 'talk' }
-
-  let allMet = true
-  const progressParts: string[] = []
-
-  for (const req of reqs) {
-    const result = getRequirementProgress(req, progress.progress, inventory, killList, playerLevel)
-    if (!result.met) allMet = false
-    if (req.type === 'killCount') {
-      progressParts.push(`${result.current}/${result.total} ${result.label ?? req.enemySlug}`)
-    } else if (req.type === 'hasItem') {
-      progressParts.push(`${result.current}/${result.total} ${result.label ?? req.itemSlug}`)
-    }
-  }
-
-  if (allMet) return { state: 'turn_in' }
-  return { state: 'in_progress', progressLabel: progressParts.join('\n') }
+  if (reqs.length === 0) return 'talk'
+  return areRequirementsMet(reqs, ctx) ? 'turn_in' : 'in_progress'
 }
 
 export default function NpcQuestCard({
@@ -168,10 +90,17 @@ export default function NpcQuestCard({
   loadingQuestId,
 }: NpcQuestCardProps) {
   const inventory = useGameStore((s) => s.inventory)
-  const playerLevel = useGameStore((s) => s.player?.level ?? 0)
+  const player = useGameStore((s) => s.player)
 
   const visibleQuests = useMemo(() => {
-    const result: Array<{ questDef: QuestDef; progress: QuestProgress; state: QuestState; progressLabel?: string }> = []
+    const ctx: RequirementContext = { inventory, killList, player }
+    const pretalkRow = (): { questDef: QuestDef; progress: QuestProgress; state: QuestState } => ({
+      questDef: { title: `Talk to ${npcName}`, questType: 'main', number: 0, level: 1, objective: '', giver: { npcId: '', roomId: '', name: npcName, icon: npcIcon } },
+      progress: { id: PRE_QUEST_TALK_ID, questId: PRE_QUEST_TALK_ID, progress: 0, completed: false },
+      state: 'talk',
+    })
+
+    const result: Array<{ questDef: QuestDef; progress: QuestProgress; state: QuestState }> = []
 
     for (const questId of questIds) {
       const questDef = QUESTS[questId as keyof typeof QUESTS] as QuestDef | undefined
@@ -180,27 +109,29 @@ export default function NpcQuestCard({
       const progress = quests.find((q) => q.questId === questId)
       if (!progress) continue // hidden if locked (no QuestProgress record)
 
-      const { state, progressLabel } = resolveQuestState(questDef, progress, inventory, killList, playerLevel)
-      result.push({ questDef, progress, state, progressLabel })
+      result.push({ questDef, progress, state: resolveQuestState(questDef, progress, ctx) })
     }
 
     // No unlocked quests yet (e.g. the Young Soldier before you've talked to the
     // Old Man). Show a single Talk row through the normal display — the backend
     // returns the appropriate "talk to the Old Man first" dialogue.
-    if (result.length === 0) {
-      result.push({
-        questDef: { title: `Talk to ${npcName}`, questType: 'main', number: 0, level: 1, objective: '', giver: { npcId: '', roomId: '', name: npcName, icon: npcIcon } },
-        progress: { id: PRE_QUEST_TALK_ID, questId: PRE_QUEST_TALK_ID, progress: 0, completed: false },
-        state: 'talk',
-      })
-      return result
-    }
+    if (result.length === 0) return [pretalkRow()]
+
+    // A finished intro "Talk to {npc}" quest has nothing left to say — its whole
+    // job was to open the chain, and the follow-ups it started are already on the
+    // card. Drop it so the row stays about work the player can still do.
+    const active = result.filter(
+      ({ progress, state }) => !(state === 'completed' && TALK_COMPLETE_QUEST_IDS.has(progress.questId))
+    )
+    // Everything the NPC had was that intro (its follow-ups haven't unlocked
+    // yet): keep the NPC talkable rather than letting the card vanish.
+    if (active.length === 0) return [pretalkRow()]
 
     // Sort by quest number (authored order within each NPC's chain)
-    result.sort((a, b) => a.questDef.number - b.questDef.number)
+    active.sort((a, b) => a.questDef.number - b.questDef.number)
 
-    return result
-  }, [questIds, quests, inventory, killList, playerLevel, npcName, npcIcon])
+    return active
+  }, [questIds, quests, inventory, killList, player, npcName, npcIcon])
 
   if (visibleQuests.length === 0) return null
 
@@ -216,7 +147,7 @@ export default function NpcQuestCard({
 
       {/* Quest rows */}
       <div className="flex flex-col divide-y divide-white/5">
-        {visibleQuests.map(({ questDef, progress, state, progressLabel }) => {
+        {visibleQuests.map(({ questDef, progress, state }) => {
           const isLoading = loadingQuestId === progress.questId
           const isTalk = state === 'talk'
           const isTurnIn = state === 'turn_in'
@@ -245,8 +176,8 @@ export default function NpcQuestCard({
               {/* Quest info */}
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-white truncate">{questDef.title}</div>
-                {isInProgress && progressLabel && (
-                  <div className="text-xs text-white/50 mt-0.5 whitespace-pre-line">{progressLabel}</div>
+                {!isCompleted && (
+                  <QuestRequirements requirements={questDef.requirements} variant="compact" className="mt-1" />
                 )}
                 {isTurnIn && (
                   <div className="text-xs text-green-400/70 mt-0.5 truncate">{questDef.objective}</div>
@@ -299,7 +230,7 @@ export default function NpcQuestCard({
                   <button
                     disabled={!canTurnIn || isLoading}
                     onClick={() => canTurnIn && onTurnIn(progress.questId)}
-                    title={isInProgress && progressLabel ? `Still needed: ${progressLabel}` : undefined}
+                    title={isInProgress ? `Still needed: ${unmetSummary(questDef, { inventory, killList, player })}` : undefined}
                     className={`px-3 py-2 rounded-md text-sm font-semibold transition-colors ${
                       canTurnIn
                         ? 'bg-green-600 hover:bg-green-500 text-white'

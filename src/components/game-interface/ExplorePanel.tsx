@@ -68,7 +68,9 @@ export default function ExplorePanel({
 
   return (
     <>
-      {/* Sub-tabs — one level below the Explore tab itself */}
+      {/* Sub-tabs — one level below the Explore tab itself. Clicking the active
+          one toggles back to the Compass, this panel's core content, so a
+          sub-tab is never a one-way door. */}
       <div className="flex items-center gap-2 px-3 pt-1 pb-1.5 border-b border-gray-700/50 flex-shrink-0 overflow-x-auto">
         <SubTabButton
           active={isCompass}
@@ -83,7 +85,7 @@ export default function ExplorePanel({
         <SubTabButton
           active={isTeleport}
           color="violet"
-          onClick={() => onSubViewChange('teleport')}
+          onClick={() => onSubViewChange(isTeleport ? 'compass' : 'teleport')}
           ariaPressed={isTeleport}
           title="Teleport"
         >
@@ -94,7 +96,7 @@ export default function ExplorePanel({
         <SubTabButton
           active={isMap}
           color="sky"
-          onClick={showMapHere}
+          onClick={isMap ? () => onSubViewChange('compass') : showMapHere}
           ariaPressed={isSidebar ? isMap : undefined}
           title={isSidebar ? 'Map' : 'Open Map'}
         >

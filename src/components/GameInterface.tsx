@@ -154,6 +154,7 @@ export default function GameInterface() {
     itemSlug?: string | null
     itemNamePlural?: string | null
     maxHeld?: number | null
+    readyLabel?: string | null
   }>>([])
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
   // Returning to Explore always lands on the compass — a sub-view left open

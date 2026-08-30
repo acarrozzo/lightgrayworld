@@ -241,7 +241,8 @@
     "requirements": [
       {
         "type": "hasFlag",
-        "flag": "chest1"
+        "flag": "chest1",
+        "displayName": "Gold Chest opened"
       }
     ],
     "consumeRequirementsOnComplete": false,

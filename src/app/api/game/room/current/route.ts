@@ -29,6 +29,7 @@ type GatherActionDef = {
   itemSlug: string | null
   itemNamePlural: string | null
   maxHeld: number | null
+  readyLabel: string | null
 }
 
 const noCacheHeaders = {
@@ -254,6 +255,7 @@ export async function GET(request: NextRequest) {
                 itemSlug: gather.itemSlug ?? null,
                 itemNamePlural: gather.itemNamePlural ?? null,
                 maxHeld: gather.maxHeld ?? null,
+                readyLabel: gather.readyLabel ?? null,
               }))
             )
           }

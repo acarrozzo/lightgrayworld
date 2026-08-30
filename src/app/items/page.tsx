@@ -238,6 +238,10 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
   // any tool gate.
   for (const [roomId, actions] of Object.entries(ROOM_ACTIONS)) {
     const name = roomNames.get(roomId) ?? `Room ${roomId}`
+    // A room can host the same node more than once (the two-tree Forest rooms):
+    // collapse identical nodes into one row carrying a ×N, so the page shows the
+    // room's real throughput instead of a duplicated line.
+    const nodes = new Map<string, { itemSlug: string; suffix: string; count: number }>()
     for (const def of Object.values(actions)) {
       if (!def || typeof def !== 'object') continue
       if (!def.isGather && !def.cooldownMs) continue
@@ -252,8 +256,14 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
         : def.maxHeld != null
           ? ` · max ${def.maxHeld} held`
           : ''
-      const label = `${name}${fixedQty(grant.quantity)}${limit}${tool}`
-      ensure(grant.itemSlug).gathers.push({ label })
+      const suffix = `${fixedQty(grant.quantity)}${limit}${tool}`
+      const key = `${grant.itemSlug}|${suffix}`
+      const existing = nodes.get(key)
+      if (existing) existing.count += 1
+      else nodes.set(key, { itemSlug: grant.itemSlug, suffix, count: 1 })
+    }
+    for (const { itemSlug, suffix, count } of nodes.values()) {
+      ensure(itemSlug).gathers.push({ label: `${name}${count > 1 ? ` ×${count}` : ''}${suffix}` })
     }
   }
 
