@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react'
 import { useGameStore } from '@/lib/game-state'
 import { ArrowBigUp, ArrowBigUpDash } from 'lucide-react'
 import Icon from './Icon'
+import { getRoomMapPosition } from './game-interface/room-map-positions'
 
 interface CompassProps {
   room: any
@@ -24,134 +25,6 @@ interface VerticalDirection {
   key: string
   label: string
   rotation?: number
-}
-
-// Function to get room-specific map position using the same coordinates as the original
-const getRoomMapPosition = (roomId: string | undefined) => {
-  // Map room IDs to specific background-position coordinates (matching the original PHP implementation)
-  const roomMapPositions: Record<string, string> = {
-    '000': '-350px -350px',    // Room Zero
-    '001': '-350px -350px',    // Grassy Field Crossroads
-    '002': '-350px -455px',    // Grassy Field South
-    '003': '-245px -455px',    // Wood Cabin
-    '013': '-140px -560px',    // Marsh Behind the Cabin
-    '003c': '-140px -455px',   // Young Soldier
-    '004': '-245px -350px',    // Flower Patch
-    '005': '-350px -245px',    // Grassy Field North
-    '006': '-455px -350px',    // Basic Shop
-    '007': '-455px -455px',    // Cave Entrance
-    '014': '-140px -350px',    // Dirt Road West
-    '015': '-35px -140px',     // On the Beach Sandy shores
-    '016': '-35px -245px',     // On the Beach by a Giant Rock
-    '017': '-35px -350px',     // Abandoned Docks
-    '018': '-35px -455px',     // Rocky Beach
-    '019': '-35px -560px',     // Sand Crab Nest
-    '020': '-245px -245px',    // Healing Springs
-    '021': '-455px -245px',    // Pajama Shaman
-    '026': '-350px -560px',    // Stone Path South (south of 002)
-    '027': '-350px -665px',    // Dwarf Guard - Gate to the Rocky Flats (south of 026)
-    '028': '-245px -665px',    // Bat Cave Entrance (southwest of 026, west of 027)
-    '088': 'center',            // Solar Office
-    '999': 'center',            // The Lobby
-    // Grassy Field Underground rooms (coordinates relative to underground map image)
-    '003b':  '-245px -455px',   // Cabin Basement
-    '003bb': '-140px -455px',   // Destroyed Basement
-    // Spider Cave rooms (overworld map, 105px grid steps from 007 at -455 -455)
-    '008': '-455px -560px',     // Spider Cave Exit (south of 007)
-    '009': '-455px -665px',     // Spider Cave #009 (south of 008)
-    '010': '-560px -665px',     // Spider Cave #010 (east of 009)
-    '011': '-560px -560px',     // Spider Cave #011 (east of 008 / north of 010)
-    '012': '-665px -560px',     // Above the Scorpion Pit (east of 011)
-    // Scorpion Pit underground (105px grid steps, underground map)
-    '012b': '-665px -560px',    // Scorpion Pit EXIT
-    '012c': '-665px -665px',    // Scorpion Pit Path (south of 012b)
-    '012d': '-560px -665px',    // Scorpion Control Room (south of 012e)
-    '012e': '-560px -560px',    // Scorpion Guard Room (northwest of 012c)
-    '012f': '-560px -455px',    // Scorpion Hall (north of 012e)
-    '012g': '-665px -350px',    // Scorpion Queen Nest (northeast of 012f)
-    '012h': '-665px -245px',    // Scorpion Throne Room (north of 012g)
-    // Bat Cave underground (entry via 028.down = 028b)
-    // Row alignment: 028h shares row Y=-455 with 003bb/003b (cabin basements)
-    '028b': '-245px -665px',    // Bat Cave EXIT (col 3, bottom row)
-    '028c': '-350px -665px',    // Abandoned Workshop (col 4, bottom row)
-    '028d': '-245px -560px',    // Bat Cave hub (col 3, middle row; north of 028b)
-    '028e': '-140px -665px',    // Bat Nest (col 2, bottom row)
-    '028f': '-140px -560px',    // Salamander Cavern (col 2, middle row; north of 028e)
-    '028g': '-35px -560px',     // Goblin Tracks (col 1, middle row; west of 028f)
-    '028h': '-35px -455px',     // Goblin Dead End (col 1, same row as 003bb/003b)
-    '028i': '-35px -350px',     // Goblin Hideout (col 1, top; directly N of 028h)
-    // East forest-edge rooms (overworld map, 105px grid steps east from 006)
-    '022': '-560px -350px',     // Dirt Road East (east of 006)
-    '023': '-665px -350px',     // Jack's Forest Gate (east of 022)
-    '024': '-665px -245px',     // Jack Lumber (north of 023)
-    '025': '-665px -140px',     // Goblin Woods (north of 024)
-    // Forest rooms (coordinates relative to forest map image)
-    '101': '-35px -350px',      // Forest Path (entry from west)
-    '102': '-140px -455px',     // Forest Path near a Cow Farm
-    '103': '-140px -350px',     // Freddie's Cow Farm
-    '103b': '-140px -245px',    // Cows (north of 103)
-    '103c': '-35px -245px',     // More Cows (west of 103b)
-    '104': '-245px -455px',     // Stone Path by a Forest Gate
-    '105': '-245px -350px',     // Traveling Wizard
-    '106': '-245px -560px',     // Traveling Warrior
-    '107': '-245px -665px',     // Stone Path by a Hill
-    '108': '-140px -665px',     // Dirt Path Behind a Hill
-    '109': '-35px -560px',      // Behind a Hill by a Cave
-    '110': '-35px -455px',      // Behind a Hill
-    '111': '-140px -560px',     // Ogre Cave
-    '112': '-245px -245px',     // Stone Path
-    '113': '-245px -140px',     // Stone Path
-    '114': '-245px -35px',      // Stone Path by a Magical Gate
-    '115': '-140px -140px',     // Kobold Lair
-    '116': '-350px -350px',     // Forest Entrance
-    '117': '-350px -245px',     // Under a Massive Tree
-    '118': '-350px -140px',     // Hunter Bill
-    '119': '-455px -35px',      // Forest by a Gold Chest
-    '120': '-455px -140px',     // Forest by a River
-    '121': '-455px -245px',     // Forest Clearing (hub)
-    '122': '-455px -350px',     // Forest Fork in the Road
-    '123': '-455px -455px',     // Forest Beaten Path
-    '124': '-455px -560px',     // Red Guard Tower
-    '125': '-560px -560px',     // Small Graveyard
-    '126': '-665px -560px',     // Forest by a Cliff
-    '127': '-665px -455px',     // Surrounded by Trees
-    '128': '-560px -455px',     // Forest Gnome Tree Hut
-    '129': '-665px -665px',     // Forest Dead End
-    '130': '-560px -245px',     // Abandoned Campsite
-    '131': '-560px -350px',     // Forest by a Lake
-    '132': '-665px -350px',     // Forest Rocky Path
-    '133': '-665px -245px',     // Forest Twisted Path
-    '134': '-665px -140px',     // Approaching Troll Territory
-    '135': '-560px -140px',     // Forest atop a Hill
-    '136': '-665px -35px',      // Abandoned Troll Guard Post
-    '137': '-560px -35px',      // Troll Base Camp
-    // Forest Underground - Kobold Lair (coordinates relative to forest underground map image)
-    '115a': '-140px -140px',     // Kobold Lair EXIT
-    '115b': '-35px -140px',      // Kobold Dead End
-    '115c': '-245px -140px',     // Kobold Twisted Path
-    '115d': '-140px -35px',      // Kobold Temple
-    '115e': '-350px -245px',     // Kobold Bloody Path
-    '115f': '-245px -245px',     // Kobold Hidden Chamber
-    '115g': '-455px -245px',     // Dark Courtyard
-    '115h': '-350px -350px',     // Control Room
-    '115i': '-560px -350px',     // Magic Altar
-    '115j': '-560px -245px',     // Champion Arena
-    '115k': '-560px -140px',     // Kobold Master Chambers
-    // Forest Underground - Ogre Lair
-    '111a': '-140px -560px',     // Ogre Lair EXIT
-    '111b': '-35px -560px',      // Goblin Tent
-    '111c': '-35px -665px',      // Rat's Nest
-    '111d': '-140px -665px',     // Hob Goblin Hut
-    '111e': '-245px -560px',     // Ogre Path
-    '111f': '-350px -665px',     // Orc Den
-    '111g': '-350px -560px',     // Ogre Yard
-    '111h': '-245px -455px',     // Ogre Treasure Room
-    '111i': '-455px -560px',     // Ogre Guard Room
-    '111j': '-560px -560px',     // Ogress Fire Altar
-    '111k': '-560px -665px',     // Ogre Lieutenant Quarters
-  }
-
-  return roomMapPositions[roomId || '000'] || '-350px -350px' // Default to center
 }
 
 // Helper function to get background color classes for a direction button

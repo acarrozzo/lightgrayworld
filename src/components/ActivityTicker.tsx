@@ -107,7 +107,7 @@ export default function ActivityTicker() {
         disabled={!hasHistory}
         className={`
           w-full h-8
-          flex items-center justify-center overflow-hidden
+          flex items-center justify-start gap-2 overflow-hidden
           border-b border-gray-800/40 bg-gray-900/90 backdrop-blur-sm
           px-3
           ${hasHistory ? 'cursor-pointer hover:bg-gray-800/85' : 'cursor-default'}
@@ -117,15 +117,18 @@ export default function ActivityTicker() {
         aria-label={expanded ? 'Collapse activity history' : 'Expand activity history'}
         aria-expanded={expanded}
       >
+        <span className="flex-shrink-0 text-[10px] uppercase tracking-wider text-gray-500">
+          Last Action
+        </span>
         {latest ? (
-          <div className="flex items-center gap-2 max-w-full min-w-0">
+          <div className="flex flex-1 items-center gap-2 min-w-0">
             <span
               className={`flex-shrink-0 w-1.5 h-1.5 rounded-full ${entryAccent(latest)} ${isIdle ? 'opacity-40' : ''}`}
               aria-hidden="true"
             />
             <span
               key={displayedId ?? 'empty'}
-              className={`min-w-0 truncate text-xs animate-[tickerFadeIn_0.25s_ease-out] ${isIdle ? 'text-gray-500' : 'text-gray-200'}`}
+              className={`flex-1 min-w-0 truncate text-left text-xs animate-[tickerFadeIn_0.25s_ease-out] ${isIdle ? 'text-gray-500' : 'text-gray-200'}`}
             >
               {renderEntry(latest)}
             </span>
@@ -139,9 +142,7 @@ export default function ActivityTicker() {
             )}
           </div>
         ) : (
-          <span className="text-center text-[10px] text-gray-600 tracking-wide uppercase">
-            Activity
-          </span>
+          <span className="text-left text-[10px] text-gray-600">Nothing yet</span>
         )}
       </button>
 

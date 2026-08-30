@@ -64,7 +64,7 @@ export default function ExplorePanel({
   const isCompass = subView === 'compass'
   const isTeleport = subView === 'teleport'
   const isMap = isSidebar && subView === 'map'
-  const mapView = resolveMapView(currentMapId, availableMaps)
+  const mapView = resolveMapView(currentMapId, availableMaps, room?.roomId)
 
   return (
     <>
@@ -111,6 +111,7 @@ export default function ExplorePanel({
             availableMaps={mapView.options}
             currentMapId={currentMapId}
             onMapChange={onMapChange}
+            marker={mapView.marker}
           />
           <button
             type="button"

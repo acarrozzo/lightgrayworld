@@ -18,14 +18,20 @@ interface MapContentProps {
   availableMaps?: MapOption[]
   currentMapId?: string
   onMapChange?: (mapId: string) => void
+  /** Player position as a 0..1 fraction of the map image, or null to hide it. */
+  marker?: { x: number; y: number } | null
 }
 
-export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMapId, onMapChange }: MapContentProps) {
+export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMapId, onMapChange, marker }: MapContentProps) {
   const [isZoomed, setIsZoomed] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const dragStartRef = useRef<{ x: number; y: number } | null>(null)
   const pointerIdRef = useRef<number | null>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
+  // Rendered box + intrinsic size of the map image, so the marker can be placed
+  // on the painted pixels rather than on the (possibly letterboxed) element box.
+  const [imgMetrics, setImgMetrics] = useState<{ w: number; h: number; natW: number; natH: number } | null>(null)
   const pointerDownPositionRef = useRef<{ x: number; y: number } | null>(null)
   const hasMovedRef = useRef(false)
   
@@ -50,6 +56,33 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
   useEffect(() => {
     resetView()
   }, [mapSrc])
+
+  const measureImage = useCallback(() => {
+    const el = imgRef.current
+    if (!el) return
+    setImgMetrics({ w: el.clientWidth, h: el.clientHeight, natW: el.naturalWidth, natH: el.naturalHeight })
+  }, [])
+
+  useEffect(() => {
+    const el = imgRef.current
+    if (!el) return
+    measureImage()
+    const observer = new ResizeObserver(() => measureImage())
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [measureImage, mapSrc, isZoomed])
+
+  // Marker offset in element-box pixels, accounting for object-contain letterboxing.
+  let markerOffset: { left: number; top: number } | null = null
+  if (marker && imgMetrics && imgMetrics.natW > 0 && imgMetrics.natH > 0 && imgMetrics.w > 0 && imgMetrics.h > 0) {
+    const scale = Math.min(imgMetrics.w / imgMetrics.natW, imgMetrics.h / imgMetrics.natH)
+    const paintedW = imgMetrics.natW * scale
+    const paintedH = imgMetrics.natH * scale
+    markerOffset = {
+      left: (imgMetrics.w - paintedW) / 2 + marker.x * paintedW,
+      top: (imgMetrics.h - paintedH) / 2 + marker.y * paintedH,
+    }
+  }
 
   // Initialize visible buttons when availableMaps changes
   useEffect(() => {
@@ -441,7 +474,7 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
         
         <div className="flex h-full items-center justify-center py-4">
           <div
-            className={`${isZoomed ? 'cursor-grab' : ''}`}
+            className={`relative ${isZoomed ? 'cursor-grab' : ''}`}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={endDrag}
@@ -458,25 +491,39 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
             style={{
               touchAction: isZoomed ? 'none' : 'auto',
               cursor: isZoomed ? (isDragging ? 'grabbing' : 'grab') : 'default',
+              // Zoom/pan lives on the wrapper so the marker travels with the art.
+              transform: isZoomed ? `scale(1.4) translate(${dragOffset.x}px, ${dragOffset.y}px)` : undefined,
+              transition: !isDragging ? 'transform 0.2s ease-out' : 'none',
             }}
           >
             <img
+              ref={imgRef}
               src={mapSrc}
               alt={mapTitle}
-              className={`rounded-xl shadow-inner ${
+              onLoad={measureImage}
+              className={`block rounded-xl shadow-inner ${
                 isZoomed
                   ? 'max-h-none w-auto max-w-none'
                   : 'w-full max-w-full object-contain'
               }`}
               style={{
-                transform: isZoomed ? `scale(1.4) translate(${dragOffset.x}px, ${dragOffset.y}px)` : undefined,
-                transition: !isDragging ? 'transform 0.2s ease-out' : 'none',
                 userSelect: 'none',
                 pointerEvents: isZoomed ? 'none' : 'auto',
                 maxHeight: isZoomed ? 'none' : '100%',
               }}
               draggable={false}
             />
+            {markerOffset && (
+              <div
+                className="pointer-events-none absolute z-10"
+                style={{ left: markerOffset.left, top: markerOffset.top, transform: 'translate(-50%, -50%)' }}
+                role="img"
+                aria-label="You are here"
+              >
+                <span className="absolute inset-0 -m-2 rounded-full bg-amber-400/40 animate-ping" aria-hidden="true" />
+                <span className="block h-3 w-3 rounded-full border-2 border-gray-950 bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.5)]" aria-hidden="true" />
+              </div>
+            )}
           </div>
         </div>
       </div>

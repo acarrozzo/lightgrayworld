@@ -120,7 +120,8 @@ export default function GameInterface() {
   const removePresence = usePresenceStore((state) => state.removePresence)
   const [exploreSubView, setExploreSubView] = useState<ExploreSubView>('compass')
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
-  const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(false)
+  // Desktop world feed starts open; the toggle only affects this session.
+  const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(true)
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
   const [shopModalData, setShopModalData] = useState<{
     shopItems: Array<{ id: string; slug: string; name: string; description: string; value: number; type: string }>
@@ -2907,7 +2908,7 @@ export default function GameInterface() {
   // Mobile includes feed tab in bottom nav
   const mobileTabs: TabConfig[] = [
     ...panelTabs,
-    { id: 'feed', label: 'Feed', icon: <MessageSquareText size={14} />, color: 'blue', badge: unreadCount > 0 ? unreadCount : undefined },
+    { id: 'feed', label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'blue', badge: unreadCount > 0 ? unreadCount : undefined },
   ]
 
   return (
@@ -2920,6 +2921,7 @@ export default function GameInterface() {
         >
           <MapPanel
             currentMapId={currentMapId}
+            currentRoomId={currentRoom?.roomId}
             availableMaps={availableMaps}
             onMapChange={handleMapChange}
             onOpenTeleport={() => {
@@ -3161,8 +3163,8 @@ export default function GameInterface() {
             type="button"
             onClick={() => setIsFeedPanelOpen(v => !v)}
             className="hidden lg:flex absolute top-2 right-3 z-20 items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-700/50 bg-gray-900/80 hover:bg-gray-800/80 text-gray-400 hover:text-white transition-all duration-200 text-xs font-medium shadow-sm"
-            title={isFeedPanelOpen ? 'Close Feed' : 'Open Feed'}
-            aria-label={isFeedPanelOpen ? 'Close Feed' : 'Open Feed'}
+            title={isFeedPanelOpen ? 'Close World Feed' : 'Open World Feed'}
+            aria-label={isFeedPanelOpen ? 'Close World Feed' : 'Open World Feed'}
           >
             <MessageSquareText size={14} />
             {unreadCount > 0 && (
@@ -3301,13 +3303,13 @@ export default function GameInterface() {
         {isFeedPanelOpen && (
           <div className="hidden lg:flex flex-col flex-shrink-0 w-[360px] border-l border-gray-700/30 bg-gray-900/95 min-h-0 overflow-hidden">
             <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/30">
-              <span className="text-sm font-medium text-gray-300">Feed</span>
+              <span className="text-sm font-medium text-gray-300">World Feed</span>
               <button
                 type="button"
                 onClick={() => setIsFeedPanelOpen(false)}
                 className="p-1.5 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
-                title="Close Feed"
-                aria-label="Close Feed"
+                title="Close World Feed"
+                aria-label="Close World Feed"
               >
                 <Icon name="x" size={16} />
               </button>
@@ -3339,7 +3341,7 @@ export default function GameInterface() {
           tabs={mobileTabs}
           activeTab={centerActiveTab}
           onTabChange={handleCenterTabChange}
-          fallbackLabels={{ players: 'Players', feed: 'Feed', settings: 'Settings' }}
+          fallbackLabels={{ players: 'Players', feed: 'World Feed', settings: 'Settings' }}
           overflowAfter={5}
         />
       </div>

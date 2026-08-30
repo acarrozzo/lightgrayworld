@@ -7,6 +7,7 @@ import { resolveMapView } from '../utils'
 
 interface MapPanelProps {
   currentMapId: string
+  currentRoomId?: string
   availableMaps: MapConfigEntry[]
   onMapChange: (mapId: string) => void
   onClose: () => void
@@ -15,12 +16,13 @@ interface MapPanelProps {
 
 export default function MapPanel({
   currentMapId,
+  currentRoomId,
   availableMaps,
   onMapChange,
   onClose,
   onOpenTeleport,
 }: MapPanelProps) {
-  const mapView = resolveMapView(currentMapId, availableMaps)
+  const mapView = resolveMapView(currentMapId, availableMaps, currentRoomId)
 
   return (
     <div className="flex flex-col w-full h-full">
@@ -39,6 +41,7 @@ export default function MapPanel({
           availableMaps={mapView.options}
           currentMapId={currentMapId}
           onMapChange={onMapChange}
+          marker={mapView.marker}
         />
       </div>
       <div className="flex-shrink-0 grow-0 h-14 border-t border-gray-700/50 px-4 flex items-center justify-center gap-2">

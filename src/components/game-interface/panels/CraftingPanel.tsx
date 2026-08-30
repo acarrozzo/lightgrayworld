@@ -89,6 +89,7 @@ export default function CraftingPanel({
     const maxCraftable = maxCraftableFor(recipe)
     const canCraft = maxCraftable >= 1
     const outEntry = owned.get(recipe.output.slug)
+    const held = outEntry?.quantity ?? 0
     const atMax =
       recipe.output.max != null &&
       (outEntry?.quantity ?? 0) + recipe.output.qty > recipe.output.max
@@ -112,8 +113,17 @@ export default function CraftingPanel({
         <div className="flex items-start gap-3">
           <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-gray-700/50 bg-gray-900/60">
             <Icon name={recipe.outputIcon} size={44} className="text-orange-300" color="current" />
-            <span className="absolute -top-1.5 -left-1.5 min-w-[18px] rounded-full border border-gray-700 bg-gray-900 px-1 text-center text-[10px] font-bold text-gray-300">
-              {qtyOf(recipe.output.slug)}
+            {/* How many of this output the player is already carrying. Kept
+                prominent so the held count reads at a glance while crafting. */}
+            <span
+              title={`You are carrying ${held} ${recipe.output.name}`}
+              className={`absolute -top-2 -left-2 flex h-6 min-w-[24px] items-center justify-center rounded-full border px-1.5 text-sm font-bold tabular-nums shadow-sm shadow-black/50 ${
+                held > 0
+                  ? 'border-orange-400/70 bg-gray-950 text-orange-200'
+                  : 'border-gray-700 bg-gray-900 text-gray-500'
+              }`}
+            >
+              {held}
             </span>
           </div>
           <div className="min-w-0 flex-1">

@@ -1,5 +1,6 @@
 import type { Room, Player } from '@/lib/game-state'
 import { TRAVEL_DIRECTION_KEYS, CLIENT_ROOM_GATES, COMMAND_SHORTHAND, MAP_CONFIG, type TravelDirectionKey, type MapConfigEntry } from './constants'
+import { getRoomMapMarker } from './room-map-positions'
 
 export const findTravelDirection = (fromRoom: Room | null, toRoomId: string): TravelDirectionKey | undefined => {
   if (!fromRoom) {
@@ -51,12 +52,23 @@ export const getUnlockedMaps = (player: Player | null, currentRoomId: string | u
 
 // Resolve the image + picker options for a map id. Shared by the sidebar map
 // sub-view and the full-screen MapPanel so the two cannot drift.
-export const resolveMapView = (currentMapId: string, availableMaps: MapConfigEntry[]) => {
+export const resolveMapView = (
+  currentMapId: string,
+  availableMaps: MapConfigEntry[],
+  currentRoomId?: string,
+) => {
   const selected = MAP_CONFIG.find((m) => m.id === currentMapId)
+  // Only mark the player's position while they are looking at the map they are
+  // actually standing on — switching maps should not fake a location.
+  const marker =
+    currentRoomId && getMapIdForRoom(currentRoomId) === currentMapId
+      ? getRoomMapMarker(currentRoomId)
+      : null
   return {
     src: selected?.src || '',
     title: selected?.title || 'Map',
     options: availableMaps.map((map) => ({ id: map.id, src: map.src, title: map.title })),
+    marker,
   }
 }
 
