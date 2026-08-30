@@ -112,6 +112,55 @@ async function handleGetProgress(request: AuthenticatedRequest) {
       }
     }
 
+    // Backfill the Forest Gnome chain for players who opened the Forest Path
+    // (finished Jack's Chief's Cloak) before this chain existed. Mirrors the
+    // Jack backfill above: the intro comes first, and only once it's completed
+    // do its three follow-ups appear.
+    const questChiefsCloak = await getQuestProgress(user.id, 'quest_jacklumber_000')
+    if ((questChiefsCloak as any)?.completed) {
+      const existingGnomeIntro = await getQuestProgress(user.id, 'quest_forestgnome_intro')
+      if (!existingGnomeIntro) {
+        try {
+          const { randomUUID } = require('crypto')
+          await prisma.questProgress.create({
+            data: {
+              id: randomUUID(),
+              userId: user.id,
+              questId: 'quest_forestgnome_intro',
+              progress: 0,
+              completed: false,
+            },
+          })
+        } catch (error) {
+          console.error('Failed to backfill quest_forestgnome_intro:', error)
+        }
+      }
+
+      const gnomeIntroProgress = await getQuestProgress(user.id, 'quest_forestgnome_intro')
+      if ((gnomeIntroProgress as any)?.completed) {
+        const gnomeQuests = ['quest_forestgnome_000', 'quest_forestgnome_001', 'quest_forestgnome_002']
+        for (const questId of gnomeQuests) {
+          const existing = await getQuestProgress(user.id, questId)
+          if (!existing) {
+            try {
+              const { randomUUID } = require('crypto')
+              await prisma.questProgress.create({
+                data: {
+                  id: randomUUID(),
+                  userId: user.id,
+                  questId,
+                  progress: 0,
+                  completed: false,
+                },
+              })
+            } catch (error) {
+              console.error(`Failed to backfill ${questId}:`, error)
+            }
+          }
+        }
+      }
+    }
+
     const quests = await getAllQuestProgress(user.id)
 
     return NextResponse.json({

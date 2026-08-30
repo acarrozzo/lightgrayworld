@@ -610,6 +610,13 @@ export default function BattlePanel({
               </p>
               <p className="text-xs text-gray-400">
                 You attack with your <span className={`font-semibold ${isRanged ? 'text-green-300' : 'text-red-300'}`}>{weaponName ?? 'fists'}</span>
+                {/* Ammo-spending weapons (bows, crossbow) report what's left, so
+                    running dry mid-fight is visible before it blocks a shot. */}
+                {battle.ammo?.remaining != null && (
+                  <span className={`ml-1 tabular-nums ${battle.ammo.remaining <= 5 ? 'text-amber-400' : 'text-gray-500'}`}>
+                    ({battle.ammo.remaining} left)
+                  </span>
+                )}
               </p>
               <p
                 className={`text-4xl font-black leading-none tabular-nums ${isRanged ? 'text-green-400' : 'text-red-400'}`}

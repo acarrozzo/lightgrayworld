@@ -68,6 +68,12 @@ export interface BattleTurnPayload extends BattleSnapshot {
   missedFlyingMelee?: boolean
   weaponCategory?: 'MELEE' | 'RANGED' | null
   enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
+  /**
+   * Present only for weapons that spend ammo (bows spend arrows, the crossbow
+   * spends bolts). `remaining` is the count left after this turn's shot; it is
+   * null on a turn that fired nothing (e.g. an enemy advantage turn).
+   */
+  ammo?: { slug: string; remaining: number | null } | null
   actionMeta?: BattleSupportActionMeta | null
   message: string
 }

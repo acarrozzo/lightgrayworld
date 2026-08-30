@@ -1899,9 +1899,9 @@ async function main() {
       subtitlePosition: 'below',
       nameColor: 'forest',
       subtitleColor: 'gray-400',
-      icon: 'treefarm',
+      icon: 'npc-forestgnome',
       iconColor: 'forest',
-      description: 'A small tree hut sits among the branches. The Forest Gnome peers down from above.',
+      description: 'A tiny gnome has a cozy tree hut set up here among the branches. He has a set of quests available for you and a free hatchet if you need one.',
       dangerLevel: 0,      north: null,
       south: null,
       east: '127',
@@ -2940,6 +2940,16 @@ async function main() {
       metadata: { crafting: { kind: 'material' } },
     },
     {
+      id: 'leather_001',
+      slug: 'leather',
+      name: 'Leather',
+      description: 'A cured hide, cut and ready for working. A staple of light armor and bindings.',
+      type: ItemType.MISC,
+      max: 99999,
+      value: 25,
+      metadata: { crafting: { kind: 'material' } },
+    },
+    {
       id: 'iron_001',
       slug: 'iron',
       name: 'Iron',
@@ -2958,6 +2968,16 @@ async function main() {
       max: 1,
       value: 10,
       metadata: { crafting: { kind: 'tool' } },
+    },
+    {
+      id: 'iron-hatchet_001',
+      slug: 'iron-hatchet',
+      name: 'Iron Hatchet',
+      description: 'A hatchet with a forged iron head. It bites deeper than a plain one, bringing back twice the wood from every tree.',
+      type: ItemType.MISC,
+      max: 1,
+      value: 200,
+      metadata: { icon: 'axelog', crafting: { kind: 'tool' } },
     },
     {
       id: 'pickaxe_001',
@@ -4270,7 +4290,7 @@ async function main() {
       value: 800,
       equipSlot: EquipSlot.MAIN_HAND,
       weaponCategory: WeaponCategory.RANGED,
-      metadata: { isTwoHanded: true, statMods: { dex: 8, def: 4 } },
+      metadata: { ammo: 'arrow', isTwoHanded: true, statMods: { dex: 8, def: 4 } },
     },
     {
       id: 'hunter-bow_001',
@@ -4282,7 +4302,7 @@ async function main() {
       value: 1500,
       equipSlot: EquipSlot.MAIN_HAND,
       weaponCategory: WeaponCategory.RANGED,
-      metadata: { isTwoHanded: true, statMods: { dex: 9, def: 9 } },
+      metadata: { ammo: 'arrow', isTwoHanded: true, statMods: { dex: 9, def: 9 } },
     },
     {
       id: 'short-bow_001',
@@ -4294,7 +4314,7 @@ async function main() {
       value: 1500,
       equipSlot: EquipSlot.MAIN_HAND,
       weaponCategory: WeaponCategory.RANGED,
-      metadata: { isTwoHanded: true, statMods: { dex: 9, mag: 2 } },
+      metadata: { ammo: 'arrow', isTwoHanded: true, statMods: { dex: 9, mag: 2 } },
     },
     {
       id: 'long-bow_001',
@@ -4306,7 +4326,7 @@ async function main() {
       value: 1500,
       equipSlot: EquipSlot.MAIN_HAND,
       weaponCategory: WeaponCategory.RANGED,
-      metadata: { isTwoHanded: true, statMods: { dex: 11 } },
+      metadata: { ammo: 'arrow', isTwoHanded: true, statMods: { dex: 11 } },
     },
     {
       id: 'crossbow_001',
@@ -4318,7 +4338,7 @@ async function main() {
       value: 1200,
       equipSlot: EquipSlot.MAIN_HAND,
       weaponCategory: WeaponCategory.RANGED,
-      metadata: { isTwoHanded: true, statMods: { dex: 13 } },
+      metadata: { ammo: 'crossbow-bolt', isTwoHanded: true, statMods: { dex: 13 } },
     },
   ]
 

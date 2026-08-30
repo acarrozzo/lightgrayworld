@@ -160,6 +160,9 @@ interface RoomBoxProps {
     cooldownSeconds: number
     secondsRemaining: number
     quantity?: number | null
+    itemSlug?: string | null
+    itemNamePlural?: string | null
+    maxHeld?: number | null
   }>
   worldTick?: {
     tickNumber: number

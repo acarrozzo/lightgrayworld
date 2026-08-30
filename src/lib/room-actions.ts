@@ -101,6 +101,45 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'rest in lobby', label: 'Rest at the Fountain', icon: 'heal', className: 'bg-green-600 hover:bg-green-700' },
     { action: 'teleport to grassy field', label: 'Teleport to the Grassy Field', icon: 'world', className: 'bg-green-500/70  hover:bg-green-600' },
   ],
+
+  // Forest — berry bushes and the Forest Gnome's tree hut. The chop-wood button
+  // for every tree-bearing Forest room is merged in below.
+  '120': [
+    { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'bg-red-600 hover:bg-red-700' },
+  ],
+  '125': [
+    { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'bg-red-600 hover:bg-red-700' },
+  ],
+  '130': [
+    { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'bg-red-600 hover:bg-red-700' },
+  ],
+  '129': [
+    { action: 'pick blueberry', label: 'Pick Blueberry', icon: 'blueberry', className: 'bg-blue-600 hover:bg-blue-700' },
+  ],
+  '135': [
+    { action: 'pick blueberry', label: 'Pick Blueberry', icon: 'blueberry', className: 'bg-blue-600 hover:bg-blue-700' },
+  ],
+  '128': [
+    { action: 'talk to forest gnome', label: 'Forest Gnome', icon: 'npc-forestgnome', className: 'bg-green-600 hover:bg-green-700', questIds: questIdsForNpc('forest_gnome') },
+  ],
+}
+
+/**
+ * Forest rooms with choppable trees. Mirrors FOREST_CHOP_WOOD_ROOMS in
+ * `game-engine/room-action-handlers.js` — the server owns the action, this just
+ * renders its button. Kept as a merge so the berry rooms above (120/125/129/
+ * 130/135) end up with both buttons without repeating either entry.
+ */
+const FOREST_CHOP_WOOD_ROOMS = [
+  '116', '117', '119', '120', '121', '122', '123', '124', '125',
+  '126', '127', '129', '130', '131', '132', '133', '134', '135', '136',
+]
+
+for (const roomId of FOREST_CHOP_WOOD_ROOMS) {
+  ROOM_ACTIONS[roomId] = [
+    ...(ROOM_ACTIONS[roomId] ?? []),
+    { action: 'chop wood', label: 'Chop Wood', icon: 'wood', className: 'bg-amber-700 hover:bg-amber-600' },
+  ]
 }
 
 /**

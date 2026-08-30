@@ -117,7 +117,7 @@ type SearchTable = { entries: { effect?: SearchEffect }[] }
 // handler function. Only the structured form (a cooldown + grantItem effect) is
 // a gatherable resource; the rest are narrowed out at runtime.
 type GatherEffect = { type: string; itemSlug?: string; quantity?: number }
-type GatherActionDef = { cooldownMs?: number; toolRequired?: string; effects?: GatherEffect[] }
+type GatherActionDef = { isGather?: boolean; cooldownMs?: number; maxHeld?: number; toolRequired?: string; toolRequiredAny?: string[]; effects?: GatherEffect[] }
 type RoomActionEntry = string | GatherActionDef | ((...args: never[]) => unknown)
 
 // Render a cooldown interval as a compact label ("5m", "30m", "1h", "1h30m").
@@ -231,17 +231,28 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
     }
   }
 
-  // Gather actions — timed room resource collection (sand, dirt, stone, wheat…).
-  // A gatherable resource is any structured room action with a cooldown and a
-  // grantItem effect; the label notes quantity, cooldown, and any tool gate.
+  // Gather actions — room resource collection (sand, dirt, stone, wheat, wood…).
+  // A gatherable resource is any structured room action flagged `isGather` with
+  // a grantItem effect; the label notes quantity, then what limits the node —
+  // a cooldown, or a held cap for nodes that have no timer (Jack's tree) — and
+  // any tool gate.
   for (const [roomId, actions] of Object.entries(ROOM_ACTIONS)) {
     const name = roomNames.get(roomId) ?? `Room ${roomId}`
     for (const def of Object.values(actions)) {
-      if (!def || typeof def !== 'object' || !def.cooldownMs) continue
+      if (!def || typeof def !== 'object') continue
+      if (!def.isGather && !def.cooldownMs) continue
       const grant = def.effects?.find((e) => e.type === 'grantItem' && e.itemSlug)
       if (!grant?.itemSlug) continue
-      const tool = def.toolRequired ? ` · ${def.toolRequired}` : ''
-      const label = `${name}${fixedQty(grant.quantity)} · ${formatCooldown(def.cooldownMs)}${tool}`
+      // A gate is either one named tool or a set of interchangeable tiers
+      // (plain / iron hatchet); list every tool that opens it.
+      const tools = def.toolRequired ? [def.toolRequired] : (def.toolRequiredAny ?? [])
+      const tool = tools.length > 0 ? ` · ${tools.join(' or ')}` : ''
+      const limit = def.cooldownMs
+        ? ` · ${formatCooldown(def.cooldownMs)}`
+        : def.maxHeld != null
+          ? ` · max ${def.maxHeld} held`
+          : ''
+      const label = `${name}${fixedQty(grant.quantity)}${limit}${tool}`
       ensure(grant.itemSlug).gathers.push({ label })
     }
   }

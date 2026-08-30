@@ -311,7 +311,12 @@
         "quantity": 1
       }
     ],
-    "onComplete": []
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_forestgnome_intro"
+      }
+    ]
   },
   "quest_jacklumber_001": {
     "number": 11,
@@ -587,6 +592,200 @@
       {
         "type": "xp",
         "amount": 8
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_forestgnome_intro": {
+    "number": 14,
+    "questType": "main",
+    "level": 13,
+    "title": "Talk to the Forest Gnome",
+    "summary": "A gnome keeps a cozy tree hut deep in the Forest. He has work for a Wanderer — and a spare hatchet.",
+    "objective": "Talk to the Forest Gnome at his tree hut.",
+    "nextStep": "Find the Forest Gnome's tree hut (Room 128), deep in the Forest — northwest of the Forest by a Cliff — and introduce yourself.",
+    "reminderDialog": "You haven't met the Forest Gnome yet. His tree hut sits among the branches deep in the Forest — go and say hello.",
+    "completionDialog": "The gnome peers down at you from the branches with a lazy grin. \"Welcome to my tree hut. Pretty nice right?\" He hops down. \"Since you're here — I've got a few things that need doing, and you look like you've got the legs for it.\"",
+    "giver": {
+      "npcId": "forest_gnome",
+      "roomId": "128",
+      "name": "Forest Gnome",
+      "icon": "npc-forestgnome"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 50
+      },
+      {
+        "type": "xp",
+        "amount": 50
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_forestgnome_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_forestgnome_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_forestgnome_000"
+      }
+    ]
+  },
+  "quest_forestgnome_001": {
+    "number": 15,
+    "questType": "side",
+    "level": 13,
+    "title": "Gnome Needs Berries",
+    "summary": "The Forest Gnome wants berries — twenty red and twenty blue. He is not saying what for.",
+    "objective": "Bring 20 Redberries and 20 Blueberries to the Forest Gnome.",
+    "nextStep": "Pick berries from the bushes scattered around the Forest — redberries by the river, the small graveyard and the abandoned campsite; blueberries at the forest dead end and atop the hill. Plenty of enemies drop them too.",
+    "reminderDialog": "\"Still short on berries? They grow all over this forest — red ones down by the river and the graveyard, blue ones at the dead end and up on the hill. Twenty of each, that's all I ask.\"",
+    "completionDialog": "\"Twenty and twenty, just like I asked!\" The gnome takes the whole lot, smashes it together on the spot, and hands you back an armful of potions. \"Waste not!\"",
+    "giver": {
+      "npcId": "forest_gnome",
+      "roomId": "128",
+      "name": "Forest Gnome",
+      "icon": "npc-forestgnome"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "redberry",
+        "quantity": 20,
+        "displayName": "Redberries"
+      },
+      {
+        "type": "hasItem",
+        "itemSlug": "blueberry",
+        "quantity": 20,
+        "displayName": "Blueberries"
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 300
+      },
+      {
+        "type": "currency",
+        "amount": 300
+      },
+      {
+        "type": "item",
+        "itemSlug": "red-potion",
+        "quantity": 5
+      },
+      {
+        "type": "item",
+        "itemSlug": "blue-potion",
+        "quantity": 5
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_forestgnome_002": {
+    "number": 16,
+    "questType": "side",
+    "level": 13,
+    "title": "New Tree Hut Door",
+    "summary": "The Forest Gnome's tree hut needs a new door. Twenty pieces of wood should cover it.",
+    "objective": "Bring 20 Wood to the Forest Gnome.",
+    "nextStep": "Chop trees anywhere in the Forest with a hatchet — there's a spare one here at the tree hut if you need one — then bring 20 wood back.",
+    "reminderDialog": "\"Only {progress} of {count} wood so far? Take a hatchet — there's a spare one right here — and chop the trees around this forest. Twenty pieces and I can finally build that door.\"",
+    "completionDialog": "\"Twenty pieces! That's a door and then some.\" The gnome passes you a coil of leather and an iron hatchet. \"Keep that one. It bites deeper than yours — you'll bring back twice the wood from every tree.\"",
+    "giver": {
+      "npcId": "forest_gnome",
+      "roomId": "128",
+      "name": "Forest Gnome",
+      "icon": "npc-forestgnome"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "wood",
+        "quantity": 20,
+        "displayName": "Wood"
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 300
+      },
+      {
+        "type": "currency",
+        "amount": 300
+      },
+      {
+        "type": "item",
+        "itemSlug": "leather",
+        "quantity": 5
+      },
+      {
+        "type": "item",
+        "itemSlug": "iron-hatchet",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_forestgnome_000": {
+    "number": 17,
+    "questType": "main",
+    "level": 13,
+    "title": "Troll Base Camp",
+    "summary": "Trolls hold the camp at the north end of the Forest, guarding the way to the Dark Forest. The gnome wants three of them gone.",
+    "objective": "Defeat 3 Trolls.",
+    "nextStep": "The Troll Base Camp lies at the far north of the Forest. Defeat 3 Trolls there, then return to the tree hut.",
+    "reminderDialog": "\"Only {progress} of {count} trolls down? They're camped up north, guarding the gate to the Dark Forest. Three of them, then come see me.\"",
+    "completionDialog": "\"Three trolls! Ha!\" The gnome tosses you a fresh pair of gloves. \"Made these myself. Troll hide — still warm.\"",
+    "giver": {
+      "npcId": "forest_gnome",
+      "roomId": "128",
+      "name": "Forest Gnome",
+      "icon": "npc-forestgnome"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "troll",
+        "count": 3,
+        "displayName": "Trolls"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 600
+      },
+      {
+        "type": "currency",
+        "amount": 300
+      },
+      {
+        "type": "item",
+        "itemSlug": "troll-gloves",
+        "quantity": 1
       }
     ],
     "onComplete": []

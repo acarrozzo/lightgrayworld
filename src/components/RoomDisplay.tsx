@@ -25,6 +25,9 @@ interface RoomDisplayProps {
     cooldownSeconds: number
     secondsRemaining: number
     quantity?: number | null
+    itemSlug?: string | null
+    itemNamePlural?: string | null
+    maxHeld?: number | null
   }>
   showHeader?: boolean
   className?: string
@@ -56,6 +59,11 @@ export default function RoomDisplay({
 }: RoomDisplayProps) {
   // Persisted "gold chest opened" flag (chest1) — drives the opened-button look.
   const goldChestOpened = useGameStore((state) => state.player?.chest1 ?? false)
+  // Live inventory, used to tell whether a capped gather node (e.g. Jack's
+  // starter tree, which stops at 5 wood) is currently tapped out. Reading the
+  // store means the button flips the instant the cap is hit or spent back down,
+  // with no refetch.
+  const inventory = useGameStore((state) => state.inventory)
 
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null)
   const [loadingQuestId, setLoadingQuestId] = useState<string | null>(null)
@@ -135,7 +143,8 @@ export default function RoomDisplay({
 
   // Per-action gather metadata (cooldown window, quantity), keyed by action name.
   const gatherByAction = useMemo(() => {
-    const map = new Map<string, { quantity?: number | null }>()
+    // Element type is derived from the prop so the map never drifts from it.
+    const map = new Map<string, NonNullable<RoomDisplayProps['gatherCooldowns']>[number]>()
     for (const g of gatherCooldowns) map.set(g.action, g)
     return map
   }, [gatherCooldowns])
@@ -320,8 +329,30 @@ export default function RoomDisplay({
           const gatherInfo = gatherByAction.get(actionItem.action)
           const isGather = Boolean(gatherInfo)
           const gatherSecondsLeft = gatherRemaining[actionItem.action] ?? 0
-          const isGatherLocked = isGather && gatherSecondsLeft > 0
           const gatherQuantity = gatherInfo?.quantity ?? null
+          // Capped node: the player already holds all this node will give, so
+          // say so up front instead of letting them click into a rejection.
+          // Held count for a capped node, summed across rows to match the
+          // server's getHeldQuantity so the two can never disagree.
+          const gatherCap = gatherInfo?.maxHeld ?? null
+          const gatherHeld =
+            gatherCap != null && gatherInfo?.itemSlug
+              ? inventory.reduce(
+                  (total, i) => (i.template.slug === gatherInfo.itemSlug ? total + i.quantity : total),
+                  0
+                )
+              : 0
+          const gatherAtMax = gatherCap != null && gatherHeld >= gatherCap
+          // A capped node reports its own fill instead of "Ready to pick": how
+          // many more it will give ("3 wood left"), or that it's full ("5/5 wood").
+          const gatherCapLabel =
+            gatherCap != null
+              ? gatherAtMax
+                ? `${Math.min(gatherHeld, gatherCap)}/${gatherCap} ${gatherInfo?.itemNamePlural ?? ''}`.trim()
+                : `${gatherCap - gatherHeld} ${gatherInfo?.itemNamePlural ?? ''} left`.replace('  ', ' ')
+              : null
+          // Both states disable the button; they differ only in what they say.
+          const isGatherLocked = isGather && (gatherSecondsLeft > 0 || gatherAtMax)
           const gatherButton = (
             <button
               data-action-button
@@ -362,7 +393,8 @@ export default function RoomDisplay({
               )}
               {isGather ? (
                 // Minimal container: button on the left, status/countdown to the right.
-                // Gold while on cooldown, green when ready; border matches the text color.
+                // Amber while on cooldown or tapped out, green when ready; border
+                // matches the text color so the state reads at a glance.
                 <div
                   className={`flex items-center gap-2 rounded-lg border bg-gray-800/40 p-1.5 ${
                     isGatherLocked ? 'border-amber-400/50' : 'border-green-400/50'
@@ -374,9 +406,12 @@ export default function RoomDisplay({
                       isGatherLocked ? 'text-amber-400' : 'text-green-400'
                     }`}
                   >
-                    {isGatherLocked
-                      ? formatTimeRemaining(gatherSecondsLeft)
-                      : `Ready to pick${gatherQuantity != null ? ` (${gatherQuantity})` : ''}`}
+                    {gatherAtMax
+                      ? gatherCapLabel
+                      : isGatherLocked
+                        ? formatTimeRemaining(gatherSecondsLeft)
+                        : gatherCapLabel ??
+                          `Ready to pick${gatherQuantity != null ? ` (${gatherQuantity})` : ''}`}
                   </span>
                 </div>
               ) : (

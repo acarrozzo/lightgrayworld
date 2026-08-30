@@ -150,6 +150,9 @@ export default function GameInterface() {
     cooldownSeconds: number
     secondsRemaining: number
     quantity: number | null
+    itemSlug?: string | null
+    itemNamePlural?: string | null
+    maxHeld?: number | null
   }>>([])
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
   // Returning to Explore always lands on the compass — a sub-view left open
@@ -2074,6 +2077,7 @@ export default function GameInterface() {
           missedFlyingMelee: payload.missedFlyingMelee,
           weaponCategory: payload.weaponCategory,
           enemyDamageType: payload.enemyDamageType,
+          ammo: payload.ammo ?? null,
           actionMeta: payload.actionMeta ?? null,
         })
       }

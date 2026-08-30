@@ -42,13 +42,61 @@ async function fetchPlayerStats(playerId) {
   })
 }
 
-// Fetch the equipped MAIN_HAND weapon category. Returns 'MELEE' | 'RANGED' | null (null = unarmed).
-async function fetchEquippedWeaponCategory(playerId) {
+// Fetch the equipped MAIN_HAND weapon's combat-relevant properties.
+//
+// `weaponCategory` is 'MELEE' | 'RANGED' | null (null = unarmed).
+// `ammoSlug` is the item a shot consumes, declared as `metadata.ammo` on the
+// weapon template — bows spend arrows, the crossbow spends bolts. Thrown ranged
+// weapons (boomerang, chakram) declare none and never run dry, matching the
+// original, which only ever checked ammo for bows and crossbows.
+async function fetchEquippedWeapon(playerId) {
   const item = await prisma.playerItem.findFirst({
     where: { playerId, isEquipped: true, slot: 'MAIN_HAND' },
-    select: { ItemTemplate: { select: { weaponCategory: true } } },
+    select: { ItemTemplate: { select: { weaponCategory: true, metadata: true } } },
   })
-  return item?.ItemTemplate?.weaponCategory || null
+  const template = item?.ItemTemplate
+  const metadata = (template?.metadata && typeof template.metadata === 'object') ? template.metadata : null
+  return {
+    weaponCategory: template?.weaponCategory || null,
+    ammoSlug: typeof metadata?.ammo === 'string' ? metadata.ammo : null,
+  }
+}
+
+// The player's ammo stack for a slug: its row id, count, and display name in a
+// single query. Returns null when they hold none. Combat runs this on every
+// ranged swing, so it stays one round trip.
+async function readAmmo(playerId, ammoSlug) {
+  const row = await prisma.playerItem.findFirst({
+    where: { playerId, ItemTemplate: { slug: ammoSlug } },
+    select: { id: true, quantity: true, ItemTemplate: { select: { name: true } } },
+  })
+  if (!row) return null
+  return { id: row.id, remaining: row.quantity ?? 0, name: row.ItemTemplate?.name || ammoSlug }
+}
+
+// Fallback display name for the "you're out" message, used only when the player
+// holds no stack at all (so readAmmo returned null) — an uncommon path.
+async function ammoDisplayName(ammoSlug) {
+  const template = await prisma.itemTemplate.findFirst({
+    where: { slug: ammoSlug },
+    select: { name: true },
+  })
+  return template?.name || ammoSlug
+}
+
+// Spend one round for a shot that resolved. Returns the count left (so the turn
+// can report it, the way the original showed "N arrows left") plus the refreshed
+// inventory, which the caller pushes so the inventory panel doesn't go stale
+// mid-fight.
+async function consumeAmmo(playerId, ammo) {
+  const remaining = Math.max(0, ammo.remaining - 1)
+  if (remaining <= 0) {
+    await prisma.playerItem.delete({ where: { id: ammo.id } })
+  } else {
+    await prisma.playerItem.update({ where: { id: ammo.id }, data: { quantity: remaining } })
+  }
+  const { getPlayerInventory } = require('./services/inventory-service')
+  return { remaining, inventory: await getPlayerInventory(playerId) }
 }
 
 // ─── start_battle ───────────────────────────────────────────────────────────
@@ -85,7 +133,22 @@ async function executeStartBattle(action, playerId, roomState) {
   // Bug fix #5: prevent dead players from initiating combat
   if (playerStats.hp <= 0) return errorResult('start_battle', 'You cannot fight while dead.')
 
-  const equippedWeaponCategory = await fetchEquippedWeaponCategory(playerId)
+  const equippedWeapon = await fetchEquippedWeapon(playerId)
+  const { weaponCategory: equippedWeaponCategory, ammoSlug } = equippedWeapon
+
+  // Engaging with an empty quiver: refuse before the battle exists rather than
+  // opening one the player cannot act in. An aggressive enemy that jumps you
+  // (isAutoInitiated) still starts a battle — it attacks regardless of your ammo.
+  const isAdvantageTurn = enemy.isAggressive && isAutoInitiated
+  let ammo = null
+  if (ammoSlug && !isAdvantageTurn) {
+    ammo = await readAmmo(playerId, ammoSlug)
+    if (!ammo || ammo.remaining <= 0) {
+      const name = ammo?.name || (await ammoDisplayName(ammoSlug))
+      return errorResult('start_battle', `You're out of ${name}s! Equip another weapon.`)
+    }
+  }
+
   const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats, equippedWeaponCategory })
   roomState.activeBattles.set(playerId, battleState)
 
@@ -93,7 +156,6 @@ async function executeStartBattle(action, playerId, roomState) {
   roomState.touchActivity()
 
   // ─── Resolve first turn immediately ──────────────────────────────────────
-  const isAdvantageTurn = enemy.isAggressive && isAutoInitiated
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
 
   let firstTurn
@@ -125,6 +187,14 @@ async function executeStartBattle(action, playerId, roomState) {
   }
 
   battleState.incrementTurn()
+
+  // The opening shot spends a round. Only a player-initiated turn fires — an
+  // advantage turn is the enemy's swing, not yours.
+  let ammoRemaining = null
+  let ammoInventory = null
+  if (ammo) {
+    ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo))
+  }
 
   // Apply enemy damage to player HP
   const updatedPlayer = await prisma.user.update({
@@ -187,12 +257,16 @@ async function executeStartBattle(action, playerId, roomState) {
     missedFlyingMelee: firstTurn.missedFlyingMelee,
     weaponCategory: firstTurn.weaponCategory,
     enemyDamageType: firstTurn.enemyDamageType,
+    ...(ammoSlug ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
     message: [attackDesc, defenseDesc].join(' '),
   }
 
   const playerEvents = [
     { event: 'battle:started', payload: startPayload },
     { event: 'battle:turn', payload: turnPayload },
+    // Spending a round changes inventory — push it so the panel's arrow count
+    // tracks the fight instead of going stale until the next refresh.
+    ...(ammoInventory ? [{ event: 'inventory:update', payload: { inventory: ammoInventory } }] : []),
   ]
 
   // Victory check (only possible on player-initiated turn)
@@ -325,15 +399,36 @@ async function executePlayerAttack(action, playerId, roomState) {
     return errorResult('player_attack', 'You are not in a battle.')
   }
 
-  const [liveStats, liveWeaponCategory] = await Promise.all([
+  const [liveStats, liveWeapon] = await Promise.all([
     fetchPlayerStats(playerId),
-    fetchEquippedWeaponCategory(playerId),
+    fetchEquippedWeapon(playerId),
   ])
   if (!liveStats) return errorResult('player_attack', 'Could not load your stats.')
-  battleState.updateStats(liveStats, liveWeaponCategory)
+  battleState.updateStats(liveStats, liveWeapon.weaponCategory)
+
+  // Out of ammo: reject the shot without advancing the battle. The enemy does
+  // NOT get a free counterattack — matching the original, and leaving the player
+  // their turn to equip something else (which does cost a turn) instead of being
+  // beaten to death unable to act.
+  const { ammoSlug } = liveWeapon
+  let ammo = null
+  if (ammoSlug) {
+    ammo = await readAmmo(playerId, ammoSlug)
+    if (!ammo || ammo.remaining <= 0) {
+      const name = ammo?.name || (await ammoDisplayName(ammoSlug))
+      return errorResult('player_attack', `You're out of ${name}s! Equip another weapon.`)
+    }
+  }
 
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
   const turnResult = resolveTurn(battleState, otherCombatants)
+
+  // The shot resolved — spend the round.
+  let ammoRemaining = null
+  let ammoInventory = null
+  if (ammo) {
+    ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo))
+  }
 
   battleState.applyDamageToEnemy(turnResult.playerDealtDamage)
   battleState.incrementTurn()
@@ -496,6 +591,7 @@ async function executePlayerAttack(action, playerId, roomState) {
   } else {
     let strikeMsg = `You strike the ${battleState.enemyName} for ${turnResult.playerDealtDamage} damage.`
     if (turnResult.multiplayerBonus) strikeMsg += ` (+${turnResult.bonusPercent}% group bonus)`
+    if (ammoRemaining !== null) strikeMsg += ` (${ammoRemaining} left)`
     parts.push(strikeMsg)
   }
   if (turnResult.enemyDealtDamage === 0) {
@@ -528,9 +624,12 @@ async function executePlayerAttack(action, playerId, roomState) {
           missedFlyingMelee: turnResult.missedFlyingMelee,
           weaponCategory: turnResult.weaponCategory,
           enemyDamageType: turnResult.enemyDamageType,
+          ...(ammoSlug ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
           message: parts.join(' '),
         },
       },
+      // Spending a round changes inventory — keep the panel's count live.
+      ...(ammoInventory ? [{ event: 'inventory:update', payload: { inventory: ammoInventory } }] : []),
     ],
   }
 }
@@ -548,12 +647,13 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
   const player = roomState.players.get(playerId)
   const playerName = player?.username || 'Player'
 
-  const [liveStats, liveWeaponCategory] = await Promise.all([
+  const [liveStats, liveWeapon] = await Promise.all([
     fetchPlayerStats(playerId),
-    fetchEquippedWeaponCategory(playerId),
+    fetchEquippedWeapon(playerId),
   ])
   if (!liveStats) return { playerEvents: [] }
-  battleState.updateStats(liveStats, liveWeaponCategory)
+  // A support turn (potion, weapon swap) fires no shot, so it spends no ammo.
+  battleState.updateStats(liveStats, liveWeapon.weaponCategory)
 
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
   const enemyAtk = resolveEnemyAttack(battleState, otherCombatants)

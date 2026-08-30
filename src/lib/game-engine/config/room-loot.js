@@ -54,6 +54,11 @@ const ROOM_LOOT = [
   // Room 024 — Jack Lumber's cabin (hatchet for chopping wood at tree farm)
   { roomId: '024', slug: 'hatchet' },
 
+  // Room 128 — Forest Gnome's tree hut. The gnome's spare hatchet: legacy parity
+  // with "If you lose it come back here for another free one", handled by the
+  // autoRespawn refill rather than a bespoke `get hatchet` action.
+  { roomId: '128', slug: 'hatchet' },
+
   // Room 014 — pickaxe (for mining stone in room 015)
   { roomId: '014', slug: 'pickaxe' },
 

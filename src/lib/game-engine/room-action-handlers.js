@@ -3,7 +3,7 @@
  * Handles execution of actions that are unique to specific rooms
  */
 const { grantPersonalItemOnce } = require('./effects')
-const { grantItemOnce, playerHasItem, removeItemBySlug, getPlayerInventory } = require('./services/inventory-service')
+const { grantItemOnce, playerHasItem, getHeldQuantity, removeItemBySlug, getPlayerInventory } = require('./services/inventory-service')
 const { checkAndConsumeCooldown } = require('./services/action-cap-service')
 const { getRecipeById, isCraftingRoom } = require('../game-data/crafting-recipes')
 
@@ -198,17 +198,66 @@ const CHEST_LOOT = {
  * Build a rolling-cooldown gather action: grants `quantity` of an item in one
  * click, then locks for `cooldownMs` (window starts at the moment of collection,
  * decoupled from the global world tick). Optionally requires a tool in inventory.
+ *
+ * `toolTiers` (best tool first, e.g. `[{ slug: 'iron-hatchet', quantity: 10,
+ * label: 'iron hatchet' }, { slug: 'hatchet', quantity: 5, label: 'hatchet' }]`)
+ * replaces `toolRequired`: owning any tier unlocks the action, and the best tier
+ * held sets the batch size. `effects` still carries the lowest tier's yield so
+ * the declared quantity (what getGatherActionsForRoom reports to the UI) stays
+ * the baseline; `resolve` upgrades it per player at execution time.
  */
-function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs, quantity = 5, toolRequired = null, emptyVerb = 'appear', missingToolMessage = null }) {
+function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantity = 5, toolRequired = null, toolTiers = null, emptyVerb = 'appear', missingToolMessage = null, maxHeld = null, maxHeldMessage = null }) {
+  const tiers = Array.isArray(toolTiers) && toolTiers.length > 0 ? toolTiers : null
+  const baseQuantity = tiers ? tiers[tiers.length - 1].quantity : quantity
+
   return {
-    cooldownMs,
+    // Explicit marker: a gather is not always identifiable by its cooldown,
+    // since a capped node (Jack's tree) can have a cap and no timer at all.
+    isGather: true,
+    ...(cooldownMs ? { cooldownMs } : {}),
     ...(toolRequired ? { toolRequired } : {}),
-    effects: [{ type: 'grantItem', itemSlug, quantity }],
-    generateMessage: (effects, capInfo) => {
+    ...(tiers ? { toolRequiredAny: tiers.map((tier) => tier.slug) } : {}),
+    // Surfaced to the room UI so a capped node can label its own resource
+    // ("3 wood left" / "5/5 wood") without the client hardcoding item names.
+    itemNamePlural,
+    ...(typeof maxHeld === 'number'
+      ? {
+          maxHeld,
+          precondition: async (playerId) => {
+            const held = await getHeldQuantity(playerId, itemSlug)
+            return held >= maxHeld
+              ? { allowed: false, capInfo: { atMaxHeld: true, held } }
+              : { allowed: true }
+          },
+        }
+      : {}),
+    effects: [{ type: 'grantItem', itemSlug, quantity: baseQuantity }],
+    ...(tiers
+      ? {
+          resolve: async (playerId) => {
+            for (const tier of tiers) {
+              if (await playerHasItem(playerId, tier.slug)) {
+                return {
+                  effects: [{ type: 'grantItem', itemSlug, quantity: tier.quantity }],
+                  context: { tier },
+                }
+              }
+            }
+            // Unreachable in practice — the tool gate already rejected the
+            // player — but fall back to the baseline rather than granting extra.
+            return { effects: [{ type: 'grantItem', itemSlug, quantity: baseQuantity }], context: null }
+          },
+        }
+      : {}),
+    generateMessage: (effects, capInfo, context) => {
       if (capInfo?.missingTool) {
         return missingToolMessage || `You need a ${capInfo.missingTool} to do that.`
       }
+      if (capInfo?.atMaxHeld) {
+        return maxHeldMessage || `You already have ${maxHeld} ${itemNamePlural}. Come back if you run low.`
+      }
       if (!effects?.[0]?.success) {
+        if (!cooldownMs) return `No more ${itemNamePlural} here right now.`
         const secondsRemaining = capInfo?.secondsUntilReset ?? 0
         return `No more ${itemNamePlural} right now. More will ${emptyVerb} in ${formatTimeRemaining(secondsRemaining)}.`
       }
@@ -218,10 +267,32 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs, quantity = 5, 
         ? inventory.find((i) => i?.template?.slug === itemSlug)
         : null
       const total = entry?.quantity
-      return `You collect ${quantity} ${itemNamePlural}${typeof total === 'number' ? ` (${total})` : ''}.`
+      const collected = effects?.[0]?.quantity ?? baseQuantity
+      const withTool = context?.tier?.label ? ` with your ${context.tier.label}` : ''
+      return `You collect ${collected} ${itemNamePlural}${withTool}${typeof total === 'number' ? ` (${total})` : ''}.`
     },
     determineOutcome: ({ success }) => (success ? 'success' : 'info'),
   }
+}
+
+/**
+ * Chop wood: the tool-gated gather shared by Jack's tree farm (025) and every
+ * tree-bearing Forest room. Yields match the original game's per-swing amounts —
+ * 1 wood with a plain hatchet, 2 with an iron one — so wood is earned by walking
+ * the forest tree to tree, and the Gnome's iron hatchet halves that walk.
+ */
+function makeChopWoodAction({ missingToolMessage }) {
+  return makeGatherAction({
+    itemSlug: 'wood',
+    itemNamePlural: 'wood',
+    cooldownMs: 15 * 60 * 1000,
+    emptyVerb: 'grow',
+    toolTiers: [
+      { slug: 'iron-hatchet', quantity: 2, label: 'iron hatchet' },
+      { slug: 'hatchet', quantity: 1, label: 'hatchet' },
+    ],
+    missingToolMessage,
+  })
 }
 
 /**
@@ -928,14 +999,23 @@ const ROOM_ACTIONS = {
     'craft': executeCraft,
   },
   '025': {
+    // Jack's tree farm is the starter tree and deliberately unlike every other
+    // one: no timer at all — click away for 1 wood a chop — but it refuses once
+    // you're holding 5. The cap, not a cooldown, is what limits it, so it can't
+    // be farmed. That's enough to learn crafting (a Wooden Bow costs 3) without
+    // the Forest's per-room walk, and it tops back up whenever you spend down.
     'chop wood': makeGatherAction({
       itemSlug: 'wood',
       itemNamePlural: 'wood',
-      cooldownMs: 15 * 60 * 1000,
-      quantity: 5,
-      toolRequired: 'hatchet',
+      quantity: 1,
       emptyVerb: 'grow',
+      toolTiers: [
+        { slug: 'iron-hatchet', quantity: 1, label: 'iron hatchet' },
+        { slug: 'hatchet', quantity: 1, label: 'hatchet' },
+      ],
       missingToolMessage: 'You need a hatchet to chop wood here. There should be one at Jack\'s cabin to the south.',
+      maxHeld: 5,
+      maxHeldMessage: 'You already have 5 wood — enough for anything Jack will teach you. Come back if you run low.',
     }),
   },
   '020': {
@@ -945,9 +1025,102 @@ const ROOM_ACTIONS = {
   '021': {
     'craft': executeCraft,
   },
+
+  // ==================== FOREST ====================
+  // Berry bushes, at the exact rooms the original game placed them. Each bush's
+  // batch size is the legacy per-room amount; the rolling cooldown replaces the
+  // legacy "top up to N, re-pick forever" pattern.
+  '120': {
+    'pick redberry': makeGatherAction({
+      itemSlug: 'redberry',
+      itemNamePlural: 'redberries',
+      cooldownMs: 15 * 60 * 1000,
+      quantity: 20,
+      emptyVerb: 'grow',
+    }),
+  },
+  '125': {
+    'pick redberry': makeGatherAction({
+      itemSlug: 'redberry',
+      itemNamePlural: 'redberries',
+      cooldownMs: 15 * 60 * 1000,
+      quantity: 10,
+      emptyVerb: 'grow',
+    }),
+  },
+  '130': {
+    'pick redberry': makeGatherAction({
+      itemSlug: 'redberry',
+      itemNamePlural: 'redberries',
+      cooldownMs: 15 * 60 * 1000,
+      quantity: 15,
+      emptyVerb: 'grow',
+    }),
+  },
+  '129': {
+    'pick blueberry': makeGatherAction({
+      itemSlug: 'blueberry',
+      itemNamePlural: 'blueberries',
+      cooldownMs: 30 * 60 * 1000,
+      quantity: 10,
+      emptyVerb: 'grow',
+    }),
+  },
+  '135': {
+    'pick blueberry': makeGatherAction({
+      itemSlug: 'blueberry',
+      itemNamePlural: 'blueberries',
+      cooldownMs: 30 * 60 * 1000,
+      quantity: 15,
+      emptyVerb: 'grow',
+    }),
+  },
+  '128': {
+    'talk to forest gnome': createNpcTalkHandler({
+      npcId: 'forest_gnome',
+      action: 'talk to forest gnome',
+      icon: 'npc-forestgnome',
+      iconColor: 'green-400',
+      title: 'Forest Gnome',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_forestgnome_000',
+          message: '"Trolls handled, door hung, potions brewed. You\'re alright, Wanderer." The gnome stretches out in his hut. "Spare hatchet\'s always here if you lose yours."',
+        },
+        {
+          ifCompleted: 'quest_forestgnome_intro',
+          message: '"Berries, wood, trolls — take them in whatever order suits you. Grab the spare hatchet on your way out."',
+        },
+        {
+          ifCompleted: null,
+          message: 'The gnome watches you from the branches without climbing down. "Nice hut, isn\'t it? Come find me once you\'ve earned your way into this forest properly."',
+        },
+      ],
+    }),
+  },
   '999': {
     'rest in lobby': async (playerId, roomState) => roomState.executeLobbyRest(playerId),
   },
+}
+
+/**
+ * Every Forest room with choppable trees — the exact set that included
+ * `function-choptree.php` in the original game. Merged in rather than repeated
+ * inline: the rooms differ only in that they all host the same action, and
+ * several of them (120/125/129/130/135) also carry a berry bush declared above.
+ */
+const FOREST_CHOP_WOOD_ROOMS = [
+  '116', '117', '119', '120', '121', '122', '123', '124', '125',
+  '126', '127', '129', '130', '131', '132', '133', '134', '135', '136',
+]
+
+for (const roomId of FOREST_CHOP_WOOD_ROOMS) {
+  ROOM_ACTIONS[roomId] = {
+    ...(ROOM_ACTIONS[roomId] || {}),
+    'chop wood': makeChopWoodAction({
+      missingToolMessage: 'You need a hatchet to chop these trees. The Forest Gnome keeps a spare one at his tree hut.',
+    }),
+  }
 }
 
 /**
@@ -1086,15 +1259,55 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
 
   roomState.touchActivity()
 
-  // Tool requirement gate (e.g. a shovel is required to dig sand)
-  if (definition.toolRequired) {
-    const hasTool = await playerHasItem(playerId, definition.toolRequired)
+  // Tool requirement gate (e.g. a shovel is required to dig sand). `toolRequired`
+  // names one tool; `toolRequiredAny` accepts a set of interchangeable tiers
+  // (e.g. plain or iron hatchet) — owning any one of them opens the gate.
+  const toolOptions = definition.toolRequired
+    ? [definition.toolRequired]
+    : (Array.isArray(definition.toolRequiredAny) ? definition.toolRequiredAny : [])
+  if (toolOptions.length > 0) {
+    let hasTool = false
+    for (const slug of toolOptions) {
+      if (await playerHasItem(playerId, slug)) {
+        hasTool = true
+        break
+      }
+    }
     if (!hasTool) {
+      // Name the humblest acceptable tool — that's the one the player should go find.
+      const missingTool = toolOptions[toolOptions.length - 1]
       const message = typeof definition.generateMessage === 'function'
-        ? definition.generateMessage([{ success: false, reason: 'missingTool' }], { missingTool: definition.toolRequired })
-        : `You need a ${definition.toolRequired} to do that.`
+        ? definition.generateMessage([{ success: false, reason: 'missingTool' }], { missingTool })
+        : `You need a ${missingTool} to do that.`
       const outcome = typeof definition.determineOutcome === 'function'
-        ? definition.determineOutcome({ success: false, effectResults: [{ success: false }], capInfo: { missingTool: definition.toolRequired } }) || 'failure'
+        ? definition.determineOutcome({ success: false, effectResults: [{ success: false }], capInfo: { missingTool } }) || 'failure'
+        : 'failure'
+      return {
+        success: false,
+        action: actionName,
+        message,
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(actionName, outcome, message, { roomId: roomState.roomId }),
+          },
+        ],
+      }
+    }
+  }
+
+  // Definition-level precondition (e.g. a gather that refuses once the player
+  // already holds its cap). Runs before the cooldown is consumed so a refusal
+  // never burns the window.
+  if (typeof definition.precondition === 'function') {
+    const check = await definition.precondition(playerId)
+    if (check && check.allowed === false) {
+      const capInfo = check.capInfo || {}
+      const message = typeof definition.generateMessage === 'function'
+        ? definition.generateMessage([{ success: false }], capInfo)
+        : 'You cannot do that right now.'
+      const outcome = typeof definition.determineOutcome === 'function'
+        ? definition.determineOutcome({ success: false, effectResults: [{ success: false }], capInfo }) || 'failure'
         : 'failure'
       return {
         success: false,
@@ -1139,7 +1352,13 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
     cooldownSeconds = cd.secondsRemaining
   }
 
-  const effects = Array.isArray(definition.effects) ? definition.effects : []
+  // `resolve` lets a definition pick its effects per player (e.g. a better tool
+  // raising a gather's yield). It runs after the cooldown is consumed so the
+  // resolved batch and the locked window always describe the same collection.
+  const resolved = typeof definition.resolve === 'function' ? await definition.resolve(playerId) : null
+  const effects = Array.isArray(resolved?.effects)
+    ? resolved.effects
+    : (Array.isArray(definition.effects) ? definition.effects : [])
   const { results: effectResults, inventory } = await executeEffects(effects, playerId)
 
   const capInfo = definition.cooldownMs
@@ -1147,7 +1366,7 @@ async function executeStructuredAction(actionName, definition, playerId, roomSta
     : null
 
   const message = typeof definition.generateMessage === 'function'
-    ? definition.generateMessage(effectResults, capInfo)
+    ? definition.generateMessage(effectResults, capInfo, resolved?.context ?? null)
     : definition.message || 'You take action.'
 
   const success = typeof definition.success === 'boolean'
@@ -1219,6 +1438,9 @@ async function executeEffects(effects, playerId) {
       results.push({
         success: result.granted,
         message: result.reason,
+        // Echo the requested amount so message builders can report what was
+        // actually granted rather than assuming the definition's default.
+        quantity: effect.quantity || 1,
         inventory: result.inventory,
       })
       if (result.inventory) {
@@ -1270,18 +1492,32 @@ function getGatherActionForRoom(roomId) {
  * All rolling-cooldown gather actions in a room (sand / dirt / stone / berries).
  * A room can host more than one (e.g. shovel sand + mine stone), so this returns
  * every match; the singular helper above is kept for callers that want the first.
- * @returns {Array<{ action: string, cooldownMs: number, quantity: number|null }>}
+ *
+ * `itemSlug` / `itemNamePlural` / `maxHeld` are static definition data, not
+ * player state: the client already holds a live inventory, so it can decide on
+ * its own whether the player is at a node's cap and re-render the moment that
+ * changes — no per-player query here, and nothing to go stale.
+ *
+ * @returns {Array<{ action: string, cooldownMs: number, quantity: number|null,
+ *                   itemSlug: string|null, itemNamePlural: string|null, maxHeld: number|null }>}
  */
 function getGatherActionsForRoom(roomId) {
   const actions = ROOM_ACTIONS[roomId]
   if (!actions) return []
   const result = []
   for (const [action, def] of Object.entries(actions)) {
-    if (def && typeof def === 'object' && def.cooldownMs) {
+    if (def && typeof def === 'object' && (def.isGather || def.cooldownMs)) {
       const grant = Array.isArray(def.effects)
         ? def.effects.find((e) => e?.type === 'grantItem')
         : null
-      result.push({ action, cooldownMs: def.cooldownMs, quantity: grant?.quantity ?? null })
+      result.push({
+        action,
+        cooldownMs: def.cooldownMs ?? null,
+        quantity: grant?.quantity ?? null,
+        itemSlug: grant?.itemSlug ?? null,
+        itemNamePlural: def.itemNamePlural ?? null,
+        maxHeld: typeof def.maxHeld === 'number' ? def.maxHeld : null,
+      })
     }
   }
   return result

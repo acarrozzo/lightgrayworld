@@ -63,6 +63,23 @@ async function playerHasItem(playerId, itemSlug) {
 }
 
 /**
+ * How many of an item a player is currently holding (0 if none, or if the slug
+ * doesn't resolve). The quantity counterpart to playerHasItem, for gates that
+ * care about the amount rather than mere possession.
+ */
+async function getHeldQuantity(playerId, itemSlug) {
+  const template = await getItemBySlug(itemSlug)
+  if (!template) return 0
+
+  const rows = await prisma.playerItem.findMany({
+    where: { playerId, templateId: template.id },
+    select: { quantity: true },
+  })
+
+  return rows.reduce((total, row) => total + (row.quantity ?? 0), 0)
+}
+
+/**
  * Grant an item respecting the item's max and stacking rules.
  */
 async function grantItemOnce(playerId, itemSlug, quantity = 1, tx = null) {
@@ -169,6 +186,7 @@ module.exports = {
   getPlayerInventory,
   getItemBySlug,
   playerHasItem,
+  getHeldQuantity,
   grantItemOnce,
   removeItemBySlug,
 }

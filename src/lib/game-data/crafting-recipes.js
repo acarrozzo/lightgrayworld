@@ -90,7 +90,19 @@ const CRAFTING_RECIPES = [
     station: 'crafting-table',
     blurb: 'Carve a simple bow from wood. Effective against flying enemies.',
     inputs: [{ slug: 'wood', qty: 3, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'wooden-bow', qty: 1, name: 'Wooden Bow', effect: 'Ranged weapon', max: 1 },
+    output: { slug: 'wooden-bow', qty: 1, name: 'Wooden Bow', effect: 'Ranged weapon', max: 999 },
+  },
+  {
+    id: 'arrow',
+    label: 'Arrows',
+    outputIcon: 'arrow',
+    station: 'crafting-table',
+    blurb: 'Shave a shaft and knap a tip. Ten arrows from one piece of each.',
+    inputs: [
+      { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' },
+      { slug: 'stone', qty: 1, name: 'Stone', icon: 'stone' },
+    ],
+    output: { slug: 'arrow', qty: 10, name: 'Arrow', effect: 'Bow ammo', max: 999 },
   },
   {
     id: 'bread',
