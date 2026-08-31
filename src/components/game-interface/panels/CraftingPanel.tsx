@@ -82,8 +82,13 @@ export default function CraftingPanel({
   }, [inventory])
 
   /** The tool a recipe needs but does not consume, and whether it's in the bag. */
-  const missingTool = (recipe: Recipe) =>
-    recipe.tool && qtyOf(recipe.tool.slug) < 1 ? recipe.tool : null
+  const missingTool = (recipe: Recipe) => {
+    if (!recipe.tool) return null
+    // A recipe's `anyOf` names tools that stand in for the one it asks for (a
+    // steel hammer works iron), so the requirement is met by any of them.
+    const slugs = [recipe.tool.slug, ...((recipe.tool as { anyOf?: string[] }).anyOf ?? [])]
+    return slugs.some((slug) => qtyOf(slug) >= 1) ? null : recipe.tool
+  }
 
   /**
    * The quest a recipe is locked behind, while it is still locked. Most recipes

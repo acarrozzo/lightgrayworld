@@ -2143,5 +2143,770 @@
       }
     ],
     "onComplete": []
+  },
+  "quest_miningguild_intro": {
+    "number": 45,
+    "questType": "main",
+    "isIntro": true,
+    "level": 25,
+    "title": "Talk to the Mining Guild Recruiter",
+    "summary": "The forge at the back of the Dwarf Village never stops, and one of the miners standing outside it is not there to work.",
+    "objective": "Talk to the Mining Guild Recruiter.",
+    "nextStep": "The Mining Guild (Room 308) is east of the Dwarf Village Square, which is northeast of the Rocky Flats Crossroads.",
+    "reminderDialog": "You have not spoken to the Mining Guild Recruiter yet. The guild hall is east of the village square.",
+    "completionDialog": "He looks you over the way a man looks over a tool. “Our members do more than swing a pick. Prove you can do something about Red Beard and the Neverending Mine is yours.”",
+    "giver": {
+      "npcId": "mining_guild_recruiter",
+      "roomId": "308",
+      "name": "Mining Guild Recruiter",
+      "icon": "npc-miner2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_miningguild_000"
+      }
+    ]
+  },
+  "quest_miningguild_000": {
+    "number": 46,
+    "questType": "main",
+    "level": 30,
+    "title": "Red Beard the Traitor",
+    "summary": "Captain Red Beard turned on the dwarven guard and took the Red Fort with him. The Mining Guild will not take anyone who has not dealt with him.",
+    "objective": "Defeat Red Beard.",
+    "nextStep": "The Red Fort is west of the grass path south of the Crossroads. Courtyard, hallway, barracks, then north into the war room.",
+    "reminderDialog": "“Red Beard is still breathing and still in that fort. West across the grass, then keep going west.”",
+    "completionDialog": "“Then you’re one of us.” He hands over a bundle of picks and one good iron one. “The mine is open. Mind the rock, mind the things in it, and bring the guild something back.”",
+    "giver": {
+      "npcId": "mining_guild_recruiter",
+      "roomId": "308",
+      "name": "Mining Guild Recruiter",
+      "icon": "npc-miner2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "red-beard",
+        "count": 1,
+        "displayName": "Red Beard"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "pickaxe",
+        "quantity": 3
+      },
+      {
+        "type": "item",
+        "itemSlug": "iron-pickaxe",
+        "quantity": 1
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_guildleader_intro"
+      }
+    ]
+  },
+  "quest_guildleader_intro": {
+    "number": 47,
+    "questType": "main",
+    "isIntro": true,
+    "level": 30,
+    "title": "Talk to the Mining Guild Leader",
+    "summary": "The Guild Leader holds the far end of the hall and demonstrates perfect mining form at anyone who stands still long enough.",
+    "objective": "Talk to the Mining Guild Leader.",
+    "nextStep": "He is at the back of the Mining Guild hall (Room 308), same room as the recruiter.",
+    "reminderDialog": "The Guild Leader is still waiting at the back of the hall.",
+    "completionDialog": "“Three things live down there that shouldn’t. Deal with them and I’ll teach you what to do with what you dig up.”",
+    "giver": {
+      "npcId": "mining_guild_leader",
+      "roomId": "308",
+      "name": "Mining Guild Leader",
+      "icon": "npc-miner"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_miningguild_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_miningguild_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_miningguild_003"
+      }
+    ]
+  },
+  "quest_miningguild_001": {
+    "number": 48,
+    "questType": "main",
+    "level": 30,
+    "title": "Iron Boss: The Phoenix",
+    "summary": "Something is circling at Mine Level 10 and it never comes down. Kill it and the guild will teach you to work iron.",
+    "objective": "Defeat the Phoenix at Mine Level 10.",
+    "nextStep": "Dig down from the mine head. The Phoenix flies — melee cannot reach it, so bring a bow or a crossbow and the ammunition for it.",
+    "reminderDialog": "“The Phoenix is still up there. And you still can’t hit it with a sword, before you ask again.”",
+    "completionDialog": "“Good. Iron’s yours.” He pushes a hammer across the bench. “Any forge fire will do — ours is the best of them, but Red Town’s will serve.”",
+    "giver": {
+      "npcId": "mining_guild_leader",
+      "roomId": "308",
+      "name": "Mining Guild Leader",
+      "icon": "npc-miner"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "phoenix",
+        "count": 1,
+        "displayName": "Phoenix"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 2000
+      },
+      {
+        "type": "currency",
+        "amount": 20000
+      },
+      {
+        "type": "item",
+        "itemSlug": "iron-pickaxe",
+        "quantity": 3
+      },
+      {
+        "type": "item",
+        "itemSlug": "steel-pickaxe",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "iron-hammer",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_miningguild_002": {
+    "number": 49,
+    "questType": "main",
+    "level": 40,
+    "title": "Steel Boss: The Cyclops",
+    "summary": "A cyclops has taken Mine Level 20, which is also where the coal is. The guild would like both back.",
+    "objective": "Defeat the Cyclops at Mine Level 20.",
+    "nextStep": "Mine Level 20. Do not count on your armour — its attacks are pure, so your DEF never enters the arithmetic.",
+    "reminderDialog": "“Still down there, is it. Your shield won’t help. Bring more health than you think you need.”",
+    "completionDialog": "“Steel next, then.” He hands you a steel hammer and a pick to match. “Coal and iron make steel. You’ll work the rest out.”",
+    "giver": {
+      "npcId": "mining_guild_leader",
+      "roomId": "308",
+      "name": "Mining Guild Leader",
+      "icon": "npc-miner"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "cyclops",
+        "count": 1,
+        "displayName": "Cyclops"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 3000
+      },
+      {
+        "type": "currency",
+        "amount": 30000
+      },
+      {
+        "type": "item",
+        "itemSlug": "steel-pickaxe",
+        "quantity": 3
+      },
+      {
+        "type": "item",
+        "itemSlug": "mithril-pickaxe",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "steel-hammer",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_miningguild_003": {
+    "number": 50,
+    "questType": "main",
+    "level": 60,
+    "title": "Mithril Boss: The Minotaur",
+    "summary": "The bottom of the Neverending Mine, as far as anyone has dug, and there is something standing on it.",
+    "objective": "Defeat the Minotaur at Mine Level 30.",
+    "nextStep": "Mine Level 30. It is strong, it is fast, and when it goes into a rage nothing you are wearing matters.",
+    "reminderDialog": "“Mine Level 30. It has been down there longer than the guild has been up here. Go carefully.”",
+    "completionDialog": "The whole hall goes quiet for a moment. “Mithril,” says the Guild Leader, and hands you the hammer for it. “Nobody has brought that back before.”",
+    "giver": {
+      "npcId": "mining_guild_leader",
+      "roomId": "308",
+      "name": "Mining Guild Leader",
+      "icon": "npc-miner"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "minotaur",
+        "count": 1,
+        "displayName": "Minotaur"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 4000
+      },
+      {
+        "type": "currency",
+        "amount": 40000
+      },
+      {
+        "type": "item",
+        "itemSlug": "mithril-pickaxe",
+        "quantity": 3
+      },
+      {
+        "type": "item",
+        "itemSlug": "mithril-hammer",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_dwarfcaptain_intro": {
+    "number": 51,
+    "questType": "side",
+    "isIntro": true,
+    "level": 15,
+    "title": "Talk to the Dwarf Captain",
+    "summary": "The Dwarven Captain keeps the law for the whole of the Rocky Flats from a post in the middle of the Crossroads, and he is short-handed.",
+    "objective": "Talk to the Dwarf Captain.",
+    "nextStep": "The Rocky Flats Crossroads (Room 303) is the hub of the map — northwest of the stone path in from Red Town.",
+    "reminderDialog": "The Dwarf Captain is still standing his post at the Crossroads.",
+    "completionDialog": "“The Rocky Flats is full of danger,” he says, in the tone of a man who has said it a great many times. “Three things need doing. Pick one.”",
+    "giver": {
+      "npcId": "dwarf_captain",
+      "roomId": "303",
+      "name": "Dwarf Captain",
+      "icon": "npc-dwarfcaptain"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_dwarfcaptain_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_dwarfcaptain_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_dwarfcaptain_003"
+      }
+    ]
+  },
+  "quest_dwarfcaptain_001": {
+    "number": 52,
+    "questType": "side",
+    "level": 23,
+    "title": "Clear out the Abandoned Mine",
+    "summary": "The condemned mine west of the Crossroads has been overrun by three things that were not there when it was condemned.",
+    "objective": "Defeat a Rabid Skeever, a Bleeding Dartwing and a Mongolian Death Worm.",
+    "nextStep": "The Abandoned Mine is northeast off the muddy path west of the Crossroads. Down the shaft, then southwest, west, northeast — one of them in each room.",
+    "reminderDialog": "“{progress} of {count}. Skeevers on the tracks, dartwings in the nests, and the worm at the far end. All three.”",
+    "completionDialog": "“That’s the mine, then.” The Captain hands you a heavy gold key. “There’s a chest in the Treasury north of here that this opens. Consider it settled.”",
+    "giver": {
+      "npcId": "dwarf_captain",
+      "roomId": "303",
+      "name": "Dwarf Captain",
+      "icon": "npc-dwarfcaptain"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "rabid-skeever",
+        "count": 1,
+        "displayName": "Rabid Skeever"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "bleeding-dartwing",
+        "count": 1,
+        "displayName": "Bleeding Dartwing"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "mongolian-death-worm",
+        "count": 1,
+        "displayName": "Mongolian Death Worm"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "gold-key",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_dwarfcaptain_002": {
+    "number": 53,
+    "questType": "side",
+    "level": 20,
+    "title": "Glowing Sea Monster",
+    "summary": "A glowing monster has been reported under the sea, and the Captain wants it confirmed by someone who came back.",
+    "objective": "Find and defeat the Glowing Octopus.",
+    "nextStep": "Under the Blue Ocean, a long way down. You will want gills before you go looking.",
+    "reminderDialog": "“Still nobody has seen it up close and come back to say so.”",
+    "completionDialog": "“So it is real.” The Captain unwraps a bow with a charge laid into the limbs, and two heavy quivers with it. “You’ll want the reach out there.”",
+    "giver": {
+      "npcId": "dwarf_captain",
+      "roomId": "303",
+      "name": "Dwarf Captain",
+      "icon": "npc-dwarfcaptain"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "glowing-octopus",
+        "count": 1,
+        "displayName": "Glowing Octopus"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "enchanted-bow",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "arrow",
+        "quantity": 200
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_dwarfcaptain_003": {
+    "number": 54,
+    "questType": "side",
+    "level": 25,
+    "title": "Missing Dwarf Axeman",
+    "summary": "A dwarven guard has gone missing. He was last seen on patrol around the Stone Grotto and has not reported in since.",
+    "objective": "Find the missing axeman at the Stone Grotto.",
+    "nextStep": "The Stone Grotto is behind a carved stone door southwest of the grass path. A switch in the Red Fort Kitchen opens it.",
+    "reminderDialog": "“No word yet. The Grotto is where he was headed — if you can get the door open.”",
+    "completionDialog": "“You found him.” The Captain looks genuinely relieved for about a second. “Whatever had hold of him has let go. He owes you, and dwarves are unbearable about owing people.”",
+    "giver": {
+      "npcId": "dwarf_captain",
+      "roomId": "303",
+      "name": "Dwarf Captain",
+      "icon": "npc-dwarfcaptain"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "possessed-axeman",
+        "count": 1,
+        "displayName": "Possessed Axeman"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "great-axe",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "haunted-helm",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_bountyboard_intro": {
+    "number": 55,
+    "questType": "side",
+    "isIntro": true,
+    "level": 20,
+    "title": "Read the Dwarf Guard Bounty Board",
+    "summary": "A board of wanted posters stands beside the coal fire in the village square, built by the Dwarven Guard and kept unpleasantly up to date.",
+    "objective": "Read the Bounty Board.",
+    "nextStep": "The Bounty Board is in the Dwarf Village Square (Room 307), by the fire.",
+    "reminderDialog": "You have not read the Bounty Board yet. It is beside the fire in the village square.",
+    "completionDialog": "Three postings, in three hands, none of them recent. The rewards at the bottom of each are not small.",
+    "giver": {
+      "npcId": "dwarf_bounty_board",
+      "roomId": "307",
+      "name": "Dwarf Guard Bounty Board",
+      "icon": "npc-bountyboard"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_bountyboard_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_bountyboard_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_bountyboard_003"
+      }
+    ]
+  },
+  "quest_bountyboard_001": {
+    "number": 56,
+    "questType": "side",
+    "level": 20,
+    "title": "Grunt Bounty",
+    "summary": "Vicious things roam the roads, the forests and the dungeons, and the Guard pays by the head. Ten of each of six kinds.",
+    "objective": "Defeat 10 each of Goblins, Ogres, Kobolds, Skeletons, Bandits and Trolls.",
+    "nextStep": "Anywhere. Goblins and ogres in the Forest and its lairs, kobolds under it, skeletons in the Catacombs, bandits in the Red Fort and Red Town’s alleys, trolls in the north of the Forest.",
+    "reminderDialog": "“The posting is still up. Ten each — goblins, ogres, kobolds, skeletons, bandits, trolls. Every kind counts, not just the big ones.”",
+    "completionDialog": "The Guard tallies your count twice, then hands over a very large axe and a very heavy purse. “The roads are quieter. That was the point.”",
+    "giver": {
+      "npcId": "dwarf_bounty_board",
+      "roomId": "307",
+      "name": "Dwarf Guard Bounty Board",
+      "icon": "npc-bountyboard"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCountGroup",
+        "enemySlugs": [
+          "goblin",
+          "goblin-bandit",
+          "goblin-chief",
+          "hob-goblin"
+        ],
+        "count": 10,
+        "displayName": "Goblins"
+      },
+      {
+        "type": "killCountGroup",
+        "enemySlugs": [
+          "ogre",
+          "ogre-guard",
+          "fire-ogress",
+          "ogre-lieutenant",
+          "ogre-priest",
+          "hill-ogre"
+        ],
+        "count": 10,
+        "displayName": "Ogres"
+      },
+      {
+        "type": "killCountGroup",
+        "enemySlugs": [
+          "kobold",
+          "flying-kobold",
+          "kobold-shaman",
+          "kobold-ninja",
+          "kobold-warlock",
+          "kobold-champion",
+          "kobold-master",
+          "kobold-monk"
+        ],
+        "count": 10,
+        "displayName": "Kobolds"
+      },
+      {
+        "type": "killCountGroup",
+        "enemySlugs": [
+          "skeleton",
+          "skeleton-archer",
+          "skeleton-knight",
+          "skeleton-sorcerer",
+          "ancient-skeleton",
+          "omar-the-dead",
+          "victoria-the-dead"
+        ],
+        "count": 10,
+        "displayName": "Skeletons"
+      },
+      {
+        "type": "killCountGroup",
+        "enemySlugs": [
+          "red-bandit",
+          "bandit-marauder",
+          "thief",
+          "thief-brute",
+          "thief-pickpocket",
+          "master-thief"
+        ],
+        "count": 10,
+        "displayName": "Bandits"
+      },
+      {
+        "type": "killCountGroup",
+        "enemySlugs": [
+          "troll",
+          "troll-champion",
+          "troll-queen"
+        ],
+        "count": 10,
+        "displayName": "Trolls"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 10000
+      },
+      {
+        "type": "item",
+        "itemSlug": "axe-of-slaughter",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_bountyboard_002": {
+    "number": 57,
+    "questType": "side",
+    "level": 23,
+    "title": "B-Squad Bounty",
+    "summary": "Three second-rate bosses with first-rate opinions of themselves. The Guard would like them dealt with before they get ideas.",
+    "objective": "Defeat the Hill Ogre, the Scorpion Queen and the Butcher.",
+    "nextStep": "The Hill Ogre holds the outcrop behind the hill in the Forest. The Scorpion Queen is deep in the Scorpion Pit under the Grassy Field. The Butcher runs the Red Fort Kitchen.",
+    "reminderDialog": "“{progress} of {count}. Hill Ogre, Scorpion Queen, Butcher. None of them are hiding.”",
+    "completionDialog": "“B-Squad,” says the Guard, with feeling, and hands you a staff crowned with a scorpion’s tail. “They were somewhat impressive. Somewhat.”",
+    "giver": {
+      "npcId": "dwarf_bounty_board",
+      "roomId": "307",
+      "name": "Dwarf Guard Bounty Board",
+      "icon": "npc-bountyboard"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "hill-ogre",
+        "count": 1,
+        "displayName": "Hill Ogre"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "scorpion-queen",
+        "count": 1,
+        "displayName": "Scorpion Queen"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "butcher",
+        "count": 1,
+        "displayName": "Butcher"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 2000
+      },
+      {
+        "type": "currency",
+        "amount": 10000
+      },
+      {
+        "type": "item",
+        "itemSlug": "staff-of-the-scorpion",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_bountyboard_003": {
+    "number": 58,
+    "questType": "side",
+    "level": 55,
+    "title": "Elite Bounty",
+    "summary": "The last posting, and the oldest. Three things nobody has managed to collect on.",
+    "objective": "Defeat King Squid, the Stone Sphinx and the Gatekeeper.",
+    "nextStep": "King Squid is under the Blue Ocean, the Stone Sphinx sits in the mountain pass, and the Gatekeeper holds the gate of the Dark Keep.",
+    "reminderDialog": "“{progress} of {count}. That posting has been up a long time. It will keep.”",
+    "completionDialog": "The Guard reads your count, reads it again, and takes a gilded falchion down off the wall behind the board. “That one has been hanging there since before I took this post.”",
+    "giver": {
+      "npcId": "dwarf_bounty_board",
+      "roomId": "307",
+      "name": "Dwarf Guard Bounty Board",
+      "icon": "npc-bountyboard"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "king-squid",
+        "count": 1,
+        "displayName": "King Squid"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "stone-sphinx",
+        "count": 1,
+        "displayName": "Stone Sphinx"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "gatekeeper",
+        "count": 1,
+        "displayName": "Gatekeeper"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 10000
+      },
+      {
+        "type": "currency",
+        "amount": 20000
+      },
+      {
+        "type": "item",
+        "itemSlug": "gilded-falcion",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
   }
 }

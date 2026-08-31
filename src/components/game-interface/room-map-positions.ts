@@ -14,8 +14,19 @@ export const MAP_CELL_SIZE = 100
 
 const DEFAULT_POSITION = { x: 350, y: 350 }
 
-/** Single-room maps (Solar Office, The Lobby) simply centre their artwork. */
-const CENTERED_ROOMS = new Set(['088', '999'])
+/**
+ * Single-room maps (Solar Office, The Lobby) simply centre their artwork.
+ *
+ * The Neverending Mine belongs here too: its artwork is one tile in the middle
+ * of an otherwise empty sheet, because a shaft thirty levels deep has no plan
+ * view worth drawing. Mine Level 0 is the exception — it is drawn on the Rocky
+ * Flats Underground map, where the mine head actually sits.
+ */
+const CENTERED_ROOMS = new Set([
+  '088',
+  '999',
+  ...Array.from({ length: 30 }, (_, i) => `311-${String(i + 1).padStart(2, '0')}`),
+])
 
 export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '000': { x: 350, y: 350 },  // Room Zero
@@ -203,6 +214,44 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '232m': { x: 35, y: 665 },  // Thieve's Den Hangout
   '232n': { x: 140, y: 665 },  // Thieve's Den Training Room
   '232o': { x: 245, y: 665 },  // Thieve's Den Treasure Room
+  // ==================== ROCKY FLATS ====================
+  // Coordinates relative to the Rocky Flats map image.
+  '305': { x: 350, y: 35 },  // On a Stone Path near the Grassy Field
+  '309': { x: 455, y: 35 },  // Dwarf Treasury
+  '310': { x: 560, y: 35 },  // Silver Shop
+  '311': { x: 665, y: 35 },  // The Neverending Mine — Base Camp
+  '316': { x: 35, y: 140 },  // On a Muddy Path approaching a Swamp
+  '315': { x: 245, y: 140 },  // Abandoned Mine ENTRANCE
+  '304': { x: 350, y: 140 },  // On a Stone Path
+  '307': { x: 560, y: 140 },  // Dwarf Village Square
+  '308': { x: 665, y: 140 },  // Mining Guild
+  '314': { x: 140, y: 245 },  // On a Muddy Path by an Abandoned Mine
+  '313': { x: 245, y: 245 },  // On a Muddy Path
+  '312': { x: 350, y: 245 },  // On a Muddy Path by the Crossroads
+  '303': { x: 455, y: 245 },  // Rocky Flats Crossroads — Dwarf Captain (hub)
+  '306': { x: 560, y: 245 },  // Rocky Flats Ledge
+  '326': { x: 35, y: 350 },  // Red Beard's War Room
+  '317': { x: 455, y: 350 },  // Dry Grass Clearing
+  '302': { x: 560, y: 350 },  // On a Stone Path
+  '301': { x: 665, y: 350 },  // On a Stone Path near Red Town
+  '324': { x: 35, y: 455 },  // Red Fort Barracks
+  '323': { x: 140, y: 455 },  // Red Fort Hallway
+  '322': { x: 245, y: 455 },  // Red Fort Courtyard
+  '318': { x: 350, y: 455 },  // On a Grass Path near a Fortress
+  '328': { x: 455, y: 455 },  // Silver Mine (sealed)
+  '327': { x: 560, y: 455 },  // Empty Arena
+  '325': { x: 35, y: 560 },  // Red Fort Kitchen
+  '319': { x: 350, y: 560 },  // On a Grass Path near the Grotto
+  '321': { x: 245, y: 665 },  // Stone Grotto
+  '320': { x: 350, y: 665 },  // On a Grass Path Approaching the Savannah
+  // Rocky Flats Underground — the Abandoned Mine, Under the Grotto, and the
+  // mine head's own Level 0 (coordinates relative to the underground map image).
+  '315a': { x: 245, y: 140 },  // Abandoned Mine EXIT
+  '315d': { x: 140, y: 140 },  // Lair of the Worm
+  '315b': { x: 140, y: 245 },  // Bloody Skeever Tracks
+  '315c': { x: 35, y: 245 },  // Bleeding Nests
+  '321b': { x: 245, y: 665 },  // Under the Grotto
+  '311-00': { x: 665, y: 35 },  // Mine Level 0 (the mine head, below 311)
 }
 
 /** CSS `background-position` for the compass mini-map window. */

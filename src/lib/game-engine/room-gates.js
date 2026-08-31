@@ -49,6 +49,36 @@ async function captainQuestDone(playerId) {
 }
 
 /**
+ * Is the player a member of either Red Town guild?
+ *
+ * Both dwarf guards onto the Rocky Flats want to see a badge and neither cares
+ * which: the Grassy Field gate (027) took the Warrior's OR the Wizard's Guild,
+ * and Red Town's gate (205) took the Warrior's Guild or a dead Ogre Lieutenant,
+ * which is the same thing one step earlier. Membership is the completed guild
+ * quest in both cases.
+ */
+async function guildMember(playerId) {
+  const done = await prisma.questProgress.findFirst({
+    where: {
+      userId: playerId,
+      completed: true,
+      questId: { in: ['quest_warriorsguild_000', 'quest_wizardsguild_000'] },
+    },
+    select: { id: true },
+  })
+  return !!done
+}
+
+/** Has the player joined the Mining Guild — i.e. put Red Beard down? */
+async function miningGuildMember(playerId) {
+  const done = await prisma.questProgress.findUnique({
+    where: { userId_questId: { userId: playerId, questId: 'quest_miningguild_000' } },
+    select: { completed: true },
+  })
+  return !!done?.completed
+}
+
+/**
  * Map of room gates by roomId and direction
  * Each gate definition includes:
  * - check: async function that validates criteria (returns boolean)
@@ -539,6 +569,130 @@ const ROOM_GATES = {
       },
     },
   },
+
+  // ==================== ROCKY FLATS ====================
+  // Both ways in. The original gated the Grassy Field gate on Warrior's OR
+  // Wizard's Guild membership and the Red Town gate on the Warrior's Guild
+  // alone; both are one dwarf with one question, so both take either badge.
+  '027': {
+    'south': {
+      check: (playerId) => guildMember(playerId),
+      message: "The Dwarf Guard puts an arm across the gate. \"Rocky Flats is guild country. Join the Warrior's Guild or the Wizard's Guild in Red Town and I'll open it.\"",
+      modalContent: {
+        title: 'The Dwarf Guard blocks the gate south',
+        type: 'icon',
+        icon: 'npc-dwarfguard',
+        iconColor: 'gray-400',
+        message: "The Dwarf Guard puts an arm across the gate. \"Rocky Flats is guild country. Join the Warrior's Guild or the Wizard's Guild in Red Town and I'll open it.\" Meanwhile there is a bat cave west of here, and the forest path east goes to Red Town.",
+      },
+    },
+  },
+  '205': {
+    'west': {
+      check: (playerId) => guildMember(playerId),
+      message: "The dwarf guard does not move. \"Nothing out there for the likes of you yet. Come back with a guild badge.\"",
+      modalContent: {
+        title: 'A Dwarf Guard blocks the road west',
+        type: 'icon',
+        icon: 'environment-dwarf-guard-gate',
+        iconColor: 'gray-500',
+        message: "The dwarf guard does not move. \"Nothing out there for the likes of you yet. Come back with a guild badge.\" The Warrior's Guild and the Wizard's Guild are both a short walk east.",
+      },
+    },
+  },
+  // The Grotto's carved stone door. The switch that moves it is in the Red Fort
+  // Kitchen, past the Butcher — a room away and on the far side of the fort.
+  // Session-scoped like the original's `$_SESSION['grottoswitch']`, and the exit
+  // stays invisible until it is thrown rather than showing as a locked door.
+  '319': {
+    'southwest': {
+      check: (playerId) => {
+        const { isLeverPulled, GROTTO_SWITCH } = require('./lever-state')
+        return isLeverPulled(playerId, GROTTO_SWITCH)
+      },
+      message: 'A giant carved stone door blocks the way to the Grotto. There must be a switch somewhere that moves it.',
+      hidden: true,
+      lever: true,
+      modalContent: {
+        title: 'The Grotto door will not move',
+        type: 'icon',
+        icon: 'gate',
+        iconColor: 'gray-500',
+        message: 'A giant carved stone door blocks the way to the Grotto. There must be a switch somewhere that moves it — somewhere in the fort, by the feel of it.',
+      },
+      // Spent on the way through, as the original spent it: the door grinds shut
+      // behind you, so a second visit means a second trip past the Butcher.
+      onPass: async (playerId) => {
+        const { resetLever, GROTTO_SWITCH } = require('./lever-state')
+        resetLever(playerId, GROTTO_SWITCH)
+      },
+    },
+  },
+  // The Silver Mine. The original drew the room on the map, greyed out, behind a
+  // gate whose handler is `if (1 == 2)`. It is content that was never finished,
+  // not content you have failed to unlock, so the door simply does not open.
+  '317': {
+    'south': {
+      check: async () => false,
+      message: 'The gate to the south is magically locked, and nothing you have opens it.',
+      modalContent: {
+        title: 'A magically locked gate',
+        type: 'icon',
+        icon: 'gate',
+        iconColor: 'gray-500',
+        message: 'The gate to the south is magically locked. Whatever is down in the Silver Mine, it is staying there for now.',
+      },
+    },
+  },
+  // The mine head. Membership is the Mining Guild's own initiation quest — put
+  // Red Beard down in the Red Fort and the shaft is yours.
+  '311': {
+    'down': {
+      check: (playerId) => miningGuildMember(playerId),
+      message: 'ACCESS DENIED. Join the Mining Guild to gain access to the mine — the guild hall is south of here, and they want Red Beard dealt with first.',
+      modalContent: {
+        title: 'The mine is guild property',
+        type: 'icon',
+        icon: 'npc-miner2',
+        iconColor: 'yellow-600',
+        message: 'A miner steps in front of the cage. "Guild members only past here. Talk to the hall south of the square — they want the Red Fort dealt with first."',
+      },
+    },
+  },
+}
+
+/**
+ * Every shaft in the Neverending Mine, built rather than written out thirty-one
+ * times. Going down is not walking downstairs — it is digging the next level
+ * out, so it needs a pickaxe in the pack and it pays ore on the way through,
+ * which is what `onPass` is doing here. The pick tier decides what you bring
+ * back up, never whether you can descend: a plain pickaxe reaches Mine Level 30,
+ * it just fills your pack with stone on the way.
+ */
+for (let depth = 0; depth <= 29; depth += 1) {
+  const roomId = `311-${String(depth).padStart(2, '0')}`
+  ROOM_GATES[roomId] = {
+    down: {
+      check: async (playerId) => {
+        const { getBestPickaxe } = require('./services/mining-service')
+        return !!(await getBestPickaxe(playerId))
+      },
+      message: 'You need a pickaxe to mine down! Grab one at the mine head, or buy a better one from the Mining Guild.',
+      modalContent: {
+        type: 'icon',
+        icon: 'pickaxe',
+        iconColor: 'amber-400',
+        title: 'You have nothing to dig with',
+        message: 'You need a pickaxe to mine down! There are spares at the mine head above, and the Mining Guild sells iron, steel and mithril ones.',
+      },
+      onPass: async (playerId) => {
+        const { mineOnce } = require('./services/mining-service')
+        const result = await mineOnce(playerId, `311-${String(depth + 1).padStart(2, '0')}`)
+        if (!result?.message) return null
+        return { message: result.message, inventory: result.inventory }
+      },
+    },
+  }
 }
 
 /**

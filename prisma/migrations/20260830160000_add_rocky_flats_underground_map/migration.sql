@@ -1,0 +1,11 @@
+-- Rocky Flats: the second map flag.
+--
+-- `rockyFlatsMap` already existed for the surface; the Abandoned Mine, Under the
+-- Grotto and Mine Level 0 sit on their own artwork
+-- (lightgray_map_rockyflats_underground.jpg) and need the matching flag, exactly
+-- as the Forest and Red Town each carry a surface and an underground one.
+--
+-- `neverEndingMineMap` is already on the model, so the mine itself needs nothing.
+--
+-- Purely additive: the column has a default, so nothing needs a backfill.
+ALTER TABLE "User" ADD COLUMN "rockyFlatsUndergroundMap" BOOLEAN NOT NULL DEFAULT false;

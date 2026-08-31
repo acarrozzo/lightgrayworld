@@ -86,6 +86,7 @@ export const TELEPORT_LOCATIONS: TeleportLocation[] = [
   { roomId: '088', name: 'Solar Office', description: 'A large, open-plan command office' },
   { roomId: '104', name: 'Forest Crossroads', description: 'The central crossroads of the forest' },
   { roomId: '210', name: 'Red Town', description: 'The Grand Square, at the heart of Red Town' },
+  { roomId: '303', name: 'Rocky Flats', description: 'The Crossroads, where the Dwarf Captain stands watch' },
 ]
 
 // Map configuration entry type
@@ -93,7 +94,7 @@ export type MapConfigEntry = {
   id: string
   src: string
   title: string
-  flag?: keyof Pick<Player, 'grassyFieldMap' | 'grassyFieldUndergroundMap' | 'forestUndergroundMap' | 'redTownMap' | 'redTownSewersMap' | 'roomZeroMap' | 'lobbyMap' | 'solarOfficeMap'>
+  flag?: keyof Pick<Player, 'grassyFieldMap' | 'grassyFieldUndergroundMap' | 'forestUndergroundMap' | 'redTownMap' | 'redTownSewersMap' | 'rockyFlatsMap' | 'rockyFlatsUndergroundMap' | 'neverEndingMineMap' | 'roomZeroMap' | 'lobbyMap' | 'solarOfficeMap'>
 }
 
 // Map configuration
@@ -107,5 +108,8 @@ export const MAP_CONFIG: MapConfigEntry[] = [
   { id: 'forest-underground', src: '/img/lightgray_map_forest_underground.jpg', title: 'Forest Underground', flag: 'forestUndergroundMap' },
   { id: 'red-town', src: '/img/lightgray_map_redtown_main.jpg', title: 'Red Town', flag: 'redTownMap' },
   { id: 'red-town-sewers', src: '/img/lightgray_map_redtown_sewers.jpg', title: 'Red Town Sewers', flag: 'redTownSewersMap' },
+  { id: 'rocky-flats', src: '/img/lightgray_map_rockyflats_main.jpg', title: 'Rocky Flats', flag: 'rockyFlatsMap' },
+  { id: 'rocky-flats-underground', src: '/img/lightgray_map_rockyflats_underground.jpg', title: 'Rocky Flats Underground', flag: 'rockyFlatsUndergroundMap' },
+  { id: 'neverending-mine', src: '/img/lightgray_map_neverendingmine_main.jpg', title: 'The Neverending Mine', flag: 'neverEndingMineMap' },
 ]
 

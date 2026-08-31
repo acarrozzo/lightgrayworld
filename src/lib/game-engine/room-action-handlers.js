@@ -182,8 +182,9 @@ function createNpcTalkHandler(npc) {
  * charges `ItemTemplate.value` via shop-pricing, so what the card shows and what
  * the player is charged come from the same column.
  *
- * `gate`, when given, is an async (playerId) => boolean run before the shop opens;
- * the guild stalls use it so only members can browse.
+ * A shop's own `requiresQuest` (shops.js) is checked first, so the stock list and
+ * the buy route agree about who may trade. `gate`, when given, is an extra
+ * async (playerId) => boolean layered on top of it.
  */
 function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'basicshop', iconColor = 'amber-500' } = {}) {
   return async (playerId, roomState) => {
@@ -195,7 +196,11 @@ function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'ba
       return createErrorResult('view shop', 'There is no shop here.')
     }
 
-    if (gate && !(await gate(playerId))) {
+    const { shopRequiresQuest } = require('../game-data/shops')
+    const requiredQuest = shopRequiresQuest(roomId)
+    const membershipOk = requiredQuest ? await makeGuildMemberCheck(requiredQuest)(playerId) : true
+
+    if (!membershipOk || (gate && !(await gate(playerId)))) {
       return {
         success: true,
         action: 'view shop',
@@ -327,7 +332,8 @@ const CHEST_LOOT = {
   },
   // Babylon Gardens gold chest, behind the Mayor's Gold Key. Legacy handed out
   // 5 each of reds/greens/blues/yellows, both regen III rings, and one of twelve
-  // silver pieces rolled at random — `randomItems` is that roll.
+  // silver pieces rolled at random — `randomItems` is that roll. (A chest that
+  // needs more than one roll passes a list of pools instead; see 309.)
   '224': {
     'open gold chest': {
       label: 'Red Town Gold Chest',
@@ -353,6 +359,47 @@ const CHEST_LOOT = {
         { itemSlug: 'silver-boots', quantity: 1 },
         { itemSlug: 'silver-ring', quantity: 1 },
         { itemSlug: 'silver-necklace', quantity: 1 },
+      ],
+    },
+  },
+  // The Dwarf Treasury's Gold Chest (309), behind the Dwarf Captain's key. The
+  // original rolled TWO items on top of its fixed haul — one Ring of X VII and
+  // one of the twelve silver pieces — which is the case `randomItems` takes a
+  // list of pools for.
+  //
+  // Its third headline reward was a Pet Bat, and there is no pet slot in the
+  // game yet (EquipSlot has MOUNT and nothing else). A Ring of Defense X stands
+  // in for it: permanent, notable, and of the same tier. If pets land, this is
+  // where the bat goes back.
+  '309': {
+    'open gold chest': {
+      label: 'Rocky Flats Gold Chest',
+      xp: 500,
+      items: [
+        { itemSlug: 'meatball', quantity: 5 },
+        { itemSlug: 'ring-of-defense-x', quantity: 1, highlighted: true },
+      ],
+      randomItems: [
+        [
+          { itemSlug: 'ring-of-strength-vii', quantity: 1 },
+          { itemSlug: 'ring-of-dexterity-vii', quantity: 1 },
+          { itemSlug: 'ring-of-magic-vii', quantity: 1 },
+          { itemSlug: 'ring-of-defense-vii', quantity: 1 },
+        ],
+        [
+          { itemSlug: 'silver-sword', quantity: 1 },
+          { itemSlug: 'silver-2h-sword', quantity: 1 },
+          { itemSlug: 'silver-boomerang', quantity: 1 },
+          { itemSlug: 'silver-bow', quantity: 1 },
+          { itemSlug: 'silver-crossbow', quantity: 1 },
+          { itemSlug: 'silver-shield', quantity: 1 },
+          { itemSlug: 'silver-helmet', quantity: 1 },
+          { itemSlug: 'silver-breastplate', quantity: 1 },
+          { itemSlug: 'silver-gauntlets', quantity: 1 },
+          { itemSlug: 'silver-boots', quantity: 1 },
+          { itemSlug: 'silver-ring', quantity: 1 },
+          { itemSlug: 'silver-necklace', quantity: 1 },
+        ],
       ],
     },
   },
@@ -628,8 +675,20 @@ async function executeCraft(playerId, roomState, actionData = {}) {
       return fail(recipe.unlock.hint, recipe.id)
     }
   }
-  if (recipe.tool && !(await playerHasItem(playerId, recipe.tool.slug))) {
-    return fail(`You need a ${recipe.tool.name} to craft ${recipe.label}.`, recipe.id)
+  if (recipe.tool) {
+    // `anyOf` lets a better tool stand in for the named one — a steel or mithril
+    // hammer works iron just as well, and the original accepted all three.
+    const toolSlugs = [recipe.tool.slug, ...(recipe.tool.anyOf ?? [])]
+    let hasTool = false
+    for (const slug of toolSlugs) {
+      if (await playerHasItem(playerId, slug)) {
+        hasTool = true
+        break
+      }
+    }
+    if (!hasTool) {
+      return fail(`You need a ${recipe.tool.name} to craft ${recipe.label}.`, recipe.id)
+    }
   }
 
   // Requested batch size. Floor + clamp to a sane ceiling; the transaction
@@ -762,17 +821,23 @@ function makeGoldChestHandler({ roomId, flagField, goldMin, goldMax, lockedMessa
     // (Babylon Gardens rolls one of the twelve silver pieces). Rolled once per
     // open, before the transaction, so the granted item and the rewards modal
     // can never disagree about what came out.
-    const rolledBonus =
+    // `randomItems` is either one pool or a list of pools; one entry is rolled
+    // from each. Babylon Gardens rolls a single silver piece; the Rocky Flats
+    // Treasury rolls a ring AND a silver piece, which is why pools are a list.
+    const pools =
       Array.isArray(randomItems) && randomItems.length > 0
-        ? randomItems[Math.floor(Math.random() * randomItems.length)]
-        : null
+        ? (Array.isArray(randomItems[0]) ? randomItems : [randomItems])
+        : []
+    const rolledBonuses = pools.map((pool) => pool[Math.floor(Math.random() * pool.length)])
 
     // Build the enriched item reward list for the rewards modal. Gold is
     // omitted here because it is rolled randomly per open — callers that know
     // the exact amount (the open flow) append their own currency entry.
-    const buildEnrichedItemRewards = async (bonus = null) => {
+    const buildEnrichedItemRewards = async (bonuses = []) => {
       const rewards = [{ type: 'xp', amount: xpAmount }]
-      const entries = bonus ? [...itemRewards, { ...bonus, highlighted: true }] : itemRewards
+      const entries = bonuses.length
+        ? [...itemRewards, ...bonuses.map((b) => ({ ...b, highlighted: true }))]
+        : itemRewards
       for (const reward of entries) {
         const template = await getItemBySlug(reward.itemSlug)
         rewards.push({
@@ -870,7 +935,7 @@ function makeGoldChestHandler({ roomId, flagField, goldMin, goldMax, lockedMessa
         if (!removed.success) {
           throw new Error('GOLD_KEY_MISSING')
         }
-        const toGrant = rolledBonus ? [...itemRewards, rolledBonus] : itemRewards
+        const toGrant = [...itemRewards, ...rolledBonuses]
         for (const reward of toGrant) {
           const granted = await grantItemOnce(playerId, reward.itemSlug, reward.quantity, tx)
           if (!granted.granted) {
@@ -913,7 +978,7 @@ function makeGoldChestHandler({ roomId, flagField, goldMin, goldMax, lockedMessa
     // Enrich rewards for the rewards modal (same shape as quest completion).
     // Insert the exact rolled gold after the XP entry; items come from the
     // shared builder so the haul matches the "already opened" reminder.
-    const enrichedRewards = await buildEnrichedItemRewards(rolledBonus)
+    const enrichedRewards = await buildEnrichedItemRewards(rolledBonuses)
     enrichedRewards.splice(1, 0, { type: 'currency', amount: goldAmount })
 
     const playerEvents = [
@@ -1259,6 +1324,23 @@ const makeWizardPackHandler = () =>
  * teleport dispatch so party pulls, room events and persistence all behave. The
  * server decides *whether*; `teleportRoomId` only says *where*.
  */
+/** The Mining Guild's pack: potions, food, and a pickaxe to break. */
+const makeMiningPackHandler = () =>
+  makeGuildPackHandler({
+    questId: 'quest_miningguild_000',
+    label: 'Mining Pack',
+    icon: 'npc-miner2',
+    iconColor: 'yellow-600',
+    joinMessage: 'Join the Mining Guild to claim a Mining Pack. Speak to the recruiter.',
+    pack: [
+      { slug: 'red-potion', floor: 5, label: 'red potions' },
+      { slug: 'blue-potion', floor: 5, label: 'blue potions' },
+      { slug: 'bluefish', floor: 5, label: 'bluefish' },
+      { slug: 'meatball', floor: 5, label: 'meatballs' },
+      { slug: 'pickaxe', floor: 1, label: 'pickaxe' },
+    ],
+  })
+
 function makeGuildTeleportHandler({ action, questId, toRoomId, label, icon, iconColor, joinMessage, message }) {
   return async (playerId, roomState) => {
     roomState.touchActivity()
@@ -2207,7 +2289,6 @@ const ROOM_ACTIONS = {
       ],
     }),
     'view shop': makeShopHandler('225', {
-      gate: makeGuildMemberCheck('quest_wizardsguild_000'),
       lockedMessage: 'The stall keeper shakes her head. "Guild members only. Speak to the recruiter."',
       icon: 'npc-wizard',
       iconColor: 'purple-400',
@@ -2314,7 +2395,6 @@ const ROOM_ACTIONS = {
       ],
     }),
     'view shop': makeShopHandler('226', {
-      gate: makeGuildMemberCheck('quest_warriorsguild_000'),
       lockedMessage: 'The quartermaster folds his arms. "Guild members only. Talk to the recruiter."',
       icon: 'npc-warrior',
       iconColor: 'blue-400',
@@ -2581,6 +2661,380 @@ const ROOM_ACTIONS = {
     }),
   },
 
+
+  // ==================== ROCKY FLATS ====================
+
+  // --- The Crossroads: the Dwarf Captain, and the map directory beside him ---
+  '303': {
+    'talk to dwarf captain': createNpcTalkHandler({
+      npcId: 'dwarf_captain',
+      action: 'talk to dwarf captain',
+      title: 'Dwarf Captain',
+      icon: 'npc-dwarfcaptain',
+      iconColor: 'yellow-600',
+      idleDialogs: [
+        { message: '"The Rocky Flats is full of danger," he says, and goes back to watching the road. He has nothing else for you today.' },
+      ],
+    }),
+    'read sign': {
+      showModal: true,
+      message: 'You read the Rocky Flats Map Directory.',
+      modalContent: {
+        title: 'You read the Rocky Flats Directory',
+        heading: {
+          text: 'Rocky Flats Directory',
+          parts: ['Rocky Flats', 'Directory'],
+          description: 'Six roads out of the Crossroads, and what is at the end of each.',
+        },
+        locations: [
+          { name: 'Dwarf Village', direction: 'northeast', description: 'The Mining Guild, the Neverending Mine, the Treasury and the Silver Shop.' },
+          { name: 'Dwarf Guard Ledge', direction: 'east', description: 'Free arrows, bolts and a polearm, and a good place to catch your breath.' },
+          { name: 'Path to Red Town', direction: 'southeast', description: 'The stone road east to the Grand Red Gates.' },
+          { name: 'Red Fort & Stone Grotto', direction: 'south', description: 'Bandit country. Red Beard holds the fort at the far end of it.' },
+          { name: 'Abandoned Mine', direction: 'west', description: 'The condemned mine, and the muddy path on toward the Swamp.' },
+          { name: 'Path to Grassy Field', direction: 'northwest', description: 'North to the Dwarf Guard gate, the Grassy Field and the Ocean.' },
+        ],
+        questMessage: 'The Captain has three postings of his own, and the Bounty Board in the village square has three more.',
+        questMessageDescription: 'Clearing the Abandoned Mine earns the Gold Key for the Treasury chest.',
+      },
+    },
+  },
+
+  // --- The Ledge: the Dwarf Guard's supply crate, and a place to rest ---
+  '306': {
+    'grab arrows': makeGatherAction({
+      itemSlug: 'arrow',
+      itemNamePlural: 'arrows',
+      topUpTo: 50,
+      maxHeldMessage: 'You already have more than 50 arrows. Come back if you run low.',
+      topUpMessage: (collected) => `You take a bundle of arrows from the guard's crate. [ +${collected} arrows ]`,
+    }),
+    'grab bolts': makeGatherAction({
+      itemSlug: 'crossbow-bolt',
+      itemNamePlural: 'bolts',
+      topUpTo: 50,
+      maxHeldMessage: 'You already have more than 50 bolts. Come back if you run low.',
+      topUpMessage: (collected) => `You take a bundle of bolts from the guard's crate. [ +${collected} bolts ]`,
+    }),
+    'grab polearm': makeFreeItemAction({
+      itemSlug: 'polearm',
+      itemName: 'a polearm',
+      capLabel: 'polearm',
+      icon: 'equipment-polearm',
+      iconColor: 'gray-400',
+      grantMessage: 'You take the spare polearm off the rack and stow it in your pack.',
+      alreadyHaveMessage: 'You already have a polearm. If you lose it, come back here for another free one.',
+    }),
+    'rest on the ledge': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest on the ledge',
+        overchargeBonus: 50,
+        overchargeMessage: 'You sit on the ledge and watch the road for a while. Your HP and MP are fully restored, plus an extra +50 to each.',
+      }),
+  },
+
+  // --- The Dwarf Village Square: the Bounty Board, the coal fire, the directory ---
+  '307': {
+    'read bounty board': createNpcTalkHandler({
+      npcId: 'dwarf_bounty_board',
+      action: 'read bounty board',
+      title: 'Dwarf Guard Bounty Board',
+      icon: 'npc-bountyboard',
+      iconColor: 'yellow-600',
+      idleDialogs: [
+        { message: 'The board is covered in wanted posters in three different hands, and every one of them has been collected on. Nothing new today.' },
+      ],
+    }),
+    'rest at the coal fire': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest at the coal fire',
+        overchargeBonus: 50,
+        overchargeMessage: 'You warm up at the coal fire in the middle of the square. Your HP and MP are fully restored, plus an extra +50 to each.',
+      }),
+    'read sign': {
+      showModal: true,
+      message: 'You read the Dwarf Village Directory.',
+      modalContent: {
+        title: 'You read the Dwarf Village Directory',
+        heading: {
+          text: 'Dwarf Village Directory',
+          parts: ['Dwarf Village', 'Directory'],
+          description: 'Everything the Mining Village has, and which side of the square it is on.',
+        },
+        locations: [
+          { name: 'Dwarf Treasury', direction: 'northwest', description: 'The Gold Chest. The Dwarf Captain holds the key.' },
+          { name: 'Silver Shop', direction: 'north', description: 'Silver weapons and armour, at silver prices.' },
+          { name: 'Neverending Mine', direction: 'northeast', description: 'Stone, iron, coal and mithril, all the way down.' },
+          { name: 'Mining Guild', direction: 'east', description: 'The forge, the supply shop, and the guild quests.' },
+          { name: 'Rocky Flats Ledge', direction: 'south', description: 'Free arrows, bolts and a polearm.' },
+          { name: 'Rocky Flats Crossroads', direction: 'southwest', description: 'The Dwarf Captain, and every road off this map.' },
+        ],
+        questMessage: 'The Bounty Board here pays for grunts by the ten and for bosses by the head.',
+        questMessageDescription: 'Membership of the Mining Guild opens the mine. Membership starts with Red Beard.',
+      },
+    },
+  },
+
+  // --- The Mining Guild: the recruiter, the leader, the forge and the supply shop ---
+  // The whole guild in one room. See the note on room 308 in prisma/seed.ts for
+  // why the original's five interior rooms are folded in here.
+  '308': {
+    'talk to mining recruiter': createNpcTalkHandler({
+      npcId: 'mining_guild_recruiter',
+      action: 'talk to mining recruiter',
+      title: 'Mining Guild Recruiter',
+      icon: 'npc-miner2',
+      iconColor: 'yellow-600',
+      idleDialogs: [
+        { message: '"You are in. Talk to the Leader at the back — he is the one who decides what you are allowed to make."' },
+      ],
+    }),
+    'talk to guild leader': createNpcTalkHandler({
+      npcId: 'mining_guild_leader',
+      action: 'talk to guild leader',
+      title: 'Mining Guild Leader',
+      icon: 'npc-miner',
+      iconColor: 'yellow-600',
+      preCheck: makeGuildMemberCheck('quest_miningguild_000'),
+      preCheckMessage: 'The Guild Leader does not look up. "Members. Talk to the recruiter."',
+      idleDialogs: [
+        { message: 'He demonstrates perfect mining form at you for a while, then goes back to the bench. Nothing more for now.' },
+      ],
+    }),
+    'view shop': makeShopHandler('308', {
+      lockedMessage: 'Join the Mining Guild to buy from its supply shop. Speak to the recruiter.',
+      icon: 'npc-miner2',
+      iconColor: 'yellow-600',
+    }),
+    'grab pack': makeMiningPackHandler(),
+    'rest at the forge': async (playerId, roomState) => {
+      const isMember = await makeGuildMemberCheck('quest_miningguild_000')(playerId)
+      if (!isMember) {
+        return {
+          success: true,
+          action: 'rest at the forge',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('rest at the forge', 'info', 'Join the Mining Guild to rest at the forge.', {
+                roomId: roomState.roomId,
+                showModal: true,
+                modalContent: {
+                  type: 'icon',
+                  icon: 'npc-miner2',
+                  iconColor: 'yellow-600',
+                  title: 'Mining Guild',
+                  message: 'Join the Mining Guild to rest at the forge. Speak to the recruiter.',
+                },
+              }),
+            },
+          ],
+        }
+      }
+      return roomState.applyRest(playerId, {
+        action: 'rest at the forge',
+        overchargeBonus: 50,
+        overchargeMessage: 'You rest at the Guild Forge. Your HP and MP are fully restored, plus an extra +50 to each.',
+      })
+    },
+    'craft': executeCraft,
+    'read sign': {
+      showModal: true,
+      message: 'You read the Mining Guild Directory.',
+      modalContent: {
+        title: 'You read the Mining Guild Directory',
+        heading: {
+          text: 'Mining Guild Directory',
+          parts: ['Mining Guild', 'Directory'],
+          description: 'What the hall holds, and what the guild expects of you.',
+        },
+        locations: [
+          { name: 'The Forge', direction: 'here', description: 'Craft here once the Guild Leader has taught you a metal.' },
+          { name: 'Supply Shop', direction: 'here', description: 'Pickaxes and hammers, in iron, steel and mithril.' },
+          { name: 'Neverending Mine', direction: 'north', description: 'Stone and iron near the top, coal from Level 10, mithril from Level 20.' },
+          { name: 'Dwarf Village Square', direction: 'west', description: 'The Bounty Board, the coal fire and the rest of the village.' },
+        ],
+        questMessage: 'Membership starts with Red Beard. After that the Guild Leader has three: the Phoenix, the Cyclops and the Minotaur.',
+        questMessageDescription: 'Each one you put down is another metal you are allowed to work at the forge.',
+      },
+    },
+  },
+
+  // --- The Dwarf Treasury: the Gold Chest, behind the Captain's key ---
+  '309': {
+    'open gold chest': makeGoldChestHandler({
+      roomId: '309',
+      flagField: 'chest4',
+      goldMin: 1500,
+      goldMax: 2000,
+      lockedMessage:
+        'The gold chest is locked. The Dwarf Captain at the Crossroads hands over the key for clearing out the Abandoned Mine.',
+    }),
+  },
+
+  // --- The Silver Shop ---
+  '310': { 'view shop': makeShopHandler('310', { icon: 'shop', iconColor: 'blue-300' }) },
+
+  // --- The mine head: free supplies for anyone going down ---
+  '311': {
+    'grab pickaxe': makeFreeItemAction({
+      itemSlug: 'pickaxe',
+      itemName: 'a pickaxe',
+      capLabel: 'pickaxe',
+      icon: 'pickaxe',
+      iconColor: 'amber-400',
+      grantMessage: 'You take a pickaxe off the trestle. It will not survive the whole mine, but it will get you started.',
+      alreadyHaveMessage: 'You already have a pickaxe. Come back if you break it — and you will break it.',
+    }),
+    'grab red potion': makeGatherAction({
+      itemSlug: 'red-potion',
+      itemNamePlural: 'red potions',
+      topUpTo: 5,
+      maxHeldMessage: 'You already have 5 red potions. Come back if you run low.',
+      topUpMessage: (collected) => `You take ${collected} red potions from the miners' stores.`,
+    }),
+    'grab blue potion': makeGatherAction({
+      itemSlug: 'blue-potion',
+      itemNamePlural: 'blue potions',
+      topUpTo: 5,
+      maxHeldMessage: 'You already have 5 blue potions. Come back if you run low.',
+      topUpMessage: (collected) => `You take ${collected} blue potions from the miners' stores.`,
+    }),
+  },
+
+  // --- The Abandoned Mine's sign ---
+  '315': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the sign at the mine mouth.',
+      modalContent: {
+        title: 'You read the sign',
+        type: 'icon',
+        icon: 'sign',
+        iconColor: 'gray-500',
+        message: 'MINE HAS BEEN CONDEMNED\n\nENTER AT YOUR OWN RISK',
+      },
+    },
+  },
+
+  // --- Under the Grotto: the gloves in the statue's hands ---
+  '321b': {
+    'ex gloves': {
+      showModal: true,
+      message: 'You examine the gloves in the statue’s hands.',
+      modalContent: {
+        title: 'You examine the gloves',
+        type: 'icon',
+        icon: 'hand',
+        iconColor: 'blue-400',
+        message:
+          'The gloves seem to be an antiquated offering. They are under a thick layer of dust, and you do not think anyone will mind if you take them.',
+      },
+    },
+    'grab gloves': makeFreeItemAction({
+      itemSlug: 'grotto-gloves',
+      itemName: 'the Grotto Gloves',
+      capLabel: 'grotto gloves',
+      icon: 'hand',
+      iconColor: 'blue-400',
+      grantMessage: 'You lift the magical Grotto Gloves out of the statue’s open hands. Look at you go.',
+      alreadyHaveMessage:
+        'A loud voice comes from every direction at once: "The Dwarven gods allow you ONE pair of grotto gloves!!!"',
+    }),
+  },
+
+  // --- The Red Fort's sign ---
+  '322': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the sign nailed to the courtyard gate.',
+      modalContent: {
+        title: 'You read the sign',
+        type: 'icon',
+        icon: 'sign',
+        iconColor: 'red-600',
+        message: 'BANDIT TERRITORY!',
+      },
+    },
+  },
+
+  // --- The Red Fort Kitchen: the switch that opens the Grotto ---
+  // Session-scoped, and spent on the way through the door it opens, exactly as
+  // the original spent `$_SESSION['grottoswitch']`. See lever-state.js.
+  '325': {
+    'flip switch': async (playerId, roomState) => {
+      const { isLeverPulled, pullLever, GROTTO_SWITCH, getRoomStateNote, getRoomActionOverrides } =
+        require('./lever-state')
+      roomState.touchActivity()
+
+      if (isLeverPulled(playerId, GROTTO_SWITCH)) {
+        return {
+          success: true,
+          action: 'flip switch',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('flip switch', 'info', 'You already flipped this switch. Something to the southeast is standing open.', {
+                roomId: roomState.roomId,
+                stateNote: getRoomStateNote(playerId, '325'),
+                actionOverrides: getRoomActionOverrides(playerId, '325'),
+              }),
+            },
+          ],
+        }
+      }
+
+      pullLever(playerId, GROTTO_SWITCH)
+      return {
+        success: true,
+        action: 'flip switch',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('flip switch', 'success', 'You flip the switch and hear a long grinding noise a very long way to the southeast.', {
+              roomId: roomState.roomId,
+              showModal: true,
+              stateNote: getRoomStateNote(playerId, '325'),
+              actionOverrides: getRoomActionOverrides(playerId, '325'),
+              modalContent: {
+                type: 'icon',
+                icon: 'lever-down',
+                iconColor: 'yellow-500',
+                title: 'You flip the switch',
+                message:
+                  'Stone moves somewhere a long way off, and keeps moving for longer than seems reasonable. Whatever opened, it opened southeast of here — out past the fort, on the grass path by the Grotto.',
+              },
+            }),
+          },
+        ],
+      }
+    },
+  },
+
+  // --- Mine Level 0: the tutorial sign, and no ore whatsoever ---
+  '311-00': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the Mine Room Zero sign.',
+      modalContent: {
+        title: 'You read the Mine Basics sign',
+        heading: {
+          text: 'Mine Basics',
+          parts: ['Mine', 'Basics'],
+          description: 'Nailed to the pit prop by the shaft, and worn smooth by a great many hands.',
+        },
+        locations: [
+          { name: 'Dig down', direction: 'down', description: 'Every level down is a swing of the pick, and the pick brings ore up with it.' },
+          { name: 'Work this level', direction: 'here', description: 'Mine here as often as you like. Something will find you eventually.' },
+        ],
+        questMessage:
+          'STONE and IRON near the top. COAL from Mine Level 10, MITHRIL from Mine Level 20. A better pickaxe works a harder seam — a plain one only ever brings up stone.',
+        questMessageDescription:
+          'Every fifth level holds a boss and every tenth a worse one. Mine Level 10 is the Phoenix, 20 the Cyclops, 30 the Minotaur — the three the Mining Guild wants, and the three that decide what you are allowed to forge.',
+      },
+    },
+  },
+
   '999': {
     'rest in lobby': async (playerId, roomState) => roomState.executeLobbyRest(playerId),
   },
@@ -2607,6 +3061,47 @@ const FOREST_TWO_TREE_ROOMS = new Set(['117', '122', '124', '127', '129', '133',
 
 const CHOP_WOOD_MISSING_TOOL =
   'You need a hatchet to chop these trees. The Forest Gnome keeps a spare one at his tree hut.'
+
+/**
+ * Working the level you are standing on. `mine down` is the same swing plus a
+ * move, and rides on the shaft gate's `onPass` (room-gates.js) so both paths run
+ * one ore table — see services/mining-service.js.
+ *
+ * Mine Level 0 is deliberately absent: the original put no ore in it and no
+ * `mine here` button on it, which is what makes it the one safe room down there.
+ */
+function makeMineHereAction() {
+  return async (playerId, roomState) => {
+    const { mineOnce } = require('./services/mining-service')
+
+    roomState.touchActivity()
+
+    const result = await mineOnce(playerId, roomState.roomId)
+    const outcome = result.outcome === 'mined' ? 'success' : 'info'
+
+    return {
+      success: result.outcome !== 'no-pickaxe',
+      action: 'mine here',
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('mine here', outcome, result.message, {
+            roomId: roomState.roomId,
+            ...(result.inventory ? { inventory: result.inventory } : {}),
+          }),
+        },
+      ],
+    }
+  }
+}
+
+for (let depth = 1; depth <= 30; depth += 1) {
+  const roomId = `311-${String(depth).padStart(2, '0')}`
+  ROOM_ACTIONS[roomId] = {
+    ...(ROOM_ACTIONS[roomId] || {}),
+    'mine here': makeMineHereAction(),
+  }
+}
 
 for (const roomId of FOREST_CHOP_WOOD_ROOMS) {
   const twoTrees = FOREST_TWO_TREE_ROOMS.has(roomId)

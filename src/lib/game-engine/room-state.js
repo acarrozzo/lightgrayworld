@@ -115,6 +115,65 @@ const SEARCH_LOOT_TABLES = {
       },
     ],
   },
+
+  // ==================== ROCKY FLATS ====================
+  // The Stone Grotto and the chamber under it. Both were 1-in-2 to find anything
+  // in the original, then an even roll across what somebody left behind — the
+  // upper room in offerings and food, the lower one in supplies and coin.
+  '321': {
+    chance: 0.5,
+    failMessage: 'You search the grotto and find nothing. You should search again.',
+    entries: [
+      { message: 'You search the grotto and find a Blue Balm!', effect: { type: 'grantItem', itemSlug: 'blue-balm', quantity: 1 } },
+      { message: 'You search the grotto and find a Red Balm!', effect: { type: 'grantItem', itemSlug: 'red-balm', quantity: 1 } },
+      { message: 'You search the grotto and find a Meatball!', effect: { type: 'grantItem', itemSlug: 'meatball', quantity: 1 } },
+      { message: 'You search the grotto and find a Bluefish!', effect: { type: 'grantItem', itemSlug: 'bluefish', quantity: 1 } },
+      { message: (amount) => `You search the grotto and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 100, max: 200 } },
+    ],
+  },
+  '321b': {
+    chance: 0.5,
+    failMessage: 'You search the lower grotto and find nothing. You should search again.',
+    entries: [
+      { message: 'You search the lower grotto and find a Blue Potion!', effect: { type: 'grantItem', itemSlug: 'blue-potion', quantity: 1 } },
+      { message: 'You search the lower grotto and find a Red Potion!', effect: { type: 'grantItem', itemSlug: 'red-potion', quantity: 1 } },
+      { message: (qty) => `You search the lower grotto and find ${qty} bolts!`, effect: { type: 'grantItem', itemSlug: 'crossbow-bolt', minQty: 10, maxQty: 20 } },
+      { message: (amount) => `You search the lower grotto and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 100, max: 200 } },
+    ],
+  },
+  // The Red Fort Barracks. Racks of bandit kit, and the bandits are not using
+  // all of it. 1-in-2, then an even roll across five.
+  '324': {
+    chance: 0.5,
+    failMessage: 'You search the barracks and find nothing. You should search again.',
+    entries: [
+      { message: 'You search the barracks and find a Bandit Hood!', effect: { type: 'grantItem', itemSlug: 'bandit-hood', quantity: 1 } },
+      { message: (qty) => `You search the barracks and find ${qty} bolts!`, effect: { type: 'grantItem', itemSlug: 'crossbow-bolt', minQty: 5, maxQty: 15 } },
+      { message: 'You search the barracks and find 2 Meatballs!', effect: { type: 'grantItem', itemSlug: 'meatball', quantity: 2 } },
+      { message: 'You search the barracks and find a Bluefish!', effect: { type: 'grantItem', itemSlug: 'bluefish', quantity: 1 } },
+      { message: (amount) => `You search the barracks and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 100, max: 200 } },
+    ],
+  },
+}
+
+/**
+ * Rooms with their own ambient lines, which replace the generic world-tick
+ * flavour while a player is standing in them. The original wrote these as a
+ * per-room roll at the end of the room script — a 1-in-5 in the Stone Grotto and
+ * a 1-in-10 in the Red Fort Barracks — and they are most of what makes those two
+ * rooms feel occupied.
+ */
+const ROOM_FLAVOR = {
+  '321': [
+    'You get an uneasy feeling that some sort of spirit is nearby.',
+    'You hear a rumbling come from the ground.',
+    'You feel both warm and cold at once.',
+  ],
+  '324': [
+    'You hear a giant rat scurrying along the floor.',
+    'You hear someone scream, somewhere to the north.',
+    'The air from the south is warm and delicious.',
+  ],
 }
 
 // Pull a short "+5 HP" / "−1 HP" / "+10 MP" effect string out of an item action
@@ -630,6 +689,8 @@ class RoomState {
     }
 
     // 2. GATE CHECK (additional constraint, only if reachability passes)
+    let gatePassMessage = null
+    let gatePassInventory = null
     if (direction) {
       const gateResult = await checkRoomGate(fromRoom, direction, playerId)
       if (gateResult && !gateResult.allowed) {
@@ -657,7 +718,14 @@ class RoomState {
         }
       }
       if (gateResult?.onPass) {
-        await gateResult.onPass(playerId)
+        // A gate that charges for the crossing can also report what the crossing
+        // produced. Digging the next level of the Neverending Mine out is the
+        // case that needs it: `down` is a pickaxe swing as well as a move, so
+        // the ore it turns up rides back on the move's own feedback rather than
+        // disappearing silently.
+        const passed = await gateResult.onPass(playerId)
+        if (passed?.message) gatePassMessage = passed.message
+        if (passed?.inventory) gatePassInventory = passed.inventory
       }
     }
 
@@ -681,8 +749,22 @@ class RoomState {
       playerEvents: [
         {
           event: 'action:feedback',
-          payload: this.createFeedbackPayload('move', 'success', message, { toRoom, toRoomName, roomData, direction }),
+          payload: this.createFeedbackPayload('move', 'success', message, {
+            toRoom,
+            toRoomName,
+            roomData,
+            direction,
+            ...(gatePassInventory ? { inventory: gatePassInventory } : {}),
+          }),
         },
+        ...(gatePassMessage
+          ? [
+              {
+                event: 'action:feedback',
+                payload: this.createFeedbackPayload('move', 'success', gatePassMessage, { roomId: toRoom }),
+              },
+            ]
+          : []),
       ],
       broadcastEvents: [
         {
@@ -1582,7 +1664,8 @@ class RoomState {
     // Ambient data generates on every world tick (every 5 seconds)
     this.lastAmbientHintAt = now
 
-    const flavorSnippets = [
+    // A room with its own authored lines uses them instead of the generic set.
+    const flavorSnippets = ROOM_FLAVOR[this.roomId] ?? [
       'A faint breeze rustles through the area.',
       'You hear distant footsteps echo briefly.',
       'The lights flicker for just a moment.',
@@ -1602,4 +1685,5 @@ class RoomState {
 module.exports = {
   RoomState,
   SEARCH_LOOT_TABLES,
+  ROOM_FLAVOR,
 }

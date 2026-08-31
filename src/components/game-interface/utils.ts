@@ -44,6 +44,13 @@ const RED_TOWN_SEWER_ROOMS = new Set([
 ])
 
 // Helper function to determine which map corresponds to a room
+/**
+ * Rocky Flats rooms that sit on the underground sheet rather than the surface
+ * one: the Abandoned Mine's four rooms and the chamber below the Stone Grotto.
+ * The surface entrances (315, 321) stay on the surface map.
+ */
+const ROCKY_FLATS_UNDERGROUND = new Set(['315a', '315b', '315c', '315d', '321b'])
+
 export const getMapIdForRoom = (roomId: string): string => {
   if (roomId === '000') return 'room-zero'
   if (roomId === '999') return 'lobby'
@@ -53,6 +60,12 @@ export const getMapIdForRoom = (roomId: string): string => {
   const forestUnderground = ['111a','111b','111c','111d','111e','111f','111g','111h','111i','111j','111k','115a','115b','115c','115d','115e','115f','115g','115h','115i','115j','115k']
   if (forestUnderground.includes(roomId)) return 'forest-underground'
   if (RED_TOWN_SEWER_ROOMS.has(roomId)) return 'red-town-sewers'
+  // The Neverending Mine: Level 0 is drawn on the Rocky Flats Underground sheet
+  // where the mine head sits; everything below it is on the mine's own artwork.
+  if (roomId === '311-00') return 'rocky-flats-underground'
+  if (roomId.startsWith('311-')) return 'neverending-mine'
+  if (ROCKY_FLATS_UNDERGROUND.has(roomId)) return 'rocky-flats-underground'
+  if (roomId.startsWith('3')) return 'rocky-flats'
   // The Red Guard Captain's lookout tower is drawn on the Forest artwork even
   // though its room ID belongs to the Red Town block.
   if (roomId === '215') return 'forest'

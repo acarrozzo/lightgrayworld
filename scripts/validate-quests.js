@@ -26,7 +26,7 @@ const { ENEMIES } = require(path.join(ROOT, 'src/lib/game-data/enemies.js'))
 // EquipSlot enum from prisma/schema.prisma — kept in sync manually (small, rarely changes).
 const EQUIP_SLOTS = new Set(['MAIN_HAND', 'OFF_HAND', 'HEAD', 'BODY', 'HANDS', 'FEET', 'RING', 'NECK'])
 const REWARD_TYPES = new Set(['currency', 'xp', 'item'])
-const REQUIREMENT_TYPES = new Set(['hasItem', 'hasAnyItem', 'killCount', 'hasEquippedInSlot', 'level', 'hasFlag'])
+const REQUIREMENT_TYPES = new Set(['hasItem', 'hasAnyItem', 'killCount', 'killCountGroup', 'hasEquippedInSlot', 'level', 'hasFlag'])
 const EFFECT_TYPES = new Set(['startQuest', 'completeQuest'])
 
 // Item slugs: every `slug: '...'` / `slug: "..."` literal in the seed. This is a
@@ -80,6 +80,15 @@ for (const [id, q] of Object.entries(QUESTS)) {
     }
     if (req.type === 'killCount' && !enemySlugs.has(req.enemySlug)) {
       err(id, `killCount references unknown enemy slug "${req.enemySlug}"`)
+    }
+    if (req.type === 'killCountGroup') {
+      if (!Array.isArray(req.enemySlugs) || req.enemySlugs.length === 0) {
+        err(id, 'killCountGroup requires a non-empty enemySlugs array')
+      } else {
+        for (const slug of req.enemySlugs) {
+          if (!enemySlugs.has(slug)) err(id, `killCountGroup references unknown enemy slug "${slug}"`)
+        }
+      }
     }
     if (req.type === 'hasEquippedInSlot' && !EQUIP_SLOTS.has(req.slot)) {
       err(id, `hasEquippedInSlot references unknown slot "${req.slot}"`)

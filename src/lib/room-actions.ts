@@ -270,6 +270,74 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '232z': [
     { action: 'open silver chest', label: 'Open Silver Chest', icon: 'chest2', className: 'bg-sky-500/80 hover:bg-sky-500' },
   ],
+  // ==================== ROCKY FLATS ====================
+  '303': [
+    { action: 'talk to dwarf captain', label: 'Dwarf Captain', icon: 'npc-dwarfcaptain', className: 'bg-yellow-600 hover:bg-yellow-700', questIds: questIdsForNpc('dwarf_captain') },
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
+  '306': [
+    { action: 'rest on the ledge', label: 'Rest on the Ledge', icon: 'heal', className: 'bg-green-600 hover:bg-green-700' },
+    { action: 'grab arrows', label: 'Grab Arrows', icon: 'arrow', className: 'bg-amber-600 hover:bg-amber-700' },
+    { action: 'grab bolts', label: 'Grab Bolts', icon: 'boltupgrade', className: 'bg-amber-700 hover:bg-amber-600' },
+    { action: 'grab polearm', label: 'Grab Polearm', icon: 'equipment-polearm', className: 'bg-gray-600 hover:bg-gray-500' },
+  ],
+  '307': [
+    { action: 'read bounty board', label: 'Bounty Board', icon: 'npc-bountyboard', className: 'bg-yellow-600 hover:bg-yellow-700', questIds: questIdsForNpc('dwarf_bounty_board') },
+    { action: 'rest at the coal fire', label: 'Rest at the Coal Fire', icon: 'fire', className: 'bg-green-600 hover:bg-green-700' },
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
+  '308': [
+    { action: 'talk to mining recruiter', label: 'Mining Guild Recruiter', icon: 'npc-miner2', className: 'bg-yellow-600 hover:bg-yellow-700', questIds: questIdsForNpc('mining_guild_recruiter') },
+    { action: 'talk to guild leader', label: 'Guild Leader', icon: 'npc-miner', className: 'bg-yellow-600 hover:bg-yellow-700', questIds: questIdsForNpc('mining_guild_leader'), requiresCompletedQuest: 'quest_miningguild_000' },
+    { action: 'view shop', label: 'Supply Shop', icon: 'shop', className: 'bg-amber-500/80 hover:bg-amber-500' },
+    { action: 'grab pack', label: 'Grab Mining Pack', icon: 'inv', className: 'bg-blue-700 hover:bg-blue-600' },
+    { action: 'rest at the forge', label: 'Rest at the Forge', icon: 'fire', className: 'bg-green-600 hover:bg-green-700' },
+    { action: 'open crafting', label: 'Open Crafting', icon: 'craft', className: 'bg-orange-600 hover:bg-orange-700' },
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
+  '309': [
+    { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'bg-amber-500/80 hover:bg-amber-500' },
+  ],
+  '310': [
+    { action: 'view shop', label: 'View Shop', icon: 'shop', className: 'bg-sky-500/80 hover:bg-sky-500' },
+  ],
+  '311': [
+    { action: 'grab pickaxe', label: 'Grab Pickaxe', icon: 'pickaxe', className: 'bg-amber-600 hover:bg-amber-700' },
+    { action: 'grab red potion', label: 'Grab Red Potions', icon: 'red-potion', className: 'bg-red-600 hover:bg-red-700' },
+    { action: 'grab blue potion', label: 'Grab Blue Potions', icon: 'blue-potion', className: 'bg-blue-600 hover:bg-blue-700' },
+  ],
+  '315': [
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
+  '321b': [
+    { action: 'ex gloves', label: 'Examine Gloves', icon: 'hand', className: 'bg-blue-600 hover:bg-blue-700' },
+    { action: 'grab gloves', label: 'Grab Gloves', icon: 'hand', className: 'bg-amber-500/80 hover:bg-amber-500' },
+  ],
+  '322': [
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-red-700/70 hover:bg-red-700/90' },
+  ],
+  '325': [
+    { action: 'flip switch', label: 'Flip Switch', icon: 'lever-up', className: 'bg-yellow-600/80 hover:bg-yellow-600' },
+  ],
+
+  // ==================== THE NEVERENDING MINE ====================
+  // Mine Level 0 carries the sign; every level below it carries the pick. The
+  // `mine here` buttons for 1-30 are merged in below rather than written out
+  // thirty times — the rooms differ only in how deep they are.
+  '311-00': [
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-yellow-700/70 hover:bg-yellow-700/90' },
+  ],
+}
+
+// Working the level you are standing on. Digging DOWN is the compass, not a
+// button: it is gated on carrying a pickaxe and pays ore on the way through
+// (see room-gates.js), which is what makes the shaft a mine rather than stairs.
+for (let depth = 1; depth <= 30; depth += 1) {
+  const roomId = `311-${String(depth).padStart(2, '0')}`
+  ROOM_ACTIONS[roomId] = [
+    ...(ROOM_ACTIONS[roomId] ?? []),
+    { action: 'mine here', label: 'Mine Here', icon: 'pickaxe', className: 'bg-amber-700 hover:bg-amber-600' },
+  ]
 }
 
 /**

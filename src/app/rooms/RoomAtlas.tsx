@@ -16,6 +16,9 @@ export type MapId =
   | 'forest_underground'
   | 'red_town'
   | 'red_town_sewers'
+  | 'rocky_flats'
+  | 'rocky_flats_underground'
+  | 'neverending_mine'
 export type ExitInfo = {
   direction: string
   to: string
@@ -231,6 +234,9 @@ const MAP_LABEL: Record<MapId, string> = {
   forest_underground: 'Forest Underground',
   red_town: 'Red Town',
   red_town_sewers: 'Red Town Sewers',
+  rocky_flats: 'Rocky Flats',
+  rocky_flats_underground: 'Rocky Flats Underground',
+  neverending_mine: 'Neverending Mine',
 }
 
 // Tab order shown across the top of the atlas — roughly the order a player meets
@@ -244,6 +250,9 @@ const MAP_ORDER: MapId[] = [
   'forest_underground',
   'red_town',
   'red_town_sewers',
+  'rocky_flats',
+  'rocky_flats_underground',
+  'neverending_mine',
 ]
 
 // Greedy word-wrap so a room's full name fits inside the card without ellipsis.

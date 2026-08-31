@@ -12,10 +12,15 @@
 // meant threading a new branch through the whole enemy-attack block and the
 // ordering between perks was implicit in the source order.
 //
-// To add a special later (bite, rage, crit, heal, poison…): add an entry here
+// To add a special later (heal, poison, steal, multi-hit…): add an entry here
 // and slot its id into SPECIAL_PRIORITY. Damage-shaped specials implement
 // `rollDamage`; specials that do something other than raw damage will need a
 // resolution hook in battle-calculator, but the selection step stays the same.
+//
+// `bypassesDefense: true` marks the one such hook that exists today: the
+// original's "pure" damage, where the number the enemy rolls is the number you
+// take and your DEF never enters the arithmetic. battle-calculator reports the
+// block as 0 on those turns so the formula the player reads stays honest.
 
 const ENEMY_SPECIALS = {
   power: {
@@ -32,12 +37,62 @@ const ENEMY_SPECIALS = {
       return { rolls, raw: rolls[0] + rolls[1] + rolls[2] }
     },
   },
+  crit: {
+    id: 'crit',
+    name: 'Critical Attack',
+    // 1/10 — `$enemycritattack = rand(1, 10); ... == 1`.
+    chance: 1 / 10,
+    // Ten independent ATT rolls summed, blocked once. Averages 5x ATT, which is
+    // why it is rare: a critical from Red Beard or a Stone Assassin ends most
+    // fights that were already going badly.
+    rollDamage: (enemy, rand) => {
+      const rolls = Array.from({ length: 10 }, () => rand(0, enemy.att))
+      return { rolls, raw: rolls.reduce((sum, r) => sum + r, 0) }
+    },
+  },
+  rage: {
+    id: 'rage',
+    name: 'Rage',
+    // 1/5 — `$enemyrage = rand(1, 5); ... == 1`.
+    chance: 1 / 5,
+    // A 2-to-4 hit combo at FULL attack each, with no roll and no block. The
+    // Minotaur's whole reputation: `$edamagetotal = $enemyatt * $rageCombo`.
+    bypassesDefense: true,
+    rollDamage: (enemy, rand) => {
+      const hits = rand(2, 4)
+      const rolls = Array.from({ length: hits }, () => enemy.att)
+      return { rolls, raw: enemy.att * hits }
+    },
+  },
+  bite: {
+    id: 'bite',
+    name: 'Bite',
+    // 1/5 — `$enemybite = rand(1, 5); ... == 1`.
+    chance: 1 / 5,
+    // Two hits at full attack, pure. Rats, skeevers and the War Turtle all carry
+    // it, and it is what makes an ordinary-looking mine rat dangerous.
+    bypassesDefense: true,
+    rollDamage: (enemy) => ({ rolls: [enemy.att, enemy.att], raw: enemy.att * 2 }),
+  },
+  pure: {
+    id: 'pure',
+    name: 'Pure Attack',
+    // Not a proc: the original's `ePureA` is a standing property that replaced
+    // the damage line on EVERY attack (`$edamagetotal = $enemyatt`). Declared
+    // here at chance 1 so it flows through the same selection step as the rest.
+    chance: 1,
+    bypassesDefense: true,
+    rollDamage: (enemy) => ({ rolls: [enemy.att], raw: enemy.att }),
+  },
 }
 
 // Order specials are considered in when an enemy carries more than one.
 // Earlier entries win the attack. Later perks slot in here rather than into
 // combat's control flow.
-const SPECIAL_PRIORITY = ['power']
+// This is the original's own if/else order in battle.php: crit, then rage, then
+// power, then bite, with the standing pure modifier last so a Cyclops that also
+// rolled something rarer still shows the rarer thing.
+const SPECIAL_PRIORITY = ['crit', 'rage', 'power', 'bite', 'pure']
 
 /**
  * The special ids an enemy definition declares, filtered to ones that exist.

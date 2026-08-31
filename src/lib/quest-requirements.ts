@@ -20,6 +20,7 @@ export type QuestRequirement = {
   slot?: string
   notDefault?: boolean
   enemySlug?: string
+  enemySlugs?: string[]
   minLevel?: number
   flag?: string
 }
@@ -110,6 +111,25 @@ export function getRequirementProgress(
       current: Math.min(current, total),
       total,
       label: `${req.displayName ?? humanizeSlug(req.enemySlug ?? '')} defeated`,
+      countable: true,
+    }
+  }
+
+  if (req.type === 'killCountGroup') {
+    // One line per family: kills across every slug in the group are summed, so
+    // "10 Goblins" counts goblins, goblin bandits, hob goblins and the chief.
+    const total = req.count ?? 1
+    const slugs = req.enemySlugs ?? []
+    const current = killList
+      .filter((k) => slugs.includes(k.monster))
+      .reduce((sum, k) => sum + k.kills, 0)
+    return {
+      ...base,
+      key: `kill-group-${index}`,
+      met: current >= total,
+      current: Math.min(current, total),
+      total,
+      label: `${req.displayName ?? 'Enemies'} defeated`,
       countable: true,
     }
   }

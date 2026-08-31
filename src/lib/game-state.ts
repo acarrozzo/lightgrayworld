@@ -51,6 +51,9 @@ export interface Player {
   forestUndergroundMap?: boolean
   redTownMap?: boolean
   redTownSewersMap?: boolean
+  rockyFlatsMap?: boolean
+  rockyFlatsUndergroundMap?: boolean
+  neverEndingMineMap?: boolean
   roomZeroMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean

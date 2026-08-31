@@ -6,7 +6,7 @@ import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { getPlayerInventory } from '@/lib/game-engine/services/inventory-service'
 import { getBuyPrice } from '@/lib/shop-pricing'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { getShop, shopSellsItem } = require('@/lib/game-data/shops')
+const { getShop, shopSellsItem, shopRequiresQuest } = require('@/lib/game-data/shops')
 
 async function handleBuy(request: AuthenticatedRequest) {
   try {
@@ -57,6 +57,23 @@ async function handleBuy(request: AuthenticatedRequest) {
         { success: false, message: `${shop.name} does not sell that.` },
         { status: 400 }
       )
+    }
+
+    // A guild stall only trades with members. The room action hides the stock
+    // list from everyone else, but hiding it is not what makes the purchase
+    // illegal — this is. Standing in the room is not enough.
+    const requiredQuest = shopRequiresQuest(player.currentRoom)
+    if (requiredQuest) {
+      const membership = await prisma.questProgress.findUnique({
+        where: { userId_questId: { userId: request.user.id, questId: requiredQuest } },
+        select: { completed: true },
+      })
+      if (!membership?.completed) {
+        return NextResponse.json(
+          { success: false, message: `${shop.name} only trades with guild members.` },
+          { status: 403 }
+        )
+      }
     }
 
     // Get item template

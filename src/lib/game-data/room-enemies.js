@@ -1588,6 +1588,805 @@ const ROOM_ENEMIES = {
   },
   // Room 232x (A Sewer Oasis) is deliberately absent: the original set its danger
   // level to 0 and gave it no battle set — it is the one safe room down here.
+
+  // ==================== ROCKY FLATS ====================
+  // The open-road set (legacy battle-sets/rockyflatspath.php): rand(1,50) with
+  // sixteen live outcomes, so a 32% chance of meeting something and a very wide
+  // spread when you do. Kobolds occupied two of the sixteen slots, which is the
+  // only weight above 1. Every stone, mud and grass path on the map runs it —
+  // the village, the treasury, the shops, the mine head and the arena do not.
+  // Room 301 — the stone path in from Red Town.
+  '301': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 302 — the stone path.
+  '302': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 304 — the stone path north.
+  '304': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 305 — the stone path up to the Grassy Field.
+  '305': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 312 — the muddy path west of the Crossroads.
+  '312': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 313 — the muddy path.
+  '313': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 314 — the muddy path below the Abandoned Mine.
+  '314': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 315 — the Abandoned Mine entrance.
+  '315': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 316 — the muddy path toward the Swamp.
+  '316': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 317 — the Dry Grass Clearing.
+  '317': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 318 — the grass path below the Red Fort.
+  '318': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 319 — the grass path by the Grotto.
+  '319': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+  // Room 320 — the grass path toward the Savannah.
+  '320': {
+    probabilistic: true,
+    spawnChance: 0.32,
+    enemies: [
+      { slug: 'thief', weight: 1 },
+      { slug: 'red-bandit', weight: 1 },
+      { slug: 'goblin', weight: 1 },
+      { slug: 'goblin-bandit', weight: 1 },
+      { slug: 'snake', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'kobold', weight: 2 },
+      { slug: 'golden-bat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'hob-goblin', weight: 1 },
+      { slug: 'orc', weight: 1 },
+      { slug: 'ogre', weight: 1 },
+      { slug: 'flying-kobold', weight: 1 },
+      { slug: 'troll', weight: 1 },
+    ],
+  },
+
+  // ---------- The Abandoned Mine ----------
+  // The Dwarf Captain's Gold Key quest lives down here. Its three targets are
+  // one room apart and each one owns its room: skeevers on the tracks, dartwings
+  // in the nests, the worm in the lair.
+  // Abandoned Mine EXIT — legacy rand(1,12) with six live outcomes. The sixth
+  // set the enemy to 'Bloody Skeever', which battle-initialize.php never
+  // defined and the kill list never tracked; the Rabid Skeever the room's
+  // own name points at is used instead.
+  '315a': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [
+      { slug: 'giant-rat', weight: 1 },
+      { slug: 'skeleton', weight: 1 },
+      { slug: 'imp', weight: 1 },
+      { slug: 'kobold', weight: 1 },
+      { slug: 'salamander', weight: 1 },
+      { slug: 'rabid-skeever', weight: 1 },
+    ],
+  },
+  // Bloody Skeever Tracks — rand(1,10), 1-6 skeever and 7 dartwing.
+  '315b': {
+    probabilistic: true,
+    spawnChance: 0.7,
+    enemies: [
+      { slug: 'rabid-skeever', weight: 6 },
+      { slug: 'bleeding-dartwing', weight: 1 },
+    ],
+  },
+  // Bleeding Nests — the same roll with the two swapped.
+  '315c': {
+    probabilistic: true,
+    spawnChance: 0.7,
+    enemies: [
+      { slug: 'bleeding-dartwing', weight: 6 },
+      { slug: 'rabid-skeever', weight: 1 },
+    ],
+  },
+  // Lair of the Worm — nothing else lives here.
+  '315d': {
+    probabilistic: true,
+    spawnChance: 0.7,
+    enemies: [
+      { slug: 'mongolian-death-worm', weight: 100 },
+    ],
+  },
+
+  // ---------- The Stone Grotto ----------
+  // Stone Grotto — the missing dwarf axeman is the Captain's third quest, and
+  // this is where he was last seen. 3-in-10 him, 1-in-10 a demon wing.
+  '321': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'possessed-axeman', weight: 3 },
+      { slug: 'demon-wing', weight: 1 },
+    ],
+  },
+  // Under the Grotto — legacy rand(1,15), 1-4 demon wing and 5 a golden bat.
+  '321b': {
+    probabilistic: true,
+    spawnChance: 0.3333333333333333,
+    enemies: [
+      { slug: 'demon-wing', weight: 4 },
+      { slug: 'golden-bat', weight: 1 },
+    ],
+  },
+
+  // ---------- The Red Fort ----------
+  // Bandits thicken as you go west, then two named rooms at the end: the Butcher
+  // in the kitchen and Red Beard in his war room. Both are Mining Guild business.
+  // Red Fort Courtyard.
+  '322': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'red-bandit', weight: 3 },
+      { slug: 'bandit-marauder', weight: 1 },
+    ],
+  },
+  // Red Fort Hallway.
+  '323': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'bandit-marauder', weight: 2 },
+      { slug: 'red-bandit', weight: 2 },
+    ],
+  },
+  // Red Fort Barracks.
+  '324': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'bandit-marauder', weight: 3 },
+      { slug: 'red-bandit', weight: 1 },
+    ],
+  },
+  // Red Fort Kitchen — the Butcher, and a 7-in-10 chance he is in.
+  '325': {
+    probabilistic: true,
+    spawnChance: 0.7,
+    enemies: [
+      { slug: 'butcher', weight: 100 },
+    ],
+  },
+  // Red Beard's War Room. Quest 31 — Mining Guild membership, and with it the
+  // Neverending Mine — turns on this one kill.
+  '326': {
+    probabilistic: true,
+    spawnChance: 0.7,
+    enemies: [
+      { slug: 'red-beard', weight: 100 },
+    ],
+  },
+
+  // ==================== THE NEVERENDING MINE ====================
+  // Three tiers of nine ordinary levels, each running the same shape: a 4-in-10
+  // chance of a fight, three common shapes taking one slot each, and a fourth
+  // slot that rolls one of five elites. Weights are out of 20 so the elites land
+  // at 1/20 apiece, which is the original's rand(1,10) then rand(1,5).
+  //
+  // Every fifth level is a boss instead, always present, exactly as the original
+  // left them after it turned their odds up to 100%. Mine Level 0 is safe.
+  // Iron tier, upper (legacy battle-sets/mine01.php) — Mine Levels 1-4.
+  '311-01': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'iron-rat', weight: 5 },
+      { slug: 'iron-crab', weight: 5 },
+      { slug: 'iron-scorpion', weight: 5 },
+      { slug: 'slag-beast', weight: 1 },
+      { slug: 'iron-gator', weight: 1 },
+      { slug: 'iron-golem', weight: 1 },
+      { slug: 'iron-cobra', weight: 1 },
+      { slug: 'earth-golem', weight: 1 },
+    ],
+  },
+  '311-02': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'iron-rat', weight: 5 },
+      { slug: 'iron-crab', weight: 5 },
+      { slug: 'iron-scorpion', weight: 5 },
+      { slug: 'slag-beast', weight: 1 },
+      { slug: 'iron-gator', weight: 1 },
+      { slug: 'iron-golem', weight: 1 },
+      { slug: 'iron-cobra', weight: 1 },
+      { slug: 'earth-golem', weight: 1 },
+    ],
+  },
+  '311-03': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'iron-rat', weight: 5 },
+      { slug: 'iron-crab', weight: 5 },
+      { slug: 'iron-scorpion', weight: 5 },
+      { slug: 'slag-beast', weight: 1 },
+      { slug: 'iron-gator', weight: 1 },
+      { slug: 'iron-golem', weight: 1 },
+      { slug: 'iron-cobra', weight: 1 },
+      { slug: 'earth-golem', weight: 1 },
+    ],
+  },
+  '311-04': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'iron-rat', weight: 5 },
+      { slug: 'iron-crab', weight: 5 },
+      { slug: 'iron-scorpion', weight: 5 },
+      { slug: 'slag-beast', weight: 1 },
+      { slug: 'iron-gator', weight: 1 },
+      { slug: 'iron-golem', weight: 1 },
+      { slug: 'iron-cobra', weight: 1 },
+      { slug: 'earth-golem', weight: 1 },
+    ],
+  },
+  // Mine Level 5 — the War Turtle. Sub-boss, always present.
+  '311-05': {
+    enemies: ['war-turtle'],
+  },
+  // Iron tier, lower (mine06.php) — the same eight, with the elites promoted to
+  // the common slots. Mine Levels 6-9.
+  '311-06': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'slag-beast', weight: 5 },
+      { slug: 'iron-gator', weight: 5 },
+      { slug: 'iron-golem', weight: 5 },
+      { slug: 'iron-rat', weight: 1 },
+      { slug: 'iron-crab', weight: 1 },
+      { slug: 'iron-scorpion', weight: 1 },
+      { slug: 'iron-cobra', weight: 1 },
+      { slug: 'earth-golem', weight: 1 },
+    ],
+  },
+  '311-07': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'slag-beast', weight: 5 },
+      { slug: 'iron-gator', weight: 5 },
+      { slug: 'iron-golem', weight: 5 },
+      { slug: 'iron-rat', weight: 1 },
+      { slug: 'iron-crab', weight: 1 },
+      { slug: 'iron-scorpion', weight: 1 },
+      { slug: 'iron-cobra', weight: 1 },
+      { slug: 'earth-golem', weight: 1 },
+    ],
+  },
+  '311-08': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'slag-beast', weight: 5 },
+      { slug: 'iron-gator', weight: 5 },
+      { slug: 'iron-golem', weight: 5 },
+      { slug: 'iron-rat', weight: 1 },
+      { slug: 'iron-crab', weight: 1 },
+      { slug: 'iron-scorpion', weight: 1 },
+      { slug: 'iron-cobra', weight: 1 },
+      { slug: 'earth-golem', weight: 1 },
+    ],
+  },
+  '311-09': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'slag-beast', weight: 5 },
+      { slug: 'iron-gator', weight: 5 },
+      { slug: 'iron-golem', weight: 5 },
+      { slug: 'iron-rat', weight: 1 },
+      { slug: 'iron-crab', weight: 1 },
+      { slug: 'iron-scorpion', weight: 1 },
+      { slug: 'iron-cobra', weight: 1 },
+      { slug: 'earth-golem', weight: 1 },
+    ],
+  },
+  // Mine Level 10 — the Phoenix. Mining Guild quest 32, and the reason the quest
+  // text warns you: it flies, so melee cannot touch it. Bring a bow.
+  '311-10': {
+    enemies: ['phoenix'],
+  },
+  // Steel tier, upper (mine11.php) — Mine Levels 11-14. Coal starts at 10.
+  '311-11': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'steel-rat', weight: 5 },
+      { slug: 'steel-crab', weight: 5 },
+      { slug: 'steel-scorpion', weight: 5 },
+      { slug: 'black-frog', weight: 1 },
+      { slug: 'steel-gator', weight: 1 },
+      { slug: 'steel-golem', weight: 1 },
+      { slug: 'stone-assassin', weight: 1 },
+      { slug: 'gamma-monk', weight: 1 },
+    ],
+  },
+  '311-12': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'steel-rat', weight: 5 },
+      { slug: 'steel-crab', weight: 5 },
+      { slug: 'steel-scorpion', weight: 5 },
+      { slug: 'black-frog', weight: 1 },
+      { slug: 'steel-gator', weight: 1 },
+      { slug: 'steel-golem', weight: 1 },
+      { slug: 'stone-assassin', weight: 1 },
+      { slug: 'gamma-monk', weight: 1 },
+    ],
+  },
+  '311-13': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'steel-rat', weight: 5 },
+      { slug: 'steel-crab', weight: 5 },
+      { slug: 'steel-scorpion', weight: 5 },
+      { slug: 'black-frog', weight: 1 },
+      { slug: 'steel-gator', weight: 1 },
+      { slug: 'steel-golem', weight: 1 },
+      { slug: 'stone-assassin', weight: 1 },
+      { slug: 'gamma-monk', weight: 1 },
+    ],
+  },
+  '311-14': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'steel-rat', weight: 5 },
+      { slug: 'steel-crab', weight: 5 },
+      { slug: 'steel-scorpion', weight: 5 },
+      { slug: 'black-frog', weight: 1 },
+      { slug: 'steel-gator', weight: 1 },
+      { slug: 'steel-golem', weight: 1 },
+      { slug: 'stone-assassin', weight: 1 },
+      { slug: 'gamma-monk', weight: 1 },
+    ],
+  },
+  // Mine Level 15 — the Ulfberht. Sub-boss.
+  '311-15': {
+    enemies: ['ulfberht'],
+  },
+  // Steel tier, lower (mine16.php) — Mine Levels 16-19.
+  '311-16': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'black-frog', weight: 5 },
+      { slug: 'steel-gator', weight: 5 },
+      { slug: 'steel-golem', weight: 5 },
+      { slug: 'steel-rat', weight: 1 },
+      { slug: 'steel-crab', weight: 1 },
+      { slug: 'steel-scorpion', weight: 1 },
+      { slug: 'stone-assassin', weight: 1 },
+      { slug: 'gamma-monk', weight: 1 },
+    ],
+  },
+  '311-17': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'black-frog', weight: 5 },
+      { slug: 'steel-gator', weight: 5 },
+      { slug: 'steel-golem', weight: 5 },
+      { slug: 'steel-rat', weight: 1 },
+      { slug: 'steel-crab', weight: 1 },
+      { slug: 'steel-scorpion', weight: 1 },
+      { slug: 'stone-assassin', weight: 1 },
+      { slug: 'gamma-monk', weight: 1 },
+    ],
+  },
+  '311-18': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'black-frog', weight: 5 },
+      { slug: 'steel-gator', weight: 5 },
+      { slug: 'steel-golem', weight: 5 },
+      { slug: 'steel-rat', weight: 1 },
+      { slug: 'steel-crab', weight: 1 },
+      { slug: 'steel-scorpion', weight: 1 },
+      { slug: 'stone-assassin', weight: 1 },
+      { slug: 'gamma-monk', weight: 1 },
+    ],
+  },
+  '311-19': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'black-frog', weight: 5 },
+      { slug: 'steel-gator', weight: 5 },
+      { slug: 'steel-golem', weight: 5 },
+      { slug: 'steel-rat', weight: 1 },
+      { slug: 'steel-crab', weight: 1 },
+      { slug: 'steel-scorpion', weight: 1 },
+      { slug: 'stone-assassin', weight: 1 },
+      { slug: 'gamma-monk', weight: 1 },
+    ],
+  },
+  // Mine Level 20 — the Cyclops. Mining Guild quest 33. Its attacks are pure:
+  // full ATT every hit, and your DEF never enters the sum.
+  '311-20': {
+    enemies: ['cyclops'],
+  },
+  // Mithril tier, upper (mine21.php) — Mine Levels 21-24. Mithril starts at 20.
+  '311-21': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'mithril-rat', weight: 5 },
+      { slug: 'mithril-crab', weight: 5 },
+      { slug: 'mithril-scorpion', weight: 5 },
+      { slug: 'blue-frog', weight: 1 },
+      { slug: 'mithril-gator', weight: 1 },
+      { slug: 'mithril-golem', weight: 1 },
+      { slug: 'cosmic-mage', weight: 1 },
+      { slug: 'carbon-beast', weight: 1 },
+    ],
+  },
+  '311-22': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'mithril-rat', weight: 5 },
+      { slug: 'mithril-crab', weight: 5 },
+      { slug: 'mithril-scorpion', weight: 5 },
+      { slug: 'blue-frog', weight: 1 },
+      { slug: 'mithril-gator', weight: 1 },
+      { slug: 'mithril-golem', weight: 1 },
+      { slug: 'cosmic-mage', weight: 1 },
+      { slug: 'carbon-beast', weight: 1 },
+    ],
+  },
+  '311-23': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'mithril-rat', weight: 5 },
+      { slug: 'mithril-crab', weight: 5 },
+      { slug: 'mithril-scorpion', weight: 5 },
+      { slug: 'blue-frog', weight: 1 },
+      { slug: 'mithril-gator', weight: 1 },
+      { slug: 'mithril-golem', weight: 1 },
+      { slug: 'cosmic-mage', weight: 1 },
+      { slug: 'carbon-beast', weight: 1 },
+    ],
+  },
+  '311-24': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'mithril-rat', weight: 5 },
+      { slug: 'mithril-crab', weight: 5 },
+      { slug: 'mithril-scorpion', weight: 5 },
+      { slug: 'blue-frog', weight: 1 },
+      { slug: 'mithril-gator', weight: 1 },
+      { slug: 'mithril-golem', weight: 1 },
+      { slug: 'cosmic-mage', weight: 1 },
+      { slug: 'carbon-beast', weight: 1 },
+    ],
+  },
+  // Mine Level 25 — the Griffin. Sub-boss, and flying.
+  '311-25': {
+    enemies: ['griffin'],
+  },
+  // Mithril tier, lower (mine26.php) — Mine Levels 26-29.
+  '311-26': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'blue-frog', weight: 5 },
+      { slug: 'mithril-gator', weight: 5 },
+      { slug: 'mithril-golem', weight: 5 },
+      { slug: 'mithril-rat', weight: 1 },
+      { slug: 'mithril-crab', weight: 1 },
+      { slug: 'mithril-scorpion', weight: 1 },
+      { slug: 'cosmic-mage', weight: 1 },
+      { slug: 'carbon-beast', weight: 1 },
+    ],
+  },
+  '311-27': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'blue-frog', weight: 5 },
+      { slug: 'mithril-gator', weight: 5 },
+      { slug: 'mithril-golem', weight: 5 },
+      { slug: 'mithril-rat', weight: 1 },
+      { slug: 'mithril-crab', weight: 1 },
+      { slug: 'mithril-scorpion', weight: 1 },
+      { slug: 'cosmic-mage', weight: 1 },
+      { slug: 'carbon-beast', weight: 1 },
+    ],
+  },
+  '311-28': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'blue-frog', weight: 5 },
+      { slug: 'mithril-gator', weight: 5 },
+      { slug: 'mithril-golem', weight: 5 },
+      { slug: 'mithril-rat', weight: 1 },
+      { slug: 'mithril-crab', weight: 1 },
+      { slug: 'mithril-scorpion', weight: 1 },
+      { slug: 'cosmic-mage', weight: 1 },
+      { slug: 'carbon-beast', weight: 1 },
+    ],
+  },
+  '311-29': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [
+      { slug: 'blue-frog', weight: 5 },
+      { slug: 'mithril-gator', weight: 5 },
+      { slug: 'mithril-golem', weight: 5 },
+      { slug: 'mithril-rat', weight: 1 },
+      { slug: 'mithril-crab', weight: 1 },
+      { slug: 'mithril-scorpion', weight: 1 },
+      { slug: 'cosmic-mage', weight: 1 },
+      { slug: 'carbon-beast', weight: 1 },
+    ],
+  },
+  // Mine Level 30 — the Minotaur. Mining Guild quest 34, and the bottom of the mine.
+  '311-30': {
+    enemies: ['minotaur'],
+  },
+
+  // ==================== FOREST (Rocky Flats supporting change) ====================
+  // The Hill Ogre. The original put it behind the hill at r100/room110.php on a
+  // 3-in-10 roll and it was the only thing in the room; the Rocky Flats Bounty
+  // Board's B-Squad quest asks for its head, so the room it lives in gets it.
+  '110': {
+    probabilistic: true,
+    spawnChance: 0.3,
+    enemies: [
+      { slug: 'hill-ogre', weight: 100 },
+    ],
+  },
 }
 
 function getRoomEnemies(roomId) {

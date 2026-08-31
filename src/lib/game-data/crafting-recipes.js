@@ -29,6 +29,9 @@
  * @typedef {Object} RecipeTool
  * @property {string} slug  Item template slug that must be held (not consumed).
  * @property {string} name  Display name shown on the card and in the refusal.
+ * @property {string[]} [anyOf] Slugs that satisfy the requirement in place of
+ *                            `slug` — a better tool standing in for the named
+ *                            one (a steel hammer works iron).
  *
  * @typedef {Object} RecipeUnlock
  * @property {string} questId  Quest that must have been started or completed.
@@ -60,8 +63,12 @@
  * renders an "Open Crafting" button and registers a `craft` handler — but was
  * missing from this list, so every craft attempted there was refused with "You
  * cannot craft that here."
+ *
+ * 308 is the Mining Guild forge in the Rocky Flats. Any crafting fire works iron
+ * once the Guild Leader has taught you how, exactly as in the original — the
+ * guild's own forge is simply the one you are standing next to when he does.
  */
-const CRAFTING_ROOMS = ['003', '021', '024', '210']
+const CRAFTING_ROOMS = ['003', '021', '024', '210', '308']
 
 /**
  * Crafting stations, in display order. Recipes are grouped under these as
@@ -75,6 +82,22 @@ const CRAFTING_STATIONS = [
 
 /** Shared by every leather recipe — one tool, one unlock, declared once. */
 const LEATHER_TOOL = { slug: 'hammer', name: 'Hammer' }
+
+/**
+ * Shared by every iron recipe. `anyOf` is the original's own rule: the check was
+ * `ironhammer >= 1 || steelhammer >= 1 || mithrilhammer >= 1`, so a better
+ * hammer never stopped you working a softer metal.
+ */
+const IRON_HAMMER = {
+  slug: 'iron-hammer',
+  name: 'Iron Hammer',
+  anyOf: ['steel-hammer', 'mithril-hammer'],
+}
+const IRON_UNLOCK = {
+  questId: 'quest_miningguild_001',
+  requireCompleted: true,
+  hint: 'To craft with iron, defeat the Phoenix at Mine Level 10 for the Mining Guild.',
+}
 const LEATHER_UNLOCK = {
   questId: 'quest_freddie_intro',
   hint: "To craft with leather, find Freddie's Cow Farm on the Forest Path.",
@@ -231,6 +254,281 @@ const CRAFTING_RECIPES = [
     unlock: LEATHER_UNLOCK,
     inputs: [{ slug: 'leather', qty: 10, name: 'Leather', icon: 'leather' }],
     output: { slug: 'leather-armor', qty: 1, name: 'Leather Armor', effect: '+4 STR, +10 DEF', max: 999 },
+  },
+
+  // ==================== BASIC TOOLS ====================
+  // Three stone and a length of wood, no tool and no unlock — the original had
+  // these from the moment you could craft at all, and they matter more now that
+  // the Neverending Mine breaks a pickaxe roughly every fifty swings.
+  {
+    id: 'pickaxe',
+    label: 'Pickaxe',
+    outputIcon: 'pickaxe',
+    station: 'crafting-table',
+    blurb: 'Knap a stone head onto a haft. Mines stone, and nothing harder.',
+    inputs: [{ slug: 'stone', qty: 3, name: 'Stone', icon: 'stone' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'pickaxe', qty: 1, name: 'Pickaxe', effect: 'Mines stone', max: 10 },
+  },
+  {
+    id: 'hammer',
+    label: 'Hammer',
+    outputIcon: 'craft',
+    station: 'crafting-table',
+    blurb: 'A plain forge hammer. Needed to work leather.',
+    inputs: [{ slug: 'stone', qty: 3, name: 'Stone', icon: 'stone' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'hammer', qty: 1, name: 'Hammer', effect: 'Crafting tool', max: 1 },
+  },
+  {
+    id: 'hatchet',
+    label: 'Hatchet',
+    outputIcon: 'axelog',
+    station: 'crafting-table',
+    blurb: 'A stone-headed hatchet for felling trees.',
+    inputs: [{ slug: 'stone', qty: 3, name: 'Stone', icon: 'stone' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'hatchet', qty: 1, name: 'Hatchet', effect: 'Chops wood', max: 1 },
+  },
+
+
+  // ==================== IRON ====================
+  // The Mining Guild's tier, and the reason to join it. Unlocked by putting the
+  // Phoenix down at Mine Level 10 — the Guild Leader hands you the iron hammer
+  // with the technique, and a steel or mithril hammer works iron just as well.
+  //
+  // The iron hammer itself is the one exception: it asks for no hammer, so a
+  // player who loses theirs can forge a replacement rather than being locked out
+  // of their own tier.
+  {
+    id: 'iron-hammer',
+    label: 'Iron Hammer',
+    outputIcon: 'craft',
+    station: 'crafting-table',
+    blurb: 'A replacement forge hammer, in case the first one goes missing.',
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-hammer', qty: 1, name: 'Iron Hammer', effect: 'Works iron at a forge', max: 1 },
+  },
+
+  {
+    id: 'iron-pickaxe',
+    label: 'Iron Pickaxe',
+    outputIcon: 'pickaxe',
+    station: 'crafting-table',
+    blurb: 'Frees the iron a plain pick only scratches.',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-pickaxe', qty: 1, name: 'Iron Pickaxe', effect: 'Mines iron and stone', max: 999 },
+  },
+  {
+    id: 'iron-hatchet',
+    label: 'Iron Hatchet',
+    outputIcon: 'axelog',
+    station: 'crafting-table',
+    blurb: 'Bites deeper than a plain hatchet, and brings back twice the wood.',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-hatchet', qty: 1, name: 'Iron Hatchet', effect: 'Chops twice the wood', max: 999 },
+  },
+  {
+    id: 'iron-dagger',
+    label: 'Iron Dagger',
+    outputIcon: 'equipment-irondagger',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 1, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-dagger', qty: 1, name: 'Iron Dagger', effect: '+8 STR', max: 999 },
+  },
+  {
+    id: 'iron-boomerang',
+    label: 'Iron Boomerang',
+    outputIcon: 'equipment-ironboomerang',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 5, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-boomerang', qty: 1, name: 'Iron Boomerang', effect: '+15 DEX', max: 999 },
+  },
+  {
+    id: 'iron-sword',
+    label: 'Iron Sword',
+    outputIcon: 'equipment-ironsword',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 7, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-sword', qty: 1, name: 'Iron Sword', effect: '+14 STR', max: 999 },
+  },
+  {
+    id: 'iron-staff',
+    label: 'Iron Staff',
+    outputIcon: 'equipment-ironstaff',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 7, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-staff', qty: 1, name: 'Iron Staff', effect: '+10 MAG, +3 STR', max: 999 },
+  },
+  {
+    id: 'iron-bow',
+    label: 'Iron Bow',
+    outputIcon: 'equipment-ironbow',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 7, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-bow', qty: 1, name: 'Iron Bow', effect: '+18 DEX', max: 999 },
+  },
+  {
+    id: 'iron-chakram',
+    label: 'Iron Chakram',
+    outputIcon: 'equipment-ironchakram',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 7, name: 'Iron', icon: 'iron' }, { slug: 'gray-matter', qty: 1, name: 'Gray Matter', icon: 'gray-matter' }],
+    output: { slug: 'iron-chakram', qty: 1, name: 'Iron Chakram', effect: '+15 DEX, +15 MAG', max: 999 },
+  },
+  {
+    id: 'iron-maul',
+    label: 'Iron Maul',
+    outputIcon: 'equipment-ironmaul',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 10, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-maul', qty: 1, name: 'Iron Maul', effect: '+22 STR, +10 DEF', max: 999 },
+  },
+  {
+    id: 'iron-crossbow',
+    label: 'Iron Crossbow',
+    outputIcon: 'equipment-ironcrossbow',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 10, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-crossbow', qty: 1, name: 'Iron Crossbow', effect: '+30 DEX', max: 999 },
+  },
+  {
+    id: 'iron-nunchaku',
+    label: 'Iron Nunchaku',
+    outputIcon: 'equipment-ironnunchaku',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 10, name: 'Iron', icon: 'iron' }, { slug: 'gray-matter', qty: 1, name: 'Gray Matter', icon: 'gray-matter' }],
+    output: { slug: 'iron-nunchaku', qty: 1, name: 'Iron Nunchaku', effect: '+25 STR, +25 MAG', max: 999 },
+  },
+  {
+    id: 'iron-2h-sword',
+    label: 'Iron 2H Sword',
+    outputIcon: 'equipment-iron2hsword',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 15, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-2h-sword', qty: 1, name: 'Iron 2H Sword', effect: '+25 STR', max: 999 },
+  },
+  {
+    id: 'iron-battle-staff',
+    label: 'Iron Battle Staff',
+    outputIcon: 'equipment-ironbattlestaff',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 15, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'iron-battle-staff', qty: 1, name: 'Iron Battle Staff', effect: '+12 MAG, +12 STR', max: 999 },
+  },
+  {
+    id: 'iron-hood',
+    label: 'Iron Hood',
+    outputIcon: 'iron',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }],
+    output: { slug: 'iron-hood', qty: 1, name: 'Iron Hood', effect: '+3 STR, +3 DEX, +3 DEF', max: 999 },
+  },
+  {
+    id: 'iron-gloves',
+    label: 'Iron Gloves',
+    outputIcon: 'iron',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }],
+    output: { slug: 'iron-gloves', qty: 1, name: 'Iron Gloves', effect: '+5 STR, +10 DEF', max: 999 },
+  },
+  {
+    id: 'iron-boots',
+    label: 'Iron Boots',
+    outputIcon: 'iron',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }],
+    output: { slug: 'iron-boots', qty: 1, name: 'Iron Boots', effect: '+20 DEF', max: 999 },
+  },
+  {
+    id: 'iron-helmet',
+    label: 'Iron Helmet',
+    outputIcon: 'iron',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 5, name: 'Iron', icon: 'iron' }],
+    output: { slug: 'iron-helmet', qty: 1, name: 'Iron Helmet', effect: '+20 DEF', max: 999 },
+  },
+  {
+    id: 'iron-gauntlets',
+    label: 'Iron Gauntlets',
+    outputIcon: 'iron',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 5, name: 'Iron', icon: 'iron' }],
+    output: { slug: 'iron-gauntlets', qty: 1, name: 'Iron Gauntlets', effect: '+20 DEF', max: 999 },
+  },
+  {
+    id: 'iron-cape',
+    label: 'Iron Cape',
+    outputIcon: 'iron',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 7, name: 'Iron', icon: 'iron' }],
+    output: { slug: 'iron-cape', qty: 1, name: 'Iron Cape', effect: '+15 STR', max: 999 },
+  },
+  {
+    id: 'iron-armor',
+    label: 'Iron Armor',
+    outputIcon: 'iron',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 10, name: 'Iron', icon: 'iron' }],
+    output: { slug: 'iron-armor', qty: 1, name: 'Iron Armor', effect: '+30 DEF', max: 999 },
+  },
+  {
+    id: 'iron-shield',
+    label: 'Iron Shield',
+    outputIcon: 'iron',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 10, name: 'Iron', icon: 'iron' }],
+    output: { slug: 'iron-shield', qty: 1, name: 'Iron Shield', effect: '+25 DEF', max: 999 },
+  },
+  {
+    id: 'iron-kite-shield',
+    label: 'Iron Kite Shield',
+    outputIcon: 'iron',
+    station: 'crafting-table',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [{ slug: 'iron', qty: 15, name: 'Iron', icon: 'iron' }],
+    output: { slug: 'iron-kite-shield', qty: 1, name: 'Iron Kite Shield', effect: '+40 DEF', max: 999 },
   },
 ]
 

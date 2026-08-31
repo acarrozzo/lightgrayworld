@@ -322,6 +322,27 @@ async function checkQuestRequirements(playerId, questId) {
           },
         }
       }
+    } else if (requirement.type === 'killCountGroup') {
+      // "Ten goblins" where a goblin is any of four things. The Rocky Flats
+      // Bounty Board asks for six families at once, and counting each family as
+      // one line rather than four keeps the goal readable and keeps the quest
+      // data declarative — the alternative is a quest-ID conditional in here.
+      const { enemySlugs = [], count = 1 } = requirement
+      const entries = await prisma.killList.findMany({
+        where: { userId: playerId, monster: { in: enemySlugs } },
+        select: { kills: true },
+      })
+      const current = entries.reduce((sum, e) => sum + e.kills, 0)
+      if (current < count) {
+        return {
+          met: false,
+          details: {
+            enemySlugs,
+            requiredKills: count,
+            currentKills: current,
+          },
+        }
+      }
     } else if (requirement.type === 'hasEquippedInSlot') {
       const { slot, notDefault } = requirement
       if (!slot) {

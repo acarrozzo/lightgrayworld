@@ -96,7 +96,12 @@ function resolveEnemyAttack(battleState, otherCombatants) {
   // Defense is rolled ONCE against whatever raw damage the attack produced —
   // a Power Attack does not get blocked three times.
   // Negative DEF rolls negative, so enemyRaw - playerBlock grows — you take extra damage
-  const playerBlock = rand(0, effectiveDef)
+  //
+  // A `bypassesDefense` special (bite, rage, the Cyclops' standing pure attack)
+  // is the original's "pure" damage: the roll IS the damage. Report the block as
+  // 0 rather than rolling and discarding it, so the `( rolls ) − block = total`
+  // line the battle panel prints still adds up.
+  const playerBlock = special?.bypassesDefense ? 0 : rand(0, effectiveDef)
   return {
     enemyRaw,
     playerBlock,

@@ -7,6 +7,11 @@
  *                                            sale, and is the player standing in
  *                                            the shop that sells it?" check)
  *
+ * `requiresQuest`, where present, is the completed quest that opens the shop —
+ * guild membership, in every case so far. It lives here rather than on the room
+ * action because BOTH consumers have to honour it: hiding the stock list is not
+ * what makes a purchase illegal, the buy route refusing it is.
+ *
  * Prices are NOT listed here. A shop sells an item at its `ItemTemplate.value`
  * via shop-pricing.ts, so one item costs the same everywhere and a price can
  * never drift between the card the player sees and the gold they are charged.
@@ -15,7 +20,7 @@
  *
  * `stock` is ordered for display: weapons, then armour, then consumables.
  *
- * @typedef {{ name: string, stock: string[] }} Shop
+ * @typedef {{ name: string, stock: string[], requiresQuest?: string }} Shop
  * @type {Record<string, Shop>}
  */
 const SHOPS = {
@@ -86,10 +91,10 @@ const SHOPS = {
     ],
   },
 
-  // The Wizard's Guild stall. Guild membership is checked by the room action,
-  // not here — this is only the stock list.
+  // The Wizard's Guild stall, open to members only (`requiresQuest`).
   '225': {
     name: "Wizard's Guild Store",
+    requiresQuest: 'quest_wizardsguild_000',
     stock: [
       'wand',
       'wizard-staff',
@@ -107,9 +112,10 @@ const SHOPS = {
     ],
   },
 
-  // The Warrior's Guild stall, likewise gated by the room action.
+  // The Warrior's Guild stall, likewise members only.
   '226': {
     name: "Warrior's Guild Store",
+    requiresQuest: 'quest_warriorsguild_000',
     stock: [
       'iron-dagger',
       'iron-sword',
@@ -172,6 +178,51 @@ const SHOPS = {
     name: 'Shady Shop',
     stock: ['arrow', 'crossbow-bolt', 'reds', 'greens', 'blues', 'yellows', 'vapor-necklace'],
   },
+
+  // ==================== ROCKY FLATS ====================
+  // The Mining Guild's supply shop — the strange dwarf with the perfectly
+  // ordered display, consolidated into the guild hall along with the rest of the
+  // interior. Membership is checked by the room action, not here.
+  //
+  // Ordered as the original's list was: the pick and hammer of each tier
+  // together, cheapest tier first. A better pick digs a better seam; a better
+  // hammer works a better metal at the forge.
+  '308': {
+    name: 'Mining Guild Supply Shop',
+    requiresQuest: 'quest_miningguild_000',
+    stock: [
+      'pickaxe',
+      'hammer',
+      'iron-pickaxe',
+      'iron-hammer',
+      'steel-pickaxe',
+      'steel-hammer',
+      'mithril-pickaxe',
+      'mithril-hammer',
+    ],
+  },
+
+  // The Silver Shop on the north side of the Dwarf Village square. One very
+  // well-dressed dwarf selling exactly what he is wearing, at exactly the prices
+  // the Babylon Gardens chest and the Silver Vault are an alternative to.
+  '310': {
+    name: 'Silver Shop',
+    stock: [
+      'silver-sword',
+      'silver-2h-sword',
+      'silver-staff',
+      'silver-boomerang',
+      'silver-bow',
+      'silver-crossbow',
+      'silver-shield',
+      'silver-helmet',
+      'silver-breastplate',
+      'silver-gauntlets',
+      'silver-boots',
+      'silver-ring',
+      'silver-necklace',
+    ],
+  },
 }
 
 /** The shop standing in a room, or null. */
@@ -188,4 +239,9 @@ function shopSellsItem(roomId, itemSlug) {
   return !!shop && shop.stock.includes(itemSlug)
 }
 
-module.exports = { SHOPS, getShop, shopSellsItem }
+/** The quest that must be completed to trade here, or null if anyone may. */
+function shopRequiresQuest(roomId) {
+  return SHOPS[roomId]?.requiresQuest ?? null
+}
+
+module.exports = { SHOPS, getShop, shopSellsItem, shopRequiresQuest }

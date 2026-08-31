@@ -21,6 +21,18 @@ const KOBOLD_SWITCH = '115h-lever'
  */
 const COW_TOLL = '103-cowtoll'
 
+/**
+ * The Red Fort Kitchen's switch (325), which grinds the carved stone door open
+ * on the Grotto entrance a long way southeast of it (319 → 321). Session-scoped
+ * exactly like the original's `$_SESSION['grottoswitch']`: throw it, walk round
+ * to the Grotto, and it has closed again by your next session.
+ *
+ * The original also cleared the flag the moment you walked through, so a second
+ * trip in meant a second trip past the Butcher. That is kept — see the gate's
+ * `onPass` in room-gates.js.
+ */
+const GROTTO_SWITCH = '325-grottoswitch'
+
 function pullLever(playerId, leverId) {
   if (!activatedLevers.has(playerId)) {
     activatedLevers.set(playerId, new Set())
@@ -65,6 +77,14 @@ function getRoomStateNote(playerId, roomId) {
   if (roomId === '115e' && isLeverPulled(playerId, KOBOLD_SWITCH)) {
     return 'The west wall stands open onto a hidden chamber.'
   }
+  if (roomId === '325') {
+    return isLeverPulled(playerId, GROTTO_SWITCH)
+      ? 'The switch by the range is thrown. Something ground open a long way to the southeast.'
+      : 'A switch is set into the stone beside the range.'
+  }
+  if (roomId === '319' && isLeverPulled(playerId, GROTTO_SWITCH)) {
+    return 'The carved stone door stands open on the Grotto to the southwest.'
+  }
   return null
 }
 
@@ -78,6 +98,11 @@ function getRoomStateNote(playerId, roomId) {
 function getExitOverlay(playerId, roomId) {
   if (roomId === '115e' && !isLeverPulled(playerId, KOBOLD_SWITCH)) {
     return { west: null }
+  }
+  // The Grotto's carved door, likewise: 319 shows no southwest exit at all until
+  // the Red Fort Kitchen switch is thrown.
+  if (roomId === '319' && !isLeverPulled(playerId, GROTTO_SWITCH)) {
+    return { southwest: null }
   }
   return null
 }
@@ -103,6 +128,14 @@ function getRoomActionOverrides(playerId, roomId) {
         : { className: 'bg-yellow-600/80 hover:bg-yellow-600', icon: 'lever-up' },
     }
   }
+  if (roomId === '325') {
+    const pulled = isLeverPulled(playerId, GROTTO_SWITCH)
+    return {
+      'flip switch': pulled
+        ? { className: 'bg-green-700/80 hover:bg-green-700', icon: 'lever-down' }
+        : { className: 'bg-yellow-600/80 hover:bg-yellow-600', icon: 'lever-up' },
+    }
+  }
   return null
 }
 
@@ -116,4 +149,5 @@ module.exports = {
   getExitOverlay,
   KOBOLD_SWITCH,
   COW_TOLL,
+  GROTTO_SWITCH,
 }
