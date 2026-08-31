@@ -86,12 +86,15 @@ export default function ActionFlyout({ result, anchorRef, anchorRect, onDismiss 
     level: result.success === false ? 'error' : undefined,
   })
 
+  // Clicking anywhere on the flyout dismisses it, same as the × button. The ×
+  // stays as the visible affordance for keyboard/AT users (Escape works too).
   return createPortal(
     <div
       data-action-flyout
       role="status"
       aria-live="polite"
-      className="fixed z-[60] -translate-y-full animate-[flyoutFadeIn_0.2s_ease-out]"
+      onClick={onDismiss}
+      className="fixed z-[60] -translate-y-full animate-[flyoutFadeIn_0.2s_ease-out] cursor-pointer"
       style={{ top: pos.top, left: pos.left, width: FLYOUT_WIDTH }}
     >
       <div className="relative rounded-lg border border-gray-700/40 bg-gray-900/95 backdrop-blur-sm shadow-xl shadow-black/30 px-3 py-2">

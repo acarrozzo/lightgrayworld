@@ -142,19 +142,11 @@ export default function InventoryDisplay({
       return null
     }
 
-    const groups: Record<string, InventoryItem[]> = {
-      main: [],
-      off: [],
-      head: [],
-      body: [],
-      hands: [],
-      feet: [],
-      ring: [],
-      neck: [],
-      consumables: [],
-      crafting: [],
-      misc: [],
-    }
+    // Derived from CATEGORY_DISPLAY_ORDER so a new category (e.g. mount) can
+    // never end up missing a bucket here.
+    const groups = Object.fromEntries(
+      CATEGORY_DISPLAY_ORDER.map((category) => [category, [] as InventoryItem[]])
+    ) as Record<ItemCategory, InventoryItem[]>
 
     for (const item of inventory) {
       groups[getItemCategory(item)].push(item)
