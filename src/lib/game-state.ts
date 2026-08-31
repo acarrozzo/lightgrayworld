@@ -117,6 +117,8 @@ export interface BattleState {
   missedFlyingMelee: boolean
   weaponCategory: 'MELEE' | 'RANGED' | null
   enemyDamageType: 'MELEE' | 'RANGED' | 'MAGIC' | null
+  /** The special the enemy used on the last attack, or null for a normal attack. */
+  enemyAction: BattleEnemyAction | null
   /** Ammo left after the last shot, for weapons that spend it (bows, crossbow). */
   ammo: { slug: string; remaining: number | null } | null
   actionMeta: BattleActionMeta | null
@@ -152,7 +154,18 @@ const INITIAL_BATTLE_STATE: BattleState = {
   ammo: null,
   weaponCategory: null,
   enemyDamageType: null,
+  enemyAction: null,
   actionMeta: null,
+}
+
+/**
+ * Client mirror of the server's enemy-special descriptor (see lib/socket.ts).
+ * The server states which special fired; the UI never infers one from damage.
+ */
+export interface BattleEnemyAction {
+  id: string
+  name: string
+  rolls: number[]
 }
 
 export interface BattleLastTurn {
@@ -170,6 +183,7 @@ export interface BattleLastTurn {
   missedFlyingMelee?: boolean
   weaponCategory?: 'MELEE' | 'RANGED' | null
   enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
+  enemyAction?: BattleEnemyAction | null
 }
 
 export interface BattleResult {
@@ -245,7 +259,7 @@ export interface GameState {
   getRoomFactSeq: (roomId: string) => number
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
   setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
-  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null }) => void
+  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null }) => void
   clearBattle: () => void
   setBattleResult: (result: BattleResult) => void
   clearBattleResult: () => void
@@ -415,6 +429,7 @@ export const useGameStore = create<GameState>()(
             missedFlyingMelee: payload.missedFlyingMelee ?? false,
             weaponCategory: payload.weaponCategory ?? null,
             enemyDamageType: payload.enemyDamageType ?? null,
+            enemyAction: payload.enemyAction ?? null,
             ammo: payload.ammo ?? null,
             actionMeta: payload.actionMeta ?? null,
           },

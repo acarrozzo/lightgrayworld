@@ -19,6 +19,8 @@ export type EnemyRow = {
   isAggressive: boolean
   isFlying: boolean
   isFriendly: boolean
+  /** Enemy perk ids from game-data/enemy-specials.js, e.g. ['power']. */
+  specials: string[]
   drops: { name: string; chance: number; tag?: 'always' | 'first-kill' }[]
 }
 
@@ -214,6 +216,7 @@ function EnemyTr({ r }: { r: EnemyRow }) {
           <span className="font-medium text-gray-100">{r.name}</span>
           {r.isFlying && <Tag>flying</Tag>}
           {r.isFriendly && <Tag>friendly</Tag>}
+          {r.specials.map((s) => <Tag key={s}>{s}</Tag>)}
         </div>
       </td>
       <td className="px-3 py-2 text-right text-yellow-400">{r.level}</td>
@@ -267,6 +270,7 @@ function EnemyCard({ r }: { r: EnemyRow }) {
         <span className="font-medium text-gray-100">{r.name}</span>
         {r.isFlying && <Tag>flying</Tag>}
         {r.isFriendly && <Tag>friendly</Tag>}
+        {r.specials.map((s) => <Tag key={s}>{s}</Tag>)}
       </div>
       <div className="grid grid-cols-6 gap-1 text-center text-xs mb-2">
         {[

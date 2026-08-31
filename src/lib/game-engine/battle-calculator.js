@@ -6,6 +6,7 @@ function rand(a, b) {
 }
 
 const partyStore = require('../services/party-store')
+const { selectEnemySpecial } = require('../game-data/enemy-specials')
 
 // Count other players in the same room who either have an active battle OR are in
 // the player's party (party members are pinned to the same room, so presence counts).
@@ -77,7 +78,23 @@ function resolveEnemyAttack(battleState, otherCombatants) {
   // True effective stat — may be negative when mods outweigh the base stat
   const effectiveDef = Math.floor(defStat * bonus)
 
-  const enemyRaw = rand(0, enemy.att)
+  // At most one special resolves per attack. A special replaces how the enemy's
+  // raw damage is rolled; everything downstream — the single defense roll, the
+  // zero floor, damageType — is unchanged, so perks never fork the pipeline.
+  const special = selectEnemySpecial(enemy, rand)
+
+  let enemyRaw
+  let enemyAction = null
+  if (special) {
+    const rolled = special.rollDamage(enemy, rand)
+    enemyRaw = rolled.raw
+    enemyAction = { id: special.id, name: special.name, rolls: rolled.rolls }
+  } else {
+    enemyRaw = rand(0, enemy.att)
+  }
+
+  // Defense is rolled ONCE against whatever raw damage the attack produced —
+  // a Power Attack does not get blocked three times.
   // Negative DEF rolls negative, so enemyRaw - playerBlock grows — you take extra damage
   const playerBlock = rand(0, effectiveDef)
   return {
@@ -86,6 +103,7 @@ function resolveEnemyAttack(battleState, otherCombatants) {
     enemyFinal: Math.max(0, enemyRaw - playerBlock),
     effectiveDef,
     enemyDamageType: enemyDmgType,
+    enemyAction,
   }
 }
 
@@ -108,6 +126,8 @@ function resolveTurn(battleState, otherCombatants) {
     missedFlyingMelee: player.missedFlyingMelee,
     weaponCategory: player.weaponCategory,
     enemyDamageType: enemyAtk.enemyDamageType,
+    // null on a normal attack; { id, name, rolls } when a special fired.
+    enemyAction: enemyAtk.enemyAction,
   }
 }
 

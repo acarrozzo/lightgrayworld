@@ -2107,6 +2107,7 @@ export default function GameInterface() {
           missedFlyingMelee: payload.missedFlyingMelee,
           weaponCategory: payload.weaponCategory,
           enemyDamageType: payload.enemyDamageType,
+          enemyAction: payload.enemyAction ?? null,
           ammo: payload.ammo ?? null,
           actionMeta: payload.actionMeta ?? null,
         })
@@ -2167,6 +2168,7 @@ export default function GameInterface() {
           enemyBlocked: lt?.enemyBlocked ?? 0,
           multiplayerBonus: lt?.multiplayerBonus ?? false,
           bonusPercent: lt?.bonusPercent ?? 0,
+          enemyAction: lt?.enemyAction ?? null,
         })
         updateBattleTurn(buildUpdate(0))
       }, 0)
@@ -2213,6 +2215,7 @@ export default function GameInterface() {
           enemyBlocked: lt?.enemyBlocked ?? 0,
           multiplayerBonus: lt?.multiplayerBonus ?? false,
           bonusPercent: lt?.bonusPercent ?? 0,
+          enemyAction: lt?.enemyAction ?? null,
         })
       }, 0)
       setTimeout(applyDefeat, 900)

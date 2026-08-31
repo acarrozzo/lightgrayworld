@@ -52,6 +52,7 @@ type Enemy = {
   isAggressive: boolean
   isFriendly: boolean
   isFlying: boolean
+  specials?: string[]
   xpReward: number
   goldMin: number
   goldMax: number
@@ -144,6 +145,7 @@ export default async function EnemiesPage() {
       isAggressive: e.isAggressive,
       isFlying: e.isFlying,
       isFriendly: e.isFriendly,
+      specials: e.specials ?? [],
       drops,
     }
   })

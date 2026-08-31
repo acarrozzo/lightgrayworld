@@ -389,7 +389,19 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
           >
             <div className="min-w-0">
               <p className="text-[10px] text-gray-400 text-right leading-tight truncate"><span className="text-yellow-300 font-semibold">{result.enemyName}</span> hit</p>
-              <p className="text-xl font-black text-yellow-400 leading-tight text-right">{lt.enemyDealtDamage}</p>
+              {/* Name the special that finished you off — a 45 with no label
+                  looks like the enemy simply rolled high. */}
+              {lt.enemyAction && (
+                <p className="text-[9px] font-black tracking-[0.15em] uppercase text-right leading-tight" style={{ color: '#fb923c' }}>
+                  {lt.enemyAction.name}
+                </p>
+              )}
+              <p className={`text-xl font-black leading-tight text-right ${lt.enemyAction ? 'text-orange-400' : 'text-yellow-400'}`}>{lt.enemyDealtDamage}</p>
+              {lt.enemyAction && lt.enemyAction.rolls.length > 1 && (
+                <p className="text-[9px] text-gray-600 text-right leading-tight tabular-nums">
+                  ( {lt.enemyAction.rolls.join(' + ')} ) &minus; {lt.playerBlocked} = {lt.enemyDealtDamage}
+                </p>
+              )}
             </div>
             {result.enemyIcon && (
               <img
@@ -457,6 +469,13 @@ export default function BattlePanel({
 
   const turnsUntilFlee = Math.max(0, 3 - battle.turnCount)
   const hasEnemyFormula = battle.enemyRaw !== null
+  // The server tells us outright when the enemy used a special — we never infer
+  // one from the size of the damage. `rolls` is the real breakdown behind the
+  // total (a Power Attack is three separate ATT rolls, not one number tripled).
+  const enemyAction = battle.enemyAction
+  const enemyRollText = enemyAction && enemyAction.rolls.length > 1
+    ? `( ${enemyAction.rolls.join(' + ')} )`
+    : String(battle.enemyRaw)
   const enemyIsDead = battle.enemyCurrentHp <= 0
 
   const consumables = inventory.filter(
@@ -640,14 +659,26 @@ export default function BattlePanel({
             <p className="text-sm font-bold text-red-500 text-right">{battle.enemyName}</p>
           ) : hasEnemyFormula ? (
             <>
+              {enemyAction && (
+                <p
+                  className="text-[11px] font-black tracking-[0.18em] uppercase text-right leading-tight"
+                  style={{ color: '#fb923c', textShadow: '0 0 14px #ea580c80' }}
+                >
+                  {enemyAction.name}
+                </p>
+              )}
               <p className="text-[10px] text-gray-600 text-right tabular-nums">
                 <span className="mr-1">(max {battle.enemyStrMax})</span>
-                {battle.enemyRaw} &minus; {battle.playerBlocked} = {battle.lastEnemyDamage ?? 0}
+                {enemyRollText} &minus; {battle.playerBlocked} = {battle.lastEnemyDamage ?? 0}
               </p>
               <p className="text-xs text-gray-400 text-right">
-                The <span className="text-yellow-300 font-semibold">{battle.enemyName}</span> attacks you for
+                The <span className="text-yellow-300 font-semibold">{battle.enemyName}</span>{' '}
+                {enemyAction ? 'unleashes it for' : 'attacks you for'}
               </p>
-              <p className="text-4xl font-black text-yellow-400 leading-none tabular-nums text-right" style={{ textShadow: '0 0 16px #eab30860' }}>
+              <p
+                className={`text-4xl font-black leading-none tabular-nums text-right ${enemyAction ? 'text-orange-400' : 'text-yellow-400'}`}
+                style={{ textShadow: enemyAction ? '0 0 16px #ea580c80' : '0 0 16px #eab30860' }}
+              >
                 {battle.lastEnemyDamage ?? 0}
               </p>
             </>

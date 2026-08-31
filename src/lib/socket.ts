@@ -42,6 +42,19 @@ export interface BattleStartedPayload extends BattleSnapshot {
   isAggressive?: boolean
 }
 
+/**
+ * The special (perk) an enemy used on this attack — Power Attack today, with
+ * Bite/Rage/Crit/Heal to follow. `null` on a normal attack. Server-declared:
+ * the client must never infer a special from the damage numbers or the message.
+ * `rolls` holds the individual attack rolls the special produced, so the UI can
+ * show the real breakdown (3 + 2 + 1) instead of a single opaque total.
+ */
+export interface BattleEnemyAction {
+  id: string
+  name: string
+  rolls: number[]
+}
+
 export interface BattleSupportActionMeta {
   kind: 'use_item' | 'equip_item' | 'unequip_item'
   itemSlug: string
@@ -68,6 +81,7 @@ export interface BattleTurnPayload extends BattleSnapshot {
   missedFlyingMelee?: boolean
   weaponCategory?: 'MELEE' | 'RANGED' | null
   enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
+  enemyAction?: BattleEnemyAction | null
   /**
    * Present only for weapons that spend ammo (bows spend arrows, the crossbow
    * spends bolts). `remaining` is the count left after this turn's shot; it is
@@ -93,6 +107,7 @@ export interface BattleLastTurn {
   missedFlyingMelee?: boolean
   weaponCategory?: 'MELEE' | 'RANGED' | null
   enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
+  enemyAction?: BattleEnemyAction | null
 }
 
 export interface BattleSummary {

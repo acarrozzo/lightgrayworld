@@ -9,6 +9,11 @@
 //   drops.firstKill — array of slugs that drop while the player does NOT already own the item.
 //                     Typically earned on the first kill, but re-drops on later kills if the
 //                     player no longer holds the item (sold/dropped), and stops once owned again.
+//
+// specials — optional array of enemy perk ids (see game-data/enemy-specials.js), e.g.
+//            `specials: ['power']`. Each perk's proc chance and damage rule live in that
+//            registry; the enemy only declares which it carries. Omit the field entirely
+//            for enemies that just attack normally.
 const STANDARD_MAIN_DROP = [
   { itemSlug: 'redberry', chance: 0.25 },
   { itemSlug: 'blueberry', chance: 0.25 },
@@ -950,6 +955,7 @@ const ENEMIES = [
     isFriendly: false,
     isFlying: false,
     damageType: 'MELEE',
+    specials: ['power'],
     xpReward: 50,
     goldMin: 40,
     goldMax: 80,
@@ -1630,6 +1636,7 @@ const ENEMIES = [
     isFriendly: false,
     isFlying: false,
     damageType: 'MELEE',
+    specials: ['power'],
     xpReward: 200,
     goldMin: 50,
     goldMax: 200,
@@ -1655,6 +1662,7 @@ const ENEMIES = [
     isFriendly: false,
     isFlying: false,
     damageType: 'MELEE',
+    specials: ['power'],
     xpReward: 250,
     goldMin: 100,
     goldMax: 300,

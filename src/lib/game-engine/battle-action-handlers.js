@@ -34,6 +34,21 @@ function errorResult(action, message) {
   }
 }
 
+// Enemy-side line of a battle:turn message. When a special fired it names itself,
+// so the feed states what happened instead of leaving the player to infer it from
+// a suspiciously large number.
+function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '') {
+  if (enemyAction) {
+    const label = enemyAction.name.toUpperCase()
+    return damage === 0
+      ? `The ${enemyName} unleashes a ${label} but you block it!`
+      : `The ${enemyName} unleashes a ${label} for ${damage} damage!${hpSuffix}`
+  }
+  return damage === 0
+    ? `The ${enemyName} attacks but you block it!`
+    : `The ${enemyName} hits you for ${damage} damage.${hpSuffix}`
+}
+
 const { BUFF_SELECT } = require('./services/buff-service')
 
 // Fetch the stats needed for BattleState from DB
@@ -179,6 +194,8 @@ async function executeStartBattle(action, playerId, roomState) {
       missedFlyingMelee: false,
       weaponCategory: battleState.equippedWeaponCategory,
       enemyDamageType: enemyAtk.enemyDamageType,
+      // An ambush swing is a normal enemy attack, so it can roll a special too.
+      enemyAction: enemyAtk.enemyAction,
     }
     battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, firstTurn)
   } else {
@@ -237,9 +254,7 @@ async function executeStartBattle(action, playerId, roomState) {
   } else {
     attackDesc = `You strike the ${enemy.name} for ${firstTurn.playerDealtDamage} damage.`
   }
-  const defenseDesc = firstTurn.enemyDealtDamage === 0
-    ? `The ${enemy.name} attacks but you block it!`
-    : `The ${enemy.name} hits you for ${firstTurn.enemyDealtDamage} damage.`
+  const defenseDesc = describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction)
 
   const turnPayload = {
     ...snapshot,
@@ -259,6 +274,7 @@ async function executeStartBattle(action, playerId, roomState) {
     missedFlyingMelee: firstTurn.missedFlyingMelee,
     weaponCategory: firstTurn.weaponCategory,
     enemyDamageType: firstTurn.enemyDamageType,
+    enemyAction: firstTurn.enemyAction ?? null,
     ...(ammoSlug ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
     message: [attackDesc, defenseDesc].join(' '),
   }
@@ -596,11 +612,14 @@ async function executePlayerAttack(action, playerId, roomState) {
     if (ammoRemaining !== null) strikeMsg += ` (${ammoRemaining} left)`
     parts.push(strikeMsg)
   }
-  if (turnResult.enemyDealtDamage === 0) {
-    parts.push(`The ${battleState.enemyName} attacks but you block it!`)
-  } else {
-    parts.push(`The ${battleState.enemyName} hits you for ${turnResult.enemyDealtDamage} damage. (HP: ${newHp}/${updatedPlayer.hpMax})`)
-  }
+  parts.push(
+    describeEnemyAttack(
+      battleState.enemyName,
+      turnResult.enemyDealtDamage,
+      turnResult.enemyAction,
+      ` (HP: ${newHp}/${updatedPlayer.hpMax})`
+    )
+  )
 
   return {
     success: true,
@@ -626,6 +645,7 @@ async function executePlayerAttack(action, playerId, roomState) {
           missedFlyingMelee: turnResult.missedFlyingMelee,
           weaponCategory: turnResult.weaponCategory,
           enemyDamageType: turnResult.enemyDamageType,
+          enemyAction: turnResult.enemyAction ?? null,
           ...(ammoSlug ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
           message: parts.join(' '),
         },
@@ -676,6 +696,9 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     missedFlyingMelee: false,
     weaponCategory: battleState.equippedWeaponCategory,
     enemyDamageType: enemyAtk.enemyDamageType,
+    // Spending the turn on a potion or a weapon swap doesn't shield you from a
+    // special — the counterattack rolls exactly like any other enemy attack.
+    enemyAction: enemyAtk.enemyAction,
   }
   battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, turnRecord)
 
@@ -691,9 +714,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
 
   // Build the action description string for the battle:turn message.
   const actionDesc = describeSupportAction(actionMeta)
-  const defenseDesc = enemyAtk.enemyFinal === 0
-    ? `The ${battleState.enemyName} attacks but you block it!`
-    : `The ${battleState.enemyName} hits you for ${enemyAtk.enemyFinal} damage.`
+  const defenseDesc = describeEnemyAttack(battleState.enemyName, enemyAtk.enemyFinal, enemyAtk.enemyAction)
 
   // Defeat path: enemy counterattack killed the player
   if (newHp <= 0) {
@@ -767,6 +788,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
           missedFlyingMelee: false,
           weaponCategory: battleState.equippedWeaponCategory,
           enemyDamageType: enemyAtk.enemyDamageType,
+          enemyAction: enemyAtk.enemyAction ?? null,
           actionMeta,
           message: [actionDesc, defenseDesc].join(' '),
         },
