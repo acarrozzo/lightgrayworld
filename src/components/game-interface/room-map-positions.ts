@@ -37,6 +37,7 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '003c': { x: 140, y: 455 },  // Young Soldier
   '004': { x: 245, y: 350 },  // Flower Patch
   '005': { x: 350, y: 245 },  // Grassy Field North
+  '029': { x: 350, y: 140 },  // Guardian Angel / Destroyed Academy (north of 005)
   '006': { x: 455, y: 350 },  // Basic Shop
   '007': { x: 455, y: 455 },  // Cave Entrance
   '014': { x: 140, y: 350 },  // Dirt Road West

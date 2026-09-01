@@ -53,13 +53,26 @@ const ACCEPTED = {
     '115d:south',
   ]),
 
-  // Rooms deliberately not reachable by walking from the start room. 031
-  // ("Stairway to Heaven") is stubbed endgame content with no entrance yet.
+  // Rooms deliberately not reachable by walking from the start room.
+  //
+  // 031 ("Stairway to Heaven") is endgame content with no entrance yet, and no
+  // counterpart in the original at all — it is new to this version. It stays
+  // seeded so the room id is reserved and its description is not lost.
   detachedRooms: new Set(['031']),
 
-  // Rooms with no map cell yet. Both are stubbed endgame content (029 "Guardian
-  // Angel", 031 "Stairway to Heaven") and currently draw at the default cell.
-  roomsWithoutMapCoords: new Set(['029', '031']),
+  // Rooms with no map cell. 031 has no entrance, so it has nowhere to be drawn;
+  // 029 now has one, since it is reachable (see below).
+  roomsWithoutMapCoords: new Set(['031']),
+
+  // 029 ("Guardian Angel", the Destroyed Academy) is reachable and empty, and
+  // that is a deliberate choice rather than an unfinished port left showing.
+  //
+  // The original gated 005-north on the Goblin Chief kill ("Complete Jack
+  // Lumber's quests to open this gate") and put the Grand Quest 1-4 chain in
+  // 029. Neither is ported. Rather than restore the gate, the room is left open
+  // as a teaser for content still to come — so a bare room with an epic
+  // description is expected here, not a bug.
+  openEmptyRooms: new Set(['029']),
 
   // Enemies authored ahead of the map that will hold them. They are named by
   // acceptable quests, so they must exist — they simply have no spawn yet.
@@ -84,13 +97,11 @@ const ACCEPTED = {
  */
 const KNOWN_GAPS = {
   // Buttons the client renders with no server handler, so clicking them returns
-  // "Unknown action type". 007/021's signs need sign text authored; 021's staff
-  // shop is content from the original that was never ported.
-  deadButtons: new Set([
-    '007:read sign',
-    '021:read sign',
-    '021:buy staff',
-  ]),
+  // "Unknown action type". Empty, and worth keeping that way: the three that
+  // were here — 007 and 021's signs, and 021's "buy staff" — are fixed. Both
+  // signs are ported from the original; the staff button was removed, since the
+  // Pajama Shaman never sold one in any version.
+  deadButtons: new Set([]),
 }
 
 // ─── Sources ──────────────────────────────────────────────────────────────────
@@ -479,6 +490,31 @@ for (const location of TELEPORT_LOCATIONS) {
         )
       }
     }
+  }
+}
+
+// ─── 8b. Recorded decisions that may go stale ─────────────────────────────────
+//
+// A room listed as deliberately open-and-empty should still be open and empty.
+// Once it gains content or a gate the decision has been superseded, and the
+// entry should go — otherwise the allowlist quietly starts excusing something
+// nobody decided.
+for (const roomId of ACCEPTED.openEmptyRooms) {
+  if (!isRoom(roomId)) {
+    warn('decisions', `openEmptyRooms lists "${roomId}", which is not a seeded room`)
+    continue
+  }
+  const gained = []
+  if (Object.keys(SERVER_ROOM_ACTIONS[roomId] || {}).length) gained.push('room actions')
+  if (ROOM_ENEMIES[roomId]) gained.push('a spawn table')
+  if (ROOM_LOOT.some((entry) => entry.roomId === roomId)) gained.push('ground loot')
+  if (Object.keys(ROOM_GATES[roomId] || {}).length) gained.push('a gate')
+
+  if (gained.length) {
+    warn(
+      'decisions',
+      `${roomId} is listed as deliberately open and empty but now has ${gained.join(' and ')} — remove it from ACCEPTED.openEmptyRooms`
+    )
   }
 }
 

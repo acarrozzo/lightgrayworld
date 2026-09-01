@@ -20,6 +20,15 @@ export const metadata = {
     'Every room in Light Gray RPG as an interactive node graph — enemies and spawn logic, NPCs, loot, actions, gates, and secrets.',
 }
 
+// This page is PUBLIC BY DESIGN, spoilers and all.
+//
+// It has no auth check and lists every hidden exit, reveal condition and gate in
+// the game — including passages a player is meant to find by searching. That is
+// a deliberate decision, not an oversight: the Atlas is a developer's wiki, and
+// being able to read the whole world at a glance is the point of it. If it ever
+// needs to stop spoiling secrets, the fix is to gate the `secrets` layer behind
+// a session rather than to trim what the page derives.
+//
 // All room data is pulled live from its canonical sources so this page never
 // drifts: the Room rows live in the database, while the dynamic layers
 // (spawn tables, loot, gates, reveals, room actions) live in the game engine.

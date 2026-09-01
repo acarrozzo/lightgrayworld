@@ -81,7 +81,10 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '021': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'bg-blue-600 hover:bg-blue-700' },
-    { action: 'buy staff', label: 'Buy Staff', icon: 'equipment-basicstaff', className: 'bg-purple-600 hover:bg-purple-700' },
+    // No "Buy Staff": the Pajama Shaman's shop is not ported yet, and a staff is
+    // not something he ever sold — the original's stock was flail, morning star,
+    // gladius, battle axe, warhammer, claymore, long bow, arrows, pajamas and
+    // slippers. The button pointed at nothing and returned "Unknown action type".
     { action: 'open crafting', label: 'Open Crafting', icon: 'fire', className: 'bg-orange-600 hover:bg-orange-700' },
   ],
   '014': [

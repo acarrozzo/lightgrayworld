@@ -1546,7 +1546,23 @@ const ROOM_ACTIONS = {
     }),
   },
   '007': {
-    'talk to young soldier': createNpcTalkHandler({
+    // Ported from the original's Spider Cave Entrance sign. The warning and the
+    // "get a weapon first" advice are the original's; the direction is not —
+    // there the sign sent you west to find the Young Soldier, and in this
+    // version he stands in this very room, so the sign points at him instead.
+    'read sign': {
+      showModal: true,
+      message: 'You read the Spider Cave entrance sign',
+      modalContent: {
+        title: 'Spider Cave Entrance',
+        type: 'icon',
+        icon: 'sign',
+        iconColor: 'gray-500/50',
+        message:
+          'Beware the spiders and scorpions that live in the cave to the south. You will need a weapon if you want to survive. If you do not have one, speak to the Young Soldier here — he will see you armed and trained before you go down.',
+      },
+    },
+    'talk to young soldier':createNpcTalkHandler({
       npcId: 'young_soldier',
       action: 'talk to young soldier',
       icon: 'npc-youngsoldier',
@@ -1695,6 +1711,23 @@ const ROOM_ACTIONS = {
     'pick wheat': makeWheatAction(),
   },
   '021': {
+    // Ported from the original's Pajama Shaman sign, which is a skills primer
+    // rather than flavour. Every rule it states still holds in this version:
+    // SP per level, training driving HP/MP growth, and rest scaling with both.
+    'read sign': {
+      showModal: true,
+      message: 'You read the Pajama Shaman sign',
+      modalContent: {
+        title: 'Skills',
+        type: 'icon',
+        icon: 'sign',
+        iconColor: 'gray-500/50',
+        message:
+          'You gain SP every time you level. Spend it to learn skills and spells.\n\n' +
+          'Physical Training and Mental Training matter. Physical Training raises the Hit Points you gain on each level, and Mental Training does the same for Mana Points — so learn them as early as you can.\n\n' +
+          'Rest up. Resting restores lost HP and MP, and how much you recover is decided by those same two trainings.',
+      },
+    },
     'craft': executeCraft,
   },
 

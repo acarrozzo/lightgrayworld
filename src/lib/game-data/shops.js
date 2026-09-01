@@ -1,6 +1,13 @@
 /**
  * Single source of truth for every shop in the game.
  *
+ * NOT YET PORTED: the Pajama Shaman (room 021). The original sold a flail,
+ * morning star, gladius, battle axe, warhammer, claymore, long bow, arrows,
+ * pajamas and slippers, from 800 to 5000 gold — a mid-game weapon shop whose
+ * prices would need balancing against this version's economy rather than
+ * copying across. Room 021's description still advertises it ("selling some
+ * basic items"), so it is content owed, not content cut.
+ *
  * Keyed by the roomId the shop stands in. Consumed by:
  *   - game-engine/room-action-handlers.js  (the `view shop` action's stock list)
  *   - app/api/shop/buy/route.ts            (authoritative "is this actually for
