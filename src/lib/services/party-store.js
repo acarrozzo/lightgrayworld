@@ -85,6 +85,21 @@ function getLeaderMemberIds(playerId) {
 
 // All ids in the player's party (leader + members), or null if not in a party.
 // Used by combat to count co-located party members.
+/**
+ * The same snapshot shape broadcast as PARTY_UPDATED, or null when solo.
+ *
+ * Used to hand a reconnecting client its party on login. `null` matters as much
+ * as a snapshot does: it is what lets the client clear a party strip left over
+ * from before the connection dropped.
+ */
+function getPartySnapshot(playerId) {
+  const leaderId = getLeaderId(playerId)
+  if (leaderId == null) return null
+  const party = store.parties.get(leaderId)
+  if (!party) return null
+  return buildSnapshot(party)
+}
+
 function getParty(playerId) {
   const leaderId = getLeaderId(playerId)
   if (leaderId == null) return null
@@ -207,4 +222,5 @@ module.exports = {
   getLeaderId,
   getLeaderMemberIds,
   getParty,
+  getPartySnapshot,
 }

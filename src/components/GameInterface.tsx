@@ -94,6 +94,7 @@ export default function GameInterface() {
   const clearBattleResult = useGameStore((s) => s.clearBattleResult)
   const setParty = useGameStore((s) => s.setParty)
   const clearParty = useGameStore((s) => s.clearParty)
+  const hydrateSession = useGameStore((s) => s.hydrateSession)
   const updateRoomItems = useGameStore((s) => s.updateRoomItems)
   const equippedWeapon = inventory.find(item => item.isEquipped && item.slot === 'MAIN_HAND')
   const weaponIconName = equippedWeapon
@@ -724,6 +725,27 @@ export default function GameInterface() {
   }, [getAuthHeaders, cacheRoom, setCurrentRoom, setRoomPlayers, player, setPlayer, getCachedRoom, isLoggedIn, worldTick, setWorldTick])
   const loadRoomDataRef = useRef(loadRoomData)
 
+  /**
+   * Give up on a pending move and re-adopt whatever room the server says we are in.
+   *
+   * Used when a move's confirmation never arrives, and when there was no socket
+   * to send the move on at all. Neither case may leave the optimistic room
+   * standing: the client would go on believing it is somewhere the server never
+   * moved it, and since every later move is validated from the room the server
+   * has, the player would be wedged until a refresh — with each failure rolling
+   * back to the phantom room again.
+   *
+   * Fetching with no travel target is the reconciliation: that endpoint answers
+   * with the player's actual `currentRoom`, and loadRoomData commits it.
+   */
+  const abandonPendingMove = useCallback((reason: string) => {
+    console.warn(`[GameInterface] Abandoning pending move (${reason}); reconciling with server`)
+    pendingMoveRef.current = null
+    setIsMoveInProgress(false)
+    enteredViaCacheRoomIdRef.current = null
+    void loadRoomDataRef.current?.({ requireAuth: true })
+  }, [])
+
   useEffect(() => {
     playerRef.current = player
   }, [player])
@@ -848,6 +870,15 @@ export default function GameInterface() {
       const targetRoomId = actionData.toRoomId
       console.log('[handleAction] Teleporting from', currentRoom.roomId, 'to', targetRoomId)
 
+      // Same guard the directional branch has always had. Without it a second
+      // teleport could start while the first was pending, and its rollback
+      // target would be the *first* teleport's optimistic destination — a room
+      // the player had never actually stood in.
+      if (isMoveInProgress) {
+        console.warn('[handleAction] Move already in progress, ignoring new teleport request')
+        return
+      }
+
       // Increment move sequence when initiating teleport
       const moveSeq = ++moveSequenceRef.current
 
@@ -870,9 +901,7 @@ export default function GameInterface() {
       // This prevents the UI from being permanently stuck if feedback is lost
       setTimeout(() => {
         if (pendingMoveRef.current?.moveSeq === moveSeq) {
-          console.warn(`[GameInterface] Teleport timeout - clearing move-in-progress flag for moveSeq:${moveSeq}`)
-          setIsMoveInProgress(false)
-          // Don't clear pendingMoveRef here - let it be cleared by feedback if it arrives late
+          abandonPendingMove(`teleport timeout moveSeq:${moveSeq}`)
         }
       }, 10000)
 
@@ -896,10 +925,10 @@ export default function GameInterface() {
           toRoom: targetRoomId,
         })
       } else {
+        // Nothing was sent, so the optimistic room above is pure fiction — roll
+        // it back rather than leaving the UI in a room the server never saw.
         console.warn('Socket not connected; teleport request not sent')
-        // Clear move-in-progress if socket not connected
-        setIsMoveInProgress(false)
-        pendingMoveRef.current = null
+        abandonPendingMove('no socket for teleport')
       }
 
       return
@@ -982,9 +1011,7 @@ export default function GameInterface() {
       // This prevents the UI from being permanently stuck if feedback is lost
       setTimeout(() => {
         if (pendingMoveRef.current?.moveSeq === moveSeq) {
-          console.warn(`[GameInterface] Move timeout - clearing move-in-progress flag for moveSeq:${moveSeq}`)
-          setIsMoveInProgress(false)
-          // Don't clear pendingMoveRef here - let it be cleared by feedback if it arrives late
+          abandonPendingMove(`move timeout moveSeq:${moveSeq}`)
         }
       }, 10000)
 
@@ -1020,10 +1047,10 @@ export default function GameInterface() {
           toRoom: targetRoomId,
         })
       } else {
+        // Nothing was sent, so the optimistic room above is pure fiction — roll
+        // it back rather than leaving the UI in a room the server never saw.
         console.warn('Socket not connected; movement request not sent')
-        // Clear move-in-progress if socket not connected
-        setIsMoveInProgress(false)
-        pendingMoveRef.current = null
+        abandonPendingMove('no socket for move')
       }
 
       return
@@ -1648,9 +1675,17 @@ export default function GameInterface() {
 
     const cleanupLoginSuccess = socketHandlers.onLoginSuccess((payload) => {
       console.log('[GameInterface] Received login:success event')
-      if (payload?.inventory) {
-        setInventory(payload.inventory)
-      }
+      // One authoritative adoption of the server's account state. This fires on
+      // the automatic re-login after a reconnect too, which is what corrects the
+      // party and battle events missed while the connection was down — and the
+      // fresh player snapshot, which used to be dropped here in favour of
+      // whatever localStorage had rehydrated.
+      hydrateSession({
+        player: payload?.player,
+        inventory: payload?.inventory,
+        party: payload?.party ?? null,
+        battle: payload?.battle ?? null,
+      })
       if (Array.isArray(payload?.roomGhosts) && payload.roomGhosts.length > 0) {
         const currentRoomPlayers = useGameStore.getState().roomPlayers
         const activeIds = new Set(currentRoomPlayers.map((p) => p.id))
@@ -1688,21 +1723,18 @@ export default function GameInterface() {
         const uiRoom = activeRoom?.roomId
         const pendingMove = pendingMoveRef.current
         
-        // Gate reconciliation: only reconcile if:
-        // 1. There's a pending move that matches this event (credible - we're waiting for feedback)
-        // 2. OR player/UI state is unset/unknown (reconnect case - need to sync)
-        // 3. OR event matches expected target from pending move
-        const isCredibleEvent = 
-          (pendingMove && pendingMove.toRoomId === event.toRoom) || // Matches pending move
-          (!playerRoom && !uiRoom) || // Reconnect case - no state
-          (pendingMove && event.fromRoom === playerRoom && event.toRoom === pendingMove.toRoomId) // Matches expected move
-        
-        // Check if this event indicates a state mismatch that needs reconciliation
-        const needsReconciliation = 
+        // This event is the server reporting where it has actually put us, so it
+        // is authoritative — there is no such thing as an "incredible" one. It
+        // used to be accepted only when it matched a move this tab had started,
+        // which made the case that most needs it unreachable: a second tab for
+        // the same account receives the move the *other* tab made, matches no
+        // pending move of its own, and so sat in the old room forever, sending
+        // every later action from a room the server had already left.
+        const needsReconciliation =
           (playerRoom !== event.toRoom) ||  // Player state doesn't match event
           (uiRoom !== event.toRoom)         // UI doesn't match event destination
-        
-        if (needsReconciliation && isCredibleEvent) {
+
+        if (needsReconciliation) {
           console.log('[GameInterface] Reconciliation needed for current player move', {
             eventFromRoom: event.fromRoom,
             eventToRoom: event.toRoom,
@@ -1726,19 +1758,12 @@ export default function GameInterface() {
               travel: { toRoomId: event.toRoom },
             })
           }
-        } else if (!isCredibleEvent) {
-          console.log('[GameInterface] Ignoring stale room:player-moved for current player - event not credible', {
-            eventToRoom: event.toRoom,
-            playerRoom,
-            uiRoom,
-            pendingMove: pendingMove?.toRoomId,
-            reason: 'event-does-not-match-pending-move-or-state'
-          })
         } else {
           console.log('[GameInterface] room:player-moved redundant for current player - state already matches', {
             eventToRoom: event.toRoom,
             playerRoom,
-            uiRoom
+            uiRoom,
+            pendingMove: pendingMove?.toRoomId,
           })
         }
         return
@@ -1757,7 +1782,7 @@ export default function GameInterface() {
       cleanupInventoryUpdate()
       cleanupRoomMoves()
     }
-  }, [socket, socketHandlers, setPlayer, setInventory, updateRoomItems, appendWorldFeed, worldTick])
+  }, [socket, socketHandlers, setPlayer, setInventory, hydrateSession, updateRoomItems, appendWorldFeed, worldTick])
 
   // Fetch quests and kill list on login so they're available immediately
   useEffect(() => {

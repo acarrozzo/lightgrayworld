@@ -777,6 +777,23 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // Send initial inventory snapshot to client
         const inventory = await getPlayerInventory(playerData.id)
         const roomGhosts = getGhostsForRoom(playerData.currentRoom).filter((g) => g.id !== playerData.id)
+        // Session state the client cannot infer from a fresh page load. After a
+        // full disconnect both are usually null — and sending the nulls is the
+        // point: they are what let the client clear a phantom battle panel
+        // (which blocks movement and teleport) or a party strip left standing
+        // from before the connection dropped. Those events were missed while
+        // the client was away, so nothing else would ever correct them.
+        const activeBattle = gameEngine
+          .getOrCreateRoom(playerData.currentRoom)
+          .activeBattles.get(playerData.id)
+        const battleResume =
+          activeBattle && activeBattle.isActive
+            ? activeBattle.getResumeSnapshot({
+                playerHp: playerData.hp,
+                playerHpMax: playerData.hpMax,
+              })
+            : null
+
         socket.emit('login:success', {
           player: playerData,
           inventory,
@@ -784,6 +801,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // Initial party groupings for this room (covers the listener-attach race
           // where a room broadcast would fire before the client is listening).
           roomPartyState: buildRoomPartyState(playerData.currentRoom),
+          party: partyStore.getPartySnapshot(playerData.id),
+          battle: battleResume,
         })
 
         // Full global roster for the Players tab. Deltas (world:presence-update)
@@ -885,14 +904,27 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // reaching ensureAutoRespawnItems, which creates item rows in whatever
         // room it is handed.
         const direction = sourceRoom ? findDirectionKey(sourceRoom, toRoom) : null
-        if (!direction) {
-          console.log(`[Socket] player-move - No exit from ${fromRoom} leads to ${toRoom}`)
-          emitActionFeedback(socket, {
-            action: 'move',
-            message: "You don't see an exit in that direction",
-            outcome: 'failure',
-          })
-          return
+
+        // The client sends teleports through this same event, so a destination
+        // with no exit leading to it is not automatically illegal — it is legal
+        // exactly when it is a teleport the server authorizes: a room in the
+        // fixed network, or one the server itself just named for this player
+        // (guild lair, defeat respawn, flee retreat) and has not yet spent.
+        const isTeleportMove = !direction
+        if (isTeleportMove) {
+          const authorized =
+            isFixedTeleportDestination(toRoom) || consumeTeleportGrant(player.id, toRoom)
+          if (!authorized) {
+            console.warn(
+              `[Socket] player-move - ${player.username} requested unreachable/unauthorized ${toRoom} from ${fromRoom}`
+            )
+            emitActionFeedback(socket, {
+              action: 'move',
+              message: "You don't see an exit in that direction",
+              outcome: 'failure',
+            })
+            return
+          }
         }
 
         // Ensure auto-respawn items exist in the destination room FIRST
@@ -943,8 +975,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         const toRoomName = destinationRoom.name
 
         // Direction was derived above, before the destination was touched.
+        // A teleport has no direction on either side.
         const exitDirection = direction
-        const entryDirection = destinationRoom ? findDirectionKey(destinationRoom, fromRoom) : null
+        const entryDirection =
+          direction && destinationRoom ? findDirectionKey(destinationRoom, fromRoom) : null
 
         // A leader can't travel through a gate a party member can't pass — keep the party together.
         if (partyStore.isLeader(player.id)) {
@@ -965,8 +999,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           roomId: fromRoom,
           action: {
             type: 'move',
+            // Authorized above for a teleport; left unset for a directional move
+            // so the engine derives the direction itself and enforces the gate.
+            authorizedMove: isTeleportMove,
             // Only the destination and its presentation data. The engine derives
-            // the source room and the direction itself and enforces the gate.
+            // the source room from where the player actually stands.
             data: { toRoom, toRoomName, roomData: normalizedRoomData },
           },
         })
@@ -977,11 +1014,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // The engine result is authoritative - do not transition unless result.success === true
         if (result && result.success === true) {
           console.log(`[Socket] Movement succeeded, transitioning player room`)
-          // This handler only ever performs a directional move — it rejected
-          // anything without a real exit above — so it is never a teleport. The
-          // flag used to be read from the client payload, which let a caller
-          // relabel an ordinary step for the room enter/leave messaging.
-          const isTeleport = false
+          // Derived from whether an exit actually led here, never from the client
+          // payload — which used to let a caller relabel an ordinary step for the
+          // room enter/leave messaging.
+          const isTeleport = isTeleportMove
           await transitionPlayerRoom({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
 
           // Save entry/exit messages to database
@@ -1126,8 +1162,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               exitDirection,
               entryDirection,
               isTeleport,
-              // authorizedMove is deliberately omitted: a directional move must
-              // re-run each member's own gate rather than inherit the leader's.
+              // Members skip adjacency exactly when the leader did. On a
+              // directional move this stays false on purpose, so the engine
+              // re-runs each member's own gate rather than inheriting the
+              // leader's right of way.
+              authorizedMove: isTeleportMove,
             })
           }
         } else {

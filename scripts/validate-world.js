@@ -202,7 +202,10 @@ const { ROOM_LOOT } = load('src/lib/game-engine/config/room-loot.js')
 const { SHOPS } = load('src/lib/game-data/shops.js')
 const { CRAFTING_ROOMS, CRAFTING_RECIPES } = load('src/lib/game-data/crafting-recipes.js')
 const { ROOM_ACTIONS: SERVER_ROOM_ACTIONS } = load('src/lib/game-engine/room-action-handlers.js')
-const { TELEPORT_LOCATIONS } = load('src/lib/game-data/teleport-destinations.js')
+const {
+  TELEPORT_LOCATIONS,
+  isFixedTeleportDestination,
+} = load('src/lib/game-data/teleport-destinations.js')
 const QUESTS = load('src/lib/game-data/quests.json')
 
 const enemySlugs = new Set(ENEMIES.map((e) => e.slug))
@@ -447,6 +450,35 @@ const CLIENT_ONLY_ACTIONS = new Set([
 for (const location of TELEPORT_LOCATIONS) {
   if (!isRoom(location.roomId)) {
     err('teleport', `destination "${location.roomId}" (${location.name}) is not a seeded room`)
+  }
+}
+
+// Every teleport destination hard-coded in the UI must be one the server will
+// actually authorize, or the button silently fails. Destinations the server
+// names at runtime (a guild lair, a flee retreat) arrive through a grant and
+// carry no literal here, so only literals are checked.
+{
+  const uiFiles = [
+    'src/components/GameInterface.tsx',
+    'src/components/RoomBox.tsx',
+    'src/components/game-interface/ExplorePanel.tsx',
+  ]
+  for (const file of uiFiles) {
+    let src
+    try {
+      src = read(file)
+    } catch {
+      continue // panel renamed or removed; the other checks still apply
+    }
+    for (const m of src.matchAll(/toRoomId:\s*'([^']+)'/g)) {
+      const roomId = m[1]
+      if (!isFixedTeleportDestination(roomId)) {
+        err(
+          'teleport',
+          `${file} teleports to "${roomId}", which is not in the fixed teleport network — the server will refuse it`
+        )
+      }
+    }
   }
 }
 

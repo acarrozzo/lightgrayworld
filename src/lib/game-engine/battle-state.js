@@ -80,6 +80,31 @@ class BattleState {
       canFlee: this.canFlee,
     }
   }
+
+  /**
+   * The full client-facing battle shape, for a client picking up a fight that is
+   * already under way — a reconnect, or a second tab opening mid-battle.
+   *
+   * Deliberately the same shape as the `battle:started` payload so the client
+   * applies it through the existing handler and the two cannot drift. Unlike a
+   * fresh start it reports live enemy HP rather than full, and is never an
+   * advantage turn: the ambush, if there was one, already happened.
+   */
+  getResumeSnapshot({ playerHp, playerHpMax }) {
+    return {
+      ...this.getSnapshot(),
+      enemyIcon: this.enemy.name,
+      enemyLevel: this.enemy.level,
+      enemyAtt: this.enemy.att,
+      enemyDef: this.enemy.def,
+      enemyDescription: this.enemy.description,
+      isAdvantageTurn: false,
+      playerHp,
+      playerHpMax,
+      playerStr: this.baseStr,
+      playerDef: this.baseDef,
+    }
+  }
 }
 
 module.exports = { BattleState }

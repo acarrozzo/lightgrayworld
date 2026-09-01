@@ -268,6 +268,12 @@ export interface GameState {
   clearBattleResult: () => void
   setParty: (party: PartySnapshot | null) => void
   clearParty: () => void
+  hydrateSession: (payload: {
+    player?: Partial<Player> | null
+    inventory?: InventoryItem[]
+    party?: PartySnapshot | null
+    battle?: Parameters<GameState['setBattleStarted']>[0] | null
+  }) => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -449,6 +455,61 @@ export const useGameStore = create<GameState>()(
       setParty: (party) => set({ party }),
 
       clearParty: () => set({ party: null }),
+
+      /**
+       * Adopt the server's account-level state in one atomic update.
+       *
+       * Called on every login, including the automatic re-login after a
+       * reconnect. Party and battle are applied *including their absence*: the
+       * events that would normally clear them (`party:disbanded`, `battle:*`)
+       * fire while the client is disconnected and are simply missed, so without
+       * this a reconnect left a party strip for a group that no longer exists
+       * and a battle panel that blocks movement with no way out but a refresh.
+       */
+      hydrateSession: (payload) =>
+        set((state) => {
+          const next: Partial<GameState> = {}
+
+          if (payload.player) {
+            // Merge rather than replace: the server's fields win, while any
+            // client-only field already on the object survives.
+            next.player = { ...(state.player ?? {}), ...payload.player } as Player
+          }
+
+          if (Array.isArray(payload.inventory)) {
+            next.inventory = payload.inventory
+          }
+
+          if (payload.party !== undefined) {
+            next.party = payload.party
+          }
+
+          if (payload.battle !== undefined) {
+            next.battle = payload.battle
+              ? {
+                  ...INITIAL_BATTLE_STATE,
+                  isInBattle: true,
+                  isAdvantageTurn: payload.battle.isAdvantageTurn,
+                  enemySlug: payload.battle.enemySlug,
+                  enemyName: payload.battle.enemyName,
+                  enemyIcon: payload.battle.enemyIcon,
+                  enemyLevel: payload.battle.enemyLevel,
+                  enemyAtt: payload.battle.enemyAtt,
+                  enemyDef: payload.battle.enemyDef,
+                  enemyCurrentHp: payload.battle.enemyCurrentHp,
+                  enemyMaxHp: payload.battle.enemyMaxHp,
+                  turnCount: payload.battle.turnCount,
+                  canFlee: payload.battle.canFlee,
+                  playerHp: payload.battle.playerHp,
+                  playerHpMax: payload.battle.playerHpMax,
+                  playerStrMax: payload.battle.playerStr,
+                  playerDefMax: payload.battle.playerDef,
+                }
+              : { ...INITIAL_BATTLE_STATE }
+          }
+
+          return next
+        }),
     }),
     {
       name: 'game-storage', // unique name for localStorage key

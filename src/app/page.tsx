@@ -52,9 +52,11 @@ export default function Home() {
         const result = await validateAndRefreshUser(token)
         
         if (result.isValid && result.user) {
-          if (!isLoggedIn) {
-            login(result.user, result.newToken || token)
-          }
+          // Apply the server's answer even when a persisted session already says
+          // we are logged in — that persisted copy is a rehydrated snapshot from
+          // localStorage, and discarding the fresh one left stale stats on screen
+          // until some later event happened to carry a player payload.
+          login(result.user, result.newToken || token)
         } else {
           logout()
         }
