@@ -36,7 +36,10 @@ const ACTION_QUEUE_ERRORS = {
 }
 
 const QUEUE_FULL_MESSAGE = 'Action queue is full. Please wait for pending actions to complete.'
-const ACTION_TIMEOUT_MESSAGE = 'Action timed out after 5000ms.'
+const {
+  DEFAULT_ACTION_TIMEOUT_MS,
+} = require('./game-engine/player-action-queue.js')
+const ACTION_TIMEOUT_MESSAGE = `Action timed out after ${DEFAULT_ACTION_TIMEOUT_MS}ms.`
 const LAST_ACTIVE_PERSIST_INTERVAL = 60 * 1000
 const { createWorldFeedEvent } = require('./services/world-feed-event-service.js')
 const { createIdleDetectionService } = require('./services/idle-detection-service.js')
@@ -1567,8 +1570,6 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         eventType: 'logout',
       })
 
-      partyStore.onDisconnect(player.id)
-
       socket.emit('auth:logout', { success: true })
       const socketSet = userIdToSocketIds.get(player.id)
       if (socketSet) {
@@ -1577,6 +1578,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           userIdToSocketIds.delete(player.id)
         }
       }
+      // The party drop is left to the disconnect handler that `disconnect(true)`
+      // triggers below, which does it only once this account's last connection
+      // is gone. Doing it here unconditionally disbanded the party of a player
+      // who was still playing in another tab.
       socket.disconnect(true)
     })
 
@@ -1584,6 +1589,39 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     socket.on('disconnect', () => {
       const player = activePlayers.get(socket.id)
       if (player) {
+        // Retire this connection first, so the teardown below knows whether the
+        // account has any left. Everything that ends a *session* — the action
+        // queue, engine registration, the party, levers and reveals — used to
+        // run on every disconnect, so closing one of two tabs tore down the
+        // session the other tab was still using: its battle ended, its party
+        // disbanded, and every later action failed with "Player not found in
+        // this room" until a full re-login.
+        const socketSet = userIdToSocketIds.get(player.id)
+        if (socketSet) {
+          socketSet.delete(socket.id)
+          if (socketSet.size === 0) {
+            userIdToSocketIds.delete(player.id)
+          }
+        }
+        const isLastSocket = !userIdToSocketIds.has(player.id)
+
+        // Per-connection bookkeeping always runs.
+        if (roomPlayers.has(player.currentRoom)) {
+          roomPlayers.get(player.currentRoom).delete(socket.id)
+        }
+        activePlayers.delete(socket.id)
+
+        if (!isLastSocket) {
+          // Another tab is still live: drop just this connection and leave the
+          // player's session — battle, party, queue, presence — intact.
+          gameEngine.unregisterSocket(player.id, socket.id)
+          broadcastRoomPartyState(player.currentRoom)
+          console.log(
+            `[Socket] ${player.username} closed one connection; session still active on another`
+          )
+          return
+        }
+
         if (gameEngine.playerQueue && gameEngine.playerQueue.clearPlayer) {
           gameEngine.playerQueue.clearPlayer(player.id, { rejectPending: true })
           console.log(`[Socket] Cleared action queue for player ${player.username}`)
@@ -1619,25 +1657,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           },
         })
 
-        if (roomPlayers.has(player.currentRoom)) {
-          roomPlayers.get(player.currentRoom).delete(socket.id)
-        }
-
-        activePlayers.delete(socket.id)
         // If they led a party, surviving members' grouping changed — refresh the room.
         broadcastRoomPartyState(player.currentRoom)
-        const socketSet = userIdToSocketIds.get(player.id)
-        if (socketSet) {
-          socketSet.delete(socket.id)
-          if (socketSet.size === 0) {
-            userIdToSocketIds.delete(player.id)
-          }
-        }
-        // One account can hold several sockets (a second tab). Only the last one
-        // leaving takes the player off the global roster.
-        if (!userIdToSocketIds.has(player.id)) {
-          departPresence(io, player.id)
-        }
+        // This was the account's last connection, so it leaves the global roster.
+        departPresence(io, player.id)
         lastActivityPersistedAt.delete(player.id)
         clearPlayerLevers(player.id)
         clearPlayerReveals(player.id)

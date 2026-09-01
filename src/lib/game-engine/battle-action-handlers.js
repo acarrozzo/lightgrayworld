@@ -55,6 +55,60 @@ function settleBattleWinPersistence(playerId, battleState, rewards) {
     })
 }
 
+/**
+ * Tear down a lost battle and build the defeat event.
+ *
+ * Defeat can arrive from three places — the opening ambush turn, an ordinary
+ * attack turn, and a support turn — and every one of them must leave the same
+ * state behind. Keeping them as three hand-maintained copies is exactly how the
+ * opening-turn path drifted: it never cleared the player's enemy roster, so the
+ * hostile that had just killed them stayed in the room, and the respawn move was
+ * then refused with "you cannot leave while hostile enemies are here". The
+ * player sat at 1 HP in the room that killed them while the database already
+ * said they were in the respawn room — recoverable only by refreshing.
+ */
+async function resolveBattleDefeat(playerId, roomState, battleState, enemyName, enemySlug) {
+  battleState.end()
+  roomState.activeBattles.delete(playerId)
+  // The player respawns elsewhere: clear the enemy slot so the wave does not
+  // carry over, and so nothing blocks the move out of this room.
+  roomState.clearPlayerEnemyState(playerId)
+
+  try {
+    await handleBattleDefeat(playerId, battleState)
+  } catch (err) {
+    console.error(`handleBattleDefeat failed for player ${playerId}:`, err)
+  }
+
+  // handleBattleDefeat resets DB hp to 1 on respawn — keep the map aligned.
+  roomState.updatePlayer(playerId, (state) => ({ ...state, hp: 1 }))
+
+  return {
+    event: 'battle:defeat',
+    payload: {
+      enemyName,
+      respawnRoomId: RESPAWN_ROOM_ID,
+      playerHp: 1,
+      message: `The ${enemyName} overwhelms you. You black out...`,
+      summary: {
+        outcome: 'LOSS',
+        enemyName,
+        enemyIcon: enemyName,
+        enemySlug,
+        turnsCount: battleState.turnCount,
+        totalDamageDealt: battleState.totalDamageDealt,
+        totalDamageReceived: battleState.totalDamageReceived,
+        maxSingleHit: battleState.maxSingleHit,
+        xpEarned: 0,
+        goldEarned: 0,
+        itemsDropped: [],
+        multiplayerBonus: battleState.multiplayerBonusUsed,
+        lastTurn: battleState.lastTurnResult,
+      },
+    },
+  }
+}
+
 function errorResult(action, message) {
   return {
     success: false,
@@ -374,40 +428,10 @@ async function executeStartBattle(action, playerId, roomState) {
 
     startBattleBackgroundWork = settleBattleWinPersistence(playerId, battleState, rewards)
   } else if (newPlayerHp <= 0) {
-    // Defeat check
-    battleState.end()
-    roomState.activeBattles.delete(playerId)
-    try {
-      await handleBattleDefeat(playerId, battleState)
-    } catch (err) {
-      console.error(`handleBattleDefeat failed on turn 1 for player ${playerId}:`, err)
-    }
-    // handleBattleDefeat resets DB hp to 1 on respawn — keep the map aligned.
-    roomState.updatePlayer(playerId, (state) => ({ ...state, hp: 1 }))
-    playerEvents.push({
-      event: 'battle:defeat',
-      payload: {
-        enemyName: enemy.name,
-        respawnRoomId: RESPAWN_ROOM_ID,
-        playerHp: 1,
-        message: `The ${enemy.name} overwhelms you. You black out...`,
-        summary: {
-          outcome: 'LOSS',
-          enemyName: enemy.name,
-          enemyIcon: enemy.name,
-          enemySlug: enemy.slug,
-          turnsCount: battleState.turnCount,
-          totalDamageDealt: battleState.totalDamageDealt,
-          totalDamageReceived: battleState.totalDamageReceived,
-          maxSingleHit: battleState.maxSingleHit,
-          xpEarned: 0,
-          goldEarned: 0,
-          itemsDropped: [],
-          multiplayerBonus: battleState.multiplayerBonusUsed,
-          lastTurn: battleState.lastTurnResult,
-        },
-      },
-    })
+    // Defeat check — an ambush that killed on the opening turn.
+    playerEvents.push(
+      await resolveBattleDefeat(playerId, roomState, battleState, enemy.name, enemy.slug)
+    )
   }
 
   const broadcastMsg = isAdvantageTurn
@@ -559,47 +583,17 @@ async function executePlayerAttack(action, playerId, roomState) {
 
   // Death check
   if (newHp <= 0) {
-    battleState.end()
-    roomState.activeBattles.delete(playerId)
-    // Player respawns to a different room — clear their enemy slot so it doesn't carry over.
-    roomState.clearPlayerEnemyState(playerId)
-
-    try {
-      await handleBattleDefeat(playerId, battleState)
-    } catch (err) {
-      console.error(`handleBattleDefeat failed for player ${playerId}:`, err)
-    }
-    // handleBattleDefeat resets DB hp to 1 on respawn — keep the map aligned.
-    roomState.updatePlayer(playerId, (state) => ({ ...state, hp: 1 }))
-
     return {
       success: true,
       action: 'player_attack',
       playerEvents: [
-        {
-          event: 'battle:defeat',
-          payload: {
-            enemyName: battleState.enemyName,
-            respawnRoomId: RESPAWN_ROOM_ID,
-            playerHp: 1,
-            message: `The ${battleState.enemyName} overwhelms you. You black out...`,
-            summary: {
-              outcome: 'LOSS',
-              enemyName: battleState.enemyName,
-              enemyIcon: battleState.enemyName,
-              enemySlug: battleState.enemySlug,
-              turnsCount: battleState.turnCount,
-              totalDamageDealt: battleState.totalDamageDealt,
-              totalDamageReceived: battleState.totalDamageReceived,
-              maxSingleHit: battleState.maxSingleHit,
-              xpEarned: 0,
-              goldEarned: 0,
-              itemsDropped: [],
-              multiplayerBonus: battleState.multiplayerBonusUsed,
-              lastTurn: battleState.lastTurnResult,
-            },
-          },
-        },
+        await resolveBattleDefeat(
+          playerId,
+          roomState,
+          battleState,
+          battleState.enemyName,
+          battleState.enemySlug
+        ),
       ],
       // Bug fix #4: notify room of defeat
       broadcastEvents: [
@@ -729,42 +723,15 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
 
   // Defeat path: enemy counterattack killed the player
   if (newHp <= 0) {
-    battleState.end()
-    roomState.activeBattles.delete(playerId)
-    roomState.clearPlayerEnemyState(playerId)
-    try {
-      await handleBattleDefeat(playerId, battleState)
-    } catch (err) {
-      console.error(`handleBattleDefeat failed during support turn for player ${playerId}:`, err)
-    }
-    // handleBattleDefeat resets DB hp to 1 on respawn — keep the map aligned.
-    roomState.updatePlayer(playerId, (state) => ({ ...state, hp: 1 }))
     return {
       playerEvents: [
-        {
-          event: 'battle:defeat',
-          payload: {
-            enemyName: battleState.enemyName,
-            respawnRoomId: RESPAWN_ROOM_ID,
-            playerHp: 1,
-            message: `The ${battleState.enemyName} overwhelms you. You black out...`,
-            summary: {
-              outcome: 'LOSS',
-              enemyName: battleState.enemyName,
-              enemyIcon: battleState.enemyName,
-              enemySlug: battleState.enemySlug,
-              turnsCount: battleState.turnCount,
-              totalDamageDealt: battleState.totalDamageDealt,
-              totalDamageReceived: battleState.totalDamageReceived,
-              maxSingleHit: battleState.maxSingleHit,
-              xpEarned: 0,
-              goldEarned: 0,
-              itemsDropped: [],
-              multiplayerBonus: battleState.multiplayerBonusUsed,
-              lastTurn: battleState.lastTurnResult,
-            },
-          },
-        },
+        await resolveBattleDefeat(
+          playerId,
+          roomState,
+          battleState,
+          battleState.enemyName,
+          battleState.enemySlug
+        ),
       ],
       broadcastEvents: [
         {
@@ -864,4 +831,13 @@ async function executePlayerFlee(action, playerId, roomState) {
   }
 }
 
-module.exports = { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn }
+module.exports = {
+  executeStartBattle,
+  executePlayerAttack,
+  executePlayerFlee,
+  resolveSupportTurn,
+  // Exported so the shared defeat teardown can be exercised directly: the bug it
+  // fixes (a roster left behind, blocking the respawn move) is invisible from
+  // the outside until a player is already stuck.
+  resolveBattleDefeat,
+}

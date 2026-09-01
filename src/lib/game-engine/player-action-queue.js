@@ -1,5 +1,12 @@
+/**
+ * How long a single action may run before the caller is answered with a timeout.
+ * Exported so the engine and the socket layer's user-facing message cannot drift
+ * from it — the message used to quote 5000ms while the engine ran at 15000ms.
+ */
+const DEFAULT_ACTION_TIMEOUT_MS = 15000;
+
 class PlayerActionQueue {
-  constructor({ timeoutMs = 5000, maxQueueLength = 5, logger = console } = {}) {
+  constructor({ timeoutMs = DEFAULT_ACTION_TIMEOUT_MS, maxQueueLength = 5, logger = console } = {}) {
     this.timeoutMs = timeoutMs;
     this.maxQueueLength = maxQueueLength;
     this.logger = logger || console;
@@ -150,57 +157,83 @@ class PlayerActionQueue {
     });
 
     let settled = false;
-    const complete = (handler) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
+    let timedOut = false;
+
+    // The lane is released only when the action itself settles — never on the
+    // timeout. A timeout answers the caller early; it does not mean the work
+    // stopped, because an in-flight promise cannot be cancelled.
+    const releaseLane = () => {
       clearTimeout(timeoutHandle);
       this.activePlayers.delete(playerId);
-      handler();
       this.processNext(playerId);
     };
 
     const timeoutHandle = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      timedOut = true;
       this.metrics.timedOut += 1;
-      const timeoutError = this._createError(
-        `Action timed out after ${this.timeoutMs}ms`,
-        'ACTION_TIMEOUT'
-      );
       this._log('error', '[ActionQueue] Action timed out', {
         playerId,
         actionType: metadata?.actionType,
         timeoutMs: this.timeoutMs,
       });
-      complete(() => {
-        reject(timeoutError);
-      });
+      // Tell the caller now so the client is not left hanging, but keep holding
+      // the player's lane. Freeing it here used to start the next action while
+      // the timed-out one was still running and still writing — voiding the
+      // serialization this queue exists to provide, at exactly the moment it
+      // matters most. Timeouts happen when the database is slow, which is
+      // precisely when a player retries; the retry then raced the original.
+      reject(
+        this._createError(`Action timed out after ${this.timeoutMs}ms`, 'ACTION_TIMEOUT')
+      );
     }, this.timeoutMs);
 
     Promise.resolve()
       .then(() => actionFn())
       .then((result) => {
+        settled = true;
         const duration = Date.now() - startedAt;
         this._recordDuration(duration);
         this.metrics.completed += 1;
-        this._log('info', '[ActionQueue] Action completed', {
-          playerId,
-          actionType: metadata?.actionType,
-          durationMs: duration,
-        });
 
-        complete(() => resolve(result));
+        if (timedOut) {
+          // The caller was already rejected; surfacing the result now would
+          // resolve a settled promise. Log it so a chronically slow action is
+          // visible rather than silent.
+          this._log('warn', '[ActionQueue] Action completed after it had timed out', {
+            playerId,
+            actionType: metadata?.actionType,
+            durationMs: duration,
+          });
+        } else {
+          this._log('info', '[ActionQueue] Action completed', {
+            playerId,
+            actionType: metadata?.actionType,
+            durationMs: duration,
+          });
+          resolve(result);
+        }
+
+        releaseLane();
       })
       .catch((error) => {
+        settled = true;
         const duration = Date.now() - startedAt;
         this._recordDuration(duration);
         this._log('error', '[ActionQueue] Action failed', {
           playerId,
           actionType: metadata?.actionType,
           error: error?.message,
+          afterTimeout: timedOut,
         });
 
-        complete(() => reject(error));
+        if (!timedOut) {
+          reject(error);
+        }
+
+        releaseLane();
       });
   }
 
@@ -235,5 +268,6 @@ class PlayerActionQueue {
 
 module.exports = {
   PlayerActionQueue,
+  DEFAULT_ACTION_TIMEOUT_MS,
 };
 

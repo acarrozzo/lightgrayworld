@@ -11,9 +11,12 @@ class GameEngine {
     this.tickClock = new TickClock(tickMs)
     this.rooms = new Map()
     this.playerQueue = new PlayerActionQueue({
-      timeoutMs: 15000,
       maxQueueLength: 5,
     })
+    // playerId -> Set<socketId>. One account can hold several connections (a
+    // second tab), and each of them should receive that player's events. This
+    // was a single socketId, so a second login silently redirected every battle,
+    // inventory and level-up event to whichever tab connected last.
     this.playerSockets = new Map()
     // Map<playerId, Map<roomId, enemySlug>> — enemies waiting for a player when they return to a room.
     // Populated on room exit, consumed on room entry, cleared on disconnect.
@@ -54,7 +57,25 @@ class GameEngine {
     const room = this.getOrCreateRoom(playerState.roomId)
     room.addPlayer(playerState)
     if (playerState.id && playerState.socketId) {
-      this.playerSockets.set(playerState.id, playerState.socketId)
+      if (!this.playerSockets.has(playerState.id)) {
+        this.playerSockets.set(playerState.id, new Set())
+      }
+      this.playerSockets.get(playerState.id).add(playerState.socketId)
+    }
+  }
+
+  /**
+   * Drop one connection without tearing down the player's session — the second
+   * tab closing while the first is still open.
+   */
+  unregisterSocket(playerId, socketId) {
+    const sockets = this.playerSockets.get(playerId)
+    if (!sockets) {
+      return
+    }
+    sockets.delete(socketId)
+    if (sockets.size === 0) {
+      this.playerSockets.delete(playerId)
     }
   }
 
@@ -371,14 +392,23 @@ class GameEngine {
   }
 
   emitToPlayer(playerId, event, payload) {
-    const socketId = this.playerSockets.get(playerId)
-    if (!socketId) {
+    const sockets = this.playerSockets.get(playerId)
+    if (!sockets) {
       return
     }
 
-    const socket = this.io.sockets.sockets.get(socketId)
-    if (socket) {
-      socket.emit(event, payload)
+    for (const socketId of [...sockets]) {
+      const socket = this.io.sockets.sockets.get(socketId)
+      if (socket) {
+        socket.emit(event, payload)
+      } else {
+        // The connection is gone but disconnect bookkeeping never ran for it.
+        sockets.delete(socketId)
+      }
+    }
+
+    if (sockets.size === 0) {
+      this.playerSockets.delete(playerId)
     }
   }
 
