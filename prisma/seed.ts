@@ -6282,7 +6282,7 @@ async function main() {
             title: 'You eat the flower',
             type: 'icon',
             icon: 'flower',
-            iconColor: 'pink-400/70',
+            iconColor: 'mood.arcane',
             message: 'You consume the flower. It tastes bitter and you feel weaker. You lose 1 HP.',
           },
         },

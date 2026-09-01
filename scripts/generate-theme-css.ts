@@ -18,6 +18,7 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { THEMES, DEFAULT_THEME_ID } from '../src/lib/theme/themes'
+import type { Theme } from '../src/lib/theme/types'
 import { isFillableVar, themeToCssVars } from '../src/lib/theme/tokens'
 
 const OUT = join(process.cwd(), 'src/app/generated-themes.css')
@@ -27,8 +28,19 @@ if (!defaultTheme) throw new Error(`Default theme ${DEFAULT_THEME_ID} is not reg
 
 const varsFor = (t: (typeof THEMES)[number]) => themeToCssVars(t)
 
-function block(selector: string, vars: Record<string, string>, indent = '  '): string {
-  const lines = Object.entries(vars).map(([k, v]) => `${indent}${k}: ${v};`)
+/**
+ * One theme's variables, led by `color-scheme`.
+ *
+ * `color-scheme` is what tells the browser to draw its own widgets — selects,
+ * checkboxes, date pickers, the scrollbars it still owns — to match. Without it
+ * every native control renders light inside a dark page, and no amount of
+ * custom-property work reaches them.
+ */
+function block(selector: string, theme: Theme, vars: Record<string, string>, indent = '  '): string {
+  const lines = [
+    `${indent}color-scheme: ${theme.appearance};`,
+    ...Object.entries(vars).map(([k, v]) => `${indent}${k}: ${v};`),
+  ]
   return `${selector} {\n${lines.join('\n')}\n}`
 }
 
@@ -59,13 +71,13 @@ const parts: string[] = [
   themeRegistration(defaultVars),
   '',
   `/* Default theme (${defaultTheme.name}), applied when no preference is stored. */`,
-  block(':root', defaultVars),
+  block(':root', defaultTheme, defaultVars),
   '',
 ]
 
 for (const theme of THEMES) {
   parts.push(`/* ${theme.name} — ${theme.description} */`)
-  parts.push(block(`[data-theme='${theme.id}']`, varsFor(theme)))
+  parts.push(block(`[data-theme='${theme.id}']`, theme, varsFor(theme)))
   parts.push('')
 }
 

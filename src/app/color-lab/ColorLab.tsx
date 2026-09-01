@@ -382,7 +382,7 @@ export default function ColorLab() {
       {compare ? (
         <div className="grid gap-4 xl:grid-cols-2">
           {THEMES.map((t) => (
-            // Each card carries its own theme's variables, so all eight render
+            // Each card carries its own theme's variables, so all of them render
             // at once regardless of which one is actually applied.
             <div
               key={t.id}

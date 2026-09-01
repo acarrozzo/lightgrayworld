@@ -2,7 +2,7 @@
  * Theme linter.
  *
  * Runs the project's contrast and state-visibility checks over every launch
- * theme. This is what makes "all eight themes are readable" a claim the build
+ * theme. This is what makes "every theme is readable" a claim the build
  * can defend rather than something a person eyeballed once.
  *
  * Three families of check:

@@ -443,7 +443,7 @@ function StatBar({ label, value, percentage, gradient }: StatBarProps) {
         <span>{label}</span>
         <span className="font-medium">{value}</span>
       </div>
-      <div className="h-3 rounded-full bg-surface-raised/80 overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
+      <div className="h-3 rounded-full bg-surface-raised/80 overflow-hidden shadow-[inset_0_1px_3px_var(--shadow)]">
         <div
           className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-[width] duration-500 ease-out`}
           style={{ width: `${percentage}%` }}

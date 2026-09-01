@@ -179,6 +179,25 @@ export function resolveRegions(theme: Theme): Record<RegionId, ResolvedRegionPal
  * Ordering is stable so generated CSS diffs stay readable.
  */
 export function themeToCssVars(theme: Theme): Record<string, string> {
+  const cached = CSS_VARS_CACHE.get(theme)
+  if (cached) return cached
+  const vars = computeCssVars(theme)
+  CSS_VARS_CACHE.set(theme, vars)
+  return vars
+}
+
+/**
+ * Memo of `computeCssVars`, keyed by theme identity.
+ *
+ * Building the set costs a few milliseconds — the fill companions walk 165
+ * roles through an OKLab search each — and the pickers ask for it during
+ * render: the header dot on every vitals change, the Settings list once per
+ * theme per render. Themes are built once at module load and never mutated,
+ * so the answer never changes and object identity is a safe key.
+ */
+const CSS_VARS_CACHE = new WeakMap<Theme, Record<string, string>>()
+
+function computeCssVars(theme: Theme): Record<string, string> {
   const vars: Record<string, string> = {}
   const { ui, game, terminal } = theme
 

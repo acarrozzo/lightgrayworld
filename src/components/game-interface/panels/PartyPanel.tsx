@@ -180,7 +180,7 @@ export default function PartyPanel({
   return (
     <div className="rounded-lg border border-resource-mp/40 bg-resource-mp/10 p-3 space-y-2">
       {inParty && party && (
-        <div className="rounded-md border border-resource-mp/50 bg-resource-mp/15 p-2 space-y-1.5 shadow-[0_0_0_1px_rgba(59,130,246,0.15)] ring-1 ring-resource-mp/20">
+        <div className="rounded-md border border-resource-mp/50 bg-resource-mp/15 p-2 space-y-1.5 ring-1 ring-resource-mp/20">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-resource-mp">
               Party <span className="text-[10px] text-fg-muted">({party.size}/{party.maxSize})</span>

@@ -45,13 +45,20 @@ export const THEMES_BY_ID: Record<string, Theme> = Object.fromEntries(
 
 export const THEME_IDS: string[] = THEMES.map((t) => t.id)
 
+/**
+ * Whether `value` names a registered theme.
+ *
+ * Own keys only: `THEMES_BY_ID` is a plain object, so a bare `in` check would
+ * also accept `'constructor'` and `'toString'`, and the API route would store
+ * them on the account.
+ */
 export function isThemeId(value: unknown): value is string {
-  return typeof value === 'string' && value in THEMES_BY_ID
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(THEMES_BY_ID, value)
 }
 
 /** The requested theme, or Light Gray RPG when the id is unknown or missing. */
 export function resolveTheme(id: string | null | undefined): Theme {
-  return (id && THEMES_BY_ID[id]) || THEMES_BY_ID[DEFAULT_THEME_ID]
+  return isThemeId(id) ? THEMES_BY_ID[id] : THEMES_BY_ID[DEFAULT_THEME_ID]
 }
 
 export { lightGray, lightGrayDark, dracula, nord, gruvboxDark, solarizedDark, tokyoNight, catppuccinMocha, everforestDark }

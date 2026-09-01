@@ -716,6 +716,7 @@
 
 /* Default theme (Light Gray RPG), applied when no preference is stored. */
 :root {
+  color-scheme: dark;
   --surface-canvas: #030712;
   --surface-sunken: #01040a;
   --surface-panel: #111827;
@@ -1427,6 +1428,7 @@
 
 /* Light Gray RPG — The house palette. Cool slate greys, earthy world, bright steel. */
 [data-theme='light-gray'] {
+  color-scheme: dark;
   --surface-canvas: #030712;
   --surface-sunken: #01040a;
   --surface-panel: #111827;
@@ -2138,6 +2140,7 @@
 
 /* Light Gray Dark — The house palette, neutral and near black. Quiet frame, loud world. */
 [data-theme='light-gray-dark'] {
+  color-scheme: dark;
   --surface-canvas: #030303;
   --surface-sunken: #000000;
   --surface-panel: #141414;
@@ -2849,6 +2852,7 @@
 
 /* Gruvbox Dark — Retro groove. Warm earth tones over charcoal. */
 [data-theme='gruvbox-dark'] {
+  color-scheme: dark;
   --surface-canvas: #282828;
   --surface-sunken: #1d2021;
   --surface-panel: #32302f;
@@ -3560,6 +3564,7 @@
 
 /* Nord — Arctic, north-bluish. Cool frost over a slate night. */
 [data-theme='nord'] {
+  color-scheme: dark;
   --surface-canvas: #2e3440;
   --surface-sunken: #272c36;
   --surface-panel: #353c4a;
@@ -4271,6 +4276,7 @@
 
 /* Everforest Dark — Soft green and warm stone. Comfortable, mossy, low contrast. */
 [data-theme='everforest-dark'] {
+  color-scheme: dark;
   --surface-canvas: #2d353b;
   --surface-sunken: #232a2e;
   --surface-panel: #343f44;
@@ -4982,6 +4988,7 @@
 
 /* Dracula — Purple and pink on deep indigo. The classic. */
 [data-theme='dracula'] {
+  color-scheme: dark;
   --surface-canvas: #282a36;
   --surface-sunken: #21222c;
   --surface-panel: #2f313d;
@@ -5693,6 +5700,7 @@
 
 /* Solarized Dark — Precision colour on deep cyan-black. Low glare, high care. */
 [data-theme='solarized-dark'] {
+  color-scheme: dark;
   --surface-canvas: #002b36;
   --surface-sunken: #00212b;
   --surface-panel: #073642;
@@ -6404,6 +6412,7 @@
 
 /* Tokyo Night — Neon signage over deep navy. Cool, electric, late. */
 [data-theme='tokyo-night'] {
+  color-scheme: dark;
   --surface-canvas: #1a1b26;
   --surface-sunken: #16161e;
   --surface-panel: #1f2335;
@@ -7115,6 +7124,7 @@
 
 /* Catppuccin Mocha — Soft pastels on warm plum. Gentle, and very hard to dislike. */
 [data-theme='catppuccin-mocha'] {
+  color-scheme: dark;
   --surface-canvas: #1e1e2e;
   --surface-sunken: #181825;
   --surface-panel: #282839;

@@ -1,10 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
-import { THEMES } from '@/lib/theme/themes'
+import { THEMES, resolveTheme } from '@/lib/theme/themes'
 import { themeToCssVars } from '@/lib/theme/tokens'
-import { themeSwatch } from '@/lib/theme/swatch'
+import { themeNameColor } from '@/lib/theme/swatch'
 import { useThemeStore } from '@/store/themeStore'
+import ThemeDot from '@/components/ThemeDot'
 import type { Theme } from '@/lib/theme/types'
 
 /**
@@ -92,7 +93,7 @@ function ThemeDots({
   onKeyDown: (event: React.KeyboardEvent) => void
   className?: string
 }) {
-  const selected = THEMES.find((t) => t.id === themeId) ?? THEMES[0]
+  const selected = resolveTheme(themeId)
 
   return (
     <div className={className}>
@@ -100,39 +101,22 @@ function ThemeDots({
         role="radiogroup"
         aria-label="Terminal theme"
         onKeyDown={onKeyDown}
-        className="flex items-center justify-center gap-2"
+        className="flex items-center justify-center gap-1"
       >
-        {THEMES.map((theme) => {
-          const isSelected = theme.id === themeId
-          return (
-            <button
-              key={theme.id}
-              type="button"
-              role="radio"
-              aria-checked={isSelected}
-              aria-label={theme.name}
-              title={theme.name}
-              tabIndex={isSelected ? 0 : -1}
-              onClick={() => onSelect(theme.id)}
-              className={`
-                h-[18px] w-[18px] shrink-0 rounded-full border transition-all duration-150
-                focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus
-                ${
-                  isSelected
-                    ? 'scale-110 border-accent ring-2 ring-accent/40'
-                    : 'border-line-strong opacity-70 hover:scale-110 hover:opacity-100'
-                }
-              `}
-              style={{ background: themeSwatch(theme) }}
-            />
-          )
-        })}
+        {THEMES.map((theme) => (
+          <ThemeDot
+            key={theme.id}
+            theme={theme}
+            isSelected={theme.id === themeId}
+            onSelect={onSelect}
+          />
+        ))}
       </div>
 
       {/* The name lives under the row so the dots stay a single tidy line. */}
       <p
         className="mt-2 text-center text-[11px] font-semibold transition-colors"
-        style={{ color: themeToCssVars(selected)['--accent'] }}
+        style={{ color: themeNameColor(selected, selected) }}
       >
         {selected.name}
       </p>
@@ -163,6 +147,7 @@ export default function ThemeSelector({
   const themeId = useThemeStore((state) => state.themeId)
   const setTheme = useThemeStore((state) => state.setTheme)
   const listRef = useRef<HTMLDivElement>(null)
+  const current = resolveTheme(themeId)
 
   const select = useCallback(
     (id: string) => setTheme(id, { persistToAccount }),
@@ -235,7 +220,7 @@ export default function ThemeSelector({
               {/* The name wears its own palette — the playful part. */}
               <span
                 className="truncate text-xs font-semibold"
-                style={{ color: themeToCssVars(theme)['--accent'] }}
+                style={{ color: themeNameColor(theme, current) }}
               >
                 {theme.name}
               </span>

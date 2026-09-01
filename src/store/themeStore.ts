@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import { DEFAULT_THEME_ID, isThemeId } from '@/lib/theme/themes'
+import { useGameStore } from '@/lib/game-state'
 
 /**
  * The selected terminal theme.
@@ -15,7 +16,15 @@ import { DEFAULT_THEME_ID, isThemeId } from '@/lib/theme/themes'
  *
  *  - **The `User.theme` column** is the account-level memory, so the choice
  *    follows a player to another browser. It is written on change and read on
- *    sign-in, at which point it overrides whatever the device had stored.
+ *    every load while signed in, at which point it overrides whatever the
+ *    device had stored.
+ *
+ * The account wins. That is only workable because every change made while
+ * signed in is written back to the account, so the two agree except in the
+ * brief window before that write lands (or when it fails). The write carries
+ * the bearer token like every other authenticated request — the API reads no
+ * cookie — and is skipped entirely on the login screen, where there is no
+ * account yet and the choice is handed to registration instead.
  *
  * Neither is authoritative over gameplay — a theme is presentation only — so a
  * failed write is logged and dropped rather than surfaced or retried.
@@ -94,15 +103,25 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     set({ themeId })
 
     if (options?.persistToAccount !== false) {
+      const token = useGameStore.getState().token
+      // Signed out: nothing to save to. The device copy is enough, and
+      // registration picks it up from there.
+      if (!token) return
+
       void fetch('/api/user/theme', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ theme: themeId }),
-      }).catch((error) => {
-        // A signed-out player on the login screen is the normal case here.
-        console.debug('Theme not saved to account:', error)
       })
+        .then((res) => {
+          if (!res.ok) console.debug('Theme not saved to account:', res.status)
+        })
+        .catch((error) => {
+          console.debug('Theme not saved to account:', error)
+        })
     }
   },
 

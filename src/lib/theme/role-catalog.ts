@@ -154,6 +154,17 @@ export const ROLE_CATALOG: RoleGroup[] = [
     ],
   },
   {
+    id: 'enemies',
+    title: 'Enemies',
+    blurb:
+      'How a creature reads before you have fought it. Hostile is not the same role as attack or error, and boss is its own colour so the rare fight looks rare.',
+    roles: [
+      role('enemy.hostile', '--enemy-hostile', 'Something that will fight you.', 'Enemy names in the room roster and battle frame.'),
+      role('enemy.neutral', '--enemy-neutral', 'Something that will not, unless provoked.', 'Wandering NPCs, training dummies, passive creatures.'),
+      role('enemy.boss', '--enemy-boss', 'A named, rare, dangerous fight.', 'Boss names and boss battle headers.'),
+    ],
+  },
+  {
     id: 'loot',
     title: 'Loot and enemies',
     blurb:

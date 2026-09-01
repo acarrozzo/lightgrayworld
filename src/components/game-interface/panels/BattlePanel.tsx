@@ -48,7 +48,7 @@ function HpBar({ current, max, color, rtl = false, initialPct }: { current: numb
   }, [pct])
 
   return (
-    <div className="relative w-full bg-surface-raised/80 rounded-full h-2 shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]">
+    <div className="relative w-full bg-surface-raised/80 rounded-full h-2 shadow-[inset_0_1px_2px_var(--shadow)]">
       {damagePct > 0 && (
         <div
           className="bg-resource-xp h-2 rounded-full absolute top-0 transition-all duration-500"

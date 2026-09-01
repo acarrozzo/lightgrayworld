@@ -32,7 +32,7 @@ function StatBar({ pct, fillClass, label, value, over, className }: {
 }) {
   return (
     <div
-      className={`relative h-4 rounded-full bg-surface-raised/90 overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)] ${className ?? ''}`}
+      className={`relative h-4 rounded-full bg-surface-raised/90 overflow-hidden shadow-[inset_0_1px_3px_var(--shadow)] ${className ?? ''}`}
       title={`${label} ${value}`}
     >
       <div

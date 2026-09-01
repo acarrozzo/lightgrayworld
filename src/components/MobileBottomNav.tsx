@@ -118,7 +118,7 @@ export default function MobileBottomNav({
   return (
     <div
       ref={containerRef}
-      className="flex-shrink-0 relative bg-surface-panel/98 backdrop-blur-md border-t border-line-subtle/30 shadow-[0_-4px_16px_rgba(0,0,0,0.3)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+      className="flex-shrink-0 relative bg-surface-panel/98 backdrop-blur-md border-t border-line-subtle/30 shadow-[0_-4px_16px_var(--shadow)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
     >
       {isOverflowOpen && (
         <div

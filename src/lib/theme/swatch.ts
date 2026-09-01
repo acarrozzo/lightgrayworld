@@ -13,10 +13,23 @@
 
 import type { Theme } from './types'
 import { themeToCssVars } from './tokens'
+import { ensureContrast } from './color'
 
 /** The authored signature colour. Use where themes are shown as a set. */
 export function themeSwatch(theme: Theme): string {
   return theme.swatch
+}
+
+/**
+ * A theme's name, painted in its own accent, on a panel of the theme in use.
+ *
+ * Every picker shows names this way — it is the playful part — but the accent
+ * was chosen against its own surfaces, not the current theme's. This lifts it
+ * toward the current theme's bright text until it clears the large-text bar,
+ * so a steel-blue name is still legible on a Solarized panel.
+ */
+export function themeNameColor(theme: Theme, on: Theme): string {
+  return ensureContrast(theme.ui.accent, on.ui.surfacePanel, 3, on.ui.fgBright)
 }
 
 /** Ground, accent and attack as three slices. Use for a lone active-theme dot. */

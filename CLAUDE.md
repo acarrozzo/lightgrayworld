@@ -99,6 +99,7 @@ Before changing a system, name its authoritative owner and decide what reconnect
 - `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/`: durable schema and authored world/item data.
 - `src/lib/socket-server-handlers.js`, `src/lib/socket.ts`, `src/lib/socket-utils.js`, `src/lib/socket-handlers.ts`: realtime transport and contracts.
 - `src/lib/game-state.ts`: central client gameplay store.
+- `src/lib/theme/`: terminal colour themes. Themes are typed recipes in `themes/`, derived by `factory.ts`, flattened to CSS variables by `tokens.ts`, and emitted to the committed `src/app/generated-themes.css` by `npm run generate-themes`. Components use semantic roles (`text-status-error`, `bg-surface-panel`, `.fill-action-attack`, `roomColor(...)`), never raw Tailwind colours or hex. Room colour overrides in the seed are tokens from `room-colors.ts`. `npm run validate-themes` checks contrast and distinctness.
 - `src/components/GameInterface.tsx`: current top-level gameplay coordinator and layout.
 - `src/components/game-interface/panels/`: focused character, inventory, quest, battle, map, party, player, feed, chat, crafting, and settings views.
 - `src/app/rooms`, `src/app/items`, `src/app/enemies`, `src/app/quests`, `src/app/players`, `src/app/world-tool`: read-oriented world reference tools.
@@ -197,6 +198,7 @@ Modernization should improve reliability, clarity, accessibility, responsiveness
 Prefer:
 
 - structured events over parsing feed strings;
+- semantic colour roles over raw colours: a meaning (`resource.hp`, `status.error`, `mood.danger`) rather than a hue, so every theme can place it; decorative `hue.*` only where colour distinguishes without meaning;
 - declarative definitions over huge conditional files;
 - stable identifiers over display-name coupling;
 - transactions and idempotency over ordered side effects;
@@ -249,9 +251,12 @@ Use the commands relevant to the change:
 
 ```bash
 npm run validate-quests
+npm run validate-themes
 npm run lint
 npm run build
 ```
+
+After editing anything under `src/lib/theme/themes/`, run `npm run generate-themes` and commit the regenerated stylesheet.
 
 For schema changes:
 

@@ -1,7 +1,7 @@
 /**
  * Builds a complete `Theme` from a terminal palette plus targeted overrides.
  *
- * The derivation here is the reason eight themes is a tractable amount of work.
+ * The derivation here is the reason nine themes is a tractable amount of work.
  * A terminal palette is sixteen colours chosen to be legible against one
  * background; an application needs roughly two hundred values. `makeTheme`
  * spans that gap with rules that hold for any palette, and each launch theme

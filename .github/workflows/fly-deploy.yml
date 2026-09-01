@@ -24,6 +24,12 @@ jobs:
         run: npm run validate-quests
       - name: Validate world
         run: npm run validate-world
+      - name: Validate themes
+        run: npm run validate-themes
+      # The stylesheet is generated from the theme definitions and committed;
+      # a theme edited without regenerating it would ship the old colours.
+      - name: Generated theme CSS is in sync
+        run: npm run generate-themes && git diff --exit-code -- src/app/generated-themes.css
       - name: Typecheck
         run: npm run typecheck
       - name: Lint

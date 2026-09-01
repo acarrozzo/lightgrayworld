@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { THEMES } from '@/lib/theme/themes'
-import { themeToCssVars } from '@/lib/theme/tokens'
-import { themeSwatch, themeSwatchPie } from '@/lib/theme/swatch'
+import { THEMES, resolveTheme } from '@/lib/theme/themes'
+import { themeNameColor, themeSwatchPie } from '@/lib/theme/swatch'
 import { useThemeStore } from '@/store/themeStore'
+import ThemeDot from '@/components/ThemeDot'
 
 /**
  * The header's theme control: one dot, and a row of dots when you press it.
@@ -21,7 +21,8 @@ import { useThemeStore } from '@/store/themeStore'
  */
 
 const GAP = 8
-const FLYOUT_WIDTH = 232
+/** Nine 28px dot targets, 4px apart, plus the flyout's own padding. */
+const FLYOUT_WIDTH = 312
 
 export default function ThemeSwitcher({ className = '' }: { className?: string }) {
   const themeId = useThemeStore((state) => state.themeId)
@@ -37,10 +38,10 @@ export default function ThemeSwitcher({ className = '' }: { className?: string }
 
   useEffect(() => setMounted(true), [])
 
-  const active = THEMES.find((t) => t.id === themeId) ?? THEMES[0]
+  const active = resolveTheme(themeId)
   // The name shown is whatever the pointer is over, falling back to the
   // selected one — so themes can be browsed by name without committing.
-  const named = THEMES.find((t) => t.id === (hovered ?? themeId)) ?? active
+  const named = hovered ? resolveTheme(hovered) : active
 
   /** Anchor to the trigger, right-aligned so it never runs off the edge. */
   const reposition = useCallback(() => {
@@ -108,14 +109,24 @@ export default function ThemeSwitcher({ className = '' }: { className?: string }
         aria-expanded={isOpen}
         aria-label={`Terminal theme: ${active.name}`}
         title={`Terminal theme: ${active.name}`}
+        // The 16px dot keeps the bar thin; the negative margin lets the 24px
+        // hit area around it overlap its neighbours' padding instead of
+        // pushing them apart.
         className={`
-          h-4 w-4 shrink-0 rounded-full border transition-all duration-150
-          focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus
-          ${isOpen ? 'border-accent ring-2 ring-accent/40' : 'border-line-strong hover:scale-110 hover:border-accent'}
+          group -m-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full focus:outline-none
           ${className}
         `}
-        style={{ background: themeSwatchPie(active) }}
-      />
+      >
+        <span
+          aria-hidden="true"
+          className={`
+            block h-4 w-4 rounded-full border transition-all duration-150
+            group-focus-visible:ring-2 group-focus-visible:ring-line-focus
+            ${isOpen ? 'border-accent ring-2 ring-accent/40' : 'border-line-strong group-hover:scale-110 group-hover:border-accent'}
+          `}
+          style={{ background: themeSwatchPie(active) }}
+        />
+      </button>
 
       {mounted &&
         isOpen &&
@@ -133,41 +144,23 @@ export default function ThemeSwitcher({ className = '' }: { className?: string }
               role="radiogroup"
               aria-label="Terminal theme"
               onKeyDown={onFlyoutKeyDown}
-              className="flex items-center justify-center gap-1.5"
+              className="flex items-center justify-center gap-1"
             >
-              {THEMES.map((theme) => {
-                const isSelected = theme.id === themeId
-                return (
-                  <button
-                    key={theme.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    aria-label={theme.name}
-                    title={theme.name}
-                    tabIndex={isSelected ? 0 : -1}
-                    autoFocus={isSelected}
-                    onClick={() => setTheme(theme.id)}
-                    onMouseEnter={() => setHovered(theme.id)}
-                    onFocus={() => setHovered(theme.id)}
-                    className={`
-                      h-[18px] w-[18px] shrink-0 rounded-full border transition-all duration-150
-                      focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus
-                      ${
-                        isSelected
-                          ? 'scale-110 border-accent ring-2 ring-accent/40'
-                          : 'border-line-strong opacity-70 hover:scale-110 hover:opacity-100'
-                      }
-                    `}
-                    style={{ background: themeSwatch(theme) }}
-                  />
-                )
-              })}
+              {THEMES.map((theme) => (
+                <ThemeDot
+                  key={theme.id}
+                  theme={theme}
+                  isSelected={theme.id === themeId}
+                  autoFocus={theme.id === themeId}
+                  onSelect={setTheme}
+                  onHover={setHovered}
+                />
+              ))}
             </div>
 
             <p
               className="mt-2 text-center text-[11px] font-semibold leading-none"
-              style={{ color: themeToCssVars(named)['--accent'] }}
+              style={{ color: themeNameColor(named, active) }}
             >
               {named.name}
             </p>
