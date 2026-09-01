@@ -200,7 +200,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
               <span className="text-[10px] text-gray-500 font-normal tabular-nums">{clicks.toLocaleString()}</span>
             )}
             <h1 className="text-sm font-semibold text-gray-100 tracking-wide">Light Gray</h1>
-            <span className="text-[10px] text-gray-500 font-normal">v0.1.6</span>
+            <span className="text-[10px] text-gray-500 font-normal">v0.1.7</span>
           </div>
 
           {/* Right side - Stats and Connection Status */}
