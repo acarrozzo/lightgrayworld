@@ -25,6 +25,7 @@ import { makeTheme } from '../src/lib/theme/factory'
 import { themeToCssVars, resolveRegions } from '../src/lib/theme/tokens'
 import { contrast, deltaE } from '../src/lib/theme/color'
 import { THEMES, resolveTheme, DEFAULT_THEME_ID } from '../src/lib/theme/themes'
+import { ROLE_CATALOG, DOCUMENTED_VARS } from '../src/lib/theme/role-catalog'
 
 test('room colours resolve to CSS variables, never to class names', () => {
   const value = roomColor('terrain.dirt', 'rockyFlats', 'title')
@@ -193,6 +194,37 @@ test('region derivation fills every slot', () => {
         const value = (palette as Record<string, string>)[slot]
         assert.match(value, /^#[0-9a-fA-F]{6,8}$/, `${theme.id}/${id}/${slot} is ${value}`)
       }
+    }
+  }
+})
+
+test('the role catalog documents every role a theme defines', () => {
+  const documented = new Set(DOCUMENTED_VARS)
+  const emitted = Object.keys(themeToCssVars(THEMES[0]))
+
+  // Regions and the terminal layer are documented structurally by the World
+  // Tool page (a region has fifteen instances of the same seven slots, and the
+  // ANSI table is shown whole), so they are not expected in the role catalog.
+  const roleVars = emitted.filter(
+    (v) => !v.startsWith('--world-') && !v.startsWith('--ansi-') && !v.startsWith('--term-')
+  )
+
+  const undocumented = roleVars.filter((v) => !documented.has(v))
+  assert.deepEqual(undocumented, [], `these roles have no entry in ROLE_CATALOG: ${undocumented}`)
+})
+
+test('the role catalog documents nothing a theme does not define', () => {
+  const emitted = new Set(Object.keys(themeToCssVars(THEMES[0])))
+  const stale = DOCUMENTED_VARS.filter((v) => !emitted.has(v))
+  assert.deepEqual(stale, [], `ROLE_CATALOG documents variables no theme emits: ${stale}`)
+})
+
+test('every catalog token matches its CSS variable', () => {
+  for (const group of ROLE_CATALOG) {
+    for (const r of group.roles) {
+      assert.match(r.cssVar, /^--[a-z-]+$/, `${r.token} has a malformed variable`)
+      assert.ok(r.meaning.length > 0, `${r.token} has no meaning`)
+      assert.ok(r.usedFor.length > 0, `${r.token} has no usage`)
     }
   }
 })

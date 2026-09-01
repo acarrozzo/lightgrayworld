@@ -73,12 +73,89 @@ function AnsiStrip({ theme }: { theme: Theme }) {
   )
 }
 
+/**
+ * The whole theme in one circle: canvas, accent and attack as three slices.
+ *
+ * Enough to tell the palettes apart at 18px — a theme's ground, its chrome and
+ * its hottest colour are exactly the three that differ most between them.
+ */
+function dotBackground(theme: Theme): string {
+  const vars = themeToCssVars(theme)
+  return `conic-gradient(from 210deg, ${vars['--surface-canvas']} 0 33%, ${vars['--accent']} 33% 66%, ${vars['--action-attack']} 66% 100%)`
+}
+
+/**
+ * The minimal form: one dot per theme, the selected one named beneath.
+ *
+ * Used on the login screen, where the theme picker should be an invitation
+ * rather than a form section — it sits under the sign-in button and must not
+ * compete with it.
+ */
+function ThemeDots({
+  themeId,
+  onSelect,
+  onKeyDown,
+  className,
+}: {
+  themeId: string
+  onSelect: (id: string) => void
+  onKeyDown: (event: React.KeyboardEvent) => void
+  className?: string
+}) {
+  const selected = THEMES.find((t) => t.id === themeId) ?? THEMES[0]
+
+  return (
+    <div className={className}>
+      <div
+        role="radiogroup"
+        aria-label="Terminal theme"
+        onKeyDown={onKeyDown}
+        className="flex items-center justify-center gap-2"
+      >
+        {THEMES.map((theme) => {
+          const isSelected = theme.id === themeId
+          return (
+            <button
+              key={theme.id}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
+              aria-label={theme.name}
+              title={theme.name}
+              tabIndex={isSelected ? 0 : -1}
+              onClick={() => onSelect(theme.id)}
+              className={`
+                h-[18px] w-[18px] shrink-0 rounded-full border transition-all duration-150
+                focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus
+                ${
+                  isSelected
+                    ? 'scale-110 border-accent ring-2 ring-accent/40'
+                    : 'border-line-strong opacity-70 hover:scale-110 hover:opacity-100'
+                }
+              `}
+              style={{ background: dotBackground(theme) }}
+            />
+          )
+        })}
+      </div>
+
+      {/* The name lives under the row so the dots stay a single tidy line. */}
+      <p
+        className="mt-2 text-center text-[11px] font-semibold transition-colors"
+        style={{ color: themeToCssVars(selected)['--accent'] }}
+      >
+        {selected.name}
+      </p>
+    </div>
+  )
+}
+
 interface ThemeSelectorProps {
   /**
-   * `carousel` is the login screen's horizontal strip; `list` is the stacked
-   * form used in Settings.
+   * `dots` is the minimal login form; `carousel` is a horizontal strip of
+   * previews; `list` is the stacked form used in Settings.
    */
-  variant?: 'carousel' | 'list'
+  variant?: 'carousel' | 'list' | 'dots'
   /**
    * Whether to save the choice to the signed-in account. Off on the login
    * screen, where there is no account yet — the device copy is enough, and the
@@ -118,6 +195,12 @@ export default function ThemeSelector({
     const index = THEMES.findIndex((t) => t.id === themeId)
     const next = THEMES[(index + delta + THEMES.length) % THEMES.length]
     select(next.id)
+  }
+
+  if (variant === 'dots') {
+    return (
+      <ThemeDots themeId={themeId} onSelect={select} onKeyDown={onKeyDown} className={className} />
+    )
   }
 
   const isCarousel = variant === 'carousel'

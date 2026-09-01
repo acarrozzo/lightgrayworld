@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Home, Skull, Sword, ScrollText, Map, Users, type LucideIcon } from 'lucide-react'
+import { Home, Skull, Sword, ScrollText, Map, Users, Palette, type LucideIcon } from 'lucide-react'
 
 // Top navigation bar shared across the Light Gray World Tool pages.
 // To add a new World Tool page, add an entry here and pass its `key` as the
@@ -11,6 +11,7 @@ const NAV_ITEMS: { key: string; href: string; label: string; icon: LucideIcon }[
   { key: 'quests', href: '/quests', label: 'Quests', icon: ScrollText },
   { key: 'rooms', href: '/rooms', label: 'World Atlas', icon: Map },
   { key: 'players', href: '/players', label: 'Players', icon: Users },
+  { key: 'themes', href: '/themes', label: 'Themes', icon: Palette },
 ]
 
 export default function WorldToolNav({ active }: { active: string }) {

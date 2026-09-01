@@ -287,19 +287,17 @@ export default function LoginForm() {
         </form>
 
         {/*
-          Theme picking before sign-in. The choice applies instantly, is
-          remembered on this device, and — when signing up — becomes the new
-          account's theme. Persisting to the account is off here because there
-          is no account yet.
+          Theme picking before sign-in, kept deliberately small: a row of dots
+          under the form rather than a panel beside it. The choice applies
+          instantly, is remembered on this device, and — when signing up —
+          becomes the new account's theme. Persisting to the account is off
+          here because there is no account yet.
         */}
-        <div className="mt-8 border-t border-line-subtle pt-5">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg-muted">
-              Terminal Theme
-            </h2>
-            <span className="text-[10px] text-fg-disabled">pick your colours</span>
-          </div>
-          <ThemeSelector variant="carousel" persistToAccount={false} />
+        <div className="mt-7 border-t border-line-subtle pt-4">
+          <h2 className="text-center text-[10px] font-semibold uppercase tracking-[0.2em] text-fg-muted">
+            Terminal Theme
+          </h2>
+          <ThemeSelector variant="dots" persistToAccount={false} className="mt-2.5" />
         </div>
       </div>
     </div>
