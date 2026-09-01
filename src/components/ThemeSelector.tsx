@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { THEMES } from '@/lib/theme/themes'
 import { themeToCssVars } from '@/lib/theme/tokens'
+import { themeSwatch } from '@/lib/theme/swatch'
 import { useThemeStore } from '@/store/themeStore'
 import type { Theme } from '@/lib/theme/types'
 
@@ -74,17 +75,6 @@ function AnsiStrip({ theme }: { theme: Theme }) {
 }
 
 /**
- * The whole theme in one circle: canvas, accent and attack as three slices.
- *
- * Enough to tell the palettes apart at 18px — a theme's ground, its chrome and
- * its hottest colour are exactly the three that differ most between them.
- */
-function dotBackground(theme: Theme): string {
-  const vars = themeToCssVars(theme)
-  return `conic-gradient(from 210deg, ${vars['--surface-canvas']} 0 33%, ${vars['--accent']} 33% 66%, ${vars['--action-attack']} 66% 100%)`
-}
-
-/**
  * The minimal form: one dot per theme, the selected one named beneath.
  *
  * Used on the login screen, where the theme picker should be an invitation
@@ -133,7 +123,7 @@ function ThemeDots({
                     : 'border-line-strong opacity-70 hover:scale-110 hover:opacity-100'
                 }
               `}
-              style={{ background: dotBackground(theme) }}
+              style={{ background: themeSwatch(theme) }}
             />
           )
         })}

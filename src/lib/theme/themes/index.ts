@@ -1,5 +1,6 @@
 import type { Theme } from '../types'
 import { lightGray } from './light-gray'
+import { lightGrayDark } from './light-gray-dark'
 import { dracula } from './dracula'
 import { nord } from './nord'
 import { gruvboxDark } from './gruvbox-dark'
@@ -17,12 +18,16 @@ import { everforestDark } from './everforest-dark'
  * at once.
  *
  * Light Gray RPG is first and is the default for every account that has not
- * chosen otherwise. The rest run warm-and-muted to cool-and-vivid — Gruvbox,
- * Nord and Everforest are the restrained earthy end nearest the house palette;
- * Dracula, Solarized, Tokyo Night and Catppuccin are the more saturated ones.
+ * chosen otherwise — the id `light-gray` deliberately still points at the
+ * original blue-tinted look, so no existing player's game changes appearance.
+ * Light Gray Dark follows it as the opt-in neutral sibling. The rest run
+ * warm-and-muted to cool-and-vivid — Gruvbox, Nord and Everforest are the
+ * restrained earthy end nearest the house palette; Dracula, Solarized, Tokyo
+ * Night and Catppuccin are the more saturated ones.
  */
 export const THEMES: Theme[] = [
   lightGray,
+  lightGrayDark,
   gruvboxDark,
   nord,
   everforestDark,
@@ -49,4 +54,4 @@ export function resolveTheme(id: string | null | undefined): Theme {
   return (id && THEMES_BY_ID[id]) || THEMES_BY_ID[DEFAULT_THEME_ID]
 }
 
-export { lightGray, dracula, nord, gruvboxDark, solarizedDark, tokyoNight, catppuccinMocha, everforestDark }
+export { lightGray, lightGrayDark, dracula, nord, gruvboxDark, solarizedDark, tokyoNight, catppuccinMocha, everforestDark }

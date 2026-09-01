@@ -14,6 +14,8 @@ export const nord = makeTheme({
   id: 'nord',
   name: 'Nord',
   description: 'Arctic, north-bluish. Cool frost over a slate night.',
+  // Frost cyan.
+  swatch: '#88c0d0',
 
   terminal: {
     background: '#2e3440',

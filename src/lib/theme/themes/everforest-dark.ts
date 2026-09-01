@@ -13,6 +13,8 @@ export const everforestDark = makeTheme({
   id: 'everforest-dark',
   name: 'Everforest Dark',
   description: 'Soft green and warm stone. Comfortable, mossy, low contrast.',
+  // Forest green — the only green in the set.
+  swatch: '#a7c080',
 
   terminal: {
     background: '#2d353b',

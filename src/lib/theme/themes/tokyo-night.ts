@@ -12,6 +12,8 @@ export const tokyoNight = makeTheme({
   id: 'tokyo-night',
   name: 'Tokyo Night',
   description: 'Neon signage over deep navy. Cool, electric, late.',
+  // Tokyo's periwinkle.
+  swatch: '#7aa2f7',
 
   terminal: {
     background: '#1a1b26',

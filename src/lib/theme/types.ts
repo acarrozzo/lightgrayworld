@@ -298,6 +298,17 @@ export interface Theme {
    * background's luminance.
    */
   appearance: 'dark' | 'light'
+  /**
+   * The single colour that stands for this theme in a picker.
+   *
+   * Authored rather than derived: the obvious candidate, `ui.accent`, resolves
+   * to a blue or teal in six of the nine launch themes and is byte-identical
+   * between the two Light Grays, which share a palette and differ only in
+   * ground. A swatch has one job — tell nine themes apart at 16px — so it is
+   * chosen for separation, not computed from something that was chosen for
+   * another purpose.
+   */
+  swatch: Color
   terminal: TerminalPalette
   ui: InterfaceRoles
   game: GameRoles

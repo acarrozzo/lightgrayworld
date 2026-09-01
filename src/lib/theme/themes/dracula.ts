@@ -13,6 +13,8 @@ export const dracula = makeTheme({
   id: 'dracula',
   name: 'Dracula',
   description: 'Purple and pink on deep indigo. The classic.',
+  // Dracula purple.
+  swatch: '#bd93f9',
 
   terminal: {
     background: '#282a36',

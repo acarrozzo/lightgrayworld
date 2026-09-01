@@ -391,3 +391,22 @@ test('no gradient runs from a colour to itself', async () => {
 
   assert.deepEqual(offenders, [], `degenerate gradients:\n  ${offenders.join('\n  ')}`)
 })
+
+test('every theme has a swatch, and no two are hard to tell apart', () => {
+  // The swatch's only job is to distinguish nine themes at 16px. Deriving it
+  // from `ui.accent` would give six blues and two byte-identical Light Grays,
+  // which is why it is authored.
+  for (const theme of THEMES) {
+    assert.match(theme.swatch, /^#[0-9a-fA-F]{6}$/, `${theme.id} has no valid swatch`)
+  }
+
+  for (let i = 0; i < THEMES.length; i++) {
+    for (let j = i + 1; j < THEMES.length; j++) {
+      const d = deltaE(THEMES[i].swatch, THEMES[j].swatch)
+      assert.ok(
+        d >= 0.06,
+        `${THEMES[i].name} and ${THEMES[j].name} swatches differ by only ${d.toFixed(3)}`
+      )
+    }
+  }
+})

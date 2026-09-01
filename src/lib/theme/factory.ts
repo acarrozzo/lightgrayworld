@@ -39,6 +39,8 @@ export interface ThemeRecipe {
   name: string
   description: string
   appearance?: 'dark' | 'light'
+  /** The picker swatch. Defaults to the interface accent when not authored. */
+  swatch?: string
   terminal: TerminalPalette
   /**
    * Which ANSI colour drives buttons, links and focus rings. Defaults to the
@@ -47,7 +49,7 @@ export interface ThemeRecipe {
    */
   accentSource?: keyof TerminalPalette
   /** Slots where the derived value was not good enough. */
-  overrides?: DeepPartial<Omit<Theme, 'id' | 'name' | 'description' | 'appearance' | 'terminal'>>
+  overrides?: DeepPartial<Omit<Theme, 'id' | 'name' | 'description' | 'appearance' | 'swatch' | 'terminal'>>
 }
 
 function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
@@ -238,7 +240,7 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     lobby: { base: mix(t.blue, t.white, 0.3) },
   }
 
-  const derived: Omit<Theme, 'id' | 'name' | 'description' | 'appearance' | 'terminal'> = {
+  const derived: Omit<Theme, 'id' | 'name' | 'description' | 'appearance' | 'swatch' | 'terminal'> = {
     ui,
     game,
     regions,
@@ -260,6 +262,7 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     appearance: recipe.appearance ?? 'dark',
     terminal: t,
     ...merged,
+    swatch: recipe.swatch ?? merged.ui.accent,
   }
 }
 

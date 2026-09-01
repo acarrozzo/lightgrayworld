@@ -19,6 +19,8 @@ export const solarizedDark = makeTheme({
   id: 'solarized-dark',
   name: 'Solarized Dark',
   description: 'Precision colour on deep cyan-black. Low glare, high care.',
+  // Solarized blue, deeper than the other blues here.
+  swatch: '#268bd2',
 
   terminal: {
     background: '#002b36',

@@ -12,6 +12,8 @@ export const gruvboxDark = makeTheme({
   id: 'gruvbox-dark',
   name: 'Gruvbox Dark',
   description: 'Retro groove. Warm earth tones over charcoal.',
+  // Gruvbox orange, the most Gruvbox colour there is.
+  swatch: '#fe8019',
 
   terminal: {
     background: '#282828',

@@ -13,6 +13,8 @@ export const catppuccinMocha = makeTheme({
   id: 'catppuccin-mocha',
   name: 'Catppuccin Mocha',
   description: 'Soft pastels on warm plum. Gentle, and very hard to dislike.',
+  // Mocha pink — keeps it out of the blue/purple pile.
+  swatch: '#f5c2e7',
 
   terminal: {
     background: '#1e1e2e',

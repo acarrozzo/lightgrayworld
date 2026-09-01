@@ -1,5 +1,7 @@
 'use client'
 
+import ThemeSwitcher from '@/components/ThemeSwitcher'
+
 interface GameHeaderProps {
   playerName?: string
   level?: number
@@ -128,6 +130,9 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
             {dex !== undefined && <span className="text-stat-dex">{dex}</span>}
             {mag !== undefined && <span className="text-stat-mag">{mag}</span>}
             {def !== undefined && <span className="text-stat-def">{def}</span>}
+            {/* The connection indicator is desktop-only, so on mobile this
+                trails the stats — still the last control in the bar. */}
+            <ThemeSwitcher className="ml-0.5" />
           </div>
         </div>
 
@@ -251,6 +256,9 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                 )}
               </div>
             )}
+
+            {/* Last in the bar, with the other chrome controls. */}
+            <ThemeSwitcher className="ml-1" />
           </div>
 
         </div>
