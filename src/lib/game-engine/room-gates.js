@@ -723,8 +723,26 @@ async function checkRoomGate(roomId, direction, playerId) {
   }
 }
 
+/**
+ * Which of a room's exits carry a gate, as plain direction names.
+ *
+ * Shipped on the room payload so the client can skip its optimistic room swap on
+ * an exit the server may refuse. The client used to keep a hand-written copy of
+ * this table (`CLIENT_ROOM_GATES`), which had fallen to 15 of 65 gates — every
+ * gate added since the sewers was missing, so new content optimistically flashed
+ * the destination and then rubber-banded back on rejection.
+ *
+ * Only *whether* an exit is gated, never why: the condition stays server-side.
+ * That a visible exit is gated is not a secret — undiscovered passages are
+ * hidden from the payload entirely by the lever and search-reveal overlays.
+ */
+function getGatedDirections(roomId) {
+  return Object.keys(ROOM_GATES[roomId] || {})
+}
+
 module.exports = {
   checkRoomGate,
+  getGatedDirections,
   ROOM_GATES,
 }
 

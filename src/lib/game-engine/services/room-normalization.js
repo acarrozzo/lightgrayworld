@@ -24,6 +24,12 @@ const ROOM_ITEMS_SELECT = {
       quantity: true,
       templateId: true,
       roomId: true,
+      // Must stay identical to the field list in room-normalization.ts —
+      // validate-world fails the build if they diverge. They already had:
+      // the engine's socket path used this copy and silently dropped `value`,
+      // `canSell`, `canDrop` and `metadata`, so a room item pushed over the
+      // socket arrived without its icon (which lives in metadata) or its
+      // sell/drop affordances, while the same item fetched over HTTP had them.
       ItemTemplate: {
         select: {
           id: true,
@@ -31,7 +37,11 @@ const ROOM_ITEMS_SELECT = {
           name: true,
           description: true,
           type: true,
+          value: true,
+          canSell: true,
+          canDrop: true,
           equipSlot: true,
+          metadata: true,
         },
       },
     },
@@ -41,6 +51,12 @@ const ROOM_ITEMS_SELECT = {
 const ROOM_ITEMS_INCLUDE = {
   items: {
     include: {
+      // Must stay identical to the field list in room-normalization.ts —
+      // validate-world fails the build if they diverge. They already had:
+      // the engine's socket path used this copy and silently dropped `value`,
+      // `canSell`, `canDrop` and `metadata`, so a room item pushed over the
+      // socket arrived without its icon (which lives in metadata) or its
+      // sell/drop affordances, while the same item fetched over HTTP had them.
       ItemTemplate: {
         select: {
           id: true,
@@ -48,7 +64,11 @@ const ROOM_ITEMS_INCLUDE = {
           name: true,
           description: true,
           type: true,
+          value: true,
+          canSell: true,
+          canDrop: true,
           equipSlot: true,
+          metadata: true,
         },
       },
     },
@@ -90,7 +110,11 @@ function normalizeRoomItems(rawItems) {
         name: item.ItemTemplate.name,
         description: item.ItemTemplate.description,
         type: item.ItemTemplate.type,
+        value: item.ItemTemplate.value,
+        canSell: item.ItemTemplate.canSell,
+        canDrop: item.ItemTemplate.canDrop,
         equipSlot: item.ItemTemplate.equipSlot,
+        metadata: item.ItemTemplate.metadata,
       },
     })
   })

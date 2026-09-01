@@ -1,5 +1,5 @@
 import type { Room, Player } from '@/lib/game-state'
-import { TRAVEL_DIRECTION_KEYS, CLIENT_ROOM_GATES, COMMAND_SHORTHAND, MAP_CONFIG, type TravelDirectionKey, type MapConfigEntry } from './constants'
+import { TRAVEL_DIRECTION_KEYS, COMMAND_SHORTHAND, MAP_CONFIG, type TravelDirectionKey, type MapConfigEntry } from './constants'
 import { getRoomMapMarker, getRoomMapPosition } from './room-map-positions'
 
 export const findTravelDirection = (fromRoom: Room | null, toRoomId: string): TravelDirectionKey | undefined => {
@@ -11,14 +11,20 @@ export const findTravelDirection = (fromRoom: Room | null, toRoomId: string): Tr
 }
 
 /**
- * Check if an exit has a gate (client-side check for optimistic update skipping)
+ * Whether this exit carries a gate, so the caller can skip the optimistic room
+ * swap on a move the server may refuse.
+ *
+ * Read from the room the server sent. This used to consult a hand-maintained
+ * client copy of ROOM_GATES that had fallen to 15 of the server's 65 gates —
+ * every gate added since the sewers was missing, so newer content flashed the
+ * destination optimistically and then rubber-banded back on rejection.
  */
-export function checkIfExitHasGate(roomId: string, direction: string): boolean {
-  const roomGates = CLIENT_ROOM_GATES[roomId]
-  if (!roomGates) {
+export function checkIfExitHasGate(room: Room | null, direction: string): boolean {
+  const gatedExits = room?.gatedExits
+  if (!Array.isArray(gatedExits)) {
     return false
   }
-  return roomGates[direction] === true
+  return gatedExits.includes(direction)
 }
 
 /**

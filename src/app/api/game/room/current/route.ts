@@ -225,6 +225,8 @@ export async function GET(request: NextRequest) {
       ? { ...(getLeverExitOverlay(user.id, roomId) || {}), ...(getSearchRevealExitOverlay(user.id, roomId) || {}) }
       : null
 
+    const { getGatedDirections } = require('@/lib/game-engine/room-gates')
+
     const payload: Record<string, unknown> = {
       room: {
         ...normalizedRoom,
@@ -232,6 +234,10 @@ export async function GET(request: NextRequest) {
         enemies: roomEnemies,
         stateNote,
         actionOverrides,
+        // Which exits carry a gate, so the client can skip its optimistic room
+        // swap on one the server may refuse. Derived from ROOM_GATES rather than
+        // mirrored in a client-side table that had drifted to 15 of 65 gates.
+        gatedExits: getGatedDirections(roomId),
       },
     }
 

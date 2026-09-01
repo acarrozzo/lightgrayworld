@@ -50,6 +50,11 @@ export interface RoomView extends RoomViewNavigation {
   hasSearch?: boolean
   stateNote?: string | null
   actionOverrides?: Record<string, { className?: string; icon?: string }> | null
+  /**
+   * Directions out of this room that carry a gate, derived server-side from
+   * ROOM_GATES. Only *whether* an exit is gated — never the condition.
+   */
+  gatedExits?: string[]
   players: any[]
   items: RoomItemView[]
   npcs: any[]

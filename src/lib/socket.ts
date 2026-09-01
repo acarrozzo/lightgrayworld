@@ -408,50 +408,17 @@ export interface WorldTickPayload {
 }
 
 // Socket event constants
-export const SOCKET_EVENTS = {
-  // Client to server
-  PLAYER_LOGIN: 'player-login',
-  SEND_CHAT_MESSAGE: 'send-chat-message',
-  SEND_ROOM_CHAT_MESSAGE: 'send-room-chat-message',
-  GAME_ACTION: 'game-action',
-  USER_LOGOUT: 'user:logout',
-  PARTY_FOLLOW: 'party:follow',
-  PARTY_LEAVE: 'party:leave',
-  PARTY_REMOVE: 'party:remove',
+/**
+ * Re-exported from the server's own list rather than copied.
+ *
+ * These were two hand-maintained tables that drifted in both directions, so the
+ * client could not name an event the server emitted (every battle event, among
+ * others) and listed one nothing emitted. `lib/socket-utils.js` is now the
+ * single source; this keeps the familiar import path for client code.
+ */
+const { SOCKET_EVENTS: CANONICAL_SOCKET_EVENTS } = require('@/lib/socket-utils')
 
-  // Server to client
-  PARTY_UPDATED: 'party:updated',
-  PARTY_DISBANDED: 'party:disbanded',
-  PARTY_REMOVED: 'party:removed',
-  PARTY_ERROR: 'party:error',
-  PARTY_PULLED: 'party:pulled',
-  PLAYER_JOINED: 'player-joined',
-  PLAYER_LEFT: 'player-left',
-  CHAT_MESSAGE: 'chat-message',
-  ROOM_CHAT_MESSAGE: 'room-chat-message',
-  ACTION_COMPLETED: 'action-completed',
-  PLAYER_ACTION: 'player-action',
-  ACTION_CONFIRMED: 'action:confirmed',
-  ACTION_FEEDBACK: 'action:feedback',
-  WORLD_TICK: 'world:tick',
-  ROOM_PLAYER_MOVED: 'room:player-moved',
-  WORLD_ACTIVITY: 'world:activity',
-  DIRECT_MESSAGE: 'direct-message',
-  BATTLE_STARTED: 'battle:started',
-  BATTLE_TURN: 'battle:turn',
-  BATTLE_VICTORY: 'battle:victory',
-  BATTLE_DEFEAT: 'battle:defeat',
-  BATTLE_FLED: 'battle:fled',
-  PLAYER_LEVEL_UP: 'player:level-up',
-  PLAYER_CLICKS_UPDATE: 'player:clicks-update',
-  PLAYER_IDLE: 'player-idle',
-  PLAYER_RETURNED: 'player-returned',
-  PLAYER_BATTLE_STATUS: 'player-battle-status',
-  PLAYER_VITALS: 'player-vitals',
-  ROOM_PARTY_STATE: 'room:party-state',
-  WORLD_PRESENCE_SYNC: 'world:presence-sync',
-  WORLD_PRESENCE_UPDATE: 'world:presence-update',
-} as const
+export const SOCKET_EVENTS: Readonly<Record<string, string>> = CANONICAL_SOCKET_EVENTS
 
 let io: Server<SocketEvents> | null = null
 

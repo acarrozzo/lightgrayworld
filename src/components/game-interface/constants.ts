@@ -6,61 +6,6 @@ export const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast',
 
 export type TravelDirectionKey = (typeof TRAVEL_DIRECTION_KEYS)[number]
 
-/**
- * Client-side map of room gates (mirrors server-side ROOM_GATES structure)
- * Used to skip optimistic updates for gated exits
- */
-export const CLIENT_ROOM_GATES: Record<string, Record<string, boolean>> = {
-  '002': {
-    'south': true,
-  },
-  '003': {
-    'west': true,
-  },
-  '004': {
-    'west': true,
-  },
-  '020': {
-    'northwest': true,
-  },
-  '012f': {
-    'northeast': true,
-  },
-  // Red Town — the Red Guard's Ogre requirement on both roads in.
-  '107': {
-    'south': true,
-  },
-  '124': {
-    'south': true,
-  },
-  // Back-alley and sewer secret doors (hidden until searched).
-  '232': {
-    'south': true,
-  },
-  '233': {
-    'southeast': true,
-  },
-  '232mm': {
-    'northeast': true,
-  },
-  '232b': {
-    'east': true,
-  },
-  '232l': {
-    'southwest': true,
-  },
-  '232j': {
-    'northeast': true,
-  },
-  // The sewer river — both banks need wings.
-  '232d': {
-    'north': true,
-  },
-  '232y': {
-    'south': true,
-  },
-}
-
 // Command shorthand mapping
 export const COMMAND_SHORTHAND: Record<string, string> = {
   // Directions

@@ -482,6 +482,83 @@ for (const location of TELEPORT_LOCATIONS) {
   }
 }
 
+// ─── 9. Cross-language contracts ──────────────────────────────────────────────
+//
+// The engine is CommonJS and the app is TypeScript, so several contracts exist
+// as a pair of files. Where one can be derived from the other it now is; where
+// it cannot (Prisma's select typing needs literal types a JS import would lose),
+// these checks stand in for derivation.
+
+// Every socket event emitted anywhere in src/lib must appear in the canonical
+// list, so a new event cannot quietly become an unlisted string literal — which
+// is how `player-move`, `login:success`, `inventory:update` and
+// `room:items:update` ended up in neither of the two lists that used to exist.
+{
+  const { SOCKET_EVENTS } = load('src/lib/socket-utils.js')
+  const known = new Set(Object.values(SOCKET_EVENTS))
+
+  const walk = (dir, out = []) => {
+    for (const entry of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+      const rel = `${dir}/${entry.name}`
+      if (entry.isDirectory()) walk(rel, out)
+      else if (entry.name.endsWith('.js')) out.push(rel)
+    }
+    return out
+  }
+
+  const emitted = new Map() // event name -> first file that emits it
+  for (const file of walk('src/lib')) {
+    const src = read(file)
+    // `.emit('name'` and `{ event: 'name' }` are the two shapes the server uses.
+    for (const m of src.matchAll(/\.emit\(\s*'([a-z][a-zA-Z0-9:_-]*)'/g)) {
+      if (!emitted.has(m[1])) emitted.set(m[1], file)
+    }
+    for (const m of src.matchAll(/\bevent:\s*'([a-z][a-zA-Z0-9:_-]*)'/g)) {
+      if (!emitted.has(m[1])) emitted.set(m[1], file)
+    }
+  }
+
+  for (const [event, file] of emitted) {
+    if (!known.has(event)) {
+      err('socket-contract', `"${event}" is emitted in ${file} but is not in SOCKET_EVENTS`)
+    }
+  }
+}
+
+// The room-item field list exists twice: the engine's socket path uses the .js
+// copy, API routes use the .ts one. They cannot be collapsed into a single
+// export because Prisma's result typing depends on the literal types the .ts
+// version declares, so the field lists are compared instead. They had drifted —
+// the .js copy silently dropped value, canSell, canDrop and metadata.
+{
+  const fields = (file, marker) => {
+    const src = read(file)
+    const start = src.indexOf(marker)
+    if (start === -1) return null
+    // Read from the declaration to the first ItemTemplate select block after it,
+    // then take that block's `field: true` entries.
+    const inner = src
+      .slice(start)
+      .match(/ItemTemplate:\s*\{\s*select:\s*\{([\s\S]*?)\n\s*\},/)
+    if (!inner) return null
+    return [...inner[1].matchAll(/(\w+):\s*true/g)].map((m) => m[1]).sort()
+  }
+
+  const jsFields = fields('src/lib/game-engine/services/room-normalization.js', 'ROOM_ITEMS_SELECT')
+  const tsFields = fields('src/lib/game-engine/services/room-normalization.ts', 'ROOM_ITEMS_SELECT')
+
+  if (!jsFields || !tsFields) {
+    warn('normalizer', 'could not parse ROOM_ITEMS_SELECT from both room-normalization files')
+  } else if (jsFields.join(',') !== tsFields.join(',')) {
+    const onlyJs = jsFields.filter((f) => !tsFields.includes(f))
+    const onlyTs = tsFields.filter((f) => !jsFields.includes(f))
+    err(
+      'normalizer',
+      `room-normalization.js and .ts select different item fields — only in .js: [${onlyJs}], only in .ts: [${onlyTs}]`
+    )
+  }
+}
+
 // ─── Result ───────────────────────────────────────────────────────────────────
 
 if (warnings.length) {

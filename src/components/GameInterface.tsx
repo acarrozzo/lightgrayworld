@@ -987,7 +987,7 @@ export default function GameInterface() {
       }
 
       // Check if this exit has a gate (skip optimistic update for gated exits)
-      const hasGate = checkIfExitHasGate(currentRoom.roomId, actionType)
+      const hasGate = checkIfExitHasGate(currentRoom, actionType)
 
       // Increment move sequence when initiating move
       const moveSeq = ++moveSequenceRef.current

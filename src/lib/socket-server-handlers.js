@@ -1,7 +1,7 @@
 // Shared socket handling logic for server.js and socket-server.js
 const { SOCKET_EVENTS, getSocketIdsForUser } = require('./socket-utils.js')
 const partyStore = require('./services/party-store.js')
-const { checkRoomGate } = require('./game-engine/room-gates.js')
+const { checkRoomGate, getGatedDirections } = require('./game-engine/room-gates.js')
 const { getPlayerInventory } = require('./game-engine/services/inventory-service.js')
 const {
   ROOM_ITEMS_SELECT,
@@ -972,6 +972,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           enemies: destEnemies,
           stateNote: leverStateNote || searchRevealStateNote || null,
           actionOverrides: getRoomActionOverrides(player.id, toRoom),
+          gatedExits: getGatedDirections(toRoom),
         }
         const toRoomName = destinationRoom.name
 
@@ -1430,6 +1431,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
             npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
             enemies: destEnemies,
+            gatedExits: getGatedDirections(toRoomId),
           }
 
           const result = await gameEngine.processUserAction({
