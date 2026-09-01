@@ -20,7 +20,7 @@ export default function Icon({ name, className = '', size = 24, color = 'current
   let processedClassName = className
   let fillOpacity: number | undefined = undefined
   
-  // Match opacity modifier at the end of a class (e.g., text-gray-500/70 or gray-500/70)
+  // Match opacity modifier at the end of a class (e.g., text-fg-muted/70 or gray-500/70)
   const opacityMatch = className.match(/\/(\d+)(?:\s|$)/)
   if (opacityMatch) {
     const opacityValue = parseInt(opacityMatch[1])
@@ -88,18 +88,18 @@ export const Icons = {
 
 // Predefined color classes for easy styling
 export const IconColors = {
-  blue: 'text-blue-500',
-  red: 'text-red-500',
-  green: 'text-green-500',
-  yellow: 'text-yellow-500',
-  purple: 'text-purple-500',
-  pink: 'text-pink-500',
-  violet: 'text-violet-500',
-  orange: 'text-orange-500',
-  gray: 'text-gray-500',
-  white: 'text-white',
-  black: 'text-black',
-  sky: 'text-sky-500',
+  blue: 'text-resource-mp',
+  red: 'text-status-error',
+  green: 'text-status-success',
+  yellow: 'text-status-warning',
+  purple: 'text-stat-mag',
+  pink: 'text-hue-pink',
+  violet: 'text-stat-mag',
+  orange: 'text-action-attack',
+  gray: 'text-fg-muted',
+  white: 'text-fg-bright',
+  black: 'text-fg-on-accent',
+  sky: 'text-status-info',
   current: 'text-current',
 } as const
 

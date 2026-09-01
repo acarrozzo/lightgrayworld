@@ -6,9 +6,9 @@ import type { WorldFeedEntry } from '@/store/worldFeedStore'
  * success/failure/info colors stay identical across surfaces.
  */
 export const entryAccent = (entry: Pick<WorldFeedEntry, 'outcome' | 'level'>) => {
-  if (entry.outcome === 'success') return 'bg-emerald-400'
-  if (entry.outcome === 'failure' || entry.level === 'error') return 'bg-red-400'
-  return 'bg-blue-400'
+  if (entry.outcome === 'success') return 'bg-status-success'
+  if (entry.outcome === 'failure' || entry.level === 'error') return 'bg-status-error'
+  return 'bg-resource-mp'
 }
 
 /**

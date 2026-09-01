@@ -389,12 +389,12 @@ export default async function RoomsPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-950 text-gray-200">
+    <div className="flex min-h-screen flex-col bg-surface-canvas text-fg-bright">
       <WorldToolNav active="rooms" />
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-8">
         <header className="mb-4">
-          <h1 className="text-2xl font-bold text-gray-100">World Atlas</h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <h1 className="text-2xl font-bold text-fg-bright">World Atlas</h1>
+          <p className="mt-1 text-sm text-fg-secondary">
             {nodes.length} rooms laid out across two maps, oriented by their compass exits. Click a room
             to inspect its enemies, loot, NPCs, actions, gates, and secrets.
           </p>

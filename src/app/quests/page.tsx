@@ -190,12 +190,12 @@ export default async function QuestsPage() {
   for (const g of groups) g.quests.sort((a, b) => a.number - b.number)
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-200">
+    <div className="min-h-screen bg-surface-canvas text-fg-bright">
       <WorldToolNav active="quests" />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-100">Quests</h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <h1 className="text-2xl font-bold text-fg-bright">Quests</h1>
+          <p className="mt-1 text-sm text-fg-secondary">
             {rows.length} quests across {groups.length} quest givers — pulled live from the game data.
           </p>
         </header>

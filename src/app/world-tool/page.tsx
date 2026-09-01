@@ -19,21 +19,21 @@ const PAGES = [
 
 export default function WorldToolHomePage() {
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-200">
+    <div className="min-h-screen bg-surface-canvas text-fg-bright">
       <WorldToolNav active="home" />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-100">Light Gray World Tool</h1>
+          <h1 className="text-2xl font-bold text-fg-bright">Light Gray World Tool</h1>
         </header>
         <ul className="flex flex-col gap-3">
           {PAGES.map((page) => (
             <li key={page.href}>
               <Link
                 href={page.href}
-                className="block rounded border border-gray-800 bg-gray-900 px-4 py-3 transition-colors hover:border-gray-700 hover:bg-gray-800"
+                className="block rounded border border-line-subtle/80 bg-surface-panel px-4 py-3 transition-colors hover:border-line-subtle hover:bg-surface-raised"
               >
-                <span className="text-base font-medium text-gray-100">{page.label}</span>
-                <span className="mt-1 block text-sm text-gray-400">{page.description}</span>
+                <span className="text-base font-medium text-fg-bright">{page.label}</span>
+                <span className="mt-1 block text-sm text-fg-secondary">{page.description}</span>
               </Link>
             </li>
           ))}

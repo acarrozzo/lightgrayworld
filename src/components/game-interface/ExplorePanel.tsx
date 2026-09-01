@@ -84,7 +84,7 @@ export default function ExplorePanel({
       {/* Sub-tabs — one level below the Explore tab itself. Clicking the active
           one toggles back to the Compass, this panel's core content, so a
           sub-tab is never a one-way door. */}
-      <div className="flex items-center gap-2 px-3 pt-1 pb-1.5 border-b border-gray-700/50 flex-shrink-0 overflow-x-auto">
+      <div className="flex items-center gap-2 px-3 pt-1 pb-1.5 border-b border-line-subtle/50 flex-shrink-0 overflow-x-auto">
         <SubTabButton
           active={isCompass}
           color="green"
@@ -105,7 +105,7 @@ export default function ExplorePanel({
           <Icon name="ironskin" size={14} className={getTabIconColorClass('violet', isTeleport)} />
           <span>Teleport</span>
         </SubTabButton>
-        {!isSidebar && <span className="w-1 h-1 rounded-full bg-gray-600 flex-shrink-0" aria-hidden="true" />}
+        {!isSidebar && <span className="w-1 h-1 rounded-full bg-surface-selected flex-shrink-0" aria-hidden="true" />}
         <SubTabButton
           active={isMap}
           color="sky"
@@ -131,7 +131,7 @@ export default function ExplorePanel({
           <button
             type="button"
             onClick={onOpenMapFullscreen}
-            className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-200 shadow-lg transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+            className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded bg-surface-raised px-3 py-1.5 text-sm font-medium text-fg-bright shadow-lg transition-colors hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
             title="Open the map full screen"
           >
             <Maximize2 size={14} aria-hidden="true" />
@@ -188,7 +188,7 @@ export default function ExplorePanel({
           </div>
           {showBattleBadge && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10">
-              <span className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-red-400/90 bg-gray-950/70 border border-red-500/25 rounded-lg backdrop-blur-sm">
+              <span className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-status-error/90 bg-surface-canvas/70 border border-status-error/25 rounded-lg backdrop-blur-sm">
                 In Battle
               </span>
             </div>

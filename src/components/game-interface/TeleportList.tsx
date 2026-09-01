@@ -27,28 +27,28 @@ const VIP_ROOM_IDS = new Set(['000', '088'])
 const getLocationColor = (name: string, isMuted: boolean) => {
   if (name === 'The Lobby' || name === 'Lobby') {
     return isMuted
-      ? 'bg-blue-400/40 border-blue-400/60'
-      : 'bg-blue-400/60 hover:bg-blue-400/80 border-blue-500/70 hover:border-blue-400/90'
+      ? 'bg-resource-mp/40 border-resource-mp/60'
+      : 'bg-resource-mp/60 hover:bg-resource-mp/80 border-resource-mp/70 hover:border-resource-mp/90'
   } else if (name === 'Grassy Field') {
     return isMuted
-      ? 'bg-green-500/40 border-green-500/60'
-      : 'bg-green-500/60 hover:bg-green-500/80 border-green-600/70 hover:border-green-500/90'
+      ? 'bg-status-success/40 border-status-success/60'
+      : 'bg-status-success/60 hover:bg-status-success/80 border-status-success/70 hover:border-status-success/90'
   } else if (name === 'Forest Crossroads') {
     return isMuted
-      ? 'bg-emerald-700/40 border-emerald-700/60'
-      : 'bg-emerald-700/60 hover:bg-emerald-700/80 border-emerald-800/70 hover:border-emerald-700/90'
+      ? 'bg-status-success/40 border-status-success/60'
+      : 'bg-status-success/60 hover:bg-status-success/80 border-status-success/70 hover:border-status-success/90'
   } else if (name === 'Red Town') {
     return isMuted
-      ? 'bg-red-600/40 border-red-600/60'
-      : 'bg-red-600/60 hover:bg-red-600/80 border-red-700/70 hover:border-red-600/90'
+      ? 'bg-status-error/40 border-status-error/60'
+      : 'bg-status-error/60 hover:bg-status-error/80 border-status-error/70 hover:border-status-error/90'
   } else if (name === 'Room Zero') {
     return isMuted
-      ? 'bg-gray-700/60 border-gray-600/70'
-      : 'bg-gray-700/80 hover:bg-gray-600/90 border-gray-600/80 hover:border-gray-500/90'
+      ? 'bg-surface-hover/60 border-line-strong/70'
+      : 'bg-surface-hover/80 hover:bg-surface-selected/90 border-line-strong/80 hover:border-line-strong/90'
   }
   return isMuted
-    ? 'bg-gray-800/50 border-gray-700/30'
-    : 'bg-gray-800/70 hover:bg-gray-700/70 border-gray-700/30 hover:border-gray-600/50'
+    ? 'bg-surface-raised/50 border-line-subtle/30'
+    : 'bg-surface-raised/70 hover:bg-surface-hover/70 border-line-subtle/30 hover:border-line-strong/50'
 }
 
 export default function TeleportList({
@@ -73,24 +73,24 @@ export default function TeleportList({
         disabled={isDisabled}
         className={`w-full text-left px-3 py-2 rounded-lg border transition-all duration-200 ${
           isDisabled
-            ? `${getLocationColor(location.name, true)} text-gray-300 cursor-not-allowed ${isBlocked && !isCurrentRoom ? 'opacity-50' : ''}`
-            : `${getLocationColor(location.name, false)} text-white cursor-pointer shadow-md hover:shadow-lg hover:scale-[1.01]`
+            ? `${getLocationColor(location.name, true)} text-fg-primary cursor-not-allowed ${isBlocked && !isCurrentRoom ? 'opacity-50' : ''}`
+            : `${getLocationColor(location.name, false)} text-fg-bright cursor-pointer shadow-md hover:shadow-lg hover:scale-[1.01]`
         }`}
       >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <h3 className="text-sm font-bold text-white">{location.name}</h3>
+            <h3 className="text-sm font-bold text-fg-bright">{location.name}</h3>
             {isCurrentRoom && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-white/20 rounded text-white/90 font-medium">
+              <span className="text-[10px] px-1.5 py-0.5 bg-fg-bright/20 rounded text-fg-bright/90 font-medium">
                 Current
               </span>
             )}
             {location.description && (
-              <span className="text-[11px] text-white/50 truncate hidden sm:inline">{location.description}</span>
+              <span className="text-[11px] text-fg-bright/50 truncate hidden sm:inline">{location.description}</span>
             )}
           </div>
           {!isDisabled && (
-            <Icon name="arrow" size={14} className="text-white/50 flex-shrink-0" />
+            <Icon name="arrow" size={14} className="text-fg-bright/50 flex-shrink-0" />
           )}
         </div>
       </button>
@@ -100,12 +100,12 @@ export default function TeleportList({
   return (
     <div className="flex flex-col gap-2 p-3">
       <div className="flex items-baseline gap-2">
-        <h2 className="text-sm font-semibold text-white">Fast Travel</h2>
-        <span className="ml-auto text-[10px] text-gray-500 uppercase tracking-widest">Esc to close</span>
+        <h2 className="text-sm font-semibold text-fg-bright">Fast Travel</h2>
+        <span className="ml-auto text-[10px] text-fg-muted uppercase tracking-widest">Esc to close</span>
       </div>
 
       {blockedReason && (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] leading-relaxed text-red-300/90">
+        <p className="rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-[11px] leading-relaxed text-status-error/90">
           {blockedReason}
         </p>
       )}
@@ -117,9 +117,9 @@ export default function TeleportList({
       {vipLocations.length > 0 && (
         <>
           <div className="flex items-center gap-2 mt-1">
-            <div className="h-px flex-1 bg-gray-700/40" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-amber-500/70">VIP</span>
-            <div className="h-px flex-1 bg-gray-700/40" />
+            <div className="h-px flex-1 bg-surface-hover/40" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-resource-gold/70">VIP</span>
+            <div className="h-px flex-1 bg-surface-hover/40" />
           </div>
           <div className="flex flex-col gap-2">
             {vipLocations.map(renderLocationButton)}

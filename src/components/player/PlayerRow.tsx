@@ -97,9 +97,9 @@ export const PRESENCE_META: Record<
   PlayerPresenceStatus,
   { label: string; dot: string; text: string }
 > = {
-  active: { label: 'Online', dot: 'bg-emerald-500', text: 'text-emerald-400' },
-  idle: { label: 'Idle', dot: 'bg-amber-500', text: 'text-amber-400' },
-  disconnected: { label: 'Offline', dot: 'bg-slate-500', text: 'text-slate-400' },
+  active: { label: 'Online', dot: 'bg-status-success', text: 'text-status-success' },
+  idle: { label: 'Idle', dot: 'bg-resource-gold', text: 'text-resource-gold' },
+  disconnected: { label: 'Offline', dot: 'bg-surface-selected', text: 'text-fg-secondary' },
 }
 
 export function PlayerAvatar({
@@ -118,7 +118,7 @@ export function PlayerAvatar({
       {coloredAvatar ? (
         <div className={box} dangerouslySetInnerHTML={{ __html: coloredAvatar }} />
       ) : (
-        <span className="text-[10px] text-violet-200/70">…</span>
+        <span className="text-[10px] text-stat-mag/70">…</span>
       )}
     </div>
   )
@@ -126,29 +126,29 @@ export function PlayerAvatar({
 
 export function MiniBars({ stats }: { stats?: PlayerRowStats }) {
   if (!stats || typeof stats.hp !== 'number') {
-    return <span className="text-[9px] text-gray-600 italic">stats unavailable</span>
+    return <span className="text-[9px] text-fg-disabled italic">stats unavailable</span>
   }
   return (
     <div className="flex items-center gap-2">
       <div className="flex items-center gap-1">
-        <div className="h-1 w-10 rounded-full bg-gray-800/80 overflow-hidden">
+        <div className="h-1 w-10 rounded-full bg-surface-raised/80 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-rose-500 to-rose-600"
+            className="h-full rounded-full bg-gradient-to-r from-resource-hp to-resource-hp"
             style={{ width: `${pct(stats.hp, stats.hpMax)}%` }}
           />
         </div>
-        <span className="text-[9px] text-gray-500 tabular-nums">
+        <span className="text-[9px] text-fg-muted tabular-nums">
           {stats.hp}/{stats.hpMax}
         </span>
       </div>
       <div className="flex items-center gap-1">
-        <div className="h-1 w-10 rounded-full bg-gray-800/80 overflow-hidden">
+        <div className="h-1 w-10 rounded-full bg-surface-raised/80 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-500"
+            className="h-full rounded-full bg-gradient-to-r from-status-info to-accent-hover"
             style={{ width: `${pct(stats.mp, stats.mpMax)}%` }}
           />
         </div>
-        <span className="text-[9px] text-gray-500 tabular-nums">
+        <span className="text-[9px] text-fg-muted tabular-nums">
           {stats.mp}/{stats.mpMax}
         </span>
       </div>
@@ -161,17 +161,17 @@ export function CoreStats({ stats }: { stats?: PlayerRowStats }) {
   // The four core stats may be absent on stale/ghost snapshots; skip rendering then.
   // Value colors match the core-stat palette used in CharPanel.
   const entries: { label: string; value?: number; color: string }[] = [
-    { label: 'STR', value: effective(stats.str, stats.strMod), color: 'text-red-400' },
-    { label: 'DEX', value: effective(stats.dex, stats.dexMod), color: 'text-emerald-400' },
-    { label: 'MAG', value: effective(stats.mag, stats.magMod), color: 'text-sky-400' },
-    { label: 'DEF', value: effective(stats.def, stats.defMod), color: 'text-amber-400' },
+    { label: 'STR', value: effective(stats.str, stats.strMod), color: 'text-status-error' },
+    { label: 'DEX', value: effective(stats.dex, stats.dexMod), color: 'text-status-success' },
+    { label: 'MAG', value: effective(stats.mag, stats.magMod), color: 'text-status-info' },
+    { label: 'DEF', value: effective(stats.def, stats.defMod), color: 'text-resource-gold' },
   ]
   if (entries.every((e) => e.value == null)) return null
   return (
     <div className="mt-0.5 flex items-center gap-2">
       {entries.map((e) => (
         <span key={e.label} className="flex items-center gap-0.5 text-[9px] tabular-nums">
-          <span className="text-gray-500 uppercase tracking-wide">{e.label}</span>
+          <span className="text-fg-muted uppercase tracking-wide">{e.label}</span>
           <span className={e.color}>{e.value ?? '–'}</span>
         </span>
       ))}
@@ -182,12 +182,12 @@ export function CoreStats({ stats }: { stats?: PlayerRowStats }) {
 export function ActionButton({ label, onClick, variant = 'plain', title, disabled }: PlayerRowAction) {
   const base = 'text-[10px] leading-none transition-colors'
   const styles = disabled
-    ? 'px-1.5 py-0.5 rounded border border-gray-700/40 text-gray-600 cursor-not-allowed'
+    ? 'px-1.5 py-0.5 rounded border border-line-subtle/40 text-fg-disabled cursor-not-allowed'
     : variant === 'follow'
-      ? 'px-1.5 py-0.5 rounded border border-blue-700/40 text-blue-300/90 hover:bg-blue-900/30 hover:text-blue-200'
+      ? 'px-1.5 py-0.5 rounded border border-resource-mp/40 text-resource-mp/90 hover:bg-resource-mp/30 hover:text-resource-mp'
       : variant === 'danger'
-        ? 'text-red-400/70 hover:text-red-300'
-        : 'text-gray-400/80 hover:text-gray-200'
+        ? 'text-status-error/70 hover:text-status-error'
+        : 'text-fg-secondary/80 hover:text-fg-bright'
   return (
     <button type="button" onClick={onClick} title={title} disabled={disabled} className={`${base} ${styles}`}>
       {label}
@@ -201,13 +201,13 @@ export function PlayerBadges({ row }: { row: PlayerRowData }) {
   return (
     <>
       {row.isSelf && (
-        <span className="rounded-sm border border-blue-400/60 bg-blue-500/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-blue-200">
+        <span className="rounded-sm border border-resource-mp/60 bg-resource-mp/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-resource-mp">
           You
         </span>
       )}
       {(row.role === 'leader' || row.isLeader) && (
         <span
-          className="rounded-sm border border-yellow-400/50 bg-yellow-400/15 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-yellow-300"
+          className="rounded-sm border border-status-warning/50 bg-status-warning/15 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-status-warning"
           title="Party leader"
         >
           Leader
@@ -215,13 +215,13 @@ export function PlayerBadges({ row }: { row: PlayerRowData }) {
       )}
       {row.stats?.inBattle && (
         <span
-          className="rounded-sm border border-red-400/60 bg-red-500/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-red-200"
+          className="rounded-sm border border-status-error/60 bg-status-error/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-status-error"
           title="Currently in battle"
         >
           In Battle
         </span>
       )}
-      {presence === 'idle' && <span className="text-[9px] text-yellow-600/80">idle</span>}
+      {presence === 'idle' && <span className="text-[9px] text-status-warning/80">idle</span>}
     </>
   )
 }
@@ -254,22 +254,22 @@ export default function PlayerRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className={`truncate text-xs ${highlightName ? 'text-gray-200 font-medium' : 'text-gray-300'}`}>
+          <span className={`truncate text-xs ${highlightName ? 'text-fg-bright font-medium' : 'text-fg-primary'}`}>
             {row.username}
           </span>
-          <span className="text-[10px] text-gray-500">Lv{row.level}</span>
+          <span className="text-[10px] text-fg-muted">Lv{row.level}</span>
           <PlayerBadges row={row} />
         </div>
 
         {showLocation && (
           <div className="mt-0.5 flex items-center gap-1.5 text-[9px]">
             <span className={`h-1.5 w-1.5 rounded-full ${PRESENCE_META[presence].dot}`} />
-            <span className="truncate text-gray-500">
+            <span className="truncate text-fg-muted">
               {row.roomName || row.roomId || 'Unknown'}
-              {row.roomId && row.roomName ? <span className="text-gray-600"> · {row.roomId}</span> : null}
+              {row.roomId && row.roomName ? <span className="text-fg-disabled"> · {row.roomId}</span> : null}
             </span>
             {presence === 'disconnected' && row.lastSeen ? (
-              <span className="text-gray-600">{formatTimeAgo(row.lastSeen)}</span>
+              <span className="text-fg-disabled">{formatTimeAgo(row.lastSeen)}</span>
             ) : null}
           </div>
         )}

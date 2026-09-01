@@ -93,34 +93,34 @@ export default function RanksPanel({ onOpenProfile }: RanksPanelProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-gray-800/60 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-subtle/60 px-4 py-3">
         <div className="flex items-baseline gap-2">
-          <h3 className="text-sm font-semibold text-white">Standings</h3>
+          <h3 className="text-sm font-semibold text-fg-bright">Standings</h3>
           {myRank !== null && (
-            <span className="text-xs text-gray-400">
-              You&rsquo;re <span className="font-semibold text-pink-300">#{myRank}</span> of {sorted.length}
+            <span className="text-xs text-fg-secondary">
+              You&rsquo;re <span className="font-semibold text-hue-pink">#{myRank}</span> of {sorted.length}
             </span>
           )}
         </div>
         <button
           onClick={fetchRanks}
           disabled={isLoading}
-          className="ml-auto flex items-center gap-1.5 rounded-lg border border-gray-700/60 bg-gray-900/60 px-2.5 py-1.5 text-xs text-gray-300 transition-colors hover:bg-gray-800/60 disabled:opacity-50"
+          className="ml-auto flex items-center gap-1.5 rounded-lg border border-line-subtle/60 bg-surface-panel/60 px-2.5 py-1.5 text-xs text-fg-primary transition-colors hover:bg-surface-raised/60 disabled:opacity-50"
         >
           <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
           <span>Refresh</span>
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-1 border-b border-gray-800/60 px-4 py-2">
+      <div className="flex flex-wrap gap-1 border-b border-line-subtle/60 px-4 py-2">
         {BOARDS.map((entry) => (
           <button
             key={entry.key}
             onClick={() => setBoard(entry.key)}
             className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
               board === entry.key
-                ? 'bg-pink-600/25 text-pink-200'
-                : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200'
+                ? 'bg-hue-pink/25 text-hue-pink'
+                : 'text-fg-secondary hover:bg-surface-raised/50 hover:text-fg-bright'
             }`}
           >
             {entry.label}
@@ -130,31 +130,31 @@ export default function RanksPanel({ onOpenProfile }: RanksPanelProps) {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         {error ? (
-          <div className="m-2 rounded-lg border border-red-800/50 bg-red-900/20 p-3">
-            <div className="text-xs text-red-300">{error}</div>
+          <div className="m-2 rounded-lg border border-status-error/50 bg-status-error/20 p-3">
+            <div className="text-xs text-status-error">{error}</div>
             <button
               onClick={fetchRanks}
-              className="mt-2 rounded-lg bg-red-600/90 px-3 py-1 text-xs text-white hover:bg-red-500/90"
+              className="mt-2 rounded-lg bg-status-error/90 px-3 py-1 text-xs text-fg-bright hover:bg-status-error"
             >
               Retry
             </button>
           </div>
         ) : isLoading && rows.length === 0 ? (
-          <div className="p-6 text-center text-xs text-gray-500">Loading standings…</div>
+          <div className="p-6 text-center text-xs text-fg-muted">Loading standings…</div>
         ) : sorted.length === 0 ? (
-          <div className="p-6 text-center text-xs text-gray-500">No players yet.</div>
+          <div className="p-6 text-center text-xs text-fg-muted">No players yet.</div>
         ) : (
-          <div className="divide-y divide-gray-800/40">
+          <div className="divide-y divide-line-subtle/40">
             {sorted.map((row, index) => {
               const isSelf = row.id === currentPlayerId
               return (
                 <div
                   key={row.id}
-                  className={`flex items-center gap-2 px-1.5 py-1 ${isSelf ? 'bg-pink-500/5' : ''}`}
+                  className={`flex items-center gap-2 px-1.5 py-1 ${isSelf ? 'bg-hue-pink/5' : ''}`}
                 >
                   <span
                     className={`w-7 shrink-0 text-right text-[11px] tabular-nums ${
-                      index < 3 ? 'font-bold text-amber-300' : 'text-gray-600'
+                      index < 3 ? 'font-bold text-resource-gold' : 'text-fg-disabled'
                     }`}
                   >
                     #{index + 1}
@@ -172,19 +172,19 @@ export default function RanksPanel({ onOpenProfile }: RanksPanelProps) {
                             uIconColor: row.uIconColor,
                           })
                         }
-                        className="truncate text-xs text-gray-300 hover:text-white hover:underline"
+                        className="truncate text-xs text-fg-primary hover:text-fg-bright hover:underline"
                       >
                         {row.username}
                       </button>
                       {isSelf && (
-                        <span className="rounded-sm border border-blue-400/60 bg-blue-500/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-blue-200">
+                        <span className="rounded-sm border border-resource-mp/60 bg-resource-mp/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-resource-mp">
                           You
                         </span>
                       )}
                     </div>
-                    <div className="text-[9px] text-gray-500">{active.describe(row)}</div>
+                    <div className="text-[9px] text-fg-muted">{active.describe(row)}</div>
                   </div>
-                  <span className="shrink-0 text-xs font-semibold tabular-nums text-gray-300">
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-fg-primary">
                     {valueOf(row, board).toLocaleString()}
                   </span>
                 </div>

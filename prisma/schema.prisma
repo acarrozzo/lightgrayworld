@@ -78,6 +78,7 @@ model User {
   inFight                   Boolean         @default(false)
   endFight                  Boolean         @default(false)
   weaponType                Int             @default(0)
+  theme                     String          @default("light-gray")
   uIcon                     String          @default("char-commander")
   uIconColor                String          @default("#60a5fa")
   uIconWeapon               String          @default("fists")
@@ -233,6 +234,13 @@ model Room {
   hasSearch        Boolean    @default(false)
   subtitle         String     @default("This is it. The world is yours.")
   subtitlePosition String     @default("below")
+  /**
+   * Which world region this room belongs to, driving its themed colours.
+   * The four *Color fields below are per-room overrides on top of it, and hold
+   * semantic token names (`terrain.dirt`, `world.redTown`) rather than CSS
+   * classes — see src/lib/theme/room-colors.ts.
+   */
+  region           String     @default("grassyField")
   nameColor        String?
   subtitleColor    String?
   icon             String?

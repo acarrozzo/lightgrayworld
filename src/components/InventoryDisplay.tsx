@@ -236,7 +236,7 @@ export default function InventoryDisplay({
         {/* Equipped status tag + Unequip button - show if item is equipped */}
         {item.isEquipped && (
           <>
-            <span className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-full bg-green-500/15 text-green-300 border border-green-400/40 flex-shrink-0">
+            <span className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-full bg-status-success/15 text-status-success border border-status-success/40 flex-shrink-0">
               Equipped
             </span>
             <button
@@ -244,7 +244,7 @@ export default function InventoryDisplay({
                 onClearNewItem?.(item.id)
                 onAction?.({ type: 'unequip_item', data: { playerItemId: item.id } })
               }}
-              className="px-3 py-1.5 text-sm font-semibold text-white bg-red-600/80 hover:bg-red-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
+              className="px-3 py-1.5 text-sm font-semibold text-fg-bright bg-status-error/80 hover:bg-status-error rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
             >
               <Icon name="arrow-down" size={12} color="current" />
               <span>Unequip</span>
@@ -258,7 +258,7 @@ export default function InventoryDisplay({
               onClearNewItem?.(item.id)
               onAction?.({ type: 'equip_item', data: { playerItemId: item.id } })
             }}
-            className="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600/80 hover:bg-blue-600 rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
+            className="px-3 py-1.5 text-sm font-semibold text-fg-bright bg-resource-mp/80 hover:bg-resource-mp rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
           >
             <Icon name="arrow-up" size={12} color="current" />
             <span>Equip</span>
@@ -274,8 +274,8 @@ export default function InventoryDisplay({
                 data: { playerItemId: item.id, action: itemAction.action },
               })
             }}
-            className={`px-3 py-1.5 rounded-md text-sm font-semibold text-white transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md ${
-              itemAction.className || 'bg-indigo-600/80 hover:bg-indigo-600'
+            className={`px-3 py-1.5 rounded-md text-sm font-semibold text-fg-bright transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md ${
+              itemAction.className || 'bg-accent/80 hover:bg-accent'
             }`}
             title={itemAction.label}
           >
@@ -285,7 +285,7 @@ export default function InventoryDisplay({
         ))}
         <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
           {itemValue > 0 && (
-            <span className="text-xs text-gray-400/70 font-medium">{itemValue}</span>
+            <span className="text-xs text-fg-secondary/70 font-medium">{itemValue}</span>
           )}
           <InventoryDropButton
             item={item}
@@ -309,7 +309,7 @@ export default function InventoryDisplay({
 
   return (
     <div className="@container space-y-4 p-4 sm:p-6">
-      {showHeading && <h3 className="text-lg font-semibold text-white">Inventory</h3>}
+      {showHeading && <h3 className="text-lg font-semibold text-fg-bright">Inventory</h3>}
       
       {/* Filter Tabs */}
       <div className="flex gap-2 flex-wrap pt-1 pb-2">
@@ -323,15 +323,15 @@ export default function InventoryDisplay({
               onClick={() => setActiveTab(tab.id)}
               className={`relative px-3 py-1.5 text-xs font-medium rounded transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
                 isActive
-                  ? 'bg-blue-500/70 hover:bg-blue-500 text-white border border-blue-400/50'
-                  : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-300 border border-gray-700/50 hover:border-gray-600/50'
+                  ? 'bg-resource-mp/70 hover:bg-resource-mp text-fg-bright border border-resource-mp/50'
+                  : 'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-primary border border-line-subtle/50 hover:border-line-strong/50'
               }`}
             >
               <NotificationBadge value={newItemCount} className="absolute -left-1 -top-1 z-10" />
               <span>{tab.label}</span>
               {count > 0 && (
                 <span className={`text-[10px] font-normal ${
-                  isActive ? 'text-white/60' : 'text-gray-400/60'
+                  isActive ? 'text-fg-bright/60' : 'text-fg-secondary/60'
                 }`}>
                   ({count})
                 </span>
@@ -356,8 +356,8 @@ export default function InventoryDisplay({
                 onClick={() => setWeaponTypeFilter(f)}
                 className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
                   weaponTypeFilter === f
-                    ? 'bg-violet-600/70 hover:bg-violet-600 text-white border border-violet-500/50'
-                    : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-400 border border-gray-700/50 hover:border-gray-600/50'
+                    ? 'bg-stat-mag/70 hover:bg-stat-mag text-fg-bright border border-stat-mag/50'
+                    : 'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-secondary border border-line-subtle/50 hover:border-line-strong/50'
                 }`}
               >
                 {f === 'all' ? 'All Types' : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -371,8 +371,8 @@ export default function InventoryDisplay({
                 onClick={() => setHandednessFilter(f)}
                 className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
                   handednessFilter === f
-                    ? 'bg-amber-600/70 hover:bg-amber-600 text-white border border-amber-500/50'
-                    : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-400 border border-gray-700/50 hover:border-gray-600/50'
+                    ? 'bg-resource-gold/70 hover:bg-resource-gold text-fg-bright border border-resource-gold/50'
+                    : 'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-secondary border border-line-subtle/50 hover:border-line-strong/50'
                 }`}
               >
                 {f === 'all' ? 'All Hands' : f.toUpperCase()}
@@ -384,7 +384,7 @@ export default function InventoryDisplay({
 
       {/* Filtered Items */}
       {(!inventory || inventory.length === 0) ? (
-        <div className="text-gray-400 text-sm">
+        <div className="text-fg-secondary text-sm">
           Your inventory is empty.
         </div>
       ) : activeTab === 'all' && groupedItems ? (
@@ -398,7 +398,7 @@ export default function InventoryDisplay({
 
             return (
               <div key={tab.id} className="space-y-2">
-                <h4 className="text-sm font-semibold text-gray-300 px-2">
+                <h4 className="text-sm font-semibold text-fg-primary px-2">
                   {tab.label.charAt(0).toUpperCase() + tab.label.slice(1)} ({categoryItems.length})
                 </h4>
                 <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
@@ -417,7 +417,7 @@ export default function InventoryDisplay({
           })}
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="text-gray-400 text-sm">
+        <div className="text-fg-secondary text-sm">
           No items in this category.
         </div>
       ) : activeTab === 'crafting' ? (
@@ -428,7 +428,7 @@ export default function InventoryDisplay({
             if (sectionItems.length === 0) return null
             return (
               <div key={kind} className="space-y-2">
-                <h4 className="text-sm font-semibold text-gray-300 px-2">
+                <h4 className="text-sm font-semibold text-fg-primary px-2">
                   {label} ({sectionItems.length})
                 </h4>
                 <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">

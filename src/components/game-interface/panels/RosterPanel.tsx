@@ -213,7 +213,7 @@ export default function RosterPanel({
   ]
 
   const renderRows = (rows: RosterEntry[]) => (
-    <div className="divide-y divide-gray-800/40">
+    <div className="divide-y divide-line-subtle/40">
       {rows.map((entry) => (
         <PlayerRow key={entry.id} row={entry} actions={buildActions(entry)} showLocation />
       ))}
@@ -223,26 +223,26 @@ export default function RosterPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-gray-800/60 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line-subtle/60 px-4 py-3">
         <div className="flex items-baseline gap-2">
-          <h3 className="text-sm font-semibold text-white">Players</h3>
+          <h3 className="text-sm font-semibold text-fg-bright">Players</h3>
           <span className="text-xs">
-            <span className="font-semibold text-emerald-400">{counts.online} online</span>
+            <span className="font-semibold text-status-success">{counts.online} online</span>
             {counts.idle > 0 && (
               <>
-                <span className="mx-1 text-gray-600">·</span>
-                <span className="text-amber-400">{counts.idle} idle</span>
+                <span className="mx-1 text-fg-disabled">·</span>
+                <span className="text-resource-gold">{counts.idle} idle</span>
               </>
             )}
-            <span className="mx-1 text-gray-600">·</span>
-            <span className="text-gray-400">{counts.total} total</span>
+            <span className="mx-1 text-fg-disabled">·</span>
+            <span className="text-fg-secondary">{counts.total} total</span>
           </span>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={onOpenWorldChat}
-            className="flex items-center gap-1.5 rounded-lg border border-purple-700/40 bg-purple-900/20 px-2.5 py-1.5 text-xs text-purple-200 transition-colors hover:bg-purple-800/30"
+            className="flex items-center gap-1.5 rounded-lg border border-stat-mag/40 bg-stat-mag/20 px-2.5 py-1.5 text-xs text-stat-mag transition-colors hover:bg-stat-mag/30"
           >
             <MessageSquare size={13} />
             <span>World Chat</span>
@@ -251,7 +251,7 @@ export default function RosterPanel({
             onClick={fetchDirectory}
             disabled={isLoading}
             title="Reload the player directory (online status is always live)"
-            className="flex items-center gap-1.5 rounded-lg border border-gray-700/60 bg-gray-900/60 px-2.5 py-1.5 text-xs text-gray-300 transition-colors hover:bg-gray-800/60 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg border border-line-subtle/60 bg-surface-panel/60 px-2.5 py-1.5 text-xs text-fg-primary transition-colors hover:bg-surface-raised/60 disabled:opacity-50"
           >
             <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
             <span>Refresh</span>
@@ -260,39 +260,39 @@ export default function RosterPanel({
       </div>
 
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-800/60 px-4 py-2">
-        <div className="flex rounded-lg border border-gray-700/60 bg-gray-900/60 p-0.5">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line-subtle/60 px-4 py-2">
+        <div className="flex rounded-lg border border-line-subtle/60 bg-surface-panel/60 p-0.5">
           {filterChips.map((chip) => (
             <button
               key={chip.id}
               onClick={() => setPresenceFilter(chip.id)}
               className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
                 presenceFilter === chip.id
-                  ? 'bg-pink-600/25 text-pink-200'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-hue-pink/25 text-hue-pink'
+                  : 'text-fg-secondary hover:text-fg-bright'
               }`}
             >
               {chip.label}
-              <span className="ml-1 text-[10px] text-gray-500">{chip.count}</span>
+              <span className="ml-1 text-[10px] text-fg-muted">{chip.count}</span>
             </button>
           ))}
         </div>
 
         <div className="relative min-w-[140px] flex-1">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted" />
           <input
             type="text"
             placeholder="Search players…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-gray-700/60 bg-gray-900/60 py-1.5 pl-8 pr-3 text-xs text-gray-100 placeholder-gray-500 focus:border-pink-500/60 focus:outline-none focus:ring-1 focus:ring-pink-500/60"
+            className="w-full rounded-lg border border-line-subtle/60 bg-surface-panel/60 py-1.5 pl-8 pr-3 text-xs text-fg-bright placeholder-fg-muted focus:border-hue-pink/60 focus:outline-none focus:ring-1 focus:ring-hue-pink/60"
           />
         </div>
 
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as RosterSortOption)}
-          className="rounded-lg border border-gray-700/60 bg-gray-900/60 px-2 py-1.5 text-xs text-gray-300 focus:border-pink-500/60 focus:outline-none"
+          className="rounded-lg border border-line-subtle/60 bg-surface-panel/60 px-2 py-1.5 text-xs text-fg-primary focus:border-hue-pink/60 focus:outline-none"
           aria-label="Sort players"
         >
           {SORT_OPTIONS.map((option) => (
@@ -302,12 +302,12 @@ export default function RosterPanel({
           ))}
         </select>
 
-        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200">
+        <label className="flex cursor-pointer items-center gap-1.5 text-xs text-fg-secondary hover:text-fg-bright">
           <input
             type="checkbox"
             checked={groupByRegion}
             onChange={(e) => setGroupByRegion(e.target.checked)}
-            className="h-3.5 w-3.5 accent-pink-500"
+            className="h-3.5 w-3.5 accent-hue-pink"
           />
           <span>By region</span>
         </label>
@@ -316,19 +316,19 @@ export default function RosterPanel({
       {/* List */}
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         {error ? (
-          <div className="m-2 rounded-lg border border-red-800/50 bg-red-900/20 p-3">
-            <div className="text-xs text-red-300">{error}</div>
+          <div className="m-2 rounded-lg border border-status-error/50 bg-status-error/20 p-3">
+            <div className="text-xs text-status-error">{error}</div>
             <button
               onClick={fetchDirectory}
-              className="mt-2 rounded-lg bg-red-600/90 px-3 py-1 text-xs text-white hover:bg-red-500/90"
+              className="mt-2 rounded-lg bg-status-error/90 px-3 py-1 text-xs text-fg-bright hover:bg-status-error"
             >
               Retry
             </button>
           </div>
         ) : isLoading && directory.length === 0 ? (
-          <div className="p-6 text-center text-xs text-gray-500">Loading players…</div>
+          <div className="p-6 text-center text-xs text-fg-muted">Loading players…</div>
         ) : visibleEntries.length === 0 ? (
-          <div className="p-6 text-center text-xs text-gray-500">
+          <div className="p-6 text-center text-xs text-fg-muted">
             {presenceFilter === 'here'
               ? 'Nobody else is in this room.'
               : searchQuery
@@ -340,18 +340,18 @@ export default function RosterPanel({
             {groupedEntries.map(({ regionId, title, rows }) => {
               const collapsed = collapsedRegions.has(regionId)
               return (
-                <div key={regionId} className="overflow-hidden rounded-lg border border-gray-800/60">
+                <div key={regionId} className="overflow-hidden rounded-lg border border-line-subtle/60">
                   <button
                     onClick={() => toggleRegion(regionId)}
-                    className="flex w-full items-center gap-2 border-b border-gray-800/60 bg-gray-900/70 px-2.5 py-1.5 transition-colors hover:bg-gray-900/90"
+                    className="flex w-full items-center gap-2 border-b border-line-subtle/60 bg-surface-panel/70 px-2.5 py-1.5 transition-colors hover:bg-surface-panel/90"
                   >
                     {collapsed ? (
-                      <ChevronRight size={14} className="text-gray-500" />
+                      <ChevronRight size={14} className="text-fg-muted" />
                     ) : (
-                      <ChevronDown size={14} className="text-gray-500" />
+                      <ChevronDown size={14} className="text-fg-muted" />
                     )}
-                    <span className="text-xs font-semibold text-gray-200">{title}</span>
-                    <span className="text-[10px] text-gray-500">
+                    <span className="text-xs font-semibold text-fg-bright">{title}</span>
+                    <span className="text-[10px] text-fg-muted">
                       {rows.length} player{rows.length === 1 ? '' : 's'}
                     </span>
                   </button>

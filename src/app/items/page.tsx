@@ -359,12 +359,12 @@ export default async function ItemsPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-200">
+    <div className="min-h-screen bg-surface-canvas text-fg-bright">
       <WorldToolNav active="items" />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-100">Item Compendium</h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <h1 className="text-2xl font-bold text-fg-bright">Item Compendium</h1>
+          <p className="mt-1 text-sm text-fg-secondary">
             {rows.length} items — pulled live from the game data.
           </p>
         </header>

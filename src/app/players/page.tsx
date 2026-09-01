@@ -103,12 +103,12 @@ export default async function PlayersPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-200">
+    <div className="min-h-screen bg-surface-canvas text-fg-bright">
       <WorldToolNav active="players" />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-100">Players</h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <h1 className="text-2xl font-bold text-fg-bright">Players</h1>
+          <p className="mt-1 text-sm text-fg-secondary">
             {rows.length} players — click a name for the full profile, or a row to expand details.
           </p>
         </header>

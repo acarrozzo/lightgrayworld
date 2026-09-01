@@ -21,10 +21,10 @@ interface CharPanelProps {
 }
 
 const STAT_MOD_COLORS: Record<string, string> = {
-  str: 'text-red-400',
-  dex: 'text-emerald-400',
-  mag: 'text-sky-400',
-  def: 'text-amber-400',
+  str: 'text-stat-str',
+  dex: 'text-stat-dex',
+  mag: 'text-stat-mag',
+  def: 'text-stat-def',
 }
 
 function renderStatMods(metadata: any): React.ReactNode {
@@ -40,8 +40,8 @@ function renderStatMods(metadata: any): React.ReactNode {
     const value = statMods[stat]
     if (typeof value === 'number' && value !== 0) {
       const sign = value > 0 ? '+' : ''
-      const color = value > 0 ? STAT_MOD_COLORS[stat] : 'text-red-800'
-      if (parts.length > 0) parts.push(<span key={`${stat}-sep`} className="text-gray-500">, </span>)
+      const color = value > 0 ? STAT_MOD_COLORS[stat] : 'text-fg-disabled'
+      if (parts.length > 0) parts.push(<span key={`${stat}-sep`} className="text-fg-muted">, </span>)
       parts.push(<span key={stat} className={color}>{sign}{value} {statLabels[stat]}</span>)
     }
   }
@@ -170,7 +170,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
         {onClose && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+            className="absolute top-4 right-4 z-10 p-2 text-fg-secondary hover:text-fg-bright transition-colors duration-200 rounded-lg hover:bg-surface-raised/50"
             title="Close"
             aria-label="Close"
           >
@@ -184,18 +184,18 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
           <div className="space-y-4">
             <div className="">
               <div className="relative flex flex-row items-start gap-6">
-                <div className="relative w-36 h-52 bg-gray-950/70 rounded-3xl border border-gray-800/80 flex items-center justify-center shadow-inner shadow-black/60 flex-shrink-0">
+                <div className="relative w-36 h-52 bg-surface-canvas/70 rounded-3xl border border-line-subtle/80 flex items-center justify-center shadow-inner shadow-black/60 flex-shrink-0">
                   {coloredAvatarSvg ? (
                     <div
                       className="w-28 h-44"
                       dangerouslySetInnerHTML={{ __html: coloredAvatarSvg }}
                     />
                   ) : (
-                    <div className="text-gray-500 text-sm">Loading avatar...</div>
+                    <div className="text-fg-muted text-sm">Loading avatar...</div>
                   )}
                   <button
                     type="button"
-                    className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 transition-all"
+                    className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full text-xs font-semibold text-fg-bright bg-accent/80 hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas transition-all"
                     onClick={() => setAvatarModalOpen(true)}
                     disabled={!isLoggedIn}
                   >
@@ -205,29 +205,29 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
 
                 <div className="flex-1 w-full space-y-3">
                   <div className="space-y-0 text-left">
-                    <div className="text-xs uppercase tracking-[0.3em] text-indigo-300/80">lvl {player.level}</div>
-                    <h3 className="text-2xl font-semibold text-white">{player.username}</h3>
-                    <p className="text-sm text-gray-400">Room: {player.currentRoom || '???'}</p>
+                    <div className="text-xs uppercase tracking-[0.3em] text-accent-hover/80">lvl {player.level}</div>
+                    <h3 className="text-2xl font-semibold text-fg-bright">{player.username}</h3>
+                    <p className="text-sm text-fg-secondary">Room: {player.currentRoom || '???'}</p>
                   </div>
 
                   <div className="space-y-3">
                     <StatBar
                       label="HP"
-                      value={<span className="text-white">{Math.min(player.hp, player.hpMax)}/{player.hpMax}{player.hp > player.hpMax && <span className="text-yellow-400"> +{player.hp - player.hpMax}</span>}</span>}
+                      value={<span className="text-fg-bright">{Math.min(player.hp, player.hpMax)}/{player.hpMax}{player.hp > player.hpMax && <span className="text-resource-gold"> +{player.hp - player.hpMax}</span>}</span>}
                       percentage={hpPercent}
-                      gradient="from-rose-500 via-red-500 to-rose-600"
+                      gradient="from-resource-hp via-resource-hp to-resource-hp"
                     />
                     <StatBar
                       label="MP"
-                      value={<span className="text-white">{Math.min(player.mp, player.mpMax)}/{player.mpMax}{player.mp > player.mpMax && <span className="text-yellow-400"> +{player.mp - player.mpMax}</span>}</span>}
+                      value={<span className="text-fg-bright">{Math.min(player.mp, player.mpMax)}/{player.mpMax}{player.mp > player.mpMax && <span className="text-resource-gold"> +{player.mp - player.mpMax}</span>}</span>}
                       percentage={mpPercent}
-                      gradient="from-sky-500 via-blue-500 to-indigo-500"
+                      gradient="from-resource-mp via-resource-mp to-accent-hover"
                     />
                     <StatBar
                       label="XP"
-                      value={<><span className="text-green-400">{xpPct}%</span> <span className="text-gray-400">need {xpRemaining}</span></>}
+                      value={<><span className="text-resource-xp">{xpPct}%</span> <span className="text-fg-secondary">need {xpRemaining}</span></>}
                       percentage={xpPct}
-                      gradient="from-green-500 via-emerald-500 to-green-600"
+                      gradient="from-resource-xp via-resource-xp to-resource-xp"
                     />
                   </div>
                 </div>
@@ -237,16 +237,16 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
             {/* Core Stats */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Core Stats</h4>
+                <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Core Stats</h4>
                 <div className="flex items-center gap-1.5">
                   {(player.tp ?? 0) > 0 && (
                     <span className="relative inline-flex">
-                      <span className="absolute inset-[2px] rounded-lg bg-yellow-400/60 animate-ping-slow" />
+                      <span className="absolute inset-[2px] rounded-lg bg-resource-gold/60 animate-ping-slow" />
                       <button
                         type="button"
                         onClick={() => setTrainingModalOpen(true)}
                         disabled={!isLoggedIn}
-                        className="relative px-2.5 py-1 text-xs font-semibold text-gray-900 bg-yellow-400/90 hover:bg-yellow-300 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
+                        className="relative px-2.5 py-1 text-xs font-semibold text-fg-disabled bg-resource-gold/90 hover:bg-resource-gold disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
                       >
                         Spend TP ({player.tp ?? 0})
                       </button>
@@ -257,7 +257,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                       type="button"
                       onClick={() => setStatModalOpen(true)}
                       disabled={!isLoggedIn}
-                      className="px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600/80 hover:bg-indigo-500 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
+                      className="px-2.5 py-1 text-xs font-semibold text-fg-bright bg-accent/80 hover:bg-accent-hover disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
                     >
                       Spend CP ({player.cp ?? 0})
                     </button>
@@ -265,16 +265,16 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
-                <StatDisplay label="STR" core={player.str ?? 0} mod={player.strMod ?? 0} compact color="text-red-400" />
-                <StatDisplay label="DEX" core={player.dex ?? 0} mod={player.dexMod ?? 0} compact color="text-emerald-400" />
-                <StatDisplay label="MAG" core={player.mag ?? 0} mod={player.magMod ?? 0} compact color="text-sky-400" />
-                <StatDisplay label="DEF" core={player.def ?? 0} mod={player.defMod ?? 0} compact color="text-amber-400" />
+                <StatDisplay label="STR" core={player.str ?? 0} mod={player.strMod ?? 0} compact color="text-stat-str" />
+                <StatDisplay label="DEX" core={player.dex ?? 0} mod={player.dexMod ?? 0} compact color="text-stat-dex" />
+                <StatDisplay label="MAG" core={player.mag ?? 0} mod={player.magMod ?? 0} compact color="text-stat-mag" />
+                <StatDisplay label="DEF" core={player.def ?? 0} mod={player.defMod ?? 0} compact color="text-stat-def" />
               </div>
             </div>
 
             {/* Equipment Display */}
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Equipment</h4>
+              <h4 className="text-sm font-semibold text-fg-primary uppercase tracking-wide">Equipment</h4>
               <div className="grid grid-cols-2 gap-2">
                 {/* Row 1: MAIN_HAND, OFF_HAND */}
                 <EquipmentSlot
@@ -389,7 +389,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
 
             {/* Core Points Group */}
             <div className="space-y-1.5">
-              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Points</h4>
+              <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Points</h4>
               <div className="grid grid-cols-3 gap-1.5">
                 <StatBox label="Core" value={player.cp ?? 0} compact />
                 <StatBox label="Training" value={player.tp ?? 0} compact />
@@ -439,11 +439,11 @@ interface StatBarProps {
 function StatBar({ label, value, percentage, gradient }: StatBarProps) {
   return (
     <div>
-      <div className="flex justify-between text-xs text-gray-400 mb-1">
+      <div className="flex justify-between text-xs text-fg-secondary mb-1">
         <span>{label}</span>
         <span className="font-medium">{value}</span>
       </div>
-      <div className="h-3 rounded-full bg-gray-800/80 overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
+      <div className="h-3 rounded-full bg-surface-raised/80 overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
         <div
           className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-[width] duration-500 ease-out`}
           style={{ width: `${percentage}%` }}
@@ -461,9 +461,9 @@ interface StatBoxProps {
 
 function StatBox({ label, value, subtle = false, compact = false }: StatBoxProps & { compact?: boolean }) {
   return (
-    <div className={`rounded-xl border text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'} ${subtle ? 'border-gray-800/70 bg-gray-900/60' : 'border-gray-800/80 bg-gray-900/80'}`}>
-      <p className="text-xs uppercase tracking-wide text-gray-400 leading-none">{label}</p>
-      <p className={`font-semibold text-white ${compact ? 'text-base mt-0.5' : 'text-lg mt-1'}`}>{value}</p>
+    <div className={`rounded-xl border text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'} ${subtle ? 'border-line-subtle/70 bg-surface-panel/60' : 'border-line-subtle/80 bg-surface-panel/80'}`}>
+      <p className="text-xs uppercase tracking-wide text-fg-secondary leading-none">{label}</p>
+      <p className={`font-semibold text-fg-bright ${compact ? 'text-base mt-0.5' : 'text-lg mt-1'}`}>{value}</p>
     </div>
   )
 }
@@ -478,10 +478,10 @@ function StatDisplay({ label, core, mod, compact = false, color }: StatDisplayPr
   const effective = core + mod
 
   return (
-    <div className={`rounded-xl border border-gray-700/40 bg-gray-900/60 text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'}`}>
-      <p className={`text-xs uppercase tracking-wide leading-none ${color ?? 'text-gray-400'}`}>{label}</p>
-      <p className={`font-bold ${color ?? 'text-white'} ${compact ? 'text-lg mt-0.5' : 'text-2xl mt-1'}`}>{effective}</p>
-      <p className="text-xs text-gray-500 leading-none">{core}</p>
+    <div className={`rounded-xl border border-line-subtle/40 bg-surface-panel/60 text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'}`}>
+      <p className={`text-xs uppercase tracking-wide leading-none ${color ?? 'text-fg-secondary'}`}>{label}</p>
+      <p className={`font-bold ${color ?? 'text-fg-bright'} ${compact ? 'text-lg mt-0.5' : 'text-2xl mt-1'}`}>{effective}</p>
+      <p className="text-xs text-fg-muted leading-none">{core}</p>
     </div>
   )
 }
@@ -504,14 +504,14 @@ function EquipmentSlot({ slot, item, ghostItem, onUnequip, onSwitchToInventory }
     return (
       <button
         onClick={() => onSwitchToInventory?.()}
-        className="rounded-lg border border-gray-800/80 bg-gray-900/80 px-3 py-2 text-left hover:bg-gray-800/80 transition-colors flex items-center gap-2"
+        className="rounded-lg border border-line-subtle/80 bg-surface-panel/80 px-3 py-2 text-left hover:bg-surface-raised/80 transition-colors flex items-center gap-2"
       >
-        <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-gray-700/40 border border-gray-600/30">
-          <Icon name={icon} size={22} className="text-gray-300" />
+        <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-surface-hover/40 border border-line-strong/30">
+          <Icon name={icon} size={22} className="text-fg-primary" />
         </div>
         <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
-          <p className="text-sm font-medium text-white truncate">{item.template.name}</p>
+          <p className="text-xs uppercase tracking-wide text-fg-secondary">{slotName}</p>
+          <p className="text-sm font-medium text-fg-bright truncate">{item.template.name}</p>
           {mods && <p className="text-xs">{mods}</p>}
         </div>
       </button>
@@ -523,14 +523,14 @@ function EquipmentSlot({ slot, item, ghostItem, onUnequip, onSwitchToInventory }
     const ghostIcon = resolveItemIcon(ghostItem.template.metadata as { icon?: string } | null, ghostItem.template.slug ?? '')
 
     return (
-      <div className="rounded-lg border border-gray-800/80 bg-gray-900/80 px-3 py-2 cursor-default select-none">
+      <div className="rounded-lg border border-line-subtle/80 bg-surface-panel/80 px-3 py-2 cursor-default select-none">
         <div className="flex items-center gap-2 opacity-35">
-          <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-gray-700/40 border border-gray-600/30">
-            <Icon name={ghostIcon} size={22} className="text-gray-300" />
+          <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-surface-hover/40 border border-line-strong/30">
+            <Icon name={ghostIcon} size={22} className="text-fg-primary" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
-            <p className="text-sm font-medium text-white truncate">{ghostItem.template.name}</p>
+            <p className="text-xs uppercase tracking-wide text-fg-secondary">{slotName}</p>
+            <p className="text-sm font-medium text-fg-bright truncate">{ghostItem.template.name}</p>
             {ghostMods && <p className="text-xs">{ghostMods}</p>}
           </div>
         </div>
@@ -541,10 +541,10 @@ function EquipmentSlot({ slot, item, ghostItem, onUnequip, onSwitchToInventory }
   return (
     <button
       onClick={() => onSwitchToInventory?.()}
-      className="rounded-lg border border-gray-800/70 bg-gray-900/60 px-3 py-2 text-left hover:bg-gray-800/60 hover:border-gray-700/70 transition-colors cursor-pointer"
+      className="rounded-lg border border-line-subtle/70 bg-surface-panel/60 px-3 py-2 text-left hover:bg-surface-raised/60 hover:border-line-subtle transition-colors cursor-pointer"
     >
-      <p className="text-xs uppercase tracking-wide text-gray-400">{slotName}</p>
-      <p className="text-sm text-gray-500 mt-0.5">- - -</p>
+      <p className="text-xs uppercase tracking-wide text-fg-secondary">{slotName}</p>
+      <p className="text-sm text-fg-muted mt-0.5">- - -</p>
     </button>
   )
 }

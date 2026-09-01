@@ -47,23 +47,23 @@ export default function PartyStrip({
   if (!party && followable.length === 0) return null
 
   return (
-    <div className="rounded-lg border border-blue-900/40 bg-blue-950/10 p-2.5 space-y-2">
+    <div className="rounded-lg border border-resource-mp/40 bg-resource-mp/10 p-2.5 space-y-2">
       {party && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="text-xs font-bold text-blue-300">
-              Party <span className="text-[10px] text-gray-500">({party.size}/{party.maxSize})</span>
+            <h4 className="text-xs font-bold text-resource-mp">
+              Party <span className="text-[10px] text-fg-muted">({party.size}/{party.maxSize})</span>
             </h4>
             <div className="flex items-center gap-2">
               <button
                 onClick={onManage}
-                className="text-[10px] text-gray-400 underline underline-offset-2 hover:text-gray-200"
+                className="text-[10px] text-fg-secondary underline underline-offset-2 hover:text-fg-bright"
               >
                 Manage
               </button>
               <button
                 onClick={onLeave}
-                className="text-[10px] text-red-400/80 underline underline-offset-2 hover:text-red-300"
+                className="text-[10px] text-status-error/80 underline underline-offset-2 hover:text-status-error"
               >
                 {isLeader ? 'Disband' : 'Leave'}
               </button>
@@ -76,14 +76,14 @@ export default function PartyStrip({
                 <PlayerAvatar uIcon={member.uIcon} uIconColor={member.uIconColor} />
                 <span
                   className={`text-[11px] ${
-                    member.id === party.leaderId ? 'font-medium text-gray-200' : 'text-gray-400'
+                    member.id === party.leaderId ? 'font-medium text-fg-bright' : 'text-fg-secondary'
                   }`}
                 >
                   {member.username}
                   {member.id === currentPlayerId ? ' (you)' : ''}
                 </span>
                 {member.id === party.leaderId && (
-                  <span className="text-[8px] font-bold uppercase tracking-wide text-yellow-400/80">lead</span>
+                  <span className="text-[8px] font-bold uppercase tracking-wide text-status-warning/80">lead</span>
                 )}
               </div>
             ))}
@@ -92,15 +92,15 @@ export default function PartyStrip({
       )}
 
       {followable.length > 0 && (
-        <div className={party ? 'border-t border-blue-900/30 pt-2' : ''}>
+        <div className={party ? 'border-t border-resource-mp/30 pt-2' : ''}>
           <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-300/60">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-resource-mp/60">
               Also here
             </span>
             {!party && (
               <button
                 onClick={onManage}
-                className="text-[10px] text-gray-400 underline underline-offset-2 hover:text-gray-200"
+                className="text-[10px] text-fg-secondary underline underline-offset-2 hover:text-fg-bright"
               >
                 Manage
               </button>
@@ -112,10 +112,10 @@ export default function PartyStrip({
                 key={p.id}
                 onClick={() => onFollow(p.id)}
                 title={`Follow ${p.username}`}
-                className="flex items-center gap-1 rounded border border-blue-700/40 px-1.5 py-0.5 text-[10px] text-blue-300/90 transition-colors hover:bg-blue-900/30 hover:text-blue-200"
+                className="flex items-center gap-1 rounded border border-resource-mp/40 px-1.5 py-0.5 text-[10px] text-resource-mp/90 transition-colors hover:bg-resource-mp/30 hover:text-resource-mp"
               >
                 <span className="max-w-[90px] truncate">{p.username}</span>
-                <span className="text-blue-400/60">follow</span>
+                <span className="text-resource-mp/60">follow</span>
               </button>
             ))}
           </div>

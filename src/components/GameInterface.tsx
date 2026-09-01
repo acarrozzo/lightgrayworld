@@ -1558,10 +1558,10 @@ export default function GameInterface() {
             if (modalContent.type === 'icon' && modalContent.icon) {
               // Ensure iconColor has 'text-' prefix if it's a color without it
               // Opacity modifiers (e.g., /70) are preserved and will be handled by Icon component
-              let iconColorClass = modalContent.iconColor || "text-yellow-400"
+              let iconColorClass = modalContent.iconColor || "text-status-warning"
               if (iconColorClass && !iconColorClass.startsWith('text-') && !iconColorClass.includes(' ')) {
                 // If it's a simple color name like 'yellow-400', 'gray-500', or 'gray-500/70', add 'text-' prefix
-                // The opacity modifier (e.g., /70) will be preserved: 'gray-500/70' -> 'text-gray-500/70'
+                // The opacity modifier (e.g., /70) will be preserved: 'gray-500/70' -> 'text-fg-muted/70'
                 iconColorClass = `text-${iconColorClass}`
               }
               const questCompleteData: QuestCompleteData | null =
@@ -1589,18 +1589,18 @@ export default function GameInterface() {
                   />
                   <div className="text-center max-w-md w-full">
                     {modalContent.header && (
-                      <h3 className="text-gray-100 text-lg font-semibold mb-4">
+                      <h3 className="text-fg-bright text-lg font-semibold mb-4">
                         {modalContent.header}
                       </h3>
                     )}
                     {isMessageArray ? (
-                      <div className="text-gray-200 text-base leading-relaxed space-y-4">
+                      <div className="text-fg-bright text-base leading-relaxed space-y-4">
                         {messageContent.map((paragraph, index) => (
                           <p key={index}>{paragraph}</p>
                         ))}
                       </div>
                     ) : messageContent ? (
-                      <p className="text-gray-200 text-base leading-relaxed">
+                      <p className="text-fg-bright text-base leading-relaxed">
                         {messageContent}
                       </p>
                     ) : null}
@@ -2921,10 +2921,10 @@ export default function GameInterface() {
 
   if (!currentRoom || (isLoadingRoom && isInitialLoad)) {
     return (
-      <div className="min-h-dvh bg-gray-950 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.04)_0%,transparent_70%)] text-white flex items-center justify-center">
+      <div className="min-h-dvh bg-surface-canvas bg-[radial-gradient(ellipse_at_center,color-mix(in_srgb,var(--accent)_4%,transparent)_0%,transparent_70%)] text-fg-bright flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-indigo-400/40 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-500 text-sm tracking-wide">Loading world data...</p>
+          <div className="w-8 h-8 border-2 border-accent-hover/40 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-fg-muted text-sm tracking-wide">Loading world data...</p>
         </div>
       </div>
     )
@@ -2948,10 +2948,10 @@ export default function GameInterface() {
   ]
 
   return (
-    <div className="h-dvh bg-gray-950 text-white flex flex-col overflow-hidden">
+    <div className="h-dvh bg-surface-canvas text-fg-bright flex flex-col overflow-hidden">
       {isMapModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex flex-col bg-gray-950/95 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex flex-col bg-surface-canvas/95 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
         >
@@ -3145,7 +3145,7 @@ export default function GameInterface() {
 
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Left: on desktop (lg+), tab bar at top; D-pad default, panel content when tab active */}
-        <div className="hidden lg:flex flex-col flex-shrink-0 w-[420px] border-r border-gray-700/30 bg-gray-900/95 min-h-0 overflow-hidden">
+        <div className="hidden lg:flex flex-col flex-shrink-0 w-[420px] border-r border-line-subtle/30 bg-surface-panel/95 min-h-0 overflow-hidden">
           <TabContainer
             tabs={panelTabs}
             defaultTab="explore"
@@ -3191,7 +3191,7 @@ export default function GameInterface() {
 
         {/* Mobile panel: full-width when a panel tab is active (< lg only) */}
         {centerActiveTab !== 'explore' && (
-          <div className="flex flex-col flex-1 min-h-0 bg-gray-900/95 overflow-hidden lg:hidden">
+          <div className="flex flex-col flex-1 min-h-0 bg-surface-panel/95 overflow-hidden lg:hidden">
             <div className="flex-1 overflow-y-auto min-h-0">
               {renderActivePanel()}
             </div>
@@ -3204,30 +3204,30 @@ export default function GameInterface() {
           <button
             type="button"
             onClick={() => setIsFeedPanelOpen(v => !v)}
-            className="hidden lg:flex absolute top-2 right-3 z-20 items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-700/50 bg-gray-900/80 hover:bg-gray-800/80 text-gray-400 hover:text-white transition-all duration-200 text-xs font-medium shadow-sm"
+            className="hidden lg:flex absolute top-2 right-3 z-20 items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-line-subtle/50 bg-surface-panel/80 hover:bg-surface-raised/80 text-fg-secondary hover:text-fg-bright transition-all duration-200 text-xs font-medium shadow-sm"
             title={isFeedPanelOpen ? 'Close World Feed' : 'Open World Feed'}
             aria-label={isFeedPanelOpen ? 'Close World Feed' : 'Open World Feed'}
           >
             <MessageSquareText size={14} />
             {unreadCount > 0 && (
-              <span className="min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-[9px] font-semibold text-white flex items-center justify-center">
+              <span className="min-w-[16px] h-[16px] px-1 rounded-full bg-status-error text-[9px] font-semibold text-fg-bright flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </button>
           {currentRoom && (
-            <div className="bg-gray-900/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
+            <div className="bg-surface-panel/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
               <div className="flex-1 min-h-0 overflow-y-auto h-full">
                 <div className="max-w-4xl mx-auto w-full">
                   {!socket?.connected && (
-                    <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-gray-700/30 bg-gray-900/60">
-                      <div className="flex items-center gap-2 text-xs text-gray-400">
-                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                    <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-line-subtle/30 bg-surface-panel/60">
+                      <div className="flex items-center gap-2 text-xs text-fg-secondary">
+                        <span className="w-2 h-2 rounded-full bg-status-error" />
                         <span>Not Connected</span>
                       </div>
                       <button
                         onClick={() => window.location.reload()}
-                        className="px-6 py-2 text-md font-medium rounded-lg bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-white transition-all duration-200 shadow-md shadow-indigo-950/40 hover:shadow-lg active:scale-[0.98]"
+                        className="px-6 py-2 text-md font-medium rounded-lg bg-gradient-to-b from-accent to-accent hover:from-accent-hover hover:to-accent-hover text-fg-bright transition-all duration-200 shadow-md shadow-shadow/40 hover:shadow-lg active:scale-[0.98]"
                         aria-label="Refresh page"
                         title="Refresh page"
                       >
@@ -3322,7 +3322,7 @@ export default function GameInterface() {
               </div>
 
               {/* D-pad — mobile/tablet only (< lg), hidden during battle/crafting */}
-              <div className={`lg:hidden flex-shrink-0 flex flex-col border-t border-gray-700/30 ${battle.isInBattle || isCraftingOpen ? 'hidden' : ''}`}>
+              <div className={`lg:hidden flex-shrink-0 flex flex-col border-t border-line-subtle/30 ${battle.isInBattle || isCraftingOpen ? 'hidden' : ''}`}>
                 <ExplorePanel
                   variant="strip"
                   room={currentRoom}
@@ -3351,13 +3351,13 @@ export default function GameInterface() {
 
         {/* Right: Feed panel — desktop only */}
         {isFeedPanelOpen && (
-          <div className="hidden lg:flex flex-col flex-shrink-0 w-[360px] border-l border-gray-700/30 bg-gray-900/95 min-h-0 overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/30">
-              <span className="text-sm font-medium text-gray-300">World Feed</span>
+          <div className="hidden lg:flex flex-col flex-shrink-0 w-[360px] border-l border-line-subtle/30 bg-surface-panel/95 min-h-0 overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-line-subtle/30">
+              <span className="text-sm font-medium text-fg-primary">World Feed</span>
               <button
                 type="button"
                 onClick={() => setIsFeedPanelOpen(false)}
-                className="p-1.5 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+                className="p-1.5 text-fg-secondary hover:text-fg-bright transition-colors duration-200 rounded-lg hover:bg-surface-raised/50"
                 title="Close World Feed"
                 aria-label="Close World Feed"
               >

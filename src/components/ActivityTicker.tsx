@@ -19,14 +19,14 @@ const renderEntry = (entry: WorldFeedEntry): React.ReactNode => {
   if (entry.type === 'world') {
     return (
       <>
-        {speaker} shouts: <span className="text-emerald-400">{entry.message}</span>
+        {speaker} shouts: <span className="text-status-success">{entry.message}</span>
       </>
     )
   }
   if (entry.type === 'room') {
     return (
       <>
-        {speaker} says: <span className="text-purple-400">{entry.message}</span>
+        {speaker} says: <span className="text-stat-mag">{entry.message}</span>
       </>
     )
   }
@@ -108,10 +108,10 @@ export default function ActivityTicker() {
         className={`
           w-full h-8
           flex items-center justify-center overflow-hidden
-          border-b border-gray-800/40 bg-gray-900/90 backdrop-blur-sm
+          border-b border-line-subtle/40 bg-surface-panel/90 backdrop-blur-sm
           px-3
-          ${hasHistory ? 'cursor-pointer hover:bg-gray-800/85' : 'cursor-default'}
-          focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/30
+          ${hasHistory ? 'cursor-pointer hover:bg-surface-raised/85' : 'cursor-default'}
+          focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-fg-bright/30
           transition-colors
         `}
         aria-label={expanded ? 'Collapse activity history' : 'Expand activity history'}
@@ -125,21 +125,21 @@ export default function ActivityTicker() {
             />
             <span
               key={displayedId ?? 'empty'}
-              className={`min-w-0 truncate text-xs animate-[tickerFadeIn_0.25s_ease-out] ${isIdle ? 'text-gray-500' : 'text-gray-200'}`}
+              className={`min-w-0 truncate text-xs animate-[tickerFadeIn_0.25s_ease-out] ${isIdle ? 'text-fg-muted' : 'text-fg-bright'}`}
             >
               {renderEntry(latest)}
             </span>
-            <span className="flex-shrink-0 text-[10px] text-gray-500 tabular-nums">
+            <span className="flex-shrink-0 text-[10px] text-fg-muted tabular-nums">
               {formatRelative(latest.ts, now)}
             </span>
             {hasHistory && (
-              <span className="flex-shrink-0 text-gray-500" aria-hidden="true">
+              <span className="flex-shrink-0 text-fg-muted" aria-hidden="true">
                 {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </span>
             )}
           </div>
         ) : (
-          <span className="text-center text-[10px] text-gray-600 tracking-wide uppercase">
+          <span className="text-center text-[10px] text-fg-disabled tracking-wide uppercase">
             Activity
           </span>
         )}
@@ -147,19 +147,19 @@ export default function ActivityTicker() {
 
       {expanded && hasHistory && (
         <div className="absolute top-full left-0 right-0 z-40 px-2 pt-1">
-          <div className="mx-auto max-w-3xl rounded-b-md border border-t-0 border-gray-700/60 bg-gray-900/95 backdrop-blur-sm shadow-lg">
+          <div className="mx-auto max-w-3xl rounded-b-md border border-t-0 border-line-subtle/60 bg-surface-panel/95 backdrop-blur-sm shadow-lg">
             <div className="max-h-64 overflow-y-auto py-1">
               {history.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-start gap-2 px-3 py-1.5 text-xs text-gray-200"
+                  className="flex items-start gap-2 px-3 py-1.5 text-xs text-fg-bright"
                 >
                   <span
                     className={`flex-shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${entryAccent(entry)}`}
                     aria-hidden="true"
                   />
                   <span className="flex-1 min-w-0 whitespace-normal break-words">{renderEntry(entry)}</span>
-                  <span className="flex-shrink-0 mt-0.5 text-[10px] text-gray-500 tabular-nums">
+                  <span className="flex-shrink-0 mt-0.5 text-[10px] text-fg-muted tabular-nums">
                     {formatRelative(entry.ts, now)}
                   </span>
                 </div>

@@ -24,8 +24,8 @@ const TRAINING_DESCRIPTIONS: Record<string, string> = {
 }
 
 const TRAINING_COLORS: Record<string, { text: string; activeBorder: string; btnActive: string }> = {
-  pt: { text: 'text-yellow-400',  activeBorder: 'border-yellow-500',  btnActive: 'border-yellow-500 bg-gray-800 text-white hover:bg-yellow-600/20'  },
-  mt: { text: 'text-violet-400',  activeBorder: 'border-violet-500',  btnActive: 'border-violet-500 bg-gray-800 text-white hover:bg-violet-600/20'  },
+  pt: { text: 'text-status-warning',  activeBorder: 'border-status-warning',  btnActive: 'border-status-warning bg-surface-raised text-fg-bright hover:bg-status-warning/20'  },
+  mt: { text: 'text-stat-mag',  activeBorder: 'border-stat-mag',  btnActive: 'border-stat-mag bg-surface-raised text-fg-bright hover:bg-stat-mag/20'  },
 }
 
 type TrainingStatName = 'pt' | 'mt'
@@ -59,10 +59,10 @@ function TrainingControl({
   const newValue = currentValue + pendingAmount
 
   return (
-    <div className={`bg-gray-900/70 border rounded-2xl p-6 ${pendingAmount > 0 ? color.activeBorder : 'border-gray-800'}`}>
+    <div className={`bg-surface-panel/70 border rounded-2xl p-6 ${pendingAmount > 0 ? color.activeBorder : 'border-line-subtle'}`}>
       <div className="text-center mb-4">
         <p className={`text-lg font-semibold ${color.text}`}>{label}</p>
-        <p className="text-xs text-gray-400 mt-1">{description}</p>
+        <p className="text-xs text-fg-secondary mt-1">{description}</p>
       </div>
 
       <div className="flex items-center justify-center gap-4 mb-4">
@@ -71,7 +71,7 @@ function TrainingControl({
           onClick={() => onDecrement(statKey)}
           disabled={!canDecrement}
           className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xl font-bold transition-all ${
-            canDecrement ? color.btnActive : 'border-gray-800 bg-gray-900/50 text-gray-600 cursor-not-allowed'
+            canDecrement ? color.btnActive : 'border-line-subtle bg-surface-panel/50 text-fg-disabled cursor-not-allowed'
           }`}
         >
           −
@@ -80,9 +80,9 @@ function TrainingControl({
         <div className="text-center min-w-[80px]">
           <div className={`text-3xl font-bold ${color.text}`}>{newValue}</div>
           {pendingAmount > 0 ? (
-            <div className="text-xs text-emerald-400 mt-1">+{pendingAmount}</div>
+            <div className="text-xs text-status-success mt-1">+{pendingAmount}</div>
           ) : (
-            <div className="text-xs text-gray-500 mt-1">{currentValue}</div>
+            <div className="text-xs text-fg-muted mt-1">{currentValue}</div>
           )}
         </div>
 
@@ -91,7 +91,7 @@ function TrainingControl({
           onClick={() => onIncrement(statKey)}
           disabled={!canIncrement}
           className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xl font-bold transition-all ${
-            canIncrement ? color.btnActive : 'border-gray-800 bg-gray-900/50 text-gray-600 cursor-not-allowed'
+            canIncrement ? color.btnActive : 'border-line-subtle bg-surface-panel/50 text-fg-disabled cursor-not-allowed'
           }`}
         >
           +
@@ -213,20 +213,20 @@ export default function TrainingAllocationModal({
   return createPortal(
     <div className="fixed inset-0 z-50 p-4 sm:p-6 lg:p-10">
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-surface-sunken/70 backdrop-blur-sm"
         onClick={handleCancel}
       />
-      <div className="relative z-10 h-full w-full bg-gray-900/95 border border-gray-700/50 rounded-lg shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700/50">
+      <div className="relative z-10 h-full w-full bg-surface-panel/95 border border-line-subtle/50 rounded-lg shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-line-subtle/50">
           <div>
-            <h3 className="text-lg font-semibold text-white">Allocate Training Points</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h3 className="text-lg font-semibold text-fg-bright">Allocate Training Points</h3>
+            <p className="text-xs text-fg-secondary mt-0.5">
               Use the plus and minus buttons to invest Training Points into PT or MT. Click Confirm to apply.
             </p>
           </div>
           <button
             onClick={handleCancel}
-            className="text-gray-400 hover:text-white transition-colors p-1.5 rounded hover:bg-gray-800"
+            className="text-fg-secondary hover:text-fg-bright transition-colors p-1.5 rounded hover:bg-surface-raised"
             disabled={isSaving || isAllocating}
           >
             <span className="sr-only">Close</span>
@@ -235,30 +235,30 @@ export default function TrainingAllocationModal({
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6">
+          <div className="bg-surface-panel/70 border border-line-subtle rounded-2xl p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-yellow-300/80 mb-1">Available</p>
-                <h4 className="text-3xl font-semibold text-white">{currentTp} Training Point{currentTp !== 1 ? 's' : ''}</h4>
+                <p className="text-xs uppercase tracking-[0.4em] text-status-warning/80 mb-1">Available</p>
+                <h4 className="text-3xl font-semibold text-fg-bright">{currentTp} Training Point{currentTp !== 1 ? 's' : ''}</h4>
               </div>
               {totalPending > 0 && (
                 <div className="text-right">
-                  <p className="text-xs uppercase tracking-[0.4em] text-emerald-300/80 mb-1">Pending</p>
-                  <h4 className="text-2xl font-semibold text-emerald-400">-{totalPending}</h4>
-                  <p className="text-sm text-gray-400 mt-1">Remaining: {remainingTp}</p>
+                  <p className="text-xs uppercase tracking-[0.4em] text-status-success/80 mb-1">Pending</p>
+                  <h4 className="text-2xl font-semibold text-status-success">-{totalPending}</h4>
+                  <p className="text-sm text-fg-secondary mt-1">Remaining: {remainingTp}</p>
                 </div>
               )}
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-900/30 border border-red-800/50 rounded-2xl p-4">
-              <p className="text-sm text-red-200">{error}</p>
+            <div className="bg-status-error/30 border border-status-error/50 rounded-2xl p-4">
+              <p className="text-sm text-status-error">{error}</p>
             </div>
           )}
 
-          <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6">
-            <p className="text-xs uppercase tracking-widest text-gray-400 mb-4">Training Stats</p>
+          <div className="bg-surface-panel/70 border border-line-subtle rounded-2xl p-6">
+            <p className="text-xs uppercase tracking-widest text-fg-secondary mb-4">Training Stats</p>
             <div className="grid grid-cols-2 gap-4">
               <TrainingControl
                 statKey="pt"
@@ -284,20 +284,20 @@ export default function TrainingAllocationModal({
           </div>
 
           {totalPending > 0 && (
-            <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-2xl p-6">
-              <p className="text-xs uppercase tracking-[0.4em] text-yellow-300/80 mb-2">Summary</p>
-              <p className="text-lg font-semibold text-white">
+            <div className="bg-status-warning/20 border border-status-warning/50 rounded-2xl p-6">
+              <p className="text-xs uppercase tracking-[0.4em] text-status-warning/80 mb-2">Summary</p>
+              <p className="text-lg font-semibold text-fg-bright">
                 Spending {totalPending} Training Point{totalPending !== 1 ? 's' : ''}: {summaryText}
               </p>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-gray-700/50">
+        <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-line-subtle/50">
           <button
             type="button"
             onClick={handleCancel}
-            className="px-4 py-1.5 rounded text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+            className="px-4 py-1.5 rounded text-sm font-medium text-fg-primary hover:text-fg-bright hover:bg-surface-raised transition-colors"
             disabled={isSaving || isAllocating}
           >
             Cancel
@@ -306,7 +306,7 @@ export default function TrainingAllocationModal({
             type="button"
             onClick={handleConfirm}
             disabled={isSaving || isAllocating || totalPending === 0}
-            className="px-4 py-1.5 rounded text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 rounded text-sm font-medium text-fg-bright bg-surface-hover hover:bg-surface-selected transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isAllocating ? 'Allocating...' : 'Confirm'}
           </button>

@@ -138,8 +138,8 @@ export default function CraftingPanel({
         key={recipe.id}
         className={`relative flex max-w-md flex-col gap-2 rounded-lg border p-3 transition-colors ${
           canCraft
-            ? 'border-gray-700/60 bg-gray-800/40'
-            : 'border-gray-800/60 bg-gray-800/20 opacity-70'
+            ? 'border-line-subtle/60 bg-surface-raised/40'
+            : 'border-line-subtle/60 bg-surface-raised/20 opacity-70'
         }`}
       >
         {showFlyout && actionResult && (
@@ -148,16 +148,16 @@ export default function CraftingPanel({
 
         {/* Header: output icon, name×qty, effect */}
         <div className="flex items-start gap-3">
-          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-gray-700/50 bg-gray-900/60">
-            <Icon name={recipe.outputIcon} size={44} className="text-orange-300" color="current" />
+          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-line-subtle/50 bg-surface-panel/60">
+            <Icon name={recipe.outputIcon} size={44} className="text-action-attack" color="current" />
             {/* How many of this output the player is already carrying. Kept
                 prominent so the held count reads at a glance while crafting. */}
             <span
               title={`You are carrying ${held} ${recipe.output.name}`}
               className={`absolute -top-2 -left-2 flex h-6 min-w-[24px] items-center justify-center rounded-full border px-1.5 text-sm font-bold tabular-nums shadow-sm shadow-black/50 ${
                 held > 0
-                  ? 'border-orange-400/70 bg-gray-950 text-orange-200'
-                  : 'border-gray-700 bg-gray-900 text-gray-500'
+                  ? 'border-action-attack/70 bg-surface-canvas text-action-attack'
+                  : 'border-line-subtle bg-surface-panel text-fg-muted'
               }`}
             >
               {held}
@@ -165,31 +165,31 @@ export default function CraftingPanel({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-sm font-semibold text-white truncate">{recipe.label}</span>
+              <span className="text-sm font-semibold text-fg-bright truncate">{recipe.label}</span>
               {recipe.output.qty > 1 && (
-                <span className="text-xs text-gray-400 whitespace-nowrap">×{recipe.output.qty}</span>
+                <span className="text-xs text-fg-secondary whitespace-nowrap">×{recipe.output.qty}</span>
               )}
             </div>
             {recipe.output.effect && (
-              <div className="text-xs text-emerald-400/90">{recipe.output.effect}</div>
+              <div className="text-xs text-status-success/90">{recipe.output.effect}</div>
             )}
             {recipe.blurb && (
-              <div className="text-[11px] text-gray-500 leading-snug mt-0.5">{recipe.blurb}</div>
+              <div className="text-[11px] text-fg-muted leading-snug mt-0.5">{recipe.blurb}</div>
             )}
           </div>
         </div>
 
         {/* Why this recipe is unavailable, when it is not simply a material shortfall. */}
-        {locked && <div className="text-[11px] text-amber-400/90">{locked.hint}</div>}
+        {locked && <div className="text-[11px] text-resource-gold/90">{locked.hint}</div>}
         {!locked && needsTool && (
-          <div className="text-[11px] text-amber-400/90">Needs a {needsTool.name} in your inventory.</div>
+          <div className="text-[11px] text-resource-gold/90">Needs a {needsTool.name} in your inventory.</div>
         )}
 
         {/* Ingredient requirements: cost (have / need). */}
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-          <span className="text-[10px] uppercase tracking-wider text-gray-500">Cost:</span>
+          <span className="text-[10px] uppercase tracking-wider text-fg-muted">Cost:</span>
           {recipe.tool && (
-            <span className={`text-xs ${needsTool ? 'text-red-400' : 'text-gray-300'}`}>
+            <span className={`text-xs ${needsTool ? 'text-status-error' : 'text-fg-primary'}`}>
               {recipe.tool.name} <span className="font-semibold">{needsTool ? '0/1' : '1/1'}</span>
             </span>
           )}
@@ -197,7 +197,7 @@ export default function CraftingPanel({
             const have = qtyOf(input.slug)
             const enough = have >= input.qty
             return (
-              <span key={input.slug} className={`text-xs ${enough ? 'text-gray-300' : 'text-red-400'}`}>
+              <span key={input.slug} className={`text-xs ${enough ? 'text-fg-primary' : 'text-status-error'}`}>
                 {input.name} <span className="font-semibold">{have}/{input.qty}</span>
               </span>
             )
@@ -206,8 +206,8 @@ export default function CraftingPanel({
 
         {/* Footer: max craftable + buttons */}
         <div ref={showFlyout ? flyoutRootRef : undefined} className="flex items-center justify-between gap-2 pt-1">
-          <span className="text-[11px] text-gray-500">
-            Can make: <span className="font-semibold text-gray-300">{maxCraftable}</span>
+          <span className="text-[11px] text-fg-muted">
+            Can make: <span className="font-semibold text-fg-primary">{maxCraftable}</span>
           </span>
           <div className="flex items-center gap-1.5">
             <button
@@ -218,8 +218,8 @@ export default function CraftingPanel({
               title={atMax ? `You already hold the max number of ${recipe.output.name}` : 'Craft one'}
               className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
                 canCraft && !isBusy
-                  ? 'bg-orange-600 hover:bg-orange-500 text-white'
-                  : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
+                  ? 'bg-action-attack/80 hover:bg-action-attack text-fg-bright'
+                  : 'bg-surface-hover/50 text-fg-muted cursor-not-allowed'
               }`}
             >
               {isBusy ? '...' : atMax ? 'Full' : 'Craft 1'}
@@ -232,8 +232,8 @@ export default function CraftingPanel({
               title={maxCraftable >= 2 ? `Craft all ${maxCraftable}` : 'Not enough materials to batch-craft'}
               className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
                 canCraft && !isBusy && maxCraftable >= 2
-                  ? 'bg-amber-700 hover:bg-amber-600 text-white'
-                  : 'bg-gray-700/40 text-gray-600 cursor-not-allowed'
+                  ? 'bg-resource-gold/80 hover:bg-resource-gold text-fg-bright'
+                  : 'bg-surface-hover/40 text-fg-disabled cursor-not-allowed'
               }`}
             >
               Craft All{maxCraftable >= 2 ? ` (${maxCraftable})` : ''}
@@ -245,18 +245,18 @@ export default function CraftingPanel({
   }
 
   return (
-    <div className="rounded-xl border border-orange-700/40 bg-gray-900/95 shadow-xl overflow-hidden">
+    <div className="rounded-xl border border-action-attack/40 bg-surface-panel/95 shadow-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-800/70 bg-orange-900/60 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-line-subtle/70 bg-action-attack/60 px-4 py-3">
         <div className="flex items-center gap-2">
-          <Hammer size={20} className="text-orange-400" />
-          <h3 className="text-lg font-bold text-orange-100">Crafting</h3>
+          <Hammer size={20} className="text-action-attack" />
+          <h3 className="text-lg font-bold text-action-attack">Crafting</h3>
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close crafting"
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-gray-100 hover:bg-gray-800 hover:text-white transition-colors"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-fg-bright/80 hover:bg-surface-raised hover:text-fg-bright transition-colors"
         >
           <X size={16} />
           <span>Close Crafting</span>
@@ -266,16 +266,16 @@ export default function CraftingPanel({
       {/* Recipes, grouped by crafting station with a minimal section header. */}
       <div className="p-3 space-y-4">
         {recipes.length === 0 ? (
-          <p className="text-sm text-gray-400 px-1 py-2">No recipes available here.</p>
+          <p className="text-sm text-fg-secondary px-1 py-2">No recipes available here.</p>
         ) : (
           CRAFTING_STATIONS.map((station) => {
             const stationRecipes = recipes.filter((r) => r.station === station.id)
             if (stationRecipes.length === 0) return null
             return (
               <div key={station.id} className="space-y-2">
-                <div className="flex items-center gap-1.5 border-b border-gray-800/60 pb-1">
-                  <Icon name={station.icon} size={14} className="text-gray-400" color="current" />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <div className="flex items-center gap-1.5 border-b border-line-subtle/60 pb-1">
+                  <Icon name={station.icon} size={14} className="text-fg-secondary" color="current" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-fg-secondary">
                     {station.label}
                   </span>
                 </div>
@@ -289,7 +289,7 @@ export default function CraftingPanel({
       </div>
 
       {/* Materials & tools strip */}
-      <div className="border-t border-gray-800/70 bg-gray-900/60 px-3 py-2 space-y-1.5">
+      <div className="border-t border-line-subtle/70 bg-surface-panel/60 px-3 py-2 space-y-1.5">
         <MaterialRow label="Materials" items={materials} emptyText="No materials" />
         <MaterialRow label="Tools" items={tools} emptyText="No tools" />
       </div>
@@ -308,25 +308,25 @@ function MaterialRow({
 }) {
   return (
     <div className="flex items-start gap-2">
-      <span className="w-16 shrink-0 pt-0.5 text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+      <span className="w-16 shrink-0 pt-0.5 text-[10px] uppercase tracking-wider text-fg-muted">{label}</span>
       {items.length === 0 ? (
-        <span className="text-xs text-gray-600 italic">{emptyText}</span>
+        <span className="text-xs text-fg-disabled italic">{emptyText}</span>
       ) : (
         <div className="flex flex-wrap items-center gap-1.5">
           {items.map((item) => (
             <span
               key={item.id}
               title={item.template.name}
-              className="flex items-center gap-1 rounded border border-gray-700/50 bg-gray-800/50 px-1.5 py-0.5"
+              className="flex items-center gap-1 rounded border border-line-subtle/50 bg-surface-raised/50 px-1.5 py-0.5"
             >
               <Icon
                 name={item.template.metadata?.icon || item.template.slug}
                 size={20}
-                className="text-gray-300"
+                className="text-fg-primary"
                 color="current"
               />
-              <span className="text-[11px] text-gray-300 max-w-[90px] truncate">{item.template.name}</span>
-              <span className="text-[11px] font-semibold text-gray-400">×{item.quantity}</span>
+              <span className="text-[11px] text-fg-primary max-w-[90px] truncate">{item.template.name}</span>
+              <span className="text-[11px] font-semibold text-fg-secondary">×{item.quantity}</span>
             </span>
           ))}
         </div>

@@ -48,7 +48,7 @@ export default function InventorySellButton({
   // Buttons fill their cell so they look right whether the card is wide
   // (one row) or narrow (the 2x2 grid below wraps the quantity options).
   const btn =
-    'flex flex-col items-center justify-center w-full px-2 py-1 rounded-md text-white bg-green-600/80 hover:bg-green-600 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed leading-tight'
+    'flex flex-col items-center justify-center w-full px-2 py-1 rounded-md text-fg-bright bg-status-success/80 hover:bg-status-success transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed leading-tight'
 
   const SellOption = ({
     label,
@@ -61,7 +61,7 @@ export default function InventorySellButton({
   }) => (
     <button onClick={(e) => handleSell(qty, e)} disabled={disabled} className={`${btn} ${className}`}>
       <span className="text-[11px] font-semibold whitespace-nowrap">{label}</span>
-      <span className="text-[10px] text-green-200/90">{sellValuePerItem * qty}g</span>
+      <span className="text-[10px] text-status-success/90">{sellValuePerItem * qty}g</span>
     </button>
   )
 
@@ -77,7 +77,7 @@ export default function InventorySellButton({
       <SellOption label="All but 1" qty={allButOneQuantity} />
       {/* "Sell all" set apart with a subtle ring instead of spacing so it still
           fills the grid cell at every width */}
-      <SellOption label="Sell all" qty={quantity} className="ring-1 ring-green-300/40" />
+      <SellOption label="Sell all" qty={quantity} className="ring-1 ring-status-success/40" />
     </div>
   )
 }

@@ -8,11 +8,12 @@ import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
 import { FEATURE_FLAGS } from '@/lib/config'
 import { createWorldFeedEvent } from '@/lib/services/world-feed-event-service'
 import { validateUsername } from '@/lib/sanitization'
+import { DEFAULT_THEME_ID, isThemeId } from '@/lib/theme/themes'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password, email } = await request.json()
+    const { username, password, email, theme } = await request.json()
 
     // Validate required fields
     const requiredFields: Array<'username' | 'password' | 'email'> = ['username', 'password']
@@ -73,6 +74,9 @@ export async function POST(request: NextRequest) {
           create: {}
         },
         uIconColor: randomColor,
+        // A new account keeps whatever theme was being previewed on the login
+        // screen. Validated rather than trusted: this is client-supplied.
+        theme: isThemeId(theme) ? theme : DEFAULT_THEME_ID,
         cp: 1, // Give new users 1 Core Point (total CP earned aligns with level)
       },
       include: { equipment: true }

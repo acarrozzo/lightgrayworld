@@ -97,23 +97,23 @@ export default function ActionFlyout({ result, anchorRef, anchorRect, onDismiss 
       className="fixed z-[60] -translate-y-full animate-[flyoutFadeIn_0.2s_ease-out] cursor-pointer"
       style={{ top: pos.top, left: pos.left, width: FLYOUT_WIDTH }}
     >
-      <div className="relative rounded-lg border border-gray-700/40 bg-gray-900/95 backdrop-blur-sm shadow-xl shadow-black/30 px-3 py-2">
+      <div className="relative rounded-lg border border-line-subtle/40 bg-surface-panel/95 backdrop-blur-sm shadow-xl shadow-black/30 px-3 py-2">
         <div className="flex items-start gap-2">
           <span
             className={`flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full ${accent}`}
             aria-hidden="true"
           />
-          <span className="flex-1 min-w-0 whitespace-normal break-words text-xs text-gray-200">
+          <span className="flex-1 min-w-0 whitespace-normal break-words text-xs text-fg-bright">
             {result.message}
           </span>
-          <span className="flex-shrink-0 mt-0.5 text-[10px] text-gray-500 tabular-nums">
+          <span className="flex-shrink-0 mt-0.5 text-[10px] text-fg-muted tabular-nums">
             {formatRelative(tsMs, now)}
           </span>
           <button
             type="button"
             onClick={onDismiss}
             aria-label="Dismiss"
-            className="flex-shrink-0 -mt-0.5 -mr-1 text-gray-500 hover:text-gray-300 text-sm leading-none"
+            className="flex-shrink-0 -mt-0.5 -mr-1 text-fg-muted hover:text-fg-primary text-sm leading-none"
           >
             ×
           </button>

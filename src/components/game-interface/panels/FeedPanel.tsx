@@ -57,104 +57,104 @@ const CATEGORY_STYLES: Record<'room' | 'world' | 'action' | 'dm', CategoryStyle>
   room: {
     label: 'ROOM',
     icon: MessageSquare,
-    barClass: 'bg-indigo-600',
-    iconClass: 'text-indigo-300',
+    barClass: 'bg-accent',
+    iconClass: 'text-accent-hover',
   },
   world: {
     label: 'WORLD',
     icon: MessageSquare,
-    barClass: 'bg-emerald-500',
-    iconClass: 'text-emerald-300',
+    barClass: 'bg-channel-room',
+    iconClass: 'text-channel-room',
   },
   action: {
     label: 'ACT',
     icon: Sparkles,
-    barClass: 'bg-amber-500',
-    iconClass: 'text-amber-300',
+    barClass: 'bg-channel-action',
+    iconClass: 'text-channel-action',
   },
   dm: {
     label: 'DM',
     icon: Mail,
-    barClass: 'bg-violet-500',
-    iconClass: 'text-violet-300',
+    barClass: 'bg-stat-mag',
+    iconClass: 'text-channel-dm',
   },
 }
 
 const ERROR_STYLE: CategoryStyle = {
   label: 'ERR',
   icon: AlertTriangle,
-  barClass: 'bg-red-500',
-  iconClass: 'text-red-300',
+  barClass: 'bg-status-error',
+  iconClass: 'text-status-error',
 }
 
 const SUCCESS_STYLE: CategoryStyle = {
   label: 'ACT',
   icon: Sparkles,
-  barClass: 'bg-green-500',
-  iconClass: 'text-green-300',
+  barClass: 'bg-status-success',
+  iconClass: 'text-status-success',
 }
 
 const INFO_STYLE: CategoryStyle = {
   label: 'ACT',
   icon: Sparkles,
-  barClass: 'bg-blue-500',
-  iconClass: 'text-blue-300',
+  barClass: 'bg-resource-mp',
+  iconClass: 'text-channel-world',
 }
 
 const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
   login: {
     label: 'LOGIN',
     icon: Globe,
-    barClass: 'bg-emerald-500',
-    iconClass: 'text-emerald-300',
+    barClass: 'bg-channel-room',
+    iconClass: 'text-channel-room',
   },
   register: {
     label: 'NEW',
     icon: Globe,
-    barClass: 'bg-emerald-500',
-    iconClass: 'text-emerald-300',
+    barClass: 'bg-channel-room',
+    iconClass: 'text-channel-room',
   },
   return: {
     label: 'ACTIVE',
     icon: Globe,
-    barClass: 'bg-emerald-500',
-    iconClass: 'text-emerald-300',
+    barClass: 'bg-channel-room',
+    iconClass: 'text-channel-room',
   },
   logout: {
     label: 'LOGOUT',
     icon: Globe,
-    barClass: 'bg-red-600',
-    iconClass: 'text-red-300',
+    barClass: 'bg-status-error',
+    iconClass: 'text-status-error',
   },
   disconnect: {
     label: 'DISCONNECT',
     icon: Globe,
-    barClass: 'bg-gray-500',
-    iconClass: 'text-gray-500',
+    barClass: 'bg-surface-selected',
+    iconClass: 'text-fg-muted',
   },
   idle: {
     label: 'IDLE',
     icon: Globe,
-    barClass: 'bg-gray-500',
-    iconClass: 'text-gray-400',
+    barClass: 'bg-surface-selected',
+    iconClass: 'text-fg-secondary',
   },
   'room-enter': {
     label: 'ENTER',
     icon: Sparkles,
-    barClass: 'bg-purple-500',
-    iconClass: 'text-purple-300',
+    barClass: 'bg-channel-dm',
+    iconClass: 'text-channel-dm',
   },
   'room-exit': {
     label: 'EXIT',
     icon: Sparkles,
-    barClass: 'bg-purple-500',
-    iconClass: 'text-purple-300',
+    barClass: 'bg-channel-dm',
+    iconClass: 'text-channel-dm',
   },
   'room-travel': {
     label: 'TRAVEL',
     icon: Sparkles,
-    barClass: 'bg-purple-500',
-    iconClass: 'text-purple-300',
+    barClass: 'bg-channel-dm',
+    iconClass: 'text-channel-dm',
   },
 }
 
@@ -171,15 +171,15 @@ const ACTIVITY_LABELS: Record<string, string> = {
 }
 
 const ACTIVITY_TEXT_CLASSES: Record<string, string> = {
-  login: 'text-gray-400',
-  register: 'text-emerald-200',
-  return: 'text-emerald-200',
-  logout: 'text-red-200',
-  disconnect: 'text-gray-400',
-  idle: 'text-gray-300',
-  'room-enter': 'text-purple-200',
-  'room-exit': 'text-purple-200',
-  'room-travel': 'text-purple-200',
+  login: 'text-fg-secondary',
+  register: 'text-channel-room',
+  return: 'text-channel-room',
+  logout: 'text-status-error',
+  disconnect: 'text-fg-secondary',
+  idle: 'text-fg-primary',
+  'room-enter': 'text-channel-dm',
+  'room-exit': 'text-channel-dm',
+  'room-travel': 'text-channel-dm',
 }
 
 const DIRECTION_ICONS: Record<string, LucideIcon> = {
@@ -259,23 +259,23 @@ const getEntryStyle = (entry: WorldFeedEntry): CategoryStyle => {
 
 const getMessageColorClass = (entry: WorldFeedEntry) => {
   if (entry.eventType) {
-    return ACTIVITY_TEXT_CLASSES[entry.eventType] ?? 'text-gray-200'
+    return ACTIVITY_TEXT_CLASSES[entry.eventType] ?? 'text-fg-bright'
   }
   
   // For action entries, check outcome first
   if (entry.type === 'action' && entry.outcome) {
     if (entry.outcome === 'success') {
-      return 'text-green-200'
+      return 'text-status-success'
     }
     if (entry.outcome === 'failure') {
-      return 'text-red-200'
+      return 'text-status-error'
     }
     if (entry.outcome === 'info') {
-      return 'text-blue-200'
+      return 'text-resource-mp'
     }
   }
   
-  return entry.level === 'error' ? 'text-red-200' : 'text-gray-200'
+  return entry.level === 'error' ? 'text-status-error' : 'text-fg-bright'
 }
 
 const getEntryCategory = (entry: WorldFeedEntry): 'chat' | 'event' | 'action' => {
@@ -673,7 +673,7 @@ export default function FeedPanel({
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+          className="absolute top-4 right-4 z-10 p-2 text-fg-secondary hover:text-fg-bright transition-colors duration-200 rounded-lg hover:bg-surface-raised/50"
           title="Close"
           aria-label="Close"
         >
@@ -684,7 +684,7 @@ export default function FeedPanel({
         </button>
       )}
 
-      <div className="worldFeedControls px-4 py-2 border-b border-gray-800/60 bg-gray-900/70 flex flex-col gap-2">
+      <div className="worldFeedControls px-4 py-2 border-b border-line-subtle/60 bg-surface-panel/70 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {(['all', 'chat', 'events', 'actions'] as FilterType[]).map((key) => {
             const isActive = filter === key
@@ -707,8 +707,8 @@ export default function FeedPanel({
                 onClick={() => handleFilterChange(key)}
                 className={`px-2 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow ${
                   isActive
-                    ? 'border-1 border-blue-500 hover:border-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
-                    : 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
+                    ? 'border-1 border-resource-mp/80 hover:border-resource-mp bg-resource-mp/10 hover:bg-resource-mp/20 text-channel-world'
+                    : 'border-1 border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary'
                 }`}
               >
                 {IconComponent && (
@@ -727,8 +727,8 @@ export default function FeedPanel({
             onClick={() => setIsDisplayOptionsCollapsed((prev) => !prev)}
             className={`ml-auto px-2 py-1.5 rounded-md border transition-colors ${
               !isDisplayOptionsCollapsed
-                ? 'bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-500'
-                : 'bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800/60'
+                ? 'bg-accent text-fg-bright border-accent hover:bg-accent-hover'
+                : 'bg-surface-panel/60 text-fg-secondary border-line-subtle hover:text-fg-bright hover:bg-surface-raised/60'
             }`}
             aria-expanded={!isDisplayOptionsCollapsed}
             aria-label="Toggle display options"
@@ -743,7 +743,7 @@ export default function FeedPanel({
 
         {/* Sub-filters */}
         {filter === 'chat' && (
-          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-indigo-600/25">
+          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-accent/25">
             {(['all-chat', 'world-chat', 'room-chat'] as ChatSubFilter[]).map((subKey) => {
               const isActive = chatSubFilter === subKey
               const labelMap: Record<ChatSubFilter, string> = {
@@ -761,8 +761,8 @@ export default function FeedPanel({
                   }}
                   className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md ${
                     isActive
-                      ? 'border-1 border-indigo-500 hover:border-indigo-400 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300'
-                      : 'border-1 border-gray-700 hover:border-gray-600 bg-transparent hover:bg-gray-800/30 text-gray-500 hover:text-gray-400'
+                      ? 'border-1 border-accent hover:border-accent-hover bg-accent/10 hover:bg-accent/20 text-accent-hover'
+                      : 'border-1 border-line-subtle hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-muted hover:text-fg-secondary'
                   }`}
                 >
                   {labelMap[subKey]}
@@ -773,7 +773,7 @@ export default function FeedPanel({
         )}
 
         {filter === 'events' && (
-          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-amber-500/30">
+          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-channel-action/30">
             {(['all-events', 'world-activity'] as EventsSubFilter[]).map((subKey) => {
               const isActive = eventsSubFilter === subKey
               const labelMap: Record<EventsSubFilter, string> = {
@@ -790,8 +790,8 @@ export default function FeedPanel({
                   }}
                   className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md ${
                     isActive
-                      ? 'border-1 border-amber-400 hover:border-amber-300 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
-                      : 'border-1 border-gray-700 hover:border-gray-600 bg-transparent hover:bg-gray-800/30 text-gray-500 hover:text-gray-400'
+                      ? 'border-1 border-channel-action/80 hover:border-channel-action bg-channel-action/10 hover:bg-channel-action/20 text-channel-action'
+                      : 'border-1 border-line-subtle hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-muted hover:text-fg-secondary'
                   }`}
                 >
                   {labelMap[subKey]}
@@ -802,7 +802,7 @@ export default function FeedPanel({
         )}
 
         {filter === 'actions' && (
-          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-amber-500/30">
+          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-channel-action/30">
             {(['all-actions', 'action-feedback', 'movement'] as ActionsSubFilter[]).map((subKey) => {
               const isActive = actionsSubFilter === subKey
               const labelMap: Record<ActionsSubFilter, string> = {
@@ -820,8 +820,8 @@ export default function FeedPanel({
                   }}
                   className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md ${
                     isActive
-                      ? 'border-1 border-amber-400 hover:border-amber-300 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
-                      : 'border-1 border-gray-700 hover:border-gray-600 bg-transparent hover:bg-gray-800/30 text-gray-500 hover:text-gray-400'
+                      ? 'border-1 border-channel-action/80 hover:border-channel-action bg-channel-action/10 hover:bg-channel-action/20 text-channel-action'
+                      : 'border-1 border-line-subtle hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-muted hover:text-fg-secondary'
                   }`}
                 >
                   {labelMap[subKey]}
@@ -834,7 +834,7 @@ export default function FeedPanel({
         {!isDisplayOptionsCollapsed && (
           <>
             <div className="flex flex-col gap-1.5">
-              <div className="text-[10px] text-gray-500 font-medium">Feed display options</div>
+              <div className="text-[10px] text-fg-muted font-medium">Feed display options</div>
               <div className="flex flex-wrap items-center gap-2">
                 {WORLD_FEED_TOGGLES.map(({ key, label }) => {
                   const active = settings[key]
@@ -846,8 +846,8 @@ export default function FeedPanel({
                       onClick={() => handleToggleSetting(key)}
                       className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
                         active
-                          ? 'bg-gray-800 text-white border-indigo-400/70'
-                          : 'bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200'
+                          ? 'bg-surface-raised text-fg-bright border-accent-hover/70'
+                          : 'bg-surface-panel/60 text-fg-secondary border-line-subtle hover:text-fg-bright'
                       }`}
                     >
                       {label}
@@ -857,7 +857,7 @@ export default function FeedPanel({
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="text-[10px] text-gray-500 font-medium">Feed actions</div>
+              <div className="text-[10px] text-fg-muted font-medium">Feed actions</div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -865,21 +865,21 @@ export default function FeedPanel({
                     const { clear } = useWorldFeedStore.getState()
                     clear()
                   }}
-                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800"
+                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-surface-panel/60 text-fg-secondary border-line-subtle hover:text-fg-bright hover:bg-surface-raised"
                 >
                   Clear Feed
                 </button>
                 <button
                   type="button"
                   onClick={scrollToTop}
-                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800"
+                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-surface-panel/60 text-fg-secondary border-line-subtle hover:text-fg-bright hover:bg-surface-raised"
                 >
                   Jump to Top
                 </button>
                 <button
                   type="button"
                   onClick={scrollToBottom}
-                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-gray-900/60 text-gray-400 border-gray-800 hover:text-gray-200 hover:bg-gray-800"
+                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-surface-panel/60 text-fg-secondary border-line-subtle hover:text-fg-bright hover:bg-surface-raised"
                 >
                   Jump to Bottom
                 </button>
@@ -890,27 +890,27 @@ export default function FeedPanel({
       </div>
 
       <div className="relative flex flex-col flex-1 min-h-0">
-      <div ref={listRef} className={`worldFeedEntries flex-1 overflow-y-auto pb-6 bg-gray-950/80 ${
+      <div ref={listRef} className={`worldFeedEntries flex-1 overflow-y-auto pb-6 bg-surface-canvas/80 ${
         filter === 'chat' && chatSubFilter === 'room-chat' ? 'px-3 pt-2' : 'px-2 pt-1'
       }`}>
         {canLoadMore && (
           <div className="flex justify-center items-center gap-2 py-3">
             <button
               onClick={handleLoadMore}
-              className="px-4 py-2 text-sm rounded-md border bg-gray-800 text-gray-200 border-gray-700 hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 text-sm rounded-md border bg-surface-raised text-fg-bright border-line-subtle hover:bg-surface-hover transition-colors"
             >
               Load previous 50
             </button>
             <button
               onClick={scrollToBottom}
-              className="px-4 py-2 text-sm rounded-md transition-colors bg-indigo-600 hover:bg-indigo-500 text-white border-transparent shadow-sm hover:shadow"
+              className="px-4 py-2 text-sm rounded-md transition-colors bg-accent hover:bg-accent-hover text-fg-bright border-transparent shadow-sm hover:shadow"
             >
               Jump to bottom
             </button>
           </div>
         )}
         {renderEntries.length === 0 ? (
-          <div className="text-center text-sm text-gray-500 py-8">No entries yet.</div>
+          <div className="text-center text-sm text-fg-muted py-8">No entries yet.</div>
         ) : (
           renderEntries.map((item, index) => {
             const { entry, count } = item
@@ -945,8 +945,8 @@ export default function FeedPanel({
               const speaker = entry.isSelf ? `${actorLabel} (you)` : actorLabel
               const verb = isWorldChat ? 'shouts' : 'says'
               const roomTag = !isWorldChat && entry.roomId ? ` (${entry.roomId})` : ''
-              const dotColor = isWorldChat ? 'bg-emerald-400' : 'bg-purple-400'
-              const messageColor = isWorldChat ? 'text-emerald-400' : 'text-purple-400'
+              const dotColor = isWorldChat ? 'bg-status-success' : 'bg-stat-mag'
+              const messageColor = isWorldChat ? 'text-status-success' : 'text-channel-dm'
               const opacityClass = isOtherRoom ? 'opacity-70' : ''
 
               return (
@@ -959,18 +959,18 @@ export default function FeedPanel({
                     aria-hidden
                   />
                   <span
-                    className={`flex-1 min-w-0 ${contentSize} font-mono text-gray-200 break-words leading-tight`}
+                    className={`flex-1 min-w-0 ${contentSize} font-mono text-fg-bright break-words leading-tight`}
                   >
                     {speaker} {verb}
                     {roomTag}: <span className={messageColor}>{messageText}</span>
                   </span>
                   {settings.showTimestamps && (
-                    <span className="shrink-0 mt-0.5 text-[10px] text-gray-500 tabular-nums font-mono whitespace-nowrap">
+                    <span className="shrink-0 mt-0.5 text-[10px] text-fg-muted tabular-nums font-mono whitespace-nowrap">
                       {formatTimestamp(entry.ts)}
                     </span>
                   )}
                   {count > 1 && (
-                    <span className="shrink-0 mt-0.5 text-[10px] text-gray-500 font-mono font-semibold whitespace-nowrap">
+                    <span className="shrink-0 mt-0.5 text-[10px] text-fg-muted font-mono font-semibold whitespace-nowrap">
                       ×{count}
                     </span>
                   )}
@@ -983,9 +983,9 @@ export default function FeedPanel({
             const isAction = entryCategory === 'action'
             const terminalPadding = settings.compactMode ? 'py-0.5 pr-2 pl-3' : 'py-1 pr-3 pl-4'
             const categoryBgClass = isEvent
-              ? 'bg-gray-800/30' 
+              ? 'bg-surface-raised/30' 
               : isAction
-              ? 'bg-gray-900/40'
+              ? 'bg-surface-panel/40'
               : 'bg-transparent'
 
             return (
@@ -1014,10 +1014,10 @@ export default function FeedPanel({
                     )}
                   </div>
                   {count > 1 && (
-                    <span className="text-gray-500/70 font-mono font-semibold whitespace-nowrap text-[10px]">×{count}</span>
+                    <span className="text-fg-muted/70 font-mono font-semibold whitespace-nowrap text-[10px]">×{count}</span>
                   )}
                   {settings.showTimestamps && (
-                    <span className="text-gray-500/60 whitespace-nowrap tabular-nums font-mono text-[10px]">
+                    <span className="text-fg-muted/60 whitespace-nowrap tabular-nums font-mono text-[10px]">
                       {formatTimestamp(entry.ts)}
                     </span>
                   )}
@@ -1034,12 +1034,12 @@ export default function FeedPanel({
             type="button"
             onClick={scrollToBottom}
             aria-label="Jump to bottom"
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-600/95 hover:bg-indigo-500 text-white text-xs font-medium shadow-lg shadow-black/40 border border-indigo-400/60 transition-colors"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/95 hover:bg-accent-hover text-fg-bright text-xs font-medium shadow-lg shadow-black/40 border border-accent-hover/60 transition-colors"
           >
             <ChevronDown size={14} className="shrink-0" />
             <span>Jump to bottom</span>
             {unreadCount > 0 && (
-              <span className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-white text-indigo-700 text-[10px] font-bold tabular-nums">
+              <span className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-fg-bright text-accent text-[10px] font-bold tabular-nums">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -1047,12 +1047,12 @@ export default function FeedPanel({
         )}
       </div>
 
-      <div className="worldFeedFooter p-4 border-t border-gray-800/60 bg-gray-950/95 space-y-3">
+      <div className="worldFeedFooter p-4 border-t border-line-subtle/60 bg-surface-canvas/95 space-y-3">
         {showUnreadNotice && (
-          <div className="flex items-center justify-between text-xs text-gray-300 bg-gray-900/80 px-3 py-2 rounded-md border border-gray-800/80">
+          <div className="flex items-center justify-between text-xs text-fg-primary bg-surface-panel/80 px-3 py-2 rounded-md border border-line-subtle/80">
             <button
               onClick={scrollToBottom}
-              className="px-3 py-2 w-full text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+              className="px-3 py-2 w-full text-xs rounded-md bg-accent text-fg-bright hover:bg-accent-hover transition-colors"
             >
               <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`} </span>
               - Jump to latest
@@ -1079,16 +1079,16 @@ export default function FeedPanel({
             const IconComponent = iconMap[mode]
             const colorMap: Record<InputMode, { active: string; inactive: string }> = {
               action: {
-                active: 'border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300',
-                inactive: 'border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300',
+                active: 'border-channel-action/80 hover:border-channel-action bg-channel-action/10 hover:bg-channel-action/20 text-channel-action',
+                inactive: 'border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary',
               },
               room: {
-                active: 'border-indigo-600 hover:border-indigo-500 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300',
-                inactive: 'border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300',
+                active: 'border-accent/80 hover:border-accent bg-accent/10 hover:bg-accent/20 text-accent-hover',
+                inactive: 'border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary',
               },
               world: {
-                active: 'border-emerald-500 hover:border-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300',
-                inactive: 'border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300',
+                active: 'border-status-success/80 hover:border-status-success bg-channel-room/10 hover:bg-channel-room/20 text-channel-room',
+                inactive: 'border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary',
               },
             }
             const colors = colorMap[mode]
@@ -1098,7 +1098,7 @@ export default function FeedPanel({
                 type="button"
                 onClick={() => setInputMode(mode)}
                 className={`px-2 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 ${
-                  isActive ? colors.active : isFilterActive ? 'border-gray-500 bg-gray-800/20 text-gray-300' : colors.inactive
+                  isActive ? colors.active : isFilterActive ? 'border-line-strong bg-surface-raised/20 text-fg-primary' : colors.inactive
                 }`}
               >
                 <IconComponent 
@@ -1127,23 +1127,23 @@ export default function FeedPanel({
                   : 'Shout something...'
               }
               disabled={Boolean(isLoadingRoom)}
-              className={`flex-1 min-w-0 px-3 py-2 bg-gray-900/80 text-gray-100 font-mono text-sm border rounded focus:outline-none focus:ring-1 transition-all duration-200 disabled:bg-gray-900/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-gray-500 ${
+              className={`flex-1 min-w-0 px-3 py-2 bg-surface-panel/80 text-fg-bright font-mono text-sm border rounded focus:outline-none focus:ring-1 transition-all duration-200 disabled:bg-surface-panel/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-fg-muted ${
                 isOverLimit
-                  ? 'border-red-500/60 focus:border-red-500/80 focus:ring-red-500/40'
-                  : 'border-gray-700/60 focus:border-indigo-500/60 focus:ring-indigo-500/40'
+                  ? 'border-status-error/60 focus:border-status-error/80 focus:ring-status-error/40'
+                  : 'border-line-subtle/60 focus:border-accent/60 focus:ring-line-focus/40'
               }`}
               autoComplete="off"
             />
             <button
               type="submit"
               disabled={isSubmitDisabled}
-              className="px-4 py-2 bg-indigo-600/90 hover:bg-indigo-600 disabled:bg-gray-700/50 disabled:cursor-not-allowed disabled:opacity-50 text-indigo-50 font-mono text-sm border border-indigo-500/60 rounded whitespace-nowrap transition-all duration-200 hover:border-indigo-400/80"
+              className="px-4 py-2 bg-accent/90 hover:bg-accent disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 text-fg-bright font-mono text-sm border border-accent/60 rounded whitespace-nowrap transition-all duration-200 hover:border-accent-hover/80"
             >
               Submit
             </button>
           </div>
           {isOverLimit && (
-            <p className="text-xs text-red-400 font-mono px-1">
+            <p className="text-xs text-status-error font-mono px-1">
               Message cannot exceed {MESSAGE_MAX_LENGTH} characters. Current: {charCount} characters
             </p>
           )}

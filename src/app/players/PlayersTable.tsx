@@ -155,15 +155,15 @@ export default function PlayersTable({ rows }: { rows: PlayerRow[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search name or room…"
-          className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-600"
+          className="rounded border border-line-subtle bg-surface-panel px-2 py-1 text-sm text-fg-bright placeholder-fg-disabled focus:outline-none focus:ring-1 focus:ring-line-strong"
         />
-        <span className="ml-auto text-xs text-gray-500">{sorted.length} shown</span>
+        <span className="ml-auto text-xs text-fg-muted">{sorted.length} shown</span>
       </div>
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
         {sorted.length === 0 && (
-          <p className="py-6 text-center text-sm text-gray-500">No players match this search.</p>
+          <p className="py-6 text-center text-sm text-fg-muted">No players match this search.</p>
         )}
         {sorted.map((r) => (
           <PlayerCard key={r.id} r={r} expanded={open.has(r.id)} onToggle={() => toggle(r.id)} />
@@ -171,17 +171,17 @@ export default function PlayersTable({ rows }: { rows: PlayerRow[] }) {
       </div>
 
       {/* Desktop table */}
-      <div className="hidden overflow-x-auto rounded-lg border border-gray-800 md:block">
+      <div className="hidden overflow-x-auto rounded-lg border border-line-subtle md:block">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-gray-900 text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
               <th className="w-8 px-3 py-2" />
               {COLUMNS.map((col) => (
                 <th
                   key={col.key}
                   onClick={() => clickHeader(col.key)}
                   className={
-                    'cursor-pointer select-none px-3 py-2 font-medium hover:text-gray-300 ' +
+                    'cursor-pointer select-none px-3 py-2 font-medium hover:text-fg-primary ' +
                     (col.align === 'right' ? 'text-right' : 'text-left')
                   }
                 >
@@ -197,7 +197,7 @@ export default function PlayersTable({ rows }: { rows: PlayerRow[] }) {
             ))}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length + 1} className="px-3 py-6 text-center text-gray-500">
+                <td colSpan={COLUMNS.length + 1} className="px-3 py-6 text-center text-fg-muted">
                   No players match this search.
                 </td>
               </tr>
@@ -214,40 +214,40 @@ function PlayerTr({ r, expanded, onToggle }: { r: PlayerRow; expanded: boolean; 
     <>
       <tr
         onClick={onToggle}
-        className="cursor-pointer border-t border-gray-800 odd:bg-gray-900/30 hover:bg-gray-800/50"
+        className="cursor-pointer border-t border-line-subtle odd:bg-surface-panel/30 hover:bg-surface-raised/50"
       >
-        <td className="px-3 py-2 text-center text-gray-500">{expanded ? '▾' : '▸'}</td>
+        <td className="px-3 py-2 text-center text-fg-muted">{expanded ? '▾' : '▸'}</td>
         <td className="px-3 py-2">
           <div className="flex items-center gap-2">
             <Icon name={r.uIcon} size={20} color={r.uIconColor} />
             <Link
               href={`/players/${r.id}`}
               onClick={(e) => e.stopPropagation()}
-              className="font-medium text-indigo-300 hover:text-indigo-200 hover:underline"
+              className="font-medium text-accent-hover/80 hover:text-accent-hover hover:underline"
             >
               {r.name}
             </Link>
-            {r.inFight && <Tag className="border-red-800 text-red-400">in battle</Tag>}
-            {!r.isActive && <Tag className="border-gray-700 text-gray-500">inactive</Tag>}
+            {r.inFight && <Tag className="border-status-error text-status-error">in battle</Tag>}
+            {!r.isActive && <Tag className="border-line-subtle text-fg-muted">inactive</Tag>}
           </div>
         </td>
-        <td className="px-3 py-2 text-right text-yellow-400">{r.level}</td>
-        <td className="px-3 py-2 text-right text-red-400">{r.hpMax}</td>
-        <td className="px-3 py-2 text-right text-blue-400">{r.mpMax}</td>
-        <td className="px-3 py-2 text-right text-orange-400">{r.physicalTraining}</td>
-        <td className="px-3 py-2 text-right text-purple-400">{r.mentalTraining}</td>
-        <td className="px-3 py-2 text-right text-gray-300">{r.kills}</td>
-        <td className="px-3 py-2 text-right text-red-300">{r.deaths}</td>
-        <td className="px-3 py-2 text-right text-emerald-400">{r.completedQuests}</td>
-        <td className="px-3 py-2 text-right text-green-400">{r.xp.toLocaleString()}</td>
-        <td className="px-3 py-2 text-right text-gray-400">{r.clicks.toLocaleString()}</td>
-        <td className="whitespace-nowrap px-3 py-2 text-right text-gray-400">
+        <td className="px-3 py-2 text-right text-status-warning">{r.level}</td>
+        <td className="px-3 py-2 text-right text-status-error">{r.hpMax}</td>
+        <td className="px-3 py-2 text-right text-resource-mp">{r.mpMax}</td>
+        <td className="px-3 py-2 text-right text-action-attack">{r.physicalTraining}</td>
+        <td className="px-3 py-2 text-right text-stat-mag">{r.mentalTraining}</td>
+        <td className="px-3 py-2 text-right text-fg-primary">{r.kills}</td>
+        <td className="px-3 py-2 text-right text-status-error">{r.deaths}</td>
+        <td className="px-3 py-2 text-right text-status-success">{r.completedQuests}</td>
+        <td className="px-3 py-2 text-right text-status-success">{r.xp.toLocaleString()}</td>
+        <td className="px-3 py-2 text-right text-fg-secondary">{r.clicks.toLocaleString()}</td>
+        <td className="whitespace-nowrap px-3 py-2 text-right text-fg-secondary">
           {fmtDate(r.lastLogin)}
-          <span className="ml-1 text-gray-600">({fmtRelative(r.lastLogin)})</span>
+          <span className="ml-1 text-fg-disabled">({fmtRelative(r.lastLogin)})</span>
         </td>
       </tr>
       {expanded && (
-        <tr className="border-t border-gray-800 bg-gray-900/60">
+        <tr className="border-t border-line-subtle bg-surface-panel/60">
           <td />
           <td colSpan={COLUMNS.length} className="px-3 py-3">
             <DetailGrid r={r} />
@@ -260,40 +260,40 @@ function PlayerTr({ r, expanded, onToggle }: { r: PlayerRow; expanded: boolean; 
 
 function PlayerCard({ r, expanded, onToggle }: { r: PlayerRow; expanded: boolean; onToggle: () => void }) {
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900/30 px-3 py-2.5 text-sm">
+    <div className="rounded-lg border border-line-subtle bg-surface-panel/30 px-3 py-2.5 text-sm">
       <div className="flex items-center gap-2">
-        <button onClick={onToggle} className="text-gray-500">{expanded ? '▾' : '▸'}</button>
+        <button onClick={onToggle} className="text-fg-muted">{expanded ? '▾' : '▸'}</button>
         <Icon name={r.uIcon} size={20} color={r.uIconColor} />
-        <Link href={`/players/${r.id}`} className="font-medium text-indigo-300 hover:underline">
+        <Link href={`/players/${r.id}`} className="font-medium text-accent-hover hover:underline">
           {r.name}
         </Link>
-        {r.inFight && <Tag className="border-red-800 text-red-400">in battle</Tag>}
-        {!r.isActive && <Tag className="border-gray-700 text-gray-500">inactive</Tag>}
+        {r.inFight && <Tag className="border-status-error text-status-error">in battle</Tag>}
+        {!r.isActive && <Tag className="border-line-subtle text-fg-muted">inactive</Tag>}
       </div>
       <div className="mt-2 grid grid-cols-4 gap-1 text-center text-xs">
         {[
-          { label: 'Lvl', value: r.level, color: 'text-yellow-400' },
-          { label: 'HP', value: r.hpMax, color: 'text-red-400' },
-          { label: 'MP', value: r.mpMax, color: 'text-blue-400' },
-          { label: 'Kills', value: r.kills, color: 'text-gray-300' },
-          { label: 'PT', value: r.physicalTraining, color: 'text-orange-400' },
-          { label: 'MT', value: r.mentalTraining, color: 'text-purple-400' },
-          { label: 'Quests', value: r.completedQuests, color: 'text-emerald-400' },
-          { label: 'Deaths', value: r.deaths, color: 'text-red-300' },
-          { label: 'XP', value: r.xp.toLocaleString(), color: 'text-green-400' },
-          { label: 'Clicks', value: r.clicks.toLocaleString(), color: 'text-gray-400' },
+          { label: 'Lvl', value: r.level, color: 'text-status-warning' },
+          { label: 'HP', value: r.hpMax, color: 'text-status-error' },
+          { label: 'MP', value: r.mpMax, color: 'text-resource-mp' },
+          { label: 'Kills', value: r.kills, color: 'text-fg-primary' },
+          { label: 'PT', value: r.physicalTraining, color: 'text-action-attack' },
+          { label: 'MT', value: r.mentalTraining, color: 'text-stat-mag' },
+          { label: 'Quests', value: r.completedQuests, color: 'text-status-success' },
+          { label: 'Deaths', value: r.deaths, color: 'text-status-error' },
+          { label: 'XP', value: r.xp.toLocaleString(), color: 'text-status-success' },
+          { label: 'Clicks', value: r.clicks.toLocaleString(), color: 'text-fg-secondary' },
         ].map(({ label, value, color }) => (
           <div key={label} className="flex flex-col gap-0.5">
-            <span className="uppercase tracking-wide text-gray-600" style={{ fontSize: '10px' }}>{label}</span>
+            <span className="uppercase tracking-wide text-fg-disabled" style={{ fontSize: '10px' }}>{label}</span>
             <span className={color}>{value}</span>
           </div>
         ))}
       </div>
-      <div className="mt-1 text-xs text-gray-500">
-        last login {fmtDate(r.lastLogin)} <span className="text-gray-600">({fmtRelative(r.lastLogin)})</span>
+      <div className="mt-1 text-xs text-fg-muted">
+        last login {fmtDate(r.lastLogin)} <span className="text-fg-disabled">({fmtRelative(r.lastLogin)})</span>
       </div>
       {expanded && (
-        <div className="mt-2 border-t border-gray-800 pt-2">
+        <div className="mt-2 border-t border-line-subtle pt-2">
           <DetailGrid r={r} />
         </div>
       )}
@@ -315,9 +315,9 @@ function DetailGrid({ r }: { r: PlayerRow }) {
   return (
     <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-3 lg:grid-cols-4">
       {items.map((it) => (
-        <div key={it.label} className="flex justify-between gap-2 border-b border-gray-800/60 py-0.5">
-          <span className="text-gray-500">{it.label}</span>
-          <span className="text-right text-gray-200">{it.value}</span>
+        <div key={it.label} className="flex justify-between gap-2 border-b border-line-subtle/60 py-0.5">
+          <span className="text-fg-muted">{it.label}</span>
+          <span className="text-right text-fg-bright">{it.value}</span>
         </div>
       ))}
     </div>
@@ -326,7 +326,7 @@ function DetailGrid({ r }: { r: PlayerRow }) {
 
 function SortArrow({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
   return (
-    <span className={`ml-1 text-[10px] ${active ? 'text-gray-300' : 'text-gray-700'}`}>
+    <span className={`ml-1 text-[10px] ${active ? 'text-fg-primary' : 'text-fg-disabled'}`}>
       {active ? (dir === 'asc' ? '▲' : '▼') : '↕'}
     </span>
   )

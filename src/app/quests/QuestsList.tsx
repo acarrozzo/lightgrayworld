@@ -47,7 +47,7 @@ export default function QuestsList({ groups }: { groups: QuestGroup[] }) {
   }
 
   if (groups.length === 0) {
-    return <p className="py-6 text-center text-sm text-gray-500">No quests found.</p>
+    return <p className="py-6 text-center text-sm text-fg-muted">No quests found.</p>
   }
   return (
     <div className="space-y-8">
@@ -55,25 +55,25 @@ export default function QuestsList({ groups }: { groups: QuestGroup[] }) {
         <button
           type="button"
           onClick={() => setOpenIds(new Set(allIds))}
-          className="rounded border border-gray-700 bg-gray-800/60 px-3 py-1 text-xs font-semibold text-gray-300 transition-colors hover:border-gray-600 hover:bg-gray-700/80 hover:text-white"
+          className="rounded border border-line-subtle bg-surface-raised/60 px-3 py-1 text-xs font-semibold text-fg-primary transition-colors hover:border-line-strong hover:bg-surface-hover/80 hover:text-fg-bright"
         >
           Expand all
         </button>
         <button
           type="button"
           onClick={() => setOpenIds(new Set())}
-          className="rounded border border-gray-700 bg-gray-800/60 px-3 py-1 text-xs font-semibold text-gray-300 transition-colors hover:border-gray-600 hover:bg-gray-700/80 hover:text-white"
+          className="rounded border border-line-subtle bg-surface-raised/60 px-3 py-1 text-xs font-semibold text-fg-primary transition-colors hover:border-line-strong hover:bg-surface-hover/80 hover:text-fg-bright"
         >
           Collapse all
         </button>
       </div>
       {groups.map((g) => (
         <section key={g.npcId}>
-          <div className="mb-3 flex items-center gap-2 border-b border-gray-800 pb-2">
+          <div className="mb-3 flex items-center gap-2 border-b border-line-subtle pb-2">
             <Icon name={g.icon} size={40} />
-            <h2 className="text-lg font-semibold text-gray-100">{g.name}</h2>
-            <span className="text-xs text-gray-500">Room {g.roomId}</span>
-            <span className="ml-auto text-xs text-gray-500">{g.quests.length} quests</span>
+            <h2 className="text-lg font-semibold text-fg-bright">{g.name}</h2>
+            <span className="text-xs text-fg-muted">Room {g.roomId}</span>
+            <span className="ml-auto text-xs text-fg-muted">{g.quests.length} quests</span>
           </div>
           <div className="space-y-2">
             {g.quests.map((q) => (
@@ -104,32 +104,32 @@ function QuestCard({
     <details
       open={open}
       onToggle={(e) => onToggle(e.currentTarget.open)}
-      className="group rounded-lg border border-gray-800 bg-gray-900/30 open:bg-gray-900/50"
+      className="group rounded-lg border border-line-subtle bg-surface-panel/30 open:bg-surface-panel/50"
     >
       <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm">
-        <span className="w-6 shrink-0 text-right text-xs text-gray-500">{q.number}</span>
-        <span className="font-medium text-gray-100">{q.title}</span>
+        <span className="w-6 shrink-0 text-right text-xs text-fg-muted">{q.number}</span>
+        <span className="font-medium text-fg-bright">{q.title}</span>
         <QuestTypeTag type={q.questType} />
         <span className="ml-auto flex items-center gap-3">
-          <span className="text-xs text-gray-500">Lvl {q.level}</span>
-          <span className="text-[10px] text-gray-600 transition-transform group-open:rotate-90">▶</span>
+          <span className="text-xs text-fg-muted">Lvl {q.level}</span>
+          <span className="text-[10px] text-fg-disabled transition-transform group-open:rotate-90">▶</span>
         </span>
       </summary>
 
-      <div className="space-y-3 border-t border-gray-800 px-3 py-3 text-sm">
-        <p className="italic text-gray-400">{q.summary}</p>
+      <div className="space-y-3 border-t border-line-subtle px-3 py-3 text-sm">
+        <p className="italic text-fg-secondary">{q.summary}</p>
 
         <Field label="Objective">
-          <span className="text-gray-200">{q.objective}</span>
+          <span className="text-fg-bright">{q.objective}</span>
         </Field>
 
         <Field label="Requirements">
           <ul className="space-y-0.5">
             {q.requirements.map((r, i) => (
-              <li key={i} className="text-gray-300">• {r}</li>
+              <li key={i} className="text-fg-primary">• {r}</li>
             ))}
             {q.consumesItems && (
-              <li className="text-xs text-gray-500">Required items are consumed on turn-in.</li>
+              <li className="text-xs text-fg-muted">Required items are consumed on turn-in.</li>
             )}
           </ul>
         </Field>
@@ -137,21 +137,21 @@ function QuestCard({
         <Field label="Rewards">
           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
             {q.rewards.map((r, i) => (
-              <span key={i} className="text-amber-300">{r}</span>
+              <span key={i} className="text-resource-gold">{r}</span>
             ))}
           </div>
         </Field>
 
         <Field label="Next step">
-          <span className="text-gray-400">{q.nextStep}</span>
+          <span className="text-fg-secondary">{q.nextStep}</span>
         </Field>
 
         <Field label="Reminder">
-          <span className="italic text-gray-400">“{q.reminderDialog}”</span>
+          <span className="italic text-fg-secondary">“{q.reminderDialog}”</span>
         </Field>
 
         <Field label="On completion">
-          <span className="italic text-gray-400">“{q.completionDialog}”</span>
+          <span className="italic text-fg-secondary">“{q.completionDialog}”</span>
         </Field>
 
         {q.unlocks.length > 0 && (
@@ -160,7 +160,7 @@ function QuestCard({
               {q.unlocks.map((u, i) => (
                 <span
                   key={i}
-                  className="rounded border border-indigo-800 bg-indigo-950/40 px-2 py-0.5 text-xs text-indigo-300"
+                  className="rounded border border-accent bg-accent-muted/40 px-2 py-0.5 text-xs text-accent-hover"
                 >
                   {u}
                 </span>
@@ -176,7 +176,7 @@ function QuestCard({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[7rem_1fr] gap-2">
-      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-fg-muted">{label}</span>
       <div>{children}</div>
     </div>
   )
@@ -189,8 +189,8 @@ function QuestTypeTag({ type }: { type: string }) {
       className={
         'rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ' +
         (isMain
-          ? 'border-amber-700 text-amber-300'
-          : 'border-indigo-700 text-indigo-300')
+          ? 'border-resource-gold text-resource-gold'
+          : 'border-accent text-accent-hover')
       }
     >
       {type}

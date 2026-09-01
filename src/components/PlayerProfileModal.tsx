@@ -123,99 +123,99 @@ export default function PlayerProfileModal({
 
   const content = useMemo(() => {
     if (!player) {
-      return <div className="text-sm text-gray-400">No player selected.</div>
+      return <div className="text-sm text-fg-secondary">No player selected.</div>
     }
 
     if (isLoading) {
-      return <div className="text-sm text-gray-300">Loading profile...</div>
+      return <div className="text-sm text-fg-primary">Loading profile...</div>
     }
 
     if (error) {
-      return <div className="text-sm text-red-300">{error}</div>
+      return <div className="text-sm text-status-error">{error}</div>
     }
 
     if (!profile) {
-      return <div className="text-sm text-gray-400">Profile unavailable.</div>
+      return <div className="text-sm text-fg-secondary">Profile unavailable.</div>
     }
 
     return (
-      <div className="space-y-5 text-sm text-gray-200">
+      <div className="space-y-5 text-sm text-fg-bright">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-10 items-center justify-center rounded border border-gray-700/70 bg-gray-800/60">
+          <div className="flex h-16 w-10 items-center justify-center rounded border border-line-subtle/70 bg-surface-raised/60">
             {coloredAvatar ? (
               <div className="h-14 w-9" dangerouslySetInnerHTML={{ __html: coloredAvatar }} />
             ) : (
-              <span className="text-xs text-gray-400">...</span>
+              <span className="text-xs text-fg-secondary">...</span>
             )}
           </div>
           <div className="min-w-0">
-            <div className="truncate text-base font-semibold text-white">{profile.username}</div>
-            <div className="text-xs uppercase tracking-[0.15em] text-violet-200/80">
+            <div className="truncate text-base font-semibold text-fg-bright">{profile.username}</div>
+            <div className="text-xs uppercase tracking-[0.15em] text-stat-mag/80">
               Lvl {profile.level} {profile.characterRace} {profile.characterClass}
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="rounded border border-gray-700/60 bg-gray-800/50 p-3">
-            <div className="mb-1 flex items-center justify-between text-xs text-red-200">
+          <div className="rounded border border-line-subtle/60 bg-surface-raised/50 p-3">
+            <div className="mb-1 flex items-center justify-between text-xs text-status-error">
               <span>HP</span>
               <span>
                 {profile.hp}/{profile.hpMax}
               </span>
             </div>
-            <div className="h-2 rounded bg-gray-700">
-              <div className="h-2 rounded bg-red-500" style={{ width: `${toPercent(profile.hp, profile.hpMax)}%` }} />
+            <div className="h-2 rounded bg-surface-hover">
+              <div className="h-2 rounded bg-status-error" style={{ width: `${toPercent(profile.hp, profile.hpMax)}%` }} />
             </div>
           </div>
-          <div className="rounded border border-gray-700/60 bg-gray-800/50 p-3">
-            <div className="mb-1 flex items-center justify-between text-xs text-sky-200">
+          <div className="rounded border border-line-subtle/60 bg-surface-raised/50 p-3">
+            <div className="mb-1 flex items-center justify-between text-xs text-status-info">
               <span>MP</span>
               <span>
                 {profile.mp}/{profile.mpMax}
               </span>
             </div>
-            <div className="h-2 rounded bg-gray-700">
-              <div className="h-2 rounded bg-sky-500" style={{ width: `${toPercent(profile.mp, profile.mpMax)}%` }} />
+            <div className="h-2 rounded bg-surface-hover">
+              <div className="h-2 rounded bg-status-info" style={{ width: `${toPercent(profile.mp, profile.mpMax)}%` }} />
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
-          <div className="rounded border border-gray-700/60 bg-gray-800/50 p-2 text-center">
-            <div className="text-[10px] uppercase tracking-[0.15em] text-gray-400">STR</div>
-            <div className="text-lg font-semibold text-white">{profile.str}</div>
+          <div className="rounded border border-line-subtle/60 bg-surface-raised/50 p-2 text-center">
+            <div className="text-[10px] uppercase tracking-[0.15em] text-fg-secondary">STR</div>
+            <div className="text-lg font-semibold text-fg-bright">{profile.str}</div>
           </div>
-          <div className="rounded border border-gray-700/60 bg-gray-800/50 p-2 text-center">
-            <div className="text-[10px] uppercase tracking-[0.15em] text-gray-400">DEX</div>
-            <div className="text-lg font-semibold text-white">{profile.dex}</div>
+          <div className="rounded border border-line-subtle/60 bg-surface-raised/50 p-2 text-center">
+            <div className="text-[10px] uppercase tracking-[0.15em] text-fg-secondary">DEX</div>
+            <div className="text-lg font-semibold text-fg-bright">{profile.dex}</div>
           </div>
-          <div className="rounded border border-gray-700/60 bg-gray-800/50 p-2 text-center">
-            <div className="text-[10px] uppercase tracking-[0.15em] text-gray-400">MAG</div>
-            <div className="text-lg font-semibold text-white">{profile.mag}</div>
+          <div className="rounded border border-line-subtle/60 bg-surface-raised/50 p-2 text-center">
+            <div className="text-[10px] uppercase tracking-[0.15em] text-fg-secondary">MAG</div>
+            <div className="text-lg font-semibold text-fg-bright">{profile.mag}</div>
           </div>
-          <div className="rounded border border-gray-700/60 bg-gray-800/50 p-2 text-center">
-            <div className="text-[10px] uppercase tracking-[0.15em] text-gray-400">DEF</div>
-            <div className="text-lg font-semibold text-white">{profile.def}</div>
+          <div className="rounded border border-line-subtle/60 bg-surface-raised/50 p-2 text-center">
+            <div className="text-[10px] uppercase tracking-[0.15em] text-fg-secondary">DEF</div>
+            <div className="text-lg font-semibold text-fg-bright">{profile.def}</div>
           </div>
-          <div className="rounded border border-gray-700/60 bg-gray-800/50 p-2 text-center">
-            <div className="text-[10px] uppercase tracking-[0.15em] text-gray-400">Gold</div>
-            <div className="text-lg font-semibold text-yellow-300">{profile.currency}</div>
+          <div className="rounded border border-line-subtle/60 bg-surface-raised/50 p-2 text-center">
+            <div className="text-[10px] uppercase tracking-[0.15em] text-fg-secondary">Gold</div>
+            <div className="text-lg font-semibold text-status-warning">{profile.currency}</div>
           </div>
         </div>
 
         <div>
-          <div className="mb-2 text-xs uppercase tracking-[0.15em] text-gray-400">Equipped Items</div>
+          <div className="mb-2 text-xs uppercase tracking-[0.15em] text-fg-secondary">Equipped Items</div>
           <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
             {DISPLAY_SLOT_ORDER.map((slot) => {
               const equipped = profile.equippedItems?.[slot]
               return (
                 <div
                   key={slot}
-                  className="flex items-center justify-between rounded border border-gray-700/50 bg-gray-800/40 px-2.5 py-1.5"
+                  className="flex items-center justify-between rounded border border-line-subtle/50 bg-surface-raised/40 px-2.5 py-1.5"
                 >
-                  <span className="text-xs text-gray-400">{EQUIPMENT_LABELS[slot]}</span>
-                  <span className="truncate pl-3 text-xs text-gray-200">{equipped?.name || '- - -'}</span>
+                  <span className="text-xs text-fg-secondary">{EQUIPMENT_LABELS[slot]}</span>
+                  <span className="truncate pl-3 text-xs text-fg-bright">{equipped?.name || '- - -'}</span>
                 </div>
               )
             })}

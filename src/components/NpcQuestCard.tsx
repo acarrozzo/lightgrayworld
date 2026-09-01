@@ -146,15 +146,15 @@ export default function NpcQuestCard({
   const showTypeLabels = visibleQuests.length > 1
 
   return (
-    <div className="w-full max-w-[600px] rounded-md border border-white/10 bg-gray-900/60 overflow-hidden">
+    <div className="w-full max-w-[600px] rounded-md border border-fg-bright/10 bg-surface-panel/60 overflow-hidden">
       {/* NPC header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-gray-800/40">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-fg-bright/10 bg-surface-raised/40">
         {npcIcon && <Icon name={npcIcon} size={20} color="current" />}
-        <span className="text-sm font-semibold text-white/80">{npcName}</span>
+        <span className="text-sm font-semibold text-fg-bright/80">{npcName}</span>
       </div>
 
       {/* Quest rows */}
-      <div className="flex flex-col divide-y divide-white/5">
+      <div className="flex flex-col divide-y divide-fg-bright/5">
         {visibleQuests.map(({ questDef, progress, state }) => {
           const isLoading = loadingQuestId === progress.questId
           const isTalk = state === 'talk'
@@ -173,8 +173,8 @@ export default function NpcQuestCard({
                 <span
                   className={`shrink-0 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
                     questDef.questType === 'main'
-                      ? 'bg-amber-500/20 text-amber-300'
-                      : 'bg-blue-500/20 text-blue-300'
+                      ? 'bg-resource-gold/20 text-resource-gold'
+                      : 'bg-resource-mp/20 text-resource-mp'
                   }`}
                 >
                   {questDef.questType === 'main' ? 'Main' : 'Side'}
@@ -183,18 +183,18 @@ export default function NpcQuestCard({
 
               {/* Quest info */}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-white truncate">{questDef.title}</div>
+                <div className="text-sm font-medium text-fg-bright truncate">{questDef.title}</div>
                 {!isCompleted && (
                   <QuestRequirements requirements={questDef.requirements} variant="compact" className="mt-1" />
                 )}
                 {isTurnIn && (
-                  <div className="text-xs text-green-400/70 mt-0.5 truncate">{questDef.objective}</div>
+                  <div className="text-xs text-status-success/70 mt-0.5 truncate">{questDef.objective}</div>
                 )}
               </div>
 
               {/* CTA */}
               {isCompleted ? (
-                <CheckCircle size={18} className="shrink-0 text-green-600" />
+                <CheckCircle size={18} className="shrink-0 text-status-success" />
               ) : isTalkComplete ? (
                 // Intro quests: single button that completes in one click.
                 // Disabled when quest requirements aren't met yet (e.g. chest1 flag).
@@ -203,8 +203,8 @@ export default function NpcQuestCard({
                   onClick={() => onTurnIn(progress.questId)}
                   className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     state === 'in_progress'
-                      ? 'bg-gray-700/60 text-gray-500 cursor-not-allowed'
-                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                      ? 'bg-surface-hover/60 text-fg-muted cursor-not-allowed'
+                      : 'bg-accent hover:bg-accent-hover text-fg-bright'
                   } ${isLoading ? 'opacity-60 cursor-wait' : ''}`}
                 >
                   <MessageCircle size={16} />
@@ -215,7 +215,7 @@ export default function NpcQuestCard({
                 <button
                   disabled={isLoading}
                   onClick={() => onTalk(progress.questId)}
-                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors bg-indigo-600 hover:bg-indigo-500 text-white ${
+                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors bg-accent hover:bg-accent-hover text-fg-bright ${
                     isLoading ? 'opacity-60 cursor-wait' : ''
                   }`}
                 >
@@ -228,7 +228,7 @@ export default function NpcQuestCard({
                   <button
                     disabled={isLoading}
                     onClick={() => onTalk(progress.questId)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-300 hover:text-white bg-gray-700/60 hover:bg-gray-600/80 ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-fg-primary hover:text-fg-bright bg-surface-hover/60 hover:bg-surface-selected/80 ${
                       isLoading ? 'opacity-60 cursor-wait' : ''
                     }`}
                   >
@@ -241,8 +241,8 @@ export default function NpcQuestCard({
                     title={isInProgress ? `Still needed: ${unmetSummary(questDef, { inventory, killList, player })}` : undefined}
                     className={`px-3 py-2 rounded-md text-sm font-semibold transition-colors ${
                       canTurnIn
-                        ? 'bg-green-600 hover:bg-green-500 text-white'
-                        : 'bg-gray-700/60 text-gray-500 cursor-not-allowed'
+                        ? 'bg-status-success/80 hover:bg-status-success text-fg-bright'
+                        : 'bg-surface-hover/60 text-fg-muted cursor-not-allowed'
                     } ${isLoading ? 'opacity-60 cursor-wait' : ''}`}
                   >
                     {isLoading ? '...' : 'Turn In'}

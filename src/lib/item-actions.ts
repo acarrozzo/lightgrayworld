@@ -35,20 +35,20 @@ export interface ItemAction {
  */
 export const ITEM_ACTIONS: Record<string, ItemAction[]> = {
   'welcome-book': [
-    { action: 'read book', label: 'Read Book', icon: 'book', className: 'bg-blue-600/70 hover:bg-blue-600' },
+    { action: 'read book', label: 'Read Book', icon: 'book', className: 'bg-resource-mp/70 hover:bg-resource-mp' },
   ],
 }
 
 // Pure presentation for consumables, keyed by slug. Gameplay facts (verb, stat,
 // amount) come from metadata.consumable — only styling lives here.
 const CONSUMABLE_STYLING: Record<string, { icon: string; className: string }> = {
-  'flower': { icon: 'flower', className: 'bg-amber-400/70 hover:bg-amber-400' },
-  'redberry': { icon: 'redberry', className: 'bg-red-500/70 hover:bg-red-500' },
-  'blueberry': { icon: 'blueberry', className: 'bg-blue-500/70 hover:bg-blue-500' },
-  'raw-meat': { icon: 'uncooked-meat', className: 'bg-rose-700/70 hover:bg-rose-700' },
-  'cooked-meat': { icon: 'cooked-meat', className: 'bg-amber-600/70 hover:bg-amber-600' },
-  'red-potion': { icon: 'red-potion', className: 'bg-red-600/70 hover:bg-red-600' },
-  'blue-potion': { icon: 'blue-potion', className: 'bg-blue-600/70 hover:bg-blue-600' },
+  'flower': { icon: 'flower', className: 'bg-resource-gold/70 hover:bg-resource-gold' },
+  'redberry': { icon: 'redberry', className: 'bg-status-error/70 hover:bg-status-error' },
+  'blueberry': { icon: 'blueberry', className: 'bg-resource-mp/70 hover:bg-resource-mp' },
+  'raw-meat': { icon: 'uncooked-meat', className: 'bg-resource-hp/70 hover:bg-resource-hp' },
+  'cooked-meat': { icon: 'cooked-meat', className: 'bg-resource-gold/70 hover:bg-resource-gold' },
+  'red-potion': { icon: 'red-potion', className: 'bg-status-error/70 hover:bg-status-error' },
+  'blue-potion': { icon: 'blue-potion', className: 'bg-resource-mp/70 hover:bg-resource-mp' },
 }
 
 interface ConsumableMeta {

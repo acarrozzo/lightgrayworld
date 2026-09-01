@@ -106,8 +106,18 @@ const OPPOSITE: Record<string, string> = {
 
 // Danger reads as a heat scale; safe rooms are always emerald regardless of level.
 function dangerColor(level: number, isSafe: boolean): string {
-  if (isSafe) return '#34d399'
-  const scale = ['#60a5fa', '#a3e635', '#fbbf24', '#fb923c', '#f87171', '#ef4444', '#b91c1c']
+  if (isSafe) return 'var(--status-success)'
+  // A heat ramp built from the theme's own roles, coolest to hottest, so the
+  // atlas reads the same way in every palette.
+  const scale = [
+    'var(--status-info)',
+    'var(--terrain-grass)',
+    'var(--status-warning)',
+    'var(--action-attack)',
+    'var(--combat-damage)',
+    'var(--status-error)',
+    'var(--combat-defeat)',
+  ]
   return scale[Math.min(Math.max(level, 0), scale.length - 1)]
 }
 
@@ -370,11 +380,11 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
   }, [nodes, mapOf, activeMap])
 
   function edgeStyle(e: RoomEdge): { stroke: string; dash?: string } {
-    if (e.hidden) return { stroke: '#c084fc', dash: '5 5' }
-    if (e.lever) return { stroke: '#fbbf24', dash: '7 5' }
-    if (e.gated) return { stroke: '#f87171' }
-    if (e.vertical) return { stroke: '#38bdf8', dash: '3 6' }
-    return { stroke: '#4b5563' }
+    if (e.hidden) return { stroke: 'var(--mood-arcane)', dash: '5 5' }
+    if (e.lever) return { stroke: 'var(--mood-treasure)', dash: '7 5' }
+    if (e.gated) return { stroke: 'var(--status-error)' }
+    if (e.vertical) return { stroke: 'var(--status-info)', dash: '3 6' }
+    return { stroke: 'var(--line-strong)' }
   }
 
   function pick(id: string) {
@@ -422,9 +432,9 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
   return (
     <div className="flex flex-1 flex-col gap-3 lg:flex-row">
       {/* Map area */}
-      <div className="flex min-h-[560px] flex-1 flex-col overflow-hidden rounded border border-gray-800 bg-gray-900/30">
+      <div className="flex min-h-[560px] flex-1 flex-col overflow-hidden rounded border border-line-subtle bg-surface-panel/30">
         {/* Map tabs */}
-        <div className="flex items-center gap-1 border-b border-gray-800 bg-gray-900/70 px-3 pt-2">
+        <div className="flex items-center gap-1 border-b border-line-subtle bg-surface-panel/70 px-3 pt-2">
           {MAP_ORDER.map((m) => (
             <button
               key={m}
@@ -432,12 +442,12 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
               className={
                 'rounded-t border-x border-t px-3 py-1.5 text-sm font-semibold transition-colors ' +
                 (activeMap === m
-                  ? 'border-gray-700 bg-gray-800 text-white'
-                  : 'border-transparent text-gray-400 hover:text-gray-200')
+                  ? 'border-line-subtle bg-surface-raised text-fg-bright'
+                  : 'border-transparent text-fg-secondary hover:text-fg-bright')
               }
             >
               {MAP_LABEL[m]}
-              <span className="ml-1.5 text-xs text-gray-500">
+              <span className="ml-1.5 text-xs text-fg-muted">
                 {nodes.filter((n) => n.map === m).length}
               </span>
             </button>
@@ -518,24 +528,24 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
                       width={CARD_W}
                       height={CARD_H}
                       rx={8}
-                      fill="#0f1623"
+                      fill="var(--surface-canvas)"
                       stroke={color}
                       strokeWidth={isSelected ? 3.5 : 1.8}
                     />
                     {/* danger stripe */}
                     <rect width={6} height={CARD_H} rx={3} fill={color} />
-                    <text x={14} y={20} fontSize={12} fontWeight={700} fill="#e5e7eb">
+                    <text x={14} y={20} fontSize={12} fontWeight={700} fill="var(--fg-bright)">
                       #{n.roomId}
                     </text>
                     {/* danger level badge */}
                     <g transform={`translate(${CARD_W - 21},15)`}>
                       <title>{n.isSafe ? 'Safe zone' : `Danger level ${n.dangerLevel}`}</title>
                       <circle r={9} fill={color} />
-                      <text textAnchor="middle" y={3.5} fontSize={11} fontWeight={700} fill="#0f1623">
+                      <text textAnchor="middle" y={3.5} fontSize={11} fontWeight={700} fill="var(--surface-canvas)">
                         {n.isSafe ? '✓' : n.dangerLevel}
                       </text>
                     </g>
-                    <text x={14} y={38} fontSize={11} fill="#cbd5e1">
+                    <text x={14} y={38} fontSize={11} fill="var(--fg-secondary)">
                       {wrapName(n.name).map((line, i) => (
                         <tspan key={i} x={14} dy={i === 0 ? 0 : 13}>
                           {line}
@@ -544,10 +554,10 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
                     </text>
                     {/* content glyphs */}
                     <g transform={`translate(14,${CARD_H - 9})`}>
-                      {n.enemies && <circle r={3.5} cx={0} fill="#ef4444" />}
-                      {n.npcs.length > 0 && <circle r={3.5} cx={12} fill="#38bdf8" />}
-                      {n.items.length > 0 && <circle r={3.5} cx={24} fill="#fbbf24" />}
-                      {n.exits.some((e) => e.gated) && <circle r={3.5} cx={36} fill="#c084fc" />}
+                      {n.enemies && <circle r={3.5} cx={0} fill="var(--status-error)" />}
+                      {n.npcs.length > 0 && <circle r={3.5} cx={12} fill="var(--status-info)" />}
+                      {n.items.length > 0 && <circle r={3.5} cx={24} fill="var(--mood-treasure)" />}
+                      {n.exits.some((e) => e.gated) && <circle r={3.5} cx={36} fill="var(--mood-arcane)" />}
                     </g>
                     {portals &&
                       (() => {
@@ -566,8 +576,8 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
                             }}
                           >
                             <title>{`${down ? 'Down' : 'Up'} to ${MAP_LABEL[portal.toMap]} — room ${portal.to}`}</title>
-                            <rect x={-52} y={-11} width={104} height={22} rx={11} fill="#312e81" stroke="#a5b4fc" strokeWidth={1.5} />
-                            <text x={0} y={4} fontSize={11} fontWeight={700} fill="#e0e7ff" textAnchor="middle">
+                            <rect x={-52} y={-11} width={104} height={22} rx={11} fill="var(--accent-muted)" stroke="var(--accent)" strokeWidth={1.5} />
+                            <text x={0} y={4} fontSize={11} fontWeight={700} fill="var(--fg-bright)" textAnchor="middle">
                               {(down ? '▼ ' : '▲ ') + label}
                             </text>
                           </g>
@@ -582,7 +592,7 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
       </div>
 
       {/* Detail panel */}
-      <div className="w-full shrink-0 overflow-y-auto rounded border border-gray-800 bg-gray-900/40 lg:max-h-[80vh] lg:w-96">
+      <div className="w-full shrink-0 overflow-y-auto rounded border border-line-subtle bg-surface-panel/40 lg:max-h-[80vh] lg:w-96">
         {selected ? (
           <RoomDetail
             room={selected}
@@ -591,16 +601,16 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
             onClose={() => setSelectedId(null)}
           />
         ) : (
-          <div className="p-6 text-sm text-gray-400">
-            <p className="font-medium text-gray-200">Select a room</p>
+          <div className="p-6 text-sm text-fg-secondary">
+            <p className="font-medium text-fg-bright">Select a room</p>
             <p className="mt-2">
               Rooms are positioned by their compass exits. Click any room to see its full breakdown:
               enemies &amp; spawn logic, loot, NPCs &amp; quests, room actions, gates, and secrets.
             </p>
-            <p className="mt-3 text-xs text-gray-500">
+            <p className="mt-3 text-xs text-fg-muted">
               Drag to pan · scroll to zoom · hover to trace connections · the{' '}
-              <span className="font-semibold text-indigo-300">▼ Underground</span> /{' '}
-              <span className="font-semibold text-indigo-300">▲ Surface</span> pill jumps between maps.
+              <span className="font-semibold text-accent-hover">▼ Underground</span> /{' '}
+              <span className="font-semibold text-accent-hover">▲ Surface</span> pill jumps between maps.
             </p>
           </div>
         )}
@@ -627,17 +637,17 @@ function Toolbar({
   total: number
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-gray-800 bg-gray-900/60 px-3 py-2 text-xs">
+    <div className="flex flex-wrap items-center gap-2 border-b border-line-subtle bg-surface-panel/60 px-3 py-2 text-xs">
       <input
         value={filters.query}
         onChange={(e) => setFilters({ ...filters, query: e.target.value })}
         placeholder="Search id or name…"
-        className="w-40 rounded border border-gray-700 bg-gray-800/60 px-2 py-1 text-gray-200 placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+        className="w-40 rounded border border-line-subtle bg-surface-raised/60 px-2 py-1 text-fg-bright placeholder-fg-muted focus:border-accent focus:outline-none"
       />
       <select
         value={filters.safe}
         onChange={(e) => setFilters({ ...filters, safe: e.target.value as Filters['safe'] })}
-        className="rounded border border-gray-700 bg-gray-800/60 px-2 py-1 text-gray-200 focus:border-indigo-500 focus:outline-none"
+        className="rounded border border-line-subtle bg-surface-raised/60 px-2 py-1 text-fg-bright focus:border-accent focus:outline-none"
       >
         <option value="all">All rooms</option>
         <option value="safe">Safe only</option>
@@ -649,12 +659,12 @@ function Toolbar({
       <ToggleChip active={filters.gated} onClick={() => setFilters({ ...filters, gated: !filters.gated })}>
         Gated
       </ToggleChip>
-      <span className="ml-auto text-gray-500">
+      <span className="ml-auto text-fg-muted">
         {count}/{total} shown
       </span>
       <button
         onClick={onReset}
-        className="rounded border border-gray-700 bg-gray-800/60 px-2 py-1 font-semibold text-gray-300 transition-colors hover:bg-gray-700/80 hover:text-white"
+        className="rounded border border-line-subtle bg-surface-raised/60 px-2 py-1 font-semibold text-fg-primary transition-colors hover:bg-surface-hover/80 hover:text-fg-bright"
       >
         Reset view
       </button>
@@ -668,8 +678,8 @@ function ToggleChip({ active, onClick, children }: { active: boolean; onClick: (
       className={
         'rounded border px-2 py-1 font-semibold transition-colors ' +
         (active
-          ? 'border-indigo-500 bg-indigo-600 text-white'
-          : 'border-gray-700 bg-gray-800/60 text-gray-300 hover:bg-gray-700/80')
+          ? 'border-accent bg-accent text-fg-bright'
+          : 'border-line-subtle bg-surface-raised/60 text-fg-primary hover:bg-surface-hover/80')
       }
     >
       {children}
@@ -678,30 +688,30 @@ function ToggleChip({ active, onClick, children }: { active: boolean; onClick: (
 }
 function Legend() {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-gray-800 bg-gray-900/60 px-3 py-2 text-[10px] text-gray-400">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-line-subtle bg-surface-panel/60 px-3 py-2 text-[10px] text-fg-secondary">
       <span className="flex items-center gap-1">
-        <Dot color="#34d399" /> Safe
+        <Dot color="var(--status-success)" /> Safe
       </span>
       <span className="flex items-center gap-1">
-        <Dot color="#fbbf24" /> Danger →
+        <Dot color="var(--mood-treasure)" /> Danger →
       </span>
       <span className="flex items-center gap-1">
-        <Dot color="#ef4444" /> High danger
+        <Dot color="var(--status-error)" /> High danger
       </span>
       <span className="ml-2 flex items-center gap-1">
-        <LineSwatch color="#f87171" /> Gated
+        <LineSwatch color="var(--status-error)" /> Gated
       </span>
       <span className="flex items-center gap-1">
-        <LineSwatch color="#c084fc" dash /> Hidden
+        <LineSwatch color="var(--mood-arcane)" dash /> Hidden
       </span>
       <span className="flex items-center gap-1">
-        <LineSwatch color="#fbbf24" dash /> Lever
+        <LineSwatch color="var(--mood-treasure)" dash /> Lever
       </span>
       <span className="flex items-center gap-1">
-        <LineSwatch color="#38bdf8" dash /> Up/Down
+        <LineSwatch color="var(--status-info)" dash /> Up/Down
       </span>
       <span className="flex items-center gap-1">
-        <span className="rounded bg-indigo-800 px-1 text-[9px] font-bold leading-none text-indigo-100">▼▲</span> Map portal
+        <span className="rounded bg-accent px-1 text-[9px] font-bold leading-none text-accent">▼▲</span> Map portal
       </span>
     </div>
   )
@@ -747,12 +757,12 @@ function RoomDetail({
   return (
     <div>
       {/* Sticky close bar */}
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-800 bg-gray-900/95 px-4 py-2 backdrop-blur">
-        <span className="font-mono text-xs font-semibold text-gray-400">Room #{room.roomId}</span>
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line-subtle bg-surface-panel/95 px-4 py-2 backdrop-blur">
+        <span className="font-mono text-xs font-semibold text-fg-secondary">Room #{room.roomId}</span>
         <button
           onClick={onClose}
           aria-label="Close room details"
-          className="flex items-center gap-1 rounded border border-gray-700 bg-gray-800/60 px-2 py-1 text-xs font-semibold text-gray-300 transition-colors hover:bg-gray-700/80 hover:text-white"
+          className="flex items-center gap-1 rounded border border-line-subtle bg-surface-raised/60 px-2 py-1 text-xs font-semibold text-fg-primary transition-colors hover:bg-surface-hover/80 hover:text-fg-bright"
         >
           <X className="h-3.5 w-3.5" />
           Close
@@ -764,10 +774,10 @@ function RoomDetail({
       <div>
         <div className="flex items-center gap-2">
           {room.icon && <Icon name={room.icon} size={22} className={room.iconColor ? `text-${room.iconColor}` : ''} />}
-          <h2 className="text-lg font-bold text-gray-100">{room.name}</h2>
+          <h2 className="text-lg font-bold text-fg-bright">{room.name}</h2>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-          <Badge color="#1f2937" text={`#${room.roomId}`} />
+          <Badge color="var(--surface-raised)" text={`#${room.roomId}`} />
           <span className="rounded px-1.5 py-0.5 font-semibold" style={{ backgroundColor: `${color}22`, color }}>
             {room.isSafe ? 'Safe' : `Danger ${room.dangerLevel}`}
           </span>
@@ -775,8 +785,8 @@ function RoomDetail({
           {room.hasCraftingTable && <FeatureChip icon={Hammer} label="Crafting" />}
           {room.hasSearch && <FeatureChip icon={Search} label="Searchable" />}
         </div>
-        {room.subtitle && <p className="mt-2 text-xs italic text-gray-500">{room.subtitle}</p>}
-        <p className="mt-2 text-sm leading-relaxed text-gray-300">{room.description}</p>
+        {room.subtitle && <p className="mt-2 text-xs italic text-fg-muted">{room.subtitle}</p>}
+        <p className="mt-2 text-sm leading-relaxed text-fg-primary">{room.description}</p>
       </div>
 
       {/* Exits */}
@@ -787,19 +797,19 @@ function RoomDetail({
           <ul className="space-y-1">
             {room.exits.map((e) => (
               <li key={e.direction} className="flex items-center gap-2 text-sm">
-                <span className="w-10 shrink-0 font-semibold text-gray-400">{DIR_LABEL[e.direction] ?? e.direction}</span>
+                <span className="w-10 shrink-0 font-semibold text-fg-secondary">{DIR_LABEL[e.direction] ?? e.direction}</span>
                 {hasNode(e.to) ? (
-                  <button onClick={() => onPick(e.to)} className="font-mono text-indigo-300 hover:text-indigo-200 hover:underline">
+                  <button onClick={() => onPick(e.to)} className="font-mono text-accent-hover/80 hover:text-accent-hover hover:underline">
                     #{e.to}
                   </button>
                 ) : (
-                  <span className="font-mono text-gray-400">#{e.to}</span>
+                  <span className="font-mono text-fg-secondary">#{e.to}</span>
                 )}
                 <span className="flex items-center gap-1">
-                  {e.hidden && <Tag color="#c084fc" icon={Eye}>hidden</Tag>}
-                  {e.lever && <Tag color="#fbbf24" icon={Zap}>lever</Tag>}
-                  {e.gated && !e.hidden && !e.lever && <Tag color="#f87171" icon={Lock}>gated</Tag>}
-                  {e.oneWay && <Tag color="#9ca3af">one-way</Tag>}
+                  {e.hidden && <Tag color="var(--mood-arcane)" icon={Eye}>hidden</Tag>}
+                  {e.lever && <Tag color="var(--mood-treasure)" icon={Zap}>lever</Tag>}
+                  {e.gated && !e.hidden && !e.lever && <Tag color="var(--status-error)" icon={Lock}>gated</Tag>}
+                  {e.oneWay && <Tag color="var(--fg-secondary)">one-way</Tag>}
                 </span>
               </li>
             ))}
@@ -813,12 +823,12 @@ function RoomDetail({
           <Empty>No enemies spawn here.</Empty>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-fg-secondary">
               {room.enemies.mode === 'static' ? (
-                <span className="font-semibold text-red-300">Static</span>
+                <span className="font-semibold text-status-error">Static</span>
               ) : (
                 <>
-                  <span className="font-semibold text-amber-300">Probabilistic</span> —{' '}
+                  <span className="font-semibold text-resource-gold">Probabilistic</span> —{' '}
                   {room.enemies.spawnChancePct}% spawn chance per turn action
                 </>
               )}
@@ -827,14 +837,14 @@ function RoomDetail({
               {room.enemies.enemies.map((en) => (
                 <li key={en.slug} className="flex items-center gap-2 text-sm">
                   {en.icon && <Icon name={en.icon} size={18} />}
-                  <span className="text-gray-200">{en.name}</span>
-                  {en.level != null && <span className="text-xs text-gray-500">Lv {en.level}</span>}
-                  {en.chancePct != null && <span className="ml-auto text-xs font-semibold text-amber-300">{en.chancePct}%</span>}
+                  <span className="text-fg-bright">{en.name}</span>
+                  {en.level != null && <span className="text-xs text-fg-muted">Lv {en.level}</span>}
+                  {en.chancePct != null && <span className="ml-auto text-xs font-semibold text-resource-gold">{en.chancePct}%</span>}
                 </li>
               ))}
             </ul>
             {room.enemies.mode === 'probabilistic' && room.enemies.enemies.length > 1 && (
-              <p className="text-[10px] text-gray-500">Percentages are weighted shares of a successful spawn.</p>
+              <p className="text-[10px] text-fg-muted">Percentages are weighted shares of a successful spawn.</p>
             )}
           </div>
         )}
@@ -849,13 +859,13 @@ function RoomDetail({
             {room.npcs.map((npc) => (
               <li key={npc.name} className="flex items-center gap-2 text-sm">
                 {npc.icon && <Icon name={npc.icon} size={18} />}
-                <span className="text-gray-200">{npc.name}</span>
+                <span className="text-fg-bright">{npc.name}</span>
                 {npc.type === 'quest-giver' && (
-                  <span className="rounded bg-indigo-600/30 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-indigo-300">
+                  <span className="rounded bg-accent/30 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent-hover">
                     {npc.questCount} quest{npc.questCount === 1 ? '' : 's'}
                   </span>
                 )}
-                {npc.type && npc.type !== 'quest-giver' && <span className="text-xs text-gray-500">{npc.type}</span>}
+                {npc.type && npc.type !== 'quest-giver' && <span className="text-xs text-fg-muted">{npc.type}</span>}
               </li>
             ))}
           </ul>
@@ -871,9 +881,9 @@ function RoomDetail({
             {room.items.map((it) => (
               <li key={it.slug} className="flex items-center gap-2 text-sm">
                 <Icon name={it.icon} size={18} />
-                <span className="text-gray-200">{it.name}</span>
-                {it.quantity > 1 && <span className="text-xs text-gray-500">×{it.quantity}</span>}
-                {it.autoRespawn && <span className="ml-auto text-[10px] font-semibold uppercase text-emerald-400">respawns</span>}
+                <span className="text-fg-bright">{it.name}</span>
+                {it.quantity > 1 && <span className="text-xs text-fg-muted">×{it.quantity}</span>}
+                {it.autoRespawn && <span className="ml-auto text-[10px] font-semibold uppercase text-status-success">respawns</span>}
               </li>
             ))}
           </ul>
@@ -889,10 +899,10 @@ function RoomDetail({
             {room.actions.map((a) => (
               <li key={a.name} className="text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-200">{a.name}</span>
-                  <span className="rounded border border-gray-700 px-1 py-0.5 text-[9px] uppercase tracking-wide text-gray-400">{a.kind}</span>
+                  <span className="font-semibold text-fg-bright">{a.name}</span>
+                  <span className="rounded border border-line-subtle px-1 py-0.5 text-[9px] uppercase tracking-wide text-fg-secondary">{a.kind}</span>
                 </div>
-                {a.detail && <p className="mt-0.5 text-xs text-gray-500">{a.detail}</p>}
+                {a.detail && <p className="mt-0.5 text-xs text-fg-muted">{a.detail}</p>}
               </li>
             ))}
           </ul>
@@ -907,10 +917,10 @@ function RoomDetail({
           <ul className="space-y-1.5">
             {room.secrets.map((s, i) => (
               <li key={i} className="flex gap-2 text-xs">
-                {s.kind === 'reveal' && <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0 text-purple-400" />}
-                {s.kind === 'lever' && <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />}
-                {s.kind === 'gate' && <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-400" />}
-                <span className="text-gray-400">{s.text}</span>
+                {s.kind === 'reveal' && <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0 text-stat-mag" />}
+                {s.kind === 'lever' && <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-resource-gold" />}
+                {s.kind === 'gate' && <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-status-error" />}
+                <span className="text-fg-secondary">{s.text}</span>
               </li>
             ))}
           </ul>
@@ -924,7 +934,7 @@ function RoomDetail({
 function Section({ icon: IconC, title, children }: { icon: typeof Zap; title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h3 className="mb-2 flex items-center gap-1.5 border-b border-gray-800 pb-1 text-xs font-bold uppercase tracking-wide text-gray-400">
+      <h3 className="mb-2 flex items-center gap-1.5 border-b border-line-subtle pb-1 text-xs font-bold uppercase tracking-wide text-fg-secondary">
         <IconC className="h-3.5 w-3.5" />
         {title}
       </h3>
@@ -933,18 +943,18 @@ function Section({ icon: IconC, title, children }: { icon: typeof Zap; title: st
   )
 }
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs italic text-gray-600">{children}</p>
+  return <p className="text-xs italic text-fg-disabled">{children}</p>
 }
 function Badge({ color, text }: { color: string; text: string }) {
   return (
-    <span className="rounded px-1.5 py-0.5 font-mono font-semibold text-gray-300" style={{ backgroundColor: color }}>
+    <span className="rounded px-1.5 py-0.5 font-mono font-semibold text-fg-primary" style={{ backgroundColor: color }}>
       {text}
     </span>
   )
 }
 function FeatureChip({ icon: IconC, label }: { icon: typeof Flame; label: string }) {
   return (
-    <span className="flex items-center gap-1 rounded border border-gray-700 bg-gray-800/60 px-1.5 py-0.5 text-gray-300">
+    <span className="flex items-center gap-1 rounded border border-line-subtle bg-surface-raised/60 px-1.5 py-0.5 text-fg-primary">
       <IconC className="h-3 w-3" />
       {label}
     </span>

@@ -116,24 +116,24 @@ function getRoomActionOverrides(playerId, roomId) {
     const pulled = isLeverPulled(playerId, '012d-lever')
     return {
       'pull lever': pulled
-        ? { className: 'bg-green-700/80 hover:bg-green-700', icon: 'lever-down' }
-        : { className: 'bg-yellow-600/80 hover:bg-yellow-600', icon: 'lever-up' },
+        ? { className: 'bg-status-success/80 hover:bg-status-success', icon: 'lever-down' }
+        : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
     }
   }
   if (roomId === '115h') {
     const pulled = isLeverPulled(playerId, KOBOLD_SWITCH)
     return {
       'flip lever': pulled
-        ? { className: 'bg-green-700/80 hover:bg-green-700', icon: 'lever-down' }
-        : { className: 'bg-yellow-600/80 hover:bg-yellow-600', icon: 'lever-up' },
+        ? { className: 'bg-status-success/80 hover:bg-status-success', icon: 'lever-down' }
+        : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
     }
   }
   if (roomId === '325') {
     const pulled = isLeverPulled(playerId, GROTTO_SWITCH)
     return {
       'flip switch': pulled
-        ? { className: 'bg-green-700/80 hover:bg-green-700', icon: 'lever-down' }
-        : { className: 'bg-yellow-600/80 hover:bg-yellow-600', icon: 'lever-up' },
+        ? { className: 'bg-status-success/80 hover:bg-status-success', icon: 'lever-down' }
+        : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
     }
   }
   return null

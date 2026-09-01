@@ -338,7 +338,7 @@ export default function TabContainer({
   return (
     <div className={`flex-1 flex flex-col min-h-0 ${containerClassName}`}>
       {/* Tab Navigation */}
-      <div ref={headerRef} className={`relative z-10 hidden md:flex gap-2 ${defaultHeaderPadding} bg-gray-900/95 backdrop-blur-sm flex-shrink-0 flex-wrap justify-between items-center ${headerClassName}`}>
+      <div ref={headerRef} className={`relative z-10 hidden md:flex gap-2 ${defaultHeaderPadding} bg-surface-panel/95 backdrop-blur-sm flex-shrink-0 flex-wrap justify-between items-center ${headerClassName}`}>
         {/* Left side elements */}
         {leftElement && (
           <div ref={leftElementRef} className="flex items-center gap-2 flex-shrink-0">
@@ -394,7 +394,7 @@ export default function TabContainer({
                   <NotificationBadge value={tab.badge} className="absolute -top-1 -right-1" />
                 </button>
                 {isFirstExploreTab && (
-                  <span className="w-1 h-1 rounded-full bg-gray-600 flex-shrink-0" aria-hidden="true" />
+                  <span className="w-1 h-1 rounded-full bg-surface-selected flex-shrink-0" aria-hidden="true" />
                 )}
               </React.Fragment>
             )
@@ -412,10 +412,10 @@ export default function TabContainer({
                   }
                 }}
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className={`w-full ${buttonPadding} h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-gray-600 hover:border-gray-500 ${
+                className={`w-full ${buttonPadding} h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-line-strong/80 hover:border-line-strong ${
                   dropdownTabs.some(tab => activeTab === tab.id)
-                    ? 'bg-gray-500/10 hover:bg-gray-500/20 text-gray-300'
-                    : 'bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
+                    ? 'bg-surface-selected/10 hover:bg-surface-selected/20 text-fg-primary'
+                    : 'bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary'
                 }`}
               >
                 <ChevronDown 
@@ -426,7 +426,7 @@ export default function TabContainer({
               
               {/* Dropdown menu */}
               {isDropdownOpen && (
-                <div className="absolute top-full right-0 mt-2 bg-gray-900/95 backdrop-blur-sm border border-gray-700/50 rounded-lg shadow-xl z-50 min-w-[140px] py-1">
+                <div className="absolute top-full right-0 mt-2 bg-surface-panel/95 backdrop-blur-sm border border-line-subtle/50 rounded-lg shadow-xl z-50 min-w-[140px] py-1">
                   {dropdownTabs.map((tab) => {
                     const isActive = activeTab === tab.id
                     return (
@@ -436,7 +436,7 @@ export default function TabContainer({
                         className={`w-full ${buttonPadding} text-sm font-medium transition-all duration-200 flex items-center gap-2 rounded-lg first:rounded-t-lg last:rounded-b-lg ${
                           isActive
                             ? getButtonColorClasses(tab, true)
-                            : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
+                            : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-raised/30'
                         }`}
                       >
                         {tab.icon && (
@@ -514,7 +514,7 @@ export default function TabContainer({
           {onClose && (
             <button
               onClick={onClose}
-              className={`${closeButtonPlacement === 'separate' ? breakpointClass : ''} p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50`}
+              className={`${closeButtonPlacement === 'separate' ? breakpointClass : ''} p-2 text-fg-secondary hover:text-fg-bright transition-colors duration-200 rounded-lg hover:bg-surface-raised/50`}
               title="Close"
             >
               <Icon name="x" size={20} />

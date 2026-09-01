@@ -1,3 +1,21 @@
+/**
+ * Tab identity colours.
+ *
+ * A tab's colour distinguishes it; it does not mean anything. That makes this
+ * the textbook use for the decorative `hue.*` roles rather than a semantic one —
+ * the Quests tab is "the gold one", not "the reward one", and nothing should
+ * break if a theme decides gold and amber swap places.
+ *
+ * The `TabColor` names are the historical vocabulary from when these were
+ * Tailwind palettes. They are kept because tab configs across the app already
+ * use them; each now resolves to a theme hue instead of a fixed colour.
+ *
+ * Every class string below is written out in full rather than assembled from a
+ * hue name. Tailwind discovers utilities by scanning source text, so a class
+ * built as `text-${hue}` is never generated — the same defect that made the old
+ * `text-${room.iconColor}` room colours silently fail.
+ */
+
 export type TabColor =
   | 'blue'
   | 'green'
@@ -9,50 +27,50 @@ export type TabColor =
   | 'violet'
   | 'pink'
 
-export function getTabIconColorClass(color: TabColor | string | undefined, isActive: boolean): string {
-  const c = color || 'blue'
-  if (isActive) {
-    switch (c) {
-      case 'blue': return 'text-blue-300'
-      case 'green': return 'text-green-300'
-      case 'purple': return 'text-purple-300'
-      case 'gold': return 'text-yellow-300'
-      case 'red': return 'text-red-300'
-      case 'sky': return 'text-sky-300'
-      case 'gray': return 'text-gray-300'
-      case 'violet': return 'text-violet-300'
-      case 'pink': return 'text-pink-300'
-      default: return 'text-blue-300'
-    }
-  }
-  switch (c) {
-    case 'blue': return 'text-blue-400'
-    case 'green': return 'text-green-400'
-    case 'purple': return 'text-purple-400'
-    case 'gold': return 'text-yellow-400'
-    case 'red': return 'text-red-400'
-    case 'sky': return 'text-sky-400'
-    case 'gray': return 'text-gray-400'
-    case 'violet': return 'text-violet-400'
-    case 'pink': return 'text-pink-400'
-    default: return 'text-blue-400'
-  }
+/** Icon colour, active and resting. Resting is the same hue held back. */
+const ICON_CLASSES: Record<TabColor, { active: string; resting: string }> = {
+  blue: { active: 'text-hue-blue', resting: 'text-hue-blue/70' },
+  green: { active: 'text-hue-green', resting: 'text-hue-green/70' },
+  purple: { active: 'text-hue-purple', resting: 'text-hue-purple/70' },
+  gold: { active: 'text-hue-gold', resting: 'text-hue-gold/70' },
+  red: { active: 'text-hue-red', resting: 'text-hue-red/70' },
+  sky: { active: 'text-hue-sky', resting: 'text-hue-sky/70' },
+  gray: { active: 'text-hue-gray', resting: 'text-hue-gray/70' },
+  violet: { active: 'text-hue-violet', resting: 'text-hue-violet/70' },
+  pink: { active: 'text-hue-pink', resting: 'text-hue-pink/70' },
 }
 
-export function getTabButtonColorClasses(color: TabColor | string | undefined, isActive: boolean): string {
-  const c = color || 'blue'
-  if (isActive) {
-    switch (c) {
-      case 'blue': return 'border-1 border-blue-500 hover:border-blue-400 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300'
-      case 'green': return 'border-1 border-green-500 hover:border-green-400 bg-green-500/10 hover:bg-green-500/20 text-green-300'
-      case 'purple': return 'border-1 border-purple-500 hover:border-purple-400 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300'
-      case 'gold': return 'border-1 border-amber-500 hover:border-amber-400 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300'
-      case 'red': return 'border-1 border-red-500 hover:border-red-400 bg-red-500/10 hover:bg-red-500/20 text-red-300'
-      case 'sky': return 'border-1 border-sky-500 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300'
-      case 'violet': return 'border-1 border-violet-500 hover:border-violet-400 bg-violet-500/10 hover:bg-violet-500/20 text-violet-300'
-      case 'pink': return 'border-1 border-pink-500 hover:border-pink-400 bg-pink-500/10 hover:bg-pink-500/20 text-pink-300'
-      default: return 'border-1 border-indigo-500 hover:border-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300'
-    }
-  }
-  return 'border border-gray-700/50 hover:border-gray-600 bg-transparent hover:bg-gray-800/40 text-gray-400 hover:text-gray-300'
+/** Border, fill and text for an active tab button. */
+const ACTIVE_BUTTON_CLASSES: Record<TabColor, string> = {
+  blue: 'border-1 border-hue-blue/80 hover:border-hue-blue bg-hue-blue/10 hover:bg-hue-blue/20 text-hue-blue',
+  green: 'border-1 border-hue-green/80 hover:border-hue-green bg-hue-green/10 hover:bg-hue-green/20 text-hue-green',
+  purple: 'border-1 border-hue-purple/80 hover:border-hue-purple bg-hue-purple/10 hover:bg-hue-purple/20 text-hue-purple',
+  gold: 'border-1 border-hue-gold/80 hover:border-hue-gold bg-hue-gold/10 hover:bg-hue-gold/20 text-hue-gold',
+  red: 'border-1 border-hue-red/80 hover:border-hue-red bg-hue-red/10 hover:bg-hue-red/20 text-hue-red',
+  sky: 'border-1 border-hue-sky/80 hover:border-hue-sky bg-hue-sky/10 hover:bg-hue-sky/20 text-hue-sky',
+  gray: 'border-1 border-hue-gray/80 hover:border-hue-gray bg-hue-gray/10 hover:bg-hue-gray/20 text-hue-gray',
+  violet: 'border-1 border-hue-violet/80 hover:border-hue-violet bg-hue-violet/10 hover:bg-hue-violet/20 text-hue-violet',
+  pink: 'border-1 border-hue-pink/80 hover:border-hue-pink bg-hue-pink/10 hover:bg-hue-pink/20 text-hue-pink',
+}
+
+const RESTING_BUTTON_CLASSES =
+  'border border-line-subtle hover:border-line-strong bg-transparent hover:bg-surface-hover text-fg-secondary hover:text-fg-primary'
+
+function normalize(color: TabColor | string | undefined): TabColor {
+  return color && color in ICON_CLASSES ? (color as TabColor) : 'blue'
+}
+
+export function getTabIconColorClass(
+  color: TabColor | string | undefined,
+  isActive: boolean
+): string {
+  const entry = ICON_CLASSES[normalize(color)]
+  return isActive ? entry.active : entry.resting
+}
+
+export function getTabButtonColorClasses(
+  color: TabColor | string | undefined,
+  isActive: boolean
+): string {
+  return isActive ? ACTIVE_BUTTON_CLASSES[normalize(color)] : RESTING_BUTTON_CLASSES
 }

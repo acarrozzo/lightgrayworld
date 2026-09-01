@@ -352,7 +352,7 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
     <div className="flex flex-col h-full min-h-0">
       {/* Map Selector Buttons */}
       {availableMaps && availableMaps.length > 1 && (
-        <div className="flex gap-2 border-b border-gray-700/50 pl-4 pr-12 md:pr-4 py-2 flex-shrink-0 relative">
+        <div className="flex gap-2 border-b border-line-subtle/50 pl-4 pr-12 md:pr-4 py-2 flex-shrink-0 relative">
             <div ref={buttonsContainerRef} className="flex-1 flex items-center justify-start gap-2 flex-nowrap">
               {/* Render visible buttons */}
               {visibleButtons.map((map) => {
@@ -393,8 +393,8 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     className={`px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow ${
                       dropdownButtons.some(map => currentMapId === map.id)
-                        ? 'border-1 border-gray-500 hover:border-gray-400 bg-gray-500/10 hover:bg-gray-500/20 text-gray-300'
-                        : 'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
+                        ? 'border-1 border-line-strong/80 hover:border-line-strong bg-surface-selected/10 hover:bg-surface-selected/20 text-fg-primary'
+                        : 'border-1 border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary'
                     }`}
                   >
                     <ChevronDown 
@@ -405,7 +405,7 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
                   
                   {/* Dropdown menu */}
                   {isDropdownOpen && (
-                    <div className="absolute top-full right-0 mt-2 bg-gray-900/95 backdrop-blur-sm border border-gray-700/50 rounded-lg shadow-xl z-50 min-w-[140px] py-1">
+                    <div className="absolute top-full right-0 mt-2 bg-surface-panel/95 backdrop-blur-sm border border-line-subtle/50 rounded-lg shadow-xl z-50 min-w-[140px] py-1">
                       {dropdownButtons.map((map) => {
                         const isActive = currentMapId === map.id
                         return (
@@ -417,8 +417,8 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
                             }}
                             className={`w-full px-2.5 py-1.5 text-sm font-medium transition-all duration-200 flex items-center gap-2 rounded-lg first:rounded-t-lg last:rounded-b-lg ${
                               isActive
-                                ? 'border-1 border-sky-500 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 text-sky-300'
-                                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
+                                ? 'border-1 border-status-info/80 hover:border-status-info bg-status-info/10 hover:bg-status-info/20 text-status-info'
+                                : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-raised/30'
                             }`}
                           >
                             <span className="flex-1 text-left">{map.title}</span>
@@ -461,13 +461,13 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
 
       {/* Map Content */}
       <div
-        className={`flex-1 bg-gray-950/40 px-4 py-4 ${isZoomed ? 'overflow-hidden' : 'overflow-auto'} min-h-0 relative`}
+        className={`flex-1 bg-surface-canvas/40 px-4 py-4 ${isZoomed ? 'overflow-hidden' : 'overflow-auto'} min-h-0 relative`}
       >
         {/* Zoom Button - Absolutely positioned in top right */}
         <button
           type="button"
           onClick={handleToggleZoom}
-          className="absolute top-4 right-4 z-10 rounded bg-gray-800 px-3 py-1.5 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 shadow-lg"
+          className="absolute top-4 right-4 z-10 rounded bg-surface-raised px-3 py-1.5 text-sm font-medium text-fg-bright transition-colors hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas shadow-lg"
         >
           {isZoomed ? 'Reset View' : 'Zoom In'}
         </button>
@@ -520,8 +520,8 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
                 role="img"
                 aria-label="You are here"
               >
-                <span className="absolute inset-0 -m-2 rounded-full bg-amber-400/40 animate-ping" aria-hidden="true" />
-                <span className="block h-3 w-3 rounded-full border-2 border-gray-950 bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.5)]" aria-hidden="true" />
+                <span className="absolute inset-0 -m-2 rounded-full bg-resource-gold/40 animate-ping" aria-hidden="true" />
+                <span className="block h-3 w-3 rounded-full border-2 border-line-subtle bg-resource-gold shadow-[0_0_0_2px_color-mix(in_srgb,var(--resource-gold)_50%,transparent)]" aria-hidden="true" />
               </div>
             )}
           </div>

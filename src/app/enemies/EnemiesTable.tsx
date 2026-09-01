@@ -93,12 +93,12 @@ export default function EnemiesTable({
     <div>
       {/* Controls */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm text-gray-400">
+        <label className="flex items-center gap-2 text-sm text-fg-secondary">
           Area
           <select
             value={area}
             onChange={(e) => setArea(e.target.value)}
-            className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-600"
+            className="rounded border border-line-subtle bg-surface-panel px-2 py-1 text-sm text-fg-bright focus:outline-none focus:ring-1 focus:ring-line-strong"
           >
             <option value="all">All areas</option>
             {zones.map((z) => (
@@ -109,17 +109,17 @@ export default function EnemiesTable({
           </select>
         </label>
 
-        <label className="flex items-center gap-2 text-sm text-gray-400">
+        <label className="flex items-center gap-2 text-sm text-fg-secondary">
           <input
             type="checkbox"
             checked={grouped}
             onChange={(e) => setGrouped(e.target.checked)}
-            className="accent-gray-500"
+            className="accent-fg-muted"
           />
           Group by area
         </label>
 
-        <span className="ml-auto text-xs text-gray-500">
+        <span className="ml-auto text-xs text-fg-muted">
           {sorted.length} shown
         </span>
       </div>
@@ -127,12 +127,12 @@ export default function EnemiesTable({
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
         {sorted.length === 0 && (
-          <p className="py-6 text-center text-gray-500 text-sm">No enemies match this filter.</p>
+          <p className="py-6 text-center text-fg-muted text-sm">No enemies match this filter.</p>
         )}
         {groups
           ? groups.map((g) => (
               <div key={g.zone}>
-                <p className="px-1 py-2 text-xs font-semibold uppercase tracking-wide text-gray-400">{g.zone}</p>
+                <p className="px-1 py-2 text-xs font-semibold uppercase tracking-wide text-fg-secondary">{g.zone}</p>
                 {g.rows.map((r) => <EnemyCard key={r.slug} r={r} />)}
               </div>
             ))
@@ -140,13 +140,13 @@ export default function EnemiesTable({
       </div>
 
       {/* Desktop table */}
-      <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-800">
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-line-subtle">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-gray-900 text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
               <th
                 onClick={() => clickHeader('source')}
-                className="cursor-pointer select-none px-3 py-2 font-medium hover:text-gray-300"
+                className="cursor-pointer select-none px-3 py-2 font-medium hover:text-fg-primary"
               >
                 Enemy
                 <SortArrow active={sortKey === 'source'} dir={sortDir} />
@@ -155,7 +155,7 @@ export default function EnemiesTable({
                 <th
                   key={col.key}
                   onClick={() => clickHeader(col.key)}
-                  className="cursor-pointer select-none px-3 py-2 text-right font-medium hover:text-gray-300"
+                  className="cursor-pointer select-none px-3 py-2 text-right font-medium hover:text-fg-primary"
                 >
                   {col.label}
                   <SortArrow active={sortKey === col.key} dir={sortDir} />
@@ -174,7 +174,7 @@ export default function EnemiesTable({
               : sorted.map((r) => <EnemyTr key={r.slug} r={r} />)}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-3 py-6 text-center text-gray-500">
+                <td colSpan={10} className="px-3 py-6 text-center text-fg-muted">
                   No enemies match this filter.
                 </td>
               </tr>
@@ -189,10 +189,10 @@ export default function EnemiesTable({
 function GroupBlock({ zone, rows }: { zone: string; rows: EnemyRow[] }) {
   return (
     <>
-      <tr className="border-t border-gray-800 bg-gray-900/70">
+      <tr className="border-t border-line-subtle bg-surface-panel/70">
         <td
           colSpan={10}
-          className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400"
+          className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-fg-secondary"
         >
           {zone}
         </td>
@@ -209,52 +209,52 @@ function EnemyTr({ r }: { r: EnemyRow }) {
   const firstDrops = r.drops.filter((d) => d.tag === 'first-kill')
   const chanceDrops = r.drops.filter((d) => !d.tag)
   return (
-    <tr className="border-t border-gray-800 odd:bg-gray-900/30">
+    <tr className="border-t border-line-subtle odd:bg-surface-panel/30">
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           <Icon name={r.icon} size={20} />
-          <span className="font-medium text-gray-100">{r.name}</span>
+          <span className="font-medium text-fg-bright">{r.name}</span>
           {r.isFlying && <Tag>flying</Tag>}
           {r.isFriendly && <Tag>friendly</Tag>}
           {r.specials.map((s) => <Tag key={s}>{s}</Tag>)}
         </div>
       </td>
-      <td className="px-3 py-2 text-right text-yellow-400">{r.level}</td>
-      <td className="px-3 py-2 text-right text-red-400">{r.hp}</td>
-      <td className="px-3 py-2 text-right text-gray-300">{r.att}</td>
-      <td className="px-3 py-2 text-right text-gray-300">{r.def}</td>
-      <td className="px-3 py-2 text-right text-green-400">{r.xp}</td>
-      <td className="px-3 py-2 text-right text-gray-400">
+      <td className="px-3 py-2 text-right text-status-warning">{r.level}</td>
+      <td className="px-3 py-2 text-right text-status-error">{r.hp}</td>
+      <td className="px-3 py-2 text-right text-fg-primary">{r.att}</td>
+      <td className="px-3 py-2 text-right text-fg-primary">{r.def}</td>
+      <td className="px-3 py-2 text-right text-status-success">{r.xp}</td>
+      <td className="px-3 py-2 text-right text-fg-secondary">
         {r.goldMin}–{r.goldMax}
       </td>
-      <td className="px-3 py-2 text-green-400">
+      <td className="px-3 py-2 text-status-success">
         {firstDrops.length === 0
-          ? <span className="text-gray-600">—</span>
+          ? <span className="text-fg-disabled">—</span>
           : firstDrops.map((d, i) => (
               <span key={i}>
-                {i > 0 && <span className="text-gray-600">, </span>}
+                {i > 0 && <span className="text-fg-disabled">, </span>}
                 {d.name}
               </span>
             ))}
       </td>
-      <td className="px-3 py-2 text-blue-400">
+      <td className="px-3 py-2 text-resource-mp">
         {alwaysDrops.length === 0
-          ? <span className="text-gray-600">—</span>
+          ? <span className="text-fg-disabled">—</span>
           : alwaysDrops.map((d, i) => (
               <span key={i}>
-                {i > 0 && <span className="text-gray-600">, </span>}
+                {i > 0 && <span className="text-fg-disabled">, </span>}
                 {d.name}
               </span>
             ))}
       </td>
-      <td className="px-3 py-2 text-gray-400">
+      <td className="px-3 py-2 text-fg-secondary">
         {chanceDrops.length === 0
           ? '—'
           : chanceDrops.map((d, i) => (
               <span key={i}>
-                {i > 0 && <span className="text-gray-600">, </span>}
-                <span className="text-gray-300">{d.name}</span>
-                <span className="text-gray-500"> ({d.chance}%)</span>
+                {i > 0 && <span className="text-fg-disabled">, </span>}
+                <span className="text-fg-primary">{d.name}</span>
+                <span className="text-fg-muted"> ({d.chance}%)</span>
               </span>
             ))}
       </td>
@@ -264,40 +264,40 @@ function EnemyTr({ r }: { r: EnemyRow }) {
 
 function EnemyCard({ r }: { r: EnemyRow }) {
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900/30 px-3 py-2.5 text-sm">
+    <div className="rounded-lg border border-line-subtle bg-surface-panel/30 px-3 py-2.5 text-sm">
       <div className="flex items-center gap-2 mb-2">
         <Icon name={r.icon} size={20} />
-        <span className="font-medium text-gray-100">{r.name}</span>
+        <span className="font-medium text-fg-bright">{r.name}</span>
         {r.isFlying && <Tag>flying</Tag>}
         {r.isFriendly && <Tag>friendly</Tag>}
         {r.specials.map((s) => <Tag key={s}>{s}</Tag>)}
       </div>
       <div className="grid grid-cols-6 gap-1 text-center text-xs mb-2">
         {[
-          { label: 'Lvl', value: r.level, color: 'text-yellow-400' },
-          { label: 'HP',  value: r.hp,    color: 'text-red-400' },
-          { label: 'ATT', value: r.att,   color: 'text-gray-300' },
-          { label: 'DEF', value: r.def,   color: 'text-gray-300' },
-          { label: 'XP',  value: r.xp,    color: 'text-green-400' },
-          { label: 'Gold', value: `${r.goldMin}–${r.goldMax}`, color: 'text-gray-400' },
+          { label: 'Lvl', value: r.level, color: 'text-status-warning' },
+          { label: 'HP',  value: r.hp,    color: 'text-status-error' },
+          { label: 'ATT', value: r.att,   color: 'text-fg-primary' },
+          { label: 'DEF', value: r.def,   color: 'text-fg-primary' },
+          { label: 'XP',  value: r.xp,    color: 'text-status-success' },
+          { label: 'Gold', value: `${r.goldMin}–${r.goldMax}`, color: 'text-fg-secondary' },
         ].map(({ label, value, color }) => (
           <div key={label} className="flex flex-col gap-0.5">
-            <span className="text-gray-600 uppercase tracking-wide" style={{ fontSize: '10px' }}>{label}</span>
+            <span className="text-fg-disabled uppercase tracking-wide" style={{ fontSize: '10px' }}>{label}</span>
             <span className={color}>{value}</span>
           </div>
         ))}
       </div>
       {r.drops.length > 0 && (
-        <div className="text-xs text-gray-400 flex flex-wrap gap-x-2 gap-y-0.5">
+        <div className="text-xs text-fg-secondary flex flex-wrap gap-x-2 gap-y-0.5">
           {r.drops.map((d, i) => {
             const [label, nameColor] =
-              d.tag === 'always'     ? ['always', 'text-blue-400'] :
-              d.tag === 'first-kill' ? ['1st',    'text-green-400'] :
-                                       [`${d.chance}%`, 'text-gray-300']
+              d.tag === 'always'     ? ['always', 'text-resource-mp'] :
+              d.tag === 'first-kill' ? ['1st',    'text-status-success'] :
+                                       [`${d.chance}%`, 'text-fg-primary']
             return (
               <span key={i}>
                 <span className={nameColor}>{d.name}</span>
-                <span className="text-gray-500"> ({label})</span>
+                <span className="text-fg-muted"> ({label})</span>
               </span>
             )
           })}
@@ -309,7 +309,7 @@ function EnemyCard({ r }: { r: EnemyRow }) {
 
 function SortArrow({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
   return (
-    <span className={`ml-1 text-[10px] ${active ? 'text-gray-300' : 'text-gray-700'}`}>
+    <span className={`ml-1 text-[10px] ${active ? 'text-fg-primary' : 'text-fg-disabled'}`}>
       {active ? (dir === 'asc' ? '▲' : '▼') : '↕'}
     </span>
   )
@@ -317,7 +317,7 @@ function SortArrow({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
 
 function Tag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded border border-gray-700 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">
+    <span className="rounded border border-line-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fg-muted">
       {children}
     </span>
   )

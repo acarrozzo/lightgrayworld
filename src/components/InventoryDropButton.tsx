@@ -109,7 +109,7 @@ export default function InventoryDropButton({
           <button
             onClick={handleMainButtonClick}
             disabled={disabled}
-            className="px-1.5 py-0.5 text-xs bg-gray-600/70 hover:bg-gray-600 rounded-l text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+            className="px-1.5 py-0.5 text-xs bg-surface-selected/70 hover:bg-surface-selected rounded-l text-fg-bright disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
           >
             Drop
           </button>
@@ -119,8 +119,8 @@ export default function InventoryDropButton({
         <button
           onClick={handleDropdownToggle}
           disabled={disabled}
-          className={`px-1 py-0.5 bg-gray-600/70 hover:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-            cannotDrop ? 'rounded' : 'rounded-r border-l border-gray-500/30'
+          className={`px-1 py-0.5 bg-surface-selected/70 hover:bg-surface-selected text-fg-bright flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            cannotDrop ? 'rounded' : 'rounded-r border-l border-line-strong/30'
           }`}
           aria-label="More options"
         >
@@ -132,7 +132,7 @@ export default function InventoryDropButton({
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 top-full mt-1 z-50 min-w-[140px] bg-gray-800 rounded-md shadow-lg border border-gray-700 overflow-hidden"
+          className="absolute right-0 top-full mt-1 z-50 min-w-[140px] bg-surface-raised rounded-md shadow-lg border border-line-subtle overflow-hidden"
         >
           <div className="py-1">
             {/* Drop options - only show if item can be dropped */}
@@ -141,7 +141,7 @@ export default function InventoryDropButton({
                 <button
                   onClick={handleMainButtonClick}
                   disabled={disabled}
-                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2 text-left text-sm text-fg-bright hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Drop 1
                 </button>
@@ -151,41 +151,41 @@ export default function InventoryDropButton({
                     <button
                       onClick={handleDropHalf}
                       disabled={disabled}
-                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-3 py-2 text-left text-sm text-fg-bright hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Drop half
                     </button>
                     <button
                       onClick={handleDropAll}
                       disabled={disabled}
-                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-3 py-2 text-left text-sm text-fg-bright hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Drop all
                     </button>
                   </>
                 )}
                 
-                <div className="border-t border-gray-700 my-1" />
+                <div className="border-t border-line-subtle my-1" />
               </>
             )}
             
             <button
               onClick={handleExamine}
               disabled={disabled}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 text-left text-sm text-fg-bright hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Examine {item.template.name}
             </button>
             
             {itemActions.length > 0 && (
               <>
-                <div className="border-t border-gray-700 my-1" />
+                <div className="border-t border-line-subtle my-1" />
                 {itemActions.map((itemAction) => (
                   <button
                     key={itemAction.action}
                     onClick={() => handleItemAction(itemAction.action)}
                     disabled={disabled}
-                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-sm text-fg-bright hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {itemAction.icon && (
                       <Icon name={itemAction.icon} size={14} color="current" />

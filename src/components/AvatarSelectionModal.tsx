@@ -42,10 +42,10 @@ function AvatarOption({ avatar, selectedAvatar, selectedColor, onSelect }: Avata
     <button
       type="button"
       onClick={() => onSelect(avatar)}
-      className={`group relative flex flex-col items-center justify-center gap-3 rounded-2xl border bg-gray-900/70 px-4 py-4 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 ${
+      className={`group relative flex flex-col items-center justify-center gap-3 rounded-2xl border bg-surface-panel/70 px-4 py-4 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas ${
         isSelected
-          ? 'border-indigo-500/80 shadow-lg shadow-indigo-500/20'
-          : 'border-gray-800 hover:border-gray-700 hover:bg-gray-900'
+          ? 'border-accent/80 shadow-lg shadow-accent/20'
+          : 'border-line-subtle/80 hover:border-line-subtle hover:bg-surface-panel'
       }`}
     >
       <div className="w-24 h-32 flex items-center justify-center overflow-hidden">
@@ -66,11 +66,11 @@ function AvatarOption({ avatar, selectedAvatar, selectedColor, onSelect }: Avata
         )}
       </div>
       <div className="text-center">
-        <p className={`text-sm font-semibold ${isSelected ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}>
+        <p className={`text-sm font-semibold ${isSelected ? 'text-fg-bright' : 'text-fg-primary group-hover:text-fg-bright'}`}>
           {formatAvatarName(avatar)}
         </p>
         {isSelected && (
-          <p className="text-xs text-indigo-400 uppercase tracking-wide">
+          <p className="text-xs text-accent uppercase tracking-wide">
             Selected
           </p>
         )}
@@ -118,20 +118,20 @@ export default function AvatarSelectionModal({
   return createPortal(
     <div className="fixed inset-0 z-50 p-4 sm:p-6 lg:p-10">
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-surface-sunken/70 backdrop-blur-sm"
         onClick={() => (!isSaving ? onClose() : null)}
       />
-      <div className="relative z-10 h-full w-full bg-gray-900/95 border border-gray-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-8 py-6 border-b border-gray-800/70">
+      <div className="relative z-10 h-full w-full bg-surface-panel/95 border border-line-subtle/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between px-8 py-6 border-b border-line-subtle/70">
           <div>
-            <h3 className="text-2xl font-semibold text-white">Customize Your Avatar</h3>
-            <p className="text-sm text-gray-400 mt-1">
+            <h3 className="text-2xl font-semibold text-fg-bright">Customize Your Avatar</h3>
+            <p className="text-sm text-fg-secondary mt-1">
               Choose a character and color that matches your vibe.
             </p>
           </div>
           <button
             onClick={() => (!isSaving ? onClose() : null)}
-            className="text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-800/70"
+            className="text-fg-secondary hover:text-fg-bright transition-colors p-2 rounded-full hover:bg-surface-raised/70"
             disabled={isSaving}
           >
             <span className="sr-only">Close</span>
@@ -140,19 +140,19 @@ export default function AvatarSelectionModal({
         </div>
 
         <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
-          <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
+          <div className="bg-surface-panel/70 border border-line-subtle rounded-2xl p-6 space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-indigo-300/80 mb-1">Current</p>
-                <h4 className="text-2xl font-semibold text-white">{formatAvatarName(selectedAvatar)}</h4>
+                <p className="text-xs uppercase tracking-[0.4em] text-accent-hover/80 mb-1">Current</p>
+                <h4 className="text-2xl font-semibold text-fg-bright">{formatAvatarName(selectedAvatar)}</h4>
               </div>
-              <div className="text-sm text-gray-300">
-                <p className="uppercase text-gray-400 tracking-widest">Color</p>
-                <p className="font-semibold text-white">{selectedColor}</p>
+              <div className="text-sm text-fg-primary">
+                <p className="uppercase text-fg-secondary tracking-widest">Color</p>
+                <p className="font-semibold text-fg-bright">{selectedColor}</p>
               </div>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-widest text-gray-400 mb-3">Palette</p>
+              <p className="text-xs uppercase tracking-widest text-fg-secondary mb-3">Palette</p>
               <ColorPicker
                 selectedColor={selectedColor}
                 onSelectColor={setSelectedColor}
@@ -160,8 +160,8 @@ export default function AvatarSelectionModal({
             </div>
           </div>
 
-          <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6">
-            <p className="text-xs uppercase tracking-widest text-gray-400 mb-4">Avatars</p>
+          <div className="bg-surface-panel/70 border border-line-subtle rounded-2xl p-6">
+            <p className="text-xs uppercase tracking-widest text-fg-secondary mb-4">Avatars</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {PLAYER_AVATARS.map((avatar) => (
                 <AvatarOption
@@ -176,11 +176,11 @@ export default function AvatarSelectionModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-8 py-6 border-t border-gray-800/70">
+        <div className="flex items-center justify-end gap-3 px-8 py-6 border-t border-line-subtle/70">
           <button
             type="button"
             onClick={() => (!isSaving ? onClose() : null)}
-            className="px-4 py-2 rounded-full text-sm font-semibold text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+            className="px-4 py-2 rounded-full text-sm font-semibold text-fg-primary hover:text-fg-bright hover:bg-surface-raised transition-colors"
             disabled={isSaving}
           >
             Cancel
@@ -189,7 +189,7 @@ export default function AvatarSelectionModal({
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="px-5 py-2 rounded-full text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-5 py-2 rounded-full text-sm font-semibold text-fg-bright bg-accent hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSaving ? 'Saving...' : 'Save Avatar'}
           </button>

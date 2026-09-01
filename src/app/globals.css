@@ -1,13 +1,19 @@
 @import "tailwindcss";
+@import "./generated-themes.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Colour lives in generated-themes.css, which is produced from the typed theme
+ * definitions in src/lib/theme/themes/. Every colour token is registered there
+ * as a Tailwind colour, so `bg-surface-panel`, `text-fg-muted` and
+ * `text-action-attack` are ordinary utilities that re-resolve when the root
+ * element's `data-theme` changes.
+ *
+ * Do not add raw colour values to this file.
+ */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--surface-canvas);
+  --color-foreground: var(--fg-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-active: var(--font-geist-mono);
@@ -25,13 +31,6 @@
   --color-taupe-900: #3e3228;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 html,
 body {
   height: 100%;
@@ -39,8 +38,8 @@ body {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--surface-canvas);
+  color: var(--fg-primary);
   font-family: var(--font-active, var(--font-geist-mono)), 'Courier New', Courier, monospace;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -81,7 +80,7 @@ body.font-mono {
 
 /* Refined focus styles */
 :focus-visible {
-  outline: 2px solid rgb(99 102 241 / 0.6);
+  outline: 2px solid var(--line-focus);
   outline-offset: 2px;
 }
 
@@ -89,7 +88,7 @@ body.font-mono {
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(75 85 99 / 0.4) transparent;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 /* Webkit browsers (Chrome, Safari, Edge) */
@@ -103,14 +102,14 @@ body.font-mono {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: rgb(75 85 99 / 0.35);
+  background: var(--line-subtle);
   border-radius: 9999px;
   border: 1px solid transparent;
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgb(107 114 128 / 0.55);
+  background: var(--line-strong);
   background-clip: padding-box;
 }
 

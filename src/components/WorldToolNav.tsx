@@ -15,11 +15,11 @@ const NAV_ITEMS: { key: string; href: string; label: string; icon: LucideIcon }[
 
 export default function WorldToolNav({ active }: { active: string }) {
   return (
-    <nav className="border-b border-gray-800 bg-gray-900">
+    <nav className="border-b border-line-subtle bg-surface-panel">
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
         <Link
           href="/world-tool"
-          className="text-base font-bold text-gray-100 hover:text-white"
+          className="text-base font-bold text-fg-bright/80 hover:text-fg-bright"
         >
           Light Gray World Tool
         </Link>
@@ -35,8 +35,8 @@ export default function WorldToolNav({ active }: { active: string }) {
                 className={
                   'flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors sm:px-4 ' +
                   (isActive
-                    ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm'
-                    : 'border-gray-700 bg-gray-800/60 text-gray-300 hover:border-gray-600 hover:bg-gray-700/80 hover:text-white')
+                    ? 'border-accent bg-accent text-fg-bright shadow-sm'
+                    : 'border-line-subtle bg-surface-raised/60 text-fg-primary hover:border-line-strong hover:bg-surface-hover/80 hover:text-fg-bright')
                 }
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />

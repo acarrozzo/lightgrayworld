@@ -65,7 +65,7 @@ export default function PlayersPanel({
 }: PlayersPanelProps) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-shrink-0 gap-2 border-b border-gray-700/50 py-2 pl-4 pr-12 md:pr-4">
+      <div className="flex flex-shrink-0 gap-2 border-b border-line-subtle/50 py-2 pl-4 pr-12 md:pr-4">
         <div className="flex flex-1 flex-nowrap items-center justify-start gap-2">
           {SUB_TABS.map((tab) => {
             const showBadge = tab.id === 'dm' && unreadDmCount > 0
@@ -80,7 +80,7 @@ export default function PlayersPanel({
               >
                 {tab.label}
                 {showPartySize && (
-                  <span className="ml-1 text-[10px] text-gray-500">
+                  <span className="ml-1 text-[10px] text-fg-muted">
                     {party.size}/{party.maxSize}
                   </span>
                 )}
@@ -91,7 +91,7 @@ export default function PlayersPanel({
         </div>
         <button
           onClick={onClose}
-          className="hidden rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-800/50 hover:text-white md:block"
+          className="hidden rounded-lg p-1.5 text-fg-secondary transition-colors hover:bg-surface-raised/50 hover:text-fg-bright md:block"
           title="Close"
           aria-label="Close"
         >
@@ -126,7 +126,7 @@ export default function PlayersPanel({
               onMessage={onMessagePlayer}
             />
             {!party && roomPlayers.length <= 1 && (
-              <p className="mt-3 text-xs leading-relaxed text-gray-500">
+              <p className="mt-3 text-xs leading-relaxed text-fg-muted">
                 Parties form between players standing in the same room. Find someone on the
                 Players tab, travel to them, then Follow to join up. Up to six travel together —
                 members are pulled along with the leader.

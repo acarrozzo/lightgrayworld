@@ -191,8 +191,8 @@ export default function RoomDisplay({
 
   if (!room) {
     return (
-      <div className="mt-4 p-4 bg-gray-800 rounded-lg">
-        <div className="text-gray-400">Loading room...</div>
+      <div className="mt-4 p-4 bg-surface-raised rounded-lg">
+        <div className="text-fg-secondary">Loading room...</div>
       </div>
     )
   }
@@ -308,15 +308,15 @@ export default function RoomDisplay({
       {showHeader && (
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm text-gray-400">{room.subtitle}</div>
-            <div className="text-xl font-semibold text-white">{room.name}</div>
+            <div className="text-sm text-fg-secondary">{room.subtitle}</div>
+            <div className="text-xl font-semibold text-fg-bright">{room.name}</div>
           </div>
-          <div className="text-xs text-gray-500">Room {room.roomId}</div>
+          <div className="text-xs text-fg-muted">Room {room.roomId}</div>
         </div>
       )}
 
       {room.stateNote && (
-        <div className="mt-2 text-xs text-amber-300/80 italic">{room.stateNote}</div>
+        <div className="mt-2 text-xs text-resource-gold/80 italic">{room.stateNote}</div>
       )}
 
       {(() => {
@@ -331,7 +331,7 @@ export default function RoomDisplay({
           const isOpenedGoldChest = actionItem.action === 'open gold chest' && goldChestOpened
           const resolvedIcon = isOpenedGoldChest ? 'chest2' : (override?.icon ?? actionItem.icon)
           const resolvedLabel = isOpenedGoldChest ? 'Gold Chest (Opened)' : actionItem.label
-          const openedClassName = 'bg-emerald-700/70 hover:bg-emerald-700'
+          const openedClassName = 'bg-status-success/70 hover:bg-status-success'
           const showFlyout = flyoutActionForButton(actionItem.action)
           // Rolling gather action (sand / berries): disable while on cooldown and
           // show a live countdown beneath the button.
@@ -374,14 +374,14 @@ export default function RoomDisplay({
               disabled={isPerformingAction === actionItem.action || isGatherLocked}
               className={`${
                 isViewShop
-                  ? 'px-4 py-3 rounded-lg text-base font-semibold text-white transition-all flex items-center gap-2 border-2 border-amber-400/40 shadow-lg shadow-amber-950/20 hover:shadow-xl hover:border-amber-400/60'
-                  : 'px-3 py-2 rounded-lg text-sm text-white transition-all duration-200 flex items-center gap-2 active:scale-[0.97]'
+                  ? 'px-4 py-3 rounded-lg text-base font-semibold text-fg-bright transition-all flex items-center gap-2 border-2 border-resource-gold/40 shadow-lg shadow-resource-gold/20 hover:shadow-xl hover:border-resource-gold/60'
+                  : 'px-3 py-2 rounded-lg text-sm text-fg-bright transition-all duration-200 flex items-center gap-2 active:scale-[0.97]'
               } ${
                 isPerformingAction === actionItem.action
-                  ? 'bg-gray-700 cursor-wait'
+                  ? 'bg-surface-hover cursor-wait'
                   : isOpenedGoldChest
                     ? openedClassName
-                    : override?.className || actionItem.className || 'bg-gradient-to-b from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 shadow-sm'
+                    : override?.className || actionItem.className || 'bg-gradient-to-b from-accent to-accent hover:from-accent-hover hover:to-accent-hover shadow-sm'
               } ${isGatherLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {resolvedIcon && (
@@ -410,14 +410,14 @@ export default function RoomDisplay({
                 // Amber while on cooldown or tapped out, green when ready; border
                 // matches the text color so the state reads at a glance.
                 <div
-                  className={`flex items-center gap-2 rounded-lg border bg-gray-800/40 p-1.5 ${
-                    isGatherLocked ? 'border-amber-400/50' : 'border-green-400/50'
+                  className={`flex items-center gap-2 rounded-lg border bg-surface-raised/40 p-1.5 ${
+                    isGatherLocked ? 'border-resource-gold/50' : 'border-status-success/50'
                   }`}
                 >
                   {gatherButton}
                   <span
                     className={`text-xs whitespace-nowrap pr-1 ${
-                      isGatherLocked ? 'text-amber-400' : 'text-green-400'
+                      isGatherLocked ? 'text-resource-gold' : 'text-status-success'
                     }`}
                   >
                     {gatherAtMax
@@ -460,7 +460,7 @@ export default function RoomDisplay({
 
       {room.items && room.items.length > 0 && (
         <div className="mt-4">
-          <div className="text-sm text-gray-300 mb-2">Items here:</div>
+          <div className="text-sm text-fg-primary mb-2">Items here:</div>
           <div className="flex flex-wrap gap-2">
             {room.items.map((item: any) => (
               <div
@@ -497,7 +497,7 @@ export default function RoomDisplay({
 
       {showPlayers && otherUsers.length > 0 && (
         <div className="mt-4">
-          <div className="text-sm text-gray-300 mb-2">Others here:</div>
+          <div className="text-sm text-fg-primary mb-2">Others here:</div>
           <div className="flex flex-wrap gap-3">
             {otherUsers.map((player) => (
               <PlayerCard
@@ -532,12 +532,12 @@ function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
   const isDisconnected = presence === 'disconnected'
 
   const containerClass = [
-    'group flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-white transition-all duration-200 overflow-hidden active:scale-[0.98]',
+    'group flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-fg-bright transition-all duration-200 overflow-hidden active:scale-[0.98]',
     isDisconnected
-      ? 'border-slate-600/20 bg-slate-700/10 opacity-35 grayscale hover:border-slate-500/40 hover:opacity-50'
+      ? 'border-line-strong/20 bg-surface-hover/10 opacity-35 grayscale hover:border-line-strong/40 hover:opacity-50'
       : isIdle
-        ? 'border-amber-500/20 bg-amber-900/10 opacity-60 hover:border-amber-400/50 hover:bg-amber-500/15'
-        : 'border-slate-500/30 bg-slate-500/10 hover:border-violet-400 hover:bg-violet-500/20 shadow-sm hover:shadow-md hover:shadow-violet-500/10',
+        ? 'border-resource-gold/20 bg-resource-gold/10 opacity-60 hover:border-resource-gold/50 hover:bg-resource-gold/15'
+        : 'border-line-strong/30 bg-surface-selected/10 hover:border-stat-mag hover:bg-stat-mag/20 shadow-sm hover:shadow-md hover:shadow-stat-mag/10',
     disabled ? 'cursor-not-allowed opacity-50' : '',
   ].filter(Boolean).join(' ')
 
@@ -556,17 +556,17 @@ function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
           </span>
         )}
         {isDisconnected && (
-          <span className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-slate-500 border border-slate-700 block" title="Offline" />
+          <span className="absolute -top-0.5 -right-1 w-2.5 h-2.5 rounded-full bg-surface-selected border border-line-subtle block" title="Offline" />
         )}
       </div>
       <div className="leading-tight min-w-0">
-        <div className="text-xs font-semibold text-white/90 truncate max-w-[110px]">{player.username}</div>
-        <div className="text-[10px] uppercase tracking-[0.15em] text-violet-200/80">Lvl {player.level}</div>
+        <div className="text-xs font-semibold text-fg-bright/90 truncate max-w-[110px]">{player.username}</div>
+        <div className="text-[10px] uppercase tracking-[0.15em] text-stat-mag/80">Lvl {player.level}</div>
         {isIdle && player.lastSeen && (
-          <div className="text-[9px] text-amber-400/80 mt-0.5">Idle {formatTimeAgo(player.lastSeen)}</div>
+          <div className="text-[9px] text-resource-gold/80 mt-0.5">Idle {formatTimeAgo(player.lastSeen)}</div>
         )}
         {isDisconnected && player.lastSeen && (
-          <div className="text-[9px] text-slate-400/80 mt-0.5">Offline {formatTimeAgo(player.lastSeen)}</div>
+          <div className="text-[9px] text-fg-secondary/80 mt-0.5">Offline {formatTimeAgo(player.lastSeen)}</div>
         )}
       </div>
     </button>

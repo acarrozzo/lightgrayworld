@@ -38,6 +38,12 @@ export interface RoomView extends RoomViewNavigation {
   name: string
   subtitle: string
   subtitlePosition?: 'above' | 'below' | string
+  /**
+   * The world region this room belongs to. Drives its themed colours; the
+   * four *Color fields below are per-room overrides on top of it and hold
+   * semantic tokens, never CSS classes. See src/lib/theme/room-colors.ts.
+   */
+  region?: string | null
   nameColor?: string | null
   subtitleColor?: string | null
   icon?: string | null

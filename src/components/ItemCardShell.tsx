@@ -40,28 +40,28 @@ export default function ItemCardShell({
     <div
       className={`relative rounded-lg border px-4 py-3 shadow-md hover:shadow-lg transition-all duration-200 flex gap-3 ${
         highlighted
-          ? 'border-green-500/70 bg-gradient-to-br from-green-900/30 via-green-800/20 to-green-900/20 hover:from-green-900/40 hover:via-green-800/30 hover:to-green-900/30 hover:border-green-500/90 shadow-green-500/10'
-          : 'border-gray-700/30 bg-gray-800/25 hover:bg-gray-800/45 hover:border-gray-600/50'
+          ? 'border-status-success/70 bg-gradient-to-br from-status-success/30 via-status-success/20 to-status-success/20 hover:from-status-success/40 hover:via-status-success/30 hover:to-status-success/30 hover:border-status-success/90 shadow-status-success/10'
+          : 'border-line-subtle/30 bg-surface-raised/25 hover:bg-surface-raised/45 hover:border-line-strong/50'
       } ${className}`}
     >
       {newBadge && (
-        <span className="absolute left-2 top-2 w-2 h-2 bg-red-500 rounded-full z-10 shadow-lg shadow-red-500/50 border border-red-400/50"></span>
+        <span className="absolute left-2 top-2 w-2 h-2 bg-status-error rounded-full z-10 shadow-lg shadow-status-error/50 border border-status-error/50"></span>
       )}
 
       {/* Item icon on the left */}
-      <div className="flex-shrink-0 flex items-center justify-center w-20 h-20 rounded-lg bg-gray-700/30 border border-gray-600/30">
-        <Icon name={itemIcon} size={64} color="current" className="text-gray-300" />
+      <div className="flex-shrink-0 flex items-center justify-center w-20 h-20 rounded-lg bg-surface-hover/30 border border-line-strong/30">
+        <Icon name={itemIcon} size={64} color="current" className="text-fg-primary" />
       </div>
 
       {/* Content area */}
       <div className="flex-1 min-w-0">
         {/* Top row: name + quantity */}
         <div className="flex items-center gap-2 mb-1">
-          <div className={`text-white text-sm font-semibold truncate min-w-0 ${newBadge ? 'pl-2' : ''}`}>
+          <div className={`text-fg-bright text-sm font-semibold truncate min-w-0 ${newBadge ? 'pl-2' : ''}`}>
             {item.template.name}
           </div>
           {item.quantity > 1 && (
-            <span className="text-amber-300 text-xs font-bold border border-amber-500/40 bg-amber-500/15 px-1.5 py-0.5 rounded-md flex-shrink-0 shadow-sm">
+            <span className="text-resource-gold text-xs font-bold border border-resource-gold/40 bg-resource-gold/15 px-1.5 py-0.5 rounded-md flex-shrink-0 shadow-sm">
               x{item.quantity}
             </span>
           )}
@@ -70,11 +70,11 @@ export default function ItemCardShell({
         {/* Weapon type / handedness */}
         {item.template.weaponCategory && (
           <div className="flex gap-1 items-center mb-1">
-            <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+            <span className="text-[10px] text-fg-muted uppercase tracking-wide">
               {item.template.weaponCategory === WeaponCategory.RANGED ? 'Ranged' : 'Melee'}
             </span>
-            <span className="text-gray-600 text-[10px]">·</span>
-            <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+            <span className="text-fg-disabled text-[10px]">·</span>
+            <span className="text-[10px] text-fg-muted uppercase tracking-wide">
               {(item.template.metadata as any)?.isTwoHanded ? '2H' : '1H'}
             </span>
           </div>
@@ -85,7 +85,7 @@ export default function ItemCardShell({
 
         {/* Description */}
         {item.template.description && (
-          <div className="text-gray-400 text-xs mb-2 line-clamp-2 leading-relaxed">
+          <div className="text-fg-secondary text-xs mb-2 line-clamp-2 leading-relaxed">
             {item.template.description}
           </div>
         )}

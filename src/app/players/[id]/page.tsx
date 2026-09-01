@@ -108,10 +108,10 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   ].filter(Boolean).length
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-200">
+    <div className="min-h-screen bg-surface-canvas text-fg-bright">
       <WorldToolNav active="players" />
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <Link href="/players" className="text-sm text-indigo-300 hover:underline">
+        <Link href="/players" className="text-sm text-accent-hover hover:underline">
           ← Back to Players
         </Link>
 
@@ -119,20 +119,20 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         <header className="mt-4 mb-6 flex items-center gap-4">
           <Icon name={user.uIcon} size={48} color={user.uIconColor} />
           <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-100">
+            <h1 className="flex items-center gap-2 text-2xl font-bold text-fg-bright">
               {user.username}
               {user.inFight && (
-                <span className="rounded border border-red-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-red-400">
+                <span className="rounded border border-status-error px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-status-error">
                   in battle
                 </span>
               )}
               {!user.isActive && (
-                <span className="rounded border border-gray-700 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">
+                <span className="rounded border border-line-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fg-muted">
                   inactive
                 </span>
               )}
             </h1>
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-fg-secondary">
               Level {user.level} · {user.characterRace} {user.characterClass}
             </p>
           </div>
@@ -140,40 +140,40 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
         <div className="grid gap-6 md:grid-cols-2">
           <Section title="Vitals & Attributes">
-            <Stat label="Max HP" value={`${user.hp} / ${user.hpMax}`} color="text-red-400" />
-            <Stat label="Max MP" value={`${user.mp} / ${user.mpMax}`} color="text-blue-400" />
-            <Stat label="STR" value={`${user.str}${user.strMod ? ` (+${user.strMod})` : ''}`} color="text-rose-300" />
-            <Stat label="DEX" value={`${user.dex}${user.dexMod ? ` (+${user.dexMod})` : ''}`} color="text-lime-300" />
-            <Stat label="MAG" value={`${user.mag}${user.magMod ? ` (+${user.magMod})` : ''}`} color="text-cyan-300" />
-            <Stat label="DEF" value={`${user.def}${user.defMod ? ` (+${user.defMod})` : ''}`} color="text-amber-300" />
-            <Stat label="Physical Training" value={user.physicalTraining} color="text-orange-400" />
-            <Stat label="Mental Training" value={user.mentalTraining} color="text-purple-400" />
+            <Stat label="Max HP" value={`${user.hp} / ${user.hpMax}`} color="text-status-error" />
+            <Stat label="Max MP" value={`${user.mp} / ${user.mpMax}`} color="text-resource-mp" />
+            <Stat label="STR" value={`${user.str}${user.strMod ? ` (+${user.strMod})` : ''}`} color="text-resource-hp" />
+            <Stat label="DEX" value={`${user.dex}${user.dexMod ? ` (+${user.dexMod})` : ''}`} color="text-status-success" />
+            <Stat label="MAG" value={`${user.mag}${user.magMod ? ` (+${user.magMod})` : ''}`} color="text-action-search" />
+            <Stat label="DEF" value={`${user.def}${user.defMod ? ` (+${user.defMod})` : ''}`} color="text-resource-gold" />
+            <Stat label="Physical Training" value={user.physicalTraining} color="text-action-attack" />
+            <Stat label="Mental Training" value={user.mentalTraining} color="text-stat-mag" />
           </Section>
 
           <Section title="Progression">
-            <Stat label="Level" value={user.level} color="text-yellow-400" />
-            <Stat label="XP (current)" value={user.xp.toLocaleString()} color="text-green-400" />
-            <Stat label="Currency" value={user.currency} color="text-yellow-300" />
+            <Stat label="Level" value={user.level} color="text-status-warning" />
+            <Stat label="XP (current)" value={user.xp.toLocaleString()} color="text-status-success" />
+            <Stat label="Currency" value={user.currency} color="text-status-warning" />
             <Stat label="Total Clicks" value={user.clicks.toLocaleString()} />
-            <Stat label="Deaths" value={user.deaths} color="text-red-300" />
-            <Stat label="Chests Opened" value={`${chestsOpened} / 10`} color="text-amber-400" />
-            <Stat label="Daily Chests" value={user.dailyChestCount} color="text-amber-400" />
-            <Stat label="Completed Quests" value={`${completedQuestCount} / ${questCount}`} color="text-emerald-400" />
+            <Stat label="Deaths" value={user.deaths} color="text-status-error" />
+            <Stat label="Chests Opened" value={`${chestsOpened} / 10`} color="text-resource-gold" />
+            <Stat label="Daily Chests" value={user.dailyChestCount} color="text-resource-gold" />
+            <Stat label="Completed Quests" value={`${completedQuestCount} / ${questCount}`} color="text-status-success" />
           </Section>
 
           <Section title="Location & Activity">
-            <Stat label="Current Room" value={`${user.room?.name || user.currentRoom} (${user.currentRoom})`} color="text-teal-300" />
-            <Stat label="Recall Room" value={user.recallRoom} color="text-teal-300" />
+            <Stat label="Current Room" value={`${user.room?.name || user.currentRoom} (${user.currentRoom})`} color="text-action-search" />
+            <Stat label="Recall Room" value={user.recallRoom} color="text-action-search" />
             <Stat label="Last Login" value={dateWithRelative(user.lastActive)} />
             <Stat label="Account Created" value={fmtDate(user.createdAt)} />
           </Section>
 
           <Section title="Combat">
-            <Stat label="Total Kills" value={totalKills} color="text-gray-100" />
+            <Stat label="Total Kills" value={totalKills} color="text-fg-bright" />
             <Stat
               label="Last Enemy Fought"
               value={lastBattle ? `${lastBattle.enemyName} (${lastBattle.outcome})` : '—'}
-              color={lastBattle?.outcome === 'victory' ? 'text-green-400' : lastBattle ? 'text-red-400' : undefined}
+              color={lastBattle?.outcome === 'victory' ? 'text-status-success' : lastBattle ? 'text-status-error' : undefined}
             />
             {lastBattle && (
               <Stat label="Last Battle" value={fmtDate(lastBattle.createdAt)} />
@@ -188,9 +188,9 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
           <Section title={`Kill List (${kills.length})`}>
             {kills.length === 0 ? (
-              <p className="text-sm text-gray-500">No kills recorded.</p>
+              <p className="text-sm text-fg-muted">No kills recorded.</p>
             ) : (
-              kills.map((k) => <Stat key={k.id} label={k.monster} value={k.kills} color="text-gray-100" />)
+              kills.map((k) => <Stat key={k.id} label={k.monster} value={k.kills} color="text-fg-bright" />)
             )}
           </Section>
         </div>
@@ -201,17 +201,17 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900/30 p-4">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-400">{title}</h2>
+    <div className="rounded-lg border border-line-subtle bg-surface-panel/30 p-4">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-fg-secondary">{title}</h2>
       <div className="space-y-1">{children}</div>
     </div>
   )
 }
 
-function Stat({ label, value, color = 'text-gray-200' }: { label: string; value: React.ReactNode; color?: string }) {
+function Stat({ label, value, color = 'text-fg-bright' }: { label: string; value: React.ReactNode; color?: string }) {
   return (
-    <div className="flex justify-between gap-3 border-b border-gray-800/60 py-1 text-sm">
-      <span className="text-gray-500">{label}</span>
+    <div className="flex justify-between gap-3 border-b border-line-subtle/60 py-1 text-sm">
+      <span className="text-fg-muted">{label}</span>
       <span className={`text-right ${color}`}>{value}</span>
     </div>
   )

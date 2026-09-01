@@ -25,22 +25,22 @@ type Tone = {
 
 const TONES: Record<'met' | 'partial' | 'none', Tone> = {
   met: {
-    chip: 'border-green-500/40 bg-green-500/10',
-    text: 'text-green-300',
-    count: 'text-green-300',
-    bar: 'bg-green-500',
+    chip: 'border-status-success/40 bg-status-success/10',
+    text: 'text-status-success',
+    count: 'text-status-success',
+    bar: 'bg-status-success',
   },
   partial: {
-    chip: 'border-amber-500/40 bg-amber-500/10',
-    text: 'text-amber-200',
-    count: 'text-amber-300',
-    bar: 'bg-amber-500',
+    chip: 'border-resource-gold/40 bg-resource-gold/10',
+    text: 'text-resource-gold',
+    count: 'text-resource-gold',
+    bar: 'bg-resource-gold',
   },
   none: {
-    chip: 'border-gray-600/50 bg-gray-700/25',
-    text: 'text-gray-400',
-    count: 'text-gray-400',
-    bar: 'bg-gray-500',
+    chip: 'border-line-strong/50 bg-surface-hover/25',
+    text: 'text-fg-secondary',
+    count: 'text-fg-secondary',
+    bar: 'bg-surface-selected',
   },
 }
 
@@ -101,7 +101,7 @@ export default function QuestRequirements({
 
   return (
     <div className={`space-y-1.5 ${className}`}>
-      <span className="text-gray-500 text-sm">Requirements:</span>
+      <span className="text-fg-muted text-sm">Requirements:</span>
       <div className="space-y-1.5">
         {progress.map((req) => {
           const tone = toneFor(req)
@@ -121,7 +121,7 @@ export default function QuestRequirements({
               </div>
               {/* Only a multi-step tally earns a bar; 0/1 says everything already. */}
               {req.countable && req.total > 1 && (
-                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-gray-900/60">
+                <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-surface-panel/60">
                   <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${pct}%` }} />
                 </div>
               )}

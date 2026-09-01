@@ -17,25 +17,25 @@ export const BASIC_ACTIONS = [
     action: 'attack',
     label: 'Attack',
     className:
-      'bg-gradient-to-b from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 shadow-sm shadow-red-950/30',
+      'bg-gradient-to-b from-status-error to-status-error hover:from-status-error hover:to-status-error shadow-sm shadow-status-error/30',
   },
   {
     action: 'search',
     label: 'Search',
     className:
-      'bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-sm shadow-amber-950/30',
+      'bg-gradient-to-b from-resource-gold to-resource-gold hover:from-resource-gold hover:to-resource-gold shadow-sm shadow-resource-gold/30',
   },
   {
     action: 'rest',
     label: 'Rest',
     className:
-      'bg-gradient-to-b from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 shadow-sm shadow-green-950/30',
+      'bg-gradient-to-b from-status-success to-status-success hover:from-status-success hover:to-status-success shadow-sm shadow-status-success/30',
   },
   {
     action: 'look',
     label: 'Look',
     className:
-      'bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 shadow-sm shadow-blue-950/30',
+      'bg-gradient-to-b from-resource-mp to-resource-mp hover:from-resource-mp hover:to-resource-mp shadow-sm shadow-resource-mp/30',
   },
 ] as const
 
@@ -92,7 +92,7 @@ export default function BasicActionButtons({
                 onAction(action)
               }}
               disabled={isLoadingRoom}
-              className={`${sizeClassName} ${className} disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
+              className={`${sizeClassName} ${className} disabled:opacity-40 disabled:cursor-not-allowed text-fg-bright rounded-lg font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
             >
               {isLoadingRoom && currentAction === action ? '...' : label}
             </button>

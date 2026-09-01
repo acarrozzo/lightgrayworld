@@ -1,62 +1,64 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useThemeStore } from '@/store/themeStore'
+import ThemeSelector from '@/components/ThemeSelector'
 import { useGameStore } from '@/lib/game-state'
 import { inputStyles } from '@/lib/styles'
 import { FEATURE_FLAGS } from '@/lib/config'
 import { validateUsername } from '@/lib/sanitization'
 
-// Component to load and colorize SVG
-function ColoredSVG({ src, colorClass, className }: { src: string; colorClass: string; className?: string }) {
+/**
+ * Loads an SVG and repaints it in a theme colour.
+ *
+ * The fill has to be a concrete value written into the markup, so it is read
+ * from the live computed styles rather than looked up in a table of hex codes.
+ * That means the artwork follows the selected theme, including a change made
+ * while the login screen is open.
+ */
+function ColoredSVG({
+  src,
+  colorVar,
+  className,
+}: {
+  src: string
+  /** A theme custom property, e.g. `--status-success`. */
+  colorVar: string
+  className?: string
+}) {
   const [svgContent, setSvgContent] = useState<string>('')
-
-  // Map Tailwind color classes to hex values
-  const colorMap: Record<string, string> = {
-    'text-green-400': '#4ade80',
-    'text-red-400': '#f87171',
-    'text-blue-400': '#60a5fa',
-    'text-purple-400': '#a78bfa',
-  }
-
-  // Extract just the color class from the colorClass prop (in case it contains other classes)
-  const colorClassOnly = colorClass.split(' ').find(cls => cls.startsWith('text-')) || colorClass
-  const fillColor = colorMap[colorClassOnly] || '#ffffff'
+  const themeId = useThemeStore((state) => state.themeId)
 
   useEffect(() => {
+    let cancelled = false
+
+    const fillColor =
+      getComputedStyle(document.documentElement).getPropertyValue(colorVar).trim() || '#ffffff'
+
     fetch(src)
       .then((res) => res.text())
       .then((text) => {
-        // Replace all fill attributes with the specified color
+        if (cancelled) return
         let coloredSvg = text
           .replace(/fill="[^"]*"/g, `fill="${fillColor}"`)
           .replace(/fill='[^']*'/g, `fill='${fillColor}'`)
-        
-        // Add fill to path elements that don't have it
-        coloredSvg = coloredSvg.replace(
-          /<path([^>]*?)(?:\s+fill="[^"]*")?([^>]*?)>/g,
-          (match, before, after) => {
-            if (!match.includes('fill=')) {
-              return `<path${before}${after} fill="${fillColor}">`
-            }
-            return match
-          }
+
+        coloredSvg = coloredSvg.replace(/<path([^>]*?)>/g, (match, attrs) =>
+          match.includes('fill=') ? match : `<path${attrs} fill="${fillColor}">`
         )
-        
-        // Add fill to g elements that don't have it (for grouped paths)
-        coloredSvg = coloredSvg.replace(
-          /<g([^>]*?)(?:\s+fill="[^"]*")?([^>]*?)>/g,
-          (match, before, after) => {
-            if (!match.includes('fill=')) {
-              return `<g${before}${after} fill="${fillColor}">`
-            }
-            return match
-          }
+        coloredSvg = coloredSvg.replace(/<g([^>]*?)>/g, (match, attrs) =>
+          match.includes('fill=') ? match : `<g${attrs} fill="${fillColor}">`
         )
-        
+
         setSvgContent(coloredSvg)
       })
       .catch((err) => console.error('Failed to load SVG:', err))
-  }, [src, fillColor])
+
+    return () => {
+      cancelled = true
+    }
+    // Re-runs on theme change so the artwork is repainted, not left behind.
+  }, [src, colorVar, themeId])
 
   if (!svgContent) return null
 
@@ -81,6 +83,7 @@ export default function LoginForm() {
   const setError = useGameStore((s) => s.setError)
   const login = useGameStore((s) => s.login)
   const requireEmail = FEATURE_FLAGS.REQUIRE_EMAIL_ON_REGISTRATION
+  const themeId = useThemeStore((state) => state.themeId)
 
   const handleUsernameChange = (value: string) => {
     setFormData({ ...formData, username: value })
@@ -125,6 +128,8 @@ export default function LoginForm() {
         if (requireEmail || trimmedEmail) {
           payload.email = trimmedEmail
         }
+        // Whatever theme they were previewing becomes the account's.
+        payload.theme = themeId
       }
 
       const response = await fetch(endpoint, {
@@ -160,13 +165,13 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-gray-950 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.06)_0%,transparent_70%)]">
+    <div className="min-h-dvh flex items-center justify-center bg-surface-canvas bg-[radial-gradient(ellipse_at_center,color-mix(in_srgb,var(--accent)_6%,transparent)_0%,transparent_70%)]">
       <div className="max-w-md w-full space-y-8 px-4">
         <div>
-          <h2 className="mt-6 text-center text-2xl font-light text-white/90 tracking-[0.25em] uppercase">
+          <h2 className="mt-6 text-center text-2xl font-light text-fg-bright/90 tracking-[0.25em] uppercase">
             Light Gray RPG
           </h2>
-          <p className="mt-3 text-center text-xs text-gray-500 tracking-wide">
+          <p className="mt-3 text-center text-xs text-fg-muted tracking-wide">
             {isLogin ? 'Sign in to your account' : 'Create a new account'}
           </p>
         </div>
@@ -177,23 +182,23 @@ export default function LoginForm() {
             <>
               <ColoredSVG
                 src="/img/svg/npc/char-archer.svg"
-                colorClass="text-green-400"
+                colorVar="--hue-green"
                 className="scale-90 scale-x-[-1]"
               />
               <ColoredSVG
                 src="/img/svg/npc/char-commander.svg"
-                colorClass="text-red-400"
+                colorVar="--hue-red"
               />
               <ColoredSVG
                 src="/img/svg/npc/npc-guardian.svg"
-                colorClass="text-blue-400"
+                colorVar="--hue-blue"
                 className="scale-90 scale-x-[-1]"
               />
             </>
           ) : (
             <ColoredSVG
               src="/img/svg/potion.svg"
-              colorClass="text-purple-400"
+              colorVar="--hue-violet"
             />
           )}
         </div>
@@ -219,7 +224,7 @@ export default function LoginForm() {
                 onChange={(e) => handleUsernameChange(e.target.value)}
               />
               {usernameError && !isLogin && (
-                <p className="mt-1 text-sm text-red-400">{usernameError}</p>
+                <p className="mt-1 text-sm text-status-error">{usernameError}</p>
               )}
             </div>
             
@@ -280,6 +285,22 @@ export default function LoginForm() {
             </button>
           </div>
         </form>
+
+        {/*
+          Theme picking before sign-in. The choice applies instantly, is
+          remembered on this device, and — when signing up — becomes the new
+          account's theme. Persisting to the account is off here because there
+          is no account yet.
+        */}
+        <div className="mt-8 border-t border-line-subtle pt-5">
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fg-muted">
+              Terminal Theme
+            </h2>
+            <span className="text-[10px] text-fg-disabled">pick your colours</span>
+          </div>
+          <ThemeSelector variant="carousel" persistToAccount={false} />
+        </div>
       </div>
     </div>
   )

@@ -21,9 +21,9 @@ export default function NotificationBadge({ value, className = '' }: Notificatio
 
   return (
     <span
-      className={`bg-red-500 rounded-full border border-gray-900 flex items-center justify-center ${
+      className={`bg-status-error rounded-full border border-line-subtle flex items-center justify-center ${
         isNumber
-          ? 'min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-white'
+          ? 'min-w-[18px] h-[18px] px-1 text-[10px] font-semibold text-fg-bright'
           : 'w-2 h-2'
       } ${className}`}
     >

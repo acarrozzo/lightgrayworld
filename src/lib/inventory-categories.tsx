@@ -118,10 +118,10 @@ export function sortItems(
 }
 
 export const STAT_MOD_COLORS: Record<string, string> = {
-  str: 'text-red-400',
-  dex: 'text-emerald-400',
-  mag: 'text-sky-400',
-  def: 'text-amber-400',
+  str: 'text-status-error',
+  dex: 'text-status-success',
+  mag: 'text-status-info',
+  def: 'text-resource-gold',
 }
 
 /**
@@ -142,8 +142,8 @@ export function renderStatMods(metadata: any): React.ReactNode {
     const value = statMods[stat]
     if (typeof value === 'number' && value !== 0) {
       const sign = value > 0 ? '+' : ''
-      const color = value > 0 ? STAT_MOD_COLORS[stat] : 'text-red-800'
-      if (parts.length > 0) parts.push(<span key={`${stat}-sep`} className="text-gray-500">, </span>)
+      const color = value > 0 ? STAT_MOD_COLORS[stat] : 'text-status-error'
+      if (parts.length > 0) parts.push(<span key={`${stat}-sep`} className="text-fg-muted">, </span>)
       parts.push(<span key={stat} className={color}>{sign}{value} {statLabels[stat]}</span>)
     }
   }

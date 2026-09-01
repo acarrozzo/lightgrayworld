@@ -207,16 +207,16 @@ export default function ShopModal({
     const canAfford = playerCurrency >= buyPrice
     return (
       <div className="mt-1 space-y-1">
-        <div className="text-[11px] text-gray-400/80">
-          <span className="text-amber-400 font-medium">{buyPrice}g</span>
+        <div className="text-[11px] text-fg-secondary/80">
+          <span className="text-resource-gold font-medium">{buyPrice}g</span>
         </div>
         <button
           onClick={(e) => handleBuy(item.template.slug, e.currentTarget.getBoundingClientRect())}
           disabled={!canAfford || isBuying}
           className={`w-full flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
             canAfford
-              ? 'bg-green-600/80 hover:bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed'
-              : 'bg-gray-700/50 text-gray-400 cursor-not-allowed'
+              ? 'bg-status-success/80 hover:bg-status-success text-fg-bright disabled:opacity-50 disabled:cursor-not-allowed'
+              : 'bg-surface-hover/50 text-fg-secondary cursor-not-allowed'
           }`}
         >
           Buy
@@ -230,8 +230,8 @@ export default function ShopModal({
     const sellValue = getSellValue(item.template.value)
     return (
       <div className="mt-1 space-y-1">
-        <div className="text-[11px] text-gray-400/80">
-          <span className="text-green-400 font-medium">{sellValue}g</span> each
+        <div className="text-[11px] text-fg-secondary/80">
+          <span className="text-status-success font-medium">{sellValue}g</span> each
         </div>
         <InventorySellButton
           item={item}
@@ -267,13 +267,13 @@ export default function ShopModal({
                 onClick={() => setFilter(tab.id)}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
                   isActive
-                    ? 'bg-blue-500/70 hover:bg-blue-500 text-white border border-blue-400/50'
-                    : 'bg-gray-800/50 hover:bg-gray-800/70 text-gray-300 border border-gray-700/50 hover:border-gray-600/50'
+                    ? 'bg-resource-mp/70 hover:bg-resource-mp text-fg-bright border border-resource-mp/50'
+                    : 'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-primary border border-line-subtle/50 hover:border-line-strong/50'
                 }`}
               >
                 <span>{tab.label}</span>
                 {count > 0 && (
-                  <span className={`text-[10px] font-normal ${isActive ? 'text-white/60' : 'text-gray-400/60'}`}>
+                  <span className={`text-[10px] font-normal ${isActive ? 'text-fg-bright/60' : 'text-fg-secondary/60'}`}>
                     ({count})
                   </span>
                 )}
@@ -295,7 +295,7 @@ export default function ShopModal({
               const label = INVENTORY_TABS.find((t) => t.id === category)?.label || category
               return (
                 <div key={category} className="space-y-2">
-                  <h4 className="text-sm font-semibold text-gray-300 px-2">
+                  <h4 className="text-sm font-semibold text-fg-primary px-2">
                     {label.charAt(0).toUpperCase() + label.slice(1)} ({items.length})
                   </h4>
                   <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
@@ -315,7 +315,7 @@ export default function ShopModal({
               if (sectionItems.length === 0) return null
               return (
                 <div key={kind} className="space-y-2">
-                  <h4 className="text-sm font-semibold text-gray-300 px-2">
+                  <h4 className="text-sm font-semibold text-fg-primary px-2">
                     {label} ({sectionItems.length})
                   </h4>
                   <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
@@ -345,29 +345,29 @@ export default function ShopModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-surface-sunken/80 backdrop-blur-sm"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="relative flex max-h-[85vh] w-[90vw] max-w-5xl flex-col overflow-hidden rounded-lg border border-gray-700/50 bg-gray-900 shadow-2xl"
+        className="relative flex max-h-[85vh] w-[90vw] max-w-5xl flex-col overflow-hidden rounded-lg border border-line-subtle/50 bg-surface-panel shadow-2xl"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="border-b border-gray-700/50">
+        <div className="border-b border-line-subtle/50">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-white">{shopName || 'Shop'}</h2>
-              <div className="flex items-center gap-2 px-3 py-1 bg-amber-900/30 border border-amber-800/50 rounded-md">
-                <Icon name="coin" size={16} className="text-amber-400" />
-                <span className="text-amber-300 font-medium">{playerCurrency}g</span>
+              <h2 className="text-lg font-semibold text-fg-bright">{shopName || 'Shop'}</h2>
+              <div className="flex items-center gap-2 px-3 py-1 bg-resource-gold/30 border border-resource-gold/50 rounded-md">
+                <Icon name="coin" size={16} className="text-resource-gold" />
+                <span className="text-resource-gold font-medium">{playerCurrency}g</span>
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="rounded p-1.5 text-gray-400 transition-colors hover:text-white hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="rounded p-1.5 text-fg-secondary transition-colors hover:text-fg-bright hover:bg-surface-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
               aria-label="Close shop"
             >
               <Icon name="x" size={16} />
@@ -376,13 +376,13 @@ export default function ShopModal({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-gray-700/50">
+        <div className="flex border-b border-line-subtle/50">
           <button
             onClick={() => setActiveTab('buy')}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === 'buy'
-                ? 'bg-gray-800/50 text-white border-b-2 border-green-500'
-                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
+                ? 'bg-surface-raised/50 text-fg-bright border-b-2 border-status-success'
+                : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-raised/30'
             }`}
           >
             BUY ({shopItems.length})
@@ -391,8 +391,8 @@ export default function ShopModal({
             onClick={() => setActiveTab('sell')}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === 'sell'
-                ? 'bg-gray-800/50 text-white border-b-2 border-green-500'
-                : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800/30'
+                ? 'bg-surface-raised/50 text-fg-bright border-b-2 border-status-success'
+                : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-raised/30'
             }`}
           >
             SELL ({sellableInventory.length})
@@ -404,7 +404,7 @@ export default function ShopModal({
             /* Buy Section */
             <div className="space-y-4">
               {buyItems.length === 0 ? (
-                <div className="text-gray-400 text-sm py-4">
+                <div className="text-fg-secondary text-sm py-4">
                   No items available for purchase.
                 </div>
               ) : (
@@ -422,7 +422,7 @@ export default function ShopModal({
             /* Sell Section */
             <div className="space-y-4">
               {sellableInventory.length === 0 ? (
-                <div className="text-gray-400 text-sm py-4">
+                <div className="text-fg-secondary text-sm py-4">
                   You have no items to sell.
                 </div>
               ) : (
@@ -439,11 +439,11 @@ export default function ShopModal({
           )}
         </div>
 
-        <div className="border-t border-gray-700/50 px-4 py-3 text-right">
+        <div className="border-t border-line-subtle/50 px-4 py-3 text-right">
           <button
             type="button"
             onClick={onClose}
-            className="rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+            className="rounded bg-surface-hover px-4 py-1.5 text-sm font-medium text-fg-bright transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
           >
             Close
           </button>

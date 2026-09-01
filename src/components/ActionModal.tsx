@@ -57,22 +57,22 @@ export default function ActionModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-surface-sunken/80 backdrop-blur-sm"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="relative flex h-auto max-h-[85vh] w-[90vw] max-w-3xl flex-col overflow-hidden rounded-lg border border-gray-700/50 bg-gray-900 shadow-2xl"
+        className="relative flex h-auto max-h-[85vh] w-[90vw] max-w-3xl flex-col overflow-hidden rounded-lg border border-line-subtle/50 bg-surface-panel shadow-2xl"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between border-b border-gray-700/50 px-4 py-3">
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <div className="flex items-center justify-between border-b border-line-subtle/50 px-4 py-3">
+          <h2 className="text-lg font-semibold text-fg-bright">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1.5 text-gray-400 transition-colors hover:text-white hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+            className="rounded p-1.5 text-fg-secondary transition-colors hover:text-fg-bright hover:bg-surface-raised focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
             aria-label="Close modal"
           >
             <Icon name="x" size={16} />
@@ -85,7 +85,7 @@ export default function ActionModal({
         >
           {isStringContent ? (
             <div className="prose prose-invert max-w-none">
-              <p className="text-gray-200 whitespace-pre-wrap leading-relaxed text-sm">
+              <p className="text-fg-bright whitespace-pre-wrap leading-relaxed text-sm">
                 {content}
               </p>
             </div>
@@ -96,7 +96,7 @@ export default function ActionModal({
           )}
         </div>
 
-        <div className="border-t border-gray-700/50 px-4 py-3 flex items-center justify-center gap-2">
+        <div className="border-t border-line-subtle/50 px-4 py-3 flex items-center justify-center gap-2">
           {buttons && buttons.length > 0 ? (
             buttons.map((button, index) => (
               <button
@@ -106,8 +106,8 @@ export default function ActionModal({
                 data-close-on-action={button.closeOnAction !== false}
                 onClick={() => handleButtonClick(button.direction, button.closeOnAction !== false)}
                 className={button.primary
-                  ? "rounded bg-blue-600 px-6 py-2 text-base font-semibold text-white transition-colors hover:bg-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
-                  : "rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+                  ? "rounded bg-resource-mp/80 px-6 py-2 text-base font-semibold text-fg-bright transition-colors hover:bg-resource-mp focus:outline-none focus-visible:ring-2 focus-visible:ring-resource-mp focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
+                  : "rounded bg-surface-hover px-4 py-1.5 text-sm font-medium text-fg-bright transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
                 }
               >
                 {button.label}
@@ -117,7 +117,7 @@ export default function ActionModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded bg-gray-700 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+              className="rounded bg-surface-hover px-4 py-1.5 text-sm font-medium text-fg-bright transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
             >
               Close
             </button>

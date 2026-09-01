@@ -178,22 +178,22 @@ export default function PartyPanel({
   }
 
   return (
-    <div className="rounded-lg border border-blue-900/40 bg-blue-950/10 p-3 space-y-2">
+    <div className="rounded-lg border border-resource-mp/40 bg-resource-mp/10 p-3 space-y-2">
       {inParty && party && (
-        <div className="rounded-md border border-blue-500/50 bg-blue-900/15 p-2 space-y-1.5 shadow-[0_0_0_1px_rgba(59,130,246,0.15)] ring-1 ring-blue-500/20">
+        <div className="rounded-md border border-resource-mp/50 bg-resource-mp/15 p-2 space-y-1.5 shadow-[0_0_0_1px_rgba(59,130,246,0.15)] ring-1 ring-resource-mp/20">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold text-blue-300">
-              Party <span className="text-[10px] text-gray-500">({party.size}/{party.maxSize})</span>
+            <h4 className="text-xs font-bold text-resource-mp">
+              Party <span className="text-[10px] text-fg-muted">({party.size}/{party.maxSize})</span>
             </h4>
             <button
               onClick={onLeave}
-              className="text-[10px] text-red-400/80 hover:text-red-300 underline underline-offset-2"
+              className="text-[10px] text-status-error/80 hover:text-status-error underline underline-offset-2"
             >
               {isLeader ? 'Disband' : 'Leave'}
             </button>
           </div>
 
-          <div className="divide-y divide-blue-900/20">
+          <div className="divide-y divide-resource-mp/20">
             {partyRows.map((row) => (
               <PlayerStatRow
                 key={row.id}
@@ -209,18 +209,18 @@ export default function PartyPanel({
 
       {hereRows.length > 0 && (
         <div className="space-y-1.5">
-          <h4 className="text-xs font-bold text-blue-300">Also here</h4>
+          <h4 className="text-xs font-bold text-resource-mp">Also here</h4>
 
           {/* Other parties sharing this room, each in its own subtle container. */}
           {foreignParties.map((grp) => (
             <div
               key={grp.leaderId}
-              className="rounded-md border border-blue-800/30 bg-blue-900/10 p-2 space-y-1"
+              className="rounded-md border border-resource-mp/30 bg-resource-mp/10 p-2 space-y-1"
             >
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-blue-300/60">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-resource-mp/60">
                 Party
               </div>
-              <div className="divide-y divide-blue-900/20">
+              <div className="divide-y divide-resource-mp/20">
                 {grp.rows.map((row) => (
                   <PlayerStatRow
                     key={row.id}
@@ -236,7 +236,7 @@ export default function PartyPanel({
 
           {/* Unpartied players (and lone members). */}
           {soloRows.length > 0 && (
-            <div className="divide-y divide-gray-800/40">
+            <div className="divide-y divide-line-subtle/40">
               {soloRows.map((row) => (
                 <PlayerStatRow
                   key={row.id}

@@ -302,6 +302,7 @@ async function fetchRoomWithColors(prisma, roomId) {
       name: true,
       subtitle: true,
       subtitlePosition: true,
+      region: true,
       nameColor: true,
       subtitleColor: true,
       icon: true,

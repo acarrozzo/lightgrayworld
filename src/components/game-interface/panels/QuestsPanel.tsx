@@ -81,8 +81,8 @@ function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string,
     if (!loaded) fetchLogs()
   }, [loaded, fetchLogs])
 
-  if (isLoading) return <p className="text-gray-500 text-sm">Loading battle log...</p>
-  if (loaded && logs.length === 0) return <p className="text-gray-500 text-sm">No battles recorded yet.</p>
+  if (isLoading) return <p className="text-fg-muted text-sm">Loading battle log...</p>
+  if (loaded && logs.length === 0) return <p className="text-fg-muted text-sm">No battles recorded yet.</p>
 
   return (
     <div className="space-y-2">
@@ -92,44 +92,44 @@ function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string,
         return (
           <div
             key={log.id}
-            className={`rounded-lg border p-3 space-y-2 ${isWin ? 'border-green-800/40 bg-green-950/20' : 'border-red-900/40 bg-red-950/10'}`}
+            className={`rounded-lg border p-3 space-y-2 ${isWin ? 'border-status-success/40 bg-status-success/20' : 'border-status-error/40 bg-status-error/10'}`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isWin ? 'bg-green-800/60 text-green-300' : 'bg-red-900/60 text-red-400'}`}>
+                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isWin ? 'bg-status-success/60 text-status-success' : 'bg-status-error/60 text-status-error'}`}>
                   {isWin ? 'WIN' : 'LOSS'}
                 </span>
-                <span className="text-sm font-semibold text-white">{log.enemyName}</span>
+                <span className="text-sm font-semibold text-fg-bright">{log.enemyName}</span>
                 {log.multiplayerBonus && (
-                  <span className="text-[10px] text-blue-400 bg-blue-900/30 px-1 rounded">group</span>
+                  <span className="text-[10px] text-resource-mp bg-resource-mp/30 px-1 rounded">group</span>
                 )}
               </div>
-              <span className="text-[10px] text-gray-600">{date}</span>
+              <span className="text-[10px] text-fg-disabled">{date}</span>
             </div>
             <div className="grid grid-cols-4 gap-1 text-center">
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Turns</p>
-                <p className="text-xs font-semibold text-gray-200">{log.turnsCount}</p>
+                <p className="text-[10px] text-fg-muted uppercase tracking-wide">Turns</p>
+                <p className="text-xs font-semibold text-fg-bright">{log.turnsCount}</p>
               </div>
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Dealt</p>
-                <p className="text-xs font-semibold text-gray-200">{log.totalDamageDealt}</p>
+                <p className="text-[10px] text-fg-muted uppercase tracking-wide">Dealt</p>
+                <p className="text-xs font-semibold text-fg-bright">{log.totalDamageDealt}</p>
               </div>
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Received</p>
-                <p className="text-xs font-semibold text-gray-200">{log.totalDamageReceived}</p>
+                <p className="text-[10px] text-fg-muted uppercase tracking-wide">Received</p>
+                <p className="text-xs font-semibold text-fg-bright">{log.totalDamageReceived}</p>
               </div>
               <div>
-                <p className="text-[10px] text-yellow-600 uppercase tracking-wide">Best Hit</p>
-                <p className="text-xs font-semibold text-yellow-300">{log.maxSingleHit}</p>
+                <p className="text-[10px] text-status-warning uppercase tracking-wide">Best Hit</p>
+                <p className="text-xs font-semibold text-status-warning">{log.maxSingleHit}</p>
               </div>
             </div>
             {isWin && (
-              <div className="flex items-center gap-3 text-[11px] text-gray-400 pt-0.5 border-t border-gray-800/40">
-                <span className="text-green-400">+{log.xpEarned} XP</span>
-                <span className="text-yellow-400">+{log.goldEarned} Gold</span>
+              <div className="flex items-center gap-3 text-[11px] text-fg-secondary pt-0.5 border-t border-line-subtle/40">
+                <span className="text-status-success">+{log.xpEarned} XP</span>
+                <span className="text-status-warning">+{log.goldEarned} Gold</span>
                 {log.itemsDropped.length > 0 && (
-                  <span className="text-purple-400">+{log.itemsDropped.join(', ')}</span>
+                  <span className="text-stat-mag">+{log.itemsDropped.join(', ')}</span>
                 )}
               </div>
             )}
@@ -163,18 +163,18 @@ function KillListTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string, 
     if (!loaded) fetchKills()
   }, [loaded, fetchKills])
 
-  if (isLoading) return <p className="text-gray-500 text-sm">Loading kill list...</p>
-  if (loaded && kills.length === 0) return <p className="text-gray-500 text-sm">No kills recorded yet.</p>
+  if (isLoading) return <p className="text-fg-muted text-sm">Loading kill list...</p>
+  if (loaded && kills.length === 0) return <p className="text-fg-muted text-sm">No kills recorded yet.</p>
 
   const total = kills.reduce((sum, k) => sum + k.kills, 0)
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-gray-500">{total} total kills across {kills.length} creature{kills.length !== 1 ? 's' : ''}</p>
+      <p className="text-xs text-fg-muted">{total} total kills across {kills.length} creature{kills.length !== 1 ? 's' : ''}</p>
       {kills.map((entry) => (
-        <div key={entry.id} className="flex items-center justify-between bg-gray-800/40 border border-gray-700/40 rounded-lg px-3 py-2">
-          <span className="text-sm text-gray-200 capitalize">{entry.monster.replace(/-/g, ' ')}</span>
-          <span className="text-sm font-bold text-red-400">{entry.kills} kill{entry.kills !== 1 ? 's' : ''}</span>
+        <div key={entry.id} className="flex items-center justify-between bg-surface-raised/40 border border-line-subtle/40 rounded-lg px-3 py-2">
+          <span className="text-sm text-fg-bright capitalize">{entry.monster.replace(/-/g, ' ')}</span>
+          <span className="text-sm font-bold text-status-error">{entry.kills} kill{entry.kills !== 1 ? 's' : ''}</span>
         </div>
       ))}
     </div>
@@ -201,14 +201,14 @@ export default function QuestsPanel({
     <div className="relative w-full h-full flex flex-col min-h-0">
       <button
         onClick={onClose}
-        className="absolute top-2 right-3 z-30 p-2 text-gray-400 hover:text-white transition-colors duration-200 rounded-lg hover:bg-gray-800/50"
+        className="absolute top-2 right-3 z-30 p-2 text-fg-secondary hover:text-fg-bright transition-colors duration-200 rounded-lg hover:bg-surface-raised/50"
         title="Close"
         aria-label="Close"
       >
         <X size={20} />
       </button>
 
-      <div className="flex gap-2 border-b border-gray-700/50 pl-4 pr-12 md:pr-12 py-2 flex-shrink-0">
+      <div className="flex gap-2 border-b border-line-subtle/50 pl-4 pr-12 md:pr-12 py-2 flex-shrink-0">
         <div className="flex-1 flex items-center justify-start gap-2 flex-nowrap overflow-x-auto">
           {QUEST_SUB_TABS.map((tab) => (
             <SubTabButton
@@ -230,7 +230,7 @@ export default function QuestsPanel({
         {activeTab === 'quests' && (
           <>
             {isLoadingQuests ? (
-              <div className="text-gray-400 text-sm">Unraveling your quest log...</div>
+              <div className="text-fg-secondary text-sm">Unraveling your quest log...</div>
             ) : (() => {
               const activeQuests = [...quests]
                 .sort((a, b) => {
@@ -241,7 +241,7 @@ export default function QuestsPanel({
                 .filter(q => !q.completed)
 
               if (activeQuests.length === 0) {
-                return <div className="text-gray-400 text-sm">No active quests.</div>
+                return <div className="text-fg-secondary text-sm">No active quests.</div>
               }
 
               return (
@@ -258,28 +258,28 @@ export default function QuestsPanel({
                       areRequirementsMet(questDef.requirements, requirementContext)
 
                     return (
-                      <div key={quest.id} className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3">
+                      <div key={quest.id} className="bg-surface-raised/50 border border-line-subtle/50 rounded-lg p-4 space-y-3">
                         <div className="flex items-start justify-between">
                           <div>
                             {questDef.giver?.name && (
-                              <p className="text-gray-500 text-xs mb-1">{questDef.giver.name}</p>
+                              <p className="text-fg-muted text-xs mb-1">{questDef.giver.name}</p>
                             )}
-                            <h4 className="text-white font-semibold text-base">{questDef.title}</h4>
-                            <p className="text-gray-400 text-sm mt-1">{questDef.summary}</p>
+                            <h4 className="text-fg-bright font-semibold text-base">{questDef.title}</h4>
+                            <p className="text-fg-secondary text-sm mt-1">{questDef.summary}</p>
                           </div>
-                          <span className="px-2 py-1 bg-blue-900/50 border border-blue-700/50 text-blue-300 text-xs font-semibold rounded">
+                          <span className="px-2 py-1 bg-resource-mp/50 border border-resource-mp/50 text-resource-mp text-xs font-semibold rounded">
                             Active
                           </span>
                         </div>
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-500 text-sm">Objective:</span>
-                            <span className="text-gray-300 text-sm">{questDef.objective}</span>
+                            <span className="text-fg-muted text-sm">Objective:</span>
+                            <span className="text-fg-primary text-sm">{questDef.objective}</span>
                           </div>
                           {questDef.rewards && questDef.rewards.length > 0 && (
                             <div className="flex items-center gap-2">
-                              <span className="text-gray-500 text-sm">Reward:</span>
-                              <span className="text-gray-300 text-sm">
+                              <span className="text-fg-muted text-sm">Reward:</span>
+                              <span className="text-fg-primary text-sm">
                                 {questDef.rewards.map((r: any) => {
                                   if (r.type === 'currency') return `${r.amount} Gold`
                                   if (r.type === 'xp') return `${r.amount} XP`
@@ -299,15 +299,15 @@ export default function QuestsPanel({
                         </div>
                         <QuestRequirements requirements={questDef.requirements} variant="full" />
                         {isReadyToTurnIn && questDef.giver && (
-                          <div className="pt-2 border-t border-gray-700/50">
-                            <p className="text-green-400 text-sm font-medium">
+                          <div className="pt-2 border-t border-line-subtle/50">
+                            <p className="text-status-success text-sm font-medium">
                               Ready to turn in — return to {questDef.giver.name} to complete the quest.
                             </p>
                           </div>
                         )}
                         {questDef.nextStep && (
-                          <div className="pt-2 border-t border-gray-700/50">
-                            <p className="text-gray-500 text-xs mt-2">Next: {questDef.nextStep}</p>
+                          <div className="pt-2 border-t border-line-subtle/50">
+                            <p className="text-fg-muted text-xs mt-2">Next: {questDef.nextStep}</p>
                           </div>
                         )}
                       </div>
@@ -323,7 +323,7 @@ export default function QuestsPanel({
         {activeTab === 'completed-quests' && (
           <>
             {isLoadingQuests ? (
-              <div className="text-gray-400 text-sm">Loading...</div>
+              <div className="text-fg-secondary text-sm">Loading...</div>
             ) : (() => {
               const completedQuests = [...quests]
                 .sort((a, b) => {
@@ -334,7 +334,7 @@ export default function QuestsPanel({
                 .filter(q => q.completed)
 
               if (completedQuests.length === 0) {
-                return <div className="text-gray-400 text-sm">No completed quests yet.</div>
+                return <div className="text-fg-secondary text-sm">No completed quests yet.</div>
               }
 
               return (
@@ -343,23 +343,23 @@ export default function QuestsPanel({
                     const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
                     if (!questDef) return null
                     return (
-                      <div key={quest.id} className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 space-y-3 opacity-75">
+                      <div key={quest.id} className="bg-surface-raised/50 border border-line-subtle/50 rounded-lg p-4 space-y-3 opacity-75">
                         <div className="flex items-start justify-between">
                           <div>
                             {questDef.giver?.name && (
-                              <p className="text-gray-500 text-xs mb-1">{questDef.giver.name}</p>
+                              <p className="text-fg-muted text-xs mb-1">{questDef.giver.name}</p>
                             )}
-                            <h4 className="text-white font-semibold text-base">{questDef.title}</h4>
-                            <p className="text-gray-400 text-sm mt-1">{questDef.summary}</p>
+                            <h4 className="text-fg-bright font-semibold text-base">{questDef.title}</h4>
+                            <p className="text-fg-secondary text-sm mt-1">{questDef.summary}</p>
                           </div>
-                          <span className="px-2 py-1 bg-green-900/50 border border-green-700/50 text-green-300 text-xs font-semibold rounded">
+                          <span className="px-2 py-1 bg-status-success/50 border border-status-success/50 text-status-success text-xs font-semibold rounded">
                             Done
                           </span>
                         </div>
                         {questDef.rewards && questDef.rewards.length > 0 && (
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-500 text-sm">Reward:</span>
-                            <span className="text-gray-300 text-sm">
+                            <span className="text-fg-muted text-sm">Reward:</span>
+                            <span className="text-fg-primary text-sm">
                               {questDef.rewards.map((r: any) => {
                                 if (r.type === 'currency') return `${r.amount} Gold`
                                 if (r.type === 'xp') return `${r.amount} XP`
@@ -376,25 +376,25 @@ export default function QuestsPanel({
             })()}
 
             {!isLoadingQuests && (
-              <div className="mt-6 pt-4 border-t border-gray-700/50 space-y-3">
+              <div className="mt-6 pt-4 border-t border-line-subtle/50 space-y-3">
                 <button
                   onClick={onResetQuests}
                   disabled={isResettingQuests || !isLoggedIn}
-                  className="w-full px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 hover:border-red-600/70 text-red-400 hover:text-red-300 text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 bg-status-error/20 hover:bg-status-error/30 border border-status-error/50 hover:border-status-error/70 text-status-error/80 hover:text-status-error text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isResettingQuests ? 'Resetting...' : 'Reset Quests to Initial State'}
                 </button>
-                <p className="mt-1 text-xs text-gray-500 text-center">
+                <p className="mt-1 text-xs text-fg-muted text-center">
                   Resets all quests and chest to initial state
                 </p>
                 <button
                   onClick={onSkipToChest}
                   disabled={isResettingQuests || !isLoggedIn}
-                  className="w-full px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-600/50 hover:border-amber-600/70 text-amber-400 hover:text-amber-300 text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 bg-resource-gold/20 hover:bg-resource-gold/30 border border-resource-gold/50 hover:border-resource-gold/70 text-resource-gold/80 hover:text-resource-gold text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isResettingQuests ? 'Resetting...' : 'Skip to Chest / Jack Flow'}
                 </button>
-                <p className="mt-1 text-xs text-gray-500 text-center">
+                <p className="mt-1 text-xs text-fg-muted text-center">
                   Completes Old Man &amp; Young Soldier quests, resets chest
                 </p>
               </div>

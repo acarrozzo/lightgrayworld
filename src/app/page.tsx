@@ -74,14 +74,14 @@ export default function Home() {
 
   if (isInitializing || isLoading || !isHydrated) {
     return (
-      <div className="min-h-dvh bg-gray-950 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-dvh bg-surface-canvas flex items-center justify-center">
+        <div className="text-fg-bright text-xl">Loading...</div>
       </div>
     )
   }
 
   return (
-    <main className="h-dvh bg-gray-950 overflow-hidden">
+    <main className="h-dvh bg-surface-canvas overflow-hidden">
       {isLoggedIn ? <GameInterface /> : <LoginForm />}
     </main>
   )

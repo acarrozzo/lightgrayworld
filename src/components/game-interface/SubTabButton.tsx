@@ -22,7 +22,7 @@ interface SubTabButtonProps {
  * read as different levels.
  */
 const INACTIVE_CLASSES =
-  'border-1 border-gray-600 hover:border-gray-500 bg-transparent hover:bg-gray-800/30 text-gray-400 hover:text-gray-300'
+  'border-1 border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary'
 
 export default function SubTabButton({
   active,
