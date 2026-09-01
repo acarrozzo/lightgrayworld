@@ -48,9 +48,20 @@ export interface ThemeRecipe {
    * every terminal scheme.
    */
   accentSource?: keyof TerminalPalette
+  /**
+   * Whether to force the red family apart (default true). Off only for a theme
+   * whose authored identity is a shared red — Light Gray RPG Classic — where
+   * the separation would be a modernisation the theme exists not to make.
+   */
+  separateReds?: boolean
+  /** How role fills carry their labels. See `Theme.fills`. Default `deepened`. */
+  fills?: Theme['fills']
   /** Slots where the derived value was not good enough. */
-  overrides?: DeepPartial<Omit<Theme, 'id' | 'name' | 'description' | 'appearance' | 'swatch' | 'terminal'>>
+  overrides?: DeepPartial<DerivedLayers>
 }
+
+/** The layers `makeTheme` derives and a recipe may override. */
+type DerivedLayers = Pick<Theme, 'ui' | 'game' | 'regions'>
 
 function deepMerge<T>(base: T, patch: DeepPartial<T> | undefined): T {
   if (!patch) return base
@@ -183,6 +194,8 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
       grass: t.green,
       forest: dim(t.green, 0.3),
       dirt: dim(mix(t.yellow, t.red, 0.45), 0.2),
+      // Redder and a little deeper than dirt: timber, not earth.
+      wood: dim(mix(t.red, t.yellow, 0.45), 0.3),
       sand: mix(t.yellow, t.white, 0.4),
       stone: fade(0.4),
       water: t.cyan,
@@ -240,7 +253,7 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     lobby: { base: mix(t.blue, t.white, 0.3) },
   }
 
-  const derived: Omit<Theme, 'id' | 'name' | 'description' | 'appearance' | 'swatch' | 'terminal'> = {
+  const derived: DerivedLayers = {
     ui,
     game,
     regions,
@@ -251,8 +264,9 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
   // Guarantees, applied after overrides so they hold for hand-authored values
   // and imported palettes alike. Both passes only ever move a value that fails
   // a check, so a theme that was already correct is returned untouched.
+  const separateReds = recipe.separateReds ?? true
   enforceLegibility(merged.ui, merged.game)
-  separateRedFamily(merged.ui, merged.game, merged.regions, t)
+  if (separateReds) separateRedFamily(merged.ui, merged.game, merged.regions, t)
   separateRegions(merged.ui, merged.regions)
 
   return {
@@ -260,6 +274,8 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     name: recipe.name,
     description: recipe.description,
     appearance: recipe.appearance ?? 'dark',
+    separateReds,
+    fills: recipe.fills ?? 'deepened',
     terminal: t,
     ...merged,
     swatch: recipe.swatch ?? merged.ui.accent,

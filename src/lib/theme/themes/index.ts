@@ -1,5 +1,6 @@
 import type { Theme } from '../types'
 import { lightGray } from './light-gray'
+import { lightGrayModern } from './light-gray-modern'
 import { lightGrayDark } from './light-gray-dark'
 import { dracula } from './dracula'
 import { nord } from './nord'
@@ -17,16 +18,17 @@ import { everforestDark } from './everforest-dark'
  * stylesheet all map over it, so changing the order here changes it everywhere
  * at once.
  *
- * Light Gray RPG is first and is the default for every account that has not
- * chosen otherwise — the id `light-gray` deliberately still points at the
- * original blue-tinted look, so no existing player's game changes appearance.
- * Light Gray Dark follows it as the opt-in neutral sibling. The rest run
- * warm-and-muted to cool-and-vivid — Gruvbox, Nord and Everforest are the
- * restrained earthy end nearest the house palette; Dracula, Solarized, Tokyo
- * Night and Catppuccin are the more saturated ones.
+ * The three Light Grays come first. Classic is the default for every account
+ * that has not chosen otherwise — the id `light-gray` points at the original
+ * game's own colours, so a player who never touched the picker sees the game
+ * as it was. Modern is the Tailwind-era look of the rewrite; Dark is the house
+ * palette on a neutral near-black ground. The rest run warm-and-muted to
+ * cool-and-vivid — Gruvbox, Nord and Everforest are the restrained earthy end;
+ * Dracula, Solarized, Tokyo Night and Catppuccin are the more saturated ones.
  */
 export const THEMES: Theme[] = [
   lightGray,
+  lightGrayModern,
   lightGrayDark,
   gruvboxDark,
   nord,
@@ -61,4 +63,4 @@ export function resolveTheme(id: string | null | undefined): Theme {
   return isThemeId(id) ? THEMES_BY_ID[id] : THEMES_BY_ID[DEFAULT_THEME_ID]
 }
 
-export { lightGray, lightGrayDark, dracula, nord, gruvboxDark, solarizedDark, tokyoNight, catppuccinMocha, everforestDark }
+export { lightGray, lightGrayModern, lightGrayDark, dracula, nord, gruvboxDark, solarizedDark, tokyoNight, catppuccinMocha, everforestDark }

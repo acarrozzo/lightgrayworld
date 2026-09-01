@@ -375,8 +375,9 @@ export default function ThemeReference() {
           <p className="mb-3 mt-1 max-w-4xl text-xs leading-relaxed text-fg-muted">
             Underneath the game roles, each theme carries a complete 16-colour ANSI palette with a
             background, foreground, cursor and selection — the portable layer a real terminal
-            emulator understands. Light Gray RPG&rsquo;s is first-party and written to be usable
-            in an actual shell, not merely to feed the interface.
+            emulator understands. Light Gray Dark&rsquo;s is first-party and written to be usable
+            in an actual shell; Classic&rsquo;s is the original game&rsquo;s own colours, and
+            Modern&rsquo;s is Tailwind&rsquo;s palette stops.
           </p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {THEMES.map((t) => (

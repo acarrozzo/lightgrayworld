@@ -306,15 +306,24 @@ function computeCssVars(theme: Theme): Record<string, string> {
 
     const role = name.slice(2)
     const isSurface = name.startsWith('--surface-')
+    const flat = theme.fills === 'flat' && !isSurface
 
-    const fill = isSurface ? value : deepenForLabel(value, ui.fgBright, LABEL_CONTRAST)
-    const label = readableOn(fill, ui)
+    // Flat fills are the original game's buttons: the role's own colour, a
+    // bright label, and a dark text shadow (emitted below) doing the work
+    // contrast would otherwise do. Everything else deepens.
+    const fill = isSurface || flat ? value : deepenForLabel(value, ui.fgBright, LABEL_CONTRAST)
+    const label = flat ? ui.fgBright : readableOn(fill, ui)
 
     // Hover brightens the fill toward the role it represents, in small steps,
     // stopping at the contrast floor — so the lift is as large as the palette
     // can afford rather than a fixed amount some themes cannot pay.
     let hover = ui.surfaceHover
-    if (!isSurface) {
+    if (flat) {
+      // No contrast floor to respect; the shadow carries the label. Lift, or
+      // darken where the colour is already too light to lift visibly.
+      hover = adjustLightness(fill, HOVER_LIFT)
+      if (deltaE(fill, hover) < MIN_HOVER_DELTA) hover = adjustLightness(fill, -HOVER_LIFT)
+    } else if (!isSurface) {
       hover = fill
       for (let step = 0; step < 8; step++) {
         const next = adjustLightness(hover, HOVER_LIFT / 4)
@@ -336,5 +345,12 @@ function computeCssVars(theme: Theme): Record<string, string> {
     vars[`--on-${role}`] = label
   }
 
+  // The label halo every `.fill-*` class applies. The original's `.btn` rule
+  // was exactly this shadow; deepened themes need none, and say so.
+  vars['--fill-label-shadow'] = theme.fills === 'flat' ? '0 0 4px rgba(0, 0, 0, 0.6)' : 'none'
+
   return vars
 }
+
+/** Variables that are not colours and must not be registered as Tailwind colours. */
+export const NON_COLOR_VARS = new Set(['--fill-label-shadow'])

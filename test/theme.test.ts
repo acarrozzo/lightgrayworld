@@ -237,6 +237,8 @@ test('every catalog token matches its CSS variable', () => {
 
 test('every filled control is readable, at rest and on hover', () => {
   for (const theme of THEMES) {
+    // Flat-fill themes put the label on a text shadow instead; see the next test.
+    if (theme.fills === 'flat') continue
     const vars = themeToCssVars(theme)
     for (const [name, value] of Object.entries(vars)) {
       if (!isFillableVar(name) || isFillCompanion(name)) continue
@@ -260,10 +262,26 @@ test('every filled control is readable, at rest and on hover', () => {
   }
 })
 
+test('a flat-fill theme paints the role itself and shadows the label', () => {
+  const flat = THEMES.filter((t) => t.fills === 'flat')
+  assert.ok(flat.length > 0, 'Classic should be a flat-fill theme')
+  for (const theme of flat) {
+    const vars = themeToCssVars(theme)
+    assert.equal(vars['--fill-action-search'], vars['--action-search'], `${theme.id}: search fill was deepened`)
+    assert.equal(vars['--fill-hue-gold'], vars['--hue-gold'], `${theme.id}: gold fill was deepened`)
+    assert.equal(vars['--on-hue-gold'], theme.ui.fgBright, `${theme.id}: label is not the bright text`)
+    assert.notEqual(vars['--fill-label-shadow'], 'none', `${theme.id}: no label shadow`)
+  }
+  for (const theme of THEMES.filter((t) => t.fills !== 'flat')) {
+    assert.equal(themeToCssVars(theme)['--fill-label-shadow'], 'none', `${theme.id}: deepened theme has a shadow`)
+  }
+})
+
 test('buttons keep light labels; the fill deepens instead of the text flipping', () => {
   // The whole point of deepening: a gold button is bronze with a white label,
   // not pale gold with a black one, so it matches every other control.
   for (const theme of THEMES) {
+    if (theme.fills === 'flat') continue
     const vars = themeToCssVars(theme)
     const lightLabelled = ['hue-gold', 'mood-treasure', 'resource-gold', 'action-attack']
     for (const role of lightLabelled) {
@@ -283,7 +301,7 @@ test('buttons keep light labels; the fill deepens instead of the text flipping',
 
 test('a role stays bright as text even though its fill is deepened', () => {
   // The two jobs need different values; deepening must not touch the role.
-  const theme = THEMES[0]
+  const theme = THEMES.find((t) => t.fills === 'deepened')!
   const vars = themeToCssVars(theme)
   assert.equal(vars['--resource-gold'], theme.game.resource.gold)
   assert.notEqual(vars['--fill-resource-gold'], vars['--resource-gold'])

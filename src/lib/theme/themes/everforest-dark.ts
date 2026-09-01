@@ -74,7 +74,7 @@ export const everforestDark = makeTheme({
       enemy: { hostile: '#e67e80', neutral: '#dbbc7f', boss: '#d699b6' },
       channel: { room: '#a7c080', world: '#7fbbb3', action: '#dbbc7f', dm: '#d699b6', system: '#9da9a0', quest: '#e69875' },
       combat: { victory: '#a7c080', defeat: '#9e4f51', damage: '#e69875', heal: '#83c092', miss: '#868d80', crit: '#dbbc7f' },
-      terrain: { grass: '#a7c080', forest: '#6d8a5c', dirt: '#a8845c', sand: '#dfd2ab', stone: '#9da9a0', water: '#7fbbb3', ash: '#7a8478', bone: '#ddd3b4' },
+      terrain: { grass: '#a7c080', forest: '#6d8a5c', dirt: '#a8845c', wood: '#9a6b4a', sand: '#dfd2ab', stone: '#9da9a0', water: '#7fbbb3', ash: '#7a8478', bone: '#ddd3b4' },
       hue: { gray: '#9da9a0', red: '#e67e80', gold: '#dbbc7f', green: '#a7c080', sky: '#83c092', blue: '#7fbbb3', violet: '#d699b6', purple: '#bf9ac4', pink: '#e0a0b4' },
     },
     regions: {

@@ -34,12 +34,12 @@ export function questIdsForNpc(npcId: string): string[] {
 
 export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '000': [
-    { action: 'read sign', label: 'Read Sign', icon: '', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Sign', icon: '', className: 'fill-terrain-wood' },
     { action: 'examine pillar', label: 'Examine Pillar', icon: '', className: 'fill-hue-blue' },
     { action: 'teleport to grassy field', label: 'Press Button (Teleports to Grassy Field)', icon: '', className: 'fill-hue-green' },
   ],
   '001': [
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
     { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'fill-mood-treasure' },
   ],
   '002': [
@@ -65,7 +65,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'fill-mood-treasure' },
   ],
   '007': [
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-blue' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
     { action: 'talk to young soldier', label: 'Young Soldier', icon: 'npc-youngsoldier', className: 'fill-hue-blue', questIds: questIdsForNpc('young_soldier') },
   ],
   '024': [
@@ -80,7 +80,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'pick wheat', label: 'Pick Wheat', icon: 'flower', className: 'fill-mood-treasure' },
   ],
   '021': [
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-blue' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
     // No "Buy Staff": the Pajama Shaman's shop is not ported yet, and a staff is
     // not something he ever sold — the original's stock was flail, morning star,
     // gladius, battle axe, warhammer, claymore, long bow, arrows, pajamas and
@@ -127,7 +127,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'get wood', label: 'Get Wood', icon: 'wood', className: 'fill-mood-treasure' },
   ],
   '104': [
-    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '117': [
     { action: 'get leather', label: 'Get Leather', icon: 'leather', className: 'fill-mood-treasure' },
@@ -137,7 +137,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'grab ring', label: 'Grab Ring', icon: 'ring', className: 'fill-hue-green' },
   ],
   '121': [
-    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '124': [
     { action: 'grab arrows', label: 'Grab Arrows', icon: 'arrow', className: 'fill-mood-treasure' },
@@ -174,10 +174,10 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   // the trees) need no button — Search is one of the four core actions RoomBox
   // renders in every room.
   '111': [
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '115': [
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '111h': [
     { action: 'open chest', label: 'Open Treasure Chest', icon: 'chest', className: 'fill-mood-treasure' },
@@ -197,12 +197,12 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'view shop', label: 'View Shop', icon: 'veggies', className: 'fill-hue-green' },
   ],
   '210': [
-    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
     { action: 'rest at fountain', label: 'Rest at Fountain', icon: 'heal', className: 'fill-hue-blue' },
     { action: 'open crafting', label: 'Open Crafting', icon: 'craft', className: 'fill-action-craft' },
   ],
   '214': [
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '215': [
     { action: 'talk to red guard captain', label: 'Red Guard Captain', icon: 'npc-redguardcaptain', className: 'fill-hue-red', questIds: questIdsForNpc('red_guard_captain') },
@@ -211,7 +211,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'fill-mood-treasure' },
   ],
   '218': [
-    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '220': [
     { action: 'view shop', label: 'View Shop', icon: 'bar', className: 'fill-mood-treasure' },
@@ -229,7 +229,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '225': [
     { action: 'talk to wizard recruiter', label: "Wizard's Guild Recruiter", icon: 'npc-wizard', className: 'fill-mood-arcane', questIds: questIdsForNpc('wizards_guild_recruiter') },
     { action: 'talk to wizard morty', label: 'Wizard Morty', icon: 'npc-wizard2', className: 'fill-mood-arcane', questIds: questIdsForNpc('wizard_morty'), requiresCompletedQuest: 'quest_wizardsguild_000' },
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'fill-mood-treasure' },
     { action: 'grab pack', label: "Grab Wizard's Pack", icon: 'npc-wizard', className: 'fill-mood-arcane' },
     { action: 'rest at wizard fire', label: "Rest at Wizard's Fire", icon: 'heal', className: 'fill-hue-blue' },
@@ -238,7 +238,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '226': [
     { action: 'talk to warrior recruiter', label: "Warrior's Guild Recruiter", icon: 'npc-warrior', className: 'fill-hue-blue', questIds: questIdsForNpc('warriors_guild_recruiter') },
     { action: 'talk to warrior pete', label: 'Warrior Pete', icon: 'npc-warrior2', className: 'fill-hue-blue', questIds: questIdsForNpc('warrior_pete'), requiresCompletedQuest: 'quest_warriorsguild_000' },
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'fill-mood-treasure' },
     { action: 'grab pack', label: "Grab Warrior's Pack", icon: 'npc-warrior', className: 'fill-hue-blue' },
     { action: 'rest at warrior fire', label: "Rest at Warrior's Fire", icon: 'heal', className: 'fill-hue-blue' },
@@ -276,7 +276,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   // ==================== ROCKY FLATS ====================
   '303': [
     { action: 'talk to dwarf captain', label: 'Dwarf Captain', icon: 'npc-dwarfcaptain', className: 'fill-hue-gold', questIds: questIdsForNpc('dwarf_captain') },
-    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '306': [
     { action: 'rest on the ledge', label: 'Rest on the Ledge', icon: 'heal', className: 'fill-hue-green' },
@@ -287,7 +287,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '307': [
     { action: 'read bounty board', label: 'Bounty Board', icon: 'npc-bountyboard', className: 'fill-hue-gold', questIds: questIdsForNpc('dwarf_bounty_board') },
     { action: 'rest at the coal fire', label: 'Rest at the Coal Fire', icon: 'fire', className: 'fill-hue-green' },
-    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '308': [
     { action: 'talk to mining recruiter', label: 'Mining Guild Recruiter', icon: 'npc-miner2', className: 'fill-hue-gold', questIds: questIdsForNpc('mining_guild_recruiter') },
@@ -296,7 +296,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'grab pack', label: 'Grab Mining Pack', icon: 'inv', className: 'fill-hue-blue' },
     { action: 'rest at the forge', label: 'Rest at the Forge', icon: 'fire', className: 'fill-hue-green' },
     { action: 'open crafting', label: 'Open Crafting', icon: 'craft', className: 'fill-action-craft' },
-    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '309': [
     { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'fill-mood-treasure' },
@@ -310,14 +310,14 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'grab blue potion', label: 'Grab Blue Potions', icon: 'blue-potion', className: 'fill-hue-blue' },
   ],
   '315': [
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '321b': [
     { action: 'ex gloves', label: 'Examine Gloves', icon: 'hand', className: 'fill-hue-blue' },
     { action: 'grab gloves', label: 'Grab Gloves', icon: 'hand', className: 'fill-mood-treasure' },
   ],
   '322': [
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-red' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '325': [
     { action: 'flip switch', label: 'Flip Switch', icon: 'lever-up', className: 'fill-hue-gold' },
@@ -328,7 +328,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   // `mine here` buttons for 1-30 are merged in below rather than written out
   // thirty times — the rooms differ only in how deep they are.
   '311-00': [
-    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-hue-gold' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
   ],
 }
 

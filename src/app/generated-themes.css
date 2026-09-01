@@ -71,6 +71,7 @@
   --color-terrain-grass: var(--terrain-grass);
   --color-terrain-forest: var(--terrain-forest);
   --color-terrain-dirt: var(--terrain-dirt);
+  --color-terrain-wood: var(--terrain-wood);
   --color-terrain-sand: var(--terrain-sand);
   --color-terrain-stone: var(--terrain-stone);
   --color-terrain-water: var(--terrain-water);
@@ -382,6 +383,9 @@
   --color-fill-terrain-dirt: var(--fill-terrain-dirt);
   --color-hover-terrain-dirt: var(--hover-terrain-dirt);
   --color-on-terrain-dirt: var(--on-terrain-dirt);
+  --color-fill-terrain-wood: var(--fill-terrain-wood);
+  --color-hover-terrain-wood: var(--hover-terrain-wood);
+  --color-on-terrain-wood: var(--on-terrain-wood);
   --color-fill-terrain-sand: var(--fill-terrain-sand);
   --color-hover-terrain-sand: var(--hover-terrain-sand);
   --color-on-terrain-sand: var(--on-terrain-sand);
@@ -714,720 +718,1442 @@
   --color-on-world-lobby-accent: var(--on-world-lobby-accent);
 }
 
-/* Default theme (Light Gray RPG), applied when no preference is stored. */
+/* Default theme (Light Gray RPG Classic), applied when no preference is stored. */
 :root {
   color-scheme: dark;
-  --surface-canvas: #030712;
-  --surface-sunken: #01040a;
-  --surface-panel: #111827;
-  --surface-raised: #1f2937;
-  --surface-overlay: #161f31;
-  --surface-hover: #374151;
-  --surface-selected: #4b5563;
-  --surface-disabled: #111827;
+  --surface-canvas: #07141d;
+  --surface-sunken: #111f2b;
+  --surface-panel: #20303f;
+  --surface-raised: #344456;
+  --surface-overlay: #20303f;
+  --surface-hover: #425266;
+  --surface-selected: #546378;
+  --surface-disabled: #111f2b;
   --scrim: #000000b8;
   --shadow: #0000008c;
-  --fg-bright: #ffffff;
-  --fg-primary: #d1d5db;
-  --fg-secondary: #9ca3af;
-  --fg-muted: #727986;
-  --fg-disabled: #4b5563;
-  --fg-on-accent: #030712;
-  --line-subtle: #374151;
-  --line-strong: #4b5563;
-  --line-focus: #9ab3c9;
-  --accent: #7b96b0;
-  --accent-hover: #9ab3c9;
-  --accent-muted: #2c3a49;
-  --action-attack: #de8541;
-  --action-search: #6a9490;
-  --action-rest: #7f9ec4;
-  --action-look: #9a9a9a;
-  --action-talk: #c9a86a;
-  --action-travel: #8fae6b;
-  --action-craft: #c07a4a;
-  --action-gather: #96b06a;
-  --action-use: #9b8fb5;
-  --resource-hp: #b54764;
-  --resource-mp: #5f8fd4;
-  --resource-xp: #8fc46a;
-  --resource-gold: #e8bf72;
-  --stat-str: #d97a5a;
-  --stat-dex: #8fbf7a;
-  --stat-mag: #9b8fd4;
-  --stat-def: #7fa3c9;
-  --status-success: #84b869;
-  --status-error: #ff4d46;
-  --status-warning: #dba03f;
-  --status-info: #7ba3c9;
-  --loot-common: #a3a3a3;
-  --loot-uncommon: #84b869;
-  --loot-rare: #6fa3d9;
-  --loot-epic: #a98fd4;
-  --loot-legendary: #e8b04a;
-  --enemy-hostile: #b8574d;
-  --enemy-neutral: #c8994a;
-  --enemy-boss: #9b7096;
-  --channel-room: #7a9557;
-  --channel-world: #5f7f9e;
-  --channel-action: #c8994a;
-  --channel-dm: #9b7096;
-  --channel-system: #888a8e;
-  --channel-quest: #e8bf72;
-  --combat-victory: #a3c47a;
-  --combat-defeat: #b04a52;
-  --combat-damage: #e8896a;
-  --combat-heal: #7fc48a;
-  --combat-miss: #8a8a8a;
-  --combat-crit: #f0c24a;
-  --terrain-grass: #7fa055;
-  --terrain-forest: #5c7a4a;
-  --terrain-dirt: #8a6a4a;
-  --terrain-sand: #c4a878;
-  --terrain-stone: #8a8a86;
-  --terrain-water: #5a8a9e;
-  --terrain-ash: #6a6a6e;
-  --terrain-bone: #c9c0a8;
-  --mood-danger: #b8564a;
-  --mood-arcane: #9b7ec4;
-  --mood-sacred: #9ab8d4;
-  --mood-treasure: #d4a84a;
-  --mood-calm: #6f9aae;
-  --mood-decay: #7a8a52;
-  --hue-gray: #9a9a9a;
-  --hue-red: #d4645a;
-  --hue-gold: #dba64a;
-  --hue-green: #84b869;
-  --hue-sky: #6fb0d9;
-  --hue-blue: #6f92d9;
-  --hue-violet: #9b8fd4;
-  --hue-purple: #b06fd4;
-  --hue-pink: #d46f9e;
-  --world-room-zero: #9b8fb5;
-  --world-room-zero-title: #9b8fb5;
-  --world-room-zero-subtitle: #8985a0;
-  --world-room-zero-icon: #9b8fb5;
-  --world-room-zero-direction: #9b8fb5;
-  --world-room-zero-accent: #b4abc8;
-  --world-room-zero-tint: #9b8fb51a;
-  --world-grassy-field: #8fae5c;
-  --world-grassy-field-title: #8fae5c;
-  --world-grassy-field-subtitle: #82966f;
-  --world-grassy-field-icon: #8fae5c;
-  --world-grassy-field-direction: #8fae5c;
-  --world-grassy-field-accent: #abc285;
-  --world-grassy-field-tint: #8fae5c1a;
-  --world-grassy-field-underground: #7a6a52;
-  --world-grassy-field-underground-title: #8e806c;
-  --world-grassy-field-underground-subtitle: #817d78;
-  --world-grassy-field-underground-icon: #7a6a52;
-  --world-grassy-field-underground-direction: #7a6a52;
-  --world-grassy-field-underground-accent: #9b8f7d;
-  --world-grassy-field-underground-tint: #7a6a521a;
-  --world-beach: #cbb07a;
-  --world-beach-title: #cbb07a;
-  --world-beach-subtitle: #a3977f;
-  --world-beach-icon: #cbb07a;
-  --world-beach-direction: #cbb07a;
-  --world-beach-accent: #d8c49b;
-  --world-beach-tint: #cbb07a1a;
-  --world-caves: #6a707a;
-  --world-caves-title: #80858e;
-  --world-caves-subtitle: #7a808a;
-  --world-caves-icon: #6a707a;
-  --world-caves-direction: #6a707a;
-  --world-caves-accent: #8f949b;
-  --world-caves-tint: #6a707a1a;
-  --world-scorpion-pit: #bd7a2e;
-  --world-scorpion-pit-title: #bd7a2e;
-  --world-scorpion-pit-subtitle: #9b7a56;
-  --world-scorpion-pit-icon: #bd7a2e;
-  --world-scorpion-pit-direction: #bd7a2e;
-  --world-scorpion-pit-accent: #ce9b62;
-  --world-scorpion-pit-tint: #bd7a2e1a;
-  --world-forest: #5f8a52;
-  --world-forest-title: #67905b;
-  --world-forest-subtitle: #6c866e;
-  --world-forest-icon: #5f8a52;
-  --world-forest-direction: #5f8a52;
-  --world-forest-accent: #87a77d;
-  --world-forest-tint: #5f8a521a;
-  --world-forest-underground: #4a6350;
-  --world-forest-underground-title: #778a7c;
-  --world-forest-underground-subtitle: #758281;
-  --world-forest-underground-icon: #536b59;
-  --world-forest-underground-direction: #4a6350;
-  --world-forest-underground-accent: #778a7c;
-  --world-forest-underground-tint: #4a63501a;
-  --world-red-town: #803f32;
-  --world-red-town-title: #a67970;
-  --world-red-town-subtitle: #8f797a;
-  --world-red-town-icon: #935c51;
-  --world-red-town-direction: #803f32;
-  --world-red-town-accent: #a06f65;
-  --world-red-town-tint: #803f321a;
-  --world-red-town-sewers: #6a7a52;
-  --world-red-town-sewers-title: #798763;
-  --world-red-town-sewers-subtitle: #768173;
-  --world-red-town-sewers-icon: #6a7a52;
-  --world-red-town-sewers-direction: #6a7a52;
-  --world-red-town-sewers-accent: #8f9b7d;
-  --world-red-town-sewers-tint: #6a7a521a;
-  --world-rocky-flats: #9e8a6a;
-  --world-rocky-flats-title: #9e8a6a;
-  --world-rocky-flats-subtitle: #8a8277;
-  --world-rocky-flats-icon: #9e8a6a;
-  --world-rocky-flats-direction: #9e8a6a;
-  --world-rocky-flats-accent: #b6a78f;
-  --world-rocky-flats-tint: #9e8a6a1a;
-  --world-rocky-flats-underground: #8a8478;
-  --world-rocky-flats-underground-title: #8a8478;
-  --world-rocky-flats-underground-subtitle: #7f7f7e;
-  --world-rocky-flats-underground-icon: #8a8478;
-  --world-rocky-flats-underground-direction: #8a8478;
-  --world-rocky-flats-underground-accent: #a7a39a;
-  --world-rocky-flats-underground-tint: #8a84781a;
-  --world-neverending-mine: #b5934a;
-  --world-neverending-mine-title: #b5934a;
-  --world-neverending-mine-subtitle: #978765;
-  --world-neverending-mine-icon: #b5934a;
-  --world-neverending-mine-direction: #b5934a;
-  --world-neverending-mine-accent: #c8ae77;
-  --world-neverending-mine-tint: #b5934a1a;
-  --world-solar-office: #d9b84a;
-  --world-solar-office-title: #d9b84a;
-  --world-solar-office-subtitle: #ab9c65;
-  --world-solar-office-icon: #d9b84a;
-  --world-solar-office-direction: #d9b84a;
-  --world-solar-office-accent: #e3ca77;
-  --world-solar-office-tint: #d9b84a1a;
-  --world-lobby: #7a8fa3;
-  --world-lobby-title: #7a8fa3;
-  --world-lobby-subtitle: #768596;
-  --world-lobby-icon: #7a8fa3;
-  --world-lobby-direction: #7a8fa3;
-  --world-lobby-accent: #9babba;
-  --world-lobby-tint: #7a8fa31a;
-  --term-bg: #030712;
-  --term-fg: #d0d0d0;
-  --term-cursor: #e8bf72;
-  --term-selection-bg: #2f3a3f;
-  --term-selection-fg: #ededed;
-  --ansi-black: #1a1a1a;
-  --ansi-red: #b8574d;
-  --ansi-green: #7a9557;
-  --ansi-yellow: #c8994a;
-  --ansi-blue: #5f7f9e;
-  --ansi-magenta: #9b7096;
-  --ansi-cyan: #6a9490;
-  --ansi-white: #b8b8b8;
-  --ansi-bright-black: #4a4a4a;
-  --ansi-bright-red: #e07a6d;
-  --ansi-bright-green: #a3c47a;
-  --ansi-bright-yellow: #e8bf72;
-  --ansi-bright-blue: #8aacc8;
-  --ansi-bright-magenta: #c39dbd;
-  --ansi-bright-cyan: #96bdb8;
-  --ansi-bright-white: #ededed;
-  --fill-surface-canvas: #030712;
-  --hover-surface-canvas: #374151;
-  --on-surface-canvas: #ffffff;
-  --fill-surface-sunken: #01040a;
-  --hover-surface-sunken: #374151;
-  --on-surface-sunken: #ffffff;
-  --fill-surface-panel: #111827;
-  --hover-surface-panel: #374151;
-  --on-surface-panel: #ffffff;
-  --fill-surface-raised: #1f2937;
-  --hover-surface-raised: #374151;
-  --on-surface-raised: #ffffff;
-  --fill-surface-overlay: #161f31;
-  --hover-surface-overlay: #374151;
-  --on-surface-overlay: #ffffff;
-  --fill-surface-hover: #374151;
-  --hover-surface-hover: #374151;
-  --on-surface-hover: #ffffff;
-  --fill-surface-selected: #4b5563;
-  --hover-surface-selected: #374151;
-  --on-surface-selected: #ffffff;
-  --fill-surface-disabled: #111827;
-  --hover-surface-disabled: #374151;
-  --on-surface-disabled: #ffffff;
-  --fill-accent: #516a81;
-  --hover-accent: #5d768d;
-  --on-accent: #ffffff;
-  --fill-accent-hover: #51687b;
-  --hover-accent-hover: #61788b;
-  --on-accent-hover: #ffffff;
-  --fill-accent-muted: #2c3a49;
-  --hover-accent-muted: #4b5a69;
-  --on-accent-muted: #ffffff;
-  --fill-action-attack: #a64d00;
-  --hover-action-attack: #b55918;
-  --on-action-attack: #ffffff;
-  --fill-action-search: #476f6c;
-  --hover-action-search: #537b78;
-  --on-action-search: #ffffff;
-  --fill-action-rest: #4e6a8c;
-  --hover-action-rest: #5a7698;
-  --on-action-rest: #ffffff;
-  --fill-action-look: #676767;
-  --hover-action-look: #737373;
-  --on-action-look: #ffffff;
-  --fill-action-talk: #816422;
-  --hover-action-talk: #8d702f;
-  --on-action-talk: #ffffff;
-  --fill-action-travel: #567032;
-  --hover-action-travel: #627c3e;
-  --on-action-travel: #ffffff;
-  --fill-action-craft: #985622;
-  --hover-action-craft: #a86633;
-  --on-action-craft: #ffffff;
-  --fill-action-gather: #5c7230;
-  --hover-action-gather: #687e3c;
-  --on-action-gather: #ffffff;
-  --fill-action-use: #6f6485;
-  --hover-action-use: #7b7091;
-  --on-action-use: #ffffff;
-  --fill-resource-hp: #ad3f5d;
-  --hover-resource-hp: #c14f6d;
-  --on-resource-hp: #ffffff;
-  --fill-resource-mp: #3c68ac;
-  --hover-resource-mp: #4874b8;
-  --on-resource-mp: #ffffff;
-  --fill-resource-xp: #467517;
-  --hover-resource-xp: #528127;
-  --on-resource-xp: #ffffff;
-  --fill-resource-gold: #886306;
-  --hover-resource-gold: #946f1c;
-  --on-resource-gold: #ffffff;
-  --fill-stat-str: #a84b30;
-  --hover-stat-str: #b7573c;
-  --on-stat-str: #ffffff;
-  --fill-stat-dex: #467132;
-  --hover-stat-dex: #568142;
-  --on-stat-dex: #ffffff;
-  --fill-stat-mag: #695c9c;
-  --hover-stat-mag: #796cac;
-  --on-stat-mag: #ffffff;
-  --fill-stat-def: #476789;
-  --hover-stat-def: #577799;
-  --on-stat-def: #ffffff;
-  --fill-status-success: #437221;
-  --hover-status-success: #538232;
-  --on-status-success: #ffffff;
-  --fill-status-error: #d2131d;
-  --hover-status-error: #e12b2c;
-  --on-status-error: #ffffff;
-  --fill-status-warning: #935b00;
-  --hover-status-warning: #9f6719;
-  --on-status-warning: #ffffff;
-  --fill-status-info: #4a6e91;
-  --hover-status-info: #567a9d;
-  --on-status-info: #ffffff;
-  --fill-loot-common: #686868;
-  --hover-loot-common: #747474;
-  --on-loot-common: #ffffff;
-  --fill-loot-uncommon: #437221;
-  --hover-loot-uncommon: #538232;
-  --on-loot-uncommon: #ffffff;
-  --fill-loot-rare: #3d6da1;
-  --hover-loot-rare: #4979ad;
-  --on-loot-rare: #ffffff;
-  --fill-loot-epic: #755b9c;
-  --hover-loot-epic: #8167a8;
-  --on-loot-epic: #ffffff;
-  --fill-loot-legendary: #905b00;
-  --hover-loot-legendary: #a06b1e;
-  --on-loot-legendary: #ffffff;
-  --fill-enemy-hostile: #a8493f;
-  --hover-enemy-hostile: #b7554b;
-  --on-enemy-hostile: #ffffff;
-  --fill-enemy-neutral: #885d00;
-  --hover-enemy-neutral: #986d1e;
-  --on-enemy-neutral: #ffffff;
-  --fill-enemy-boss: #835b7f;
-  --hover-enemy-boss: #8f678b;
-  --on-enemy-boss: #ffffff;
-  --fill-channel-room: #577034;
-  --hover-channel-room: #637c40;
-  --on-channel-room: #ffffff;
-  --fill-channel-world: #4a6a86;
-  --hover-channel-world: #5a7a96;
-  --on-channel-world: #ffffff;
-  --fill-channel-action: #885d00;
-  --hover-channel-action: #986d1e;
-  --on-channel-action: #ffffff;
-  --fill-channel-dm: #835b7f;
-  --hover-channel-dm: #8f678b;
-  --on-channel-dm: #ffffff;
-  --fill-channel-system: #65676a;
-  --hover-channel-system: #717376;
-  --on-channel-system: #ffffff;
-  --fill-channel-quest: #886306;
-  --hover-channel-quest: #946f1c;
-  --on-channel-quest: #ffffff;
-  --fill-combat-victory: #526e22;
-  --hover-combat-victory: #627e32;
-  --on-combat-victory: #ffffff;
-  --fill-combat-defeat: #b04a52;
-  --hover-combat-defeat: #ba525a;
-  --on-combat-defeat: #ffffff;
-  --fill-combat-damage: #a64b31;
-  --hover-combat-damage: #ba5b41;
-  --on-combat-damage: #ffffff;
-  --fill-combat-heal: #2f7542;
-  --hover-combat-heal: #3b814e;
-  --on-combat-heal: #ffffff;
-  --fill-combat-miss: #676767;
-  --hover-combat-miss: #737373;
-  --on-combat-miss: #ffffff;
-  --fill-combat-crit: #885d00;
-  --hover-combat-crit: #986d1e;
-  --on-combat-crit: #ffffff;
-  --fill-terrain-grass: #557225;
-  --hover-terrain-grass: #617e31;
-  --on-terrain-grass: #ffffff;
-  --fill-terrain-forest: #557343;
-  --hover-terrain-forest: #617f4f;
-  --on-terrain-forest: #ffffff;
-  --fill-terrain-dirt: #826343;
-  --hover-terrain-dirt: #8e6f4f;
-  --on-terrain-dirt: #ffffff;
-  --fill-terrain-sand: #7d6438;
-  --hover-terrain-sand: #897044;
-  --on-terrain-sand: #ffffff;
-  --fill-terrain-stone: #676763;
-  --hover-terrain-stone: #73736f;
-  --on-terrain-stone: #ffffff;
-  --fill-terrain-water: #3e6d7f;
-  --hover-terrain-water: #4e7d8f;
-  --on-terrain-water: #ffffff;
-  --fill-terrain-ash: #6a6a6e;
-  --hover-terrain-ash: #76767a;
-  --on-terrain-ash: #ffffff;
-  --fill-terrain-bone: #6d6550;
-  --hover-terrain-bone: #7d7560;
-  --on-terrain-bone: #ffffff;
-  --fill-mood-danger: #a8463c;
-  --hover-mood-danger: #bc564c;
-  --on-mood-danger: #ffffff;
-  --fill-mood-arcane: #765a9c;
-  --hover-mood-arcane: #8266a8;
-  --on-mood-arcane: #ffffff;
-  --fill-mood-sacred: #516c84;
-  --hover-mood-sacred: #5d7890;
-  --on-mood-sacred: #ffffff;
-  --fill-mood-treasure: #8c6300;
-  --hover-mood-treasure: #986f19;
-  --on-mood-treasure: #ffffff;
-  --fill-mood-calm: #456d7f;
-  --hover-mood-calm: #51798b;
-  --on-mood-calm: #ffffff;
-  --fill-mood-decay: #5e6d36;
-  --hover-mood-decay: #6a7942;
-  --on-mood-decay: #ffffff;
-  --fill-hue-gray: #676767;
-  --hover-hue-gray: #737373;
-  --on-hue-gray: #ffffff;
-  --fill-hue-red: #b1443e;
-  --hover-hue-red: #c0504a;
-  --on-hue-red: #ffffff;
-  --fill-hue-gold: #936100;
-  --hover-hue-gold: #9b6913;
-  --on-hue-gold: #ffffff;
-  --fill-hue-green: #437221;
-  --hover-hue-green: #538232;
-  --on-hue-green: #ffffff;
-  --fill-hue-sky: #276b91;
-  --hover-hue-sky: #387ba1;
-  --on-hue-sky: #ffffff;
-  --fill-hue-blue: #4564a9;
-  --hover-hue-blue: #5574b9;
-  --on-hue-blue: #ffffff;
-  --fill-hue-violet: #695c9c;
-  --hover-hue-violet: #796cac;
-  --on-hue-violet: #ffffff;
-  --fill-hue-purple: #8847ac;
-  --hover-hue-purple: #9857bc;
-  --on-hue-purple: #ffffff;
-  --fill-hue-pink: #ac4778;
-  --hover-hue-pink: #b64f80;
-  --on-hue-pink: #ffffff;
-  --fill-world-room-zero: #6f6485;
-  --hover-world-room-zero: #7b7091;
-  --on-world-room-zero: #ffffff;
-  --fill-world-room-zero-title: #6f6485;
-  --hover-world-room-zero-title: #7b7091;
-  --on-world-room-zero-title: #ffffff;
-  --fill-world-room-zero-subtitle: #66627a;
-  --hover-world-room-zero-subtitle: #76728a;
-  --on-world-room-zero-subtitle: #ffffff;
-  --fill-world-room-zero-icon: #6f6485;
-  --hover-world-room-zero-icon: #7b7091;
-  --on-world-room-zero-icon: #ffffff;
-  --fill-world-room-zero-direction: #6f6485;
-  --hover-world-room-zero-direction: #7b7091;
-  --on-world-room-zero-direction: #ffffff;
-  --fill-world-room-zero-accent: #69617a;
-  --hover-world-room-zero-accent: #79718a;
-  --on-world-room-zero-accent: #ffffff;
-  --fill-world-grassy-field: #56701b;
-  --hover-world-grassy-field: #627c2a;
-  --on-world-grassy-field: #ffffff;
-  --fill-world-grassy-field-title: #56701b;
-  --hover-world-grassy-field-title: #627c2a;
-  --on-world-grassy-field-title: #ffffff;
-  --fill-world-grassy-field-subtitle: #5f714c;
-  --hover-world-grassy-field-subtitle: #677954;
-  --on-world-grassy-field-subtitle: #ffffff;
-  --fill-world-grassy-field-icon: #56701b;
-  --hover-world-grassy-field-icon: #627c2a;
-  --on-world-grassy-field-icon: #ffffff;
-  --fill-world-grassy-field-direction: #56701b;
-  --hover-world-grassy-field-direction: #627c2a;
-  --on-world-grassy-field-direction: #ffffff;
-  --fill-world-grassy-field-accent: #5a6d35;
-  --hover-world-grassy-field-accent: #6a7d45;
-  --on-world-grassy-field-accent: #ffffff;
-  --fill-world-grassy-field-underground: #73634b;
-  --hover-world-grassy-field-underground: #83735b;
-  --on-world-grassy-field-underground: #ffffff;
-  --fill-world-grassy-field-underground-title: #716450;
-  --hover-world-grassy-field-underground-title: #817460;
-  --on-world-grassy-field-underground-title: #ffffff;
-  --fill-world-grassy-field-underground-subtitle: #6c6863;
-  --hover-world-grassy-field-underground-subtitle: #78746f;
-  --on-world-grassy-field-underground-subtitle: #ffffff;
-  --fill-world-grassy-field-underground-icon: #73634b;
-  --hover-world-grassy-field-underground-icon: #83735b;
-  --on-world-grassy-field-underground-icon: #ffffff;
-  --fill-world-grassy-field-underground-direction: #73634b;
-  --hover-world-grassy-field-underground-direction: #83735b;
-  --on-world-grassy-field-underground-direction: #ffffff;
-  --fill-world-grassy-field-underground-accent: #6f6453;
-  --hover-world-grassy-field-underground-accent: #7f7463;
-  --on-world-grassy-field-underground-accent: #ffffff;
-  --fill-world-beach: #7c6431;
-  --hover-world-beach: #88703d;
-  --on-world-beach: #ffffff;
-  --fill-world-beach-title: #7c6431;
-  --hover-world-beach-title: #88703d;
-  --on-world-beach-title: #ffffff;
-  --fill-world-beach-subtitle: #6f644e;
-  --hover-world-beach-subtitle: #7f745e;
-  --on-world-beach-subtitle: #ffffff;
-  --fill-world-beach-icon: #7c6431;
-  --hover-world-beach-icon: #88703d;
-  --on-world-beach-icon: #ffffff;
-  --fill-world-beach-direction: #7c6431;
-  --hover-world-beach-direction: #88703d;
-  --on-world-beach-direction: #ffffff;
-  --fill-world-beach-accent: #7a6843;
-  --hover-world-beach-accent: #86744f;
-  --on-world-beach-accent: #ffffff;
-  --fill-world-caves: #636973;
-  --hover-world-caves: #6f757f;
-  --on-world-caves: #ffffff;
-  --fill-world-caves-title: #646971;
-  --hover-world-caves-title: #70757d;
-  --on-world-caves-title: #ffffff;
-  --fill-world-caves-subtitle: #656b75;
-  --hover-world-caves-subtitle: #717781;
-  --on-world-caves-subtitle: #ffffff;
-  --fill-world-caves-icon: #636973;
-  --hover-world-caves-icon: #6f757f;
-  --on-world-caves-icon: #ffffff;
-  --fill-world-caves-direction: #636973;
-  --hover-world-caves-direction: #6f757f;
-  --on-world-caves-direction: #ffffff;
-  --fill-world-caves-accent: #64696f;
-  --hover-world-caves-accent: #70757b;
-  --on-world-caves-accent: #ffffff;
-  --fill-world-scorpion-pit: #955600;
-  --hover-world-scorpion-pit: #a5661e;
-  --on-world-scorpion-pit: #ffffff;
-  --fill-world-scorpion-pit-title: #955600;
-  --hover-world-scorpion-pit-title: #a5661e;
-  --on-world-scorpion-pit-title: #ffffff;
-  --fill-world-scorpion-pit-subtitle: #836541;
-  --hover-world-scorpion-pit-subtitle: #8f714d;
-  --on-world-scorpion-pit-subtitle: #ffffff;
-  --fill-world-scorpion-pit-icon: #955600;
-  --hover-world-scorpion-pit-icon: #a5661e;
-  --on-world-scorpion-pit-icon: #ffffff;
-  --fill-world-scorpion-pit-direction: #955600;
-  --hover-world-scorpion-pit-direction: #a5661e;
-  --on-world-scorpion-pit-direction: #ffffff;
-  --fill-world-scorpion-pit-accent: #8e5f22;
-  --hover-world-scorpion-pit-accent: #9a6b2f;
-  --on-world-scorpion-pit-accent: #ffffff;
-  --fill-world-forest: #4a743d;
-  --hover-world-forest: #568049;
-  --on-world-forest: #ffffff;
-  --fill-world-forest-title: #4b723f;
-  --hover-world-forest-title: #577e4b;
-  --on-world-forest-title: #ffffff;
-  --fill-world-forest-subtitle: #577159;
-  --hover-world-forest-subtitle: #637d65;
-  --on-world-forest-subtitle: #ffffff;
-  --fill-world-forest-icon: #4a743d;
-  --hover-world-forest-icon: #568049;
-  --on-world-forest-icon: #ffffff;
-  --fill-world-forest-direction: #4a743d;
-  --hover-world-forest-direction: #568049;
-  --on-world-forest-direction: #ffffff;
-  --fill-world-forest-accent: #55724c;
-  --hover-world-forest-accent: #617e58;
-  --on-world-forest-accent: #ffffff;
-  --fill-world-forest-underground: #4a6350;
-  --hover-world-forest-underground: #627b68;
-  --on-world-forest-underground: #ffffff;
-  --fill-world-forest-underground-title: #5b6e60;
-  --hover-world-forest-underground-title: #677a6c;
-  --on-world-forest-underground-title: #ffffff;
-  --fill-world-forest-underground-subtitle: #606d6c;
-  --hover-world-forest-underground-subtitle: #6c7978;
-  --on-world-forest-underground-subtitle: #ffffff;
-  --fill-world-forest-underground-icon: #536b59;
-  --hover-world-forest-underground-icon: #637b69;
-  --on-world-forest-underground-icon: #ffffff;
-  --fill-world-forest-underground-direction: #4a6350;
-  --hover-world-forest-underground-direction: #627b68;
-  --on-world-forest-underground-direction: #ffffff;
-  --fill-world-forest-underground-accent: #5b6e60;
-  --hover-world-forest-underground-accent: #677a6c;
-  --on-world-forest-underground-accent: #ffffff;
-  --fill-world-red-town: #803f32;
-  --hover-world-red-town: #a05f52;
-  --on-world-red-town: #ffffff;
-  --fill-world-red-town-title: #865d54;
-  --hover-world-red-town-title: #926960;
-  --on-world-red-town-title: #ffffff;
-  --fill-world-red-town-subtitle: #796465;
-  --hover-world-red-town-subtitle: #857071;
-  --on-world-red-town-subtitle: #ffffff;
-  --fill-world-red-town-icon: #935c51;
-  --hover-world-red-town-icon: #9f685d;
-  --on-world-red-town-icon: #ffffff;
-  --fill-world-red-town-direction: #803f32;
-  --hover-world-red-town-direction: #a05f52;
-  --on-world-red-town-direction: #ffffff;
-  --fill-world-red-town-accent: #885a50;
-  --hover-world-red-town-accent: #986a60;
-  --on-world-red-town-accent: #ffffff;
-  --fill-world-red-town-sewers: #5c6c44;
-  --hover-world-red-town-sewers: #6c7c54;
-  --on-world-red-town-sewers: #ffffff;
-  --fill-world-red-town-sewers-title: #5d6b47;
-  --hover-world-red-town-sewers-title: #6d7b57;
-  --on-world-red-town-sewers-title: #ffffff;
-  --fill-world-red-town-sewers-subtitle: #616c5e;
-  --hover-world-red-town-sewers-subtitle: #6d786a;
-  --on-world-red-town-sewers-subtitle: #ffffff;
-  --fill-world-red-town-sewers-icon: #5c6c44;
-  --hover-world-red-town-sewers-icon: #6c7c54;
-  --on-world-red-town-sewers-icon: #ffffff;
-  --fill-world-red-town-sewers-direction: #5c6c44;
-  --hover-world-red-town-sewers-direction: #6c7c54;
-  --on-world-red-town-sewers-direction: #ffffff;
-  --fill-world-red-town-sewers-accent: #646f53;
-  --hover-world-red-town-sewers-accent: #6c775b;
-  --on-world-red-town-sewers-accent: #ffffff;
-  --fill-world-rocky-flats: #786747;
-  --hover-world-rocky-flats: #847353;
-  --on-world-rocky-flats: #ffffff;
-  --fill-world-rocky-flats-title: #786747;
-  --hover-world-rocky-flats-title: #847353;
-  --on-world-rocky-flats-title: #ffffff;
-  --fill-world-rocky-flats-subtitle: #6e665b;
-  --hover-world-rocky-flats-subtitle: #7a7267;
-  --on-world-rocky-flats-subtitle: #ffffff;
-  --fill-world-rocky-flats-icon: #786747;
-  --hover-world-rocky-flats-icon: #847353;
-  --on-world-rocky-flats-icon: #ffffff;
-  --fill-world-rocky-flats-direction: #786747;
-  --hover-world-rocky-flats-direction: #847353;
-  --on-world-rocky-flats-direction: #ffffff;
-  --fill-world-rocky-flats-accent: #71644f;
-  --hover-world-rocky-flats-accent: #81745f;
-  --on-world-rocky-flats-accent: #ffffff;
-  --fill-world-rocky-flats-underground: #6e685c;
-  --hover-world-rocky-flats-underground: #7a7468;
-  --on-world-rocky-flats-underground: #ffffff;
-  --fill-world-rocky-flats-underground-title: #6e685c;
-  --hover-world-rocky-flats-underground-title: #7a7468;
-  --on-world-rocky-flats-underground-title: #ffffff;
-  --fill-world-rocky-flats-underground-subtitle: #6a6a69;
-  --hover-world-rocky-flats-underground-subtitle: #767675;
-  --on-world-rocky-flats-underground-subtitle: #ffffff;
-  --fill-world-rocky-flats-underground-icon: #6e685c;
-  --hover-world-rocky-flats-underground-icon: #7a7468;
-  --on-world-rocky-flats-underground-icon: #ffffff;
-  --fill-world-rocky-flats-underground-direction: #6e685c;
-  --hover-world-rocky-flats-underground-direction: #7a7468;
-  --on-world-rocky-flats-underground-direction: #ffffff;
-  --fill-world-rocky-flats-underground-accent: #6b6860;
-  --hover-world-rocky-flats-underground-accent: #77746c;
-  --on-world-rocky-flats-underground-accent: #ffffff;
-  --fill-world-neverending-mine: #856617;
-  --hover-world-neverending-mine: #917227;
-  --on-world-neverending-mine: #ffffff;
-  --fill-world-neverending-mine-title: #856617;
-  --hover-world-neverending-mine-title: #917227;
-  --on-world-neverending-mine-title: #ffffff;
-  --fill-world-neverending-mine-subtitle: #726442;
-  --hover-world-neverending-mine-subtitle: #827452;
-  --on-world-neverending-mine-subtitle: #ffffff;
-  --fill-world-neverending-mine-icon: #856617;
-  --hover-world-neverending-mine-icon: #917227;
-  --on-world-neverending-mine-icon: #ffffff;
-  --fill-world-neverending-mine-direction: #856617;
-  --hover-world-neverending-mine-direction: #917227;
-  --on-world-neverending-mine-direction: #ffffff;
-  --fill-world-neverending-mine-accent: #7a632e;
-  --hover-world-neverending-mine-accent: #8a733e;
-  --on-world-neverending-mine-accent: #ffffff;
-  --fill-world-solar-office: #816300;
-  --hover-world-solar-office: #8d6f18;
-  --on-world-solar-office: #ffffff;
-  --fill-world-solar-office-title: #816300;
-  --hover-world-solar-office-title: #8d6f18;
-  --on-world-solar-office-title: #ffffff;
-  --fill-world-solar-office-subtitle: #766834;
-  --hover-world-solar-office-subtitle: #827440;
-  --on-world-solar-office-subtitle: #ffffff;
-  --fill-world-solar-office-icon: #816300;
-  --hover-world-solar-office-icon: #8d6f18;
-  --on-world-solar-office-icon: #ffffff;
-  --fill-world-solar-office-direction: #816300;
-  --hover-world-solar-office-direction: #8d6f18;
-  --on-world-solar-office-direction: #ffffff;
-  --fill-world-solar-office-accent: #7d6500;
-  --hover-world-solar-office-accent: #897118;
-  --on-world-solar-office-accent: #ffffff;
-  --fill-world-lobby: #576b7c;
-  --hover-world-lobby: #637788;
-  --on-world-lobby: #ffffff;
-  --fill-world-lobby-title: #576b7c;
-  --hover-world-lobby-title: #637788;
-  --on-world-lobby-title: #ffffff;
-  --fill-world-lobby-subtitle: #5a6978;
-  --hover-world-lobby-subtitle: #667584;
-  --on-world-lobby-subtitle: #ffffff;
-  --fill-world-lobby-icon: #576b7c;
-  --hover-world-lobby-icon: #637788;
-  --on-world-lobby-icon: #ffffff;
-  --fill-world-lobby-direction: #576b7c;
-  --hover-world-lobby-direction: #637788;
-  --on-world-lobby-direction: #ffffff;
-  --fill-world-lobby-accent: #5a6875;
-  --hover-world-lobby-accent: #6a7885;
-  --on-world-lobby-accent: #ffffff;
+  --fg-bright: #f6f7f9;
+  --fg-primary: #ebeef3;
+  --fg-secondary: #c5cbd8;
+  --fg-muted: #8c97ab;
+  --fg-disabled: #66748a;
+  --fg-on-accent: #20303f;
+  --line-subtle: #344456;
+  --line-strong: #425266;
+  --line-focus: #efb045;
+  --accent: #efb045;
+  --accent-hover: #ffe183;
+  --accent-muted: #4a4030;
+  --action-attack: #d66976;
+  --action-search: #efb045;
+  --action-rest: #6ebc75;
+  --action-look: #569acf;
+  --action-talk: #bda0ef;
+  --action-travel: #7ebe63;
+  --action-craft: #68815d;
+  --action-gather: #bd9486;
+  --action-use: #0eb3f5;
+  --resource-hp: #d66976;
+  --resource-mp: #569acf;
+  --resource-xp: #6ebc75;
+  --resource-gold: #efb045;
+  --stat-str: #d66976;
+  --stat-dex: #6ebc75;
+  --stat-mag: #9287d0;
+  --stat-def: #569acf;
+  --status-success: #6ebc75;
+  --status-error: #ea4659;
+  --status-warning: #efb045;
+  --status-info: #569acf;
+  --loot-common: #c5cbd8;
+  --loot-uncommon: #6ebc75;
+  --loot-rare: #efb045;
+  --loot-epic: #9287d0;
+  --loot-legendary: #ff9eff;
+  --enemy-hostile: #d66976;
+  --enemy-neutral: #8c97ab;
+  --enemy-boss: #ca5657;
+  --channel-room: #6ebc75;
+  --channel-world: #569acf;
+  --channel-action: #d66976;
+  --channel-dm: #9287d0;
+  --channel-system: #8c97ab;
+  --channel-quest: #efb045;
+  --combat-victory: #6ebc75;
+  --combat-defeat: #ea4659;
+  --combat-damage: #d66976;
+  --combat-heal: #7ebe63;
+  --combat-miss: #6d7b90;
+  --combat-crit: #ffff00;
+  --terrain-grass: #7ebe63;
+  --terrain-forest: #46ac4d;
+  --terrain-dirt: #937774;
+  --terrain-wood: #8f7772;
+  --terrain-sand: #ffcb39;
+  --terrain-stone: #8c97ab;
+  --terrain-water: #0eb3f5;
+  --terrain-ash: #748192;
+  --terrain-bone: #c5cbd8;
+  --mood-danger: #d66976;
+  --mood-arcane: #9287d0;
+  --mood-sacred: #bee3ff;
+  --mood-treasure: #efb045;
+  --mood-calm: #569acf;
+  --mood-decay: #96a172;
+  --hue-gray: #8c97ab;
+  --hue-red: #d66976;
+  --hue-gold: #efb045;
+  --hue-green: #6ebc75;
+  --hue-sky: #0eb3f5;
+  --hue-blue: #569acf;
+  --hue-violet: #9287d0;
+  --hue-purple: #9d80cf;
+  --hue-pink: #ff9eff;
+  --world-room-zero: #9287d0;
+  --world-room-zero-title: #978dd2;
+  --world-room-zero-subtitle: #9292c0;
+  --world-room-zero-icon: #9287d0;
+  --world-room-zero-direction: #9287d0;
+  --world-room-zero-accent: #aba3da;
+  --world-room-zero-tint: #9287d01a;
+  --world-grassy-field: #7ebe63;
+  --world-grassy-field-title: #7ebe63;
+  --world-grassy-field-subtitle: #84ac83;
+  --world-grassy-field-icon: #7ebe63;
+  --world-grassy-field-direction: #7ebe63;
+  --world-grassy-field-accent: #9ccc89;
+  --world-grassy-field-tint: #7ebe631a;
+  --world-grassy-field-underground: #997f7c;
+  --world-grassy-field-underground-title: #a7918f;
+  --world-grassy-field-underground-subtitle: #9b949c;
+  --world-grassy-field-underground-icon: #997f7c;
+  --world-grassy-field-underground-direction: #997f7c;
+  --world-grassy-field-underground-accent: #b09d9b;
+  --world-grassy-field-underground-tint: #997f7c1a;
+  --world-beach: #ffcb39;
+  --world-beach-title: #ffcb39;
+  --world-beach-subtitle: #cbb46c;
+  --world-beach-icon: #ffcb39;
+  --world-beach-direction: #ffcb39;
+  --world-beach-accent: #fdd669;
+  --world-beach-tint: #ffcb391a;
+  --world-caves: #66748a;
+  --world-caves-title: #919bab;
+  --world-caves-subtitle: #8f99ab;
+  --world-caves-icon: #6d7b90;
+  --world-caves-direction: #66748a;
+  --world-caves-accent: #8a95a6;
+  --world-caves-tint: #66748a1a;
+  --world-scorpion-pit: #de6e1d;
+  --world-scorpion-pit-title: #e07c33;
+  --world-scorpion-pit-subtitle: #ba8869;
+  --world-scorpion-pit-icon: #de6e1d;
+  --world-scorpion-pit-direction: #de6e1d;
+  --world-scorpion-pit-accent: #e49054;
+  --world-scorpion-pit-tint: #de6e1d1a;
+  --world-forest: #46ac4d;
+  --world-forest-title: #46ac4d;
+  --world-forest-subtitle: #66a377;
+  --world-forest-icon: #46ac4d;
+  --world-forest-direction: #46ac4d;
+  --world-forest-accent: #72bf78;
+  --world-forest-tint: #46ac4d1a;
+  --world-forest-underground: #4f6c42;
+  --world-forest-underground-title: #899d82;
+  --world-forest-underground-subtitle: #8a9a94;
+  --world-forest-underground-icon: #68815d;
+  --world-forest-underground-direction: #4f6c42;
+  --world-forest-underground-accent: #798f70;
+  --world-forest-underground-tint: #4f6c421a;
+  --world-red-town: #d66976;
+  --world-red-town-title: #db7e8a;
+  --world-red-town-subtitle: #b78999;
+  --world-red-town-icon: #d66976;
+  --world-red-town-direction: #d66976;
+  --world-red-town-accent: #de8d97;
+  --world-red-town-tint: #d669761a;
+  --world-red-town-sewers: #96a172;
+  --world-red-town-sewers-title: #96a172;
+  --world-red-town-sewers-subtitle: #929d8c;
+  --world-red-town-sewers-icon: #96a172;
+  --world-red-town-sewers-direction: #96a172;
+  --world-red-town-sewers-accent: #aeb794;
+  --world-red-town-sewers-tint: #96a1721a;
+  --world-rocky-flats: #b1bd62;
+  --world-rocky-flats-title: #b1bd62;
+  --world-rocky-flats-subtitle: #a0ac83;
+  --world-rocky-flats-icon: #b1bd62;
+  --world-rocky-flats-direction: #b1bd62;
+  --world-rocky-flats-accent: #c2cc88;
+  --world-rocky-flats-tint: #b1bd621a;
+  --world-rocky-flats-underground: #87716d;
+  --world-rocky-flats-underground-title: #a39390;
+  --world-rocky-flats-underground-subtitle: #99959c;
+  --world-rocky-flats-underground-icon: #8d7874;
+  --world-rocky-flats-underground-direction: #87716d;
+  --world-rocky-flats-underground-accent: #a39390;
+  --world-rocky-flats-underground-tint: #87716d1a;
+  --world-neverending-mine: #d89f13;
+  --world-neverending-mine-title: #d89f13;
+  --world-neverending-mine-subtitle: #b69b57;
+  --world-neverending-mine-icon: #d89f13;
+  --world-neverending-mine-direction: #d89f13;
+  --world-neverending-mine-accent: #e0b54d;
+  --world-neverending-mine-tint: #d89f131a;
+  --world-solar-office: #efb450;
+  --world-solar-office-title: #efb450;
+  --world-solar-office-subtitle: #c2a779;
+  --world-solar-office-icon: #efb450;
+  --world-solar-office-direction: #efb450;
+  --world-solar-office-accent: #f1c57a;
+  --world-solar-office-tint: #efb4501a;
+  --world-lobby: #0eb3f5;
+  --world-lobby-title: #0eb3f5;
+  --world-lobby-subtitle: #47a6d4;
+  --world-lobby-icon: #0eb3f5;
+  --world-lobby-direction: #0eb3f5;
+  --world-lobby-accent: #48c4f6;
+  --world-lobby-tint: #0eb3f51a;
+  --term-bg: #07141d;
+  --term-fg: #ebeef3;
+  --term-cursor: #efb045;
+  --term-selection-bg: #344456;
+  --term-selection-fg: #f6f7f9;
+  --ansi-black: #111f2b;
+  --ansi-red: #d66976;
+  --ansi-green: #6ebc75;
+  --ansi-yellow: #efb045;
+  --ansi-blue: #569acf;
+  --ansi-magenta: #9287d0;
+  --ansi-cyan: #0eb3f5;
+  --ansi-white: #c5cbd8;
+  --ansi-bright-black: #546378;
+  --ansi-bright-red: #ff7d8e;
+  --ansi-bright-green: #7ebe63;
+  --ansi-bright-yellow: #ffe183;
+  --ansi-bright-blue: #70b9ed;
+  --ansi-bright-magenta: #bda0ef;
+  --ansi-bright-cyan: #bee3ff;
+  --ansi-bright-white: #f6f7f9;
+  --fill-surface-canvas: #07141d;
+  --hover-surface-canvas: #425266;
+  --on-surface-canvas: #f6f7f9;
+  --fill-surface-sunken: #111f2b;
+  --hover-surface-sunken: #425266;
+  --on-surface-sunken: #f6f7f9;
+  --fill-surface-panel: #20303f;
+  --hover-surface-panel: #425266;
+  --on-surface-panel: #f6f7f9;
+  --fill-surface-raised: #344456;
+  --hover-surface-raised: #425266;
+  --on-surface-raised: #f6f7f9;
+  --fill-surface-overlay: #20303f;
+  --hover-surface-overlay: #425266;
+  --on-surface-overlay: #f6f7f9;
+  --fill-surface-hover: #425266;
+  --hover-surface-hover: #425266;
+  --on-surface-hover: #f6f7f9;
+  --fill-surface-selected: #546378;
+  --hover-surface-selected: #425266;
+  --on-surface-selected: #f6f7f9;
+  --fill-surface-disabled: #111f2b;
+  --hover-surface-disabled: #425266;
+  --on-surface-disabled: #f6f7f9;
+  --fill-accent: #efb045;
+  --hover-accent: #ffc259;
+  --on-accent: #f6f7f9;
+  --fill-accent-hover: #ffe183;
+  --hover-accent-hover: #fff395;
+  --on-accent-hover: #f6f7f9;
+  --fill-accent-muted: #4a4030;
+  --hover-accent-muted: #594f3e;
+  --on-accent-muted: #f6f7f9;
+  --fill-action-attack: #d66976;
+  --hover-action-attack: #e97a86;
+  --on-action-attack: #f6f7f9;
+  --fill-action-search: #efb045;
+  --hover-action-search: #ffc259;
+  --on-action-search: #f6f7f9;
+  --fill-action-rest: #6ebc75;
+  --hover-action-rest: #7fce86;
+  --on-action-rest: #f6f7f9;
+  --fill-action-look: #569acf;
+  --hover-action-look: #67abe1;
+  --on-action-look: #f6f7f9;
+  --fill-action-talk: #bda0ef;
+  --hover-action-talk: #cfb1ff;
+  --on-action-talk: #f6f7f9;
+  --fill-action-travel: #7ebe63;
+  --hover-action-travel: #8fd074;
+  --on-action-travel: #f6f7f9;
+  --fill-action-craft: #68815d;
+  --hover-action-craft: #78926d;
+  --on-action-craft: #f6f7f9;
+  --fill-action-gather: #bd9486;
+  --hover-action-gather: #cfa597;
+  --on-action-gather: #f6f7f9;
+  --fill-action-use: #0eb3f5;
+  --hover-action-use: #34c5ff;
+  --on-action-use: #f6f7f9;
+  --fill-resource-hp: #d66976;
+  --hover-resource-hp: #e97a86;
+  --on-resource-hp: #f6f7f9;
+  --fill-resource-mp: #569acf;
+  --hover-resource-mp: #67abe1;
+  --on-resource-mp: #f6f7f9;
+  --fill-resource-xp: #6ebc75;
+  --hover-resource-xp: #7fce86;
+  --on-resource-xp: #f6f7f9;
+  --fill-resource-gold: #efb045;
+  --hover-resource-gold: #ffc259;
+  --on-resource-gold: #f6f7f9;
+  --fill-stat-str: #d66976;
+  --hover-stat-str: #e97a86;
+  --on-stat-str: #f6f7f9;
+  --fill-stat-dex: #6ebc75;
+  --hover-stat-dex: #7fce86;
+  --on-stat-dex: #f6f7f9;
+  --fill-stat-mag: #9287d0;
+  --hover-stat-mag: #a398e2;
+  --on-stat-mag: #f6f7f9;
+  --fill-stat-def: #569acf;
+  --hover-stat-def: #67abe1;
+  --on-stat-def: #f6f7f9;
+  --fill-status-success: #6ebc75;
+  --hover-status-success: #7fce86;
+  --on-status-success: #f6f7f9;
+  --fill-status-error: #ea4659;
+  --hover-status-error: #fe5969;
+  --on-status-error: #f6f7f9;
+  --fill-status-warning: #efb045;
+  --hover-status-warning: #ffc259;
+  --on-status-warning: #f6f7f9;
+  --fill-status-info: #569acf;
+  --hover-status-info: #67abe1;
+  --on-status-info: #f6f7f9;
+  --fill-loot-common: #c5cbd8;
+  --hover-loot-common: #d7ddea;
+  --on-loot-common: #f6f7f9;
+  --fill-loot-uncommon: #6ebc75;
+  --hover-loot-uncommon: #7fce86;
+  --on-loot-uncommon: #f6f7f9;
+  --fill-loot-rare: #efb045;
+  --hover-loot-rare: #ffc259;
+  --on-loot-rare: #f6f7f9;
+  --fill-loot-epic: #9287d0;
+  --hover-loot-epic: #a398e2;
+  --on-loot-epic: #f6f7f9;
+  --fill-loot-legendary: #ff9eff;
+  --hover-loot-legendary: #ffb0ff;
+  --on-loot-legendary: #f6f7f9;
+  --fill-enemy-hostile: #d66976;
+  --hover-enemy-hostile: #e97a86;
+  --on-enemy-hostile: #f6f7f9;
+  --fill-enemy-neutral: #8c97ab;
+  --hover-enemy-neutral: #9da8bc;
+  --on-enemy-neutral: #f6f7f9;
+  --fill-enemy-boss: #ca5657;
+  --hover-enemy-boss: #dd6767;
+  --on-enemy-boss: #f6f7f9;
+  --fill-channel-room: #6ebc75;
+  --hover-channel-room: #7fce86;
+  --on-channel-room: #f6f7f9;
+  --fill-channel-world: #569acf;
+  --hover-channel-world: #67abe1;
+  --on-channel-world: #f6f7f9;
+  --fill-channel-action: #d66976;
+  --hover-channel-action: #e97a86;
+  --on-channel-action: #f6f7f9;
+  --fill-channel-dm: #9287d0;
+  --hover-channel-dm: #a398e2;
+  --on-channel-dm: #f6f7f9;
+  --fill-channel-system: #8c97ab;
+  --hover-channel-system: #9da8bc;
+  --on-channel-system: #f6f7f9;
+  --fill-channel-quest: #efb045;
+  --hover-channel-quest: #ffc259;
+  --on-channel-quest: #f6f7f9;
+  --fill-combat-victory: #6ebc75;
+  --hover-combat-victory: #7fce86;
+  --on-combat-victory: #f6f7f9;
+  --fill-combat-defeat: #ea4659;
+  --hover-combat-defeat: #fe5969;
+  --on-combat-defeat: #f6f7f9;
+  --fill-combat-damage: #d66976;
+  --hover-combat-damage: #e97a86;
+  --on-combat-damage: #f6f7f9;
+  --fill-combat-heal: #7ebe63;
+  --hover-combat-heal: #8fd074;
+  --on-combat-heal: #f6f7f9;
+  --fill-combat-miss: #6d7b90;
+  --hover-combat-miss: #7d8ba1;
+  --on-combat-miss: #f6f7f9;
+  --fill-combat-crit: #ffff00;
+  --hover-combat-crit: #edec00;
+  --on-combat-crit: #f6f7f9;
+  --fill-terrain-grass: #7ebe63;
+  --hover-terrain-grass: #8fd074;
+  --on-terrain-grass: #f6f7f9;
+  --fill-terrain-forest: #46ac4d;
+  --hover-terrain-forest: #59be5e;
+  --on-terrain-forest: #f6f7f9;
+  --fill-terrain-dirt: #937774;
+  --hover-terrain-dirt: #a48784;
+  --on-terrain-dirt: #f6f7f9;
+  --fill-terrain-wood: #8f7772;
+  --hover-terrain-wood: #a08782;
+  --on-terrain-wood: #f6f7f9;
+  --fill-terrain-sand: #ffcb39;
+  --hover-terrain-sand: #ffdd51;
+  --on-terrain-sand: #f6f7f9;
+  --fill-terrain-stone: #8c97ab;
+  --hover-terrain-stone: #9da8bc;
+  --on-terrain-stone: #f6f7f9;
+  --fill-terrain-water: #0eb3f5;
+  --hover-terrain-water: #34c5ff;
+  --on-terrain-water: #f6f7f9;
+  --fill-terrain-ash: #748192;
+  --hover-terrain-ash: #8492a3;
+  --on-terrain-ash: #f6f7f9;
+  --fill-terrain-bone: #c5cbd8;
+  --hover-terrain-bone: #d7ddea;
+  --on-terrain-bone: #f6f7f9;
+  --fill-mood-danger: #d66976;
+  --hover-mood-danger: #e97a86;
+  --on-mood-danger: #f6f7f9;
+  --fill-mood-arcane: #9287d0;
+  --hover-mood-arcane: #a398e2;
+  --on-mood-arcane: #f6f7f9;
+  --fill-mood-sacred: #bee3ff;
+  --hover-mood-sacred: #d0f5ff;
+  --on-mood-sacred: #f6f7f9;
+  --fill-mood-treasure: #efb045;
+  --hover-mood-treasure: #ffc259;
+  --on-mood-treasure: #f6f7f9;
+  --fill-mood-calm: #569acf;
+  --hover-mood-calm: #67abe1;
+  --on-mood-calm: #f6f7f9;
+  --fill-mood-decay: #96a172;
+  --hover-mood-decay: #a7b283;
+  --on-mood-decay: #f6f7f9;
+  --fill-hue-gray: #8c97ab;
+  --hover-hue-gray: #9da8bc;
+  --on-hue-gray: #f6f7f9;
+  --fill-hue-red: #d66976;
+  --hover-hue-red: #e97a86;
+  --on-hue-red: #f6f7f9;
+  --fill-hue-gold: #efb045;
+  --hover-hue-gold: #ffc259;
+  --on-hue-gold: #f6f7f9;
+  --fill-hue-green: #6ebc75;
+  --hover-hue-green: #7fce86;
+  --on-hue-green: #f6f7f9;
+  --fill-hue-sky: #0eb3f5;
+  --hover-hue-sky: #34c5ff;
+  --on-hue-sky: #f6f7f9;
+  --fill-hue-blue: #569acf;
+  --hover-hue-blue: #67abe1;
+  --on-hue-blue: #f6f7f9;
+  --fill-hue-violet: #9287d0;
+  --hover-hue-violet: #a398e2;
+  --on-hue-violet: #f6f7f9;
+  --fill-hue-purple: #9d80cf;
+  --hover-hue-purple: #ae91e1;
+  --on-hue-purple: #f6f7f9;
+  --fill-hue-pink: #ff9eff;
+  --hover-hue-pink: #ffb0ff;
+  --on-hue-pink: #f6f7f9;
+  --fill-world-room-zero: #9287d0;
+  --hover-world-room-zero: #a398e2;
+  --on-world-room-zero: #f6f7f9;
+  --fill-world-room-zero-title: #978dd2;
+  --hover-world-room-zero-title: #a89ee4;
+  --on-world-room-zero-title: #f6f7f9;
+  --fill-world-room-zero-subtitle: #9292c0;
+  --hover-world-room-zero-subtitle: #a3a3d2;
+  --on-world-room-zero-subtitle: #f6f7f9;
+  --fill-world-room-zero-icon: #9287d0;
+  --hover-world-room-zero-icon: #a398e2;
+  --on-world-room-zero-icon: #f6f7f9;
+  --fill-world-room-zero-direction: #9287d0;
+  --hover-world-room-zero-direction: #a398e2;
+  --on-world-room-zero-direction: #f6f7f9;
+  --fill-world-room-zero-accent: #aba3da;
+  --hover-world-room-zero-accent: #bcb4ec;
+  --on-world-room-zero-accent: #f6f7f9;
+  --fill-world-grassy-field: #7ebe63;
+  --hover-world-grassy-field: #8fd074;
+  --on-world-grassy-field: #f6f7f9;
+  --fill-world-grassy-field-title: #7ebe63;
+  --hover-world-grassy-field-title: #8fd074;
+  --on-world-grassy-field-title: #f6f7f9;
+  --fill-world-grassy-field-subtitle: #84ac83;
+  --hover-world-grassy-field-subtitle: #95bd94;
+  --on-world-grassy-field-subtitle: #f6f7f9;
+  --fill-world-grassy-field-icon: #7ebe63;
+  --hover-world-grassy-field-icon: #8fd074;
+  --on-world-grassy-field-icon: #f6f7f9;
+  --fill-world-grassy-field-direction: #7ebe63;
+  --hover-world-grassy-field-direction: #8fd074;
+  --on-world-grassy-field-direction: #f6f7f9;
+  --fill-world-grassy-field-accent: #9ccc89;
+  --hover-world-grassy-field-accent: #adde9a;
+  --on-world-grassy-field-accent: #f6f7f9;
+  --fill-world-grassy-field-underground: #997f7c;
+  --hover-world-grassy-field-underground: #aa8f8c;
+  --on-world-grassy-field-underground: #f6f7f9;
+  --fill-world-grassy-field-underground-title: #a7918f;
+  --hover-world-grassy-field-underground-title: #b8a2a0;
+  --on-world-grassy-field-underground-title: #f6f7f9;
+  --fill-world-grassy-field-underground-subtitle: #9b949c;
+  --hover-world-grassy-field-underground-subtitle: #aca5ad;
+  --on-world-grassy-field-underground-subtitle: #f6f7f9;
+  --fill-world-grassy-field-underground-icon: #997f7c;
+  --hover-world-grassy-field-underground-icon: #aa8f8c;
+  --on-world-grassy-field-underground-icon: #f6f7f9;
+  --fill-world-grassy-field-underground-direction: #997f7c;
+  --hover-world-grassy-field-underground-direction: #aa8f8c;
+  --on-world-grassy-field-underground-direction: #f6f7f9;
+  --fill-world-grassy-field-underground-accent: #b09d9b;
+  --hover-world-grassy-field-underground-accent: #c1aeac;
+  --on-world-grassy-field-underground-accent: #f6f7f9;
+  --fill-world-beach: #ffcb39;
+  --hover-world-beach: #ffdd51;
+  --on-world-beach: #f6f7f9;
+  --fill-world-beach-title: #ffcb39;
+  --hover-world-beach-title: #ffdd51;
+  --on-world-beach-title: #f6f7f9;
+  --fill-world-beach-subtitle: #cbb46c;
+  --hover-world-beach-subtitle: #ddc67d;
+  --on-world-beach-subtitle: #f6f7f9;
+  --fill-world-beach-icon: #ffcb39;
+  --hover-world-beach-icon: #ffdd51;
+  --on-world-beach-icon: #f6f7f9;
+  --fill-world-beach-direction: #ffcb39;
+  --hover-world-beach-direction: #ffdd51;
+  --on-world-beach-direction: #f6f7f9;
+  --fill-world-beach-accent: #fdd669;
+  --hover-world-beach-accent: #ffe87c;
+  --on-world-beach-accent: #f6f7f9;
+  --fill-world-caves: #66748a;
+  --hover-world-caves: #76849b;
+  --on-world-caves: #f6f7f9;
+  --fill-world-caves-title: #919bab;
+  --hover-world-caves-title: #a2acbc;
+  --on-world-caves-title: #f6f7f9;
+  --fill-world-caves-subtitle: #8f99ab;
+  --hover-world-caves-subtitle: #a0aabc;
+  --on-world-caves-subtitle: #f6f7f9;
+  --fill-world-caves-icon: #6d7b90;
+  --hover-world-caves-icon: #7d8ba1;
+  --on-world-caves-icon: #f6f7f9;
+  --fill-world-caves-direction: #66748a;
+  --hover-world-caves-direction: #76849b;
+  --on-world-caves-direction: #f6f7f9;
+  --fill-world-caves-accent: #8a95a6;
+  --hover-world-caves-accent: #9ba6b7;
+  --on-world-caves-accent: #f6f7f9;
+  --fill-world-scorpion-pit: #de6e1d;
+  --hover-world-scorpion-pit: #f17f35;
+  --on-world-scorpion-pit: #f6f7f9;
+  --fill-world-scorpion-pit-title: #e07c33;
+  --hover-world-scorpion-pit-title: #f38d46;
+  --on-world-scorpion-pit-title: #f6f7f9;
+  --fill-world-scorpion-pit-subtitle: #ba8869;
+  --hover-world-scorpion-pit-subtitle: #cc9979;
+  --on-world-scorpion-pit-subtitle: #f6f7f9;
+  --fill-world-scorpion-pit-icon: #de6e1d;
+  --hover-world-scorpion-pit-icon: #f17f35;
+  --on-world-scorpion-pit-icon: #f6f7f9;
+  --fill-world-scorpion-pit-direction: #de6e1d;
+  --hover-world-scorpion-pit-direction: #f17f35;
+  --on-world-scorpion-pit-direction: #f6f7f9;
+  --fill-world-scorpion-pit-accent: #e49054;
+  --hover-world-scorpion-pit-accent: #f7a165;
+  --on-world-scorpion-pit-accent: #f6f7f9;
+  --fill-world-forest: #46ac4d;
+  --hover-world-forest: #59be5e;
+  --on-world-forest: #f6f7f9;
+  --fill-world-forest-title: #46ac4d;
+  --hover-world-forest-title: #59be5e;
+  --on-world-forest-title: #f6f7f9;
+  --fill-world-forest-subtitle: #66a377;
+  --hover-world-forest-subtitle: #77b487;
+  --on-world-forest-subtitle: #f6f7f9;
+  --fill-world-forest-icon: #46ac4d;
+  --hover-world-forest-icon: #59be5e;
+  --on-world-forest-icon: #f6f7f9;
+  --fill-world-forest-direction: #46ac4d;
+  --hover-world-forest-direction: #59be5e;
+  --on-world-forest-direction: #f6f7f9;
+  --fill-world-forest-accent: #72bf78;
+  --hover-world-forest-accent: #83d189;
+  --on-world-forest-accent: #f6f7f9;
+  --fill-world-forest-underground: #4f6c42;
+  --hover-world-forest-underground: #5e7c51;
+  --on-world-forest-underground: #f6f7f9;
+  --fill-world-forest-underground-title: #899d82;
+  --hover-world-forest-underground-title: #9aae93;
+  --on-world-forest-underground-title: #f6f7f9;
+  --fill-world-forest-underground-subtitle: #8a9a94;
+  --hover-world-forest-underground-subtitle: #9baba5;
+  --on-world-forest-underground-subtitle: #f6f7f9;
+  --fill-world-forest-underground-icon: #68815d;
+  --hover-world-forest-underground-icon: #78926d;
+  --on-world-forest-underground-icon: #f6f7f9;
+  --fill-world-forest-underground-direction: #4f6c42;
+  --hover-world-forest-underground-direction: #5e7c51;
+  --on-world-forest-underground-direction: #f6f7f9;
+  --fill-world-forest-underground-accent: #798f70;
+  --hover-world-forest-underground-accent: #89a080;
+  --on-world-forest-underground-accent: #f6f7f9;
+  --fill-world-red-town: #d66976;
+  --hover-world-red-town: #e97a86;
+  --on-world-red-town: #f6f7f9;
+  --fill-world-red-town-title: #db7e8a;
+  --hover-world-red-town-title: #ee8f9b;
+  --on-world-red-town-title: #f6f7f9;
+  --fill-world-red-town-subtitle: #b78999;
+  --hover-world-red-town-subtitle: #c99aaa;
+  --on-world-red-town-subtitle: #f6f7f9;
+  --fill-world-red-town-icon: #d66976;
+  --hover-world-red-town-icon: #e97a86;
+  --on-world-red-town-icon: #f6f7f9;
+  --fill-world-red-town-direction: #d66976;
+  --hover-world-red-town-direction: #e97a86;
+  --on-world-red-town-direction: #f6f7f9;
+  --fill-world-red-town-accent: #de8d97;
+  --hover-world-red-town-accent: #f19ea8;
+  --on-world-red-town-accent: #f6f7f9;
+  --fill-world-red-town-sewers: #96a172;
+  --hover-world-red-town-sewers: #a7b283;
+  --on-world-red-town-sewers: #f6f7f9;
+  --fill-world-red-town-sewers-title: #96a172;
+  --hover-world-red-town-sewers-title: #a7b283;
+  --on-world-red-town-sewers-title: #f6f7f9;
+  --fill-world-red-town-sewers-subtitle: #929d8c;
+  --hover-world-red-town-sewers-subtitle: #a3ae9d;
+  --on-world-red-town-sewers-subtitle: #f6f7f9;
+  --fill-world-red-town-sewers-icon: #96a172;
+  --hover-world-red-town-sewers-icon: #a7b283;
+  --on-world-red-town-sewers-icon: #f6f7f9;
+  --fill-world-red-town-sewers-direction: #96a172;
+  --hover-world-red-town-sewers-direction: #a7b283;
+  --on-world-red-town-sewers-direction: #f6f7f9;
+  --fill-world-red-town-sewers-accent: #aeb794;
+  --hover-world-red-town-sewers-accent: #bfc9a5;
+  --on-world-red-town-sewers-accent: #f6f7f9;
+  --fill-world-rocky-flats: #b1bd62;
+  --hover-world-rocky-flats: #c2cf73;
+  --on-world-rocky-flats: #f6f7f9;
+  --fill-world-rocky-flats-title: #b1bd62;
+  --hover-world-rocky-flats-title: #c2cf73;
+  --on-world-rocky-flats-title: #f6f7f9;
+  --fill-world-rocky-flats-subtitle: #a0ac83;
+  --hover-world-rocky-flats-subtitle: #b1bd94;
+  --on-world-rocky-flats-subtitle: #f6f7f9;
+  --fill-world-rocky-flats-icon: #b1bd62;
+  --hover-world-rocky-flats-icon: #c2cf73;
+  --on-world-rocky-flats-icon: #f6f7f9;
+  --fill-world-rocky-flats-direction: #b1bd62;
+  --hover-world-rocky-flats-direction: #c2cf73;
+  --on-world-rocky-flats-direction: #f6f7f9;
+  --fill-world-rocky-flats-accent: #c2cc88;
+  --hover-world-rocky-flats-accent: #d4de99;
+  --on-world-rocky-flats-accent: #f6f7f9;
+  --fill-world-rocky-flats-underground: #87716d;
+  --hover-world-rocky-flats-underground: #98817d;
+  --on-world-rocky-flats-underground: #f6f7f9;
+  --fill-world-rocky-flats-underground-title: #a39390;
+  --hover-world-rocky-flats-underground-title: #b4a4a1;
+  --on-world-rocky-flats-underground-title: #f6f7f9;
+  --fill-world-rocky-flats-underground-subtitle: #99959c;
+  --hover-world-rocky-flats-underground-subtitle: #aaa6ad;
+  --on-world-rocky-flats-underground-subtitle: #f6f7f9;
+  --fill-world-rocky-flats-underground-icon: #8d7874;
+  --hover-world-rocky-flats-underground-icon: #9e8884;
+  --on-world-rocky-flats-underground-icon: #f6f7f9;
+  --fill-world-rocky-flats-underground-direction: #87716d;
+  --hover-world-rocky-flats-underground-direction: #98817d;
+  --on-world-rocky-flats-underground-direction: #f6f7f9;
+  --fill-world-rocky-flats-underground-accent: #a39390;
+  --hover-world-rocky-flats-underground-accent: #b4a4a1;
+  --on-world-rocky-flats-underground-accent: #f6f7f9;
+  --fill-world-neverending-mine: #d89f13;
+  --hover-world-neverending-mine: #eab133;
+  --on-world-neverending-mine: #f6f7f9;
+  --fill-world-neverending-mine-title: #d89f13;
+  --hover-world-neverending-mine-title: #eab133;
+  --on-world-neverending-mine-title: #f6f7f9;
+  --fill-world-neverending-mine-subtitle: #b69b57;
+  --hover-world-neverending-mine-subtitle: #c8ac68;
+  --on-world-neverending-mine-subtitle: #f6f7f9;
+  --fill-world-neverending-mine-icon: #d89f13;
+  --hover-world-neverending-mine-icon: #eab133;
+  --on-world-neverending-mine-icon: #f6f7f9;
+  --fill-world-neverending-mine-direction: #d89f13;
+  --hover-world-neverending-mine-direction: #eab133;
+  --on-world-neverending-mine-direction: #f6f7f9;
+  --fill-world-neverending-mine-accent: #e0b54d;
+  --hover-world-neverending-mine-accent: #f2c760;
+  --on-world-neverending-mine-accent: #f6f7f9;
+  --fill-world-solar-office: #efb450;
+  --hover-world-solar-office: #ffc663;
+  --on-world-solar-office: #f6f7f9;
+  --fill-world-solar-office-title: #efb450;
+  --hover-world-solar-office-title: #ffc663;
+  --on-world-solar-office-title: #f6f7f9;
+  --fill-world-solar-office-subtitle: #c2a779;
+  --hover-world-solar-office-subtitle: #d4b88a;
+  --on-world-solar-office-subtitle: #f6f7f9;
+  --fill-world-solar-office-icon: #efb450;
+  --hover-world-solar-office-icon: #ffc663;
+  --on-world-solar-office-icon: #f6f7f9;
+  --fill-world-solar-office-direction: #efb450;
+  --hover-world-solar-office-direction: #ffc663;
+  --on-world-solar-office-direction: #f6f7f9;
+  --fill-world-solar-office-accent: #f1c57a;
+  --hover-world-solar-office-accent: #ffd78c;
+  --on-world-solar-office-accent: #f6f7f9;
+  --fill-world-lobby: #0eb3f5;
+  --hover-world-lobby: #34c5ff;
+  --on-world-lobby: #f6f7f9;
+  --fill-world-lobby-title: #0eb3f5;
+  --hover-world-lobby-title: #34c5ff;
+  --on-world-lobby-title: #f6f7f9;
+  --fill-world-lobby-subtitle: #47a6d4;
+  --hover-world-lobby-subtitle: #5ab8e6;
+  --on-world-lobby-subtitle: #f6f7f9;
+  --fill-world-lobby-icon: #0eb3f5;
+  --hover-world-lobby-icon: #34c5ff;
+  --on-world-lobby-icon: #f6f7f9;
+  --fill-world-lobby-direction: #0eb3f5;
+  --hover-world-lobby-direction: #34c5ff;
+  --on-world-lobby-direction: #f6f7f9;
+  --fill-world-lobby-accent: #48c4f6;
+  --hover-world-lobby-accent: #5dd6ff;
+  --on-world-lobby-accent: #f6f7f9;
+  --fill-label-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
 }
 
-/* Light Gray RPG — The house palette. Cool slate greys, earthy world, bright steel. */
+/* Light Gray RPG Classic — The original. Cool slate, one gold, one red — exactly as it was. */
 [data-theme='light-gray'] {
+  color-scheme: dark;
+  --surface-canvas: #07141d;
+  --surface-sunken: #111f2b;
+  --surface-panel: #20303f;
+  --surface-raised: #344456;
+  --surface-overlay: #20303f;
+  --surface-hover: #425266;
+  --surface-selected: #546378;
+  --surface-disabled: #111f2b;
+  --scrim: #000000b8;
+  --shadow: #0000008c;
+  --fg-bright: #f6f7f9;
+  --fg-primary: #ebeef3;
+  --fg-secondary: #c5cbd8;
+  --fg-muted: #8c97ab;
+  --fg-disabled: #66748a;
+  --fg-on-accent: #20303f;
+  --line-subtle: #344456;
+  --line-strong: #425266;
+  --line-focus: #efb045;
+  --accent: #efb045;
+  --accent-hover: #ffe183;
+  --accent-muted: #4a4030;
+  --action-attack: #d66976;
+  --action-search: #efb045;
+  --action-rest: #6ebc75;
+  --action-look: #569acf;
+  --action-talk: #bda0ef;
+  --action-travel: #7ebe63;
+  --action-craft: #68815d;
+  --action-gather: #bd9486;
+  --action-use: #0eb3f5;
+  --resource-hp: #d66976;
+  --resource-mp: #569acf;
+  --resource-xp: #6ebc75;
+  --resource-gold: #efb045;
+  --stat-str: #d66976;
+  --stat-dex: #6ebc75;
+  --stat-mag: #9287d0;
+  --stat-def: #569acf;
+  --status-success: #6ebc75;
+  --status-error: #ea4659;
+  --status-warning: #efb045;
+  --status-info: #569acf;
+  --loot-common: #c5cbd8;
+  --loot-uncommon: #6ebc75;
+  --loot-rare: #efb045;
+  --loot-epic: #9287d0;
+  --loot-legendary: #ff9eff;
+  --enemy-hostile: #d66976;
+  --enemy-neutral: #8c97ab;
+  --enemy-boss: #ca5657;
+  --channel-room: #6ebc75;
+  --channel-world: #569acf;
+  --channel-action: #d66976;
+  --channel-dm: #9287d0;
+  --channel-system: #8c97ab;
+  --channel-quest: #efb045;
+  --combat-victory: #6ebc75;
+  --combat-defeat: #ea4659;
+  --combat-damage: #d66976;
+  --combat-heal: #7ebe63;
+  --combat-miss: #6d7b90;
+  --combat-crit: #ffff00;
+  --terrain-grass: #7ebe63;
+  --terrain-forest: #46ac4d;
+  --terrain-dirt: #937774;
+  --terrain-wood: #8f7772;
+  --terrain-sand: #ffcb39;
+  --terrain-stone: #8c97ab;
+  --terrain-water: #0eb3f5;
+  --terrain-ash: #748192;
+  --terrain-bone: #c5cbd8;
+  --mood-danger: #d66976;
+  --mood-arcane: #9287d0;
+  --mood-sacred: #bee3ff;
+  --mood-treasure: #efb045;
+  --mood-calm: #569acf;
+  --mood-decay: #96a172;
+  --hue-gray: #8c97ab;
+  --hue-red: #d66976;
+  --hue-gold: #efb045;
+  --hue-green: #6ebc75;
+  --hue-sky: #0eb3f5;
+  --hue-blue: #569acf;
+  --hue-violet: #9287d0;
+  --hue-purple: #9d80cf;
+  --hue-pink: #ff9eff;
+  --world-room-zero: #9287d0;
+  --world-room-zero-title: #978dd2;
+  --world-room-zero-subtitle: #9292c0;
+  --world-room-zero-icon: #9287d0;
+  --world-room-zero-direction: #9287d0;
+  --world-room-zero-accent: #aba3da;
+  --world-room-zero-tint: #9287d01a;
+  --world-grassy-field: #7ebe63;
+  --world-grassy-field-title: #7ebe63;
+  --world-grassy-field-subtitle: #84ac83;
+  --world-grassy-field-icon: #7ebe63;
+  --world-grassy-field-direction: #7ebe63;
+  --world-grassy-field-accent: #9ccc89;
+  --world-grassy-field-tint: #7ebe631a;
+  --world-grassy-field-underground: #997f7c;
+  --world-grassy-field-underground-title: #a7918f;
+  --world-grassy-field-underground-subtitle: #9b949c;
+  --world-grassy-field-underground-icon: #997f7c;
+  --world-grassy-field-underground-direction: #997f7c;
+  --world-grassy-field-underground-accent: #b09d9b;
+  --world-grassy-field-underground-tint: #997f7c1a;
+  --world-beach: #ffcb39;
+  --world-beach-title: #ffcb39;
+  --world-beach-subtitle: #cbb46c;
+  --world-beach-icon: #ffcb39;
+  --world-beach-direction: #ffcb39;
+  --world-beach-accent: #fdd669;
+  --world-beach-tint: #ffcb391a;
+  --world-caves: #66748a;
+  --world-caves-title: #919bab;
+  --world-caves-subtitle: #8f99ab;
+  --world-caves-icon: #6d7b90;
+  --world-caves-direction: #66748a;
+  --world-caves-accent: #8a95a6;
+  --world-caves-tint: #66748a1a;
+  --world-scorpion-pit: #de6e1d;
+  --world-scorpion-pit-title: #e07c33;
+  --world-scorpion-pit-subtitle: #ba8869;
+  --world-scorpion-pit-icon: #de6e1d;
+  --world-scorpion-pit-direction: #de6e1d;
+  --world-scorpion-pit-accent: #e49054;
+  --world-scorpion-pit-tint: #de6e1d1a;
+  --world-forest: #46ac4d;
+  --world-forest-title: #46ac4d;
+  --world-forest-subtitle: #66a377;
+  --world-forest-icon: #46ac4d;
+  --world-forest-direction: #46ac4d;
+  --world-forest-accent: #72bf78;
+  --world-forest-tint: #46ac4d1a;
+  --world-forest-underground: #4f6c42;
+  --world-forest-underground-title: #899d82;
+  --world-forest-underground-subtitle: #8a9a94;
+  --world-forest-underground-icon: #68815d;
+  --world-forest-underground-direction: #4f6c42;
+  --world-forest-underground-accent: #798f70;
+  --world-forest-underground-tint: #4f6c421a;
+  --world-red-town: #d66976;
+  --world-red-town-title: #db7e8a;
+  --world-red-town-subtitle: #b78999;
+  --world-red-town-icon: #d66976;
+  --world-red-town-direction: #d66976;
+  --world-red-town-accent: #de8d97;
+  --world-red-town-tint: #d669761a;
+  --world-red-town-sewers: #96a172;
+  --world-red-town-sewers-title: #96a172;
+  --world-red-town-sewers-subtitle: #929d8c;
+  --world-red-town-sewers-icon: #96a172;
+  --world-red-town-sewers-direction: #96a172;
+  --world-red-town-sewers-accent: #aeb794;
+  --world-red-town-sewers-tint: #96a1721a;
+  --world-rocky-flats: #b1bd62;
+  --world-rocky-flats-title: #b1bd62;
+  --world-rocky-flats-subtitle: #a0ac83;
+  --world-rocky-flats-icon: #b1bd62;
+  --world-rocky-flats-direction: #b1bd62;
+  --world-rocky-flats-accent: #c2cc88;
+  --world-rocky-flats-tint: #b1bd621a;
+  --world-rocky-flats-underground: #87716d;
+  --world-rocky-flats-underground-title: #a39390;
+  --world-rocky-flats-underground-subtitle: #99959c;
+  --world-rocky-flats-underground-icon: #8d7874;
+  --world-rocky-flats-underground-direction: #87716d;
+  --world-rocky-flats-underground-accent: #a39390;
+  --world-rocky-flats-underground-tint: #87716d1a;
+  --world-neverending-mine: #d89f13;
+  --world-neverending-mine-title: #d89f13;
+  --world-neverending-mine-subtitle: #b69b57;
+  --world-neverending-mine-icon: #d89f13;
+  --world-neverending-mine-direction: #d89f13;
+  --world-neverending-mine-accent: #e0b54d;
+  --world-neverending-mine-tint: #d89f131a;
+  --world-solar-office: #efb450;
+  --world-solar-office-title: #efb450;
+  --world-solar-office-subtitle: #c2a779;
+  --world-solar-office-icon: #efb450;
+  --world-solar-office-direction: #efb450;
+  --world-solar-office-accent: #f1c57a;
+  --world-solar-office-tint: #efb4501a;
+  --world-lobby: #0eb3f5;
+  --world-lobby-title: #0eb3f5;
+  --world-lobby-subtitle: #47a6d4;
+  --world-lobby-icon: #0eb3f5;
+  --world-lobby-direction: #0eb3f5;
+  --world-lobby-accent: #48c4f6;
+  --world-lobby-tint: #0eb3f51a;
+  --term-bg: #07141d;
+  --term-fg: #ebeef3;
+  --term-cursor: #efb045;
+  --term-selection-bg: #344456;
+  --term-selection-fg: #f6f7f9;
+  --ansi-black: #111f2b;
+  --ansi-red: #d66976;
+  --ansi-green: #6ebc75;
+  --ansi-yellow: #efb045;
+  --ansi-blue: #569acf;
+  --ansi-magenta: #9287d0;
+  --ansi-cyan: #0eb3f5;
+  --ansi-white: #c5cbd8;
+  --ansi-bright-black: #546378;
+  --ansi-bright-red: #ff7d8e;
+  --ansi-bright-green: #7ebe63;
+  --ansi-bright-yellow: #ffe183;
+  --ansi-bright-blue: #70b9ed;
+  --ansi-bright-magenta: #bda0ef;
+  --ansi-bright-cyan: #bee3ff;
+  --ansi-bright-white: #f6f7f9;
+  --fill-surface-canvas: #07141d;
+  --hover-surface-canvas: #425266;
+  --on-surface-canvas: #f6f7f9;
+  --fill-surface-sunken: #111f2b;
+  --hover-surface-sunken: #425266;
+  --on-surface-sunken: #f6f7f9;
+  --fill-surface-panel: #20303f;
+  --hover-surface-panel: #425266;
+  --on-surface-panel: #f6f7f9;
+  --fill-surface-raised: #344456;
+  --hover-surface-raised: #425266;
+  --on-surface-raised: #f6f7f9;
+  --fill-surface-overlay: #20303f;
+  --hover-surface-overlay: #425266;
+  --on-surface-overlay: #f6f7f9;
+  --fill-surface-hover: #425266;
+  --hover-surface-hover: #425266;
+  --on-surface-hover: #f6f7f9;
+  --fill-surface-selected: #546378;
+  --hover-surface-selected: #425266;
+  --on-surface-selected: #f6f7f9;
+  --fill-surface-disabled: #111f2b;
+  --hover-surface-disabled: #425266;
+  --on-surface-disabled: #f6f7f9;
+  --fill-accent: #efb045;
+  --hover-accent: #ffc259;
+  --on-accent: #f6f7f9;
+  --fill-accent-hover: #ffe183;
+  --hover-accent-hover: #fff395;
+  --on-accent-hover: #f6f7f9;
+  --fill-accent-muted: #4a4030;
+  --hover-accent-muted: #594f3e;
+  --on-accent-muted: #f6f7f9;
+  --fill-action-attack: #d66976;
+  --hover-action-attack: #e97a86;
+  --on-action-attack: #f6f7f9;
+  --fill-action-search: #efb045;
+  --hover-action-search: #ffc259;
+  --on-action-search: #f6f7f9;
+  --fill-action-rest: #6ebc75;
+  --hover-action-rest: #7fce86;
+  --on-action-rest: #f6f7f9;
+  --fill-action-look: #569acf;
+  --hover-action-look: #67abe1;
+  --on-action-look: #f6f7f9;
+  --fill-action-talk: #bda0ef;
+  --hover-action-talk: #cfb1ff;
+  --on-action-talk: #f6f7f9;
+  --fill-action-travel: #7ebe63;
+  --hover-action-travel: #8fd074;
+  --on-action-travel: #f6f7f9;
+  --fill-action-craft: #68815d;
+  --hover-action-craft: #78926d;
+  --on-action-craft: #f6f7f9;
+  --fill-action-gather: #bd9486;
+  --hover-action-gather: #cfa597;
+  --on-action-gather: #f6f7f9;
+  --fill-action-use: #0eb3f5;
+  --hover-action-use: #34c5ff;
+  --on-action-use: #f6f7f9;
+  --fill-resource-hp: #d66976;
+  --hover-resource-hp: #e97a86;
+  --on-resource-hp: #f6f7f9;
+  --fill-resource-mp: #569acf;
+  --hover-resource-mp: #67abe1;
+  --on-resource-mp: #f6f7f9;
+  --fill-resource-xp: #6ebc75;
+  --hover-resource-xp: #7fce86;
+  --on-resource-xp: #f6f7f9;
+  --fill-resource-gold: #efb045;
+  --hover-resource-gold: #ffc259;
+  --on-resource-gold: #f6f7f9;
+  --fill-stat-str: #d66976;
+  --hover-stat-str: #e97a86;
+  --on-stat-str: #f6f7f9;
+  --fill-stat-dex: #6ebc75;
+  --hover-stat-dex: #7fce86;
+  --on-stat-dex: #f6f7f9;
+  --fill-stat-mag: #9287d0;
+  --hover-stat-mag: #a398e2;
+  --on-stat-mag: #f6f7f9;
+  --fill-stat-def: #569acf;
+  --hover-stat-def: #67abe1;
+  --on-stat-def: #f6f7f9;
+  --fill-status-success: #6ebc75;
+  --hover-status-success: #7fce86;
+  --on-status-success: #f6f7f9;
+  --fill-status-error: #ea4659;
+  --hover-status-error: #fe5969;
+  --on-status-error: #f6f7f9;
+  --fill-status-warning: #efb045;
+  --hover-status-warning: #ffc259;
+  --on-status-warning: #f6f7f9;
+  --fill-status-info: #569acf;
+  --hover-status-info: #67abe1;
+  --on-status-info: #f6f7f9;
+  --fill-loot-common: #c5cbd8;
+  --hover-loot-common: #d7ddea;
+  --on-loot-common: #f6f7f9;
+  --fill-loot-uncommon: #6ebc75;
+  --hover-loot-uncommon: #7fce86;
+  --on-loot-uncommon: #f6f7f9;
+  --fill-loot-rare: #efb045;
+  --hover-loot-rare: #ffc259;
+  --on-loot-rare: #f6f7f9;
+  --fill-loot-epic: #9287d0;
+  --hover-loot-epic: #a398e2;
+  --on-loot-epic: #f6f7f9;
+  --fill-loot-legendary: #ff9eff;
+  --hover-loot-legendary: #ffb0ff;
+  --on-loot-legendary: #f6f7f9;
+  --fill-enemy-hostile: #d66976;
+  --hover-enemy-hostile: #e97a86;
+  --on-enemy-hostile: #f6f7f9;
+  --fill-enemy-neutral: #8c97ab;
+  --hover-enemy-neutral: #9da8bc;
+  --on-enemy-neutral: #f6f7f9;
+  --fill-enemy-boss: #ca5657;
+  --hover-enemy-boss: #dd6767;
+  --on-enemy-boss: #f6f7f9;
+  --fill-channel-room: #6ebc75;
+  --hover-channel-room: #7fce86;
+  --on-channel-room: #f6f7f9;
+  --fill-channel-world: #569acf;
+  --hover-channel-world: #67abe1;
+  --on-channel-world: #f6f7f9;
+  --fill-channel-action: #d66976;
+  --hover-channel-action: #e97a86;
+  --on-channel-action: #f6f7f9;
+  --fill-channel-dm: #9287d0;
+  --hover-channel-dm: #a398e2;
+  --on-channel-dm: #f6f7f9;
+  --fill-channel-system: #8c97ab;
+  --hover-channel-system: #9da8bc;
+  --on-channel-system: #f6f7f9;
+  --fill-channel-quest: #efb045;
+  --hover-channel-quest: #ffc259;
+  --on-channel-quest: #f6f7f9;
+  --fill-combat-victory: #6ebc75;
+  --hover-combat-victory: #7fce86;
+  --on-combat-victory: #f6f7f9;
+  --fill-combat-defeat: #ea4659;
+  --hover-combat-defeat: #fe5969;
+  --on-combat-defeat: #f6f7f9;
+  --fill-combat-damage: #d66976;
+  --hover-combat-damage: #e97a86;
+  --on-combat-damage: #f6f7f9;
+  --fill-combat-heal: #7ebe63;
+  --hover-combat-heal: #8fd074;
+  --on-combat-heal: #f6f7f9;
+  --fill-combat-miss: #6d7b90;
+  --hover-combat-miss: #7d8ba1;
+  --on-combat-miss: #f6f7f9;
+  --fill-combat-crit: #ffff00;
+  --hover-combat-crit: #edec00;
+  --on-combat-crit: #f6f7f9;
+  --fill-terrain-grass: #7ebe63;
+  --hover-terrain-grass: #8fd074;
+  --on-terrain-grass: #f6f7f9;
+  --fill-terrain-forest: #46ac4d;
+  --hover-terrain-forest: #59be5e;
+  --on-terrain-forest: #f6f7f9;
+  --fill-terrain-dirt: #937774;
+  --hover-terrain-dirt: #a48784;
+  --on-terrain-dirt: #f6f7f9;
+  --fill-terrain-wood: #8f7772;
+  --hover-terrain-wood: #a08782;
+  --on-terrain-wood: #f6f7f9;
+  --fill-terrain-sand: #ffcb39;
+  --hover-terrain-sand: #ffdd51;
+  --on-terrain-sand: #f6f7f9;
+  --fill-terrain-stone: #8c97ab;
+  --hover-terrain-stone: #9da8bc;
+  --on-terrain-stone: #f6f7f9;
+  --fill-terrain-water: #0eb3f5;
+  --hover-terrain-water: #34c5ff;
+  --on-terrain-water: #f6f7f9;
+  --fill-terrain-ash: #748192;
+  --hover-terrain-ash: #8492a3;
+  --on-terrain-ash: #f6f7f9;
+  --fill-terrain-bone: #c5cbd8;
+  --hover-terrain-bone: #d7ddea;
+  --on-terrain-bone: #f6f7f9;
+  --fill-mood-danger: #d66976;
+  --hover-mood-danger: #e97a86;
+  --on-mood-danger: #f6f7f9;
+  --fill-mood-arcane: #9287d0;
+  --hover-mood-arcane: #a398e2;
+  --on-mood-arcane: #f6f7f9;
+  --fill-mood-sacred: #bee3ff;
+  --hover-mood-sacred: #d0f5ff;
+  --on-mood-sacred: #f6f7f9;
+  --fill-mood-treasure: #efb045;
+  --hover-mood-treasure: #ffc259;
+  --on-mood-treasure: #f6f7f9;
+  --fill-mood-calm: #569acf;
+  --hover-mood-calm: #67abe1;
+  --on-mood-calm: #f6f7f9;
+  --fill-mood-decay: #96a172;
+  --hover-mood-decay: #a7b283;
+  --on-mood-decay: #f6f7f9;
+  --fill-hue-gray: #8c97ab;
+  --hover-hue-gray: #9da8bc;
+  --on-hue-gray: #f6f7f9;
+  --fill-hue-red: #d66976;
+  --hover-hue-red: #e97a86;
+  --on-hue-red: #f6f7f9;
+  --fill-hue-gold: #efb045;
+  --hover-hue-gold: #ffc259;
+  --on-hue-gold: #f6f7f9;
+  --fill-hue-green: #6ebc75;
+  --hover-hue-green: #7fce86;
+  --on-hue-green: #f6f7f9;
+  --fill-hue-sky: #0eb3f5;
+  --hover-hue-sky: #34c5ff;
+  --on-hue-sky: #f6f7f9;
+  --fill-hue-blue: #569acf;
+  --hover-hue-blue: #67abe1;
+  --on-hue-blue: #f6f7f9;
+  --fill-hue-violet: #9287d0;
+  --hover-hue-violet: #a398e2;
+  --on-hue-violet: #f6f7f9;
+  --fill-hue-purple: #9d80cf;
+  --hover-hue-purple: #ae91e1;
+  --on-hue-purple: #f6f7f9;
+  --fill-hue-pink: #ff9eff;
+  --hover-hue-pink: #ffb0ff;
+  --on-hue-pink: #f6f7f9;
+  --fill-world-room-zero: #9287d0;
+  --hover-world-room-zero: #a398e2;
+  --on-world-room-zero: #f6f7f9;
+  --fill-world-room-zero-title: #978dd2;
+  --hover-world-room-zero-title: #a89ee4;
+  --on-world-room-zero-title: #f6f7f9;
+  --fill-world-room-zero-subtitle: #9292c0;
+  --hover-world-room-zero-subtitle: #a3a3d2;
+  --on-world-room-zero-subtitle: #f6f7f9;
+  --fill-world-room-zero-icon: #9287d0;
+  --hover-world-room-zero-icon: #a398e2;
+  --on-world-room-zero-icon: #f6f7f9;
+  --fill-world-room-zero-direction: #9287d0;
+  --hover-world-room-zero-direction: #a398e2;
+  --on-world-room-zero-direction: #f6f7f9;
+  --fill-world-room-zero-accent: #aba3da;
+  --hover-world-room-zero-accent: #bcb4ec;
+  --on-world-room-zero-accent: #f6f7f9;
+  --fill-world-grassy-field: #7ebe63;
+  --hover-world-grassy-field: #8fd074;
+  --on-world-grassy-field: #f6f7f9;
+  --fill-world-grassy-field-title: #7ebe63;
+  --hover-world-grassy-field-title: #8fd074;
+  --on-world-grassy-field-title: #f6f7f9;
+  --fill-world-grassy-field-subtitle: #84ac83;
+  --hover-world-grassy-field-subtitle: #95bd94;
+  --on-world-grassy-field-subtitle: #f6f7f9;
+  --fill-world-grassy-field-icon: #7ebe63;
+  --hover-world-grassy-field-icon: #8fd074;
+  --on-world-grassy-field-icon: #f6f7f9;
+  --fill-world-grassy-field-direction: #7ebe63;
+  --hover-world-grassy-field-direction: #8fd074;
+  --on-world-grassy-field-direction: #f6f7f9;
+  --fill-world-grassy-field-accent: #9ccc89;
+  --hover-world-grassy-field-accent: #adde9a;
+  --on-world-grassy-field-accent: #f6f7f9;
+  --fill-world-grassy-field-underground: #997f7c;
+  --hover-world-grassy-field-underground: #aa8f8c;
+  --on-world-grassy-field-underground: #f6f7f9;
+  --fill-world-grassy-field-underground-title: #a7918f;
+  --hover-world-grassy-field-underground-title: #b8a2a0;
+  --on-world-grassy-field-underground-title: #f6f7f9;
+  --fill-world-grassy-field-underground-subtitle: #9b949c;
+  --hover-world-grassy-field-underground-subtitle: #aca5ad;
+  --on-world-grassy-field-underground-subtitle: #f6f7f9;
+  --fill-world-grassy-field-underground-icon: #997f7c;
+  --hover-world-grassy-field-underground-icon: #aa8f8c;
+  --on-world-grassy-field-underground-icon: #f6f7f9;
+  --fill-world-grassy-field-underground-direction: #997f7c;
+  --hover-world-grassy-field-underground-direction: #aa8f8c;
+  --on-world-grassy-field-underground-direction: #f6f7f9;
+  --fill-world-grassy-field-underground-accent: #b09d9b;
+  --hover-world-grassy-field-underground-accent: #c1aeac;
+  --on-world-grassy-field-underground-accent: #f6f7f9;
+  --fill-world-beach: #ffcb39;
+  --hover-world-beach: #ffdd51;
+  --on-world-beach: #f6f7f9;
+  --fill-world-beach-title: #ffcb39;
+  --hover-world-beach-title: #ffdd51;
+  --on-world-beach-title: #f6f7f9;
+  --fill-world-beach-subtitle: #cbb46c;
+  --hover-world-beach-subtitle: #ddc67d;
+  --on-world-beach-subtitle: #f6f7f9;
+  --fill-world-beach-icon: #ffcb39;
+  --hover-world-beach-icon: #ffdd51;
+  --on-world-beach-icon: #f6f7f9;
+  --fill-world-beach-direction: #ffcb39;
+  --hover-world-beach-direction: #ffdd51;
+  --on-world-beach-direction: #f6f7f9;
+  --fill-world-beach-accent: #fdd669;
+  --hover-world-beach-accent: #ffe87c;
+  --on-world-beach-accent: #f6f7f9;
+  --fill-world-caves: #66748a;
+  --hover-world-caves: #76849b;
+  --on-world-caves: #f6f7f9;
+  --fill-world-caves-title: #919bab;
+  --hover-world-caves-title: #a2acbc;
+  --on-world-caves-title: #f6f7f9;
+  --fill-world-caves-subtitle: #8f99ab;
+  --hover-world-caves-subtitle: #a0aabc;
+  --on-world-caves-subtitle: #f6f7f9;
+  --fill-world-caves-icon: #6d7b90;
+  --hover-world-caves-icon: #7d8ba1;
+  --on-world-caves-icon: #f6f7f9;
+  --fill-world-caves-direction: #66748a;
+  --hover-world-caves-direction: #76849b;
+  --on-world-caves-direction: #f6f7f9;
+  --fill-world-caves-accent: #8a95a6;
+  --hover-world-caves-accent: #9ba6b7;
+  --on-world-caves-accent: #f6f7f9;
+  --fill-world-scorpion-pit: #de6e1d;
+  --hover-world-scorpion-pit: #f17f35;
+  --on-world-scorpion-pit: #f6f7f9;
+  --fill-world-scorpion-pit-title: #e07c33;
+  --hover-world-scorpion-pit-title: #f38d46;
+  --on-world-scorpion-pit-title: #f6f7f9;
+  --fill-world-scorpion-pit-subtitle: #ba8869;
+  --hover-world-scorpion-pit-subtitle: #cc9979;
+  --on-world-scorpion-pit-subtitle: #f6f7f9;
+  --fill-world-scorpion-pit-icon: #de6e1d;
+  --hover-world-scorpion-pit-icon: #f17f35;
+  --on-world-scorpion-pit-icon: #f6f7f9;
+  --fill-world-scorpion-pit-direction: #de6e1d;
+  --hover-world-scorpion-pit-direction: #f17f35;
+  --on-world-scorpion-pit-direction: #f6f7f9;
+  --fill-world-scorpion-pit-accent: #e49054;
+  --hover-world-scorpion-pit-accent: #f7a165;
+  --on-world-scorpion-pit-accent: #f6f7f9;
+  --fill-world-forest: #46ac4d;
+  --hover-world-forest: #59be5e;
+  --on-world-forest: #f6f7f9;
+  --fill-world-forest-title: #46ac4d;
+  --hover-world-forest-title: #59be5e;
+  --on-world-forest-title: #f6f7f9;
+  --fill-world-forest-subtitle: #66a377;
+  --hover-world-forest-subtitle: #77b487;
+  --on-world-forest-subtitle: #f6f7f9;
+  --fill-world-forest-icon: #46ac4d;
+  --hover-world-forest-icon: #59be5e;
+  --on-world-forest-icon: #f6f7f9;
+  --fill-world-forest-direction: #46ac4d;
+  --hover-world-forest-direction: #59be5e;
+  --on-world-forest-direction: #f6f7f9;
+  --fill-world-forest-accent: #72bf78;
+  --hover-world-forest-accent: #83d189;
+  --on-world-forest-accent: #f6f7f9;
+  --fill-world-forest-underground: #4f6c42;
+  --hover-world-forest-underground: #5e7c51;
+  --on-world-forest-underground: #f6f7f9;
+  --fill-world-forest-underground-title: #899d82;
+  --hover-world-forest-underground-title: #9aae93;
+  --on-world-forest-underground-title: #f6f7f9;
+  --fill-world-forest-underground-subtitle: #8a9a94;
+  --hover-world-forest-underground-subtitle: #9baba5;
+  --on-world-forest-underground-subtitle: #f6f7f9;
+  --fill-world-forest-underground-icon: #68815d;
+  --hover-world-forest-underground-icon: #78926d;
+  --on-world-forest-underground-icon: #f6f7f9;
+  --fill-world-forest-underground-direction: #4f6c42;
+  --hover-world-forest-underground-direction: #5e7c51;
+  --on-world-forest-underground-direction: #f6f7f9;
+  --fill-world-forest-underground-accent: #798f70;
+  --hover-world-forest-underground-accent: #89a080;
+  --on-world-forest-underground-accent: #f6f7f9;
+  --fill-world-red-town: #d66976;
+  --hover-world-red-town: #e97a86;
+  --on-world-red-town: #f6f7f9;
+  --fill-world-red-town-title: #db7e8a;
+  --hover-world-red-town-title: #ee8f9b;
+  --on-world-red-town-title: #f6f7f9;
+  --fill-world-red-town-subtitle: #b78999;
+  --hover-world-red-town-subtitle: #c99aaa;
+  --on-world-red-town-subtitle: #f6f7f9;
+  --fill-world-red-town-icon: #d66976;
+  --hover-world-red-town-icon: #e97a86;
+  --on-world-red-town-icon: #f6f7f9;
+  --fill-world-red-town-direction: #d66976;
+  --hover-world-red-town-direction: #e97a86;
+  --on-world-red-town-direction: #f6f7f9;
+  --fill-world-red-town-accent: #de8d97;
+  --hover-world-red-town-accent: #f19ea8;
+  --on-world-red-town-accent: #f6f7f9;
+  --fill-world-red-town-sewers: #96a172;
+  --hover-world-red-town-sewers: #a7b283;
+  --on-world-red-town-sewers: #f6f7f9;
+  --fill-world-red-town-sewers-title: #96a172;
+  --hover-world-red-town-sewers-title: #a7b283;
+  --on-world-red-town-sewers-title: #f6f7f9;
+  --fill-world-red-town-sewers-subtitle: #929d8c;
+  --hover-world-red-town-sewers-subtitle: #a3ae9d;
+  --on-world-red-town-sewers-subtitle: #f6f7f9;
+  --fill-world-red-town-sewers-icon: #96a172;
+  --hover-world-red-town-sewers-icon: #a7b283;
+  --on-world-red-town-sewers-icon: #f6f7f9;
+  --fill-world-red-town-sewers-direction: #96a172;
+  --hover-world-red-town-sewers-direction: #a7b283;
+  --on-world-red-town-sewers-direction: #f6f7f9;
+  --fill-world-red-town-sewers-accent: #aeb794;
+  --hover-world-red-town-sewers-accent: #bfc9a5;
+  --on-world-red-town-sewers-accent: #f6f7f9;
+  --fill-world-rocky-flats: #b1bd62;
+  --hover-world-rocky-flats: #c2cf73;
+  --on-world-rocky-flats: #f6f7f9;
+  --fill-world-rocky-flats-title: #b1bd62;
+  --hover-world-rocky-flats-title: #c2cf73;
+  --on-world-rocky-flats-title: #f6f7f9;
+  --fill-world-rocky-flats-subtitle: #a0ac83;
+  --hover-world-rocky-flats-subtitle: #b1bd94;
+  --on-world-rocky-flats-subtitle: #f6f7f9;
+  --fill-world-rocky-flats-icon: #b1bd62;
+  --hover-world-rocky-flats-icon: #c2cf73;
+  --on-world-rocky-flats-icon: #f6f7f9;
+  --fill-world-rocky-flats-direction: #b1bd62;
+  --hover-world-rocky-flats-direction: #c2cf73;
+  --on-world-rocky-flats-direction: #f6f7f9;
+  --fill-world-rocky-flats-accent: #c2cc88;
+  --hover-world-rocky-flats-accent: #d4de99;
+  --on-world-rocky-flats-accent: #f6f7f9;
+  --fill-world-rocky-flats-underground: #87716d;
+  --hover-world-rocky-flats-underground: #98817d;
+  --on-world-rocky-flats-underground: #f6f7f9;
+  --fill-world-rocky-flats-underground-title: #a39390;
+  --hover-world-rocky-flats-underground-title: #b4a4a1;
+  --on-world-rocky-flats-underground-title: #f6f7f9;
+  --fill-world-rocky-flats-underground-subtitle: #99959c;
+  --hover-world-rocky-flats-underground-subtitle: #aaa6ad;
+  --on-world-rocky-flats-underground-subtitle: #f6f7f9;
+  --fill-world-rocky-flats-underground-icon: #8d7874;
+  --hover-world-rocky-flats-underground-icon: #9e8884;
+  --on-world-rocky-flats-underground-icon: #f6f7f9;
+  --fill-world-rocky-flats-underground-direction: #87716d;
+  --hover-world-rocky-flats-underground-direction: #98817d;
+  --on-world-rocky-flats-underground-direction: #f6f7f9;
+  --fill-world-rocky-flats-underground-accent: #a39390;
+  --hover-world-rocky-flats-underground-accent: #b4a4a1;
+  --on-world-rocky-flats-underground-accent: #f6f7f9;
+  --fill-world-neverending-mine: #d89f13;
+  --hover-world-neverending-mine: #eab133;
+  --on-world-neverending-mine: #f6f7f9;
+  --fill-world-neverending-mine-title: #d89f13;
+  --hover-world-neverending-mine-title: #eab133;
+  --on-world-neverending-mine-title: #f6f7f9;
+  --fill-world-neverending-mine-subtitle: #b69b57;
+  --hover-world-neverending-mine-subtitle: #c8ac68;
+  --on-world-neverending-mine-subtitle: #f6f7f9;
+  --fill-world-neverending-mine-icon: #d89f13;
+  --hover-world-neverending-mine-icon: #eab133;
+  --on-world-neverending-mine-icon: #f6f7f9;
+  --fill-world-neverending-mine-direction: #d89f13;
+  --hover-world-neverending-mine-direction: #eab133;
+  --on-world-neverending-mine-direction: #f6f7f9;
+  --fill-world-neverending-mine-accent: #e0b54d;
+  --hover-world-neverending-mine-accent: #f2c760;
+  --on-world-neverending-mine-accent: #f6f7f9;
+  --fill-world-solar-office: #efb450;
+  --hover-world-solar-office: #ffc663;
+  --on-world-solar-office: #f6f7f9;
+  --fill-world-solar-office-title: #efb450;
+  --hover-world-solar-office-title: #ffc663;
+  --on-world-solar-office-title: #f6f7f9;
+  --fill-world-solar-office-subtitle: #c2a779;
+  --hover-world-solar-office-subtitle: #d4b88a;
+  --on-world-solar-office-subtitle: #f6f7f9;
+  --fill-world-solar-office-icon: #efb450;
+  --hover-world-solar-office-icon: #ffc663;
+  --on-world-solar-office-icon: #f6f7f9;
+  --fill-world-solar-office-direction: #efb450;
+  --hover-world-solar-office-direction: #ffc663;
+  --on-world-solar-office-direction: #f6f7f9;
+  --fill-world-solar-office-accent: #f1c57a;
+  --hover-world-solar-office-accent: #ffd78c;
+  --on-world-solar-office-accent: #f6f7f9;
+  --fill-world-lobby: #0eb3f5;
+  --hover-world-lobby: #34c5ff;
+  --on-world-lobby: #f6f7f9;
+  --fill-world-lobby-title: #0eb3f5;
+  --hover-world-lobby-title: #34c5ff;
+  --on-world-lobby-title: #f6f7f9;
+  --fill-world-lobby-subtitle: #47a6d4;
+  --hover-world-lobby-subtitle: #5ab8e6;
+  --on-world-lobby-subtitle: #f6f7f9;
+  --fill-world-lobby-icon: #0eb3f5;
+  --hover-world-lobby-icon: #34c5ff;
+  --on-world-lobby-icon: #f6f7f9;
+  --fill-world-lobby-direction: #0eb3f5;
+  --hover-world-lobby-direction: #34c5ff;
+  --on-world-lobby-direction: #f6f7f9;
+  --fill-world-lobby-accent: #48c4f6;
+  --hover-world-lobby-accent: #5dd6ff;
+  --on-world-lobby-accent: #f6f7f9;
+  --fill-label-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Light Gray Modern — The Tailwind years. Cool gray surfaces, indigo chrome, palette-stop colours. */
+[data-theme='light-gray-modern'] {
   color-scheme: dark;
   --surface-canvas: #030712;
   --surface-sunken: #01040a;
@@ -1447,200 +2173,201 @@
   --fg-on-accent: #030712;
   --line-subtle: #374151;
   --line-strong: #4b5563;
-  --line-focus: #9ab3c9;
-  --accent: #7b96b0;
-  --accent-hover: #9ab3c9;
-  --accent-muted: #2c3a49;
-  --action-attack: #de8541;
-  --action-search: #6a9490;
-  --action-rest: #7f9ec4;
-  --action-look: #9a9a9a;
-  --action-talk: #c9a86a;
-  --action-travel: #8fae6b;
-  --action-craft: #c07a4a;
-  --action-gather: #96b06a;
-  --action-use: #9b8fb5;
-  --resource-hp: #b54764;
-  --resource-mp: #5f8fd4;
-  --resource-xp: #8fc46a;
-  --resource-gold: #e8bf72;
-  --stat-str: #d97a5a;
-  --stat-dex: #8fbf7a;
-  --stat-mag: #9b8fd4;
-  --stat-def: #7fa3c9;
-  --status-success: #84b869;
-  --status-error: #ff4d46;
-  --status-warning: #dba03f;
-  --status-info: #7ba3c9;
-  --loot-common: #a3a3a3;
-  --loot-uncommon: #84b869;
-  --loot-rare: #6fa3d9;
-  --loot-epic: #a98fd4;
-  --loot-legendary: #e8b04a;
-  --enemy-hostile: #b8574d;
-  --enemy-neutral: #c8994a;
-  --enemy-boss: #9b7096;
-  --channel-room: #7a9557;
-  --channel-world: #5f7f9e;
-  --channel-action: #c8994a;
-  --channel-dm: #9b7096;
-  --channel-system: #888a8e;
-  --channel-quest: #e8bf72;
-  --combat-victory: #a3c47a;
-  --combat-defeat: #b04a52;
-  --combat-damage: #e8896a;
-  --combat-heal: #7fc48a;
-  --combat-miss: #8a8a8a;
-  --combat-crit: #f0c24a;
-  --terrain-grass: #7fa055;
-  --terrain-forest: #5c7a4a;
-  --terrain-dirt: #8a6a4a;
-  --terrain-sand: #c4a878;
-  --terrain-stone: #8a8a86;
-  --terrain-water: #5a8a9e;
-  --terrain-ash: #6a6a6e;
-  --terrain-bone: #c9c0a8;
-  --mood-danger: #b8564a;
-  --mood-arcane: #9b7ec4;
-  --mood-sacred: #9ab8d4;
-  --mood-treasure: #d4a84a;
-  --mood-calm: #6f9aae;
-  --mood-decay: #7a8a52;
-  --hue-gray: #9a9a9a;
-  --hue-red: #d4645a;
-  --hue-gold: #dba64a;
-  --hue-green: #84b869;
-  --hue-sky: #6fb0d9;
-  --hue-blue: #6f92d9;
-  --hue-violet: #9b8fd4;
-  --hue-purple: #b06fd4;
-  --hue-pink: #d46f9e;
-  --world-room-zero: #9b8fb5;
-  --world-room-zero-title: #9b8fb5;
-  --world-room-zero-subtitle: #8985a0;
-  --world-room-zero-icon: #9b8fb5;
-  --world-room-zero-direction: #9b8fb5;
-  --world-room-zero-accent: #b4abc8;
-  --world-room-zero-tint: #9b8fb51a;
-  --world-grassy-field: #8fae5c;
-  --world-grassy-field-title: #8fae5c;
-  --world-grassy-field-subtitle: #82966f;
-  --world-grassy-field-icon: #8fae5c;
-  --world-grassy-field-direction: #8fae5c;
-  --world-grassy-field-accent: #abc285;
-  --world-grassy-field-tint: #8fae5c1a;
-  --world-grassy-field-underground: #7a6a52;
-  --world-grassy-field-underground-title: #8e806c;
-  --world-grassy-field-underground-subtitle: #817d78;
-  --world-grassy-field-underground-icon: #7a6a52;
-  --world-grassy-field-underground-direction: #7a6a52;
-  --world-grassy-field-underground-accent: #9b8f7d;
-  --world-grassy-field-underground-tint: #7a6a521a;
-  --world-beach: #cbb07a;
-  --world-beach-title: #cbb07a;
-  --world-beach-subtitle: #a3977f;
-  --world-beach-icon: #cbb07a;
-  --world-beach-direction: #cbb07a;
-  --world-beach-accent: #d8c49b;
-  --world-beach-tint: #cbb07a1a;
-  --world-caves: #6a707a;
-  --world-caves-title: #80858e;
-  --world-caves-subtitle: #7a808a;
-  --world-caves-icon: #6a707a;
-  --world-caves-direction: #6a707a;
-  --world-caves-accent: #8f949b;
-  --world-caves-tint: #6a707a1a;
-  --world-scorpion-pit: #bd7a2e;
-  --world-scorpion-pit-title: #bd7a2e;
-  --world-scorpion-pit-subtitle: #9b7a56;
-  --world-scorpion-pit-icon: #bd7a2e;
-  --world-scorpion-pit-direction: #bd7a2e;
-  --world-scorpion-pit-accent: #ce9b62;
-  --world-scorpion-pit-tint: #bd7a2e1a;
-  --world-forest: #5f8a52;
-  --world-forest-title: #67905b;
-  --world-forest-subtitle: #6c866e;
-  --world-forest-icon: #5f8a52;
-  --world-forest-direction: #5f8a52;
-  --world-forest-accent: #87a77d;
-  --world-forest-tint: #5f8a521a;
-  --world-forest-underground: #4a6350;
-  --world-forest-underground-title: #778a7c;
-  --world-forest-underground-subtitle: #758281;
-  --world-forest-underground-icon: #536b59;
-  --world-forest-underground-direction: #4a6350;
-  --world-forest-underground-accent: #778a7c;
-  --world-forest-underground-tint: #4a63501a;
-  --world-red-town: #803f32;
-  --world-red-town-title: #a67970;
-  --world-red-town-subtitle: #8f797a;
-  --world-red-town-icon: #935c51;
-  --world-red-town-direction: #803f32;
-  --world-red-town-accent: #a06f65;
-  --world-red-town-tint: #803f321a;
-  --world-red-town-sewers: #6a7a52;
-  --world-red-town-sewers-title: #798763;
-  --world-red-town-sewers-subtitle: #768173;
-  --world-red-town-sewers-icon: #6a7a52;
-  --world-red-town-sewers-direction: #6a7a52;
-  --world-red-town-sewers-accent: #8f9b7d;
-  --world-red-town-sewers-tint: #6a7a521a;
-  --world-rocky-flats: #9e8a6a;
-  --world-rocky-flats-title: #9e8a6a;
-  --world-rocky-flats-subtitle: #8a8277;
-  --world-rocky-flats-icon: #9e8a6a;
-  --world-rocky-flats-direction: #9e8a6a;
-  --world-rocky-flats-accent: #b6a78f;
-  --world-rocky-flats-tint: #9e8a6a1a;
-  --world-rocky-flats-underground: #8a8478;
-  --world-rocky-flats-underground-title: #8a8478;
-  --world-rocky-flats-underground-subtitle: #7f7f7e;
-  --world-rocky-flats-underground-icon: #8a8478;
-  --world-rocky-flats-underground-direction: #8a8478;
-  --world-rocky-flats-underground-accent: #a7a39a;
-  --world-rocky-flats-underground-tint: #8a84781a;
-  --world-neverending-mine: #b5934a;
-  --world-neverending-mine-title: #b5934a;
-  --world-neverending-mine-subtitle: #978765;
-  --world-neverending-mine-icon: #b5934a;
-  --world-neverending-mine-direction: #b5934a;
-  --world-neverending-mine-accent: #c8ae77;
-  --world-neverending-mine-tint: #b5934a1a;
-  --world-solar-office: #d9b84a;
-  --world-solar-office-title: #d9b84a;
-  --world-solar-office-subtitle: #ab9c65;
-  --world-solar-office-icon: #d9b84a;
-  --world-solar-office-direction: #d9b84a;
-  --world-solar-office-accent: #e3ca77;
-  --world-solar-office-tint: #d9b84a1a;
-  --world-lobby: #7a8fa3;
-  --world-lobby-title: #7a8fa3;
-  --world-lobby-subtitle: #768596;
-  --world-lobby-icon: #7a8fa3;
-  --world-lobby-direction: #7a8fa3;
-  --world-lobby-accent: #9babba;
-  --world-lobby-tint: #7a8fa31a;
+  --line-focus: #6366f1;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --accent-muted: #312e81;
+  --action-attack: #ef4444;
+  --action-search: #f59e0b;
+  --action-rest: #22c55e;
+  --action-look: #3b82f6;
+  --action-talk: #38bdf8;
+  --action-travel: #c084fc;
+  --action-craft: #f97316;
+  --action-gather: #84cc16;
+  --action-use: #a855f7;
+  --resource-hp: #ef4444;
+  --resource-mp: #0ea5e9;
+  --resource-xp: #10b981;
+  --resource-gold: #facc15;
+  --stat-str: #f87171;
+  --stat-dex: #34d399;
+  --stat-mag: #38bdf8;
+  --stat-def: #fbbf24;
+  --status-success: #4ade80;
+  --status-error: #f87171;
+  --status-warning: #facc15;
+  --status-info: #60a5fa;
+  --loot-common: #d1d5db;
+  --loot-uncommon: #4ade80;
+  --loot-rare: #60a5fa;
+  --loot-epic: #c084fc;
+  --loot-legendary: #fbbf24;
+  --enemy-hostile: #f87171;
+  --enemy-neutral: #facc15;
+  --enemy-boss: #a855f7;
+  --channel-room: #6ee7b7;
+  --channel-world: #60a5fa;
+  --channel-action: #fbbf24;
+  --channel-dm: #a5b4fc;
+  --channel-system: #9ca3af;
+  --channel-quest: #fcd34d;
+  --combat-victory: #86efac;
+  --combat-defeat: #ef4444;
+  --combat-damage: #fca5a5;
+  --combat-heal: #34d399;
+  --combat-miss: #6b7280;
+  --combat-crit: #fde047;
+  --terrain-grass: #22c55e;
+  --terrain-forest: #15803d;
+  --terrain-dirt: #b45309;
+  --terrain-wood: #9d5326;
+  --terrain-sand: #fde68a;
+  --terrain-stone: #a8a29e;
+  --terrain-water: #06b6d4;
+  --terrain-ash: #6b7280;
+  --terrain-bone: #e7e5e4;
+  --mood-danger: #ef4444;
+  --mood-arcane: #a855f7;
+  --mood-sacred: #bae6fd;
+  --mood-treasure: #facc15;
+  --mood-calm: #60a5fa;
+  --mood-decay: #4d7c0f;
+  --hue-gray: #9ca3af;
+  --hue-red: #f87171;
+  --hue-gold: #fbbf24;
+  --hue-green: #4ade80;
+  --hue-sky: #38bdf8;
+  --hue-blue: #60a5fa;
+  --hue-violet: #a78bfa;
+  --hue-purple: #c084fc;
+  --hue-pink: #f472b6;
+  --world-room-zero: #a78bfa;
+  --world-room-zero-title: #a78bfa;
+  --world-room-zero-subtitle: #8f83c6;
+  --world-room-zero-icon: #a78bfa;
+  --world-room-zero-direction: #a78bfa;
+  --world-room-zero-accent: #bda8fb;
+  --world-room-zero-tint: #a78bfa1a;
+  --world-grassy-field: #22c55e;
+  --world-grassy-field-title: #22c55e;
+  --world-grassy-field-subtitle: #46a370;
+  --world-grassy-field-icon: #22c55e;
+  --world-grassy-field-direction: #22c55e;
+  --world-grassy-field-accent: #59d486;
+  --world-grassy-field-tint: #22c55e1a;
+  --world-grassy-field-underground: #92400e;
+  --world-grassy-field-underground-title: #b37956;
+  --world-grassy-field-underground-subtitle: #96796c;
+  --world-grassy-field-underground-icon: #9d5326;
+  --world-grassy-field-underground-direction: #92400e;
+  --world-grassy-field-underground-accent: #ad704a;
+  --world-grassy-field-underground-tint: #92400e1a;
+  --world-beach: #fde047;
+  --world-beach-title: #fde047;
+  --world-beach-subtitle: #beb263;
+  --world-beach-icon: #fde047;
+  --world-beach-direction: #fde047;
+  --world-beach-accent: #fee875;
+  --world-beach-tint: #fde0471a;
+  --world-caves: #94a3b8;
+  --world-caves-title: #94a3b8;
+  --world-caves-subtitle: #8590a2;
+  --world-caves-icon: #94a3b8;
+  --world-caves-direction: #94a3b8;
+  --world-caves-accent: #afbaca;
+  --world-caves-tint: #94a3b81a;
+  --world-scorpion-pit: #f97316;
+  --world-scorpion-pit-title: #f97316;
+  --world-scorpion-pit-subtitle: #bc7648;
+  --world-scorpion-pit-icon: #f97316;
+  --world-scorpion-pit-direction: #f97316;
+  --world-scorpion-pit-accent: #fb9650;
+  --world-scorpion-pit-tint: #f973161a;
+  --world-forest: #15803d;
+  --world-forest-title: #38935a;
+  --world-forest-subtitle: #52876e;
+  --world-forest-icon: #15803d;
+  --world-forest-direction: #15803d;
+  --world-forest-accent: #50a06e;
+  --world-forest-tint: #15803d1a;
+  --world-forest-underground: #115e59;
+  --world-forest-underground-title: #588e8b;
+  --world-forest-underground-subtitle: #648589;
+  --world-forest-underground-icon: #357672;
+  --world-forest-underground-direction: #115e59;
+  --world-forest-underground-accent: #4d8683;
+  --world-forest-underground-tint: #115e591a;
+  --world-red-town: #b91c1c;
+  --world-red-town-title: #ce6060;
+  --world-red-town-subtitle: #a56b71;
+  --world-red-town-icon: #c03333;
+  --world-red-town-direction: #b91c1c;
+  --world-red-town-accent: #cb5555;
+  --world-red-town-tint: #b91c1c1a;
+  --world-red-town-sewers: #3f6212;
+  --world-red-town-sewers-title: #6f894d;
+  --world-red-town-sewers-subtitle: #708267;
+  --world-red-town-sewers-icon: #52722a;
+  --world-red-town-sewers-direction: #3f6212;
+  --world-red-town-sewers-accent: #6f894d;
+  --world-red-town-sewers-tint: #3f62121a;
+  --world-rocky-flats: #78716c;
+  --world-rocky-flats-title: #867f7b;
+  --world-rocky-flats-subtitle: #7d7c80;
+  --world-rocky-flats-icon: #78716c;
+  --world-rocky-flats-direction: #78716c;
+  --world-rocky-flats-accent: #9a9591;
+  --world-rocky-flats-tint: #78716c1a;
+  --world-rocky-flats-underground: #57534e;
+  --world-rocky-flats-underground-title: #898783;
+  --world-rocky-flats-underground-subtitle: #7f8184;
+  --world-rocky-flats-underground-icon: #686460;
+  --world-rocky-flats-underground-direction: #57534e;
+  --world-rocky-flats-underground-accent: #817e7a;
+  --world-rocky-flats-underground-tint: #57534e1a;
+  --world-neverending-mine: #d97706;
+  --world-neverending-mine-title: #d97706;
+  --world-neverending-mine-subtitle: #ab7840;
+  --world-neverending-mine-icon: #d97706;
+  --world-neverending-mine-direction: #d97706;
+  --world-neverending-mine-accent: #e39944;
+  --world-neverending-mine-tint: #d977061a;
+  --world-solar-office: #facc15;
+  --world-solar-office-title: #facc15;
+  --world-solar-office-subtitle: #bda748;
+  --world-solar-office-icon: #facc15;
+  --world-solar-office-direction: #facc15;
+  --world-solar-office-accent: #fbd950;
+  --world-solar-office-tint: #facc151a;
+  --world-lobby: #7dd3fc;
+  --world-lobby-title: #7dd3fc;
+  --world-lobby-subtitle: #78abc7;
+  --world-lobby-icon: #7dd3fc;
+  --world-lobby-direction: #7dd3fc;
+  --world-lobby-accent: #9edefd;
+  --world-lobby-tint: #7dd3fc1a;
   --term-bg: #030712;
-  --term-fg: #d0d0d0;
-  --term-cursor: #e8bf72;
-  --term-selection-bg: #2f3a3f;
-  --term-selection-fg: #ededed;
-  --ansi-black: #1a1a1a;
-  --ansi-red: #b8574d;
-  --ansi-green: #7a9557;
-  --ansi-yellow: #c8994a;
-  --ansi-blue: #5f7f9e;
-  --ansi-magenta: #9b7096;
-  --ansi-cyan: #6a9490;
-  --ansi-white: #b8b8b8;
-  --ansi-bright-black: #4a4a4a;
-  --ansi-bright-red: #e07a6d;
-  --ansi-bright-green: #a3c47a;
-  --ansi-bright-yellow: #e8bf72;
-  --ansi-bright-blue: #8aacc8;
-  --ansi-bright-magenta: #c39dbd;
-  --ansi-bright-cyan: #96bdb8;
-  --ansi-bright-white: #ededed;
+  --term-fg: #d1d5db;
+  --term-cursor: #818cf8;
+  --term-selection-bg: #374151;
+  --term-selection-fg: #f9fafb;
+  --ansi-black: #1f2937;
+  --ansi-red: #ef4444;
+  --ansi-green: #22c55e;
+  --ansi-yellow: #eab308;
+  --ansi-blue: #3b82f6;
+  --ansi-magenta: #a855f7;
+  --ansi-cyan: #06b6d4;
+  --ansi-white: #d1d5db;
+  --ansi-bright-black: #4b5563;
+  --ansi-bright-red: #f87171;
+  --ansi-bright-green: #4ade80;
+  --ansi-bright-yellow: #facc15;
+  --ansi-bright-blue: #60a5fa;
+  --ansi-bright-magenta: #c084fc;
+  --ansi-bright-cyan: #22d3ee;
+  --ansi-bright-white: #f9fafb;
   --fill-surface-canvas: #030712;
   --hover-surface-canvas: #374151;
   --on-surface-canvas: #ffffff;
@@ -1665,477 +2392,481 @@
   --fill-surface-disabled: #111827;
   --hover-surface-disabled: #374151;
   --on-surface-disabled: #ffffff;
-  --fill-accent: #516a81;
-  --hover-accent: #5d768d;
+  --fill-accent: #5656df;
+  --hover-accent: #6162ee;
   --on-accent: #ffffff;
-  --fill-accent-hover: #51687b;
-  --hover-accent-hover: #61788b;
+  --fill-accent-hover: #575cc5;
+  --hover-accent-hover: #6368d4;
   --on-accent-hover: #ffffff;
-  --fill-accent-muted: #2c3a49;
-  --hover-accent-muted: #4b5a69;
+  --fill-accent-muted: #312e81;
+  --hover-accent-muted: #4a4ea1;
   --on-accent-muted: #ffffff;
-  --fill-action-attack: #a64d00;
-  --hover-action-attack: #b55918;
+  --fill-action-attack: #cb1624;
+  --hover-action-attack: #df3234;
   --on-action-attack: #ffffff;
-  --fill-action-search: #476f6c;
-  --hover-action-search: #537b78;
+  --fill-action-search: #a34f00;
+  --hover-action-search: #b25b18;
   --on-action-search: #ffffff;
-  --fill-action-rest: #4e6a8c;
-  --hover-action-rest: #5a7698;
+  --fill-action-rest: #007d0f;
+  --hover-action-rest: #1c8921;
   --on-action-rest: #ffffff;
-  --fill-action-look: #676767;
-  --hover-action-look: #737373;
+  --fill-action-look: #1a62d2;
+  --hover-action-look: #2d72e6;
   --on-action-look: #ffffff;
-  --fill-action-talk: #816422;
-  --hover-action-talk: #8d702f;
+  --fill-action-talk: #006da8;
+  --hover-action-talk: #1b79b4;
   --on-action-talk: #ffffff;
-  --fill-action-travel: #567032;
-  --hover-action-travel: #627c3e;
+  --fill-action-travel: #894cc1;
+  --hover-action-travel: #9558d0;
   --on-action-travel: #ffffff;
-  --fill-action-craft: #985622;
-  --hover-action-craft: #a86633;
+  --fill-action-craft: #ba3b00;
+  --hover-action-craft: #c94a19;
   --on-action-craft: #ffffff;
-  --fill-action-gather: #5c7230;
-  --hover-action-gather: #687e3c;
+  --fill-action-gather: #317400;
+  --hover-action-gather: #41841e;
   --on-action-gather: #ffffff;
-  --fill-action-use: #6f6485;
-  --hover-action-use: #7b7091;
+  --fill-action-use: #903adc;
+  --hover-action-use: #9c49eb;
   --on-action-use: #ffffff;
-  --fill-resource-hp: #ad3f5d;
-  --hover-resource-hp: #c14f6d;
+  --fill-resource-hp: #cb1624;
+  --hover-resource-hp: #df3234;
   --on-resource-hp: #ffffff;
-  --fill-resource-mp: #3c68ac;
-  --hover-resource-mp: #4874b8;
+  --fill-resource-mp: #006db1;
+  --hover-resource-mp: #1b79be;
   --on-resource-mp: #ffffff;
-  --fill-resource-xp: #467517;
-  --hover-resource-xp: #528127;
+  --fill-resource-xp: #007949;
+  --hover-resource-xp: #1c8555;
   --on-resource-xp: #ffffff;
-  --fill-resource-gold: #886306;
-  --hover-resource-gold: #946f1c;
+  --fill-resource-gold: #8a5f00;
+  --hover-resource-gold: #9a6f1e;
   --on-resource-gold: #ffffff;
-  --fill-stat-str: #a84b30;
-  --hover-stat-str: #b7573c;
+  --fill-stat-str: #b93940;
+  --hover-stat-str: #c8474c;
   --on-stat-str: #ffffff;
-  --fill-stat-dex: #467132;
-  --hover-stat-dex: #568142;
+  --fill-stat-dex: #007b49;
+  --hover-stat-dex: #1c8755;
   --on-stat-dex: #ffffff;
-  --fill-stat-mag: #695c9c;
-  --hover-stat-mag: #796cac;
+  --fill-stat-mag: #006da8;
+  --hover-stat-mag: #1b79b4;
   --on-stat-mag: #ffffff;
-  --fill-stat-def: #476789;
-  --hover-stat-def: #577799;
+  --fill-stat-def: #935a00;
+  --hover-stat-def: #a36a1e;
   --on-stat-def: #ffffff;
-  --fill-status-success: #437221;
-  --hover-status-success: #538232;
+  --fill-status-success: #007615;
+  --hover-status-success: #21862a;
   --on-status-success: #ffffff;
-  --fill-status-error: #d2131d;
-  --hover-status-error: #e12b2c;
+  --fill-status-error: #b93940;
+  --hover-status-error: #c8474c;
   --on-status-error: #ffffff;
-  --fill-status-warning: #935b00;
-  --hover-status-warning: #9f6719;
+  --fill-status-warning: #8a5f00;
+  --hover-status-warning: #9a6f1e;
   --on-status-warning: #ffffff;
-  --fill-status-info: #4a6e91;
-  --hover-status-info: #567a9d;
+  --fill-status-info: #1f65b8;
+  --hover-status-info: #3175cc;
   --on-status-info: #ffffff;
-  --fill-loot-common: #686868;
-  --hover-loot-common: #747474;
+  --fill-loot-common: #666a6f;
+  --hover-loot-common: #72767b;
   --on-loot-common: #ffffff;
-  --fill-loot-uncommon: #437221;
-  --hover-loot-uncommon: #538232;
+  --fill-loot-uncommon: #007615;
+  --hover-loot-uncommon: #21862a;
   --on-loot-uncommon: #ffffff;
-  --fill-loot-rare: #3d6da1;
-  --hover-loot-rare: #4979ad;
+  --fill-loot-rare: #1f65b8;
+  --hover-loot-rare: #3175cc;
   --on-loot-rare: #ffffff;
-  --fill-loot-epic: #755b9c;
-  --hover-loot-epic: #8167a8;
+  --fill-loot-epic: #894cc1;
+  --hover-loot-epic: #9558d0;
   --on-loot-epic: #ffffff;
-  --fill-loot-legendary: #905b00;
-  --hover-loot-legendary: #a06b1e;
+  --fill-loot-legendary: #935a00;
+  --hover-loot-legendary: #a36a1e;
   --on-loot-legendary: #ffffff;
-  --fill-enemy-hostile: #a8493f;
-  --hover-enemy-hostile: #b7554b;
+  --fill-enemy-hostile: #b93940;
+  --hover-enemy-hostile: #c8474c;
   --on-enemy-hostile: #ffffff;
-  --fill-enemy-neutral: #885d00;
-  --hover-enemy-neutral: #986d1e;
+  --fill-enemy-neutral: #8a5f00;
+  --hover-enemy-neutral: #9a6f1e;
   --on-enemy-neutral: #ffffff;
-  --fill-enemy-boss: #835b7f;
-  --hover-enemy-boss: #8f678b;
+  --fill-enemy-boss: #903adc;
+  --hover-enemy-boss: #9c49eb;
   --on-enemy-boss: #ffffff;
-  --fill-channel-room: #577034;
-  --hover-channel-room: #637c40;
+  --fill-channel-room: #00784f;
+  --hover-channel-room: #1c845b;
   --on-channel-room: #ffffff;
-  --fill-channel-world: #4a6a86;
-  --hover-channel-world: #5a7a96;
+  --fill-channel-world: #1f65b8;
+  --hover-channel-world: #3175cc;
   --on-channel-world: #ffffff;
-  --fill-channel-action: #885d00;
-  --hover-channel-action: #986d1e;
+  --fill-channel-action: #935a00;
+  --hover-channel-action: #a36a1e;
   --on-channel-action: #ffffff;
-  --fill-channel-dm: #835b7f;
-  --hover-channel-dm: #8f678b;
+  --fill-channel-dm: #5c66ab;
+  --hover-channel-dm: #646eb3;
   --on-channel-dm: #ffffff;
-  --fill-channel-system: #65676a;
-  --hover-channel-system: #717376;
+  --fill-channel-system: #626872;
+  --hover-channel-system: #6e747e;
   --on-channel-system: #ffffff;
-  --fill-channel-quest: #886306;
-  --hover-channel-quest: #946f1c;
+  --fill-channel-quest: #845e00;
+  --hover-channel-quest: #946e1e;
   --on-channel-quest: #ffffff;
-  --fill-combat-victory: #526e22;
-  --hover-combat-victory: #627e32;
+  --fill-combat-victory: #00773c;
+  --hover-combat-victory: #21874c;
   --on-combat-victory: #ffffff;
-  --fill-combat-defeat: #b04a52;
-  --hover-combat-defeat: #ba525a;
+  --fill-combat-defeat: #cb1624;
+  --hover-combat-defeat: #df3234;
   --on-combat-defeat: #ffffff;
-  --fill-combat-damage: #a64b31;
-  --hover-combat-damage: #ba5b41;
+  --fill-combat-damage: #a15154;
+  --hover-combat-damage: #ae5d60;
   --on-combat-damage: #ffffff;
-  --fill-combat-heal: #2f7542;
-  --hover-combat-heal: #3b814e;
+  --fill-combat-heal: #007b49;
+  --hover-combat-heal: #1c8755;
   --on-combat-heal: #ffffff;
-  --fill-combat-miss: #676767;
-  --hover-combat-miss: #737373;
+  --fill-combat-miss: #646b79;
+  --hover-combat-miss: #707785;
   --on-combat-miss: #ffffff;
-  --fill-combat-crit: #885d00;
-  --hover-combat-crit: #986d1e;
+  --fill-combat-crit: #7e6300;
+  --hover-combat-crit: #8e731e;
   --on-combat-crit: #ffffff;
-  --fill-terrain-grass: #557225;
-  --hover-terrain-grass: #617e31;
+  --fill-terrain-grass: #007d0f;
+  --hover-terrain-grass: #1c8921;
   --on-terrain-grass: #ffffff;
-  --fill-terrain-forest: #557343;
-  --hover-terrain-forest: #617f4f;
+  --fill-terrain-forest: #037836;
+  --hover-terrain-forest: #1d8442;
   --on-terrain-forest: #ffffff;
-  --fill-terrain-dirt: #826343;
-  --hover-terrain-dirt: #8e6f4f;
+  --fill-terrain-dirt: #ac4b00;
+  --hover-terrain-dirt: #bb5719;
   --on-terrain-dirt: #ffffff;
-  --fill-terrain-sand: #7d6438;
-  --hover-terrain-sand: #897044;
+  --fill-terrain-wood: #9d5326;
+  --hover-terrain-wood: #ad6336;
+  --on-terrain-wood: #ffffff;
+  --fill-terrain-sand: #7f6900;
+  --hover-terrain-sand: #8b7519;
   --on-terrain-sand: #ffffff;
-  --fill-terrain-stone: #676763;
-  --hover-terrain-stone: #73736f;
+  --fill-terrain-stone: #6c6763;
+  --hover-terrain-stone: #78736f;
   --on-terrain-stone: #ffffff;
-  --fill-terrain-water: #3e6d7f;
-  --hover-terrain-water: #4e7d8f;
+  --fill-terrain-water: #00708c;
+  --hover-terrain-water: #21809c;
   --on-terrain-water: #ffffff;
-  --fill-terrain-ash: #6a6a6e;
-  --hover-terrain-ash: #76767a;
+  --fill-terrain-ash: #646b79;
+  --hover-terrain-ash: #707785;
   --on-terrain-ash: #ffffff;
-  --fill-terrain-bone: #6d6550;
-  --hover-terrain-bone: #7d7560;
+  --fill-terrain-bone: #6b6a69;
+  --hover-terrain-bone: #777675;
   --on-terrain-bone: #ffffff;
-  --fill-mood-danger: #a8463c;
-  --hover-mood-danger: #bc564c;
+  --fill-mood-danger: #cb1624;
+  --hover-mood-danger: #df3234;
   --on-mood-danger: #ffffff;
-  --fill-mood-arcane: #765a9c;
-  --hover-mood-arcane: #8266a8;
+  --fill-mood-arcane: #903adc;
+  --hover-mood-arcane: #9c49eb;
   --on-mood-arcane: #ffffff;
-  --fill-mood-sacred: #516c84;
-  --hover-mood-sacred: #5d7890;
+  --fill-mood-sacred: #416a7e;
+  --hover-mood-sacred: #517a8e;
   --on-mood-sacred: #ffffff;
-  --fill-mood-treasure: #8c6300;
-  --hover-mood-treasure: #986f19;
+  --fill-mood-treasure: #8a5f00;
+  --hover-mood-treasure: #9a6f1e;
   --on-mood-treasure: #ffffff;
-  --fill-mood-calm: #456d7f;
-  --hover-mood-calm: #51798b;
+  --fill-mood-calm: #1f65b8;
+  --hover-mood-calm: #3175cc;
   --on-mood-calm: #ffffff;
-  --fill-mood-decay: #5e6d36;
-  --hover-mood-decay: #6a7942;
+  --fill-mood-decay: #467500;
+  --hover-mood-decay: #528119;
   --on-mood-decay: #ffffff;
-  --fill-hue-gray: #676767;
-  --hover-hue-gray: #737373;
+  --fill-hue-gray: #626872;
+  --hover-hue-gray: #6e747e;
   --on-hue-gray: #ffffff;
-  --fill-hue-red: #b1443e;
-  --hover-hue-red: #c0504a;
+  --fill-hue-red: #b93940;
+  --hover-hue-red: #c8474c;
   --on-hue-red: #ffffff;
-  --fill-hue-gold: #936100;
-  --hover-hue-gold: #9b6913;
+  --fill-hue-gold: #935a00;
+  --hover-hue-gold: #a36a1e;
   --on-hue-gold: #ffffff;
-  --fill-hue-green: #437221;
-  --hover-hue-green: #538232;
+  --fill-hue-green: #007615;
+  --hover-hue-green: #21862a;
   --on-hue-green: #ffffff;
-  --fill-hue-sky: #276b91;
-  --hover-hue-sky: #387ba1;
+  --fill-hue-sky: #006da8;
+  --hover-hue-sky: #1b79b4;
   --on-hue-sky: #ffffff;
-  --fill-hue-blue: #4564a9;
-  --hover-hue-blue: #5574b9;
+  --fill-hue-blue: #1f65b8;
+  --hover-hue-blue: #3175cc;
   --on-hue-blue: #ffffff;
-  --fill-hue-violet: #695c9c;
-  --hover-hue-violet: #796cac;
+  --fill-hue-violet: #7453bf;
+  --hover-hue-violet: #805fce;
   --on-hue-violet: #ffffff;
-  --fill-hue-purple: #8847ac;
-  --hover-hue-purple: #9857bc;
+  --fill-hue-purple: #894cc1;
+  --hover-hue-purple: #9558d0;
   --on-hue-purple: #ffffff;
-  --fill-hue-pink: #ac4778;
-  --hover-hue-pink: #b64f80;
+  --fill-hue-pink: #b53a7f;
+  --hover-hue-pink: #c4478b;
   --on-hue-pink: #ffffff;
-  --fill-world-room-zero: #6f6485;
-  --hover-world-room-zero: #7b7091;
+  --fill-world-room-zero: #7453bf;
+  --hover-world-room-zero: #805fce;
   --on-world-room-zero: #ffffff;
-  --fill-world-room-zero-title: #6f6485;
-  --hover-world-room-zero-title: #7b7091;
+  --fill-world-room-zero-title: #7453bf;
+  --hover-world-room-zero-title: #805fce;
   --on-world-room-zero-title: #ffffff;
-  --fill-world-room-zero-subtitle: #66627a;
-  --hover-world-room-zero-subtitle: #76728a;
+  --fill-world-room-zero-subtitle: #6c5f9e;
+  --hover-world-room-zero-subtitle: #786baa;
   --on-world-room-zero-subtitle: #ffffff;
-  --fill-world-room-zero-icon: #6f6485;
-  --hover-world-room-zero-icon: #7b7091;
+  --fill-world-room-zero-icon: #7453bf;
+  --hover-world-room-zero-icon: #805fce;
   --on-world-room-zero-icon: #ffffff;
-  --fill-world-room-zero-direction: #6f6485;
-  --hover-world-room-zero-direction: #7b7091;
+  --fill-world-room-zero-direction: #7453bf;
+  --hover-world-room-zero-direction: #805fce;
   --on-world-room-zero-direction: #ffffff;
-  --fill-world-room-zero-accent: #69617a;
-  --hover-world-room-zero-accent: #79718a;
+  --fill-world-room-zero-accent: #725baa;
+  --hover-world-room-zero-accent: #7e67b6;
   --on-world-room-zero-accent: #ffffff;
-  --fill-world-grassy-field: #56701b;
-  --hover-world-grassy-field: #627c2a;
+  --fill-world-grassy-field: #007d0f;
+  --hover-world-grassy-field: #1c8921;
   --on-world-grassy-field: #ffffff;
-  --fill-world-grassy-field-title: #56701b;
-  --hover-world-grassy-field-title: #627c2a;
+  --fill-world-grassy-field-title: #007d0f;
+  --hover-world-grassy-field-title: #1c8921;
   --on-world-grassy-field-title: #ffffff;
-  --fill-world-grassy-field-subtitle: #5f714c;
-  --hover-world-grassy-field-subtitle: #677954;
+  --fill-world-grassy-field-subtitle: #047446;
+  --hover-world-grassy-field-subtitle: #248456;
   --on-world-grassy-field-subtitle: #ffffff;
-  --fill-world-grassy-field-icon: #56701b;
-  --hover-world-grassy-field-icon: #627c2a;
+  --fill-world-grassy-field-icon: #007d0f;
+  --hover-world-grassy-field-icon: #1c8921;
   --on-world-grassy-field-icon: #ffffff;
-  --fill-world-grassy-field-direction: #56701b;
-  --hover-world-grassy-field-direction: #627c2a;
+  --fill-world-grassy-field-direction: #007d0f;
+  --hover-world-grassy-field-direction: #1c8921;
   --on-world-grassy-field-direction: #ffffff;
-  --fill-world-grassy-field-accent: #5a6d35;
-  --hover-world-grassy-field-accent: #6a7d45;
+  --fill-world-grassy-field-accent: #007c35;
+  --hover-world-grassy-field-accent: #1c8841;
   --on-world-grassy-field-accent: #ffffff;
-  --fill-world-grassy-field-underground: #73634b;
-  --hover-world-grassy-field-underground: #83735b;
+  --fill-world-grassy-field-underground: #92400e;
+  --hover-world-grassy-field-underground: #b05c30;
   --on-world-grassy-field-underground: #ffffff;
-  --fill-world-grassy-field-underground-title: #716450;
-  --hover-world-grassy-field-underground-title: #817460;
+  --fill-world-grassy-field-underground-title: #935d3a;
+  --hover-world-grassy-field-underground-title: #9f6946;
   --on-world-grassy-field-underground-title: #ffffff;
-  --fill-world-grassy-field-underground-subtitle: #6c6863;
-  --hover-world-grassy-field-underground-subtitle: #78746f;
+  --fill-world-grassy-field-underground-subtitle: #7f6457;
+  --hover-world-grassy-field-underground-subtitle: #8b7063;
   --on-world-grassy-field-underground-subtitle: #ffffff;
-  --fill-world-grassy-field-underground-icon: #73634b;
-  --hover-world-grassy-field-underground-icon: #83735b;
+  --fill-world-grassy-field-underground-icon: #9d5326;
+  --hover-world-grassy-field-underground-icon: #ad6336;
   --on-world-grassy-field-underground-icon: #ffffff;
-  --fill-world-grassy-field-underground-direction: #73634b;
-  --hover-world-grassy-field-underground-direction: #83735b;
+  --fill-world-grassy-field-underground-direction: #92400e;
+  --hover-world-grassy-field-underground-direction: #b05c30;
   --on-world-grassy-field-underground-direction: #ffffff;
-  --fill-world-grassy-field-underground-accent: #6f6453;
-  --hover-world-grassy-field-underground-accent: #7f7463;
+  --fill-world-grassy-field-underground-accent: #955b35;
+  --hover-world-grassy-field-underground-accent: #a16741;
   --on-world-grassy-field-underground-accent: #ffffff;
-  --fill-world-beach: #7c6431;
-  --hover-world-beach: #88703d;
+  --fill-world-beach: #7e6300;
+  --hover-world-beach: #8e731e;
   --on-world-beach: #ffffff;
-  --fill-world-beach-title: #7c6431;
-  --hover-world-beach-title: #88703d;
+  --fill-world-beach-title: #7e6300;
+  --hover-world-beach-title: #8e731e;
   --on-world-beach-title: #ffffff;
-  --fill-world-beach-subtitle: #6f644e;
-  --hover-world-beach-subtitle: #7f745e;
+  --fill-world-beach-subtitle: #72660c;
+  --hover-world-beach-subtitle: #827624;
   --on-world-beach-subtitle: #ffffff;
-  --fill-world-beach-icon: #7c6431;
-  --hover-world-beach-icon: #88703d;
+  --fill-world-beach-icon: #7e6300;
+  --hover-world-beach-icon: #8e731e;
   --on-world-beach-icon: #ffffff;
-  --fill-world-beach-direction: #7c6431;
-  --hover-world-beach-direction: #88703d;
+  --fill-world-beach-direction: #7e6300;
+  --hover-world-beach-direction: #8e731e;
   --on-world-beach-direction: #ffffff;
-  --fill-world-beach-accent: #7a6843;
-  --hover-world-beach-accent: #86744f;
+  --fill-world-beach-accent: #796300;
+  --hover-world-beach-accent: #89731e;
   --on-world-beach-accent: #ffffff;
-  --fill-world-caves: #636973;
-  --hover-world-caves: #6f757f;
+  --fill-world-caves: #5a687a;
+  --hover-world-caves: #6a788a;
   --on-world-caves: #ffffff;
-  --fill-world-caves-title: #646971;
-  --hover-world-caves-title: #70757d;
+  --fill-world-caves-title: #5a687a;
+  --hover-world-caves-title: #6a788a;
   --on-world-caves-title: #ffffff;
-  --fill-world-caves-subtitle: #656b75;
-  --hover-world-caves-subtitle: #717781;
+  --fill-world-caves-subtitle: #626c7c;
+  --hover-world-caves-subtitle: #6a7484;
   --on-world-caves-subtitle: #ffffff;
-  --fill-world-caves-icon: #636973;
-  --hover-world-caves-icon: #6f757f;
+  --fill-world-caves-icon: #5a687a;
+  --hover-world-caves-icon: #6a788a;
   --on-world-caves-icon: #ffffff;
-  --fill-world-caves-direction: #636973;
-  --hover-world-caves-direction: #6f757f;
+  --fill-world-caves-direction: #5a687a;
+  --hover-world-caves-direction: #6a788a;
   --on-world-caves-direction: #ffffff;
-  --fill-world-caves-accent: #64696f;
-  --hover-world-caves-accent: #70757b;
+  --fill-world-caves-accent: #5d6775;
+  --hover-world-caves-accent: #6d7785;
   --on-world-caves-accent: #ffffff;
-  --fill-world-scorpion-pit: #955600;
-  --hover-world-scorpion-pit: #a5661e;
+  --fill-world-scorpion-pit: #ba3b00;
+  --hover-world-scorpion-pit: #c94a19;
   --on-world-scorpion-pit: #ffffff;
-  --fill-world-scorpion-pit-title: #955600;
-  --hover-world-scorpion-pit-title: #a5661e;
+  --fill-world-scorpion-pit-title: #ba3b00;
+  --hover-world-scorpion-pit-title: #c94a19;
   --on-world-scorpion-pit-title: #ffffff;
-  --fill-world-scorpion-pit-subtitle: #836541;
-  --hover-world-scorpion-pit-subtitle: #8f714d;
+  --fill-world-scorpion-pit-subtitle: #9c5a28;
+  --hover-world-scorpion-pit-subtitle: #a86634;
   --on-world-scorpion-pit-subtitle: #ffffff;
-  --fill-world-scorpion-pit-icon: #955600;
-  --hover-world-scorpion-pit-icon: #a5661e;
+  --fill-world-scorpion-pit-icon: #ba3b00;
+  --hover-world-scorpion-pit-icon: #c94a19;
   --on-world-scorpion-pit-icon: #ffffff;
-  --fill-world-scorpion-pit-direction: #955600;
-  --hover-world-scorpion-pit-direction: #a5661e;
+  --fill-world-scorpion-pit-direction: #ba3b00;
+  --hover-world-scorpion-pit-direction: #c94a19;
   --on-world-scorpion-pit-direction: #ffffff;
-  --fill-world-scorpion-pit-accent: #8e5f22;
-  --hover-world-scorpion-pit-accent: #9a6b2f;
+  --fill-world-scorpion-pit-accent: #ae4e00;
+  --hover-world-scorpion-pit-accent: #bd5a19;
   --on-world-scorpion-pit-accent: #ffffff;
-  --fill-world-forest: #4a743d;
-  --hover-world-forest: #568049;
+  --fill-world-forest: #037836;
+  --hover-world-forest: #1d8442;
   --on-world-forest: #ffffff;
-  --fill-world-forest-title: #4b723f;
-  --hover-world-forest-title: #577e4b;
+  --fill-world-forest-title: #0c743e;
+  --hover-world-forest-title: #27844e;
   --on-world-forest-title: #ffffff;
-  --fill-world-forest-subtitle: #577159;
-  --hover-world-forest-subtitle: #637d65;
+  --fill-world-forest-subtitle: #3d7259;
+  --hover-world-forest-subtitle: #497e65;
   --on-world-forest-subtitle: #ffffff;
-  --fill-world-forest-icon: #4a743d;
-  --hover-world-forest-icon: #568049;
+  --fill-world-forest-icon: #037836;
+  --hover-world-forest-icon: #1d8442;
   --on-world-forest-icon: #ffffff;
-  --fill-world-forest-direction: #4a743d;
-  --hover-world-forest-direction: #568049;
+  --fill-world-forest-direction: #037836;
+  --hover-world-forest-direction: #1d8442;
   --on-world-forest-direction: #ffffff;
-  --fill-world-forest-accent: #55724c;
-  --hover-world-forest-accent: #617e58;
+  --fill-world-forest-accent: #27794b;
+  --hover-world-forest-accent: #368557;
   --on-world-forest-accent: #ffffff;
-  --fill-world-forest-underground: #4a6350;
-  --hover-world-forest-underground: #627b68;
+  --fill-world-forest-underground: #115e59;
+  --hover-world-forest-underground: #387e79;
   --on-world-forest-underground: #ffffff;
-  --fill-world-forest-underground-title: #5b6e60;
-  --hover-world-forest-underground-title: #677a6c;
+  --fill-world-forest-underground-title: #3c716f;
+  --hover-world-forest-underground-title: #487d7b;
   --on-world-forest-underground-title: #ffffff;
-  --fill-world-forest-underground-subtitle: #606d6c;
-  --hover-world-forest-underground-subtitle: #6c7978;
+  --fill-world-forest-underground-subtitle: #4f7074;
+  --hover-world-forest-underground-subtitle: #5b7c80;
   --on-world-forest-underground-subtitle: #ffffff;
-  --fill-world-forest-underground-icon: #536b59;
-  --hover-world-forest-underground-icon: #637b69;
+  --fill-world-forest-underground-icon: #2d6f6b;
+  --hover-world-forest-underground-icon: #3d7f7b;
   --on-world-forest-underground-icon: #ffffff;
-  --fill-world-forest-underground-direction: #4a6350;
-  --hover-world-forest-underground-direction: #627b68;
+  --fill-world-forest-underground-direction: #115e59;
+  --hover-world-forest-underground-direction: #387e79;
   --on-world-forest-underground-direction: #ffffff;
-  --fill-world-forest-underground-accent: #5b6e60;
-  --hover-world-forest-underground-accent: #677a6c;
+  --fill-world-forest-underground-accent: #38716e;
+  --hover-world-forest-underground-accent: #447d7a;
   --on-world-forest-underground-accent: #ffffff;
-  --fill-world-red-town: #803f32;
-  --hover-world-red-town: #a05f52;
+  --fill-world-red-town: #b91c1c;
+  --hover-world-red-town: #d73e36;
   --on-world-red-town: #ffffff;
-  --fill-world-red-town-title: #865d54;
-  --hover-world-red-town-title: #926960;
+  --fill-world-red-town-title: #ac4044;
+  --hover-world-red-town-title: #c05054;
   --on-world-red-town-title: #ffffff;
-  --fill-world-red-town-subtitle: #796465;
-  --hover-world-red-town-subtitle: #857071;
+  --fill-world-red-town-subtitle: #8d565c;
+  --hover-world-red-town-subtitle: #9d666c;
   --on-world-red-town-subtitle: #ffffff;
-  --fill-world-red-town-icon: #935c51;
-  --hover-world-red-town-icon: #9f685d;
+  --fill-world-red-town-icon: #c03333;
+  --hover-world-red-town-icon: #cf423f;
   --on-world-red-town-icon: #ffffff;
-  --fill-world-red-town-direction: #803f32;
-  --hover-world-red-town-direction: #a05f52;
+  --fill-world-red-town-direction: #b91c1c;
+  --hover-world-red-town-direction: #d73e36;
   --on-world-red-town-direction: #ffffff;
-  --fill-world-red-town-accent: #885a50;
-  --hover-world-red-town-accent: #986a60;
+  --fill-world-red-town-accent: #b03d40;
+  --hover-world-red-town-accent: #c44d50;
   --on-world-red-town-accent: #ffffff;
-  --fill-world-red-town-sewers: #5c6c44;
-  --hover-world-red-town-sewers: #6c7c54;
+  --fill-world-red-town-sewers: #3f6212;
+  --hover-world-red-town-sewers: #5b7e32;
   --on-world-red-town-sewers: #ffffff;
-  --fill-world-red-town-sewers-title: #5d6b47;
-  --hover-world-red-town-sewers-title: #6d7b57;
+  --fill-world-red-town-sewers-title: #5a7338;
+  --hover-world-red-town-sewers-title: #627b40;
   --on-world-red-town-sewers-title: #ffffff;
-  --fill-world-red-town-sewers-subtitle: #616c5e;
-  --hover-world-red-town-sewers-subtitle: #6d786a;
+  --fill-world-red-town-sewers-subtitle: #5b6d52;
+  --hover-world-red-town-sewers-subtitle: #67795e;
   --on-world-red-town-sewers-subtitle: #ffffff;
-  --fill-world-red-town-sewers-icon: #5c6c44;
-  --hover-world-red-town-sewers-icon: #6c7c54;
+  --fill-world-red-town-sewers-icon: #52722a;
+  --hover-world-red-town-sewers-icon: #5e7e36;
   --on-world-red-town-sewers-icon: #ffffff;
-  --fill-world-red-town-sewers-direction: #5c6c44;
-  --hover-world-red-town-sewers-direction: #6c7c54;
+  --fill-world-red-town-sewers-direction: #3f6212;
+  --hover-world-red-town-sewers-direction: #5b7e32;
   --on-world-red-town-sewers-direction: #ffffff;
-  --fill-world-red-town-sewers-accent: #646f53;
-  --hover-world-red-town-sewers-accent: #6c775b;
+  --fill-world-red-town-sewers-accent: #5a7338;
+  --hover-world-red-town-sewers-accent: #627b40;
   --on-world-red-town-sewers-accent: #ffffff;
-  --fill-world-rocky-flats: #786747;
-  --hover-world-rocky-flats: #847353;
+  --fill-world-rocky-flats: #716a65;
+  --hover-world-rocky-flats: #79726d;
   --on-world-rocky-flats: #ffffff;
-  --fill-world-rocky-flats-title: #786747;
-  --hover-world-rocky-flats-title: #847353;
+  --fill-world-rocky-flats-title: #716a66;
+  --hover-world-rocky-flats-title: #79726e;
   --on-world-rocky-flats-title: #ffffff;
-  --fill-world-rocky-flats-subtitle: #6e665b;
-  --hover-world-rocky-flats-subtitle: #7a7267;
+  --fill-world-rocky-flats-subtitle: #68676b;
+  --hover-world-rocky-flats-subtitle: #747377;
   --on-world-rocky-flats-subtitle: #ffffff;
-  --fill-world-rocky-flats-icon: #786747;
-  --hover-world-rocky-flats-icon: #847353;
+  --fill-world-rocky-flats-icon: #716a65;
+  --hover-world-rocky-flats-icon: #79726d;
   --on-world-rocky-flats-icon: #ffffff;
-  --fill-world-rocky-flats-direction: #786747;
-  --hover-world-rocky-flats-direction: #847353;
+  --fill-world-rocky-flats-direction: #716a65;
+  --hover-world-rocky-flats-direction: #79726d;
   --on-world-rocky-flats-direction: #ffffff;
-  --fill-world-rocky-flats-accent: #71644f;
-  --hover-world-rocky-flats-accent: #81745f;
+  --fill-world-rocky-flats-accent: #6e6a66;
+  --hover-world-rocky-flats-accent: #7a7672;
   --on-world-rocky-flats-accent: #ffffff;
-  --fill-world-rocky-flats-underground: #6e685c;
-  --hover-world-rocky-flats-underground: #7a7468;
+  --fill-world-rocky-flats-underground: #57534e;
+  --hover-world-rocky-flats-underground: #77736e;
   --on-world-rocky-flats-underground: #ffffff;
-  --fill-world-rocky-flats-underground-title: #6e685c;
-  --hover-world-rocky-flats-underground-title: #7a7468;
+  --fill-world-rocky-flats-underground-title: #6d6b67;
+  --hover-world-rocky-flats-underground-title: #75736f;
   --on-world-rocky-flats-underground-title: #ffffff;
-  --fill-world-rocky-flats-underground-subtitle: #6a6a69;
-  --hover-world-rocky-flats-underground-subtitle: #767675;
+  --fill-world-rocky-flats-underground-subtitle: #636568;
+  --hover-world-rocky-flats-underground-subtitle: #737578;
   --on-world-rocky-flats-underground-subtitle: #ffffff;
-  --fill-world-rocky-flats-underground-icon: #6e685c;
-  --hover-world-rocky-flats-underground-icon: #7a7468;
+  --fill-world-rocky-flats-underground-icon: #686460;
+  --hover-world-rocky-flats-underground-icon: #787470;
   --on-world-rocky-flats-underground-icon: #ffffff;
-  --fill-world-rocky-flats-underground-direction: #6e685c;
-  --hover-world-rocky-flats-underground-direction: #7a7468;
+  --fill-world-rocky-flats-underground-direction: #57534e;
+  --hover-world-rocky-flats-underground-direction: #77736e;
   --on-world-rocky-flats-underground-direction: #ffffff;
-  --fill-world-rocky-flats-underground-accent: #6b6860;
-  --hover-world-rocky-flats-underground-accent: #77746c;
+  --fill-world-rocky-flats-underground-accent: #6c6965;
+  --hover-world-rocky-flats-underground-accent: #787571;
   --on-world-rocky-flats-underground-accent: #ffffff;
-  --fill-world-neverending-mine: #856617;
-  --hover-world-neverending-mine: #917227;
+  --fill-world-neverending-mine: #a84700;
+  --hover-world-neverending-mine: #bc571e;
   --on-world-neverending-mine: #ffffff;
-  --fill-world-neverending-mine-title: #856617;
-  --hover-world-neverending-mine-title: #917227;
+  --fill-world-neverending-mine-title: #a84700;
+  --hover-world-neverending-mine-title: #bc571e;
   --on-world-neverending-mine-title: #ffffff;
-  --fill-world-neverending-mine-subtitle: #726442;
-  --hover-world-neverending-mine-subtitle: #827452;
+  --fill-world-neverending-mine-subtitle: #8b5c20;
+  --hover-world-neverending-mine-subtitle: #9b6c31;
   --on-world-neverending-mine-subtitle: #ffffff;
-  --fill-world-neverending-mine-icon: #856617;
-  --hover-world-neverending-mine-icon: #917227;
+  --fill-world-neverending-mine-icon: #a84700;
+  --hover-world-neverending-mine-icon: #bc571e;
   --on-world-neverending-mine-icon: #ffffff;
-  --fill-world-neverending-mine-direction: #856617;
-  --hover-world-neverending-mine-direction: #917227;
+  --fill-world-neverending-mine-direction: #a84700;
+  --hover-world-neverending-mine-direction: #bc571e;
   --on-world-neverending-mine-direction: #ffffff;
-  --fill-world-neverending-mine-accent: #7a632e;
-  --hover-world-neverending-mine-accent: #8a733e;
+  --fill-world-neverending-mine-accent: #9b5400;
+  --hover-world-neverending-mine-accent: #ab641e;
   --on-world-neverending-mine-accent: #ffffff;
-  --fill-world-solar-office: #816300;
-  --hover-world-solar-office: #8d6f18;
+  --fill-world-solar-office: #8a5f00;
+  --hover-world-solar-office: #9a6f1e;
   --on-world-solar-office: #ffffff;
-  --fill-world-solar-office-title: #816300;
-  --hover-world-solar-office-title: #8d6f18;
+  --fill-world-solar-office-title: #8a5f00;
+  --hover-world-solar-office-title: #9a6f1e;
   --on-world-solar-office-title: #ffffff;
-  --fill-world-solar-office-subtitle: #766834;
-  --hover-world-solar-office-subtitle: #827440;
+  --fill-world-solar-office-subtitle: #786300;
+  --hover-world-solar-office-subtitle: #88731e;
   --on-world-solar-office-subtitle: #ffffff;
-  --fill-world-solar-office-icon: #816300;
-  --hover-world-solar-office-icon: #8d6f18;
+  --fill-world-solar-office-icon: #8a5f00;
+  --hover-world-solar-office-icon: #9a6f1e;
   --on-world-solar-office-icon: #ffffff;
-  --fill-world-solar-office-direction: #816300;
-  --hover-world-solar-office-direction: #8d6f18;
+  --fill-world-solar-office-direction: #8a5f00;
+  --hover-world-solar-office-direction: #9a6f1e;
   --on-world-solar-office-direction: #ffffff;
-  --fill-world-solar-office-accent: #7d6500;
-  --hover-world-solar-office-accent: #897118;
+  --fill-world-solar-office-accent: #836400;
+  --hover-world-solar-office-accent: #8f7019;
   --on-world-solar-office-accent: #ffffff;
-  --fill-world-lobby: #576b7c;
-  --hover-world-lobby: #637788;
+  --fill-world-lobby: #026d94;
+  --hover-world-lobby: #227da4;
   --on-world-lobby: #ffffff;
-  --fill-world-lobby-title: #576b7c;
-  --hover-world-lobby-title: #637788;
+  --fill-world-lobby-title: #026d94;
+  --hover-world-lobby-title: #227da4;
   --on-world-lobby-title: #ffffff;
-  --fill-world-lobby-subtitle: #5a6978;
-  --hover-world-lobby-subtitle: #667584;
+  --fill-world-lobby-subtitle: #3e6e87;
+  --hover-world-lobby-subtitle: #4a7a93;
   --on-world-lobby-subtitle: #ffffff;
-  --fill-world-lobby-icon: #576b7c;
-  --hover-world-lobby-icon: #637788;
+  --fill-world-lobby-icon: #026d94;
+  --hover-world-lobby-icon: #227da4;
   --on-world-lobby-icon: #ffffff;
-  --fill-world-lobby-direction: #576b7c;
-  --hover-world-lobby-direction: #637788;
+  --fill-world-lobby-direction: #026d94;
+  --hover-world-lobby-direction: #227da4;
   --on-world-lobby-direction: #ffffff;
-  --fill-world-lobby-accent: #5a6875;
-  --hover-world-lobby-accent: #6a7885;
+  --fill-world-lobby-accent: #2e708d;
+  --hover-world-lobby-accent: #3a7c99;
   --on-world-lobby-accent: #ffffff;
+  --fill-label-shadow: none;
 }
 
 /* Light Gray Dark — The house palette, neutral and near black. Quiet frame, loud world. */
@@ -2207,6 +2938,7 @@
   --terrain-grass: #7fa055;
   --terrain-forest: #5c7a4a;
   --terrain-dirt: #8a6a4a;
+  --terrain-wood: #8c5e3c;
   --terrain-sand: #c4a878;
   --terrain-stone: #8a8a86;
   --terrain-water: #5a8a9e;
@@ -2518,6 +3250,9 @@
   --fill-terrain-dirt: #7b5c3c;
   --hover-terrain-dirt: #876848;
   --on-terrain-dirt: #f5f5f5;
+  --fill-terrain-wood: #845735;
+  --hover-terrain-wood: #906341;
+  --on-terrain-wood: #f5f5f5;
   --fill-terrain-sand: #765d31;
   --hover-terrain-sand: #866d41;
   --on-terrain-sand: #f5f5f5;
@@ -2848,6 +3583,7 @@
   --fill-world-lobby-accent: #586673;
   --hover-world-lobby-accent: #64727f;
   --on-world-lobby-accent: #f5f5f5;
+  --fill-label-shadow: none;
 }
 
 /* Gruvbox Dark — Retro groove. Warm earth tones over charcoal. */
@@ -2919,6 +3655,7 @@
   --terrain-grass: #98971a;
   --terrain-forest: #82802d;
   --terrain-dirt: #a8743a;
+  --terrain-wood: #a17448;
   --terrain-sand: #d5c4a1;
   --terrain-stone: #928374;
   --terrain-water: #689d6a;
@@ -3230,6 +3967,9 @@
   --fill-terrain-dirt: #784a01;
   --hover-terrain-dirt: #845615;
   --on-terrain-dirt: #ebdbb2;
+  --fill-terrain-wood: #724a1d;
+  --hover-terrain-wood: #7e5629;
+  --on-terrain-wood: #ebdbb2;
   --fill-terrain-sand: #625334;
   --hover-terrain-sand: #6e5f40;
   --on-terrain-sand: #ebdbb2;
@@ -3560,6 +4300,7 @@
   --fill-world-lobby-accent: #465a48;
   --hover-world-lobby-accent: #526654;
   --on-world-lobby-accent: #ebdbb2;
+  --fill-label-shadow: none;
 }
 
 /* Nord — Arctic, north-bluish. Cool frost over a slate night. */
@@ -3631,6 +4372,7 @@
   --terrain-grass: #a3be8c;
   --terrain-forest: #809575;
   --terrain-dirt: #a5846a;
+  --terrain-wood: #a2856f;
   --terrain-sand: #e0d3ae;
   --terrain-stone: #8b94a5;
   --terrain-water: #88c0d0;
@@ -3942,6 +4684,9 @@
   --fill-terrain-dirt: #775a40;
   --hover-terrain-dirt: #83664c;
   --on-terrain-dirt: #eceff4;
+  --fill-terrain-wood: #745b45;
+  --hover-terrain-wood: #806751;
+  --on-terrain-wood: #eceff4;
   --fill-terrain-sand: #6c603f;
   --hover-terrain-sand: #786c4b;
   --on-terrain-sand: #eceff4;
@@ -4272,6 +5017,7 @@
   --fill-world-lobby-accent: #546374;
   --hover-world-lobby-accent: #5c6b7c;
   --on-world-lobby-accent: #eceff4;
+  --fill-label-shadow: none;
 }
 
 /* Everforest Dark — Soft green and warm stone. Comfortable, mossy, low contrast. */
@@ -4343,6 +5089,7 @@
   --terrain-grass: #a7c080;
   --terrain-forest: #799367;
   --terrain-dirt: #a8845c;
+  --terrain-wood: #aa8264;
   --terrain-sand: #dfd2ab;
   --terrain-stone: #9da9a0;
   --terrain-water: #7fbbb3;
@@ -4654,6 +5401,9 @@
   --fill-terrain-dirt: #72532b;
   --hover-terrain-dirt: #7a5b33;
   --on-terrain-dirt: #e8e0cc;
+  --fill-terrain-wood: #735133;
+  --hover-terrain-wood: #7f5d3f;
+  --on-terrain-wood: #e8e0cc;
   --fill-terrain-sand: #5d522e;
   --hover-terrain-sand: #6d623e;
   --on-terrain-sand: #e8e0cc;
@@ -4984,6 +5734,7 @@
   --fill-world-lobby-accent: #3f575c;
   --hover-world-lobby-accent: #4f676c;
   --on-world-lobby-accent: #e8e0cc;
+  --fill-label-shadow: none;
 }
 
 /* Dracula — Purple and pink on deep indigo. The classic. */
@@ -5055,6 +5806,7 @@
   --terrain-grass: #50fa7b;
   --terrain-forest: #44bc66;
   --terrain-dirt: #a17d5c;
+  --terrain-wood: #a47a63;
   --terrain-sand: #e8dfa8;
   --terrain-stone: #8f93a8;
   --terrain-water: #8be9fd;
@@ -5366,6 +6118,9 @@
   --fill-terrain-dirt: #816140;
   --hover-terrain-dirt: #8d6d4c;
   --on-terrain-dirt: #ffffff;
+  --fill-terrain-wood: #845e47;
+  --hover-terrain-wood: #946e57;
+  --on-terrain-wood: #ffffff;
   --fill-terrain-sand: #736b37;
   --hover-terrain-sand: #7f7743;
   --on-terrain-sand: #ffffff;
@@ -5696,6 +6451,7 @@
   --fill-world-lobby-accent: #596b88;
   --hover-world-lobby-accent: #657794;
   --on-world-lobby-accent: #ffffff;
+  --fill-label-shadow: none;
 }
 
 /* Solarized Dark — Precision colour on deep cyan-black. Low glare, high care. */
@@ -5767,6 +6523,7 @@
   --terrain-grass: #859900;
   --terrain-forest: #778335;
   --terrain-dirt: #96783d;
+  --terrain-wood: #a1795c;
   --terrain-sand: #c9bb92;
   --terrain-stone: #6d8188;
   --terrain-water: #2aa198;
@@ -6078,6 +6835,9 @@
   --fill-terrain-dirt: #785c1d;
   --hover-terrain-dirt: #886c2e;
   --on-terrain-dirt: #fdf6e3;
+  --fill-terrain-wood: #815d40;
+  --hover-terrain-wood: #8d694c;
+  --on-terrain-wood: #fdf6e3;
   --fill-terrain-sand: #6d603b;
   --hover-terrain-sand: #7d704b;
   --on-terrain-sand: #fdf6e3;
@@ -6408,6 +7168,7 @@
   --fill-world-lobby-accent: #286780;
   --hover-world-lobby-accent: #387790;
   --on-world-lobby-accent: #fdf6e3;
+  --fill-label-shadow: none;
 }
 
 /* Tokyo Night — Neon signage over deep navy. Cool, electric, late. */
@@ -6479,6 +7240,7 @@
   --terrain-grass: #9ece6a;
   --terrain-forest: #769856;
   --terrain-dirt: #a1743f;
+  --terrain-wood: #9a6247;
   --terrain-sand: #dcc79a;
   --terrain-stone: #787c99;
   --terrain-water: #7dcfff;
@@ -6790,6 +7552,9 @@
   --fill-terrain-dirt: #724a0c;
   --hover-terrain-dirt: #825a21;
   --on-terrain-dirt: #d5dcff;
+  --fill-terrain-wood: #7a462b;
+  --hover-terrain-wood: #865237;
+  --on-terrain-wood: #d5dcff;
   --fill-terrain-sand: #614f25;
   --hover-terrain-sand: #715f35;
   --on-terrain-sand: #d5dcff;
@@ -7120,6 +7885,7 @@
   --fill-world-lobby-accent: #10577f;
   --hover-world-lobby-accent: #25678f;
   --on-world-lobby-accent: #d5dcff;
+  --fill-label-shadow: none;
 }
 
 /* Catppuccin Mocha — Soft pastels on warm plum. Gentle, and very hard to dislike. */
@@ -7191,6 +7957,7 @@
   --terrain-grass: #a6e3a1;
   --terrain-forest: #6a9e73;
   --terrain-dirt: #b08968;
+  --terrain-wood: #a67458;
   --terrain-sand: #f2dfc4;
   --terrain-stone: #9399b2;
   --terrain-water: #89dceb;
@@ -7502,6 +8269,9 @@
   --fill-terrain-dirt: #805e3e;
   --hover-terrain-dirt: #8c6a4a;
   --on-terrain-dirt: #f5f5fa;
+  --fill-terrain-wood: #86583c;
+  --hover-terrain-wood: #926448;
+  --on-terrain-wood: #f5f5fa;
   --fill-terrain-sand: #6e5d45;
   --hover-terrain-sand: #7e6d55;
   --on-terrain-sand: #f5f5fa;
@@ -7832,6 +8602,7 @@
   --fill-world-lobby-accent: #2c6d79;
   --hover-world-lobby-accent: #387985;
   --on-world-lobby-accent: #f5f5fa;
+  --fill-label-shadow: none;
 }
 
 /*
@@ -7847,6 +8618,7 @@
 .fill-surface-canvas {
   background-color: var(--fill-surface-canvas);
   color: var(--on-surface-canvas);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-surface-canvas:hover {
   background-color: var(--hover-surface-canvas);
@@ -7854,6 +8626,7 @@
 .fill-surface-sunken {
   background-color: var(--fill-surface-sunken);
   color: var(--on-surface-sunken);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-surface-sunken:hover {
   background-color: var(--hover-surface-sunken);
@@ -7861,6 +8634,7 @@
 .fill-surface-panel {
   background-color: var(--fill-surface-panel);
   color: var(--on-surface-panel);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-surface-panel:hover {
   background-color: var(--hover-surface-panel);
@@ -7868,6 +8642,7 @@
 .fill-surface-raised {
   background-color: var(--fill-surface-raised);
   color: var(--on-surface-raised);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-surface-raised:hover {
   background-color: var(--hover-surface-raised);
@@ -7875,6 +8650,7 @@
 .fill-surface-overlay {
   background-color: var(--fill-surface-overlay);
   color: var(--on-surface-overlay);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-surface-overlay:hover {
   background-color: var(--hover-surface-overlay);
@@ -7882,6 +8658,7 @@
 .fill-surface-hover {
   background-color: var(--fill-surface-hover);
   color: var(--on-surface-hover);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-surface-hover:hover {
   background-color: var(--hover-surface-hover);
@@ -7889,6 +8666,7 @@
 .fill-surface-selected {
   background-color: var(--fill-surface-selected);
   color: var(--on-surface-selected);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-surface-selected:hover {
   background-color: var(--hover-surface-selected);
@@ -7896,6 +8674,7 @@
 .fill-surface-disabled {
   background-color: var(--fill-surface-disabled);
   color: var(--on-surface-disabled);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-surface-disabled:hover {
   background-color: var(--hover-surface-disabled);
@@ -7903,6 +8682,7 @@
 .fill-accent {
   background-color: var(--fill-accent);
   color: var(--on-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-accent:hover {
   background-color: var(--hover-accent);
@@ -7910,6 +8690,7 @@
 .fill-accent-hover {
   background-color: var(--fill-accent-hover);
   color: var(--on-accent-hover);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-accent-hover:hover {
   background-color: var(--hover-accent-hover);
@@ -7917,6 +8698,7 @@
 .fill-accent-muted {
   background-color: var(--fill-accent-muted);
   color: var(--on-accent-muted);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-accent-muted:hover {
   background-color: var(--hover-accent-muted);
@@ -7924,6 +8706,7 @@
 .fill-action-attack {
   background-color: var(--fill-action-attack);
   color: var(--on-action-attack);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-action-attack:hover {
   background-color: var(--hover-action-attack);
@@ -7931,6 +8714,7 @@
 .fill-action-search {
   background-color: var(--fill-action-search);
   color: var(--on-action-search);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-action-search:hover {
   background-color: var(--hover-action-search);
@@ -7938,6 +8722,7 @@
 .fill-action-rest {
   background-color: var(--fill-action-rest);
   color: var(--on-action-rest);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-action-rest:hover {
   background-color: var(--hover-action-rest);
@@ -7945,6 +8730,7 @@
 .fill-action-look {
   background-color: var(--fill-action-look);
   color: var(--on-action-look);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-action-look:hover {
   background-color: var(--hover-action-look);
@@ -7952,6 +8738,7 @@
 .fill-action-talk {
   background-color: var(--fill-action-talk);
   color: var(--on-action-talk);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-action-talk:hover {
   background-color: var(--hover-action-talk);
@@ -7959,6 +8746,7 @@
 .fill-action-travel {
   background-color: var(--fill-action-travel);
   color: var(--on-action-travel);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-action-travel:hover {
   background-color: var(--hover-action-travel);
@@ -7966,6 +8754,7 @@
 .fill-action-craft {
   background-color: var(--fill-action-craft);
   color: var(--on-action-craft);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-action-craft:hover {
   background-color: var(--hover-action-craft);
@@ -7973,6 +8762,7 @@
 .fill-action-gather {
   background-color: var(--fill-action-gather);
   color: var(--on-action-gather);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-action-gather:hover {
   background-color: var(--hover-action-gather);
@@ -7980,6 +8770,7 @@
 .fill-action-use {
   background-color: var(--fill-action-use);
   color: var(--on-action-use);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-action-use:hover {
   background-color: var(--hover-action-use);
@@ -7987,6 +8778,7 @@
 .fill-resource-hp {
   background-color: var(--fill-resource-hp);
   color: var(--on-resource-hp);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-resource-hp:hover {
   background-color: var(--hover-resource-hp);
@@ -7994,6 +8786,7 @@
 .fill-resource-mp {
   background-color: var(--fill-resource-mp);
   color: var(--on-resource-mp);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-resource-mp:hover {
   background-color: var(--hover-resource-mp);
@@ -8001,6 +8794,7 @@
 .fill-resource-xp {
   background-color: var(--fill-resource-xp);
   color: var(--on-resource-xp);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-resource-xp:hover {
   background-color: var(--hover-resource-xp);
@@ -8008,6 +8802,7 @@
 .fill-resource-gold {
   background-color: var(--fill-resource-gold);
   color: var(--on-resource-gold);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-resource-gold:hover {
   background-color: var(--hover-resource-gold);
@@ -8015,6 +8810,7 @@
 .fill-stat-str {
   background-color: var(--fill-stat-str);
   color: var(--on-stat-str);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-stat-str:hover {
   background-color: var(--hover-stat-str);
@@ -8022,6 +8818,7 @@
 .fill-stat-dex {
   background-color: var(--fill-stat-dex);
   color: var(--on-stat-dex);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-stat-dex:hover {
   background-color: var(--hover-stat-dex);
@@ -8029,6 +8826,7 @@
 .fill-stat-mag {
   background-color: var(--fill-stat-mag);
   color: var(--on-stat-mag);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-stat-mag:hover {
   background-color: var(--hover-stat-mag);
@@ -8036,6 +8834,7 @@
 .fill-stat-def {
   background-color: var(--fill-stat-def);
   color: var(--on-stat-def);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-stat-def:hover {
   background-color: var(--hover-stat-def);
@@ -8043,6 +8842,7 @@
 .fill-status-success {
   background-color: var(--fill-status-success);
   color: var(--on-status-success);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-status-success:hover {
   background-color: var(--hover-status-success);
@@ -8050,6 +8850,7 @@
 .fill-status-error {
   background-color: var(--fill-status-error);
   color: var(--on-status-error);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-status-error:hover {
   background-color: var(--hover-status-error);
@@ -8057,6 +8858,7 @@
 .fill-status-warning {
   background-color: var(--fill-status-warning);
   color: var(--on-status-warning);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-status-warning:hover {
   background-color: var(--hover-status-warning);
@@ -8064,6 +8866,7 @@
 .fill-status-info {
   background-color: var(--fill-status-info);
   color: var(--on-status-info);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-status-info:hover {
   background-color: var(--hover-status-info);
@@ -8071,6 +8874,7 @@
 .fill-loot-common {
   background-color: var(--fill-loot-common);
   color: var(--on-loot-common);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-loot-common:hover {
   background-color: var(--hover-loot-common);
@@ -8078,6 +8882,7 @@
 .fill-loot-uncommon {
   background-color: var(--fill-loot-uncommon);
   color: var(--on-loot-uncommon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-loot-uncommon:hover {
   background-color: var(--hover-loot-uncommon);
@@ -8085,6 +8890,7 @@
 .fill-loot-rare {
   background-color: var(--fill-loot-rare);
   color: var(--on-loot-rare);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-loot-rare:hover {
   background-color: var(--hover-loot-rare);
@@ -8092,6 +8898,7 @@
 .fill-loot-epic {
   background-color: var(--fill-loot-epic);
   color: var(--on-loot-epic);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-loot-epic:hover {
   background-color: var(--hover-loot-epic);
@@ -8099,6 +8906,7 @@
 .fill-loot-legendary {
   background-color: var(--fill-loot-legendary);
   color: var(--on-loot-legendary);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-loot-legendary:hover {
   background-color: var(--hover-loot-legendary);
@@ -8106,6 +8914,7 @@
 .fill-enemy-hostile {
   background-color: var(--fill-enemy-hostile);
   color: var(--on-enemy-hostile);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-enemy-hostile:hover {
   background-color: var(--hover-enemy-hostile);
@@ -8113,6 +8922,7 @@
 .fill-enemy-neutral {
   background-color: var(--fill-enemy-neutral);
   color: var(--on-enemy-neutral);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-enemy-neutral:hover {
   background-color: var(--hover-enemy-neutral);
@@ -8120,6 +8930,7 @@
 .fill-enemy-boss {
   background-color: var(--fill-enemy-boss);
   color: var(--on-enemy-boss);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-enemy-boss:hover {
   background-color: var(--hover-enemy-boss);
@@ -8127,6 +8938,7 @@
 .fill-channel-room {
   background-color: var(--fill-channel-room);
   color: var(--on-channel-room);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-channel-room:hover {
   background-color: var(--hover-channel-room);
@@ -8134,6 +8946,7 @@
 .fill-channel-world {
   background-color: var(--fill-channel-world);
   color: var(--on-channel-world);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-channel-world:hover {
   background-color: var(--hover-channel-world);
@@ -8141,6 +8954,7 @@
 .fill-channel-action {
   background-color: var(--fill-channel-action);
   color: var(--on-channel-action);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-channel-action:hover {
   background-color: var(--hover-channel-action);
@@ -8148,6 +8962,7 @@
 .fill-channel-dm {
   background-color: var(--fill-channel-dm);
   color: var(--on-channel-dm);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-channel-dm:hover {
   background-color: var(--hover-channel-dm);
@@ -8155,6 +8970,7 @@
 .fill-channel-system {
   background-color: var(--fill-channel-system);
   color: var(--on-channel-system);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-channel-system:hover {
   background-color: var(--hover-channel-system);
@@ -8162,6 +8978,7 @@
 .fill-channel-quest {
   background-color: var(--fill-channel-quest);
   color: var(--on-channel-quest);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-channel-quest:hover {
   background-color: var(--hover-channel-quest);
@@ -8169,6 +8986,7 @@
 .fill-combat-victory {
   background-color: var(--fill-combat-victory);
   color: var(--on-combat-victory);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-combat-victory:hover {
   background-color: var(--hover-combat-victory);
@@ -8176,6 +8994,7 @@
 .fill-combat-defeat {
   background-color: var(--fill-combat-defeat);
   color: var(--on-combat-defeat);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-combat-defeat:hover {
   background-color: var(--hover-combat-defeat);
@@ -8183,6 +9002,7 @@
 .fill-combat-damage {
   background-color: var(--fill-combat-damage);
   color: var(--on-combat-damage);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-combat-damage:hover {
   background-color: var(--hover-combat-damage);
@@ -8190,6 +9010,7 @@
 .fill-combat-heal {
   background-color: var(--fill-combat-heal);
   color: var(--on-combat-heal);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-combat-heal:hover {
   background-color: var(--hover-combat-heal);
@@ -8197,6 +9018,7 @@
 .fill-combat-miss {
   background-color: var(--fill-combat-miss);
   color: var(--on-combat-miss);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-combat-miss:hover {
   background-color: var(--hover-combat-miss);
@@ -8204,6 +9026,7 @@
 .fill-combat-crit {
   background-color: var(--fill-combat-crit);
   color: var(--on-combat-crit);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-combat-crit:hover {
   background-color: var(--hover-combat-crit);
@@ -8211,6 +9034,7 @@
 .fill-terrain-grass {
   background-color: var(--fill-terrain-grass);
   color: var(--on-terrain-grass);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-terrain-grass:hover {
   background-color: var(--hover-terrain-grass);
@@ -8218,6 +9042,7 @@
 .fill-terrain-forest {
   background-color: var(--fill-terrain-forest);
   color: var(--on-terrain-forest);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-terrain-forest:hover {
   background-color: var(--hover-terrain-forest);
@@ -8225,13 +9050,23 @@
 .fill-terrain-dirt {
   background-color: var(--fill-terrain-dirt);
   color: var(--on-terrain-dirt);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-terrain-dirt:hover {
   background-color: var(--hover-terrain-dirt);
 }
+.fill-terrain-wood {
+  background-color: var(--fill-terrain-wood);
+  color: var(--on-terrain-wood);
+  text-shadow: var(--fill-label-shadow);
+}
+:where(button, a, [role='button'], summary, label, [tabindex]).fill-terrain-wood:hover {
+  background-color: var(--hover-terrain-wood);
+}
 .fill-terrain-sand {
   background-color: var(--fill-terrain-sand);
   color: var(--on-terrain-sand);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-terrain-sand:hover {
   background-color: var(--hover-terrain-sand);
@@ -8239,6 +9074,7 @@
 .fill-terrain-stone {
   background-color: var(--fill-terrain-stone);
   color: var(--on-terrain-stone);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-terrain-stone:hover {
   background-color: var(--hover-terrain-stone);
@@ -8246,6 +9082,7 @@
 .fill-terrain-water {
   background-color: var(--fill-terrain-water);
   color: var(--on-terrain-water);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-terrain-water:hover {
   background-color: var(--hover-terrain-water);
@@ -8253,6 +9090,7 @@
 .fill-terrain-ash {
   background-color: var(--fill-terrain-ash);
   color: var(--on-terrain-ash);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-terrain-ash:hover {
   background-color: var(--hover-terrain-ash);
@@ -8260,6 +9098,7 @@
 .fill-terrain-bone {
   background-color: var(--fill-terrain-bone);
   color: var(--on-terrain-bone);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-terrain-bone:hover {
   background-color: var(--hover-terrain-bone);
@@ -8267,6 +9106,7 @@
 .fill-mood-danger {
   background-color: var(--fill-mood-danger);
   color: var(--on-mood-danger);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-mood-danger:hover {
   background-color: var(--hover-mood-danger);
@@ -8274,6 +9114,7 @@
 .fill-mood-arcane {
   background-color: var(--fill-mood-arcane);
   color: var(--on-mood-arcane);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-mood-arcane:hover {
   background-color: var(--hover-mood-arcane);
@@ -8281,6 +9122,7 @@
 .fill-mood-sacred {
   background-color: var(--fill-mood-sacred);
   color: var(--on-mood-sacred);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-mood-sacred:hover {
   background-color: var(--hover-mood-sacred);
@@ -8288,6 +9130,7 @@
 .fill-mood-treasure {
   background-color: var(--fill-mood-treasure);
   color: var(--on-mood-treasure);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-mood-treasure:hover {
   background-color: var(--hover-mood-treasure);
@@ -8295,6 +9138,7 @@
 .fill-mood-calm {
   background-color: var(--fill-mood-calm);
   color: var(--on-mood-calm);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-mood-calm:hover {
   background-color: var(--hover-mood-calm);
@@ -8302,6 +9146,7 @@
 .fill-mood-decay {
   background-color: var(--fill-mood-decay);
   color: var(--on-mood-decay);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-mood-decay:hover {
   background-color: var(--hover-mood-decay);
@@ -8309,6 +9154,7 @@
 .fill-hue-gray {
   background-color: var(--fill-hue-gray);
   color: var(--on-hue-gray);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-hue-gray:hover {
   background-color: var(--hover-hue-gray);
@@ -8316,6 +9162,7 @@
 .fill-hue-red {
   background-color: var(--fill-hue-red);
   color: var(--on-hue-red);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-hue-red:hover {
   background-color: var(--hover-hue-red);
@@ -8323,6 +9170,7 @@
 .fill-hue-gold {
   background-color: var(--fill-hue-gold);
   color: var(--on-hue-gold);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-hue-gold:hover {
   background-color: var(--hover-hue-gold);
@@ -8330,6 +9178,7 @@
 .fill-hue-green {
   background-color: var(--fill-hue-green);
   color: var(--on-hue-green);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-hue-green:hover {
   background-color: var(--hover-hue-green);
@@ -8337,6 +9186,7 @@
 .fill-hue-sky {
   background-color: var(--fill-hue-sky);
   color: var(--on-hue-sky);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-hue-sky:hover {
   background-color: var(--hover-hue-sky);
@@ -8344,6 +9194,7 @@
 .fill-hue-blue {
   background-color: var(--fill-hue-blue);
   color: var(--on-hue-blue);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-hue-blue:hover {
   background-color: var(--hover-hue-blue);
@@ -8351,6 +9202,7 @@
 .fill-hue-violet {
   background-color: var(--fill-hue-violet);
   color: var(--on-hue-violet);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-hue-violet:hover {
   background-color: var(--hover-hue-violet);
@@ -8358,6 +9210,7 @@
 .fill-hue-purple {
   background-color: var(--fill-hue-purple);
   color: var(--on-hue-purple);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-hue-purple:hover {
   background-color: var(--hover-hue-purple);
@@ -8365,6 +9218,7 @@
 .fill-hue-pink {
   background-color: var(--fill-hue-pink);
   color: var(--on-hue-pink);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-hue-pink:hover {
   background-color: var(--hover-hue-pink);
@@ -8372,6 +9226,7 @@
 .fill-world-room-zero {
   background-color: var(--fill-world-room-zero);
   color: var(--on-world-room-zero);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-room-zero:hover {
   background-color: var(--hover-world-room-zero);
@@ -8379,6 +9234,7 @@
 .fill-world-room-zero-title {
   background-color: var(--fill-world-room-zero-title);
   color: var(--on-world-room-zero-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-room-zero-title:hover {
   background-color: var(--hover-world-room-zero-title);
@@ -8386,6 +9242,7 @@
 .fill-world-room-zero-subtitle {
   background-color: var(--fill-world-room-zero-subtitle);
   color: var(--on-world-room-zero-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-room-zero-subtitle:hover {
   background-color: var(--hover-world-room-zero-subtitle);
@@ -8393,6 +9250,7 @@
 .fill-world-room-zero-icon {
   background-color: var(--fill-world-room-zero-icon);
   color: var(--on-world-room-zero-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-room-zero-icon:hover {
   background-color: var(--hover-world-room-zero-icon);
@@ -8400,6 +9258,7 @@
 .fill-world-room-zero-direction {
   background-color: var(--fill-world-room-zero-direction);
   color: var(--on-world-room-zero-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-room-zero-direction:hover {
   background-color: var(--hover-world-room-zero-direction);
@@ -8407,6 +9266,7 @@
 .fill-world-room-zero-accent {
   background-color: var(--fill-world-room-zero-accent);
   color: var(--on-world-room-zero-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-room-zero-accent:hover {
   background-color: var(--hover-world-room-zero-accent);
@@ -8414,6 +9274,7 @@
 .fill-world-grassy-field {
   background-color: var(--fill-world-grassy-field);
   color: var(--on-world-grassy-field);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field:hover {
   background-color: var(--hover-world-grassy-field);
@@ -8421,6 +9282,7 @@
 .fill-world-grassy-field-title {
   background-color: var(--fill-world-grassy-field-title);
   color: var(--on-world-grassy-field-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-title:hover {
   background-color: var(--hover-world-grassy-field-title);
@@ -8428,6 +9290,7 @@
 .fill-world-grassy-field-subtitle {
   background-color: var(--fill-world-grassy-field-subtitle);
   color: var(--on-world-grassy-field-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-subtitle:hover {
   background-color: var(--hover-world-grassy-field-subtitle);
@@ -8435,6 +9298,7 @@
 .fill-world-grassy-field-icon {
   background-color: var(--fill-world-grassy-field-icon);
   color: var(--on-world-grassy-field-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-icon:hover {
   background-color: var(--hover-world-grassy-field-icon);
@@ -8442,6 +9306,7 @@
 .fill-world-grassy-field-direction {
   background-color: var(--fill-world-grassy-field-direction);
   color: var(--on-world-grassy-field-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-direction:hover {
   background-color: var(--hover-world-grassy-field-direction);
@@ -8449,6 +9314,7 @@
 .fill-world-grassy-field-accent {
   background-color: var(--fill-world-grassy-field-accent);
   color: var(--on-world-grassy-field-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-accent:hover {
   background-color: var(--hover-world-grassy-field-accent);
@@ -8456,6 +9322,7 @@
 .fill-world-grassy-field-underground {
   background-color: var(--fill-world-grassy-field-underground);
   color: var(--on-world-grassy-field-underground);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-underground:hover {
   background-color: var(--hover-world-grassy-field-underground);
@@ -8463,6 +9330,7 @@
 .fill-world-grassy-field-underground-title {
   background-color: var(--fill-world-grassy-field-underground-title);
   color: var(--on-world-grassy-field-underground-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-underground-title:hover {
   background-color: var(--hover-world-grassy-field-underground-title);
@@ -8470,6 +9338,7 @@
 .fill-world-grassy-field-underground-subtitle {
   background-color: var(--fill-world-grassy-field-underground-subtitle);
   color: var(--on-world-grassy-field-underground-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-underground-subtitle:hover {
   background-color: var(--hover-world-grassy-field-underground-subtitle);
@@ -8477,6 +9346,7 @@
 .fill-world-grassy-field-underground-icon {
   background-color: var(--fill-world-grassy-field-underground-icon);
   color: var(--on-world-grassy-field-underground-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-underground-icon:hover {
   background-color: var(--hover-world-grassy-field-underground-icon);
@@ -8484,6 +9354,7 @@
 .fill-world-grassy-field-underground-direction {
   background-color: var(--fill-world-grassy-field-underground-direction);
   color: var(--on-world-grassy-field-underground-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-underground-direction:hover {
   background-color: var(--hover-world-grassy-field-underground-direction);
@@ -8491,6 +9362,7 @@
 .fill-world-grassy-field-underground-accent {
   background-color: var(--fill-world-grassy-field-underground-accent);
   color: var(--on-world-grassy-field-underground-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-grassy-field-underground-accent:hover {
   background-color: var(--hover-world-grassy-field-underground-accent);
@@ -8498,6 +9370,7 @@
 .fill-world-beach {
   background-color: var(--fill-world-beach);
   color: var(--on-world-beach);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-beach:hover {
   background-color: var(--hover-world-beach);
@@ -8505,6 +9378,7 @@
 .fill-world-beach-title {
   background-color: var(--fill-world-beach-title);
   color: var(--on-world-beach-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-beach-title:hover {
   background-color: var(--hover-world-beach-title);
@@ -8512,6 +9386,7 @@
 .fill-world-beach-subtitle {
   background-color: var(--fill-world-beach-subtitle);
   color: var(--on-world-beach-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-beach-subtitle:hover {
   background-color: var(--hover-world-beach-subtitle);
@@ -8519,6 +9394,7 @@
 .fill-world-beach-icon {
   background-color: var(--fill-world-beach-icon);
   color: var(--on-world-beach-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-beach-icon:hover {
   background-color: var(--hover-world-beach-icon);
@@ -8526,6 +9402,7 @@
 .fill-world-beach-direction {
   background-color: var(--fill-world-beach-direction);
   color: var(--on-world-beach-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-beach-direction:hover {
   background-color: var(--hover-world-beach-direction);
@@ -8533,6 +9410,7 @@
 .fill-world-beach-accent {
   background-color: var(--fill-world-beach-accent);
   color: var(--on-world-beach-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-beach-accent:hover {
   background-color: var(--hover-world-beach-accent);
@@ -8540,6 +9418,7 @@
 .fill-world-caves {
   background-color: var(--fill-world-caves);
   color: var(--on-world-caves);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-caves:hover {
   background-color: var(--hover-world-caves);
@@ -8547,6 +9426,7 @@
 .fill-world-caves-title {
   background-color: var(--fill-world-caves-title);
   color: var(--on-world-caves-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-caves-title:hover {
   background-color: var(--hover-world-caves-title);
@@ -8554,6 +9434,7 @@
 .fill-world-caves-subtitle {
   background-color: var(--fill-world-caves-subtitle);
   color: var(--on-world-caves-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-caves-subtitle:hover {
   background-color: var(--hover-world-caves-subtitle);
@@ -8561,6 +9442,7 @@
 .fill-world-caves-icon {
   background-color: var(--fill-world-caves-icon);
   color: var(--on-world-caves-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-caves-icon:hover {
   background-color: var(--hover-world-caves-icon);
@@ -8568,6 +9450,7 @@
 .fill-world-caves-direction {
   background-color: var(--fill-world-caves-direction);
   color: var(--on-world-caves-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-caves-direction:hover {
   background-color: var(--hover-world-caves-direction);
@@ -8575,6 +9458,7 @@
 .fill-world-caves-accent {
   background-color: var(--fill-world-caves-accent);
   color: var(--on-world-caves-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-caves-accent:hover {
   background-color: var(--hover-world-caves-accent);
@@ -8582,6 +9466,7 @@
 .fill-world-scorpion-pit {
   background-color: var(--fill-world-scorpion-pit);
   color: var(--on-world-scorpion-pit);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-scorpion-pit:hover {
   background-color: var(--hover-world-scorpion-pit);
@@ -8589,6 +9474,7 @@
 .fill-world-scorpion-pit-title {
   background-color: var(--fill-world-scorpion-pit-title);
   color: var(--on-world-scorpion-pit-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-scorpion-pit-title:hover {
   background-color: var(--hover-world-scorpion-pit-title);
@@ -8596,6 +9482,7 @@
 .fill-world-scorpion-pit-subtitle {
   background-color: var(--fill-world-scorpion-pit-subtitle);
   color: var(--on-world-scorpion-pit-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-scorpion-pit-subtitle:hover {
   background-color: var(--hover-world-scorpion-pit-subtitle);
@@ -8603,6 +9490,7 @@
 .fill-world-scorpion-pit-icon {
   background-color: var(--fill-world-scorpion-pit-icon);
   color: var(--on-world-scorpion-pit-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-scorpion-pit-icon:hover {
   background-color: var(--hover-world-scorpion-pit-icon);
@@ -8610,6 +9498,7 @@
 .fill-world-scorpion-pit-direction {
   background-color: var(--fill-world-scorpion-pit-direction);
   color: var(--on-world-scorpion-pit-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-scorpion-pit-direction:hover {
   background-color: var(--hover-world-scorpion-pit-direction);
@@ -8617,6 +9506,7 @@
 .fill-world-scorpion-pit-accent {
   background-color: var(--fill-world-scorpion-pit-accent);
   color: var(--on-world-scorpion-pit-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-scorpion-pit-accent:hover {
   background-color: var(--hover-world-scorpion-pit-accent);
@@ -8624,6 +9514,7 @@
 .fill-world-forest {
   background-color: var(--fill-world-forest);
   color: var(--on-world-forest);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest:hover {
   background-color: var(--hover-world-forest);
@@ -8631,6 +9522,7 @@
 .fill-world-forest-title {
   background-color: var(--fill-world-forest-title);
   color: var(--on-world-forest-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-title:hover {
   background-color: var(--hover-world-forest-title);
@@ -8638,6 +9530,7 @@
 .fill-world-forest-subtitle {
   background-color: var(--fill-world-forest-subtitle);
   color: var(--on-world-forest-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-subtitle:hover {
   background-color: var(--hover-world-forest-subtitle);
@@ -8645,6 +9538,7 @@
 .fill-world-forest-icon {
   background-color: var(--fill-world-forest-icon);
   color: var(--on-world-forest-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-icon:hover {
   background-color: var(--hover-world-forest-icon);
@@ -8652,6 +9546,7 @@
 .fill-world-forest-direction {
   background-color: var(--fill-world-forest-direction);
   color: var(--on-world-forest-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-direction:hover {
   background-color: var(--hover-world-forest-direction);
@@ -8659,6 +9554,7 @@
 .fill-world-forest-accent {
   background-color: var(--fill-world-forest-accent);
   color: var(--on-world-forest-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-accent:hover {
   background-color: var(--hover-world-forest-accent);
@@ -8666,6 +9562,7 @@
 .fill-world-forest-underground {
   background-color: var(--fill-world-forest-underground);
   color: var(--on-world-forest-underground);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-underground:hover {
   background-color: var(--hover-world-forest-underground);
@@ -8673,6 +9570,7 @@
 .fill-world-forest-underground-title {
   background-color: var(--fill-world-forest-underground-title);
   color: var(--on-world-forest-underground-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-underground-title:hover {
   background-color: var(--hover-world-forest-underground-title);
@@ -8680,6 +9578,7 @@
 .fill-world-forest-underground-subtitle {
   background-color: var(--fill-world-forest-underground-subtitle);
   color: var(--on-world-forest-underground-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-underground-subtitle:hover {
   background-color: var(--hover-world-forest-underground-subtitle);
@@ -8687,6 +9586,7 @@
 .fill-world-forest-underground-icon {
   background-color: var(--fill-world-forest-underground-icon);
   color: var(--on-world-forest-underground-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-underground-icon:hover {
   background-color: var(--hover-world-forest-underground-icon);
@@ -8694,6 +9594,7 @@
 .fill-world-forest-underground-direction {
   background-color: var(--fill-world-forest-underground-direction);
   color: var(--on-world-forest-underground-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-underground-direction:hover {
   background-color: var(--hover-world-forest-underground-direction);
@@ -8701,6 +9602,7 @@
 .fill-world-forest-underground-accent {
   background-color: var(--fill-world-forest-underground-accent);
   color: var(--on-world-forest-underground-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-forest-underground-accent:hover {
   background-color: var(--hover-world-forest-underground-accent);
@@ -8708,6 +9610,7 @@
 .fill-world-red-town {
   background-color: var(--fill-world-red-town);
   color: var(--on-world-red-town);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town:hover {
   background-color: var(--hover-world-red-town);
@@ -8715,6 +9618,7 @@
 .fill-world-red-town-title {
   background-color: var(--fill-world-red-town-title);
   color: var(--on-world-red-town-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-title:hover {
   background-color: var(--hover-world-red-town-title);
@@ -8722,6 +9626,7 @@
 .fill-world-red-town-subtitle {
   background-color: var(--fill-world-red-town-subtitle);
   color: var(--on-world-red-town-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-subtitle:hover {
   background-color: var(--hover-world-red-town-subtitle);
@@ -8729,6 +9634,7 @@
 .fill-world-red-town-icon {
   background-color: var(--fill-world-red-town-icon);
   color: var(--on-world-red-town-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-icon:hover {
   background-color: var(--hover-world-red-town-icon);
@@ -8736,6 +9642,7 @@
 .fill-world-red-town-direction {
   background-color: var(--fill-world-red-town-direction);
   color: var(--on-world-red-town-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-direction:hover {
   background-color: var(--hover-world-red-town-direction);
@@ -8743,6 +9650,7 @@
 .fill-world-red-town-accent {
   background-color: var(--fill-world-red-town-accent);
   color: var(--on-world-red-town-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-accent:hover {
   background-color: var(--hover-world-red-town-accent);
@@ -8750,6 +9658,7 @@
 .fill-world-red-town-sewers {
   background-color: var(--fill-world-red-town-sewers);
   color: var(--on-world-red-town-sewers);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-sewers:hover {
   background-color: var(--hover-world-red-town-sewers);
@@ -8757,6 +9666,7 @@
 .fill-world-red-town-sewers-title {
   background-color: var(--fill-world-red-town-sewers-title);
   color: var(--on-world-red-town-sewers-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-sewers-title:hover {
   background-color: var(--hover-world-red-town-sewers-title);
@@ -8764,6 +9674,7 @@
 .fill-world-red-town-sewers-subtitle {
   background-color: var(--fill-world-red-town-sewers-subtitle);
   color: var(--on-world-red-town-sewers-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-sewers-subtitle:hover {
   background-color: var(--hover-world-red-town-sewers-subtitle);
@@ -8771,6 +9682,7 @@
 .fill-world-red-town-sewers-icon {
   background-color: var(--fill-world-red-town-sewers-icon);
   color: var(--on-world-red-town-sewers-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-sewers-icon:hover {
   background-color: var(--hover-world-red-town-sewers-icon);
@@ -8778,6 +9690,7 @@
 .fill-world-red-town-sewers-direction {
   background-color: var(--fill-world-red-town-sewers-direction);
   color: var(--on-world-red-town-sewers-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-sewers-direction:hover {
   background-color: var(--hover-world-red-town-sewers-direction);
@@ -8785,6 +9698,7 @@
 .fill-world-red-town-sewers-accent {
   background-color: var(--fill-world-red-town-sewers-accent);
   color: var(--on-world-red-town-sewers-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-red-town-sewers-accent:hover {
   background-color: var(--hover-world-red-town-sewers-accent);
@@ -8792,6 +9706,7 @@
 .fill-world-rocky-flats {
   background-color: var(--fill-world-rocky-flats);
   color: var(--on-world-rocky-flats);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats:hover {
   background-color: var(--hover-world-rocky-flats);
@@ -8799,6 +9714,7 @@
 .fill-world-rocky-flats-title {
   background-color: var(--fill-world-rocky-flats-title);
   color: var(--on-world-rocky-flats-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-title:hover {
   background-color: var(--hover-world-rocky-flats-title);
@@ -8806,6 +9722,7 @@
 .fill-world-rocky-flats-subtitle {
   background-color: var(--fill-world-rocky-flats-subtitle);
   color: var(--on-world-rocky-flats-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-subtitle:hover {
   background-color: var(--hover-world-rocky-flats-subtitle);
@@ -8813,6 +9730,7 @@
 .fill-world-rocky-flats-icon {
   background-color: var(--fill-world-rocky-flats-icon);
   color: var(--on-world-rocky-flats-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-icon:hover {
   background-color: var(--hover-world-rocky-flats-icon);
@@ -8820,6 +9738,7 @@
 .fill-world-rocky-flats-direction {
   background-color: var(--fill-world-rocky-flats-direction);
   color: var(--on-world-rocky-flats-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-direction:hover {
   background-color: var(--hover-world-rocky-flats-direction);
@@ -8827,6 +9746,7 @@
 .fill-world-rocky-flats-accent {
   background-color: var(--fill-world-rocky-flats-accent);
   color: var(--on-world-rocky-flats-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-accent:hover {
   background-color: var(--hover-world-rocky-flats-accent);
@@ -8834,6 +9754,7 @@
 .fill-world-rocky-flats-underground {
   background-color: var(--fill-world-rocky-flats-underground);
   color: var(--on-world-rocky-flats-underground);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-underground:hover {
   background-color: var(--hover-world-rocky-flats-underground);
@@ -8841,6 +9762,7 @@
 .fill-world-rocky-flats-underground-title {
   background-color: var(--fill-world-rocky-flats-underground-title);
   color: var(--on-world-rocky-flats-underground-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-underground-title:hover {
   background-color: var(--hover-world-rocky-flats-underground-title);
@@ -8848,6 +9770,7 @@
 .fill-world-rocky-flats-underground-subtitle {
   background-color: var(--fill-world-rocky-flats-underground-subtitle);
   color: var(--on-world-rocky-flats-underground-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-underground-subtitle:hover {
   background-color: var(--hover-world-rocky-flats-underground-subtitle);
@@ -8855,6 +9778,7 @@
 .fill-world-rocky-flats-underground-icon {
   background-color: var(--fill-world-rocky-flats-underground-icon);
   color: var(--on-world-rocky-flats-underground-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-underground-icon:hover {
   background-color: var(--hover-world-rocky-flats-underground-icon);
@@ -8862,6 +9786,7 @@
 .fill-world-rocky-flats-underground-direction {
   background-color: var(--fill-world-rocky-flats-underground-direction);
   color: var(--on-world-rocky-flats-underground-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-underground-direction:hover {
   background-color: var(--hover-world-rocky-flats-underground-direction);
@@ -8869,6 +9794,7 @@
 .fill-world-rocky-flats-underground-accent {
   background-color: var(--fill-world-rocky-flats-underground-accent);
   color: var(--on-world-rocky-flats-underground-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-rocky-flats-underground-accent:hover {
   background-color: var(--hover-world-rocky-flats-underground-accent);
@@ -8876,6 +9802,7 @@
 .fill-world-neverending-mine {
   background-color: var(--fill-world-neverending-mine);
   color: var(--on-world-neverending-mine);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-neverending-mine:hover {
   background-color: var(--hover-world-neverending-mine);
@@ -8883,6 +9810,7 @@
 .fill-world-neverending-mine-title {
   background-color: var(--fill-world-neverending-mine-title);
   color: var(--on-world-neverending-mine-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-neverending-mine-title:hover {
   background-color: var(--hover-world-neverending-mine-title);
@@ -8890,6 +9818,7 @@
 .fill-world-neverending-mine-subtitle {
   background-color: var(--fill-world-neverending-mine-subtitle);
   color: var(--on-world-neverending-mine-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-neverending-mine-subtitle:hover {
   background-color: var(--hover-world-neverending-mine-subtitle);
@@ -8897,6 +9826,7 @@
 .fill-world-neverending-mine-icon {
   background-color: var(--fill-world-neverending-mine-icon);
   color: var(--on-world-neverending-mine-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-neverending-mine-icon:hover {
   background-color: var(--hover-world-neverending-mine-icon);
@@ -8904,6 +9834,7 @@
 .fill-world-neverending-mine-direction {
   background-color: var(--fill-world-neverending-mine-direction);
   color: var(--on-world-neverending-mine-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-neverending-mine-direction:hover {
   background-color: var(--hover-world-neverending-mine-direction);
@@ -8911,6 +9842,7 @@
 .fill-world-neverending-mine-accent {
   background-color: var(--fill-world-neverending-mine-accent);
   color: var(--on-world-neverending-mine-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-neverending-mine-accent:hover {
   background-color: var(--hover-world-neverending-mine-accent);
@@ -8918,6 +9850,7 @@
 .fill-world-solar-office {
   background-color: var(--fill-world-solar-office);
   color: var(--on-world-solar-office);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-solar-office:hover {
   background-color: var(--hover-world-solar-office);
@@ -8925,6 +9858,7 @@
 .fill-world-solar-office-title {
   background-color: var(--fill-world-solar-office-title);
   color: var(--on-world-solar-office-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-solar-office-title:hover {
   background-color: var(--hover-world-solar-office-title);
@@ -8932,6 +9866,7 @@
 .fill-world-solar-office-subtitle {
   background-color: var(--fill-world-solar-office-subtitle);
   color: var(--on-world-solar-office-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-solar-office-subtitle:hover {
   background-color: var(--hover-world-solar-office-subtitle);
@@ -8939,6 +9874,7 @@
 .fill-world-solar-office-icon {
   background-color: var(--fill-world-solar-office-icon);
   color: var(--on-world-solar-office-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-solar-office-icon:hover {
   background-color: var(--hover-world-solar-office-icon);
@@ -8946,6 +9882,7 @@
 .fill-world-solar-office-direction {
   background-color: var(--fill-world-solar-office-direction);
   color: var(--on-world-solar-office-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-solar-office-direction:hover {
   background-color: var(--hover-world-solar-office-direction);
@@ -8953,6 +9890,7 @@
 .fill-world-solar-office-accent {
   background-color: var(--fill-world-solar-office-accent);
   color: var(--on-world-solar-office-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-solar-office-accent:hover {
   background-color: var(--hover-world-solar-office-accent);
@@ -8960,6 +9898,7 @@
 .fill-world-lobby {
   background-color: var(--fill-world-lobby);
   color: var(--on-world-lobby);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-lobby:hover {
   background-color: var(--hover-world-lobby);
@@ -8967,6 +9906,7 @@
 .fill-world-lobby-title {
   background-color: var(--fill-world-lobby-title);
   color: var(--on-world-lobby-title);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-lobby-title:hover {
   background-color: var(--hover-world-lobby-title);
@@ -8974,6 +9914,7 @@
 .fill-world-lobby-subtitle {
   background-color: var(--fill-world-lobby-subtitle);
   color: var(--on-world-lobby-subtitle);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-lobby-subtitle:hover {
   background-color: var(--hover-world-lobby-subtitle);
@@ -8981,6 +9922,7 @@
 .fill-world-lobby-icon {
   background-color: var(--fill-world-lobby-icon);
   color: var(--on-world-lobby-icon);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-lobby-icon:hover {
   background-color: var(--hover-world-lobby-icon);
@@ -8988,6 +9930,7 @@
 .fill-world-lobby-direction {
   background-color: var(--fill-world-lobby-direction);
   color: var(--on-world-lobby-direction);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-lobby-direction:hover {
   background-color: var(--hover-world-lobby-direction);
@@ -8995,6 +9938,7 @@
 .fill-world-lobby-accent {
   background-color: var(--fill-world-lobby-accent);
   color: var(--on-world-lobby-accent);
+  text-shadow: var(--fill-label-shadow);
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-lobby-accent:hover {
   background-color: var(--hover-world-lobby-accent);

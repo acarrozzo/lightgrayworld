@@ -67,7 +67,7 @@ export const gruvboxDark = makeTheme({
       resource: { hp: '#cc241d', mp: '#83a598', xp: '#b8bb26', gold: '#fabd2f' },
       status: { warning: '#fabd2f' },
       combat: { damage: '#fe8019', defeat: '#9d0006', heal: '#8ec07c' },
-      terrain: { dirt: '#a1682d', sand: '#d5c4a1', stone: '#928374', ash: '#7c6f64', bone: '#ebdbb2' },
+      terrain: { dirt: '#a1682d', wood: '#8f5a2e', sand: '#d5c4a1', stone: '#928374', ash: '#7c6f64', bone: '#ebdbb2' },
     },
     regions: {
       redTown: { base: '#c14a3a' },

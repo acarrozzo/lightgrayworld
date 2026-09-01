@@ -60,7 +60,7 @@ function walk(value: unknown, path: string, visit: (path: string, color: string)
   }
 }
 
-const SKIP_PARSE = new Set(['id', 'name', 'description', 'appearance'])
+const SKIP_PARSE = new Set(['id', 'name', 'description', 'appearance', 'fills'])
 
 function checkWellFormed(theme: Theme) {
   for (const [key, value] of Object.entries(theme)) {
@@ -177,12 +177,16 @@ function checkDistinctness(theme: Theme) {
 
   const MIN_ROLE_DISTANCE = 0.1
 
-  const redFamily: [string, string][] = [
-    ['action.attack', game.action.attack],
-    ['resource.hp', game.resource.hp],
-    ['status.error', game.status.error],
-    ['world.redTown', regions.redTown.base],
-  ]
+  // A theme that opted out (Classic, whose one red is the point) is not held
+  // to a separation it deliberately does not make.
+  const redFamily: [string, string][] = theme.separateReds
+    ? [
+        ['action.attack', game.action.attack],
+        ['resource.hp', game.resource.hp],
+        ['status.error', game.status.error],
+        ['world.redTown', regions.redTown.base],
+      ]
+    : []
   for (let i = 0; i < redFamily.length; i++) {
     for (let j = i + 1; j < redFamily.length; j++) {
       const [an, av] = redFamily[i]
@@ -252,6 +256,16 @@ function checkFillPairs(theme: Theme) {
 
     if (!fill || !hover || !label) {
       add(theme.id, 'contrast', `${name} is fillable but is missing its --fill-/--on- companions`)
+      continue
+    }
+
+    // A flat-fill theme carries its label on a text shadow, not on contrast;
+    // the original game's white-on-gold is the look being preserved. Only the
+    // hover visibility check below applies.
+    if (theme.fills === 'flat') {
+      if (!name.startsWith('--surface-') && deltaE(fill, hover) < 0.012) {
+        add(theme.id, 'distinctness', `--fill-${role} (${fill}) and its hover (${hover}) are visually identical — no hover state`)
+      }
       continue
     }
 

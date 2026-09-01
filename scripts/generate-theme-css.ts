@@ -19,7 +19,7 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { THEMES, DEFAULT_THEME_ID } from '../src/lib/theme/themes'
 import type { Theme } from '../src/lib/theme/types'
-import { isFillableVar, themeToCssVars } from '../src/lib/theme/tokens'
+import { isFillableVar, themeToCssVars, NON_COLOR_VARS } from '../src/lib/theme/tokens'
 
 const OUT = join(process.cwd(), 'src/app/generated-themes.css')
 
@@ -55,7 +55,9 @@ function block(selector: string, theme: Theme, vars: Record<string, string>, ind
  * `bg-action-attack/20` to a `color-mix()` against the same variable.
  */
 function themeRegistration(vars: Record<string, string>): string {
-  const lines = Object.keys(vars).map((name) => `  --color-${name.slice(2)}: var(${name});`)
+  const lines = Object.keys(vars)
+    .filter((name) => !NON_COLOR_VARS.has(name))
+    .map((name) => `  --color-${name.slice(2)}: var(${name});`)
   return `@theme inline {\n${lines.join('\n')}\n}`
 }
 
@@ -101,6 +103,10 @@ for (const theme of THEMES) {
  * belongs to an elevation ladder — so they fill with their own value and hover
  * to the shared hover surface.
  *
+ * A theme with flat fills (Classic) skips the deepening and instead sets
+ * `--fill-label-shadow` to the original game's button shadow; every other theme
+ * sets it to `none`, so the one class serves both.
+ *
  * Hover is scoped to genuinely interactive elements. `.fill-*` is used on page
  * wrappers and static panels too, and those must not light up under the pointer.
  * `:where()` keeps the selector at zero specificity so a caller's own
@@ -120,6 +126,7 @@ function fillClasses(vars: Record<string, string>): string {
       `.fill-${role} {\n` +
         `  background-color: var(--fill-${role});\n` +
         `  color: var(--on-${role});\n` +
+        `  text-shadow: var(--fill-label-shadow);\n` +
         `}\n` +
         `${interactive}.fill-${role}:hover {\n` +
         `  background-color: var(--hover-${role});\n` +

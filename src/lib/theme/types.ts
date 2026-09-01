@@ -201,6 +201,8 @@ export interface TerrainRoles {
   grass: Color
   forest: Color
   dirt: Color
+  /** Cut and worked timber — signs, cabins, doors, chests. Warmer than dirt. */
+  wood: Color
   sand: Color
   stone: Color
   water: Color
@@ -309,6 +311,23 @@ export interface Theme {
    * another purpose.
    */
   swatch: Color
+  /**
+   * Whether the factory forced `action.attack`, `resource.hp`, `status.error`
+   * and Red Town apart. True for every theme but Light Gray RPG Classic, whose
+   * identity is that one red did all of those jobs; the validator reads this
+   * to know which themes owe the separation guarantee.
+   */
+  separateReds: boolean
+  /**
+   * How a role is painted behind a label.
+   *
+   * `deepened` (the default) lowers the fill until the theme's bright text
+   * reads on it at body-copy contrast — a gold button becomes bronze. `flat`
+   * paints the role's own colour and relies on a dark text shadow under a
+   * bright label, which is how the original game drew every button. Classic
+   * uses `flat`, because bronze buttons are not the original's buttons.
+   */
+  fills: 'deepened' | 'flat'
   terminal: TerminalPalette
   ui: InterfaceRoles
   game: GameRoles

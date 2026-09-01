@@ -74,7 +74,7 @@ export const catppuccinMocha = makeTheme({
       enemy: { hostile: '#eba0ac', neutral: '#f9e2af', boss: '#cba6f7' },
       channel: { room: '#a6e3a1', world: '#89b4fa', action: '#f9e2af', dm: '#f5c2e7', system: '#9399b2', quest: '#fab387' },
       combat: { victory: '#a6e3a1', defeat: '#a4506a', damage: '#fab387', heal: '#94e2d5', miss: '#7f849c', crit: '#f9e2af' },
-      terrain: { grass: '#a6e3a1', forest: '#6a9e73', dirt: '#b08968', sand: '#f2dfc4', stone: '#9399b2', water: '#89dceb', ash: '#6c7086', bone: '#e8e0cc' },
+      terrain: { grass: '#a6e3a1', forest: '#6a9e73', dirt: '#b08968', wood: '#a67458', sand: '#f2dfc4', stone: '#9399b2', water: '#89dceb', ash: '#6c7086', bone: '#e8e0cc' },
       hue: { gray: '#9399b2', red: '#f38ba8', gold: '#f9e2af', green: '#a6e3a1', sky: '#89dceb', blue: '#89b4fa', violet: '#cba6f7', purple: '#b4a1f0', pink: '#f5c2e7' },
     },
     regions: {

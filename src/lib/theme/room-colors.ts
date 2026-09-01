@@ -35,6 +35,7 @@ export const ROOM_COLOR_TOKENS: Record<string, string> = {
   'terrain.grass': '--terrain-grass',
   'terrain.forest': '--terrain-forest',
   'terrain.dirt': '--terrain-dirt',
+  'terrain.wood': '--terrain-wood',
   'terrain.sand': '--terrain-sand',
   'terrain.stone': '--terrain-stone',
   'terrain.water': '--terrain-water',

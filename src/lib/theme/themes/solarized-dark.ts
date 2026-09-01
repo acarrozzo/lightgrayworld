@@ -79,7 +79,7 @@ export const solarizedDark = makeTheme({
       enemy: { hostile: '#dc322f', neutral: '#b58900', boss: '#d33682' },
       channel: { room: '#859900', world: '#268bd2', action: '#b58900', dm: '#d33682', system: '#657b83', quest: '#cb4b16' },
       combat: { victory: '#859900', defeat: '#a02622', damage: '#cb4b16', heal: '#2aa198', miss: '#657b83', crit: '#b58900' },
-      terrain: { grass: '#859900', forest: '#5f6f16', dirt: '#8a6a2a', sand: '#c9bb92', stone: '#657b83', water: '#2aa198', ash: '#4a5f66', bone: '#c4bda3' },
+      terrain: { grass: '#859900', forest: '#5f6f16', dirt: '#8a6a2a', wood: '#8a5a3a', sand: '#c9bb92', stone: '#657b83', water: '#2aa198', ash: '#4a5f66', bone: '#c4bda3' },
       hue: { gray: '#839496', red: '#dc322f', gold: '#b58900', green: '#859900', sky: '#2aa198', blue: '#268bd2', violet: '#6c71c4', purple: '#9b4fb8', pink: '#d33682' },
     },
     regions: {

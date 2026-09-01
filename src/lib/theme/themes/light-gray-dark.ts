@@ -1,31 +1,52 @@
 /**
- * Light Gray Dark — the house palette on a true-neutral, darker ground.
+ * Light Gray Dark — the house palette on a true-neutral, near-black ground.
  *
- * Same ANSI colours, same game roles, same world regions as Light Gray RPG;
- * only the ground changes. Two differences from the original, both deliberate:
+ * This is the palette the theme epic authored for the rewrite: an earthy,
+ * restrained ANSI set written to be usable in a real shell, game roles kept
+ * deliberately apart (attack hot, HP crimson, error loud, Red Town brick), and
+ * a world of fifteen regions each with its own identity colour. It once shared
+ * that palette with a blue-tinted sibling; that sibling has since become
+ * Light Gray RPG Classic, which restores the original game's own colours, so
+ * the earthy palette now lives here alone.
  *
- *  - **No blue cast.** Tailwind's greys lean cool; these are neutral, so the
- *    frame recedes and the world's own colours carry the screen.
- *  - **Genuinely darker.** The canvas sits near black, roughly half the
- *    original's lightness, with the panel lifted further above it — so the
- *    elevation ladder is wider than the original's rather than merely shifted,
- *    and cards read as sitting on the page rather than tinted into it.
+ * The ground is neutral and genuinely dark — no blue cast, canvas near black,
+ * panel lifted well clear of it — so the frame recedes and the world's own
+ * colours carry the screen.
  */
 
 import { makeTheme } from '../factory'
-import { LIGHT_GRAY_ANSI, LIGHT_GRAY_GAME, LIGHT_GRAY_REGIONS } from './light-gray-shared'
 
 export const lightGrayDark = makeTheme({
   id: 'light-gray-dark',
   name: 'Light Gray Dark',
   description: 'The house palette, neutral and near black. Quiet frame, loud world.',
-  // Neutral and much darker, which is the whole difference from its sibling.
+  // Neutral and much darker than its siblings.
   swatch: '#2e2e2e',
 
   terminal: {
-    ...LIGHT_GRAY_ANSI,
     background: '#030303',
+    foreground: '#d0d0d0',
+    cursor: '#e8bf72',
     selectionBackground: '#2f3a3f',
+    selectionForeground: '#ededed',
+
+    black: '#1a1a1a',
+    red: '#b8574d',
+    green: '#7a9557',
+    yellow: '#c8994a',
+    blue: '#5f7f9e',
+    magenta: '#9b7096',
+    cyan: '#6a9490',
+    white: '#b8b8b8',
+
+    brightBlack: '#4a4a4a',
+    brightRed: '#e07a6d',
+    brightGreen: '#a3c47a',
+    brightYellow: '#e8bf72',
+    brightBlue: '#8aacc8',
+    brightMagenta: '#c39dbd',
+    brightCyan: '#96bdb8',
+    brightWhite: '#ededed',
   },
 
   overrides: {
@@ -48,6 +69,8 @@ export const lightGrayDark = makeTheme({
       lineSubtle: '#292929',
       lineStrong: '#454545',
 
+      // Steel blue, deliberately cooler and quieter than the gold used for
+      // rewards, so interface chrome never reads as a prize.
       accent: '#7b96b0',
       accentHover: '#9ab3c9',
       accentMuted: '#2b3640',
@@ -55,7 +78,87 @@ export const lightGrayDark = makeTheme({
       fgOnAccent: '#030303',
     },
 
-    game: LIGHT_GRAY_GAME,
-    regions: LIGHT_GRAY_REGIONS,
+    game: {
+      action: {
+        attack: '#e08340',
+        search: '#6a9490',
+        rest: '#7f9ec4',
+        look: '#9a9a9a',
+        talk: '#c9a86a',
+        travel: '#8fae6b',
+        craft: '#c07a4a',
+        gather: '#96b06a',
+        use: '#9b8fb5',
+      },
+      resource: { hp: '#cc4a63', mp: '#5f8fd4', xp: '#8fc46a', gold: '#e8bf72' },
+      stat: { str: '#d97a5a', dex: '#8fbf7a', mag: '#9b8fd4', def: '#7fa3c9' },
+      status: { success: '#84b869', error: '#e2564e', warning: '#dba03f', info: '#7ba3c9' },
+      loot: {
+        common: '#a3a3a3',
+        uncommon: '#84b869',
+        rare: '#6fa3d9',
+        epic: '#a98fd4',
+        legendary: '#e8b04a',
+      },
+      combat: {
+        victory: '#a3c47a',
+        defeat: '#b04a52',
+        damage: '#e8896a',
+        heal: '#7fc48a',
+        miss: '#8a8a8a',
+        crit: '#f0c24a',
+      },
+      terrain: {
+        grass: '#7fa055',
+        forest: '#5c7a4a',
+        dirt: '#8a6a4a',
+        wood: '#8c5e3c',
+        sand: '#c4a878',
+        stone: '#8a8a86',
+        water: '#5a8a9e',
+        ash: '#6a6a6e',
+        bone: '#c9c0a8',
+      },
+      mood: {
+        danger: '#b8564a',
+        arcane: '#9b7ec4',
+        sacred: '#9ab8d4',
+        treasure: '#d4a84a',
+        calm: '#6f9aae',
+        decay: '#7a8a52',
+      },
+      hue: {
+        gray: '#9a9a9a',
+        red: '#d4645a',
+        gold: '#dba64a',
+        green: '#84b869',
+        sky: '#6fb0d9',
+        blue: '#6f92d9',
+        violet: '#9b8fd4',
+        purple: '#b06fd4',
+        pink: '#d46f9e',
+      },
+    },
+
+    // Earthy and atmospheric. Room Zero is the one colour belonging to no
+    // landscape; Red Town is brick and terracotta, clearly red-family but far
+    // enough from attack and error never to be mistaken for either.
+    regions: {
+      roomZero: { base: '#9b8fb5' },
+      grassyField: { base: '#8fae5c' },
+      grassyFieldUnderground: { base: '#7a6a52' },
+      beach: { base: '#cbb07a' },
+      caves: { base: '#6a707a' },
+      scorpionPit: { base: '#bd7a2e' },
+      forest: { base: '#5f8a52' },
+      forestUnderground: { base: '#4a6350' },
+      redTown: { base: '#a35a48' },
+      redTownSewers: { base: '#6a7a52' },
+      rockyFlats: { base: '#9e8a6a' },
+      rockyFlatsUnderground: { base: '#8a8478' },
+      neverendingMine: { base: '#b5934a' },
+      solarOffice: { base: '#d9b84a' },
+      lobby: { base: '#7a8fa3' },
+    },
   },
 })

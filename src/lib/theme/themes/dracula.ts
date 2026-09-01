@@ -66,7 +66,7 @@ export const dracula = makeTheme({
       resource: { hp: '#ff5c8a', gold: '#f1fa8c' },
       status: { warning: '#ffb86c' },
       combat: { crit: '#ffb86c', damage: '#ff8a6e' },
-      terrain: { dirt: '#a17d5c', sand: '#e8dfa8', stone: '#8f93a8', bone: '#e6e4c8' },
+      terrain: { dirt: '#a17d5c', wood: '#9a6b52', sand: '#e8dfa8', stone: '#8f93a8', bone: '#e6e4c8' },
     },
     regions: {
       redTown: { base: '#c56b6b' },

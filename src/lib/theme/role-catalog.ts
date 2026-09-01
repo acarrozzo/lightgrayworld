@@ -203,6 +203,7 @@ export const ROLE_CATALOG: RoleGroup[] = [
       role('terrain.grass', '--terrain-grass', 'Open grassland.', 'Room titles, compass directions leading onto grass.'),
       role('terrain.forest', '--terrain-forest', 'Deep woodland.', 'Forest room titles and exits.'),
       role('terrain.dirt', '--terrain-dirt', 'Bare earth and dirt roads.', 'Dirt-road rooms and their exits.'),
+      role('terrain.wood', '--terrain-wood', 'Cut and worked timber.', 'Sign and directory buttons, cabins, doors, chests, bridges, the Wood crafting tier.'),
       role('terrain.sand', '--terrain-sand', 'Sand and shoreline.', 'Beach rooms and their exits.'),
       role('terrain.stone', '--terrain-stone', 'Worked or bare stone.', 'Stone paths, cave walls, room icons.'),
       role('terrain.water', '--terrain-water', 'Water.', 'Rivers, lakes, ocean rooms.'),

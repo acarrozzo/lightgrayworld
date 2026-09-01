@@ -72,7 +72,7 @@ export const nord = makeTheme({
       status: { success: '#a3be8c', error: '#bf616a', warning: '#ebcb8b', info: '#88c0d0' },
       loot: { common: '#94a1b5', uncommon: '#a3be8c', rare: '#81a1c1', epic: '#b48ead', legendary: '#ebcb8b' },
       combat: { victory: '#a3be8c', defeat: '#8a4a52', damage: '#d08770', heal: '#8fbcbb', crit: '#ebcb8b' },
-      terrain: { dirt: '#a17e63', sand: '#e0d3ae', stone: '#8b94a5', ash: '#6b7689', bone: '#dfd8bd' },
+      terrain: { dirt: '#a17e63', wood: '#8f6a4e', sand: '#e0d3ae', stone: '#8b94a5', ash: '#6b7689', bone: '#dfd8bd' },
       hue: { gray: '#94a1b5', red: '#bf616a', gold: '#ebcb8b', green: '#a3be8c', sky: '#88c0d0', blue: '#81a1c1', violet: '#b48ead', purple: '#a48bbd', pink: '#c98a9c' },
     },
     regions: {
