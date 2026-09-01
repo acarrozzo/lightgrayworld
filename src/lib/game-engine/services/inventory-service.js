@@ -89,8 +89,8 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1, tx = null) {
     return { granted: false, reason: 'Item not found', inventory: null }
   }
 
-  const existing = await client.playerItem.findFirst({
-    where: { playerId, templateId: template.id },
+  const existing = await client.playerItem.findUnique({
+    where: { playerId_templateId: { playerId, templateId: template.id } },
   })
 
   // Enforce the item's max; if it isn't set there's no cap
@@ -107,27 +107,30 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1, tx = null) {
     }
   }
 
-  if (existing) {
-    const newQty = Math.min(currentQty + quantity, limit)
-    await client.playerItem.update({
-      where: { id: existing.id },
-      data: {
-        quantity: newQty,
-        updatedAt: new Date(),
-      },
-    })
-  } else {
-    // Generate a unique ID for the new PlayerItem (schema doesn't have @default)
-    const { randomUUID } = require('crypto')
-    await client.playerItem.create({
-      data: {
-        id: randomUUID(),
-        playerId,
-        templateId: template.id,
-        quantity: Math.min(quantity, limit),
-      },
-    })
-  }
+  // Never hand out more than the remaining headroom under the cap.
+  const grantQty = Math.min(quantity, limit - currentQty)
+
+  // One atomic upsert against the (playerId, templateId) unique key. A grant
+  // racing another grant for the same template — a backgrounded battle drop
+  // landing while the player buys or picks up the same item — now serializes on
+  // the conflict target and increments the committed quantity. The previous
+  // find-then-create could have both callers miss the row and insert two, which
+  // removeItemBySlug would then only half-see.
+  // Generate a unique ID for the new PlayerItem (schema doesn't have @default)
+  const { randomUUID } = require('crypto')
+  await client.playerItem.upsert({
+    where: { playerId_templateId: { playerId, templateId: template.id } },
+    create: {
+      id: randomUUID(),
+      playerId,
+      templateId: template.id,
+      quantity: grantQty,
+    },
+    update: {
+      quantity: { increment: grantQty },
+      updatedAt: new Date(),
+    },
+  })
 
   return {
     granted: true,

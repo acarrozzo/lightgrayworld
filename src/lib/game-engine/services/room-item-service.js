@@ -103,33 +103,46 @@ async function pickupRoomItem(playerId, roomItemId, quantity, playerCurrentRoom)
     }
   }
 
-  await prisma.$transaction(async (tx) => {
-    if (roomItem.quantity === quantity) {
-      await tx.roomItem.delete({ where: { id: roomItemId } })
-    } else {
-      await tx.roomItem.update({
-        where: { id: roomItemId },
-        data: { quantity: roomItem.quantity - quantity },
-      })
+  const outcome = await prisma.$transaction(async (tx) => {
+    // Take from the room behind a quantity guard. Room items are shared between
+    // players, so the per-player action queue cannot serialize this: two players
+    // grabbing from the same pile previously both read the same quantity and
+    // both wrote the same decremented value, handing out the item twice while
+    // removing it once.
+    const taken = await tx.roomItem.updateMany({
+      where: { id: roomItemId, quantity: { gte: quantity } },
+      data: { quantity: { decrement: quantity } },
+    })
+
+    if (taken.count === 0) {
+      // Nothing written yet, so this commits empty rather than rolling back.
+      return { conflict: true }
     }
 
-    if (existingPlayerItem) {
-      await tx.playerItem.update({
-        where: { id: existingPlayerItem.id },
-        data: { quantity: currentPlayerQty + quantity },
-      })
-    } else {
-      const { randomUUID } = require('crypto')
-      await tx.playerItem.create({
-        data: {
-          id: randomUUID(),
-          playerId,
-          templateId: template.id,
-          quantity,
-        },
-      })
-    }
+    // An emptied pile leaves no zero-quantity row behind.
+    await tx.roomItem.deleteMany({ where: { id: roomItemId, quantity: { lte: 0 } } })
+
+    // One atomic upsert against the (playerId, templateId) unique key, so a
+    // pickup racing another grant for the same template adds to one stack
+    // rather than inserting a second row.
+    const { randomUUID } = require('crypto')
+    await tx.playerItem.upsert({
+      where: { playerId_templateId: { playerId, templateId: template.id } },
+      create: {
+        id: randomUUID(),
+        playerId,
+        templateId: template.id,
+        quantity,
+      },
+      update: { quantity: { increment: quantity } },
+    })
+
+    return { conflict: false }
   })
+
+  if (outcome.conflict) {
+    return { success: false, message: 'Someone else got there first.' }
+  }
 
   const inventory = await getPlayerInventory(playerId)
   const roomItems = await getRoomItems(playerCurrentRoom)
@@ -169,15 +182,26 @@ async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom)
     return { success: false, message: 'This item cannot be dropped.' }
   }
 
-  await prisma.$transaction(async (tx) => {
-    if (playerItem.quantity === quantity) {
-      await tx.playerItem.delete({ where: { id: playerItemId } })
-    } else {
-      await tx.playerItem.update({
-        where: { id: playerItemId },
-        data: { quantity: playerItem.quantity - quantity },
-      })
+  // Equipped gear feeds the cached strMod/dexMod/magMod/defMod columns combat
+  // reads. Dropping the row while it is equipped leaves the bonus applied until
+  // the next equip or login, so it has to come off first.
+  if (playerItem.isEquipped) {
+    return { success: false, message: 'Unequip this item before dropping it.' }
+  }
+
+  const outcome = await prisma.$transaction(async (tx) => {
+    // Guarded decrement rather than an absolute write computed from the read
+    // above, so a duplicate in-flight drop cannot remove the stack twice.
+    const removed = await tx.playerItem.updateMany({
+      where: { id: playerItemId, playerId, quantity: { gte: quantity } },
+      data: { quantity: { decrement: quantity } },
+    })
+
+    if (removed.count === 0) {
+      return { conflict: true }
     }
+
+    await tx.playerItem.deleteMany({ where: { id: playerItemId, quantity: { lte: 0 } } })
 
     const existingRoomItem = await tx.roomItem.findFirst({
       where: {
@@ -189,7 +213,7 @@ async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom)
     if (existingRoomItem) {
       await tx.roomItem.update({
         where: { id: existingRoomItem.id },
-        data: { quantity: existingRoomItem.quantity + quantity },
+        data: { quantity: { increment: quantity } },
       })
     } else {
       const { randomUUID } = require('crypto')
@@ -202,7 +226,13 @@ async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom)
         },
       })
     }
+
+    return { conflict: false }
   })
+
+  if (outcome.conflict) {
+    return { success: false, message: 'You no longer have that many to drop.' }
+  }
 
   const inventory = await getPlayerInventory(playerId)
   const roomItems = await getRoomItems(playerCurrentRoom)

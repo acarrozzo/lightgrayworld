@@ -458,6 +458,24 @@ async function completeQuest(playerId, questId) {
 
   // Wrap everything in a transaction
   const result = await prisma.$transaction(async (tx) => {
+    // Claim the completion before granting anything. This conditional write is
+    // the idempotency barrier: a concurrent second turn-in blocks on this row,
+    // then matches nothing once the first commits, so the rewards below are
+    // granted exactly once. The `completed` check above runs outside the
+    // transaction and cannot stop a request that arrives while this one is still
+    // in flight — and the HTTP completion route reaches this function outside the
+    // per-player action queue, so in-process serialization does not cover it.
+    const claimed = await tx.questProgress.updateMany({
+      where: { id: questProgress.id, completed: false },
+      data: { completed: true, progress: 1 },
+    })
+
+    if (claimed.count === 0) {
+      // Nothing has been written yet, so returning here commits an empty
+      // transaction rather than rolling back a partial grant.
+      return { alreadyCompleted: true }
+    }
+
     // Consume requirements if needed
     if (questDef.consumeRequirementsOnComplete && questDef.requirements) {
       for (const requirement of questDef.requirements) {
@@ -538,17 +556,12 @@ async function completeQuest(playerId, questId) {
       })
     }
 
-    // Mark quest as completed
-    await tx.questProgress.update({
-      where: { id: questProgress.id },
-      data: {
-        completed: true,
-        progress: 1,
-      },
-    })
-
     return { updatedUser }
   })
+
+  if (result.alreadyCompleted) {
+    return { success: false, error: 'Quest already completed' }
+  }
 
   // Run onComplete effects (outside transaction but after completion is committed)
   // These effects may start new quests, which is safe to do after the transaction

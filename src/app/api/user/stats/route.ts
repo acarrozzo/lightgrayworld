@@ -131,10 +131,24 @@ export const PUT = withAuth(async (request: AuthenticatedRequest) => {
       }
     }
 
-    // Update user with all allocations
-    const updatedPlayer = await prisma.user.update({
-      where: { id: request.user.id },
+    // Spend behind a CP guard. The check above exists only to produce a friendly
+    // message; this conditional write is what makes the allocation safe. With an
+    // unconditional decrement, two submits in flight both passed the check and
+    // both applied their increments, driving `cp` negative for free stat points.
+    const applied = await prisma.user.updateMany({
+      where: { id: request.user.id, cp: { gte: totalCpNeeded } },
       data: updateData,
+    })
+
+    if (applied.count === 0) {
+      return NextResponse.json(
+        COMMON_ERRORS.CONFLICT('Your Core Points changed before that could be applied. Please try again.'),
+        { status: 409 }
+      )
+    }
+
+    const updatedPlayer = await prisma.user.findUnique({
+      where: { id: request.user.id },
       select: selectPlayerFields,
     })
 

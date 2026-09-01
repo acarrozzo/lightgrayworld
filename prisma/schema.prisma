@@ -397,6 +397,13 @@ model ItemTemplate {
   RoomItem     RoomItem[]
 }
 
+// One row per (player, item template) — a stack, with `isEquipped` flipped on the
+// stack row rather than split into a separate row. That was always the intended
+// invariant but nothing enforced it, so concurrent grants (a backgrounded battle
+// drop racing a pickup or purchase) could create a second row for the same
+// template; `removeItemBySlug` only ever sees the first, so quantity gates and
+// consumes then misbehave. The unique constraint makes the invariant real and
+// lets grants be a single atomic upsert.
 model PlayerItem {
   id           String       @id
   playerId     String
@@ -408,6 +415,9 @@ model PlayerItem {
   updatedAt    DateTime     @default(now())
   User         User         @relation(fields: [playerId], references: [id], onDelete: Cascade)
   ItemTemplate ItemTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([playerId, templateId])
+  @@index([playerId])
 }
 
 model BattleLog {

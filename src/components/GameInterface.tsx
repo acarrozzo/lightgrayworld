@@ -664,34 +664,14 @@ export default function GameInterface() {
           setRoomEnemies(Array.isArray(roomData.room?.enemies) ? roomData.room.enemies : [])
         }
 
+        // The server owns `currentRoom`: the authoritative socket move path
+        // persists it, and defeat/respawn writes it directly. This block used to
+        // POST the client's own belief to /api/game/room/sync, which inverted
+        // that ownership — any client could name a room and have it written to
+        // the database, skipping every gate. Align the local projection with the
+        // room we actually loaded and write nothing durable.
         if (player && normalizedRoom && player.currentRoom !== normalizedRoom.roomId) {
-          console.log('[GameInterface] Syncing player.currentRoom to', normalizedRoom.roomId)
-
-          if (shouldUseAuth) {
-            try {
-              const syncResponse = await fetch('/api/game/room/sync', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...getAuthHeaders(),
-                },
-                body: JSON.stringify({ roomId: normalizedRoom.roomId }),
-              })
-
-              if (!syncResponse.ok) {
-                const errorText = await syncResponse.text()
-                console.error(
-                  'Failed to sync player room on server:',
-                  syncResponse.status,
-                  syncResponse.statusText,
-                  errorText
-                )
-              }
-            } catch (error) {
-              console.error('Failed to sync player room on server:', error)
-            }
-          }
-
+          console.log('[GameInterface] Aligning local player.currentRoom to', normalizedRoom.roomId)
           setPlayer({ ...player, currentRoom: normalizedRoom.roomId }) // Guarded by sequence
         }
         
@@ -1829,7 +1809,9 @@ export default function GameInterface() {
   // Handler to reset quests to initial state
   const handleResetQuests = async () => {
     if (!isLoggedIn) return
-    
+    // Matches the server gate: the reset fixture does not exist in production.
+    if (process.env.NODE_ENV === 'production') return
+
     setIsResettingQuests(true)
     try {
       const response = await fetch('/api/game/quests/reset', {
@@ -1860,6 +1842,8 @@ export default function GameInterface() {
 
   const handleSkipToChest = async () => {
     if (!isLoggedIn) return
+    // Matches the server gate: the reset fixture does not exist in production.
+    if (process.env.NODE_ENV === 'production') return
     setIsResettingQuests(true)
     try {
       const response = await fetch('/api/game/quests/reset?mode=skip-to-chest', {

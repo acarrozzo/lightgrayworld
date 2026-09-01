@@ -7,6 +7,14 @@ import { prisma } from '@/lib/prisma'
 
 async function handleResetQuests(request: AuthenticatedRequest) {
   try {
+    // Development fixture only. Both modes clear the gold-chest flags, and
+    // skip-to-chest also grants a Gold Key — so in production this is an
+    // unbounded faucet: reset, re-open the chest for gold/XP/items, repeat.
+    // Authentication alone is not a gate here; every player holds a token.
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(COMMON_ERRORS.NOT_FOUND('Route'), { status: 404 })
+    }
+
     const user = request.user
     const { randomUUID } = require('crypto')
     const url = new URL(request.url)

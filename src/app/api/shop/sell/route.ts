@@ -6,6 +6,11 @@ import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { getPlayerInventory } from '@/lib/game-engine/services/inventory-service'
 import { getSellValue } from '@/lib/shop-pricing'
 
+// Raised inside the sell transaction when the guarded decrement matches no row,
+// i.e. the stack was spent by a concurrent request. Distinguishes "someone beat
+// you to it" from a genuine fault so the player sees 409, not 500.
+const STOCK_CONFLICT = 'STOCK_CONFLICT'
+
 async function handleSell(request: AuthenticatedRequest) {
   try {
     const { playerItemId, quantity } = await request.json()
@@ -17,9 +22,9 @@ async function handleSell(request: AuthenticatedRequest) {
       )
     }
 
-    if (!quantity || quantity < 1) {
+    if (!Number.isInteger(quantity) || quantity < 1) {
       return NextResponse.json(
-        { success: false, message: 'Quantity must be at least 1' },
+        { success: false, message: 'Quantity must be a whole number of at least 1' },
         { status: 400 }
       )
     }
@@ -54,36 +59,63 @@ async function handleSell(request: AuthenticatedRequest) {
       )
     }
 
+    // Equipped gear contributes to the cached strMod/dexMod/magMod/defMod columns
+    // that combat reads. Selling the row out from under them leaves the bonus
+    // applied until the next equip or login, so the stack has to come off first.
+    if (playerItem.isEquipped) {
+      return NextResponse.json(
+        { success: false, message: 'Unequip this item before selling it.' },
+        { status: 400 }
+      )
+    }
+
     // Calculate sell value
     const sellValuePerItem = getSellValue(playerItem.ItemTemplate.value)
     const totalSellValue = sellValuePerItem * quantity
 
     // Perform transaction: remove item and add gold
-    await prisma.$transaction(async (tx) => {
-      // Remove item from inventory
-      if (playerItem.quantity === quantity) {
-        await tx.playerItem.delete({
-          where: { id: playerItemId },
-        })
-      } else {
-        await tx.playerItem.update({
-          where: { id: playerItemId },
-          data: {
-            quantity: playerItem.quantity - quantity,
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Decrement behind a quantity guard rather than writing an absolute value
+        // computed from the read above. Two concurrent partial sells previously
+        // both read the same starting quantity and both wrote the same result,
+        // removing the items once but paying for them twice.
+        const sold = await tx.playerItem.updateMany({
+          where: {
+            id: playerItemId,
+            playerId: request.user.id,
+            quantity: { gte: quantity },
           },
+          data: { quantity: { decrement: quantity } },
         })
-      }
 
-      // Add gold to player
-      await tx.user.update({
-        where: { id: request.user.id },
-        data: {
-          currency: {
-            increment: totalSellValue,
+        if (sold.count === 0) {
+          throw new Error(STOCK_CONFLICT)
+        }
+
+        // A fully sold stack leaves no empty row behind.
+        await tx.playerItem.deleteMany({
+          where: { id: playerItemId, quantity: { lte: 0 } },
+        })
+
+        await tx.user.update({
+          where: { id: request.user.id },
+          data: {
+            currency: {
+              increment: totalSellValue,
+            },
           },
-        },
+        })
       })
-    })
+    } catch (error) {
+      if (error instanceof Error && error.message === STOCK_CONFLICT) {
+        return NextResponse.json(
+          { success: false, message: 'You no longer have that many to sell.' },
+          { status: 409 }
+        )
+      }
+      throw error
+    }
 
     // Get updated inventory and currency
     const inventory = await getPlayerInventory(request.user.id)

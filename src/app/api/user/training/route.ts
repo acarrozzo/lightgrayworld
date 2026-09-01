@@ -106,9 +106,23 @@ export const PUT = withAuth(async (request: AuthenticatedRequest) => {
     if (statTotals.pt > 0) updateData.physicalTraining = { increment: statTotals.pt }
     if (statTotals.mt > 0) updateData.mentalTraining = { increment: statTotals.mt }
 
-    const updatedPlayer = await prisma.user.update({
-      where: { id: request.user.id },
+    // Spend behind a TP guard — same reasoning as the CP allocation route: the
+    // pre-check is for the message, the conditional write is the actual guard
+    // against two concurrent submits both spending the same training points.
+    const applied = await prisma.user.updateMany({
+      where: { id: request.user.id, tp: { gte: totalTpNeeded } },
       data: updateData,
+    })
+
+    if (applied.count === 0) {
+      return NextResponse.json(
+        COMMON_ERRORS.CONFLICT('Your Training Points changed before that could be applied. Please try again.'),
+        { status: 409 }
+      )
+    }
+
+    const updatedPlayer = await prisma.user.findUnique({
+      where: { id: request.user.id },
       select: selectPlayerFields,
     })
 

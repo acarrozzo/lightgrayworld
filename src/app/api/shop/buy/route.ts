@@ -8,6 +8,11 @@ import { getBuyPrice } from '@/lib/shop-pricing'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { getShop, shopSellsItem, shopRequiresQuest } = require('@/lib/game-data/shops')
 
+// Raised inside the buy transaction when the guarded gold decrement matches no
+// row, i.e. the balance was spent by a concurrent request between the check and
+// the write. Keeps "you were outbid by your own second click" out of the 500s.
+const INSUFFICIENT_FUNDS = 'INSUFFICIENT_FUNDS'
+
 async function handleBuy(request: AuthenticatedRequest) {
   try {
     const { itemSlug, quantity = 1 } = await request.json()
@@ -19,9 +24,9 @@ async function handleBuy(request: AuthenticatedRequest) {
       )
     }
 
-    if (quantity < 1) {
+    if (!Number.isInteger(quantity) || quantity < 1) {
       return NextResponse.json(
-        { success: false, message: 'Quantity must be at least 1' },
+        { success: false, message: 'Quantity must be a whole number of at least 1' },
         { status: 400 }
       )
     }
@@ -111,7 +116,10 @@ async function handleBuy(request: AuthenticatedRequest) {
     })
 
     const currentQty = existing?.quantity ?? 0
-    const limit = template.max ?? quantity
+    // An item with no `max` is uncapped. The previous `?? quantity` fallback
+    // collapsed the check below to `currentQty > 0`, so an uncapped item could
+    // only ever be bought while holding none of it.
+    const limit = template.max ?? Infinity
 
     if (currentQty + quantity > limit) {
       return NextResponse.json(
@@ -124,38 +132,57 @@ async function handleBuy(request: AuthenticatedRequest) {
     }
 
     // Perform transaction: deduct gold and add item
-    await prisma.$transaction(async (tx) => {
-      // Deduct gold
-      await tx.user.update({
-        where: { id: request.user.id },
-        data: {
-          currency: {
-            decrement: totalCost,
-          },
-        },
-      })
-
-      // Add item to inventory
-      if (existing) {
-        await tx.playerItem.update({
-          where: { id: existing.id },
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Charge behind a balance guard. The check above is only for the error
+        // message — it is this conditional write that makes the purchase safe.
+        // An unconditional decrement let two clicks in flight both pass the
+        // check and drive `currency` negative.
+        const charged = await tx.user.updateMany({
+          where: { id: request.user.id, currency: { gte: totalCost } },
           data: {
-            quantity: currentQty + quantity,
-            updatedAt: new Date(),
+            currency: {
+              decrement: totalCost,
+            },
           },
         })
-      } else {
+
+        if (charged.count === 0) {
+          throw new Error(INSUFFICIENT_FUNDS)
+        }
+
+        // Add to inventory as one atomic upsert against the (playerId,
+        // templateId) unique key, so two purchases in flight add to a single
+        // stack instead of racing to insert two rows for the same template.
         const { randomUUID } = require('crypto')
-        await tx.playerItem.create({
-          data: {
+        await tx.playerItem.upsert({
+          where: {
+            playerId_templateId: {
+              playerId: request.user.id,
+              templateId: template.id,
+            },
+          },
+          create: {
             id: randomUUID(),
             playerId: request.user.id,
             templateId: template.id,
-            quantity: Math.min(quantity, limit),
+            quantity,
+          },
+          update: {
+            quantity: { increment: quantity },
+            updatedAt: new Date(),
           },
         })
+      })
+    } catch (error) {
+      if (error instanceof Error && error.message === INSUFFICIENT_FUNDS) {
+        return NextResponse.json(
+          { success: false, message: 'Not enough gold to complete that purchase.' },
+          { status: 409 }
+        )
       }
-    })
+      throw error
+    }
 
     // Get updated inventory and currency
     const inventory = await getPlayerInventory(request.user.id)
