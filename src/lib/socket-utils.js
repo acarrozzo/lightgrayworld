@@ -66,9 +66,6 @@ const SOCKET_EVENTS = {
   // ── Server to client: actions ─────────────────────────────────────────────
   ACTION_CONFIRMED: 'action:confirmed',
   ACTION_FEEDBACK: 'action:feedback',
-  // No current emitter; kept because the client still registers a listener.
-  ACTION_COMPLETED: 'action-completed',
-  PLAYER_ACTION: 'player-action',
 
   // ── Server to client: battle and progression ──────────────────────────────
   BATTLE_STARTED: 'battle:started',

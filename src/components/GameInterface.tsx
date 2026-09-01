@@ -32,6 +32,7 @@ import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import { MAP_CONFIG, TELEPORT_LOCATIONS } from './game-interface/constants'
 import type { FilterTab } from '@/lib/inventory-categories'
 import { findTravelDirection, checkIfExitHasGate, normalizeCommand, getMapIdForRoom, getUnlockedMaps, formatDirectionPhrase } from './game-interface/utils'
+import { useGameSocketBindings } from './game-interface/useGameSocketBindings'
 import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
 import InventoryPanel from './game-interface/panels/InventoryPanel'
@@ -46,7 +47,6 @@ import { isCraftingRoom } from '@/lib/game-data/crafting-recipes'
 import QuestCompleteRewards, { type QuestCompleteData } from './QuestCompleteRewards'
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
-import { usePresenceStore } from '@/store/presenceStore'
 import LevelUpAlert from './LevelUpAlert'
 import TrainingAllocationModal from './TrainingAllocationModal'
 import StatAllocationModal from './StatAllocationModal'
@@ -118,9 +118,6 @@ export default function GameInterface() {
   const craftingPanelRef = useRef<HTMLDivElement>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const totalDmUnread = useDMStore((state) => state.getTotalUnreadCount())
-  const syncPresence = usePresenceStore((state) => state.syncPresence)
-  const upsertPresence = usePresenceStore((state) => state.upsertPresence)
-  const removePresence = usePresenceStore((state) => state.removePresence)
   const [exploreSubView, setExploreSubView] = useState<ExploreSubView>('compass')
   const [isMapModalOpen, setIsMapModalOpen] = useState(false)
   // Desktop world feed starts open; the toggle only affects this session.
@@ -341,20 +338,10 @@ export default function GameInterface() {
   }, [getAuthHeaders, isLoggedIn])
 
   // Listen for world ticks to drive countdowns
-  useEffect(() => {
-    if (!socket) return
-    const cleanup = socketHandlers.onWorldTick((payload) => {
-      const tickNumber = payload?.tickNumber ?? payload?.tickId ?? 0
-      const interval = payload?.tickIntervalMs ?? 10000
-      const nextTickAt = payload?.nextTickAt ?? (Date.now() + interval)
-      setWorldTick({
-        tickNumber,
-        nextTickAt,
-        tickIntervalMs: interval,
-      })
-    })
-    return cleanup
-  }, [socket, socketHandlers])
+  // Subscriptions that only feed stores (world tick, room items, world feed,
+  // presence) live in this hook rather than here — see its own comment for why
+  // the battle, party and action-feedback subscriptions deliberately do not.
+  useGameSocketBindings(socket, socketHandlers, setWorldTick)
 
   // Hydrate the rolling gather cooldown whenever the current room changes.
   useEffect(() => {
@@ -382,32 +369,6 @@ export default function GameInterface() {
     })
     return () => cancelAnimationFrame(raf)
   }, [isCraftingOpen])
-
-  useEffect(() => {
-    if (!socket) return
-    const cleanup = socketHandlers.onRoomItemsUpdate((payload) => {
-      if (!payload?.roomId || !Array.isArray(payload.items)) return
-      updateRoomItems(payload.roomId, normalizeRoomItems(payload.items))
-    })
-    return cleanup
-  }, [socket, socketHandlers, updateRoomItems])
-
-  useEffect(() => {
-    if (!socket) return
-    const cleanup = socketHandlers.onWorldActivity((payload) => {
-      if (!payload) return
-      appendWorldFeed({
-        id: payload.id,
-        ts: payload.ts,
-        type: payload.type ?? 'world',
-        level: payload.level,
-        actor: payload.actor,
-        message: payload.message,
-        eventType: payload.eventType,
-      })
-    })
-    return cleanup
-  }, [socket, socketHandlers, appendWorldFeed])
 
   // Escape unwinds one layer per press — overlays, then any open panel or tab,
   // then the Explore sub-view — so repeated presses always end on the compass.
@@ -722,7 +683,10 @@ export default function GameInterface() {
       }
       setIsInitialLoad(false)
     }
-  }, [getAuthHeaders, cacheRoom, setCurrentRoom, setRoomPlayers, player, setPlayer, getCachedRoom, isLoggedIn, worldTick, setWorldTick])
+    // `worldTick` is deliberately absent: this reads the tick off the API
+    // response, never the stored one. Listing it changed loadRoomData's identity
+    // every tick, which cascaded into every effect that depends on it.
+  }, [getAuthHeaders, cacheRoom, setCurrentRoom, setRoomPlayers, player, setPlayer, getCachedRoom, isLoggedIn, setWorldTick])
   const loadRoomDataRef = useRef(loadRoomData)
 
   /**
@@ -792,6 +756,28 @@ export default function GameInterface() {
   useEffect(() => {
     handleActionRef.current = handleAction
   })
+
+  /**
+   * Timers staging the end-of-battle sequence: one frame to render the HP drain,
+   * then ~900ms later the summary and teardown.
+   *
+   * They are tracked so they can be cancelled. A battle can begin inside that
+   * window — a rest or search ambush, or auto-advancing onto the next enemy in
+   * the room — and the previous fight's delayed `clearBattle()` would then wipe
+   * the fight that had just started, leaving no battle panel for a battle the
+   * server thinks is live.
+   */
+  const battleTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  const clearBattleTimers = useCallback(() => {
+    battleTimersRef.current.forEach((id) => clearTimeout(id))
+    battleTimersRef.current = []
+  }, [])
+
+  const scheduleBattleTimer = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms)
+    battleTimersRef.current.push(id)
+  }, [])
 
   useEffect(() => {
     if (player && isLoggedIn && !currentRoom) {
@@ -1782,7 +1768,10 @@ export default function GameInterface() {
       cleanupInventoryUpdate()
       cleanupRoomMoves()
     }
-  }, [socket, socketHandlers, setPlayer, setInventory, hydrateSession, updateRoomItems, appendWorldFeed, worldTick])
+    // `worldTick` is deliberately absent: nothing in this effect reads it, but
+    // it is replaced on every world tick, so listing it tore down and re-armed
+    // the four most important handlers in the game on a timer.
+  }, [socket, socketHandlers, setPlayer, setInventory, hydrateSession, updateRoomItems, appendWorldFeed])
 
   // Fetch quests and kill list on login so they're available immediately
   useEffect(() => {
@@ -2058,6 +2047,10 @@ export default function GameInterface() {
     if (!socket) return
 
     const cleanupStarted = socketHandlers.onBattleStarted((payload) => {
+      // Cancel the previous fight's staged teardown. Without this, a battle that
+      // begins inside that ~900ms window is erased a moment later by the earlier
+      // fight's delayed clearBattle().
+      clearBattleTimers()
       // A new battle beginning (manual attack, auto-advance, or a rest/search ambush)
       // dismisses any lingering victory summary so it never blocks the next fight.
       clearBattleResult()
@@ -2157,7 +2150,7 @@ export default function GameInterface() {
         // server's background persistence (drops commit after this victory event fires).
       }
       const lt = payload.summary?.lastTurn
-      setTimeout(() => {
+      scheduleBattleTimer(() => {
         const b = useGameStore.getState().battle
         const buildUpdate = (enemyHp: number) => ({
           enemyCurrentHp: enemyHp,
@@ -2181,7 +2174,7 @@ export default function GameInterface() {
         })
         updateBattleTurn(buildUpdate(0))
       }, 0)
-      setTimeout(applyVictory, 900)
+      scheduleBattleTimer(applyVictory, 900)
     })
 
     const cleanupDefeat = socketHandlers.onBattleDefeat((payload) => {
@@ -2200,11 +2193,11 @@ export default function GameInterface() {
           ts: Date.now(),
         })
         setRoomEnemies([])
-        handleAction({ type: 'teleport', data: { toRoomId: payload.respawnRoomId ?? '999' } })
+        handleActionRef.current({ type: 'teleport', data: { toRoomId: payload.respawnRoomId ?? '999' } })
       }
       // Same macrotask-deferral as victory: ensure setBattleStarted renders first.
       const lt = payload.summary?.lastTurn
-      setTimeout(() => {
+      scheduleBattleTimer(() => {
         const b = useGameStore.getState().battle
         updateBattleTurn({
           enemyCurrentHp: b.enemyCurrentHp,
@@ -2227,7 +2220,7 @@ export default function GameInterface() {
           enemyAction: lt?.enemyAction ?? null,
         })
       }, 0)
-      setTimeout(applyDefeat, 900)
+      scheduleBattleTimer(applyDefeat, 900)
     })
 
     const cleanupFled = socketHandlers.onBattleFled((payload) => {
@@ -2244,7 +2237,7 @@ export default function GameInterface() {
       // (the 'teleport' action is the client's "move to an explicit room id" primitive).
       const returnRoomId = payload.returnRoomId
       if (returnRoomId && returnRoomId !== currentRoomRef.current?.roomId) {
-        handleAction({ type: 'teleport', data: { toRoomId: returnRoomId } })
+        handleActionRef.current({ type: 'teleport', data: { toRoomId: returnRoomId } })
       } else {
         // Fleeing in place: the server abandoned the room's wave, so clear the
         // local roster to match (otherwise the fled-from enemies linger on screen).
@@ -2298,8 +2291,15 @@ export default function GameInterface() {
       cleanupFled()
       cleanupLevelUp()
       cleanupClicksUpdate()
+      // Never leave a staged teardown to fire against an unmounted tree.
+      clearBattleTimers()
     }
-  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, setBattleResult, clearBattleResult, appendWorldFeed, handleAction])
+    // `handleAction` is deliberately absent: it is redefined on every render, so
+    // listing it resubscribed all seven battle handlers each time this component
+    // re-rendered — which, subscribing to player, room, battle and party state,
+    // is constantly. The two call sites above dispatch through handleActionRef
+    // instead, the pattern the rest of the long-lived subscriptions already use.
+  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, setBattleResult, clearBattleResult, appendWorldFeed, scheduleBattleTimer, clearBattleTimers])
 
   useEffect(() => {
     if (!socket) {
@@ -2554,28 +2554,6 @@ export default function GameInterface() {
   // Global presence feed — the Players tab roster. Room-scoped presence above keeps
   // "Others here" live; this keeps the world-wide list live. Server-owned and
   // ephemeral, so a disconnect simply stops the deltas until the next sync.
-  useEffect(() => {
-    if (!socket) return
-
-    const cleanupSync = socketHandlers.onWorldPresenceSync((payload) => {
-      syncPresence(payload.players ?? [], payload.serverTime ?? Date.now())
-    })
-
-    const cleanupUpdate = socketHandlers.onWorldPresenceUpdate((payload) => {
-      const serverTime = payload.serverTime ?? Date.now()
-      if (payload.type === 'remove') {
-        removePresence(payload.id, serverTime)
-        return
-      }
-      if (payload.player) upsertPresence(payload.player, serverTime)
-    })
-
-    return () => {
-      cleanupSync()
-      cleanupUpdate()
-    }
-  }, [socket, socketHandlers, syncPresence, upsertPresence, removePresence])
-
   useEffect(() => {
     console.log('[GameInterface] Socket state:', {
       socket: !!socket,
@@ -2929,7 +2907,11 @@ export default function GameInterface() {
 
     if (tabId !== 'inventory') {
       setInventoryFilter(undefined)
-      setNewItemIds(new Set())
+      // The badge is deliberately NOT cleared here. Clearing on a switch to any
+      // non-inventory tab meant opening Char or Quests destroyed the "new items"
+      // count before the player had ever opened the inventory to see what was
+      // new. The single rule lives in the effect that clears it on *leaving*
+      // the inventory tab — i.e. once the items have actually been seen.
     }
   }, [goToExplore])
 

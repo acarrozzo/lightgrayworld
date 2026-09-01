@@ -119,11 +119,6 @@ export class SocketEventHandlers {
     return this.on(SOCKET_EVENTS.ROOM_CHAT_MESSAGE, handler)
   }
 
-  // Listen for action completed events
-  onActionCompleted(handler: (actionData: ActionData) => void): () => void {
-    return this.on(SOCKET_EVENTS.ACTION_COMPLETED, handler)
-  }
-
   // Listen for player joined events
   onPlayerJoined(handler: (player: any) => void): () => void {
     return this.on(SOCKET_EVENTS.PLAYER_JOINED, handler)

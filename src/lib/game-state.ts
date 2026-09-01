@@ -229,7 +229,6 @@ export interface GameState {
   currentRoom: Room | null
   roomPlayers: Player[]
   roomCache: Record<string, Room>
-  roomFactSeq: Record<string, number>
 
   // Battle state
   battle: BattleState
@@ -258,8 +257,6 @@ export interface GameState {
   getAuthHeaders: () => Record<string, string>
   cacheRoom: (room: Room) => void
   getCachedRoom: (roomId: string) => Room | null
-  setRoomFactSeq: (roomId: string, seq: number) => void
-  getRoomFactSeq: (roomId: string) => number
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
   setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
   updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null }) => void
@@ -288,7 +285,6 @@ export const useGameStore = create<GameState>()(
       currentRoom: null,
       roomPlayers: [],
       roomCache: {},
-      roomFactSeq: {},
       battle: { ...INITIAL_BATTLE_STATE },
       party: null,
       battleResult: null,
@@ -374,20 +370,6 @@ export const useGameStore = create<GameState>()(
         const cached = roomCache[roomId]
         console.log('Getting cached room for ID:', roomId, 'Found:', cached ? cached.name : 'None')
         return cached || null
-      },
-
-      setRoomFactSeq: (roomId, seq) => {
-        set((state) => ({
-          roomFactSeq: {
-            ...state.roomFactSeq,
-            [roomId]: Math.max(state.roomFactSeq[roomId] || 0, seq),
-          },
-        }))
-      },
-
-      getRoomFactSeq: (roomId) => {
-        const { roomFactSeq } = get()
-        return roomFactSeq[roomId] || 0
       },
 
       setBattleStarted: (payload) =>
