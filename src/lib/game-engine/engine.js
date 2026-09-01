@@ -326,12 +326,19 @@ class GameEngine {
     }
 
     if (result.backgroundWork) {
-      result.backgroundWork.then((extraEvents) => {
-        extraEvents.forEach(({ event, payload }) => {
-          console.log(`[GameEngine] Emitting deferred event: ${event} to player ${playerId}`)
-          this.emitToPlayer(playerId, event, payload)
+      result.backgroundWork
+        .then((extraEvents) => {
+          ;(extraEvents ?? []).forEach(({ event, payload }) => {
+            console.log(`[GameEngine] Emitting deferred event: ${event} to player ${playerId}`)
+            this.emitToPlayer(playerId, event, payload)
+          })
         })
-      })
+        // Producers are expected to handle their own failures and return events
+        // describing them, but the engine must not depend on every future one
+        // remembering: an unhandled rejection here is fatal to the process.
+        .catch((error) => {
+          console.error(`[GameEngine] backgroundWork failed for player ${playerId}:`, error)
+        })
     }
 
     if (result.roomEvent) {

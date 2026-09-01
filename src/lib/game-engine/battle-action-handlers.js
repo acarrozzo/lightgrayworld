@@ -21,6 +21,40 @@ function makeFeedback(action, outcome, message, data = {}) {
   }
 }
 
+/**
+ * Persist a win in the background and turn the outcome into client events.
+ *
+ * `battle:victory` is emitted before this settles — the client is already
+ * showing the spoils — so success pushes the refreshed inventory and any
+ * level-up, and failure says so plainly instead of leaving a victory screen
+ * standing for rewards that were never saved. The writes are one transaction,
+ * so "nothing was awarded" is the literal truth when this rejects.
+ */
+function settleBattleWinPersistence(playerId, battleState, rewards) {
+  return persistBattleWin(playerId, battleState, rewards)
+    .then(({ levelUp, inventory }) => {
+      const events = []
+      // Drops are persisted after battle:victory is emitted, so push the refreshed
+      // inventory once the grants commit — otherwise the client never sees the items.
+      if (inventory) events.push({ event: 'inventory:update', payload: { inventory } })
+      if (levelUp?.leveled) events.push({ event: 'player:level-up', payload: levelUp })
+      return events
+    })
+    .catch((err) => {
+      console.error(`persistBattleWin failed for player ${playerId}:`, err)
+      return [
+        {
+          event: 'action:feedback',
+          payload: makeFeedback(
+            'battle_rewards',
+            'failure',
+            'Your rewards from that fight could not be saved, so nothing was awarded. Please refresh before fighting again.'
+          ),
+        },
+      ]
+    })
+}
+
 function errorResult(action, message) {
   return {
     success: false,
@@ -338,19 +372,7 @@ async function executeStartBattle(action, playerId, roomState) {
       },
     })
 
-    startBattleBackgroundWork = persistBattleWin(playerId, battleState, rewards)
-      .then(({ levelUp, inventory }) => {
-        const events = []
-        // Drops are persisted after battle:victory is emitted, so push the refreshed
-        // inventory once the grants commit — otherwise the client never sees the items.
-        if (inventory) events.push({ event: 'inventory:update', payload: { inventory } })
-        if (levelUp?.leveled) events.push({ event: 'player:level-up', payload: levelUp })
-        return events
-      })
-      .catch((err) => {
-        console.error(`persistBattleWin failed on turn 1 for player ${playerId}:`, err)
-        return []
-      })
+    startBattleBackgroundWork = settleBattleWinPersistence(playerId, battleState, rewards)
   } else if (newPlayerHp <= 0) {
     // Defeat check
     battleState.end()
@@ -477,19 +499,7 @@ async function executePlayerAttack(action, playerId, roomState) {
     const winMsg = `You defeated the ${battleState.enemyName}! ${rewardParts.join('  ')}`
 
     // Fire DB persistence in the background; level-up event emitted via backgroundWork
-    const backgroundWork = persistBattleWin(playerId, battleState, rewards)
-      .then(({ levelUp, inventory }) => {
-        const events = []
-        // Drops are persisted after battle:victory is emitted, so push the refreshed
-        // inventory once the grants commit — otherwise the client never sees the items.
-        if (inventory) events.push({ event: 'inventory:update', payload: { inventory } })
-        if (levelUp?.leveled) events.push({ event: 'player:level-up', payload: levelUp })
-        return events
-      })
-      .catch((err) => {
-        console.error(`persistBattleWin failed for player ${playerId}:`, err)
-        return []
-      })
+    const backgroundWork = settleBattleWinPersistence(playerId, battleState, rewards)
 
     return {
       success: true,

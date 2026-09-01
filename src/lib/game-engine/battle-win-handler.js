@@ -94,74 +94,126 @@ function calcBattleWinRewards(battleState, ownedFirstKillSlugs = new Set()) {
   return { xpAwarded, goldAwarded, drops, droppedSlugs, dropDetails }
 }
 
+/**
+ * Run `fn` once more if the first attempt fails.
+ *
+ * A battle win is persisted after `battle:victory` has already been emitted, so
+ * there is no request left to fail — a dropped connection would simply lose the
+ * rewards. One retry covers the transient case (a connection recycled by the
+ * pooler) without turning a genuine fault into a loop.
+ */
+async function runWithRetry(fn, label) {
+  try {
+    return await fn()
+  } catch (error) {
+    console.warn(`[${label}] first attempt failed, retrying once:`, error?.message || error)
+    return fn()
+  }
+}
+
 // All DB writes for a battle win. Returns { droppedItems (names), levelUp, inventory }.
 // `inventory` is the player's refreshed inventory after grants (null when nothing dropped),
 // so callers can push it to the client — the battle:victory event is emitted before this
 // background work commits, so the client's inventory would otherwise be stale.
 // Fire this as a background promise — do not await before emitting battle:victory.
+//
+// Every write lands in one transaction. Previously these were five sequential
+// awaits, so a fault partway through left the player with, say, the XP but no
+// kill credit (silently stalling a kill-count quest the victory screen had just
+// shown progress on), or drops listed on the victory card that were never
+// granted. Nothing could repair it either: the in-memory battle is already torn
+// down by the time this runs, so there is no way to re-drive the award.
 async function persistBattleWin(playerId, battleState, rewards) {
   const { xpAwarded, goldAwarded, drops } = rewards
   const enemy = battleState.enemy
 
-  await prisma.user.update({
-    where: { id: playerId },
-    data: {
-      xp: { increment: xpAwarded },
-      currency: { increment: goldAwarded },
-      inFight: false,
-    },
-  })
+  const { droppedItems, levelUp } = await runWithRetry(
+    () =>
+      prisma.$transaction(
+        async (tx) => {
+          await tx.user.update({
+            where: { id: playerId },
+            data: {
+              xp: { increment: xpAwarded },
+              currency: { increment: goldAwarded },
+              inFight: false,
+            },
+          })
 
-  await prisma.killList.upsert({
-    where: { userId_monster: { userId: playerId, monster: enemy.slug } },
-    update: { kills: { increment: 1 } },
-    create: { userId: playerId, monster: enemy.slug, kills: 1 },
-  })
+          await tx.killList.upsert({
+            where: { userId_monster: { userId: playerId, monster: enemy.slug } },
+            update: { kills: { increment: 1 } },
+            create: { userId: playerId, monster: enemy.slug, kills: 1 },
+          })
 
+          const granted = []
+          if (drops.length > 0) {
+            const templates = await tx.itemTemplate.findMany({
+              where: { slug: { in: drops.map((d) => d.slug) } },
+            })
+            const templateBySlug = new Map(templates.map((t) => [t.slug, t]))
 
-  const droppedItems = []
+            // Grant drops through grantItemOnce so they merge into existing stacks
+            // (respecting the item's max) instead of creating duplicate rows.
+            for (const { slug, qty } of drops) {
+              const template = templateBySlug.get(slug)
+              if (!template) {
+                // A drop table naming a slug with no template is an authoring
+                // bug, not a runtime one — validate-world fails the build on it.
+                // Skip the item rather than voiding the whole win.
+                console.error(`persistBattleWin: item template not found for slug "${slug}"`)
+                continue
+              }
+              const result = await grantItemOnce(playerId, slug, qty, tx)
+              if (result.granted) {
+                granted.push(qty > 1 ? `${template.name} x${qty}` : template.name)
+              }
+            }
+          }
+
+          await tx.battleLog.create({
+            data: {
+              userId: playerId,
+              enemySlug: battleState.enemySlug,
+              enemyName: battleState.enemyName,
+              outcome: 'WIN',
+              turnsCount: battleState.turnCount,
+              totalDamageDealt: battleState.totalDamageDealt,
+              totalDamageReceived: battleState.totalDamageReceived,
+              maxSingleHit: battleState.maxSingleHit,
+              xpEarned: xpAwarded,
+              goldEarned: goldAwarded,
+              itemsDropped: granted,
+              multiplayerBonus: battleState.multiplayerBonusUsed,
+            },
+          })
+
+          // Inside the transaction, so the XP above and the level it earns commit
+          // together — a level-up can never be granted for XP that rolled back.
+          const levelUpResult = await checkAndApplyLevelUp(playerId, tx)
+
+          return { droppedItems: granted, levelUp: levelUpResult }
+        },
+        // Comfortably above the handful of round-trips above, for the case where
+        // the database is remote and having a slow minute.
+        { timeout: 15000 }
+      ),
+    'persistBattleWin'
+  )
+
+  // Read back outside the transaction: this is only needed to push to the client
+  // and would otherwise hold the transaction open for an extra round-trip.
+  // Non-fatal on purpose — the rewards are committed by this point, so a failed
+  // read-back must not be reported to the player as a lost win. It only costs a
+  // live inventory refresh, which their next action restores.
   let inventory = null
   if (drops.length > 0) {
-    const templates = await prisma.itemTemplate.findMany({
-      where: { slug: { in: drops.map((d) => d.slug) } },
-    })
-    const templateBySlug = new Map(templates.map((t) => [t.slug, t]))
-
-    // Grant drops through grantItemOnce so they merge into existing stacks
-    // (respecting the item's max) instead of creating duplicate rows.
-    for (const { slug, qty } of drops) {
-      const template = templateBySlug.get(slug)
-      if (!template) {
-        console.error(`persistBattleWin: item template not found for slug "${slug}"`)
-        continue
-      }
-      const result = await grantItemOnce(playerId, slug, qty)
-      if (result.granted) {
-        droppedItems.push(qty > 1 ? `${template.name} x${qty}` : template.name)
-      }
+    try {
+      inventory = await getPlayerInventory(playerId)
+    } catch (error) {
+      console.error('persistBattleWin: inventory refresh failed after commit:', error)
     }
-    // Refresh once after all grants so the client can sync without a stale read.
-    inventory = await getPlayerInventory(playerId)
   }
-
-  await prisma.battleLog.create({
-    data: {
-      userId: playerId,
-      enemySlug: battleState.enemySlug,
-      enemyName: battleState.enemyName,
-      outcome: 'WIN',
-      turnsCount: battleState.turnCount,
-      totalDamageDealt: battleState.totalDamageDealt,
-      totalDamageReceived: battleState.totalDamageReceived,
-      maxSingleHit: battleState.maxSingleHit,
-      xpEarned: xpAwarded,
-      goldEarned: goldAwarded,
-      itemsDropped: droppedItems,
-      multiplayerBonus: battleState.multiplayerBonusUsed,
-    },
-  })
-
-  const levelUp = await checkAndApplyLevelUp(playerId)
 
   return { droppedItems, levelUp, inventory }
 }

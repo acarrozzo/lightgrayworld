@@ -221,17 +221,48 @@ function extractEffectText(result) {
   return null
 }
 
+/**
+ * Combine two action results, carrying every channel the engine reads.
+ *
+ * A result has five: playerEvents, broadcastEvents, roomEvent, backgroundWork
+ * and transfer. Merge sites used to copy only the one or two they happened to
+ * need, which quietly dropped the rest. The costly case was an auto-provoked
+ * battle won in a single turn: its `backgroundWork` — the promise carrying the
+ * drop grants' inventory refresh and the level-up event — was discarded, so the
+ * loot and the new level did not appear until the player refreshed, and the room
+ * never heard the fight start.
+ */
+function mergeActionResults(base, extra) {
+  if (!extra) return base
+  const merged = { ...base }
+
+  if (extra.playerEvents?.length) {
+    merged.playerEvents = [...(base.playerEvents ?? []), ...extra.playerEvents]
+  }
+  if (extra.broadcastEvents?.length) {
+    merged.broadcastEvents = [...(base.broadcastEvents ?? []), ...extra.broadcastEvents]
+  }
+
+  // Only one of each can be acted on, so whatever the base result already
+  // decided wins; the incoming result fills the slot only if it is empty.
+  if (!merged.roomEvent && extra.roomEvent) merged.roomEvent = extra.roomEvent
+  if (!merged.transfer && extra.transfer) merged.transfer = extra.transfer
+
+  if (extra.backgroundWork) {
+    merged.backgroundWork = base.backgroundWork
+      ? Promise.all([base.backgroundWork, extra.backgroundWork]).then(
+          ([fromBase, fromExtra]) => [...(fromBase ?? []), ...(fromExtra ?? [])]
+        )
+      : extra.backgroundWork
+  }
+
+  return merged
+}
+
 // Combine the original action result with the support-turn events. If the
 // support turn ended the battle with defeat, that takes over.
 function mergeSupportTurnIntoResult(base, supportTurn) {
-  if (!supportTurn || (!supportTurn.playerEvents?.length && !supportTurn.broadcastEvents?.length)) {
-    return base
-  }
-  return {
-    ...base,
-    playerEvents: [...(base.playerEvents ?? []), ...(supportTurn.playerEvents ?? [])],
-    broadcastEvents: [...(base.broadcastEvents ?? []), ...(supportTurn.broadcastEvents ?? [])],
-  }
+  return mergeActionResults(base, supportTurn)
 }
 
 // Actions that consume a "turn" and may trigger a spawn check in probabilistic rooms.
@@ -552,12 +583,10 @@ class RoomState {
         playerId,
         this
       )
-      if (battleResult?.playerEvents?.length) {
-        result = {
-          ...result,
-          playerEvents: [...(result.playerEvents ?? []), ...battleResult.playerEvents],
-        }
-      }
+      // Merge every channel, not just the player events: a one-turn kill here
+      // carries its reward persistence on `backgroundWork`, and the room's
+      // "engages a ..." line on `broadcastEvents`.
+      result = mergeActionResults(result, battleResult)
     }
 
     return result
@@ -1726,4 +1755,7 @@ module.exports = {
   RoomState,
   SEARCH_LOOT_TABLES,
   ROOM_FLAVOR,
+  // Exported for tests: this is the plumbing that decides which of an action
+  // result's five channels survive a merge, and losing one is silent at runtime.
+  mergeActionResults,
 }
