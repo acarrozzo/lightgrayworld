@@ -4,6 +4,15 @@ const { PlayerActionQueue } = require('./player-action-queue')
 const { prisma } = require('../db-client')
 const { topUpRoomEnemyGroup } = require('../game-data/room-enemies')
 const { updatePresence } = require('../services/presence-store')
+const { debugLog, quietActionLogger } = require('../debug-log')
+
+/**
+ * How often the engine reports its own health. Deliberately wall-clock rather
+ * than tick-driven: the world tick is hourly, so metrics gated on it surfaced
+ * roughly twice a day and the queue's timeout and rejection counters — the
+ * numbers worth watching — were effectively unobservable.
+ */
+const METRICS_INTERVAL_MS = 60_000
 
 class GameEngine {
   constructor(io, tickMs = WORLD_TICK_MS) {
@@ -12,6 +21,7 @@ class GameEngine {
     this.rooms = new Map()
     this.playerQueue = new PlayerActionQueue({
       maxQueueLength: 5,
+      logger: quietActionLogger,
     })
     // playerId -> Set<socketId>. One account can hold several connections (a
     // second tab), and each of them should receive that player's events. This
@@ -31,18 +41,23 @@ class GameEngine {
   start() {
     this.tickClock.start(async (tickId) => {
       const start = performance.now()
-
       await this.processWorldTick(tickId)
-
-      const elapsed = performance.now() - start
-      if (tickId % 10 === 0) {
-        this.maybeLogMetrics(tickId, elapsed)
-      }
+      this.lastTickElapsed = performance.now() - start
     })
+
+    this.metricsTimer = setInterval(() => {
+      this.logMetrics()
+    }, METRICS_INTERVAL_MS)
+    // Never hold the process open just to report metrics.
+    this.metricsTimer.unref?.()
   }
 
   stop() {
     this.tickClock.stop()
+    if (this.metricsTimer) {
+      clearInterval(this.metricsTimer)
+      this.metricsTimer = null
+    }
   }
 
   getMetrics() {
@@ -99,7 +114,7 @@ class GameEngine {
     }
     this.playerQueue.clearPlayer(playerId, { rejectPending: true })
     this.persistedEnemies.delete(playerId)
-    console.log(`[GameEngine] Player ${playerId} unregistered and action queue cleared`)
+    debugLog(`[GameEngine] Player ${playerId} unregistered and action queue cleared`)
     this.playerSockets.delete(playerId)
   }
 
@@ -284,11 +299,11 @@ class GameEngine {
       return
     }
 
-    console.log(`[GameEngine] handleActionResult for player ${playerId}, action: ${result.action}`)
+    debugLog(`[GameEngine] handleActionResult for player ${playerId}, action: ${result.action}`)
 
     if (Array.isArray(result.playerEvents)) {
       result.playerEvents.forEach(({ event, payload }) => {
-        console.log(`[GameEngine] Emitting player event: ${event} to player ${playerId}`)
+        debugLog(`[GameEngine] Emitting player event: ${event} to player ${playerId}`)
         this.emitToPlayer(playerId, event, payload)
       })
 
@@ -350,7 +365,7 @@ class GameEngine {
       result.backgroundWork
         .then((extraEvents) => {
           ;(extraEvents ?? []).forEach(({ event, payload }) => {
-            console.log(`[GameEngine] Emitting deferred event: ${event} to player ${playerId}`)
+            debugLog(`[GameEngine] Emitting deferred event: ${event} to player ${playerId}`)
             this.emitToPlayer(playerId, event, payload)
           })
         })
@@ -363,25 +378,25 @@ class GameEngine {
     }
 
     if (result.roomEvent) {
-      console.log(`[GameEngine] Emitting room event: ${result.roomEvent.event} to room ${roomId}`)
+      debugLog(`[GameEngine] Emitting room event: ${result.roomEvent.event} to room ${roomId}`)
       this.io.to(`room-${roomId}`).emit(result.roomEvent.event, result.roomEvent.payload)
     }
 
     if (Array.isArray(result.broadcastEvents)) {
-      console.log(`[GameEngine] Broadcasting ${result.broadcastEvents.length} events`)
+      debugLog(`[GameEngine] Broadcasting ${result.broadcastEvents.length} events`)
       result.broadcastEvents.forEach(({ event, payload, targetRoomId }) => {
         if (targetRoomId) {
-          console.log(`[GameEngine] Broadcasting ${event} to room ${targetRoomId}`)
+          debugLog(`[GameEngine] Broadcasting ${event} to room ${targetRoomId}`)
           this.io.to(`room-${targetRoomId}`).emit(event, payload)
         } else {
-          console.log(`[GameEngine] Broadcasting ${event} globally`)
+          debugLog(`[GameEngine] Broadcasting ${event} globally`)
           this.io.emit(event, payload)
         }
       })
     }
 
     if (result.transfer?.toRoomId && result.transfer.playerState) {
-      console.log(`[GameEngine] Transferring player ${playerId} to room ${result.transfer.toRoomId}`)
+      debugLog(`[GameEngine] Transferring player ${playerId} to room ${result.transfer.toRoomId}`)
       this.transferPlayer({
         playerState: result.transfer.playerState,
         fromRoomId: result.transfer.fromRoomId || roomId,
@@ -444,55 +459,52 @@ class GameEngine {
     }
   }
 
-  maybeLogMetrics(tickId, elapsed) {
-    const now = Date.now()
-    if (now - this.lastMetricsLoggedAt < 10_000) {
+  /**
+   * One health line per interval: how busy the world is, how the last world tick
+   * performed, and — the part worth watching — what the per-player action queue
+   * is doing. Timeouts and rejections are how a slow database first shows up.
+   *
+   * Stays quiet while nobody is connected, so an idle server does not fill the
+   * log with identical lines.
+   */
+  logMetrics() {
+    const queueMetrics = this.playerQueue.getMetrics()
+    const activePlayerCount = this.playerSockets.size
+
+    const idle =
+      activePlayerCount === 0 &&
+      queueMetrics.activePlayers === 0 &&
+      queueMetrics.enqueued === this.lastReportedEnqueued
+    if (idle) {
       return
     }
+    this.lastReportedEnqueued = queueMetrics.enqueued
 
-    this.lastMetricsLoggedAt = now
     const tickMetrics = this.tickClock.getMetrics()
-    const queueMetrics = this.playerQueue.getMetrics()
-    const tickProfile =
-      this.lastTickProfile || {
-        totalElapsed: elapsed,
-        activeRooms: 0,
-        roomsWithUpdates: 0,
-        roomStats: [],
-      }
+    const tickProfile = this.lastTickProfile || {
+      totalElapsed: this.lastTickElapsed ?? 0,
+      activeRooms: 0,
+      roomsWithUpdates: 0,
+      roomStats: [],
+    }
 
     const perRoomTimes = tickProfile.roomStats.map((stat) => stat.elapsed)
     const perRoomSummary =
       perRoomTimes.length > 0
-        ? `roomAvg=${this.average(perRoomTimes).toFixed(2)}ms roomMax=${Math.max(...perRoomTimes).toFixed(
-            2
-          )}ms roomMin=${Math.min(...perRoomTimes).toFixed(2)}ms`
-        : 'roomAvg=0.00ms roomMax=0.00ms roomMin=0.00ms'
-
-    const roomDetail =
-      tickProfile.roomStats.length > 0 && tickProfile.roomStats.length <= 10
-        ? ` roomDetails=[${tickProfile.roomStats
-            .map(
-              (stat) =>
-                `${stat.roomId}:${stat.elapsed.toFixed(2)}ms${stat.emitted ? '' : '(idle)'}`
-            )
-            .join(', ')}]`
-        : tickProfile.roomStats.length > 10
-        ? ` roomsLogged=${tickProfile.roomStats.length}`
-        : ''
+        ? `roomAvg=${this.average(perRoomTimes).toFixed(2)}ms roomMax=${Math.max(
+            ...perRoomTimes
+          ).toFixed(2)}ms`
+        : 'roomAvg=0.00ms roomMax=0.00ms'
 
     console.log(
-      `[GameEngine] tick=${tickId} rooms=${this.rooms.size} tickAvg=${tickMetrics.avgTickTime.toFixed(
-        2
-      )}ms p95=${tickMetrics.p95TickTime.toFixed(2)}ms last=${elapsed.toFixed(
-        2
-      )}ms worldTickTotal=${tickProfile.totalElapsed.toFixed(2)}ms activeRooms=${
-        tickProfile.activeRooms
-      } roomsWithUpdates=${tickProfile.roomsWithUpdates} ${perRoomSummary}${roomDetail} actionQueue={ enqueued=${
-        queueMetrics.enqueued
-      } started=${queueMetrics.started} completed=${queueMetrics.completed} timedOut=${
-        queueMetrics.timedOut
-      } rejected=${queueMetrics.rejected} active=${queueMetrics.activePlayers} }`
+      `[GameEngine] players=${activePlayerCount} rooms=${this.rooms.size} ` +
+        `tickAvg=${tickMetrics.avgTickTime.toFixed(2)}ms p95=${tickMetrics.p95TickTime.toFixed(2)}ms ` +
+        `lastTick=${tickProfile.totalElapsed.toFixed(2)}ms activeRooms=${tickProfile.activeRooms} ` +
+        `${perRoomSummary} ` +
+        `actionQueue={ enqueued=${queueMetrics.enqueued} completed=${queueMetrics.completed} ` +
+        `timedOut=${queueMetrics.timedOut} rejected=${queueMetrics.rejected} ` +
+        `active=${queueMetrics.activePlayers} avgMs=${queueMetrics.avgDurationMs.toFixed(0)} ` +
+        `maxMs=${queueMetrics.maxDurationMs.toFixed(0)} }`
     )
   }
 

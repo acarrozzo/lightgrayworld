@@ -12,6 +12,7 @@
     "dev:clean": "rm -rf .next && npm run generate-icons && node server.js",
     "dev:legacy": "npm run generate-icons && node server.js",
     "dev:socket": "node socket-server.js",
+    "dev:engine": "npm run generate-icons && node --watch-path=src/lib/game-engine --watch-path=src/lib/game-data --watch-path=src/lib/services --watch-path=src/lib/socket-server-handlers.js server.js",
     "postinstall": "prisma generate",
     "build": "npm run validate && node scripts/build-with-icons.js && next build",
     "start": "NODE_ENV=production node server.js",

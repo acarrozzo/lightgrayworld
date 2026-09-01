@@ -9,6 +9,7 @@ const {
 } = require('./game-engine/services/room-normalization.js')
 const { getRoomEnemies, isProbabilistic, rollRoomEnemyGroup } = require('./game-data/room-enemies.js')
 const { isFixedTeleportDestination } = require('./game-data/teleport-destinations.js')
+const { debugLog } = require('./debug-log.js')
 const {
   consumeTeleportGrant,
   clearTeleportGrants,
@@ -1008,7 +1009,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           },
         })
 
-        console.log(`[Socket] processUserAction result:`, result)
+        // The whole result object — room data, player list, items — on every
+        // single move. Useful when tracing one action, unreadable otherwise.
+        debugLog(`[Socket] processUserAction result:`, result)
 
         // CRITICAL: Only transition/persist player room if movement succeeded
         // The engine result is authoritative - do not transition unless result.success === true
@@ -1219,7 +1222,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           },
         })
 
-        console.log(`[Socket] Chat processUserAction result:`, result)
+        debugLog(`[Socket] Chat processUserAction result:`, result)
 
         console.log(`[Socket] Emitting chat action:confirmed to player`)
         socket.emit('action:confirmed', { action: 'chat', success: true })

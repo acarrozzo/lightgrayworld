@@ -1,6 +1,18 @@
 // Socket utility functions for server.js (CommonJS)
-let io = null
-let userIdToSocketIds = null
+//
+// The realtime server and the Next.js API routes do not share a module instance:
+// Next bundles its own copy of this file, so a plain module-level `io` assigned
+// by socket-server.js is still null when a route reads it. The runtime handles
+// therefore live on globalThis — the same pattern the presence and ghost stores
+// already use for exactly this reason.
+//
+// This was not theoretical: the DM route guards its live push on `if (io && …)`,
+// so with a null `io` the push silently did nothing. The message persisted and
+// the recipient saw it on their next refresh, with no error anywhere.
+if (!globalThis.__socketRuntime) {
+  globalThis.__socketRuntime = { io: null, userIdToSocketIds: null }
+}
+const runtime = globalThis.__socketRuntime
 
 // Socket event constants
 const SOCKET_EVENTS = {
@@ -41,23 +53,23 @@ const SOCKET_EVENTS = {
 }
 
 function setSocketIO(ioInstance) {
-  io = ioInstance
+  runtime.io = ioInstance
 }
 
 function getSocketIO() {
-  return io
+  return runtime.io
 }
 
 function setUserSocketMap(mapInstance) {
-  userIdToSocketIds = mapInstance
+  runtime.userIdToSocketIds = mapInstance
 }
 
 function getSocketIdsForUser(userId) {
-  if (!userId || !userIdToSocketIds) {
+  if (!userId || !runtime.userIdToSocketIds) {
     return []
   }
 
-  const socketSet = userIdToSocketIds.get(userId)
+  const socketSet = runtime.userIdToSocketIds.get(userId)
   if (!socketSet) {
     return []
   }
@@ -67,13 +79,13 @@ function getSocketIdsForUser(userId) {
 
 // Helper function to emit socket events with error handling
 function emitToRoom(roomId, event, data) {
-  if (!io) {
+  if (!runtime.io) {
     console.warn('Socket.io not initialized, cannot emit event:', event)
     return false
   }
-  
+
   try {
-    io.to(`room-${roomId}`).emit(event, data)
+    runtime.io.to(`room-${roomId}`).emit(event, data)
     return true
   } catch (error) {
     console.error('Failed to emit socket event:', error)

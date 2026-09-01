@@ -1,5 +1,30 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# Version control history. ~113MB that is uploaded as build context on every
+# deploy and, because the runner stage ends with `COPY . .`, shipped inside the
+# image as well. Nothing at runtime reads it.
+.git
+.gitignore
+.github
+.husky
+
+# The original game is reference material only — never built, never served, and
+# ~61MB. It is git-ignored but NOT docker-ignored, so it rode along in every image.
+lg-DO NOT EDIT - ORIGINAL LG RPG GAME - FOR REFERENCE ONLY
+
+# Illustrator design sources (~31MB). They are the origin of the sprite sheet,
+# not an input to the build, and must never be served to players.
+*.ai
+
+# Local scratch and editor state
+*.code-workspace
+.vscode
+.idea
+
+# Docs — useful in the repo, dead weight in the image
+*.md
+!README.md
+
 # dependencies
 /node_modules
 /.pnp

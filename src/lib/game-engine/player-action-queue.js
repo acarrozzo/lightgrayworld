@@ -5,7 +5,19 @@
  */
 const DEFAULT_ACTION_TIMEOUT_MS = 15000;
 
+/**
+ * Only these three levels are ever used, so any object providing them works —
+ * the engine passes one whose `info` is gated behind a verbosity flag.
+ * @typedef {{ info: Function, warn: Function, error: Function }} QueueLogger
+ */
+
 class PlayerActionQueue {
+  /**
+   * @param {Object} [options]
+   * @param {number} [options.timeoutMs]
+   * @param {number} [options.maxQueueLength]
+   * @param {QueueLogger} [options.logger]
+   */
   constructor({ timeoutMs = DEFAULT_ACTION_TIMEOUT_MS, maxQueueLength = 5, logger = console } = {}) {
     this.timeoutMs = timeoutMs;
     this.maxQueueLength = maxQueueLength;
