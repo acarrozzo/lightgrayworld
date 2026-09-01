@@ -130,7 +130,7 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '115e': { x: 350, y: 245 },  // Kobold Bloody Path
   '115f': { x: 245, y: 245 },  // Kobold Hidden Chamber
   '115g': { x: 455, y: 245 },  // Dark Courtyard
-  '115h': { x: 350, y: 350 },  // Control Room
+  '115h': { x: 455, y: 350 },  // Control Room
   '115i': { x: 560, y: 350 },  // Magic Altar
   '115j': { x: 560, y: 245 },  // Champion Arena
   '115k': { x: 560, y: 140 },  // Kobold Master Chambers

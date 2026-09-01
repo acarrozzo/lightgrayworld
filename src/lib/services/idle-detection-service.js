@@ -3,6 +3,23 @@ const { createWorldFeedEvent } = require('./world-feed-event-service.js')
 const FIVE_MINUTES_MS = 5 * 60 * 1000
 const CHECK_INTERVAL_MS = 30 * 1000
 
+/**
+ * One account's most recent activity across all of its sockets.
+ * @typedef {Object} IdleSnapshotEntry
+ * @property {string} username
+ * @property {number} lastActive - epoch ms of the latest activity seen
+ * @property {string|null} currentRoom
+ */
+
+/**
+ * @param {Object} [options]
+ * @param {Map<string, any>} [options.activePlayers] - live socket.id -> player map.
+ *   Required in practice; the constructor throws when it is missing, so it is
+ *   marked optional here only so the `= {}` default stays well-typed.
+ * @param {number} [options.thresholdMs] - idle after this long without activity
+ * @param {number} [options.intervalMs] - how often to sweep for idle players
+ * @param {(userId: string, username: string, currentRoom: string|null, isIdle: boolean) => void} [options.onStateChange]
+ */
 function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_MS, intervalMs = CHECK_INTERVAL_MS, onStateChange } = {}) {
   if (!activePlayers || typeof activePlayers.forEach !== 'function') {
     throw new Error('IdleDetectionService requires an activePlayers Map')
@@ -20,7 +37,7 @@ function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_
   }
 
   function snapshotActiveUsers() {
-    /** @type {Map<string, { username: string, lastActive: number }>} */
+    /** @type {Map<string, IdleSnapshotEntry>} */
     const snapshot = new Map()
 
     activePlayers.forEach((player) => {

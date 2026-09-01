@@ -1,6 +1,5 @@
 import type { Player } from '@/lib/game-state'
 import type { TeleportLocation } from '@/components/game-interface/TeleportList'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { TELEPORT_LOCATIONS: SERVER_TELEPORT_LOCATIONS } = require('@/lib/game-data/teleport-destinations')
 
 export const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const

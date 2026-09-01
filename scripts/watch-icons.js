@@ -9,7 +9,7 @@ console.log('👀 Watching for SVG changes...\n');
 // Watch the icons directory for changes
 const iconsDir = path.join(__dirname, '../public/icons');
 const watcher = chokidar.watch(iconsDir, {
-  ignored: /(^|[\/\\])\../, // ignore dotfiles
+  ignored: /(^|[/\\])\../, // ignore dotfiles
   persistent: true,
   ignoreInitial: true, // Don't trigger on initial scan
   awaitWriteFinish: {

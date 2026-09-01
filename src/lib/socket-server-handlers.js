@@ -1120,10 +1120,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               toRoom,
               toRoomName,
               normalizedRoomData,
-              direction,
               exitDirection,
               entryDirection,
               isTeleport,
+              // authorizedMove is deliberately omitted: a directional move must
+              // re-run each member's own gate rather than inherit the leader's.
             })
           }
         } else {
@@ -1421,7 +1422,6 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
                 toRoom: toRoomId,
                 toRoomName: destinationRoom.name,
                 normalizedRoomData,
-                direction: null,
                 exitDirection: null,
                 entryDirection: null,
                 isTeleport: true,

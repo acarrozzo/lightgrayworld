@@ -6,8 +6,34 @@ on:
     branches:
       - main
 jobs:
+  # Everything that can be verified without a database or a running server.
+  # The deploy waits on this, so a dangling item slug, a broken room exit, a type
+  # error or a failing invariant is caught here instead of on the live machine.
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # `npm ci` runs the postinstall `prisma generate`, which needs no database.
+      - run: npm ci
+      - name: Validate quests
+        run: npm run validate-quests
+      - name: Validate world
+        run: npm run validate-world
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+
   deploy:
     name: Deploy app
+    needs: check
     runs-on: ubuntu-latest
     concurrency: deploy-group    # optional: ensure only one action runs at a time
     steps:

@@ -1,0 +1,24 @@
+{
+  // Type-checks the CommonJS half of the codebase — the game engine, socket
+  // server and data modules — which the main tsconfig's `include` leaves out
+  // entirely, so roughly 20k lines currently compile without any checking.
+  //
+  // Deliberately not `strict`: the goal is catching real drift (a payload field
+  // that no longer exists, a call signature that changed, a typo'd property),
+  // not annotating the engine. The JSDoc already in these files does most of the
+  // work. Run with: npm run typecheck:engine
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "isolatedModules": false,
+    "types": ["node"]
+  },
+  "include": ["src/lib/**/*.js"],
+  "exclude": ["node_modules"]
+}
