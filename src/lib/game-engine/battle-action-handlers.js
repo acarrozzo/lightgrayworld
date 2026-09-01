@@ -6,6 +6,7 @@ const { getEnemy } = require('../game-data/enemies')
 const { isProbabilistic } = require('../game-data/room-enemies')
 const { getRoomEnemies } = require('../game-data/room-enemies')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
+const { grantTeleport } = require('./teleport-grants')
 
 function makeFeedback(action, outcome, message, data = {}) {
   const ts = Date.now()
@@ -833,6 +834,13 @@ async function executePlayerFlee(action, playerId, roomState) {
   // player's previous room and passes it in; null when there's no prior room (the
   // client then simply stays put after escaping).
   const returnRoomId = action?.data?.returnRoomId ?? null
+
+  // The retreat itself is performed by the client teleporting to this room, so
+  // authorize that one destination. `returnRoomId` comes from the socket layer's
+  // record of the player's previous room, not from the client.
+  if (returnRoomId) {
+    grantTeleport(playerId, returnRoomId)
+  }
 
   return {
     success: true,

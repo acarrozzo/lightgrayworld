@@ -11,6 +11,35 @@ const { getEnemy } = require('../game-data/enemies')
 const { getRevealDefinition, markRevealed, clearRevealed } = require('./search-reveal-state')
 const { saveRoomRoster } = require('./services/room-roster-service')
 
+const EXIT_DIRECTIONS = [
+  'north',
+  'northeast',
+  'east',
+  'southeast',
+  'south',
+  'southwest',
+  'west',
+  'northwest',
+  'up',
+  'down',
+]
+
+/**
+ * Which exit of `room` leads to `toRoomId`, or null when none does.
+ *
+ * Hidden passages are canonical in the room row, so this will find a reveal- or
+ * lever-gated exit too. That is intended: the matching entry in ROOM_GATES is
+ * what keeps an undiscovered passage shut, and routing those moves through the
+ * gate check is precisely what a caller-supplied direction used to skip.
+ */
+function findExitDirection(room, toRoomId) {
+  if (!room || !toRoomId) return null
+  for (const direction of EXIT_DIRECTIONS) {
+    if (room[direction] === toRoomId) return direction
+  }
+  return null
+}
+
 const SEARCH_LOOT_TABLES = {
   '003b': {
     failMessage: 'You search the cabin basement but find nothing.',
@@ -640,19 +669,31 @@ class RoomState {
       return this.createErrorResult('move', 'You cannot leave while hostile enemies are here. Defeat them first.')
     }
 
-    const fromRoom = action.data?.fromRoom || this.roomId
+    // The source is always the room this RoomState represents — the room the
+    // player is demonstrably standing in. It is never taken from the action
+    // payload: a caller-supplied `fromRoom` would aim both the reachability
+    // lookup and the gate check below at a different room's exits.
+    const fromRoom = this.roomId
     const toRoom = action.data?.toRoom
     if (!toRoom) {
       console.log(`[RoomState:${this.roomId}] executeMove - No destination room provided`)
       return this.createErrorResult('move', 'No destination room provided')
     }
 
-    const direction = action.data?.direction
-    const directionValidated = action.data?.directionValidated === true
+    // Only server code paths set `authorizedMove`, and only after deciding the
+    // destination themselves: a fixed teleport-network room, a grant the server
+    // just issued (guild lair, respawn, flee retreat), or a party member being
+    // pulled behind a leader who already teleported. It sits on the action
+    // rather than in `action.data`, which is the half built from client input.
+    const authorizedMove = action.authorizedMove === true
 
     // 1. REACHABILITY VALIDATION (primary constraint)
-    // Skip if the socket handler already validated the direction (avoids redundant DB fetch)
-    if (direction && !directionValidated) {
+    // The direction is derived from the source room's own exits rather than
+    // taken from the caller. Trusting a supplied direction meant an omitted one
+    // skipped this check *and* the gate check below — the whole point of the
+    // move pipeline — so an arbitrary destination travelled as a free teleport.
+    let direction = null
+    if (!authorizedMove) {
       try {
         const sourceRoom = await prisma.room.findUnique({
           where: { roomId: fromRoom },
@@ -676,10 +717,9 @@ class RoomState {
           return this.createErrorResult('move', 'Source room not found')
         }
 
-        // Check if the source room has an exit in the specified direction that leads to the destination
-        const exitRoomId = sourceRoom[direction]
-        if (exitRoomId !== toRoom) {
-          console.log(`[RoomState:${this.roomId}] executeMove - No valid exit from ${fromRoom} ${direction} to ${toRoom}`)
+        direction = findExitDirection(sourceRoom, toRoom)
+        if (!direction) {
+          console.log(`[RoomState:${this.roomId}] executeMove - No exit from ${fromRoom} leads to ${toRoom}`)
           return this.createErrorResult('move', `You don't see an exit in that direction`)
         }
       } catch (error) {

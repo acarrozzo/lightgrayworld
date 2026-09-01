@@ -5,6 +5,7 @@
 const { grantPersonalItemOnce } = require('./effects')
 const { grantItemOnce, playerHasItem, getHeldQuantity, removeItemBySlug, getPlayerInventory } = require('./services/inventory-service')
 const { checkAndConsumeCooldown } = require('./services/action-cap-service')
+const { grantTeleport } = require('./teleport-grants')
 const { getRecipeById, isCraftingRoom } = require('../game-data/crafting-recipes')
 const { getShop } = require('../game-data/shops')
 
@@ -1370,6 +1371,11 @@ function makeGuildTeleportHandler({ action, questId, toRoomId, label, icon, icon
       return respond('failure', 'You cannot leave the room in the middle of battle!')
     }
 
+    // Membership is confirmed, so authorize this one teleport. The client still
+    // performs the move, but the teleport handler now accepts a non-network
+    // destination only when a grant like this one names it — otherwise echoing
+    // `teleportRoomId` back would be indistinguishable from asking for any room.
+    grantTeleport(playerId, toRoomId)
     return respond('success', message, { teleportRoomId: toRoomId })
   }
 }

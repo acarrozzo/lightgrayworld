@@ -1,5 +1,7 @@
 import type { Player } from '@/lib/game-state'
 import type { TeleportLocation } from '@/components/game-interface/TeleportList'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { TELEPORT_LOCATIONS: SERVER_TELEPORT_LOCATIONS } = require('@/lib/game-data/teleport-destinations')
 
 export const TRAVEL_DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'] as const
 
@@ -78,16 +80,11 @@ export const COMMAND_SHORTHAND: Record<string, string> = {
   'a': 'attack',
 }
 
-// Teleport locations configuration
-export const TELEPORT_LOCATIONS: TeleportLocation[] = [
-  { roomId: '999', name: 'Lobby', description: 'The main lobby area' },
-  { roomId: '001', name: 'Grassy Field', description: 'Grassy Field Crossroads' },
-  { roomId: '000', name: 'Room Zero', description: 'The starting room' },
-  { roomId: '088', name: 'Solar Office', description: 'A large, open-plan command office' },
-  { roomId: '104', name: 'Forest Crossroads', description: 'The central crossroads of the forest' },
-  { roomId: '210', name: 'Red Town', description: 'The Grand Square, at the heart of Red Town' },
-  { roomId: '303', name: 'Rocky Flats', description: 'The Crossroads, where the Dwarf Captain stands watch' },
-]
+// Teleport locations configuration.
+//
+// Re-exported from the server's own list rather than copied, so the menu cannot
+// offer a destination the teleport handler would reject — or omit one it allows.
+export const TELEPORT_LOCATIONS: TeleportLocation[] = SERVER_TELEPORT_LOCATIONS
 
 // Map configuration entry type
 export type MapConfigEntry = {

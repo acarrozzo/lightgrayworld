@@ -3,6 +3,7 @@ const { rand } = require('./battle-calculator')
 const { checkAndApplyLevelUp } = require('./services/leveling-service')
 const { grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
+const { grantTeleport } = require('./teleport-grants')
 const partyStore = require('../services/party-store')
 
 // Of this enemy's firstKill slugs, return the set the player already owns (equipped copies
@@ -199,6 +200,12 @@ async function handleBattleDefeat(playerId, battleState) {
       multiplayerBonus: battleState.multiplayerBonusUsed,
     },
   })
+
+  // The client performs the respawn move itself in response to battle:defeat, so
+  // authorize that one destination explicitly. It keeps respawn working no
+  // matter which room RESPAWN_ROOM_ID names, rather than relying on it also
+  // happening to be part of the fixed teleport network.
+  grantTeleport(playerId, RESPAWN_ROOM_ID)
 
   // Death respawns the player to another room; they can't stay pinned to a party.
   partyStore.onDeath(playerId)
