@@ -389,7 +389,7 @@ export default async function RoomsPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-canvas text-fg-bright">
+    <div className="flex min-h-screen flex-col fill-surface-canvas">
       <WorldToolNav active="rooms" />
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-8">
         <header className="mb-4">

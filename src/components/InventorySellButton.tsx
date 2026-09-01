@@ -48,7 +48,7 @@ export default function InventorySellButton({
   // Buttons fill their cell so they look right whether the card is wide
   // (one row) or narrow (the 2x2 grid below wraps the quantity options).
   const btn =
-    'flex flex-col items-center justify-center w-full px-2 py-1 rounded-md text-fg-bright bg-status-success/80 hover:bg-status-success transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed leading-tight'
+    'flex flex-col items-center justify-center w-full px-2 py-1 rounded-md fill-status-success transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed leading-tight'
 
   const SellOption = ({
     label,

@@ -188,7 +188,7 @@ export default function RoomBox({
                 onClick={() => onAction({ type: 'start_battle', data: { enemySlug: enemy.slug } })}
                 disabled={isInBattle || isLoadingRoom}
                 title={isInBattle ? 'You are already in combat' : `Attack the ${enemy.name}`}
-                className="ml-1 shrink-0 px-3.5 py-1.5 text-xs font-semibold bg-gradient-to-b from-action-attack to-action-attack hover:from-action-attack hover:to-action-attack disabled:opacity-40 disabled:cursor-not-allowed text-fg-bright rounded-md transition-all duration-150 shadow-sm active:scale-[0.97]"
+                className="ml-1 shrink-0 px-3.5 py-1.5 text-xs font-semibold fill-action-attack disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition-all duration-150 shadow-sm active:scale-[0.97]"
               >
                 Attack
               </button>
@@ -207,7 +207,7 @@ export default function RoomBox({
                 onClick={() => handleDirection(dir)}
                 disabled={isPartyMember}
                 title={isPartyMember ? 'Following your party — leave to move freely' : undefined}
-                className="px-4 py-1.5 bg-surface-raised/60 hover:bg-surface-hover/80 disabled:opacity-40 disabled:cursor-not-allowed text-fg-bright/80 hover:text-fg-bright rounded-lg text-sm transition-all duration-200 border border-line-subtle/30 hover:border-line-strong/50"
+                className="px-4 py-1.5 fill-surface-raised hover:bg-surface-hover/80 disabled:opacity-40 disabled:cursor-not-allowed/80 hover:text-fg-bright rounded-lg text-sm transition-all duration-200 border border-line-subtle/30 hover:border-line-strong/50"
               >
                 {dir.charAt(0).toUpperCase() + dir.slice(1)}
               </button>
@@ -282,7 +282,7 @@ export default function RoomBox({
                         onAction({ type: 'teleport', data: { toRoomId: '999' } })
                       }
                     }}
-                    className="px-2 py-1 bg-action-look/50 hover:bg-action-look/70 border border-action-look/50 hover:border-action-look/70 text-fg-bright rounded text-xs transition-all duration-200"
+                    className="px-2 py-1 fill-action-look border border-action-look/50 hover:border-action-look/70 rounded text-xs transition-all duration-200"
                   >
                     The Lobby
                   </button>
@@ -292,7 +292,7 @@ export default function RoomBox({
                         onAction({ type: 'teleport', data: { toRoomId: '001' } })
                       }
                     }}
-                    className="px-2 py-1 bg-action-gather/50 hover:bg-action-gather/70 border border-action-gather/50 hover:border-action-gather/70 text-fg-bright rounded text-xs transition-all duration-200"
+                    className="px-2 py-1 fill-action-gather border border-action-gather/50 hover:border-action-gather/70 rounded text-xs transition-all duration-200"
                   >
                     Grassy Field
                   </button>
@@ -302,7 +302,7 @@ export default function RoomBox({
                         onAction({ type: 'teleport', data: { toRoomId: '000' } })
                       }
                     }}
-                    className="px-2 py-1 bg-surface-hover/70 hover:bg-surface-selected/70 border border-line-strong/50 hover:border-line-strong text-fg-bright rounded text-xs transition-all duration-200"
+                    className="px-2 py-1 fill-surface-hover hover:bg-surface-selected/70 border border-line-strong/50 hover:border-line-strong rounded text-xs transition-all duration-200"
                   >
                     Room Zero
                   </button>
@@ -312,7 +312,7 @@ export default function RoomBox({
                         onAction({ type: 'teleport', data: { toRoomId: '088' } })
                       }
                     }}
-                    className="px-2 py-1 bg-surface-panel/70 hover:bg-surface-panel/90 border border-line-subtle/50 hover:border-resource-gold/70 text-fg-primary rounded text-xs transition-all duration-200"
+                    className="px-2 py-1 fill-surface-panel border border-line-subtle/50 hover:border-resource-gold/70 rounded text-xs transition-all duration-200"
                   >
                     Solar Office
                   </button>

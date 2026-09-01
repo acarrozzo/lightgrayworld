@@ -172,8 +172,8 @@ export default function ItemsTable({
             onClick={() => setTab(t)}
             className={`rounded px-3 py-1 text-sm border transition-colors ${
               tab === t
-                ? 'border-line-strong bg-surface-raised text-fg-bright'
-                : 'border-line-subtle/80 bg-surface-panel text-fg-secondary hover:border-line-subtle hover:text-fg-bright'
+                ? 'border-line-strong fill-surface-raised'
+                : 'border-line-subtle/80 fill-surface-panel text-fg-secondary hover:border-line-subtle hover:'
             }`}
           >
             {t}
@@ -208,7 +208,7 @@ export default function ItemsTable({
         <button
           onClick={resetView}
           disabled={isDefaultView}
-          className="rounded border border-line-subtle/80 bg-surface-panel px-3 py-1 text-sm text-fg-secondary/80 transition-colors hover:border-line-subtle hover:text-fg-bright disabled:cursor-default disabled:opacity-40 disabled:hover:border-line-subtle disabled:hover:text-fg-secondary"
+          className="rounded border border-line-subtle/80 fill-surface-panel px-3 py-1 text-sm text-fg-secondary/80 transition-colors hover:border-line-subtle hover: disabled:cursor-default disabled:opacity-40 disabled:hover:border-line-subtle disabled:hover:text-fg-secondary"
         >
           Reset view
         </button>

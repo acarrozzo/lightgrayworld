@@ -2921,7 +2921,7 @@ export default function GameInterface() {
 
   if (!currentRoom || (isLoadingRoom && isInitialLoad)) {
     return (
-      <div className="min-h-dvh bg-surface-canvas bg-[radial-gradient(ellipse_at_center,color-mix(in_srgb,var(--accent)_4%,transparent)_0%,transparent_70%)] text-fg-bright flex items-center justify-center">
+      <div className="min-h-dvh fill-surface-canvas bg-[radial-gradient(ellipse_at_center,color-mix(in_srgb,var(--accent)_4%,transparent)_0%,transparent_70%)] flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-accent-hover/40 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-fg-muted text-sm tracking-wide">Loading world data...</p>
@@ -2948,7 +2948,7 @@ export default function GameInterface() {
   ]
 
   return (
-    <div className="h-dvh bg-surface-canvas text-fg-bright flex flex-col overflow-hidden">
+    <div className="h-dvh fill-surface-canvas flex flex-col overflow-hidden">
       {isMapModalOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col bg-surface-canvas/95 backdrop-blur-sm"
@@ -3204,13 +3204,13 @@ export default function GameInterface() {
           <button
             type="button"
             onClick={() => setIsFeedPanelOpen(v => !v)}
-            className="hidden lg:flex absolute top-2 right-3 z-20 items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-line-subtle/50 bg-surface-panel/80 hover:bg-surface-raised/80 text-fg-secondary hover:text-fg-bright transition-all duration-200 text-xs font-medium shadow-sm"
+            className="hidden lg:flex absolute top-2 right-3 z-20 items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-line-subtle/50 fill-surface-panel hover:bg-surface-raised/80 text-fg-secondary hover: transition-all duration-200 text-xs font-medium shadow-sm"
             title={isFeedPanelOpen ? 'Close World Feed' : 'Open World Feed'}
             aria-label={isFeedPanelOpen ? 'Close World Feed' : 'Open World Feed'}
           >
             <MessageSquareText size={14} />
             {unreadCount > 0 && (
-              <span className="min-w-[16px] h-[16px] px-1 rounded-full bg-status-error text-[9px] font-semibold text-fg-bright flex items-center justify-center">
+              <span className="min-w-[16px] h-[16px] px-1 rounded-full fill-status-error text-[9px] font-semibold flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -3227,7 +3227,7 @@ export default function GameInterface() {
                       </div>
                       <button
                         onClick={() => window.location.reload()}
-                        className="px-6 py-2 text-md font-medium rounded-lg bg-gradient-to-b from-accent to-accent hover:from-accent-hover hover:to-accent-hover text-fg-bright transition-all duration-200 shadow-md shadow-shadow/40 hover:shadow-lg active:scale-[0.98]"
+                        className="px-6 py-2 text-md font-medium rounded-lg fill-accent transition-all duration-200 shadow-md shadow-shadow/40 hover:shadow-lg active:scale-[0.98]"
                         aria-label="Refresh page"
                         title="Refresh page"
                       >

@@ -20,7 +20,7 @@ const PAGES = [
 
 export default function WorldToolHomePage() {
   return (
-    <div className="min-h-screen bg-surface-canvas text-fg-bright">
+    <div className="min-h-screen fill-surface-canvas">
       <WorldToolNav active="home" />
       <div className="mx-auto max-w-7xl px-4 py-8">
         <header className="mb-6">

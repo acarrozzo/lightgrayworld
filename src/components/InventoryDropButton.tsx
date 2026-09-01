@@ -109,7 +109,7 @@ export default function InventoryDropButton({
           <button
             onClick={handleMainButtonClick}
             disabled={disabled}
-            className="px-1.5 py-0.5 text-xs bg-surface-selected/70 hover:bg-surface-selected rounded-l text-fg-bright disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+            className="px-1.5 py-0.5 text-xs fill-surface-selected rounded-l disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
           >
             Drop
           </button>
@@ -119,7 +119,7 @@ export default function InventoryDropButton({
         <button
           onClick={handleDropdownToggle}
           disabled={disabled}
-          className={`px-1 py-0.5 bg-surface-selected/70 hover:bg-surface-selected text-fg-bright flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`px-1 py-0.5 fill-surface-selected flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
             cannotDrop ? 'rounded' : 'rounded-r border-l border-line-strong/30'
           }`}
           aria-label="More options"

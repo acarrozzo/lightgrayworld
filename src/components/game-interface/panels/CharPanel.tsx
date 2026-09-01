@@ -195,7 +195,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                   )}
                   <button
                     type="button"
-                    className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full text-xs font-semibold text-fg-bright bg-accent/80 hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas transition-all"
+                    className="absolute bottom-2 right-2 px-3 py-1.5 rounded-full text-xs font-semibold fill-accent hover:bg-accent-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas transition-all"
                     onClick={() => setAvatarModalOpen(true)}
                     disabled={!isLoggedIn}
                   >
@@ -215,19 +215,19 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                       label="HP"
                       value={<span className="text-fg-bright">{Math.min(player.hp, player.hpMax)}/{player.hpMax}{player.hp > player.hpMax && <span className="text-resource-gold"> +{player.hp - player.hpMax}</span>}</span>}
                       percentage={hpPercent}
-                      gradient="from-resource-hp via-resource-hp to-resource-hp"
+                      gradient="from-fill-resource-hp via-resource-hp to-resource-hp"
                     />
                     <StatBar
                       label="MP"
                       value={<span className="text-fg-bright">{Math.min(player.mp, player.mpMax)}/{player.mpMax}{player.mp > player.mpMax && <span className="text-resource-gold"> +{player.mp - player.mpMax}</span>}</span>}
                       percentage={mpPercent}
-                      gradient="from-resource-mp via-resource-mp to-accent-hover"
+                      gradient="from-fill-resource-mp via-resource-mp to-resource-mp"
                     />
                     <StatBar
                       label="XP"
                       value={<><span className="text-resource-xp">{xpPct}%</span> <span className="text-fg-secondary">need {xpRemaining}</span></>}
                       percentage={xpPct}
-                      gradient="from-resource-xp via-resource-xp to-resource-xp"
+                      gradient="from-fill-resource-xp via-resource-xp to-resource-xp"
                     />
                   </div>
                 </div>
@@ -257,7 +257,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                       type="button"
                       onClick={() => setStatModalOpen(true)}
                       disabled={!isLoggedIn}
-                      className="px-2.5 py-1 text-xs font-semibold text-fg-bright bg-accent/80 hover:bg-accent-hover disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
+                      className="px-2.5 py-1 text-xs font-semibold fill-accent hover:bg-accent-hover disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
                     >
                       Spend CP ({player.cp ?? 0})
                     </button>

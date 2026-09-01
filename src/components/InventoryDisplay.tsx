@@ -244,7 +244,7 @@ export default function InventoryDisplay({
                 onClearNewItem?.(item.id)
                 onAction?.({ type: 'unequip_item', data: { playerItemId: item.id } })
               }}
-              className="px-3 py-1.5 text-sm font-semibold text-fg-bright bg-status-error/80 hover:bg-status-error rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
+              className="px-3 py-1.5 text-sm font-semibold fill-status-error rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
             >
               <Icon name="arrow-down" size={12} color="current" />
               <span>Unequip</span>
@@ -258,7 +258,7 @@ export default function InventoryDisplay({
               onClearNewItem?.(item.id)
               onAction?.({ type: 'equip_item', data: { playerItemId: item.id } })
             }}
-            className="px-3 py-1.5 text-sm font-semibold text-fg-bright bg-resource-mp/80 hover:bg-resource-mp rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
+            className="px-3 py-1.5 text-sm font-semibold fill-resource-mp rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
           >
             <Icon name="arrow-up" size={12} color="current" />
             <span>Equip</span>
@@ -323,8 +323,8 @@ export default function InventoryDisplay({
               onClick={() => setActiveTab(tab.id)}
               className={`relative px-3 py-1.5 text-xs font-medium rounded transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
                 isActive
-                  ? 'bg-resource-mp/70 hover:bg-resource-mp text-fg-bright border border-resource-mp/50'
-                  : 'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-primary border border-line-subtle/50 hover:border-line-strong/50'
+                  ? 'fill-resource-mp border border-resource-mp/50'
+                  : 'fill-surface-raised border border-line-subtle/50 hover:border-line-strong/50'
               }`}
             >
               <NotificationBadge value={newItemCount} className="absolute -left-1 -top-1 z-10" />
@@ -356,7 +356,7 @@ export default function InventoryDisplay({
                 onClick={() => setWeaponTypeFilter(f)}
                 className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
                   weaponTypeFilter === f
-                    ? 'bg-stat-mag/70 hover:bg-stat-mag text-fg-bright border border-stat-mag/50'
+                    ? 'fill-stat-mag border border-stat-mag/50'
                     : 'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-secondary border border-line-subtle/50 hover:border-line-strong/50'
                 }`}
               >
@@ -371,7 +371,7 @@ export default function InventoryDisplay({
                 onClick={() => setHandednessFilter(f)}
                 className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
                   handednessFilter === f
-                    ? 'bg-resource-gold/70 hover:bg-resource-gold text-fg-bright border border-resource-gold/50'
+                    ? 'fill-resource-gold border border-resource-gold/50'
                     : 'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-secondary border border-line-subtle/50 hover:border-line-strong/50'
                 }`}
               >

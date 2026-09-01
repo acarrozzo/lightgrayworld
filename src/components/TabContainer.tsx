@@ -414,7 +414,7 @@ export default function TabContainer({
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className={`w-full ${buttonPadding} h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 border-line-strong/80 hover:border-line-strong ${
                   dropdownTabs.some(tab => activeTab === tab.id)
-                    ? 'bg-surface-selected/10 hover:bg-surface-selected/20 text-fg-primary'
+                    ? 'fill-surface-selected'
                     : 'bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary'
                 }`}
               >

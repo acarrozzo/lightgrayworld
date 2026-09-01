@@ -98,7 +98,7 @@ export default function EnemiesTable({
           <select
             value={area}
             onChange={(e) => setArea(e.target.value)}
-            className="rounded border border-line-subtle bg-surface-panel px-2 py-1 text-sm text-fg-bright focus:outline-none focus:ring-1 focus:ring-line-strong"
+            className="rounded border border-line-subtle fill-surface-panel px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-line-strong"
           >
             <option value="all">All areas</option>
             {zones.map((z) => (

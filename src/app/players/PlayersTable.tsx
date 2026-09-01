@@ -155,7 +155,7 @@ export default function PlayersTable({ rows }: { rows: PlayerRow[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search name or room…"
-          className="rounded border border-line-subtle bg-surface-panel px-2 py-1 text-sm text-fg-bright placeholder-fg-disabled focus:outline-none focus:ring-1 focus:ring-line-strong"
+          className="rounded border border-line-subtle fill-surface-panel px-2 py-1 text-sm placeholder-fg-disabled focus:outline-none focus:ring-1 focus:ring-line-strong"
         />
         <span className="ml-auto text-xs text-fg-muted">{sorted.length} shown</span>
       </div>

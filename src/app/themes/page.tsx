@@ -11,7 +11,7 @@ export const metadata = {
 
 export default function ThemesPage() {
   return (
-    <div className="min-h-screen bg-surface-canvas text-fg-bright">
+    <div className="min-h-screen fill-surface-canvas">
       <WorldToolNav active="themes" />
       <ThemeReference />
     </div>

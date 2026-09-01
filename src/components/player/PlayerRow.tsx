@@ -133,7 +133,7 @@ export function MiniBars({ stats }: { stats?: PlayerRowStats }) {
       <div className="flex items-center gap-1">
         <div className="h-1 w-10 rounded-full bg-surface-raised/80 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-resource-hp to-resource-hp"
+            className="h-full rounded-full bg-gradient-to-r from-fill-resource-hp to-resource-hp"
             style={{ width: `${pct(stats.hp, stats.hpMax)}%` }}
           />
         </div>

@@ -12,31 +12,26 @@ import { useActionFlyout } from '@/hooks/useActionFlyout'
  */
 export type BasicActionSurface = 'room' | 'explore'
 
+/**
+ * The four persistent actions, each on the role that names it.
+ *
+ * These had drifted onto borrowed roles — Attack wore `status.error`, Search
+ * wore `resource.gold`, Rest wore `status.success`, Look wore `resource.mp` —
+ * which is exactly the coupling the semantic vocabulary exists to prevent: the
+ * Attack button was painted with the colour that means "something failed", and
+ * a theme separating those two would have broken it. `action.attack` and its
+ * siblings exist for precisely these buttons.
+ *
+ * `fill-*` carries the background and its label colour together. They were
+ * previously `bg-gradient-to-b from-X to-X` — a gradient between one colour and
+ * itself, left over from an earlier migration — with a white label hard-coded
+ * on the button element, which put Search at 1.55:1.
+ */
 export const BASIC_ACTIONS = [
-  {
-    action: 'attack',
-    label: 'Attack',
-    className:
-      'bg-gradient-to-b from-status-error to-status-error hover:from-status-error hover:to-status-error shadow-sm shadow-status-error/30',
-  },
-  {
-    action: 'search',
-    label: 'Search',
-    className:
-      'bg-gradient-to-b from-resource-gold to-resource-gold hover:from-resource-gold hover:to-resource-gold shadow-sm shadow-resource-gold/30',
-  },
-  {
-    action: 'rest',
-    label: 'Rest',
-    className:
-      'bg-gradient-to-b from-status-success to-status-success hover:from-status-success hover:to-status-success shadow-sm shadow-status-success/30',
-  },
-  {
-    action: 'look',
-    label: 'Look',
-    className:
-      'bg-gradient-to-b from-resource-mp to-resource-mp hover:from-resource-mp hover:to-resource-mp shadow-sm shadow-resource-mp/30',
-  },
+  { action: 'attack', label: 'Attack', className: 'fill-action-attack shadow-sm shadow-shadow' },
+  { action: 'search', label: 'Search', className: 'fill-action-search shadow-sm shadow-shadow' },
+  { action: 'rest', label: 'Rest', className: 'fill-action-rest shadow-sm shadow-shadow' },
+  { action: 'look', label: 'Look', className: 'fill-action-look shadow-sm shadow-shadow' },
 ] as const
 
 /** Action names owned by these buttons — other surfaces skip their flyouts. */
@@ -92,7 +87,7 @@ export default function BasicActionButtons({
                 onAction(action)
               }}
               disabled={isLoadingRoom}
-              className={`${sizeClassName} ${className} disabled:opacity-40 disabled:cursor-not-allowed text-fg-bright rounded-lg font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
+              className={`${sizeClassName} ${className} disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
             >
               {isLoadingRoom && currentAction === action ? '...' : label}
             </button>

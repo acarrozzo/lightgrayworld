@@ -727,8 +727,8 @@ export default function FeedPanel({
             onClick={() => setIsDisplayOptionsCollapsed((prev) => !prev)}
             className={`ml-auto px-2 py-1.5 rounded-md border transition-colors ${
               !isDisplayOptionsCollapsed
-                ? 'bg-accent text-fg-bright border-accent hover:bg-accent-hover'
-                : 'bg-surface-panel/60 text-fg-secondary border-line-subtle hover:text-fg-bright hover:bg-surface-raised/60'
+                ? 'fill-accent border-accent hover:bg-accent-hover'
+                : 'fill-surface-panel text-fg-secondary border-line-subtle hover: hover:bg-surface-raised/60'
             }`}
             aria-expanded={!isDisplayOptionsCollapsed}
             aria-label="Toggle display options"
@@ -846,8 +846,8 @@ export default function FeedPanel({
                       onClick={() => handleToggleSetting(key)}
                       className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
                         active
-                          ? 'bg-surface-raised text-fg-bright border-accent-hover/70'
-                          : 'bg-surface-panel/60 text-fg-secondary border-line-subtle hover:text-fg-bright'
+                          ? 'fill-surface-raised border-accent-hover/70'
+                          : 'fill-surface-panel text-fg-secondary border-line-subtle hover:'
                       }`}
                     >
                       {label}
@@ -865,21 +865,21 @@ export default function FeedPanel({
                     const { clear } = useWorldFeedStore.getState()
                     clear()
                   }}
-                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-surface-panel/60 text-fg-secondary border-line-subtle hover:text-fg-bright hover:bg-surface-raised"
+                  className="text-[10px] px-2 py-1 rounded-md border transition-colors fill-surface-panel text-fg-secondary border-line-subtle hover: hover:bg-surface-raised"
                 >
                   Clear Feed
                 </button>
                 <button
                   type="button"
                   onClick={scrollToTop}
-                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-surface-panel/60 text-fg-secondary border-line-subtle hover:text-fg-bright hover:bg-surface-raised"
+                  className="text-[10px] px-2 py-1 rounded-md border transition-colors fill-surface-panel text-fg-secondary border-line-subtle hover: hover:bg-surface-raised"
                 >
                   Jump to Top
                 </button>
                 <button
                   type="button"
                   onClick={scrollToBottom}
-                  className="text-[10px] px-2 py-1 rounded-md border transition-colors bg-surface-panel/60 text-fg-secondary border-line-subtle hover:text-fg-bright hover:bg-surface-raised"
+                  className="text-[10px] px-2 py-1 rounded-md border transition-colors fill-surface-panel text-fg-secondary border-line-subtle hover: hover:bg-surface-raised"
                 >
                   Jump to Bottom
                 </button>
@@ -897,13 +897,13 @@ export default function FeedPanel({
           <div className="flex justify-center items-center gap-2 py-3">
             <button
               onClick={handleLoadMore}
-              className="px-4 py-2 text-sm rounded-md border bg-surface-raised text-fg-bright border-line-subtle hover:bg-surface-hover transition-colors"
+              className="px-4 py-2 text-sm rounded-md border fill-surface-raised border-line-subtle hover:bg-surface-hover transition-colors"
             >
               Load previous 50
             </button>
             <button
               onClick={scrollToBottom}
-              className="px-4 py-2 text-sm rounded-md transition-colors bg-accent hover:bg-accent-hover text-fg-bright border-transparent shadow-sm hover:shadow"
+              className="px-4 py-2 text-sm rounded-md transition-colors fill-accent hover:bg-accent-hover border-transparent shadow-sm hover:shadow"
             >
               Jump to bottom
             </button>
@@ -1034,7 +1034,7 @@ export default function FeedPanel({
             type="button"
             onClick={scrollToBottom}
             aria-label="Jump to bottom"
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/95 hover:bg-accent-hover text-fg-bright text-xs font-medium shadow-lg shadow-black/40 border border-accent-hover/60 transition-colors"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full fill-accent hover:bg-accent-hover text-xs font-medium shadow-lg shadow-black/40 border border-accent-hover/60 transition-colors"
           >
             <ChevronDown size={14} className="shrink-0" />
             <span>Jump to bottom</span>
@@ -1049,10 +1049,10 @@ export default function FeedPanel({
 
       <div className="worldFeedFooter p-4 border-t border-line-subtle/60 bg-surface-canvas/95 space-y-3">
         {showUnreadNotice && (
-          <div className="flex items-center justify-between text-xs text-fg-primary bg-surface-panel/80 px-3 py-2 rounded-md border border-line-subtle/80">
+          <div className="flex items-center justify-between text-xs fill-surface-panel px-3 py-2 rounded-md border border-line-subtle/80">
             <button
               onClick={scrollToBottom}
-              className="px-3 py-2 w-full text-xs rounded-md bg-accent text-fg-bright hover:bg-accent-hover transition-colors"
+              className="px-3 py-2 w-full text-xs rounded-md fill-accent hover:bg-accent-hover transition-colors"
             >
               <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`} </span>
               - Jump to latest
@@ -1098,7 +1098,7 @@ export default function FeedPanel({
                 type="button"
                 onClick={() => setInputMode(mode)}
                 className={`px-2 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 ${
-                  isActive ? colors.active : isFilterActive ? 'border-line-strong bg-surface-raised/20 text-fg-primary' : colors.inactive
+                  isActive ? colors.active : isFilterActive ? 'border-line-strong fill-surface-raised' : colors.inactive
                 }`}
               >
                 <IconComponent 
@@ -1127,7 +1127,7 @@ export default function FeedPanel({
                   : 'Shout something...'
               }
               disabled={Boolean(isLoadingRoom)}
-              className={`flex-1 min-w-0 px-3 py-2 bg-surface-panel/80 text-fg-bright font-mono text-sm border rounded focus:outline-none focus:ring-1 transition-all duration-200 disabled:bg-surface-panel/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-fg-muted ${
+              className={`flex-1 min-w-0 px-3 py-2 fill-surface-panel font-mono text-sm border rounded focus:outline-none focus:ring-1 transition-all duration-200 disabled:bg-surface-panel/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-fg-muted ${
                 isOverLimit
                   ? 'border-status-error/60 focus:border-status-error/80 focus:ring-status-error/40'
                   : 'border-line-subtle/60 focus:border-accent/60 focus:ring-line-focus/40'
@@ -1137,7 +1137,7 @@ export default function FeedPanel({
             <button
               type="submit"
               disabled={isSubmitDisabled}
-              className="px-4 py-2 bg-accent/90 hover:bg-accent disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 text-fg-bright font-mono text-sm border border-accent/60 rounded whitespace-nowrap transition-all duration-200 hover:border-accent-hover/80"
+              className="px-4 py-2 fill-accent disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 font-mono text-sm border border-accent/60 rounded whitespace-nowrap transition-all duration-200 hover:border-accent-hover/80"
             >
               Submit
             </button>

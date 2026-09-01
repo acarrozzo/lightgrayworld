@@ -8,7 +8,7 @@ interface StatSortControlProps {
 }
 
 const ACTIVE_CLASSES: Record<SortStat, string> = {
-  none: 'bg-surface-selected/80 hover:bg-surface-selected text-fg-bright border-line-strong/50',
+  none: 'fill-surface-selected border-line-strong/50',
   str: 'bg-status-error/20 hover:bg-status-error/30 text-status-error border-status-error/40',
   dex: 'bg-status-success/20 hover:bg-status-success/30 text-status-success border-status-success/40',
   mag: 'bg-status-info/20 hover:bg-status-info/30 text-status-info border-status-info/40',

@@ -151,7 +151,7 @@ export default function SettingsContent({ onLogout }: SettingsContentProps) {
           <button
             type="button"
             onClick={onLogout}
-            className="rounded-full bg-status-error/80 px-5 py-2 text-sm font-semibold text-fg-bright transition-colors hover:bg-status-error focus:outline-none focus-visible:ring-2 focus-visible:ring-status-error focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
+            className="rounded-full fill-status-error px-5 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-status-error focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
           >
             Logout
           </button>

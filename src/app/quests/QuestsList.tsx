@@ -55,14 +55,14 @@ export default function QuestsList({ groups }: { groups: QuestGroup[] }) {
         <button
           type="button"
           onClick={() => setOpenIds(new Set(allIds))}
-          className="rounded border border-line-subtle bg-surface-raised/60 px-3 py-1 text-xs font-semibold text-fg-primary transition-colors hover:border-line-strong hover:bg-surface-hover/80 hover:text-fg-bright"
+          className="rounded border border-line-subtle fill-surface-raised px-3 py-1 text-xs font-semibold transition-colors hover:border-line-strong hover:bg-surface-hover/80 hover:text-fg-bright"
         >
           Expand all
         </button>
         <button
           type="button"
           onClick={() => setOpenIds(new Set())}
-          className="rounded border border-line-subtle bg-surface-raised/60 px-3 py-1 text-xs font-semibold text-fg-primary transition-colors hover:border-line-strong hover:bg-surface-hover/80 hover:text-fg-bright"
+          className="rounded border border-line-subtle fill-surface-raised px-3 py-1 text-xs font-semibold transition-colors hover:border-line-strong hover:bg-surface-hover/80 hover:text-fg-bright"
         >
           Collapse all
         </button>

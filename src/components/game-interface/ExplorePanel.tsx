@@ -131,7 +131,7 @@ export default function ExplorePanel({
           <button
             type="button"
             onClick={onOpenMapFullscreen}
-            className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded bg-surface-raised px-3 py-1.5 text-sm font-medium text-fg-bright shadow-lg transition-colors hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
+            className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded fill-surface-raised px-3 py-1.5 text-sm font-medium shadow-lg transition-colors hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
             title="Open the map full screen"
           >
             <Maximize2 size={14} aria-hidden="true" />

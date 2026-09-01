@@ -737,13 +737,16 @@ export default function BattlePanel({
               <button
                 onClick={onAttack}
                 disabled={isActing}
-                className={`flex-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed text-fg-bright rounded-lg text-sm font-bold transition-all duration-150 active:scale-[0.97] ${isRanged ? 'bg-gradient-to-b from-status-success to-combat-victory hover:from-status-success hover:to-status-success shadow-sm shadow-status-success/30' : 'bg-gradient-to-b from-status-error to-combat-defeat hover:from-status-error hover:to-status-error shadow-sm shadow-status-error/30'}`}
+                // Ranged strikes are DEX, melee are STR — the same split the combat
+                // formulas use, so the button matches the stat it rolls against
+                // rather than borrowing success/error, which mean something else.
+                className={`flex-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-bold transition-all duration-150 active:scale-[0.97] shadow-sm shadow-shadow ${isRanged ? 'fill-stat-dex' : 'fill-stat-str'}`}
               >
                 {isActing ? '...' : 'Attack'}
               </button>
               <button
                 disabled={isActing}
-                className="flex-1 py-2 bg-status-warning/80 hover:bg-status-warning disabled:opacity-50 disabled:cursor-not-allowed text-fg-bright rounded-lg text-sm font-bold transition-all duration-150"
+                className="flex-1 py-2 fill-status-warning disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-bold transition-all duration-150"
               >
                 Defend
               </button>
@@ -781,7 +784,7 @@ export default function BattlePanel({
                     <button
                       onClick={() => onUseItem(item.id, primaryAction.action)}
                       disabled={isActing}
-                      className={`px-2.5 py-1 rounded text-xs font-semibold text-fg-bright transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 ${primaryAction.className ?? 'bg-accent/80 hover:bg-accent'}`}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 ${primaryAction.className ?? 'fill-accent'}`}
                     >
                       {primaryAction.effect ?? primaryAction.label}
                     </button>

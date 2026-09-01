@@ -311,6 +311,66 @@ export default function ThemeReference() {
         </section>
 
         <section>
+          <h2 className="text-base font-bold text-fg-bright">Readable fills</h2>
+          <p className="mb-3 mt-1 max-w-4xl text-xs leading-relaxed text-fg-muted">
+            Buttons are light-on-dark like the rest of the interface. A role used as{' '}
+            <em>text</em> has to be bright to read on a dark panel, but that same bright colour
+            cannot carry a white label — so every fillable role gets a{' '}
+            <code className="text-fg-secondary">--fill-&lt;role&gt;</code>: the same hue deepened
+            in OKLab until the label reads on it, with hue and saturation intact. A gold button
+            is deep bronze, not pale gold with black text on it.
+          </p>
+          <p className="mb-3 max-w-4xl text-xs leading-relaxed text-fg-muted">
+            Components use <code className="text-fg-secondary">.fill-&lt;role&gt;</code>, which
+            sets the background and its label together, so the two cannot be mismatched. Nothing
+            hard-codes a label colour over a themed fill — that produced white text on gold
+            buttons at under 2:1, and it was invisible to a build that only checked colours
+            against the panel behind them. Below, each pair shows the role as text on a panel
+            and as a button fill.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(['hue-gold', 'mood-treasure', 'action-attack', 'resource-hp', 'status-error', 'world-red-town'] as const).map(
+              (roleName) => (
+                <div key={roleName} className="flex flex-col gap-1">
+                  <span className="font-mono text-[9px] text-fg-disabled">{roleName}</span>
+                  <div className="flex gap-1">
+                    {THEMES.map((t) => {
+                      const vars = themeToCssVars(t)
+                      return (
+                        <div key={t.id} className="flex flex-col gap-px">
+                          {/* as text, on that theme's panel */}
+                          <span
+                            title={`${t.name} · --${roleName} ${vars[`--${roleName}`]}`}
+                            className="flex h-6 w-11 items-center justify-center rounded-sm text-[10px] font-bold"
+                            style={{
+                              background: vars['--surface-panel'],
+                              color: vars[`--${roleName}`],
+                            }}
+                          >
+                            Ab
+                          </span>
+                          {/* as a button fill, with its paired label */}
+                          <span
+                            title={`${t.name} · --fill-${roleName} ${vars[`--fill-${roleName}`]} · label ${vars[`--on-${roleName}`]}`}
+                            className="flex h-6 w-11 items-center justify-center rounded-sm text-[10px] font-bold"
+                            style={{
+                              background: vars[`--fill-${roleName}`],
+                              color: vars[`--on-${roleName}`],
+                            }}
+                          >
+                            Ab
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </section>
+
+        <section>
           <h2 className="text-base font-bold text-fg-bright">Terminal layer</h2>
           <p className="mb-3 mt-1 max-w-4xl text-xs leading-relaxed text-fg-muted">
             Underneath the game roles, each theme carries a complete 16-colour ANSI palette with a

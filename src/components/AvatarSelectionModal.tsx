@@ -189,7 +189,7 @@ export default function AvatarSelectionModal({
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="px-5 py-2 rounded-full text-sm font-semibold text-fg-bright bg-accent hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-5 py-2 rounded-full text-sm font-semibold fill-accent hover:bg-accent-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSaving ? 'Saving...' : 'Save Avatar'}
           </button>

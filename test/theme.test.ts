@@ -22,8 +22,8 @@ import assert from 'node:assert/strict'
 import { getRegionForRoom } from '../src/lib/theme/regions'
 import { legacyRoomColorToken, roomColor, ROOM_COLOR_TOKENS } from '../src/lib/theme/room-colors'
 import { makeTheme } from '../src/lib/theme/factory'
-import { themeToCssVars, resolveRegions } from '../src/lib/theme/tokens'
-import { contrast, deltaE } from '../src/lib/theme/color'
+import { themeToCssVars, resolveRegions, isFillableVar, isFillCompanion } from '../src/lib/theme/tokens'
+import { contrast, deltaE, luminance } from '../src/lib/theme/color'
 import { THEMES, resolveTheme, DEFAULT_THEME_ID } from '../src/lib/theme/themes'
 import { ROLE_CATALOG, DOCUMENTED_VARS } from '../src/lib/theme/role-catalog'
 
@@ -205,8 +205,14 @@ test('the role catalog documents every role a theme defines', () => {
   // Regions and the terminal layer are documented structurally by the World
   // Tool page (a region has fifteen instances of the same seven slots, and the
   // ANSI table is shown whole), so they are not expected in the role catalog.
+  // `--on-*` is derived from another role rather than being one, and is
+  // documented as a concept rather than entry by entry.
   const roleVars = emitted.filter(
-    (v) => !v.startsWith('--world-') && !v.startsWith('--ansi-') && !v.startsWith('--term-')
+    (v) =>
+      !v.startsWith('--world-') &&
+      !v.startsWith('--ansi-') &&
+      !v.startsWith('--term-') &&
+      !isFillCompanion(v)
   )
 
   const undocumented = roleVars.filter((v) => !documented.has(v))
@@ -227,4 +233,161 @@ test('every catalog token matches its CSS variable', () => {
       assert.ok(r.usedFor.length > 0, `${r.token} has no usage`)
     }
   }
+})
+
+test('every filled control is readable, at rest and on hover', () => {
+  for (const theme of THEMES) {
+    const vars = themeToCssVars(theme)
+    for (const [name, value] of Object.entries(vars)) {
+      if (!isFillableVar(name) || isFillCompanion(name)) continue
+      if (!/^#[0-9a-fA-F]{6}$/.test(value)) continue
+
+      const role = name.slice(2)
+      const fill = vars[`--fill-${role}`]
+      const hover = vars[`--hover-${role}`]
+      const label = vars[`--on-${role}`]
+      assert.ok(fill && hover && label, `${theme.id}: ${name} is missing a fill companion`)
+
+      assert.ok(
+        contrast(label, fill) >= 4.5,
+        `${theme.id}: ${label} on --fill-${role} (${fill}) is ${contrast(label, fill).toFixed(2)}:1`
+      )
+      assert.ok(
+        contrast(label, hover) >= 4,
+        `${theme.id}: ${label} on --hover-${role} (${hover}) is ${contrast(label, hover).toFixed(2)}:1`
+      )
+    }
+  }
+})
+
+test('buttons keep light labels; the fill deepens instead of the text flipping', () => {
+  // The whole point of deepening: a gold button is bronze with a white label,
+  // not pale gold with a black one, so it matches every other control.
+  for (const theme of THEMES) {
+    const vars = themeToCssVars(theme)
+    const lightLabelled = ['hue-gold', 'mood-treasure', 'resource-gold', 'action-attack']
+    for (const role of lightLabelled) {
+      assert.equal(
+        vars[`--on-${role}`],
+        theme.ui.fgBright,
+        `${theme.id}: ${role} should carry the bright label`
+      )
+      // And the fill really is darker than the role's own text colour.
+      assert.ok(
+        luminance(vars[`--fill-${role}`]) < luminance(vars[`--${role}`]),
+        `${theme.id}: --fill-${role} is not deeper than --${role}`
+      )
+    }
+  }
+})
+
+test('a role stays bright as text even though its fill is deepened', () => {
+  // The two jobs need different values; deepening must not touch the role.
+  const theme = THEMES[0]
+  const vars = themeToCssVars(theme)
+  assert.equal(vars['--resource-gold'], theme.game.resource.gold)
+  assert.notEqual(vars['--fill-resource-gold'], vars['--resource-gold'])
+})
+
+test('no component pairs a role fill with a hard-coded light text colour', async () => {
+  // The defect this system exists to prevent, asserted against the source.
+  const { readFileSync } = await import('node:fs')
+  const { execSync } = await import('node:child_process')
+
+  const files = execSync("git ls-files 'src/**/*.tsx' 'src/**/*.ts'", { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean)
+    .filter((f) => !f.startsWith('src/lib/theme/'))
+
+  const roleFill = /(?<![\w-:])bg-(action|resource|stat|status|loot|enemy|channel|combat|terrain|mood|hue|accent)[a-z-]*/
+  const fixedText = /(?<![\w-])text-fg-(bright|primary)(?![\w-])/
+  const offenders: string[] = []
+
+  for (const file of files) {
+    readFileSync(file, 'utf8')
+      .split('\n')
+      .forEach((line, i) => {
+        if (roleFill.test(line) && fixedText.test(line)) offenders.push(`${file}:${i + 1}`)
+      })
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `these pair a game-role background with a fixed light label; use fill-<role> instead:\n  ${offenders.join('\n  ')}`
+  )
+})
+
+test('fill companions never collide with each other', () => {
+  // `--fill-<role>-hover` used to be the hover name, which meant the role
+  // `accent-hover` generated the same variable as the hover of `accent` and
+  // silently overwrote it — leaving that button with no hover state.
+  for (const theme of THEMES) {
+    const vars = themeToCssVars(theme)
+    const roles = Object.keys(vars).filter((v) => isFillableVar(v) && !isFillCompanion(v))
+
+    const claimed = new Map<string, string>()
+    for (const role of roles) {
+      for (const prefix of ['--fill-', '--hover-', '--on-']) {
+        const name = `${prefix}${role.slice(2)}`
+        const existing = claimed.get(name)
+        assert.equal(
+          existing,
+          undefined,
+          `${theme.id}: ${role} and ${existing} both generate ${name}`
+        )
+        claimed.set(name, role)
+      }
+    }
+  }
+})
+
+test('every button fill has a hover state somebody can see', () => {
+  for (const theme of THEMES) {
+    const vars = themeToCssVars(theme)
+    for (const name of Object.keys(vars)) {
+      if (!isFillableVar(name) || isFillCompanion(name)) continue
+      if (name.startsWith('--surface-')) continue
+      const role = name.slice(2)
+      const d = deltaE(vars[`--fill-${role}`], vars[`--hover-${role}`])
+      assert.ok(
+        d >= 0.015,
+        `${theme.id}: --fill-${role} and --hover-${role} differ by only ${d.toFixed(3)}`
+      )
+    }
+  }
+})
+
+test('no gradient runs from a colour to itself', async () => {
+  // A `from-X to-X` gradient is always a leftover — the shade migration
+  // collapsed real two-stop gradients onto a single token and left the syntax
+  // behind. It also hides a fill from the paired-fill checks, which is how the
+  // four D-pad action buttons kept a hard-coded white label at 1.55:1 long
+  // after every `bg-<role>` had been converted.
+  const { readFileSync } = await import('node:fs')
+  const { execSync } = await import('node:child_process')
+
+  const files = execSync("git ls-files 'src/**/*.tsx' 'src/**/*.ts'", { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean)
+    .filter((f) => !f.startsWith('src/lib/theme/'))
+
+  const offenders: string[] = []
+  for (const file of files) {
+    readFileSync(file, 'utf8')
+      .split('\n')
+      .forEach((line, i) => {
+        for (const m of line.matchAll(/(?<![\w-:])from-([a-z][a-z0-9-]*(?:\/\d+)?)(?![\w-])/g)) {
+          const stop = m[1]
+          // Include the opacity modifier: `from-x/30 to-x/20` is a genuine
+          // two-stop tint, while `from-x to-x` is a collapsed gradient.
+          // A `hover:to-x` is a variant of the same stop, not a second stop.
+          if (new RegExp(`(?<![\\w-:])to-${stop.replace('/', '\\/')}(?![\\w-])`).test(line)) {
+            offenders.push(`${file}:${i + 1} (from-${stop} to-${stop})`)
+          }
+        }
+      })
+  }
+
+  assert.deepEqual(offenders, [], `degenerate gradients:\n  ${offenders.join('\n  ')}`)
 })

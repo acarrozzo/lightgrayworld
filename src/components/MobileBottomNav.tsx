@@ -147,7 +147,7 @@ export default function MobileBottomNav({
                 {tab.badge && (
                   <span className="ml-auto flex items-center">
                     {typeof tab.badge === 'number' ? (
-                      <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-status-error text-[10px] font-semibold text-fg-bright flex items-center justify-center">
+                      <span className="min-w-[18px] h-[18px] px-1 rounded-full fill-status-error text-[10px] font-semibold flex items-center justify-center">
                         {tab.badge > 99 ? '99+' : tab.badge}
                       </span>
                     ) : (

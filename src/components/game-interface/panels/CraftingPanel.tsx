@@ -218,7 +218,7 @@ export default function CraftingPanel({
               title={atMax ? `You already hold the max number of ${recipe.output.name}` : 'Craft one'}
               className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
                 canCraft && !isBusy
-                  ? 'bg-action-attack/80 hover:bg-action-attack text-fg-bright'
+                  ? 'fill-action-attack'
                   : 'bg-surface-hover/50 text-fg-muted cursor-not-allowed'
               }`}
             >
@@ -232,7 +232,7 @@ export default function CraftingPanel({
               title={maxCraftable >= 2 ? `Craft all ${maxCraftable}` : 'Not enough materials to batch-craft'}
               className={`rounded-md px-3 py-1.5 text-sm font-semibold transition-colors ${
                 canCraft && !isBusy && maxCraftable >= 2
-                  ? 'bg-resource-gold/80 hover:bg-resource-gold text-fg-bright'
+                  ? 'fill-resource-gold'
                   : 'bg-surface-hover/40 text-fg-disabled cursor-not-allowed'
               }`}
             >

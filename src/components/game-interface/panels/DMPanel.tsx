@@ -233,7 +233,7 @@ export default function DMPanel({ onClose, onMessageSent }: DMPanelProps) {
                               {thread.otherUser.username}
                             </span>
                             {thread.unreadCount > 0 && (
-                              <span className="rounded-full bg-stat-mag/90 px-1.5 py-0.5 text-[10px] font-semibold text-fg-bright">
+                              <span className="rounded-full fill-stat-mag px-1.5 py-0.5 text-[10px] font-semibold">
                                 {thread.unreadCount}
                               </span>
                             )}
@@ -278,8 +278,8 @@ export default function DMPanel({ onClose, onMessageSent }: DMPanelProps) {
                             <div
                               className={`rounded-lg px-3 py-2 text-sm ${
                                 isSelf
-                                  ? 'bg-stat-mag/80 text-fg-bright'
-                                  : 'border border-line-subtle/70 bg-surface-raised/70 text-fg-bright'
+                                  ? 'fill-stat-mag'
+                                  : 'border border-line-subtle/70 fill-surface-raised'
                               }`}
                             >
                               <div className="whitespace-pre-wrap break-words">{message.message}</div>
@@ -310,12 +310,12 @@ export default function DMPanel({ onClose, onMessageSent }: DMPanelProps) {
                       rows={2}
                       maxLength={MESSAGE_MAX_LENGTH}
                       placeholder={`Message ${selectedThread.otherUser.username}...`}
-                      className="min-h-[56px] flex-1 resize-y rounded border border-line-subtle bg-surface-canvas/80 px-3 py-2 text-sm text-fg-bright outline-none transition-colors focus:border-stat-mag"
+                      className="min-h-[56px] flex-1 resize-y rounded border border-line-subtle fill-surface-canvas px-3 py-2 text-sm outline-none transition-colors focus:border-stat-mag"
                     />
                     <button
                       type="submit"
                       disabled={isSending || !composer.trim()}
-                      className="inline-flex h-10 items-center gap-1 rounded bg-stat-mag/80 px-3 text-sm font-medium text-fg-bright transition-colors hover:bg-stat-mag disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex h-10 items-center gap-1 rounded fill-stat-mag px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <SendHorizontal size={14} />
                       Send

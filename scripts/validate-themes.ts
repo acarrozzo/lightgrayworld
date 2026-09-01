@@ -22,7 +22,7 @@
  */
 
 import { THEMES } from '../src/lib/theme/themes'
-import { resolveRegions } from '../src/lib/theme/tokens'
+import { isFillableVar, isFillCompanion, resolveRegions, themeToCssVars } from '../src/lib/theme/tokens'
 import { REGIONS } from '../src/lib/theme/regions'
 import { contrast, deltaE, parseHex } from '../src/lib/theme/color'
 import type { Theme } from '../src/lib/theme/types'
@@ -229,10 +229,69 @@ function checkDistinctness(theme: Theme) {
   }
 }
 
+/**
+ * Every filled control must be readable, at rest and on hover.
+ *
+ * This is the check that would have caught white-on-gold buttons. Colours were
+ * previously validated only against the panel behind them, which says nothing
+ * about a colour used as a background with text on top — and that is exactly
+ * where the failure was: 525 of 536 role colours fail 4.5:1 against white, so
+ * any hard-coded light label on a role fill was broken in almost every case.
+ */
+function checkFillPairs(theme: Theme) {
+  const vars = themeToCssVars(theme)
+
+  for (const [name, value] of Object.entries(vars)) {
+    if (!isFillableVar(name) || isFillCompanion(name)) continue
+    if (!/^#[0-9a-fA-F]{6}$/.test(value)) continue
+
+    const role = name.slice(2)
+    const fill = vars[`--fill-${role}`]
+    const hover = vars[`--hover-${role}`]
+    const label = vars[`--on-${role}`]
+
+    if (!fill || !hover || !label) {
+      add(theme.id, 'contrast', `${name} is fillable but is missing its --fill-/--on- companions`)
+      continue
+    }
+
+    const resting = contrast(label, fill)
+    if (resting < 4.5) {
+      add(
+        theme.id,
+        'contrast',
+        `--on-${role} on --fill-${role} is ${resting.toFixed(2)}:1 (need 4.5) — the label does not read on its own button`
+      )
+    }
+
+    const hovered = contrast(label, hover)
+    if (hovered < 4) {
+      add(
+        theme.id,
+        'contrast',
+        `--on-${role} on --hover-${role} is ${hovered.toFixed(2)}:1 (need 4.0) — the label fails while hovered`
+      )
+    }
+
+    // A hover nobody can see is not a hover state. Note the absence of a
+    // `fill !== hover` guard: an earlier version had one, which meant the check
+    // skipped the exact case it existed to catch — a hover that had collapsed
+    // onto its resting value entirely.
+    if (!name.startsWith('--surface-') && deltaE(fill, hover) < 0.012) {
+      add(
+        theme.id,
+        'distinctness',
+        `--fill-${role} (${fill}) and its hover (${hover}) are visually identical — no hover state`
+      )
+    }
+  }
+}
+
 for (const theme of THEMES) {
   checkWellFormed(theme)
   checkContrast(theme)
   checkDistinctness(theme)
+  checkFillPairs(theme)
 }
 
 const byTheme = new Map<string, Problem[]>()

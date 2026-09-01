@@ -125,17 +125,17 @@ function InteractionStates() {
       <button className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-fg-on-accent hover:bg-accent-hover">
         Primary
       </button>
-      <button className="rounded-md border border-line-subtle bg-surface-raised px-3 py-1.5 text-xs text-fg-primary hover:border-line-strong hover:bg-surface-hover">
+      <button className="rounded-md border border-line-subtle fill-surface-raised px-3 py-1.5 text-xs hover:border-line-strong hover:bg-surface-hover">
         Secondary — hover me
       </button>
-      <button className="rounded-md bg-surface-selected px-3 py-1.5 text-xs text-fg-bright">Selected</button>
+      <button className="rounded-md fill-surface-selected px-3 py-1.5 text-xs">Selected</button>
       <button
         disabled
         className="cursor-not-allowed rounded-md bg-surface-disabled px-3 py-1.5 text-xs text-fg-disabled"
       >
         Disabled
       </button>
-      <button className="rounded-md border border-line-subtle bg-surface-raised px-3 py-1.5 text-xs text-fg-primary outline-none ring-2 ring-line-focus">
+      <button className="rounded-md border border-line-subtle fill-surface-raised px-3 py-1.5 text-xs outline-none ring-2 ring-line-focus">
         Focused
       </button>
       <button className="rounded-md bg-action-attack px-3 py-1.5 text-xs font-bold text-fg-on-accent">
@@ -347,7 +347,7 @@ export default function ColorLab() {
   const active = THEMES.find((t) => t.id === themeId) ?? THEMES[0]
 
   return (
-    <div className="h-dvh overflow-y-auto bg-surface-canvas p-4 text-fg-primary sm:p-6">
+    <div className="h-dvh overflow-y-auto fill-surface-canvas p-4 sm:p-6">
       <header className="mb-5">
         <h1 className="text-lg font-bold text-fg-bright">Color Lab</h1>
         <p className="mt-0.5 text-xs text-fg-muted">
@@ -363,7 +363,7 @@ export default function ColorLab() {
               onClick={() => setTheme(t.id)}
               className={`rounded-md border px-2.5 py-1 text-xs transition-colors ${
                 t.id === themeId
-                  ? 'border-accent bg-surface-selected text-fg-bright'
+                  ? 'border-accent fill-surface-selected'
                   : 'border-line-subtle bg-surface-panel text-fg-secondary hover:border-line-strong hover:bg-surface-hover'
               }`}
             >

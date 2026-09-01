@@ -331,7 +331,7 @@ export default function RoomDisplay({
           const isOpenedGoldChest = actionItem.action === 'open gold chest' && goldChestOpened
           const resolvedIcon = isOpenedGoldChest ? 'chest2' : (override?.icon ?? actionItem.icon)
           const resolvedLabel = isOpenedGoldChest ? 'Gold Chest (Opened)' : actionItem.label
-          const openedClassName = 'bg-status-success/70 hover:bg-status-success'
+          const openedClassName = 'fill-status-success'
           const showFlyout = flyoutActionForButton(actionItem.action)
           // Rolling gather action (sand / berries): disable while on cooldown and
           // show a live countdown beneath the button.
@@ -374,14 +374,14 @@ export default function RoomDisplay({
               disabled={isPerformingAction === actionItem.action || isGatherLocked}
               className={`${
                 isViewShop
-                  ? 'px-4 py-3 rounded-lg text-base font-semibold text-fg-bright transition-all flex items-center gap-2 border-2 border-resource-gold/40 shadow-lg shadow-resource-gold/20 hover:shadow-xl hover:border-resource-gold/60'
-                  : 'px-3 py-2 rounded-lg text-sm text-fg-bright transition-all duration-200 flex items-center gap-2 active:scale-[0.97]'
+                  ? 'px-4 py-3 rounded-lg text-base font-semibold transition-all flex items-center gap-2 border-2 border-resource-gold/40 shadow-lg shadow-resource-gold/20 hover:shadow-xl hover:border-resource-gold/60'
+                  : 'px-3 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-2 active:scale-[0.97]'
               } ${
                 isPerformingAction === actionItem.action
-                  ? 'bg-surface-hover cursor-wait'
+                  ? 'fill-surface-hover cursor-wait'
                   : isOpenedGoldChest
                     ? openedClassName
-                    : override?.className || actionItem.className || 'bg-gradient-to-b from-accent to-accent hover:from-accent-hover hover:to-accent-hover shadow-sm'
+                    : override?.className || actionItem.className || 'fill-accent shadow-sm'
               } ${isGatherLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {resolvedIcon && (

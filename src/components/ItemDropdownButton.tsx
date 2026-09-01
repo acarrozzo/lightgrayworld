@@ -89,7 +89,7 @@ export default function ItemDropdownButton({
         <button
           onClick={handleMainButtonClick}
           disabled={disabled}
-          className="px-3 py-1.5 rounded-l-md bg-status-success/70 text-fg-bright text-xs hover:bg-status-success transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-1.5 rounded-l-md fill-status-success text-xs transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span>{item.template.name}</span>
           {item.quantity > 1 && <span className="text-status-success">x{item.quantity}</span>}
@@ -99,7 +99,7 @@ export default function ItemDropdownButton({
         <button
           onClick={handleDropdownToggle}
           disabled={disabled}
-          className="px-2 py-1.5 rounded-r-md bg-status-success/70 text-fg-bright hover:bg-status-success transition-colors border-l border-status-success/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          className="px-2 py-1.5 rounded-r-md fill-status-success transition-colors border-l border-status-success/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           aria-label="More options"
         >
           <ChevronDown size={14} className={isOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />

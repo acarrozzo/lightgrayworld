@@ -37,7 +37,7 @@ function StatBar({ pct, fillClass, label, value, over, className }: {
         className={`h-full rounded-full transition-[width] duration-500 ease-out ${fillClass}`}
         style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
       />
-      <span className="absolute inset-0 flex items-center justify-center text-[10px] leading-none font-semibold text-fg-bright tabular-nums drop-shadow-sm">
+      <span className="absolute inset-0 flex items-center justify-center text-[10px] leading-none font-semibold label-over-fill tabular-nums">
         <span className={over ? 'font-bold' : ''}>{value}</span>
       </span>
     </div>
@@ -81,7 +81,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                   <StatBar
                     className="w-12 shrink-0"
                     pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
-                    fillClass="bg-gradient-to-r from-resource-hp to-resource-hp"
+                    fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp"
                     label="HP"
                     value={`${hp}/${hpMax}`}
                     over={hp > hpMax}
@@ -91,7 +91,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                   <StatBar
                     className="w-12 shrink-0"
                     pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
-                    fillClass="bg-gradient-to-r from-resource-mp to-resource-mp"
+                    fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp"
                     label="MP"
                     value={`${mp}/${mpMax}`}
                     over={mp > mpMax}
@@ -104,7 +104,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                   <StatBar
                     className="w-10 shrink-0"
                     pct={xpPct}
-                    fillClass="bg-gradient-to-r from-resource-xp to-resource-xp"
+                    fillClass="bg-gradient-to-r from-fill-resource-xp to-resource-xp"
                     label="XP"
                     value={`${xpPct}%`}
                   />
@@ -152,7 +152,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                     <StatBar
                       className="w-16"
                       pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
-                      fillClass="bg-gradient-to-r from-resource-hp to-resource-hp"
+                      fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp"
                       label="HP"
                       value={`${hp}/${hpMax}`}
                       over={hp > hpMax}
@@ -162,7 +162,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                     <StatBar
                       className="w-16"
                       pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
-                      fillClass="bg-gradient-to-r from-resource-mp to-resource-mp"
+                      fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp"
                       label="MP"
                       value={`${mp}/${mpMax}`}
                       over={mp > mpMax}
@@ -175,7 +175,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                     <StatBar
                       className="w-14"
                       pct={xpPct}
-                      fillClass="bg-gradient-to-r from-resource-xp to-resource-xp"
+                      fillClass="bg-gradient-to-r from-fill-resource-xp to-resource-xp"
                       label="XP"
                       value={`${xpPct}%`}
                     />
@@ -242,7 +242,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                 {!isConnected && onRefresh && (
                   <button
                     onClick={onRefresh}
-                    className="px-2 py-1 text-xs font-medium rounded-md bg-gradient-to-b from-accent to-accent hover:from-accent-hover hover:to-accent-hover text-fg-bright transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97]"
+                    className="px-2 py-1 text-xs font-medium rounded-md fill-accent transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97]"
                     aria-label="Refresh page"
                     title="Refresh page"
                   >

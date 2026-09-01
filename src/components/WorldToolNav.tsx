@@ -36,8 +36,8 @@ export default function WorldToolNav({ active }: { active: string }) {
                 className={
                   'flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors sm:px-4 ' +
                   (isActive
-                    ? 'border-accent bg-accent text-fg-bright shadow-sm'
-                    : 'border-line-subtle bg-surface-raised/60 text-fg-primary hover:border-line-strong hover:bg-surface-hover/80 hover:text-fg-bright')
+                    ? 'border-accent fill-accent shadow-sm'
+                    : 'border-line-subtle fill-surface-raised hover:border-line-strong hover:bg-surface-hover/80 hover:text-fg-bright')
                 }
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />

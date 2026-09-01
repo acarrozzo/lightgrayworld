@@ -105,7 +105,7 @@ export default function RanksPanel({ onOpenProfile }: RanksPanelProps) {
         <button
           onClick={fetchRanks}
           disabled={isLoading}
-          className="ml-auto flex items-center gap-1.5 rounded-lg border border-line-subtle/60 bg-surface-panel/60 px-2.5 py-1.5 text-xs text-fg-primary transition-colors hover:bg-surface-raised/60 disabled:opacity-50"
+          className="ml-auto flex items-center gap-1.5 rounded-lg border border-line-subtle/60 fill-surface-panel px-2.5 py-1.5 text-xs transition-colors hover:bg-surface-raised/60 disabled:opacity-50"
         >
           <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
           <span>Refresh</span>
@@ -134,7 +134,7 @@ export default function RanksPanel({ onOpenProfile }: RanksPanelProps) {
             <div className="text-xs text-status-error">{error}</div>
             <button
               onClick={fetchRanks}
-              className="mt-2 rounded-lg bg-status-error/90 px-3 py-1 text-xs text-fg-bright hover:bg-status-error"
+              className="mt-2 rounded-lg fill-status-error px-3 py-1 text-xs"
             >
               Retry
             </button>

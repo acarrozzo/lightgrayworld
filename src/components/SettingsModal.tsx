@@ -193,7 +193,7 @@ export default function SettingsModal({
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-full bg-status-error/80 px-5 py-2 text-sm font-semibold text-fg-bright transition-colors hover:bg-status-error focus:outline-none focus-visible:ring-2 focus-visible:ring-status-error focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
+                className="rounded-full fill-status-error px-5 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-status-error focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
               >
                 Logout
               </button>
@@ -213,7 +213,7 @@ export default function SettingsModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded bg-surface-hover px-4 py-1.5 text-sm font-medium text-fg-bright transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
+            className="rounded fill-surface-hover px-4 py-1.5 text-sm font-medium transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
           >
             Close
           </button>

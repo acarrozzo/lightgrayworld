@@ -393,7 +393,7 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                     className={`px-2.5 py-1.5 h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow ${
                       dropdownButtons.some(map => currentMapId === map.id)
-                        ? 'border-1 border-line-strong/80 hover:border-line-strong bg-surface-selected/10 hover:bg-surface-selected/20 text-fg-primary'
+                        ? 'border-1 border-line-strong/80 hover:border-line-strong fill-surface-selected'
                         : 'border-1 border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary'
                     }`}
                   >
@@ -467,7 +467,7 @@ export default function MapContent({ mapSrc, mapTitle, availableMaps, currentMap
         <button
           type="button"
           onClick={handleToggleZoom}
-          className="absolute top-4 right-4 z-10 rounded bg-surface-raised px-3 py-1.5 text-sm font-medium text-fg-bright transition-colors hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas shadow-lg"
+          className="absolute top-4 right-4 z-10 rounded fill-surface-raised px-3 py-1.5 text-sm font-medium transition-colors hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas shadow-lg"
         >
           {isZoomed ? 'Reset View' : 'Zoom In'}
         </button>

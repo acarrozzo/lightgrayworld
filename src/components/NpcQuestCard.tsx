@@ -204,7 +204,7 @@ export default function NpcQuestCard({
                   className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     state === 'in_progress'
                       ? 'bg-surface-hover/60 text-fg-muted cursor-not-allowed'
-                      : 'bg-accent hover:bg-accent-hover text-fg-bright'
+                      : 'fill-accent hover:bg-accent-hover'
                   } ${isLoading ? 'opacity-60 cursor-wait' : ''}`}
                 >
                   <MessageCircle size={16} />
@@ -215,7 +215,7 @@ export default function NpcQuestCard({
                 <button
                   disabled={isLoading}
                   onClick={() => onTalk(progress.questId)}
-                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors bg-accent hover:bg-accent-hover text-fg-bright ${
+                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors fill-accent hover:bg-accent-hover ${
                     isLoading ? 'opacity-60 cursor-wait' : ''
                   }`}
                 >
@@ -228,7 +228,7 @@ export default function NpcQuestCard({
                   <button
                     disabled={isLoading}
                     onClick={() => onTalk(progress.questId)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-fg-primary hover:text-fg-bright bg-surface-hover/60 hover:bg-surface-selected/80 ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:text-fg-bright fill-surface-hover hover:bg-surface-selected/80 ${
                       isLoading ? 'opacity-60 cursor-wait' : ''
                     }`}
                   >
@@ -241,7 +241,7 @@ export default function NpcQuestCard({
                     title={isInProgress ? `Still needed: ${unmetSummary(questDef, { inventory, killList, player })}` : undefined}
                     className={`px-3 py-2 rounded-md text-sm font-semibold transition-colors ${
                       canTurnIn
-                        ? 'bg-status-success/80 hover:bg-status-success text-fg-bright'
+                        ? 'fill-status-success'
                         : 'bg-surface-hover/60 text-fg-muted cursor-not-allowed'
                     } ${isLoading ? 'opacity-60 cursor-wait' : ''}`}
                   >

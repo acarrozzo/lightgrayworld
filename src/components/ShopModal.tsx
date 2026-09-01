@@ -215,7 +215,7 @@ export default function ShopModal({
           disabled={!canAfford || isBuying}
           className={`w-full flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
             canAfford
-              ? 'bg-status-success/80 hover:bg-status-success text-fg-bright disabled:opacity-50 disabled:cursor-not-allowed'
+              ? 'fill-status-success disabled:opacity-50 disabled:cursor-not-allowed'
               : 'bg-surface-hover/50 text-fg-secondary cursor-not-allowed'
           }`}
         >
@@ -267,8 +267,8 @@ export default function ShopModal({
                 onClick={() => setFilter(tab.id)}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
                   isActive
-                    ? 'bg-resource-mp/70 hover:bg-resource-mp text-fg-bright border border-resource-mp/50'
-                    : 'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-primary border border-line-subtle/50 hover:border-line-strong/50'
+                    ? 'fill-resource-mp border border-resource-mp/50'
+                    : 'fill-surface-raised border border-line-subtle/50 hover:border-line-strong/50'
                 }`}
               >
                 <span>{tab.label}</span>
@@ -381,7 +381,7 @@ export default function ShopModal({
             onClick={() => setActiveTab('buy')}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === 'buy'
-                ? 'bg-surface-raised/50 text-fg-bright border-b-2 border-status-success'
+                ? 'fill-surface-raised border-b-2 border-status-success'
                 : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-raised/30'
             }`}
           >
@@ -391,7 +391,7 @@ export default function ShopModal({
             onClick={() => setActiveTab('sell')}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === 'sell'
-                ? 'bg-surface-raised/50 text-fg-bright border-b-2 border-status-success'
+                ? 'fill-surface-raised border-b-2 border-status-success'
                 : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-raised/30'
             }`}
           >
@@ -443,7 +443,7 @@ export default function ShopModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded bg-surface-hover px-4 py-1.5 text-sm font-medium text-fg-bright transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
+            className="rounded fill-surface-hover px-4 py-1.5 text-sm font-medium transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
           >
             Close
           </button>

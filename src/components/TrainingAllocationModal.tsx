@@ -24,8 +24,8 @@ const TRAINING_DESCRIPTIONS: Record<string, string> = {
 }
 
 const TRAINING_COLORS: Record<string, { text: string; activeBorder: string; btnActive: string }> = {
-  pt: { text: 'text-status-warning',  activeBorder: 'border-status-warning',  btnActive: 'border-status-warning bg-surface-raised text-fg-bright hover:bg-status-warning/20'  },
-  mt: { text: 'text-stat-mag',  activeBorder: 'border-stat-mag',  btnActive: 'border-stat-mag bg-surface-raised text-fg-bright hover:bg-stat-mag/20'  },
+  pt: { text: 'text-status-warning',  activeBorder: 'border-status-warning',  btnActive: 'border-status-warning fill-surface-raised hover:bg-status-warning/20'  },
+  mt: { text: 'text-stat-mag',  activeBorder: 'border-stat-mag',  btnActive: 'border-stat-mag fill-surface-raised hover:bg-stat-mag/20'  },
 }
 
 type TrainingStatName = 'pt' | 'mt'
@@ -306,7 +306,7 @@ export default function TrainingAllocationModal({
             type="button"
             onClick={handleConfirm}
             disabled={isSaving || isAllocating || totalPending === 0}
-            className="px-4 py-1.5 rounded text-sm font-medium text-fg-bright bg-surface-hover hover:bg-surface-selected transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 rounded text-sm font-medium fill-surface-hover hover:bg-surface-selected transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isAllocating ? 'Allocating...' : 'Confirm'}
           </button>

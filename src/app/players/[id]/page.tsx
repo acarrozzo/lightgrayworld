@@ -108,7 +108,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   ].filter(Boolean).length
 
   return (
-    <div className="min-h-screen bg-surface-canvas text-fg-bright">
+    <div className="min-h-screen fill-surface-canvas">
       <WorldToolNav active="players" />
       <div className="mx-auto max-w-5xl px-4 py-8">
         <Link href="/players" className="text-sm text-accent-hover hover:underline">

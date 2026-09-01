@@ -106,8 +106,8 @@ export default function ActionModal({
                 data-close-on-action={button.closeOnAction !== false}
                 onClick={() => handleButtonClick(button.direction, button.closeOnAction !== false)}
                 className={button.primary
-                  ? "rounded bg-resource-mp/80 px-6 py-2 text-base font-semibold text-fg-bright transition-colors hover:bg-resource-mp focus:outline-none focus-visible:ring-2 focus-visible:ring-resource-mp focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
-                  : "rounded bg-surface-hover px-4 py-1.5 text-sm font-medium text-fg-bright transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
+                  ? "rounded fill-resource-mp px-6 py-2 text-base font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-resource-mp focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
+                  : "rounded fill-surface-hover px-4 py-1.5 text-sm font-medium transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
                 }
               >
                 {button.label}
@@ -117,7 +117,7 @@ export default function ActionModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded bg-surface-hover px-4 py-1.5 text-sm font-medium text-fg-bright transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
+              className="rounded fill-surface-hover px-4 py-1.5 text-sm font-medium transition-colors hover:bg-surface-selected focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
             >
               Close
             </button>

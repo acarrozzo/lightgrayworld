@@ -28,10 +28,10 @@ const STAT_DESCRIPTIONS: Record<string, string> = {
 }
 
 const STAT_COLORS: Record<string, { text: string; activeBorder: string; btnActive: string }> = {
-  str: { text: 'text-status-error',     activeBorder: 'border-status-error',     btnActive: 'border-status-error bg-surface-raised text-fg-bright hover:bg-status-error/20'     },
-  dex: { text: 'text-status-success', activeBorder: 'border-status-success', btnActive: 'border-status-success bg-surface-raised text-fg-bright hover:bg-status-success/20' },
-  mag: { text: 'text-status-info',     activeBorder: 'border-status-info',     btnActive: 'border-status-info bg-surface-raised text-fg-bright hover:bg-status-info/20'     },
-  def: { text: 'text-resource-gold',   activeBorder: 'border-resource-gold',   btnActive: 'border-resource-gold bg-surface-raised text-fg-bright hover:bg-resource-gold/20'   },
+  str: { text: 'text-status-error',     activeBorder: 'border-status-error',     btnActive: 'border-status-error fill-surface-raised hover:bg-status-error/20'     },
+  dex: { text: 'text-status-success', activeBorder: 'border-status-success', btnActive: 'border-status-success fill-surface-raised hover:bg-status-success/20' },
+  mag: { text: 'text-status-info',     activeBorder: 'border-status-info',     btnActive: 'border-status-info fill-surface-raised hover:bg-status-info/20'     },
+  def: { text: 'text-resource-gold',   activeBorder: 'border-resource-gold',   btnActive: 'border-resource-gold fill-surface-raised hover:bg-resource-gold/20'   },
 }
 
 type StatName = 'str' | 'dex' | 'mag' | 'def'
@@ -364,7 +364,7 @@ export default function StatAllocationModal({
             type="button"
             onClick={handleConfirm}
             disabled={isSaving || isAllocating || totalPending === 0}
-            className="px-4 py-1.5 rounded text-sm font-medium text-fg-bright bg-surface-hover hover:bg-surface-selected transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-4 py-1.5 rounded text-sm font-medium fill-surface-hover hover:bg-surface-selected transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isAllocating ? 'Allocating...' : 'Confirm'}
           </button>

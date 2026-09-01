@@ -7,17 +7,17 @@
 
 export const inputStyles = {
   // Base input styles for dark theme
-  base: "appearance-none relative block w-full px-4 py-2.5 border border-line-subtle placeholder-fg-muted text-fg-bright bg-surface-sunken rounded-lg focus:outline-none focus:ring-2 focus:ring-line-focus/40 focus:border-line-focus transition-all duration-200 text-sm",
+  base: "appearance-none relative block w-full px-4 py-2.5 border border-line-subtle placeholder-fg-muted fill-surface-sunken rounded-lg focus:outline-none focus:ring-2 focus:ring-line-focus/40 focus:border-line-focus transition-all duration-200 text-sm",
 
   // Login form specific styles
   login: {
-    username: "appearance-none relative block w-full px-4 py-2.5 border border-line-subtle placeholder-fg-muted text-fg-bright bg-surface-sunken rounded-lg focus:outline-none focus:ring-2 focus:ring-line-focus/40 focus:border-line-focus focus:z-10 transition-all duration-200 text-sm",
-    email: "appearance-none relative block w-full px-4 py-2.5 border border-line-subtle placeholder-fg-muted text-fg-bright bg-surface-sunken rounded-lg focus:outline-none focus:ring-2 focus:ring-line-focus/40 focus:border-line-focus focus:z-10 transition-all duration-200 text-sm",
-    password: "appearance-none relative block w-full px-4 py-2.5 border border-line-subtle placeholder-fg-muted text-fg-bright bg-surface-sunken rounded-lg focus:outline-none focus:ring-2 focus:ring-line-focus/40 focus:border-line-focus focus:z-10 transition-all duration-200 text-sm"
+    username: "appearance-none relative block w-full px-4 py-2.5 border border-line-subtle placeholder-fg-muted fill-surface-sunken rounded-lg focus:outline-none focus:ring-2 focus:ring-line-focus/40 focus:border-line-focus focus:z-10 transition-all duration-200 text-sm",
+    email: "appearance-none relative block w-full px-4 py-2.5 border border-line-subtle placeholder-fg-muted fill-surface-sunken rounded-lg focus:outline-none focus:ring-2 focus:ring-line-focus/40 focus:border-line-focus focus:z-10 transition-all duration-200 text-sm",
+    password: "appearance-none relative block w-full px-4 py-2.5 border border-line-subtle placeholder-fg-muted fill-surface-sunken rounded-lg focus:outline-none focus:ring-2 focus:ring-line-focus/40 focus:border-line-focus focus:z-10 transition-all duration-200 text-sm"
   },
 
   // Chat input styles
-  chat: "flex-1 px-4 py-2.5 bg-surface-raised/40 text-fg-bright border border-line-subtle/40 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-line-focus/40 focus:border-line-focus text-sm transition-all duration-200",
+  chat: "flex-1 px-4 py-2.5 fill-surface-raised border border-line-subtle/40 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-line-focus/40 focus:border-line-focus text-sm transition-all duration-200",
 
   // Button styles
   button: {

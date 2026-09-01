@@ -9,20 +9,27 @@ import { catppuccinMocha } from './catppuccin-mocha'
 import { everforestDark } from './everforest-dark'
 
 /**
- * Launch themes, in the order they are offered in the selectors.
+ * Launch themes, in the order they are offered everywhere.
+ *
+ * This array is the single ordering authority: the login dots, the Settings
+ * list, the Color Lab, the World Tool matrix columns and the generated
+ * stylesheet all map over it, so changing the order here changes it everywhere
+ * at once.
  *
  * Light Gray RPG is first and is the default for every account that has not
- * chosen otherwise.
+ * chosen otherwise. The rest run warm-and-muted to cool-and-vivid — Gruvbox,
+ * Nord and Everforest are the restrained earthy end nearest the house palette;
+ * Dracula, Solarized, Tokyo Night and Catppuccin are the more saturated ones.
  */
 export const THEMES: Theme[] = [
   lightGray,
-  dracula,
-  nord,
   gruvboxDark,
+  nord,
+  everforestDark,
+  dracula,
   solarizedDark,
   tokyoNight,
   catppuccinMocha,
-  everforestDark,
 ]
 
 export const DEFAULT_THEME_ID = lightGray.id

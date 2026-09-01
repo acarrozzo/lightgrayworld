@@ -442,7 +442,7 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
               className={
                 'rounded-t border-x border-t px-3 py-1.5 text-sm font-semibold transition-colors ' +
                 (activeMap === m
-                  ? 'border-line-subtle bg-surface-raised text-fg-bright'
+                  ? 'border-line-subtle fill-surface-raised'
                   : 'border-transparent text-fg-secondary hover:text-fg-bright')
               }
             >
@@ -642,12 +642,12 @@ function Toolbar({
         value={filters.query}
         onChange={(e) => setFilters({ ...filters, query: e.target.value })}
         placeholder="Search id or name…"
-        className="w-40 rounded border border-line-subtle bg-surface-raised/60 px-2 py-1 text-fg-bright placeholder-fg-muted focus:border-accent focus:outline-none"
+        className="w-40 rounded border border-line-subtle fill-surface-raised px-2 py-1 placeholder-fg-muted focus:border-accent focus:outline-none"
       />
       <select
         value={filters.safe}
         onChange={(e) => setFilters({ ...filters, safe: e.target.value as Filters['safe'] })}
-        className="rounded border border-line-subtle bg-surface-raised/60 px-2 py-1 text-fg-bright focus:border-accent focus:outline-none"
+        className="rounded border border-line-subtle fill-surface-raised px-2 py-1 focus:border-accent focus:outline-none"
       >
         <option value="all">All rooms</option>
         <option value="safe">Safe only</option>
@@ -664,7 +664,7 @@ function Toolbar({
       </span>
       <button
         onClick={onReset}
-        className="rounded border border-line-subtle bg-surface-raised/60 px-2 py-1 font-semibold text-fg-primary transition-colors hover:bg-surface-hover/80 hover:text-fg-bright"
+        className="rounded border border-line-subtle fill-surface-raised px-2 py-1 font-semibold transition-colors hover:bg-surface-hover/80 hover:text-fg-bright"
       >
         Reset view
       </button>
@@ -678,8 +678,8 @@ function ToggleChip({ active, onClick, children }: { active: boolean; onClick: (
       className={
         'rounded border px-2 py-1 font-semibold transition-colors ' +
         (active
-          ? 'border-accent bg-accent text-fg-bright'
-          : 'border-line-subtle bg-surface-raised/60 text-fg-primary hover:bg-surface-hover/80')
+          ? 'border-accent fill-accent'
+          : 'border-line-subtle fill-surface-raised hover:bg-surface-hover/80')
       }
     >
       {children}
@@ -762,7 +762,7 @@ function RoomDetail({
         <button
           onClick={onClose}
           aria-label="Close room details"
-          className="flex items-center gap-1 rounded border border-line-subtle bg-surface-raised/60 px-2 py-1 text-xs font-semibold text-fg-primary transition-colors hover:bg-surface-hover/80 hover:text-fg-bright"
+          className="flex items-center gap-1 rounded border border-line-subtle fill-surface-raised px-2 py-1 text-xs font-semibold transition-colors hover:bg-surface-hover/80 hover:text-fg-bright"
         >
           <X className="h-3.5 w-3.5" />
           Close
@@ -954,7 +954,7 @@ function Badge({ color, text }: { color: string; text: string }) {
 }
 function FeatureChip({ icon: IconC, label }: { icon: typeof Flame; label: string }) {
   return (
-    <span className="flex items-center gap-1 rounded border border-line-subtle bg-surface-raised/60 px-1.5 py-0.5 text-fg-primary">
+    <span className="flex items-center gap-1 rounded border border-line-subtle fill-surface-raised px-1.5 py-0.5">
       <IconC className="h-3 w-3" />
       {label}
     </span>
