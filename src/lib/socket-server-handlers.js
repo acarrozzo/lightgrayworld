@@ -19,6 +19,7 @@ const { loadRoomRoster } = require('./game-engine/services/room-roster-service.j
 const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service.js')
 const { buildGatherCooldowns } = require('./game-engine/services/gather-status.js')
 const { applyRoomQuestTrigger } = require('./game-engine/quest-room-triggers.js')
+const { SPELL_SELECT, projectSpellState, unlockSpellTeacher } = require('./game-engine/services/spell-service.js')
 const { getAllQuestProgress } = require('./game-engine/services/quest-service.js')
 const {
   getRoomStateNote,
@@ -469,6 +470,32 @@ async function announceRoomQuest(socket, player, toRoom) {
   }
 }
 
+/**
+ * Spell teachers met by walking in (the Pajama Shaman's crash course). Same
+ * shape as the arrival quest: the flag is written once, guarded server-side,
+ * and the player hears about it through action:feedback, whose `data.player`
+ * the client already merges into its store — so the spellbook's caps update
+ * without a bespoke event.
+ */
+async function announceSpellTeacher(prisma, socket, player, toRoom) {
+  try {
+    const met = await unlockSpellTeacher(prisma, player.id, toRoom)
+    if (!met) return
+    player.spellTeachers = met.spellTeachers
+    socket.emit('action:feedback', {
+      action: 'spell teacher',
+      message: met.message,
+      outcome: 'success',
+      ts: Date.now(),
+      timestamp: new Date().toISOString(),
+      success: true,
+      data: { roomId: toRoom, player: { spellTeachers: met.spellTeachers } },
+    })
+  } catch (error) {
+    console.error('[Socket] Error unlocking spell teacher:', error)
+  }
+}
+
 // Setup socket handlers
 function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers, userIdToSocketIds = new Map()) {
   const idleDetectionService = createIdleDetectionService({
@@ -865,6 +892,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             forestUndergroundMap: true,
             redTownMap: true,
             redTownSewersMap: true,
+            ...SPELL_SELECT,
           },
         })
 
@@ -900,6 +928,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           forestUndergroundMap: dbPlayer.forestUndergroundMap,
           redTownMap: dbPlayer.redTownMap,
           redTownSewersMap: dbPlayer.redTownSewersMap,
+          // Spell levels and the teachers met, so a reconnect restores the
+          // battle Spells tab and the spellbook's caps along with everything else.
+          ...projectSpellState(dbPlayer),
           socketId: socket.id,
           lastActive: new Date(),
         }
@@ -1234,6 +1265,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             persisted,
             applyMapUnlocks(prisma, player, toRoom),
             announceRoomQuest(socket, player, toRoom),
+            announceSpellTeacher(prisma, socket, player, toRoom),
           ])
 
           // Pull any party members along with the leader.
@@ -1541,6 +1573,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               persisted,
               applyMapUnlocks(prisma, player, toRoomId),
               announceRoomQuest(socket, player, toRoomId),
+              announceSpellTeacher(prisma, socket, player, toRoomId),
             ])
 
             if (partyStore.isLeader(player.id)) {

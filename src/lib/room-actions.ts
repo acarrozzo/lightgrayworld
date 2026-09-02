@@ -86,6 +86,10 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     // gladius, battle axe, warhammer, claymore, long bow, arrows, pajamas and
     // slippers. The button pointed at nothing and returned "Unknown action type".
     { action: 'open crafting', label: 'Open Crafting', icon: 'fire', className: 'fill-action-craft' },
+    // The shaman's spell lessons. A client-side panel toggle like "open
+    // crafting": the spellbook itself is global (learning never required
+    // standing here in the original either), this is the door he points at.
+    { action: 'open spellbook', label: 'Spells', icon: 'magicmissile', className: 'fill-mood-arcane' },
   ],
   '014': [
     { action: 'shovel dirt', label: 'Shovel Dirt', icon: 'shovel', className: 'fill-terrain-dirt' },

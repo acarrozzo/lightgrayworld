@@ -35,6 +35,10 @@ export interface AuthUser {
   clicks?: number
   deaths?: number
   chest1?: boolean
+  /** Spell levels keyed by User column (`magicMissile`, `fireball`, ...). */
+  spells?: Record<string, number>
+  /** Spell teachers met, keyed by User flag column (`pajamaShamanFlag`, ...). */
+  spellTeachers?: Record<string, boolean>
 }
 
 interface TokenPayload {

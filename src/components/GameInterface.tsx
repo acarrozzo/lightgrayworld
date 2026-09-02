@@ -18,6 +18,7 @@ import ExplorePanel, { type ExploreSubView } from './game-interface/ExplorePanel
 import { type BasicActionSurface } from './BasicActionButtons'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
+import SpellbookModal from './SpellbookModal'
 import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { resolveItemIcon } from '@/lib/item-actions'
@@ -123,6 +124,9 @@ export default function GameInterface() {
   // Desktop world feed starts open; the toggle only affects this session.
   const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(true)
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
+  // The spellbook: global (learning never needed a teacher present in the
+  // original either), opened from the Character panel or the shaman's tent.
+  const [isSpellbookOpen, setSpellbookOpen] = useState(false)
   const [shopModalData, setShopModalData] = useState<{
     shopName?: string
     shopItems: Array<{ id: string; slug: string; name: string; description: string; value: number; type: string }>
@@ -879,6 +883,14 @@ export default function GameInterface() {
     // The actual craft (type: 'craft') is dispatched from within the panel.
     if (normalizedAction === 'open crafting') {
       setIsCraftingOpen((prev) => !prev)
+      return
+    }
+
+    // "Spells" at the Pajama Shaman's tent is the same client-side toggle: the
+    // book itself lives in the store, learning goes over HTTP, casting is a
+    // normal game action dispatched from inside it.
+    if (normalizedAction === 'open spellbook') {
+      setSpellbookOpen(true)
       return
     }
 
@@ -2166,7 +2178,16 @@ export default function GameInterface() {
           enemyAction: payload.enemyAction ?? null,
           ammo: payload.ammo ?? null,
           actionMeta: payload.actionMeta ?? null,
+          spell: payload.spell ?? null,
+          immuneToMagic: payload.immuneToMagic ?? false,
+          playerMp: payload.playerMp,
+          playerMpMax: payload.playerMpMax,
         })
+      } else if (typeof payload.playerMp === 'number') {
+        // A one-turn kill or a fatal counter after a cast: the terminal handler
+        // owns the battle state, but the MP the spell spent is still real.
+        const { player: currentPlayer, setPlayer: sp } = useGameStore.getState()
+        if (currentPlayer) sp({ ...currentPlayer, mp: payload.playerMp })
       }
       appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-turn' })
     })
@@ -2189,6 +2210,8 @@ export default function GameInterface() {
             ...currentPlayer,
             xp: (currentPlayer.xp ?? 0) + payload.xpAwarded,
             currency: (currentPlayer.currency ?? 0) + payload.goldAwarded,
+            // A spell that landed the final blow still spent its MP.
+            ...(typeof payload.playerMp === 'number' ? { mp: payload.playerMp } : {}),
           })
         }
         appendWorldFeed({
@@ -2225,6 +2248,8 @@ export default function GameInterface() {
           multiplayerBonus: lt?.multiplayerBonus ?? false,
           bonusPercent: lt?.bonusPercent ?? 0,
           enemyAction: lt?.enemyAction ?? null,
+          spell: lt?.spell ?? null,
+          immuneToMagic: lt?.immuneToMagic ?? false,
         })
         updateBattleTurn(buildUpdate(0))
       }, 0)
@@ -2272,6 +2297,8 @@ export default function GameInterface() {
           multiplayerBonus: lt?.multiplayerBonus ?? false,
           bonusPercent: lt?.bonusPercent ?? 0,
           enemyAction: lt?.enemyAction ?? null,
+          spell: lt?.spell ?? null,
+          immuneToMagic: lt?.immuneToMagic ?? false,
         })
       }, 0)
       scheduleBattleTimer(applyDefeat, 900)
@@ -2862,6 +2889,7 @@ export default function GameInterface() {
             player={player}
             onAction={handleAction}
             onSwitchToInventory={handleSwitchToInventory}
+            onOpenSpellbook={() => setSpellbookOpen(true)}
             onClose={goToExplore}
           />
         )
@@ -3048,6 +3076,21 @@ export default function GameInterface() {
         player={player}
         onClose={() => setStatModalOpen(false)}
         onStatAllocated={(updatedPlayer) => setPlayer(updatedPlayer)}
+      />
+      <SpellbookModal
+        isOpen={isSpellbookOpen}
+        player={player}
+        inBattle={battle.isInBattle}
+        onClose={() => setSpellbookOpen(false)}
+        onLearned={(updatedPlayer) => {
+          // Merge: the server's row wins, client-only fields (buffs, presence) survive.
+          const current = useGameStore.getState().player
+          setPlayer(current ? { ...current, ...updatedPlayer } : updatedPlayer)
+        }}
+        onCast={(spellId) => {
+          setSpellbookOpen(false)
+          handleAction({ type: 'cast_spell', data: { spellId } })
+        }}
       />
       <ShopModal
         isOpen={isShopModalOpen}
@@ -3307,6 +3350,8 @@ export default function GameInterface() {
                         onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
                         onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
                         onUseItem={(itemId, action) => socketHandlers.sendGameAction({ type: 'use_item', data: { playerItemId: itemId, action } })}
+                        onCastSpell={(spellId) => socketHandlers.sendGameAction({ type: 'cast_spell', data: { spellId } })}
+                        player={player}
                         onDismissResult={() => {
                           clearBattleResult()
                           const nextHostile = roomEnemies.find((e) => e.isAggressive)

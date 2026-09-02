@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { COMMON_ERRORS } from '@/lib/error-handling'
+import { SPELL_SELECT, projectSpellState } from '@/lib/game-engine/services/spell-service'
 
 const VALID_STATS = ['str', 'dex', 'mag', 'def'] as const
 type StatName = typeof VALID_STATS[number]
@@ -37,6 +38,7 @@ const selectPlayerFields = {
   uIconColor: true,
   clicks: true,
   deaths: true,
+  ...SPELL_SELECT,
 } as const
 
 export const PUT = withAuth(async (request: AuthenticatedRequest) => {
@@ -152,7 +154,7 @@ export const PUT = withAuth(async (request: AuthenticatedRequest) => {
       select: selectPlayerFields,
     })
 
-    return NextResponse.json({ player: updatedPlayer })
+    return NextResponse.json({ player: { ...updatedPlayer, ...projectSpellState(updatedPlayer) } })
   } catch (error) {
     console.error('Failed to update stats:', error)
     return NextResponse.json(

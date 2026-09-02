@@ -13,6 +13,7 @@ const PAGES = [
   { href: '/enemies', label: 'Bestiary', description: 'Every enemy, with their stats and drops.' },
   { href: '/items', label: 'Item Compendium', description: 'Every item, with their stats, value, and properties.' },
   { href: '/quests', label: 'Quests', description: 'Every quest, grouped by giver, with objectives, requirements, and rewards.' },
+  { href: '/spells', label: 'Spells', description: 'Every spell, by school, with its formula, learning and casting costs, and the teachers that unlock each level.' },
   { href: '/rooms', label: 'World Atlas', description: 'Compass-oriented maps of every region — Grassy Field, Forest and Red Town, each with the areas below it — showing enemies, spawn logic, NPCs, loot, actions, gates, and secrets.' },
   { href: '/players', label: 'Players', description: 'Every player, with level, vitals, equipment, kills, quests, and progression. Sort and drill into full profiles.' },
   { href: '/themes', label: 'Terminal Themes', description: 'Every semantic colour role — actions, resources, stats, combat, feed channels, room mood and world regions — shown across every terminal theme, with what each role means and where it is used.' },

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { COMMON_ERRORS } from '@/lib/error-handling'
 import { recomputeStatMods } from '@/lib/game-engine/services/equipment-service'
+import { projectSpellState } from '@/lib/game-engine/services/spell-service'
 
 async function handleGetMe(request: AuthenticatedRequest) {
   try {
@@ -58,6 +59,7 @@ async function handleGetMe(request: AuthenticatedRequest) {
       clicks: freshUser.clicks,
       deaths: freshUser.deaths,
       chest1: freshUser.chest1,
+      ...projectSpellState(freshUser),
     }
 
     return NextResponse.json({

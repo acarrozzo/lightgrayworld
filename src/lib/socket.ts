@@ -56,7 +56,7 @@ export interface BattleEnemyAction {
 }
 
 export interface BattleSupportActionMeta {
-  kind: 'use_item' | 'equip_item' | 'unequip_item'
+  kind: 'use_item' | 'equip_item' | 'unequip_item' | 'cast_spell'
   itemSlug: string
   itemName: string
   itemMetadata: { icon?: string } | null
@@ -64,9 +64,31 @@ export interface BattleSupportActionMeta {
   effectText: string | null
 }
 
+/**
+ * A spell the player struck with this turn. Server-declared, like enemy
+ * specials: the client never infers a cast from the numbers. `text` is the
+ * roll breakdown behind `amount`; both are empty when the enemy is immune to
+ * magic and nothing was rolled (or charged).
+ */
+export interface BattleSpellCast {
+  id: string
+  name: string
+  level: number
+  cost: number
+  icon: string
+  attackIcon: string
+  hue: string
+  amount: number
+  rolls: number[]
+  text: string | null
+}
+
 export interface BattleTurnPayload extends BattleSnapshot {
   playerHp: number
   playerHpMax: number
+  /** Present on a spell turn: the MP left after paying for the cast. */
+  playerMp?: number
+  playerMpMax?: number
   playerDealtDamage: number
   enemyDealtDamage: number
   playerRaw: number | null
@@ -89,6 +111,8 @@ export interface BattleTurnPayload extends BattleSnapshot {
    */
   ammo?: { slug: string; remaining: number | null } | null
   actionMeta?: BattleSupportActionMeta | null
+  spell?: BattleSpellCast | null
+  immuneToMagic?: boolean
   message: string
 }
 
@@ -108,6 +132,8 @@ export interface BattleLastTurn {
   weaponCategory?: 'MELEE' | 'RANGED' | null
   enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
   enemyAction?: BattleEnemyAction | null
+  spell?: BattleSpellCast | null
+  immuneToMagic?: boolean
 }
 
 export interface BattleSummary {
@@ -154,6 +180,9 @@ export interface BattleVictoryPayload {
   goldAwarded: number
   droppedItems: string[]
   message: string
+  /** Present when the finishing blow was a spell: the MP left after paying for it. */
+  playerMp?: number
+  playerMpMax?: number
   lastTurnResult?: Record<string, any>
   summary?: BattleSummary
   // Multi-enemy waves: the enemies still present after this kill, and whether the

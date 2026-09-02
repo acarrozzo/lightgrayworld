@@ -1,9 +1,10 @@
 'use client'
 
-import { BattleState, BattleResult, InventoryItem } from '@/lib/game-state'
+import { BattleState, BattleResult, BattleSpellCast, InventoryItem, Player } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 import { useEffect, useRef, useState } from 'react'
 import { getItemActions, resolveItemIcon } from '@/lib/item-actions'
+import { getCastableSpells, spellTone } from '@/lib/spellbook'
 
 type BattleTab = 'actions' | 'spells' | 'items'
 
@@ -13,6 +14,7 @@ interface BattlePanelProps {
   onAttack: () => void
   onFlee: () => void
   onUseItem: (itemId: string, action: string) => void
+  onCastSpell: (spellId: string) => void
   onDismissResult: () => void
   isActing: boolean
   playerName: string
@@ -23,6 +25,8 @@ interface BattlePanelProps {
   weaponName: string | null
   weaponCategory: 'MELEE' | 'RANGED' | null
   inventory: InventoryItem[]
+  /** Spell levels, teachers and MAG — everything the Spells tab derives from. */
+  player: Player
 }
 
 function HpBar({ current, max, color, rtl = false, initialPct }: { current: number; max: number; color: string; rtl?: boolean; initialPct?: number }) {
@@ -112,11 +116,18 @@ function EnemyIcon({ iconName, isDead }: { iconName: string; isDead: boolean }) 
   )
 }
 
-function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking, isRanged = false }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean; isPlayerAttacking: boolean; isRanged?: boolean }) {
+function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking, isRanged = false, spell = null }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean; isPlayerAttacking: boolean; isRanged?: boolean; spell?: BattleSpellCast | null }) {
   const playerArrowColor = isRanged ? 'text-combat-heal/60' : 'text-combat-damage/60'
   return (
     <div className="flex-shrink-0 flex items-center gap-1">
-      {isPlayerAttacking && (
+      {isPlayerAttacking && spell ? (
+        // The original drew a casting hand where the weapon goes, and the
+        // spell's own strike icon in the spell's colour where the arrow goes.
+        <>
+          <Icon name="spellhand" size={76} className="text-fg-bright opacity-75" />
+          <Icon name={spell.attackIcon} size={32} className={`${spellTone(spell.hue).text} opacity-80`} />
+        </>
+      ) : isPlayerAttacking && (
         <>
           <Icon name={weaponIconName ?? 'equipment-fists'} size={76} className="text-fg-bright opacity-75" />
           <Icon name="attack" size={28} className={playerArrowColor} />
@@ -209,6 +220,7 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
   const lt = result.lastTurn
   const wasAdvantageTurn = lt?.playerRaw === null
   const lastBlowRanged = lt?.weaponCategory === 'RANGED'
+  const lastBlowSpell = lt?.spell ?? null
 
   if (isWin) {
     return (
@@ -243,21 +255,21 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
               style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-victory) 12%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 7%, var(--surface-canvas)))' }}
             >
               {!wasAdvantageTurn && (
-                <Icon name={weaponIconName ?? 'equipment-fists'} size={44} className="text-fg-bright opacity-80 flex-shrink-0" />
+                <Icon name={lastBlowSpell ? lastBlowSpell.attackIcon : (weaponIconName ?? 'equipment-fists')} size={44} className={`${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : 'text-fg-bright'} opacity-80 flex-shrink-0`} />
               )}
               <div className="min-w-0">
                 {wasAdvantageTurn ? (
                   <p className="text-[11px] text-fg-muted italic">Ambush entry</p>
                 ) : (
                   <>
-                    <p className="text-[10px] text-fg-muted leading-tight truncate">Final blow · <span className={`font-semibold ${lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{weaponName ?? 'fists'}</span></p>
+                    <p className="text-[10px] text-fg-muted leading-tight truncate">Final blow · <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{lastBlowSpell ? lastBlowSpell.name : (weaponName ?? 'fists')}</span></p>
                     <p
-                      className={`text-xl font-black leading-tight ${lastBlowRanged ? 'text-combat-heal' : 'text-combat-damage'}`}
-                      style={{ textShadow: lastBlowRanged ? '0 0 10px color-mix(in srgb, var(--combat-victory) 38%, transparent)' : '0 0 10px color-mix(in srgb, var(--combat-damage) 38%, transparent)' }}
+                      className={`text-xl font-black leading-tight ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-heal' : 'text-combat-damage'}`}
+                      style={{ textShadow: lastBlowSpell ? `0 0 10px color-mix(in srgb, ${spellTone(lastBlowSpell.hue).glow} 38%, transparent)` : lastBlowRanged ? '0 0 10px color-mix(in srgb, var(--combat-victory) 38%, transparent)' : '0 0 10px color-mix(in srgb, var(--combat-damage) 38%, transparent)' }}
                     >
                       {lt.playerDealtDamage}
                     </p>
-                    <p className="text-[9px] text-fg-disabled leading-tight">{lt.playerRaw} − {lt.enemyBlocked} = {lt.playerDealtDamage}</p>
+                    <p className="text-[9px] text-fg-disabled leading-tight">{lastBlowSpell?.text ? `[ ${lastBlowSpell.text} ]` : lt.playerRaw} − {lt.enemyBlocked} = {lt.playerDealtDamage}</p>
                   </>
                 )}
               </div>
@@ -361,15 +373,15 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
             style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-victory) 12%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 7%, var(--surface-canvas)))' }}
           >
             {!wasAdvantageTurn && (
-              <Icon name={weaponIconName ?? 'equipment-fists'} size={44} className="text-fg-bright opacity-80 flex-shrink-0" />
+              <Icon name={lastBlowSpell ? lastBlowSpell.attackIcon : (weaponIconName ?? 'equipment-fists')} size={44} className={`${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : 'text-fg-bright'} opacity-80 flex-shrink-0`} />
             )}
             <div className="min-w-0">
               {wasAdvantageTurn ? (
                 <p className="text-[11px] text-fg-muted italic">Ambush entry</p>
               ) : (
                 <>
-                  <p className="text-[10px] text-fg-muted leading-tight truncate">Your strike · <span className={`font-semibold ${lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{weaponName ?? 'fists'}</span></p>
-                  <p className={`text-xl font-black leading-tight ${lastBlowRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{lt.playerDealtDamage}</p>
+                  <p className="text-[10px] text-fg-muted leading-tight truncate">Your strike · <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{lastBlowSpell ? lastBlowSpell.name : (weaponName ?? 'fists')}</span></p>
+                  <p className={`text-xl font-black leading-tight ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{lt.playerDealtDamage}</p>
                 </>
               )}
             </div>
@@ -441,6 +453,7 @@ export default function BattlePanel({
   onAttack,
   onFlee,
   onUseItem,
+  onCastSpell,
   onDismissResult,
   isActing,
   playerName,
@@ -451,12 +464,17 @@ export default function BattlePanel({
   weaponName,
   weaponCategory,
   inventory,
+  player,
 }: BattlePanelProps) {
   const [activeTab, setActiveTab] = useState<BattleTab>('actions')
 
   const isRanged = weaponCategory === 'RANGED'
   const hasPlayerFormula = battle.playerRaw !== null
   const supportAction = battle.actionMeta
+  // The spell the last strike was, if it was one; its tone paints that side of the row.
+  const spellCast = battle.spell
+  const spellCastTone = spellCast ? spellTone(spellCast.hue) : null
+  const castableSpells = getCastableSpells(player)
   const supportIconName = supportAction
     ? resolveItemIcon(supportAction.itemMetadata ?? null, supportAction.itemSlug)
     : null
@@ -527,8 +545,9 @@ export default function BattlePanel({
           </div>
           <div className="flex items-center gap-3 pt-0.5">
             <div className="flex flex-col items-center">
-              <span className={`text-[9px] uppercase tracking-widest leading-none ${isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{isRanged ? 'DEX' : 'STR'}</span>
-              <span className={`text-sm font-black leading-none ${isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{battle.playerStrMax ?? '—'}</span>
+              {/* The stat the last strike rolled: MAG for a spell, else the weapon's. */}
+              <span className={`text-[9px] uppercase tracking-widest leading-none ${spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{spellCast ? 'MAG' : isRanged ? 'DEX' : 'STR'}</span>
+              <span className={`text-sm font-black leading-none ${spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{battle.playerStrMax ?? '—'}</span>
             </div>
             <div className="w-px h-6 bg-surface-hover/60" />
             <div className="flex flex-col items-center">
@@ -592,10 +611,12 @@ export default function BattlePanel({
               <p className="text-[10px] text-fg-disabled uppercase tracking-widest">
                 {supportAction.kind === 'equip_item' ? 'Equipped'
                   : supportAction.kind === 'unequip_item' ? 'Unequipped'
+                  : supportAction.kind === 'cast_spell' ? 'Cast'
                   : 'Used'}
               </p>
               <p className="text-xs text-fg-secondary">
-                You {supportAction.actionVerb} your <span className="text-accent-hover font-semibold">{supportAction.itemName}</span>
+                {supportAction.kind === 'cast_spell' ? 'You cast ' : `You ${supportAction.actionVerb} your `}
+                <span className="text-accent-hover font-semibold">{supportAction.itemName}</span>
               </p>
               <div className="flex items-center gap-2 mt-0.5">
                 {supportIconName && (
@@ -611,6 +632,35 @@ export default function BattlePanel({
                 )}
               </div>
             </>
+          ) : spellCast && spellCastTone ? (
+            battle.immuneToMagic ? (
+              <>
+                <p className="text-[10px] text-fg-disabled italic">Immune to magic</p>
+                <p className="text-xs text-fg-secondary">
+                  Your <span className={`font-semibold ${spellCastTone.text}`}>{spellCast.name}</span> fizzles — the {battle.enemyName} shrugs off magic!
+                </p>
+                <p className="text-2xl font-black text-fg-muted leading-none tabular-nums italic">
+                  IMMUNE
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[10px] text-fg-disabled tabular-nums">
+                  [ {spellCast.text} ] &minus; {battle.enemyBlocked} = {battle.lastPlayerDamage ?? 0}
+                  <span className="ml-1">(mag {battle.playerStrMax})</span>
+                </p>
+                <p className="text-xs text-fg-secondary">
+                  You cast <span className={`font-semibold ${spellCastTone.text}`}>{spellCast.name}</span>
+                  <span className="ml-1 text-resource-mp tabular-nums">(−{spellCast.cost} MP)</span>
+                </p>
+                <p
+                  className={`text-4xl font-black leading-none tabular-nums ${spellCastTone.text}`}
+                  style={{ textShadow: `0 0 16px color-mix(in srgb, ${spellCastTone.glow} 38%, transparent)` }}
+                >
+                  {battle.lastPlayerDamage ?? 0}
+                </p>
+              </>
+            )
           ) : battle.missedFlyingMelee ? (
             <>
               <p className="text-[10px] text-fg-disabled italic">Out of reach</p>
@@ -651,7 +701,7 @@ export default function BattlePanel({
           )}
         </div>
 
-        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} isPlayerAttacking={hasPlayerFormula} isRanged={isRanged} />
+        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} isPlayerAttacking={hasPlayerFormula} isRanged={isRanged} spell={spellCast} />
 
         {/* Enemy side */}
         <div className="flex-1 flex flex-col items-end gap-1 min-w-0">
@@ -762,10 +812,43 @@ export default function BattlePanel({
           </div>
         )}
 
-        {/* Spells tab */}
+        {/* Spells tab — learned spells the engine can cast, from the shared registry. */}
         {activeTab === 'spells' && (
-          <div className="px-4 pb-4 pt-4 flex items-center justify-center">
-            <p className="text-xs text-fg-disabled italic">No spells learned yet.</p>
+          <div className="px-4 pb-3 pt-2 flex flex-col gap-1.5 max-h-36 overflow-y-auto">
+            {castableSpells.length === 0 ? (
+              <p className="text-xs text-fg-disabled italic py-2">No spells learned yet.</p>
+            ) : (
+              castableSpells.map((entry) => {
+                const tone = spellTone(entry.def.hue)
+                const reason =
+                  entry.def.kind === 'heal' && battle.playerHp >= battle.playerHpMax ? 'Full HP'
+                  : playerMp < entry.castCost ? 'Not enough MP'
+                  : null
+                return (
+                  <div key={entry.def.id} className="flex items-center gap-2">
+                    <button
+                      onClick={() => onCastSpell(entry.def.id)}
+                      disabled={isActing || Boolean(reason)}
+                      title={reason ?? `Cast ${entry.def.name}`}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 ${tone.fill}`}
+                    >
+                      Cast
+                    </button>
+                    <Icon name={entry.def.icon} size={20} className={`${tone.text} opacity-80 flex-shrink-0`} />
+                    <span className="flex-1 text-xs text-fg-primary truncate">
+                      {entry.def.name}
+                      <span className="text-fg-muted ml-1">lvl {entry.level}</span>
+                      {entry.preview && (
+                        <span className="text-fg-disabled ml-1 tabular-nums">{entry.preview.min}–{entry.preview.max}</span>
+                      )}
+                    </span>
+                    <span className={`text-xs tabular-nums flex-shrink-0 ${reason === 'Not enough MP' ? 'text-status-error' : 'text-resource-mp'}`}>
+                      {entry.castCost} MP
+                    </span>
+                  </div>
+                )
+              })
+            )}
           </div>
         )}
 

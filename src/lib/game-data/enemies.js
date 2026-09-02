@@ -366,6 +366,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: true,
+    isMagicImmune: true,
     damageType: 'MELEE',
     xpReward: 10,
     goldMin: 100,
@@ -846,6 +847,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isMagicImmune: true,
     damageType: 'MELEE',
     xpReward: 30,
     goldMin: 20,
@@ -1602,6 +1604,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isMagicImmune: true,
     damageType: 'MAGIC',
     xpReward: 150,
     goldMin: 50,
@@ -2569,7 +2572,7 @@ const ENEMIES = [
       ],
     },
   },
-  // Legacy eMagImm (magic immune) and eHeal have no modern equivalent yet.
+  // Legacy eHeal has no modern equivalent yet.
   {
     slug: 'blue-frog',
     zone: 'Neverending Mine',
@@ -2583,6 +2586,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isMagicImmune: true,
     damageType: 'MAGIC',
     xpReward: 800,
     goldMin: 50,
@@ -2647,7 +2651,6 @@ const ENEMIES = [
       always: [{ itemSlug: 'mithril-pickaxe', qty: 1 }],
     },
   },
-  // Legacy eMagImm (magic immune) has no modern equivalent yet.
   {
     slug: 'cosmic-mage',
     zone: 'Neverending Mine',
@@ -2661,6 +2664,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isMagicImmune: true,
     damageType: 'MAGIC',
     xpReward: 4000,
     goldMin: 5000,
@@ -2947,6 +2951,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isMagicImmune: true,
     damageType: 'MELEE',
     xpReward: 3000,
     goldMin: 1000,

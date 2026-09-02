@@ -205,6 +205,32 @@ async function consumeAmmo(playerId, ammo) {
   return { remaining, inventory: await getPlayerInventory(playerId) }
 }
 
+// Pay for a spell before it is rolled. One guarded UPDATE: it lands only while
+// the player still has the MP, so two casts in flight cannot both spend the
+// same points. Returns the new vitals, or null when the MP was not there.
+async function chargeSpellMp(playerId, spell) {
+  const rows = await prisma.$queryRawUnsafe(
+    `UPDATE "User" SET mp = mp - $2 WHERE id = $1 AND mp >= $2 RETURNING mp, "mpMax"`,
+    playerId,
+    spell.cost
+  )
+  const row = rows[0]
+  return row ? { mp: Number(row.mp), mpMax: Number(row.mpMax) } : null
+}
+
+function notEnoughMpMessage(spell) {
+  return `You don't have enough MP to cast ${spell.def.name}! It costs ${spell.cost} MP.`
+}
+
+// Player-side line of a battle:turn message for a spell strike.
+function describeSpellStrike(enemyName, turn) {
+  const cast = turn.spell
+  if (turn.immuneToMagic) {
+    return `The ${enemyName} is immune to magic! Your ${cast.name} fizzles.`
+  }
+  return `You cast ${cast.name} for ${cast.cost} MP and hit the ${enemyName} for ${turn.playerDealtDamage} damage.`
+}
+
 // ─── start_battle ───────────────────────────────────────────────────────────
 
 async function executeStartBattle(action, playerId, roomState) {
@@ -215,7 +241,9 @@ async function executeStartBattle(action, playerId, roomState) {
     return errorResult('start_battle', 'You are already in a battle.')
   }
 
-  const { enemySlug, isAutoInitiated = false } = action.data || {}
+  // `spell` — { def, level, cost }, built server-side by room-state's
+  // cast_spell — opens the fight with a spell instead of a weapon strike.
+  const { enemySlug, isAutoInitiated = false, spell = null } = action.data || {}
   if (!enemySlug) return errorResult('start_battle', 'No enemy specified.')
 
   if (isProbabilistic(roomState.roomId)) {
@@ -246,13 +274,25 @@ async function executeStartBattle(action, playerId, roomState) {
   // opening one the player cannot act in. An aggressive enemy that jumps you
   // (isAutoInitiated) still starts a battle — it attacks regardless of your ammo.
   const isAdvantageTurn = enemy.isAggressive && isAutoInitiated
+  // A spell fires no shot, so it spends no ammo — an empty quiver does not stop a Fireball.
   let ammo = null
-  if (ammoSlug && !isAdvantageTurn) {
+  if (ammoSlug && !isAdvantageTurn && !spell) {
     ammo = await readAmmo(playerId, ammoSlug)
     if (!ammo || ammo.remaining <= 0) {
       const name = ammo?.name || (await ammoDisplayName(ammoSlug))
       return errorResult('start_battle', `You're out of ${name}s! Equip another weapon.`)
     }
+  }
+
+  // A spell is paid for before the fight exists, so a cast the player cannot
+  // afford is refused outright rather than opening a battle they never struck
+  // in. A magic-immune enemy is never charged — the cast does nothing, and the
+  // original spent no MP on it either.
+  let spellMp = null
+  if (spell && !isAdvantageTurn && !enemy.isMagicImmune) {
+    spellMp = await chargeSpellMp(playerId, spell)
+    if (!spellMp) return errorResult('start_battle', notEnoughMpMessage(spell))
+    roomState.updatePlayer(playerId, (state) => ({ ...state, mp: spellMp.mp }))
   }
 
   const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats, equippedWeaponCategory })
@@ -285,11 +325,13 @@ async function executeStartBattle(action, playerId, roomState) {
       enemyDamageType: enemyAtk.enemyDamageType,
       // An ambush swing is a normal enemy attack, so it can roll a special too.
       enemyAction: enemyAtk.enemyAction,
+      spell: null,
+      immuneToMagic: false,
     }
     battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, firstTurn)
   } else {
-    // Player-initiated — normal full turn
-    firstTurn = resolveTurn(battleState, otherCombatants)
+    // Player-initiated — normal full turn, or the spell that opened the fight
+    firstTurn = resolveTurn(battleState, otherCombatants, { spell })
     battleState.applyDamageToEnemy(firstTurn.playerDealtDamage)
     battleState.recordTurn(firstTurn.playerDealtDamage, firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
   }
@@ -338,6 +380,8 @@ async function executeStartBattle(action, playerId, roomState) {
   let attackDesc
   if (isAdvantageTurn) {
     attackDesc = `You enter the area and the ${enemy.name} immediately attacks!`
+  } else if (firstTurn.spell) {
+    attackDesc = describeSpellStrike(enemy.name, firstTurn)
   } else if (firstTurn.missedFlyingMelee) {
     attackDesc = `Your swing passes through empty air — the ${enemy.name} is out of reach!`
   } else {
@@ -364,7 +408,10 @@ async function executeStartBattle(action, playerId, roomState) {
     weaponCategory: firstTurn.weaponCategory,
     enemyDamageType: firstTurn.enemyDamageType,
     enemyAction: firstTurn.enemyAction ?? null,
-    ...(ammoSlug ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
+    spell: firstTurn.spell ?? null,
+    immuneToMagic: firstTurn.immuneToMagic ?? false,
+    ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
+    ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
     message: [attackDesc, defenseDesc].join(' '),
   }
 
@@ -404,6 +451,7 @@ async function executeStartBattle(action, playerId, roomState) {
         goldAwarded,
         droppedItems: droppedSlugs,
         lastTurnResult: firstTurn,
+        ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
         message: `You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
         clearRoomEnemies: isProbabilistic(roomState.roomId) && remainingCount === 0,
         remainingEnemies,
@@ -464,6 +512,10 @@ async function executePlayerAttack(action, playerId, roomState) {
     return errorResult('player_attack', 'You are not in a battle.')
   }
 
+  // `spell` — { def, level, cost }, built server-side by room-state's
+  // cast_spell — makes this turn a spell strike instead of a weapon swing.
+  const spell = action?.data?.spell ?? null
+
   const [liveStats, liveWeapon] = await Promise.all([
     fetchPlayerStats(playerId),
     fetchEquippedWeapon(playerId),
@@ -474,10 +526,10 @@ async function executePlayerAttack(action, playerId, roomState) {
   // Out of ammo: reject the shot without advancing the battle. The enemy does
   // NOT get a free counterattack — matching the original, and leaving the player
   // their turn to equip something else (which does cost a turn) instead of being
-  // beaten to death unable to act.
+  // beaten to death unable to act. A spell fires no shot, so it never runs dry.
   const { ammoSlug } = liveWeapon
   let ammo = null
-  if (ammoSlug) {
+  if (ammoSlug && !spell) {
     ammo = await readAmmo(playerId, ammoSlug)
     if (!ammo || ammo.remaining <= 0) {
       const name = ammo?.name || (await ammoDisplayName(ammoSlug))
@@ -485,8 +537,19 @@ async function executePlayerAttack(action, playerId, roomState) {
     }
   }
 
+  // Not enough MP is treated like an empty quiver: the cast is refused and the
+  // battle does not advance. (The original let the enemy swing anyway — a
+  // mis-click cost you a turn — which is treated here as a defect, not canon.)
+  // A magic-immune enemy is never charged: nothing is rolled, nothing is spent.
+  let spellMp = null
+  if (spell && !battleState.enemy.isMagicImmune) {
+    spellMp = await chargeSpellMp(playerId, spell)
+    if (!spellMp) return errorResult('player_attack', notEnoughMpMessage(spell))
+    roomState.updatePlayer(playerId, (state) => ({ ...state, mp: spellMp.mp }))
+  }
+
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
-  const turnResult = resolveTurn(battleState, otherCombatants)
+  const turnResult = resolveTurn(battleState, otherCombatants, { spell })
 
   // The shot resolved — spend the round.
   let ammoRemaining = null
@@ -520,7 +583,8 @@ async function executePlayerAttack(action, playerId, roomState) {
 
     const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]
     if (droppedSlugs.length > 0) rewardParts.push(`+${droppedSlugs.join(', ')}`)
-    const winMsg = `You defeated the ${battleState.enemyName}! ${rewardParts.join('  ')}`
+    const finalBlow = turnResult.spell ? `Your ${turnResult.spell.name} finishes it. ` : ''
+    const winMsg = `${finalBlow}You defeated the ${battleState.enemyName}! ${rewardParts.join('  ')}`
 
     // Fire DB persistence in the background; level-up event emitted via backgroundWork
     const backgroundWork = settleBattleWinPersistence(playerId, battleState, rewards)
@@ -538,6 +602,7 @@ async function executePlayerAttack(action, playerId, roomState) {
             goldAwarded,
             droppedItems: droppedSlugs,
             lastTurnResult: turnResult,
+            ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
             message: winMsg,
             clearRoomEnemies: isProbabilistic(roomState.roomId) && remainingCount === 0,
             remainingEnemies,
@@ -609,7 +674,9 @@ async function executePlayerAttack(action, playerId, roomState) {
   // Fight continues
   const snapshot = battleState.getSnapshot()
   const parts = []
-  if (turnResult.missedFlyingMelee) {
+  if (turnResult.spell) {
+    parts.push(describeSpellStrike(battleState.enemyName, turnResult))
+  } else if (turnResult.missedFlyingMelee) {
     parts.push(`Your swing passes through empty air — the ${battleState.enemyName} is out of reach!`)
   } else {
     let strikeMsg = `You strike the ${battleState.enemyName} for ${turnResult.playerDealtDamage} damage.`
@@ -651,7 +718,10 @@ async function executePlayerAttack(action, playerId, roomState) {
           weaponCategory: turnResult.weaponCategory,
           enemyDamageType: turnResult.enemyDamageType,
           enemyAction: turnResult.enemyAction ?? null,
-          ...(ammoSlug ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
+          spell: turnResult.spell ?? null,
+          immuneToMagic: turnResult.immuneToMagic ?? false,
+          ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
+          ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
           message: parts.join(' '),
         },
       },
@@ -704,6 +774,8 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     // Spending the turn on a potion or a weapon swap doesn't shield you from a
     // special — the counterattack rolls exactly like any other enemy attack.
     enemyAction: enemyAtk.enemyAction,
+    spell: null,
+    immuneToMagic: false,
   }
   battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, turnRecord)
 
@@ -781,6 +853,7 @@ function describeSupportAction(meta) {
   const effect = meta.effectText ? ` (${meta.effectText})` : ''
   if (meta.kind === 'equip_item') return `You equip the ${name}.`
   if (meta.kind === 'unequip_item') return `You unequip the ${name}.`
+  if (meta.kind === 'cast_spell') return `You cast ${name}${effect}.`
   const verb = meta.actionVerb || 'use'
   // Capitalize the verb's past-tense-ish form for "use" → "use the X"
   return `You ${verb} the ${name}${effect}.`

@@ -44,6 +44,14 @@ export interface Player {
    * `player:clicks-update`; a value of 0 (or an absent key) means inactive.
    */
   buffs?: Record<string, number>
+  /**
+   * Spell levels keyed by the User column that stores them (`magicMissile`,
+   * `fireball`, `heal`, ...). 0 or absent means unlearned. The registry in
+   * game-data/spells.js turns these into costs, caps and previews.
+   */
+  spells?: Record<string, number>
+  /** Spell teachers met, keyed by flag column (`pajamaShamanFlag`, ...). */
+  spellTeachers?: Record<string, boolean>
   deaths?: number
   chest1?: boolean
   grassyFieldMap?: boolean
@@ -83,12 +91,31 @@ export interface InventoryItem {
 }
 
 export interface BattleActionMeta {
-  kind: 'use_item' | 'equip_item' | 'unequip_item'
+  kind: 'use_item' | 'equip_item' | 'unequip_item' | 'cast_spell'
   itemSlug: string
   itemName: string
   itemMetadata: { icon?: string } | null
   actionVerb: string
   effectText: string | null
+}
+
+/**
+ * Client mirror of the server's spell-cast record (see lib/socket.ts). Present
+ * on a turn the player spent casting an attack spell; `text` is the roll
+ * breakdown ("2 + (9 × 1.10) = 12"), null when the cast fizzled on a
+ * magic-immune enemy.
+ */
+export interface BattleSpellCast {
+  id: string
+  name: string
+  level: number
+  cost: number
+  icon: string
+  attackIcon: string
+  hue: string
+  amount: number
+  rolls: number[]
+  text: string | null
 }
 
 export interface BattleState {
@@ -125,6 +152,10 @@ export interface BattleState {
   /** Ammo left after the last shot, for weapons that spend it (bows, crossbow). */
   ammo: { slug: string; remaining: number | null } | null
   actionMeta: BattleActionMeta | null
+  /** The spell the player struck with on the last turn, or null for a weapon swing. */
+  spell: BattleSpellCast | null
+  /** True when the last cast did nothing because the enemy is immune to magic. */
+  immuneToMagic: boolean
 }
 
 const INITIAL_BATTLE_STATE: BattleState = {
@@ -159,6 +190,8 @@ const INITIAL_BATTLE_STATE: BattleState = {
   enemyDamageType: null,
   enemyAction: null,
   actionMeta: null,
+  spell: null,
+  immuneToMagic: false,
 }
 
 /**
@@ -187,6 +220,8 @@ export interface BattleLastTurn {
   weaponCategory?: 'MELEE' | 'RANGED' | null
   enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
   enemyAction?: BattleEnemyAction | null
+  spell?: BattleSpellCast | null
+  immuneToMagic?: boolean
 }
 
 export interface BattleResult {
@@ -259,7 +294,7 @@ export interface GameState {
   getCachedRoom: (roomId: string) => Room | null
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
   setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
-  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null }) => void
+  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; playerMp?: number; playerMpMax?: number }) => void
   clearBattle: () => void
   setBattleResult: (result: BattleResult) => void
   clearBattleResult: () => void
@@ -423,8 +458,18 @@ export const useGameStore = create<GameState>()(
             enemyAction: payload.enemyAction ?? null,
             ammo: payload.ammo ?? null,
             actionMeta: payload.actionMeta ?? null,
+            spell: payload.spell ?? null,
+            immuneToMagic: payload.immuneToMagic ?? false,
           },
-          player: state.player ? { ...state.player, hp: payload.playerHp } : state.player,
+          // A spell turn also reports the MP it spent; a weapon turn leaves MP alone.
+          player: state.player
+            ? {
+                ...state.player,
+                hp: payload.playerHp,
+                ...(typeof payload.playerMp === 'number' ? { mp: payload.playerMp } : {}),
+                ...(typeof payload.playerMpMax === 'number' ? { mpMax: payload.playerMpMax } : {}),
+              }
+            : state.player,
         })),
 
       clearBattle: () =>

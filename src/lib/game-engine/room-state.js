@@ -5,6 +5,9 @@ const { getPlayerInventory, grantItemOnce, getItemBySlug } = require('./services
 const { equipItem, unequipItem } = require('./services/equipment-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
+const { getSpell, findSpellByCommand, isCastable } = require('../game-data/spells')
+const { getSpellState, castHealSpell } = require('./services/spell-service')
+const { rand } = require('./battle-calculator')
 const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn } = require('./battle-action-handlers')
 const { getRoomEnemies, isProbabilistic, getRoomPriorityEnemy, rollRoomEnemyGroup } = require('../game-data/room-enemies')
 const { getEnemy } = require('../game-data/enemies')
@@ -474,11 +477,21 @@ class RoomState {
       return roomSpecificResult
     }
 
+    // A typed "cast fireball" / "fireball" is the same as the Spells button.
+    if (typeof action.type === 'string' && action.type !== 'cast_spell') {
+      const typedSpell = findSpellByCommand(action.type)
+      if (typedSpell && (/^cast\s/i.test(action.type) || typedSpell.kind !== 'buff')) {
+        return await this.executeCastSpell({ type: 'cast_spell', data: { spellId: typedSpell.id } }, playerId)
+      }
+    }
+
     // Otherwise, fall back to standard actions
     let result
     switch (action.type) {
       case 'attack':
         return await this.executeAttack(playerId)
+      case 'cast_spell':
+        return await this.executeCastSpell(action, playerId)
       case 'start_battle':
         return await executeStartBattle(action, playerId, this)
       case 'player_attack':
@@ -921,7 +934,7 @@ class RoomState {
     }
   }
 
-  async executeAttack(playerId) {
+  async executeAttack(playerId, { spell = null } = {}) {
     const player = this.players.get(playerId)
     if (!player) {
       return this.createErrorResult('attack', 'Player not found in this room')
@@ -929,7 +942,7 @@ class RoomState {
 
     const activeBattle = this.activeBattles.get(playerId)
     if (activeBattle && activeBattle.isActive) {
-      return await executePlayerAttack({ type: 'player_attack' }, playerId, this)
+      return await executePlayerAttack({ type: 'player_attack', data: { spell } }, playerId, this)
     }
 
     let target = null
@@ -953,13 +966,117 @@ class RoomState {
         playerEvents: [
           {
             event: 'action:feedback',
-            payload: this.createFeedbackPayload('attack', 'info', 'Nothing to attack here.'),
+            payload: this.createFeedbackPayload(
+              'attack',
+              'info',
+              spell ? `There is nothing here to cast ${spell.def.name} at.` : 'Nothing to attack here.'
+            ),
           },
         ],
       }
     }
 
-    return await executeStartBattle({ type: 'start_battle', data: { enemySlug: target.slug } }, playerId, this)
+    return await executeStartBattle({ type: 'start_battle', data: { enemySlug: target.slug, spell } }, playerId, this)
+  }
+
+  /**
+   * Cast a spell the player knows.
+   *
+   * Attack spells are strikes: in a fight they are the turn's attack, and out
+   * of one they open the fight the way "attack" does — the original let you
+   * lead with a Fireball. Healing works anywhere; inside a fight it is a support
+   * turn, so the enemy still swings. Buffs (wings, iron skin, ...) have no
+   * handler yet and are refused before anything is spent.
+   */
+  async executeCastSpell(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('cast_spell', 'Player not found in this room')
+    }
+
+    const spellId = action?.data?.spellId
+    const spell = typeof spellId === 'string' ? getSpell(spellId) || findSpellByCommand(spellId) : null
+    if (!spell) {
+      return this.createErrorResult('cast_spell', 'Unknown spell.')
+    }
+    if (!isCastable(spell)) {
+      return this.createErrorResult('cast_spell', `${spell.name} cannot be cast yet.`)
+    }
+
+    const state = await getSpellState(playerId)
+    if (!state) {
+      return this.createErrorResult('cast_spell', 'Could not load your spells.')
+    }
+    const level = state.spells[spell.column] || 0
+    if (level < 1) {
+      return this.createErrorResult('cast_spell', `You don't know the ${spell.name} spell.`)
+    }
+
+    this.touchActivity()
+
+    if (spell.kind === 'attack') {
+      const cost = spell.castCost(level, state.effectiveMag)
+      // The friendly refusal; the guarded MP charge in the battle handler is
+      // what actually makes the cast safe against a second click.
+      if (state.mp < cost) {
+        return this.createErrorResult('cast_spell', `You don't have enough MP to cast ${spell.name}! It costs ${cost} MP and you have ${state.mp}.`)
+      }
+      return await this.executeAttack(playerId, { spell: { def: spell, level, cost } })
+    }
+
+    // kind === 'heal'
+    const heal = await castHealSpell(playerId, spell, rand)
+    if (heal.success === false) {
+      return this.createErrorResult('cast_spell', heal.message)
+    }
+
+    this.updatePlayer(playerId, (s) => ({ ...s, hp: heal.hp, mp: heal.mp }))
+
+    const message = `You cast ${spell.name} for ${heal.cost} MP and restore ${heal.hpChange} HP. [ ${heal.text} ]`
+    let result = {
+      success: true,
+      action: 'cast_spell',
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('cast_spell', 'success', message, {
+            roomId: this.roomId,
+            hp: heal.hp,
+            mp: heal.mp,
+            hpChange: heal.hpChange,
+            mpChange: heal.mpChange,
+            spell: {
+              id: spell.id,
+              name: spell.name,
+              level: heal.level,
+              cost: heal.cost,
+              icon: spell.icon,
+              hue: spell.hue,
+              amount: heal.amount,
+              rolls: heal.rolls,
+              text: heal.text,
+            },
+          }),
+        },
+      ],
+    }
+
+    // Healing mid-fight spends the turn: the enemy answers, exactly as it does
+    // for a potion.
+    if (this.activeBattles.get(playerId)?.isActive) {
+      const supportTurn = await resolveSupportTurn(playerId, this, {
+        kind: 'cast_spell',
+        itemSlug: spell.id,
+        itemName: spell.name,
+        itemMetadata: { icon: spell.icon },
+        actionVerb: 'cast',
+        effectText: `+${heal.hpChange} HP`,
+      })
+      return mergeSupportTurnIntoResult(result, supportTurn)
+    }
+
+    // Out of a fight it is a turn action like rest: something may notice.
+    return await this.appendSpawnEvents(result, playerId)
   }
 
   async executeSearch(playerId) {

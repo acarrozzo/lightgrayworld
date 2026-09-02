@@ -437,6 +437,7 @@ const ENGINE_ACTIONS = new Set([
 // Buttons the client resolves without ever reaching the engine.
 const CLIENT_ONLY_ACTIONS = new Set([
   'open crafting', // toggles the crafting panel; the craft itself is `craft`
+  'open spellbook', // opens the spellbook modal; learning is HTTP, casting is `cast_spell`
   'teleport to grassy field', // rewritten client-side into a teleport action
 ])
 

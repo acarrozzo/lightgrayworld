@@ -6,6 +6,7 @@ import { createAuthResponse } from '@/lib/auth'
 import { DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
 import { recomputeStatMods } from '@/lib/game-engine/services/equipment-service'
+import { SPELL_SELECT, projectSpellState } from '@/lib/game-engine/services/spell-service'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
         clicks: true,
         deaths: true,
         chest1: true,
+        ...SPELL_SELECT,
       },
     })
 
@@ -122,6 +124,7 @@ export async function POST(request: NextRequest) {
       clicks: freshUser!.clicks,
       deaths: freshUser!.deaths,
       chest1: freshUser!.chest1,
+      ...projectSpellState(freshUser),
     })
 
     return NextResponse.json(authResponse)

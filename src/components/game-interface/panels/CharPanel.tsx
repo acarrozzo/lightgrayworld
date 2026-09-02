@@ -10,6 +10,7 @@ import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { EquipSlot } from '@prisma/client'
 import Icon from '@/components/Icon'
 import { resolveItemIcon } from '@/lib/item-actions'
+import { buildSpellbook, hasLearnableSpell, spellTone } from '@/lib/spellbook'
 
 import type { FilterTab } from '@/lib/inventory-categories'
 
@@ -17,6 +18,7 @@ interface CharPanelProps {
   player: Player
   onAction?: (action: string | { type: string; data?: any }) => void
   onSwitchToInventory?: (filter?: FilterTab) => void
+  onOpenSpellbook?: () => void
   onClose?: () => void
 }
 
@@ -48,7 +50,7 @@ function renderStatMods(metadata: any): React.ReactNode {
   return parts.length > 0 ? <>{parts}</> : null
 }
 
-export default function CharPanel({ player, onAction, onSwitchToInventory, onClose }: CharPanelProps) {
+export default function CharPanel({ player, onAction, onSwitchToInventory, onOpenSpellbook, onClose }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
   const setPlayer = useGameStore((state) => state.setPlayer)
   const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
@@ -78,6 +80,10 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
     const xpRemaining = Math.max(0, xpRange - xpInLevel)
     return { xpInLevel, xpRange, xpPct, xpRemaining }
   }, [player.level, player.xp])
+  const spellbook = useMemo(() => buildSpellbook(player), [player])
+  const learnedSpells = spellbook.filter((entry) => entry.level >= 1)
+  const hasAnyTeacher = spellbook.some((entry) => entry.maxLevel > 0)
+  const canLearnSpell = hasLearnableSpell(player)
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
@@ -385,6 +391,50 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onClo
                   onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.MOUNT))}
                 />
               </div>
+            </div>
+
+            {/* Spells: what's learned, and the door to the spellbook. */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Spells</h4>
+                {onOpenSpellbook && (
+                  <span className="relative inline-flex">
+                    {canLearnSpell && (
+                      <span className="absolute inset-[2px] rounded-lg bg-mood-arcane/60 animate-ping-slow" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={onOpenSpellbook}
+                      disabled={!isLoggedIn}
+                      className="relative px-2.5 py-1 text-xs font-semibold fill-mood-arcane hover:opacity-90 disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
+                    >
+                      Spellbook ({player.sp ?? 0} SP)
+                    </button>
+                  </span>
+                )}
+              </div>
+              {learnedSpells.length === 0 ? (
+                <p className="text-xs text-fg-muted italic px-1">
+                  {hasAnyTeacher ? 'No spells learned yet. Open the spellbook to spend SP.' : 'No spells yet. Find a teacher — the Pajama Shaman camps north-east of the Grassy Field.'}
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {learnedSpells.map((entry) => {
+                    const tone = spellTone(entry.def.hue)
+                    return (
+                      <div key={entry.def.id} className="rounded-lg border border-line-subtle/70 bg-surface-panel/60 px-2.5 py-1.5 flex items-center gap-2">
+                        <Icon name={entry.def.icon} size={20} className={`${tone.text} flex-shrink-0`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-fg-bright truncate">{entry.def.name}</p>
+                          <p className="text-[10px] text-fg-muted tabular-nums">
+                            lvl {entry.level}/{entry.maxLevel} · <span className="text-resource-mp">{entry.castCost} MP</span>
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Core Points Group */}
