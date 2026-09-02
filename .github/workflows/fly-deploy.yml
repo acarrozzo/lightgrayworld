@@ -20,6 +20,11 @@ jobs:
           cache: npm
       # `npm ci` runs the postinstall `prisma generate`, which needs no database.
       - run: npm ci
+      # `src/lib/icon-mappings.ts` and the sprite sheet are generated from
+      # `public/icons` and deliberately untracked, so typecheck and lint need
+      # them built first; `npm run build` does this via build-with-icons.js.
+      - name: Generate icons
+        run: npm run generate-icons
       - name: Validate quests
         run: npm run validate-quests
       - name: Validate world
