@@ -79,6 +79,13 @@ const getDirectionStyle = (
   }
 }
 
+/**
+ * How long the mini-map slides from the old room to the new one. Must match
+ * the `duration-[...]` on the map button below. Short and eased out so the
+ * slide reads as arriving, not as travelling.
+ */
+const MAP_PAN_MS = 350
+
 export default function Compass({
   room,
   onAction,
@@ -126,7 +133,7 @@ export default function Compass({
       setCurrentPosition(newPosition)
       setIsTransitioning(false)
       console.log('[Compass] Transition complete, currentPosition updated to:', newPosition)
-    }, 1000) // Match CSS transition duration
+    }, MAP_PAN_MS)
 
     return () => {
       console.log('[Compass] Cleaning up transition timer for room change')
@@ -193,7 +200,7 @@ export default function Compass({
             <button
               type="button"
               onClick={() => onNavigateToMap?.()}
-              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-all duration-[1000ms] ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-[10px] sm:border-[25px] border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl"
+              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-[background-position] duration-[350ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-[10px] sm:border-[25px] border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition
@@ -280,12 +287,10 @@ export default function Compass({
           })}
         </div>
 
-        {/* Loading indicator - show during transition (not during move-in-progress as buttons show spinners) */}
-        {isTransitioning && !isMoveInProgress && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-accent/50 border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        )}
+        {/* No spinner over the map while it pans: the exit buttons already show
+            one while the server is confirming a move, and a second spinner
+            appearing after the room had changed made arrival read as slower
+            than it was. */}
       </div>
     </div>
   )

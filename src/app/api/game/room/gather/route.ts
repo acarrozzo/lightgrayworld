@@ -4,22 +4,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { COMMON_ERRORS } from '@/lib/error-handling'
 import { getCurrentUser } from '@/lib/auth'
 
-/**
- * Static shape of a room's gather action, as returned by getGatherActionsForRoom.
- * `maxHeld` is set only for capped nodes (e.g. Jack's starter tree); the client
- * compares it against its own live inventory count of `itemSlug` to decide
- * whether the node reads as tapped out, and labels it with `itemNamePlural`.
- */
-type GatherActionDef = {
-  action: string
-  cooldownMs: number | null
-  quantity: number | null
-  itemSlug: string | null
-  itemNamePlural: string | null
-  maxHeld: number | null
-  readyLabel: string | null
-}
-
 const noCacheHeaders = {
   'Cache-Control': 'private, no-store, must-revalidate',
   Pragma: 'no-cache',
@@ -51,29 +35,8 @@ export async function GET(request: NextRequest) {
       ? requestedRoomId
       : user.currentRoom || '001'
 
-    const payload: Record<string, unknown> = { gatherCooldowns: [] }
-
-    const { getGatherActionsForRoom } = require('@/lib/game-engine/room-action-handlers')
-    const { getCooldownRemaining } = require('@/lib/game-engine/services/action-cap-service')
-    const gathers = getGatherActionsForRoom(roomId)
-    if (gathers.length > 0) {
-      payload.gatherCooldowns = await Promise.all(
-        gathers.map(async (gather: GatherActionDef) => ({
-          action: gather.action,
-          // A capped node can have no timer at all (Jack's tree): report it as
-          // always-ready rather than asking the cooldown service about it.
-          cooldownSeconds: gather.cooldownMs ? Math.ceil(gather.cooldownMs / 1000) : 0,
-          secondsRemaining: gather.cooldownMs
-            ? await getCooldownRemaining(user.id, roomId, gather.action, gather.cooldownMs)
-            : 0,
-          quantity: gather.quantity ?? null,
-          itemSlug: gather.itemSlug ?? null,
-          itemNamePlural: gather.itemNamePlural ?? null,
-          maxHeld: gather.maxHeld ?? null,
-          readyLabel: gather.readyLabel ?? null,
-        }))
-      )
-    }
+    const { buildGatherCooldowns } = require('@/lib/game-engine/services/gather-status')
+    const payload = { gatherCooldowns: await buildGatherCooldowns(user.id, roomId) }
 
     return NextResponse.json(payload, { headers: noCacheHeaders })
   } catch (error) {

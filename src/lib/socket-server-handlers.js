@@ -16,6 +16,8 @@ const {
 } = require('./game-engine/teleport-grants.js')
 const { getEnemy } = require('./game-data/enemies.js')
 const { loadRoomRoster } = require('./game-engine/services/room-roster-service.js')
+const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service.js')
+const { buildGatherCooldowns } = require('./game-engine/services/gather-status.js')
 const { applyRoomQuestTrigger } = require('./game-engine/quest-room-triggers.js')
 const { getAllQuestProgress } = require('./game-engine/services/quest-service.js')
 const {
@@ -218,11 +220,19 @@ async function recordWorldFeedEventSafe({ userId, username, eventType }) {
   }
 }
 
-// Create room transition function
+/**
+ * Move a connection between socket rooms and tell both rooms about it.
+ *
+ * Everything the rest of the server reads — socket-room membership, the live
+ * player record, presence, party groupings — is updated synchronously before
+ * this returns, so callers may start work in the new room (the ambush roll)
+ * straight away. Only the database write is still in flight; the returned
+ * promise settles when it has landed, for callers that need to know.
+ */
 function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlayers, broadcastRoomPartyState) {
-  return async ({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport = false }) => {
+  return ({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport = false }) => {
     if (!toRoom || fromRoom === toRoom) {
-      return
+      return Promise.resolve()
     }
 
     socket.leave(`room-${fromRoom}`)
@@ -281,18 +291,47 @@ function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlaye
     if (broadcastRoomPartyState) broadcastRoomPartyState(toRoom)
     activePlayers.set(socket.id, player)
 
-    try {
-      await prisma.user.update({
+    return prisma.user
+      .update({
         where: { id: player.id },
         data: { currentRoom: toRoom },
       })
-    } catch (error) {
-      console.error('Failed to persist player room change', error)
-    }
+      .then(() => undefined)
+      .catch((error) => {
+        console.error('Failed to persist player room change', error)
+      })
   }
 }
 
-// Standard room query - ensures nameColor and subtitleColor are included
+const ROOM_EXIT_SELECT = {
+  roomId: true,
+  north: true,
+  northeast: true,
+  east: true,
+  southeast: true,
+  south: true,
+  southwest: true,
+  west: true,
+  northwest: true,
+  up: true,
+  down: true,
+}
+
+/**
+ * Just a room's exits: enough to derive the direction of a move and check
+ * that one exists. A single narrow read — the source room of a move used to be
+ * fetched with its items and NPCs attached, several round trips for ten
+ * columns, on every step.
+ */
+async function fetchRoomExits(prisma, roomId) {
+  if (!roomId) return null
+  return prisma.room.findUnique({ where: { roomId }, select: ROOM_EXIT_SELECT })
+}
+
+// Standard room query - ensures nameColor and subtitleColor are included.
+// Deliberately without the `players` relation: who is in a room is live
+// server state (see buildLiveRoomPlayers), not the database's last-known
+// `currentRoom` of every account.
 async function fetchRoomWithColors(prisma, roomId) {
   const room = await prisma.room.findUnique({
     where: { roomId },
@@ -322,22 +361,6 @@ async function fetchRoomWithColors(prisma, roomId) {
       northwest: true,
       up: true,
       down: true,
-      players: {
-        select: {
-          id: true,
-          username: true,
-          level: true,
-          hp: true,
-          hpMax: true,
-          mp: true,
-          mpMax: true,
-          currentRoom: true,
-          isActive: true,
-          inFight: true,
-          uIcon: true,
-          uIconColor: true,
-        },
-      },
       ...ROOM_ITEMS_SELECT,
       npcs: true,
     },
@@ -373,20 +396,77 @@ function findDirectionKey(room, targetRoomId) {
   return null
 }
 
-function buildDirectionPhrase(direction, context) {
-  if (!direction) {
-    return 'an unknown direction'
-  }
+// Rooms whose first entry unlocks a map. Each check is against the flag the
+// player already carries, so the write only happens once per map.
+const SCORPION_DUNGEON_ROOMS = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
+const FOREST_UNDERGROUND_ROOMS = [
+  '111a', '111b', '111c', '111d', '111e', '111f', '111g', '111h', '111i', '111j', '111k',
+  '115a', '115b', '115c', '115d', '115e', '115f', '115g', '115h', '115i', '115j', '115k',
+]
 
-  if (direction === 'up') {
-    return context === 'enter' ? 'above' : 'upward'
-  }
+const isGrassyFieldUndergroundRoom = (roomId) =>
+  roomId.startsWith('003b') ||
+  (roomId.startsWith('028') && roomId !== '028') ||
+  SCORPION_DUNGEON_ROOMS.includes(roomId)
 
-  if (direction === 'down') {
-    return context === 'enter' ? 'below' : 'downward'
-  }
+// Room 215 (the Red Guard Captain's lookout) is deliberately excluded — it is
+// drawn on the Forest map, and reaching it is not the same as reaching town.
+const isRedTownRoom = (roomId) =>
+  roomId.startsWith('2') && roomId !== '215' && !RED_TOWN_SEWER_ROOMS.includes(roomId)
 
-  return `the ${direction.replace(/_/g, ' ')}`
+/**
+ * Unlock whichever maps arriving in `toRoom` earns, in one write. Resolves once
+ * the flags are persisted and mirrored onto the live player record; resolves
+ * immediately when there is nothing new to unlock, which is almost every move.
+ */
+async function applyMapUnlocks(prisma, player, toRoom) {
+  const unlocks = {}
+  if (isGrassyFieldUndergroundRoom(toRoom) && !player.grassyFieldUndergroundMap) {
+    unlocks.grassyFieldUndergroundMap = true
+  }
+  if (FOREST_UNDERGROUND_ROOMS.includes(toRoom) && !player.forestUndergroundMap) {
+    unlocks.forestUndergroundMap = true
+  }
+  if (isRedTownRoom(toRoom) && !player.redTownMap) {
+    unlocks.redTownMap = true
+  }
+  // The sewers, Thieve's Den and Catacombs.
+  if (RED_TOWN_SEWER_ROOMS.includes(toRoom) && !player.redTownSewersMap) {
+    unlocks.redTownSewersMap = true
+  }
+  if (Object.keys(unlocks).length === 0) return
+
+  try {
+    await prisma.user.update({ where: { id: player.id }, data: unlocks })
+    Object.assign(player, unlocks)
+  } catch (error) {
+    console.error(`[Socket] Error unlocking maps for room ${toRoom}:`, error)
+  }
+}
+
+/**
+ * Quests that open by arriving somewhere (town quest givers). `toRoom` is the
+ * engine-confirmed destination, not the client's request. The quest list rides
+ * on action:feedback's `data.quests`, which the client already folds into its
+ * store — no bespoke event needed.
+ */
+async function announceRoomQuest(socket, player, toRoom) {
+  try {
+    const started = await applyRoomQuestTrigger(player.id, toRoom)
+    if (!started) return
+    const quests = await getAllQuestProgress(player.id)
+    socket.emit('action:feedback', {
+      action: 'quest started',
+      message: `You have work from ${started.npc}: ${started.quest.title}.`,
+      outcome: 'success',
+      ts: Date.now(),
+      timestamp: new Date().toISOString(),
+      success: true,
+      data: { roomId: toRoom, quests },
+    })
+  } catch (error) {
+    console.error('[Socket] Error applying room quest trigger:', error)
+  }
 }
 
 // Setup socket handlers
@@ -484,6 +564,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     // from `isTeleport`, which only shapes the room enter/leave messaging: an
     // authorization decision must never ride on a presentation flag.
     authorizedMove = false,
+    // The leader's source-room exits, already read for the leader's own move.
+    // Members stand in the same room, so the engine can derive each member's
+    // direction from them instead of re-reading the room per member.
+    sourceExits = null,
   }) => {
     const memberIds = partyStore.getLeaderMemberIds(leaderId)
     if (!memberIds.length) return
@@ -506,6 +590,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             // direction per member and re-runs that member's own gate, which is
             // what keeps a member from being dragged through a gate they fail.
             authorizedMove: authorizedMove === true,
+            sourceExits,
             data: { toRoom, toRoomName, roomData: normalizedRoomData },
           },
         })
@@ -530,6 +615,126 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         console.error(`[Party] Failed to pull member ${memberId} from ${fromRoom} to ${toRoom}:`, err)
       }
     }
+  }
+
+  /**
+   * The room's occupants as the server knows them right now: every live
+   * connection in the room, then the ghosts of players who went idle or dropped
+   * there — the same answer the HTTP room load gives. The socket move payload
+   * used to read the destination's `players` relation from the database
+   * instead: every account whose last known room this was, logged out or not.
+   * So walking into a room could show people who were not there, and never
+   * showed the ghosts a refresh would.
+   *
+   * `arrivingPlayer` is the mover, who is not in the room's socket set yet
+   * when the payload is built. The client filters itself out of the room list,
+   * but the HTTP load includes the viewer and the shape should not differ.
+   */
+  const buildLiveRoomPlayers = (roomId, arrivingPlayer) => {
+    const roomState = gameEngine.getOrCreateRoom(roomId)
+    const ghosts = new Map(getGhostsForRoom(roomId).map((g) => [g.id, g]))
+    const seen = new Set()
+    const players = []
+
+    const pushLive = (p) => {
+      if (!p?.id || seen.has(p.id)) return
+      seen.add(p.id)
+      const battle = roomState.activeBattles.get(p.id)
+      // A player can be connected and idle at once; the ghost entry is what
+      // remembers that, and the room list shows it the way a live idle event would.
+      const idleGhost = ghosts.get(p.id)
+      const isIdle = idleGhost?.status === 'idle'
+      players.push({
+        id: p.id,
+        username: p.username,
+        level: p.level,
+        hp: p.hp,
+        hpMax: p.hpMax,
+        mp: p.mp,
+        mpMax: p.mpMax,
+        currentRoom: roomId,
+        isActive: true,
+        uIcon: p.uIcon ?? null,
+        uIconColor: p.uIconColor ?? null,
+        str: p.str ?? null,
+        dex: p.dex ?? null,
+        mag: p.mag ?? null,
+        def: p.def ?? null,
+        strMod: p.strMod ?? null,
+        dexMod: p.dexMod ?? null,
+        magMod: p.magMod ?? null,
+        defMod: p.defMod ?? null,
+        inBattle: Boolean(battle && battle.isActive),
+        partyLeaderId: partyStore.getLeaderId(p.id),
+        presenceStatus: isIdle ? 'idle' : 'active',
+        ...(isIdle ? { lastSeen: idleGhost.lastSeen } : {}),
+      })
+    }
+
+    if (arrivingPlayer) pushLive(arrivingPlayer)
+    for (const sid of roomPlayers.get(roomId) ?? []) pushLive(activePlayers.get(sid))
+    for (const ghost of ghosts.values()) {
+      if (seen.has(ghost.id)) continue
+      seen.add(ghost.id)
+      players.push({ ...ghost, presenceStatus: ghost.status ?? 'disconnected' })
+    }
+    return players
+  }
+
+  /**
+   * The destination room as this player will see it: the room record plus
+   * everything per-player or live that the database does not hold — exit
+   * overlays for passages they have not opened, lever and reveal notes, the
+   * static enemy list, who is standing there, and the gather countdowns. One
+   * builder for both ways of arriving, so a teleport into a lever room shows
+   * the same exits a walk in would.
+   */
+  const buildDestinationRoomData = ({ destinationRoom, toRoom, player, gatherCooldowns }) => {
+    // Probabilistic rooms start with no enemies — the spawn roll happens in
+    // maybeStartAutoBattle after the move succeeds, and the client is told via
+    // an enemy_spawn action:feedback.
+    const destEnemyConfig = getRoomEnemies(toRoom)
+    const destEnemies =
+      destEnemyConfig && !isProbabilistic(toRoom)
+        ? destEnemyConfig.enemies.map((slug) => getEnemy(slug)).filter(Boolean)
+        : []
+
+    const leverStateNote = getRoomStateNote(player.id, toRoom)
+    const searchRevealStateNote = getSearchRevealStateNote(player.id, toRoom)
+    // Both overlays mask DB-canonical exits the player has not opened yet:
+    // search reveals (hidden passages) and levers (the Kobold false wall).
+    const exitOverlay = {
+      ...(getLeverExitOverlay(player.id, toRoom) || {}),
+      ...(getSearchRevealExitOverlay(player.id, toRoom) || {}),
+    }
+
+    return {
+      ...destinationRoom,
+      ...exitOverlay,
+      players: buildLiveRoomPlayers(toRoom, player),
+      items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
+      npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
+      enemies: destEnemies,
+      stateNote: leverStateNote || searchRevealStateNote || null,
+      actionOverrides: getRoomActionOverrides(player.id, toRoom),
+      gatedExits: getGatedDirections(toRoom),
+      // Always an array: an empty one tells the client the room has no gather
+      // action, so it need not ask over HTTP.
+      gatherCooldowns: Array.isArray(gatherCooldowns) ? gatherCooldowns : [],
+    }
+  }
+
+  /**
+   * Read the destination for a move. The respawn check must precede the room
+   * read (it may create the rows the read returns); the player's gather
+   * countdowns depend on neither and go out alongside.
+   */
+  const loadDestination = async (player, toRoom) => {
+    const [destinationRoom, gatherCooldowns] = await Promise.all([
+      ensureAutoRespawnItems(toRoom).then(() => fetchRoomWithColors(prisma, toRoom)),
+      buildGatherCooldowns(player.id, toRoom),
+    ])
+    return { destinationRoom, gatherCooldowns }
   }
 
   // True if any same-room member of this leader's party is locked in battle.
@@ -897,15 +1102,23 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       }
 
       try {
-        // Fetch source room (needed for direction calculation)
-        const sourceRoom = await fetchRoomWithColors(prisma, fromRoom)
+        const sourceExits = await fetchRoomExits(prisma, fromRoom)
+        if (!sourceExits) {
+          console.log(`[Socket] player-move - Source room ${fromRoom} not found`)
+          emitActionFeedback(socket, {
+            action: 'move',
+            message: 'Source room not found',
+            outcome: 'failure',
+          })
+          return
+        }
 
         // Refuse a destination this room has no exit to, before anything writes.
         // The engine re-derives and re-validates this itself — that check is the
         // authority — but rejecting here keeps an arbitrary destination from
         // reaching ensureAutoRespawnItems, which creates item rows in whatever
         // room it is handed.
-        const direction = sourceRoom ? findDirectionKey(sourceRoom, toRoom) : null
+        const direction = findDirectionKey(sourceExits, toRoom)
 
         // The client sends teleports through this same event, so a destination
         // with no exit leading to it is not automatically illegal — it is legal
@@ -929,61 +1142,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
         }
 
-        // Ensure auto-respawn items exist in the destination room FIRST
-        // This may create items in the database, so we fetch destination room after
-        const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service')
-        await ensureAutoRespawnItems(toRoom)
-
-        // Fetch destination room ONCE (includes any newly created items from ensureAutoRespawnItems)
-        const destinationRoom = await fetchRoomWithColors(prisma, toRoom)
-        if (!destinationRoom) {
-          console.log(`[Socket] player-move - Destination room ${toRoom} not found`)
-          emitActionFeedback(socket, {
-            action: 'move',
-            message: 'Destination room not found',
-            outcome: 'failure',
-          })
-          return
-        }
-
-        // Attach enemy data to the destination room.
-        // Probabilistic rooms start with no enemies — the spawn roll happens in maybeStartAutoBattle
-        // after the move succeeds, and the client is notified via an enemy_spawn action:feedback.
-        const destEnemyConfig = getRoomEnemies(toRoom)
-        const destEnemies =
-          destEnemyConfig && !isProbabilistic(toRoom)
-            ? destEnemyConfig.enemies.map((slug) => getEnemy(slug)).filter(Boolean)
-            : []
-
-        // Use the room data which includes respawned items
-        const leverStateNote = getRoomStateNote(player.id, toRoom)
-        const searchRevealStateNote = getSearchRevealStateNote(player.id, toRoom)
-        // Both overlays mask DB-canonical exits the player has not opened yet:
-        // search reveals (hidden passages) and levers (the Kobold false wall).
-        const exitOverlay = {
-          ...(getLeverExitOverlay(player.id, toRoom) || {}),
-          ...(getSearchRevealExitOverlay(player.id, toRoom) || {}),
-        }
-        const normalizedRoomData = {
-          ...destinationRoom,
-          ...(exitOverlay || {}),
-          players: Array.isArray(destinationRoom.players) ? destinationRoom.players : [],
-          items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
-          npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
-          enemies: destEnemies,
-          stateNote: leverStateNote || searchRevealStateNote || null,
-          actionOverrides: getRoomActionOverrides(player.id, toRoom),
-          gatedExits: getGatedDirections(toRoom),
-        }
-        const toRoomName = destinationRoom.name
-
-        // Direction was derived above, before the destination was touched.
-        // A teleport has no direction on either side.
-        const exitDirection = direction
-        const entryDirection =
-          direction && destinationRoom ? findDirectionKey(destinationRoom, fromRoom) : null
-
-        // A leader can't travel through a gate a party member can't pass — keep the party together.
+        // A leader can't travel through a gate a party member can't pass — keep
+        // the party together. Needs only the direction, so it is settled before
+        // the destination is read rather than after.
         if (partyStore.isLeader(player.id)) {
           const gateBlock = await partyMemberGateBlocked(player.id, fromRoom, direction)
           if (gateBlock) {
@@ -996,6 +1157,30 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
         }
 
+        const { destinationRoom, gatherCooldowns } = await loadDestination(player, toRoom)
+        if (!destinationRoom) {
+          console.log(`[Socket] player-move - Destination room ${toRoom} not found`)
+          emitActionFeedback(socket, {
+            action: 'move',
+            message: 'Destination room not found',
+            outcome: 'failure',
+          })
+          return
+        }
+
+        const normalizedRoomData = buildDestinationRoomData({
+          destinationRoom,
+          toRoom,
+          player,
+          gatherCooldowns,
+        })
+        const toRoomName = destinationRoom.name
+
+        // Direction was derived above, before the destination was touched.
+        // A teleport has no direction on either side.
+        const exitDirection = direction
+        const entryDirection = direction ? findDirectionKey(destinationRoom, fromRoom) : null
+
         console.log(`[Socket] Calling gameEngine.processUserAction for ${player.username}`)
         const result = await gameEngine.processUserAction({
           playerId: player.id,
@@ -1005,6 +1190,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             // Authorized above for a teleport; left unset for a directional move
             // so the engine derives the direction itself and enforces the gate.
             authorizedMove: isTeleportMove,
+            // The exits just read, so the engine's own derivation does not read
+            // them again. Server-authored: it sits beside `authorizedMove`,
+            // outside the half of the action built from client input.
+            sourceExits,
             // Only the destination and its presentation data. The engine derives
             // the source room from where the player actually stands.
             data: { toRoom, toRoomName, roomData: normalizedRoomData },
@@ -1023,129 +1212,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // payload — which used to let a caller relabel an ordinary step for the
           // room enter/leave messaging.
           const isTeleport = isTeleportMove
-          await transitionPlayerRoom({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
-
-          // Save entry/exit messages to database
-          try {
-            // Reuse already-fetched rooms (sourceRoom and destinationRoom) instead of fetching again
-            const fromRoomData = sourceRoom
-            const toRoomData = destinationRoom
-
-            if (fromRoomData && toRoomData) {
-              // Exit message for the room being left
-              const exitDirection = findDirectionKey(fromRoomData, toRoom)
-              const exitDirectionPhrase = buildDirectionPhrase(exitDirection, 'exit')
-              const exitMessage = `${player.username} exits to ${exitDirectionPhrase}`
-
-              await prisma.roomChatMessage.create({
-                data: {
-                  userId: player.id,
-                  roomId: fromRoom,
-                  message: exitMessage,
-                  type: 'system',
-                },
-              })
-
-              // Entry message for the room being entered
-              const entryDirection = findDirectionKey(toRoomData, fromRoom)
-              const entryDirectionPhrase = buildDirectionPhrase(entryDirection, 'enter')
-              const entryMessage = `${player.username} enters from ${entryDirectionPhrase}`
-
-              await prisma.roomChatMessage.create({
-                data: {
-                  userId: player.id,
-                  roomId: toRoom,
-                  message: entryMessage,
-                  type: 'system',
-                },
-              })
-
-              console.log(`[Socket] Saved entry/exit messages for ${player.username} moving from ${fromRoom} to ${toRoom}`)
-            }
-          } catch (error) {
-            console.error('[Socket] Error saving entry/exit messages:', error)
-            // Don't fail the movement if message saving fails
-          }
-
-          // Unlock underground map on first entry to any underground room
-          const scorpionDungeon = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
-          const isUndergroundRoom = toRoom.startsWith('003b') || (toRoom.startsWith('028') && toRoom !== '028') || scorpionDungeon.includes(toRoom)
-          if (isUndergroundRoom && !player.grassyFieldUndergroundMap) {
-            try {
-              await prisma.user.update({
-                where: { id: player.id },
-                data: { grassyFieldUndergroundMap: true },
-              })
-              player.grassyFieldUndergroundMap = true
-            } catch (error) {
-              console.error('[Socket] Error setting grassyFieldUndergroundMap:', error)
-            }
-          }
-
-          // Unlock forest underground map on first entry to any forest underground room
-          const forestUndergroundRooms = ['111a','111b','111c','111d','111e','111f','111g','111h','111i','111j','111k','115a','115b','115c','115d','115e','115f','115g','115h','115i','115j','115k']
-          if (forestUndergroundRooms.includes(toRoom) && !player.forestUndergroundMap) {
-            try {
-              await prisma.user.update({
-                where: { id: player.id },
-                data: { forestUndergroundMap: true },
-              })
-              player.forestUndergroundMap = true
-            } catch (error) {
-              console.error('[Socket] Error setting forestUndergroundMap:', error)
-            }
-          }
-
-          // Unlock the Red Town map on first entry to any Red Town room. Room 215
-          // (the Red Guard Captain's lookout) is deliberately excluded — it is drawn
-          // on the Forest map, and reaching it is not the same as reaching town.
-          const isRedTownRoom = toRoom.startsWith('2') && toRoom !== '215' && !RED_TOWN_SEWER_ROOMS.includes(toRoom)
-          if (isRedTownRoom && !player.redTownMap) {
-            try {
-              await prisma.user.update({
-                where: { id: player.id },
-                data: { redTownMap: true },
-              })
-              player.redTownMap = true
-            } catch (error) {
-              console.error('[Socket] Error setting redTownMap:', error)
-            }
-          }
-
-          // Unlock the sewers map on first entry to the sewers, Thieve's Den or Catacombs
-          if (RED_TOWN_SEWER_ROOMS.includes(toRoom) && !player.redTownSewersMap) {
-            try {
-              await prisma.user.update({
-                where: { id: player.id },
-                data: { redTownSewersMap: true },
-              })
-              player.redTownSewersMap = true
-            } catch (error) {
-              console.error('[Socket] Error setting redTownSewersMap:', error)
-            }
-          }
-
-          // Quests that open by arriving somewhere (town quest givers). `toRoom`
-          // here is the engine-confirmed destination, not the client's request.
-          try {
-            const started = await applyRoomQuestTrigger(player.id, toRoom)
-            if (started) {
-              // The quest list rides on action:feedback's `data.quests`, which the
-              // client already folds into its store — no bespoke event needed.
-              const quests = await getAllQuestProgress(player.id)
-              socket.emit('action:feedback', {
-                action: 'quest started',
-                message: `You have work from ${started.npc}: ${started.quest.title}.`,
-                outcome: 'success',
-                ts: Date.now(),
-                timestamp: new Date().toISOString(),
-                success: true,
-                data: { roomId: toRoom, quests },
-              })
-            }
-          } catch (error) {
-            console.error('[Socket] Error applying room quest trigger:', error)
-          }
+          // Socket rooms, presence and the live player record are moved before
+          // this returns; only the database write is still in flight.
+          const persisted = transitionPlayerRoom({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
 
           console.log(`[Socket] Emitting action:confirmed to player`)
           socket.emit('action:confirmed', {
@@ -1154,7 +1223,18 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             data: result?.data || { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData },
           })
 
-          await maybeStartAutoBattle({ socket, player, toRoom, gameEngine })
+          // The room is already on the player's screen (the engine's feedback
+          // carried it); what they are waiting on now is whatever is waiting for
+          // them. So the ambush roll starts the moment the socket is in the new
+          // room, and the durable writes — current room, map unlocks, the
+          // arrival quest — run beside it instead of ahead of it. They used to
+          // run first, in sequence, with two room-chat rows nothing ever read.
+          await Promise.all([
+            maybeStartAutoBattle({ socket, player, toRoom, gameEngine }),
+            persisted,
+            applyMapUnlocks(prisma, player, toRoom),
+            announceRoomQuest(socket, player, toRoom),
+          ])
 
           // Pull any party members along with the leader.
           if (partyStore.isLeader(player.id)) {
@@ -1172,6 +1252,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               // re-runs each member's own gate rather than inheriting the
               // leader's right of way.
               authorizedMove: isTeleportMove,
+              sourceExits,
             })
           }
         } else {
@@ -1412,28 +1493,18 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             })
             return
           }
-          const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service')
-          await ensureAutoRespawnItems(toRoomId)
-
-          const destinationRoom = await fetchRoomWithColors(prisma, toRoomId)
+          const { destinationRoom, gatherCooldowns } = await loadDestination(player, toRoomId)
           if (!destinationRoom) {
             emitActionFeedback(socket, { action: 'teleport', message: 'Destination not found', outcome: 'failure' })
             return
           }
 
-          const destEnemyConfig = getRoomEnemies(toRoomId)
-          const destEnemies = destEnemyConfig
-            ? destEnemyConfig.enemies.map((slug) => getEnemy(slug)).filter(Boolean)
-            : []
-
-          const normalizedRoomData = {
-            ...destinationRoom,
-            players: Array.isArray(destinationRoom.players) ? destinationRoom.players : [],
-            items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
-            npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
-            enemies: destEnemies,
-            gatedExits: getGatedDirections(toRoomId),
-          }
+          const normalizedRoomData = buildDestinationRoomData({
+            destinationRoom,
+            toRoom: toRoomId,
+            player,
+            gatherCooldowns,
+          })
 
           const result = await gameEngine.processUserAction({
             playerId: player.id,
@@ -1453,7 +1524,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           })
 
           if (result && result.success === true) {
-            await transitionPlayerRoom({ player, fromRoom, toRoom: toRoomId, exitDirection: null, entryDirection: null, isTeleport: true })
+            const persisted = transitionPlayerRoom({ player, fromRoom, toRoom: toRoomId, exitDirection: null, entryDirection: null, isTeleport: true })
 
             socket.emit('action:confirmed', {
               action: 'move',
@@ -1461,7 +1532,16 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               data: result?.data || { fromRoom, toRoom: toRoomId, toRoomName: destinationRoom.name, roomData: normalizedRoomData },
             })
 
-            await maybeStartAutoBattle({ socket, player, toRoom: toRoomId, gameEngine })
+            // Same arrival sequence as a walked move: the ambush first, the
+            // durable writes beside it. Arriving by teleport now also unlocks
+            // the destination's map and opens its arrival quest, which only a
+            // walked entry used to do.
+            await Promise.all([
+              maybeStartAutoBattle({ socket, player, toRoom: toRoomId, gameEngine }),
+              persisted,
+              applyMapUnlocks(prisma, player, toRoomId),
+              announceRoomQuest(socket, player, toRoomId),
+            ])
 
             if (partyStore.isLeader(player.id)) {
               await pullPartyMembers({
@@ -1498,7 +1578,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         }
 
         if (actionType === 'look') {
-          const currentRoom = await fetchRoomWithColors(prisma, player.currentRoom)
+          const currentRoom = await prisma.room.findUnique({
+            where: { roomId: player.currentRoom },
+            select: { name: true },
+          })
           if (currentRoom) {
             actionData = { ...actionData, roomName: currentRoom.name }
           }

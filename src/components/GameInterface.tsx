@@ -226,7 +226,21 @@ export default function GameInterface() {
   const moveSequenceRef = useRef(0) // Tracks move actions (not room loads)
   const roomLoadSequenceRef = useRef(0) // Tracks room load requests
   const enteredViaCacheRoomIdRef = useRef<string | null>(null) // Tracks optimistic entries
-  const pendingMoveRef = useRef<{ moveSeq: number; toRoomId: string; fromRoomId: string; previousRoom: Room | null } | null>(null) // Tracks pending moves with previous state
+  // The move awaiting the server's answer, with everything the optimistic swap
+  // displaced so a refused move can put it all back: the room, and the player
+  // and enemy lists that belonged to it.
+  const pendingMoveRef = useRef<{
+    moveSeq: number
+    toRoomId: string
+    fromRoomId: string
+    previousRoom: Room | null
+    previousPlayers: Player[]
+    previousEnemies: RoomEnemy[]
+  } | null>(null)
+  // Which room's gather countdowns arrived with the room itself (socket move
+  // payload or HTTP room load), so the per-room hydrate effect can skip its
+  // fallback fetch for it.
+  const gatherHydratedRoomIdRef = useRef<string | null>(null)
   const [isMoveInProgress, setIsMoveInProgress] = useState(false) // Prevents multiple simultaneous moves and triggers UI updates
   const appendWorldFeed = useCallback((entry: WorldFeedEntryInput) => {
     const { append } = useWorldFeedStore.getState()
@@ -331,6 +345,7 @@ export default function GameInterface() {
       // Guard: room may have changed during the await
       if (currentRoomRef.current?.roomId !== roomId) return
 
+      gatherHydratedRoomIdRef.current = roomId
       setGatherCooldowns(data.gatherCooldowns ?? [])
     } catch (error) {
       console.error(`[hydrateGatherCooldown] Error for room ${roomId}:`, error)
@@ -343,15 +358,23 @@ export default function GameInterface() {
   // the battle, party and action-feedback subscriptions deliberately do not.
   useGameSocketBindings(socket, socketHandlers, setWorldTick)
 
-  // Hydrate the rolling gather cooldown whenever the current room changes.
+  // Gather countdowns for the current room. They normally arrive with the room
+  // itself — the socket move payload and the HTTP room load both carry them —
+  // and this effect only fetches for a room that turned up without them. It
+  // used to fetch on every room change regardless, an extra request per step.
   useEffect(() => {
-    if (!currentRoom?.roomId) {
+    const roomId = currentRoom?.roomId
+    if (!roomId) {
       setGatherCooldowns([])
       return
     }
-    // Clear stale values from the previous room before fetching fresh status.
+    if (gatherHydratedRoomIdRef.current === roomId) return
+    // Clear stale values from the previous room before fresh status arrives.
     setGatherCooldowns([])
-    hydrateGatherCooldown(currentRoom.roomId)
+    // An optimistic swap lands here before the server has answered; the
+    // answer brings the countdowns, so there is nothing to fetch yet.
+    if (pendingMoveRef.current?.toRoomId === roomId) return
+    hydrateGatherCooldown(roomId)
   }, [currentRoom?.roomId, hydrateGatherCooldown])
 
   // Close the crafting panel whenever the player leaves a crafting room.
@@ -532,10 +555,13 @@ export default function GameInterface() {
 
     // If roomData is provided (e.g., from socket event), use it directly
     if (providedRoomData && providedRoomData.roomId) {
+      // The countdowns ride alongside the room; they are per-player state, not
+      // part of the room record, so they stay out of the room cache.
+      const { gatherCooldowns: providedGatherCooldowns, ...providedRoom } = providedRoomData
       const normalizedRoom = normalizeRoom({
-        ...providedRoomData,
+        ...providedRoom,
         // Preserve worldTick if present in provided data
-        ...(providedRoomData.worldTick ? { worldTick: providedRoomData.worldTick } : {}),
+        ...(providedRoom.worldTick ? { worldTick: providedRoom.worldTick } : {}),
       })
       if (normalizedRoom) {
         // Check sequence BEFORE committing any state
@@ -545,10 +571,14 @@ export default function GameInterface() {
         }
         
         // Commit ALL state changes atomically (guarded by sequence)
+        if (Array.isArray(providedGatherCooldowns)) {
+          gatherHydratedRoomIdRef.current = normalizedRoom.roomId
+          setGatherCooldowns(providedGatherCooldowns)
+        }
         cacheRoom(normalizedRoom)
         setCurrentRoom(normalizedRoom)
         setRoomPlayers(stampPartyLeaders(normalizedRoom.players, normalizedRoom.roomId))
-        setRoomEnemies((providedRoomData as any).enemies || [])
+        setRoomEnemies((providedRoom as any).enemies || [])
 
         if (player && player.currentRoom !== normalizedRoom.roomId) {
           setPlayer({ ...player, currentRoom: normalizedRoom.roomId })
@@ -620,6 +650,10 @@ export default function GameInterface() {
         
         // Commit ALL state changes atomically (guarded by sequence)
         if (normalizedRoom) {
+          if (Array.isArray(roomData.gatherCooldowns)) {
+            gatherHydratedRoomIdRef.current = normalizedRoom.roomId
+            setGatherCooldowns(roomData.gatherCooldowns)
+          }
           cacheRoom(normalizedRoom)
           setCurrentRoom(normalizedRoom)
           setRoomPlayers(stampPartyLeaders(roomPlayers, normalizedRoom.roomId))
@@ -794,6 +828,28 @@ export default function GameInterface() {
 
   const handleActionRef = useRef<(input: string | { type: string; data?: any }) => void>(() => {})
 
+  /**
+   * Show a cached destination while the server decides the move.
+   *
+   * Only the room record is known ahead of time. Who is standing there and
+   * which enemies are present are live state the server answers with, so both
+   * lists are emptied rather than left showing the room just left — the
+   * previous room's players used to stay on screen under the new room's name
+   * until the answer arrived.
+   */
+  const enterRoomOptimistically = (cachedRoom: Room) => {
+    setCurrentRoom(cachedRoom)
+    setRoomPlayers([])
+    setRoomEnemies([])
+    // Track that we entered this room via optimistic cache
+    enteredViaCacheRoomIdRef.current = cachedRoom.roomId
+    // Update player room optimistically
+    const currentPlayer = playerRef.current
+    if (currentPlayer && currentPlayer.currentRoom !== cachedRoom.roomId) {
+      setPlayer({ ...currentPlayer, currentRoom: cachedRoom.roomId })
+    }
+  }
+
   const handleAction = async (actionInput: string | { type: string; data?: any }) => {
     const actionType = typeof actionInput === 'string' ? actionInput : actionInput.type
     const actionData = typeof actionInput === 'string' ? undefined : actionInput.data
@@ -870,7 +926,6 @@ export default function GameInterface() {
 
       // Store previous room state for rollback on failure
       const previousRoom = currentRoom
-      const previousPlayerRoom = player?.currentRoom
 
       // Set pending move with previous state - will be cleared when action:feedback arrives
       pendingMoveRef.current = { 
@@ -878,6 +933,8 @@ export default function GameInterface() {
         toRoomId: targetRoomId,
         fromRoomId: currentRoom.roomId,
         previousRoom: previousRoom,
+        previousPlayers: useGameStore.getState().roomPlayers,
+        previousEnemies: roomEnemies,
       }
 
       // Set move-in-progress flag
@@ -895,13 +952,7 @@ export default function GameInterface() {
       const cachedTargetRoom = getCachedRoom(targetRoomId)
       if (cachedTargetRoom) {
         console.log(`[handleAction] Using cached room for optimistic update (UI-only) [moveSeq:${moveSeq}]:`, cachedTargetRoom.name)
-        setCurrentRoom(cachedTargetRoom)
-        // Track that we entered this room via optimistic cache
-        enteredViaCacheRoomIdRef.current = targetRoomId
-        // Update player room optimistically
-        if (player && player.currentRoom !== targetRoomId) {
-          setPlayer({ ...player, currentRoom: targetRoomId })
-        }
+        enterRoomOptimistically(cachedTargetRoom)
       }
 
       if (socket) {
@@ -980,7 +1031,6 @@ export default function GameInterface() {
 
       // Store previous room state for rollback on failure
       const previousRoom = currentRoom
-      const previousPlayerRoom = player?.currentRoom
 
       // Set pending move with previous state - will be cleared when action:feedback arrives
       pendingMoveRef.current = { 
@@ -988,6 +1038,8 @@ export default function GameInterface() {
         toRoomId: targetRoomId,
         fromRoomId: currentRoom.roomId,
         previousRoom: previousRoom,
+        previousPlayers: useGameStore.getState().roomPlayers,
+        previousEnemies: roomEnemies,
       }
 
       // Set move-in-progress flag
@@ -1011,13 +1063,7 @@ export default function GameInterface() {
         const cachedTargetRoom = getCachedRoom(targetRoomId)
         if (cachedTargetRoom) {
           console.log(`[handleAction] Using cached room for optimistic update (UI-only) [moveSeq:${moveSeq}]:`, cachedTargetRoom.name)
-          setCurrentRoom(cachedTargetRoom)
-          // Track that we entered this room via optimistic cache
-          enteredViaCacheRoomIdRef.current = targetRoomId
-          // Update player room optimistically
-          if (player && player.currentRoom !== targetRoomId) {
-            setPlayer({ ...player, currentRoom: targetRoomId })
-          }
+          enterRoomOptimistically(cachedTargetRoom)
         }
       } else {
         console.log(`[handleAction] Skipping optimistic update - exit has gate [moveSeq:${moveSeq}]`)
@@ -1495,6 +1541,8 @@ export default function GameInterface() {
             if (pendingMove.previousRoom) {
               console.log(`[GameInterface] Rolling back optimistic update - restoring room ${pendingMove.previousRoom.roomId}`)
               setCurrentRoom(pendingMove.previousRoom)
+              setRoomPlayers(pendingMove.previousPlayers)
+              setRoomEnemies(pendingMove.previousEnemies)
               enteredViaCacheRoomIdRef.current = null
               
               // Restore player room state
@@ -1695,8 +1743,12 @@ export default function GameInterface() {
 
     const cleanupRoomMoves = socketHandlers.onRoomPlayerMoved((event) => {
       console.log('[GameInterface] Received room:player-moved event:', event)
-      const currentPlayer = playerRef.current
-      const activeRoom = currentRoomRef.current
+      // Read the store, not the refs: this event follows the move's own
+      // feedback on the wire, and the refs are only updated by an effect after
+      // the next render. Between the two messages they still named the old
+      // room, so the mover's own event looked like a mismatch and triggered a
+      // full HTTP reload of a room the client had just been handed.
+      const { player: currentPlayer, currentRoom: activeRoom } = useGameStore.getState()
 
       if (!currentPlayer) {
         console.log('[GameInterface] No current player, ignoring room:player-moved')
@@ -1755,11 +1807,13 @@ export default function GameInterface() {
         return
       }
 
+      // Someone else's move. The room list is kept by the player-joined and
+      // player-left events, which carry the player and arrive once the server
+      // has actually moved them. Reloading the room over HTTP here raced those:
+      // the read could run before the mover's room was persisted, and its
+      // answer overwrote a list the events had already corrected — a player who
+      // had just left reappeared, or one who had just arrived vanished.
       console.log('[GameInterface] Player moved event is for another player:', event.playerId)
-      if (activeRoom && (event.toRoom === activeRoom.roomId || event.fromRoom === activeRoom.roomId)) {
-        console.log('[GameInterface] Player entered or left current room, reloading')
-        loadRoomDataRef.current?.({ isTransition: true })
-      }
     })
 
     return () => {

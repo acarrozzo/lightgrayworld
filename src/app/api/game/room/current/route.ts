@@ -16,22 +16,6 @@ type RateLimitRecord = {
 
 const rateLimitMap = new Map<string, RateLimitRecord>()
 
-/**
- * Static shape of a room's gather action, as returned by getGatherActionsForRoom.
- * `maxHeld` is set only for capped nodes (e.g. Jack's starter tree); the client
- * compares it against its own live inventory count of `itemSlug` to decide
- * whether the node reads as tapped out, and labels it with `itemNamePlural`.
- */
-type GatherActionDef = {
-  action: string
-  cooldownMs: number | null
-  quantity: number | null
-  itemSlug: string | null
-  itemNamePlural: string | null
-  maxHeld: number | null
-  readyLabel: string | null
-}
-
 const noCacheHeaders = {
   'Cache-Control': 'private, no-store, must-revalidate',
   Pragma: 'no-cache',
@@ -248,33 +232,14 @@ export async function GET(request: NextRequest) {
       const gameEngine = (globalThis as any).gameEngine
 
       // Rolling-cooldown gather status for this room (sand / berries). Drives
-      // the in-room countdown; null when the room has no gather action.
-      if (roomId) {
-        try {
-          const { getGatherActionsForRoom } = require('@/lib/game-engine/room-action-handlers')
-          const { getCooldownRemaining } = require('@/lib/game-engine/services/action-cap-service')
-          const gathers = getGatherActionsForRoom(roomId)
-          if (gathers.length > 0) {
-            payload.gatherCooldowns = await Promise.all(
-              gathers.map(async (gather: GatherActionDef) => ({
-                action: gather.action,
-                // A capped node can have no timer at all (Jack's tree): report it as
-                // always-ready rather than asking the cooldown service about it.
-                cooldownSeconds: gather.cooldownMs ? Math.ceil(gather.cooldownMs / 1000) : 0,
-                secondsRemaining: gather.cooldownMs
-                  ? await getCooldownRemaining(user.id, roomId, gather.action, gather.cooldownMs)
-                  : 0,
-                quantity: gather.quantity ?? null,
-                itemSlug: gather.itemSlug ?? null,
-                itemNamePlural: gather.itemNamePlural ?? null,
-                maxHeld: gather.maxHeld ?? null,
-                readyLabel: gather.readyLabel ?? null,
-              }))
-            )
-          }
-        } catch (error) {
-          console.error('[Room API] Error computing gather cooldown:', error)
-        }
+      // the in-room countdown. Always an array once the viewer is known: an
+      // empty one tells the client the room has no gather action, so it does
+      // not have to ask the gather route separately.
+      try {
+        const { buildGatherCooldowns } = require('@/lib/game-engine/services/gather-status')
+        payload.gatherCooldowns = await buildGatherCooldowns(user.id, roomId)
+      } catch (error) {
+        console.error('[Room API] Error computing gather cooldown:', error)
       }
 
       // Include world tick information for immediate countdown display

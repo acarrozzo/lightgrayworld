@@ -217,7 +217,11 @@ class GameEngine {
         )
 
         if (!isChatAction) {
-          this.applyClickTick(playerId, roomId).catch((err) => {
+          // A move's click tick belongs to the room the player is arriving in:
+          // its regen broadcast and roster patch went to the room just left,
+          // where nobody could see them any more.
+          const tickRoomId = result?.transfer?.toRoomId || roomId
+          this.applyClickTick(playerId, tickRoomId).catch((err) => {
             console.error('[GameEngine] Failed to apply click tick for player', playerId, err)
           })
         }

@@ -296,17 +296,23 @@ async function ensureAutoRespawnItems(roomId) {
     // templates and one for the room's existing items. This keeps a large
     // loot table (e.g. the Solar Office) from firing ~100 sequential queries
     // on every room entry.
+    //
+    // The two reads do not depend on each other — the room's existing rows are
+    // filtered by room, not by the template ids — so they go out together.
+    // This runs on every step between rooms, ahead of the room the player is
+    // waiting to see, and each sequential round trip is felt as travel delay.
     const slugs = itemsToCheck.map((entry) => entry.slug)
-    const templates = await prisma.itemTemplate.findMany({
-      where: { slug: { in: slugs } },
-      select: { id: true, slug: true },
-    })
+    const [templates, existingItems] = await Promise.all([
+      prisma.itemTemplate.findMany({
+        where: { slug: { in: slugs } },
+        select: { id: true, slug: true },
+      }),
+      prisma.roomItem.findMany({
+        where: { roomId },
+        select: { templateId: true },
+      }),
+    ])
     const templateBySlug = new Map(templates.map((t) => [t.slug, t]))
-
-    const existingItems = await prisma.roomItem.findMany({
-      where: { roomId, templateId: { in: templates.map((t) => t.id) } },
-      select: { templateId: true },
-    })
     const existingTemplateIds = new Set(existingItems.map((item) => item.templateId))
 
     const { randomUUID } = require('crypto')

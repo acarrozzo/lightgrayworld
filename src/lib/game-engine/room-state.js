@@ -724,22 +724,34 @@ class RoomState {
     let direction = null
     if (!authorizedMove) {
       try {
-        const sourceRoom = await prisma.room.findUnique({
-          where: { roomId: fromRoom },
-          select: {
-            roomId: true,
-            north: true,
-            northeast: true,
-            east: true,
-            southeast: true,
-            south: true,
-            southwest: true,
-            west: true,
-            northwest: true,
-            up: true,
-            down: true,
-          },
-        })
+        // The socket layer has usually just read this room's exits itself, to
+        // derive the direction for the room enter/leave messaging before the
+        // move reached the engine. Like `authorizedMove`, `sourceExits` sits on
+        // the action rather than in `action.data`, so it can only have been put
+        // there by server code — the client-facing handlers refuse a raw `move`
+        // outright. It is still only honoured when it describes the room the
+        // player is demonstrably standing in; anything else falls back to the
+        // database. Re-querying here was a fourth round trip on every step.
+        const providedExits = action.sourceExits
+        const sourceRoom =
+          providedExits && providedExits.roomId === fromRoom
+            ? providedExits
+            : await prisma.room.findUnique({
+                where: { roomId: fromRoom },
+                select: {
+                  roomId: true,
+                  north: true,
+                  northeast: true,
+                  east: true,
+                  southeast: true,
+                  south: true,
+                  southwest: true,
+                  west: true,
+                  northwest: true,
+                  up: true,
+                  down: true,
+                },
+              })
 
         if (!sourceRoom) {
           console.log(`[RoomState:${this.roomId}] executeMove - Source room ${fromRoom} not found`)
