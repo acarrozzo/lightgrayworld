@@ -1,9 +1,7 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
-import { useGameStore } from '@/lib/game-state'
 import { ArrowBigUp, ArrowBigUpDash } from 'lucide-react'
-import Icon from './Icon'
 import { getRoomMapPosition } from './game-interface/room-map-positions'
 import { getRoomMapView } from './game-interface/utils'
 import { roomColor } from '@/lib/theme/room-colors'
@@ -12,8 +10,15 @@ interface CompassProps {
   room: any
   onAction?: (action: string) => void
   onNavigateToMap?: () => void
-  onOpenTeleport?: () => void
   isMoveInProgress?: boolean
+  /**
+   * Party followers travel with their leader and cannot move on their own; the
+   * server refuses the move anyway, so the D-pad greys out rather than sending
+   * a press that only comes back as an error. Matches the room's text
+   * direction buttons.
+   */
+  isLocked?: boolean
+  lockedHint?: string
   /**
    * Overrides the outer sizing box. The default centres the D-pad in whatever
    * column it is given; the mobile strip narrows it so the basic-action buttons
@@ -35,9 +40,6 @@ interface VerticalDirection {
   rotation?: number
 }
 
-// Helper function to get background color classes for a direction button
-// Defaults to green if no custom color is specified
-// This mapping ensures Tailwind can detect all color classes at build time
 // Per-room directions that should render as "no exit" on the compass even though
 // the underlying room data has a destination. The click still works — only the
 // visual treatment is suppressed. Useful for hidden back-doors.
@@ -90,8 +92,9 @@ export default function Compass({
   room,
   onAction,
   onNavigateToMap,
-  onOpenTeleport,
   isMoveInProgress = false,
+  isLocked = false,
+  lockedHint = 'Following your party — leave to move freely',
   className = 'w-full sm:max-w-[380px] max-w-[320px] mx-auto',
 }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
@@ -99,12 +102,9 @@ export default function Compass({
   const [targetPosition, setTargetPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
   const [isTransitioning, setIsTransitioning] = useState(false)
   const prevRoomId = useRef<string | null>(null)
-  const roomPlayers = useGameStore((state) => state.roomPlayers)
-  const currentPlayerId = useGameStore((state) => state.player?.id)
 
   // Initialize position when room changes
   React.useEffect(() => {
-    console.log('[Compass] useEffect triggered for room:', room?.roomId)
     if (!room?.roomId) {
       return
     }
@@ -113,49 +113,38 @@ export default function Compass({
     const isFirstLoad = prevRoomId.current === null
     const isSameRoom = prevRoomId.current === room.roomId
 
-    console.log('[Compass] Calculated newPosition:', newPosition, 'currentPosition:', currentPosition, 'prevRoomId:', prevRoomId.current)
-
     if (isFirstLoad || isSameRoom || currentPosition === '') {
       setCurrentPosition(newPosition)
       setTargetPosition(newPosition)
       setIsTransitioning(false)
       prevRoomId.current = room.roomId
-      console.log('[Compass] Initial position set to:', newPosition)
       return
     }
 
     setTargetPosition(newPosition)
     setIsTransitioning(true)
     prevRoomId.current = room.roomId
-    console.log('[Compass] Transition started to newPosition:', newPosition)
 
     const timer = setTimeout(() => {
       setCurrentPosition(newPosition)
       setIsTransitioning(false)
-      console.log('[Compass] Transition complete, currentPosition updated to:', newPosition)
     }, MAP_PAN_MS)
 
     return () => {
-      console.log('[Compass] Cleaning up transition timer for room change')
       clearTimeout(timer)
     }
   }, [room?.roomId, currentPosition])
 
   const handleNavigate = async (direction: string) => {
-    console.log('[Compass] handleNavigate called with direction:', direction)
-    console.log('[Compass] isNavigating:', isNavigating, 'isMoveInProgress:', isMoveInProgress, 'room[direction]:', room?.[direction], 'onAction:', !!onAction)
-    if (isNavigating || isMoveInProgress || !onAction) {
-      console.log('[Compass] Early return - navigation blocked')
+    if (isNavigating || isMoveInProgress || isLocked || !onAction) {
       return
     }
 
     setIsNavigating(true)
-    console.log('[Compass] Calling onAction with direction:', direction)
-    
+
     try {
       // Use the unified action system
       await onAction(direction)
-      console.log('[Compass] onAction completed successfully')
     } catch (error) {
       console.error('[Compass] Navigation error:', error)
     } finally {
@@ -165,9 +154,9 @@ export default function Compass({
 
   if (!room) return null
 
-  // Artwork + title come from the shared region table (MAP_CONFIG via
-  // getMapIdForRoom), so the mini-map and the full map view always agree on which
-  // map a room belongs to. Only the pan is local, because it animates between rooms.
+  // Artwork + title come from the shared sheet table (world-map.js via
+  // getRoomMapView), so the mini-map and the full map view always agree on which
+  // sheet a room belongs to. Only the pan is local, because it animates between rooms.
   const { src: mapBackground, title: mapTitle } = getRoomMapView(room.roomId)
   const isSingleRoomMap = room.roomId === '000' || room.roomId === '999' || room.roomId === '088'
   const mapPosition = isSingleRoomMap
@@ -190,24 +179,38 @@ export default function Compass({
     { key: 'down', label: 'DOWN', rotation: 180 },
   ]
 
+  const isDisabled = isNavigating || isMoveInProgress || isLocked
+  const directionTitle = (label: string, isAvailable: boolean) => {
+    if (isLocked) return lockedHint
+    return isAvailable ? `Go ${label}` : `No exit ${label}`
+  }
+
   return (
-    <div className={`compass ${className}`}>
+    <div className={`compass ${className}`} title={isLocked ? lockedHint : undefined}>
       {/* Main D-pad */}
       <div className="relative">
         <div className="relative w-56 sm:w-64 h-56 sm:h-64 mx-auto">
-          {/* Map circle in center */}
+          {/* Map circle in center. The caption is what tells a player the
+              mini-map is a button — it was one all along, but nothing said so. */}
           <div className="absolute inset-0 flex items-center justify-center">
             <button
               type="button"
               onClick={() => onNavigateToMap?.()}
-              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-[background-position] duration-[350ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-[10px] sm:border-[25px] border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl"
+              className="relative w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-[background-position] duration-[350ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-[10px] sm:border-[25px] border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl group"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition
               }}
-              aria-label="View full map"
-              title={mapTitle}
-            />
+              aria-label={`Open the map (${mapTitle})`}
+              title={`Open the map — ${mapTitle}`}
+            >
+              <span
+                className="pointer-events-none absolute left-1/2 bottom-0.5 -translate-x-1/2 rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.14em] text-fg-bright bg-surface-canvas/75 shadow-sm transition-colors group-hover:bg-surface-canvas/90"
+                aria-hidden="true"
+              >
+                Map
+              </span>
+            </button>
           </div>
 
           {/* Direction buttons */}
@@ -226,7 +229,6 @@ export default function Compass({
               'bottom-right': 'bottom-8.5 right-8.5',
             }
 
-            const isDisabled = isNavigating || isMoveInProgress
             const showSpinner = isMoveInProgress && isAvailable
 
             return (
@@ -234,9 +236,11 @@ export default function Compass({
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
                 disabled={isDisabled}
-                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${directionStyle.className} ${isDisabled ? 'cursor-wait opacity-60' : ''}`}
+                className={`absolute ${positionClasses[dir.position as keyof typeof positionClasses]} w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${directionStyle.className} ${
+                  isLocked ? 'cursor-not-allowed opacity-40' : isDisabled ? 'cursor-wait opacity-60' : ''
+                }`}
                 style={directionStyle.style}
-                title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
+                title={directionTitle(dir.label, isAvailable)}
               >
                 {showSpinner ? (
                   <div className="w-4 h-4 border-2 border-fg-bright/70 border-t-transparent rounded-full animate-spin"></div>
@@ -260,7 +264,6 @@ export default function Compass({
             const isAvailable = !!room[dir.key] && !hiddenForRoom.includes(dir.key)
             const directionStyle = getDirectionStyle(dir.key, room.directionColors, room.region, isAvailable)
 
-            const isDisabled = isNavigating || isMoveInProgress
             const showSpinner = isMoveInProgress && isAvailable
 
             return (
@@ -268,9 +271,11 @@ export default function Compass({
                 key={dir.key}
                 onClick={() => handleNavigate(dir.key)}
                 disabled={isDisabled}
-                className={`w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${directionStyle.className} ${isDisabled ? 'cursor-wait opacity-60' : ''}`}
+                className={`w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${directionStyle.className} ${
+                  isLocked ? 'cursor-not-allowed opacity-40' : isDisabled ? 'cursor-wait opacity-60' : ''
+                }`}
                 style={directionStyle.style}
-                title={isAvailable ? `Go ${dir.label}` : `No exit ${dir.label}`}
+                title={directionTitle(dir.label, isAvailable)}
               >
                 {showSpinner ? (
                   <div className="w-4 h-4 border-2 border-fg-bright/70 border-t-transparent rounded-full animate-spin"></div>

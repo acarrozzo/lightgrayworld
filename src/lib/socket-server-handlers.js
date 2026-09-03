@@ -8,7 +8,13 @@ const {
   normalizeRoomData,
 } = require('./game-engine/services/room-normalization.js')
 const { getRoomEnemies, isProbabilistic, rollRoomEnemyGroup } = require('./game-data/room-enemies.js')
-const { isFixedTeleportDestination } = require('./game-data/teleport-destinations.js')
+const {
+  TELEPORT_MP_COST,
+  getTeleportDestination,
+  isTeleportDestinationOpen,
+} = require('./game-data/teleport-destinations.js')
+const { getMapSheetForRoom, getWorldRegionByHubRoom } = require('./game-data/world-map.js')
+const { MAP_STATE_SELECT, projectMapState } = require('./game-engine/services/map-state.js')
 const { debugLog } = require('./debug-log.js')
 const {
   consumeTeleportGrant,
@@ -373,16 +379,6 @@ async function fetchRoomWithColors(prisma, roomId) {
 // Direction finding helpers for entry/exit messages
 const DIRECTION_KEYS = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down']
 
-// Rooms below Red Town (sewers, Thieve's Den, Catacombs). Listed explicitly rather
-// than matched on a `232` prefix: the Back Alley by a Sewer (232) and the Thieve's
-// Den Secret Entrance (232mm) are above ground on the Red Town map.
-// Mirrors RED_TOWN_SEWER_ROOMS in components/game-interface/utils.ts.
-const RED_TOWN_SEWER_ROOMS = [
-  '232a', '232b', '232c', '232d', '232e', '232f', '232g', '232h', '232i', '232j',
-  '232k', '232l', '232m', '232n', '232o', '232p', '232q', '232r', '232s', '232t',
-  '232u', '232v', '232w', '232x', '232y', '232z',
-]
-
 function findDirectionKey(room, targetRoomId) {
   if (!room || !targetRoomId) {
     return null
@@ -397,51 +393,112 @@ function findDirectionKey(room, targetRoomId) {
   return null
 }
 
-// Rooms whose first entry unlocks a map. Each check is against the flag the
-// player already carries, so the write only happens once per map.
-const SCORPION_DUNGEON_ROOMS = ['012b', '012c', '012d', '012e', '012f', '012g', '012h']
-const FOREST_UNDERGROUND_ROOMS = [
-  '111a', '111b', '111c', '111d', '111e', '111f', '111g', '111h', '111i', '111j', '111k',
-  '115a', '115b', '115c', '115d', '115e', '115f', '115g', '115h', '115i', '115j', '115k',
-]
-
-const isGrassyFieldUndergroundRoom = (roomId) =>
-  roomId.startsWith('003b') ||
-  (roomId.startsWith('028') && roomId !== '028') ||
-  SCORPION_DUNGEON_ROOMS.includes(roomId)
-
-// Room 215 (the Red Guard Captain's lookout) is deliberately excluded — it is
-// drawn on the Forest map, and reaching it is not the same as reaching town.
-const isRedTownRoom = (roomId) =>
-  roomId.startsWith('2') && roomId !== '215' && !RED_TOWN_SEWER_ROOMS.includes(roomId)
-
 /**
- * Unlock whichever maps arriving in `toRoom` earns, in one write. Resolves once
- * the flags are persisted and mirrored onto the live player record; resolves
- * immediately when there is nothing new to unlock, which is almost every move.
+ * Everything arriving in `toRoom` discovers, in one write: the map sheet the
+ * room is drawn on, and — when the room is a region's fast-travel hub — that
+ * region's teleport. Each check is against what the player already carries, so
+ * the write happens once per sheet or hub. The player hears about it through
+ * action:feedback, whose `data.player` the client merges into its store; the
+ * feed shows the line the original printed when you found a map.
+ *
+ * Resolves once persisted and mirrored onto the live player record; resolves
+ * immediately when there is nothing new, which is almost every move.
  */
-async function applyMapUnlocks(prisma, player, toRoom) {
+async function applyArrivalDiscoveries(prisma, socket, player, toRoom) {
   const unlocks = {}
-  if (isGrassyFieldUndergroundRoom(toRoom) && !player.grassyFieldUndergroundMap) {
-    unlocks.grassyFieldUndergroundMap = true
+  const messages = []
+
+  const sheet = getMapSheetForRoom(toRoom)
+  if (sheet?.flag && !player[sheet.flag]) {
+    unlocks[sheet.flag] = true
+    messages.push(`You found the ${sheet.title} map.`)
   }
-  if (FOREST_UNDERGROUND_ROOMS.includes(toRoom) && !player.forestUndergroundMap) {
-    unlocks.forestUndergroundMap = true
+
+  const hubRegion = getWorldRegionByHubRoom(toRoom)
+  if (hubRegion && !hubRegion.alwaysOpen) {
+    const discovered = Array.isArray(player.discoveredTeleports) ? player.discoveredTeleports : []
+    if (!discovered.includes(hubRegion.id)) {
+      unlocks.discoveredTeleports = [...discovered, hubRegion.id]
+      messages.push(`Fast travel to ${hubRegion.name} is now open.`)
+    }
   }
-  if (isRedTownRoom(toRoom) && !player.redTownMap) {
-    unlocks.redTownMap = true
-  }
-  // The sewers, Thieve's Den and Catacombs.
-  if (RED_TOWN_SEWER_ROOMS.includes(toRoom) && !player.redTownSewersMap) {
-    unlocks.redTownSewersMap = true
-  }
+
   if (Object.keys(unlocks).length === 0) return
 
   try {
     await prisma.user.update({ where: { id: player.id }, data: unlocks })
     Object.assign(player, unlocks)
+    emitActionFeedback(socket, {
+      action: 'discovery',
+      message: messages.join(' '),
+      outcome: 'success',
+      data: { roomId: toRoom, player: unlocks },
+    })
   } catch (error) {
-    console.error(`[Socket] Error unlocking maps for room ${toRoom}:`, error)
+    console.error(`[Socket] Error recording discoveries for room ${toRoom}:`, error)
+  }
+}
+
+/**
+ * Whether `player` may fast travel to `toRoomId` through the fixed network.
+ *
+ *  - `{ ok: false }`            — not a network destination; the caller falls
+ *                                 through to the per-use grants.
+ *  - `{ ok: false, reason }`    — a network hub the player has not found, or
+ *                                 cannot afford. Refuse with the reason.
+ *  - `{ ok: true, charge }`     — allowed; settle `charge` once the move lands.
+ *
+ * Discovery and MP are read from the row, not the live record: a second socket
+ * for the same account may have unlocked a hub or spent the MP a moment ago.
+ */
+async function authorizeNetworkTeleport(prisma, player, toRoomId) {
+  const destination = getTeleportDestination(toRoomId)
+  if (!destination) return { ok: false }
+
+  const row = await prisma.user.findUnique({
+    where: { id: player.id },
+    select: { mp: true, discoveredTeleports: true },
+  })
+  if (!row) return { ok: false, reason: 'Player not found' }
+
+  if (!isTeleportDestinationOpen(destination, row.discoveredTeleports)) {
+    return { ok: false, reason: `You have not found ${destination.name} yet.` }
+  }
+  if (row.mp < TELEPORT_MP_COST) {
+    return { ok: false, reason: `You need ${TELEPORT_MP_COST} MP to teleport. Rest first.` }
+  }
+  return { ok: true, charge: { cost: TELEPORT_MP_COST, destination } }
+}
+
+/**
+ * Take the MP for a network fast travel that has just landed. Clamped at zero
+ * in the database rather than trusted from memory, then mirrored to the live
+ * record, the room's live vitals, the roster, and the mover's own store
+ * (action:feedback `data.mp`, which the client already merges).
+ */
+async function chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom, charge }) {
+  if (!charge) return
+  try {
+    const rows = await prisma.$queryRawUnsafe(
+      `UPDATE "User" SET mp = GREATEST(mp - $2, 0) WHERE id = $1 RETURNING mp`,
+      player.id,
+      charge.cost
+    )
+    const row = rows?.[0]
+    if (!row) return
+    const mp = Number(row.mp)
+    player.mp = mp
+    gameEngine?.rooms?.get?.(toRoom)?.updatePlayer?.(player.id, (state) => ({ ...state, mp }))
+    io.to(`room-${toRoom}`).emit(SOCKET_EVENTS.PLAYER_VITALS, { id: player.id, roomId: toRoom, mp })
+    updatePresence(io, player.id, { mp })
+    emitActionFeedback(socket, {
+      action: 'teleport',
+      message: `Fast travel to ${charge.destination.name}: ${charge.cost} MP.`,
+      outcome: 'success',
+      data: { roomId: toRoom, mp },
+    })
+  } catch (error) {
+    console.error(`[Socket] Error charging teleport MP for ${player.username}:`, error)
   }
 }
 
@@ -637,6 +694,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             roomData: normalizedRoomData,
           })
           await maybeStartAutoBattle({ socket: memberSocket, player: memberPlayer, toRoom, gameEngine })
+          // A member pulled into a hub has stood in it just as the leader has.
+          await applyArrivalDiscoveries(prisma, memberSocket, memberPlayer, toRoom)
         }
       } catch (err) {
         console.error(`[Party] Failed to pull member ${memberId} from ${fromRoom} to ${toRoom}:`, err)
@@ -888,10 +947,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             defMod: true,
             physicalTraining: true,
             mentalTraining: true,
-            grassyFieldUndergroundMap: true,
-            forestUndergroundMap: true,
-            redTownMap: true,
-            redTownSewersMap: true,
+            ...MAP_STATE_SELECT,
             ...SPELL_SELECT,
           },
         })
@@ -924,10 +980,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           defMod: dbPlayer.defMod,
           physicalTraining: dbPlayer.physicalTraining,
           mentalTraining: dbPlayer.mentalTraining,
-          grassyFieldUndergroundMap: dbPlayer.grassyFieldUndergroundMap,
-          forestUndergroundMap: dbPlayer.forestUndergroundMap,
-          redTownMap: dbPlayer.redTownMap,
-          redTownSewersMap: dbPlayer.redTownSewersMap,
+          // Map sheets found and fast-travel hubs discovered, so the Map view
+          // and the Fast travel grid open in the right state on reconnect.
+          ...projectMapState(dbPlayer),
           // Spell levels and the teachers met, so a reconnect restores the
           // battle Spells tab and the spellbook's caps along with everything else.
           ...projectSpellState(dbPlayer),
@@ -1157,10 +1212,18 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // fixed network, or one the server itself just named for this player
         // (guild lair, defeat respawn, flee retreat) and has not yet spent.
         const isTeleportMove = !direction
+        // A network fast travel must have been discovered and is paid for in MP
+        // once it lands; a destination the server itself granted (guild lair,
+        // respawn, flee retreat) is its own doing and stays free.
+        let teleportCharge = null
         if (isTeleportMove) {
-          const authorized =
-            isFixedTeleportDestination(toRoom) || consumeTeleportGrant(player.id, toRoom)
-          if (!authorized) {
+          const network = await authorizeNetworkTeleport(prisma, player, toRoom)
+          if (network.ok) {
+            teleportCharge = network.charge
+          } else if (network.reason) {
+            emitActionFeedback(socket, { action: 'move', message: network.reason, outcome: 'failure' })
+            return
+          } else if (!consumeTeleportGrant(player.id, toRoom)) {
             console.warn(
               `[Socket] player-move - ${player.username} requested unreachable/unauthorized ${toRoom} from ${fromRoom}`
             )
@@ -1263,7 +1326,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           await Promise.all([
             maybeStartAutoBattle({ socket, player, toRoom, gameEngine }),
             persisted,
-            applyMapUnlocks(prisma, player, toRoom),
+            chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom, charge: teleportCharge }),
+            applyArrivalDiscoveries(prisma, socket, player, toRoom),
             announceRoomQuest(socket, player, toRoom),
             announceSpellTeacher(prisma, socket, player, toRoom),
           ])
@@ -1503,7 +1567,14 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // grant has not been used yet. Without this the destination was simply
           // whatever the client asked for, which reached sealed mines, boss
           // chambers and loot rooms past every gate in the game.
-          if (!isFixedTeleportDestination(toRoomId) && !consumeTeleportGrant(player.id, toRoomId)) {
+          let teleportCharge = null
+          const network = await authorizeNetworkTeleport(prisma, player, toRoomId)
+          if (network.ok) {
+            teleportCharge = network.charge
+          } else if (network.reason) {
+            emitActionFeedback(socket, { action: 'teleport', message: network.reason, outcome: 'failure' })
+            return
+          } else if (!consumeTeleportGrant(player.id, toRoomId)) {
             console.warn(
               `[Socket] teleport - ${player.username} requested unauthorized destination ${toRoomId}`
             )
@@ -1571,7 +1642,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             await Promise.all([
               maybeStartAutoBattle({ socket, player, toRoom: toRoomId, gameEngine }),
               persisted,
-              applyMapUnlocks(prisma, player, toRoomId),
+              chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom: toRoomId, charge: teleportCharge }),
+              applyArrivalDiscoveries(prisma, socket, player, toRoomId),
               announceRoomQuest(socket, player, toRoomId),
               announceSpellTeacher(prisma, socket, player, toRoomId),
             ])

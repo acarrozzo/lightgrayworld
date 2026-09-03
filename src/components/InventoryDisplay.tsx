@@ -1,25 +1,30 @@
 'use client'
 
-import { InventoryItem } from '@/lib/game-state'
-import { useMemo, useState, useEffect } from 'react'
-import InventoryDropButton from './InventoryDropButton'
-import NotificationBadge from './NotificationBadge'
-import ItemCardShell from './ItemCardShell'
-import StatSortControl from './StatSortControl'
-import { getItemActions } from '@/lib/item-actions'
-import Icon from './Icon'
-import { ItemType, EquipSlot, WeaponCategory } from '@prisma/client'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
+import type { InventoryItem } from '@/lib/game-state'
+import { WeaponCategory } from '@prisma/client'
 import { getItemDisplayOrder } from '@/lib/inventory-utils'
+import { getSellValue } from '@/lib/shop-pricing'
+import { getPrimaryItemAction, type PrimaryItemAction } from '@/lib/item-primary-action'
+import { useGearCompareSetting } from '@/lib/use-gear-compare'
 import {
   type FilterTab,
   type ItemCategory,
+  type ItemFilterView,
   type SortStat,
+  FILTER_GROUPS,
+  buildSections,
+  compareToEquipped,
+  countForGroup,
+  filterTabToView,
   getItemCategory,
-  getCraftingKind,
+  isTwoHanded,
+  sortEquippedFirst,
   sortItems,
-  INVENTORY_TABS,
-  CATEGORY_DISPLAY_ORDER,
 } from '@/lib/inventory-categories'
+import ItemFilterBar from './ItemFilterBar'
+import ItemRow, { EquippedDivider, GhostButton, ItemDrawer } from './ItemRow'
+import Icon from './Icon'
 
 interface InventoryDisplayProps {
   inventory: InventoryItem[]
@@ -28,19 +33,47 @@ interface InventoryDisplayProps {
   onClearNewItem?: (itemId: string) => void
   showNewItems?: boolean
   showHeading?: boolean
-  tabsPadding?: boolean
   initialFilter?: FilterTab
 }
 
 type WeaponTypeFilter = 'all' | 'melee' | 'ranged'
 type HandednessFilter = 'all' | '1h' | '2h'
 
-// Crafting items are shown in fixed subsections (materials first, then tools)
-// rather than via filter chips, so we render these in a stable order.
-const CRAFTING_SUBSECTIONS: Array<{ kind: 'material' | 'tool'; label: string }> = [
-  { kind: 'material', label: 'Materials' },
-  { kind: 'tool', label: 'Tools' },
-]
+const PRIMARY =
+  'px-2.5 min-h-[30px] rounded-md text-xs font-semibold flex items-center gap-1 whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow-md'
+const SECTION_TITLE = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-fg-muted px-0.5 mt-1'
+const SUB_CHIP = 'px-2.5 py-1 text-[11px] font-medium rounded border transition-all duration-200'
+const SUB_CHIP_IDLE =
+  'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-secondary border-line-subtle/50 hover:border-line-strong/50'
+
+/** Inline quantity strip that replaces the one-tap Drop: 1 / half / all, or cancel. */
+function DropStrip({
+  item,
+  onDrop,
+  onCancel,
+}: {
+  item: InventoryItem
+  onDrop: (quantity: number) => void
+  onCancel: () => void
+}) {
+  const quantity = item.quantity
+  const half = Math.ceil(quantity / 2)
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 w-full rounded-md border border-dashed border-status-error/40 bg-status-error/5 px-2 py-1.5">
+      <span className="text-[11px] font-semibold text-status-error mr-0.5">Drop</span>
+      <GhostButton tone="danger" onClick={() => onDrop(1)}>
+        {quantity > 1 ? '1' : `1 ${item.template.name}`}
+      </GhostButton>
+      {half > 1 && half < quantity && (
+        <GhostButton tone="danger" onClick={() => onDrop(half)}>Half · {half}</GhostButton>
+      )}
+      {quantity > 1 && (
+        <GhostButton tone="danger" onClick={() => onDrop(quantity)}>All · {quantity}</GhostButton>
+      )}
+      <GhostButton onClick={onCancel} className="ml-auto">Cancel</GhostButton>
+    </div>
+  )
+}
 
 export default function InventoryDisplay({
   inventory,
@@ -49,417 +82,273 @@ export default function InventoryDisplay({
   onClearNewItem,
   showNewItems = true,
   showHeading = true,
-  tabsPadding = true,
   initialFilter,
 }: InventoryDisplayProps) {
-  const [activeTab, setActiveTab] = useState<FilterTab>(initialFilter || 'all')
+  const [view, setView] = useState<ItemFilterView>(() => filterTabToView(initialFilter))
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<WeaponTypeFilter>('all')
   const [handednessFilter, setHandednessFilter] = useState<HandednessFilter>('all')
   const [sortStat, setSortStat] = useState<SortStat>('none')
+  // One drawer open at a time. A stale id (item dropped or sold) simply matches nothing.
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [dropOpen, setDropOpen] = useState(false)
+  const [compareEnabled, setCompareEnabled] = useGearCompareSetting()
 
-  // Sync activeTab with initialFilter prop changes
+  // The character panel's slot buttons deep-link into Equipment › slot.
   useEffect(() => {
-    if (initialFilter !== undefined) {
-      setActiveTab(initialFilter)
-    }
+    if (initialFilter !== undefined) setView(filterTabToView(initialFilter))
   }, [initialFilter])
 
-  // Reset sub-filters when leaving main tab
   useEffect(() => {
-    if (activeTab !== 'main') {
-      setWeaponTypeFilter('all')
-      setHandednessFilter('all')
-    }
-  }, [activeTab])
+    setDropOpen(false)
+  }, [openId])
 
-  // Get item display order map (memoized)
   const itemOrderMap = useMemo(() => getItemDisplayOrder(), [])
 
-  // Filter and sort items based on active tab
-  const filteredItems = useMemo(() => {
-    if (!inventory || inventory.length === 0) {
-      return []
-    }
-
-    let filtered: InventoryItem[] = []
-
-    switch (activeTab) {
-      case 'all':
-        filtered = [...inventory]
-        break
-      case 'main':
-        filtered = inventory.filter(item => {
-          if (item.template.equipSlot !== EquipSlot.MAIN_HAND) return false
-          if (weaponTypeFilter === 'melee' && item.template.weaponCategory !== WeaponCategory.MELEE) return false
-          if (weaponTypeFilter === 'ranged' && item.template.weaponCategory !== WeaponCategory.RANGED) return false
-          const isTwoHanded = (item.template.metadata as any)?.isTwoHanded === true
-          if (handednessFilter === '1h' && isTwoHanded) return false
-          if (handednessFilter === '2h' && !isTwoHanded) return false
-          return true
-        })
-        break
-      case 'off':
-        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.OFF_HAND)
-        break
-      case 'head':
-        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.HEAD)
-        break
-      case 'body':
-        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.BODY)
-        break
-      case 'hands':
-        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.HANDS)
-        break
-      case 'feet':
-        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.FEET)
-        break
-      case 'mount':
-        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.MOUNT)
-        break
-      case 'ring':
-        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.RING)
-        break
-      case 'neck':
-        filtered = inventory.filter(item => item.template.equipSlot === EquipSlot.NECK)
-        break
-      case 'consumables':
-        filtered = inventory.filter(item => item.template.type === ItemType.CONSUMABLE)
-        break
-      case 'crafting':
-        filtered = inventory.filter(item => getCraftingKind(item) !== null)
-        break
-      case 'misc':
-        filtered = inventory.filter(item => getItemCategory(item) === 'misc')
-        break
-    }
-
-    return sortItems(filtered, sortStat, itemOrderMap)
-  }, [inventory, activeTab, weaponTypeFilter, handednessFilter, sortStat, itemOrderMap])
-
-  // Group items by category when 'all' tab is selected
-  const groupedItems = useMemo(() => {
-    if (activeTab !== 'all' || !inventory || inventory.length === 0) {
-      return null
-    }
-
-    // Derived from CATEGORY_DISPLAY_ORDER so a new category (e.g. mount) can
-    // never end up missing a bucket here.
-    const groups = Object.fromEntries(
-      CATEGORY_DISPLAY_ORDER.map((category) => [category, [] as InventoryItem[]])
-    ) as Record<ItemCategory, InventoryItem[]>
-
+  // Per-category lists, sorted, with equipped gear pinned to the top.
+  const byCategory = useMemo(() => {
+    const groups = new Map<ItemCategory, InventoryItem[]>()
     for (const item of inventory) {
-      groups[getItemCategory(item)].push(item)
+      const category = getItemCategory(item)
+      const list = groups.get(category) ?? []
+      list.push(item)
+      groups.set(category, list)
     }
-
-    for (const category of CATEGORY_DISPLAY_ORDER) {
-      groups[category] = sortItems(groups[category], sortStat, itemOrderMap)
+    for (const [category, list] of groups) {
+      groups.set(category, sortEquippedFirst(sortItems(list, sortStat, itemOrderMap, category)))
     }
-
     return groups
-  }, [inventory, activeTab, sortStat, itemOrderMap])
+  }, [inventory, sortStat, itemOrderMap])
 
-  // Calculate item counts for each category
-  const categoryCounts = useMemo(() => {
-    if (!inventory || inventory.length === 0) {
-      return {
-        all: 0,
-        main: 0,
-        off: 0,
-        head: 0,
-        body: 0,
-        hands: 0,
-        feet: 0,
-        ring: 0,
-        neck: 0,
-        mount: 0,
-        consumables: 0,
-        crafting: 0,
-        misc: 0,
-      }
-    }
+  const counts = useMemo(() => {
+    const result: Partial<Record<ItemCategory, number>> = {}
+    for (const [category, list] of byCategory) result[category] = list.length
+    return result
+  }, [byCategory])
 
-    const counts = {
-      all: inventory.length,
-      main: 0,
-      off: 0,
-      head: 0,
-      body: 0,
-      hands: 0,
-      feet: 0,
-      ring: 0,
-      neck: 0,
-      mount: 0,
-      consumables: 0,
-      crafting: 0,
-      misc: 0,
-    }
-
-    for (const item of inventory) {
-      counts[getItemCategory(item)]++
-    }
-
-    return counts
-  }, [inventory])
-
-  // Count new items per category so the filter buttons can surface a numbered
-  // badge mirroring the per-item indicator and the main INV tab badge.
-  const newItemCountsByCategory = useMemo(() => {
-    const counts: Partial<Record<ItemCategory, number>> = {}
-    if (!showNewItems || !newItemIds || newItemIds.size === 0) {
-      return counts
-    }
-
+  const newCounts = useMemo(() => {
+    const result: Partial<Record<ItemCategory, number>> = {}
+    if (!showNewItems || newItemIds.size === 0) return result
     for (const item of inventory) {
       if (!newItemIds.has(item.id)) continue
       const category = getItemCategory(item)
-      counts[category] = (counts[category] || 0) + 1
+      result[category] = (result[category] ?? 0) + 1
     }
-
-    return counts
+    return result
   }, [inventory, newItemIds, showNewItems])
 
-  const tabs = INVENTORY_TABS
+  // If the chosen group has nothing in it (a fresh character with no gear, the
+  // last potion drunk), show the first group that does rather than an empty list.
+  const effectiveView = useMemo<ItemFilterView>(() => {
+    if (inventory.length === 0 || countForGroup(counts, view.group) > 0) return view
+    const first = FILTER_GROUPS.find((group) => countForGroup(counts, group.id) > 0)
+    return first ? { group: first.id, slot: 'all' } : view
+  }, [view, counts, inventory.length])
 
-  // Action footer for an inventory item card (equip/unequip/use + value/drop).
-  // Defined once and reused for both the grouped and flat layouts.
-  const renderItemFooter = (item: InventoryItem) => {
-    const itemActions = item.template.slug
-      ? getItemActions(item.template.slug, item.template.metadata as any)
-      : []
-    const itemValue = item.template.value ?? 0
+  const showMainHandFilters = effectiveView.group === 'gear' && effectiveView.slot === 'main'
+
+  // Main-hand sub-filters only mean something in the main-hand view.
+  useEffect(() => {
+    if (!showMainHandFilters) {
+      setWeaponTypeFilter('all')
+      setHandednessFilter('all')
+    }
+  }, [showMainHandFilters])
+
+  const groupsForView = useMemo(() => {
+    if (!showMainHandFilters) return byCategory
+    const filtered = new Map(byCategory)
+    filtered.set(
+      'main',
+      (byCategory.get('main') ?? []).filter((item) => {
+        if (weaponTypeFilter === 'melee' && item.template.weaponCategory !== WeaponCategory.MELEE) return false
+        if (weaponTypeFilter === 'ranged' && item.template.weaponCategory !== WeaponCategory.RANGED) return false
+        const twoHanded = isTwoHanded(item)
+        if (handednessFilter === '1h' && twoHanded) return false
+        if (handednessFilter === '2h' && !twoHanded) return false
+        return true
+      })
+    )
+    return filtered
+  }, [byCategory, showMainHandFilters, weaponTypeFilter, handednessFilter])
+
+  const toggleOpen = (item: InventoryItem) => {
+    onClearNewItem?.(item.id)
+    setOpenId((prev) => (prev === item.id ? null : item.id))
+  }
+
+  const act = (item: InventoryItem, payload: { type: string; data?: any }) => {
+    onClearNewItem?.(item.id)
+    onAction?.(payload)
+  }
+
+  const renderPrimary = (item: InventoryItem, primary: PrimaryItemAction | null): ReactNode => {
+    if (!primary) return null
+    switch (primary.kind) {
+      case 'unequip':
+        return (
+          <button
+            type="button"
+            onClick={() => act(item, { type: 'unequip_item', data: { playerItemId: item.id } })}
+            className={`${PRIMARY} border border-status-error/60 text-status-error bg-transparent hover:bg-status-error/10 shadow-none`}
+          >
+            {primary.label}
+          </button>
+        )
+      case 'equip':
+        return (
+          <button
+            type="button"
+            onClick={() => act(item, { type: 'equip_item', data: { playerItemId: item.id } })}
+            disabled={primary.disabled}
+            title={primary.reason ?? undefined}
+            className={`${PRIMARY} fill-resource-mp disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none`}
+          >
+            {primary.label}
+          </button>
+        )
+      case 'use':
+        return (
+          <button
+            type="button"
+            onClick={() => act(item, { type: 'use_item', data: { playerItemId: item.id, action: primary.action } })}
+            title={primary.title}
+            className={`${PRIMARY} text-fg-bright ${primary.className || 'fill-accent'}`}
+          >
+            {primary.icon && <Icon name={primary.icon} size={12} color="current" />}
+            <span>{primary.label}</span>
+          </button>
+        )
+    }
+  }
+
+  const renderItem = (item: InventoryItem): ReactNode => {
+    // The compare always feeds the Equip button (it knows when the server would
+    // refuse); whether it is shown is the player's setting.
+    const compare = compareToEquipped(item, inventory)
+    const shownCompare = compareEnabled ? compare : null
+    const primary = getPrimaryItemAction(item, compare)
+    const open = openId === item.id
+    const canDrop = item.template.canDrop !== false
+    const sellValue = getSellValue(item.template.value ?? 0)
+
+    let hint: ReactNode = null
+    if (item.isEquipped && canDrop) hint = 'Unequip to drop.'
+    else if (!canDrop) hint = "This can't be dropped."
+    else if (primary?.kind === 'equip' && primary.reason) hint = primary.reason
+
+    const droppable = canDrop && !item.isEquipped
 
     return (
-      // One wrapping row: action buttons flow and wrap; the value + drop group is
-      // pushed right with ml-auto and drops to its own line on narrow cards.
-      <div className="flex flex-wrap items-center gap-2 mt-1">
-        {/* Equipped status tag + Unequip button - show if item is equipped */}
-        {item.isEquipped && (
-          <>
-            <span className="px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider rounded-full bg-status-success/15 text-status-success border border-status-success/40 flex-shrink-0">
-              Equipped
-            </span>
-            <button
-              onClick={() => {
-                onClearNewItem?.(item.id)
-                onAction?.({ type: 'unequip_item', data: { playerItemId: item.id } })
-              }}
-              className="px-3 py-1.5 text-sm font-semibold fill-status-error rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
-            >
-              <Icon name="arrow-down" size={12} color="current" />
-              <span>Unequip</span>
-            </button>
-          </>
-        )}
-        {/* Equip button - show if item has equipSlot and is not already equipped */}
-        {item.template.equipSlot !== null && !item.isEquipped && (
-          <button
-            onClick={() => {
-              onClearNewItem?.(item.id)
-              onAction?.({ type: 'equip_item', data: { playerItemId: item.id } })
-            }}
-            className="px-3 py-1.5 text-sm font-semibold fill-resource-mp rounded-md transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md"
-          >
-            <Icon name="arrow-up" size={12} color="current" />
-            <span>Equip</span>
-          </button>
-        )}
-        {itemActions.map((itemAction) => (
-          <button
-            key={itemAction.action}
-            onClick={() => {
-              onClearNewItem?.(item.id)
-              onAction?.({
-                type: 'use_item',
-                data: { playerItemId: item.id, action: itemAction.action },
-              })
-            }}
-            className={`px-3 py-1.5 rounded-md text-sm font-semibold text-fg-bright transition-all duration-200 flex items-center gap-1.5 flex-shrink-0 shadow-sm hover:shadow-md ${
-              itemAction.className || 'bg-accent/80 hover:bg-accent'
-            }`}
-            title={itemAction.label}
-          >
-            {itemAction.icon && <Icon name={itemAction.icon} size={12} color="current" />}
-            <span>{itemAction.label}</span>
-          </button>
-        ))}
-        <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-          {itemValue > 0 && (
-            <span className="text-xs text-fg-secondary/70 font-medium">{itemValue}</span>
-          )}
-          <InventoryDropButton
+      <div key={item.id} className="flex flex-col">
+        <ItemRow
+          item={item}
+          open={open}
+          onToggle={() => toggleOpen(item)}
+          equipped={item.isEquipped}
+          isNew={showNewItems && newItemIds.has(item.id)}
+          compare={shownCompare}
+          action={renderPrimary(item, primary)}
+        />
+        {open && (
+          <ItemDrawer
             item={item}
-            onDrop={(quantity) => {
-              onClearNewItem?.(item.id)
-              onAction?.({ type: 'drop_item', data: { playerItemId: item.id, quantity } })
-            }}
-            onExamine={() => {
-              onClearNewItem?.(item.id)
-              onAction?.({ type: 'examine_player_item', data: { playerItemId: item.id } })
-            }}
-            onItemAction={(action) => {
-              onClearNewItem?.(item.id)
-              onAction?.({ type: 'use_item', data: { playerItemId: item.id, action } })
-            }}
-          />
-        </div>
+            equipped={item.isEquipped}
+            compare={shownCompare}
+            showWorth
+            meta={sellValue > 0 ? <span>Sells for {sellValue}g</span> : undefined}
+            hint={hint}
+          >
+            {droppable && !dropOpen && (
+              <GhostButton tone="danger" onClick={() => setDropOpen(true)}>Drop…</GhostButton>
+            )}
+            {droppable && dropOpen && (
+              <DropStrip
+                item={item}
+                onDrop={(quantity) => {
+                  setDropOpen(false)
+                  act(item, { type: 'drop_item', data: { playerItemId: item.id, quantity } })
+                }}
+                onCancel={() => setDropOpen(false)}
+              />
+            )}
+          </ItemDrawer>
+        )}
       </div>
     )
   }
 
-  return (
-    <div className="@container space-y-4 p-4 sm:p-6">
-      {showHeading && <h3 className="text-lg font-semibold text-fg-bright">Inventory</h3>}
-      
-      {/* Filter Tabs */}
-      <div className="flex gap-2 flex-wrap pt-1 pb-2">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id
-          const count = categoryCounts[tab.id]
-          const newItemCount = tab.id === 'all' ? 0 : (newItemCountsByCategory[tab.id] || 0)
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative px-3 py-1.5 text-xs font-medium rounded transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
-                isActive
-                  ? 'fill-resource-mp border border-resource-mp/50'
-                  : 'fill-surface-raised border border-line-subtle/50 hover:border-line-strong/50'
-              }`}
-            >
-              <NotificationBadge value={newItemCount} className="absolute -left-1 -top-1 z-10" />
-              <span>{tab.label}</span>
-              {count > 0 && (
-                <span className={`text-[10px] font-normal ${
-                  isActive ? 'text-fg-bright/60' : 'text-fg-secondary/60'
-                }`}>
-                  ({count})
-                </span>
-              )}
-            </button>
-          )
-        })}
+  const renderContent = (): ReactNode => {
+    if (inventory.length === 0) {
+      return <p className="text-sm text-fg-secondary">Your inventory is empty.</p>
+    }
+    const sections = buildSections(groupsForView, effectiveView)
+    if (sections.length === 0) {
+      return <p className="text-sm text-fg-secondary">Nothing here yet.</p>
+    }
+    return sections.map((section) => (
+      <div key={section.key} className="flex flex-col gap-1.5">
+        {section.title && (
+          <h4 className={SECTION_TITLE}>
+            {section.title} · {section.items.length}
+          </h4>
+        )}
+        {section.items.map((item, index) => (
+          <Fragment key={item.id}>
+            {index > 0 && !item.isEquipped && section.items[index - 1].isEquipped && <EquippedDivider />}
+            {renderItem(item)}
+          </Fragment>
+        ))}
       </div>
+    ))
+  }
 
-      {/* Stat sort — hidden for crafting items, which aren't stat-bearing gear */}
-      {activeTab !== 'crafting' && (
-        <StatSortControl value={sortStat} onChange={setSortStat} />
-      )}
+  return (
+    <div className="flex flex-col gap-3 p-4 sm:p-5">
+      {showHeading && <h3 className="text-lg font-semibold text-fg-bright">Inventory</h3>}
 
-      {/* Main hand sub-filters */}
-      {activeTab === 'main' && (
-        <div className="flex gap-4 flex-wrap pb-1">
-          <div className="flex gap-1.5">
-            {(['all', 'melee', 'ranged'] as WeaponTypeFilter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setWeaponTypeFilter(f)}
-                className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
-                  weaponTypeFilter === f
-                    ? 'fill-stat-mag border border-stat-mag/50'
-                    : 'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-secondary border border-line-subtle/50 hover:border-line-strong/50'
-                }`}
-              >
-                {f === 'all' ? 'All Types' : f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
+      <ItemFilterBar
+        counts={counts}
+        newCounts={newCounts}
+        view={effectiveView}
+        onChange={setView}
+        sort={effectiveView.group === 'crafting' ? undefined : sortStat}
+        onSortChange={effectiveView.group === 'crafting' ? undefined : setSortStat}
+        compareEnabled={compareEnabled}
+        onCompareChange={setCompareEnabled}
+      >
+        {showMainHandFilters && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <div className="flex gap-1.5">
+              {(['all', 'melee', 'ranged'] as WeaponTypeFilter[]).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  aria-pressed={weaponTypeFilter === filter}
+                  onClick={() => setWeaponTypeFilter(filter)}
+                  className={`${SUB_CHIP} ${weaponTypeFilter === filter ? 'fill-stat-mag border-stat-mag/50' : SUB_CHIP_IDLE}`}
+                >
+                  {filter === 'all' ? 'All types' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1.5">
+              {(['all', '1h', '2h'] as HandednessFilter[]).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  aria-pressed={handednessFilter === filter}
+                  onClick={() => setHandednessFilter(filter)}
+                  className={`${SUB_CHIP} ${handednessFilter === filter ? 'fill-resource-gold border-resource-gold/50' : SUB_CHIP_IDLE}`}
+                >
+                  {filter === 'all' ? 'All hands' : filter.toUpperCase()}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-1.5">
-            {(['all', '1h', '2h'] as HandednessFilter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setHandednessFilter(f)}
-                className={`px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 ${
-                  handednessFilter === f
-                    ? 'fill-resource-gold border border-resource-gold/50'
-                    : 'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-secondary border border-line-subtle/50 hover:border-line-strong/50'
-                }`}
-              >
-                {f === 'all' ? 'All Hands' : f.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
+      </ItemFilterBar>
 
-      {/* Filtered Items */}
-      {(!inventory || inventory.length === 0) ? (
-        <div className="text-fg-secondary text-sm">
-          Your inventory is empty.
-        </div>
-      ) : activeTab === 'all' && groupedItems ? (
-        // Show grouped items with category headers
-        <div className="space-y-4">
-          {tabs.slice(1).filter((tab) => {
-            const categoryItems = groupedItems[tab.id as keyof typeof groupedItems] || []
-            return categoryItems.length > 0
-          }).map((tab) => {
-            const categoryItems = groupedItems[tab.id as keyof typeof groupedItems] || []
-
-            return (
-              <div key={tab.id} className="space-y-2">
-                <h4 className="text-sm font-semibold text-fg-primary px-2">
-                  {tab.label.charAt(0).toUpperCase() + tab.label.slice(1)} ({categoryItems.length})
-                </h4>
-                <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-                  {categoryItems.map((item) => (
-                    <ItemCardShell
-                      key={item.id}
-                      item={item}
-                      highlighted={item.isEquipped}
-                      newBadge={showNewItems && newItemIds.has(item.id)}
-                      footer={renderItemFooter(item)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="text-fg-secondary text-sm">
-          No items in this category.
-        </div>
-      ) : activeTab === 'crafting' ? (
-        // Crafting items grouped into Materials, then Tools subsections
-        <div className="space-y-4">
-          {CRAFTING_SUBSECTIONS.map(({ kind, label }) => {
-            const sectionItems = filteredItems.filter((item) => getCraftingKind(item) === kind)
-            if (sectionItems.length === 0) return null
-            return (
-              <div key={kind} className="space-y-2">
-                <h4 className="text-sm font-semibold text-fg-primary px-2">
-                  {label} ({sectionItems.length})
-                </h4>
-                <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-                  {sectionItems.map((item) => (
-                    <ItemCardShell
-                      key={item.id}
-                      item={item}
-                      highlighted={item.isEquipped}
-                      newBadge={showNewItems && newItemIds.has(item.id)}
-                      footer={renderItemFooter(item)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        // Show flat list for specific category tabs
-        <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-          {filteredItems.map((item) => (
-            <ItemCardShell
-              key={item.id}
-              item={item}
-              highlighted={item.isEquipped}
-              newBadge={showNewItems && newItemIds.has(item.id)}
-              footer={renderItemFooter(item)}
-            />
-          ))}
-        </div>
-      )}
+      {renderContent()}
     </div>
   )
 }

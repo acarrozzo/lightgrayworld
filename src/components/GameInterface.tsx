@@ -15,7 +15,6 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import { Settings as SettingsIcon, MessageSquare, MessageSquareText } from 'lucide-react'
 import ExplorePanel, { type ExploreSubView } from './game-interface/ExplorePanel'
-import { type BasicActionSurface } from './BasicActionButtons'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
 import SpellbookModal from './SpellbookModal'
@@ -30,7 +29,7 @@ import ActivityTicker from './ActivityTicker'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
-import { MAP_CONFIG, TELEPORT_LOCATIONS } from './game-interface/constants'
+import { TELEPORT_MP_COST } from './game-interface/constants'
 import type { FilterTab } from '@/lib/inventory-categories'
 import { findTravelDirection, checkIfExitHasGate, normalizeCommand, getMapIdForRoom, getUnlockedMaps, formatDirectionPhrase } from './game-interface/utils'
 import { useGameSocketBindings } from './game-interface/useGameSocketBindings'
@@ -146,11 +145,6 @@ export default function GameInterface() {
     content: '',
   })
   const [customAction, setCustomAction] = useState('')
-  // Attack / Search / Rest / Look render both in the room's More Actions section
-  // and beside the compass D-pad. This tracks which copy was last pressed so only
-  // that one shows the result flyout. Defaults to the D-pad, which is always
-  // visible, so results from typed commands still surface somewhere.
-  const [basicActionSurface, setBasicActionSurface] = useState<BasicActionSurface>('explore')
   const [worldTick, setWorldTick] = useState<{
     tickNumber: number
     nextTickAt: number
@@ -484,7 +478,7 @@ export default function GameInterface() {
   ])
 
   // Tab order for swipe navigation (matches the order in the tabs array)
-  const tabOrder = ['explore', 'char', 'inventory', 'quests', 'map', 'players', 'feed', 'settings']
+  const tabOrder = ['explore', 'char', 'inventory', 'quests', 'players', 'feed', 'settings']
 
   // Helper function to get next/previous tab with wrapping
   const getAdjacentTab = useCallback((currentTab: string | null, direction: 'next' | 'prev'): string => {
@@ -2841,13 +2835,15 @@ export default function GameInterface() {
     handleAction({ type: 'teleport', data: { toRoomId: roomId } })
   }, [handleAction])
 
-  // Both of these are refused server-side anyway — party followers in
-  // socket-server-handlers.js, movement in combat in room-state.js. The list
-  // states the reason and disables the destinations.
+  // All of these are refused server-side anyway — party followers and the MP
+  // cost in socket-server-handlers.js, movement in combat in room-state.js. The
+  // grid states the reason and disables the destinations.
   const teleportBlockedReason = isPartyMember
     ? 'You are following your party. Leave the party to move freely.'
     : battle.isInBattle
     ? 'You cannot leave while in combat. Fight or flee.'
+    : (player?.mp ?? 0) < TELEPORT_MP_COST
+    ? `You need ${TELEPORT_MP_COST} MP to teleport. Rest first.`
     : null
 
   // Fast travel closes itself once you have actually travelled, and never
@@ -3292,7 +3288,8 @@ export default function GameInterface() {
                 onSubViewChange={setExploreSubView}
                 onAction={handleAction}
                 onTeleport={handleTeleport}
-                teleportLocations={TELEPORT_LOCATIONS}
+                player={player}
+                isPartyMember={isPartyMember}
                 teleportBlockedReason={teleportBlockedReason}
                 onShowMap={handleShowMap}
                 onOpenMapFullscreen={handleOpenMap}
@@ -3305,8 +3302,6 @@ export default function GameInterface() {
                 actionResult={actionResult}
                 isLoadingRoom={isLoadingRoom}
                 currentAction={action}
-                activeActionSurface={basicActionSurface}
-                onActionSurfaceChange={setBasicActionSurface}
               />
             </div>
           )}
@@ -3435,13 +3430,10 @@ export default function GameInterface() {
                     worldTick={worldTick}
                     actionResult={actionResult}
                     isLoadingRoom={isLoadingRoom}
-                    currentAction={action}
                     roomEnemies={roomEnemies}
                     isInBattle={battle.isInBattle}
                     quests={quests}
                     killList={killList}
-                    activeActionSurface={basicActionSurface}
-                    onActionSurfaceChange={setBasicActionSurface}
                   />
                 </div>
               </div>
@@ -3455,7 +3447,8 @@ export default function GameInterface() {
                   onSubViewChange={setExploreSubView}
                   onAction={handleAction}
                   onTeleport={handleTeleport}
-                  teleportLocations={TELEPORT_LOCATIONS}
+                  player={player}
+                isPartyMember={isPartyMember}
                   teleportBlockedReason={teleportBlockedReason}
                   onShowMap={handleShowMap}
                   onOpenMapFullscreen={handleOpenMap}
@@ -3466,8 +3459,6 @@ export default function GameInterface() {
                   actionResult={actionResult}
                   isLoadingRoom={isLoadingRoom}
                   currentAction={action}
-                  activeActionSurface={basicActionSurface}
-                  onActionSurfaceChange={setBasicActionSurface}
                 />
               </div>
             </div>

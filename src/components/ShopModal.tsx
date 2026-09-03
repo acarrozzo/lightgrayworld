@@ -1,22 +1,25 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Icon from './Icon'
-import InventorySellButton from './InventorySellButton'
-import ItemCardShell from './ItemCardShell'
-import StatSortControl from './StatSortControl'
 import ActionFlyout, { type ActionFlyoutResult } from './ActionFlyout'
+import ItemFilterBar from './ItemFilterBar'
+import ItemRow, { EquippedDivider, GhostButton, ItemDrawer, NameTag } from './ItemRow'
+import { useGearCompareSetting } from '@/lib/use-gear-compare'
 import type { InventoryItem } from '@/lib/game-state'
 import { getItemDisplayOrder } from '@/lib/inventory-utils'
 import { getBuyPrice, getSellValue } from '@/lib/shop-pricing'
 import {
-  type FilterTab,
+  type ItemCategory,
+  type ItemFilterView,
   type SortStat,
+  FILTER_GROUPS,
+  buildSections,
+  compareToEquipped,
+  countForGroup,
   getItemCategory,
-  getCraftingKind,
+  sortEquippedFirst,
   sortItems,
-  INVENTORY_TABS,
-  CATEGORY_DISPLAY_ORDER,
 } from '@/lib/inventory-categories'
 import { EquipSlot } from '@prisma/client'
 
@@ -27,6 +30,7 @@ interface ShopItem {
   description: string
   value: number
   type: string
+  max?: number | null
   equipSlot?: EquipSlot | null
   weaponCategory?: InventoryItem['template']['weaponCategory']
   metadata?: InventoryItem['template']['metadata']
@@ -46,8 +50,8 @@ interface ShopModalProps {
 }
 
 /**
- * Adapt a shop's buy item into the same shape the inventory cards use, so the
- * buy and sell tabs can share ItemCardShell, the category grouping and sorting.
+ * Adapt a shop's stock entry into the shape the inventory rows use, so the buy
+ * and sell tabs share ItemRow, the category grouping, sorting and the compare.
  */
 function shopItemToCardItem(item: ShopItem): InventoryItem {
   return {
@@ -61,7 +65,7 @@ function shopItemToCardItem(item: ShopItem): InventoryItem {
       name: item.name,
       type: item.type,
       description: item.description,
-      max: 99,
+      max: item.max ?? 99,
       value: item.value,
       equipSlot: item.equipSlot ?? null,
       weaponCategory: item.weaponCategory ?? null,
@@ -70,42 +74,33 @@ function shopItemToCardItem(item: ShopItem): InventoryItem {
   }
 }
 
-type CategoryView = {
-  counts: Record<string, number>
-  groups: Map<string, InventoryItem[]>
-  visibleTabs: typeof INVENTORY_TABS
+type Catalog = {
+  counts: Partial<Record<ItemCategory, number>>
+  groups: Map<ItemCategory, InventoryItem[]>
+  total: number
 }
 
-// Crafting items are shown in fixed subsections (materials first, then tools)
-// rather than via filter chips, mirroring the inventory.
-const CRAFTING_SUBSECTIONS: Array<{ kind: 'material' | 'tool'; label: string }> = [
-  { kind: 'material', label: 'Materials' },
-  { kind: 'tool', label: 'Tools' },
-]
-
 /** Group + sort a list of items into the inventory's category layout. */
-function buildCategoryView(
-  items: InventoryItem[],
-  sort: SortStat,
-  orderMap: Map<string, number>
-): CategoryView {
-  const counts: Record<string, number> = { all: items.length }
-  const groups = new Map<string, InventoryItem[]>()
+function buildCatalog(items: InventoryItem[], sort: SortStat, orderMap: Map<string, number>): Catalog {
+  const counts: Partial<Record<ItemCategory, number>> = {}
+  const groups = new Map<ItemCategory, InventoryItem[]>()
   for (const item of items) {
     const category = getItemCategory(item)
-    counts[category] = (counts[category] || 0) + 1
+    counts[category] = (counts[category] ?? 0) + 1
     const list = groups.get(category) ?? []
     list.push(item)
     groups.set(category, list)
   }
   for (const [category, list] of groups) {
-    groups.set(category, sortItems(list, sort, orderMap))
+    groups.set(category, sortEquippedFirst(sortItems(list, sort, orderMap, category)))
   }
-  const visibleTabs = INVENTORY_TABS.filter(
-    (tab) => tab.id === 'all' || (counts[tab.id] || 0) > 0
-  )
-  return { counts, groups, visibleTabs }
+  return { counts, groups, total: items.length }
 }
+
+const PRIMARY =
+  'px-2.5 min-h-[30px] rounded-md text-xs font-semibold flex items-center whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow-md fill-status-success disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none'
+const PRICE = 'font-mono text-[12.5px] font-semibold tabular-nums whitespace-nowrap min-w-[40px] text-right'
+const SECTION_TITLE = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-fg-muted px-0.5 mt-1'
 
 export default function ShopModal({
   isOpen,
@@ -118,15 +113,18 @@ export default function ShopModal({
   onSell,
 }: ShopModalProps) {
   const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('buy')
-  const [buyFilter, setBuyFilter] = useState<FilterTab>('all')
+  const [buyView, setBuyView] = useState<ItemFilterView>({ group: 'gear', slot: 'all' })
   const [buySort, setBuySort] = useState<SortStat>('none')
-  const [sellFilter, setSellFilter] = useState<FilterTab>('all')
+  const [sellView, setSellView] = useState<ItemFilterView>({ group: 'gear', slot: 'all' })
   const [sellSort, setSellSort] = useState<SortStat>('none')
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [buyQty, setBuyQty] = useState(1)
   const [isBuying, setIsBuying] = useState(false)
   const [isSelling, setIsSelling] = useState(false)
+  const [compareEnabled, setCompareEnabled] = useGearCompareSetting()
   // Transient result popover anchored above the clicked buy/sell button. We
   // reuse the same ActionFlyout the room actions use; the frozen anchorRect
-  // keeps it in place even when the card unmounts (e.g. selling the last unit).
+  // keeps it in place even when the row unmounts (e.g. selling the last unit).
   const [flyout, setFlyout] = useState<{
     result: ActionFlyoutResult
     rect: { top: number; left: number }
@@ -154,31 +152,48 @@ export default function ShopModal({
     }
   }, [])
 
+  useEffect(() => {
+    setOpenId(null)
+  }, [activeTab, isOpen])
+
+  useEffect(() => {
+    setBuyQty(1)
+  }, [openId])
+
   const itemOrderMap = useMemo(() => getItemDisplayOrder(), [])
 
   // Buy catalog — adapt shop items, then group/sort like the inventory
   const buyItems = useMemo(() => shopItems.map(shopItemToCardItem), [shopItems])
-  const buyView = useMemo(
-    () => buildCategoryView(buyItems, buySort, itemOrderMap),
-    [buyItems, buySort, itemOrderMap]
-  )
+  const buyCatalog = useMemo(() => buildCatalog(buyItems, buySort, itemOrderMap), [buyItems, buySort, itemOrderMap])
 
-  // Sell catalog — only sellable inventory, grouped/sorted the same way
+  // Sell catalog — everything sellable, equipped gear included (listed inert with the reason)
   const sellableInventory = useMemo(
     () => playerInventory.filter((item) => item.template.canSell !== false),
     [playerInventory]
   )
-  const sellView = useMemo(
-    () => buildCategoryView(sellableInventory, sellSort, itemOrderMap),
+  const sellCatalog = useMemo(
+    () => buildCatalog(sellableInventory, sellSort, itemOrderMap),
     [sellableInventory, sellSort, itemOrderMap]
   )
 
-  const handleBuy = async (itemSlug: string, anchor: DOMRect) => {
-    if (isBuying) return
+  // What the player already carries, by slug, for the "own 2" / "Wearing" tags
+  const ownedBySlug = useMemo(() => {
+    const owned = new Map<string, { quantity: number; equipped: boolean }>()
+    for (const item of playerInventory) {
+      const slug = item.template.slug
+      const entry = owned.get(slug) ?? { quantity: 0, equipped: false }
+      entry.quantity += item.quantity
+      entry.equipped = entry.equipped || item.isEquipped
+      owned.set(slug, entry)
+    }
+    return owned
+  }, [playerInventory])
 
+  const handleBuy = async (itemSlug: string, quantity: number, anchor: DOMRect) => {
+    if (isBuying) return
     setIsBuying(true)
     try {
-      const message = await onBuy(itemSlug, 1)
+      const message = await onBuy(itemSlug, quantity)
       showFlyout({ outcome: 'success', message }, anchor)
     } catch (err: any) {
       showFlyout({ outcome: 'failure', message: err?.message || 'Failed to purchase item' }, anchor)
@@ -189,7 +204,6 @@ export default function ShopModal({
 
   const handleSell = async (playerItemId: string, quantity: number, anchor: DOMRect) => {
     if (isSelling) return
-
     setIsSelling(true)
     try {
       const message = await onSell(playerItemId, quantity)
@@ -201,139 +215,235 @@ export default function ShopModal({
     }
   }
 
-  // Footer for a buy card: price + Buy button
-  const renderBuyFooter = (item: InventoryItem) => {
-    const buyPrice = getBuyPrice(item.template.value)
-    const canAfford = playerCurrency >= buyPrice
-    return (
-      <div className="mt-1 space-y-1">
-        <div className="text-[11px] text-fg-secondary/80">
-          <span className="text-resource-gold font-medium">{buyPrice}g</span>
-        </div>
-        <button
-          onClick={(e) => handleBuy(item.template.slug, e.currentTarget.getBoundingClientRect())}
-          disabled={!canAfford || isBuying}
-          className={`w-full flex items-center justify-center px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow-md ${
-            canAfford
-              ? 'fill-status-success disabled:opacity-50 disabled:cursor-not-allowed'
-              : 'bg-surface-hover/50 text-fg-secondary cursor-not-allowed'
-          }`}
-        >
-          Buy
-        </button>
-      </div>
-    )
-  }
+  const toggleOpen = (id: string) => setOpenId((prev) => (prev === id ? null : id))
 
-  // Footer for a sell card: unit value + sell buttons
-  const renderSellFooter = (item: InventoryItem) => {
-    const sellValue = getSellValue(item.template.value)
+  /* ----------------------------------------------------------------------- */
+  /* Buy rows                                                                 */
+  /* ----------------------------------------------------------------------- */
+
+  const renderBuyItem = (item: InventoryItem): ReactNode => {
+    const unitPrice = getBuyPrice(item.template.value)
+    const canAfford = playerCurrency >= unitPrice
+    const owned = ownedBySlug.get(item.template.slug)
+    const compare = compareEnabled ? compareToEquipped(item, playerInventory) : null
+    const open = openId === item.id
+    // Gear is bought one at a time; anything else can be bought in a batch.
+    const stackable = !item.template.equipSlot
+    const cap = item.template.max ?? 99
+    const remaining = Math.max(0, cap - (owned?.quantity ?? 0))
+    const maxQty = Math.max(1, Math.min(remaining, Math.floor(playerCurrency / Math.max(unitPrice, 1)), 99))
+    const qty = Math.min(buyQty, maxQty)
+    const total = unitPrice * qty
+
+    const nameTag = owned ? (
+      owned.equipped ? <NameTag tone="success">Wearing</NameTag> : <NameTag>own {owned.quantity}</NameTag>
+    ) : null
+
     return (
-      <div className="mt-1 space-y-1">
-        <div className="text-[11px] text-fg-secondary/80">
-          <span className="text-status-success font-medium">{sellValue}g</span> each
-        </div>
-        <InventorySellButton
+      <div key={item.id} className="flex flex-col">
+        <ItemRow
           item={item}
-          onSell={(quantity, anchor) => handleSell(item.id, quantity, anchor)}
-          disabled={isSelling}
+          open={open}
+          onToggle={() => toggleOpen(item.id)}
+          nameTag={nameTag}
+          compare={compare}
+          action={
+            <>
+              <span className={`${PRICE} ${canAfford ? 'text-resource-gold' : 'text-fg-disabled'}`}>{unitPrice}g</span>
+              <button
+                type="button"
+                onClick={(event) => handleBuy(item.template.slug, 1, event.currentTarget.getBoundingClientRect())}
+                disabled={!canAfford || isBuying}
+                className={PRIMARY}
+              >
+                Buy
+              </button>
+            </>
+          }
         />
+        {open && (
+          <ItemDrawer item={item} compare={compare}>
+            {stackable && remaining > 0 && (
+              <>
+                <span className="inline-flex items-center rounded-md border border-line-strong overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setBuyQty(Math.max(1, qty - 1))}
+                    disabled={qty <= 1}
+                    aria-label="Fewer"
+                    className="px-2.5 py-1 text-sm font-semibold text-fg-bright hover:bg-surface-raised/60 disabled:opacity-40"
+                  >
+                    −
+                  </button>
+                  <span className="min-w-[34px] text-center text-sm font-semibold text-fg-bright bg-surface-sunken tabular-nums py-1">
+                    {qty}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBuyQty(Math.min(maxQty, qty + 1))}
+                    disabled={qty >= maxQty}
+                    aria-label="More"
+                    className="px-2.5 py-1 text-sm font-semibold text-fg-bright hover:bg-surface-raised/60 disabled:opacity-40"
+                  >
+                    +
+                  </button>
+                </span>
+                <span className={`${PRICE} ${canAfford ? 'text-resource-gold' : 'text-fg-disabled'}`}>{total}g</span>
+                <button
+                  type="button"
+                  onClick={(event) => handleBuy(item.template.slug, qty, event.currentTarget.getBoundingClientRect())}
+                  disabled={!canAfford || isBuying}
+                  className={`${PRIMARY} ml-auto`}
+                >
+                  Buy {qty}
+                </button>
+                {cap <= 999 && (
+                  <span className="basis-full text-[11px] text-fg-muted italic">You can carry {remaining} more.</span>
+                )}
+              </>
+            )}
+            {stackable && remaining === 0 && (
+              <span className="text-[11px] text-fg-muted italic">{'You can\'t carry any more of these.'}</span>
+            )}
+          </ItemDrawer>
+        )}
       </div>
     )
   }
 
-  // Shared catalog: filter tabs + stat sort + grouped/flat cards. Used by both
-  // the buy and sell tabs; each supplies its own per-item footer.
+  /* ----------------------------------------------------------------------- */
+  /* Sell rows                                                                */
+  /* ----------------------------------------------------------------------- */
+
+  const renderSellItem = (item: InventoryItem): ReactNode => {
+    const unitValue = getSellValue(item.template.value)
+    const equipped = item.isEquipped
+    const open = openId === item.id
+    const quantity = item.quantity
+    const half = Math.ceil(quantity / 2)
+    const options: Array<{ label: string; qty: number }> = []
+    if (quantity > 1) {
+      options.push({ label: '1', qty: 1 })
+      if (half > 1 && half < quantity) options.push({ label: `Half · ${half}`, qty: half })
+      if (quantity - 1 > 1 && quantity - 1 !== half) options.push({ label: `All but 1 · ${quantity - 1}`, qty: quantity - 1 })
+      options.push({ label: `All · ${quantity}`, qty: quantity })
+    }
+
+    return (
+      <div key={item.id} className="flex flex-col">
+        <ItemRow
+          item={item}
+          open={open}
+          onToggle={() => toggleOpen(item.id)}
+          equipped={equipped}
+          muted={equipped}
+          subline={equipped ? <span className="text-[11px] text-fg-muted">Unequip to sell</span> : undefined}
+          action={
+            equipped ? (
+              <span className={`${PRICE} text-fg-disabled`}>{unitValue}g</span>
+            ) : (
+              <>
+                <span className={`${PRICE} text-resource-gold`}>{unitValue}g</span>
+                <button
+                  type="button"
+                  onClick={(event) => handleSell(item.id, 1, event.currentTarget.getBoundingClientRect())}
+                  disabled={isSelling}
+                  className={PRIMARY}
+                >
+                  Sell
+                </button>
+              </>
+            )
+          }
+        />
+        {open && (
+          <ItemDrawer
+            item={item}
+            equipped={equipped}
+            meta={<span>{unitValue}g each</span>}
+            hint={equipped ? 'Unequip it first to sell it.' : undefined}
+          >
+            {!equipped && options.length > 0 && (
+              <>
+                <span className="text-[11px] font-semibold text-status-success mr-0.5">Sell</span>
+                {options.map((option) => (
+                  <GhostButton
+                    key={option.label}
+                    tone="success"
+                    disabled={isSelling}
+                    onClick={() => {
+                      const anchor = document.activeElement instanceof HTMLElement
+                        ? document.activeElement.getBoundingClientRect()
+                        : new DOMRect()
+                      handleSell(item.id, option.qty, anchor)
+                    }}
+                  >
+                    {option.label} · {unitValue * option.qty}g
+                  </GhostButton>
+                ))}
+              </>
+            )}
+          </ItemDrawer>
+        )}
+      </div>
+    )
+  }
+
+  /* ----------------------------------------------------------------------- */
+  /* Shared catalog                                                           */
+  /* ----------------------------------------------------------------------- */
+
   const renderCatalog = (opts: {
-    view: CategoryView
-    filter: FilterTab
-    setFilter: (tab: FilterTab) => void
+    catalog: Catalog
+    view: ItemFilterView
+    setView: (view: ItemFilterView) => void
     sort: SortStat
     setSort: (sort: SortStat) => void
-    renderFooter: (item: InventoryItem) => ReactNode
+    renderItem: (item: InventoryItem) => ReactNode
+    emptyMessage: string
   }) => {
-    const { view, filter, setFilter, sort, setSort, renderFooter } = opts
-    const flatItems = view.groups.get(filter) || []
+    const { catalog, setView, sort, setSort, renderItem, emptyMessage } = opts
+    if (catalog.total === 0) {
+      return <p className="text-sm text-fg-secondary py-4">{emptyMessage}</p>
+    }
+    // A shop only stocks a few groups; if the chosen one is empty here, show the first that is not.
+    let view = opts.view
+    if (countForGroup(catalog.counts, view.group) === 0) {
+      const first = FILTER_GROUPS.find((group) => countForGroup(catalog.counts, group.id) > 0)
+      if (first) view = { group: first.id, slot: 'all' }
+    }
+    const sections = buildSections(catalog.groups, view)
+    const showSort = view.group !== 'crafting'
     return (
       <>
-        {/* Filter tabs — same categories as the inventory */}
-        <div className="flex gap-2 flex-wrap">
-          {view.visibleTabs.map((tab) => {
-            const isActive = filter === tab.id
-            const count = view.counts[tab.id] || 0
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setFilter(tab.id)}
-                className={`px-3 py-1.5 text-xs font-medium rounded transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
-                  isActive
-                    ? 'fill-resource-mp border border-resource-mp/50'
-                    : 'fill-surface-raised border border-line-subtle/50 hover:border-line-strong/50'
-                }`}
-              >
-                <span>{tab.label}</span>
-                {count > 0 && (
-                  <span className={`text-[10px] font-normal ${isActive ? 'text-fg-bright/60' : 'text-fg-secondary/60'}`}>
-                    ({count})
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Stat sort — shared with the inventory; hidden for crafting items */}
-        {filter !== 'crafting' && <StatSortControl value={sort} onChange={setSort} />}
-
-        {filter === 'all' ? (
-          // Grouped by category with headers, matching the inventory
-          <div className="space-y-4">
-            {CATEGORY_DISPLAY_ORDER.filter(
-              (category) => (view.groups.get(category)?.length || 0) > 0
-            ).map((category) => {
-              const items = view.groups.get(category) || []
-              const label = INVENTORY_TABS.find((t) => t.id === category)?.label || category
-              return (
-                <div key={category} className="space-y-2">
-                  <h4 className="text-sm font-semibold text-fg-primary px-2">
-                    {label.charAt(0).toUpperCase() + label.slice(1)} ({items.length})
-                  </h4>
-                  <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-                    {items.map((item) => (
-                      <ItemCardShell key={item.id} item={item} footer={renderFooter(item)} />
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : filter === 'crafting' ? (
-          // Crafting items grouped into Materials, then Tools subsections
-          <div className="space-y-4">
-            {CRAFTING_SUBSECTIONS.map(({ kind, label }) => {
-              const sectionItems = flatItems.filter((item) => getCraftingKind(item) === kind)
-              if (sectionItems.length === 0) return null
-              return (
-                <div key={kind} className="space-y-2">
-                  <h4 className="text-sm font-semibold text-fg-primary px-2">
-                    {label} ({sectionItems.length})
-                  </h4>
-                  <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-                    {sectionItems.map((item) => (
-                      <ItemCardShell key={item.id} item={item} footer={renderFooter(item)} />
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+        <ItemFilterBar
+          counts={catalog.counts}
+          view={view}
+          onChange={setView}
+          hideEmpty
+          sort={showSort ? sort : undefined}
+          onSortChange={showSort ? setSort : undefined}
+          compareEnabled={compareEnabled}
+          onCompareChange={setCompareEnabled}
+        />
+        {sections.length === 0 ? (
+          <p className="text-sm text-fg-secondary">Nothing in this group.</p>
         ) : (
-          // Flat list for a specific category
-          <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
-            {flatItems.map((item) => (
-              <ItemCardShell key={item.id} item={item} footer={renderFooter(item)} />
-            ))}
-          </div>
+          sections.map((section) => (
+            <div key={section.key} className="flex flex-col gap-1.5">
+              {section.title && (
+                <h4 className={SECTION_TITLE}>
+                  {section.title} · {section.items.length}
+                </h4>
+              )}
+              {section.items.map((item, index) => (
+                <Fragment key={item.id}>
+                  {index > 0 && !item.isEquipped && section.items[index - 1].isEquipped && <EquippedDivider />}
+                  {renderItem(item)}
+                </Fragment>
+              ))}
+            </div>
+          ))
         )}
       </>
     )
@@ -343,27 +453,32 @@ export default function ShopModal({
     return null
   }
 
+  const tabClass = (tab: 'buy' | 'sell') =>
+    `flex-1 px-4 py-2.5 text-xs font-semibold tracking-[0.06em] transition-colors ${
+      activeTab === tab
+        ? 'fill-surface-raised border-b-2 border-status-success'
+        : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-raised/30'
+    }`
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-surface-sunken/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-stretch justify-center lg:items-center lg:bg-surface-sunken/80 lg:backdrop-blur-sm"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="relative flex max-h-[85vh] w-[90vw] max-w-5xl flex-col overflow-hidden rounded-lg border border-line-subtle/50 bg-surface-panel shadow-2xl"
+        className="relative flex w-full h-full flex-col overflow-hidden bg-surface-panel lg:h-[85vh] lg:w-[90vw] lg:max-w-2xl lg:rounded-lg lg:border lg:border-line-subtle/50 lg:shadow-2xl"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-label={shopName || 'Shop'}
       >
-        <div className="border-b border-line-subtle/50">
-          <div className="flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-fg-bright">{shopName || 'Shop'}</h2>
-              <div className="flex items-center gap-2 px-3 py-1 bg-resource-gold/30 border border-resource-gold/50 rounded-md">
-                <Icon name="coin" size={16} className="text-resource-gold" />
-                <span className="text-resource-gold font-medium">{playerCurrency}g</span>
-              </div>
-            </div>
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-line-subtle/50">
+          <h2 className="text-base font-semibold text-fg-bright truncate">{shopName || 'Shop'}</h2>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-md border border-resource-gold/50 bg-resource-gold/20 text-resource-gold text-sm font-semibold tabular-nums">
+              {playerCurrency}g
+            </span>
             <button
               type="button"
               onClick={onClose}
@@ -375,71 +490,38 @@ export default function ShopModal({
           </div>
         </div>
 
-        {/* Tab Navigation */}
         <div className="flex border-b border-line-subtle/50">
-          <button
-            onClick={() => setActiveTab('buy')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'buy'
-                ? 'fill-surface-raised border-b-2 border-status-success'
-                : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-raised/30'
-            }`}
-          >
-            BUY ({shopItems.length})
+          <button type="button" onClick={() => setActiveTab('buy')} className={tabClass('buy')}>
+            BUY · {shopItems.length}
           </button>
-          <button
-            onClick={() => setActiveTab('sell')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'sell'
-                ? 'fill-surface-raised border-b-2 border-status-success'
-                : 'text-fg-secondary hover:text-fg-primary hover:bg-surface-raised/30'
-            }`}
-          >
-            SELL ({sellableInventory.length})
+          <button type="button" onClick={() => setActiveTab('sell')} className={tabClass('sell')}>
+            SELL · {sellableInventory.length}
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
-          {activeTab === 'buy' ? (
-            /* Buy Section */
-            <div className="space-y-4">
-              {buyItems.length === 0 ? (
-                <div className="text-fg-secondary text-sm py-4">
-                  No items available for purchase.
-                </div>
-              ) : (
-                renderCatalog({
-                  view: buyView,
-                  filter: buyFilter,
-                  setFilter: setBuyFilter,
-                  sort: buySort,
-                  setSort: setBuySort,
-                  renderFooter: renderBuyFooter,
-                })
-              )}
-            </div>
-          ) : (
-            /* Sell Section */
-            <div className="space-y-4">
-              {sellableInventory.length === 0 ? (
-                <div className="text-fg-secondary text-sm py-4">
-                  You have no items to sell.
-                </div>
-              ) : (
-                renderCatalog({
-                  view: sellView,
-                  filter: sellFilter,
-                  setFilter: setSellFilter,
-                  sort: sellSort,
-                  setSort: setSellSort,
-                  renderFooter: renderSellFooter,
-                })
-              )}
-            </div>
-          )}
+        <div className="flex-1 overflow-y-auto min-h-0 px-4 py-3 flex flex-col gap-3">
+          {activeTab === 'buy'
+            ? renderCatalog({
+                catalog: buyCatalog,
+                view: buyView,
+                setView: setBuyView,
+                sort: buySort,
+                setSort: setBuySort,
+                renderItem: renderBuyItem,
+                emptyMessage: 'No items available for purchase.',
+              })
+            : renderCatalog({
+                catalog: sellCatalog,
+                view: sellView,
+                setView: setSellView,
+                sort: sellSort,
+                setSort: setSellSort,
+                renderItem: renderSellItem,
+                emptyMessage: 'You have no items to sell.',
+              })}
         </div>
 
-        <div className="border-t border-line-subtle/50 px-4 py-3 text-right">
+        <div className="border-t border-line-subtle/50 px-4 py-2.5 text-right">
           <button
             type="button"
             onClick={onClose}

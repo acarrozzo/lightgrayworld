@@ -113,6 +113,8 @@ model User {
   worldMapFull              Boolean         @default(false)
   lobbyMap                  Boolean         @default(false)
   solarOfficeMap            Boolean         @default(false)
+  /// Fast-travel hubs this player has stood in, by world region id (game-data/world-map.js).
+  discoveredTeleports       String[]        @default([])
   pajamaShamanFlag          Boolean         @default(false)
   youngSoldierFlag          Boolean         @default(false)
   jackLumberFlag            Boolean         @default(false)

@@ -1,9 +1,8 @@
 'use client'
 
 import { X } from 'lucide-react'
-import MapContent from '@/components/MapContent'
+import MapView from '../MapView'
 import { type MapConfigEntry } from '../constants'
-import { resolveMapView } from '../utils'
 
 interface MapPanelProps {
   currentMapId: string
@@ -14,6 +13,7 @@ interface MapPanelProps {
   onOpenTeleport: () => void
 }
 
+/** The full-screen map overlay: the same MapView the sidebar hosts, plus a close control. */
 export default function MapPanel({
   currentMapId,
   currentRoomId,
@@ -22,8 +22,6 @@ export default function MapPanel({
   onClose,
   onOpenTeleport,
 }: MapPanelProps) {
-  const mapView = resolveMapView(currentMapId, availableMaps, currentRoomId)
-
   return (
     <div className="flex flex-col w-full h-full">
       <div className="relative flex-1 min-h-0">
@@ -35,13 +33,12 @@ export default function MapPanel({
         >
           <X size={20} />
         </button>
-        <MapContent
-          mapSrc={mapView.src}
-          mapTitle={mapView.title}
-          availableMaps={mapView.options}
+        <MapView
+          variant="fullscreen"
+          currentRoomId={currentRoomId}
           currentMapId={currentMapId}
+          foundMaps={availableMaps}
           onMapChange={onMapChange}
-          marker={mapView.marker}
         />
       </div>
       <div className="flex-shrink-0 grow-0 h-14 border-t border-line-subtle/50 px-4 flex items-center justify-center gap-2">
@@ -63,4 +60,3 @@ export default function MapPanel({
     </div>
   )
 }
-

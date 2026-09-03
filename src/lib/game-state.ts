@@ -65,6 +65,9 @@ export interface Player {
   roomZeroMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean
+  forestMap?: boolean
+  /** Fast-travel hubs stood in, by world region id (game-data/world-map.js). */
+  discoveredTeleports?: string[]
 }
 
 export type Room = RoomView

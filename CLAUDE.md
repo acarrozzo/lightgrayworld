@@ -96,6 +96,7 @@ Before changing a system, name its authoritative owner and decide what reconnect
 - `src/lib/game-data/room-enemies.js`: room spawn/wave rules.
 - `src/lib/game-data/quests.json`: quest definitions; validate with `npm run validate-quests`.
 - `src/lib/game-data/crafting-recipes.js`: shared client/server recipe definitions.
+- `src/lib/game-data/world-map.js`, `teleport-destinations.js`: map sheets, the world region grid, and the fast-travel network. Shared by the server (arrival discoveries, teleport gating and MP cost) and the client (compass, Map view, World grid, Fast travel).
 - `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/`: durable schema and authored world/item data.
 - `src/lib/socket-server-handlers.js`, `src/lib/socket.ts`, `src/lib/socket-utils.js`, `src/lib/socket-handlers.ts`: realtime transport and contracts.
 - `src/lib/game-state.ts`: central client gameplay store.

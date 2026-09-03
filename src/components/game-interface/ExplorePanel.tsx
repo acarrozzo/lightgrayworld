@@ -1,27 +1,34 @@
 'use client'
 
-import { Compass as CompassIcon, Map as MapIcon, Maximize2 } from 'lucide-react'
-import Icon from '@/components/Icon'
+import { ArrowLeft } from 'lucide-react'
 import Compass from '@/components/Compass'
-import BasicActionButtons, { type BasicActionSurface } from '@/components/BasicActionButtons'
-import MapContent from '@/components/MapContent'
-import TeleportList, { type TeleportLocation } from './TeleportList'
-import SubTabButton from './SubTabButton'
-import { getTabIconColorClass } from '@/lib/tabColors'
-import { resolveMapView } from './utils'
+import BasicActionButtons from '@/components/BasicActionButtons'
+import WorldGrid, { foundMapIdsFor } from './WorldGrid'
+import MapView from './MapView'
 import type { MapConfigEntry } from './constants'
+import type { Player } from '@/lib/game-state'
 
+const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
+
+/**
+ * What the Explore panel is showing. `compass` is the panel itself — the
+ * D-pad and the actions — and the other two are layers that open over it:
+ * Fast travel from the Teleport button, the Map from the mini-map in the
+ * D-pad's centre (sidebar only; the mobile strip opens the full-screen map
+ * instead). Escape, the back arrow, travelling, or entering battle all return
+ * to the compass.
+ */
 export type ExploreSubView = 'compass' | 'teleport' | 'map'
 
 interface ExplorePanelProps {
   room: any
+  player: Player | null
   subView: ExploreSubView
   onSubViewChange: (view: ExploreSubView) => void
   onAction: (action: string | { type: string; data?: any }) => void
   onTeleport: (roomId: string) => void
-  teleportLocations: TeleportLocation[]
   teleportBlockedReason?: string | null
-  /** Opens the map as a sub-view of this panel (sidebar only). */
+  /** Opens the map as a layer of this panel (sidebar only). */
   onShowMap: () => void
   /** Opens the full-screen map overlay. */
   onOpenMapFullscreen: () => void
@@ -29,31 +36,30 @@ interface ExplorePanelProps {
   availableMaps: MapConfigEntry[]
   onMapChange: (mapId: string) => void
   isMoveInProgress?: boolean
-  /** Dim the compass (battle / crafting) without hiding the sub-tabs. */
+  /** Dim the compass (battle / crafting). */
   isDimmed?: boolean
   showBattleBadge?: boolean
+  /** Following a party leader: the D-pad greys out, the server refuses moves anyway. */
+  isPartyMember?: boolean
   /**
    * 'sidebar' fills the desktop column and can host the map inline; 'strip'
    * sits under the room on mobile, where there is no room for a map — there the
-   * Map control opens the full-screen overlay directly.
+   * mini-map opens the full-screen overlay directly.
    */
   variant?: 'sidebar' | 'strip'
   /** Latest action result, for the flyout on the basic-action buttons. */
   actionResult?: any
   isLoadingRoom?: boolean
   currentAction?: string
-  /** Basic-action flyout ownership — shared with the room's copy of the buttons. */
-  activeActionSurface?: BasicActionSurface
-  onActionSurfaceChange?: (surface: BasicActionSurface) => void
 }
 
 export default function ExplorePanel({
   room,
+  player,
   subView,
   onSubViewChange,
   onAction,
   onTeleport,
-  teleportLocations,
   teleportBlockedReason = null,
   onShowMap,
   onOpenMapFullscreen,
@@ -63,138 +69,138 @@ export default function ExplorePanel({
   isMoveInProgress = false,
   isDimmed = false,
   showBattleBadge = false,
+  isPartyMember = false,
   variant = 'sidebar',
   actionResult,
   isLoadingRoom = false,
   currentAction = '',
-  activeActionSurface = 'explore',
-  onActionSurfaceChange,
 }: ExplorePanelProps) {
   const isSidebar = variant === 'sidebar'
   // Only the sidebar is tall enough to hold a map; the mobile strip sends every
   // map affordance straight to the full-screen overlay.
   const showMapHere = isSidebar ? onShowMap : onOpenMapFullscreen
-  const isCompass = subView === 'compass'
   const isTeleport = subView === 'teleport'
   const isMap = isSidebar && subView === 'map'
-  const mapView = resolveMapView(currentMapId, availableMaps, room?.roomId)
+  const backToCompass = () => onSubViewChange('compass')
+
+  if (isMap) {
+    return (
+      <div className="flex-1 min-h-0 flex flex-col">
+        <MapView
+          variant="sidebar"
+          currentRoomId={room?.roomId}
+          currentMapId={currentMapId}
+          foundMaps={availableMaps}
+          onMapChange={onMapChange}
+          onBack={backToCompass}
+          onOpenFullscreen={onOpenMapFullscreen}
+        />
+      </div>
+    )
+  }
+
+  if (isTeleport) {
+    return (
+      <div className={`min-h-0 overflow-y-auto ${isSidebar ? 'flex-1' : 'max-h-[340px]'}`}>
+        <div className="flex flex-col gap-2 p-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={backToCompass}
+              aria-label="Back to the compass"
+              title="Back to the compass (Esc)"
+              className="-ml-1 rounded p-1 text-fg-secondary transition-colors hover:bg-surface-raised/50 hover:text-fg-bright"
+            >
+              <ArrowLeft size={16} aria-hidden="true" />
+            </button>
+            <h2 className="text-sm font-semibold text-fg-bright">Fast travel</h2>
+            <span className="hidden sm:inline text-[10px] uppercase tracking-widest text-fg-muted">Esc to close</span>
+            <span className="ml-auto text-[11px] font-semibold text-resource-mp" title="Each fast travel costs MP">
+              MP cost: {TELEPORT_MP_COST}
+            </span>
+          </div>
+
+          {teleportBlockedReason && (
+            <p className="rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-[11px] leading-relaxed text-status-error/90">
+              {teleportBlockedReason}
+            </p>
+          )}
+
+          <WorldGrid
+            mode="teleport"
+            currentRoomId={room?.roomId}
+            discoveredTeleports={player?.discoveredTeleports ?? []}
+            foundMapIds={foundMapIdsFor(player, room?.roomId)}
+            blockedReason={teleportBlockedReason}
+            onTeleport={onTeleport}
+            dense={!isSidebar}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <>
-      {/* Sub-tabs — one level below the Explore tab itself. Clicking the active
-          one toggles back to the Compass, this panel's core content, so a
-          sub-tab is never a one-way door. */}
-      <div className="flex items-center gap-2 px-3 pt-1 pb-1.5 border-b border-line-subtle/50 flex-shrink-0 overflow-x-auto">
-        <SubTabButton
-          active={isCompass}
-          color="green"
-          onClick={() => onSubViewChange('compass')}
-          ariaPressed={isCompass}
-          title="Compass"
+    <div
+      className={`relative flex flex-col items-center justify-center ${
+        isSidebar ? 'flex-1 min-h-0 p-4 gap-3' : 'px-2 py-3'
+      }`}
+    >
+      {/* Desktop stacks the actions under the D-pad; the short mobile strip puts
+          them in a column beside it to save vertical space. The Compass keeps a
+          48px left inset for its up/down buttons. */}
+      <div
+        className={`flex transition-opacity duration-300 ${
+          isSidebar ? 'flex-col items-center gap-4' : 'flex-row items-center justify-center gap-2'
+        } ${isDimmed ? 'opacity-20 pointer-events-none' : ''}`}
+      >
+        <Compass
+          room={room}
+          onAction={onAction}
+          onNavigateToMap={showMapHere}
+          isMoveInProgress={isMoveInProgress}
+          isLocked={isPartyMember}
+          className={
+            isSidebar
+              ? 'w-full sm:max-w-[380px] max-w-[320px] mx-auto'
+              : 'w-[272px] sm:w-[304px] shrink-0 pl-12'
+          }
+        />
+        <BasicActionButtons
+          onAction={onAction}
+          actionResult={actionResult}
+          isLoadingRoom={isLoadingRoom}
+          currentAction={currentAction}
+          containerClassName={
+            isSidebar ? 'flex flex-wrap justify-center gap-2' : 'flex flex-col gap-1.5 shrink-0'
+          }
+          sizeClassName={isSidebar ? 'px-4 py-1.5 text-sm' : 'px-2.5 py-1.5 text-xs w-full'}
         >
-          <CompassIcon size={14} className={getTabIconColorClass('green', isCompass)} aria-hidden="true" />
-          <span>Compass</span>
-        </SubTabButton>
-        <SubTabButton
-          active={isTeleport}
-          color="violet"
-          onClick={() => onSubViewChange(isTeleport ? 'compass' : 'teleport')}
-          ariaPressed={isTeleport}
-          title="Teleport"
-        >
-          <Icon name="ironskin" size={14} className={getTabIconColorClass('violet', isTeleport)} />
-          <span>Teleport</span>
-        </SubTabButton>
-        {!isSidebar && <span className="w-1 h-1 rounded-full bg-surface-selected flex-shrink-0" aria-hidden="true" />}
-        <SubTabButton
-          active={isMap}
-          color="sky"
-          onClick={isMap ? () => onSubViewChange('compass') : showMapHere}
-          ariaPressed={isSidebar ? isMap : undefined}
-          title={isSidebar ? 'Map' : 'Open Map'}
-        >
-          <MapIcon size={14} className={getTabIconColorClass('sky', isMap)} aria-hidden="true" />
-          <span>Map</span>
-        </SubTabButton>
-      </div>
-
-      {isMap ? (
-        <div className="flex-1 min-h-0 flex flex-col relative">
-          <MapContent
-            mapSrc={mapView.src}
-            mapTitle={mapView.title}
-            availableMaps={mapView.options}
-            currentMapId={currentMapId}
-            onMapChange={onMapChange}
-            marker={mapView.marker}
-          />
+          {/* Teleport takes the slot Look used to hold, in the MP blue: fast
+              travel costs MP, and the original's teleport page wore that blue. */}
           <button
             type="button"
-            onClick={onOpenMapFullscreen}
-            className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded fill-surface-raised px-3 py-1.5 text-sm font-medium shadow-lg transition-colors hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas"
-            title="Open the map full screen"
+            onClick={() => onSubViewChange('teleport')}
+            disabled={isLoadingRoom}
+            title={`Fast travel — ${TELEPORT_MP_COST} MP`}
+            className={`${
+              isSidebar ? 'px-4 py-1.5 text-sm' : 'px-2.5 py-1.5 text-xs w-full'
+            } fill-resource-mp shadow-sm shadow-shadow disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
           >
-            <Maximize2 size={14} aria-hidden="true" />
-            Fullscreen
+            Teleport
           </button>
-        </div>
-      ) : isTeleport ? (
-        <div className={`min-h-0 overflow-y-auto ${isSidebar ? 'flex-1' : 'max-h-[300px]'}`}>
-          <TeleportList
-            locations={teleportLocations}
-            currentRoomId={room?.roomId}
-            onTeleport={onTeleport}
-            blockedReason={teleportBlockedReason}
-          />
-        </div>
-      ) : (
-        <div
-          className={`relative flex items-center justify-center ${
-            isSidebar ? 'flex-1 min-h-0 p-4' : 'px-2 py-3'
-          }`}
-        >
-          {/* Desktop stacks the basic actions under the D-pad; the short mobile
-              strip puts them in a column beside it to save vertical space. The
-              Compass keeps a 48px left inset for its up/down buttons. */}
-          <div
-            className={`flex transition-opacity duration-300 ${
-              isSidebar ? 'flex-col items-center gap-4' : 'flex-row items-center justify-center gap-2'
-            } ${isDimmed ? 'opacity-20 pointer-events-none' : ''}`}
-          >
-            <Compass
-              room={room}
-              onAction={onAction}
-              onNavigateToMap={showMapHere}
-              isMoveInProgress={isMoveInProgress}
-              className={
-                isSidebar
-                  ? 'w-full sm:max-w-[380px] max-w-[320px] mx-auto'
-                  : 'w-[272px] sm:w-[304px] shrink-0 pl-12'
-              }
-            />
-            <BasicActionButtons
-              surface="explore"
-              activeSurface={activeActionSurface}
-              onActionSurfaceChange={onActionSurfaceChange}
-              onAction={onAction}
-              actionResult={actionResult}
-              isLoadingRoom={isLoadingRoom}
-              currentAction={currentAction}
-              containerClassName={
-                isSidebar ? 'flex flex-wrap justify-center gap-2' : 'flex flex-col gap-1.5 shrink-0'
-              }
-              sizeClassName={isSidebar ? 'px-4 py-1.5 text-sm' : 'px-2.5 py-1.5 text-xs w-full'}
-            />
-          </div>
-          {showBattleBadge && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10">
-              <span className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-status-error/90 bg-surface-canvas/70 border border-status-error/25 rounded-lg backdrop-blur-sm">
-                In Battle
-              </span>
-            </div>
-          )}
+        </BasicActionButtons>
+      </div>
+      {isSidebar && isPartyMember && !isDimmed && (
+        <p className="text-[11px] text-status-info/70">Following your party — leave to move freely.</p>
+      )}
+      {showBattleBadge && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10">
+          <span className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-status-error/90 bg-surface-canvas/70 border border-status-error/25 rounded-lg backdrop-blur-sm">
+            In Battle
+          </span>
         </div>
       )}
-    </>
+    </div>
   )
 }

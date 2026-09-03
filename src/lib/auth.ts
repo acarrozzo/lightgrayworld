@@ -39,6 +39,21 @@ export interface AuthUser {
   spells?: Record<string, number>
   /** Spell teachers met, keyed by User flag column (`pajamaShamanFlag`, ...). */
   spellTeachers?: Record<string, boolean>
+  /** Map sheets found, keyed by User column (`grassyFieldMap`, ...). */
+  roomZeroMap?: boolean
+  grassyFieldMap?: boolean
+  grassyFieldUndergroundMap?: boolean
+  forestMap?: boolean
+  forestUndergroundMap?: boolean
+  redTownMap?: boolean
+  redTownSewersMap?: boolean
+  rockyFlatsMap?: boolean
+  rockyFlatsUndergroundMap?: boolean
+  neverEndingMineMap?: boolean
+  lobbyMap?: boolean
+  solarOfficeMap?: boolean
+  /** Fast-travel hubs stood in, by world region id (game-data/world-map.js). */
+  discoveredTeleports?: string[]
 }
 
 interface TokenPayload {

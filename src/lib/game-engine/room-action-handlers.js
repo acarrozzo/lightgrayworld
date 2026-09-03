@@ -241,6 +241,7 @@ function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'ba
         description: true,
         value: true,
         type: true,
+        max: true,
         equipSlot: true,
         weaponCategory: true,
         metadata: true,

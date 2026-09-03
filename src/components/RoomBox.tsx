@@ -3,9 +3,7 @@
 import RoomDisplay from './RoomDisplay'
 import type { Room, Player } from '@/lib/game-state'
 import Icon from './Icon'
-import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
-import BasicActionButtons, { type BasicActionSurface } from './BasicActionButtons'
+import { useMemo } from 'react'
 import { roomColor } from '@/lib/theme/room-colors'
 
 const DIRECTIONS = [
@@ -59,15 +57,11 @@ interface RoomBoxProps {
   }
   actionResult?: any
   isLoadingRoom?: boolean
-  currentAction?: string
   roomEnemies?: RoomEnemy[]
   isInBattle?: boolean
   isPartyMember?: boolean
   quests?: Array<{ id: string; questId: string; progress: number; completed: boolean }>
   killList?: { monster: string; kills: number }[]
-  /** Basic-action flyout ownership — shared with the compass copy of the buttons. */
-  activeActionSurface?: BasicActionSurface
-  onActionSurfaceChange?: (surface: BasicActionSurface) => void
 }
 
 export default function RoomBox({
@@ -80,14 +74,11 @@ export default function RoomBox({
   worldTick,
   actionResult,
   isLoadingRoom = false,
-  currentAction = '',
   roomEnemies = [],
   isInBattle = false,
   isPartyMember = false,
   quests = [],
   killList = [],
-  activeActionSurface = 'explore',
-  onActionSurfaceChange,
 }: RoomBoxProps) {
   const iconSizeClasses: Record<string, string> = {
     sm: 'w-12 h-12 sm:w-20 sm:h-20',
@@ -100,7 +91,6 @@ export default function RoomBox({
   const subtitleText = (room.subtitle ?? 'This is it. The world is yours.').trim()
   const hasSubtitle = subtitleText.length > 0
   const subtitlePlacement = room.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
-  const [isMoreActionsExpanded, setIsMoreActionsExpanded] = useState(false)
 
   const availableDirections = useMemo(
     () => DIRECTIONS.filter((dir) => typeof room[dir as DirectionKey] === 'string' && room[dir as DirectionKey]),
@@ -234,94 +224,6 @@ export default function RoomBox({
         killList={killList}
       />
 
-      {/* More Actions Section */}
-      <div className="mt-6 pt-4">
-        <div className="w-16 border-t border-line-subtle/40 mb-4"></div>
-        <div className="flex flex-col gap-4">
-          {/* Collapsible Header */}
-          <button
-            type="button"
-            onClick={() => setIsMoreActionsExpanded((prev) => !prev)}
-            className="group flex items-center gap-2 transition-all duration-200 text-fg-muted hover:text-fg-primary rounded-md px-2 py-1 -mx-2 -my-1 w-auto self-start"
-            aria-expanded={isMoreActionsExpanded}
-            aria-label="Toggle more actions"
-          >
-            <span className="text-sm font-medium">More Actions</span>
-            {isMoreActionsExpanded ? (
-              <ChevronUp size={14} className="text-fg-muted group-hover:text-fg-bright transition-colors duration-200" />
-            ) : (
-              <ChevronDown size={14} className="text-fg-muted group-hover:text-fg-bright transition-colors duration-200" />
-            )}
-          </button>
-
-          {/* Collapsible Content */}
-          {isMoreActionsExpanded && (
-            <div className="flex flex-col gap-4">
-              {/* Basic actions — mirrored beside the compass D-pad, which is the
-                  copy that stays visible while this section is collapsed. */}
-              <div>
-                <h3 className="text-sm font-medium text-fg-primary mb-2">Actions:</h3>
-                <BasicActionButtons
-                  surface="room"
-                  activeSurface={activeActionSurface}
-                  onActionSurfaceChange={onActionSurfaceChange}
-                  onAction={onAction}
-                  actionResult={actionResult}
-                  isLoadingRoom={isLoadingRoom}
-                  currentAction={currentAction}
-                />
-              </div>
-
-              {/* Teleport */}
-              <div>
-                <h3 className="text-sm font-medium text-fg-primary mb-2">Teleport to:</h3>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => {
-                      if (onAction) {
-                        onAction({ type: 'teleport', data: { toRoomId: '999' } })
-                      }
-                    }}
-                    className="px-2 py-1 fill-action-look border border-action-look/50 hover:border-action-look/70 rounded text-xs transition-all duration-200"
-                  >
-                    The Lobby
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (onAction) {
-                        onAction({ type: 'teleport', data: { toRoomId: '001' } })
-                      }
-                    }}
-                    className="px-2 py-1 fill-action-gather border border-action-gather/50 hover:border-action-gather/70 rounded text-xs transition-all duration-200"
-                  >
-                    Grassy Field
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (onAction) {
-                        onAction({ type: 'teleport', data: { toRoomId: '000' } })
-                      }
-                    }}
-                    className="px-2 py-1 fill-surface-hover hover:bg-surface-selected/70 border border-line-strong/50 hover:border-line-strong rounded text-xs transition-all duration-200"
-                  >
-                    Room Zero
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (onAction) {
-                        onAction({ type: 'teleport', data: { toRoomId: '088' } })
-                      }
-                    }}
-                    className="px-2 py-1 fill-surface-panel border border-line-subtle/50 hover:border-resource-gold/70 rounded text-xs transition-all duration-200"
-                  >
-                    Solar Office
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   )
 }
