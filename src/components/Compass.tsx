@@ -190,27 +190,20 @@ export default function Compass({
       {/* Main D-pad */}
       <div className="relative">
         <div className="relative w-56 sm:w-64 h-56 sm:h-64 mx-auto">
-          {/* Map circle in center. The caption is what tells a player the
-              mini-map is a button — it was one all along, but nothing said so. */}
+          {/* Map circle in center. Also opens the map; the Map button in the
+              corner of the Explore panel is the labelled way in. */}
           <div className="absolute inset-0 flex items-center justify-center">
             <button
               type="button"
               onClick={() => onNavigateToMap?.()}
-              className="relative w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-[background-position] duration-[350ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-[10px] sm:border-[25px] border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl group"
+              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-[background-position] duration-[350ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-[10px] sm:border-[25px] border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition
               }}
               aria-label={`Open the map (${mapTitle})`}
               title={`Open the map — ${mapTitle}`}
-            >
-              <span
-                className="pointer-events-none absolute left-1/2 bottom-0.5 -translate-x-1/2 rounded px-1.5 py-px text-[9px] font-bold uppercase tracking-[0.14em] text-fg-bright bg-surface-canvas/75 shadow-sm transition-colors group-hover:bg-surface-canvas/90"
-                aria-hidden="true"
-              >
-                Map
-              </span>
-            </button>
+            />
           </div>
 
           {/* Direction buttons */}

@@ -156,7 +156,7 @@ export interface ItemRowProps {
   subline?: ReactNode
   /** Gear compare; when it replaces something, a "vs …" line is added under the mods. */
   compare?: EquipCompare | null
-  /** Small tag after the name ("own 2", "Wearing"). */
+  /** Small tag after the name ("own 2", "Equipped"). */
   nameTag?: ReactNode
   /** Trailing content: the primary button, a price, or both. */
   action?: ReactNode

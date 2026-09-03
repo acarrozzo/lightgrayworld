@@ -176,7 +176,7 @@ export default function ShopModal({
     [sellableInventory, sellSort, itemOrderMap]
   )
 
-  // What the player already carries, by slug, for the "own 2" / "Wearing" tags
+  // What the player already carries, by slug, for the "own 2" / "Equipped" tags
   const ownedBySlug = useMemo(() => {
     const owned = new Map<string, { quantity: number; equipped: boolean }>()
     for (const item of playerInventory) {
@@ -236,7 +236,7 @@ export default function ShopModal({
     const total = unitPrice * qty
 
     const nameTag = owned ? (
-      owned.equipped ? <NameTag tone="success">Wearing</NameTag> : <NameTag>own {owned.quantity}</NameTag>
+      owned.equipped ? <NameTag tone="success">Equipped</NameTag> : <NameTag>own {owned.quantity}</NameTag>
     ) : null
 
     return (

@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import ActionFlyout from './ActionFlyout'
 import { useActionFlyout } from '@/hooks/useActionFlyout'
 
@@ -39,11 +38,6 @@ interface BasicActionButtonsProps {
   containerClassName?: string
   /** Padding/typography, so the compact mobile column can shrink the buttons. */
   sizeClassName?: string
-  /**
-   * Extra controls laid out as part of the same group — the Teleport button
-   * sits here so it lines up with the three actions on both breakpoints.
-   */
-  children?: ReactNode
 }
 
 /**
@@ -57,7 +51,6 @@ export default function BasicActionButtons({
   currentAction = '',
   containerClassName = 'flex flex-wrap gap-2',
   sizeClassName = 'px-4 py-1.5 text-sm',
-  children,
 }: BasicActionButtonsProps) {
   const { activeFlyoutAction, flyoutRootRef, dismissFlyout } = useActionFlyout(actionResult)
 
@@ -84,7 +77,6 @@ export default function BasicActionButtons({
           </div>
         )
       })}
-      {children}
     </div>
   )
 }

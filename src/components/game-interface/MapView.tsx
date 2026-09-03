@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Globe, Maximize2 } from 'lucide-react'
+import { Globe, Maximize2, X } from 'lucide-react'
 import MapContent from '@/components/MapContent'
 import SubTabButton from './SubTabButton'
 import WorldGrid from './WorldGrid'
@@ -17,13 +17,9 @@ interface MapViewProps {
   /** Sheets the player has found, plus the one under their feet. */
   foundMaps: MapConfigEntry[]
   onMapChange: (mapId: string) => void
-  /**
-   * The sidebar copy has a back arrow to the compass and a Fullscreen control;
-   * the fullscreen overlay has its own close button (MapPanel) and leaves room
-   * for it at the right of the header.
-   */
+  /** The sidebar copy also offers a Fullscreen control; both close from the X at top right. */
   variant: 'sidebar' | 'fullscreen'
-  onBack?: () => void
+  onClose: () => void
   onOpenFullscreen?: () => void
 }
 
@@ -39,7 +35,7 @@ export default function MapView({
   foundMaps,
   onMapChange,
   variant,
-  onBack,
+  onClose,
   onOpenFullscreen,
 }: MapViewProps) {
   const [showWorld, setShowWorld] = useState(false)
@@ -72,22 +68,7 @@ export default function MapView({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div
-        className={`flex items-center gap-2 border-b border-line-subtle/50 py-2 pl-3 flex-shrink-0 overflow-x-auto ${
-          variant === 'fullscreen' ? 'pr-14' : 'pr-3'
-        }`}
-      >
-        {variant === 'sidebar' && onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Back to the compass"
-            title="Back to the compass (Esc)"
-            className="-ml-1 rounded p-1 text-fg-secondary transition-colors hover:bg-surface-raised/50 hover:text-fg-bright"
-          >
-            <ArrowLeft size={16} aria-hidden="true" />
-          </button>
-        )}
+      <div className="flex items-center gap-2 border-b border-line-subtle/50 py-2 pl-3 pr-2 flex-shrink-0 overflow-x-auto">
         <SubTabButton
           active={showWorld}
           color="sky"
@@ -127,6 +108,15 @@ export default function MapView({
             <Maximize2 size={14} aria-hidden="true" />
           </button>
         )}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close the map"
+          title="Close (Esc)"
+          className="flex-shrink-0 rounded p-1 text-fg-secondary transition-colors hover:bg-surface-raised/50 hover:text-fg-bright"
+        >
+          <X size={variant === 'fullscreen' ? 20 : 16} aria-hidden="true" />
+        </button>
       </div>
 
       {showWorld ? (

@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft } from 'lucide-react'
+import { Map as MapIcon, Waypoints, X } from 'lucide-react'
 import Compass from '@/components/Compass'
 import BasicActionButtons from '@/components/BasicActionButtons'
 import WorldGrid, { foundMapIdsFor } from './WorldGrid'
@@ -12,11 +12,12 @@ const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
 
 /**
  * What the Explore panel is showing. `compass` is the panel itself — the
- * D-pad and the actions — and the other two are layers that open over it:
- * Fast travel from the Teleport button, the Map from the mini-map in the
- * D-pad's centre (sidebar only; the mobile strip opens the full-screen map
- * instead). Escape, the back arrow, travelling, or entering battle all return
- * to the compass.
+ * D-pad and the actions — and the other two are layers that open over it from
+ * the Map and Teleport buttons in the panel's top-right corner (the mini-map
+ * in the D-pad's centre opens the Map as well). Each layer closes from the X
+ * in its own top-right corner; Escape, travelling, or entering battle also
+ * return to the compass. On the mobile strip the Map opens the full-screen
+ * overlay instead, since the strip has no height for a map.
  */
 export type ExploreSubView = 'compass' | 'teleport' | 'map'
 
@@ -44,7 +45,7 @@ interface ExplorePanelProps {
   /**
    * 'sidebar' fills the desktop column and can host the map inline; 'strip'
    * sits under the room on mobile, where there is no room for a map — there the
-   * mini-map opens the full-screen overlay directly.
+   * Map button opens the full-screen overlay directly.
    */
   variant?: 'sidebar' | 'strip'
   /** Latest action result, for the flyout on the basic-action buttons. */
@@ -52,6 +53,10 @@ interface ExplorePanelProps {
   isLoadingRoom?: boolean
   currentAction?: string
 }
+
+/** The two corner controls share one look: a quiet outlined pill in the colour of what it opens. */
+const CORNER_BUTTON_BASE =
+  'flex items-center justify-center gap-1 rounded-md border bg-surface-panel/85 font-medium shadow-sm backdrop-blur-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:opacity-40 disabled:cursor-not-allowed'
 
 export default function ExplorePanel({
   room,
@@ -92,7 +97,7 @@ export default function ExplorePanel({
           currentMapId={currentMapId}
           foundMaps={availableMaps}
           onMapChange={onMapChange}
-          onBack={backToCompass}
+          onClose={backToCompass}
           onOpenFullscreen={onOpenMapFullscreen}
         />
       </div>
@@ -104,20 +109,20 @@ export default function ExplorePanel({
       <div className={`min-h-0 overflow-y-auto ${isSidebar ? 'flex-1' : 'max-h-[340px]'}`}>
         <div className="flex flex-col gap-2 p-3">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={backToCompass}
-              aria-label="Back to the compass"
-              title="Back to the compass (Esc)"
-              className="-ml-1 rounded p-1 text-fg-secondary transition-colors hover:bg-surface-raised/50 hover:text-fg-bright"
-            >
-              <ArrowLeft size={16} aria-hidden="true" />
-            </button>
             <h2 className="text-sm font-semibold text-fg-bright">Fast travel</h2>
             <span className="hidden sm:inline text-[10px] uppercase tracking-widest text-fg-muted">Esc to close</span>
             <span className="ml-auto text-[11px] font-semibold text-resource-mp" title="Each fast travel costs MP">
               MP cost: {TELEPORT_MP_COST}
             </span>
+            <button
+              type="button"
+              onClick={backToCompass}
+              aria-label="Close fast travel"
+              title="Close (Esc)"
+              className="-mr-1 rounded p-1 text-fg-secondary transition-colors hover:bg-surface-raised/50 hover:text-fg-bright"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
           </div>
 
           {teleportBlockedReason && (
@@ -140,19 +145,52 @@ export default function ExplorePanel({
     )
   }
 
+  const dimmedClasses = isDimmed ? 'opacity-20 pointer-events-none' : ''
+
   return (
     <div
       className={`relative flex flex-col items-center justify-center ${
         isSidebar ? 'flex-1 min-h-0 p-4 gap-3' : 'px-2 py-3'
       }`}
     >
+      {/* Map and Teleport, top right of the D-pad area on both breakpoints.
+          Labelled pills in the sidebar; icon-only squares on the strip, where
+          the space above the action column is all there is. */}
+      <div className={`absolute top-2 right-2 z-10 flex gap-1.5 transition-opacity duration-300 ${dimmedClasses}`}>
+        <button
+          type="button"
+          onClick={showMapHere}
+          aria-label="Open the map"
+          title="Map"
+          className={`${CORNER_BUTTON_BASE} border-hue-sky/60 text-hue-sky hover:bg-hue-sky/15 hover:border-hue-sky ${
+            isSidebar ? 'h-7 px-2.5 text-xs' : 'h-8 w-8'
+          }`}
+        >
+          <MapIcon size={14} aria-hidden="true" />
+          {isSidebar && <span>Map</span>}
+        </button>
+        <button
+          type="button"
+          onClick={() => onSubViewChange('teleport')}
+          disabled={isLoadingRoom}
+          aria-label="Open fast travel"
+          title={`Teleport — ${TELEPORT_MP_COST} MP`}
+          className={`${CORNER_BUTTON_BASE} border-resource-mp/60 text-resource-mp hover:bg-resource-mp/15 hover:border-resource-mp ${
+            isSidebar ? 'h-7 px-2.5 text-xs' : 'h-8 w-8'
+          }`}
+        >
+          <Waypoints size={14} aria-hidden="true" />
+          {isSidebar && <span>Teleport</span>}
+        </button>
+      </div>
+
       {/* Desktop stacks the actions under the D-pad; the short mobile strip puts
           them in a column beside it to save vertical space. The Compass keeps a
           48px left inset for its up/down buttons. */}
       <div
         className={`flex transition-opacity duration-300 ${
           isSidebar ? 'flex-col items-center gap-4' : 'flex-row items-center justify-center gap-2'
-        } ${isDimmed ? 'opacity-20 pointer-events-none' : ''}`}
+        } ${dimmedClasses}`}
       >
         <Compass
           room={room}
@@ -175,21 +213,7 @@ export default function ExplorePanel({
             isSidebar ? 'flex flex-wrap justify-center gap-2' : 'flex flex-col gap-1.5 shrink-0'
           }
           sizeClassName={isSidebar ? 'px-4 py-1.5 text-sm' : 'px-2.5 py-1.5 text-xs w-full'}
-        >
-          {/* Teleport takes the slot Look used to hold, in the MP blue: fast
-              travel costs MP, and the original's teleport page wore that blue. */}
-          <button
-            type="button"
-            onClick={() => onSubViewChange('teleport')}
-            disabled={isLoadingRoom}
-            title={`Fast travel — ${TELEPORT_MP_COST} MP`}
-            className={`${
-              isSidebar ? 'px-4 py-1.5 text-sm' : 'px-2.5 py-1.5 text-xs w-full'
-            } fill-resource-mp shadow-sm shadow-shadow disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
-          >
-            Teleport
-          </button>
-        </BasicActionButtons>
+        />
       </div>
       {isSidebar && isPartyMember && !isDimmed && (
         <p className="text-[11px] text-status-info/70">Following your party — leave to move freely.</p>
