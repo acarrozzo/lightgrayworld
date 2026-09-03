@@ -17,6 +17,8 @@ interface GameHeaderProps {
   mag?: number
   def?: number
   clicks?: number
+  /** Unspent Core + Training Points. Desktop shows a pill beside the name; on phones the Char tab badge carries it instead, the bar has no room. */
+  unspentPoints?: number
   onCharacterClick?: () => void
   isConnected?: boolean
   onRefresh?: () => void
@@ -46,7 +48,20 @@ function StatBar({ pct, fillClass, label, value, over, className }: {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, clicks, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
+function UnspentPill({ count }: { count?: number }) {
+  if (!count || count <= 0) return null
+  const label = `${count} unspent point${count === 1 ? '' : 's'}`
+  return (
+    <span className="relative inline-flex shrink-0" title={`${label} — open your character to spend them`} aria-label={label}>
+      <span className="absolute inset-0 rounded-full bg-accent/60 animate-ping-slow" aria-hidden="true" />
+      <span className="relative min-w-[1.25rem] h-5 px-1.5 rounded-full fill-accent text-[10px] font-bold leading-5 text-center tabular-nums">
+        +{count}
+      </span>
+    </span>
+  )
+}
+
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
   let xpInLevel = 0
   let xpNeeded = 1
   let xpPct = 0
@@ -149,6 +164,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                 {/* Username */}
                 <div className="hidden md:flex items-center gap-2">
                   <span className="text-fg-primary">{playerName}</span>
+                  <UnspentPill count={unspentPoints} />
                 </div>
 
                 {/* HP / MP / Level / XP */}

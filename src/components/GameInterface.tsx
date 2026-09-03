@@ -51,6 +51,7 @@ import { useDMStore } from '@/store/dmStore'
 import LevelUpAlert from './LevelUpAlert'
 import TrainingAllocationModal from './TrainingAllocationModal'
 import StatAllocationModal from './StatAllocationModal'
+import type { AllocationSummary } from './PointAllocationModal'
 import type { LevelUpPayload } from '@/lib/socket'
 
 export default function GameInterface() {
@@ -250,6 +251,23 @@ export default function GameInterface() {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
   }, [])
+
+  // Both point-spending modals (Core Points, Training Points) land here. The
+  // server's row wins but it is only a projection, so client-only fields —
+  // buffs, presence, party, in-battle — must survive the merge. The feed gets
+  // the original's "You spend N CP…" line.
+  const handlePointsSpent = useCallback((updatedPlayer: Player, summary: AllocationSummary) => {
+    const { player: current, setPlayer: sp } = useGameStore.getState()
+    sp(current ? { ...current, ...updatedPlayer } : updatedPlayer)
+    const changes = summary.changes.map((c) => `${c.code} ${c.from} → ${c.to}`).join(', ')
+    appendWorldFeed({
+      type: 'action',
+      outcome: 'success',
+      isSelf: true,
+      message: `You spend ${summary.total} ${summary.pointCode}: ${changes}.`,
+      roomId: currentRoomRef.current?.roomId,
+    })
+  }, [appendWorldFeed])
 
   // Reconcile a player list against a known-authoritative live roster for the same room:
   // stamp partyLeaderId on real occupants, drop active/idle players who aren't actually
@@ -2890,6 +2908,8 @@ export default function GameInterface() {
             onAction={handleAction}
             onSwitchToInventory={handleSwitchToInventory}
             onOpenSpellbook={() => setSpellbookOpen(true)}
+            onOpenStatAllocation={() => setStatModalOpen(true)}
+            onOpenTraining={() => setTrainingModalOpen(true)}
             onClose={goToExplore}
           />
         )
@@ -3014,9 +3034,14 @@ export default function GameInterface() {
 
   const availableMaps = getUnlockedMaps(player, currentRoom?.roomId)
 
+  // Unspent Core/Training Points: the original's nav badges. Skill Points are
+  // left out — the spellbook button in the Character panel already pulses when
+  // a spell is actually learnable.
+  const unspentPoints = (player?.cp ?? 0) + (player?.tp ?? 0)
+
   const panelTabs: TabConfig[] = [
     { id: 'explore', label: 'Explore', icon: 'world', color: 'blue' },
-    { id: 'char', label: 'Char', icon: 'character', color: 'violet' },
+    { id: 'char', label: 'Char', icon: 'character', color: 'violet', badge: unspentPoints > 0 ? unspentPoints : undefined },
     { id: 'inventory', label: 'Inv', icon: 'inv', color: 'green', badge: newItemIds.size > 0 ? newItemIds.size : undefined },
     { id: 'quests', label: 'Quests', icon: 'trophy', color: 'gold', badge: hasQuestUpdate ? true : undefined },
     { id: 'players', label: 'Players', icon: <MessageSquare size={14} />, color: 'pink', badge: totalDmUnread > 0 ? totalDmUnread : undefined },
@@ -3069,13 +3094,13 @@ export default function GameInterface() {
         isOpen={isTrainingModalOpen}
         player={player}
         onClose={() => setTrainingModalOpen(false)}
-        onTrainingAllocated={(updatedPlayer) => setPlayer(updatedPlayer)}
+        onTrainingAllocated={handlePointsSpent}
       />
       <StatAllocationModal
         isOpen={isStatModalOpen}
         player={player}
         onClose={() => setStatModalOpen(false)}
-        onStatAllocated={(updatedPlayer) => setPlayer(updatedPlayer)}
+        onStatAllocated={handlePointsSpent}
       />
       <SpellbookModal
         isOpen={isSpellbookOpen}
@@ -3234,6 +3259,7 @@ export default function GameInterface() {
         mag={player ? (player.mag ?? 0) + (player.magMod ?? 0) : undefined}
         def={player ? (player.def ?? 0) + (player.defMod ?? 0) : undefined}
         clicks={player?.clicks}
+        unspentPoints={unspentPoints}
         onCharacterClick={() => handleCenterTabChange(centerActiveTab === 'char' ? null : 'char')}
         isConnected={socket?.connected ?? false}
         onRefresh={() => window.location.reload()}

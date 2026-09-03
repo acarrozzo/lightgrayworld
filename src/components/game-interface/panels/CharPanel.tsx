@@ -3,8 +3,6 @@
 import { Player, useGameStore, InventoryItem } from '@/lib/game-state'
 import React, { useMemo, useState } from 'react'
 import AvatarSelectionModal from '@/components/AvatarSelectionModal'
-import StatAllocationModal from '@/components/StatAllocationModal'
-import TrainingAllocationModal from '@/components/TrainingAllocationModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { EquipSlot } from '@prisma/client'
@@ -19,6 +17,9 @@ interface CharPanelProps {
   onAction?: (action: string | { type: string; data?: any }) => void
   onSwitchToInventory?: (filter?: FilterTab) => void
   onOpenSpellbook?: () => void
+  /** Opens the single Core Points modal owned by GameInterface (so Escape and the level-up alert share it). */
+  onOpenStatAllocation?: () => void
+  onOpenTraining?: () => void
   onClose?: () => void
 }
 
@@ -50,15 +51,13 @@ function renderStatMods(metadata: any): React.ReactNode {
   return parts.length > 0 ? <>{parts}</> : null
 }
 
-export default function CharPanel({ player, onAction, onSwitchToInventory, onOpenSpellbook, onClose }: CharPanelProps) {
+export default function CharPanel({ player, onAction, onSwitchToInventory, onOpenSpellbook, onOpenStatAllocation, onOpenTraining, onClose }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
   const setPlayer = useGameStore((state) => state.setPlayer)
   const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
   const isLoggedIn = useGameStore((state) => state.isLoggedIn)
   const [isAvatarModalOpen, setAvatarModalOpen] = useState(false)
   const [isSavingAvatar, setIsSavingAvatar] = useState(false)
-  const [isStatModalOpen, setStatModalOpen] = useState(false)
-  const [isTrainingModalOpen, setTrainingModalOpen] = useState(false)
 
   const hpPercent = useMemo(() => {
     if (!player.hpMax) return 0
@@ -162,14 +161,6 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
     }
   }
 
-  const handleStatAllocated = (updatedPlayer: Player) => {
-    setPlayer(updatedPlayer)
-  }
-
-  const handleTrainingAllocated = (updatedPlayer: Player) => {
-    setPlayer(updatedPlayer)
-  }
-
   return (
     <>
       <div className="relative w-full h-full">
@@ -250,8 +241,8 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                       <span className="absolute inset-[2px] rounded-lg bg-resource-gold/60 animate-ping-slow" />
                       <button
                         type="button"
-                        onClick={() => setTrainingModalOpen(true)}
-                        disabled={!isLoggedIn}
+                        onClick={onOpenTraining}
+                        disabled={!isLoggedIn || !onOpenTraining}
                         className="relative px-2.5 py-1 text-xs font-semibold text-fg-disabled bg-resource-gold/90 hover:bg-resource-gold disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
                       >
                         Spend TP ({player.tp ?? 0})
@@ -259,14 +250,17 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                     </span>
                   )}
                   {(player.cp ?? 0) > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setStatModalOpen(true)}
-                      disabled={!isLoggedIn}
-                      className="px-2.5 py-1 text-xs font-semibold fill-accent hover:bg-accent-hover disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
-                    >
-                      Spend CP ({player.cp ?? 0})
-                    </button>
+                    <span className="relative inline-flex">
+                      <span className="absolute inset-[2px] rounded-lg bg-accent/60 animate-ping-slow" />
+                      <button
+                        type="button"
+                        onClick={onOpenStatAllocation}
+                        disabled={!isLoggedIn || !onOpenStatAllocation}
+                        className="relative px-2.5 py-1 text-xs font-semibold fill-accent hover:bg-accent-hover disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
+                      >
+                        Spend CP ({player.cp ?? 0})
+                      </button>
+                    </span>
                   )}
                 </div>
               </div>
@@ -462,18 +456,6 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
         isSaving={isSavingAvatar}
         onClose={() => (isSavingAvatar ? null : setAvatarModalOpen(false))}
         onSelectAvatar={handleAvatarUpdate}
-      />
-      <StatAllocationModal
-        isOpen={isStatModalOpen}
-        player={player}
-        onClose={() => setStatModalOpen(false)}
-        onStatAllocated={handleStatAllocated}
-      />
-      <TrainingAllocationModal
-        isOpen={isTrainingModalOpen}
-        player={player}
-        onClose={() => setTrainingModalOpen(false)}
-        onTrainingAllocated={handleTrainingAllocated}
       />
     </>
   )
