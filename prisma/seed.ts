@@ -9098,7 +9098,7 @@ async function main() {
       max: 99,
       value: 250,
       metadata: {
-        icon: 'steak',
+        icon: 'meatball',
         consumable: { stat: 'hp', amount: 400, verb: 'eat' },
       },
     },

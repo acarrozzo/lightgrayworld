@@ -42,8 +42,8 @@ import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
 import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/PlayersPanel'
 import PartyStrip from './game-interface/PartyStrip'
-import CraftingPanel from './game-interface/panels/CraftingPanel'
-import { isCraftingRoom } from '@/lib/game-data/crafting-recipes'
+import CraftingSheet, { type RecipeTemplates } from './CraftingSheet'
+import { isCraftingRoom, formatRecipeList } from '@/lib/game-data/crafting-recipes'
 import QuestCompleteRewards, { type QuestCompleteData } from './QuestCompleteRewards'
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
@@ -112,11 +112,14 @@ export default function GameInterface() {
   const xpGainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
-  // Crafting panel (rooms 003 / 021): a local UI toggle that renders above the
-  // room info, like the battle panel. `craftingRecipeId` marks the in-flight craft.
+  // The crafting sheet: a local UI toggle that opens over the room the way the
+  // shop does. `craftingRecipeId` marks the in-flight craft. The item templates
+  // the recipe rows read (icon, stats, description) are fetched once, the first
+  // time the sheet opens.
   const [isCraftingOpen, setIsCraftingOpen] = useState(false)
   const [craftingRecipeId, setCraftingRecipeId] = useState<string | null>(null)
-  const craftingPanelRef = useRef<HTMLDivElement>(null)
+  const [recipeTemplates, setRecipeTemplates] = useState<RecipeTemplates | null>(null)
+  const [recipeTemplatesFailed, setRecipeTemplatesFailed] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   const totalDmUnread = useDMStore((state) => state.getTotalUnreadCount())
   const [exploreSubView, setExploreSubView] = useState<ExploreSubView>('compass')
@@ -393,21 +396,39 @@ export default function GameInterface() {
     hydrateGatherCooldown(roomId)
   }, [currentRoom?.roomId, hydrateGatherCooldown])
 
-  // Close the crafting panel whenever the player leaves a crafting room.
+  // Close the crafting sheet whenever the player leaves a crafting room or a
+  // fight starts: the battle panel owns the screen then.
   useEffect(() => {
-    if (!currentRoom?.roomId || !isCraftingRoom(currentRoom.roomId)) {
+    if (!currentRoom?.roomId || !isCraftingRoom(currentRoom.roomId) || battle.isInBattle) {
       setIsCraftingOpen(false)
     }
-  }, [currentRoom?.roomId])
+  }, [currentRoom?.roomId, battle.isInBattle])
 
-  // When crafting opens, jump the scroll to the top of the crafting container.
+  // Recipe item templates, fetched the first time the sheet opens. They do not
+  // change during a session, so one load serves every crafting room.
   useEffect(() => {
-    if (!isCraftingOpen) return
-    const raf = requestAnimationFrame(() => {
-      craftingPanelRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' })
-    })
-    return () => cancelAnimationFrame(raf)
-  }, [isCraftingOpen])
+    if (!isCraftingOpen || recipeTemplates !== null) return
+    let cancelled = false
+    setRecipeTemplatesFailed(false)
+    fetch('/api/game/recipes', { headers: getAuthHeaders() })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))))
+      .then((body) => {
+        if (!cancelled) setRecipeTemplates(body?.templates ?? {})
+      })
+      .catch((error) => {
+        console.warn('[crafting] recipe templates failed to load', error)
+        if (!cancelled) setRecipeTemplatesFailed(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isCraftingOpen, recipeTemplates, getAuthHeaders])
+
+  // A craft result (success or refusal) frees the row's button again even if
+  // the dispatch promise settled first.
+  useEffect(() => {
+    if (actionResult?.action === 'craft') setCraftingRecipeId(null)
+  }, [actionResult?.action, actionResult?.timestamp])
 
   // Escape unwinds one layer per press — overlays, then any open panel or tab,
   // then the Explore sub-view — so repeated presses always end on the compass.
@@ -891,10 +912,21 @@ export default function GameInterface() {
       clearBattleResult()
     }
 
-    // "Open Crafting" is a pure client-side panel toggle — no server round-trip.
-    // The actual craft (type: 'craft') is dispatched from within the panel.
+    // "Open Crafting" is a pure client-side toggle — no server round-trip. The
+    // actual craft (type: 'craft') is dispatched from within the sheet.
     if (normalizedAction === 'open crafting') {
-      setIsCraftingOpen((prev) => !prev)
+      setIsCraftingOpen(true)
+      return
+    }
+
+    // The original's typed `craft list`: the whole recipe book, one feed line
+    // per family, readable anywhere. Local — the list is shared data.
+    if (normalizedAction === 'craft list' || normalizedAction === 'crafting list') {
+      const roomId = currentRoomRef.current?.roomId
+      appendWorldFeed({ type: 'action', outcome: 'info', isSelf: true, message: 'Crafting list:', roomId })
+      for (const line of formatRecipeList() as string[]) {
+        appendWorldFeed({ type: 'action', outcome: 'info', isSelf: true, message: line, roomId })
+      }
       return
     }
 
@@ -2914,6 +2946,11 @@ export default function GameInterface() {
           <InventoryPanel
             inventory={inventory}
             onAction={handleAction}
+            onOpenCrafting={
+              currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle
+                ? () => setIsCraftingOpen(true)
+                : undefined
+            }
             initialFilter={inventoryFilter}
             newItemIds={newItemIds}
             onClearNewItem={(itemId) => {
@@ -2989,7 +3026,7 @@ export default function GameInterface() {
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, handleOpenTeleport])
+  }, [goToExplore, centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, handleOpenTeleport, battle.isInBattle])
 
   const handleCenterTabChange = useCallback((tabId: string | null) => {
     if (!tabId || tabId === 'explore') {
@@ -3111,6 +3148,25 @@ export default function GameInterface() {
         onCast={(spellId) => {
           setSpellbookOpen(false)
           handleAction({ type: 'cast_spell', data: { spellId } })
+        }}
+      />
+      <CraftingSheet
+        isOpen={isCraftingOpen && !!currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle}
+        onClose={() => setIsCraftingOpen(false)}
+        roomId={currentRoom?.roomId ?? ''}
+        roomName={currentRoom?.name}
+        inventory={inventory}
+        quests={quests}
+        templates={recipeTemplates}
+        templatesFailed={recipeTemplatesFailed}
+        craftingRecipeId={craftingRecipeId}
+        actionResult={actionResult}
+        onCraft={(recipeId, quantity) => {
+          if (craftingRecipeId || quantity < 1) return
+          setCraftingRecipeId(recipeId)
+          Promise.resolve(handleAction({ type: 'craft', data: { recipeId, quantity } })).finally(() =>
+            setCraftingRecipeId(null)
+          )
         }}
       />
       <ShopModal
@@ -3297,7 +3353,7 @@ export default function GameInterface() {
                 availableMaps={availableMaps}
                 onMapChange={handleMapChange}
                 isMoveInProgress={isMoveInProgress}
-                isDimmed={battle.isInBattle || isCraftingOpen}
+                isDimmed={battle.isInBattle}
                 showBattleBadge={battle.isInBattle}
                 actionResult={actionResult}
                 isLoadingRoom={isLoadingRoom}
@@ -3400,25 +3456,6 @@ export default function GameInterface() {
                     onLeave={handleLeaveParty}
                     onManage={handleOpenPartyTab}
                   />
-                  {isCraftingOpen && currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle && (
-                    <div ref={craftingPanelRef} className="px-4 pt-4 scroll-mt-4">
-                      <CraftingPanel
-                        roomId={currentRoom.roomId}
-                        inventory={inventory}
-                        quests={quests}
-                        craftingRecipeId={craftingRecipeId}
-                        actionResult={actionResult}
-                        onClose={() => setIsCraftingOpen(false)}
-                        onCraft={(recipeId, quantity) => {
-                          if (craftingRecipeId || quantity < 1) return
-                          setCraftingRecipeId(recipeId)
-                          Promise.resolve(
-                            handleAction({ type: 'craft', data: { recipeId, quantity } })
-                          ).finally(() => setCraftingRecipeId(null))
-                        }}
-                      />
-                    </div>
-                  )}
                   <RoomBox
                     room={currentRoom}
                     roomPlayers={roomPlayers}

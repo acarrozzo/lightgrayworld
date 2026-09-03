@@ -55,6 +55,8 @@ export type RoomNode = {
   isSafe: boolean
   hasFire: boolean
   hasCraftingTable: boolean
+  /** The station's name ("Cooking Fire", "Forge") when the room has one. */
+  craftingStation?: string | null
   hasSearch: boolean
   icon?: string | null
   iconColor?: string | null
@@ -788,7 +790,7 @@ function RoomDetail({
             {room.isSafe ? 'Safe' : `Danger ${room.dangerLevel}`}
           </span>
           {room.hasFire && <FeatureChip icon={Flame} label="Fire" />}
-          {room.hasCraftingTable && <FeatureChip icon={Hammer} label="Crafting" />}
+          {room.hasCraftingTable && <FeatureChip icon={Hammer} label={room.craftingStation ?? 'Crafting'} />}
           {room.hasSearch && <FeatureChip icon={Search} label="Searchable" />}
         </div>
         {room.subtitle && <p className="mt-2 text-xs italic text-fg-muted">{room.subtitle}</p>}

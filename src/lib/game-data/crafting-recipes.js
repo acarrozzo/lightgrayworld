@@ -1,34 +1,33 @@
 /**
  * Crafting recipes — the single source of truth shared by the client crafting
- * panel (which reads it to render availability) and the server `craft` action
+ * sheet (which reads it to render availability) and the server `craft` action
  * handler (which re-validates and atomically consumes inputs / grants output).
  *
  * Authored as plain JS (with JSDoc types) so the Node game engine can
  * `require()` it directly, exactly like enemies.js / constants.js, while the
  * TypeScript client imports it for types via allowJs.
  *
- * Ingredient/output `name` + `icon` are duplicated here (rather than read from
- * the DB) so the panel can render a recipe — including its missing inputs —
- * without an inventory entry or a server round-trip. Quantities and slugs are
- * what the server validates against; name/icon are display-only.
+ * What a recipe carries is deliberately thin: slugs and quantities, the family
+ * it belongs to, and how it batches. Icons, stat lines, descriptions and stack
+ * caps come from the ItemTemplate the slug names (the sheet fetches those once
+ * from /api/game/recipes), so the row for a crafted bow reads exactly like the
+ * row for the same bow in the bag or the shop, and nothing here can drift from
+ * the item. Ingredient/output `name` is kept only as a fallback label while
+ * templates are still loading.
  *
  * @typedef {Object} RecipeIngredient
  * @property {string} slug  Item template slug consumed.
  * @property {number} qty   Quantity consumed per craft.
- * @property {string} name  Display name.
- * @property {string} icon  Icon name.
+ * @property {string} name  Fallback display name.
  *
  * @typedef {Object} RecipeOutput
- * @property {string} slug    Item template slug produced.
- * @property {number} qty     Quantity produced per craft.
- * @property {string} name    Display name.
- * @property {string} [effect] Short effect line shown on the card (e.g. "Restores 50 HP").
- * @property {number} [max]   Output's stack cap (mirrors the seed) so the client
- *                            can clamp the "Craft All" count; the server clamps too.
+ * @property {string} slug  Item template slug produced.
+ * @property {number} qty   Quantity produced per craft.
+ * @property {string} name  Fallback display name.
  *
  * @typedef {Object} RecipeTool
  * @property {string} slug  Item template slug that must be held (not consumed).
- * @property {string} name  Display name shown on the card and in the refusal.
+ * @property {string} name  Display name shown on the row and in the refusal.
  * @property {string[]} [anyOf] Slugs that satisfy the requirement in place of
  *                            `slug` — a better tool standing in for the named
  *                            one (a steel hammer works iron).
@@ -39,49 +38,106 @@
  *                            not enough — it must be turned in.
  * @property {string} hint     One line telling the player where to unlock it.
  *
+ * @typedef {'cook' | 'potions' | 'wood' | 'leather' | 'iron' | 'tools'} CraftingFamilyId
+ *
  * @typedef {Object} Recipe
  * @property {string} id          Stable recipe id (sent from client → server).
- * @property {string} label       Display name shown on the recipe card.
- * @property {string} outputIcon  Icon name for the produced item.
- * @property {string} station     Crafting station this recipe belongs to (see CRAFTING_STATIONS).
- * @property {string} [blurb]     Optional one-line flavor / description.
+ * @property {string} label       Display name of the recipe ("Arrows", not "Arrow").
+ * @property {CraftingFamilyId} family  Material family the sheet groups it under.
+ * @property {'all' | 'one'} batch  How the row's one button behaves: `all`
+ *                            crafts as many as the bag allows in one tap (the
+ *                            original's "craft all red potion"); `one` crafts a
+ *                            single item, with a stepper in the drawer.
+ * @property {'fire' | 'crafting-table' | 'forge'} station  What does the work:
+ *                            a fire cooks, a table makes, a forge works iron.
+ * @property {string} [effect]    Short row label for outputs whose template has
+ *                            no stat mods or consumable effect to read (ammo,
+ *                            mounts, tools).
+ * @property {string} [blurb]     One line of flavour shown in the drawer.
  * @property {RecipeTool} [tool]  Tool that must be in the player's inventory to run it.
  * @property {RecipeUnlock} [unlock] Quest that has to be underway before it can be run.
  * @property {RecipeIngredient[]} inputs
  * @property {RecipeOutput} output
  *
+ * @typedef {Object} CraftingFamily
+ * @property {CraftingFamilyId} id
+ * @property {string} label  Chip and section label.
+ */
+
+/**
+ * Where crafting happens, and what each place works. The original let you build
+ * a table and a fire in any room; here each station is authored, the way the
+ * rooms describe themselves: the Old Man's cooking fire, the Shaman's potion
+ * table, Jack's wood workshop, Freddie's leather bench, the Mining Guild forge,
+ * and the Grand Square's all-purpose table and fire. (The seed's hasFire /
+ * hasCraftingTable columns are not what gates this; this table is.)
+ *
+ * A recipe is available in a room when the room works its family AND has the
+ * kind of station it needs (`recipe.station`): that is what keeps the iron
+ * tools at the forge while the stone ones travel with the wood bench. Table
+ * order matters — it is the order the sheet names a recipe's home when it is
+ * made elsewhere, so the Grand Square comes last as the fallback mention.
+ *
  * @typedef {Object} CraftingStation
- * @property {string} id     Station id matched against Recipe.station.
- * @property {string} label  Minimal section header shown above its recipes.
- * @property {string} icon   Icon name for the section header.
+ * @property {string} label    Sheet title ("Cooking Fire", "Forge").
+ * @property {string} button   Room action label ("Cook", "Mix Potions").
+ * @property {string} icon     Room action icon.
+ * @property {string} where    How the sheet names the place: "the Old Man's cabin".
+ * @property {string} made     Participle for the pointer line: "cooked at …".
+ * @property {Array<'fire' | 'crafting-table' | 'forge'>} stations  What the room has.
+ * @property {CraftingFamilyId[]} families  What the room works.
+ *
+ * @type {Record<string, CraftingStation>}
  */
+const CRAFTING_STATIONS = {
+  '003': { label: 'Cooking Fire', button: 'Cook', icon: 'fire', where: "the Old Man's cabin", made: 'cooked', stations: ['fire'], families: ['cook'] },
+  '021': { label: 'Potion Table', button: 'Mix Potions', icon: 'red-potion', where: "the Pajama Shaman's tent", made: 'mixed', stations: ['crafting-table'], families: ['potions'] },
+  '024': { label: 'Wood Workshop', button: 'Woodwork', icon: 'axelog', where: "Jack Lumber's workshop", made: 'made', stations: ['crafting-table'], families: ['wood', 'tools'] },
+  '103': { label: 'Leather Bench', button: 'Work Leather', icon: 'craft', where: "Freddie's Cow Farm", made: 'worked', stations: ['crafting-table'], families: ['leather'] },
+  '308': { label: 'Forge', button: 'Forge', icon: 'craft', where: 'the Mining Guild forge', made: 'forged', stations: ['forge', 'crafting-table'], families: ['iron', 'tools'] },
+  '210': { label: 'Crafting Table', button: 'Open Crafting', icon: 'craft', where: "Red Town's Grand Square", made: 'made', stations: ['fire', 'crafting-table'], families: ['cook', 'potions', 'wood', 'leather', 'tools'] },
+}
 
 /**
- * Rooms where the crafting panel is available.
- *
- * 210 is Red Town's Grand Square, which seeds `hasFire` and `hasCraftingTable`,
- * renders an "Open Crafting" button and registers a `craft` handler — but was
- * missing from this list, so every craft attempted there was refused with "You
- * cannot craft that here."
- *
- * 308 is the Mining Guild forge in the Rocky Flats. Any crafting fire works iron
- * once the Guild Leader has taught you how, exactly as in the original — the
- * guild's own forge is simply the one you are standing next to when he does.
+ * Room ids with a station, in the order the sheet names a recipe's home when it
+ * is made elsewhere. Spelled out rather than taken from the table's keys: JS
+ * orders numeric-looking keys ('103', '210') ahead of zero-padded ones ('003').
  */
-const CRAFTING_ROOMS = ['003', '021', '024', '210', '308']
+const CRAFTING_ROOMS = ['003', '021', '024', '103', '308', '210']
 
 /**
- * Crafting stations, in display order. Recipes are grouped under these as
- * sections in the panel; each recipe declares its `station`.
- * @type {CraftingStation[]}
+ * Material families, in the order the original craft screen listed them:
+ * Cook, Potions, Wood, Leather, Iron, Tools. The sheet groups rows under these
+ * and collapses a family the player has not unlocked to one line.
+ * @type {CraftingFamily[]}
  */
-const CRAFTING_STATIONS = [
-  { id: 'fire', label: 'Fire', icon: 'fire' },
-  { id: 'crafting-table', label: 'Crafting Table', icon: 'craft' },
+const CRAFTING_FAMILIES = [
+  { id: 'cook', label: 'Cook' },
+  { id: 'potions', label: 'Potions' },
+  { id: 'wood', label: 'Wood' },
+  { id: 'leather', label: 'Leather' },
+  { id: 'iron', label: 'Iron' },
+  { id: 'tools', label: 'Tools' },
 ]
+
+/**
+ * Jack Lumber's lesson. The original locked the whole craft screen until you
+ * had met him ("What's craft? You should talk to Jack Lumber"); here cooking
+ * and potions stay open from the start and it is gear, ammo, mounts and tools
+ * that wait for him. His woodworking quest is started the moment his intro is
+ * turned in, so "started" is the same instant as "met Jack".
+ */
+const JACK_UNLOCK = {
+  questId: 'quest_jacklumber_001',
+  hint: 'Talk to Jack Lumber at his cabin north of the Forest Gate to learn how to craft.',
+}
 
 /** Shared by every leather recipe — one tool, one unlock, declared once. */
 const LEATHER_TOOL = { slug: 'hammer', name: 'Hammer' }
+const LEATHER_UNLOCK = {
+  questId: 'quest_freddie_intro',
+  hint: "To craft with leather, find Freddie's Cow Farm on the Forest Path.",
+}
 
 /**
  * Shared by every iron recipe. `anyOf` is the original's own rule: the check was
@@ -98,79 +154,35 @@ const IRON_UNLOCK = {
   requireCompleted: true,
   hint: 'To craft with iron, defeat the Phoenix at Mine Level 10 for the Mining Guild.',
 }
-const LEATHER_UNLOCK = {
-  questId: 'quest_freddie_intro',
-  hint: "To craft with leather, find Freddie's Cow Farm on the Forest Path.",
-}
+
+const WOOD = (qty) => ({ slug: 'wood', qty, name: 'Wood' })
+const STONE = (qty) => ({ slug: 'stone', qty, name: 'Stone' })
+const IRON = (qty) => ({ slug: 'iron', qty, name: 'Iron' })
+const LEATHER = (qty) => ({ slug: 'leather', qty, name: 'Leather' })
+const GRAY_MATTER = { slug: 'gray-matter', qty: 1, name: 'Gray Matter' }
 
 /** @type {Recipe[]} */
 const CRAFTING_RECIPES = [
-  {
-    id: 'red-potion',
-    label: 'Red Potion',
-    outputIcon: 'red-potion',
-    station: 'crafting-table',
-    blurb: 'Crush redberries into a healing potion.',
-    inputs: [{ slug: 'redberry', qty: 5, name: 'Redberry', icon: 'redberry' }],
-    output: { slug: 'red-potion', qty: 1, name: 'Red Potion', effect: 'Restores 100 HP', max: 99 },
-  },
-  {
-    id: 'blue-potion',
-    label: 'Blue Potion',
-    outputIcon: 'blue-potion',
-    station: 'crafting-table',
-    blurb: 'Crush blueberries into a mana potion.',
-    inputs: [{ slug: 'blueberry', qty: 5, name: 'Blueberry', icon: 'blueberry' }],
-    output: { slug: 'blue-potion', qty: 1, name: 'Blue Potion', effect: 'Restores 100 MP', max: 99 },
-  },
+  // ==================== COOK ====================
   {
     id: 'cook-meat',
     label: 'Cooked Meat',
-    outputIcon: 'cooked-meat',
+    family: 'cook',
+    batch: 'all',
     station: 'fire',
     blurb: 'Cook raw meat over the fire into a hearty meal.',
-    inputs: [{ slug: 'raw-meat', qty: 1, name: 'Raw Meat', icon: 'uncooked-meat' }],
-    output: { slug: 'cooked-meat', qty: 1, name: 'Cooked Meat', effect: 'Restores 50 HP', max: 999 },
-  },
-  {
-    id: 'wooden-boat',
-    label: 'Wooden Boat',
-    outputIcon: 'boat',
-    station: 'crafting-table',
-    blurb: 'Twenty wood and a hammer. Ride it as your mount and the Blue Ocean is open, west of the beach.',
-    tool: { slug: 'hammer', name: 'Hammer' },
-    inputs: [{ slug: 'wood', qty: 20, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'wooden-boat', qty: 1, name: 'Wooden Boat', effect: 'Mount: crosses the Blue Ocean', max: 1 },
-  },
-  {
-    id: 'wooden-bow',
-    label: 'Wooden Bow',
-    outputIcon: 'wooden-bow',
-    station: 'crafting-table',
-    blurb: 'Carve a simple bow from wood. Effective against flying enemies.',
-    inputs: [{ slug: 'wood', qty: 3, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'wooden-bow', qty: 1, name: 'Wooden Bow', effect: 'Ranged weapon', max: 999 },
-  },
-  {
-    id: 'arrow',
-    label: 'Arrows',
-    outputIcon: 'arrow',
-    station: 'crafting-table',
-    blurb: 'Shave a shaft and knap a tip. Ten arrows from one piece of each.',
-    inputs: [
-      { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' },
-      { slug: 'stone', qty: 1, name: 'Stone', icon: 'stone' },
-    ],
-    output: { slug: 'arrow', qty: 10, name: 'Arrow', effect: 'Bow ammo', max: 999 },
+    inputs: [{ slug: 'raw-meat', qty: 1, name: 'Raw Meat' }],
+    output: { slug: 'cooked-meat', qty: 1, name: 'Cooked Meat' },
   },
   {
     id: 'bread',
     label: 'Bread',
-    outputIcon: 'meatball',
+    family: 'cook',
+    batch: 'all',
     station: 'fire',
     blurb: 'Grind wheat and bake it into bread.',
-    inputs: [{ slug: 'wheat', qty: 2, name: 'Wheat', icon: 'flower' }],
-    output: { slug: 'bread', qty: 1, name: 'Bread', effect: 'Restores 15 HP', max: 999 },
+    inputs: [{ slug: 'wheat', qty: 2, name: 'Wheat' }],
+    output: { slug: 'bread', qty: 1, name: 'Bread' },
   },
   {
     // The Town Hall Plaza chef's recipe. "Cookin up some Meat-a-balls" ends with
@@ -181,364 +193,502 @@ const CRAFTING_RECIPES = [
     // until you have handed the meat over.
     id: 'meatball',
     label: 'Meatball',
-    outputIcon: 'steak',
+    family: 'cook',
+    batch: 'all',
     station: 'fire',
-    blurb: "Roll and fry five pieces of cooked meat the way the Red Town chef showed you.",
+    blurb: 'Roll and fry five pieces of cooked meat the way the Red Town chef showed you.',
     unlock: {
       questId: 'quest_townhallplaza_002',
       requireCompleted: true,
       hint: 'Find the Red Town chef in the Town Hall Plaza to learn how to cook meatballs.',
     },
-    inputs: [{ slug: 'cooked-meat', qty: 5, name: 'Cooked Meat', icon: 'cooked-meat' }],
-    output: { slug: 'meatball', qty: 1, name: 'Meatball', effect: 'Restores 400 HP', max: 99 },
+    inputs: [{ slug: 'cooked-meat', qty: 5, name: 'Cooked Meat' }],
+    output: { slug: 'meatball', qty: 1, name: 'Meatball' },
   },
 
-  // ---- Leather working ----
+  // ==================== POTIONS ====================
+  // Purple potions and the three balms wait for their teachers (the Traveling
+  // Wizard and the Stone Mountain shaman), neither of whom is ported yet.
+  {
+    id: 'red-potion',
+    label: 'Red Potion',
+    family: 'potions',
+    batch: 'all',
+    station: 'crafting-table',
+    blurb: 'Crush redberries into a healing potion.',
+    inputs: [{ slug: 'redberry', qty: 5, name: 'Redberry' }],
+    output: { slug: 'red-potion', qty: 1, name: 'Red Potion' },
+  },
+  {
+    id: 'blue-potion',
+    label: 'Blue Potion',
+    family: 'potions',
+    batch: 'all',
+    station: 'crafting-table',
+    blurb: 'Crush blueberries into a mana potion.',
+    inputs: [{ slug: 'blueberry', qty: 5, name: 'Blueberry' }],
+    output: { slug: 'blue-potion', qty: 1, name: 'Blue Potion' },
+  },
+
+  // ==================== WOOD ====================
+  // Jack Lumber's tier, in the order his original list ran: bo, bow, staff,
+  // shield, arrows, boat. The bow takes five wood and a length of string as it
+  // did in 2016 — the string lies in the Bat Cave's Abandoned Workshop, the same
+  // room that stocked it then. Unlike the original, a plain hammer is only
+  // needed for the boat.
+  {
+    id: 'wooden-bo',
+    label: 'Wooden Bo',
+    family: 'wood',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'A long staff of hardwood, cut and sanded to a fighting length.',
+    unlock: JACK_UNLOCK,
+    inputs: [WOOD(7)],
+    output: { slug: 'wooden-bo', qty: 1, name: 'Wooden Bo' },
+  },
+  {
+    id: 'wooden-bow',
+    label: 'Wooden Bow',
+    family: 'wood',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Carve a simple bow from wood and string it. Effective against flying enemies.',
+    unlock: JACK_UNLOCK,
+    inputs: [WOOD(5), { slug: 'string', qty: 1, name: 'String' }],
+    output: { slug: 'wooden-bow', qty: 1, name: 'Wooden Bow' },
+  },
+  {
+    id: 'wooden-staff',
+    label: 'Wooden Staff',
+    family: 'wood',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'A walking staff with carvings that hum faintly when you hold it.',
+    unlock: JACK_UNLOCK,
+    inputs: [WOOD(7)],
+    output: { slug: 'wooden-staff', qty: 1, name: 'Wooden Staff' },
+  },
+  {
+    id: 'wooden-shield',
+    label: 'Wooden Shield',
+    family: 'wood',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Planks pegged together and faced with stone.',
+    unlock: JACK_UNLOCK,
+    inputs: [WOOD(5), STONE(2)],
+    output: { slug: 'wooden-shield', qty: 1, name: 'Wooden Shield' },
+  },
+  {
+    id: 'arrow',
+    label: 'Arrows',
+    family: 'wood',
+    batch: 'all',
+    station: 'crafting-table',
+    effect: 'Bow ammo',
+    blurb: 'Shave a shaft and knap a tip. Ten arrows from one piece of each.',
+    unlock: JACK_UNLOCK,
+    inputs: [WOOD(1), STONE(1)],
+    output: { slug: 'arrow', qty: 10, name: 'Arrow' },
+  },
+  {
+    id: 'wooden-boat',
+    label: 'Wooden Boat',
+    family: 'wood',
+    batch: 'one',
+    station: 'crafting-table',
+    effect: 'Mount · crosses the Blue Ocean',
+    blurb: 'Twenty wood and a hammer. Ride it as your mount and the Blue Ocean is open, west of the beach.',
+    unlock: JACK_UNLOCK,
+    tool: { slug: 'hammer', name: 'Hammer' },
+    inputs: [WOOD(20)],
+    output: { slug: 'wooden-boat', qty: 1, name: 'Wooden Boat' },
+  },
+
+  // ==================== LEATHER ====================
   // Freddie's tier. Every piece needs a hammer in hand and his quest underway —
   // the original hid this whole block behind "To Craft w/ Leather find Freddie's
   // Cow Farm" and "Need Hammer!", which is what makes the cow farm a place you
-  // have to find rather than a shop you can skip. Leather costs and stat lines
-  // are the original's.
+  // have to find rather than a shop you can skip. Leather costs are the original's.
   {
     id: 'leather-hood',
     label: 'Leather Hood',
-    outputIcon: 'leather-hood',
+    family: 'leather',
+    batch: 'one',
     station: 'crafting-table',
     blurb: 'Cut and stitch a hood from cured hide.',
     tool: LEATHER_TOOL,
     unlock: LEATHER_UNLOCK,
-    inputs: [{ slug: 'leather', qty: 3, name: 'Leather', icon: 'leather' }],
-    output: { slug: 'leather-hood', qty: 1, name: 'Leather Hood', effect: '+4 DEX, +4 DEF', max: 999 },
+    inputs: [LEATHER(3)],
+    output: { slug: 'leather-hood', qty: 1, name: 'Leather Hood' },
   },
   {
     id: 'leather-gloves',
     label: 'Leather Gloves',
-    outputIcon: 'leather-gloves',
+    family: 'leather',
+    batch: 'one',
     station: 'crafting-table',
     blurb: 'A pair of working gloves, cut from the same hide.',
     tool: LEATHER_TOOL,
     unlock: LEATHER_UNLOCK,
-    inputs: [{ slug: 'leather', qty: 3, name: 'Leather', icon: 'leather' }],
-    output: { slug: 'leather-gloves', qty: 1, name: 'Leather Gloves', effect: '+3 DEX, +3 DEF', max: 999 },
+    inputs: [LEATHER(3)],
+    output: { slug: 'leather-gloves', qty: 1, name: 'Leather Gloves' },
   },
   {
     id: 'leather-boots',
     label: 'Leather Boots',
-    outputIcon: 'leather-boots',
+    family: 'leather',
+    batch: 'one',
     station: 'crafting-table',
     blurb: 'Sole, upper, and enough stitching to walk a forest in.',
     tool: LEATHER_TOOL,
     unlock: LEATHER_UNLOCK,
-    inputs: [{ slug: 'leather', qty: 3, name: 'Leather', icon: 'leather' }],
-    output: { slug: 'leather-boots', qty: 1, name: 'Leather Boots', effect: '+3 DEX, +3 DEF', max: 999 },
+    inputs: [LEATHER(3)],
+    output: { slug: 'leather-boots', qty: 1, name: 'Leather Boots' },
   },
   {
     id: 'leather-helmet',
     label: 'Leather Helmet',
-    outputIcon: 'leather-helmet',
+    family: 'leather',
+    batch: 'one',
     station: 'crafting-table',
     blurb: 'Hardened hide, boiled and beaten into a helmet.',
     tool: LEATHER_TOOL,
     unlock: LEATHER_UNLOCK,
-    inputs: [{ slug: 'leather', qty: 5, name: 'Leather', icon: 'leather' }],
-    output: { slug: 'leather-helmet', qty: 1, name: 'Leather Helmet', effect: '+2 STR, +10 DEF', max: 999 },
+    inputs: [LEATHER(5)],
+    output: { slug: 'leather-helmet', qty: 1, name: 'Leather Helmet' },
   },
   {
     id: 'leather-vest',
     label: 'Leather Vest',
-    outputIcon: 'leather-vest',
+    family: 'leather',
+    batch: 'one',
     station: 'crafting-table',
     blurb: 'Light, supple, and cut to keep you moving.',
     tool: LEATHER_TOOL,
     unlock: LEATHER_UNLOCK,
-    inputs: [{ slug: 'leather', qty: 7, name: 'Leather', icon: 'leather' }],
-    output: { slug: 'leather-vest', qty: 1, name: 'Leather Vest', effect: '+6 DEX', max: 999 },
+    inputs: [LEATHER(7)],
+    output: { slug: 'leather-vest', qty: 1, name: 'Leather Vest' },
   },
   {
     id: 'leather-armor',
     label: 'Leather Armor',
-    outputIcon: 'leather-armor',
+    family: 'leather',
+    batch: 'one',
     station: 'crafting-table',
     blurb: 'The full suit. Ten hides and most of an afternoon.',
     tool: LEATHER_TOOL,
     unlock: LEATHER_UNLOCK,
-    inputs: [{ slug: 'leather', qty: 10, name: 'Leather', icon: 'leather' }],
-    output: { slug: 'leather-armor', qty: 1, name: 'Leather Armor', effect: '+4 STR, +10 DEF', max: 999 },
+    inputs: [LEATHER(10)],
+    output: { slug: 'leather-armor', qty: 1, name: 'Leather Armor' },
   },
-
-  // ==================== BASIC TOOLS ====================
-  // Three stone and a length of wood, no tool and no unlock — the original had
-  // these from the moment you could craft at all, and they matter more now that
-  // the Neverending Mine breaks a pickaxe roughly every fifty swings.
-  {
-    id: 'pickaxe',
-    label: 'Pickaxe',
-    outputIcon: 'pickaxe',
-    station: 'crafting-table',
-    blurb: 'Knap a stone head onto a haft. Mines stone, and nothing harder.',
-    inputs: [{ slug: 'stone', qty: 3, name: 'Stone', icon: 'stone' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'pickaxe', qty: 1, name: 'Pickaxe', effect: 'Mines stone', max: 10 },
-  },
-  {
-    id: 'hammer',
-    label: 'Hammer',
-    outputIcon: 'craft',
-    station: 'crafting-table',
-    blurb: 'A plain forge hammer. Needed to work leather.',
-    inputs: [{ slug: 'stone', qty: 3, name: 'Stone', icon: 'stone' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'hammer', qty: 1, name: 'Hammer', effect: 'Crafting tool', max: 1 },
-  },
-  {
-    id: 'hatchet',
-    label: 'Hatchet',
-    outputIcon: 'axelog',
-    station: 'crafting-table',
-    blurb: 'A stone-headed hatchet for felling trees.',
-    inputs: [{ slug: 'stone', qty: 3, name: 'Stone', icon: 'stone' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'hatchet', qty: 1, name: 'Hatchet', effect: 'Chops wood', max: 1 },
-  },
-
 
   // ==================== IRON ====================
   // The Mining Guild's tier, and the reason to join it. Unlocked by putting the
   // Phoenix down at Mine Level 10 — the Guild Leader hands you the iron hammer
   // with the technique, and a steel or mithril hammer works iron just as well.
-  //
-  // The iron hammer itself is the one exception: it asks for no hammer, so a
-  // player who loses theirs can forge a replacement rather than being locked out
-  // of their own tier.
-  {
-    id: 'iron-hammer',
-    label: 'Iron Hammer',
-    outputIcon: 'craft',
-    station: 'crafting-table',
-    blurb: 'A replacement forge hammer, in case the first one goes missing.',
-    unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-hammer', qty: 1, name: 'Iron Hammer', effect: 'Works iron at a forge', max: 1 },
-  },
-
-  {
-    id: 'iron-pickaxe',
-    label: 'Iron Pickaxe',
-    outputIcon: 'pickaxe',
-    station: 'crafting-table',
-    blurb: 'Frees the iron a plain pick only scratches.',
-    tool: IRON_HAMMER,
-    unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-pickaxe', qty: 1, name: 'Iron Pickaxe', effect: 'Mines iron and stone', max: 999 },
-  },
-  {
-    id: 'iron-hatchet',
-    label: 'Iron Hatchet',
-    outputIcon: 'axelog',
-    station: 'crafting-table',
-    blurb: 'Bites deeper than a plain hatchet, and brings back twice the wood.',
-    tool: IRON_HAMMER,
-    unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-hatchet', qty: 1, name: 'Iron Hatchet', effect: 'Chops twice the wood', max: 999 },
-  },
+  // Listed as the original's forge did: 1h, 2h, ranged, shields, armour.
   {
     id: 'iron-dagger',
     label: 'Iron Dagger',
-    outputIcon: 'equipment-irondagger',
-    station: 'crafting-table',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 1, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-dagger', qty: 1, name: 'Iron Dagger', effect: '+8 STR', max: 999 },
-  },
-  {
-    id: 'iron-boomerang',
-    label: 'Iron Boomerang',
-    outputIcon: 'equipment-ironboomerang',
-    station: 'crafting-table',
-    tool: IRON_HAMMER,
-    unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 5, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-boomerang', qty: 1, name: 'Iron Boomerang', effect: '+15 DEX', max: 999 },
+    inputs: [IRON(1), WOOD(1)],
+    output: { slug: 'iron-dagger', qty: 1, name: 'Iron Dagger' },
   },
   {
     id: 'iron-sword',
     label: 'Iron Sword',
-    outputIcon: 'equipment-ironsword',
-    station: 'crafting-table',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 7, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-sword', qty: 1, name: 'Iron Sword', effect: '+14 STR', max: 999 },
+    inputs: [IRON(7), WOOD(1)],
+    output: { slug: 'iron-sword', qty: 1, name: 'Iron Sword' },
   },
   {
     id: 'iron-staff',
     label: 'Iron Staff',
-    outputIcon: 'equipment-ironstaff',
-    station: 'crafting-table',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 7, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-staff', qty: 1, name: 'Iron Staff', effect: '+10 MAG, +3 STR', max: 999 },
-  },
-  {
-    id: 'iron-bow',
-    label: 'Iron Bow',
-    outputIcon: 'equipment-ironbow',
-    station: 'crafting-table',
-    tool: IRON_HAMMER,
-    unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 7, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-bow', qty: 1, name: 'Iron Bow', effect: '+18 DEX', max: 999 },
-  },
-  {
-    id: 'iron-chakram',
-    label: 'Iron Chakram',
-    outputIcon: 'equipment-ironchakram',
-    station: 'crafting-table',
-    tool: IRON_HAMMER,
-    unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 7, name: 'Iron', icon: 'iron' }, { slug: 'gray-matter', qty: 1, name: 'Gray Matter', icon: 'gray-matter' }],
-    output: { slug: 'iron-chakram', qty: 1, name: 'Iron Chakram', effect: '+15 DEX, +15 MAG', max: 999 },
+    inputs: [IRON(7), WOOD(1)],
+    output: { slug: 'iron-staff', qty: 1, name: 'Iron Staff' },
   },
   {
     id: 'iron-maul',
     label: 'Iron Maul',
-    outputIcon: 'equipment-ironmaul',
-    station: 'crafting-table',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 10, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-maul', qty: 1, name: 'Iron Maul', effect: '+22 STR, +10 DEF', max: 999 },
-  },
-  {
-    id: 'iron-crossbow',
-    label: 'Iron Crossbow',
-    outputIcon: 'equipment-ironcrossbow',
-    station: 'crafting-table',
-    tool: IRON_HAMMER,
-    unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 10, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-crossbow', qty: 1, name: 'Iron Crossbow', effect: '+30 DEX', max: 999 },
-  },
-  {
-    id: 'iron-nunchaku',
-    label: 'Iron Nunchaku',
-    outputIcon: 'equipment-ironnunchaku',
-    station: 'crafting-table',
-    tool: IRON_HAMMER,
-    unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 10, name: 'Iron', icon: 'iron' }, { slug: 'gray-matter', qty: 1, name: 'Gray Matter', icon: 'gray-matter' }],
-    output: { slug: 'iron-nunchaku', qty: 1, name: 'Iron Nunchaku', effect: '+25 STR, +25 MAG', max: 999 },
+    inputs: [IRON(10), WOOD(1)],
+    output: { slug: 'iron-maul', qty: 1, name: 'Iron Maul' },
   },
   {
     id: 'iron-2h-sword',
     label: 'Iron 2H Sword',
-    outputIcon: 'equipment-iron2hsword',
-    station: 'crafting-table',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 15, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-2h-sword', qty: 1, name: 'Iron 2H Sword', effect: '+25 STR', max: 999 },
+    inputs: [IRON(15), WOOD(1)],
+    output: { slug: 'iron-2h-sword', qty: 1, name: 'Iron 2H Sword' },
   },
   {
     id: 'iron-battle-staff',
     label: 'Iron Battle Staff',
-    outputIcon: 'equipment-ironbattlestaff',
-    station: 'crafting-table',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 15, name: 'Iron', icon: 'iron' }, { slug: 'wood', qty: 1, name: 'Wood', icon: 'wood' }],
-    output: { slug: 'iron-battle-staff', qty: 1, name: 'Iron Battle Staff', effect: '+12 MAG, +12 STR', max: 999 },
+    inputs: [IRON(15), WOOD(1)],
+    output: { slug: 'iron-battle-staff', qty: 1, name: 'Iron Battle Staff' },
   },
   {
-    id: 'iron-hood',
-    label: 'Iron Hood',
-    outputIcon: 'iron',
-    station: 'crafting-table',
+    id: 'iron-nunchaku',
+    label: 'Iron Nunchaku',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }],
-    output: { slug: 'iron-hood', qty: 1, name: 'Iron Hood', effect: '+3 STR, +3 DEX, +3 DEF', max: 999 },
+    inputs: [IRON(10), GRAY_MATTER],
+    output: { slug: 'iron-nunchaku', qty: 1, name: 'Iron Nunchaku' },
   },
   {
-    id: 'iron-gloves',
-    label: 'Iron Gloves',
-    outputIcon: 'iron',
-    station: 'crafting-table',
+    id: 'iron-boomerang',
+    label: 'Iron Boomerang',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }],
-    output: { slug: 'iron-gloves', qty: 1, name: 'Iron Gloves', effect: '+5 STR, +10 DEF', max: 999 },
+    inputs: [IRON(5), WOOD(1)],
+    output: { slug: 'iron-boomerang', qty: 1, name: 'Iron Boomerang' },
   },
   {
-    id: 'iron-boots',
-    label: 'Iron Boots',
-    outputIcon: 'iron',
-    station: 'crafting-table',
+    id: 'iron-bow',
+    label: 'Iron Bow',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 3, name: 'Iron', icon: 'iron' }],
-    output: { slug: 'iron-boots', qty: 1, name: 'Iron Boots', effect: '+20 DEF', max: 999 },
+    inputs: [IRON(7), WOOD(1)],
+    output: { slug: 'iron-bow', qty: 1, name: 'Iron Bow' },
   },
   {
-    id: 'iron-helmet',
-    label: 'Iron Helmet',
-    outputIcon: 'iron',
-    station: 'crafting-table',
+    id: 'iron-crossbow',
+    label: 'Iron Crossbow',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 5, name: 'Iron', icon: 'iron' }],
-    output: { slug: 'iron-helmet', qty: 1, name: 'Iron Helmet', effect: '+20 DEF', max: 999 },
+    inputs: [IRON(10), WOOD(1)],
+    output: { slug: 'iron-crossbow', qty: 1, name: 'Iron Crossbow' },
   },
   {
-    id: 'iron-gauntlets',
-    label: 'Iron Gauntlets',
-    outputIcon: 'iron',
-    station: 'crafting-table',
+    id: 'iron-chakram',
+    label: 'Iron Chakram',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 5, name: 'Iron', icon: 'iron' }],
-    output: { slug: 'iron-gauntlets', qty: 1, name: 'Iron Gauntlets', effect: '+20 DEF', max: 999 },
-  },
-  {
-    id: 'iron-cape',
-    label: 'Iron Cape',
-    outputIcon: 'iron',
-    station: 'crafting-table',
-    tool: IRON_HAMMER,
-    unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 7, name: 'Iron', icon: 'iron' }],
-    output: { slug: 'iron-cape', qty: 1, name: 'Iron Cape', effect: '+15 STR', max: 999 },
-  },
-  {
-    id: 'iron-armor',
-    label: 'Iron Armor',
-    outputIcon: 'iron',
-    station: 'crafting-table',
-    tool: IRON_HAMMER,
-    unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 10, name: 'Iron', icon: 'iron' }],
-    output: { slug: 'iron-armor', qty: 1, name: 'Iron Armor', effect: '+30 DEF', max: 999 },
+    inputs: [IRON(7), GRAY_MATTER],
+    output: { slug: 'iron-chakram', qty: 1, name: 'Iron Chakram' },
   },
   {
     id: 'iron-shield',
     label: 'Iron Shield',
-    outputIcon: 'iron',
-    station: 'crafting-table',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 10, name: 'Iron', icon: 'iron' }],
-    output: { slug: 'iron-shield', qty: 1, name: 'Iron Shield', effect: '+25 DEF', max: 999 },
+    inputs: [IRON(10)],
+    output: { slug: 'iron-shield', qty: 1, name: 'Iron Shield' },
   },
   {
     id: 'iron-kite-shield',
     label: 'Iron Kite Shield',
-    outputIcon: 'iron',
-    station: 'crafting-table',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
     tool: IRON_HAMMER,
     unlock: IRON_UNLOCK,
-    inputs: [{ slug: 'iron', qty: 15, name: 'Iron', icon: 'iron' }],
-    output: { slug: 'iron-kite-shield', qty: 1, name: 'Iron Kite Shield', effect: '+40 DEF', max: 999 },
+    inputs: [IRON(15)],
+    output: { slug: 'iron-kite-shield', qty: 1, name: 'Iron Kite Shield' },
+  },
+  {
+    id: 'iron-helmet',
+    label: 'Iron Helmet',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [IRON(5)],
+    output: { slug: 'iron-helmet', qty: 1, name: 'Iron Helmet' },
+  },
+  {
+    id: 'iron-hood',
+    label: 'Iron Hood',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [IRON(3)],
+    output: { slug: 'iron-hood', qty: 1, name: 'Iron Hood' },
+  },
+  {
+    id: 'iron-armor',
+    label: 'Iron Armor',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [IRON(10)],
+    output: { slug: 'iron-armor', qty: 1, name: 'Iron Armor' },
+  },
+  {
+    id: 'iron-cape',
+    label: 'Iron Cape',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [IRON(7)],
+    output: { slug: 'iron-cape', qty: 1, name: 'Iron Cape' },
+  },
+  {
+    id: 'iron-gauntlets',
+    label: 'Iron Gauntlets',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [IRON(5)],
+    output: { slug: 'iron-gauntlets', qty: 1, name: 'Iron Gauntlets' },
+  },
+  {
+    id: 'iron-gloves',
+    label: 'Iron Gloves',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [IRON(3)],
+    output: { slug: 'iron-gloves', qty: 1, name: 'Iron Gloves' },
+  },
+  {
+    id: 'iron-boots',
+    label: 'Iron Boots',
+    family: 'iron',
+    batch: 'one',
+    station: 'forge',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [IRON(3)],
+    output: { slug: 'iron-boots', qty: 1, name: 'Iron Boots' },
+  },
+
+  // ==================== TOOLS ====================
+  // Three stone and a length of wood, once Jack has shown you how — they matter
+  // more now that the Neverending Mine breaks a pickaxe roughly every fifty
+  // swings. The iron tools follow the iron tier.
+  {
+    id: 'hatchet',
+    label: 'Hatchet',
+    family: 'tools',
+    batch: 'one',
+    station: 'crafting-table',
+    effect: 'Chops wood',
+    blurb: 'A stone-headed hatchet for felling trees.',
+    unlock: JACK_UNLOCK,
+    inputs: [STONE(3), WOOD(1)],
+    output: { slug: 'hatchet', qty: 1, name: 'Hatchet' },
+  },
+  {
+    id: 'pickaxe',
+    label: 'Pickaxe',
+    family: 'tools',
+    batch: 'one',
+    station: 'crafting-table',
+    effect: 'Mines stone',
+    blurb: 'Knap a stone head onto a haft. Mines stone, and nothing harder.',
+    unlock: JACK_UNLOCK,
+    inputs: [STONE(3), WOOD(1)],
+    output: { slug: 'pickaxe', qty: 1, name: 'Pickaxe' },
+  },
+  {
+    id: 'hammer',
+    label: 'Hammer',
+    family: 'tools',
+    batch: 'one',
+    station: 'crafting-table',
+    effect: 'Works leather and builds the boat',
+    blurb: 'A plain forge hammer. Needed to work leather.',
+    unlock: JACK_UNLOCK,
+    inputs: [STONE(3), WOOD(1)],
+    output: { slug: 'hammer', qty: 1, name: 'Hammer' },
+  },
+  {
+    id: 'iron-hatchet',
+    label: 'Iron Hatchet',
+    family: 'tools',
+    batch: 'one',
+    station: 'forge',
+    effect: 'Chops twice the wood',
+    blurb: 'Bites deeper than a plain hatchet, and brings back twice the wood.',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [IRON(3), WOOD(1)],
+    output: { slug: 'iron-hatchet', qty: 1, name: 'Iron Hatchet' },
+  },
+  {
+    id: 'iron-pickaxe',
+    label: 'Iron Pickaxe',
+    family: 'tools',
+    batch: 'one',
+    station: 'forge',
+    effect: 'Mines iron and stone',
+    blurb: 'Frees the iron a plain pick only scratches.',
+    tool: IRON_HAMMER,
+    unlock: IRON_UNLOCK,
+    inputs: [IRON(3), WOOD(1)],
+    output: { slug: 'iron-pickaxe', qty: 1, name: 'Iron Pickaxe' },
+  },
+  {
+    // The one iron recipe that asks for no hammer, so a player who loses theirs
+    // can forge a replacement rather than being locked out of their own tier.
+    id: 'iron-hammer',
+    label: 'Iron Hammer',
+    family: 'tools',
+    batch: 'one',
+    station: 'forge',
+    effect: 'Works iron at a forge',
+    blurb: 'A replacement forge hammer, in case the first one goes missing.',
+    unlock: IRON_UNLOCK,
+    inputs: [IRON(3), WOOD(1)],
+    output: { slug: 'iron-hammer', qty: 1, name: 'Iron Hammer' },
   },
 ]
 
@@ -549,23 +699,67 @@ const RECIPE_BY_ID = CRAFTING_RECIPES.reduce((acc, recipe) => {
 }, /** @type {Record<string, Recipe>} */ ({}))
 
 /**
+ * The station in a room, or null where there is none.
+ * @param {string} roomId
+ * @returns {CraftingStation | null}
+ */
+function getCraftingStation(roomId) {
+  return Object.prototype.hasOwnProperty.call(CRAFTING_STATIONS, roomId) ? CRAFTING_STATIONS[roomId] : null
+}
+
+/**
  * Whether crafting is available in the given room.
  * @param {string} roomId
  * @returns {boolean}
  */
 function isCraftingRoom(roomId) {
-  return CRAFTING_ROOMS.includes(roomId)
+  return getCraftingStation(roomId) !== null
 }
 
 /**
- * Recipes available in a given room. Currently every crafting room offers the
- * full list; kept as a function so per-room recipe sets can be introduced later
- * without touching call sites.
+ * Whether a room's station works this recipe: the family is one the room
+ * works, and the room has the kind of station the recipe needs.
+ * @param {Recipe} recipe
+ * @param {string} roomId
+ * @returns {boolean}
+ */
+function isRecipeAvailableInRoom(recipe, roomId) {
+  const station = getCraftingStation(roomId)
+  return station !== null && station.families.includes(recipe.family) && station.stations.includes(recipe.station)
+}
+
+/**
+ * Recipes the given room can make.
  * @param {string} roomId
  * @returns {Recipe[]}
  */
 function getRecipesForRoom(roomId) {
-  return isCraftingRoom(roomId) ? CRAFTING_RECIPES : []
+  return CRAFTING_RECIPES.filter((recipe) => isRecipeAvailableInRoom(recipe, roomId))
+}
+
+/**
+ * Where a recipe is made, as the sheet's pointer line and the server's refusal
+ * say it: "Mixed at the Pajama Shaman's tent." The first station in table
+ * order that works it, so a recipe's own room is named before the Grand Square.
+ * @param {Recipe} recipe
+ * @returns {string | null}
+ */
+function whereToCraft(recipe) {
+  for (const roomId of CRAFTING_ROOMS) {
+    if (!isRecipeAvailableInRoom(recipe, roomId)) continue
+    const station = CRAFTING_STATIONS[roomId]
+    return `${station.made.charAt(0).toUpperCase()}${station.made.slice(1)} at ${station.where}.`
+  }
+  return null
+}
+
+/**
+ * Rooms that work a family, in table order.
+ * @param {CraftingFamilyId} familyId
+ * @returns {string[]}
+ */
+function getFamilyRooms(familyId) {
+  return CRAFTING_ROOMS.filter((roomId) => CRAFTING_STATIONS[roomId].families.includes(familyId))
 }
 
 /**
@@ -577,11 +771,108 @@ function getRecipeById(recipeId) {
   return RECIPE_BY_ID[recipeId] || null
 }
 
+/**
+ * Recipes that consume or require the given item, in list order. The bag uses
+ * this so a material's row can say what it makes.
+ * @param {string} slug
+ * @returns {Recipe[]}
+ */
+function getRecipesUsing(slug) {
+  return CRAFTING_RECIPES.filter(
+    (recipe) =>
+      recipe.inputs.some((input) => input.slug === slug) ||
+      (recipe.tool != null && (recipe.tool.slug === slug || (recipe.tool.anyOf ?? []).includes(slug)))
+  )
+}
+
+/**
+ * Every item template slug a recipe refers to — inputs, outputs and tools — so
+ * the sheet can fetch their templates in one request.
+ * @returns {string[]}
+ */
+function getRecipeSlugs() {
+  const slugs = new Set()
+  for (const recipe of CRAFTING_RECIPES) {
+    for (const input of recipe.inputs) slugs.add(input.slug)
+    slugs.add(recipe.output.slug)
+    if (recipe.tool) {
+      slugs.add(recipe.tool.slug)
+      for (const slug of recipe.tool.anyOf ?? []) slugs.add(slug)
+    }
+  }
+  return [...slugs]
+}
+
+/** Item names that do not take a plural: "12 Wood", "4 Cooked Meat". */
+const MASS_NOUNS = new Set([
+  'wood', 'stone', 'leather', 'iron', 'wheat', 'bread', 'cooked meat', 'raw meat',
+  'gray matter', 'coal', 'sand', 'mud', 'water', 'mithril', 'steel', 'glass',
+])
+
+/**
+ * "10 Arrows", "1 Wood", "3 Red Potions", "5 Redberries". Shared by the feed
+ * line the server writes and the row labels the sheet renders.
+ * @param {number} qty
+ * @param {string} name
+ * @returns {string}
+ */
+function countNoun(qty, name) {
+  const lower = name.toLowerCase()
+  if (qty === 1 || MASS_NOUNS.has(lower) || /[sx]$/i.test(name)) return `${qty} ${name}`
+  if (/[^aeiou]y$/i.test(name)) return `${qty} ${name.slice(0, -1)}ies`
+  return `${qty} ${name}s`
+}
+
+/**
+ * The feed line for a finished craft, naming what went in as the original's
+ * messages did ("You craft a WOODEN BOW out of 5 wood and 1 string").
+ * @param {Recipe} recipe
+ * @param {string} outputName   Template name of what was made.
+ * @param {number} crafted      Total items produced.
+ * @param {number} batches      How many times the recipe ran.
+ * @param {{ name: string, qty: number }[]} consumed  Per-batch inputs by template name.
+ * @returns {string}
+ */
+function describeCraft(recipe, outputName, crafted, batches, consumed) {
+  const inputs = consumed.map(({ name, qty }) => countNoun(qty * batches, name)).join(' and ')
+  if (recipe.family === 'cook') {
+    return `You cook ${inputs} over the fire into ${countNoun(crafted, outputName)}.`
+  }
+  return `You craft ${countNoun(crafted, outputName)} from ${inputs}.`
+}
+
+/**
+ * The typed `craft list` command: one line per family with where it is made
+ * and every recipe's cost, the way the original's help command printed it.
+ * @returns {string[]}
+ */
+function formatRecipeList() {
+  return CRAFTING_FAMILIES.map((family) => {
+    const where = getFamilyRooms(family.id).map((roomId) => CRAFTING_STATIONS[roomId].where).join(' or ')
+    const entries = CRAFTING_RECIPES.filter((recipe) => recipe.family === family.id).map((recipe) => {
+      const cost = recipe.inputs.map((input) => countNoun(input.qty, input.name.toLowerCase())).join(' + ')
+      const tool = recipe.tool ? ` (needs ${recipe.tool.name.toLowerCase()})` : ''
+      return `${recipe.label}: ${cost}${tool}`
+    })
+    return `${family.label} (${where}) — ${entries.join('; ')}`
+  })
+}
+
 module.exports = {
   CRAFTING_ROOMS,
-  CRAFTING_RECIPES,
   CRAFTING_STATIONS,
+  CRAFTING_FAMILIES,
+  CRAFTING_RECIPES,
+  getCraftingStation,
   isCraftingRoom,
+  isRecipeAvailableInRoom,
   getRecipesForRoom,
+  whereToCraft,
+  getFamilyRooms,
   getRecipeById,
+  getRecipesUsing,
+  getRecipeSlugs,
+  countNoun,
+  describeCraft,
+  formatRecipeList,
 }

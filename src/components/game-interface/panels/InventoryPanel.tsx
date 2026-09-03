@@ -13,6 +13,8 @@ interface InventoryPanelProps {
   newItemIds: Set<string>
   onClearNewItem: (itemId: string) => void
   onClose: () => void
+  /** Present only while standing at a crafting table. */
+  onOpenCrafting?: () => void
 }
 
 export default function InventoryPanel({
@@ -22,6 +24,7 @@ export default function InventoryPanel({
   newItemIds,
   onClearNewItem,
   onClose,
+  onOpenCrafting,
 }: InventoryPanelProps) {
   return (
     <div className="relative w-full h-full">
@@ -39,6 +42,7 @@ export default function InventoryPanel({
         initialFilter={initialFilter}
         newItemIds={newItemIds}
         onClearNewItem={onClearNewItem}
+        onOpenCrafting={onOpenCrafting}
       />
     </div>
   )

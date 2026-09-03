@@ -6,7 +6,7 @@ const { grantPersonalItemOnce } = require('./effects')
 const { grantItemOnce, playerHasItem, getHeldQuantity, removeItemBySlug, getPlayerInventory } = require('./services/inventory-service')
 const { checkAndConsumeCooldown } = require('./services/action-cap-service')
 const { grantTeleport } = require('./teleport-grants')
-const { getRecipeById, isCraftingRoom } = require('../game-data/crafting-recipes')
+const { getRecipeById, isRecipeAvailableInRoom, whereToCraft, describeCraft } = require('../game-data/crafting-recipes')
 const { getShop } = require('../game-data/shops')
 
 /**
@@ -662,14 +662,15 @@ function makeFreeItemAction({ itemSlug, itemName, capLabel, icon, iconColor = 'a
 }
 
 /**
- * Server-authoritative crafting handler. Shared by every crafting room (003 /
- * 021): reads `actionData.recipeId` and an optional `actionData.quantity` (the
- * number of times to run the recipe — 1 for "Craft", or the batch size for
- * "Craft All"), re-validates the recipe is allowed in this room, then in a
- * single transaction clamps the batch to what the player's materials and the
- * output's stack cap actually allow, consumes the inputs, and grants the output.
- * The client panel only renders availability — this is the gate that actually
- * mutates inventory, so a stale or tampered client cannot dupe items.
+ * Server-authoritative crafting handler. Shared by every crafting room: reads
+ * `actionData.recipeId` and an optional `actionData.quantity` (the number of
+ * times to run the recipe — 1 for "Craft", the bag's worth for "Craft all", or
+ * whatever the drawer's stepper chose), re-validates the recipe is allowed in
+ * this room, then in a single transaction clamps the batch to what the player's
+ * materials and the output's stack cap actually allow, consumes the inputs, and
+ * grants the output. The client sheet only renders availability — this is the
+ * gate that actually mutates inventory, so a stale or tampered client cannot
+ * dupe items.
  */
 async function executeCraft(playerId, roomState, actionData = {}) {
   const { prisma } = require('../db-client')
@@ -694,8 +695,20 @@ async function executeCraft(playerId, roomState, actionData = {}) {
 
   const recipeId = actionData?.recipeId
   const recipe = recipeId ? getRecipeById(recipeId) : null
-  if (!recipe || !isCraftingRoom(roomState.roomId)) {
+  if (!recipe) {
     return fail('You cannot craft that here.')
+  }
+  // Each station works its own families (the Old Man's fire cooks, the Shaman
+  // mixes potions, the forge works iron). A recipe sent to the wrong room is
+  // refused with where it belongs — the same line the sheet shows.
+  if (!isRecipeAvailableInRoom(recipe, roomState.roomId)) {
+    const where = whereToCraft(recipe)
+    return fail(
+      where
+        ? `${recipe.label} can't be made here — ${where.charAt(0).toLowerCase()}${where.slice(1)}`
+        : `${recipe.label} can't be made here.`,
+      recipe.id
+    )
   }
 
   // A recipe may be locked behind a quest (Freddie's leather tier) and/or need a
@@ -743,9 +756,12 @@ async function executeCraft(playerId, roomState, actionData = {}) {
   }
 
   try {
-    const { inventory, crafted } = await prisma.$transaction(async (tx) => {
+    const { inventory, crafted, batches, consumed } = await prisma.$transaction(async (tx) => {
       // 1. How many batches the player's materials support (min across inputs).
+      //    Template names are collected on the way so the feed line can say
+      //    what went in, as the original's messages did.
       let feasible = requested
+      const consumed = []
       for (const input of recipe.inputs) {
         const template = await getItemBySlug(input.slug)
         if (!template) {
@@ -759,6 +775,7 @@ async function executeCraft(playerId, roomState, actionData = {}) {
           throw new CraftError(`You need ${input.qty} ${template.name} to craft ${recipe.label} (you have ${have}).`)
         }
         feasible = Math.min(feasible, Math.floor(have / input.qty))
+        consumed.push({ name: template.name, qty: input.qty })
       }
 
       // 2. Clamp again by how much output space remains under its stack cap.
@@ -791,10 +808,15 @@ async function executeCraft(playerId, roomState, actionData = {}) {
         throw new CraftError(granted.reason || 'Could not craft that item.')
       }
 
-      return { inventory: await getPlayerInventory(playerId, tx), crafted: feasible * recipe.output.qty }
+      return {
+        inventory: await getPlayerInventory(playerId, tx),
+        crafted: feasible * recipe.output.qty,
+        batches: feasible,
+        consumed,
+      }
     })
 
-    const message = `You craft ${crafted} ${outputTemplate.name}.`
+    const message = describeCraft(recipe, outputTemplate.name, crafted, batches, consumed)
     return {
       success: true,
       action,

@@ -16,6 +16,7 @@ import {
   type StatKey,
 } from '@/lib/inventory-categories'
 import { WeaponCategory } from '@prisma/client'
+import { getRecipesUsing } from '@/lib/game-data/crafting-recipes'
 
 /* ------------------------------------------------------------------------- */
 /* Small shared pieces                                                        */
@@ -131,7 +132,21 @@ function defaultSubline(item: InventoryItem, hasCompareLine: boolean): ReactNode
   const consumable = consumableMeta(item)
   if (consumable) return <span className={META}>{consumable}</span>
   const crafting = getCraftingKind(item)
-  if (crafting) return <span className={META}>{crafting === 'tool' ? 'Tool' : 'Material'}</span>
+  if (crafting) {
+    // What this makes, from the recipe file, so the line can never drift from
+    // the sheet: "Material · Wooden Bo, Wooden Bow, Wooden Staff +27".
+    const kind = crafting === 'tool' ? 'Tool' : 'Material'
+    const uses = (getRecipesUsing(item.template.slug) as { label: string }[]).map((recipe) => recipe.label)
+    if (uses.length === 0) return <span className={META}>{kind}</span>
+    const shown = uses.slice(0, 3)
+    const more = uses.length - shown.length
+    return (
+      <span className={META}>
+        {kind} · {shown.join(', ')}
+        {more > 0 && ` +${more}`}
+      </span>
+    )
+  }
   const weapon = weaponMeta(item)
   if (weapon) return <span className={META}>{weapon}</span>
   if (item.template.canDrop === false) return <span className={META}>{'Can\'t be dropped'}</span>

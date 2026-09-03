@@ -49,8 +49,9 @@ const { ROOM_ACTIONS } = require('@/lib/game-engine/room-action-handlers') as {
   ROOM_ACTIONS: Record<string, Record<string, unknown>>
 }
 const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: EnemyDef[] }
-const { isCraftingRoom } = require('@/lib/game-data/crafting-recipes') as {
+const { isCraftingRoom, getCraftingStation } = require('@/lib/game-data/crafting-recipes') as {
   isCraftingRoom: (roomId: string) => boolean
+  getCraftingStation: (roomId: string) => { label: string } | null
 }
 /* eslint-enable @typescript-eslint/no-var-requires */
 
@@ -377,11 +378,12 @@ export default async function RoomsPage() {
       dangerLevel: room.dangerLevel,
       isSafe: room.isSafe,
       hasFire: room.hasFire,
-      // Derived from CRAFTING_ROOMS, the list the crafting action itself uses,
-      // rather than the seed's `hasCraftingTable` column — which is read by
-      // nothing else and had already drifted, marking rooms 021 and 024 as
-      // having no crafting table when both are craftable.
+      // Derived from the crafting station table, the same one the crafting
+      // action and the sheet use, rather than the seed's `hasCraftingTable`
+      // column — which is read by nothing else and had already drifted,
+      // marking rooms 021 and 024 as having no crafting table when both craft.
       hasCraftingTable: isCraftingRoom(room.roomId),
+      craftingStation: getCraftingStation(room.roomId)?.label ?? null,
       hasSearch: room.hasSearch,
       icon: room.icon,
       iconColor: room.iconColor,

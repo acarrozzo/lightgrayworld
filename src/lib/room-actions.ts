@@ -1,4 +1,5 @@
 import QUESTS from './game-data/quests.json'
+import { getCraftingStation } from './game-data/crafting-recipes'
 
 export interface RoomAction {
   action: string
@@ -32,6 +33,21 @@ export function questIdsForNpc(npcId: string): string[] {
     .map(([id]) => id)
 }
 
+/**
+ * A room's crafting button, labelled for its station — "Cook" at the Old Man's
+ * fire, "Mix Potions" at the Shaman's tent, "Forge" at the Mining Guild — from
+ * the same station table the sheet and the server read.
+ */
+function craftingAction(roomId: string): RoomAction {
+  const station = getCraftingStation(roomId) as { button: string; icon: string } | null
+  return {
+    action: 'open crafting',
+    label: station?.button ?? 'Open Crafting',
+    icon: station?.icon ?? 'craft',
+    className: 'fill-action-craft',
+  }
+}
+
 export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '000': [
     { action: 'read sign', label: 'Read Sign', icon: '', className: 'fill-terrain-wood' },
@@ -49,7 +65,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'talk to old man', label: 'Old Man', icon: 'npc-oldman', className: 'fill-hue-gold', questIds: questIdsForNpc('old_man') },
     { action: 'ex cabin', label: 'Examine Cabin', icon: 'cabin2', className: 'fill-surface-selected' },
     { action: 'attack dummy', label: 'Attack Dummy', icon: 'sword1', className: 'fill-action-attack' },
-    { action: 'open crafting', label: 'Open Crafting', icon: 'fire', className: 'fill-action-craft' },
+    craftingAction('003'),
   ],
   '003b': [],
   '003bb': [],
@@ -70,7 +86,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '024': [
     { action: 'talk to jack lumber', label: 'Jack Lumber', icon: 'npc-jacklumber', className: 'fill-hue-green', questIds: questIdsForNpc('jack_lumber') },
-    { action: 'open crafting', label: 'Open Crafting', icon: 'craft', className: 'fill-action-craft' },
+    craftingAction('024'),
   ],
   '025': [
     { action: 'chop wood', label: 'Chop Wood', icon: 'wood', className: 'fill-mood-treasure' },
@@ -85,7 +101,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     // not something he ever sold — the original's stock was flail, morning star,
     // gladius, battle axe, warhammer, claymore, long bow, arrows, pajamas and
     // slippers. The button pointed at nothing and returned "Unknown action type".
-    { action: 'open crafting', label: 'Open Crafting', icon: 'fire', className: 'fill-action-craft' },
+    craftingAction('021'),
     // The shaman's spell lessons. A client-side panel toggle like "open
     // crafting": the spellbook itself is global (learning never required
     // standing here in the original either), this is the door he points at.
@@ -126,6 +142,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'talk to freddie', label: 'Freddie', icon: 'npc-freddie', className: 'fill-mood-treasure', questIds: questIdsForNpc('freddie') },
     { action: 'pay toll', label: 'Pay Toll (50 gold)', icon: 'gate', className: 'fill-hue-gold' },
     { action: 'get hammer', label: 'Get Hammer', icon: 'craft', className: 'fill-action-craft' },
+    craftingAction('103'),
   ],
   '103c': [
     { action: 'get wood', label: 'Get Wood', icon: 'wood', className: 'fill-mood-treasure' },
@@ -203,7 +220,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '210': [
     { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
     { action: 'rest at fountain', label: 'Rest at Fountain', icon: 'heal', className: 'fill-hue-blue' },
-    { action: 'open crafting', label: 'Open Crafting', icon: 'craft', className: 'fill-action-craft' },
+    craftingAction('210'),
   ],
   '214': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
@@ -299,7 +316,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'view shop', label: 'Supply Shop', icon: 'shop', className: 'fill-mood-treasure' },
     { action: 'grab pack', label: 'Grab Mining Pack', icon: 'inv', className: 'fill-hue-blue' },
     { action: 'rest at the forge', label: 'Rest at the Forge', icon: 'fire', className: 'fill-hue-green' },
-    { action: 'open crafting', label: 'Open Crafting', icon: 'craft', className: 'fill-action-craft' },
+    craftingAction('308'),
     { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '309': [

@@ -380,8 +380,8 @@
     "title": "Jack's Woodworking Lesson",
     "summary": "Jack offers to teach you the basics of woodworking. Chop some wood and craft a Wooden Bow at his workshop.",
     "objective": "Craft a Wooden Bow at Jack's workshop.",
-    "nextStep": "Pick up the hatchet at Jack's cabin, head north to the Tree Farm to chop wood, then come back to Jack's cabin and use the crafting table to craft a Wooden Bow.",
-    "reminderDialog": "Still working on that bow? Grab the hatchet here if you haven't, chop some trees up north at the farm, then use my crafting table to put a bow together. Easy!",
+    "nextStep": "Pick up the hatchet at Jack's cabin and head north to the Tree Farm to chop five wood. A bow needs a length of string too: there is one lying in the Abandoned Workshop in the Bat Cave. Then come back to Jack's cabin and use the crafting table to craft a Wooden Bow.",
+    "reminderDialog": "Still working on that bow? Grab the hatchet here if you haven't, chop five wood up north at the farm, and fetch a string from that old workshop in the Bat Cave. Then use my crafting table to put a bow together. Easy!",
     "completionDialog": "Now THAT is a proper bow! You've got the basics of woodworking down. Keep the bow — it'll serve you well against those flying critters. Here's some materials to get you started on your next project.",
     "giver": {
       "npcId": "jack_lumber",
@@ -657,8 +657,8 @@
     "title": "Craft with Leather",
     "summary": "Freddie's hides are the first material you can turn into real armour. He wants to see you make something out of one.",
     "objective": "Craft any piece of leather equipment.",
-    "nextStep": "Take a free hammer from Freddie, pay his 50 gold toll and gather leather from the cows to the north (5 a trip). Then find a crafting table — the Old Man's cabin, Jack Lumber's cabin or the Shaman's tent — and craft a leather hood, gloves or boots for 3 leather apiece.",
-    "reminderDialog": "\"Still nothing to show me? Hammer's in the crate, hides are through the gate, and any crafting table will do. Three leather makes a hood.\"",
+    "nextStep": "Take a free hammer from Freddie, pay his 50 gold toll and gather leather from the cows to the north (5 a trip). Then use the leather bench right here at the farm — or the crafting table in Red Town's Grand Square — and craft a leather hood, gloves or boots for 3 leather apiece.",
+    "reminderDialog": "\"Still nothing to show me? Hammer's in the crate, hides are through the gate, and the bench is right here. Three leather makes a hood.\"",
     "completionDialog": "Freddie turns the piece over twice and hands it back. \"That'll hold. Come get hides whenever you like — and if you want more than five at a go, hunt them in the forest.\" He loads you up with supplies on the way out.",
     "giver": {
       "npcId": "freddie",
@@ -1400,7 +1400,7 @@
     "title": "Cookin up some Meat-a-balls",
     "summary": "The Plaza chef needs cooked meat, and will teach you what he does with it.",
     "objective": "Bring 5 Cooked Meat to the Town Hall Plaza.",
-    "nextStep": "Many creatures drop raw meat. Cook it over any fire at a crafting table — there's one right in the Grand Square — and bring five cooked pieces back.",
+    "nextStep": "Many creatures drop raw meat. Cook it over a fire — there's one right in the Grand Square, and the Old Man keeps one burning in his cabin — and bring five cooked pieces back.",
     "reminderDialog": "\"{progress} of {count} pieces! Cook the raw meat over a fire, eh? There's a good one in the Grand Square.\"",
     "completionDialog": "\"Bellissimo!\" The chef takes the meat and walks you through it start to finish. You leave with five meatballs and the recipe in your head. They restore 400 HP a piece.",
     "giver": {
@@ -2917,7 +2917,7 @@
     "title": "Talk to the Friendly Pirate",
     "summary": "The Friendly Pirate can be found relaxing at the Blue Oasis. Go hang with him and pick some fresh berries on his beautiful island.",
     "objective": "Talk to the Friendly Pirate.",
-    "nextStep": "The Blue Oasis (Room 413) is the island in the middle of the Blue Ocean — south of the jetty that runs around the storm, or east of the water near the tornadoes. You will need a Wooden Boat (20 wood at a crafting table) or wings to cross the water.",
+    "nextStep": "The Blue Oasis (Room 413) is the island in the middle of the Blue Ocean — south of the jetty that runs around the storm, or east of the water near the tornadoes. You will need a Wooden Boat (20 wood and a hammer, built at Jack Lumber's workshop or the Grand Square's table) or wings to cross the water.",
     "reminderDialog": "The Friendly Pirate is still relaxing at the Blue Oasis.",
     "completionDialog": "“Aloha, matey! Welcome to my beautiful Oasis!” The pirate props himself up on one elbow. “Three things, if you’re the hunting kind. Squid, crabs, and the whole ocean’s worth of fish.”",
     "giver": {

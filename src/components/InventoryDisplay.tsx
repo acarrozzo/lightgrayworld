@@ -34,6 +34,11 @@ interface InventoryDisplayProps {
   showNewItems?: boolean
   showHeading?: boolean
   initialFilter?: FilterTab
+  /**
+   * Supplied only while the player stands at a crafting table: the Crafting
+   * group grows an "Open Crafting" button, as the original bag had.
+   */
+  onOpenCrafting?: () => void
 }
 
 type WeaponTypeFilter = 'all' | 'melee' | 'ranged'
@@ -83,6 +88,7 @@ export default function InventoryDisplay({
   showNewItems = true,
   showHeading = true,
   initialFilter,
+  onOpenCrafting,
 }: InventoryDisplayProps) {
   const [view, setView] = useState<ItemFilterView>(() => filterTabToView(initialFilter))
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<WeaponTypeFilter>('all')
@@ -285,12 +291,20 @@ export default function InventoryDisplay({
     if (sections.length === 0) {
       return <p className="text-sm text-fg-secondary">Nothing here yet.</p>
     }
-    return sections.map((section) => (
+    const craftingHere = effectiveView.group === 'crafting' && onOpenCrafting
+    return sections.map((section, sectionIndex) => (
       <div key={section.key} className="flex flex-col gap-1.5">
         {section.title && (
-          <h4 className={SECTION_TITLE}>
-            {section.title} · {section.items.length}
-          </h4>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className={SECTION_TITLE}>
+              {section.title} · {section.items.length}
+            </h4>
+            {craftingHere && sectionIndex === 0 && (
+              <GhostButton tone="success" onClick={onOpenCrafting}>
+                Open Crafting
+              </GhostButton>
+            )}
+          </div>
         )}
         {section.items.map((item, index) => (
           <Fragment key={item.id}>
