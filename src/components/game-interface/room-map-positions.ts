@@ -253,6 +253,55 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '315c': { x: 35, y: 245 },  // Bleeding Nests
   '321b': { x: 245, y: 665 },  // Under the Grotto
   '311-00': { x: 665, y: 35 },  // Mine Level 0 (the mine head, below 311)
+  // Blue Ocean (coordinates relative to lightgray_map_blueocean_main.jpg). The
+  // Master Temple sits off the grid at the top-left of the artwork, which is
+  // where the original drew it.
+  '401': { x: 665, y: 245 },  // In the Ocean near the Docks
+  '402': { x: 560, y: 140 },  // Quiet in the Ocean
+  '403': { x: 665, y: 350 },  // In the Waves by the Beach
+  '404': { x: 560, y: 350 },  // Cruising Along a Beachside Current
+  '405': { x: 560, y: 455 },  // Yellow Water Temple
+  '406': { x: 455, y: 455 },  // Blue Ocean Crossing
+  '407': { x: 455, y: 350 },  // Storm to the North
+  '408': { x: 350, y: 245 },  // Traveling Along a Jetty
+  '409': { x: 455, y: 140 },  // Blue Water Temple
+  '410': { x: 455, y: 245 },  // In the Ocean Trapped under the Storm
+  '411': { x: 455, y: 560 },  // In the Ocean near Mud Island
+  '412': { x: 560, y: 665 },  // Mud Island
+  '413': { x: 350, y: 350 },  // Blue Oasis — Friendly Pirate (hub)
+  '414': { x: 350, y: 455 },  // In the Ocean
+  '415': { x: 350, y: 560 },  // Ocean Calm
+  '416': { x: 350, y: 665 },  // On the Ocean by the Swamp Entrance
+  '417': { x: 245, y: 665 },  // A Secret Way Under the Sea
+  '418': { x: 245, y: 560 },  // Green Water Temple
+  '419': { x: 245, y: 455 },  // Trapped in a Swirling Current
+  '420': { x: 245, y: 350 },  // Near an Oasis
+  '421': { x: 140, y: 350 },  // Riding a Massive Wave
+  '422': { x: 140, y: 455 },  // In a Tornado of Currents
+  '423': { x: 35, y: 455 },  // Red Water Temple
+  '424': { x: 35, y: 560 },  // Crocodile Island — Jungle Jim
+  '425': { x: 91, y: 184 },  // Master Temple
+  // Under the Ocean (coordinates relative to lightgray_map_blueocean_underwater.jpg).
+  '480': { x: 140, y: 455 },  // Underwater Silver Chest
+  '481': { x: 245, y: 455 },  // By a School of Jellyfish
+  '482': { x: 245, y: 350 },  // Deep Under the Ocean
+  '483': { x: 350, y: 350 },  // Surrounded by Coral
+  '484': { x: 350, y: 245 },  // A Vast Underwater Landscape (Underwater hub)
+  '485': { x: 455, y: 140 },  // Underwater Gold Shrine
+  '486': { x: 455, y: 245 },  // On the Ocean Floor
+  '487': { x: 560, y: 350 },  // In an Underwater Current
+  '488': { x: 665, y: 350 },  // Giant Turtle Nest
+  '489': { x: 560, y: 455 },  // Sunken Ship
+  '490': { x: 560, y: 665 },  // Mud Cave EXIT
+  '491': { x: 665, y: 665 },  // A Muddy Tunnel
+  '492': { x: 665, y: 560 },  // Mud Crab Nest
+  '493': { x: 245, y: 665 },  // An Underwater Alcove
+  '494': { x: 350, y: 665 },  // Underwater Flower Patch
+  '495': { x: 245, y: 140 },  // Shark Infested Water
+  '496': { x: 140, y: 140 },  // Great White Gauntlet
+  '497': { x: 560, y: 140 },  // Secret Underwater Cave
+  '498': { x: 455, y: 350 },  // Underwater Cavern
+  '499': { x: 35, y: 35 },  // The Kraken
 }
 
 /** CSS `background-position` for the compass mini-map window. */

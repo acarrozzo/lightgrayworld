@@ -157,6 +157,8 @@ export const lightGrayDark = makeTheme({
       rockyFlats: { base: '#9e8a6a' },
       rockyFlatsUnderground: { base: '#8a8478' },
       neverendingMine: { base: '#b5934a' },
+      ocean: { base: '#5a94c0' },
+      underwater: { base: '#46708f' },
       solarOffice: { base: '#d9b84a' },
       lobby: { base: '#7a8fa3' },
     },

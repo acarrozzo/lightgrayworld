@@ -2908,5 +2908,741 @@
       }
     ],
     "onComplete": []
+  },
+  "quest_friendlypirate_intro": {
+    "number": 59,
+    "questType": "side",
+    "isIntro": true,
+    "level": 13,
+    "title": "Talk to the Friendly Pirate",
+    "summary": "The Friendly Pirate can be found relaxing at the Blue Oasis. Go hang with him and pick some fresh berries on his beautiful island.",
+    "objective": "Talk to the Friendly Pirate.",
+    "nextStep": "The Blue Oasis (Room 413) is the island in the middle of the Blue Ocean — south of the jetty that runs around the storm, or east of the water near the tornadoes. You will need a Wooden Boat (20 wood at a crafting table) or wings to cross the water.",
+    "reminderDialog": "The Friendly Pirate is still relaxing at the Blue Oasis.",
+    "completionDialog": "“Aloha, matey! Welcome to my beautiful Oasis!” The pirate props himself up on one elbow. “Three things, if you’re the hunting kind. Squid, crabs, and the whole ocean’s worth of fish.”",
+    "giver": {
+      "npcId": "friendly_pirate",
+      "roomId": "413",
+      "name": "Friendly Pirate",
+      "icon": "npc-pirate"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_friendlypirate_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_friendlypirate_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_friendlypirate_003"
+      }
+    ]
+  },
+  "quest_friendlypirate_001": {
+    "number": 60,
+    "questType": "side",
+    "level": 13,
+    "title": "Like a Squid",
+    "summary": "Aggressive squid have inundated the Ocean. Hunt down 3 of them.",
+    "objective": "Defeat 3 Squid.",
+    "nextStep": "Squid turn up anywhere on the open ocean and under it. Keep sailing and they will find you.",
+    "reminderDialog": "“{progress} of {count}. Squid, matey. They’re everywhere out there — that’s rather the problem.”",
+    "completionDialog": "“Three squid!” The Pirate smiles and, while humming ‘Like a Squid’, hands you a perfectly balanced Calamari Cap.",
+    "giver": {
+      "npcId": "friendly_pirate",
+      "roomId": "413",
+      "name": "Friendly Pirate",
+      "icon": "npc-pirate"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "squid",
+        "count": 3,
+        "displayName": "Squid"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "calamari-cap",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_friendlypirate_002": {
+    "number": 61,
+    "questType": "side",
+    "level": 6,
+    "title": "Mud Crab Extermination",
+    "summary": "Mud Island has been overrun by crabs! Exterminate 20 of them.",
+    "objective": "Defeat 20 Mud Crabs.",
+    "nextStep": "Mud Island is southeast of the Blue Ocean Crossing. The crabs are on the island and, in far greater numbers, in the cave beneath it — the nest at the back never empties.",
+    "reminderDialog": "“{progress} of {count}. Twenty, matey. The cave under the island is where they come from.”",
+    "completionDialog": "“NICE! Twenty mud crabs!” The Pirate rummages through his bag of loot and hands you a surprisingly strong pair of Mud Boots.",
+    "giver": {
+      "npcId": "friendly_pirate",
+      "roomId": "413",
+      "name": "Friendly Pirate",
+      "icon": "npc-pirate"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "mud-crab",
+        "count": 20,
+        "displayName": "Mud Crab"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "mud-boots",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_friendlypirate_003": {
+    "number": 62,
+    "questType": "side",
+    "level": 25,
+    "title": "Ocean Hunter Pro",
+    "summary": "Become a Pro Ocean Hunter. Hunt down a Jellyfish, Electric Eel, Piranha, Barracuda and Crocodile.",
+    "objective": "Defeat a Jellyfish, an Electric Eel, a Piranha, a Barracuda and a Crocodile.",
+    "nextStep": "The four fish are anywhere on the ocean; keep hunting until you find them all. The Crocodile lives in the tornado currents around Crocodile Island, in the far west.",
+    "reminderDialog": "“{progress} of {count}. All five, matey. The crocs are out west by Jim’s island, if that’s the one you’re missing.”",
+    "completionDialog": "“Awesome! A true Ocean Hunter Pro.” The Pirate reaches into his front pocket and hands you a shiny Gold Key, a stack of gills potions and a light green shield. “There’s a gold chest somewhere under the ocean, if you can breathe down there long enough to find it.”",
+    "giver": {
+      "npcId": "friendly_pirate",
+      "roomId": "413",
+      "name": "Friendly Pirate",
+      "icon": "npc-pirate"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "jellyfish",
+        "count": 1,
+        "displayName": "Jellyfish"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "electric-eel",
+        "count": 1,
+        "displayName": "Electric Eel"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "piranha",
+        "count": 1,
+        "displayName": "Piranha"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "barracuda",
+        "count": 1,
+        "displayName": "Barracuda"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "crocodile",
+        "count": 1,
+        "displayName": "Crocodile"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "gills-potion",
+        "quantity": 5
+      },
+      {
+        "type": "item",
+        "itemSlug": "green-shield",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "gold-key",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_junglejim_intro": {
+    "number": 63,
+    "questType": "side",
+    "isIntro": true,
+    "level": 20,
+    "title": "Find Jungle Jim",
+    "summary": "Jungle Jim likes to get away from it all and do some surfing on Crocodile Island.",
+    "objective": "Find Jungle Jim.",
+    "nextStep": "Crocodile Island (Room 424) is in the far southwest of the Blue Ocean, southwest of the tornado currents. Mind the crocodiles.",
+    "reminderDialog": "Jungle Jim is still out on Crocodile Island, and the surf is still up.",
+    "completionDialog": "“Bro! Nothing beats the waves here at Crocodile Island.” Jim plants his board in the sand. “Three things I could use a hand with, if you’re not busy being eaten.”",
+    "giver": {
+      "npcId": "jungle_jim",
+      "roomId": "424",
+      "name": "Jungle Jim",
+      "icon": "npc-surfer"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_junglejim_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_junglejim_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_junglejim_003"
+      }
+    ]
+  },
+  "quest_junglejim_001": {
+    "number": 64,
+    "questType": "side",
+    "level": 20,
+    "title": "Third Times a Charm",
+    "summary": "Find a third flower in a secret compartment under the ocean. REMEMBER: collect the first two flowers before you attempt to collect the third, or you will waste a trip underwater.",
+    "objective": "Bring Jungle Jim 3 flowers.",
+    "nextStep": "The first flower is in the Grassy Field and the second in the Red Town Babylon Gardens. The third grows on the ocean floor behind a coral door, under the whirlpool by the Green Temple — the lever that opens the door is in the reef, south of the wide underwater floor.",
+    "reminderDialog": "“{progress} of {count} flowers, bro. The third one’s under the sea, and it won’t let you pick it without the other two.”",
+    "completionDialog": "“Three flowers!” Jim takes them reverently and hands you a vicious bo and a bow to match, each laced with a toxic poison. “Jim Bo and Jim Bow. Don’t ask.”",
+    "giver": {
+      "npcId": "jungle_jim",
+      "roomId": "424",
+      "name": "Jungle Jim",
+      "icon": "npc-surfer"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "flower",
+        "quantity": 3,
+        "displayName": "Flower"
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "jim-bo",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "jim-bow",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_junglejim_002": {
+    "number": 65,
+    "questType": "side",
+    "level": 25,
+    "title": "Angry Birds",
+    "summary": "These birds are so angry. Jungle Jim is afraid of them, especially the angry ones. Hunt down a Hawk, an Albatross and a Falcon.",
+    "objective": "Defeat a Hawk, an Albatross and a Falcon.",
+    "nextStep": "Hawks are in the Forest, Albatrosses dive at boats all over the Blue Ocean, and the Falcon is in the Dark Forest, beyond the Forest. All three fly, so bring a bow.",
+    "reminderDialog": "“{progress} of {count}, bro. Hawk in the forest, albatross out on the water, falcon in the dark woods. I’m not going near any of them.”",
+    "completionDialog": "“The angry birds are down!” Jim exhales for what seems like the first time in a while and hands you a really Sharp Katana and a really Heavy Katana.",
+    "giver": {
+      "npcId": "jungle_jim",
+      "roomId": "424",
+      "name": "Jungle Jim",
+      "icon": "npc-surfer"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "hawk",
+        "count": 1,
+        "displayName": "Hawk"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "albatross",
+        "count": 1,
+        "displayName": "Albatross"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "falcon",
+        "count": 1,
+        "displayName": "Falcon"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "sharp-katana",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "heavy-katana",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_junglejim_003": {
+    "number": 66,
+    "questType": "side",
+    "level": 25,
+    "title": "Iron Warrior",
+    "summary": "Impress Jungle Jim by collecting a full set of iron equipment. Collect, buy or craft it and return with the whole set.",
+    "objective": "Hold an iron weapon, an iron helmet or hood, iron armor or cape, iron gloves or gauntlets, and iron boots.",
+    "nextStep": "The Mining Guild in the Rocky Flats forges iron, the Warrior’s Guild in Red Town sells some, and barracudas drop the odd hood. Any iron weapon will do for the hand.",
+    "reminderDialog": "“Full iron, bro. Head, body, hands, feet, and something to swing. I’ll know it when I see it.”",
+    "completionDialog": "“JUNGLE JIM IS IMPRESSED!” He walks a circle around you. “That is some nice iron. Here — finish the set.” He hands you a pair of devastating Iron Knuckles.",
+    "giver": {
+      "npcId": "jungle_jim",
+      "roomId": "424",
+      "name": "Jungle Jim",
+      "icon": "npc-surfer"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasAnyItem",
+        "items": [
+          {
+            "itemSlug": "iron-dagger",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-sword",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-staff",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-maul",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-2h-sword",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-battle-staff",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-nunchaku",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-boomerang",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-chakram",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-bow",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-crossbow",
+            "quantity": 1
+          }
+        ],
+        "displayName": "An iron weapon"
+      },
+      {
+        "type": "hasAnyItem",
+        "items": [
+          {
+            "itemSlug": "iron-helmet",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-hood",
+            "quantity": 1
+          }
+        ],
+        "displayName": "An iron helmet or hood"
+      },
+      {
+        "type": "hasAnyItem",
+        "items": [
+          {
+            "itemSlug": "iron-armor",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-cape",
+            "quantity": 1
+          }
+        ],
+        "displayName": "Iron armor or cape"
+      },
+      {
+        "type": "hasAnyItem",
+        "items": [
+          {
+            "itemSlug": "iron-gloves",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "iron-gauntlets",
+            "quantity": 1
+          }
+        ],
+        "displayName": "Iron gloves or gauntlets"
+      },
+      {
+        "type": "hasAnyItem",
+        "items": [
+          {
+            "itemSlug": "iron-boots",
+            "quantity": 1
+          }
+        ],
+        "displayName": "Iron boots"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemSlug": "iron-knuckles",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_watertempleguardian_intro": {
+    "number": 67,
+    "questType": "side",
+    "isIntro": true,
+    "level": 35,
+    "title": "Find the Water Temple Guardian",
+    "summary": "The Master Temple shimmers with light. The pillars appear like ice but are warm to the touch. Waterfalls flow down the temple sides and green vines twist their way up.",
+    "objective": "Find the Water Temple Guardian.",
+    "nextStep": "The Master Temple (Room 425) opens off each of the four Water Temples, but only once that temple’s boss is beaten — defeat any one of them and walk through.",
+    "reminderDialog": "The Water Temple Guardian is still standing watch on the main platform of the Master Temple.",
+    "completionDialog": "“Defeat the Red, Green, Blue and Yellow guardians before you attempt to challenge me, the far superior Master Temple Guardian.”",
+    "giver": {
+      "npcId": "water_temple_guardian",
+      "roomId": "425",
+      "name": "Water Temple Guardian",
+      "icon": "npc-guardian"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 500
+      },
+      {
+        "type": "xp",
+        "amount": 500
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_watertempleguardian_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_watertempleguardian_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_watertempleguardian_003"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_watertempleguardian_004"
+      }
+    ]
+  },
+  "quest_watertempleguardian_001": {
+    "number": 68,
+    "questType": "side",
+    "level": 35,
+    "title": "Test of Strength",
+    "summary": "Defeat the Thunder Barbarian at the Red Water Temple. Be careful though, the Barbarian hits hard with Power and Critical strikes.",
+    "objective": "Defeat the Thunder Barbarian.",
+    "nextStep": "The Red Water Temple is in the far west of the Blue Ocean, west of the tornado currents. Attack to summon him.",
+    "reminderDialog": "“The Barbarian still holds the Red temple. Strength, not cleverness.”",
+    "completionDialog": "“The Test of Strength is passed.” The Guardian hands you a shiny pair of Thunder Boots.",
+    "giver": {
+      "npcId": "water_temple_guardian",
+      "roomId": "425",
+      "name": "Water Temple Guardian",
+      "icon": "npc-guardian"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "thunder-barbarian",
+        "count": 1,
+        "displayName": "Thunder Barbarian"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 1000
+      },
+      {
+        "type": "item",
+        "itemSlug": "thunder-boots",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_watertempleguardian_002": {
+    "number": 69,
+    "questType": "side",
+    "level": 35,
+    "title": "Test of Dexterity",
+    "summary": "Defeat the Smooth Ranger at the Green Water Temple. Be prepared for a long fight.",
+    "objective": "Defeat the Smooth Ranger.",
+    "nextStep": "The Green Water Temple is in the southwest of the Blue Ocean, west of the calm water by the Swamp. Attack to summon him; his bow is answered with DEX, not armour.",
+    "reminderDialog": "“The Ranger still holds the Green temple. He will not tire before you do.”",
+    "completionDialog": "“The Test of Dexterity is passed.” The Guardian hands you the smoothest pair of Silk Bracers you have ever seen.",
+    "giver": {
+      "npcId": "water_temple_guardian",
+      "roomId": "425",
+      "name": "Water Temple Guardian",
+      "icon": "npc-guardian"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "smooth-ranger",
+        "count": 1,
+        "displayName": "Smooth Ranger"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 1000
+      },
+      {
+        "type": "item",
+        "itemSlug": "silk-bracers",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_watertempleguardian_003": {
+    "number": 70,
+    "questType": "side",
+    "level": 35,
+    "title": "Test of Magic",
+    "summary": "Defeat the Coral Wizard at the Blue Water Temple. Don’t expect to use magic to defeat him though, the Wizard is immune.",
+    "objective": "Defeat the Coral Wizard.",
+    "nextStep": "The Blue Water Temple is in the north of the Blue Ocean, northeast off the jetty that runs around the storm. Attack to summon him; his magic is answered with MAG, and yours does nothing to him.",
+    "reminderDialog": "“The Wizard still holds the Blue temple. Your spells will not touch him.”",
+    "completionDialog": "“The Test of Magic is passed.” The Guardian hands you a snazzy Coral Necklace.",
+    "giver": {
+      "npcId": "water_temple_guardian",
+      "roomId": "425",
+      "name": "Water Temple Guardian",
+      "icon": "npc-guardian"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "coral-wizard",
+        "count": 1,
+        "displayName": "Coral Wizard"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 1000
+      },
+      {
+        "type": "item",
+        "itemSlug": "coral-necklace",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_watertempleguardian_004": {
+    "number": 71,
+    "questType": "side",
+    "level": 35,
+    "title": "Test of Defense",
+    "summary": "Defeat the Heavy Walrus at the Yellow Water Temple. You have to hit him hard though, he has very high pure defense.",
+    "objective": "Defeat the Heavy Walrus.",
+    "nextStep": "The Yellow Water Temple is in the east of the Blue Ocean, south of the beachside current. Attack to summon him, and bring big hits.",
+    "reminderDialog": "“The Walrus still holds the Yellow temple. Small blows bounce off it.”",
+    "completionDialog": "“The Test of Defense is passed.” The Guardian hands you a really Heavy Spear. “All four. Now you may challenge me.”",
+    "giver": {
+      "npcId": "water_temple_guardian",
+      "roomId": "425",
+      "name": "Water Temple Guardian",
+      "icon": "npc-guardian"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "heavy-walrus",
+        "count": 1,
+        "displayName": "Heavy Walrus"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 1000
+      },
+      {
+        "type": "item",
+        "itemSlug": "heavy-spear",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
   }
 }

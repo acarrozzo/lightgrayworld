@@ -35,6 +35,8 @@ export const REGIONS: RegionMeta[] = [
   { id: 'rockyFlats', name: 'Rocky Flats' },
   { id: 'rockyFlatsUnderground', name: 'Rocky Flats Underground' },
   { id: 'neverendingMine', name: 'The Neverending Mine' },
+  { id: 'ocean', name: 'Blue Ocean' },
+  { id: 'underwater', name: 'Under the Ocean' },
   { id: 'solarOffice', name: 'Solar Office' },
   { id: 'lobby', name: 'The Lobby' },
 ]
@@ -88,6 +90,16 @@ const RED_TOWN_SEWERS = new Set([
  */
 const ROCKY_FLATS_UNDERGROUND = new Set(['315a', '315b', '315c', '315d', '321b', '311-00'])
 
+/**
+ * Below the Blue Ocean: the reef, the shark water, the Kraken's lair and the
+ * Mud Cave under Mud Island. The whirlpool and the storm that lead down to it
+ * are surface water and stay on the ocean.
+ */
+const UNDERWATER = new Set([
+  '480', '481', '482', '483', '484', '485', '486', '487', '488', '489',
+  '490', '491', '492', '493', '494', '495', '496', '497', '498', '499',
+])
+
 export function getRegionForRoom(roomId: string | null | undefined): RegionId {
   if (!roomId) return DEFAULT_REGION
 
@@ -102,6 +114,7 @@ export function getRegionForRoom(roomId: string | null | undefined): RegionId {
   if (FOREST_UNDERGROUND.has(roomId)) return 'forestUnderground'
   if (RED_TOWN_SEWERS.has(roomId)) return 'redTownSewers'
   if (ROCKY_FLATS_UNDERGROUND.has(roomId)) return 'rockyFlatsUnderground'
+  if (UNDERWATER.has(roomId)) return 'underwater'
 
   // Everything below Level 0 is the mine's own endless shaft.
   if (roomId.startsWith('311-')) return 'neverendingMine'
@@ -110,6 +123,7 @@ export function getRegionForRoom(roomId: string | null | undefined): RegionId {
   // in the forest, and reads as forest.
   if (roomId === '215') return 'forest'
 
+  if (roomId.startsWith('4')) return 'ocean'
   if (roomId.startsWith('3')) return 'rockyFlats'
   if (roomId.startsWith('2')) return 'redTown'
   if (roomId.startsWith('1')) return 'forest'

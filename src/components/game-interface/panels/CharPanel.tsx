@@ -121,6 +121,8 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
         return 'neck'
       case EquipSlot.MOUNT:
         return 'mount'
+      case EquipSlot.ARTIFACT:
+        return 'artifact'
       default:
         return 'all'
     }
@@ -372,7 +374,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                   }
                   onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.NECK))}
                 />
-                {/* Row 5: MOUNT */}
+                {/* Row 5: MOUNT, ARTIFACT */}
                 <EquipmentSlot
                   slot={EquipSlot.MOUNT}
                   item={equippedBySlot.get(EquipSlot.MOUNT)}
@@ -383,6 +385,17 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                     })
                   }
                   onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.MOUNT))}
+                />
+                <EquipmentSlot
+                  slot={EquipSlot.ARTIFACT}
+                  item={equippedBySlot.get(EquipSlot.ARTIFACT)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.ARTIFACT))}
                 />
               </div>
             </div>

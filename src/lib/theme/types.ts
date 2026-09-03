@@ -283,6 +283,8 @@ export type RegionId =
   | 'rockyFlats'
   | 'rockyFlatsUnderground'
   | 'neverendingMine'
+  | 'ocean'
+  | 'underwater'
   | 'solarOffice'
   | 'lobby'
 

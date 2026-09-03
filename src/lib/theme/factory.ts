@@ -249,6 +249,12 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     // Brass lamplight: the most saturated point in the earthy family, which is
     // what keeps it clear of the dusty surface above it.
     neverendingMine: { base: mix(t.yellow, t.white, 0.12) },
+    // Open water: the theme's blue, lifted toward cyan so it reads as sea
+    // rather than as the Lobby's sky or the caves' cold grey-blue.
+    ocean: { base: mix(t.blue, t.cyan, 0.45) },
+    // The same water a long way down: the ocean's hue, darkened and pushed
+    // toward pure blue, so the two sheets are plainly one place at two depths.
+    underwater: { base: dim(mix(t.blue, t.cyan, 0.2), 0.3) },
     solarOffice: { base: t.brightYellow },
     lobby: { base: mix(t.blue, t.white, 0.3) },
   }

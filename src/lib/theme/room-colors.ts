@@ -71,6 +71,8 @@ export const ROOM_COLOR_TOKENS: Record<string, string> = {
   'world.rockyFlats': '--world-rocky-flats',
   'world.rockyFlatsUnderground': '--world-rocky-flats-underground',
   'world.neverendingMine': '--world-neverending-mine',
+  'world.ocean': '--world-ocean',
+  'world.underwater': '--world-underwater',
   'world.solarOffice': '--world-solar-office',
   'world.lobby': '--world-lobby',
 }

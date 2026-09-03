@@ -233,6 +233,21 @@ function describeSpellStrike(enemyName, turn) {
 
 // ─── start_battle ───────────────────────────────────────────────────────────
 
+/**
+ * A static room's `challenge` (game-data/room-enemies.js): the quests that must
+ * all be turned in before its boss can be fought. Data on the spawn table,
+ * evaluated here, so the rule lives beside the roster it protects and no path
+ * into a fight skips it.
+ */
+async function meetsChallenge(playerId, challenge) {
+  const questIds = challenge?.requiresCompletedQuests ?? []
+  if (questIds.length === 0) return true
+  const done = await prisma.questProgress.count({
+    where: { userId: playerId, completed: true, questId: { in: questIds } },
+  })
+  return done >= questIds.length
+}
+
 async function executeStartBattle(action, playerId, roomState) {
   const player = roomState.players.get(playerId)
   if (!player) return errorResult('start_battle', 'Player not found in this room')
@@ -255,6 +270,13 @@ async function executeStartBattle(action, playerId, roomState) {
     const roomConfig = getRoomEnemies(roomState.roomId)
     if (!roomConfig || !roomConfig.enemies.includes(enemySlug)) {
       return errorResult('start_battle', 'That enemy is not here.')
+    }
+    // A boss that stands in plain sight but will not be fought until the
+    // player has earned it — the Master Temple's Guardian behind its four
+    // tests. Declared on the room's spawn table so the rule lives beside the
+    // roster it protects, and checked here so no path into a fight skips it.
+    if (roomConfig.challenge && !(await meetsChallenge(playerId, roomConfig.challenge))) {
+      return errorResult('start_battle', roomConfig.challenge.message || 'You cannot fight that yet.')
     }
   }
 

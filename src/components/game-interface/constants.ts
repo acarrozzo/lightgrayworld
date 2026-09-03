@@ -54,6 +54,8 @@ export type MapFlag = keyof Pick<
   | 'rockyFlatsMap'
   | 'rockyFlatsUndergroundMap'
   | 'neverEndingMineMap'
+  | 'oceanMap'
+  | 'oceanUnderwaterMap'
   | 'lobbyMap'
   | 'solarOfficeMap'
 >

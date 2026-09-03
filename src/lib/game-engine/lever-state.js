@@ -33,6 +33,15 @@ const COW_TOLL = '103-cowtoll'
  */
 const GROTTO_SWITCH = '325-grottoswitch'
 
+/**
+ * The coral lever in the reef under the ocean (483), which opens the Coral
+ * Door out of the Underwater Alcove (493) onto the Flower Patch (494).
+ * Session-scoped like the original's `$_SESSION['underwaterswitch']`, and —
+ * unlike the Grotto — never spent: flip it once and the door stays open until
+ * you next log in.
+ */
+const UNDERWATER_SWITCH = '483-underwaterswitch'
+
 function pullLever(playerId, leverId) {
   if (!activatedLevers.has(playerId)) {
     activatedLevers.set(playerId, new Set())
@@ -85,6 +94,16 @@ function getRoomStateNote(playerId, roomId) {
   if (roomId === '319' && isLeverPulled(playerId, GROTTO_SWITCH)) {
     return 'The carved stone door stands open on the Grotto to the southwest.'
   }
+  if (roomId === '483') {
+    return isLeverPulled(playerId, UNDERWATER_SWITCH)
+      ? 'The coral lever is DOWN. Something ground open somewhere to the south.'
+      : 'A piece of coral shaped like a lever juts from the reef, UP.'
+  }
+  if (roomId === '493') {
+    return isLeverPulled(playerId, UNDERWATER_SWITCH)
+      ? 'The Coral Door stands open to the east.'
+      : 'A massive Coral Door blocks the way east.'
+  }
   return null
 }
 
@@ -136,6 +155,14 @@ function getRoomActionOverrides(playerId, roomId) {
         : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
     }
   }
+  if (roomId === '483') {
+    const pulled = isLeverPulled(playerId, UNDERWATER_SWITCH)
+    return {
+      'flip lever': pulled
+        ? { className: 'bg-status-success/80 hover:bg-status-success', icon: 'lever-down' }
+        : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
+    }
+  }
   return null
 }
 
@@ -150,4 +177,5 @@ module.exports = {
   KOBOLD_SWITCH,
   COW_TOLL,
   GROTTO_SWITCH,
+  UNDERWATER_SWITCH,
 }

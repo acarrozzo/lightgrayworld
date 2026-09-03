@@ -27,6 +27,68 @@ async function playerCanFly(playerId) {
 }
 
 /**
+ * Can the player cross open water?
+ *
+ * The Blue Ocean's surface rooms can be crossed in a Wooden Boat — an equipped
+ * mount whose template says `boat` — or on wings, exactly the original's
+ * `equipMount == 'wooden boat' || flying >= 1`. The islands and temples are dry
+ * land and need neither.
+ */
+async function playerCanSail(playerId) {
+  const mount = await prisma.playerItem.findFirst({
+    where: { playerId, isEquipped: true, slot: 'MOUNT' },
+    select: { ItemTemplate: { select: { metadata: true } } },
+  })
+  if (mount?.ItemTemplate?.metadata?.boat === true) return true
+  return playerCanFly(playerId)
+}
+
+/**
+ * Can the player breathe water right now? The click-counted `gills` buff (a
+ * potion or, one day, the spell) is the only way — there is no mount for it.
+ */
+async function playerCanBreatheWater(playerId) {
+  const user = await prisma.user.findUnique({
+    where: { id: playerId },
+    select: { gills: true },
+  })
+  return (user?.gills ?? 0) >= 1
+}
+
+/** Has the player put down the named enemy at least once? */
+async function hasKilled(playerId, monster) {
+  const kill = await prisma.killList.findUnique({
+    where: { userId_monster: { userId: playerId, monster } },
+    select: { kills: true },
+  })
+  return (kill?.kills ?? 0) >= 1
+}
+
+const SAIL_MESSAGE = "You can't go that way! You need to be flying or in a boat. A Wooden Boat is twenty wood at any crafting table."
+const SAIL_MODAL = {
+  title: 'Open water',
+  type: 'icon',
+  icon: 'boat',
+  iconColor: 'blue-400',
+  message:
+    "You can't go that way! You need to be flying or in a boat. Craft a Wooden Boat out of 20 wood at a crafting table and ride it, or drink a Wings Potion.",
+}
+const SWIM_MESSAGE = "You can't swim that way! You need to be breathing water. Drink a Gills Potion first."
+const SWIM_MODAL = {
+  title: 'You cannot breathe down here',
+  type: 'icon',
+  icon: 'gills',
+  iconColor: 'blue-400',
+  message:
+    "You can't swim that way! You need to be breathing water. Drink a Gills Potion — they wash up in the ocean, and the General Store sells them — and you have a hundred clicks of it.",
+}
+
+/** A gate across open water: boat or wings. */
+const sailGate = () => ({ check: playerCanSail, message: SAIL_MESSAGE, modalContent: SAIL_MODAL })
+/** A gate across deep water: gills. */
+const swimGate = () => ({ check: playerCanBreatheWater, message: SWIM_MESSAGE, modalContent: SWIM_MODAL })
+
+/**
  * Has the player completed any one of the Red Guard Captain's three quests?
  * Gates the lookout-tower ladder in both directions (rooms 124 and 215).
  */
@@ -658,6 +720,119 @@ const ROOM_GATES = {
         message: 'A miner steps in front of the cage. "Guild members only past here. Talk to the hall south of the square — they want the Red Fort dealt with first."',
       },
     },
+  },
+}
+
+/**
+ * The Blue Ocean's open water. Every exit that leaves a room across the water
+ * needs a boat or wings; exits onto dry land — the Oasis, the islands, the
+ * temples, the docks and the beach — never do. Built from a table of which
+ * exits are water rather than written out fifty times, because the rule is one
+ * rule and the original wrote it out fifty times.
+ *
+ * Under the ocean the same shape with gills: every swim between water rooms
+ * needs them, every `up` to the surface does not, and the dry Mud Cave needs
+ * nothing at all.
+ */
+const OCEAN_WATER_EXITS = {
+  '016': ['west'],
+  '017': ['west'],
+  '401': ['northwest', 'southwest'],
+  '402': ['southeast'],
+  '403': ['west'],
+  '404': ['west', 'south', 'northeast', 'east'],
+  '405': ['west', 'northeast'],
+  '406': ['west', 'north', 'south', 'east'],
+  '407': ['northwest', 'north', 'south'],
+  '408': ['northeast', 'southeast'],
+  '409': ['southwest', 'east'],
+  '411': ['west', 'north', 'southeast', 'southwest'],
+  '412': ['northwest'],
+  '413': ['west', 'southeast', 'east'],
+  '414': ['north', 'south', 'east'],
+  '415': ['west', 'south', 'northeast', 'east'],
+  '416': ['west', 'northwest'],
+  '417': ['north', 'east'],
+  '418': ['northwest', 'southeast', 'east'],
+  '419': ['west'],
+  '420': ['southwest'],
+  '421': ['southwest', 'east'],
+  '422': ['west', 'southwest', 'northeast', 'east', 'southeast'],
+  '423': ['northeast', 'east'],
+  '424': ['northeast'],
+}
+for (const [roomId, directions] of Object.entries(OCEAN_WATER_EXITS)) {
+  ROOM_GATES[roomId] = ROOM_GATES[roomId] || {}
+  for (const direction of directions) ROOM_GATES[roomId][direction] = sailGate()
+}
+
+const UNDERWATER_SWIM_EXITS = {
+  '402': ['down'],
+  '410': ['down'],
+  '417': ['down'],
+  '420': ['down'],
+  '480': ['east', 'northeast'],
+  '481': ['west', 'north'],
+  '482': ['south', 'northeast'],
+  '483': ['north'],
+  '484': ['northwest', 'northeast', 'east', 'south', 'southwest'],
+  '485': ['southwest'],
+  '486': ['southeast', 'west'],
+  '487': ['northwest', 'east'],
+  '488': ['southwest'],
+  '489': ['northwest', 'northeast'],
+  '493': ['northwest'],
+  '494': ['west'],
+  '495': ['west', 'southeast'],
+  '496': ['northwest', 'east'],
+  '498': ['northwest'],
+  '499': ['southeast'],
+}
+for (const [roomId, directions] of Object.entries(UNDERWATER_SWIM_EXITS)) {
+  ROOM_GATES[roomId] = ROOM_GATES[roomId] || {}
+  for (const direction of directions) ROOM_GATES[roomId][direction] = swimGate()
+}
+
+// The four temples open onto the Master Temple only once their own boss is
+// down — each temple checks its own kill, as the original's room files did.
+const MASTER_TEMPLE_DOORS = [
+  { roomId: '405', direction: 'southeast', monster: 'heavy-walrus', boss: 'Yellow Water Temple boss, the Heavy Walrus' },
+  { roomId: '409', direction: 'northeast', monster: 'coral-wizard', boss: 'Blue Water Temple boss, the Coral Wizard' },
+  { roomId: '418', direction: 'southwest', monster: 'smooth-ranger', boss: 'Green Water Temple boss, the Smooth Ranger' },
+  { roomId: '423', direction: 'northwest', monster: 'thunder-barbarian', boss: 'Red Water Temple boss, the Thunder Barbarian' },
+]
+for (const door of MASTER_TEMPLE_DOORS) {
+  ROOM_GATES[door.roomId] = ROOM_GATES[door.roomId] || {}
+  ROOM_GATES[door.roomId][door.direction] = {
+    check: (playerId) => hasKilled(playerId, door.monster),
+    message: `You can't enter the Master Temple yet! You need to defeat the ${door.boss} first.`,
+    modalContent: {
+      title: 'The way to the Master Temple is shut',
+      type: 'icon',
+      icon: 'pillar2',
+      iconColor: 'blue-300',
+      message: `A wall of water stands where the passage should be. You can't enter the Master Temple yet — defeat the ${door.boss} first, and it will part for you.`,
+    },
+  }
+}
+
+// The coral door in the Underwater Alcove, opened by the lever in the reef
+// (483). Session-scoped like the original's `$_SESSION['underwaterswitch']`,
+// and the original never spent it — once the door was open it stayed open
+// for the rest of the session, so there is no `onPass` here.
+ROOM_GATES['493'].east = {
+  check: async (playerId) => {
+    const { isLeverPulled, UNDERWATER_SWITCH } = require('./lever-state')
+    return isLeverPulled(playerId, UNDERWATER_SWITCH)
+  },
+  lever: true,
+  message: 'A massive Coral Door blocks the way to the east. There must be a way to open it somewhere in the reef.',
+  modalContent: {
+    title: 'A massive Coral Door blocks the way east',
+    type: 'icon',
+    icon: 'gate',
+    iconColor: 'purple-400',
+    message: 'The coral door does not move. Somewhere in the reef to the north there is a piece of coral shaped like a lever, and this is what it opens.',
   },
 }
 

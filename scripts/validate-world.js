@@ -51,6 +51,34 @@ const ACCEPTED = {
     // lead east and west") matches having no way back up. The long way round is
     // 115d southeast -> 115c -> 115a.
     '115d:south',
+    // The Blue Ocean's currents. The original's ocean is full of one-way water:
+    // "the natural water current here wants to take you southwest", "a strong
+    // current drags you east", the storm you sail into and cannot sail out of.
+    // Every one of these is the original's room file, checked exit by exit.
+    '404:south', // the beachside current onto the Yellow temple; the temple sails west
+    '404:west', // the beachside current onto the storm water, which runs north and south
+    '405:northeast', // the Yellow temple's northeast current onto the beach water
+    '407:north', // into the storm; the storm has no way back
+    '408:south', // the jetty lands you on the Oasis; the Oasis sails elsewhere
+    '409:east', // the Blue temple's east current into the quiet water
+    '410:down', // out of the storm, down to the floor; the floor has no way up here
+    '411:southwest', // toward the swamp water, which drifts west and north only
+    '413:east', // the Oasis's east current onto the storm water
+    '413:southeast', // the Oasis's southeast current onto the crossing
+    '414:north', // north onto the Oasis; the Oasis has no south
+    '414:south', // south onto the calm water, which has no north
+    '415:northeast', // the calm water's northeast current onto the crossing
+    '415:south', // south to the swamp water, which drifts west and north only
+    '417:north', // the whirlpool's north current onto the Green temple
+    '421:east', // off the massive wave; nothing sails west back onto it
+    '480:northeast', // up out of the silver chest hollow
+    '484:up', // up to the jetty; the jetty does not dive
+    '487:east', // "a strong current drags you to the east"
+    '488:up', // up to the beach water; the beach water does not dive
+    '489:northwest', // into the cavern, which only leads on
+    '489:southeast', // into the Mud Crab Nest, which is dry cave and does not swim
+    '493:northwest', // the alcove's dark passage to the silver chest hollow
+    '498:northwest', // the cavern lets out onto the wide floor
   ]),
 
   // Rooms deliberately not reachable by walking from the start room.
@@ -77,14 +105,12 @@ const ACCEPTED = {
   // Enemies authored ahead of the map that will hold them. They are named by
   // acceptable quests, so they must exist — they simply have no spawn yet.
   unspawnedEnemies: new Set([
-    'glowing-octopus',
-    'king-squid',
     'stone-sphinx',
     'gatekeeper',
-    'hammerhead',
-    'great-white',
     'troll-champion',
     'troll-queen',
+    // Jungle Jim's "Angry Birds" wants a Falcon; it lives in the Dark Forest.
+    'falcon',
   ]),
 }
 

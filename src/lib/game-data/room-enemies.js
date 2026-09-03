@@ -2387,6 +2387,141 @@ const ROOM_ENEMIES = {
       { slug: 'hill-ogre', weight: 100 },
     ],
   },
+
+  // ==================== BLUE OCEAN ====================
+  // The surface battle set: a 6-in-18 roll for any of six, equal odds.
+  // Two rooms sit outside it — the Oasis (413), which is safe, and the storm
+  // (410), which rolled the same set. The temples summon their boss on attack.
+  ...Object.fromEntries(
+    ['401', '402', '403', '404', '406', '407', '408', '410', '411', '414', '415', '416', '417', '419', '420'].map((roomId) => [
+      roomId,
+      {
+        probabilistic: true,
+        spawnChance: 1 / 3,
+        enemies: [
+          { slug: 'jellyfish', weight: 1 },
+          { slug: 'electric-eel', weight: 1 },
+          { slug: 'piranha', weight: 1 },
+          { slug: 'barracuda', weight: 1 },
+          { slug: 'squid', weight: 1 },
+          { slug: 'albatross', weight: 1 },
+        ],
+      },
+    ])
+  ),
+  // Mud Island — rand(1,10) <= 2.
+  '412': {
+    probabilistic: true,
+    spawnChance: 0.2,
+    enemies: [{ slug: 'mud-crab', weight: 100 }],
+  },
+  // Riding a Massive Wave — rand(1,10) <= 3, and it is the King Squid.
+  '421': {
+    probabilistic: true,
+    spawnChance: 0.3,
+    enemies: [{ slug: 'king-squid', weight: 100 }],
+  },
+  // In a Tornado of Currents — rand(1,10) <= 2 crocodile.
+  '422': {
+    probabilistic: true,
+    spawnChance: 0.2,
+    enemies: [{ slug: 'crocodile', weight: 100 }],
+  },
+  // Crocodile Island — rand(1,15) == 1.
+  '424': {
+    probabilistic: true,
+    spawnChance: 1 / 15,
+    enemies: [{ slug: 'crocodile', weight: 100 }],
+  },
+  // The four Water Temples: the boss is always there and never starts it.
+  '405': { enemies: ['heavy-walrus'] },
+  '409': { enemies: ['coral-wizard'] },
+  '418': { enemies: ['smooth-ranger'] },
+  '423': { enemies: ['thunder-barbarian'] },
+  // The Master Temple. The Guardian stands watch from the moment you arrive,
+  // but will not be challenged until its four tests — the temple bosses — are
+  // complete. `challenge` is data only; executeStartBattle checks it before
+  // any fight with a static enemy here begins.
+  '425': {
+    enemies: ['water-temple-guardian'],
+    challenge: {
+      requiresCompletedQuests: [
+        'quest_watertempleguardian_001',
+        'quest_watertempleguardian_002',
+        'quest_watertempleguardian_003',
+        'quest_watertempleguardian_004',
+      ],
+      message:
+        "You can't challenge the Water Temple Guardian yet. Complete its four tests first by defeating the Red, Green, Blue and Yellow temple bosses.",
+    },
+  },
+
+  // ==================== UNDER THE OCEAN ====================
+  // The underwater battle set: a 7-in-21 roll, weighted the way the original
+  // nested it — two slots each for the turtle and the colossal squid, one each
+  // for barracuda and squid, and a 1-in-9 sub-roll on the last slot that
+  // usually gave a Glowing Octopus and occasionally a shark, a crocodile or
+  // one of the surface fish. Written out as weights times nine.
+  ...Object.fromEntries(
+    ['480', '481', '482', '483', '484', '485', '486', '487', '488', '493', '494', '497', '498'].map((roomId) => [
+      roomId,
+      {
+        probabilistic: true,
+        spawnChance: 1 / 3,
+        enemies: [
+          { slug: 'giant-sea-turtle', weight: 18 },
+          { slug: 'colossal-squid', weight: 18 },
+          { slug: 'barracuda', weight: 9 },
+          { slug: 'squid', weight: 9 },
+          { slug: 'glowing-octopus', weight: 2 },
+          { slug: 'great-white', weight: 1 },
+          { slug: 'hammerhead', weight: 1 },
+          { slug: 'crocodile', weight: 1 },
+          { slug: 'jellyfish', weight: 1 },
+          { slug: 'electric-eel', weight: 1 },
+          { slug: 'piranha', weight: 1 },
+        ],
+      },
+    ])
+  ),
+  // The Sunken Ship: the same roll with a whole slot given to the Glowing
+  // Octopus — "a slightly higher chance of finding the GLOWING OCTOPUS if you
+  // search near the SUNKEN SHIP" — and the King Squid on the rare sub-roll.
+  '489': {
+    probabilistic: true,
+    spawnChance: 1 / 3,
+    enemies: [
+      { slug: 'giant-sea-turtle', weight: 18 },
+      { slug: 'colossal-squid', weight: 18 },
+      { slug: 'glowing-octopus', weight: 11 },
+      { slug: 'squid', weight: 9 },
+      { slug: 'king-squid', weight: 1 },
+      { slug: 'great-white', weight: 1 },
+      { slug: 'hammerhead', weight: 1 },
+      { slug: 'crocodile', weight: 1 },
+      { slug: 'jellyfish', weight: 1 },
+      { slug: 'electric-eel', weight: 1 },
+      { slug: 'piranha', weight: 1 },
+    ],
+  },
+  // The Mud Cave under Mud Island — rand(1,10) <= 3 at the exit, <= 4 in the
+  // tunnel, and the nest itself never empties.
+  '490': {
+    probabilistic: true,
+    spawnChance: 0.3,
+    enemies: [{ slug: 'mud-crab', weight: 100 }],
+  },
+  '491': {
+    probabilistic: true,
+    spawnChance: 0.4,
+    enemies: [{ slug: 'mud-crab', weight: 100 }],
+  },
+  '492': { enemies: ['mud-crab'] },
+  // Shark water: a hammerhead every time, then a great white every time, then
+  // the Kraken, which does not wait to be attacked.
+  '495': { enemies: ['hammerhead'] },
+  '496': { enemies: ['great-white'] },
+  '499': { enemies: ['kraken'] },
 }
 
 function getRoomEnemies(roomId) {

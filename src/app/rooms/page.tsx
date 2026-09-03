@@ -95,7 +95,8 @@ const VERTICAL = new Set<Direction>(['up', 'down'])
 // undergrounds — the Cabin Basement (003b*), the Scorpion Pit (the deep scorpion
 // dungeon) and the Bat Cave (028*) — then the Forest and its lairs, then Red Town
 // and the sewers beneath it, then the Rocky Flats with the Abandoned Mine, the
-// chamber under the Stone Grotto, and the Neverending Mine's own shaft.
+// chamber under the Stone Grotto, and the Neverending Mine's own shaft, then the
+// Blue Ocean and everything under it.
 // A region's surface entrance stays on the surface tab
 // (the bat-cave mouth 028, the Back Alley sewer 232), so links between maps become
 // portal markers. Mirrors getMapIdForRoom in components/game-interface/utils.ts.
@@ -112,6 +113,10 @@ const RED_TOWN_SEWERS = [
 // Isolated special rooms that don't belong to any map.
 const EXCLUDED = new Set(['000', '999', '088'])
 const ROCKY_FLATS_UNDERGROUND = ['315a', '315b', '315c', '315d', '321b']
+const UNDER_THE_OCEAN = [
+  '480', '481', '482', '483', '484', '485', '486', '487', '488', '489',
+  '490', '491', '492', '493', '494', '495', '496', '497', '498', '499',
+]
 const mapOf = (roomId: string): MapId => {
   if (roomId.startsWith('003b')) return 'cabin_basement'
   if (SCORPION_DUNGEON.includes(roomId)) return 'scorpion_pit'
@@ -127,6 +132,8 @@ const mapOf = (roomId: string): MapId => {
   if (roomId.startsWith('311-')) return 'neverending_mine'
   if (ROCKY_FLATS_UNDERGROUND.includes(roomId)) return 'rocky_flats_underground'
   if (roomId.startsWith('3')) return 'rocky_flats'
+  if (UNDER_THE_OCEAN.includes(roomId)) return 'under_the_ocean'
+  if (roomId.startsWith('4')) return 'blue_ocean'
   if (roomId.startsWith('2')) return 'red_town'
   if (roomId.startsWith('1')) return 'forest'
   return 'overworld'

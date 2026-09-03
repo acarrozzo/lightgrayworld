@@ -6,6 +6,7 @@ const {
   WORLD_REGIONS,
   VIP_REGIONS,
   getSheetsForRegion,
+  getSubHubsForRegion,
   getWorldRegionForRoom,
 } = require('@/lib/game-data/world-map')
 
@@ -14,7 +15,16 @@ export interface WorldRegion {
   name: string
   color?: string
   hub?: { roomId: string; name: string }
+  subHubs?: Array<{ id: string; roomId: string; name: string }>
   alwaysOpen?: boolean
+}
+
+/** A region's extra landing — the ocean's Underwater or Master Temple. */
+interface SubHub {
+  regionId: string
+  discoveryId: string
+  roomId: string
+  name: string
 }
 
 interface MapSheet {
@@ -33,6 +43,7 @@ const REGION_FILL: Record<string, string> = {
   forest: 'fill-world-forest',
   'red-town': 'fill-world-red-town',
   'rocky-flats': 'fill-world-rocky-flats',
+  ocean: 'fill-world-ocean',
   lobby: 'fill-world-lobby',
   'room-zero': 'fill-world-room-zero',
   'solar-office': 'fill-world-solar-office',
@@ -50,7 +61,7 @@ interface WorldGridProps {
    */
   mode: 'teleport' | 'map'
   currentRoomId?: string
-  /** Region ids whose fast travel is open — `Player.discoveredTeleports`. */
+  /** Landings whose fast travel is open, by discovery id — `Player.discoveredTeleports`. */
   discoveredTeleports?: string[]
   /** Sheet ids the player has found (see getUnlockedMaps). */
   foundMapIds?: string[]
@@ -116,9 +127,8 @@ export default function WorldGrid({
         ? 'ring-2 ring-hue-sky ring-offset-2 ring-offset-surface-panel'
         : ''
 
-    return (
+    const tile = (
       <button
-        key={region.id}
         type="button"
         disabled={isDisabled}
         aria-label={label}
@@ -129,7 +139,7 @@ export default function WorldGrid({
           if (mode === 'teleport' && region.hub) onTeleport?.(region.hub.roomId)
           if (mode === 'map') onSelectRegion?.(region.id)
         }}
-        className={`flex flex-col items-center justify-center rounded-lg px-1 text-center transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+        className={`flex w-full flex-col items-center justify-center rounded-lg px-1 text-center transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
           dense ? 'h-14' : 'h-[72px]'
         } ${openClasses} ${stateClasses} ${ringClasses} ${isDisabled && isOpen ? 'cursor-default' : ''}`}
       >
@@ -141,11 +151,61 @@ export default function WorldGrid({
         )}
       </button>
     )
+
+    // A region's sub-hubs — the ocean's Underwater and Master Temple — sit
+    // under its tile as their own small buttons, exactly the second row of
+    // squares the original's teleport page gave them. Only fast travel has
+    // them; the map view has nothing to select below a region.
+    const subHubs: SubHub[] = mode === 'teleport' ? getSubHubsForRegion(region.id) : []
+    if (subHubs.length === 0) return <div key={region.id}>{tile}</div>
+
+    return (
+      <div key={region.id} className="flex flex-col gap-1">
+        {tile}
+        <div className="grid grid-cols-2 gap-1">
+          {subHubs.map((hub) => {
+            const hubOpen = discoveredTeleports.includes(hub.discoveryId)
+            const hubHere = hub.roomId === currentRoomId
+            const hubDisabled = !hubOpen || hubHere || isBlocked
+            const hubLabel = hubOpen
+              ? `Fast travel to ${region.name}, ${hub.name}`
+              : `${region.name}, ${hub.name}: not found yet`
+            return (
+              <button
+                key={hub.discoveryId}
+                type="button"
+                disabled={hubDisabled}
+                aria-label={hubLabel}
+                title={isBlocked && hubOpen && !hubHere ? blockedReason ?? undefined : hubLabel}
+                onClick={() => {
+                  if (hubDisabled) return
+                  onTeleport?.(hub.roomId)
+                }}
+                className={`rounded-md px-1 py-1 text-center leading-tight transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                  dense ? 'text-[9px]' : 'text-[10px]'
+                } ${
+                  hubOpen
+                    ? `${fill} shadow-sm shadow-shadow ${hubDisabled ? 'cursor-default' : 'hover:brightness-110 active:scale-[0.98]'}`
+                    : LOCKED_CLASSES
+                } ${isBlocked && hubOpen && !hubHere ? 'opacity-50 cursor-not-allowed' : ''} ${
+                  hubHere ? 'ring-2 ring-fg-bright/80 ring-offset-1 ring-offset-surface-panel' : ''
+                }`}
+              >
+                <span className="block font-semibold">{hub.name}</span>
+                <span className={`block ${hubOpen ? 'opacity-80' : ''}`}>
+                  {hubHere ? 'You are here' : hubOpen ? 'Fast travel' : 'Not found yet'}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-3 gap-2">{WORLD_REGIONS.map(renderTile)}</div>
+      <div className="grid grid-cols-3 gap-2 items-start">{WORLD_REGIONS.map(renderTile)}</div>
       <div className="flex items-center gap-2 mt-1">
         <div className="h-px flex-1 bg-surface-hover/40" />
         <span className="text-[10px] font-semibold uppercase tracking-widest text-resource-gold/70">VIP</span>

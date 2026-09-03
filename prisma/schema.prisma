@@ -71,6 +71,8 @@ model User {
   buffMagClicks             Int             @default(0)
   buffDefClicks             Int             @default(0)
   buffCoffeeClicks          Int             @default(0)
+  /// Bathing in the Master Water Temple's glory: +30 to every core stat while it counts down.
+  buffGloryClicks           Int             @default(0)
   hp                        Int             @default(10)
   hpMax                     Int             @default(10)
   mp                        Int             @default(2)
@@ -104,6 +106,7 @@ model User {
   rockyFlatsUndergroundMap  Boolean         @default(false)
   neverEndingMineMap        Boolean         @default(false)
   oceanMap                  Boolean         @default(false)
+  oceanUnderwaterMap        Boolean         @default(false)
   darkForestMap             Boolean         @default(false)
   worldMapV1                Boolean         @default(false)
   worldMapV2                Boolean         @default(false)
@@ -483,6 +486,7 @@ enum EquipSlot {
   RING
   NECK
   MOUNT
+  ARTIFACT
 }
 
 enum WeaponCategory {

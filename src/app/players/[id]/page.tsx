@@ -32,6 +32,7 @@ const PLAYER_ITEM_SLOT_MAP: Record<string, string> = {
   RING: 'ring1',
   NECK: 'neck',
   MOUNT: 'mount',
+  ARTIFACT: 'artifact',
 }
 
 function fmtDate(d: Date) {

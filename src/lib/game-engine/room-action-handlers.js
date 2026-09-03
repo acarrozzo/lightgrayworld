@@ -373,6 +373,41 @@ const CHEST_LOOT = {
   // game yet (EquipSlot has MOUNT and nothing else). A Ring of Defense X stands
   // in for it: permanent, notable, and of the same tier. If pets land, this is
   // where the bat goes back.
+  '485': {
+    'open gold chest': {
+      label: 'Blue Ocean Gold Chest',
+      xp: 500,
+      items: [
+        { itemSlug: 'meatball', quantity: 5 },
+        { itemSlug: 'bluefish', quantity: 5 },
+        { itemSlug: 'wings-potion', quantity: 5 },
+        { itemSlug: 'gills-potion', quantity: 5 },
+        { itemSlug: 'heavy-helmet', quantity: 1, highlighted: true },
+      ],
+      randomItems: [
+        [
+          { itemSlug: 'ring-of-strength-vii', quantity: 1 },
+          { itemSlug: 'ring-of-dexterity-vii', quantity: 1 },
+          { itemSlug: 'ring-of-magic-vii', quantity: 1 },
+          { itemSlug: 'ring-of-defense-vii', quantity: 1 },
+        ],
+        [
+          { itemSlug: 'silver-sword', quantity: 1 },
+          { itemSlug: 'silver-2h-sword', quantity: 1 },
+          { itemSlug: 'silver-boomerang', quantity: 1 },
+          { itemSlug: 'silver-bow', quantity: 1 },
+          { itemSlug: 'silver-crossbow', quantity: 1 },
+          { itemSlug: 'silver-shield', quantity: 1 },
+          { itemSlug: 'silver-helmet', quantity: 1 },
+          { itemSlug: 'silver-breastplate', quantity: 1 },
+          { itemSlug: 'silver-gauntlets', quantity: 1 },
+          { itemSlug: 'silver-boots', quantity: 1 },
+          { itemSlug: 'silver-ring', quantity: 1 },
+          { itemSlug: 'silver-necklace', quantity: 1 },
+        ],
+      ],
+    },
+  },
   '309': {
     'open gold chest': {
       label: 'Rocky Flats Gold Chest',
@@ -1428,6 +1463,173 @@ async function pickGardenFlower(playerId, roomState) {
 
   const inventory = await getPlayerInventory(playerId)
   return respond('success', 'You pick a second flower from the trellis. [ 2 total ]', { inventory })
+}
+
+/**
+ * A pack that tops up to a floor with no membership check — Jungle Jim's
+ * colours and the Master Temple's pack. Same shape as the guild packs, minus
+ * the badge at the door.
+ */
+function makeTopUpPackHandler({ action, label, icon, iconColor, pack, fullMessage, message }) {
+  return async (playerId, roomState) => {
+    const { getHeldQuantity, grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
+    roomState.touchActivity()
+
+    const lines = []
+    let grantedAny = false
+    for (const entry of pack) {
+      const held = await getHeldQuantity(playerId, entry.slug)
+      const shortfall = entry.floor - held
+      if (shortfall <= 0) {
+        lines.push(`You have ${held} ${entry.label}.`)
+        continue
+      }
+      const result = await grantItemOnce(playerId, entry.slug, shortfall)
+      if (result.granted) {
+        lines.push(`You now have ${entry.floor} ${entry.label}.`)
+        grantedAny = true
+      } else {
+        lines.push(`You could not carry any more ${entry.label}.`)
+      }
+    }
+
+    const inventory = await getPlayerInventory(playerId)
+    return {
+      success: true,
+      action,
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload(action, grantedAny ? 'success' : 'info', grantedAny ? message : fullMessage, {
+            roomId: roomState.roomId,
+            inventory,
+            showModal: true,
+            modalContent: { type: 'icon', icon, iconColor, title: label, message: lines.join('\n') },
+          }),
+        },
+      ],
+    }
+  }
+}
+
+/** The Master Temple's pack: three of each colour and each balm. */
+const MASTER_PACK = [
+  { slug: 'reds', floor: 3, label: 'reds' },
+  { slug: 'greens', floor: 3, label: 'greens' },
+  { slug: 'blues', floor: 3, label: 'blues' },
+  { slug: 'yellows', floor: 3, label: 'yellows' },
+  { slug: 'red-balm', floor: 3, label: 'red balms' },
+  { slug: 'blue-balm', floor: 3, label: 'blue balms' },
+]
+
+/**
+ * The third flower, under the ocean. The original's rule, insult included: you
+ * can only pick it if you are already carrying the first two, and you can only
+ * ever hold three here. (The fourth is in the Mountains, with the Dark Forest.)
+ */
+async function pickUnderwaterFlower(playerId, roomState) {
+  const { getHeldQuantity, grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
+
+  roomState.touchActivity()
+
+  const held = await getHeldQuantity(playerId, 'flower')
+  const respond = (outcome, message, extra = {}) => ({
+    success: outcome === 'success',
+    action: 'pick flower',
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload('pick flower', outcome, message, {
+          roomId: roomState.roomId,
+          showModal: true,
+          modalContent: { type: 'icon', icon: 'flower', iconColor: 'yellow-400', title: 'Underwater Flower Patch', message },
+          ...extra,
+        }),
+      },
+    ],
+  })
+
+  if (held <= 1) {
+    return respond(
+      'info',
+      'FOOL! You just wasted a trip. You can only pick a flower here if you already have two in your inventory. Return to the Grassy Field and then the Red Town Babylon Gardens to get the first two.'
+    )
+  }
+  if (held >= 3) {
+    return respond('info', 'You cannot pick up another flower here. You already have three.')
+  }
+
+  const granted = await grantItemOnce(playerId, 'flower', 1)
+  if (!granted.granted) {
+    return createErrorResult('pick flower', 'You could not pick the flower.')
+  }
+
+  const inventory = await getPlayerInventory(playerId)
+  return respond('success', 'You pick a flower up from the ocean floor. You now have 3 flowers!', { inventory })
+}
+
+/**
+ * Bathing in the Master Water Temple's glory: a full rest with +100 over the
+ * top, +30 to everything for 100 clicks, and the Master Pack topped up — the
+ * original did all three on one button and so does this.
+ */
+async function batheInGlory(playerId, roomState) {
+  const { prisma } = require('../db-client')
+  const { applyBuff } = require('./services/buff-service')
+
+  const rest = await roomState.applyRest(playerId, {
+    action: 'bathe in glory',
+    overchargeBonus: 100,
+    overchargeMessage: "You bathe in the Master Temple's glory. Your HP and MP are fully restored, plus an extra +100 to each.",
+  })
+  if (!rest.success) return rest
+
+  const glory = await applyBuff(prisma, playerId, 'buffGloryClicks', 100)
+  const pack = await makeTopUpPackHandler({
+    action: 'bathe in glory',
+    label: 'Master Pack',
+    icon: 'inv',
+    iconColor: 'blue-300',
+    pack: MASTER_PACK,
+    message: 'You replenish your Master Pack.',
+    fullMessage: 'Your Master Pack is already full.',
+  })(playerId, roomState)
+
+  const packPayload = pack.playerEvents?.[0]?.payload
+  const packLines = packPayload?.data?.modalContent?.message ?? ''
+
+  return mergeActionResultsForGlory(rest, {
+    success: true,
+    action: 'bathe in glory',
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload('bathe in glory', 'success', `You bathe in the Master Temple's glory! BUFF: +30 STR, DEX, MAG and DEF for 100 clicks. Your Master Pack is replenished.`, {
+          roomId: roomState.roomId,
+          inventory: packPayload?.data?.inventory,
+          buffs: { buffGloryClicks: glory },
+          showModal: true,
+          modalContent: {
+            type: 'icon',
+            icon: 'npc-guardian',
+            iconColor: 'blue-300',
+            title: "You bathe in the Master Temple's glory",
+            message: `REST: +100 HP, +100 MP\nBUFF: +30 STR, +30 DEX, +30 MAG, +30 DEF for 100 clicks\nREPLENISH: Master Pack\n\n${packLines}`,
+          },
+        }),
+      },
+    ],
+  })
+}
+
+/** Rest's own feedback first (it carries the vitals), then the glory's. */
+function mergeActionResultsForGlory(rest, glory) {
+  return {
+    ...rest,
+    success: true,
+    action: 'bathe in glory',
+    playerEvents: [...(rest.playerEvents ?? []), ...(glory.playerEvents ?? [])],
+  }
 }
 
 /**
@@ -3049,6 +3251,269 @@ const ROOM_ACTIONS = {
         ],
       }
     },
+  },
+
+  // ==================== BLUE OCEAN ====================
+
+  // --- The Blue Oasis: the Friendly Pirate, his berries, and his spring ---
+  '413': {
+    'talk to friendly pirate': createNpcTalkHandler({
+      npcId: 'friendly_pirate',
+      action: 'talk to friendly pirate',
+      title: 'Friendly Pirate',
+      icon: 'npc-pirate',
+      iconColor: 'blue-300',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_friendlypirate_003',
+          message: '"Aloha, matey! Nothing left for you to hunt out here — but the berries are still fresh and the spring is still cold. Stay a while."',
+        },
+        {
+          ifCompleted: null,
+          message: '"Aloha, matey! Welcome to my beautiful Oasis!" The pirate stretches out on the sand. "Pick some berries, have a rest, and come find me when you want some work."',
+        },
+      ],
+    }),
+    'pick redberry': makeGatherAction({
+      itemSlug: 'redberry',
+      itemNamePlural: 'redberries',
+      topUpTo: 20,
+      maxHeldMessage: 'You already have more than 20 redberries! Come back if you run low.',
+      topUpMessage: (collected) => `You pick redberries off the bushes. [ +${collected} redberries ]`,
+    }),
+    'pick blueberry': makeGatherAction({
+      itemSlug: 'blueberry',
+      itemNamePlural: 'blueberries',
+      topUpTo: 20,
+      maxHeldMessage: 'You already have more than 20 blueberries! Come back if you run low.',
+      topUpMessage: (collected) => `You pick blueberries off the bushes. [ +${collected} blueberries ]`,
+    }),
+    'rest at the oasis': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest at the oasis',
+        overchargeBonus: 50,
+        overchargeMessage: 'You rest by the fresh water spring at the Blue Oasis. Your HP and MP are fully restored, plus an extra +50 to each.',
+      }),
+  },
+
+  // --- Crocodile Island: Jungle Jim's tree hut ---
+  '424': {
+    'talk to jungle jim': createNpcTalkHandler({
+      npcId: 'jungle_jim',
+      action: 'talk to jungle jim',
+      title: 'Jungle Jim',
+      icon: 'npc-surfer',
+      iconColor: 'green-400',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_junglejim_003',
+          message: '"Bro! Look at you." Jim waxes his board. "Nothing beats the waves here at Crocodile Island. Grab some colours if you\'re low."',
+        },
+        {
+          ifCompleted: null,
+          message: '"Bro! Nothing beats the waves here at Crocodile Island." Jim looks up from his board. "Watch the crocs. And if you want to help a guy out, I\'ve got a few things that need doing."',
+        },
+      ],
+    }),
+    'grab colors': makeTopUpPackHandler({
+      action: 'grab colors',
+      label: "Jungle Jim's Colours",
+      icon: 'pill',
+      iconColor: 'green-400',
+      pack: [
+        { slug: 'reds', floor: 5, label: 'reds' },
+        { slug: 'greens', floor: 5, label: 'greens' },
+        { slug: 'blues', floor: 5, label: 'blues' },
+        { slug: 'yellows', floor: 5, label: 'yellows' },
+      ],
+      message: 'You grab a pack of colours. [ +reds, greens, blues, yellows ]',
+      fullMessage: 'You already have some colours! Come back if you run low.',
+    }),
+  },
+
+  // --- The Master Temple: the Guardian, the glory, the pack, the altar ---
+  '425': {
+    'talk to water temple guardian': createNpcTalkHandler({
+      npcId: 'water_temple_guardian',
+      action: 'talk to water temple guardian',
+      title: 'Water Temple Guardian',
+      icon: 'npc-guardian',
+      iconColor: 'blue-300',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_watertempleguardian_004',
+          message: '"The four tests are behind you." The Guardian does not move, but the water around it does. "I stand here, if you think you are ready for me."',
+        },
+        {
+          ifCompleted: null,
+          message: '"Defeat the Red, Green, Blue and Yellow guardians before you attempt to challenge me, the far superior Master Temple Guardian."',
+        },
+      ],
+    }),
+    'bathe in glory': batheInGlory,
+    'grab master pack': makeTopUpPackHandler({
+      action: 'grab master pack',
+      label: 'Master Pack',
+      icon: 'inv',
+      iconColor: 'blue-300',
+      pack: MASTER_PACK,
+      message: 'You replenish your Master Pack.',
+      fullMessage: 'Your Master Pack is already full.',
+    }),
+    // The original's evolve ritual — reset your stats, skills and spells for
+    // an evolve level — is not built yet. The altar stands; it is dormant.
+    'evolve': {
+      showModal: true,
+      message: 'You lay a hand on the evolve altar. It is warm, and it does nothing.',
+      modalContent: {
+        title: 'The Evolve Altar',
+        type: 'icon',
+        icon: 'pillar3',
+        iconColor: 'blue-300',
+        message:
+          'A pillar of warm ice at the centre of the platform, carved with a single word: EVOLVE. Legend says a champion of at least level 20 with ten thousand gold to burn can start again here — every stat, skill and spell returned to zero and re-chosen, and an Evolve level gained that nothing else grants. The altar is dormant for now. It will not always be.',
+      },
+    },
+  },
+
+  // ==================== UNDER THE OCEAN ====================
+
+  // --- The Underwater Silver Chest ---
+  '480': {
+    'open silver chest': makeRepeatableChestHandler({
+      roomId: '480',
+      action: 'open silver chest',
+      label: 'Silver Chest',
+      cooldownMs: 4 * 60 * 60 * 1000,
+      goldMin: 500,
+      goldMax: 1000,
+      xp: 75,
+      icon: 'chest2',
+      iconColor: 'blue-300',
+      openMessage: 'The silver chest opens in a cloud of silt, and the hollow glitters.',
+      pools: [
+        [
+          { itemSlug: 'silver-sword', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-2h-sword', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-boomerang', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-bow', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-crossbow', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-shield', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-helmet', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-breastplate', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-gauntlets', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-boots', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-ring', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-necklace', quantity: 1, highlighted: true },
+        ],
+      ],
+    }),
+  },
+
+  // --- Surrounded by Coral: the lever that opens the Coral Door ---
+  // Session-scoped and never spent, exactly as the original kept
+  // `$_SESSION['underwaterswitch']`. See lever-state.js.
+  '483': {
+    'flip lever': async (playerId, roomState) => {
+      const { isLeverPulled, pullLever, UNDERWATER_SWITCH, getRoomStateNote, getRoomActionOverrides } =
+        require('./lever-state')
+      roomState.touchActivity()
+
+      if (isLeverPulled(playerId, UNDERWATER_SWITCH)) {
+        return {
+          success: true,
+          action: 'flip lever',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: createActionFeedbackPayload('flip lever', 'info', 'You already flipped this switch. A secret door has opened somewhere to the south.', {
+                roomId: roomState.roomId,
+                stateNote: getRoomStateNote(playerId, '483'),
+                actionOverrides: getRoomActionOverrides(playerId, '483'),
+              }),
+            },
+          ],
+        }
+      }
+
+      pullLever(playerId, UNDERWATER_SWITCH)
+      return {
+        success: true,
+        action: 'flip lever',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload('flip lever', 'success', 'You flip the coral lever and hear a rumbling come from the south.', {
+              roomId: roomState.roomId,
+              showModal: true,
+              stateNote: getRoomStateNote(playerId, '483'),
+              actionOverrides: getRoomActionOverrides(playerId, '483'),
+              modalContent: {
+                type: 'icon',
+                icon: 'lever-down',
+                iconColor: 'yellow-500',
+                title: 'You flip the coral lever',
+                message:
+                  'The coral gives with a crack and a long rumble rolls through the water from the south — the far south, past the deep water and the silver chest, where the whirlpool comes down. Something heavy just opened there.',
+              },
+            }),
+          },
+        ],
+      }
+    },
+  },
+
+  // --- A Vast Underwater Landscape: the directory ---
+  '484': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the Underwater Directory.',
+      modalContent: {
+        title: 'You read the Underwater Directory',
+        heading: {
+          text: 'Underwater Directory',
+          parts: ['Underwater', 'Directory'],
+          description: 'The wide floor is the hub of everything down here. Six ways out.',
+        },
+        locations: [
+          { name: 'Gold Chest', direction: 'northeast', description: 'The Gold Shrine. The Friendly Pirate holds the key.' },
+          { name: 'Ocean Floor', direction: 'east', description: 'The current, the Giant Turtle Nest and the Sunken Ship.' },
+          { name: 'Coral Reef', direction: 'south', description: 'The secret door lever.' },
+          { name: 'Deeper Ocean', direction: 'southwest', description: 'Jellyfish, and the Silver Chest.' },
+          { name: 'Shark Infested Path', direction: 'northwest', description: 'Sharks, and the Kraken at the end of them.' },
+          { name: 'Ocean Surface', direction: 'up', description: 'Back to the jetty, in the open air.' },
+        ],
+        questMessage: 'The Glowing Octopus is seen most often around the Sunken Ship.',
+        questMessageDescription: 'Your gills run out on a count. Keep a spare potion for the swim back.',
+      },
+    },
+  },
+
+  // --- The Underwater Gold Shrine ---
+  '485': {
+    'open gold chest': makeGoldChestHandler({
+      roomId: '485',
+      flagField: 'chest5',
+      goldMin: 5000,
+      goldMax: 5000,
+      lockedMessage:
+        'You need a Gold Key to open this chest. The Friendly Pirate at the Blue Oasis hands one over to anyone who can call themselves an Ocean Hunter Pro.',
+    }),
+  },
+
+  // --- The Underwater Flower Patch: the third flower ---
+  '494': {
+    'pick flower': pickUnderwaterFlower,
+  },
+
+  // --- The Secret Underwater Cave: the green pillar ---
+  '497': {
+    'rest at the green pillar': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest at the green pillar',
+        overchargeBonus: 100,
+        overchargeMessage: 'You rest at the glowing green pillar. Your HP and MP are fully restored, plus an extra +100 to each.',
+      }),
   },
 
   // --- Mine Level 0: the tutorial sign, and no ore whatsoever ---

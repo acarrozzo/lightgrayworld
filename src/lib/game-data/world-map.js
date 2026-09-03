@@ -38,6 +38,8 @@ const MAP_SHEETS = [
   { id: 'rocky-flats', title: 'Rocky Flats', src: '/img/lightgray_map_rockyflats_main.jpg', flag: 'rockyFlatsMap', region: 'rocky-flats', level: 'Surface' },
   { id: 'rocky-flats-underground', title: 'Rocky Flats Underground', src: '/img/lightgray_map_rockyflats_underground.jpg', flag: 'rockyFlatsUndergroundMap', region: 'rocky-flats', level: 'Underground' },
   { id: 'neverending-mine', title: 'The Neverending Mine', src: '/img/lightgray_map_neverendingmine_main.jpg', flag: 'neverEndingMineMap', region: 'rocky-flats', level: 'Mine' },
+  { id: 'ocean', title: 'Blue Ocean', src: '/img/lightgray_map_blueocean_main.jpg', flag: 'oceanMap', region: 'ocean', level: 'Surface' },
+  { id: 'ocean-underwater', title: 'Under the Ocean', src: '/img/lightgray_map_blueocean_underwater.jpg', flag: 'oceanUnderwaterMap', region: 'ocean', level: 'Underwater' },
   { id: 'room-zero', title: 'Room Zero', src: '/img/lightgray_map_roomzero.jpg', flag: 'roomZeroMap', region: 'room-zero', level: 'Surface' },
   { id: 'lobby', title: 'The Lobby', src: '/img/lightgray_map_the_lobby.jpg', flag: 'lobbyMap', region: 'lobby', level: 'Surface' },
   { id: 'solar-office', title: 'Solar Office', src: '/img/lightgray_map_solar_office.jpg', flag: 'solarOfficeMap', region: 'solar-office', level: 'Surface' },
@@ -63,12 +65,28 @@ const SHEETS_BY_ID = new Map(MAP_SHEETS.map((sheet) => [sheet.id, sheet]))
  *
  * `color` is the suffix of the `world.*` theme token that paints the region's
  * tile; `hub` is where fast travel lands. Neither exists for a placeholder.
+ *
+ * `subHubs` are a region's extra fast-travel landings. The original's teleport
+ * page gave the Blue Ocean three squares — the Oasis, "Underwater" and the
+ * "Master Water Temple" — each found separately. They sit under their region's
+ * tile on the grid and are discovered by standing in them, like the hub; their
+ * discovery id is `<region>/<sub-hub>` so the User row's `discoveredTeleports`
+ * can hold them beside the region ids.
  */
 const WORLD_REGIONS = [
   { id: 'star-city', name: 'Star City' },
   { id: 'mountains', name: 'Mountains' },
   { id: 'dark-forest', name: 'Dark Forest' },
-  { id: 'ocean', name: 'Blue Ocean' },
+  {
+    id: 'ocean',
+    name: 'Blue Ocean',
+    color: 'ocean',
+    hub: { roomId: '413', name: 'Blue Oasis' },
+    subHubs: [
+      { id: 'underwater', roomId: '484', name: 'Underwater' },
+      { id: 'master-temple', roomId: '425', name: 'Master Temple' },
+    ],
+  },
   { id: 'grassy-field', name: 'Grassy Field', color: 'grassy-field', hub: { roomId: '001', name: 'Crossroads' } },
   { id: 'forest', name: 'Forest', color: 'forest', hub: { roomId: '104', name: 'Forest Crossroads' } },
   { id: 'swamp', name: 'Swamp' },
@@ -90,6 +108,37 @@ const VIP_REGIONS = [
 const ALL_REGIONS = [...WORLD_REGIONS, ...VIP_REGIONS]
 const REGIONS_BY_ID = new Map(ALL_REGIONS.map((region) => [region.id, region]))
 const REGIONS_BY_HUB = new Map(ALL_REGIONS.filter((r) => r.hub).map((region) => [region.hub.roomId, region]))
+
+/**
+ * Every fast-travel landing in the world — each region's hub and each of its
+ * sub-hubs — as one flat list. `discoveryId` is what a player's
+ * `discoveredTeleports` records: the region id for a hub, `<region>/<sub>` for
+ * a sub-hub. `isSubHub` tells the grid whether to draw it as a tile or as a
+ * button under one.
+ */
+const TELEPORT_HUBS = ALL_REGIONS.flatMap((region) => {
+  if (!region.hub) return []
+  const main = {
+    regionId: region.id,
+    regionName: region.name,
+    discoveryId: region.id,
+    roomId: region.hub.roomId,
+    name: region.hub.name,
+    isSubHub: false,
+    alwaysOpen: region.alwaysOpen === true,
+  }
+  const subs = (region.subHubs || []).map((sub) => ({
+    regionId: region.id,
+    regionName: region.name,
+    discoveryId: `${region.id}/${sub.id}`,
+    roomId: sub.roomId,
+    name: sub.name,
+    isSubHub: true,
+    alwaysOpen: false,
+  }))
+  return [main, ...subs]
+})
+const HUBS_BY_ROOM = new Map(TELEPORT_HUBS.map((hub) => [hub.roomId, hub]))
 
 // --- Room → sheet -------------------------------------------------------------
 
@@ -119,12 +168,24 @@ const RED_TOWN_SEWERS = new Set([
  */
 const ROCKY_FLATS_UNDERGROUND = new Set(['315a', '315b', '315c', '315d', '321b'])
 
+/**
+ * Rooms drawn on the Under the Ocean sheet: everything from the Silver Chest
+ * to the Kraken, and the Mud Cave under Mud Island. The surface entrances to
+ * them (the whirlpool, the storm, Mud Island itself) stay on the surface sheet.
+ */
+const OCEAN_UNDERWATER = new Set([
+  '480', '481', '482', '483', '484', '485', '486', '487', '488', '489',
+  '490', '491', '492', '493', '494', '495', '496', '497', '498', '499',
+])
+
 /** Which sheet a room is drawn on. */
 function getMapIdForRoom(roomId) {
   if (!roomId) return 'grassy-field'
   if (roomId === '000') return 'room-zero'
   if (roomId === '999') return 'lobby'
   if (roomId === '088') return 'solar-office'
+  if (OCEAN_UNDERWATER.has(roomId)) return 'ocean-underwater'
+  if (roomId.startsWith('4')) return 'ocean'
   if (roomId.startsWith('003b') || (roomId.startsWith('028') && roomId !== '028') || SCORPION_DUNGEON.has(roomId)) {
     return 'grassy-field-underground'
   }
@@ -166,6 +227,16 @@ function getWorldRegionByHubRoom(roomId) {
   return REGIONS_BY_HUB.get(roomId) || null
 }
 
+/** The fast-travel landing (hub or sub-hub) that is this room, or null. */
+function getTeleportHubByRoom(roomId) {
+  return HUBS_BY_ROOM.get(roomId) || null
+}
+
+/** A region's sub-hubs as landings, in the order they are declared. */
+function getSubHubsForRegion(regionId) {
+  return TELEPORT_HUBS.filter((hub) => hub.isSubHub && hub.regionId === regionId)
+}
+
 /** The sheets that belong to a region, in the order they are listed above. */
 function getSheetsForRegion(regionId) {
   return MAP_SHEETS.filter((sheet) => sheet.region === regionId)
@@ -183,5 +254,8 @@ module.exports = {
   getWorldRegion,
   getWorldRegionForRoom,
   getWorldRegionByHubRoom,
+  getTeleportHubByRoom,
+  getSubHubsForRegion,
   getSheetsForRegion,
+  TELEPORT_HUBS,
 }

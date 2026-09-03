@@ -62,6 +62,8 @@ export interface Player {
   rockyFlatsMap?: boolean
   rockyFlatsUndergroundMap?: boolean
   neverEndingMineMap?: boolean
+  oceanMap?: boolean
+  oceanUnderwaterMap?: boolean
   roomZeroMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean

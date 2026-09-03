@@ -186,6 +186,96 @@ const SEARCH_LOOT_TABLES = {
       { message: (amount) => `You search the barracks and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 100, max: 200 } },
     ],
   },
+
+  // ==================== BLUE OCEAN ====================
+  // Trapped under the storm. A coin flip, then one of ten things out of the
+  // wreckage — the same table the original rolled, and most of what makes being
+  // stuck here worth it.
+  '410': {
+    chance: 0.5,
+    failMessage: 'You search the ocean and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the ocean and find a Bluefish!', effect: { type: 'grantItem', itemSlug: 'bluefish', quantity: 1 } },
+      { message: (amount) => `You search the ocean and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 100, max: 300 } },
+      { message: 'You search the ocean and find a Gills Potion!', effect: { type: 'grantItem', itemSlug: 'gills-potion', quantity: 1 } },
+      { message: 'You search the ocean and find a Red Balm!', effect: { type: 'grantItem', itemSlug: 'red-balm', quantity: 1 } },
+      { message: 'You search the ocean and find a Wings Potion!', effect: { type: 'grantItem', itemSlug: 'wings-potion', quantity: 1 } },
+      { message: 'You search the ocean and find a Purple Balm!', effect: { type: 'grantItem', itemSlug: 'purple-balm', quantity: 1 } },
+      { message: 'You search the ocean and find some Blues!', effect: { type: 'grantItem', itemSlug: 'blues', quantity: 1 } },
+      { message: 'You search the ocean and find some Reds!', effect: { type: 'grantItem', itemSlug: 'reds', quantity: 1 } },
+      { message: 'You search the ocean and find some Greens!', effect: { type: 'grantItem', itemSlug: 'greens', quantity: 1 } },
+      { message: 'You search the ocean and find some Yellows!', effect: { type: 'grantItem', itemSlug: 'yellows', quantity: 1 } },
+    ],
+  },
+
+  // ==================== UNDER THE OCEAN ====================
+  // The Sunken Ship's cabins and crevices. Real gear on this one: the original
+  // put an off-hand sword, a steel staff and a glowing orb in the wreck.
+  '489': {
+    chance: 0.5,
+    failMessage: 'You search the sunken ship and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the sunken ship and find an Off Hand Sword!', effect: { type: 'grantItem', itemSlug: 'off-hand-sword', quantity: 1 } },
+      { message: 'You search the sunken ship and find an Iron Nunchaku!', effect: { type: 'grantItem', itemSlug: 'iron-nunchaku', quantity: 1 } },
+      { message: 'You search the sunken ship and find a Steel Staff!', effect: { type: 'grantItem', itemSlug: 'steel-staff', quantity: 1 } },
+      { message: 'You search the sunken ship and find a Glowing Orb!', effect: { type: 'grantItem', itemSlug: 'glowing-orb', quantity: 1 } },
+      { message: 'You search the sunken ship and find a pair of Iron Boots!', effect: { type: 'grantItem', itemSlug: 'iron-boots', quantity: 1 } },
+      { message: 'You search the sunken ship and find a Red Balm!', effect: { type: 'grantItem', itemSlug: 'red-balm', quantity: 1 } },
+      { message: 'You search the sunken ship and find some Blues!', effect: { type: 'grantItem', itemSlug: 'blues', quantity: 1 } },
+      { message: 'You search the sunken ship and find some Reds!', effect: { type: 'grantItem', itemSlug: 'reds', quantity: 1 } },
+      { message: 'You search the sunken ship and find some Greens!', effect: { type: 'grantItem', itemSlug: 'greens', quantity: 1 } },
+      { message: 'You search the sunken ship and find some Yellows!', effect: { type: 'grantItem', itemSlug: 'yellows', quantity: 1 } },
+    ],
+  },
+  // A Muddy Tunnel. Mud. Every time.
+  '491': {
+    chance: 1,
+    failMessage: 'You search and find some mud. Big surprise.',
+    entries: [
+      { message: 'You search and find some mud… big surprise. [ +1 mud ]', effect: { type: 'grantItem', itemSlug: 'mud', quantity: 1 } },
+    ],
+  },
+  // The Underwater Flower Patch, behind the Coral Door. The original's fifth and
+  // sixth rolls each gave two things at once (gills and wings; coffee and tea);
+  // an entry grants one effect, so they are split into their own rolls.
+  '494': {
+    chance: 0.5,
+    failMessage: 'You search the underwater flower patch and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the underwater flower patch and find a Ring of Strength V!', effect: { type: 'grantItem', itemSlug: 'ring-of-strength-v', quantity: 1 } },
+      { message: 'You search the underwater flower patch and find a Ring of Magic V!', effect: { type: 'grantItem', itemSlug: 'ring-of-magic-v', quantity: 1 } },
+      { message: 'You search the underwater flower patch and find a Blue Balm!', effect: { type: 'grantItem', itemSlug: 'blue-balm', quantity: 1 } },
+      { message: 'You search the underwater flower patch and find a Red Balm!', effect: { type: 'grantItem', itemSlug: 'red-balm', quantity: 1 } },
+      { message: 'You search the underwater flower patch and find a Gills Potion!', effect: { type: 'grantItem', itemSlug: 'gills-potion', quantity: 1 } },
+      { message: 'You search the underwater flower patch and find a Wings Potion!', effect: { type: 'grantItem', itemSlug: 'wings-potion', quantity: 1 } },
+      { message: "You search the underwater flower patch and find some Coffee! That's weird.", effect: { type: 'grantItem', itemSlug: 'coffee', quantity: 1 } },
+      { message: "You search the underwater flower patch and find some Tea! That's weird.", effect: { type: 'grantItem', itemSlug: 'tea', quantity: 1 } },
+      { message: 'You search the underwater flower patch and find some Blues!', effect: { type: 'grantItem', itemSlug: 'blues', quantity: 1 } },
+      { message: 'You search the underwater flower patch and find some Reds!', effect: { type: 'grantItem', itemSlug: 'reds', quantity: 1 } },
+      { message: 'You search the underwater flower patch and find some Greens!', effect: { type: 'grantItem', itemSlug: 'greens', quantity: 1 } },
+      { message: 'You search the underwater flower patch and find some Yellows!', effect: { type: 'grantItem', itemSlug: 'yellows', quantity: 1 } },
+    ],
+  },
+  // The Secret Underwater Cave under the quiet water. The original's ambient
+  // underwater encounters occasionally had "a giant whale swim by and cough up
+  // a Coral Coin"; that artifact lives here now, in place of the table's second
+  // gold roll, so the cave is the one place in the world it can be found.
+  '497': {
+    chance: 0.5,
+    failMessage: 'You search the secret underwater cave and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the secret underwater cave and find a Ring of Strength V!', effect: { type: 'grantItem', itemSlug: 'ring-of-strength-v', quantity: 1 } },
+      { message: (amount) => `You search the secret underwater cave and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 100, max: 300 } },
+      { message: 'A giant whale swims past the cave mouth and coughs up a Coral Coin! [ + ARTIFACT ]', effect: { type: 'grantItem', itemSlug: 'coral-coin', quantity: 1 } },
+      { message: 'You search the secret underwater cave and find a Red Balm!', effect: { type: 'grantItem', itemSlug: 'red-balm', quantity: 1 } },
+      { message: 'You search the secret underwater cave and find a Purple Potion!', effect: { type: 'grantItem', itemSlug: 'purple-potion', quantity: 1 } },
+      { message: 'You search the secret underwater cave and find a Purple Balm!', effect: { type: 'grantItem', itemSlug: 'purple-balm', quantity: 1 } },
+      { message: 'You search the secret underwater cave and find some Blues!', effect: { type: 'grantItem', itemSlug: 'blues', quantity: 1 } },
+      { message: 'You search the secret underwater cave and find some Reds!', effect: { type: 'grantItem', itemSlug: 'reds', quantity: 1 } },
+      { message: 'You search the secret underwater cave and find some Greens!', effect: { type: 'grantItem', itemSlug: 'greens', quantity: 1 } },
+      { message: 'You search the secret underwater cave and find some Yellows!', effect: { type: 'grantItem', itemSlug: 'yellows', quantity: 1 } },
+    ],
+  },
 }
 
 /**
@@ -206,6 +296,27 @@ const ROOM_FLAVOR = {
     'You hear someone scream, somewhere to the north.',
     'The air from the south is warm and delicious.',
   ],
+  // Under the ocean. The original rolled these as random encounters at the end
+  // of every underwater room script, a 1-in-5 chance of one of nine; a few of
+  // them healed you, one nipped you and one coughed up a Coral Coin. They are
+  // flavour here — the healing fish and the crab are lines, not effects, and
+  // the whale's coin is a search find in the Secret Underwater Cave instead.
+  ...Object.fromEntries(
+    ['480', '481', '482', '483', '484', '485', '486', '487', '488', '489', '493', '494', '495', '496', '497', '498', '499'].map((roomId) => [
+      roomId,
+      [
+        'A nemo looking clown fish swims past you.',
+        'A sea horse emerges from the coral.',
+        'A purple and blue illuminated jellyfish slowly swims up and down from the surface.',
+        'A pulsating gold and red fish swims past and you feel a surge of warmth.',
+        'A glowing blue fish swims past and the water hums with something like magic.',
+        'A crab nips at your toe. Ouch!',
+        'You think you see a glowing squid looking beast in the distance, but then it fades from view.',
+        'A shark swims past but then hurries back into the shadows.',
+        'A giant whale swims by, slow as weather.',
+      ],
+    ])
+  ),
 }
 
 // Pull a short "+5 HP" / "−1 HP" / "+10 MP" effect string out of an item action

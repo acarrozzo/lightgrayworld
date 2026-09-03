@@ -67,6 +67,8 @@ const ZONE_ORDER = [
   'Grassy Field', 'Spider Cave', 'Scorpion Pit', 'Bat Cave',
   'Forest Path', 'Forest', 'Ogre Lair', 'Kobold Lair',
   'Red Town Sewers', "Thieve's Den", 'The Catacombs',
+  'Rocky Flats', 'Neverending Mine',
+  'Blue Ocean', 'Under the Ocean', 'Mud Cave',
 ]
 
 // Turn a slug like "padded-armor" into "Padded Armor" — only used as a

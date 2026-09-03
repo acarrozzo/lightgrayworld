@@ -327,6 +327,44 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'flip switch', label: 'Flip Switch', icon: 'lever-up', className: 'fill-hue-gold' },
   ],
 
+  // ==================== BLUE OCEAN ====================
+  '413': [
+    { action: 'talk to friendly pirate', label: 'Friendly Pirate', icon: 'npc-pirate', className: 'fill-hue-gold', questIds: questIdsForNpc('friendly_pirate') },
+    { action: 'pick redberry', label: 'Pick Redberries', icon: 'redberry', className: 'fill-hue-red' },
+    { action: 'pick blueberry', label: 'Pick Blueberries', icon: 'blueberry', className: 'fill-hue-blue' },
+    { action: 'rest at the oasis', label: 'Rest at the Oasis', icon: 'heal', className: 'fill-hue-green' },
+  ],
+  '424': [
+    { action: 'talk to jungle jim', label: 'Jungle Jim', icon: 'npc-surfer', className: 'fill-hue-gold', questIds: questIdsForNpc('jungle_jim') },
+    { action: 'grab colors', label: 'Grab Colours', icon: 'pill', className: 'fill-hue-green' },
+  ],
+  '425': [
+    { action: 'talk to water temple guardian', label: 'Water Temple Guardian', icon: 'npc-guardian', className: 'fill-hue-gold', questIds: questIdsForNpc('water_temple_guardian') },
+    { action: 'bathe in glory', label: 'Bathe in Glory', icon: 'heal', className: 'fill-hue-sky' },
+    { action: 'grab master pack', label: 'Grab Master Pack', icon: 'inv', className: 'fill-hue-blue' },
+    { action: 'evolve', label: 'Evolve', icon: 'pillar3', className: 'fill-mood-arcane' },
+  ],
+
+  // ==================== UNDER THE OCEAN ====================
+  '480': [
+    { action: 'open silver chest', label: 'Open Silver Chest', icon: 'chest2', className: 'fill-hue-sky' },
+  ],
+  '483': [
+    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+  ],
+  '484': [
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
+  ],
+  '485': [
+    { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'fill-mood-treasure' },
+  ],
+  '494': [
+    { action: 'pick flower', label: 'Pick Flower', icon: 'flower', className: 'fill-mood-treasure' },
+  ],
+  '497': [
+    { action: 'rest at the green pillar', label: 'Rest at the Green Pillar', icon: 'heal', className: 'fill-hue-green' },
+  ],
+
   // ==================== THE NEVERENDING MINE ====================
   // Mine Level 0 carries the sign; every level below it carries the pick. The
   // `mine here` buttons for 1-30 are merged in below rather than written out

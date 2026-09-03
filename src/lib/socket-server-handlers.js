@@ -13,7 +13,7 @@ const {
   getTeleportDestination,
   isTeleportDestinationOpen,
 } = require('./game-data/teleport-destinations.js')
-const { getMapSheetForRoom, getWorldRegionByHubRoom } = require('./game-data/world-map.js')
+const { getMapSheetForRoom, getTeleportHubByRoom } = require('./game-data/world-map.js')
 const { MAP_STATE_SELECT, projectMapState } = require('./game-engine/services/map-state.js')
 const { debugLog } = require('./debug-log.js')
 const {
@@ -395,9 +395,10 @@ function findDirectionKey(room, targetRoomId) {
 
 /**
  * Everything arriving in `toRoom` discovers, in one write: the map sheet the
- * room is drawn on, and — when the room is a region's fast-travel hub — that
- * region's teleport. Each check is against what the player already carries, so
- * the write happens once per sheet or hub. The player hears about it through
+ * room is drawn on, and — when the room is a fast-travel landing (a region's
+ * hub, or one of its sub-hubs like the ocean's Underwater) — that landing's
+ * teleport. Each check is against what the player already carries, so the
+ * write happens once per sheet or landing. The player hears about it through
  * action:feedback, whose `data.player` the client merges into its store; the
  * feed shows the line the original printed when you found a map.
  *
@@ -414,12 +415,13 @@ async function applyArrivalDiscoveries(prisma, socket, player, toRoom) {
     messages.push(`You found the ${sheet.title} map.`)
   }
 
-  const hubRegion = getWorldRegionByHubRoom(toRoom)
-  if (hubRegion && !hubRegion.alwaysOpen) {
+  const hub = getTeleportHubByRoom(toRoom)
+  if (hub && !hub.alwaysOpen) {
     const discovered = Array.isArray(player.discoveredTeleports) ? player.discoveredTeleports : []
-    if (!discovered.includes(hubRegion.id)) {
-      unlocks.discoveredTeleports = [...discovered, hubRegion.id]
-      messages.push(`Fast travel to ${hubRegion.name} is now open.`)
+    if (!discovered.includes(hub.discoveryId)) {
+      unlocks.discoveredTeleports = [...discovered, hub.discoveryId]
+      const label = hub.isSubHub ? `${hub.regionName}, ${hub.name}` : hub.regionName
+      messages.push(`Fast travel to ${label} is now open.`)
     }
   }
 

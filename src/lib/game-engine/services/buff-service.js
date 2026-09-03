@@ -33,6 +33,9 @@ const STAT_BUFF_FIELDS = {
   buffMagClicks: { stats: ['mag'], amount: 20 },
   buffDefClicks: { stats: ['def'], amount: 20 },
   buffCoffeeClicks: { stats: ['str', 'dex', 'mag', 'def'], amount: 10 },
+  // Bathing in the Master Water Temple's glory: +30 to everything for 100
+  // clicks, the strongest standing buff in the original.
+  buffGloryClicks: { stats: ['str', 'dex', 'mag', 'def'], amount: 30 },
 }
 
 /** Every countdown field, ability and stat alike. Order is not significant. */
@@ -131,6 +134,7 @@ const BUFF_LABELS = {
   buffMagClicks: 'Magic',
   buffDefClicks: 'Defense',
   buffCoffeeClicks: 'Coffee',
+  buffGloryClicks: 'Glory',
 }
 
 module.exports = {

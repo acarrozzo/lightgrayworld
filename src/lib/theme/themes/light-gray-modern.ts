@@ -194,6 +194,8 @@ export const lightGrayModern = makeTheme({
       rockyFlats: { base: '#78716c' }, // stone-500
       rockyFlatsUnderground: { base: '#57534e' }, // stone-600
       neverendingMine: { base: '#d97706' }, // amber-600
+      ocean: { base: '#0ea5e9' }, // sky-500
+      underwater: { base: '#1d4ed8' }, // blue-700
       solarOffice: { base: '#facc15' }, // yellow-400
       lobby: { base: '#7dd3fc' }, // sky-300
     },

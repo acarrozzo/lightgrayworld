@@ -133,6 +133,16 @@ const CRAFTING_RECIPES = [
     output: { slug: 'cooked-meat', qty: 1, name: 'Cooked Meat', effect: 'Restores 50 HP', max: 999 },
   },
   {
+    id: 'wooden-boat',
+    label: 'Wooden Boat',
+    outputIcon: 'boat',
+    station: 'crafting-table',
+    blurb: 'Twenty wood and a hammer. Ride it as your mount and the Blue Ocean is open, west of the beach.',
+    tool: { slug: 'hammer', name: 'Hammer' },
+    inputs: [{ slug: 'wood', qty: 20, name: 'Wood', icon: 'wood' }],
+    output: { slug: 'wooden-boat', qty: 1, name: 'Wooden Boat', effect: 'Mount: crosses the Blue Ocean', max: 1 },
+  },
+  {
     id: 'wooden-bow',
     label: 'Wooden Bow',
     outputIcon: 'wooden-bow',

@@ -6,27 +6,31 @@
  * regions in `world-map.js`, so the grid can never offer a destination the
  * teleport handler would reject, or hide one it allows.
  *
- * Every region with a hub is a destination. World regions must be discovered:
- * a player opens one by standing in its hub room once (`discoveredTeleports`
- * on the User row, written by the socket handlers on arrival). The VIP rooms —
- * the Lobby, Room Zero and the Solar Office — are always open. As in the
- * original, each fast travel costs MP.
+ * Every region with a hub is a destination, and so is each of a region's
+ * sub-hubs (the Blue Ocean's Underwater and Master Temple landings). World
+ * destinations must be discovered: a player opens one by standing in its room
+ * once (`discoveredTeleports` on the User row, written by the socket handlers
+ * on arrival, keyed by the landing's `discoveryId`). The VIP rooms — the Lobby,
+ * Room Zero and the Solar Office — are always open. As in the original, each
+ * fast travel costs MP.
  *
  * Destinations decided at runtime rather than listed here — a guild lair, a
  * defeat respawn, a flee retreat — are authorized per-use through
  * `game-engine/teleport-grants`, not by adding them to this list.
  */
-const { ALL_REGIONS } = require('./world-map')
+const { TELEPORT_HUBS } = require('./world-map')
 
 /** The original charged 1 MP per fast travel. */
 const TELEPORT_MP_COST = 1
 
-const TELEPORT_LOCATIONS = ALL_REGIONS.filter((region) => region.hub).map((region) => ({
-  roomId: region.hub.roomId,
-  regionId: region.id,
-  name: region.name,
-  description: region.hub.name,
-  alwaysOpen: region.alwaysOpen === true,
+const TELEPORT_LOCATIONS = TELEPORT_HUBS.map((hub) => ({
+  roomId: hub.roomId,
+  regionId: hub.regionId,
+  /** What `discoveredTeleports` must hold for this landing to be open. */
+  discoveryId: hub.discoveryId,
+  name: hub.isSubHub ? `${hub.regionName}, ${hub.name}` : hub.regionName,
+  description: hub.name,
+  alwaysOpen: hub.alwaysOpen,
 }))
 
 const BY_ROOM = new Map(TELEPORT_LOCATIONS.map((location) => [location.roomId, location]))
@@ -41,13 +45,14 @@ function getTeleportDestination(roomId) {
 }
 
 /**
- * Whether a player may fast travel to `destination`, given the region ids they
- * have discovered. Costs and combat/party rules are checked by the caller.
+ * Whether a player may fast travel to `destination`, given the discovery ids
+ * they have collected. Costs and combat/party rules are checked by the caller.
  */
 function isTeleportDestinationOpen(destination, discoveredTeleports) {
   if (!destination) return false
   if (destination.alwaysOpen) return true
-  return Array.isArray(discoveredTeleports) && discoveredTeleports.includes(destination.regionId)
+  const key = destination.discoveryId ?? destination.regionId
+  return Array.isArray(discoveredTeleports) && discoveredTeleports.includes(key)
 }
 
 module.exports = {
