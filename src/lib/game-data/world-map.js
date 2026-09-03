@@ -41,7 +41,7 @@ const MAP_SHEETS = [
   { id: 'ocean', title: 'Blue Ocean', src: '/img/lightgray_map_blueocean_main.jpg', flag: 'oceanMap', region: 'ocean', level: 'Surface' },
   { id: 'ocean-underwater', title: 'Under the Ocean', src: '/img/lightgray_map_blueocean_underwater.jpg', flag: 'oceanUnderwaterMap', region: 'ocean', level: 'Underwater' },
   { id: 'room-zero', title: 'Room Zero', src: '/img/lightgray_map_roomzero.jpg', flag: 'roomZeroMap', region: 'room-zero', level: 'Surface' },
-  { id: 'lobby', title: 'The Lobby', src: '/img/lightgray_map_the_lobby.jpg', flag: 'lobbyMap', region: 'lobby', level: 'Surface' },
+  { id: 'lobby', title: 'Plane of Rebirth', src: '/img/lightgray_map_the_lobby.jpg', flag: 'lobbyMap', region: 'lobby', level: 'Surface' },
   { id: 'solar-office', title: 'Solar Office', src: '/img/lightgray_map_solar_office.jpg', flag: 'solarOfficeMap', region: 'solar-office', level: 'Surface' },
 ]
 
@@ -100,7 +100,7 @@ const WORLD_REGIONS = [
  * own row under the grid.
  */
 const VIP_REGIONS = [
-  { id: 'lobby', name: 'The Lobby', color: 'lobby', hub: { roomId: '999', name: 'The main lobby' }, alwaysOpen: true },
+  { id: 'lobby', name: 'Plane of Rebirth', color: 'lobby', hub: { roomId: '999', name: 'Where the fallen wake' }, alwaysOpen: true },
   { id: 'room-zero', name: 'Room Zero', color: 'room-zero', hub: { roomId: '000', name: 'The starting room' }, alwaysOpen: true },
   { id: 'solar-office', name: 'Solar Office', color: 'solar-office', hub: { roomId: '088', name: 'Command office' }, alwaysOpen: true },
 ]

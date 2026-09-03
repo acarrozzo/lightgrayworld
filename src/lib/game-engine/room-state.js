@@ -1,5 +1,16 @@
 const { executeRoomAction } = require('./room-action-handlers')
 const { executeItemAction } = require('./item-action-handlers')
+const { RESPAWN_ROOM_ID } = require('../game-data/constants')
+
+/**
+ * The few things a dead player (HP 0) may still do: rise — the one authorized
+ * move, to the Plane of Rebirth — look around, and talk.
+ */
+function isAllowedWhileDead(action) {
+  const type = typeof action === 'object' ? action.type : action
+  if (type === 'chat' || type === 'look') return true
+  return type === 'move' && action.authorizedMove === true && action.data?.toRoom === RESPAWN_ROOM_ID
+}
 const { pickupRoomItem, dropRoomItem, getRoomItems } = require('./services/room-item-service')
 const { getPlayerInventory, grantItemOnce, getItemBySlug } = require('./services/inventory-service')
 const { equipItem, unequipItem } = require('./services/equipment-service')
@@ -573,6 +584,14 @@ class RoomState {
     // First, check if this is a room-specific action
     const actionName = action.type || action
     const actionData = typeof action === 'object' ? (action.data ?? {}) : {}
+
+    // HP 0 is dead. The player lies where they fell, the death card open, and
+    // nothing they try goes through — not a step, a search, a potion or a
+    // fight — except rising, looking around, and talking.
+    const live = this.players.get(playerId)
+    if (live && (live.hp ?? 1) <= 0 && !isAllowedWhileDead(action)) {
+      return this.createErrorResult(actionName, "You're dead. Rise in the Plane of Rebirth first.")
+    }
     const roomSpecificResult = await executeRoomAction(
       this.roomId,
       actionName,

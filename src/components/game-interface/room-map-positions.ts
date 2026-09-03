@@ -15,7 +15,7 @@ export const MAP_CELL_SIZE = 100
 const DEFAULT_POSITION = { x: 350, y: 350 }
 
 /**
- * Single-room maps (Solar Office, The Lobby) simply centre their artwork.
+ * Single-room maps (Solar Office, Plane of Rebirth) simply centre their artwork.
  *
  * The Neverending Mine belongs here too: its artwork is one tile in the middle
  * of an otherwise empty sheet, because a shaft thirty levels deep has no plan

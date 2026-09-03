@@ -194,7 +194,10 @@ export interface BattleVictoryPayload {
 export interface BattleDefeatPayload {
   enemyName: string
   respawnRoomId: string
+  /** 0: the player is dead until they rise. */
   playerHp?: number
+  /** Every buff countdown after death zeroed them. */
+  buffs?: Record<string, number> | null
   message: string
   summary?: BattleSummary
 }

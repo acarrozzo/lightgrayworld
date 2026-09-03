@@ -137,6 +137,27 @@ const BUFF_LABELS = {
   buffGloryClicks: 'Glory',
 }
 
+/**
+ * Zero every running buff at once — what death does, as it did in the
+ * original ("reset most buffs"). Returns the all-zero counters in the same
+ * shape tickBuffs reports, so the caller can hand them straight to the client.
+ *
+ * @param {import('@prisma/client').PrismaClient} prisma
+ * @param {string} playerId
+ * @returns {Promise<Object>}
+ */
+async function clearBuffs(prisma, playerId) {
+  const setClause = BUFF_FIELDS.map((f) => `"${f}" = 0`).join(', ')
+  const returnClause = BUFF_FIELDS.map((f) => `"${f}"`).join(', ')
+  // Field names come from the module-level BUFF_FIELDS allow-list, never input.
+  const rows = await prisma.$queryRawUnsafe(
+    `UPDATE "User" SET ${setClause} WHERE id = $1 RETURNING ${returnClause}`,
+    playerId
+  )
+  const row = rows[0] || {}
+  return Object.fromEntries(BUFF_FIELDS.map((f) => [f, Number(row[f] ?? 0)]))
+}
+
 module.exports = {
   STAT_BUFF_FIELDS,
   BUFF_FIELDS,
@@ -145,4 +166,5 @@ module.exports = {
   getStatBuffBonuses,
   tickBuffs,
   applyBuff,
+  clearBuffs,
 }

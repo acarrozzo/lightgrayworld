@@ -38,7 +38,7 @@ export const REGIONS: RegionMeta[] = [
   { id: 'ocean', name: 'Blue Ocean' },
   { id: 'underwater', name: 'Under the Ocean' },
   { id: 'solarOffice', name: 'Solar Office' },
-  { id: 'lobby', name: 'The Lobby' },
+  { id: 'lobby', name: 'Plane of Rebirth' },
 ]
 
 export const REGION_IDS: RegionId[] = REGIONS.map((r) => r.id)

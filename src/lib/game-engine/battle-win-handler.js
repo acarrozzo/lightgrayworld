@@ -226,10 +226,16 @@ async function handleBattleWin(playerId, battleState) {
 }
 
 async function handleBattleDefeat(playerId, battleState) {
+  const { clearBuffs } = require('./services/buff-service')
+
+  // HP 0 is the dead state: the player stays that way, unable to act, until
+  // they choose to rise. The room is written now so a refresh mid-death lands
+  // them in the Plane of Rebirth (where the login handler wakes them) rather
+  // than back in the room that killed them.
   await prisma.user.update({
     where: { id: playerId },
     data: {
-      hp: 1,
+      hp: 0,
       inFight: false,
       deaths: { increment: 1 },
       currentRoom: RESPAWN_ROOM_ID,
@@ -253,14 +259,20 @@ async function handleBattleDefeat(playerId, battleState) {
     },
   })
 
-  // The client performs the respawn move itself in response to battle:defeat, so
-  // authorize that one destination explicitly. It keeps respawn working no
-  // matter which room RESPAWN_ROOM_ID names, rather than relying on it also
-  // happening to be part of the fixed teleport network.
+  // Death strips every running effect, as the original did: wings, gills, the
+  // capsule buffs, coffee, glory. The zeros ride back on the defeat event so
+  // the client's buff strip clears along with the HP bar.
+  const buffs = await clearBuffs(prisma, playerId)
+
+  // The client performs the respawn move itself when the player presses Rise.
+  // A dead player is authorized for that one destination for as long as they
+  // stay dead (see the move handlers); this grant is the belt to that suspender.
   grantTeleport(playerId, RESPAWN_ROOM_ID)
 
   // Death respawns the player to another room; they can't stay pinned to a party.
   partyStore.onDeath(playerId)
+
+  return { buffs }
 }
 
 module.exports = { calcBattleWinRewards, resolveDrops, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat }

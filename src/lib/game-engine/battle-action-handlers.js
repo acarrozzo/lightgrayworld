@@ -74,21 +74,25 @@ async function resolveBattleDefeat(playerId, roomState, battleState, enemyName, 
   // carry over, and so nothing blocks the move out of this room.
   roomState.clearPlayerEnemyState(playerId)
 
+  let buffs = null
   try {
-    await handleBattleDefeat(playerId, battleState)
+    ;({ buffs } = await handleBattleDefeat(playerId, battleState))
   } catch (err) {
     console.error(`handleBattleDefeat failed for player ${playerId}:`, err)
   }
 
-  // handleBattleDefeat resets DB hp to 1 on respawn — keep the map aligned.
-  roomState.updatePlayer(playerId, (state) => ({ ...state, hp: 1 }))
+  // Dead is HP 0, in the database and in the live room alike. The player lies
+  // where they fell with the death card open until they choose to rise; only
+  // arriving in the Plane of Rebirth brings them back to 1 HP.
+  roomState.updatePlayer(playerId, (state) => ({ ...state, hp: 0 }))
 
   return {
     event: 'battle:defeat',
     payload: {
       enemyName,
       respawnRoomId: RESPAWN_ROOM_ID,
-      playerHp: 1,
+      playerHp: 0,
+      buffs,
       message: `The ${enemyName} overwhelms you. You black out...`,
       summary: {
         outcome: 'LOSS',

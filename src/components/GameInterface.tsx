@@ -44,6 +44,7 @@ import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/Player
 import PartyStrip from './game-interface/PartyStrip'
 import CraftingSheet, { type RecipeTemplates } from './CraftingSheet'
 import { isCraftingRoom, formatRecipeList } from '@/lib/game-data/crafting-recipes'
+const { RESPAWN_ROOM_ID } = require('@/lib/game-data/constants') as { RESPAWN_ROOM_ID: string }
 import QuestCompleteRewards, { type QuestCompleteData } from './QuestCompleteRewards'
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
@@ -120,6 +121,9 @@ export default function GameInterface() {
   const [craftingRecipeId, setCraftingRecipeId] = useState<string | null>(null)
   const [recipeTemplates, setRecipeTemplates] = useState<RecipeTemplates | null>(null)
   const [recipeTemplatesFailed, setRecipeTemplatesFailed] = useState(false)
+  // Where the last defeat said to rise. Read when the player presses Rise on
+  // the death card; the server authorizes that move for as long as they are dead.
+  const respawnRoomRef = useRef<string | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const totalDmUnread = useDMStore((state) => state.getTotalUnreadCount())
   const [exploreSubView, setExploreSubView] = useState<ExploreSubView>('compass')
@@ -890,6 +894,25 @@ export default function GameInterface() {
   const handleAction = async (actionInput: string | { type: string; data?: any }) => {
     const actionType = typeof actionInput === 'string' ? actionInput : actionInput.type
     const actionData = typeof actionInput === 'string' ? undefined : actionInput.data
+
+    // Dead players can do exactly one thing: rise. Every other dispatch —
+    // compass, room buttons, typed commands, bag actions — stops here with the
+    // same line the server answers with, so nothing is even sent.
+    if ((useGameStore.getState().player?.hp ?? 1) <= 0) {
+      const lowered = actionType.toLowerCase()
+      const isRise =
+        lowered === 'teleport' && actionData?.toRoomId === (respawnRoomRef.current ?? RESPAWN_ROOM_ID)
+      if (!isRise && lowered !== 'look' && lowered !== 'l') {
+        appendWorldFeed({
+          type: 'action',
+          outcome: 'failure',
+          isSelf: true,
+          message: "You're dead. Rise again first.",
+          roomId: currentRoomRef.current?.roomId,
+        })
+        return
+      }
+    }
 
     // While in battle, any dispatched action returns the player to the explore
     // tab so the BattlePanel (which only renders on explore) is visible for the
@@ -2304,19 +2327,27 @@ export default function GameInterface() {
       const applyDefeat = () => {
         if (payload.summary) setBattleResult(payload.summary)
         clearBattle()
-        if (payload.playerHp !== undefined) {
-          setPlayer({ ...useGameStore.getState().player!, hp: payload.playerHp })
+        // Dead is HP 0, and death strips every running buff. The card stays up
+        // over the room that did it until the player presses Rise; only then
+        // does the respawn move run (see onDismissResult on the battle panel).
+        const current = useGameStore.getState().player
+        if (current) {
+          setPlayer({
+            ...current,
+            hp: payload.playerHp ?? 0,
+            ...(payload.buffs ? { buffs: payload.buffs } : {}),
+          })
         }
+        respawnRoomRef.current = payload.respawnRoomId ?? null
         appendWorldFeed({
           type: 'room',
           isSelf: true,
           eventType: 'battle-defeat',
           outcome: 'failure',
-          message: `Defeated! Respawning at The Lobby...`,
+          message: payload.message || 'You black out...',
           ts: Date.now(),
         })
         setRoomEnemies([])
-        handleActionRef.current({ type: 'teleport', data: { toRoomId: payload.respawnRoomId ?? '999' } })
       }
       // Same macrotask-deferral as victory: ensure setBattleStarted renders first.
       const lt = payload.summary?.lastTurn
@@ -3353,7 +3384,7 @@ export default function GameInterface() {
                 availableMaps={availableMaps}
                 onMapChange={handleMapChange}
                 isMoveInProgress={isMoveInProgress}
-                isDimmed={battle.isInBattle}
+                isDimmed={battle.isInBattle || player.hp <= 0}
                 showBattleBadge={battle.isInBattle}
                 actionResult={actionResult}
                 isLoadingRoom={isLoadingRoom}
@@ -3420,7 +3451,20 @@ export default function GameInterface() {
                     />
                   )}
                   {(battle.isInBattle || battleResult) && (
-                    <div className="px-4 pt-4">
+                    // Death takes the whole screen: the card sits on a scrim over
+                    // everything — room, compass, tabs — so the only thing left to
+                    // press is Rise again. A victory card stays inline.
+                    <div
+                      className={
+                        battleResult?.outcome === 'LOSS'
+                          ? 'fixed inset-0 z-[60] flex items-center justify-center p-4 bg-surface-canvas/85 backdrop-blur-sm'
+                          : 'px-4 pt-4'
+                      }
+                      role={battleResult?.outcome === 'LOSS' ? 'dialog' : undefined}
+                      aria-modal={battleResult?.outcome === 'LOSS' ? true : undefined}
+                      aria-label={battleResult?.outcome === 'LOSS' ? 'You died' : undefined}
+                    >
+                      <div className={battleResult?.outcome === 'LOSS' ? 'w-full max-w-xl max-h-full overflow-y-auto' : ''}>
                       <BattlePanel
                         battle={battle}
                         battleResult={battleResult}
@@ -3430,6 +3474,13 @@ export default function GameInterface() {
                         onCastSpell={(spellId) => socketHandlers.sendGameAction({ type: 'cast_spell', data: { spellId } })}
                         player={player}
                         onDismissResult={() => {
+                          // Death: pressing Rise is the respawn move itself. The
+                          // teleport dismisses the card on its way out, and the
+                          // server wakes the player to 1 HP on arrival.
+                          if (battleResult?.outcome === 'LOSS') {
+                            handleAction({ type: 'teleport', data: { toRoomId: respawnRoomRef.current ?? RESPAWN_ROOM_ID } })
+                            return
+                          }
                           clearBattleResult()
                           const nextHostile = roomEnemies.find((e) => e.isAggressive)
                           if (nextHostile) {
@@ -3446,6 +3497,7 @@ export default function GameInterface() {
                         weaponCategory={(equippedWeapon?.template.weaponCategory as 'MELEE' | 'RANGED' | null | undefined) ?? null}
                         inventory={inventory}
                       />
+                      </div>
                     </div>
                   )}
                   <PartyStrip

@@ -1,5 +1,6 @@
 // Shared socket handling logic for server.js and socket-server.js
 const { SOCKET_EVENTS, getSocketIdsForUser } = require('./socket-utils.js')
+const { RESPAWN_ROOM_ID } = require('./game-data/constants.js')
 const partyStore = require('./services/party-store.js')
 const { checkRoomGate, getGatedDirections } = require('./game-engine/room-gates.js')
 const { getPlayerInventory } = require('./game-engine/services/inventory-service.js')
@@ -60,6 +61,49 @@ const {
   departPresence,
   buildPresenceSync,
 } = require('./services/presence-store.js')
+
+/**
+ * Whether the engine's live record of the player in this room says dead (HP 0).
+ * In-memory, so it can sit on every move without a query; the engine's own
+ * executeAction guard is the authority behind it.
+ */
+function isDeadInRoom(gameEngine, roomId, playerId) {
+  const live = gameEngine?.rooms?.get(roomId)?.players?.get(playerId)
+  return live != null && typeof live.hp === 'number' && live.hp <= 0
+}
+
+/** Whether the player is dead in the database — HP 0, lying where they fell, waiting to rise. */
+async function isPlayerDead(prisma, playerId) {
+  const row = await prisma.user.findUnique({ where: { id: playerId }, select: { hp: true } })
+  return (row?.hp ?? 1) <= 0
+}
+
+/**
+ * Waking in the Plane of Rebirth. A player dies at 0 HP and stays that way —
+ * the death card open over the room that did it — until they press Rise, the
+ * one move a dead player may make. Arriving here is what brings them back:
+ * 1 HP, the fountain a step away. Anyone arriving alive passes straight through.
+ */
+async function wakeIfDead({ prisma, io, socket, gameEngine, player, toRoom }) {
+  if (toRoom !== RESPAWN_ROOM_ID) return
+  const rows = await prisma.$queryRaw`UPDATE "User" SET hp = 1 WHERE id = ${player.id} AND hp <= 0 RETURNING clicks, hp, mp`
+  const row = rows[0]
+  if (!row) return
+  const hp = Number(row.hp)
+  const mp = Number(row.mp)
+  player.hp = hp
+  gameEngine.rooms?.get(toRoom)?.updatePlayer?.(player.id, (state) => ({ ...state, hp }))
+  // The same event a regen tick uses, so the player's own HP bar and buff strip
+  // update through the one path they already trust.
+  socket.emit(SOCKET_EVENTS.PLAYER_CLICKS_UPDATE, { clicks: Number(row.clicks), hp, mp })
+  io.to(`room-${toRoom}`).emit(SOCKET_EVENTS.PLAYER_VITALS, { id: player.id, roomId: toRoom, hp, mp })
+  updatePresence(io, player.id, { hp, mp })
+  emitActionFeedback(socket, {
+    action: 'respawn',
+    message: 'You wake in the Plane of Rebirth with 1 HP. Rest at the fountain before you go anywhere.',
+    outcome: 'info',
+  })
+}
 
 async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
   if (isProbabilistic(toRoom)) {
@@ -960,6 +1004,17 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           return
         }
 
+        // A player who died and left before rising wakes here, in the Plane of
+        // Rebirth at 1 HP — the same place and state the Rise button gives.
+        if ((dbPlayer.hp ?? 0) <= 0) {
+          await prisma.user.update({
+            where: { id: dbPlayer.id },
+            data: { hp: 1, currentRoom: RESPAWN_ROOM_ID },
+          })
+          dbPlayer.hp = 1
+          dbPlayer.currentRoom = RESPAWN_ROOM_ID
+        }
+
         const playerData = {
           id: dbPlayer.id,
           username: dbPlayer.username,
@@ -1218,7 +1273,17 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // once it lands; a destination the server itself granted (guild lair,
         // respawn, flee retreat) is its own doing and stays free.
         let teleportCharge = null
-        if (isTeleportMove) {
+        // Rising from death is a teleport to the respawn room too, but a free
+        // one: no MP, no grant to expire, for as long as the player stays dead.
+        const isRising = isTeleportMove && toRoom === RESPAWN_ROOM_ID && (await isPlayerDead(prisma, player.id))
+        // The dead go nowhere else. The engine refuses this too; catching it here,
+        // from the live room record, keeps a dead player's step from touching the
+        // destination at all (item respawns, gate checks) — and costs no query.
+        if (!isRising && isDeadInRoom(gameEngine, fromRoom, player.id)) {
+          emitActionFeedback(socket, { action: 'move', message: "You're dead. Rise again first.", outcome: 'failure' })
+          return
+        }
+        if (isTeleportMove && !isRising) {
           const network = await authorizeNetworkTeleport(prisma, player, toRoom)
           if (network.ok) {
             teleportCharge = network.charge
@@ -1327,6 +1392,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // run first, in sequence, with two room-chat rows nothing ever read.
           await Promise.all([
             maybeStartAutoBattle({ socket, player, toRoom, gameEngine }),
+            wakeIfDead({ prisma, io, socket, gameEngine, player, toRoom }),
             persisted,
             chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom, charge: teleportCharge }),
             applyArrivalDiscoveries(prisma, socket, player, toRoom),
@@ -1570,7 +1636,14 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // whatever the client asked for, which reached sealed mines, boss
           // chambers and loot rooms past every gate in the game.
           let teleportCharge = null
-          const network = await authorizeNetworkTeleport(prisma, player, toRoomId)
+          // Rising from death is free and never expires, however long the death
+          // card sat open — see the player-move handler.
+          const isRising = toRoomId === RESPAWN_ROOM_ID && (await isPlayerDead(prisma, player.id))
+          if (!isRising && isDeadInRoom(gameEngine, player.currentRoom, player.id)) {
+            emitActionFeedback(socket, { action: 'teleport', message: "You're dead. Rise again first.", outcome: 'failure' })
+            return
+          }
+          const network = isRising ? { ok: true, charge: null } : await authorizeNetworkTeleport(prisma, player, toRoomId)
           if (network.ok) {
             teleportCharge = network.charge
           } else if (network.reason) {
@@ -1643,6 +1716,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             // walked entry used to do.
             await Promise.all([
               maybeStartAutoBattle({ socket, player, toRoom: toRoomId, gameEngine }),
+              wakeIfDead({ prisma, io, socket, gameEngine, player, toRoom: toRoomId }),
               persisted,
               chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom: toRoomId, charge: teleportCharge }),
               applyArrivalDiscoveries(prisma, socket, player, toRoomId),

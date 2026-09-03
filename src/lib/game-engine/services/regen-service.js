@@ -43,11 +43,13 @@ async function getEquippedRegen(playerId) {
 async function applyRegenTick(playerId, regen) {
   if (!regen || (regen.hp <= 0 && regen.mp <= 0)) return null
 
+  // The dead don't regenerate: HP 0 is the dead state, and a regen ring must
+  // not quietly stand a player back up in the room that killed them.
   const rows = await prisma.$queryRawUnsafe(
     `UPDATE "User"
      SET hp = GREATEST(hp, LEAST("hpMax", hp + $2)),
          mp = GREATEST(mp, LEAST("mpMax", mp + $3))
-     WHERE id = $1
+     WHERE id = $1 AND hp > 0
      RETURNING hp, mp`,
     playerId,
     Math.max(0, regen.hp || 0),

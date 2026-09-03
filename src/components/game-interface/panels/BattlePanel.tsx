@@ -361,8 +361,9 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
         <p className="mt-2 text-sm text-fg-secondary text-center">Well it happens to the best of us.</p>
         <p className="mt-1 text-sm text-fg-secondary text-center">When your health gets low make sure to heal yourself by drinking a red potion, eating some cooked meat, casting a heal spell, etc.</p>
         <p className="mt-2 text-sm text-center font-semibold" style={{ color: 'var(--combat-crit)', textShadow: '0 0 10px color-mix(in srgb, var(--resource-gold) 38%, transparent)' }}>
-          Your health has been replenished and you have been teleported to the Plane of Rebirth (The Lobby).
+          You will be teleported back to the Plane of Rebirth.
         </p>
+        <p className="mt-2 text-sm text-fg-secondary text-center">Godspeed.</p>
       </div>
 
       {/* Your strike + stats + enemy hit — three cards, each holding its own icon */}
@@ -433,14 +434,15 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
         <p className="px-4 py-1.5 text-[10px] text-resource-mp text-center border-b border-combat-defeat/40">Group bonus active</p>
       )}
 
-      {/* Close */}
+      {/* Rise again — the only way out. The move to the Plane of Rebirth runs
+          when this is pressed; until then the player is dead where they fell. */}
       <div className="px-4 py-2.5">
         <button
           onClick={onDismiss}
-          className="w-full py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all duration-150 text-combat-defeat"
+          className="w-full py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all duration-150 text-fg-bright"
           style={{ background: 'linear-gradient(90deg, var(--combat-defeat), color-mix(in srgb, var(--combat-defeat) 70%, var(--surface-canvas)), var(--combat-defeat))' }}
         >
-          That hurt
+          Rise again
         </button>
       </div>
     </div>
