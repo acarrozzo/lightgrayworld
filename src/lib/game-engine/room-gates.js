@@ -820,19 +820,23 @@ for (const door of MASTER_TEMPLE_DOORS) {
 // (483). Session-scoped like the original's `$_SESSION['underwaterswitch']`,
 // and the original never spent it — once the door was open it stayed open
 // for the rest of the session, so there is no `onPass` here.
+// The original checked the switch first and gills second; a gate has one
+// message, so the door is the one reported and the swim rule still holds
+// behind it — an open door is still deep water.
 ROOM_GATES['493'].east = {
   check: async (playerId) => {
     const { isLeverPulled, UNDERWATER_SWITCH } = require('./lever-state')
-    return isLeverPulled(playerId, UNDERWATER_SWITCH)
+    if (!isLeverPulled(playerId, UNDERWATER_SWITCH)) return false
+    return playerCanBreatheWater(playerId)
   },
   lever: true,
-  message: 'A massive Coral Door blocks the way to the east. There must be a way to open it somewhere in the reef.',
+  message: 'A massive Coral Door blocks the way to the east — and it is deep water beyond it. Open the door from the reef, and breathe water to swim through.',
   modalContent: {
     title: 'A massive Coral Door blocks the way east',
     type: 'icon',
     icon: 'gate',
     iconColor: 'purple-400',
-    message: 'The coral door does not move. Somewhere in the reef to the north there is a piece of coral shaped like a lever, and this is what it opens.',
+    message: 'The coral door does not move. Somewhere in the reef to the north there is a piece of coral shaped like a lever, and this is what it opens. Beyond it is deep water: you will need gills to swim through even once it stands open.',
   },
 }
 

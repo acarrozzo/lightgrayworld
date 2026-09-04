@@ -7460,10 +7460,13 @@ async function main() {
       name: 'Flower',
       description: 'A beautiful wildflower from the flower patch. Bitter to eat — costs 1 HP.',
       type: ItemType.MISC,
-      // Two, not one: the Plaza gardener's "Twice as Nice" wants a matched pair,
-      // and the Babylon Gardens will only let you pick a second one. A cap of 1
-      // made that quest impossible to hand in.
-      max: 2,
+      // Four: the Plaza gardener's "Twice as Nice" wants a matched pair (the
+      // Babylon Gardens will only let you pick a second one), Jungle Jim's
+      // "Third Times a Charm" wants three (the Underwater Flower Patch gives the
+      // third), and the Mountains will one day give a fourth. A cap of 1 made
+      // the first quest impossible to hand in; a cap of 2 would have done the
+      // same to the second.
+      max: 4,
       value: 10,
       metadata: {
         icon: 'flower',
@@ -7533,7 +7536,11 @@ async function main() {
       name: 'Gold Key',
       description: 'A heavy golden key. It surely opens something important.',
       type: ItemType.MISC,
-      max: 1,
+      // Several quests hand one over (the Young Soldier, the Mayor, the Dwarf Captain,
+      // the Friendly Pirate) and each chest spends one. The original never capped
+      // them; a cap of 1 made a quest turn-in fail for anyone still holding an
+      // unspent key, so they stack.
+      max: 10,
       value: 100,
     },
     {

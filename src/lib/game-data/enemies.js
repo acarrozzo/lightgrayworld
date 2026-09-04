@@ -3257,7 +3257,9 @@ const ENEMIES = [
     zone: 'Blue Ocean',
     name: 'Coral Wizard',
     description: 'The Blue Water Temple\'s boss. Hits strong with magic and is immune to it — do not expect a spell to do anything.',
-    icon: 'enemy-CoralMage',
+    // The art file is 'Coral Mage'; the boss has always been the Coral Wizard,
+    // so the room card's name-based icon gets a copy under that name.
+    icon: 'enemy-CoralWizard',
     level: 35,
     hp: 500,
     att: 200,
@@ -3367,8 +3369,9 @@ const ENEMIES = [
       ],
     },
   },
-  // The original's fourth roll was 200-500 bonus gold, which the drop table
-  // cannot express; that quarter is left as no drop and the gold range covers it.
+  // The original's fourth roll was 200-500 bonus gold on top of its 1-100, which
+  // the drop table cannot express; the gold range is widened to 1-250 so the
+  // average kill pays about what it did, and that quarter rolls no item.
   {
     slug: 'giant-sea-turtle',
     zone: 'Under the Ocean',
@@ -3385,7 +3388,7 @@ const ENEMIES = [
     damageType: 'MELEE',
     xpReward: 110,
     goldMin: 1,
-    goldMax: 500,
+    goldMax: 250,
     drops: {
       main: [
         { itemSlug: 'sand', chance: 0.25, min: 5, max: 15 },
@@ -3394,8 +3397,9 @@ const ENEMIES = [
       ],
     },
   },
-  // Likewise its first roll was 200-300 bonus XP; the base reward is raised to
-  // cover the average rather than lose it.
+  // Likewise its first roll was 200-300 bonus XP on a base of 130; the reward
+  // is raised to 190 so the average kill pays what it did, and that quarter
+  // rolls no item.
   {
     slug: 'colossal-squid',
     zone: 'Under the Ocean',
