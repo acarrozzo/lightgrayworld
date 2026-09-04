@@ -1,6 +1,6 @@
 'use client'
 
-import { Map as MapIcon, Waypoints, X } from 'lucide-react'
+import { Map as MapIcon, Sparkles, X } from 'lucide-react'
 import Compass from '@/components/Compass'
 import BasicActionButtons from '@/components/BasicActionButtons'
 import WorldGrid, { foundMapIdsFor } from './WorldGrid'
@@ -179,7 +179,7 @@ export default function ExplorePanel({
             isSidebar ? 'h-7 px-2.5 text-xs' : 'h-8 w-8'
           }`}
         >
-          <Waypoints size={14} aria-hidden="true" />
+          <Sparkles size={14} aria-hidden="true" />
           {isSidebar && <span>Teleport</span>}
         </button>
       </div>

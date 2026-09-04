@@ -14,6 +14,14 @@ interface LevelUpAlertProps {
 }
 
 export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoints, tpAvailable, cpAvailable }: LevelUpAlertProps) {
+  // Every level grants at least one TP, so zero means it has been spent —
+  // from this card or from the Character panel. That is the moment the card
+  // has done its job: Train Now dims to a receipt and a big Close appears
+  // under the row, so the player is not hunting for the corner X.
+  const trained = tpAvailable <= 0
+  const coreSpent = cpAvailable <= 0
+  const spentButton = 'flex rounded-lg py-3 px-3 font-black tracking-widest uppercase items-center justify-center bg-surface-raised text-fg-disabled cursor-default'
+
   return (
     <div className="mx-4 mt-4 rounded-xl overflow-hidden shadow-2xl border border-status-warning/80"
       style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas)) 0%, color-mix(in srgb, var(--resource-gold) 18%, var(--surface-canvas)) 40%, color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas)) 100%)' }}
@@ -73,31 +81,57 @@ export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoi
         </div>
 
         <div className="mt-4 w-full flex gap-2">
-          <button
-            type="button"
-            onClick={onTrainNow}
-            className="flex-[2] rounded-lg py-3 px-4 font-black tracking-widest uppercase text-sm transition-all"
-            style={{
-              background: 'linear-gradient(135deg, var(--resource-gold), var(--resource-gold), var(--resource-gold))',
-              color: 'color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas))',
-              boxShadow: '0 0 20px color-mix(in srgb, var(--resource-gold) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--combat-crit) 50%, transparent)',
-            }}
-          >
-            Train Now ({tpAvailable})
-          </button>
-          <button
-            type="button"
-            onClick={onSpendCorePoints}
-            className="flex-1 rounded-lg py-3 px-3 font-black tracking-widest uppercase text-xs transition-all"
-            style={{
-              background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 45%, var(--surface-canvas)), var(--hue-blue), color-mix(in srgb, var(--accent) 45%, var(--surface-canvas)))',
-              color: 'var(--surface-canvas)',
-              boxShadow: '0 0 20px color-mix(in srgb, var(--hue-blue) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--hue-blue) 50%, transparent)',
-            }}
-          >
-            Spend Core Points ({cpAvailable})
-          </button>
+          {trained ? (
+            <span className={`flex-[2] text-sm ${spentButton}`}>
+              Trained ✓
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onTrainNow}
+              className="flex-[2] rounded-lg py-3 px-4 font-black tracking-widest uppercase text-sm transition-all"
+              style={{
+                background: 'linear-gradient(135deg, var(--resource-gold), var(--resource-gold), var(--resource-gold))',
+                color: 'color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas))',
+                boxShadow: '0 0 20px color-mix(in srgb, var(--resource-gold) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--combat-crit) 50%, transparent)',
+              }}
+            >
+              Train Now ({tpAvailable})
+            </button>
+          )}
+          {coreSpent ? (
+            <span className={`flex-1 text-xs ${spentButton}`}>
+              CP Spent ✓
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onSpendCorePoints}
+              className="flex-1 rounded-lg py-3 px-3 font-black tracking-widest uppercase text-xs transition-all"
+              style={{
+                background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 45%, var(--surface-canvas)), var(--hue-blue), color-mix(in srgb, var(--accent) 45%, var(--surface-canvas)))',
+                color: 'var(--surface-canvas)',
+                boxShadow: '0 0 20px color-mix(in srgb, var(--hue-blue) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--hue-blue) 50%, transparent)',
+              }}
+            >
+              Spend Core Points ({cpAvailable})
+            </button>
+          )}
         </div>
+
+        {trained && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close level up alert"
+            className="mt-2 w-full rounded-lg py-3.5 px-4 font-black tracking-[0.2em] uppercase text-sm bg-surface-raised hover:bg-surface-hover text-fg-bright border border-status-warning/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-status-warning"
+            style={{
+              boxShadow: '0 0 18px color-mix(in srgb, var(--resource-gold) 20%, transparent), inset 0 1px 0 color-mix(in srgb, var(--resource-gold) 20%, transparent)',
+            }}
+          >
+            Close
+          </button>
+        )}
       </div>
     </div>
   )

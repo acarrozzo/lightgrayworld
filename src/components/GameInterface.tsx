@@ -435,10 +435,11 @@ export default function GameInterface() {
   }, [actionResult?.action, actionResult?.timestamp])
 
   // Escape unwinds one layer per press — overlays, then any open panel or tab,
-  // then the Explore sub-view — so repeated presses always end on the compass.
-  // Rewards that need acknowledging (level-up, battle summary) are deliberately
-  // not dismissible this way, and the feed side panel is a layout toggle rather
-  // than a layer.
+  // then the Explore sub-view, then the level-up card — so repeated presses
+  // always end on the compass. The level-up card goes last so Escape never
+  // dismisses it from under an open modal or while it is off-screen on a phone
+  // tab. The battle summary is deliberately not dismissible this way, and the
+  // feed side panel is a layout toggle rather than a layer.
   useEffect(() => {
     const closeTopLayer = (): boolean => {
       if (isShopModalOpen) {
@@ -452,6 +453,10 @@ export default function GameInterface() {
       }
       if (isStatModalOpen) {
         setStatModalOpen(false)
+        return true
+      }
+      if (isSpellbookOpen) {
+        setSpellbookOpen(false)
         return true
       }
       if (playerProfileModal.isOpen) {
@@ -478,6 +483,10 @@ export default function GameInterface() {
         setExploreSubView('compass')
         return true
       }
+      if (levelUpData) {
+        setLevelUpData(null)
+        return true
+      }
       return false
     }
 
@@ -496,10 +505,12 @@ export default function GameInterface() {
     isShopModalOpen,
     isTrainingModalOpen,
     isStatModalOpen,
+    isSpellbookOpen,
     playerProfileModal.isOpen,
     actionModal.isOpen,
     isMapModalOpen,
     isCraftingOpen,
+    levelUpData,
   ])
 
   // Tab order for swipe navigation (matches the order in the tabs array)
