@@ -1,10 +1,9 @@
 'use client'
 
-import { Map as MapIcon, Sparkles, X } from 'lucide-react'
+import { Map as MapIcon, Sparkles } from 'lucide-react'
 import Compass from '@/components/Compass'
 import BasicActionButtons from '@/components/BasicActionButtons'
-import WorldGrid, { foundMapIdsFor } from './WorldGrid'
-import MapView from './MapView'
+import WorldLayer, { type WorldTab } from './WorldLayer'
 import type { MapConfigEntry } from './constants'
 import type { Player } from '@/lib/game-state'
 
@@ -12,27 +11,31 @@ const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
 
 /**
  * What the Explore panel is showing. `compass` is the panel itself — the
- * D-pad and the actions — and the other two are layers that open over it from
- * the Map and Teleport buttons in the panel's top-right corner (the mini-map
- * in the D-pad's centre opens the Map as well). Each layer closes from the X
- * in its own top-right corner; Escape, travelling, or entering battle also
- * return to the compass. On the mobile strip the Map opens the full-screen
- * overlay instead, since the strip has no height for a map.
+ * D-pad and the actions — and `world` is the Map / Teleport layer docked over
+ * it, opened from the two buttons in the panel's top-right corner or the
+ * mini-map in the D-pad's centre. The layer closes from the X in its own
+ * header; Escape, travelling, or entering battle also return to the compass.
+ * The mobile strip has no height for the layer, so there every one of those
+ * controls opens the full-screen overlay instead.
  */
-export type ExploreSubView = 'compass' | 'teleport' | 'map'
+export type ExploreSubView = 'compass' | 'world'
 
 interface ExplorePanelProps {
   room: any
   player: Player | null
   subView: ExploreSubView
-  onSubViewChange: (view: ExploreSubView) => void
+  worldTab: WorldTab
+  onWorldTabChange: (tab: WorldTab) => void
+  /** Sidebar: open the layer docked (or full screen, if that is how it was last used). */
+  onOpenWorldDocked: (tab: WorldTab) => void
+  /** Strip: open the full-screen overlay. */
+  onOpenWorldOverlay: (tab: WorldTab) => void
+  onCloseWorld: () => void
+  /** Docked layer's full-screen control. */
+  onExpandWorld: () => void
   onAction: (action: string | { type: string; data?: any }) => void
   onTeleport: (roomId: string) => void
   teleportBlockedReason?: string | null
-  /** Opens the map as a layer of this panel (sidebar only). */
-  onShowMap: () => void
-  /** Opens the full-screen map overlay. */
-  onOpenMapFullscreen: () => void
   currentMapId: string
   availableMaps: MapConfigEntry[]
   onMapChange: (mapId: string) => void
@@ -43,9 +46,9 @@ interface ExplorePanelProps {
   /** Following a party leader: the D-pad greys out, the server refuses moves anyway. */
   isPartyMember?: boolean
   /**
-   * 'sidebar' fills the desktop column and can host the map inline; 'strip'
-   * sits under the room on mobile, where there is no room for a map — there the
-   * Map button opens the full-screen overlay directly.
+   * 'sidebar' fills the desktop column and can host the layer inline; 'strip'
+   * sits under the room on mobile, where there is no room for it — there the
+   * Map and Teleport buttons open the full-screen overlay directly.
    */
   variant?: 'sidebar' | 'strip'
   /** Latest action result, for the flyout on the basic-action buttons. */
@@ -62,12 +65,15 @@ export default function ExplorePanel({
   room,
   player,
   subView,
-  onSubViewChange,
+  worldTab,
+  onWorldTabChange,
+  onOpenWorldDocked,
+  onOpenWorldOverlay,
+  onCloseWorld,
+  onExpandWorld,
   onAction,
   onTeleport,
   teleportBlockedReason = null,
-  onShowMap,
-  onOpenMapFullscreen,
   currentMapId,
   availableMaps,
   onMapChange,
@@ -81,66 +87,27 @@ export default function ExplorePanel({
   currentAction = '',
 }: ExplorePanelProps) {
   const isSidebar = variant === 'sidebar'
-  // Only the sidebar is tall enough to hold a map; the mobile strip sends every
-  // map affordance straight to the full-screen overlay.
-  const showMapHere = isSidebar ? onShowMap : onOpenMapFullscreen
-  const isTeleport = subView === 'teleport'
-  const isMap = isSidebar && subView === 'map'
-  const backToCompass = () => onSubViewChange('compass')
+  // Only the sidebar is tall enough to hold the layer; the mobile strip sends
+  // every map and teleport affordance straight to the full-screen overlay.
+  const openWorld = isSidebar ? onOpenWorldDocked : onOpenWorldOverlay
 
-  if (isMap) {
+  if (isSidebar && subView === 'world') {
     return (
       <div className="flex-1 min-h-0 flex flex-col">
-        <MapView
-          variant="sidebar"
+        <WorldLayer
+          variant="docked"
+          tab={worldTab}
+          onTabChange={onWorldTabChange}
+          player={player}
           currentRoomId={room?.roomId}
           currentMapId={currentMapId}
           foundMaps={availableMaps}
           onMapChange={onMapChange}
-          onClose={backToCompass}
-          onOpenFullscreen={onOpenMapFullscreen}
+          onTeleport={onTeleport}
+          teleportBlockedReason={teleportBlockedReason}
+          onClose={onCloseWorld}
+          onFullscreen={onExpandWorld}
         />
-      </div>
-    )
-  }
-
-  if (isTeleport) {
-    return (
-      <div className={`min-h-0 overflow-y-auto ${isSidebar ? 'flex-1' : 'max-h-[340px]'}`}>
-        <div className="flex flex-col gap-2 p-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-fg-bright">Fast travel</h2>
-            <span className="hidden sm:inline text-[10px] uppercase tracking-widest text-fg-muted">Esc to close</span>
-            <span className="ml-auto text-[11px] font-semibold text-resource-mp" title="Each fast travel costs MP">
-              MP cost: {TELEPORT_MP_COST}
-            </span>
-            <button
-              type="button"
-              onClick={backToCompass}
-              aria-label="Close fast travel"
-              title="Close (Esc)"
-              className="-mr-1 rounded p-1 text-fg-secondary transition-colors hover:bg-surface-raised/50 hover:text-fg-bright"
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          </div>
-
-          {teleportBlockedReason && (
-            <p className="rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-[11px] leading-relaxed text-status-error/90">
-              {teleportBlockedReason}
-            </p>
-          )}
-
-          <WorldGrid
-            mode="teleport"
-            currentRoomId={room?.roomId}
-            discoveredTeleports={player?.discoveredTeleports ?? []}
-            foundMapIds={foundMapIdsFor(player, room?.roomId)}
-            blockedReason={teleportBlockedReason}
-            onTeleport={onTeleport}
-            dense={!isSidebar}
-          />
-        </div>
       </div>
     )
   }
@@ -159,7 +126,7 @@ export default function ExplorePanel({
       <div className={`absolute top-2 right-2 z-10 flex gap-1.5 transition-opacity duration-300 ${dimmedClasses}`}>
         <button
           type="button"
-          onClick={showMapHere}
+          onClick={() => openWorld('map')}
           aria-label="Open the map"
           title="Map"
           className={`${CORNER_BUTTON_BASE} border-hue-sky/60 text-hue-sky hover:bg-hue-sky/15 hover:border-hue-sky ${
@@ -171,7 +138,7 @@ export default function ExplorePanel({
         </button>
         <button
           type="button"
-          onClick={() => onSubViewChange('teleport')}
+          onClick={() => openWorld('teleport')}
           disabled={isLoadingRoom}
           aria-label="Open fast travel"
           title={`Teleport — ${TELEPORT_MP_COST} MP`}
@@ -195,7 +162,7 @@ export default function ExplorePanel({
         <Compass
           room={room}
           onAction={onAction}
-          onNavigateToMap={showMapHere}
+          onNavigateToMap={() => openWorld('map')}
           isMoveInProgress={isMoveInProgress}
           isLocked={isPartyMember}
           className={

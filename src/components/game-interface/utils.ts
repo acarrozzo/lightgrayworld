@@ -70,8 +70,8 @@ export const getUnlockedMaps = (player: Player | null, currentRoomId: string | u
   return MAP_CONFIG.filter((map) => map.id === hereId || (player ? player[map.flag] === true : false))
 }
 
-// Resolve the image + marker for a map id. Shared by the sidebar map view and
-// the full-screen MapPanel so the two cannot drift.
+// Resolve the image + marker for a map id, for the world layer's Map tab in
+// both its docked and full-screen forms.
 export const resolveMapView = (
   currentMapId: string,
   availableMaps: MapConfigEntry[],

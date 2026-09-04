@@ -8,14 +8,16 @@ interface MapContentProps {
   mapTitle: string
   /** Player position as a 0..1 fraction of the map image, or null to hide it. */
   marker?: { x: number; y: number } | null
+  /** A horizontal swipe across the unzoomed sheet: step to the previous or next map. */
+  onSwipe?: (direction: 'prev' | 'next') => void
 }
 
 /**
  * One map sheet: the artwork, a zoom/pan surface, and the "you are here"
- * marker. Choosing *which* sheet is MapView's job (the World grid and the
- * region's level chips); this component only draws the one it is given.
+ * marker. Choosing *which* sheet is the world layer's job (the filmstrip and
+ * the World grid); this component only draws the one it is given.
  */
-export default function MapContent({ mapSrc, mapTitle, marker }: MapContentProps) {
+export default function MapContent({ mapSrc, mapTitle, marker, onSwipe }: MapContentProps) {
   const [isZoomed, setIsZoomed] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
@@ -27,6 +29,8 @@ export default function MapContent({ mapSrc, mapTitle, marker }: MapContentProps
   const [imgMetrics, setImgMetrics] = useState<{ w: number; h: number; natW: number; natH: number } | null>(null)
   const pointerDownPositionRef = useRef<{ x: number; y: number } | null>(null)
   const hasMovedRef = useRef(false)
+  // Where the pointer ended up relative to where it went down, for the swipe.
+  const lastDeltaRef = useRef({ x: 0, y: 0 })
 
   const resetView = () => {
     setIsZoomed(false)
@@ -105,6 +109,7 @@ export default function MapContent({ mapSrc, mapTitle, marker }: MapContentProps
       if (!hasMovedRef.current && Math.hypot(deltaX, deltaY) > 4) {
         hasMovedRef.current = true
       }
+      lastDeltaRef.current = { x: deltaX, y: deltaY }
     }
 
     if (!isZoomed || !isDragging || !dragStartRef.current) {
@@ -128,6 +133,8 @@ export default function MapContent({ mapSrc, mapTitle, marker }: MapContentProps
 
     const wasZoomed = isZoomed
     const moved = hasMovedRef.current
+    const delta = lastDeltaRef.current
+    lastDeltaRef.current = { x: 0, y: 0 }
 
     if (wasZoomed) {
       setIsDragging(false)
@@ -144,6 +151,12 @@ export default function MapContent({ mapSrc, mapTitle, marker }: MapContentProps
       } else {
         setIsZoomed(true)
       }
+      return
+    }
+
+    // A clear sideways drag on the unzoomed sheet steps to the neighbouring map.
+    if (!wasZoomed && onSwipe && Math.abs(delta.x) > 60 && Math.abs(delta.x) > 2 * Math.abs(delta.y)) {
+      onSwipe(delta.x < 0 ? 'next' : 'prev')
     }
   }
 
@@ -177,7 +190,8 @@ export default function MapContent({ mapSrc, mapTitle, marker }: MapContentProps
             }
           }}
           style={{
-            touchAction: isZoomed ? 'none' : 'auto',
+            // Unzoomed, vertical scrolling stays the browser's; sideways is the swipe.
+            touchAction: isZoomed ? 'none' : 'pan-y',
             cursor: isZoomed ? (isDragging ? 'grabbing' : 'grab') : 'default',
             // Zoom/pan lives on the wrapper so the marker travels with the art.
             transform: isZoomed ? `scale(1.4) translate(${dragOffset.x}px, ${dragOffset.y}px)` : undefined,

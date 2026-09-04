@@ -37,7 +37,25 @@ import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
 import InventoryPanel from './game-interface/panels/InventoryPanel'
 import QuestsPanel from './game-interface/panels/QuestsPanel'
-import MapPanel from './game-interface/panels/MapPanel'
+import WorldLayer, { type WorldTab } from './game-interface/WorldLayer'
+
+// Whether the world layer last opened full screen on this device. A browser
+// convenience only, never authoritative for anything.
+const WORLD_FULLSCREEN_KEY = 'lg-world-layer-fullscreen'
+const readPrefersWorldFullscreen = (): boolean => {
+  try {
+    return window.localStorage.getItem(WORLD_FULLSCREEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+const writePrefersWorldFullscreen = (value: boolean) => {
+  try {
+    window.localStorage.setItem(WORLD_FULLSCREEN_KEY, value ? '1' : '0')
+  } catch {
+    // Storage can be unavailable (private mode, blocked); the layer still works.
+  }
+}
 import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
 import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/PlayersPanel'
@@ -127,7 +145,11 @@ export default function GameInterface() {
   const [unreadCount, setUnreadCount] = useState(0)
   const totalDmUnread = useDMStore((state) => state.getTotalUnreadCount())
   const [exploreSubView, setExploreSubView] = useState<ExploreSubView>('compass')
-  const [isMapModalOpen, setIsMapModalOpen] = useState(false)
+  // The world layer — Map and Fast travel under one header — is either docked
+  // in the Explore sidebar (exploreSubView === 'world') or open as the
+  // full-screen overlay, never both.
+  const [isWorldOverlayOpen, setIsWorldOverlayOpen] = useState(false)
+  const [worldTab, setWorldTab] = useState<WorldTab>('map')
   // Desktop world feed starts open; the toggle only affects this session.
   const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(true)
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
@@ -467,8 +489,8 @@ export default function GameInterface() {
         setActionModal({ isOpen: false, title: '', content: '' })
         return true
       }
-      if (isMapModalOpen) {
-        setIsMapModalOpen(false)
+      if (isWorldOverlayOpen) {
+        setIsWorldOverlayOpen(false)
         return true
       }
       if (isCraftingOpen) {
@@ -508,7 +530,7 @@ export default function GameInterface() {
     isSpellbookOpen,
     playerProfileModal.isOpen,
     actionModal.isOpen,
-    isMapModalOpen,
+    isWorldOverlayOpen,
     isCraftingOpen,
     levelUpData,
   ])
@@ -2873,32 +2895,54 @@ export default function GameInterface() {
     setCurrentMapId(mapId)
   }, [])
 
-  // Fast travel is a sub-view of Explore rather than a modal. The party and
-  // combat guards are surfaced inside the list (teleportBlockedReason) instead
-  // of refusing to open, so the control never looks dead.
-  const handleOpenTeleport = useCallback(() => {
-    setCenterActiveTab('explore')
-    setExploreSubView('teleport')
-  }, [])
-
   const syncMapToCurrentRoom = useCallback(() => {
     if (currentRoomRef.current?.roomId) {
       setCurrentMapId(getMapIdForRoom(currentRoomRef.current.roomId))
     }
   }, [])
 
-  const handleOpenMap = useCallback(() => {
+  // The world layer opens on the sheet under your feet. Full screen from the
+  // strip and the mini-map on phones; from the sidebar, wherever you last left
+  // it. The party and combat guards are surfaced inside the layer
+  // (teleportBlockedReason) instead of refusing to open, so the controls never
+  // look dead.
+  const openWorldOverlay = useCallback((tab: WorldTab) => {
     syncMapToCurrentRoom()
-    setIsMapModalOpen(true)
+    setWorldTab(tab)
+    setExploreSubView('compass')
+    setIsWorldOverlayOpen(true)
   }, [syncMapToCurrentRoom])
 
-  // The sidebar is tall enough to hold the map inline; the overlay stays one
-  // click away via the sub-view's Fullscreen control.
-  const handleShowMap = useCallback(() => {
+  const openWorldDocked = useCallback((tab: WorldTab) => {
+    if (readPrefersWorldFullscreen()) {
+      openWorldOverlay(tab)
+      return
+    }
     syncMapToCurrentRoom()
+    setWorldTab(tab)
     setCenterActiveTab('explore')
-    setExploreSubView('map')
-  }, [syncMapToCurrentRoom])
+    setExploreSubView('world')
+  }, [openWorldOverlay, syncMapToCurrentRoom])
+
+  // Expanding and docking keep the sheet you were looking at, and remember the
+  // choice for next time.
+  const expandWorld = useCallback(() => {
+    writePrefersWorldFullscreen(true)
+    setExploreSubView('compass')
+    setIsWorldOverlayOpen(true)
+  }, [])
+
+  const dockWorld = useCallback(() => {
+    writePrefersWorldFullscreen(false)
+    setIsWorldOverlayOpen(false)
+    setCenterActiveTab('explore')
+    setExploreSubView('world')
+  }, [])
+
+  const closeWorld = useCallback(() => {
+    setIsWorldOverlayOpen(false)
+    setExploreSubView('compass')
+  }, [])
 
   const handleOpenPartyTab = useCallback(() => {
     setPlayersSubTab('party')
@@ -2920,15 +2964,18 @@ export default function GameInterface() {
     ? `You need ${TELEPORT_MP_COST} MP to teleport. Rest first.`
     : null
 
-  // Fast travel closes itself once you have actually travelled, and never
-  // survives into a battle (movement is refused mid-combat regardless).
+  // The world layer closes itself once you have actually travelled — walked,
+  // fast-travelled or been pulled by a party leader — and never survives into
+  // a battle (movement is refused mid-combat regardless).
   useEffect(() => {
     setExploreSubView('compass')
+    setIsWorldOverlayOpen(false)
   }, [currentRoom?.roomId])
 
   useEffect(() => {
     if (battle.isInBattle) {
       setExploreSubView('compass')
+      setIsWorldOverlayOpen(false)
     }
   }, [battle.isInBattle])
 
@@ -3068,7 +3115,7 @@ export default function GameInterface() {
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, handleOpenTeleport, battle.isInBattle])
+  }, [goToExplore, centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle])
 
   const handleCenterTabChange = useCallback((tabId: string | null) => {
     if (!tabId || tabId === 'explore') {
@@ -3131,22 +3178,26 @@ export default function GameInterface() {
 
   return (
     <div className="h-dvh fill-surface-canvas flex flex-col overflow-hidden">
-      {isMapModalOpen && (
+      {isWorldOverlayOpen && (
         <div
           className="fixed inset-0 z-50 flex flex-col bg-surface-canvas/95 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
+          aria-label={worldTab === 'map' ? 'Map' : 'Fast travel'}
         >
-          <MapPanel
-            currentMapId={currentMapId}
+          <WorldLayer
+            variant="overlay"
+            tab={worldTab}
+            onTabChange={setWorldTab}
+            player={player}
             currentRoomId={currentRoom?.roomId}
-            availableMaps={availableMaps}
+            currentMapId={currentMapId}
+            foundMaps={availableMaps}
             onMapChange={handleMapChange}
-            onOpenTeleport={() => {
-              setIsMapModalOpen(false)
-              handleOpenTeleport()
-            }}
-            onClose={() => setIsMapModalOpen(false)}
+            onTeleport={handleTeleport}
+            teleportBlockedReason={teleportBlockedReason}
+            onClose={closeWorld}
+            onDock={dockWorld}
           />
         </div>
       )}
@@ -3383,14 +3434,17 @@ export default function GameInterface() {
                 variant="sidebar"
                 room={currentRoom}
                 subView={exploreSubView}
-                onSubViewChange={setExploreSubView}
+                worldTab={worldTab}
+                onWorldTabChange={setWorldTab}
                 onAction={handleAction}
                 onTeleport={handleTeleport}
                 player={player}
                 isPartyMember={isPartyMember}
                 teleportBlockedReason={teleportBlockedReason}
-                onShowMap={handleShowMap}
-                onOpenMapFullscreen={handleOpenMap}
+                onOpenWorldDocked={openWorldDocked}
+                onOpenWorldOverlay={openWorldOverlay}
+                onCloseWorld={closeWorld}
+                onExpandWorld={expandWorld}
                 currentMapId={currentMapId}
                 availableMaps={availableMaps}
                 onMapChange={handleMapChange}
@@ -3544,14 +3598,17 @@ export default function GameInterface() {
                   variant="strip"
                   room={currentRoom}
                   subView={exploreSubView}
-                  onSubViewChange={setExploreSubView}
+                  worldTab={worldTab}
+                  onWorldTabChange={setWorldTab}
                   onAction={handleAction}
                   onTeleport={handleTeleport}
                   player={player}
                 isPartyMember={isPartyMember}
                   teleportBlockedReason={teleportBlockedReason}
-                  onShowMap={handleShowMap}
-                  onOpenMapFullscreen={handleOpenMap}
+                  onOpenWorldDocked={openWorldDocked}
+                  onOpenWorldOverlay={openWorldOverlay}
+                  onCloseWorld={closeWorld}
+                  onExpandWorld={expandWorld}
                   currentMapId={currentMapId}
                   availableMaps={availableMaps}
                   onMapChange={handleMapChange}
