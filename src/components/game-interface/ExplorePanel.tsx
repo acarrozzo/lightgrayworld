@@ -120,21 +120,22 @@ export default function ExplorePanel({
         isSidebar ? 'flex-1 min-h-0 p-4 gap-3' : 'px-2 py-3'
       }`}
     >
-      {/* Map and Teleport, top right of the D-pad area on both breakpoints.
-          Labelled pills in the sidebar; icon-only squares on the strip, where
-          the space above the action column is all there is. */}
-      <div className={`absolute top-2 right-2 z-10 flex gap-1.5 transition-opacity duration-300 ${dimmedClasses}`}>
+      {/* Map and Teleport: top left of the D-pad area in the sidebar, where the
+          compass's up/down column leaves the corner free; top right on the
+          strip, above the action column. The sidebar labels both; the strip
+          labels Map and keeps Teleport to its glyph, the space being what it is. */}
+      <div className={`absolute top-2 z-10 flex gap-1.5 transition-opacity duration-300 ${isSidebar ? 'left-2' : 'right-2'} ${dimmedClasses}`}>
         <button
           type="button"
           onClick={() => openWorld('map')}
           aria-label="Open the map"
           title="Map"
           className={`${CORNER_BUTTON_BASE} border-hue-sky/60 text-hue-sky hover:bg-hue-sky/15 hover:border-hue-sky ${
-            isSidebar ? 'h-7 px-2.5 text-xs' : 'h-8 w-8'
+            isSidebar ? 'h-8 px-3 text-[13px]' : 'h-8 px-2.5 text-xs'
           }`}
         >
-          <MapIcon size={14} aria-hidden="true" />
-          {isSidebar && <span>Map</span>}
+          <MapIcon size={isSidebar ? 15 : 14} aria-hidden="true" />
+          <span>Map</span>
         </button>
         <button
           type="button"
@@ -143,10 +144,10 @@ export default function ExplorePanel({
           aria-label="Open fast travel"
           title={`Teleport — ${TELEPORT_MP_COST} MP`}
           className={`${CORNER_BUTTON_BASE} border-resource-mp/60 text-resource-mp hover:bg-resource-mp/15 hover:border-resource-mp ${
-            isSidebar ? 'h-7 px-2.5 text-xs' : 'h-8 w-8'
+            isSidebar ? 'h-8 px-3 text-[13px]' : 'h-8 w-8'
           }`}
         >
-          <Sparkles size={14} aria-hidden="true" />
+          <Sparkles size={isSidebar ? 15 : 14} aria-hidden="true" />
           {isSidebar && <span>Teleport</span>}
         </button>
       </div>
