@@ -76,7 +76,9 @@
 
 /** Teacher flags, best last, as the original checked them. */
 const SKILL_TEACHERS = {
-  youngSoldierFlag: { name: 'Young Soldier', roomId: '003c' },
+  // The original taught in its training area (003c); this version stands the
+  // Young Soldier in his own yard, room 007, east of the Grassy Field.
+  youngSoldierFlag: { name: 'Young Soldier', roomId: '007' },
   jackLumberFlag: { name: 'Jack Lumber', roomId: '024' },
   travelingWarriorFlag: { name: 'Traveling Warrior', roomId: '106' },
   hunterBillFlag: { name: 'Hunter Bill', roomId: '118' },
@@ -96,7 +98,7 @@ const SKILL_TEACHERS = {
  * @type {Record<string, { flag: string, message: string, requiresCompletedQuest?: string }>}
  */
 const SKILL_TEACHER_ROOMS = {
-  '003c': {
+  '007': {
     flag: 'youngSoldierFlag',
     message: 'The Young Soldier shows you the basics. You can now learn the One Handed, Two Handed and Toughness skills!',
   },
