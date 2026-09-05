@@ -31,6 +31,16 @@ const QUEST_ROOM_TRIGGERS = {
   '222': { questId: 'quest_mayorrudolf_intro', npc: 'Mayor Rudolf' },
   '225': { questId: 'quest_wizardsguild_intro', npc: "the Wizard's Guild Recruiter" },
   '226': { questId: 'quest_warriorsguild_intro', npc: "the Warrior's Guild Recruiter" },
+
+  // ==================== DARK FOREST ====================
+  // The original opened all three sets on discovery — the Outpost's and the
+  // Tree Hut's once you were a Wizard's Guild member or had cracked the Forest
+  // chest (which is what gets you through either gate into the Dark Forest),
+  // the guild's initiation once you were a wizard. Standing in the room is
+  // the same fact one step later.
+  '502': { questId: 'quest_rangerguard_intro', npc: 'the Ranger Guard' },
+  '506': { questId: 'quest_darkelf_intro', npc: 'the Dark Elf' },
+  '515': { questId: 'quest_rangersguild_intro', npc: "the Ranger's Guild" },
 }
 
 /**

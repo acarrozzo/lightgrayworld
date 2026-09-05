@@ -42,6 +42,30 @@ const GROTTO_SWITCH = '325-grottoswitch'
  */
 const UNDERWATER_SWITCH = '483-underwaterswitch'
 
+/**
+ * The Champion's Camp lever (511), which grinds open the stone door on the
+ * Dark Forest Clearing (505) onto the Silver Chest ledge (512). Session-scoped
+ * like the original's `$_SESSION['darkforestsilverswitch']`, and spent the
+ * moment you walk through — the original zeroed it on the crossing, so every
+ * trip to the silver chest is another climb up the hill past the champions.
+ */
+const DARK_FOREST_SILVER_SWITCH = '511-silverswitch'
+
+/**
+ * The Dark Keep's two pairs of levers. The steel door in the Main Hall (516a)
+ * wants the Storeroom's (516b) and the Burial Chamber's (516c); the ornate
+ * door at the Top of the Stairwell (516e) wants the Barracks' (516f) and the
+ * Paladin Altar's (516g). Each pair opens its own door and is spent on the
+ * crossing, as the original spent them. (The original reused ONE pair of
+ * session flags for both floors, so throwing the Storeroom's lever and the
+ * Altar's would open both doors at once — a quirk of shared variables, not a
+ * puzzle, and not kept.)
+ */
+const DARK_KEEP_STOREROOM_LEVER = '516b-lever'
+const DARK_KEEP_BURIAL_LEVER = '516c-lever'
+const DARK_KEEP_BARRACKS_LEVER = '516f-lever'
+const DARK_KEEP_ALTAR_LEVER = '516g-lever'
+
 function pullLever(playerId, leverId) {
   if (!activatedLevers.has(playerId)) {
     activatedLevers.set(playerId, new Set())
@@ -104,6 +128,48 @@ function getRoomStateNote(playerId, roomId) {
       ? 'The Coral Door stands open to the east.'
       : 'A massive Coral Door blocks the way east.'
   }
+  if (roomId === '511') {
+    return isLeverPulled(playerId, DARK_FOREST_SILVER_SWITCH)
+      ? 'The lever is DOWN. Something ground open on the clearing to the south.'
+      : 'A lever is wedged between the scattered equipment, UP.'
+  }
+  if (roomId === '505') {
+    return isLeverPulled(playerId, DARK_FOREST_SILVER_SWITCH)
+      ? 'The massive stone door to the northeast stands open.'
+      : 'A massive stone door seals the way northeast.'
+  }
+  if (roomId === '516b') {
+    return isLeverPulled(playerId, DARK_KEEP_STOREROOM_LEVER)
+      ? 'The lever on the wall is DOWN.'
+      : 'A lever juts from the wall, UP.'
+  }
+  if (roomId === '516c') {
+    return isLeverPulled(playerId, DARK_KEEP_BURIAL_LEVER)
+      ? 'The lever on the wall is DOWN.'
+      : 'A lever juts from the wall between two coffins, UP.'
+  }
+  if (roomId === '516a') {
+    const thrown = [DARK_KEEP_STOREROOM_LEVER, DARK_KEEP_BURIAL_LEVER].filter((id) => isLeverPulled(playerId, id)).length
+    if (thrown === 2) return 'The solid steel door to the southwest stands open.'
+    if (thrown === 1) return 'One of the two levers has been thrown. The steel door to the southwest has not moved yet.'
+    return 'A solid steel door seals the way southwest.'
+  }
+  if (roomId === '516f') {
+    return isLeverPulled(playerId, DARK_KEEP_BARRACKS_LEVER)
+      ? 'The switch by the weapon racks is DOWN.'
+      : 'A switch is set into the wall by the weapon racks, UP.'
+  }
+  if (roomId === '516g') {
+    return isLeverPulled(playerId, DARK_KEEP_ALTAR_LEVER)
+      ? 'The lever behind the altar is DOWN.'
+      : 'A lever stands behind the altar, UP.'
+  }
+  if (roomId === '516e') {
+    const thrown = [DARK_KEEP_BARRACKS_LEVER, DARK_KEEP_ALTAR_LEVER].filter((id) => isLeverPulled(playerId, id)).length
+    if (thrown === 2) return 'The massive ornate door to the northeast stands open.'
+    if (thrown === 1) return 'One of the two levers has been thrown. The ornate door to the northeast has not moved yet.'
+    return 'A massive ornate door seals the way northeast.'
+  }
   return null
 }
 
@@ -163,7 +229,25 @@ function getRoomActionOverrides(playerId, roomId) {
         : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
     }
   }
+  const darkForestLever = DARK_FOREST_LEVER_ROOMS[roomId]
+  if (darkForestLever) {
+    const pulled = isLeverPulled(playerId, darkForestLever)
+    return {
+      'flip lever': pulled
+        ? { className: 'bg-status-success/80 hover:bg-status-success', icon: 'lever-down' }
+        : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
+    }
+  }
   return null
+}
+
+/** The Dark Forest's single-lever rooms, by the lever each one throws. */
+const DARK_FOREST_LEVER_ROOMS = {
+  '511': DARK_FOREST_SILVER_SWITCH,
+  '516b': DARK_KEEP_STOREROOM_LEVER,
+  '516c': DARK_KEEP_BURIAL_LEVER,
+  '516f': DARK_KEEP_BARRACKS_LEVER,
+  '516g': DARK_KEEP_ALTAR_LEVER,
 }
 
 module.exports = {
@@ -178,4 +262,10 @@ module.exports = {
   COW_TOLL,
   GROTTO_SWITCH,
   UNDERWATER_SWITCH,
+  DARK_FOREST_SILVER_SWITCH,
+  DARK_KEEP_STOREROOM_LEVER,
+  DARK_KEEP_BURIAL_LEVER,
+  DARK_KEEP_BARRACKS_LEVER,
+  DARK_KEEP_ALTAR_LEVER,
+  DARK_FOREST_LEVER_ROOMS,
 }

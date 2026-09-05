@@ -96,6 +96,8 @@ const CRAFTING_STATIONS = {
   '103': { label: 'Leather Bench', button: 'Work Leather', icon: 'craft', where: "Freddie's Cow Farm", made: 'worked', stations: ['crafting-table'], families: ['leather'] },
   '308': { label: 'Forge', button: 'Forge', icon: 'craft', where: 'the Mining Guild forge', made: 'forged', stations: ['forge', 'crafting-table'], families: ['iron', 'tools'] },
   '210': { label: 'Crafting Table', button: 'Open Crafting', icon: 'craft', where: "Red Town's Grand Square", made: 'made', stations: ['fire', 'crafting-table'], families: ['cook', 'potions', 'wood', 'leather', 'tools'] },
+  // The Ranger's Guild lobby fire: the original's "cook all meat" button.
+  '515a': { label: "Ranger's Fire", button: 'Cook', icon: 'fire', where: "the Ranger's Guild lobby", made: 'cooked', stations: ['fire'], families: ['cook'] },
 }
 
 /**
@@ -103,7 +105,7 @@ const CRAFTING_STATIONS = {
  * is made elsewhere. Spelled out rather than taken from the table's keys: JS
  * orders numeric-looking keys ('103', '210') ahead of zero-padded ones ('003').
  */
-const CRAFTING_ROOMS = ['003', '021', '024', '103', '308', '210']
+const CRAFTING_ROOMS = ['003', '021', '024', '103', '308', '210', '515a']
 
 /**
  * Material families, in the order the original craft screen listed them:

@@ -21,6 +21,8 @@ export type MapId =
   | 'neverending_mine'
   | 'blue_ocean'
   | 'under_the_ocean'
+  | 'dark_forest'
+  | 'dark_forest_upper'
 export type ExitInfo = {
   direction: string
   to: string
@@ -253,6 +255,8 @@ const MAP_LABEL: Record<MapId, string> = {
   neverending_mine: 'Neverending Mine',
   blue_ocean: 'Blue Ocean',
   under_the_ocean: 'Under the Ocean',
+  dark_forest: 'Dark Forest',
+  dark_forest_upper: 'Dark Forest Upper Level',
 }
 
 // Tab order shown across the top of the atlas — roughly the order a player meets
@@ -271,6 +275,8 @@ const MAP_ORDER: MapId[] = [
   'neverending_mine',
   'blue_ocean',
   'under_the_ocean',
+  'dark_forest',
+  'dark_forest_upper',
 ]
 
 // Greedy word-wrap so a room's full name fits inside the card without ellipsis.

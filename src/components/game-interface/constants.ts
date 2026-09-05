@@ -56,6 +56,8 @@ export type MapFlag = keyof Pick<
   | 'neverEndingMineMap'
   | 'oceanMap'
   | 'oceanUnderwaterMap'
+  | 'darkForestMap'
+  | 'darkForestUpperMap'
   | 'lobbyMap'
   | 'solarOfficeMap'
 >

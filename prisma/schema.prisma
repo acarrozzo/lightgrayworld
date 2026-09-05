@@ -73,6 +73,8 @@ model User {
   buffCoffeeClicks          Int             @default(0)
   /// Bathing in the Master Water Temple's glory: +30 to every core stat while it counts down.
   buffGloryClicks           Int             @default(0)
+  /// The Silver Shaman's aura, learned in a full Silver set: a standing +20 to every core stat.
+  silverAura                Boolean         @default(false)
   hp                        Int             @default(10)
   hpMax                     Int             @default(10)
   mp                        Int             @default(2)
@@ -108,6 +110,7 @@ model User {
   oceanMap                  Boolean         @default(false)
   oceanUnderwaterMap        Boolean         @default(false)
   darkForestMap             Boolean         @default(false)
+  darkForestUpperMap        Boolean         @default(false)
   worldMapV1                Boolean         @default(false)
   worldMapV2                Boolean         @default(false)
   worldMapV3                Boolean         @default(false)
@@ -487,6 +490,7 @@ enum EquipSlot {
   NECK
   MOUNT
   ARTIFACT
+  COMPANION
 }
 
 enum WeaponCategory {

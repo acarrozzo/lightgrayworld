@@ -79,7 +79,19 @@ const ACCEPTED = {
     '489:southeast', // into the Mud Crab Nest, which is dry cave and does not swim
     '493:northwest', // the alcove's dark passage to the silver chest hollow
     '498:northwest', // the cavern lets out onto the wide floor
+    // The Dark Forest's jumps and ledges, each the original's own one-way:
+    // off the Champion's hill west onto the Dark Path and southwest into the
+    // Tree Hut, and off the Silver Chest ledge north onto the Bloody Path.
+    '511:west',
+    '511:southwest',
+    '512:north',
+    '521:southwest', // out of the Troll Nest onto the twisted path, which only runs east and northwest
   ]),
+
+  // Cardinal exits whose destination is not where the compass says. Lost in
+  // the Trees (514) is the one: "you travel south and somehow go east" is the
+  // room's whole joke, and the grove it lands you in really is east of it.
+  mapDirectionMismatch: new Set(['514:south', '521:southwest']),
 
   // Rooms deliberately not reachable by walking from the start room.
   //
@@ -105,12 +117,11 @@ const ACCEPTED = {
   // Enemies authored ahead of the map that will hold them. They are named by
   // acceptable quests, so they must exist — they simply have no spawn yet.
   unspawnedEnemies: new Set([
-    'stone-sphinx',
     'gatekeeper',
-    'troll-champion',
-    'troll-queen',
-    // Jungle Jim's "Angry Birds" wants a Falcon; it lives in the Dark Forest.
-    'falcon',
+    // Ranger Lego's "Gargoyle Hunter" wants both; they roost in the Cathedral
+    // in the Stone Mountains, which is not ported yet.
+    'grey-gargoyle',
+    'white-gargoyle',
   ]),
 }
 
@@ -389,19 +400,24 @@ for (const [roomId, gates] of Object.entries(ROOM_GATES)) {
 
 // A hidden passage must agree three ways: the reveal definition, the seeded
 // exit it opens, and a gate holding it shut until it is found.
+// A staged room (the Dark Grove) hides several passages, found in order;
+// each stage is checked exactly like a single-passage room.
 for (const [roomId, def] of Object.entries(REVEAL_DEFINITIONS)) {
   if (!isRoom(roomId)) {
     err('reveals', `reveal in "${roomId}", which is not a seeded room`)
     continue
   }
-  const seeded = rooms.get(roomId).exits[def.direction]
-  if (!seeded) {
-    err('reveals', `${roomId} reveals "${def.direction}", but the room has no exit that way`)
-  } else if (seeded !== def.toRoom) {
-    err('reveals', `${roomId} ${def.direction} reveals "${def.toRoom}" but the seeded exit leads to "${seeded}"`)
-  }
-  if (!ROOM_GATES[roomId]?.[def.direction]) {
-    err('reveals', `${roomId} ${def.direction} is revealable but has no gate — the passage is walkable before it is found`)
+  const stages = Array.isArray(def.stages) ? def.stages : [def]
+  for (const stage of stages) {
+    const seeded = rooms.get(roomId).exits[stage.direction]
+    if (!seeded) {
+      err('reveals', `${roomId} reveals "${stage.direction}", but the room has no exit that way`)
+    } else if (seeded !== stage.toRoom) {
+      err('reveals', `${roomId} ${stage.direction} reveals "${stage.toRoom}" but the seeded exit leads to "${seeded}"`)
+    }
+    if (!ROOM_GATES[roomId]?.[stage.direction]) {
+      err('reveals', `${roomId} ${stage.direction} is revealable but has no gate — the passage is walkable before it is found`)
+    }
   }
 }
 
@@ -432,6 +448,10 @@ for (const { roomId, exits } of rooms.values()) {
     const rule = AXIS[dir]
     const to = mapCoords.get(dest)
     if (!rule || !to) continue
+    // An exit that loops back into its own room (Lost in the Trees) has no
+    // direction to agree with.
+    if (dest === roomId) continue
+    if (ACCEPTED.mapDirectionMismatch.has(`${roomId}:${dir}`)) continue
     const dx = to.x - from.x
     const dy = to.y - from.y
     // Same sheet, adjacent-ish: ignore long jumps between map artworks.

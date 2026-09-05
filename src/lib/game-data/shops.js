@@ -230,6 +230,30 @@ const SHOPS = {
       'silver-necklace',
     ],
   },
+
+  // ==================== DARK FOREST ====================
+  // The Ranger's Guild shop, up in the tree tops: Guild Merchant Flynn's bows,
+  // crossbows, boomerangs and the green leathers, members only. The original
+  // also listed three Black weapons and commented them out; they stay out.
+  // Ammo is sold by the round at the item's own value, as Adam's sells it.
+  '515e': {
+    name: 'Ranger Shop',
+    requiresQuest: 'quest_rangersguild_000',
+    stock: [
+      'mithril-boomerang',
+      'mithril-bow',
+      'mithril-crossbow',
+      'greenhorn-bow',
+      'ranger-crossbow',
+      'ranger-hood',
+      'ranger-cloak',
+      'ranger-gloves',
+      'ranger-boots',
+      'ranger-amulet',
+      'arrow',
+      'crossbow-bolt',
+    ],
+  },
 }
 
 /** The shop standing in a room, or null. */

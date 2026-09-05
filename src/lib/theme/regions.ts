@@ -37,6 +37,9 @@ export const REGIONS: RegionMeta[] = [
   { id: 'neverendingMine', name: 'The Neverending Mine' },
   { id: 'ocean', name: 'Blue Ocean' },
   { id: 'underwater', name: 'Under the Ocean' },
+  { id: 'darkForest', name: 'Dark Forest' },
+  { id: 'darkKeep', name: 'Dark Keep' },
+  { id: 'rangersGuild', name: "Ranger's Guild" },
   { id: 'solarOffice', name: 'Solar Office' },
   { id: 'lobby', name: 'Plane of Rebirth' },
 ]
@@ -100,6 +103,20 @@ const UNDERWATER = new Set([
   '490', '491', '492', '493', '494', '495', '496', '497', '498', '499',
 ])
 
+/**
+ * The Dark Keep: the fenced-off stone block west of the Dark Forest's gold
+ * chest, two floors of it. The courtyard (516) is still forest — you can see the
+ * trees from it — and reads as forest.
+ */
+const DARK_KEEP = new Set(['516a', '516b', '516c', '516d', '516e', '516f', '516g', '516h'])
+
+/**
+ * The Ranger's Guild, up in the tree tops. The ladder at its foot (515) is a
+ * forest room; the five rooms above it are the guild's own lighter green,
+ * which the original drew as `dgreen` against the forest's `darkgreen`.
+ */
+const RANGERS_GUILD = new Set(['515a', '515b', '515c', '515d', '515e'])
+
 export function getRegionForRoom(roomId: string | null | undefined): RegionId {
   if (!roomId) return DEFAULT_REGION
 
@@ -115,6 +132,8 @@ export function getRegionForRoom(roomId: string | null | undefined): RegionId {
   if (RED_TOWN_SEWERS.has(roomId)) return 'redTownSewers'
   if (ROCKY_FLATS_UNDERGROUND.has(roomId)) return 'rockyFlatsUnderground'
   if (UNDERWATER.has(roomId)) return 'underwater'
+  if (DARK_KEEP.has(roomId)) return 'darkKeep'
+  if (RANGERS_GUILD.has(roomId)) return 'rangersGuild'
 
   // Everything below Level 0 is the mine's own endless shaft.
   if (roomId.startsWith('311-')) return 'neverendingMine'
@@ -123,6 +142,7 @@ export function getRegionForRoom(roomId: string | null | undefined): RegionId {
   // in the forest, and reads as forest.
   if (roomId === '215') return 'forest'
 
+  if (roomId.startsWith('5')) return 'darkForest'
   if (roomId.startsWith('4')) return 'ocean'
   if (roomId.startsWith('3')) return 'rockyFlats'
   if (roomId.startsWith('2')) return 'redTown'

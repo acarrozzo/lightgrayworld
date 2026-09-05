@@ -382,6 +382,91 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'rest at the green pillar', label: 'Rest at the Green Pillar', icon: 'heal', className: 'fill-hue-green' },
   ],
 
+  // ==================== DARK FOREST ====================
+  // Two quest givers on the way in, the teleport hub's sign and axe, the two
+  // chests, the Champion's lever, and the calls to the Troll Queen, the Troll
+  // King and the Forest Princess. Chop-wood buttons are merged in below.
+  '501': [
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
+  ],
+  '502': [
+    { action: 'talk to ranger guard', label: 'Ranger Guard', icon: 'npc-ranger', className: 'fill-hue-green', questIds: questIdsForNpc('ranger_guard') },
+    { action: 'rest at the outpost', label: 'Rest at the Outpost', icon: 'heal', className: 'fill-hue-blue' },
+  ],
+  '504': [
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
+    { action: 'pay toll', label: 'Pay Toll (1000 gold)', icon: 'gate', className: 'fill-hue-gold' },
+    { action: 'fight highwayman', label: 'Fight Highwayman', icon: 'sword1', className: 'fill-action-attack' },
+  ],
+  '506': [
+    { action: 'talk to dark elf', label: 'Dark Elf', icon: 'npc-darkelf', className: 'fill-hue-green', questIds: questIdsForNpc('dark_elf') },
+    { action: 'rest at the tree hut', label: 'Rest at the Fireplace', icon: 'heal', className: 'fill-hue-green' },
+    { action: 'grab tea', label: 'Grab Tea', icon: 'tea', className: 'fill-mood-treasure' },
+  ],
+  '507': [
+    { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
+    { action: 'grab iron hatchet', label: 'Grab Iron Hatchet', icon: 'axelog', className: 'fill-mood-treasure' },
+  ],
+  '511': [
+    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+  ],
+  '512': [
+    { action: 'open silver chest', label: 'Open Silver Chest', icon: 'chest2', className: 'fill-hue-sky' },
+  ],
+  '513': [
+    { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'fill-mood-treasure' },
+  ],
+  '515': [
+    { action: 'talk to ranger recruiter', label: "Ranger's Guild", icon: 'npc-ranger', className: 'fill-hue-green', questIds: questIdsForNpc('rangers_guild_recruiter') },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
+  ],
+  '515a': [
+    { action: 'grab ranger pack', label: "Grab Ranger's Pack", icon: 'npc-ranger', className: 'fill-hue-green' },
+    { action: 'rest at the ranger fire', label: 'Rest at the Fire', icon: 'heal', className: 'fill-hue-blue' },
+    craftingAction('515a'),
+  ],
+  '515b': [
+    { action: 'talk to ranger lego', label: 'Ranger Lego', icon: 'npc-ranger2', className: 'fill-hue-green', questIds: questIdsForNpc('ranger_lego') },
+  ],
+  '515c': [
+    { action: 'learn silver aura', label: 'Learn Silver Aura', icon: 'pillar2', className: 'fill-hue-sky' },
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
+  ],
+  '515d': [
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
+  ],
+  '515e': [
+    { action: 'view shop', label: 'View Shop', icon: 'bowarrow', className: 'fill-mood-treasure' },
+  ],
+  '516b': [
+    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+  ],
+  '516c': [
+    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+  ],
+  '516f': [
+    { action: 'flip lever', label: 'Flip Switch', icon: 'lever-up', className: 'fill-hue-gold' },
+  ],
+  '516g': [
+    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+  ],
+  '516h': [
+    { action: 'grab crown', label: 'Grab Crown', icon: 'skull', className: 'fill-mood-treasure' },
+  ],
+  '521': [
+    { action: 'challenge the troll queen', label: 'Challenge the Troll Queen', icon: 'attack', className: 'fill-action-attack' },
+  ],
+  '523': [
+    { action: 'challenge the troll king', label: 'Challenge the Troll King', icon: 'attack', className: 'fill-action-attack' },
+  ],
+  '524': [
+    { action: 'peer into the despair', label: 'Peer into the Despair', icon: 'cave1', className: 'fill-surface-selected' },
+  ],
+  '525': [
+    { action: 'rest by the princess', label: 'Rest', icon: 'heal', className: 'fill-hue-green' },
+    { action: 'battle forest princess', label: 'Battle the Forest Princess', icon: 'attack', className: 'fill-action-attack' },
+  ],
+
   // ==================== THE NEVERENDING MINE ====================
   // Mine Level 0 carries the sign; every level below it carries the pick. The
   // `mine here` buttons for 1-30 are merged in below rather than written out
@@ -421,6 +506,18 @@ const FOREST_CHOP_WOOD_ROOMS = [
 const FOREST_TWO_TREE_ROOMS = new Set(['117', '122', '124', '127', '129', '133', '134'])
 
 const CHOP_WOOD_BUTTON = { label: 'Chop Wood', icon: 'wood', className: 'fill-mood-treasure' }
+
+/**
+ * Dark Forest rooms with choppable trees. Mirrors DARK_FOREST_CHOP_WOOD_ROOMS
+ * in room-action-handlers.js; one tree each.
+ */
+const DARK_FOREST_CHOP_WOOD_ROOMS = [
+  '505', '507', '508', '509', '510', '511', '512', '513', '514', '516',
+  '517', '518', '519', '520', '521', '523', '524', '525',
+]
+for (const roomId of DARK_FOREST_CHOP_WOOD_ROOMS) {
+  ROOM_ACTIONS[roomId] = [...(ROOM_ACTIONS[roomId] ?? []), { action: 'chop wood', ...CHOP_WOOD_BUTTON }]
+}
 
 for (const roomId of FOREST_CHOP_WOOD_ROOMS) {
   ROOM_ACTIONS[roomId] = [

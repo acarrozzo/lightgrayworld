@@ -141,6 +141,32 @@ async function miningGuildMember(playerId) {
 }
 
 /**
+ * Is the player a Ranger — has the guild's initiation quest been turned in?
+ * Gates the ladder up into the tree tops (515) and the secret ladder by the
+ * fallen tree (519), and opens the Ranger Shop.
+ */
+async function rangerMember(playerId) {
+  const done = await prisma.questProgress.findUnique({
+    where: { userId_questId: { userId: playerId, questId: 'quest_rangersguild_000' } },
+    select: { completed: true },
+  })
+  return !!done?.completed
+}
+
+/**
+ * Has the player opened the named gold chest? The chest flags are per-player
+ * columns on the User row; the Forest's (chest2) is what opens the Dark
+ * Forest's back door from the Troll Base Camp.
+ */
+async function hasOpenedChest(playerId, flagField) {
+  const user = await prisma.user.findUnique({
+    where: { id: playerId },
+    select: { [flagField]: true },
+  })
+  return !!user?.[flagField]
+}
+
+/**
  * Map of room gates by roomId and direction
  * Each gate definition includes:
  * - check: async function that validates criteria (returns boolean)
@@ -840,6 +866,214 @@ ROOM_GATES['493'].east = {
   },
 }
 
+// ==================== DARK FOREST ====================
+// Two ways in from the Forest, and neither is early. The Magical Gate on the
+// stone path (114) opened for Wizard's Guild members — the original tested
+// `quest20 >= 2 || KLkoboldmaster >= 1`, which is one fact two ways — and the
+// Troll Base Camp's north edge (137) opened once the Forest Gold Chest had been
+// cracked, as the original's "opening up the Gold Chest here in the forest
+// will unlock this gate" said.
+ROOM_GATES['114'] = {
+  north: {
+    check: async (playerId) => {
+      const wizard = await prisma.questProgress.findUnique({
+        where: { userId_questId: { userId: playerId, questId: 'quest_wizardsguild_000' } },
+        select: { completed: true },
+      })
+      if (wizard?.completed) return true
+      return hasKilled(playerId, 'kobold-master')
+    },
+    message: "You cannot pass the Magical Gate yet! Join the Wizard's Guild by defeating the Kobold Master to pass.",
+    modalContent: {
+      title: 'The Magical Gate does not open',
+      type: 'icon',
+      icon: 'gate',
+      iconColor: 'purple-400',
+      message: "The gate hums and stays shut. Only a member of the Wizard's Guild passes here — join them in Red Town by defeating the Kobold Master, and the Path to the Mountains is yours.",
+    },
+  },
+}
+ROOM_GATES['137'] = {
+  north: {
+    check: (playerId) => hasOpenedChest(playerId, 'chest2'),
+    message: 'You cannot travel north yet. Opening up the Gold Chest here in the forest will unlock this gate. Complete Hunter Bill\'s quest to get a Gold Key.',
+    modalContent: {
+      title: 'The way north is barred',
+      type: 'icon',
+      icon: 'chest',
+      iconColor: 'amber-500',
+      message: 'A barred gate stands at the north edge of the camp. Whoever opens the Gold Chest in the Forest opens this too — Hunter Bill hands out the key.',
+    },
+  },
+}
+// The Ranger Guard will not wave you up the ledge into the Dark Forest until
+// you have handled one of each highwayman type on the road.
+ROOM_GATES['502'] = {
+  northeast: {
+    check: async (playerId) => (await hasKilled(playerId, 'highwayman')) && (await hasKilled(playerId, 'bowman')),
+    message: 'You cannot enter the Dark Forest from here until you defeat a Highwayman and a Bowman.',
+    modalContent: {
+      title: 'The Ranger Guard blocks the ledge',
+      type: 'icon',
+      icon: 'npc-ranger',
+      iconColor: 'green-400',
+      message: '"Nobody goes up into the Dark Forest on my watch until they can handle the road. Put down a Highwayman and a Bowman — they work the stone path west of here — and I\'ll look the other way."',
+    },
+  },
+}
+// The stone door onto the Silver Chest ledge, thrown from the Champion's Camp
+// lever a long way northeast and spent on the crossing (see lever-state.js).
+ROOM_GATES['505'] = {
+  northeast: {
+    check: (playerId) => {
+      const { isLeverPulled, DARK_FOREST_SILVER_SWITCH } = require('./lever-state')
+      return isLeverPulled(playerId, DARK_FOREST_SILVER_SWITCH)
+    },
+    lever: true,
+    message: "An immovable stone door blocks your way to the northeast. There's probably a switch nearby that will open it.",
+    modalContent: {
+      title: 'A massive stone door blocks the way northeast',
+      type: 'icon',
+      icon: 'gate',
+      iconColor: 'gray-500',
+      message: "An immovable stone door blocks your way to the northeast. There's probably a switch nearby that will open it — the grinding you hear when it moves comes from the top of the hill.",
+    },
+    onPass: async (playerId) => {
+      const { resetLever, DARK_FOREST_SILVER_SWITCH } = require('./lever-state')
+      resetLever(playerId, DARK_FOREST_SILVER_SWITCH)
+    },
+  },
+}
+// The Dark Grove's two secret ways, and the fallen tree's way back. The exits
+// are masked from the client by the search-reveal overlay; these are the
+// server-side half, so a hand-sent move cannot walk a passage the player has
+// not found. The grove is a staged reveal: each direction is its own find.
+ROOM_GATES['509'] = {
+  north: {
+    check: async (playerId) => {
+      const { isPassageRevealed } = require('./search-reveal-state')
+      return isPassageRevealed(playerId, '509', 'north')
+    },
+    message: "You don't see an exit to the north. You should try searching.",
+    silent: true,
+  },
+  west: {
+    check: async (playerId) => {
+      const { isPassageRevealed } = require('./search-reveal-state')
+      return isPassageRevealed(playerId, '509', 'west')
+    },
+    message: "You don't see an exit to the west.",
+    silent: true,
+  },
+}
+ROOM_GATES['519'] = {
+  south: {
+    check: async (playerId) => {
+      const { isPassageRevealed } = require('./search-reveal-state')
+      return isPassageRevealed(playerId, '519', 'south')
+    },
+    message: "You don't see an exit to the south. You should try searching.",
+    silent: true,
+  },
+  // The secret ladder into the Silver Shaman's room. The original only
+  // answered `up` here for a guild member and said nothing otherwise; the
+  // ladder is drawn as an exit here and the guild says no.
+  up: {
+    check: (playerId) => rangerMember(playerId),
+    message: "A rope ladder hangs down out of the canopy. Only a Ranger climbs it — join the guild first.",
+    modalContent: {
+      title: 'A rope ladder hangs from the trees',
+      type: 'icon',
+      icon: 'npc-ranger',
+      iconColor: 'green-400',
+      message: "A rope ladder hangs down out of the canopy, and a Ranger up there is watching you look at it. \"Members only. The front door is the big tree west of the grove — and you'll have to get lost to find it.\"",
+    },
+  },
+}
+// The Ranger's Guild front door: the ladder up the enormous tree.
+ROOM_GATES['515'] = {
+  up: {
+    check: (playerId) => rangerMember(playerId),
+    message: "You can't enter the Ranger's Guild until you complete the initiation quest. Find and defeat a Dark Ranger.",
+    modalContent: {
+      title: "The Ranger's Guild ladder",
+      type: 'icon',
+      icon: 'npc-ranger',
+      iconColor: 'green-400',
+      message: "A Ranger drops down the last few rungs and stands on the bottom one. \"Want to be a Ranger, eh? There are fallen Rangers among us. Defeat a Dark Ranger and return here, and the ladder is yours.\"",
+    },
+  },
+}
+// Lost in the Trees. Every direction is an exit and six of them lead straight
+// back into the same room — "you attempt to go north but end up going west".
+// Seeded as exits to 514 itself so the compass shows all eight, and gated shut
+// so the move never runs; the gate's message is the original's line. Only
+// south (which somehow goes east, to the grove) and northeast (which actually
+// goes northwest, to the guild tree) lead anywhere.
+const LOST_IN_THE_TREES = {
+  north: 'you attempt to go north but end up going west.',
+  east: 'you attempt to go east but end up going north.',
+  west: 'you attempt to go west but end up going south.',
+  southwest: 'you attempt to go southwest but end up going southeast.',
+  southeast: 'you attempt to go southeast but end up going northeast.',
+  northwest: 'you attempt to go northwest but end up going southwest.',
+}
+ROOM_GATES['514'] = Object.fromEntries(
+  Object.entries(LOST_IN_THE_TREES).map(([direction, message]) => [
+    direction,
+    {
+      check: async () => false,
+      message: `${message.charAt(0).toUpperCase()}${message.slice(1)} You are still lost in the trees.`,
+      silent: true,
+    },
+  ])
+)
+// The Dark Keep's two lever doors, each spent on the crossing as the original
+// spent them (see lever-state.js for why the pairs are separate).
+const DARK_KEEP_DOORS = [
+  {
+    roomId: '516a',
+    direction: 'southwest',
+    levers: ['DARK_KEEP_STOREROOM_LEVER', 'DARK_KEEP_BURIAL_LEVER'],
+    title: 'A solid steel door blocks the way southwest',
+    shut: 'The way to the southwest is blocked by a steel door. There are 2 levers nearby that need to be flipped in order to open the door.',
+    half: 'You have flipped 1 out of 2 levers. Go flip the other lever to open this door.',
+  },
+  {
+    roomId: '516e',
+    direction: 'northeast',
+    levers: ['DARK_KEEP_BARRACKS_LEVER', 'DARK_KEEP_ALTAR_LEVER'],
+    title: 'A massive ornate door blocks the way northeast',
+    shut: 'The way to the northeast is blocked by a massive door. There are 2 levers nearby that need to be switched in order to open the door.',
+    half: 'You have switched 1 of 2 levers. Go flip the other lever to open this door.',
+  },
+]
+for (const door of DARK_KEEP_DOORS) {
+  const thrownCount = (playerId) => {
+    const leverState = require('./lever-state')
+    return door.levers.filter((name) => leverState.isLeverPulled(playerId, leverState[name])).length
+  }
+  ROOM_GATES[door.roomId] = ROOM_GATES[door.roomId] || {}
+  ROOM_GATES[door.roomId][door.direction] = {
+    check: async (playerId) => thrownCount(playerId) === door.levers.length,
+    lever: true,
+    message: door.shut,
+    modalContent: {
+      title: door.title,
+      type: 'icon',
+      icon: 'gate',
+      iconColor: 'gray-500',
+      message: door.shut,
+    },
+    // The gate reports how far along the puzzle is rather than a flat "shut".
+    describe: (playerId) => (thrownCount(playerId) === 1 ? door.half : door.shut),
+    onPass: async (playerId) => {
+      const leverState = require('./lever-state')
+      for (const name of door.levers) leverState.resetLever(playerId, leverState[name])
+    },
+  }
+}
+
 /**
  * Every shaft in the Neverending Mine, built rather than written out thirty-one
  * times. Going down is not walking downstairs — it is digging the next level
@@ -895,9 +1129,17 @@ async function checkRoomGate(roomId, direction, playerId) {
   // Run the gate check function
   const allowed = await gate.check(playerId)
 
+  // A gate may word its refusal per player (the Keep's two-lever doors say how
+  // many levers are still up). The static `message` stays the fallback and
+  // what the World Tool prints.
+  const described = !allowed && typeof gate.describe === 'function' ? gate.describe(playerId) : null
+  const resolvedGate = described
+    ? { ...gate, message: described, modalContent: gate.modalContent ? { ...gate.modalContent, message: described } : undefined }
+    : gate
+
   return {
     allowed,
-    gate,
+    gate: resolvedGate,
     onPass: allowed && gate.onPass ? gate.onPass : null,
   }
 }

@@ -69,6 +69,7 @@ const ZONE_ORDER = [
   'Red Town Sewers', "Thieve's Den", 'The Catacombs',
   'Rocky Flats', 'Neverending Mine',
   'Blue Ocean', 'Under the Ocean', 'Mud Cave',
+  'Dark Forest', 'Dark Keep', 'Mountains',
 ]
 
 // Turn a slug like "padded-armor" into "Padded Armor" — only used as a

@@ -9,6 +9,7 @@ import { EquipSlot } from '@prisma/client'
 import Icon from '@/components/Icon'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { buildSpellbook, hasLearnableSpell, spellTone } from '@/lib/spellbook'
+import { buildSkillbook, gearContextFromInventory, hasLearnableSkill, passiveSkillBonuses, skillTone } from '@/lib/skillbook'
 
 import type { FilterTab } from '@/lib/inventory-categories'
 
@@ -16,7 +17,8 @@ interface CharPanelProps {
   player: Player
   onAction?: (action: string | { type: string; data?: any }) => void
   onSwitchToInventory?: (filter?: FilterTab) => void
-  onOpenSpellbook?: () => void
+  /** Opens the Skills & Spells book on the given tab. */
+  onOpenBook?: (tab: 'skills' | 'spells') => void
   /** Opens the single Core Points modal owned by GameInterface (so Escape and the level-up alert share it). */
   onOpenStatAllocation?: () => void
   onOpenTraining?: () => void
@@ -51,7 +53,7 @@ function renderStatMods(metadata: any): React.ReactNode {
   return parts.length > 0 ? <>{parts}</> : null
 }
 
-export default function CharPanel({ player, onAction, onSwitchToInventory, onOpenSpellbook, onOpenStatAllocation, onOpenTraining, onClose }: CharPanelProps) {
+export default function CharPanel({ player, onAction, onSwitchToInventory, onOpenBook, onOpenStatAllocation, onOpenTraining, onClose }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
   const setPlayer = useGameStore((state) => state.setPlayer)
   const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
@@ -83,6 +85,13 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
   const learnedSpells = spellbook.filter((entry) => entry.level >= 1)
   const hasAnyTeacher = spellbook.some((entry) => entry.maxLevel > 0)
   const canLearnSpell = hasLearnableSpell(player)
+  const skillbook = useMemo(() => buildSkillbook(player), [player])
+  const learnedSkills = skillbook.filter((entry) => entry.level >= 1)
+  const hasAnySkillTeacher = skillbook.some((entry) => entry.maxLevel > 0)
+  const canLearnSkill = hasLearnableSkill(player)
+  // What the passives add for what is in hand right now — shown on the stats.
+  const gear = useMemo(() => gearContextFromInventory(inventory), [inventory])
+  const passives = useMemo(() => passiveSkillBonuses(player, gear), [player, gear])
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
@@ -123,6 +132,8 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
         return 'mount'
       case EquipSlot.ARTIFACT:
         return 'artifact'
+      case EquipSlot.COMPANION:
+        return 'companion'
       default:
         return 'all'
     }
@@ -267,10 +278,10 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
-                <StatDisplay label="STR" core={player.str ?? 0} mod={player.strMod ?? 0} compact color="text-stat-str" />
-                <StatDisplay label="DEX" core={player.dex ?? 0} mod={player.dexMod ?? 0} compact color="text-stat-dex" />
+                <StatDisplay label="STR" core={player.str ?? 0} mod={player.strMod ?? 0} bonus={passives.str} compact color="text-stat-str" />
+                <StatDisplay label="DEX" core={player.dex ?? 0} mod={player.dexMod ?? 0} bonus={passives.dex} compact color="text-stat-dex" />
                 <StatDisplay label="MAG" core={player.mag ?? 0} mod={player.magMod ?? 0} compact color="text-stat-mag" />
-                <StatDisplay label="DEF" core={player.def ?? 0} mod={player.defMod ?? 0} compact color="text-stat-def" />
+                <StatDisplay label="DEF" core={player.def ?? 0} mod={player.defMod ?? 0} bonus={passives.def} compact color="text-stat-def" />
               </div>
             </div>
 
@@ -397,32 +408,72 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                   }
                   onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.ARTIFACT))}
                 />
+                {/* Row 6: COMPANION — swings beside you on every attack turn */}
+                <EquipmentSlot
+                  slot={EquipSlot.COMPANION}
+                  item={equippedBySlot.get(EquipSlot.COMPANION)}
+                  onUnequip={(playerItemId) =>
+                    onAction?.({
+                      type: 'unequip_item',
+                      data: { playerItemId },
+                    })
+                  }
+                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.COMPANION))}
+                />
               </div>
             </div>
 
-            {/* Spells: what's learned, and the door to the spellbook. */}
+            {/* Skills & Spells: what's learned, and the door to the book that spends SP on both. */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Spells</h4>
-                {onOpenSpellbook && (
+                <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Skills &amp; Spells</h4>
+                {onOpenBook && (
                   <span className="relative inline-flex">
-                    {canLearnSpell && (
+                    {(canLearnSkill || canLearnSpell) && (
                       <span className="absolute inset-[2px] rounded-lg bg-mood-arcane/60 animate-ping-slow" />
                     )}
                     <button
                       type="button"
-                      onClick={onOpenSpellbook}
+                      onClick={() => onOpenBook(canLearnSkill && !canLearnSpell ? 'skills' : canLearnSpell ? 'spells' : 'skills')}
                       disabled={!isLoggedIn}
                       className="relative px-2.5 py-1 text-xs font-semibold fill-mood-arcane hover:opacity-90 disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
                     >
-                      Spellbook ({player.sp ?? 0} SP)
+                      Open book ({player.sp ?? 0} SP)
                     </button>
                   </span>
                 )}
               </div>
+              <p className="text-[10px] font-semibold text-fg-muted uppercase tracking-wider px-1">Skills</p>
+              {learnedSkills.length === 0 ? (
+                <p className="text-xs text-fg-muted italic px-1">
+                  {hasAnySkillTeacher ? 'No skills learned yet. Open the book to spend SP.' : 'No skills yet. Find a teacher — the Young Soldier trains recruits east of the Grassy Field.'}
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {learnedSkills.map((entry) => {
+                    const tone = skillTone(entry.def.hue)
+                    const part = passives.parts.find((p) => p.skillId === entry.def.id)
+                    const now = part
+                      ? part.stat === 'dodge' ? `${part.amount}% dodge` : `+${part.amount} ${part.stat.toUpperCase()} now`
+                      : entry.def.kind === 'strike' && entry.castCost !== null ? `${entry.castCost} MP` : 'not in hand'
+                    return (
+                      <div key={entry.def.id} className="rounded-lg border border-line-subtle/70 bg-surface-panel/60 px-2.5 py-1.5 flex items-center gap-2">
+                        <Icon name={entry.def.icon} size={20} className={`${tone.text} flex-shrink-0`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-fg-bright truncate">{entry.def.name}</p>
+                          <p className="text-[10px] text-fg-muted tabular-nums">
+                            lvl {entry.level}/{entry.maxLevel} · <span className={entry.def.kind === 'strike' ? 'text-resource-mp' : part ? tone.text : 'text-fg-disabled'}>{now}</span>
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              <p className="text-[10px] font-semibold text-fg-muted uppercase tracking-wider px-1 pt-1">Spells</p>
               {learnedSpells.length === 0 ? (
                 <p className="text-xs text-fg-muted italic px-1">
-                  {hasAnyTeacher ? 'No spells learned yet. Open the spellbook to spend SP.' : 'No spells yet. Find a teacher — the Pajama Shaman camps north-east of the Grassy Field.'}
+                  {hasAnyTeacher ? 'No spells learned yet. Open the book to spend SP.' : 'No spells yet. Find a teacher — the Pajama Shaman camps north-east of the Grassy Field.'}
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-1.5">
@@ -517,16 +568,21 @@ interface StatDisplayProps {
   label: string
   core: number
   mod: number
+  /** What the passive skills add for what is in hand right now (the original's "+3 one-handed"). */
+  bonus?: number
 }
 
-function StatDisplay({ label, core, mod, compact = false, color }: StatDisplayProps & { compact?: boolean; color?: string }) {
-  const effective = core + mod
+function StatDisplay({ label, core, mod, bonus = 0, compact = false, color }: StatDisplayProps & { compact?: boolean; color?: string }) {
+  const effective = core + mod + bonus
 
   return (
     <div className={`rounded-xl border border-line-subtle/40 bg-surface-panel/60 text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'}`}>
       <p className={`text-xs uppercase tracking-wide leading-none ${color ?? 'text-fg-secondary'}`}>{label}</p>
       <p className={`font-bold ${color ?? 'text-fg-bright'} ${compact ? 'text-lg mt-0.5' : 'text-2xl mt-1'}`}>{effective}</p>
-      <p className="text-xs text-fg-muted leading-none">{core}</p>
+      <p className="text-xs text-fg-muted leading-none tabular-nums">
+        {core}
+        {bonus > 0 && <span className="text-fg-disabled"> · +{bonus} skill</span>}
+      </p>
     </div>
   )
 }

@@ -18,11 +18,13 @@ const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
 const { getSpell, findSpellByCommand, isCastable } = require('../game-data/spells')
 const { getSpellState, castHealSpell } = require('./services/spell-service')
+const { getSkill, findSkillByCommand, isStrikeSkill, weaponFits, weaponFitReason } = require('../game-data/skills')
+const { getSkillState } = require('./services/skill-service')
 const { rand } = require('./battle-calculator')
-const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn } = require('./battle-action-handlers')
+const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn, fetchEquippedWeapon } = require('./battle-action-handlers')
 const { getRoomEnemies, isProbabilistic, getRoomPriorityEnemy, rollRoomEnemyGroup } = require('../game-data/room-enemies')
 const { getEnemy } = require('../game-data/enemies')
-const { getRevealDefinition, markRevealed, clearRevealed } = require('./search-reveal-state')
+const { getRevealDefinition, getNextRevealStage, markRevealed, clearRevealed } = require('./search-reveal-state')
 const { saveRoomRoster } = require('./services/room-roster-service')
 
 const EXIT_DIRECTIONS = [
@@ -114,6 +116,62 @@ const SEARCH_LOOT_TABLES = {
     },
     entries: [
       { message: 'You search the Forest and find an Iron Hatchet!', effect: { type: 'grantItem', itemSlug: 'iron-hatchet', quantity: 1 } },
+    ],
+  },
+
+  // ==================== DARK FOREST ====================
+  // Champion's Camp: "search all the scattered equipment if you can withstand
+  // the beating". A 1-in-2 find, then one of eight, exactly the original's roll.
+  '511': {
+    chance: 0.5,
+    failMessage: 'You search the camp and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the camp and find a Ring of Strength V!', effect: { type: 'grantItem', itemSlug: 'ring-of-strength-v', quantity: 1 } },
+      { message: 'You search the camp and find a Ring of Health Regen III!', effect: { type: 'grantItem', itemSlug: 'ring-of-health-regen-iii', quantity: 1 } },
+      { message: 'You search the camp and find 5 Meatballs!', effect: { type: 'grantItem', itemSlug: 'meatball', quantity: 5 } },
+      { message: 'You search the camp and find a piece of Iron!', effect: { type: 'grantItem', itemSlug: 'iron', quantity: 1 } },
+      { message: 'You search the camp and find some Coal!', effect: { type: 'grantItem', itemSlug: 'coal', quantity: 1 } },
+      { message: 'You search the camp and find a shiny piece of Mithril!', effect: { type: 'grantItem', itemSlug: 'mithril', quantity: 1 } },
+      { message: 'You search the camp and find some Reds!', effect: { type: 'grantItem', itemSlug: 'reds', quantity: 1 } },
+      { message: 'You search the camp and find some Yellows!', effect: { type: 'grantItem', itemSlug: 'yellows', quantity: 1 } },
+    ],
+  },
+  // Lost in the Trees. Searching here never finds anything; the original's own
+  // line. The way out is south, which somehow goes east.
+  '514': {
+    chance: 0,
+    failMessage: 'You search the trees and somehow get even more lost.',
+    entries: [],
+  },
+  // The Dark Keep Storeroom: a 1-in-3 rummage, one of eight supplies.
+  '516b': {
+    chance: 1 / 3,
+    failMessage: 'You search the dark storeroom and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the dark storeroom and find a Red Balm!', effect: { type: 'grantItem', itemSlug: 'red-balm', quantity: 1 } },
+      { message: 'You search the dark storeroom and find a Blue Balm!', effect: { type: 'grantItem', itemSlug: 'blue-balm', quantity: 1 } },
+      { message: 'You search the dark storeroom and find a Purple Balm!', effect: { type: 'grantItem', itemSlug: 'purple-balm', quantity: 1 } },
+      { message: (amount) => `You search the dark storeroom and find ${amount} arrows!`, effect: { type: 'grantItem', itemSlug: 'arrow', minQty: 20, maxQty: 50 } },
+      { message: (amount) => `You search the dark storeroom and find ${amount} bolts!`, effect: { type: 'grantItem', itemSlug: 'crossbow-bolt', minQty: 20, maxQty: 50 } },
+      { message: 'You search the dark storeroom and find some Blues!', effect: { type: 'grantItem', itemSlug: 'blues', quantity: 1 } },
+      { message: 'You search the dark storeroom and find some Yellows!', effect: { type: 'grantItem', itemSlug: 'yellows', quantity: 1 } },
+      { message: 'You search the dark storeroom and find some Gray Matter!', effect: { type: 'grantItem', itemSlug: 'gray-matter', quantity: 1 } },
+    ],
+  },
+  // The Dark Keep Barracks: "all sorts of elite weapons and armor". A 1-in-3
+  // search through the racks, one of eight — and one of the eight is a skull.
+  '516f': {
+    chance: 1 / 3,
+    failMessage: 'You search the barracks and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the barracks and find a Mithril Dagger!', effect: { type: 'grantItem', itemSlug: 'mithril-dagger', quantity: 1 } },
+      { message: 'You search the barracks and find a Mithril Staff!', effect: { type: 'grantItem', itemSlug: 'mithril-staff', quantity: 1 } },
+      { message: 'You search the barracks and find a Flamberg!', effect: { type: 'grantItem', itemSlug: 'flamberg', quantity: 1 } },
+      { message: 'You search the barracks and find a Glaive!', effect: { type: 'grantItem', itemSlug: 'glaive', quantity: 1 } },
+      { message: 'You search the barracks and find a Steel Battle Staff!', effect: { type: 'grantItem', itemSlug: 'steel-battle-staff', quantity: 1 } },
+      { message: (amount) => `You search the barracks and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 200, max: 500 } },
+      { message: 'You search the barracks and find a Mithril Boomerang!', effect: { type: 'grantItem', itemSlug: 'mithril-boomerang', quantity: 1 } },
+      { message: 'You search the barracks and find a Cursed Skull!!', effect: { type: 'grantItem', itemSlug: 'cursed-skull', quantity: 1 } },
     ],
   },
 
@@ -297,6 +355,26 @@ const SEARCH_LOOT_TABLES = {
  * rooms feel occupied.
  */
 const ROOM_FLAVOR = {
+  // The Dark Forest's edges: what the room descriptions say you can hear.
+  '505': [
+    'You hear grunting and clanging from the hill to the north.',
+    'Something heavy moves through the trees, then stops.',
+    'The leaves here are darker than any leaves should be.',
+  ],
+  '508': [
+    'Strange screeching and howling carries down from the northeast.',
+    'It is getting darker. It is always getting darker here.',
+    'A branch cracks somewhere behind you.',
+  ],
+  '520': [
+    'The thorns creak as something pushes through them, a long way off.',
+    'You pick a thorn out of your sleeve. There will be more.',
+  ],
+  '516h': [
+    'The crown catches what little light comes through the windows.',
+    'Far to the north, a greenish pillar of light flickers over the trees.',
+    'Something moves in the rafters, and then does not.',
+  ],
   '321': [
     'You get an uneasy feeling that some sort of spirit is nearby.',
     'You hear a rumbling come from the ground.',
@@ -388,6 +466,26 @@ function mergeActionResults(base, extra) {
 // support turn ended the battle with defeat, that takes over.
 function mergeSupportTurnIntoResult(base, supportTurn) {
   return mergeActionResults(base, supportTurn)
+}
+
+/**
+ * Rooms that hurt you for standing in them. The Thorny Path (520) rolled a
+ * 1-in-3 on every page load — "ouch! you run into a thorn bush!" for 50 to 100
+ * HP — and that is what it does here on every turn action taken in the room.
+ * The thorns never finish anyone: the floor is 1 HP, because dying to a bush
+ * with nothing to fight back against is not a death the death card can
+ * explain, and the original's own version left the player at whatever was
+ * left (often nothing, which was a bug, not a design).
+ *
+ * @type {Record<string, { chance: number, min: number, max: number, message: (n: number) => string }>}
+ */
+const ROOM_HAZARDS = {
+  '520': {
+    chance: 1 / 3,
+    min: 50,
+    max: 100,
+    message: (damage) => `Ouch! You run into a thorn bush! [ -${damage} HP ]`,
+  },
 }
 
 // Actions that consume a "turn" and may trigger a spawn check in probabilistic rooms.
@@ -615,6 +713,15 @@ class RoomState {
       }
     }
 
+    // A typed "slice" / "use magic strike" is the same as the Skills button.
+    // Only strikes answer to a command; passives are not something you do.
+    if (typeof action.type === 'string' && action.type !== 'use_skill') {
+      const typedSkill = findSkillByCommand(action.type)
+      if (typedSkill) {
+        return await this.executeUseSkill({ type: 'use_skill', data: { skillId: typedSkill.id } }, playerId)
+      }
+    }
+
     // Otherwise, fall back to standard actions
     let result
     switch (action.type) {
@@ -622,6 +729,8 @@ class RoomState {
         return await this.executeAttack(playerId)
       case 'cast_spell':
         return await this.executeCastSpell(action, playerId)
+      case 'use_skill':
+        return await this.executeUseSkill(action, playerId)
       case 'start_battle':
         return await executeStartBattle(action, playerId, this)
       case 'player_attack':
@@ -667,12 +776,46 @@ class RoomState {
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
     }
 
-    // After a TURN_ACTION completes, check for enemy spawn in probabilistic rooms.
+    // After a TURN_ACTION completes, the room's hazard (if it has one) bites,
+    // then check for enemy spawn in probabilistic rooms.
     if (result?.success && TURN_ACTIONS.has(action.type)) {
+      result = await this.appendHazardEvents(result, playerId)
       result = await this.appendSpawnEvents(result, playerId)
     }
 
     return result
+  }
+
+  // The room's environmental hazard, rolled once per turn action. Damage is
+  // written with a single guarded UPDATE that floors at 1 HP and skips the
+  // dead, so a thorn bush can neither kill nor revive anyone.
+  async appendHazardEvents(result, playerId) {
+    const hazard = ROOM_HAZARDS[this.roomId]
+    if (!hazard) return result
+    if (this.activeBattles.get(playerId)?.isActive) return result
+    if (Math.random() >= hazard.chance) return result
+
+    const damage = hazard.min + Math.floor(Math.random() * (hazard.max - hazard.min + 1))
+    const rows = await prisma.$queryRawUnsafe(
+      `UPDATE "User" SET hp = GREATEST(1, hp - $2) WHERE id = $1 AND hp > 0 RETURNING hp, mp`,
+      playerId,
+      damage
+    )
+    const row = rows[0]
+    if (!row) return result
+    const hp = Number(row.hp)
+    this.updatePlayer(playerId, (state) => ({ ...state, hp }))
+
+    return {
+      ...result,
+      playerEvents: [
+        ...(result.playerEvents ?? []),
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('room_hazard', 'danger', hazard.message(damage), { hp, mp: Number(row.mp) }),
+        },
+      ],
+    }
   }
 
   // After a turn action: resolve enemy presence and append notification / auto-battle
@@ -1064,7 +1207,7 @@ class RoomState {
     }
   }
 
-  async executeAttack(playerId, { spell = null } = {}) {
+  async executeAttack(playerId, { spell = null, skill = null } = {}) {
     const player = this.players.get(playerId)
     if (!player) {
       return this.createErrorResult('attack', 'Player not found in this room')
@@ -1072,7 +1215,7 @@ class RoomState {
 
     const activeBattle = this.activeBattles.get(playerId)
     if (activeBattle && activeBattle.isActive) {
-      return await executePlayerAttack({ type: 'player_attack', data: { spell } }, playerId, this)
+      return await executePlayerAttack({ type: 'player_attack', data: { spell, skill } }, playerId, this)
     }
 
     let target = null
@@ -1106,7 +1249,52 @@ class RoomState {
       }
     }
 
-    return await executeStartBattle({ type: 'start_battle', data: { enemySlug: target.slug, spell } }, playerId, this)
+    return await executeStartBattle({ type: 'start_battle', data: { enemySlug: target.slug, spell, skill } }, playerId, this)
+  }
+
+  /**
+   * Strike with a skill the player knows — Slice, Smash, Aim or Magic Strike.
+   *
+   * A strike is the turn's attack with the skill's bonus on it (and, like a
+   * spell, it can open a fight). The weapon has to fit: Slice wants one hand,
+   * Smash two, Aim a ranged weapon, Magic Strike anything. The friendly checks
+   * here (known, fits, affordable) produce the messages; the guarded MP charge
+   * in the battle handler is what makes a double click safe.
+   */
+  async executeUseSkill(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('use_skill', 'Player not found in this room')
+    }
+
+    const skillId = action?.data?.skillId
+    const skill = typeof skillId === 'string' ? getSkill(skillId) || findSkillByCommand(skillId) : null
+    if (!skill) {
+      return this.createErrorResult('use_skill', 'Unknown skill.')
+    }
+    if (!isStrikeSkill(skill)) {
+      return this.createErrorResult('use_skill', `${skill.name} works on its own — there is nothing to use.`)
+    }
+
+    const [state, gear] = await Promise.all([getSkillState(playerId), fetchEquippedWeapon(playerId)])
+    if (!state) {
+      return this.createErrorResult('use_skill', 'Could not load your skills.')
+    }
+    const level = state.skills[skill.column] || 0
+    if (level < 1) {
+      return this.createErrorResult('use_skill', `You haven't learned ${skill.name} yet.`)
+    }
+    if (!weaponFits(skill, gear)) {
+      return this.createErrorResult('use_skill', `${weaponFitReason(skill, gear)} to ${skill.name}.`)
+    }
+
+    const cost = skill.castCost(level)
+    if (state.mp < cost) {
+      return this.createErrorResult('use_skill', `You don't have enough MP to ${skill.name}! It costs ${cost} MP and you have ${state.mp}.`)
+    }
+
+    this.touchActivity()
+    return await this.executeAttack(playerId, { skill: { def: skill, level, cost } })
   }
 
   /**
@@ -1219,7 +1407,26 @@ class RoomState {
 
     const revealDef = getRevealDefinition(this.roomId)
     if (revealDef) {
-      const chance = revealDef.chance ?? 1
+      // The next passage this room still hides — the only one for most rooms,
+      // the next in order for a staged room like the Dark Grove.
+      const stage = getNextRevealStage(playerId, this.roomId)
+      if (!stage) {
+        return {
+          success: true,
+          action: 'search',
+          playerEvents: [
+            {
+              event: 'action:feedback',
+              payload: this.createFeedbackPayload(
+                'search',
+                'info',
+                revealDef.exhaustedMessage || 'You search the room again and find nothing new.'
+              ),
+            },
+          ],
+        }
+      }
+      const chance = stage.chance ?? 1
       if (Math.random() >= chance) {
         return {
           success: true,
@@ -1227,21 +1434,23 @@ class RoomState {
           playerEvents: [
             {
               event: 'action:feedback',
-              payload: this.createFeedbackPayload('search', 'info', revealDef.failMessage),
+              payload: this.createFeedbackPayload('search', 'info', stage.failMessage),
             },
           ],
         }
       }
-      markRevealed(playerId, this.roomId)
+      // Staged rooms track each passage by direction; single ones by room.
+      markRevealed(playerId, this.roomId, Array.isArray(revealDef.stages) ? stage.direction : null)
+      const { getRoomStateNote: getRevealStateNote } = require('./search-reveal-state')
       return {
         success: true,
         action: 'search',
         playerEvents: [
           {
             event: 'action:feedback',
-            payload: this.createFeedbackPayload('search', 'success', revealDef.successMessage, {
-              stateNote: revealDef.stateNote,
-              roomPatch: { [revealDef.direction]: revealDef.toRoom },
+            payload: this.createFeedbackPayload('search', 'success', stage.successMessage, {
+              stateNote: getRevealStateNote(playerId, this.roomId) ?? stage.stateNote,
+              roomPatch: { [stage.direction]: stage.toRoom },
             }),
           },
         ],
@@ -2014,6 +2223,7 @@ module.exports = {
   RoomState,
   SEARCH_LOOT_TABLES,
   ROOM_FLAVOR,
+  ROOM_HAZARDS,
   // Exported for tests: this is the plumbing that decides which of an action
   // result's five channels survive a merge, and losing one is silent at runtime.
   mergeActionResults,

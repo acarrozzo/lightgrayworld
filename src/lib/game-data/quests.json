@@ -3644,5 +3644,672 @@
       }
     ],
     "onComplete": []
+  },
+  "quest_rangerguard_intro": {
+    "number": 72,
+    "questType": "main",
+    "isIntro": true,
+    "level": 25,
+    "title": "Find the Dark Forest Outpost",
+    "summary": "A sturdy guard outpost is manned by members of the Ranger's Guild, protecting everyone in town from all the danger in the mountains.",
+    "objective": "Find the Dark Forest Outpost.",
+    "nextStep": "The Outpost (Room 502) is over the Stone Path Bridge, north through the Magical Gate at the top of the Forest's stone path.",
+    "reminderDialog": "The Ranger Guard is still at his post over the bridge, north of the Magical Gate.",
+    "completionDialog": "\"These dang Highwaymen need to be stopped. They keep robbing the innocent.\" The Ranger Guard looks you over. \"Three things, if you're up to them.\"",
+    "giver": {
+      "npcId": "ranger_guard",
+      "roomId": "502",
+      "name": "Ranger Guard",
+      "icon": "npc-ranger"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_rangerguard_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_rangerguard_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_rangerguard_003"
+      }
+    ]
+  },
+  "quest_rangerguard_001": {
+    "number": 73,
+    "questType": "side",
+    "level": 25,
+    "title": "Protect the Mountain Path",
+    "summary": "The Bowmen and Highwaymen are thieves who prey on those who travel the Mountain Path! Protect the path by removing these outlaws.",
+    "objective": "Defeat 5 Bowmen and 5 Highwaymen.",
+    "nextStep": "They patrol the stone path west of the Outpost, between the bridge and the Highway Toll. The Highwayman at the toll gate will fight anyone who asks.",
+    "reminderDialog": "\"{progress} of {count} so far. They can be found patrolling the stone path to the mountains — and one of them is standing right at the toll.\"",
+    "completionDialog": "\"You have indeed defeated 5 Bowmen and 5 Highwaymen.\" The Ranger Guard pulls a wrapped blade from behind the palisade. \"A deadly Black Blade. It's yours.\"",
+    "giver": {
+      "npcId": "ranger_guard",
+      "roomId": "502",
+      "name": "Ranger Guard",
+      "icon": "npc-ranger"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "bowman",
+        "count": 5,
+        "displayName": "Bowman"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "highwayman",
+        "count": 5,
+        "displayName": "Highwayman"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "black-blade",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_rangerguard_002": {
+    "number": 74,
+    "questType": "side",
+    "level": 30,
+    "title": "Elder Slayer",
+    "summary": "Make the Dark Forest a safer place by defeating vicious Troll Elders.",
+    "objective": "Defeat 3 Troll Elders.",
+    "nextStep": "Troll Elders roam the whole Dark Forest, north of the teleport pillar — the trolls' most common rank after the plain Troll.",
+    "reminderDialog": "\"{progress} of {count} elders down. They can be found anywhere in the Dark Forest. Mind the power swings.\"",
+    "completionDialog": "\"You have indeed defeated 3 Troll Elders.\" The Ranger Guard whistles, and a Dire Wolf comes running in out of the trees. \"The wolf is now yours.\"",
+    "giver": {
+      "npcId": "ranger_guard",
+      "roomId": "502",
+      "name": "Ranger Guard",
+      "icon": "npc-ranger"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "troll-elder",
+        "count": 3,
+        "displayName": "Troll Elder"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1500
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "dire-wolf",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_rangerguard_003": {
+    "number": 75,
+    "questType": "side",
+    "level": 45,
+    "title": "Dark Keep First Floor",
+    "summary": "Clear out the First Floor of the Dark Keep. The evil creatures in the Keep are a serious threat that should be taken care of.",
+    "objective": "Defeat a Lurker, a Winged Demon and an Undead Orc.",
+    "nextStep": "The Dark Keep is west of the Gold Chest, past the courtyard. The three haunt its ground floor: the Main Hall, the Storeroom and the Burial Chamber. The demon flies, so bring a bow.",
+    "reminderDialog": "\"{progress} of {count}. The Dark Keep can be reached by heading west in the Dark Forest — the courtyard is past the gold chest. Lurker, Winged Demon, Undead Orc.\"",
+    "completionDialog": "\"You have indeed defeated a Lurker, a Winged Demon and an Undead Orc.\" The Ranger Guard hands you a mean looking Demon Cape. \"Try not to become one.\"",
+    "giver": {
+      "npcId": "ranger_guard",
+      "roomId": "502",
+      "name": "Ranger Guard",
+      "icon": "npc-ranger"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "lurker",
+        "count": 1,
+        "displayName": "Lurker"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "winged-demon",
+        "count": 1,
+        "displayName": "Winged Demon"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "undead-orc",
+        "count": 1,
+        "displayName": "Undead Orc"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 2000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "demon-cape",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_darkelf_intro": {
+    "number": 76,
+    "questType": "side",
+    "isIntro": true,
+    "level": 25,
+    "title": "Find the Dark Elf's Tree Hut",
+    "summary": "Come relax and have some special tea with the Dark Elf in his cozy tree hut.",
+    "objective": "Find the Dark Elf's Tree Hut.",
+    "nextStep": "The Tree Hut (Room 506) is northwest of the Dark Forest Clearing, southeast of the teleport pillar.",
+    "reminderDialog": "The Dark Elf is still in his tree hut, between the clearing and the teleport pillar, drinking tea.",
+    "completionDialog": "\"Man this tea is good.\" The Dark Elf sets down his cup. \"Make yourself at home and grab one. I've several quests for the enthusiastic adventurer.\"",
+    "giver": {
+      "npcId": "dark_elf",
+      "roomId": "506",
+      "name": "Dark Elf",
+      "icon": "npc-darkelf"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_darkelf_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_darkelf_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_darkelf_003"
+      }
+    ]
+  },
+  "quest_darkelf_001": {
+    "number": 77,
+    "questType": "side",
+    "level": 25,
+    "title": "Dark Forest Lumberjack",
+    "summary": "The Dark Elf could always use more wood for his toasty fire. Collect and bring him 50 wood.",
+    "objective": "Bring the Dark Elf 50 wood.",
+    "nextStep": "Every tree in the Dark Forest can be chopped, and there is an iron hatchet leaning on the sign at the teleport pillar. The Forest to the south has trees too.",
+    "reminderDialog": "\"You ready for a big order, traveler? Return here with 50 wood. {progress} of {count} so far — pick up a hatchet and go into the Forest and chop.\"",
+    "completionDialog": "\"That's a lot of wood!\" The Dark Elf stacks it by the fire and hands you a freshly crafted Mithril Hatchet, and two rings off his own fingers. \"Six a swing with that. Don't lose it.\"",
+    "giver": {
+      "npcId": "dark_elf",
+      "roomId": "506",
+      "name": "Dark Elf",
+      "icon": "npc-darkelf"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "wood",
+        "quantity": 50,
+        "displayName": "Wood"
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "ring-of-health-regen-v",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "ring-of-mana-regen-v",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "mithril-hatchet",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_darkelf_002": {
+    "number": 78,
+    "questType": "side",
+    "level": 25,
+    "title": "Shaman & Sorcerer Slayer",
+    "summary": "Defeat a Troll Shaman and a Troll Sorcerer in the Dark Forest before they corrupt it even more with their dark magic.",
+    "objective": "Defeat a Troll Shaman and a Troll Sorcerer.",
+    "nextStep": "Both can be found anywhere in the Dark Forest. Both attack with magic, so your MAG is what defends you.",
+    "reminderDialog": "\"I have a shiny gold key with your name on it. {progress} of {count} — return here after you slay a Troll Shaman and a Troll Sorcerer and it's all yours.\"",
+    "completionDialog": "\"I present to you this marvelous Gold Key.\" The Dark Elf drops it in your palm. \"Use it to open the Dark Forest Gold Chest north of the pillar, or any other Gold Chest you like.\"",
+    "giver": {
+      "npcId": "dark_elf",
+      "roomId": "506",
+      "name": "Dark Elf",
+      "icon": "npc-darkelf"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "troll-shaman",
+        "count": 1,
+        "displayName": "Troll Shaman"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "troll-sorcerer",
+        "count": 1,
+        "displayName": "Troll Sorcerer"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1500
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "gold-key",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_darkelf_003": {
+    "number": 79,
+    "questType": "side",
+    "level": 30,
+    "title": "Ent Hunter",
+    "summary": "Trees have been coming to life and attacking the wildlife. They are difficult to spot but when you do, send it back into the ground.",
+    "objective": "Defeat an Ent.",
+    "nextStep": "Ents are rare anywhere in the Dark Forest and commonest in the Dark Grove, east of the teleport pillar. Magic does nothing to wood; bring a blade or a bow.",
+    "reminderDialog": "\"Still no tree? They are rare creatures found in the Dark Forest. Try the grove east of the pillar — and don't bother with spells.\"",
+    "completionDialog": "\"You have indeed beat up a tree!\" A marvelous sky hawk drops out of the canopy and lands on the Dark Elf's chair. Its feathers look like tempered mithril. \"This bird is ready to go.\"",
+    "giver": {
+      "npcId": "dark_elf",
+      "roomId": "506",
+      "name": "Dark Elf",
+      "icon": "npc-darkelf"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "ent",
+        "count": 1,
+        "displayName": "Ent"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 2000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "sky-hawk",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_rangersguild_intro": {
+    "number": 80,
+    "questType": "main",
+    "isIntro": true,
+    "level": 30,
+    "title": "Find the Ranger's Guild Entrance",
+    "summary": "The Ranger's Guild is hidden somewhere in the Dark Forest. You must search and be clever to find your way.",
+    "objective": "Find the Ranger's Guild Entrance.",
+    "nextStep": "Search the Dark Grove east of the teleport pillar until it gives up a secret way west, then get lost in the trees. Northeast out of the trees somehow arrives at the base of the guild's tree (Room 515).",
+    "reminderDialog": "The guild is still hidden in the trees. Search the Dark Grove, go west, and try northeast when you are lost.",
+    "completionDialog": "\"Want to be a Ranger eh? There are fallen Rangers among us, defeat one and return here.\"",
+    "giver": {
+      "npcId": "rangers_guild_recruiter",
+      "roomId": "515",
+      "name": "Ranger's Guild",
+      "icon": "npc-ranger"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_rangersguild_000"
+      }
+    ]
+  },
+  "quest_rangersguild_000": {
+    "number": 81,
+    "questType": "main",
+    "level": 30,
+    "title": "Ranger's Initiation",
+    "summary": "Dark Rangers are increasingly becoming a nuisance in the Dark Forest. To join the Ranger's Guild you must locate and defeat one of these Dark Rangers.",
+    "objective": "Defeat a Dark Ranger.",
+    "nextStep": "Dark Rangers hide anywhere in the Dark Forest and are commonest when you are Lost in the Trees. Arrows never find them — use a blade or a spell.",
+    "reminderDialog": "\"Still no Dark Ranger? They rarely spawn in the Dark Forest. Lost in the Trees is where most of them are caught — with a blade, not a bow.\"",
+    "completionDialog": "\"You have indeed defeated a Dark Ranger! You are now an official member of the Rangers Guild.\" You are handed a sleek and powerful Greenhorn Bow. \"Up the ladder with you.\"",
+    "giver": {
+      "npcId": "rangers_guild_recruiter",
+      "roomId": "515",
+      "name": "Ranger's Guild",
+      "icon": "npc-ranger"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "dark-ranger",
+        "count": 1,
+        "displayName": "Dark Ranger"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 3000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "greenhorn-bow",
+        "quantity": 1
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_rangerlego_intro"
+      }
+    ]
+  },
+  "quest_rangerlego_intro": {
+    "number": 82,
+    "questType": "side",
+    "isIntro": true,
+    "level": 35,
+    "title": "Talk to Ranger Lego",
+    "summary": "Young Ranger Lego is just chillin in the guild re-stringing his bow and crafting some arrows. He has 3 quests for you to complete.",
+    "objective": "Talk to Ranger Lego.",
+    "nextStep": "Lego's room (Room 515b) is north of the Ranger's Guild lobby, at the top of the ladder.",
+    "reminderDialog": "Lego is still up in the guild, north of the lobby, fletching arrows.",
+    "completionDialog": "\"Aye. I only need the help of Elite Rangers. Let's see what you got.\"",
+    "giver": {
+      "npcId": "ranger_lego",
+      "roomId": "515b",
+      "name": "Ranger Lego",
+      "icon": "npc-ranger2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "level",
+        "minLevel": 0
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "onComplete": [
+      {
+        "type": "startQuest",
+        "questId": "quest_rangerlego_001"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_rangerlego_002"
+      },
+      {
+        "type": "startQuest",
+        "questId": "quest_rangerlego_003"
+      }
+    ]
+  },
+  "quest_rangerlego_001": {
+    "number": 83,
+    "questType": "side",
+    "level": 25,
+    "title": "Stubborn War Turtle",
+    "summary": "That Turtle is so stubborn. Go defeat the armored War Turtle in the Neverending Mine.",
+    "objective": "Defeat the War Turtle.",
+    "nextStep": "The War Turtle fills the shaft at Mine Level 5 in the Neverending Mine, under the Rocky Flats. It blocks ranged attacks, so put away your bow.",
+    "reminderDialog": "\"That turtle is still down there at level 5 in the Mine. He blocks ranged attacks so put away your bow.\"",
+    "completionDialog": "\"You have indeed defeated a War Turtle!\" Lego shoulders his own bow. \"I can join you in battle now. Every swing you take, I take a shot.\"",
+    "giver": {
+      "npcId": "ranger_lego",
+      "roomId": "515b",
+      "name": "Ranger Lego",
+      "icon": "npc-ranger2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "war-turtle",
+        "count": 1,
+        "displayName": "War Turtle"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 2000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "elf-ranger",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_rangerlego_002": {
+    "number": 84,
+    "questType": "side",
+    "level": 45,
+    "title": "Gargoyle Hunter",
+    "summary": "Gargoyles are so cool, and evil! Go defeat a white and grey one in the Cathedral.",
+    "objective": "Defeat a Grey Gargoyle and a White Gargoyle.",
+    "nextStep": "Both roost in the Cathedral in the Stone Mountains, beyond the Highway Toll west of the Outpost. The mountain road is snowed in for now.",
+    "reminderDialog": "\"{progress} of {count}. Find both of them in the Cathedral in the Stone Mountain Map — once the pass is open.\"",
+    "completionDialog": "\"You have indeed defeated a white and grey gargoyle!\" Lego hands you a perfectly balanced Ranger Shield.",
+    "giver": {
+      "npcId": "ranger_lego",
+      "roomId": "515b",
+      "name": "Ranger Lego",
+      "icon": "npc-ranger2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "grey-gargoyle",
+        "count": 1,
+        "displayName": "Grey Gargoyle"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "white-gargoyle",
+        "count": 1,
+        "displayName": "White Gargoyle"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 3000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "ranger-shield",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
+  },
+  "quest_rangerlego_003": {
+    "number": 85,
+    "questType": "side",
+    "level": 50,
+    "title": "The Griffin",
+    "summary": "Slay the magical flying Griffin in the Neverending Mine.",
+    "objective": "Defeat the Griffin.",
+    "nextStep": "The Griffin is at Mine Level 25 in the Neverending Mine. It flies and shrugs off blades; bring a bow and a lot of arrows, or magic.",
+    "reminderDialog": "\"The Griffin is still down at level 25 in the Mine. It flies, and steel bounces off it.\"",
+    "completionDialog": "\"You have indeed defeated the Griffin!\" Lego whistles, and a Green Griffin comes flying in through the canopy. \"A new mount. Try not to fall off.\"",
+    "giver": {
+      "npcId": "ranger_lego",
+      "roomId": "515b",
+      "name": "Ranger Lego",
+      "icon": "npc-ranger2"
+    },
+    "completionMode": "turn_in",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "griffin",
+        "count": 1,
+        "displayName": "Griffin"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 4000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "green-griffin",
+        "quantity": 1
+      }
+    ],
+    "onComplete": []
   }
 }

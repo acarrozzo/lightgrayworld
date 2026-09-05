@@ -302,6 +302,49 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '497': { x: 560, y: 140 },  // Secret Underwater Cave
   '498': { x: 455, y: 350 },  // Underwater Cavern
   '499': { x: 35, y: 35 },  // The Kraken
+  // Dark Forest (coordinates relative to lightgray_map_dark_forest_main.jpg).
+  // The stone path in from the Forest runs along the bottom edge; the Keep is
+  // the block on the left; the Troll King is the top-right corner.
+  '501': { x: 245, y: 665 },  // Stone Path Bridge
+  '502': { x: 245, y: 560 },  // Dark Forest Outpost — Ranger Guard
+  '503': { x: 140, y: 560 },  // Stone Path by the Outpost
+  '504': { x: 35, y: 560 },  // Highway Toll — Mountain Gate
+  '505': { x: 560, y: 665 },  // Dark Forest Clearing
+  '506': { x: 455, y: 560 },  // Dark Elf — Tree Hut
+  '507': { x: 350, y: 455 },  // Dark Forest Teleport (hub)
+  '508': { x: 455, y: 455 },  // Dark Path
+  '509': { x: 560, y: 350 },  // Dark Grove
+  '510': { x: 665, y: 455 },  // Bloody Path
+  '511': { x: 560, y: 455 },  // Champion's Camp
+  '512': { x: 665, y: 560 },  // Dark Forest Silver Chest
+  '513': { x: 350, y: 350 },  // Dark Forest Gold Chest
+  '514': { x: 455, y: 350 },  // Lost in the Trees
+  '515': { x: 350, y: 245 },  // Ranger's Guild Entrance
+  '516': { x: 245, y: 245 },  // Dark Keep Courtyard
+  '516a': { x: 140, y: 245 },  // Dark Keep Main Hall
+  '516b': { x: 35, y: 245 },  // Dark Keep Storeroom
+  '516c': { x: 140, y: 350 },  // Dark Keep Burial Chamber
+  '516d': { x: 35, y: 350 },  // Dark Stairwell
+  '517': { x: 350, y: 140 },  // Dark Thicket
+  '518': { x: 455, y: 245 },  // Dark Twisted Path
+  '519': { x: 560, y: 245 },  // By a Fallen Tree
+  '520': { x: 665, y: 245 },  // Thorny Path
+  '521': { x: 560, y: 140 },  // Dark Forest Troll Nest
+  '522': { x: 455, y: 35 },  // Empty Arena
+  '523': { x: 665, y: 35 },  // Troll King
+  '524': { x: 350, y: 35 },  // Top of the Despair
+  '525': { x: 245, y: 35 },  // Test of Light — Forest Princess
+  // Dark Forest upper level (lightgray_map_dark_forest_upperlevel.jpg): the
+  // Ranger's Guild cross in the tree tops, and the Keep's second floor.
+  '515a': { x: 455, y: 245 },  // Ranger's Guild Lobby (sub-hub)
+  '515b': { x: 455, y: 140 },  // Lego's Quests
+  '515c': { x: 560, y: 245 },  // Silver Shaman — Silver Aura
+  '515d': { x: 455, y: 350 },  // Ranger Skills
+  '515e': { x: 350, y: 245 },  // Ranger Shop
+  '516e': { x: 35, y: 350 },  // Top of the Stairwell
+  '516f': { x: 140, y: 350 },  // Dark Keep Barracks
+  '516g': { x: 35, y: 245 },  // Paladin Altar
+  '516h': { x: 140, y: 245 },  // Dark Throne
 }
 
 /** CSS `background-position` for the compass mini-map window. */

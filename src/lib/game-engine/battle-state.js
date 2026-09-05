@@ -1,7 +1,14 @@
 const { getStatBuffBonuses } = require('./services/buff-service')
+const { getPassiveSkillBonuses } = require('../game-data/skills')
+
+/**
+ * What the player is holding, as the skills read it: the weapon's category,
+ * whether it takes both hands, and whether the off hand carries a shield.
+ * @typedef {{ weaponCategory: 'MELEE'|'RANGED'|null, isTwoHanded: boolean, hasShield: boolean }} GearContext
+ */
 
 class BattleState {
-  constructor({ playerId, roomId, enemy, playerStats, equippedWeaponCategory = null }) {
+  constructor({ playerId, roomId, enemy, playerStats, equippedWeaponCategory = null, companion = null, gear = null }) {
     this.playerId = playerId
     this.roomId = roomId
     this.enemySlug = enemy.slug
@@ -11,12 +18,16 @@ class BattleState {
     this.enemy = enemy
 
     // Keep the true value (mods can push a stat negative) — combat rolls guard the range.
-    // Three contributions: the core stat, equipment mods (derived, stored on the
-    // User row) and any running click-counted stat buff (reds/greens/blues/yellows),
-    // which is applied here rather than folded into strMod — that column is
-    // recomputed from equipment on every equip and would drop the buff.
+    // Four contributions: the core stat, equipment mods (derived, stored on the
+    // User row), any running click-counted stat buff (reds/greens/blues/yellows),
+    // and the passive skills for what is in hand. Buffs and skills are applied
+    // here rather than folded into strMod — that column is recomputed from
+    // equipment on every equip and would drop them.
+    this.setGear(gear, equippedWeaponCategory)
     this.applyStats(playerStats)
-    this.equippedWeaponCategory = equippedWeaponCategory || 'MELEE'
+    // The equipped COMPANION, if any: { name, damageMin, damageMax }. It swings
+    // on every attack turn the player takes (battle-calculator).
+    this.companion = companion || null
 
     this.turnCount = 0
     this.canFlee = false
@@ -30,18 +41,51 @@ class BattleState {
     this.lastTurnResult = null
   }
 
-  applyStats(playerStats) {
-    const buff = getStatBuffBonuses(playerStats)
-    this.baseStr = (playerStats.str || 0) + (playerStats.strMod || 0) + buff.str
-    this.baseDex = (playerStats.dex || 0) + (playerStats.dexMod || 0) + buff.dex
-    this.baseMag = (playerStats.mag || 0) + (playerStats.magMod || 0) + buff.mag
-    this.baseDef = (playerStats.def || 0) + (playerStats.defMod || 0) + buff.def
+  /**
+   * Record what is in hand. Accepts the full gear context, or — for callers
+   * that only know the weapon's category — just that, with no shield and one
+   * hand assumed.
+   * @param {GearContext|null|undefined} gear
+   * @param {'MELEE'|'RANGED'|null|undefined} [weaponCategory]
+   */
+  setGear(gear, weaponCategory) {
+    const category = gear && gear.weaponCategory !== undefined ? gear.weaponCategory : (weaponCategory || null)
+    this.gear = {
+      weaponCategory: category || null,
+      isTwoHanded: Boolean(gear && gear.isTwoHanded),
+      hasShield: Boolean(gear && gear.hasShield),
+    }
+    this.equippedWeaponCategory = this.gear.weaponCategory || 'MELEE'
   }
 
-  updateStats(playerStats, equippedWeaponCategory) {
+  applyStats(playerStats) {
+    const buff = getStatBuffBonuses(playerStats)
+    // The skill levels ride on the same row (SKILL_SELECT); a row without them
+    // simply has no passives.
+    const skill = getPassiveSkillBonuses(playerStats, this.gear)
+    this.skillBonuses = skill
+    this.dodgeChance = skill.dodgeChance
+    this.baseStr = (playerStats.str || 0) + (playerStats.strMod || 0) + buff.str + skill.str
+    this.baseDex = (playerStats.dex || 0) + (playerStats.dexMod || 0) + buff.dex + skill.dex
+    this.baseMag = (playerStats.mag || 0) + (playerStats.magMod || 0) + buff.mag
+    this.baseDef = (playerStats.def || 0) + (playerStats.defMod || 0) + buff.def + skill.def
+  }
+
+  /**
+   * Re-read the live row mid-fight (a potion, a weapon swap). `gear` is the
+   * full context, or a bare weapon category for older callers.
+   * @param {Object} playerStats
+   * @param {GearContext|'MELEE'|'RANGED'|null} [gear]
+   * @param {Object|null} [companion]
+   */
+  updateStats(playerStats, gear, companion) {
+    if (gear !== undefined) {
+      if (gear === null || typeof gear === 'string') this.setGear(null, gear)
+      else this.setGear(gear)
+    }
     this.applyStats(playerStats)
-    if (equippedWeaponCategory !== undefined) {
-      this.equippedWeaponCategory = equippedWeaponCategory || 'MELEE'
+    if (companion !== undefined) {
+      this.companion = companion || null
     }
   }
 

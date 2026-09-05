@@ -7,6 +7,7 @@ import { DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { COMMON_ERRORS, validateRequiredFields } from '@/lib/error-handling'
 import { recomputeStatMods } from '@/lib/game-engine/services/equipment-service'
 import { SPELL_SELECT, projectSpellState } from '@/lib/game-engine/services/spell-service'
+import { SKILL_SELECT, projectSkillState } from '@/lib/game-engine/services/skill-service'
 import { MAP_STATE_SELECT, projectMapState } from '@/lib/game-engine/services/map-state'
 import bcrypt from 'bcryptjs'
 
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
         deaths: true,
         chest1: true,
         ...SPELL_SELECT,
+        ...SKILL_SELECT,
         ...MAP_STATE_SELECT,
       },
     })
@@ -127,6 +129,7 @@ export async function POST(request: NextRequest) {
       deaths: freshUser!.deaths,
       chest1: freshUser!.chest1,
       ...projectSpellState(freshUser),
+      ...projectSkillState(freshUser),
       ...projectMapState(freshUser),
     })
 

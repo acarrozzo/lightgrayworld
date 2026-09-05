@@ -192,6 +192,11 @@ export const lightGray = makeTheme({
       // The original's `.ocean` blue, and the darker water beneath it.
       ocean: { base: '#3aa0e0' },
       underwater: { base: '#2c6fa8' },
+      // The original's `.darkgreen`, `.darkergray` and `.dgreen`: the Dark
+      // Forest floor, the Keep's stone, and the guild's lighter canopy.
+      darkForest: { base: '#2f7d32' },
+      darkKeep: { base: '#7d8288' },
+      rangersGuild: { base: '#5fb36a' },
       solarOffice: { base: '#efb045' },
       lobby: { base: '#0eb3f5' },
     },

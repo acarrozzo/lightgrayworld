@@ -97,7 +97,7 @@ const VERTICAL = new Set<Direction>(['up', 'down'])
 // dungeon) and the Bat Cave (028*) — then the Forest and its lairs, then Red Town
 // and the sewers beneath it, then the Rocky Flats with the Abandoned Mine, the
 // chamber under the Stone Grotto, and the Neverending Mine's own shaft, then the
-// Blue Ocean and everything under it.
+// Blue Ocean and everything under it, then the Dark Forest and its upper level.
 // A region's surface entrance stays on the surface tab
 // (the bat-cave mouth 028, the Back Alley sewer 232), so links between maps become
 // portal markers. Mirrors getMapIdForRoom in components/game-interface/utils.ts.
@@ -118,6 +118,9 @@ const UNDER_THE_OCEAN = [
   '480', '481', '482', '483', '484', '485', '486', '487', '488', '489',
   '490', '491', '492', '493', '494', '495', '496', '497', '498', '499',
 ]
+// The Dark Forest's one sheet that sits above the surface rather than below
+// it: the Ranger's Guild in the tree tops and the Keep's second floor.
+const DARK_FOREST_UPPER = ['515a', '515b', '515c', '515d', '515e', '516e', '516f', '516g', '516h']
 const mapOf = (roomId: string): MapId => {
   if (roomId.startsWith('003b')) return 'cabin_basement'
   if (SCORPION_DUNGEON.includes(roomId)) return 'scorpion_pit'
@@ -135,6 +138,8 @@ const mapOf = (roomId: string): MapId => {
   if (roomId.startsWith('3')) return 'rocky_flats'
   if (UNDER_THE_OCEAN.includes(roomId)) return 'under_the_ocean'
   if (roomId.startsWith('4')) return 'blue_ocean'
+  if (DARK_FOREST_UPPER.includes(roomId)) return 'dark_forest_upper'
+  if (roomId.startsWith('5')) return 'dark_forest'
   if (roomId.startsWith('2')) return 'red_town'
   if (roomId.startsWith('1')) return 'forest'
   return 'overworld'

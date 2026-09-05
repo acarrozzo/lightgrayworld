@@ -83,6 +83,28 @@ export interface BattleSpellCast {
   text: string | null
 }
 
+/**
+ * A skill the player struck with this turn — a weapon swing plus the skill's
+ * bonus. Server-declared like a cast. `weaponRaw` and `bonus` are the split
+ * behind the turn's `playerRaw`; `text` is "weapon + bonus", null when a
+ * Magic Strike fizzled on a magic-immune enemy (no bonus rolled or charged).
+ */
+export interface BattleSkillUse {
+  id: string
+  name: string
+  level: number
+  cost: number
+  icon: string
+  attackIcon: string
+  hue: string
+  magic: boolean
+  weaponRaw: number
+  bonus: number
+  bonusMax: number
+  rolls: number[]
+  text: string | null
+}
+
 export interface BattleTurnPayload extends BattleSnapshot {
   playerHp: number
   playerHpMax: number
@@ -112,8 +134,24 @@ export interface BattleTurnPayload extends BattleSnapshot {
   ammo?: { slug: string; remaining: number | null } | null
   actionMeta?: BattleSupportActionMeta | null
   spell?: BattleSpellCast | null
+  /** The skill the player struck with this turn, or null for a plain swing or a spell. */
+  skill?: BattleSkillUse | null
   immuneToMagic?: boolean
+  /** 'MELEE' | 'RANGED' when the enemy shrugged the weapon off; null otherwise. */
+  immuneToWeapon?: 'MELEE' | 'RANGED' | null
+  /** The companion's swing this turn, or null with nothing in the slot. */
+  companion?: BattleCompanionStrike | null
+  /** True when the Dodge skill turned the enemy's swing into nothing. */
+  playerDodged?: boolean
   message: string
+}
+
+/** The equipped companion's own roll, reported beside the player's hit. */
+export interface BattleCompanionStrike {
+  name: string
+  roll: number
+  block: number
+  damage: number
 }
 
 export interface BattleLastTurn {
@@ -133,7 +171,11 @@ export interface BattleLastTurn {
   enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null
   enemyAction?: BattleEnemyAction | null
   spell?: BattleSpellCast | null
+  skill?: BattleSkillUse | null
   immuneToMagic?: boolean
+  immuneToWeapon?: 'MELEE' | 'RANGED' | null
+  companion?: BattleCompanionStrike | null
+  playerDodged?: boolean
 }
 
 export interface BattleSummary {

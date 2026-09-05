@@ -196,6 +196,9 @@ export const lightGrayModern = makeTheme({
       neverendingMine: { base: '#d97706' }, // amber-600
       ocean: { base: '#0ea5e9' }, // sky-500
       underwater: { base: '#1d4ed8' }, // blue-700
+      darkForest: { base: '#15803d' }, // green-700
+      darkKeep: { base: '#64748b' }, // slate-500
+      rangersGuild: { base: '#4ade80' }, // green-400
       solarOffice: { base: '#facc15' }, // yellow-400
       lobby: { base: '#7dd3fc' }, // sky-300
     },

@@ -52,6 +52,14 @@ export interface Player {
   spells?: Record<string, number>
   /** Spell teachers met, keyed by flag column (`pajamaShamanFlag`, ...). */
   spellTeachers?: Record<string, boolean>
+  /**
+   * Skill levels keyed by the User column that stores them (`oneHanded`,
+   * `slice`, `toughness`, ...). 0 or absent means unlearned. The registry in
+   * game-data/skills.js turns these into caps, costs, passives and previews.
+   */
+  skills?: Record<string, number>
+  /** Skill teachers met, keyed by flag column (`youngSoldierFlag`, ...). */
+  skillTeachers?: Record<string, boolean>
   deaths?: number
   chest1?: boolean
   grassyFieldMap?: boolean
@@ -64,6 +72,8 @@ export interface Player {
   neverEndingMineMap?: boolean
   oceanMap?: boolean
   oceanUnderwaterMap?: boolean
+  darkForestMap?: boolean
+  darkForestUpperMap?: boolean
   roomZeroMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean
@@ -123,6 +133,28 @@ export interface BattleSpellCast {
   text: string | null
 }
 
+/**
+ * Client mirror of the server's skill-strike record (see lib/socket.ts).
+ * Present on a turn the player struck with a skill; `weaponRaw` and `bonus`
+ * are the split behind `playerRaw`, `text` is "weapon + bonus" (null when a
+ * Magic Strike fizzled on a magic-immune enemy).
+ */
+export interface BattleSkillUse {
+  id: string
+  name: string
+  level: number
+  cost: number
+  icon: string
+  attackIcon: string
+  hue: string
+  magic: boolean
+  weaponRaw: number
+  bonus: number
+  bonusMax: number
+  rolls: number[]
+  text: string | null
+}
+
 export interface BattleState {
   isInBattle: boolean
   isAdvantageTurn: boolean
@@ -161,6 +193,22 @@ export interface BattleState {
   spell: BattleSpellCast | null
   /** True when the last cast did nothing because the enemy is immune to magic. */
   immuneToMagic: boolean
+  /** Set when the last swing did nothing because the enemy shrugs that weapon off. */
+  immuneToWeapon: 'MELEE' | 'RANGED' | null
+  /** The companion's swing on the last turn, or null with nothing in the slot. */
+  companion: BattleCompanionStrike | null
+  /** The skill the player struck with on the last turn, or null for a plain swing or a spell. */
+  skill: BattleSkillUse | null
+  /** True when the Dodge skill turned the enemy's last swing into nothing. */
+  playerDodged: boolean
+}
+
+/** Client mirror of the server's companion strike (see lib/socket.ts). */
+export interface BattleCompanionStrike {
+  name: string
+  roll: number
+  block: number
+  damage: number
 }
 
 const INITIAL_BATTLE_STATE: BattleState = {
@@ -197,6 +245,10 @@ const INITIAL_BATTLE_STATE: BattleState = {
   actionMeta: null,
   spell: null,
   immuneToMagic: false,
+  immuneToWeapon: null,
+  companion: null,
+  skill: null,
+  playerDodged: false,
 }
 
 /**
@@ -227,6 +279,10 @@ export interface BattleLastTurn {
   enemyAction?: BattleEnemyAction | null
   spell?: BattleSpellCast | null
   immuneToMagic?: boolean
+  immuneToWeapon?: 'MELEE' | 'RANGED' | null
+  companion?: BattleCompanionStrike | null
+  skill?: BattleSkillUse | null
+  playerDodged?: boolean
 }
 
 export interface BattleResult {
@@ -299,7 +355,7 @@ export interface GameState {
   getCachedRoom: (roomId: string) => Room | null
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
   setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
-  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; playerMp?: number; playerMpMax?: number }) => void
+  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; companion?: BattleCompanionStrike | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number }) => void
   clearBattle: () => void
   setBattleResult: (result: BattleResult) => void
   clearBattleResult: () => void
@@ -465,6 +521,10 @@ export const useGameStore = create<GameState>()(
             actionMeta: payload.actionMeta ?? null,
             spell: payload.spell ?? null,
             immuneToMagic: payload.immuneToMagic ?? false,
+            immuneToWeapon: payload.immuneToWeapon ?? null,
+            companion: payload.companion ?? null,
+            skill: payload.skill ?? null,
+            playerDodged: payload.playerDodged ?? false,
           },
           // A spell turn also reports the MP it spent; a weapon turn leaves MP alone.
           player: state.player

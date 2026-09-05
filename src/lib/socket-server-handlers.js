@@ -27,6 +27,7 @@ const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-ser
 const { buildGatherCooldowns } = require('./game-engine/services/gather-status.js')
 const { applyRoomQuestTrigger } = require('./game-engine/quest-room-triggers.js')
 const { SPELL_SELECT, projectSpellState, unlockSpellTeacher } = require('./game-engine/services/spell-service.js')
+const { SKILL_SELECT, projectSkillState, unlockSkillTeacher } = require('./game-engine/services/skill-service.js')
 const { getAllQuestProgress } = require('./game-engine/services/quest-service.js')
 const {
   getRoomStateNote,
@@ -599,6 +600,32 @@ async function announceSpellTeacher(prisma, socket, player, toRoom) {
   }
 }
 
+/**
+ * Skill teachers met by walking in — the Young Soldier's yard, Jack Lumber's
+ * cabin, the Traveling Warrior's post, Hunter Bill's camp, and the Warrior's
+ * Guild once its initiation is done. Same shape as the spell teacher: one
+ * guarded flag write, announced through action:feedback whose `data.player`
+ * the client merges into its store.
+ */
+async function announceSkillTeacher(prisma, socket, player, toRoom) {
+  try {
+    const met = await unlockSkillTeacher(prisma, player.id, toRoom)
+    if (!met) return
+    player.skillTeachers = met.skillTeachers
+    socket.emit('action:feedback', {
+      action: 'skill teacher',
+      message: met.message,
+      outcome: 'success',
+      ts: Date.now(),
+      timestamp: new Date().toISOString(),
+      success: true,
+      data: { roomId: toRoom, player: { skillTeachers: met.skillTeachers } },
+    })
+  } catch (error) {
+    console.error('[Socket] Error unlocking skill teacher:', error)
+  }
+}
+
 // Setup socket handlers
 function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers, userIdToSocketIds = new Map()) {
   const idleDetectionService = createIdleDetectionService({
@@ -995,6 +1022,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             mentalTraining: true,
             ...MAP_STATE_SELECT,
             ...SPELL_SELECT,
+            ...SKILL_SELECT,
           },
         })
 
@@ -1043,6 +1071,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // Spell levels and the teachers met, so a reconnect restores the
           // battle Spells tab and the spellbook's caps along with everything else.
           ...projectSpellState(dbPlayer),
+          // Skill levels and their teachers too, for the battle Skills list,
+          // the book's caps and the passives the Character panel shows.
+          ...projectSkillState(dbPlayer),
           socketId: socket.id,
           lastActive: new Date(),
         }
@@ -1398,6 +1429,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             applyArrivalDiscoveries(prisma, socket, player, toRoom),
             announceRoomQuest(socket, player, toRoom),
             announceSpellTeacher(prisma, socket, player, toRoom),
+            announceSkillTeacher(prisma, socket, player, toRoom),
           ])
 
           // Pull any party members along with the leader.
@@ -1722,6 +1754,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               applyArrivalDiscoveries(prisma, socket, player, toRoomId),
               announceRoomQuest(socket, player, toRoomId),
               announceSpellTeacher(prisma, socket, player, toRoomId),
+              announceSkillTeacher(prisma, socket, player, toRoomId),
             ])
 
             if (partyStore.isLeader(player.id)) {

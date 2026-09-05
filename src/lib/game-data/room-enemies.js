@@ -2522,6 +2522,194 @@ const ROOM_ENEMIES = {
   '495': { enemies: ['hammerhead'] },
   '496': { enemies: ['great-white'] },
   '499': { enemies: ['kraken'] },
+
+  // ==================== DARK FOREST ====================
+  // The stone path in from the Forest (501, 503): the original's "Mountain
+  // Path" set, a 4-in-8 roll. Half of it is the two highwaymen types the Ranger
+  // Guard wants gone; the other half is a 1-in-9 sub-roll across the Forest's
+  // usual suspects with a Troll on the end. Written out as weights times nine.
+  ...Object.fromEntries(
+    ['501', '503'].map((roomId) => [
+      roomId,
+      {
+        probabilistic: true,
+        spawnChance: 0.5,
+        enemies: [
+          { slug: 'bowman', weight: 18 },
+          { slug: 'highwayman', weight: 18 },
+          { slug: 'imp', weight: 4 },
+          { slug: 'snake', weight: 4 },
+          { slug: 'salamander', weight: 4 },
+          { slug: 'golden-bat', weight: 4 },
+          { slug: 'wild-boar', weight: 4 },
+          { slug: 'kobold', weight: 4 },
+          { slug: 'skeleton', weight: 4 },
+          { slug: 'giant-rat', weight: 4 },
+          { slug: 'troll', weight: 4 },
+        ],
+      },
+    ])
+  ),
+  // The Highway Toll. The Highwayman at the gate never jumps you: you fight
+  // him to pass, or you pay. A spawn table that never rolls, so he is placed
+  // only when the "fight highwayman" button calls him out (room-action-handlers)
+  // — a static roster would have him ambush every arrival, which he never did.
+  // Until the Stone Mountains exist there is nothing to pass into, so he is
+  // here to be fought for the Ranger Guard's count.
+  '504': {
+    probabilistic: true,
+    spawnChance: 0,
+    enemies: [{ slug: 'highwayman', weight: 100 }],
+  },
+
+  // The Dark Forest proper: the original's `dark-forest.php` battle set, a
+  // 7-in-20 roll plus a 1-in-200 Wisp. Trolls of every rank fill six of the
+  // seven slots (the Elder twice); the seventh is a 1-in-6 sub-roll of the
+  // forest's rarities. Weights are times sixty so the Wisp can be a whole number.
+  ...Object.fromEntries(
+    ['505', '507', '508', '510', '512', '513', '516', '517', '518', '519', '520'].map((roomId) => [
+      roomId,
+      {
+        probabilistic: true,
+        spawnChance: 0.355,
+        enemies: [
+          { slug: 'troll', weight: 60 },
+          { slug: 'troll-shaman', weight: 60 },
+          { slug: 'troll-sorcerer', weight: 60 },
+          { slug: 'troll-elder', weight: 120 },
+          { slug: 'troll-champion', weight: 60 },
+          { slug: 'bigfoot', weight: 10 },
+          { slug: 'imp', weight: 10 },
+          { slug: 'bowman', weight: 10 },
+          { slug: 'falcon', weight: 10 },
+          { slug: 'ent', weight: 10 },
+          { slug: 'dark-ranger', weight: 10 },
+          { slug: 'wisp', weight: 6 },
+        ],
+      },
+    ])
+  ),
+  // The Dark Grove: an Ent 1-in-20 before the ordinary set even rolls. The
+  // Dark Elf's "Ent Hunter" quest is why the grove is worth standing in.
+  '509': {
+    probabilistic: true,
+    spawnChance: 0.39,
+    enemies: [
+      { slug: 'ent', weight: 70 },
+      { slug: 'troll', weight: 57 },
+      { slug: 'troll-shaman', weight: 57 },
+      { slug: 'troll-sorcerer', weight: 57 },
+      { slug: 'troll-elder', weight: 114 },
+      { slug: 'troll-champion', weight: 57 },
+      { slug: 'bigfoot', weight: 10 },
+      { slug: 'imp', weight: 10 },
+      { slug: 'bowman', weight: 10 },
+      { slug: 'falcon', weight: 10 },
+      { slug: 'dark-ranger', weight: 10 },
+      { slug: 'wisp', weight: 6 },
+    ],
+  },
+  // Champion's Camp: "only the strongest trolls make it to the top of the
+  // hill". A 5-in-10 roll, four of them the Champion, one a 1-in-3 of the
+  // rarities, and the Wisp's 1-in-200 on top.
+  '511': {
+    probabilistic: true,
+    spawnChance: 0.505,
+    enemies: [
+      { slug: 'troll-champion', weight: 240 },
+      { slug: 'falcon', weight: 20 },
+      { slug: 'ent', weight: 20 },
+      { slug: 'dark-ranger', weight: 20 },
+      { slug: 'wisp', weight: 3 },
+    ],
+  },
+  // Lost in the Trees: the original's own table, heavier on Dark Rangers and
+  // Bowmen than the rest of the wood, and a 1-in-100 Wisp instead of 1-in-200.
+  // (Its rarity sub-roll listed six outcomes on a four-sided die; the Bowman
+  // and Dark Ranger it could not reach are the two it rolls separately.)
+  '514': {
+    probabilistic: true,
+    spawnChance: 0.36,
+    enemies: [
+      { slug: 'bigfoot', weight: 5 },
+      { slug: 'imp', weight: 5 },
+      { slug: 'ent', weight: 5 },
+      { slug: 'falcon', weight: 5 },
+      { slug: 'dark-ranger', weight: 20 },
+      { slug: 'troll-shaman', weight: 20 },
+      { slug: 'troll-sorcerer', weight: 20 },
+      { slug: 'troll-elder', weight: 20 },
+      { slug: 'bowman', weight: 20 },
+      { slug: 'troll-champion', weight: 20 },
+      { slug: 'wisp', weight: 4 },
+    ],
+  },
+
+  // The Troll Nest and the Troll King. Both ambush on a roll (1-in-5, 1-in-2)
+  // and both could be called out by attacking in the original; the "challenge"
+  // buttons in room-action-handlers cover the second half.
+  '521': {
+    probabilistic: true,
+    spawnChance: 0.2,
+    enemies: [{ slug: 'troll-queen', weight: 100 }],
+  },
+  '523': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [{ slug: 'troll-king', weight: 100 }],
+  },
+  // The Forest Princess: always here, never starts it. Her "Test of Light" is
+  // yours to begin.
+  '525': { enemies: ['forest-princess'] },
+
+  // ==================== THE DARK KEEP ====================
+  // Ground floor: the original's `dark-keep-1.php`, three of nine.
+  ...Object.fromEntries(
+    ['516a', '516b', '516c'].map((roomId) => [
+      roomId,
+      {
+        probabilistic: true,
+        spawnChance: 1 / 3,
+        enemies: [
+          { slug: 'lurker', weight: 1 },
+          { slug: 'winged-demon', weight: 1 },
+          { slug: 'undead-orc', weight: 1 },
+        ],
+      },
+    ])
+  ),
+  // The Dark Stairwell: the stone guardian 1-in-10 — and, the original's own
+  // comment, a Giant Rat 1-in-10 "for funsies".
+  '516d': {
+    probabilistic: true,
+    spawnChance: 0.2,
+    enemies: [
+      { slug: 'stone-sphinx', weight: 1 },
+      { slug: 'giant-rat', weight: 1 },
+    ],
+  },
+  // Second floor: `dark-keep-2.php`, four of ten, the Paladin three times as
+  // often as the Priest.
+  ...Object.fromEntries(
+    ['516e', '516f', '516g'].map((roomId) => [
+      roomId,
+      {
+        probabilistic: true,
+        spawnChance: 0.4,
+        enemies: [
+          { slug: 'warped-priest', weight: 1 },
+          { slug: 'dark-paladin', weight: 3 },
+        ],
+      },
+    ])
+  ),
+  // The Dark Throne: the Prince swoops in 1-in-10 on his own, and every time
+  // you reach for the crown (see 'grab crown' in room-action-handlers).
+  '516h': {
+    probabilistic: true,
+    spawnChance: 0.1,
+    enemies: [{ slug: 'dark-prince', weight: 100 }],
+  },
 }
 
 function getRoomEnemies(roomId) {

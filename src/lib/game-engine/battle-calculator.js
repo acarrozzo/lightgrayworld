@@ -8,6 +8,7 @@ function rand(a, b) {
 const partyStore = require('../services/party-store')
 const { selectEnemySpecial } = require('../game-data/enemy-specials')
 const { rollSpell } = require('../game-data/spells')
+const { rollSkillBonus } = require('../game-data/skills')
 
 // Count other players in the same room who either have an active battle OR are in
 // the player's party (party members are pinned to the same room, so presence counts).
@@ -42,14 +43,18 @@ function pickPlayerDefensiveStat(battleState, enemy) {
 /**
  * The player's strike for one turn.
  *
- * Two shapes share the pipeline. A weapon strike rolls the weapon's stat
+ * Three shapes share the pipeline. A weapon strike rolls the weapon's stat
  * (STR melee, DEX ranged) and cannot reach a flying enemy. A spell — passed as
  * `{ def, level, cost }` — rolls the spell's own formula off effective MAG,
  * reaches flying enemies (the original's "ranged weapon or projectile magic"),
- * and does nothing at all to a magic-immune one. Either way the enemy answers
- * with a single rand(0, DEF) block and the result floors at zero.
+ * and does nothing at all to a magic-immune one. A skill strike — `skill` as
+ * `{ def, level, cost }` — is the weapon swing plus the skill's bonus roll:
+ * Slice, Smash and Aim add rand(1, lvl); Magic Strike adds a magic roll, so
+ * it reaches a flying enemy like a spell and, against a magic-immune one, the
+ * swing lands but the magic does not. Either way the enemy answers with a
+ * single rand(0, DEF) block and the result floors at zero.
  */
-function resolvePlayerAttack(battleState, otherCombatants, { spell = null } = {}) {
+function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill = null } = {}) {
   const bonus = 1 + otherCombatants * 0.1
   const enemy = battleState.enemy
   const weaponCat = battleState.equippedWeaponCategory || 'MELEE'
@@ -65,6 +70,7 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null } = {}
         weaponCategory: weaponCat,
         missedFlyingMelee: false,
         immuneToMagic: true,
+        immuneToWeapon: null,
         spell: describeSpellCast(spell, null),
       }
     }
@@ -78,6 +84,7 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null } = {}
       weaponCategory: weaponCat,
       missedFlyingMelee: false,
       immuneToMagic: false,
+      immuneToWeapon: null,
       spell: describeSpellCast(spell, roll),
     }
   }
@@ -86,7 +93,10 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null } = {}
   // True effective stat — may be negative when mods outweigh the base stat
   const effectiveOff = Math.floor(offStat * bonus)
 
-  if (enemy.isFlying && weaponCat === 'MELEE') {
+  // A Magic Strike is projectile magic on top of the swing, so it reaches what
+  // a bare melee swing cannot. A Slice is still a sword.
+  const reachesFlying = weaponCat !== 'MELEE' || Boolean(skill && skill.def.magic)
+  if (enemy.isFlying && !reachesFlying) {
     return {
       playerRaw: 0,
       enemyBlock: 0,
@@ -95,12 +105,48 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null } = {}
       weaponCategory: weaponCat,
       missedFlyingMelee: true,
       immuneToMagic: false,
+      immuneToWeapon: null,
       spell: null,
+      skill: null,
+    }
+  }
+
+  // The original's eStrImm / eDexImm: a blade that bounces off the Troll
+  // Queen, an arrow that never finds the Dark Ranger. Nothing is rolled, the
+  // way nothing is rolled for a fizzled spell, and the turn says so.
+  const immuneToWeapon = weaponImmunity(enemy, weaponCat)
+  if (immuneToWeapon) {
+    return {
+      playerRaw: 0,
+      enemyBlock: 0,
+      playerFinal: 0,
+      effectiveOff,
+      weaponCategory: weaponCat,
+      missedFlyingMelee: false,
+      immuneToMagic: false,
+      immuneToWeapon,
+      spell: null,
+      skill: null,
     }
   }
 
   // Negative STR rolls negative — it can't heal the enemy, so playerFinal floors at 0 below
-  const playerRaw = rand(0, effectiveOff)
+  const weaponRaw = rand(0, effectiveOff)
+  let playerRaw = weaponRaw
+  let skillUse = null
+  let immuneToMagic = false
+  if (skill) {
+    if (skill.def.magic && enemy.isMagicImmune) {
+      // The sword still bites; the magic fizzles and (see the handlers) costs nothing.
+      immuneToMagic = true
+      skillUse = describeSkillUse(skill, null, weaponRaw)
+    } else {
+      const effectiveMag = Math.floor(battleState.baseMag * bonus)
+      const roll = rollSkillBonus(skill.def, skill.level, effectiveMag, rand)
+      playerRaw = weaponRaw + roll.amount
+      skillUse = describeSkillUse(skill, roll, weaponRaw)
+    }
+  }
   const enemyBlock = rand(0, enemy.def)
   return {
     playerRaw,
@@ -109,8 +155,65 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null } = {}
     effectiveOff,
     weaponCategory: weaponCat,
     missedFlyingMelee: false,
-    immuneToMagic: false,
+    immuneToMagic,
+    immuneToWeapon: null,
     spell: null,
+    skill: skillUse,
+  }
+}
+
+/**
+ * The client-facing record of a skill strike: what was used, at what level
+ * and cost, and the split behind the number — the weapon's own roll and the
+ * bonus on top. `roll` is null when a Magic Strike fizzled on a magic-immune
+ * enemy (no bonus rolled, nothing charged).
+ */
+function describeSkillUse(skill, roll, weaponRaw) {
+  return {
+    id: skill.def.id,
+    name: skill.def.name,
+    level: skill.level,
+    cost: skill.cost,
+    icon: skill.def.icon,
+    attackIcon: skill.def.attackIcon || skill.def.icon,
+    hue: skill.def.hue,
+    magic: Boolean(skill.def.magic),
+    weaponRaw,
+    bonus: roll ? roll.amount : 0,
+    bonusMax: roll ? roll.max : 0,
+    rolls: roll ? roll.rolls : [],
+    text: roll ? `${weaponRaw} + ${roll.amount}` : null,
+  }
+}
+
+/**
+ * Which weapon category, if any, this enemy shrugs off. `isMeleeImmune` and
+ * `isRangedImmune` on the definition are the original's eStrImm and eDexImm;
+ * magic immunity is its own flag and its own check because a spell is a
+ * different pipeline. Returns 'MELEE' | 'RANGED' | null.
+ */
+function weaponImmunity(enemy, weaponCategory) {
+  if (weaponCategory === 'RANGED' && enemy.isRangedImmune) return 'RANGED'
+  if (weaponCategory !== 'RANGED' && enemy.isMeleeImmune) return 'MELEE'
+  return null
+}
+
+/**
+ * The companion's swing, on every attack turn the player takes. The original's
+ * companion attack exactly: its own small roll, blocked by a tenth of the
+ * enemy's DEF, floored at zero, and subtracted from the enemy on top of the
+ * player's own hit. Returns null when nothing is equipped in the slot.
+ */
+function resolveCompanionAttack(battleState) {
+  const companion = battleState.companion
+  if (!companion) return null
+  const roll = rand(companion.damageMin, companion.damageMax)
+  const block = rand(0, Math.floor(battleState.enemy.def / 10))
+  return {
+    name: companion.name,
+    roll,
+    block,
+    damage: Math.max(0, roll - block),
   }
 }
 
@@ -165,23 +268,34 @@ function resolveEnemyAttack(battleState, otherCombatants) {
   // is the original's "pure" damage: the roll IS the damage. Report the block as
   // 0 rather than rolling and discarding it, so the `( rolls ) − block = total`
   // line the battle panel prints still adds up.
-  const playerBlock = special?.bypassesDefense ? 0 : rand(0, effectiveDef)
+  //
+  // Dodge (the skill) is a flat lvl% chance the whole swing does nothing —
+  // no block rolled, no damage taken — exactly the original's "You DODGE".
+  const dodgeChance = battleState.dodgeChance || 0
+  const dodged = dodgeChance > 0 && rand(1, 100) <= dodgeChance
+  const playerBlock = dodged || special?.bypassesDefense ? 0 : rand(0, effectiveDef)
   return {
     enemyRaw,
     playerBlock,
-    enemyFinal: Math.max(0, enemyRaw - playerBlock),
+    enemyFinal: dodged ? 0 : Math.max(0, enemyRaw - playerBlock),
     effectiveDef,
     enemyDamageType: enemyDmgType,
     enemyAction,
+    dodged,
   }
 }
 
-function resolveTurn(battleState, otherCombatants, { spell = null } = {}) {
-  const player = resolvePlayerAttack(battleState, otherCombatants, { spell })
+function resolveTurn(battleState, otherCombatants, { spell = null, skill = null } = {}) {
+  const player = resolvePlayerAttack(battleState, otherCombatants, { spell, skill })
+  const companion = resolveCompanionAttack(battleState)
   const enemyAtk = resolveEnemyAttack(battleState, otherCombatants)
 
   return {
+    // The player's own hit. The companion's is reported beside it, never
+    // folded in, so the `raw − block = total` line the panel prints stays true.
     playerDealtDamage: player.playerFinal,
+    // null with nothing in the slot; { name, roll, block, damage } otherwise.
+    companion,
     enemyDealtDamage: enemyAtk.enemyFinal,
     playerRaw: player.playerRaw,
     enemyRaw: enemyAtk.enemyRaw,
@@ -199,14 +313,29 @@ function resolveTurn(battleState, otherCombatants, { spell = null } = {}) {
     enemyAction: enemyAtk.enemyAction,
     // null on a weapon strike; the cast record when a spell was thrown.
     spell: player.spell,
+    // null on a plain swing or a spell; the strike record when a skill was used.
+    skill: player.skill,
     immuneToMagic: player.immuneToMagic,
+    // 'MELEE' | 'RANGED' when the enemy shrugged the weapon off; null otherwise.
+    immuneToWeapon: player.immuneToWeapon,
+    // True when Dodge turned the enemy's swing into nothing.
+    playerDodged: enemyAtk.dodged,
   }
+}
+
+/** Everything the enemy lost this turn: the player's hit plus the companion's. */
+function totalDamageToEnemy(turn) {
+  return (turn.playerDealtDamage || 0) + (turn.companion?.damage || 0)
 }
 
 module.exports = {
   rand,
   describeSpellCast,
+  describeSkillUse,
   resolveTurn,
+  resolveCompanionAttack,
+  totalDamageToEnemy,
+  weaponImmunity,
   resolvePlayerAttack,
   resolveEnemyAttack,
   pickPlayerOffensiveStat,

@@ -6,6 +6,7 @@ import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { COMMON_ERRORS } from '@/lib/error-handling'
 import { recomputeStatMods } from '@/lib/game-engine/services/equipment-service'
 import { projectSpellState } from '@/lib/game-engine/services/spell-service'
+import { projectSkillState } from '@/lib/game-engine/services/skill-service'
 import { projectMapState } from '@/lib/game-engine/services/map-state'
 
 async function handleGetMe(request: AuthenticatedRequest) {
@@ -61,6 +62,7 @@ async function handleGetMe(request: AuthenticatedRequest) {
       deaths: freshUser.deaths,
       chest1: freshUser.chest1,
       ...projectSpellState(freshUser),
+      ...projectSkillState(freshUser),
       ...projectMapState(freshUser),
     }
 

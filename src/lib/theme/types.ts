@@ -285,6 +285,9 @@ export type RegionId =
   | 'neverendingMine'
   | 'ocean'
   | 'underwater'
+  | 'darkForest'
+  | 'darkKeep'
+  | 'rangersGuild'
   | 'solarOffice'
   | 'lobby'
 

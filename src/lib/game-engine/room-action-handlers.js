@@ -408,6 +408,43 @@ const CHEST_LOOT = {
       ],
     },
   },
+  // The Dark Forest Gold Chest (513), behind the Dark Elf's key. The original's
+  // haul, a ring AND a silver piece rolled on top of it, and its headline: the
+  // Oak Battle Staff. (Its gold line printed 5000 and then set the player's
+  // purse to a flat 15000 — a bug; 5000 is what the player was told.)
+  '513': {
+    'open gold chest': {
+      label: 'Dark Forest Gold Chest',
+      xp: 1000,
+      items: [
+        { itemSlug: 'red-balm', quantity: 10 },
+        { itemSlug: 'blue-balm', quantity: 10 },
+        { itemSlug: 'oak-battle-staff', quantity: 1, highlighted: true },
+      ],
+      randomItems: [
+        [
+          { itemSlug: 'ring-of-strength-x', quantity: 1 },
+          { itemSlug: 'ring-of-dexterity-x', quantity: 1 },
+          { itemSlug: 'ring-of-magic-x', quantity: 1 },
+          { itemSlug: 'ring-of-defense-x', quantity: 1 },
+        ],
+        [
+          { itemSlug: 'silver-sword', quantity: 1 },
+          { itemSlug: 'silver-2h-sword', quantity: 1 },
+          { itemSlug: 'silver-boomerang', quantity: 1 },
+          { itemSlug: 'silver-bow', quantity: 1 },
+          { itemSlug: 'silver-crossbow', quantity: 1 },
+          { itemSlug: 'silver-shield', quantity: 1 },
+          { itemSlug: 'silver-helmet', quantity: 1 },
+          { itemSlug: 'silver-breastplate', quantity: 1 },
+          { itemSlug: 'silver-gauntlets', quantity: 1 },
+          { itemSlug: 'silver-boots', quantity: 1 },
+          { itemSlug: 'silver-ring', quantity: 1 },
+          { itemSlug: 'silver-necklace', quantity: 1 },
+        ],
+      ],
+    },
+  },
   '309': {
     'open gold chest': {
       label: 'Rocky Flats Gold Chest',
@@ -548,9 +585,10 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
 
 /**
  * Chop wood: the tool-gated gather shared by Jack's tree farm (025) and every
- * tree-bearing Forest room. Yields match the original game's per-swing amounts —
- * 1 wood with a plain hatchet, 2 with an iron one — so wood is earned by walking
- * the forest tree to tree, and the Gnome's iron hatchet halves that walk.
+ * tree-bearing Forest and Dark Forest room. Yields match the original game's
+ * per-swing amounts — 1 wood with a plain hatchet, 2 with an iron one, 6 with
+ * the Dark Elf's mithril one — so wood is earned by walking the forest tree to
+ * tree, and a better hatchet shortens that walk.
  */
 function makeChopWoodAction({ missingToolMessage, readyLabel = 'Tree' }) {
   return makeGatherAction({
@@ -560,6 +598,9 @@ function makeChopWoodAction({ missingToolMessage, readyLabel = 'Tree' }) {
     emptyVerb: 'grow',
     readyLabel,
     toolTiers: [
+      // The Dark Elf's Mithril Hatchet: six a swing in the original, and it
+      // worked in every wood, so it works in every wood here.
+      { slug: 'mithril-hatchet', quantity: 6, label: 'mithril hatchet' },
       { slug: 'iron-hatchet', quantity: 2, label: 'iron hatchet' },
       { slug: 'hatchet', quantity: 1, label: 'hatchet' },
     ],
@@ -1660,6 +1701,151 @@ function mergeActionResultsForGlory(rest, glory) {
  * - A custom function (playerId, roomState) => actionResult
  * - A structured action definition object (supports effects)
  */
+/**
+ * A single lever that throws one session-scoped switch (see lever-state.js).
+ * The Dark Forest has five of them, and they differ only in what they say.
+ */
+function makeLeverHandler({ roomId, leverName, alreadyMessage, flipMessage, modalTitle, modalMessage }) {
+  return async (playerId, roomState) => {
+    const leverState = require('./lever-state')
+    const leverId = leverState[leverName]
+    roomState.touchActivity()
+
+    const extra = () => ({
+      roomId: roomState.roomId,
+      stateNote: leverState.getRoomStateNote(playerId, roomId),
+      actionOverrides: leverState.getRoomActionOverrides(playerId, roomId),
+    })
+
+    if (leverState.isLeverPulled(playerId, leverId)) {
+      return {
+        success: true,
+        action: 'flip lever',
+        playerEvents: [
+          { event: 'action:feedback', payload: createActionFeedbackPayload('flip lever', 'info', alreadyMessage, extra()) },
+        ],
+      }
+    }
+
+    leverState.pullLever(playerId, leverId)
+    return {
+      success: true,
+      action: 'flip lever',
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload('flip lever', 'success', flipMessage, {
+            ...extra(),
+            showModal: true,
+            modalContent: { type: 'icon', icon: 'lever-down', iconColor: 'yellow-500', title: modalTitle, message: modalMessage },
+          }),
+        },
+      ],
+    }
+  }
+}
+
+/**
+ * A button that starts a fight with a named enemy: "battle forest princess",
+ * "challenge the troll king", "grab crown". In a static room the enemy is
+ * already on the roster; in a probabilistic one it is placed there first, so
+ * the fight goes through the same start_battle path as an ambush and the
+ * roster bookkeeping after it (win, flee, defeat) is unchanged. `ambush` makes
+ * it the enemy's turn first — the Dark Prince swooping in on whoever reaches
+ * for the crown.
+ */
+function makeSummonHandler({ action, enemySlug, message, ambush = false }) {
+  return async (playerId, roomState) => {
+    const { executeStartBattle } = require('./battle-action-handlers')
+    const { isProbabilistic } = require('../game-data/room-enemies')
+    roomState.touchActivity()
+
+    if (roomState.activeBattles.get(playerId)?.isActive) {
+      return createErrorResult(action, 'You are already in a battle.')
+    }
+    if (isProbabilistic(roomState.roomId) && !roomState.getPlayerEnemyRoster(playerId).includes(enemySlug)) {
+      roomState.setPlayerEnemyRoster(playerId, [enemySlug])
+    }
+
+    const battle = await executeStartBattle(
+      { type: 'start_battle', data: { enemySlug, isAutoInitiated: ambush } },
+      playerId,
+      roomState
+    )
+    if (!battle.success) return battle
+
+    return {
+      ...battle,
+      action,
+      playerEvents: [
+        { event: 'action:feedback', payload: createActionFeedbackPayload(action, 'danger', message, { roomId: roomState.roomId }) },
+        ...(battle.playerEvents ?? []),
+      ],
+    }
+  }
+}
+
+/**
+ * The Silver Shaman's lesson. Learned once, in a full set of Silver: a silver
+ * weapon in the main hand (with the Silver Shield in the off hand when the
+ * weapon leaves a hand free), and the helmet, breastplate, gauntlets and boots.
+ * The original checked those six slots by name; the modern check reads the
+ * equipped rows. Once learned it is a standing +20 to every core stat — see
+ * STANDING_BONUS_FIELDS in services/buff-service.js.
+ */
+const SILVER_WEAPONS = new Set(['silver-sword', 'silver-staff', 'silver-boomerang', 'silver-2h-sword', 'silver-bow', 'silver-crossbow'])
+const SILVER_ARMOUR = { HEAD: 'silver-helmet', BODY: 'silver-breastplate', HANDS: 'silver-gauntlets', FEET: 'silver-boots' }
+
+async function learnSilverAura(playerId, roomState) {
+  const { prisma } = require('../db-client')
+  roomState.touchActivity()
+
+  const respond = (outcome, message) => ({
+    success: outcome === 'success',
+    action: 'learn silver aura',
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload('learn silver aura', outcome, message, {
+          roomId: roomState.roomId,
+          showModal: true,
+          modalContent: { type: 'icon', icon: 'pillar2', iconColor: 'gray-300', title: 'The Silver Shaman', message },
+        }),
+      },
+    ],
+  })
+
+  const user = await prisma.user.findUnique({ where: { id: playerId }, select: { silverAura: true } })
+  if (user?.silverAura) {
+    return respond('info', 'You already know the Silver Aura! It is with you always: +20 to every stat, whatever you wear.')
+  }
+
+  const equipped = await prisma.playerItem.findMany({
+    where: { playerId, isEquipped: true },
+    select: { slot: true, ItemTemplate: { select: { slug: true, metadata: true } } },
+  })
+  const bySlot = new Map(equipped.map((row) => [row.slot, row.ItemTemplate]))
+
+  const weapon = bySlot.get('MAIN_HAND')
+  const weaponOk = !!weapon && SILVER_WEAPONS.has(weapon.slug)
+  const twoHanded = weapon?.metadata?.isTwoHanded === true
+  const shieldOk = twoHanded || bySlot.get('OFF_HAND')?.slug === 'silver-shield'
+  const armourOk = Object.entries(SILVER_ARMOUR).every(([slot, slug]) => bySlot.get(slot)?.slug === slug)
+
+  if (!weaponOk || !shieldOk || !armourOk) {
+    return respond(
+      'info',
+      "You can't learn Silver Aura yet! You need to be wearing a full set of Silver Equipment (6 slots): a silver weapon, the Silver Shield unless the weapon takes both hands, and the Silver Helmet, Breastplate, Gauntlets and Boots."
+    )
+  }
+
+  await prisma.user.update({ where: { id: playerId }, data: { silverAura: true } })
+  return respond(
+    'success',
+    'The Silver Shaman drifts down out of the corner, touches your breastplate, and the silver on you rings like a bell. You learn the Silver Aura! +20 to STR, DEX, MAG and DEF, always, in anything you wear.'
+  )
+}
+
 const ROOM_ACTIONS = {
   '000': {
     'read sign': {
@@ -3562,6 +3748,469 @@ const ROOM_ACTIONS = {
     },
   },
 
+  // ==================== DARK FOREST ====================
+  // Legacy r500/: the stone path in from the Forest, the Ranger Guard's
+  // outpost, the Dark Elf's tree hut, the teleport hub, the Champion's hill,
+  // the two chests, the Ranger's Guild in the tree tops, the Dark Keep, the
+  // Troll Nest and the Forest Princess. Chop-wood buttons for every
+  // tree-bearing room are merged in below, as the Forest's are.
+
+  // --- Stone Path Bridge: the warning sign ---
+  '501': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the sign.',
+      modalContent: {
+        title: 'You read the sign',
+        heading: {
+          text: 'Path to the Mountains',
+          parts: ['Path to the', 'Mountains'],
+          description: ':: DANGER :: This road is no longer patrolled by the Red Guard. Travel at your own risk.',
+        },
+        locations: [
+          { name: 'Ranger Outpost', direction: 'north', description: 'Over the bridge. The Ranger Guard has work for anyone willing.' },
+          { name: 'The Forest', direction: 'south', description: 'The stone path back through the Magical Gate, all the way to Red Town.' },
+        ],
+        questMessage: 'Highwaymen attack for 60 damage every single hit. (Unless they pickpocket you.)',
+        questMessageDescription: 'Bowmen shoot first. Both of them work the stone path west of the outpost.',
+      },
+    },
+  },
+
+  // --- The Dark Forest Outpost: the Ranger Guard, and a real bed ---
+  '502': {
+    'talk to ranger guard': createNpcTalkHandler({
+      npcId: 'ranger_guard',
+      action: 'talk to ranger guard',
+      title: 'Ranger Guard',
+      icon: 'npc-ranger',
+      iconColor: 'green-400',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_rangerguard_003',
+          message: '"The road, the elders and the Keep\'s ground floor. That\'s the lot." The Ranger Guard leans on the palisade. "Rest here whenever you like. The Guild is up in the trees, if you can find it."',
+        },
+        {
+          ifCompleted: null,
+          message: '"These dang Highwaymen need to be stopped. They keep robbing the innocent." The Ranger Guard nods west, toward the toll. "Rest here if you need it. The forest is up the ledge to the northeast — once you\'ve shown me you can handle the road."',
+        },
+      ],
+    }),
+    'rest at the outpost': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest at the outpost',
+        fullRestore: true,
+        fullRestoreMessage: 'You rest at the Outpost and heal all your HP and MP!',
+      }),
+  },
+
+  // --- The Highway Toll: the sign, the toll, and the man collecting it ---
+  // The Stone Mountains beyond the gate are not ported yet, so there is no
+  // exit west to pay for. The toll's sign and its collector are here as they
+  // were; paying is deferred with the road (see the memory notes).
+  '504': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the Highway Toll Sign.',
+      modalContent: {
+        title: 'You read the Highway Toll sign',
+        heading: {
+          text: 'Pay up to Pass!',
+          parts: ['Pay up', 'to Pass!'],
+          description: 'It costs 1000 gold to pass.',
+        },
+        locations: [
+          { name: 'Stone Mountains', direction: 'west', description: 'The mountain road, behind the Highwayman. Closed for now — the pass is snowed in.' },
+          { name: 'Ranger Outpost', direction: 'east', description: 'Back along the stone path.' },
+        ],
+        questMessage: 'Or you can just attack the Highwayman and be on your way.',
+        questMessageDescription: 'Be careful though, they are a difficult Level 25 — and every hit they land is a pure 60.',
+      },
+    },
+    'pay toll': {
+      showModal: true,
+      message: 'The Highwayman waves your coin away. "Pass is closed. Keep it — for now."',
+      modalContent: {
+        type: 'icon',
+        icon: 'enemy-Highwayman',
+        iconColor: 'gray-400',
+        title: 'The Highway Toll',
+        message:
+          'You reach for your purse and the Highwayman glances over his shoulder at the mountain road, buried in snow to the height of a man. "Pass is closed. Keep your coin — for now." He grins. "Or fight me anyway, if you\'re bored."',
+      },
+    },
+    'fight highwayman': makeSummonHandler({
+      action: 'fight highwayman',
+      enemySlug: 'highwayman',
+      message: 'You square up to the Highwayman at the toll gate. "Suit yourself!"',
+    }),
+  },
+
+  // --- The Dark Elf's Tree Hut: quests, a fire, and the tea ---
+  '506': {
+    'talk to dark elf': createNpcTalkHandler({
+      npcId: 'dark_elf',
+      action: 'talk to dark elf',
+      title: 'Dark Elf',
+      icon: 'npc-darkelf',
+      iconColor: 'green-400',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_darkelf_003',
+          message: '"Man this tea is good." The Dark Elf rocks in his chair. "Nothing left for you to do for me, friend — but the fire is warm and the tea is hot. Sit."',
+        },
+        {
+          ifCompleted: null,
+          message: '"Man this tea is good." The Dark Elf gestures at the table with his cup. "Grab one. Make yourself at home. And if you\'re the enthusiastic sort, I\'ve a few things that want doing."',
+        },
+      ],
+    }),
+    'rest at the tree hut': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest at the tree hut',
+        overchargeBonus: 75,
+        overchargeMessage: 'You rest at the Tree Hut fireplace and super charge your health and mana. (+75 HP, +75 MP)',
+      }),
+    // The original set your tea to five if you had fewer: a top-up, not a farm.
+    'grab tea': makeGatherAction({
+      itemSlug: 'tea',
+      itemNamePlural: 'cups of tea',
+      topUpTo: 5,
+      maxHeldMessage: 'You already have five cups of tea. Drink one first.',
+      topUpMessage: (collected) => `You pick up ${collected} cup${collected === 1 ? '' : 's'} o' tea from the table! [ ${collected} tea ]`,
+    }),
+  },
+
+  // --- The Dark Forest Teleport: the directory, and a spare axe ---
+  '507': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the Dark Forest Directory.',
+      modalContent: {
+        title: 'You read the Dark Forest Directory',
+        heading: {
+          text: 'Dark Forest Directory',
+          parts: ['Dark Forest', 'Directory'],
+          description: 'An oak sign by the pillar, with an iron axe leaning against it.',
+        },
+        locations: [
+          { name: 'Gold Chest, Dark Keep, Troll Nest', direction: 'north', description: 'The chest first, the Keep beyond it, and the nest at the top of the wood.' },
+          { name: 'Dark Grove', direction: 'east', description: "Then the Champion's Camp up the bloody path." },
+          { name: 'Dark Elf Tree Hut', direction: 'southeast', description: 'QUESTS! And tea.' },
+          { name: 'Ranger Guard Outpost', direction: 'southwest', description: 'Jump off the ledge. The stone path to the mountains runs past it.' },
+        ],
+        questMessage: 'BONUS! Grab an Iron Axe here if you need one.',
+        questMessageDescription: 'Every tree in this wood can be chopped. The Dark Elf pays well for the timber.',
+      },
+    },
+    'grab iron hatchet': makeFreeItemAction({
+      itemSlug: 'iron-hatchet',
+      itemName: 'an Iron Hatchet',
+      capLabel: 'iron hatchet',
+      icon: 'axelog',
+      iconColor: 'amber-400',
+      grantMessage: 'You pick up the iron hatchet. You are too cool.',
+      alreadyHaveMessage: 'You already have an iron hatchet. Come back here for another if you lose it.',
+    }),
+  },
+
+  // --- Champion's Camp: the lever that opens the silver chest door ---
+  '511': {
+    'flip lever': makeLeverHandler({
+      roomId: '511',
+      leverName: 'DARK_FOREST_SILVER_SWITCH',
+      alreadyMessage: 'You already flipped this lever. A door to the south has opened up.',
+      flipMessage: 'You flip the lever and hear some grinding to the south.',
+      modalTitle: 'You flip the lever',
+      modalMessage:
+        'The lever goes over with a clunk and a long grinding rolls up the hill from the south — from the clearing at the bottom of the wood, where the stone door is. It will not stay open forever: it shuts again behind whoever goes through.',
+    }),
+  },
+
+  // --- The Dark Forest Silver Chest ---
+  '512': {
+    'open silver chest': makeRepeatableChestHandler({
+      roomId: '512',
+      action: 'open silver chest',
+      label: 'Silver Chest',
+      cooldownMs: 4 * 60 * 60 * 1000,
+      goldMin: 500,
+      goldMax: 1000,
+      xp: 75,
+      icon: 'chest2',
+      iconColor: 'blue-300',
+      openMessage: 'You pull the vines off the silver chest and it opens without a sound.',
+      pools: [
+        [
+          { itemSlug: 'silver-sword', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-2h-sword', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-boomerang', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-bow', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-crossbow', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-shield', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-helmet', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-breastplate', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-gauntlets', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-boots', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-ring', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-necklace', quantity: 1, highlighted: true },
+        ],
+      ],
+    }),
+  },
+
+  // --- The Dark Forest Gold Chest ---
+  '513': {
+    'open gold chest': makeGoldChestHandler({
+      roomId: '513',
+      flagField: 'chest6',
+      goldMin: 5000,
+      goldMax: 5000,
+      lockedMessage:
+        'You need a Gold Key to open this chest. You can get one from the Dark Elf in this Forest — he trades one for a dead Troll Shaman and a dead Troll Sorcerer.',
+    }),
+  },
+
+  // --- The Ranger's Guild Entrance: the recruiter at the foot of the tree ---
+  '515': {
+    'talk to ranger recruiter': createNpcTalkHandler({
+      npcId: 'rangers_guild_recruiter',
+      action: 'talk to ranger recruiter',
+      title: "Ranger's Guild",
+      icon: 'npc-ranger',
+      iconColor: 'green-400',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_rangersguild_000',
+          message: '"Welcome, Ranger." The guard on the bottom rung steps aside. "Up you go. Flynn\'s shop is first on the left, Lego is straight on, and mind the Shaman — he floats."',
+        },
+        {
+          ifCompleted: null,
+          message: '"Want to be a Ranger eh? There are fallen Rangers among us. Defeat one and return here."',
+        },
+      ],
+    }),
+    'read sign': {
+      showModal: true,
+      message: "You read the Ranger's Guild sign.",
+      modalContent: {
+        title: "You read the Ranger's Guild sign",
+        heading: {
+          text: "Ranger's Guild Entrance",
+          parts: ["Ranger's Guild", 'Entrance'],
+          description: 'Become the most skilled bowman in all the lands.',
+        },
+        locations: [
+          { name: 'The Guild', direction: 'up', description: 'A wooden ladder up the side of an enormous tree. Members only.' },
+          { name: 'Lost in the Trees', direction: 'southeast', description: 'The only way back down into the wood, and it is the wood that got you here.' },
+        ],
+        questMessage: "Find and defeat a Dark Ranger to join the Ranger's Guild.",
+        questMessageDescription: 'Get a FREE BOW upon initiation!',
+      },
+    },
+  },
+
+  // --- The Ranger's Guild Lobby: the fire, the pack, and a rest ---
+  '515a': {
+    'grab ranger pack': makeGuildPackHandler({
+      questId: 'quest_rangersguild_000',
+      label: "Ranger's Pack",
+      icon: 'npc-ranger',
+      iconColor: 'green-400',
+      joinMessage: "Join the Ranger's Guild to claim a Ranger's Pack. Defeat a Dark Ranger and speak to the guard at the ladder.",
+      pack: [
+        { slug: 'arrow', floor: 100, label: 'arrows' },
+        { slug: 'greens', floor: 3, label: 'greens' },
+        { slug: 'red-balm', floor: 3, label: 'red balms' },
+        { slug: 'blue-balm', floor: 3, label: 'blue balms' },
+      ],
+    }),
+    'rest at the ranger fire': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest at the ranger fire',
+        overchargeBonus: 75,
+        overchargeMessage: "You rest at the Ranger's Guild fire. (+75 HP, +75 MP)",
+      }),
+  },
+
+  // --- Lego's Quests ---
+  '515b': {
+    'talk to ranger lego': createNpcTalkHandler({
+      npcId: 'ranger_lego',
+      action: 'talk to ranger lego',
+      title: 'Ranger Lego',
+      icon: 'npc-ranger2',
+      iconColor: 'green-400',
+      idleDialogs: [
+        {
+          ifCompleted: 'quest_rangerlego_003',
+          message: '"Aye." Lego does not look up from the arrow he is fletching. "Turtle, gargoyles, griffin. You\'re an Elite Ranger in my book. Go and shoot something."',
+        },
+        {
+          ifCompleted: null,
+          message: '"Aye. I only need the help of Elite Rangers. Let\'s see what you got." Lego goes back to re-stringing his bow.',
+        },
+      ],
+    }),
+  },
+
+  // --- The Silver Shaman: the Silver Aura ---
+  '515c': {
+    'learn silver aura': learnSilverAura,
+    'read sign': {
+      showModal: true,
+      message: 'You read the Aura sign.',
+      modalContent: {
+        title: 'You read the Aura sign',
+        heading: {
+          text: 'AURAS!',
+          parts: ['AURAS!'],
+          description: 'Activate Auras to increase your stats! (You can only have one aura active at a time.)',
+        },
+        locations: [
+          { name: 'Silver Aura', direction: 'here', description: 'Increases all stats by 20. ( STR +20, DEX +20, MAG +20, DEF +20 )' },
+        ],
+        questMessage: 'To initially learn the Silver Aura you must be wearing a full set of Silver Armor (6 slots).',
+        questMessageDescription: 'After you learn the Aura though, it is yours for good, wearing any equipment.',
+      },
+    },
+  },
+
+  // --- Ranger Skills: the sign. The guild's teaching flag (`rangerSkillFlag`)
+  // belongs to the skills system's teacher-room table, not to this room. ---
+  '515d': {
+    'read sign': {
+      showModal: true,
+      message: "You read the Ranger's Guild skill sign.",
+      modalContent: {
+        title: "You read the Ranger's Guild skill sign",
+        heading: {
+          text: "Ranger's Guild SKILLS!",
+          parts: ["Ranger's Guild", 'SKILLS!'],
+          description: 'Only the most skilled guild members are here to distill their knowledge of the bow.',
+        },
+        locations: [
+          { name: 'Ranged', direction: 'here', description: 'Adds 30 points to your DEX.' },
+          { name: 'Dodge', direction: 'here', description: 'Evade enemy attacks 10% of the time!' },
+          { name: 'Aim', direction: 'here', description: 'Aim with your ranged weapon and do up to 20 additional damage.' },
+          { name: 'Multi Arrow', direction: 'here', description: 'NEW! Shoot another arrow 20% of the time.' },
+          { name: 'Bolt Upgrade', direction: 'here', description: 'NEW! Increase damage by 40 when you attack with a crossbow.' },
+        ],
+        questMessage: 'Physical and Mental Training are taught here too, up to 25.',
+        questMessageDescription: 'Ranged to 30. Aim and Dodge to 10. Each level costs SP equal to the level.',
+      },
+    },
+  },
+
+  // --- The Ranger Shop ---
+  '515e': {
+    'view shop': makeShopHandler('515e', {
+      icon: 'npc-ranger',
+      iconColor: 'green-400',
+      lockedMessage: 'Guild Merchant Flynn does not sell to outsiders. Join the Ranger\'s Guild first.',
+    }),
+  },
+
+  // --- The Dark Keep's levers ---
+  '516b': {
+    'flip lever': makeLeverHandler({
+      roomId: '516b',
+      leverName: 'DARK_KEEP_STOREROOM_LEVER',
+      alreadyMessage: 'You already flipped this lever.',
+      flipMessage: 'You flip the lever and hear some grinding in the walls.',
+      modalTitle: 'You flip the lever',
+      modalMessage: 'The lever goes over and something grinds inside the walls. One of two: the steel door in the main hall wants the other as well.',
+    }),
+  },
+  '516c': {
+    'flip lever': makeLeverHandler({
+      roomId: '516c',
+      leverName: 'DARK_KEEP_BURIAL_LEVER',
+      alreadyMessage: 'You already flipped this lever.',
+      flipMessage: 'You flip the lever and hear some grinding in the walls.',
+      modalTitle: 'You flip the lever',
+      modalMessage: 'The lever goes over and something grinds inside the walls. One of two: the steel door in the main hall wants the other as well.',
+    }),
+  },
+  '516f': {
+    'flip lever': makeLeverHandler({
+      roomId: '516f',
+      leverName: 'DARK_KEEP_BARRACKS_LEVER',
+      alreadyMessage: 'You already flipped this switch.',
+      flipMessage: 'You flip the switch and hear some grinding in the walls.',
+      modalTitle: 'You flip the switch',
+      modalMessage: 'The switch goes over and something grinds inside the walls. One of two: the ornate door at the top of the stairwell wants the other as well.',
+    }),
+  },
+  '516g': {
+    'flip lever': makeLeverHandler({
+      roomId: '516g',
+      leverName: 'DARK_KEEP_ALTAR_LEVER',
+      alreadyMessage: 'You already flipped this lever.',
+      flipMessage: 'You flip the lever and hear some grinding in the walls.',
+      modalTitle: 'You flip the lever',
+      modalMessage: 'The lever goes over and something grinds inside the walls. One of two: the ornate door at the top of the stairwell wants the other as well.',
+    }),
+  },
+
+  // --- The Dark Throne: the crown, and what happens when you reach for it ---
+  '516h': {
+    'grab crown': makeSummonHandler({
+      action: 'grab crown',
+      enemySlug: 'dark-prince',
+      ambush: true,
+      message:
+        "You attempt to pick up the crown but it's so heavy it doesn't even budge. Out of nowhere a dark figure swoops in and you are attacked!",
+    }),
+  },
+
+  // --- The Troll Nest and the Troll King: call them out ---
+  '521': {
+    'challenge the troll queen': makeSummonHandler({
+      action: 'challenge the troll queen',
+      enemySlug: 'troll-queen',
+      message: 'You stride into the heart of the nest and the air goes cold. The Troll Queen turns.',
+    }),
+  },
+  '523': {
+    'challenge the troll king': makeSummonHandler({
+      action: 'challenge the troll king',
+      enemySlug: 'troll-king',
+      message: 'You call the Troll King out. He is very happy to oblige.',
+    }),
+  },
+
+  // --- Top of the Despair: the way down is not open yet ---
+  '524': {
+    'peer into the despair': {
+      showModal: true,
+      message: 'You lean into the darkness below and get an uneasy feeling.',
+      modalContent: {
+        type: 'icon',
+        icon: 'cave1',
+        iconColor: 'gray-500',
+        title: 'Top of the Despair',
+        message:
+          'You lean out over the edge. The dark goes down further than dark should, and something a very long way below it is breathing. Nothing you have will get you down there safely — not yet. The Despair is for another time.',
+      },
+    },
+  },
+
+  // --- The Test of Light: the Forest Princess ---
+  '525': {
+    'rest by the princess': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest by the princess',
+        overchargeBonus: 100,
+        overchargeMessage: 'You rest near the Forest Princess and feel great! (+100 HP, +100 MP)',
+      }),
+    'battle forest princess': makeSummonHandler({
+      action: 'battle forest princess',
+      enemySlug: 'forest-princess',
+      message: 'You bow to the Forest Princess and draw. She smiles, and the light goes strange. The Test of Light begins.',
+    }),
+  },
+
   '999': {
     'rest in lobby': async (playerId, roomState) => roomState.executeLobbyRest(playerId),
   },
@@ -3627,6 +4276,26 @@ for (let depth = 1; depth <= 30; depth += 1) {
   ROOM_ACTIONS[roomId] = {
     ...(ROOM_ACTIONS[roomId] || {}),
     'mine here': makeMineHereAction(),
+  }
+}
+
+/**
+ * Every Dark Forest room with a chop-tree button in the original — which is
+ * every room in the wood proper, the Keep's courtyard, the Troll King's corner
+ * and the Princess's clearing. One tree each; the wood here is dense, not
+ * generous.
+ */
+const DARK_FOREST_CHOP_WOOD_ROOMS = [
+  '505', '507', '508', '509', '510', '511', '512', '513', '514', '516',
+  '517', '518', '519', '520', '521', '523', '524', '525',
+]
+const DARK_FOREST_CHOP_WOOD_MISSING_TOOL =
+  'You need a hatchet to chop these trees. There is an iron one leaning on the sign at the Dark Forest Teleport.'
+
+for (const roomId of DARK_FOREST_CHOP_WOOD_ROOMS) {
+  ROOM_ACTIONS[roomId] = {
+    ...(ROOM_ACTIONS[roomId] || {}),
+    'chop wood': makeChopWoodAction({ missingToolMessage: DARK_FOREST_CHOP_WOOD_MISSING_TOOL }),
   }
 }
 

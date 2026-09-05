@@ -1,6 +1,6 @@
 const { prisma } = require('../db-client')
 const { BattleState } = require('./battle-state')
-const { resolveTurn, resolveEnemyAttack, getOtherCombatantCount } = require('./battle-calculator')
+const { resolveTurn, resolveEnemyAttack, getOtherCombatantCount, totalDamageToEnemy } = require('./battle-calculator')
 const { calcBattleWinRewards, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
 const { isProbabilistic } = require('../game-data/room-enemies')
@@ -130,7 +130,12 @@ function errorResult(action, message) {
 // Enemy-side line of a battle:turn message. When a special fired it names itself,
 // so the feed states what happened instead of leaving the player to infer it from
 // a suspiciously large number.
-function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '') {
+function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodged = false) {
+  // The Dodge skill: the whole swing, special or not, came to nothing.
+  if (dodged) {
+    const what = enemyAction ? enemyAction.name.toUpperCase() : 'attack'
+    return `You DODGE the ${enemyName}'s ${what}!${hpSuffix}`
+  }
   if (enemyAction) {
     const label = enemyAction.name.toUpperCase()
     return damage === 0
@@ -143,33 +148,69 @@ function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '') {
 }
 
 const { BUFF_SELECT } = require('./services/buff-service')
+const { SKILL_SELECT } = require('./services/skill-service')
+const { isShieldItem } = require('../game-data/skills')
+const { weaponImmunity } = require('./battle-calculator')
 
-// Fetch the stats needed for BattleState from DB
+// Fetch the stats needed for BattleState from DB. The skill levels ride along
+// so the passives (One Handed, Toughness, Dodge, ...) fold in with the buffs.
 async function fetchPlayerStats(playerId) {
   return prisma.user.findUnique({
     where: { id: playerId },
-    select: { str: true, dex: true, mag: true, def: true, strMod: true, dexMod: true, magMod: true, defMod: true, hp: true, hpMax: true, ...BUFF_SELECT },
+    select: { str: true, dex: true, mag: true, def: true, strMod: true, dexMod: true, magMod: true, defMod: true, hp: true, hpMax: true, ...BUFF_SELECT, ...SKILL_SELECT },
   })
 }
 
-// Fetch the equipped MAIN_HAND weapon's combat-relevant properties.
+// Fetch what is in the player's hands, as combat and the skills read it.
 //
 // `weaponCategory` is 'MELEE' | 'RANGED' | null (null = unarmed).
 // `ammoSlug` is the item a shot consumes, declared as `metadata.ammo` on the
 // weapon template — bows spend arrows, the crossbow spends bolts. Thrown ranged
 // weapons (boomerang, chakram) declare none and never run dry, matching the
 // original, which only ever checked ammo for bows and crossbows.
+// `isTwoHanded` and `hasShield` are what the proficiencies, Block and the
+// Slice/Smash/Aim weapon fit key on.
 async function fetchEquippedWeapon(playerId) {
-  const item = await prisma.playerItem.findFirst({
-    where: { playerId, isEquipped: true, slot: 'MAIN_HAND' },
-    select: { ItemTemplate: { select: { weaponCategory: true, metadata: true } } },
+  const hands = await prisma.playerItem.findMany({
+    where: { playerId, isEquipped: true, slot: { in: ['MAIN_HAND', 'OFF_HAND'] } },
+    select: { slot: true, ItemTemplate: { select: { slug: true, equipSlot: true, weaponCategory: true, metadata: true } } },
   })
-  const template = item?.ItemTemplate
+  const main = hands.find((row) => row.slot === 'MAIN_HAND')
+  const off = hands.find((row) => row.slot === 'OFF_HAND')
+  const template = main?.ItemTemplate
   const metadata = (template?.metadata && typeof template.metadata === 'object') ? template.metadata : null
   return {
     weaponCategory: template?.weaponCategory || null,
     ammoSlug: typeof metadata?.ammo === 'string' ? metadata.ammo : null,
+    isTwoHanded: metadata?.isTwoHanded === true,
+    hasShield: isShieldItem(off?.ItemTemplate),
   }
+}
+
+// Whether a skill strike's bonus can land at all. A bare melee swing cannot
+// reach a flying enemy (a Magic Strike can — it is projectile magic), and a
+// weapon the enemy shrugs off carries no bonus with it. When it cannot land
+// the strike is dropped before anything is charged and the swing goes in as a
+// plain attack, the way the original's flying check ran before the MP was spent.
+function skillCanLand(skill, enemy, weaponCategory) {
+  const cat = weaponCategory || 'MELEE'
+  if (enemy.isFlying && cat === 'MELEE' && !skill.def.magic) return false
+  if (weaponImmunity(enemy, cat)) return false
+  return true
+}
+
+// The equipped COMPANION, if any, as the shape the calculator swings with:
+// `{ name, damageMin, damageMax }` from the template's `metadata.companion`.
+// Null when the slot is empty or the template declares no roll.
+async function fetchEquippedCompanion(playerId) {
+  const item = await prisma.playerItem.findFirst({
+    where: { playerId, isEquipped: true, slot: 'COMPANION' },
+    select: { ItemTemplate: { select: { name: true, metadata: true } } },
+  })
+  const metadata = item?.ItemTemplate?.metadata
+  const roll = metadata && typeof metadata === 'object' ? metadata.companion : null
+  if (!roll || typeof roll.damageMin !== 'number' || typeof roll.damageMax !== 'number') return null
+  return { name: item.ItemTemplate.name, damageMin: roll.damageMin, damageMax: roll.damageMax }
 }
 
 // The player's ammo stack for a slug: its row id, count, and display name in a
@@ -222,8 +263,42 @@ async function chargeSpellMp(playerId, spell) {
   return row ? { mp: Number(row.mp), mpMax: Number(row.mpMax) } : null
 }
 
-function notEnoughMpMessage(spell) {
-  return `You don't have enough MP to cast ${spell.def.name}! It costs ${spell.cost} MP.`
+function notEnoughMpMessage(spell, verb = 'cast') {
+  return `You don't have enough MP to ${verb} ${spell.def.name}! It costs ${spell.cost} MP.`
+}
+
+// Player-side line of a battle:turn message for a skill strike — a swing with
+// a bonus on it. A Magic Strike on a magic-immune enemy still cuts, so the
+// number stands; only the magic (and its MP) came to nothing.
+function describeSkillStrike(enemyName, turn, extra = '') {
+  const use = turn.skill
+  const cost = turn.immuneToMagic ? 'no MP spent' : `${use.cost} MP`
+  const note = turn.immuneToMagic ? ` The ${enemyName} is immune to magic — the strike's magic fizzles.` : ''
+  return `You ${use.name} the ${enemyName} for ${turn.playerDealtDamage} damage (${cost}).${extra}${note}`
+}
+
+// Player-side line of a battle:turn message for a weapon strike, covering the
+// three ways a swing can come to nothing: an airborne enemy, an enemy the
+// weapon cannot hurt, and an ordinary hit. The companion's swing, when there
+// is one, is reported on its own line so the two numbers stay separate.
+function describeWeaponStrike(enemyName, turn, extra = '') {
+  if (turn.missedFlyingMelee) {
+    return `Your swing passes through empty air — the ${enemyName} is out of reach!`
+  }
+  if (turn.immuneToWeapon === 'RANGED') {
+    return `Your shot glances off the ${enemyName} — it cannot be hit at range!`
+  }
+  if (turn.immuneToWeapon === 'MELEE') {
+    return `Your blade bounces off the ${enemyName} — it cannot be cut!`
+  }
+  return `You strike the ${enemyName} for ${turn.playerDealtDamage} damage.${extra}`
+}
+
+function describeCompanionStrike(enemyName, companion) {
+  if (!companion) return ''
+  return companion.damage === 0
+    ? ` Your ${companion.name} swings at the ${enemyName} but is blocked.`
+    : ` Your ${companion.name} hits the ${enemyName} for ${companion.damage} damage.`
 }
 
 // Player-side line of a battle:turn message for a spell strike.
@@ -262,7 +337,9 @@ async function executeStartBattle(action, playerId, roomState) {
 
   // `spell` — { def, level, cost }, built server-side by room-state's
   // cast_spell — opens the fight with a spell instead of a weapon strike.
-  const { enemySlug, isAutoInitiated = false, spell = null } = action.data || {}
+  // `skill` — the same shape from use_skill — opens it with a Slice, Smash,
+  // Aim or Magic Strike: a weapon swing with the skill's bonus on it.
+  const { enemySlug, isAutoInitiated = false, spell = null, skill = null } = action.data || {}
   if (!enemySlug) return errorResult('start_battle', 'No enemy specified.')
 
   if (isProbabilistic(roomState.roomId)) {
@@ -293,7 +370,7 @@ async function executeStartBattle(action, playerId, roomState) {
   // Bug fix #5: prevent dead players from initiating combat
   if (playerStats.hp <= 0) return errorResult('start_battle', 'You cannot fight while dead.')
 
-  const equippedWeapon = await fetchEquippedWeapon(playerId)
+  const [equippedWeapon, companion] = await Promise.all([fetchEquippedWeapon(playerId), fetchEquippedCompanion(playerId)])
   const { weaponCategory: equippedWeaponCategory, ammoSlug } = equippedWeapon
 
   // Engaging with an empty quiver: refuse before the battle exists rather than
@@ -321,7 +398,20 @@ async function executeStartBattle(action, playerId, roomState) {
     roomState.updatePlayer(playerId, (state) => ({ ...state, mp: spellMp.mp }))
   }
 
-  const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats, equippedWeaponCategory })
+  // A skill strike is paid for the same way. The MP buys the bonus, so when the
+  // bonus cannot land the strike is dropped and nothing is charged: a Slice at
+  // something airborne is a plain missed swing, and a Magic Strike on a
+  // magic-immune enemy keeps its record (the panel says it fizzled) but costs
+  // nothing, like a spell.
+  let strike = skill && !isAdvantageTurn && skillCanLand(skill, enemy, equippedWeaponCategory) ? skill : null
+  let skillMp = null
+  if (strike && !(strike.def.magic && enemy.isMagicImmune)) {
+    skillMp = await chargeSpellMp(playerId, strike)
+    if (!skillMp) return errorResult('start_battle', notEnoughMpMessage(strike, 'use'))
+    roomState.updatePlayer(playerId, (state) => ({ ...state, mp: skillMp.mp }))
+  }
+
+  const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats, equippedWeaponCategory, companion, gear: equippedWeapon })
   roomState.activeBattles.set(playerId, battleState)
 
   await prisma.user.update({ where: { id: playerId }, data: { inFight: true } })
@@ -352,14 +442,19 @@ async function executeStartBattle(action, playerId, roomState) {
       // An ambush swing is a normal enemy attack, so it can roll a special too.
       enemyAction: enemyAtk.enemyAction,
       spell: null,
+      skill: null,
       immuneToMagic: false,
+      immuneToWeapon: null,
+      companion: null,
+      playerDodged: enemyAtk.dodged,
     }
     battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, firstTurn)
   } else {
-    // Player-initiated — normal full turn, or the spell that opened the fight
-    firstTurn = resolveTurn(battleState, otherCombatants, { spell })
-    battleState.applyDamageToEnemy(firstTurn.playerDealtDamage)
-    battleState.recordTurn(firstTurn.playerDealtDamage, firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
+    // Player-initiated — normal full turn, or the spell or skill that opened
+    // the fight. The companion's swing lands beside the player's own.
+    firstTurn = resolveTurn(battleState, otherCombatants, { spell, skill: strike })
+    battleState.applyDamageToEnemy(totalDamageToEnemy(firstTurn))
+    battleState.recordTurn(totalDamageToEnemy(firstTurn), firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
   }
 
   battleState.incrementTurn()
@@ -407,13 +502,13 @@ async function executeStartBattle(action, playerId, roomState) {
   if (isAdvantageTurn) {
     attackDesc = `You enter the area and the ${enemy.name} immediately attacks!`
   } else if (firstTurn.spell) {
-    attackDesc = describeSpellStrike(enemy.name, firstTurn)
-  } else if (firstTurn.missedFlyingMelee) {
-    attackDesc = `Your swing passes through empty air — the ${enemy.name} is out of reach!`
+    attackDesc = describeSpellStrike(enemy.name, firstTurn) + describeCompanionStrike(enemy.name, firstTurn.companion)
+  } else if (firstTurn.skill) {
+    attackDesc = describeSkillStrike(enemy.name, firstTurn) + describeCompanionStrike(enemy.name, firstTurn.companion)
   } else {
-    attackDesc = `You strike the ${enemy.name} for ${firstTurn.playerDealtDamage} damage.`
+    attackDesc = describeWeaponStrike(enemy.name, firstTurn) + describeCompanionStrike(enemy.name, firstTurn.companion)
   }
-  const defenseDesc = describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction)
+  const defenseDesc = describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction, '', firstTurn.playerDodged)
 
   const turnPayload = {
     ...snapshot,
@@ -435,8 +530,13 @@ async function executeStartBattle(action, playerId, roomState) {
     enemyDamageType: firstTurn.enemyDamageType,
     enemyAction: firstTurn.enemyAction ?? null,
     spell: firstTurn.spell ?? null,
+    skill: firstTurn.skill ?? null,
     immuneToMagic: firstTurn.immuneToMagic ?? false,
+    immuneToWeapon: firstTurn.immuneToWeapon ?? null,
+    companion: firstTurn.companion ?? null,
+    playerDodged: firstTurn.playerDodged ?? false,
     ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
+    ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
     ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
     message: [attackDesc, defenseDesc].join(' '),
   }
@@ -478,6 +578,7 @@ async function executeStartBattle(action, playerId, roomState) {
         droppedItems: droppedSlugs,
         lastTurnResult: firstTurn,
         ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
+    ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
         message: `You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
         clearRoomEnemies: isProbabilistic(roomState.roomId) && remainingCount === 0,
         remainingEnemies,
@@ -540,14 +641,18 @@ async function executePlayerAttack(action, playerId, roomState) {
 
   // `spell` — { def, level, cost }, built server-side by room-state's
   // cast_spell — makes this turn a spell strike instead of a weapon swing.
+  // `skill` — the same shape from use_skill — puts a Slice, Smash, Aim or
+  // Magic Strike bonus on this turn's swing.
   const spell = action?.data?.spell ?? null
+  const skill = action?.data?.skill ?? null
 
-  const [liveStats, liveWeapon] = await Promise.all([
+  const [liveStats, liveWeapon, liveCompanion] = await Promise.all([
     fetchPlayerStats(playerId),
     fetchEquippedWeapon(playerId),
+    fetchEquippedCompanion(playerId),
   ])
   if (!liveStats) return errorResult('player_attack', 'Could not load your stats.')
-  battleState.updateStats(liveStats, liveWeapon.weaponCategory)
+  battleState.updateStats(liveStats, liveWeapon, liveCompanion)
 
   // Out of ammo: reject the shot without advancing the battle. The enemy does
   // NOT get a free counterattack — matching the original, and leaving the player
@@ -574,8 +679,19 @@ async function executePlayerAttack(action, playerId, roomState) {
     roomState.updatePlayer(playerId, (state) => ({ ...state, mp: spellMp.mp }))
   }
 
+  // A skill strike pays the same way, and only when its bonus can land (see
+  // skillCanLand). A Magic Strike on a magic-immune enemy keeps its record but
+  // is never charged.
+  const strike = skill && skillCanLand(skill, battleState.enemy, liveWeapon.weaponCategory) ? skill : null
+  let skillMp = null
+  if (strike && !(strike.def.magic && battleState.enemy.isMagicImmune)) {
+    skillMp = await chargeSpellMp(playerId, strike)
+    if (!skillMp) return errorResult('player_attack', notEnoughMpMessage(strike, 'use'))
+    roomState.updatePlayer(playerId, (state) => ({ ...state, mp: skillMp.mp }))
+  }
+
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
-  const turnResult = resolveTurn(battleState, otherCombatants, { spell })
+  const turnResult = resolveTurn(battleState, otherCombatants, { spell, skill: strike })
 
   // The shot resolved — spend the round.
   let ammoRemaining = null
@@ -584,9 +700,9 @@ async function executePlayerAttack(action, playerId, roomState) {
     ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo))
   }
 
-  battleState.applyDamageToEnemy(turnResult.playerDealtDamage)
+  battleState.applyDamageToEnemy(totalDamageToEnemy(turnResult))
   battleState.incrementTurn()
-  battleState.recordTurn(turnResult.playerDealtDamage, turnResult.enemyDealtDamage, turnResult.multiplayerBonus, turnResult)
+  battleState.recordTurn(totalDamageToEnemy(turnResult), turnResult.enemyDealtDamage, turnResult.multiplayerBonus, turnResult)
 
   // Victory check
   if (battleState.isEnemyDead()) {
@@ -609,7 +725,11 @@ async function executePlayerAttack(action, playerId, roomState) {
 
     const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]
     if (droppedSlugs.length > 0) rewardParts.push(`+${droppedSlugs.join(', ')}`)
-    const finalBlow = turnResult.spell ? `Your ${turnResult.spell.name} finishes it. ` : ''
+    const finalBlow = turnResult.spell
+      ? `Your ${turnResult.spell.name} finishes it. `
+      : turnResult.skill
+        ? `Your ${turnResult.skill.name} finishes it. `
+        : ''
     const winMsg = `${finalBlow}You defeated the ${battleState.enemyName}! ${rewardParts.join('  ')}`
 
     // Fire DB persistence in the background; level-up event emitted via backgroundWork
@@ -629,6 +749,7 @@ async function executePlayerAttack(action, playerId, roomState) {
             droppedItems: droppedSlugs,
             lastTurnResult: turnResult,
             ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
+    ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
             message: winMsg,
             clearRoomEnemies: isProbabilistic(roomState.roomId) && remainingCount === 0,
             remainingEnemies,
@@ -702,20 +823,24 @@ async function executePlayerAttack(action, playerId, roomState) {
   const parts = []
   if (turnResult.spell) {
     parts.push(describeSpellStrike(battleState.enemyName, turnResult))
-  } else if (turnResult.missedFlyingMelee) {
-    parts.push(`Your swing passes through empty air — the ${battleState.enemyName} is out of reach!`)
   } else {
-    let strikeMsg = `You strike the ${battleState.enemyName} for ${turnResult.playerDealtDamage} damage.`
-    if (turnResult.multiplayerBonus) strikeMsg += ` (+${turnResult.bonusPercent}% group bonus)`
-    if (ammoRemaining !== null) strikeMsg += ` (${ammoRemaining} left)`
-    parts.push(strikeMsg)
+    let extra = ''
+    if (turnResult.multiplayerBonus) extra += ` (+${turnResult.bonusPercent}% group bonus)`
+    if (ammoRemaining !== null) extra += ` (${ammoRemaining} left)`
+    parts.push(
+      turnResult.skill
+        ? describeSkillStrike(battleState.enemyName, turnResult, extra)
+        : describeWeaponStrike(battleState.enemyName, turnResult, extra)
+    )
   }
+  if (turnResult.companion) parts.push(describeCompanionStrike(battleState.enemyName, turnResult.companion).trim())
   parts.push(
     describeEnemyAttack(
       battleState.enemyName,
       turnResult.enemyDealtDamage,
       turnResult.enemyAction,
-      ` (HP: ${newHp}/${updatedPlayer.hpMax})`
+      ` (HP: ${newHp}/${updatedPlayer.hpMax})`,
+      turnResult.playerDodged
     )
   )
 
@@ -745,8 +870,13 @@ async function executePlayerAttack(action, playerId, roomState) {
           enemyDamageType: turnResult.enemyDamageType,
           enemyAction: turnResult.enemyAction ?? null,
           spell: turnResult.spell ?? null,
+          skill: turnResult.skill ?? null,
           immuneToMagic: turnResult.immuneToMagic ?? false,
+          immuneToWeapon: turnResult.immuneToWeapon ?? null,
+          companion: turnResult.companion ?? null,
+          playerDodged: turnResult.playerDodged ?? false,
           ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
+    ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
           ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
           message: parts.join(' '),
         },
@@ -770,13 +900,15 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
   const player = roomState.players.get(playerId)
   const playerName = player?.username || 'Player'
 
-  const [liveStats, liveWeapon] = await Promise.all([
+  const [liveStats, liveWeapon, liveCompanion] = await Promise.all([
     fetchPlayerStats(playerId),
     fetchEquippedWeapon(playerId),
+    fetchEquippedCompanion(playerId),
   ])
   if (!liveStats) return { playerEvents: [] }
-  // A support turn (potion, weapon swap) fires no shot, so it spends no ammo.
-  battleState.updateStats(liveStats, liveWeapon.weaponCategory)
+  // A support turn (potion, weapon swap) fires no shot, so it spends no ammo —
+  // and the companion waits with you rather than swinging on its own.
+  battleState.updateStats(liveStats, liveWeapon, liveCompanion)
 
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
   const enemyAtk = resolveEnemyAttack(battleState, otherCombatants)
@@ -801,7 +933,11 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     // special — the counterattack rolls exactly like any other enemy attack.
     enemyAction: enemyAtk.enemyAction,
     spell: null,
+    skill: null,
     immuneToMagic: false,
+    immuneToWeapon: null,
+    companion: null,
+    playerDodged: enemyAtk.dodged,
   }
   battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, turnRecord)
 
@@ -817,7 +953,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
 
   // Build the action description string for the battle:turn message.
   const actionDesc = describeSupportAction(actionMeta)
-  const defenseDesc = describeEnemyAttack(battleState.enemyName, enemyAtk.enemyFinal, enemyAtk.enemyAction)
+  const defenseDesc = describeEnemyAttack(battleState.enemyName, enemyAtk.enemyFinal, enemyAtk.enemyAction, '', enemyAtk.dodged)
 
   // Defeat path: enemy counterattack killed the player
   if (newHp <= 0) {
@@ -865,6 +1001,8 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
           weaponCategory: battleState.equippedWeaponCategory,
           enemyDamageType: enemyAtk.enemyDamageType,
           enemyAction: enemyAtk.enemyAction ?? null,
+          skill: null,
+          playerDodged: enemyAtk.dodged ?? false,
           actionMeta,
           message: [actionDesc, defenseDesc].join(' '),
         },
@@ -935,6 +1073,9 @@ module.exports = {
   executePlayerAttack,
   executePlayerFlee,
   resolveSupportTurn,
+  // What is in the player's hands, for use_skill's weapon-fit check before a
+  // strike is even attempted.
+  fetchEquippedWeapon,
   // Exported so the shared defeat teardown can be exercised directly: the bug it
   // fixes (a roster left behind, blocking the respawn move) is invisible from
   // the outside until a player is already stuck.

@@ -1,12 +1,14 @@
 'use client'
 
-import { BattleState, BattleResult, BattleSpellCast, InventoryItem, Player } from '@/lib/game-state'
+import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player } from '@/lib/game-state'
 import Icon from '@/components/Icon'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { LogOut } from 'lucide-react'
 import { getItemActions, resolveItemIcon } from '@/lib/item-actions'
 import { getCastableSpells, spellTone } from '@/lib/spellbook'
+import { gearContextFromInventory, getStrikeSkills, skillTone, weaponFitReason } from '@/lib/skillbook'
 
-type BattleTab = 'actions' | 'spells' | 'items'
+type BattleTab = 'skills' | 'spells' | 'items'
 
 interface BattlePanelProps {
   battle: BattleState
@@ -15,6 +17,8 @@ interface BattlePanelProps {
   onFlee: () => void
   onUseItem: (itemId: string, action: string) => void
   onCastSpell: (spellId: string) => void
+  /** Strike with a skill — Slice, Smash, Aim, Magic Strike — on this turn's swing. */
+  onUseSkill: (skillId: string) => void
   onDismissResult: () => void
   isActing: boolean
   playerName: string
@@ -24,8 +28,10 @@ interface BattlePanelProps {
   weaponIconName: string | null
   weaponName: string | null
   weaponCategory: 'MELEE' | 'RANGED' | null
+  /** The equipped main-hand row, for its ammo slug and stat mods; null when unarmed. */
+  equippedWeapon: InventoryItem | null
   inventory: InventoryItem[]
-  /** Spell levels, teachers and MAG — everything the Spells tab derives from. */
+  /** Spell levels, teachers and MAG — everything the Spells list derives from. */
   player: Player
 }
 
@@ -116,7 +122,7 @@ function EnemyIcon({ iconName, isDead }: { iconName: string; isDead: boolean }) 
   )
 }
 
-function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking, isRanged = false, spell = null }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean; isPlayerAttacking: boolean; isRanged?: boolean; spell?: BattleSpellCast | null }) {
+function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking, isRanged = false, spell = null, skill = null }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean; isPlayerAttacking: boolean; isRanged?: boolean; spell?: BattleSpellCast | null; skill?: BattleSkillUse | null }) {
   const playerArrowColor = isRanged ? 'text-combat-heal/60' : 'text-combat-damage/60'
   return (
     <div className="flex-shrink-0 flex items-center gap-1">
@@ -126,6 +132,13 @@ function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking
         <>
           <Icon name="spellhand" size={76} className="text-fg-bright opacity-75" />
           <Icon name={spell.attackIcon} size={32} className={`${spellTone(spell.hue).text} opacity-80`} />
+        </>
+      ) : isPlayerAttacking && skill ? (
+        // A skill strike is still the weapon's swing; the skill's own icon, in
+        // its hue, takes the arrow's place — the original's Slice/Smash/Aim tiles.
+        <>
+          <Icon name={weaponIconName ?? 'equipment-fists'} size={76} className="text-fg-bright opacity-75" />
+          <Icon name={skill.attackIcon} size={32} className={`${skillTone(skill.hue).text} opacity-85`} />
         </>
       ) : isPlayerAttacking && (
         <>
@@ -221,6 +234,7 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
   const wasAdvantageTurn = lt?.playerRaw === null
   const lastBlowRanged = lt?.weaponCategory === 'RANGED'
   const lastBlowSpell = lt?.spell ?? null
+  const lastBlowSkill = lt?.skill ?? null
 
   if (isWin) {
     return (
@@ -262,14 +276,14 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
                   <p className="text-[11px] text-fg-muted italic">Ambush entry</p>
                 ) : (
                   <>
-                    <p className="text-[10px] text-fg-muted leading-tight truncate">Final blow · <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{lastBlowSpell ? lastBlowSpell.name : (weaponName ?? 'fists')}</span></p>
+                    <p className="text-[10px] text-fg-muted leading-tight truncate">Final blow · <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{lastBlowSpell ? lastBlowSpell.name : lastBlowSkill ? `${lastBlowSkill.name} · ${weaponName ?? 'fists'}` : (weaponName ?? 'fists')}</span></p>
                     <p
                       className={`text-xl font-black leading-tight ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-heal' : 'text-combat-damage'}`}
                       style={{ textShadow: lastBlowSpell ? `0 0 10px color-mix(in srgb, ${spellTone(lastBlowSpell.hue).glow} 38%, transparent)` : lastBlowRanged ? '0 0 10px color-mix(in srgb, var(--combat-victory) 38%, transparent)' : '0 0 10px color-mix(in srgb, var(--combat-damage) 38%, transparent)' }}
                     >
                       {lt.playerDealtDamage}
                     </p>
-                    <p className="text-[9px] text-fg-disabled leading-tight">{lastBlowSpell?.text ? `[ ${lastBlowSpell.text} ]` : lt.playerRaw} − {lt.enemyBlocked} = {lt.playerDealtDamage}</p>
+                    <p className="text-[9px] text-fg-disabled leading-tight">{lastBlowSpell?.text ? `[ ${lastBlowSpell.text} ]` : lastBlowSkill?.text ? `( ${lastBlowSkill.text} )` : lt.playerRaw} − {lt.enemyBlocked} = {lt.playerDealtDamage}</p>
                   </>
                 )}
               </div>
@@ -381,7 +395,7 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
                 <p className="text-[11px] text-fg-muted italic">Ambush entry</p>
               ) : (
                 <>
-                  <p className="text-[10px] text-fg-muted leading-tight truncate">Your strike · <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{lastBlowSpell ? lastBlowSpell.name : (weaponName ?? 'fists')}</span></p>
+                  <p className="text-[10px] text-fg-muted leading-tight truncate">Your strike · <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{lastBlowSpell ? lastBlowSpell.name : lastBlowSkill ? `${lastBlowSkill.name} · ${weaponName ?? 'fists'}` : (weaponName ?? 'fists')}</span></p>
                   <p className={`text-xl font-black leading-tight ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{lt.playerDealtDamage}</p>
                 </>
               )}
@@ -449,6 +463,77 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
   )
 }
 
+
+// ─── Command deck ──────────────────────────────────────────────────────────
+//
+// The action area under the turn readout. Attack is a full-width control that
+// never moves; a filled three-way switch under it picks the list — Spells,
+// Items, Gear — and every row in the list is one tap. Retreat lives in the
+// In Battle strip's corner (the original's spot) and takes two taps.
+
+/** How long a first Retreat tap stays armed before it quietly disarms. */
+const RETREAT_CONFIRM_MS = 2500
+
+/** Ammo the equipped weapon spends, counted from the live bag. */
+function ammoFor(weapon: InventoryItem | null | undefined, inventory: InventoryItem[]): { slug: string; remaining: number; label: string } | null {
+  const meta = (weapon?.template.metadata ?? null) as { ammo?: unknown } | null
+  const slug = typeof meta?.ammo === 'string' ? meta.ammo : null
+  if (!slug) return null
+  const stack = inventory.find((item) => item.template.slug === slug) ?? null
+  return {
+    slug,
+    remaining: stack?.quantity ?? 0,
+    label: (stack?.template.name ?? prettifyDropName(slug)).toLowerCase(),
+  }
+}
+
+function DeckRow({
+  icon,
+  iconClass,
+  name,
+  detail,
+  right,
+  reason,
+  verb,
+  verbClass,
+  disabled,
+  onClick,
+}: {
+  icon: string
+  iconClass: string
+  name: string
+  detail?: ReactNode
+  /** Cost or effect, right-aligned. Replaced by `reason` when the row is refused. */
+  right?: ReactNode
+  reason?: string | null
+  verb: string
+  verbClass: string
+  disabled: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={reason ?? undefined}
+      className="w-full min-h-[52px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg border border-line-strong/70 bg-surface-raised/45 text-left transition-all duration-150 hover:bg-surface-raised/70 active:scale-[0.99] disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:bg-surface-raised/45 disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+    >
+      <Icon name={icon} size={26} className={`${iconClass} flex-shrink-0`} />
+      <span className="flex-1 min-w-0 flex flex-col gap-0.5 leading-tight">
+        <span className="text-[13px] font-bold text-fg-primary truncate">{name}</span>
+        {detail && <span className="text-[10px] text-fg-muted tabular-nums truncate">{detail}</span>}
+      </span>
+      {reason ? (
+        <span className="text-[10px] font-bold text-status-error whitespace-nowrap">{reason}</span>
+      ) : right}
+      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1.5 rounded-md flex-shrink-0 ${disabled ? 'bg-surface-raised text-fg-muted' : verbClass}`}>
+        {verb}
+      </span>
+    </button>
+  )
+}
+
 export default function BattlePanel({
   battle,
   battleResult,
@@ -456,6 +541,7 @@ export default function BattlePanel({
   onFlee,
   onUseItem,
   onCastSpell,
+  onUseSkill,
   onDismissResult,
   isActing,
   playerName,
@@ -465,10 +551,27 @@ export default function BattlePanel({
   weaponIconName,
   weaponName,
   weaponCategory,
+  equippedWeapon,
   inventory,
   player,
 }: BattlePanelProps) {
-  const [activeTab, setActiveTab] = useState<BattleTab>('actions')
+  // Open on the list most players reach for: strikes if any are known, then
+  // spells, and a character with neither lands on Items.
+  const [activeTab, setActiveTab] = useState<BattleTab>(() =>
+    getStrikeSkills(player).length > 0 ? 'skills' : getCastableSpells(player).length > 0 ? 'spells' : 'items'
+  )
+  const [retreatArmed, setRetreatArmed] = useState(false)
+  const retreatTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const disarmRetreat = useCallback(() => {
+    if (retreatTimer.current) clearTimeout(retreatTimer.current)
+    retreatTimer.current = null
+    setRetreatArmed(false)
+  }, [])
+
+  // A new fight, or the end of one, drops a half-pressed Retreat.
+  useEffect(() => { disarmRetreat() }, [battle.isInBattle, battle.enemySlug, disarmRetreat])
+  useEffect(() => () => { if (retreatTimer.current) clearTimeout(retreatTimer.current) }, [])
 
   const isRanged = weaponCategory === 'RANGED'
   const hasPlayerFormula = battle.playerRaw !== null
@@ -476,6 +579,9 @@ export default function BattlePanel({
   // The spell the last strike was, if it was one; its tone paints that side of the row.
   const spellCast = battle.spell
   const spellCastTone = spellCast ? spellTone(spellCast.hue) : null
+  // The skill the last strike carried, if any — a swing with a bonus on it.
+  const skillUse = battle.skill
+  const skillUseTone = skillUse ? skillTone(skillUse.hue) : null
   const castableSpells = getCastableSpells(player)
   const supportIconName = supportAction
     ? resolveItemIcon(supportAction.itemMetadata ?? null, supportAction.itemSlug)
@@ -501,12 +607,39 @@ export default function BattlePanel({
   const consumables = inventory.filter(
     (item) => item.template.type === 'CONSUMABLE' && getItemActions(item.template.slug, item.template.metadata as any).length > 0
   )
+  // Strikes the player knows. What is in hand decides which of them fit —
+  // Slice wants one hand, Smash two, Aim a ranged weapon — and the row says so.
+  const gear = gearContextFromInventory(inventory)
+  const strikeSkills = getStrikeSkills(player)
+
+  // Bows and the crossbow spend ammo; the server refuses a shot with none left
+  // without spending the turn. Count from the bag so the number is right before
+  // the first shot too, not only after one.
+  const ammo = ammoFor(equippedWeapon, inventory)
+  const outOfAmmo = ammo !== null && ammo.remaining <= 0
+
+  const handleRetreat = () => {
+    if (!battle.canFlee || isActing) return
+    if (retreatArmed) {
+      disarmRetreat()
+      onFlee()
+      return
+    }
+    setRetreatArmed(true)
+    retreatTimer.current = setTimeout(() => setRetreatArmed(false), RETREAT_CONFIRM_MS)
+  }
+
+  const tabs: { id: BattleTab; label: string; icon: string; count: number; fill: string }[] = [
+    { id: 'skills', label: 'Skills', icon: 'slice', count: strikeSkills.length, fill: isRanged ? 'fill-stat-dex' : 'fill-stat-str' },
+    { id: 'spells', label: 'Spells', icon: 'magic', count: castableSpells.length, fill: 'fill-stat-mag' },
+    { id: 'items', label: 'Items', icon: 'inv', count: consumables.length, fill: 'fill-resource-gold' },
+  ]
 
   return (
     <div className="border border-combat-defeat/60 bg-surface-panel/90 rounded-lg overflow-hidden shadow-lg">
 
-      {/* ── In Battle header ── */}
-      <div className="flex flex-col items-center justify-center px-4 py-1 border-b border-combat-defeat/40"
+      {/* ── In Battle strip, Retreat in its corner ── */}
+      <div className="relative flex items-center justify-center px-4 py-1.5 border-b border-combat-defeat/40"
         style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-defeat) 19%, transparent), color-mix(in srgb, var(--combat-defeat) 19%, transparent), color-mix(in srgb, var(--combat-defeat) 19%, transparent), transparent)' }}
       >
         <p className="text-xs font-black tracking-widest uppercase"
@@ -514,97 +647,109 @@ export default function BattlePanel({
         >
           In Battle
         </p>
+        {/* Two taps: the first arms "Leave the fight?" for a moment, the second
+            retreats. The server still refuses a retreat before turn three. */}
+        <button
+          type="button"
+          onClick={handleRetreat}
+          disabled={isActing || !battle.canFlee}
+          aria-live="polite"
+          aria-label={battle.canFlee ? (retreatArmed ? 'Tap again to leave the fight' : 'Retreat from battle') : `Retreat available in ${turnsUntilFlee} turn${turnsUntilFlee !== 1 ? 's' : ''}`}
+          title={battle.canFlee ? 'Retreat to the room you came from' : `Retreat available in ${turnsUntilFlee} turn${turnsUntilFlee !== 1 ? 's' : ''}`}
+          className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-7 px-2 rounded-md border text-[10px] font-semibold tracking-wide normal-case inline-flex items-center gap-1 transition-colors duration-150 disabled:opacity-45 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+            retreatArmed
+              ? 'fill-status-error border-status-error'
+              : 'border-line-strong/70 bg-surface-canvas/70 text-fg-muted hover:text-fg-primary hover:border-fg-muted'
+          }`}
+          style={{ textShadow: 'none' }}
+        >
+          <LogOut size={11} aria-hidden="true" />
+          {!battle.canFlee ? `Retreat in ${turnsUntilFlee}` : retreatArmed ? 'Leave the fight?' : 'Retreat'}
+        </button>
       </div>
 
       {/* ── Overview header ── */}
-      <div className="flex items-stretch px-3 pt-3 pb-3 gap-3 border-b border-line-subtle/60">
+      <div className="flex items-stretch px-3 pt-2.5 pb-2.5 gap-2.5 border-b border-line-subtle/60">
 
         {/* Player column */}
-        <div className="flex-1 flex flex-col gap-2 min-w-0">
+        <div className="flex-1 flex flex-col gap-1.5 min-w-0">
           <div className="flex items-center gap-2">
             <LevelBadge level={playerLevel} />
-            <span className="text-base font-black text-fg-bright truncate tracking-tight">{playerName}</span>
+            <span className="text-sm font-black text-fg-bright truncate tracking-tight">{playerName}</span>
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black tabular-nums leading-none" style={{ color: 'var(--combat-damage)', textShadow: '0 0 12px color-mix(in srgb, var(--combat-damage) 31%, transparent)' }}>{Math.min(battle.playerHp, battle.playerHpMax)}</span>
-              <span className="text-xs text-fg-disabled font-semibold">/ {battle.playerHpMax} HP</span>
+              <span className="text-xl font-black tabular-nums leading-none" style={{ color: 'var(--combat-damage)', textShadow: '0 0 12px color-mix(in srgb, var(--combat-damage) 31%, transparent)' }}>{Math.min(battle.playerHp, battle.playerHpMax)}</span>
+              <span className="text-[11px] text-fg-disabled font-semibold">/ {battle.playerHpMax} HP</span>
               {battle.playerHp > battle.playerHpMax && (
-                <span className="text-xs font-bold text-stat-def tabular-nums">+{battle.playerHp - battle.playerHpMax}</span>
+                <span className="text-[11px] font-bold text-stat-def tabular-nums">+{battle.playerHp - battle.playerHpMax}</span>
               )}
             </div>
             <HpBar current={battle.playerHp} max={battle.playerHpMax} color="bg-resource-hp" />
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-1">
-              <span className="text-base font-bold tabular-nums leading-none text-resource-mp">{Math.min(playerMp, playerMpMax)}</span>
-              <span className="text-xs text-fg-disabled font-semibold">/ {playerMpMax} MP</span>
+              <span className="text-sm font-bold tabular-nums leading-none text-resource-mp">{Math.min(playerMp, playerMpMax)}</span>
+              <span className="text-[11px] text-fg-disabled font-semibold">/ {playerMpMax} MP</span>
               {playerMp > playerMpMax && (
-                <span className="text-xs font-bold text-stat-def tabular-nums">+{playerMp - playerMpMax}</span>
+                <span className="text-[11px] font-bold text-stat-def tabular-nums">+{playerMp - playerMpMax}</span>
               )}
             </div>
             <HpBar current={playerMp} max={playerMpMax} color="bg-resource-mp" />
           </div>
-          <div className="flex items-center gap-3 pt-0.5">
+          <div className="flex items-center gap-3">
             <div className="flex flex-col items-center">
               {/* The stat the last strike rolled: MAG for a spell, else the weapon's. */}
               <span className={`text-[9px] uppercase tracking-widest leading-none ${spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{spellCast ? 'MAG' : isRanged ? 'DEX' : 'STR'}</span>
-              <span className={`text-sm font-black leading-none ${spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{battle.playerStrMax ?? '—'}</span>
+              <span className={`text-xs font-black leading-none mt-0.5 ${spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{battle.playerStrMax ?? '—'}</span>
             </div>
-            <div className="w-px h-6 bg-surface-hover/60" />
+            <div className="w-px h-5 bg-surface-hover/60" />
             <div className="flex flex-col items-center">
               <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">DEF</span>
-              <span className="text-sm font-black text-stat-def leading-none">{battle.playerDefMax ?? '—'}</span>
+              <span className="text-xs font-black text-stat-def leading-none mt-0.5">{battle.playerDefMax ?? '—'}</span>
             </div>
           </div>
         </div>
 
-        {/* VS divider */}
+        {/* VS divider carries the turn count */}
         <div className="flex-shrink-0 flex flex-col items-center justify-center gap-1 px-1">
           <div className="flex-1 w-px bg-surface-raised" />
           <span className="text-[11px] font-black text-fg-disabled tracking-widest">VS</span>
+          <span className="text-[9px] text-fg-muted uppercase tracking-widest whitespace-nowrap">
+            Turn <span className="text-[11px] text-fg-secondary font-semibold tracking-normal">{battle.turnCount}</span>
+          </span>
           <div className="flex-1 w-px bg-surface-raised" />
         </div>
 
         {/* Enemy column */}
-        <div className="flex-1 flex flex-col items-end gap-2 min-w-0">
+        <div className="flex-1 flex flex-col items-end gap-1.5 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-base font-black text-fg-bright truncate tracking-tight">{battle.enemyName}</span>
+            <span className="text-sm font-black text-fg-bright truncate tracking-tight">{battle.enemyName}</span>
             {battle.enemyLevel !== null && <LevelBadge level={battle.enemyLevel} />}
           </div>
           <div className="flex flex-col gap-1 w-full">
             <div className="flex items-baseline justify-end gap-1">
-              <span className="text-2xl font-black tabular-nums leading-none" style={{ color: 'var(--combat-damage)', textShadow: '0 0 12px color-mix(in srgb, var(--combat-damage) 31%, transparent)' }}>{battle.enemyCurrentHp}</span>
-              <span className="text-xs text-fg-disabled font-semibold">/ {battle.enemyMaxHp} HP</span>
+              <span className="text-xl font-black tabular-nums leading-none" style={{ color: 'var(--combat-damage)', textShadow: '0 0 12px color-mix(in srgb, var(--combat-damage) 31%, transparent)' }}>{battle.enemyCurrentHp}</span>
+              <span className="text-[11px] text-fg-disabled font-semibold">/ {battle.enemyMaxHp} HP</span>
             </div>
             <HpBar current={battle.enemyCurrentHp} max={battle.enemyMaxHp} color="bg-resource-hp" rtl initialPct={100} />
           </div>
-          {/* spacer to match player MP block */}
-          <div className="flex flex-col gap-1 w-full opacity-0 pointer-events-none" aria-hidden>
-            <div className="flex items-baseline gap-1"><span className="text-base leading-none">0</span></div>
-            <HpBar current={0} max={1} color="bg-resource-mp" />
-          </div>
-          <div className="flex items-center gap-3 pt-0.5">
+          <div className="mt-auto flex items-center gap-3">
             <div className="flex flex-col items-center">
               <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">ATT</span>
-              <span className="text-sm font-black text-stat-def leading-none">{battle.enemyAtt ?? '—'}</span>
+              <span className="text-xs font-black text-stat-def leading-none mt-0.5">{battle.enemyAtt ?? '—'}</span>
             </div>
-            <div className="w-px h-6 bg-surface-hover/60" />
+            <div className="w-px h-5 bg-surface-hover/60" />
             <div className="flex flex-col items-center">
               <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">DEF</span>
-              <span className="text-sm font-black text-stat-def leading-none">{battle.enemyDef ?? '—'}</span>
+              <span className="text-xs font-black text-stat-def leading-none mt-0.5">{battle.enemyDef ?? '—'}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Turn indicator ── */}
-      <div className="flex items-center justify-center px-4 py-1">
-        <span className="text-[11px] text-fg-disabled uppercase tracking-widest">Turn <span className="text-fg-secondary font-semibold">{battle.turnCount}</span></span>
-      </div>
-
       {/* ── Combat visualization row ── */}
-      <div className="flex items-center px-3 pb-3 gap-2">
+      <div className="flex items-center px-3 pt-3 pb-3 gap-2">
 
         {/* Player side */}
         <div className="flex-1 flex flex-col gap-1 min-w-0">
@@ -633,6 +778,28 @@ export default function BattlePanel({
                   </p>
                 )}
               </div>
+            </>
+          ) : skillUse && skillUseTone ? (
+            <>
+              <p className="text-[10px] text-fg-disabled tabular-nums">
+                ( {skillUse.weaponRaw} + {skillUse.bonus} ) &minus; {battle.enemyBlocked} = {battle.lastPlayerDamage ?? 0}
+                <span className="ml-1">(max {battle.playerStrMax}{skillUse.bonusMax > 0 ? ` + ${skillUse.bonusMax}` : ''})</span>
+              </p>
+              <p className="text-xs text-fg-secondary">
+                You <span className={`font-semibold ${skillUseTone.text}`}>{skillUse.name}</span> with your{' '}
+                <span className={`font-semibold ${isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{weaponName ?? 'fists'}</span>
+                {battle.immuneToMagic ? (
+                  <span className="ml-1 text-fg-muted italic">— the {battle.enemyName} shrugs off the magic, no MP spent</span>
+                ) : (
+                  <span className="ml-1 text-resource-mp tabular-nums">(−{skillUse.cost} MP)</span>
+                )}
+              </p>
+              <p
+                className={`text-4xl font-black leading-none tabular-nums ${skillUseTone.text}`}
+                style={{ textShadow: `0 0 16px color-mix(in srgb, ${skillUseTone.glow} 38%, transparent)` }}
+              >
+                {battle.lastPlayerDamage ?? 0}
+              </p>
             </>
           ) : spellCast && spellCastTone ? (
             battle.immuneToMagic ? (
@@ -673,6 +840,21 @@ export default function BattlePanel({
                 MISS
               </p>
             </>
+          ) : battle.immuneToWeapon ? (
+            <>
+              <p className="text-[10px] text-fg-disabled italic">
+                {battle.immuneToWeapon === 'RANGED' ? 'Immune to ranged' : 'Immune to melee'}
+              </p>
+              <p className="text-xs text-fg-secondary">
+                Your <span className={`font-semibold ${isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{weaponName ?? 'fists'}</span>
+                {battle.immuneToWeapon === 'RANGED' ? ' glance off — the ' : ' bounce off — the '}
+                {battle.enemyName}
+                {battle.immuneToWeapon === 'RANGED' ? ' cannot be hit at range!' : ' cannot be cut!'}
+              </p>
+              <p className="text-2xl font-black text-fg-muted leading-none tabular-nums italic">
+                IMMUNE
+              </p>
+            </>
           ) : hasPlayerFormula ? (
             <>
               <p className="text-[10px] text-fg-disabled tabular-nums">
@@ -681,13 +863,6 @@ export default function BattlePanel({
               </p>
               <p className="text-xs text-fg-secondary">
                 You attack with your <span className={`font-semibold ${isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{weaponName ?? 'fists'}</span>
-                {/* Ammo-spending weapons (bows, crossbow) report what's left, so
-                    running dry mid-fight is visible before it blocks a shot. */}
-                {battle.ammo?.remaining != null && (
-                  <span className={`ml-1 tabular-nums ${battle.ammo.remaining <= 5 ? 'text-resource-gold' : 'text-fg-muted'}`}>
-                    ({battle.ammo.remaining} left)
-                  </span>
-                )}
               </p>
               <p
                 className={`text-4xl font-black leading-none tabular-nums ${isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}
@@ -701,14 +876,37 @@ export default function BattlePanel({
           ) : (
             <p className="text-xs text-fg-disabled italic">Waiting for first strike…</p>
           )}
+          {battle.companion && (
+            <p className="text-[10px] text-fg-muted tabular-nums">
+              <span className="font-semibold text-combat-victory">{battle.companion.name}</span>
+              {' '}{battle.companion.roll} &minus; {battle.companion.block} ={' '}
+              <span className={battle.companion.damage > 0 ? 'text-combat-victory font-semibold' : 'text-fg-disabled'}>{battle.companion.damage}</span>
+            </p>
+          )}
         </div>
 
-        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} isPlayerAttacking={hasPlayerFormula} isRanged={isRanged} spell={spellCast} />
+        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} isPlayerAttacking={hasPlayerFormula} isRanged={isRanged} spell={spellCast} skill={skillUse} />
 
         {/* Enemy side */}
         <div className="flex-1 flex flex-col items-end gap-1 min-w-0">
           {enemyIsDead ? (
             <p className="text-sm font-bold text-enemy-hostile text-right">{battle.enemyName}</p>
+          ) : hasEnemyFormula && battle.playerDodged ? (
+            // The Dodge skill: the whole swing came to nothing. The original's
+            // purple "You DODGE", with what you sidestepped for the record.
+            <>
+              <p className="text-[10px] text-fg-disabled text-right tabular-nums">
+                <span className="mr-1">(max {battle.enemyStrMax})</span>
+                {enemyRollText} dodged
+              </p>
+              <p className="text-xs text-fg-secondary text-right">
+                You <span className="font-semibold text-hue-purple">DODGE</span> the{' '}
+                <span className="text-resource-gold font-semibold">{battle.enemyName}</span>&rsquo;s {enemyAction ? enemyAction.name.toLowerCase() : 'attack'}!
+              </p>
+              <p className="text-2xl font-black text-hue-purple leading-none tabular-nums italic text-right">
+                DODGE
+              </p>
+            </>
           ) : hasEnemyFormula ? (
             <>
               {enemyAction && (
@@ -746,79 +944,105 @@ export default function BattlePanel({
         </div>
       )}
 
-      {/* ── Tabbed action panel ── */}
-      <div className="border-t border-line-subtle/50">
-        {/* Tab bar */}
-        <div className="flex px-3 pt-2.5">
-          {(['actions', 'spells', 'items'] as BattleTab[]).map((tab) => {
-            const actionsActive = isRanged
-              ? 'border-combat-victory/80 text-combat-victory/80 hover:border-combat-victory hover:text-combat-victory'
-              : 'border-status-error/80 text-combat-damage hover:border-status-error hover:text-combat-defeat'
-            const actionsHover = isRanged
-              ? 'hover:border-combat-victory/50 hover:text-combat-victory/70'
-              : 'hover:border-status-error/50 hover:text-combat-defeat/70'
-            const activeColor =
-              tab === 'actions' ? actionsActive :
-              tab === 'spells'  ? 'border-resource-mp/80 text-resource-mp/80 hover:border-resource-mp hover:text-resource-mp' :
-                                  'border-status-warning/80 text-resource-gold/80 hover:border-status-warning hover:text-resource-gold'
-            const hoverColor =
-              tab === 'actions' ? actionsHover :
-              tab === 'spells'  ? 'hover:border-resource-mp/50 hover:text-resource-mp/70' :
-                                  'hover:border-status-warning/50 hover:text-resource-gold/70'
+      {/* ── Command deck ── */}
+      <div className="border-t border-line-subtle/50 px-3 pt-3 pb-3 flex flex-col gap-2">
+
+        {/* Attack: ranged strikes are DEX, melee are STR — the same split the
+            combat formulas use, so the control wears the stat it rolls against. */}
+        <button
+          type="button"
+          onClick={onAttack}
+          disabled={isActing || outOfAmmo}
+          title={outOfAmmo && ammo ? `No ${ammo.label} left — equip another weapon from your bag` : undefined}
+          className={`w-full h-14 rounded-xl flex items-center gap-3 px-4 text-left shadow-md shadow-shadow/40 transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${isRanged ? 'fill-stat-dex' : 'fill-stat-str'}`}
+        >
+          <Icon name={weaponIconName ?? 'equipment-fists'} size={32} className="opacity-90 flex-shrink-0" />
+          <span className="flex-1 min-w-0 flex flex-col gap-1 leading-none">
+            <span className="text-base font-black uppercase tracking-[0.12em]">{isActing ? '…' : 'Attack'}</span>
+            <span className="text-[11px] font-medium opacity-85 truncate">{weaponName ?? 'Fists'}</span>
+          </span>
+          {/* Ammo-spending weapons show what's left on the control itself, so
+              running dry is visible before it blocks a shot. */}
+          {ammo && (
+            <span
+              className={`flex-shrink-0 text-[10px] font-bold tabular-nums px-2 py-1 rounded-md ${
+                ammo.remaining <= 0 ? 'fill-status-error' : ammo.remaining <= 5 ? 'fill-resource-gold' : 'bg-surface-canvas/35'
+              }`}
+              style={{ textShadow: 'none' }}
+            >
+              {ammo.remaining <= 0 ? `No ${ammo.label}` : `${ammo.remaining} ${ammo.label}`}
+            </span>
+          )}
+        </button>
+
+        {/* The switch: one filled segment, counts on all three. */}
+        <div role="tablist" aria-label="Battle actions" className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle">
+          {tabs.map((tab) => {
+            const selected = activeTab === tab.id
             return (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 h-8 text-xs font-medium uppercase tracking-wider border-b-2 transition-all duration-200 ${
-                  activeTab === tab
-                    ? activeColor
-                    : `border-transparent text-fg-muted ${hoverColor}`
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={`battle-deck-${tab.id}`}
+                id={`battle-tab-${tab.id}`}
+                onClick={() => setActiveTab(tab.id)}
+                className={`h-9 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                  selected ? tab.fill : 'text-fg-muted hover:text-fg-primary hover:bg-surface-raised/60'
                 }`}
               >
-                {tab}
+                <Icon name={tab.icon} size={14} className={selected ? 'opacity-90' : 'opacity-70'} />
+                <span>{tab.label}</span>
+                <span className={`text-[10px] font-bold px-1.5 py-px rounded-full tabular-nums ${selected ? 'bg-surface-canvas/30' : 'bg-surface-raised text-fg-secondary'}`} style={selected ? { textShadow: 'none' } : undefined}>
+                  {tab.count}
+                </span>
               </button>
             )
           })}
         </div>
-        <div className="pt-2" />
 
-        {/* Actions tab */}
-        {activeTab === 'actions' && (
-          <div className="px-3 pb-3 pt-1 flex flex-col gap-2">
-            <div className="flex gap-2">
-              <button
-                onClick={onAttack}
-                disabled={isActing}
-                // Ranged strikes are DEX, melee are STR — the same split the combat
-                // formulas use, so the button matches the stat it rolls against
-                // rather than borrowing success/error, which mean something else.
-                className={`flex-1 py-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-bold transition-all duration-150 active:scale-[0.97] shadow-sm shadow-shadow ${isRanged ? 'fill-stat-dex' : 'fill-stat-str'}`}
-              >
-                {isActing ? '...' : 'Attack'}
-              </button>
-              <button
-                disabled={isActing}
-                className="flex-1 py-2 fill-status-warning disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-bold transition-all duration-150"
-              >
-                Defend
-              </button>
-            </div>
-            <button
-              onClick={onFlee}
-              disabled={isActing || !battle.canFlee}
-              title={battle.canFlee ? 'Retreat from battle' : `Retreat available in ${turnsUntilFlee} turn${turnsUntilFlee !== 1 ? 's' : ''}`}
-              className="text-xs text-fg-muted hover:text-fg-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 py-0.5 underline underline-offset-2"
-            >
-              {battle.canFlee ? 'Retreat' : `Retreat (${turnsUntilFlee} turns)`}
-            </button>
-          </div>
-        )}
+        {/* The list. Capped so a deep bag scrolls inside the card instead of
+            pushing the room off the screen. */}
+        <div
+          role="tabpanel"
+          id={`battle-deck-${activeTab}`}
+          aria-labelledby={`battle-tab-${activeTab}`}
+          className="flex flex-col gap-1.5 max-h-60 overflow-y-auto overscroll-contain"
+        >
+          {activeTab === 'skills' && (
+            strikeSkills.length === 0 ? (
+              <p className="text-xs text-fg-disabled italic py-2 px-1">No attack skills learned yet.</p>
+            ) : (
+              strikeSkills.map((entry) => {
+                const tone = skillTone(entry.def.hue)
+                const cost = entry.castCost ?? 0
+                const reason =
+                  weaponFitReason(entry.def, gear)
+                  ?? (playerMp < cost ? 'Not enough MP' : null)
+                const range = entry.preview ? `+${entry.preview.min}–${entry.preview.max} on the swing` : null
+                return (
+                  <DeckRow
+                    key={entry.def.id}
+                    icon={entry.def.icon}
+                    iconClass={`${tone.text} opacity-90`}
+                    name={entry.def.name}
+                    detail={`lvl ${entry.level}${range ? ` · ${range}` : ''}`}
+                    right={<span className="text-xs font-bold text-resource-mp tabular-nums whitespace-nowrap">{cost} MP</span>}
+                    reason={reason}
+                    verb="Use"
+                    verbClass={tone.fill}
+                    disabled={isActing || outOfAmmo || Boolean(reason)}
+                    onClick={() => onUseSkill(entry.def.id)}
+                  />
+                )
+              })
+            )
+          )}
 
-        {/* Spells tab — learned spells the engine can cast, from the shared registry. */}
-        {activeTab === 'spells' && (
-          <div className="px-4 pb-3 pt-2 flex flex-col gap-1.5 max-h-36 overflow-y-auto">
-            {castableSpells.length === 0 ? (
-              <p className="text-xs text-fg-disabled italic py-2">No spells learned yet.</p>
+          {activeTab === 'spells' && (
+            castableSpells.length === 0 ? (
+              <p className="text-xs text-fg-disabled italic py-2 px-1">No spells learned yet.</p>
             ) : (
               castableSpells.map((entry) => {
                 const tone = spellTone(entry.def.hue)
@@ -826,66 +1050,60 @@ export default function BattlePanel({
                   entry.def.kind === 'heal' && battle.playerHp >= battle.playerHpMax ? 'Full HP'
                   : playerMp < entry.castCost ? 'Not enough MP'
                   : null
+                const range = entry.preview
+                  ? `${entry.preview.min}–${entry.preview.max} ${entry.def.kind === 'heal' ? 'HP' : 'dmg'}`
+                  : null
                 return (
-                  <div key={entry.def.id} className="flex items-center gap-2">
-                    <button
-                      onClick={() => onCastSpell(entry.def.id)}
-                      disabled={isActing || Boolean(reason)}
-                      title={reason ?? `Cast ${entry.def.name}`}
-                      className={`px-2.5 py-1 rounded text-xs font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 ${tone.fill}`}
-                    >
-                      Cast
-                    </button>
-                    <Icon name={entry.def.icon} size={20} className={`${tone.text} opacity-80 flex-shrink-0`} />
-                    <span className="flex-1 text-xs text-fg-primary truncate">
-                      {entry.def.name}
-                      <span className="text-fg-muted ml-1">lvl {entry.level}</span>
-                      {entry.preview && (
-                        <span className="text-fg-disabled ml-1 tabular-nums">{entry.preview.min}–{entry.preview.max}</span>
-                      )}
-                    </span>
-                    <span className={`text-xs tabular-nums flex-shrink-0 ${reason === 'Not enough MP' ? 'text-status-error' : 'text-resource-mp'}`}>
-                      {entry.castCost} MP
-                    </span>
-                  </div>
+                  <DeckRow
+                    key={entry.def.id}
+                    icon={entry.def.icon}
+                    iconClass={`${tone.text} opacity-90`}
+                    name={entry.def.name}
+                    detail={`lvl ${entry.level}${range ? ` · ${range}` : ''}`}
+                    right={<span className="text-xs font-bold text-resource-mp tabular-nums whitespace-nowrap">{entry.castCost} MP</span>}
+                    reason={reason}
+                    verb="Cast"
+                    verbClass={tone.fill}
+                    disabled={isActing || Boolean(reason)}
+                    onClick={() => onCastSpell(entry.def.id)}
+                  />
                 )
               })
-            )}
-          </div>
-        )}
+            )
+          )}
 
-        {/* Items tab */}
-        {activeTab === 'items' && (
-          <div className="px-4 pb-3 pt-2 flex flex-col gap-1.5 max-h-36 overflow-y-auto">
-            {consumables.length === 0 ? (
-              <p className="text-xs text-fg-disabled italic py-2">No items available.</p>
+          {activeTab === 'items' && (
+            consumables.length === 0 ? (
+              <p className="text-xs text-fg-disabled italic py-2 px-1">No items to use.</p>
             ) : (
               consumables.map((item) => {
                 const actions = getItemActions(item.template.slug, item.template.metadata as any)
                 const primaryAction = actions[0]
-                const iconName = resolveItemIcon(item.template.metadata ?? null, item.template.slug)
+                const effect = primaryAction.effect ?? null
+                const restores = effect?.includes('HP') ? 'hp' : effect?.includes('MP') ? 'mp' : null
                 return (
-                  <div key={item.id} className="flex items-center gap-2">
-                    <button
-                      onClick={() => onUseItem(item.id, primaryAction.action)}
-                      disabled={isActing}
-                      className={`px-2.5 py-1 rounded text-xs font-semibold transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 ${primaryAction.className ?? 'fill-accent'}`}
-                    >
-                      {primaryAction.effect ?? primaryAction.label}
-                    </button>
-                    <Icon name={iconName} size={20} className="text-fg-bright opacity-70 flex-shrink-0" />
-                    <span className="flex-1 text-xs text-fg-primary truncate">
-                      {item.template.name}
-                      {item.quantity > 1 && (
-                        <span className="text-fg-muted ml-1">×{item.quantity}</span>
-                      )}
-                    </span>
-                  </div>
+                  <DeckRow
+                    key={item.id}
+                    icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
+                    iconClass="text-fg-bright opacity-80"
+                    name={item.template.name}
+                    detail={item.quantity > 1 ? `×${item.quantity}` : 'Last one'}
+                    right={effect && (
+                      <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${restores === 'hp' ? 'text-resource-hp' : restores === 'mp' ? 'text-resource-mp' : 'text-fg-secondary'}`}>
+                        {effect}
+                      </span>
+                    )}
+                    verb={primaryAction.label}
+                    verbClass={restores === 'hp' ? 'fill-resource-hp' : restores === 'mp' ? 'fill-resource-mp' : 'fill-accent'}
+                    disabled={isActing}
+                    onClick={() => onUseItem(item.id, primaryAction.action)}
+                  />
                 )
               })
-            )}
-          </div>
-        )}
+            )
+          )}
+
+        </div>
       </div>
     </div>
   )

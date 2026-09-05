@@ -40,6 +40,11 @@ const MAP_SHEETS = [
   { id: 'neverending-mine', title: 'The Neverending Mine', src: '/img/lightgray_map_neverendingmine_main.jpg', flag: 'neverEndingMineMap', region: 'rocky-flats', level: 'Mine' },
   { id: 'ocean', title: 'Blue Ocean', src: '/img/lightgray_map_blueocean_main.jpg', flag: 'oceanMap', region: 'ocean', level: 'Surface' },
   { id: 'ocean-underwater', title: 'Under the Ocean', src: '/img/lightgray_map_blueocean_underwater.jpg', flag: 'oceanUnderwaterMap', region: 'ocean', level: 'Underwater' },
+  { id: 'dark-forest', title: 'Dark Forest', src: '/img/lightgray_map_dark_forest_main.jpg', flag: 'darkForestMap', region: 'dark-forest', level: 'Surface' },
+  // The tree tops and the Keep's second floor: the one sheet in the world that
+  // sits ABOVE its surface rather than below it. The grid still files it with
+  // the other non-surface sheets, labelled by its own level.
+  { id: 'dark-forest-upper', title: 'Dark Forest Upper Level', src: '/img/lightgray_map_dark_forest_upperlevel.jpg', flag: 'darkForestUpperMap', region: 'dark-forest', level: 'Upper Level' },
   { id: 'room-zero', title: 'Room Zero', src: '/img/lightgray_map_roomzero.jpg', flag: 'roomZeroMap', region: 'room-zero', level: 'Surface' },
   { id: 'lobby', title: 'Plane of Rebirth', src: '/img/lightgray_map_the_lobby.jpg', flag: 'lobbyMap', region: 'lobby', level: 'Surface' },
   { id: 'solar-office', title: 'Solar Office', src: '/img/lightgray_map_solar_office.jpg', flag: 'solarOfficeMap', region: 'solar-office', level: 'Surface' },
@@ -76,7 +81,16 @@ const SHEETS_BY_ID = new Map(MAP_SHEETS.map((sheet) => [sheet.id, sheet]))
 const WORLD_REGIONS = [
   { id: 'star-city', name: 'Star City' },
   { id: 'mountains', name: 'Mountains' },
-  { id: 'dark-forest', name: 'Dark Forest' },
+  {
+    id: 'dark-forest',
+    name: 'Dark Forest',
+    color: 'dark-forest',
+    hub: { roomId: '507', name: 'Dark Forest Teleport' },
+    // The original's teleport page gave the Ranger's Guild its own cube, open
+    // to members. It is a sub-hub here: found by standing in the guild lobby,
+    // which only a member can do, so membership is the discovery.
+    subHubs: [{ id: 'rangers-guild', roomId: '515a', name: "Ranger's Guild" }],
+  },
   {
     id: 'ocean',
     name: 'Blue Ocean',
@@ -178,12 +192,21 @@ const OCEAN_UNDERWATER = new Set([
   '490', '491', '492', '493', '494', '495', '496', '497', '498', '499',
 ])
 
+/**
+ * Rooms drawn on the Dark Forest upper level: the Ranger's Guild in the tree
+ * tops (515a-e) and the second floor of the Dark Keep (516e-h). The guild's
+ * ladder (515) and the Keep's ground floor stay on the surface sheet.
+ */
+const DARK_FOREST_UPPER = new Set(['515a', '515b', '515c', '515d', '515e', '516e', '516f', '516g', '516h'])
+
 /** Which sheet a room is drawn on. */
 function getMapIdForRoom(roomId) {
   if (!roomId) return 'grassy-field'
   if (roomId === '000') return 'room-zero'
   if (roomId === '999') return 'lobby'
   if (roomId === '088') return 'solar-office'
+  if (DARK_FOREST_UPPER.has(roomId)) return 'dark-forest-upper'
+  if (roomId.startsWith('5')) return 'dark-forest'
   if (OCEAN_UNDERWATER.has(roomId)) return 'ocean-underwater'
   if (roomId.startsWith('4')) return 'ocean'
   if (roomId.startsWith('003b') || (roomId.startsWith('028') && roomId !== '028') || SCORPION_DUNGEON.has(roomId)) {
@@ -258,4 +281,5 @@ module.exports = {
   getSubHubsForRegion,
   getSheetsForRegion,
   TELEPORT_HUBS,
+  DARK_FOREST_UPPER,
 }

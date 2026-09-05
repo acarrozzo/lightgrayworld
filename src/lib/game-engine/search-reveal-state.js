@@ -5,21 +5,35 @@
  *
  * Used by rooms where searching unmasks a hidden exit (e.g. 003 -> 003c).
  */
-const revealedRooms = new Map() // Map<playerId, Set<roomId>>
+const revealedRooms = new Map() // Map<playerId, Set<roomId | `${roomId}:${direction}`>>
 
-function markRevealed(playerId, roomId) {
+/**
+ * A room with one hidden exit is tracked by its room id. A room with several
+ * (the Dark Grove's two secret ways, found one search at a time) is tracked per
+ * direction, so the gate on each can ask about its own passage.
+ */
+function revealKey(roomId, direction) {
+  return direction ? `${roomId}:${direction}` : roomId
+}
+
+function markRevealed(playerId, roomId, direction = null) {
   if (!revealedRooms.has(playerId)) {
     revealedRooms.set(playerId, new Set())
   }
-  revealedRooms.get(playerId).add(roomId)
+  revealedRooms.get(playerId).add(revealKey(roomId, direction))
 }
 
 function clearRevealed(playerId, roomId) {
-  revealedRooms.get(playerId)?.delete(roomId)
+  const set = revealedRooms.get(playerId)
+  if (!set) return
+  set.delete(roomId)
+  for (const key of [...set]) {
+    if (key.startsWith(`${roomId}:`)) set.delete(key)
+  }
 }
 
-function isRevealed(playerId, roomId) {
-  return revealedRooms.get(playerId)?.has(roomId) ?? false
+function isRevealed(playerId, roomId, direction = null) {
+  return revealedRooms.get(playerId)?.has(revealKey(roomId, direction)) ?? false
 }
 
 function clearPlayerReveals(playerId) {
@@ -34,6 +48,13 @@ function clearPlayerReveals(playerId) {
  * - stateNote: persistent hint text shown in the room while revealed
  * - chance (optional): probability in [0,1] that a search reveals the exit; defaults to 1 (always reveals)
  * - failMessage (optional): shown when a chance-based reveal misses; required if chance < 1
+ *
+ * A room may instead declare `stages`: an ordered list of the definitions
+ * above, found one search at a time in that order. The Dark Grove (509) is the
+ * case: the first successful search opens the way north, the next the way west.
+ * Each stage's direction is tracked on its own, so its gate can be checked
+ * independently, and `exhaustedMessage` is what a search says once every stage
+ * has been found.
  */
 const REVEAL_DEFINITIONS = {
   '003': {
@@ -135,37 +156,110 @@ const REVEAL_DEFINITIONS = {
     successMessage: 'You search along the great stone wall and find the mechanism buried under centuries of grime. The catacombs door grinds open to the northeast.',
     stateNote: 'The catacombs stone door stands open to the northeast.',
   },
+
+  // ==================== DARK FOREST ====================
+  // The Dark Grove, where the original's `darkforestsearch` counter walked up
+  // one notch per lucky search: north to the fallen tree first, then west into
+  // the trees where the Ranger's Guild hides. Both 1-in-2, in that order.
+  '509': {
+    exhaustedMessage: 'You search the Dark Grove again. You have found everything there is to find here.',
+    stages: [
+      {
+        direction: 'north',
+        toRoom: '519',
+        chance: 0.5,
+        successMessage: 'You search the Dark Grove and discover a secret path to the north!',
+        failMessage: 'You search the Dark Grove and find nothing.',
+        stateNote: 'A secret path leads north out of the grove.',
+      },
+      {
+        direction: 'west',
+        toRoom: '514',
+        chance: 0.5,
+        successMessage: 'You search and find a secret way through the strange trees to the west!',
+        failMessage: 'You search the Dark Grove and think you find something, but you don\'t.',
+        stateNote: 'A secret way runs west through the strange trees.',
+      },
+    ],
+  },
+  // By a Fallen Tree: the same trail from the other end, south back to the
+  // grove. The original drove both ends off one session flag; each end is its
+  // own find here, as the Forest's hidden trail is.
+  '519': {
+    direction: 'south',
+    toRoom: '509',
+    chance: 0.5,
+    successMessage: 'You search and find a secret way to the south through the trees!',
+    failMessage: 'You search and find nothing, you should try searching again.',
+    stateNote: 'A secret way leads south through the trees.',
+  },
 }
 
 function getRevealDefinition(roomId) {
   return REVEAL_DEFINITIONS[roomId] ?? null
 }
 
+/** A definition's hidden passages as a flat list, single or staged alike. */
+function getRevealStages(roomId) {
+  const def = REVEAL_DEFINITIONS[roomId]
+  if (!def) return []
+  return Array.isArray(def.stages) ? def.stages : [def]
+}
+
+/**
+ * The next passage a search in this room can find, or null once every one has
+ * been. A single-passage room is a one-stage room.
+ */
+function getNextRevealStage(playerId, roomId) {
+  const def = REVEAL_DEFINITIONS[roomId]
+  if (!def) return null
+  if (!Array.isArray(def.stages)) return isRevealed(playerId, roomId) ? null : def
+  return def.stages.find((stage) => !isRevealed(playerId, roomId, stage.direction)) ?? null
+}
+
+/** Whether one of a room's passages has been found: by direction for staged rooms. */
+function isPassageRevealed(playerId, roomId, direction) {
+  const def = REVEAL_DEFINITIONS[roomId]
+  if (!def) return false
+  if (!Array.isArray(def.stages)) return isRevealed(playerId, roomId)
+  return isRevealed(playerId, roomId, direction)
+}
+
 function getRoomStateNote(playerId, roomId) {
   const def = REVEAL_DEFINITIONS[roomId]
   if (!def) return null
-  return isRevealed(playerId, roomId) ? def.stateNote : null
+  if (!Array.isArray(def.stages)) return isRevealed(playerId, roomId) ? def.stateNote : null
+  const notes = def.stages.filter((stage) => isRevealed(playerId, roomId, stage.direction)).map((stage) => stage.stateNote)
+  return notes.length ? notes.join(' ') : null
 }
 
 /**
  * Returns a partial exit map { [direction]: toRoom } that should override the
  * DB-canonical exits when serving room data to this player. For rooms with a
  * reveal definition, the configured direction is HIDDEN (set to null) until
- * the player has searched.
+ * the player has searched — every unfound stage at once for a staged room.
  */
 function getExitOverlay(playerId, roomId) {
   const def = REVEAL_DEFINITIONS[roomId]
   if (!def) return null
-  if (isRevealed(playerId, roomId)) return null
-  return { [def.direction]: null }
+  if (!Array.isArray(def.stages)) {
+    if (isRevealed(playerId, roomId)) return null
+    return { [def.direction]: null }
+  }
+  const hidden = def.stages.filter((stage) => !isRevealed(playerId, roomId, stage.direction))
+  if (hidden.length === 0) return null
+  return Object.fromEntries(hidden.map((stage) => [stage.direction, null]))
 }
 
 module.exports = {
   markRevealed,
   clearRevealed,
   isRevealed,
+  isPassageRevealed,
   clearPlayerReveals,
   getRevealDefinition,
+  getRevealStages,
+  getNextRevealStage,
   getRoomStateNote,
   getExitOverlay,
   REVEAL_DEFINITIONS,

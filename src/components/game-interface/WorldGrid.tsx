@@ -55,6 +55,7 @@ const REGION_FILL: Record<string, string> = {
   'red-town': 'fill-world-red-town',
   'rocky-flats': 'fill-world-rocky-flats',
   ocean: 'fill-world-ocean',
+  'dark-forest': 'fill-world-dark-forest',
   lobby: 'fill-world-lobby',
   'room-zero': 'fill-world-room-zero',
   'solar-office': 'fill-world-solar-office',

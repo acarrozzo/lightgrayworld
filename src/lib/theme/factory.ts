@@ -255,6 +255,16 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     // The same water a long way down: the ocean's hue, darkened and pushed
     // toward pure blue, so the two sheets are plainly one place at two depths.
     underwater: { base: dim(mix(t.blue, t.cyan, 0.2), 0.3) },
+    // The Dark Forest: the forest's green with most of the light taken out of
+    // it, so the two woods read as one kind of place at two hours of the day.
+    darkForest: { base: dim(t.green, 0.42) },
+    // The Keep inside it: cold stone, a shade darker than the Rocky Flats'
+    // warm grey and pulled toward the caves' blue rather than their brown.
+    darkKeep: { base: dim(mix(t.brightBlack, t.blue, 0.2), 0.15) },
+    // The Ranger's Guild in the tree tops: the Dark Forest's green lifted back
+    // toward daylight — brighter than the forest floor, but never the
+    // Grassy Field's grass.
+    rangersGuild: { base: mix(t.green, t.brightGreen, 0.35) },
     solarOffice: { base: t.brightYellow },
     lobby: { base: mix(t.blue, t.white, 0.3) },
   }

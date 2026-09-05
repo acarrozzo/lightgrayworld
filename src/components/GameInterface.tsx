@@ -17,7 +17,7 @@ import { Settings as SettingsIcon, MessageSquare, MessageSquareText } from 'luci
 import ExplorePanel, { type ExploreSubView } from './game-interface/ExplorePanel'
 import ActionModal from './ActionModal'
 import ShopModal from './ShopModal'
-import SpellbookModal from './SpellbookModal'
+import SkillsAndSpellsModal, { type BookTab } from './SkillsAndSpellsModal'
 import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { resolveItemIcon } from '@/lib/item-actions'
@@ -156,6 +156,8 @@ export default function GameInterface() {
   // The spellbook: global (learning never needed a teacher present in the
   // original either), opened from the Character panel or the shaman's tent.
   const [isSpellbookOpen, setSpellbookOpen] = useState(false)
+  // Which tab the Skills & Spells book opens on; remembered across opens.
+  const [bookTab, setBookTab] = useState<BookTab>('skills')
   const [shopModalData, setShopModalData] = useState<{
     shopName?: string
     shopItems: Array<{ id: string; slug: string; name: string; description: string; value: number; type: string }>
@@ -989,7 +991,8 @@ export default function GameInterface() {
     // "Spells" at the Pajama Shaman's tent is the same client-side toggle: the
     // book itself lives in the store, learning goes over HTTP, casting is a
     // normal game action dispatched from inside it.
-    if (normalizedAction === 'open spellbook') {
+    if (normalizedAction === 'open spellbook' || normalizedAction === 'open skills' || normalizedAction === 'open skillbook') {
+      setBookTab(normalizedAction === 'open spellbook' ? 'spells' : 'skills')
       setSpellbookOpen(true)
       return
     }
@@ -2279,7 +2282,9 @@ export default function GameInterface() {
           ammo: payload.ammo ?? null,
           actionMeta: payload.actionMeta ?? null,
           spell: payload.spell ?? null,
+          skill: payload.skill ?? null,
           immuneToMagic: payload.immuneToMagic ?? false,
+          playerDodged: payload.playerDodged ?? false,
           playerMp: payload.playerMp,
           playerMpMax: payload.playerMpMax,
         })
@@ -2349,7 +2354,9 @@ export default function GameInterface() {
           bonusPercent: lt?.bonusPercent ?? 0,
           enemyAction: lt?.enemyAction ?? null,
           spell: lt?.spell ?? null,
+          skill: lt?.skill ?? null,
           immuneToMagic: lt?.immuneToMagic ?? false,
+          playerDodged: lt?.playerDodged ?? false,
         })
         updateBattleTurn(buildUpdate(0))
       }, 0)
@@ -2406,7 +2413,9 @@ export default function GameInterface() {
           bonusPercent: lt?.bonusPercent ?? 0,
           enemyAction: lt?.enemyAction ?? null,
           spell: lt?.spell ?? null,
+          skill: lt?.skill ?? null,
           immuneToMagic: lt?.immuneToMagic ?? false,
+          playerDodged: lt?.playerDodged ?? false,
         })
       }, 0)
       scheduleBattleTimer(applyDefeat, 900)
@@ -3024,7 +3033,10 @@ export default function GameInterface() {
             player={player}
             onAction={handleAction}
             onSwitchToInventory={handleSwitchToInventory}
-            onOpenSpellbook={() => setSpellbookOpen(true)}
+            onOpenBook={(tab) => {
+              setBookTab(tab)
+              setSpellbookOpen(true)
+            }}
             onOpenStatAllocation={() => setStatModalOpen(true)}
             onOpenTraining={() => setTrainingModalOpen(true)}
             onClose={goToExplore}
@@ -3228,10 +3240,12 @@ export default function GameInterface() {
         onClose={() => setStatModalOpen(false)}
         onStatAllocated={handlePointsSpent}
       />
-      <SpellbookModal
+      <SkillsAndSpellsModal
         isOpen={isSpellbookOpen}
         player={player}
         inBattle={battle.isInBattle}
+        tab={bookTab}
+        onTabChange={setBookTab}
         onClose={() => setSpellbookOpen(false)}
         onLearned={(updatedPlayer) => {
           // Merge: the server's row wins, client-only fields (buffs, presence) survive.
@@ -3241,6 +3255,10 @@ export default function GameInterface() {
         onCast={(spellId) => {
           setSpellbookOpen(false)
           handleAction({ type: 'cast_spell', data: { spellId } })
+        }}
+        onUseSkill={(skillId) => {
+          setSpellbookOpen(false)
+          handleAction({ type: 'use_skill', data: { skillId } })
         }}
       />
       <CraftingSheet
@@ -3537,6 +3555,7 @@ export default function GameInterface() {
                         onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
                         onUseItem={(itemId, action) => socketHandlers.sendGameAction({ type: 'use_item', data: { playerItemId: itemId, action } })}
                         onCastSpell={(spellId) => socketHandlers.sendGameAction({ type: 'cast_spell', data: { spellId } })}
+                        onUseSkill={(skillId) => socketHandlers.sendGameAction({ type: 'use_skill', data: { skillId } })}
                         player={player}
                         onDismissResult={() => {
                           // Death: pressing Rise is the respawn move itself. The
@@ -3560,6 +3579,7 @@ export default function GameInterface() {
                         weaponIconName={weaponIconName}
                         weaponName={weaponName}
                         weaponCategory={(equippedWeapon?.template.weaponCategory as 'MELEE' | 'RANGED' | null | undefined) ?? null}
+                        equippedWeapon={equippedWeapon ?? null}
                         inventory={inventory}
                       />
                       </div>

@@ -41,11 +41,28 @@ const STAT_BUFF_FIELDS = {
 /** Every countdown field, ability and stat alike. Order is not significant. */
 const BUFF_FIELDS = ['wings', 'gills', ...Object.keys(STAT_BUFF_FIELDS)]
 
-/** Prisma `select` covering every buff countdown. */
-const BUFF_SELECT = Object.fromEntries(BUFF_FIELDS.map((field) => [field, true]))
+/**
+ * Standing bonuses: learned once and never counted down. The original's auras
+ * were this — the Silver Shaman's Silver Aura, "+20 all stats" for as long as
+ * you had it switched on, and with only one aura in the game it is simply on.
+ * Kept out of BUFF_FIELDS so tickBuffs never decrements them; applied in the
+ * same place the click-counted buffs are, for the same reason they are not
+ * folded into the derived *Mod columns.
+ *
+ * @type {Record<string, { stats: string[], amount: number }>}
+ */
+const STANDING_BONUS_FIELDS = {
+  silverAura: { stats: ['str', 'dex', 'mag', 'def'], amount: 20 },
+}
+
+/** Prisma `select` covering every buff countdown and standing bonus. */
+const BUFF_SELECT = Object.fromEntries(
+  [...BUFF_FIELDS, ...Object.keys(STANDING_BONUS_FIELDS)].map((field) => [field, true])
+)
 
 /**
- * Flat stat bonuses from whatever buffs are currently running.
+ * Flat stat bonuses from whatever buffs are currently running, plus any
+ * standing bonus the player has learned.
  * @param {Object} row - a User row (or partial) carrying the buff countdowns
  * @returns {{str: number, dex: number, mag: number, def: number}}
  */
@@ -54,6 +71,10 @@ function getStatBuffBonuses(row) {
   if (!row) return bonuses
   for (const [field, { stats, amount }] of Object.entries(STAT_BUFF_FIELDS)) {
     if ((row[field] || 0) <= 0) continue
+    for (const stat of stats) bonuses[stat] += amount
+  }
+  for (const [field, { stats, amount }] of Object.entries(STANDING_BONUS_FIELDS)) {
+    if (!row[field]) continue
     for (const stat of stats) bonuses[stat] += amount
   }
   return bonuses
@@ -159,6 +180,7 @@ async function clearBuffs(prisma, playerId) {
 }
 
 module.exports = {
+  STANDING_BONUS_FIELDS,
   STAT_BUFF_FIELDS,
   BUFF_FIELDS,
   BUFF_SELECT,
