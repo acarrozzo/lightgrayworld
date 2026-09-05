@@ -98,7 +98,9 @@ const CHIP =
 const CHIP_IDLE = 'fill-surface-raised border-line-subtle/50 hover:border-line-strong/50'
 const CHIP_ON = 'fill-resource-mp border-resource-mp/50'
 const TOGGLE_IDLE = 'bg-transparent border-line-strong/70 text-fg-secondary hover:text-fg-primary'
-const TOGGLE_ON = 'bg-status-success/20 border-status-success/60 text-fg-bright'
+// A tinted toggle keeps its label in the role's own colour: a fixed light label
+// on a role tint is what the theme test forbids (see test/theme.test.ts).
+const TOGGLE_ON = 'bg-status-success/20 border-status-success/60 text-status-success'
 const SECTION_TITLE = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-fg-muted px-0.5 mt-1'
 const META = 'text-[11px] text-fg-muted'
 const STEP =
