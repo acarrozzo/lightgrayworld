@@ -30,6 +30,8 @@ export type QuestRow = {
 
 export type GiverGroup = {
   giverId: string
+  /** Resolved CSS colour for this giver, falling back to its faction's. */
+  color: string | null
   name: string
   icon: string
   roomId: string
@@ -45,6 +47,8 @@ export type FactionGroup = {
   id: string
   name: string
   kind: string
+  /** Resolved CSS colour from the faction's semantic colorToken. */
+  color: string | null
   title: string | null
   membershipQuest: string | null
   givers: GiverGroup[]
@@ -171,6 +175,10 @@ export default function QuestsList({ groups }: { groups: FactionGroup[] }) {
               type="button"
               onClick={() => toggleFold(faction.id)}
               aria-expanded={!isFolded}
+              // The faction's colour becomes the rule under its heading. It
+              // replaces the neutral border rather than adding a stripe, so the
+              // page gains colour without gaining chrome.
+              style={faction.color ? { borderBottomColor: faction.color } : undefined}
               className="flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 border-b-2 border-line-strong pb-2 text-left hover:bg-surface-hover/30 rounded-t"
             >
               <span className={`text-[10px] text-fg-disabled transition-transform ${isFolded ? '' : 'rotate-90'}`}>▶</span>
@@ -190,7 +198,9 @@ export default function QuestsList({ groups }: { groups: FactionGroup[] }) {
               faction.givers.map((g) => (
                 <div key={g.giverId}>
                   <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line-subtle pb-2">
-                    <Icon name={g.icon} size={40} />
+                    <span style={g.color ? { color: g.color } : undefined}>
+                    <Icon name={g.icon} size={40} color="current" />
+                  </span>
                     <h3 className="text-lg font-semibold text-fg-bright">{g.name}</h3>
                     <span className="text-xs text-fg-muted">Room {g.roomId}</span>
                     <span className="ml-auto text-xs text-fg-muted">{g.quests.length} quests</span>

@@ -14,7 +14,7 @@
     "dev:socket": "node socket-server.js",
     "dev:engine": "npm run generate-icons && npm run generate-themes && node --watch-path=src/lib/game-engine --watch-path=src/lib/game-data --watch-path=src/lib/services --watch-path=src/lib/socket-server-handlers.js server.js",
     "postinstall": "prisma generate",
-    "build": "npm run validate && npm run generate-themes && node scripts/build-with-icons.js && next build",
+    "build": "npm run validate && npm run generate-themes && node scripts/build-with-icons.js",
     "start": "NODE_ENV=production node server.js",
     "start:socket": "NODE_ENV=production node socket-server.js",
     "lint": "eslint",

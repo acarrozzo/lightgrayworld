@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { prisma } from '@/lib/prisma'
 import QuestsList, { type FactionGroup, type GiverGroup, type QuestRow } from './QuestsList'
 import WorldToolNav from '@/components/WorldToolNav'
+import { ROOM_COLOR_TOKENS, legacyRoomColorToken } from '@/lib/theme/room-colors'
 
 export const metadata = {
   title: 'Quests — Light Gray RPG',
@@ -20,7 +21,7 @@ const registry = require('@/lib/game-data/quest-registry') as {
   listFactionGiverIds: (factionId: string) => string[]
 }
 const { FACTIONS } = require('@/lib/game-data/factions') as {
-  FACTIONS: { id: string; name: string; kind: string; title?: string; membershipQuest?: string; placeholder?: boolean }[]
+  FACTIONS: { id: string; name: string; kind: string; title?: string; membershipQuest?: string; placeholder?: boolean; colorToken?: string }[]
 }
 const { ALL_REGIONS } = require('@/lib/game-data/world-map') as { ALL_REGIONS: { id: string; name: string }[] }
 // Enemy data (for resolving killCount enemy slugs to display names) is also static.
@@ -222,6 +223,23 @@ export default async function QuestsPage() {
     }
   }
 
+  /**
+   * Colour resolution for factions and givers.
+   *
+   * A faction authors a semantic token (`world.grassyField`, `mood.calm`) and
+   * resolves straight to that role's CSS variable. A giver still carries the
+   * original game's raw Tailwind fragment (`yellow-400`, `red-500`), so it goes
+   * through the legacy mapping first — which is deliberately lossy: the three
+   * golds all land on `mood.treasure`, because the theme derives a shade ramp
+   * per slot rather than storing one. A giver with no readable colour inherits
+   * its faction's, so every row is coloured by something meaningful.
+   */
+  const tokenVar = (token: string | null | undefined): string | null =>
+    token && ROOM_COLOR_TOKENS[token] ? `var(${ROOM_COLOR_TOKENS[token]})` : null
+  const giverColor = (g: GiverDef, fallback: string | null): string | null =>
+    tokenVar(legacyRoomColorToken(typeof g.iconColor === 'string' ? g.iconColor : null, 'icon')) ??
+    fallback
+
   const toRow = (id: string): QuestRow => {
     const q = QUESTS[id]
     return {
@@ -242,10 +260,11 @@ export default async function QuestsPage() {
     }
   }
 
-  const toGiver = (giverId: string): GiverGroup => {
+  const toGiver = (giverId: string, factionColor: string | null = null): GiverGroup => {
     const g = GIVERS[giverId]
     return {
       giverId,
+      color: giverColor(g, factionColor),
       name: g.name,
       icon: g.icon,
       roomId: g.roomId,
@@ -260,17 +279,24 @@ export default async function QuestsPage() {
 
   // Factions in world order, each with its givers in authored order; the
   // Pillar (no faction) closes the list under its own heading.
-  const groups: FactionGroup[] = FACTIONS.filter((f) => !f.placeholder).map((f) => ({
-    id: f.id,
-    name: f.name,
-    kind: f.kind,
-    title: f.title ?? null,
-    membershipQuest: f.membershipQuest ? questTitle(f.membershipQuest) : null,
-    givers: listFactionGiverIds(f.id).map(toGiver),
-  }))
-  const pillarGivers = Object.keys(GIVERS).filter((id) => GIVERS[id].faction === null).map(toGiver)
+  const groups: FactionGroup[] = FACTIONS.filter((f) => !f.placeholder).map((f) => {
+    const color = tokenVar(f.colorToken)
+    return {
+      id: f.id,
+      name: f.name,
+      kind: f.kind,
+      color,
+      title: f.title ?? null,
+      membershipQuest: f.membershipQuest ? questTitle(f.membershipQuest) : null,
+      givers: listFactionGiverIds(f.id).map((giverId) => toGiver(giverId, color)),
+    }
+  })
+  // The Pillar's givers belong to no faction, so they keep only their own colour.
+  const pillarGivers = Object.keys(GIVERS)
+    .filter((id) => GIVERS[id].faction === null)
+    .map((id) => toGiver(id, null))
   if (pillarGivers.length) {
-    groups.push({ id: 'grand-quests', name: 'Grand Quests', kind: 'grand', title: null, membershipQuest: null, givers: pillarGivers })
+    groups.push({ id: 'grand-quests', name: 'Grand Quests', kind: 'grand', color: null, title: null, membershipQuest: null, givers: pillarGivers })
   }
 
   const questCount = Object.keys(QUESTS).length
