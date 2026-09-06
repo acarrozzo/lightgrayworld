@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type WheelEvent, type PointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import Icon from '@/components/Icon'
+import { roomColor } from '@/lib/theme/room-colors'
 import { Flame, Hammer, Search, Skull, Coins, Users, Zap, Lock, Eye, X } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -61,6 +62,8 @@ export type RoomNode = {
   craftingStation?: string | null
   hasSearch: boolean
   icon?: string | null
+  /** The room's world region, which its colour tokens resolve against. */
+  region?: string | null
   iconColor?: string | null
   nameColor?: string | null
   exits: ExitInfo[]
@@ -259,25 +262,31 @@ const MAP_LABEL: Record<MapId, string> = {
   dark_forest_upper: 'Dark Forest Upper Level',
 }
 
-// Tab order shown across the top of the atlas — roughly the order a player meets
-// each region, with each region's underground directly after it.
-const MAP_ORDER: MapId[] = [
-  'overworld',
-  'cabin_basement',
-  'scorpion_pit',
-  'bat_cave',
-  'forest',
-  'forest_underground',
-  'red_town',
-  'red_town_sewers',
-  'rocky_flats',
-  'rocky_flats_underground',
-  'neverending_mine',
-  'blue_ocean',
-  'under_the_ocean',
-  'dark_forest',
-  'dark_forest_upper',
+// The sheets, grouped the way the world is actually built: a surface region
+// and the sheets stacked under (or over) it.
+//
+// The tab strip is two tiers because a flat row of fifteen needed ~1500px and
+// wrapping it ate five rows of map on a phone. Tier one picks the region, tier
+// two picks which of that region's sheets you are looking at, so the strip
+// costs two rows on desktop and three on mobile no matter how many regions get
+// ported next. Order is roughly the order a player meets each region.
+const MAP_GROUPS: { surface: MapId; below: MapId[] }[] = [
+  { surface: 'overworld', below: ['cabin_basement', 'scorpion_pit', 'bat_cave'] },
+  { surface: 'forest', below: ['forest_underground'] },
+  { surface: 'red_town', below: ['red_town_sewers'] },
+  { surface: 'rocky_flats', below: ['rocky_flats_underground', 'neverending_mine'] },
+  { surface: 'blue_ocean', below: ['under_the_ocean'] },
+  { surface: 'dark_forest', below: ['dark_forest_upper'] },
 ]
+
+// Flattened, still in meet-the-region order. Layouts are computed per sheet, so
+// everything downstream of the tabs keeps working off this list.
+const MAP_ORDER: MapId[] = MAP_GROUPS.flatMap((g) => [g.surface, ...g.below])
+
+/** The group a sheet belongs to — which region tab lights up for it. */
+function groupOf(map: MapId): (typeof MAP_GROUPS)[number] {
+  return MAP_GROUPS.find((g) => g.surface === map || g.below.includes(map)) ?? MAP_GROUPS[0]
+}
 
 // Greedy word-wrap so a room's full name fits inside the card without ellipsis.
 // maxChars is tuned to the card width (~120px) at the 11px label font.
@@ -315,6 +324,15 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
   }, [nodes, nodeById])
 
   const [activeMap, setActiveMap] = useState<MapId>('overworld')
+  const activeGroup = groupOf(activeMap)
+  // Room counts per sheet, for the tab badges. Counted once rather than
+  // re-filtering all 319 nodes inside each of the fifteen tab renders.
+  const countByMap = useMemo(() => {
+    const m = new Map<MapId, number>()
+    for (const n of nodes) m.set(n.map, (m.get(n.map) ?? 0) + 1)
+    return m
+  }, [nodes])
+  const sheetCount = (m: MapId) => countByMap.get(m) ?? 0
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)
   const [filters, setFilters] = useState({ query: '', safe: 'all' as 'all' | 'safe' | 'danger', hasEnemies: false, gated: false })
@@ -407,16 +425,33 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
     setSelectedId(id)
   }
 
-  function onWheel(ev: WheelEvent<SVGSVGElement>) {
-    ev.preventDefault()
-    const factor = ev.deltaY > 0 ? 1.12 : 1 / 1.12
-    const rect = ev.currentTarget.getBoundingClientRect()
-    const mx = view.x + ((ev.clientX - rect.left) / rect.width) * view.w
-    const my = view.y + ((ev.clientY - rect.top) / rect.height) * view.h
-    const nw = Math.min(view0.w * 3, Math.max(view0.w * 0.15, view.w * factor))
-    const nh = nw * (view.h / view.w)
-    setView({ x: mx - (mx - view.x) * (nw / view.w), y: my - (my - view.y) * (nh / view.h), w: nw, h: nh })
-  }
+  // Zoom-to-cursor, on a listener we attach ourselves.
+  //
+  // This deliberately does NOT use React's `onWheel`. React registers `wheel`
+  // on the root container as a *passive* listener, so `preventDefault()` inside
+  // a React wheel handler silently does nothing — one wheel tick over the map
+  // zoomed the atlas and scrolled the page out from under it at the same time.
+  // A native listener with `{ passive: false }` is the only way to hold the
+  // page still while the map zooms.
+  const svgRef = useRef<SVGSVGElement>(null)
+  useEffect(() => {
+    const el = svgRef.current
+    if (!el) return
+    function onWheel(ev: globalThis.WheelEvent) {
+      ev.preventDefault()
+      const factor = ev.deltaY > 0 ? 1.12 : 1 / 1.12
+      const rect = (ev.currentTarget as SVGSVGElement).getBoundingClientRect()
+      setView((v) => {
+        const mx = v.x + ((ev.clientX - rect.left) / rect.width) * v.w
+        const my = v.y + ((ev.clientY - rect.top) / rect.height) * v.h
+        const nw = Math.min(view0.w * 3, Math.max(view0.w * 0.15, v.w * factor))
+        const nh = nw * (v.h / v.w)
+        return { x: mx - (mx - v.x) * (nw / v.w), y: my - (my - v.y) * (nh / v.h), w: nw, h: nh }
+      })
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [view0])
   // Pan handling. We deliberately do NOT use setPointerCapture: capturing the
   // pointer on the <svg> would redirect the follow-up `click` event to the svg
   // itself, so the room cards' onClick would never fire. Instead we track how far
@@ -447,25 +482,61 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
     <div className="flex flex-1 flex-col gap-3 lg:flex-row">
       {/* Map area */}
       <div className="flex min-h-[560px] flex-1 flex-col overflow-hidden rounded border border-line-subtle bg-surface-panel/30">
-        {/* Map tabs */}
-        <div className="flex items-center gap-1 border-b border-line-subtle bg-surface-panel/70 px-3 pt-2">
-          {MAP_ORDER.map((m) => (
-            <button
-              key={m}
-              onClick={() => setActiveMap(m)}
-              className={
-                'rounded-t border-x border-t px-3 py-1.5 text-sm font-semibold transition-colors ' +
-                (activeMap === m
-                  ? 'border-line-subtle fill-surface-raised'
-                  : 'border-transparent text-fg-secondary hover:text-fg-bright')
-              }
-            >
-              {MAP_LABEL[m]}
-              <span className="ml-1.5 text-xs text-fg-muted">
-                {nodes.filter((n) => n.map === m).length}
-              </span>
-            </button>
-          ))}
+        {/* Map tabs: region on top, that region's sheets underneath. */}
+        <div className="border-b border-line-subtle bg-surface-panel/70 px-3 pt-2">
+          <div className="flex flex-wrap items-center gap-1">
+            {MAP_GROUPS.map((g) => {
+              const isRegion = activeGroup.surface === g.surface
+              // Two selected states, because the region tab answers "which
+              // region" while the row below answers "which sheet": a region
+              // whose surface sheet is showing reads as fully active, one whose
+              // underground is showing keeps the accent but not the fill.
+              const showingSurface = activeMap === g.surface
+              return (
+                <button
+                  key={g.surface}
+                  onClick={() => setActiveMap(g.surface)}
+                  aria-current={showingSurface ? 'true' : undefined}
+                  className={
+                    'shrink-0 rounded-t border-x border-t px-2 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors sm:px-3 ' +
+                    (showingSurface
+                      ? 'border-line-subtle fill-surface-raised'
+                      : isRegion
+                        ? 'border-accent/60 text-accent-hover'
+                        : 'border-transparent text-fg-secondary hover:text-fg-bright')
+                  }
+                >
+                  {MAP_LABEL[g.surface]}
+                  {/* The counts are the first thing to go on a phone: with them
+                      the six regions wrap to three rows instead of two. */}
+                  <span className="ml-1.5 hidden text-xs text-fg-muted sm:inline">
+                    {sheetCount(g.surface)}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-1 pt-1 pb-1 text-xs">
+            <span className="pl-1 pr-0.5 text-fg-disabled" aria-hidden="true">
+              └
+            </span>
+            {activeGroup.below.map((m) => (
+              <button
+                key={m}
+                onClick={() => setActiveMap(m)}
+                aria-current={activeMap === m ? 'true' : undefined}
+                className={
+                  'shrink-0 rounded border px-1.5 py-1 font-semibold whitespace-nowrap transition-colors sm:px-2 ' +
+                  (activeMap === m
+                    ? 'border-line-subtle fill-surface-raised'
+                    : 'border-line-subtle/50 text-fg-secondary hover:border-line-subtle hover:text-fg-bright')
+                }
+              >
+                {MAP_LABEL[m]}
+                <span className="ml-1.5 hidden text-fg-muted sm:inline">{sheetCount(m)}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <Toolbar
@@ -477,9 +548,9 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
         />
 
         <svg
+          ref={svgRef}
           viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
           className="h-full w-full flex-1 cursor-grab touch-none select-none active:cursor-grabbing"
-          onWheel={onWheel}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -725,7 +796,7 @@ function Legend() {
         <LineSwatch color="var(--status-info)" dash /> Up/Down
       </span>
       <span className="flex items-center gap-1">
-        <span className="rounded bg-accent px-1 text-[9px] font-bold leading-none text-accent">▼▲</span> Map portal
+        <span className="fill-accent rounded px-1 text-[9px] font-bold leading-none">▼▲</span> Map portal
       </span>
     </div>
   )
@@ -787,8 +858,21 @@ function RoomDetail({
       {/* Header */}
       <div>
         <div className="flex items-center gap-2">
-          {room.icon && <Icon name={room.icon} size={22} className={room.iconColor ? `text-${room.iconColor}` : ''} />}
-          <h2 className="text-lg font-bold text-fg-bright">{room.name}</h2>
+          {/* Room colours are semantic tokens (`mood.treasure`, `terrain.ash`),
+              resolved to CSS variables. Interpolating them into a class name
+              produced `text-mood.treasure`, which Tailwind never compiled — the
+              icon and title fell back to inherited colour in every theme. */}
+          {room.icon && (
+            <div style={{ color: roomColor(room.iconColor, room.region, 'icon') }}>
+              <Icon name={room.icon} size={22} color="current" />
+            </div>
+          )}
+          <h2
+            className="text-lg font-bold"
+            style={{ color: roomColor(room.nameColor, room.region, 'title') }}
+          >
+            {room.name}
+          </h2>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
           <Badge color="var(--surface-raised)" text={`#${room.roomId}`} />

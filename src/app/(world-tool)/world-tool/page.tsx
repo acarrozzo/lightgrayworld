@@ -15,7 +15,8 @@ const PAGES = [
   { href: '/quests', label: 'Quests', description: 'Every quest, grouped by giver, with objectives, requirements, and rewards.' },
   { href: '/skills', label: 'Skills', description: 'Every skill, by group — weapon proficiencies, special attacks, defenses, upgrades — with what it does, what it costs, and the teachers that unlock each level.' },
   { href: '/spells', label: 'Spells', description: 'Every spell, by school, with its formula, learning and casting costs, and the teachers that unlock each level.' },
-  { href: '/rooms', label: 'World Atlas', description: 'Compass-oriented maps of every region — Grassy Field, Forest and Red Town, each with the areas below it — showing enemies, spawn logic, NPCs, loot, actions, gates, and secrets.' },
+  { href: '/rooms', label: 'World Atlas', description: 'Compass-oriented maps of every region — Grassy Field through the Dark Forest, each with the areas below it — showing enemies, spawn logic, NPCs, loot, actions, gates, and secrets.' },
+  { href: '/room-desc', label: 'Room Desc', description: "Every room's title, subtitle, description, actions and exits in the original game beside the recreation, field by field, with the differences flagged." },
   { href: '/players', label: 'Players', description: 'Every player, with level, vitals, equipment, kills, quests, and progression. Sort and drill into full profiles.' },
   { href: '/themes', label: 'Terminal Themes', description: 'Every semantic colour role — actions, resources, stats, combat, feed channels, room mood and world regions — shown across every terminal theme, with what each role means and where it is used.' },
 ]

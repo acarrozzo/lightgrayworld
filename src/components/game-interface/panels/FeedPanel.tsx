@@ -847,7 +847,7 @@ export default function FeedPanel({
                       className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
                         active
                           ? 'fill-surface-raised border-accent-hover/70'
-                          : 'fill-surface-panel text-fg-secondary border-line-subtle hover:'
+                          : 'fill-surface-panel text-fg-secondary border-line-subtle hover:text-fg-bright'
                       }`}
                     >
                       {label}

@@ -26,6 +26,7 @@
     "validate-world": "node scripts/validate-world.js",
     "check": "npm run validate && npm run typecheck && npm run lint && npm test",
     "generate-themes": "tsx scripts/generate-theme-css.ts",
+    "generate-legacy-rooms": "tsx scripts/generate-legacy-rooms.ts",
     "validate-themes": "tsx scripts/validate-themes.ts"
   },
   "dependencies": {

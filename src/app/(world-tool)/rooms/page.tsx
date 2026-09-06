@@ -391,6 +391,7 @@ export default async function RoomsPage() {
       craftingStation: getCraftingStation(room.roomId)?.label ?? null,
       hasSearch: room.hasSearch,
       icon: room.icon,
+      region: room.region,
       iconColor: room.iconColor,
       nameColor: room.nameColor,
       exits,
@@ -409,8 +410,9 @@ export default async function RoomsPage() {
         <header className="mb-4">
           <h1 className="text-2xl font-bold text-fg-bright">World Atlas</h1>
           <p className="mt-1 text-sm text-fg-secondary">
-            {nodes.length} rooms laid out across two maps, oriented by their compass exits. Click a room
-            to inspect its enemies, loot, NPCs, actions, gates, and secrets.
+            {nodes.length} rooms laid out across {new Set(nodes.map((n) => n.map)).size} map sheets,
+            oriented by their compass exits. Click a room to inspect its enemies, loot, NPCs,
+            actions, gates, and secrets.
           </p>
         </header>
         <RoomAtlas nodes={nodes} edges={edges} />
