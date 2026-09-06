@@ -11,11 +11,12 @@ import {
   type RequirementContext,
 } from '@/lib/quest-requirements'
 import QuestRequirements from './QuestRequirements'
+import QuestTypeTag, { type QuestType } from './QuestTypeTag'
 import Icon from './Icon'
 
 type QuestDef = {
   number: number
-  questType: 'main' | 'side'
+  questType: QuestType
   level: number
   title: string
   objective: string
@@ -43,20 +44,14 @@ type QuestState = 'talk' | 'in_progress' | 'turn_in' | 'completed'
 export const PRE_QUEST_TALK_ID = '__pretalk__'
 
 /**
- * The intro "talk to the NPC" quests. They carry a trivially-met `level`
- * requirement (so their data shape matches every other quest), but in the
- * journal we collapse them to a single "Talk to {npc}" button that completes
- * the quest in one click — the secondary Talk + Turn In buttons are hidden.
- *
- * Derived from `isIntro` in quests.json rather than listed here, so adding a
- * quest giver is a data change only. A hand-maintained list silently regressed
- * every NPC added after it was written.
+ * The intro "talk to the NPC" quests (`questType: 'intro'`). They carry a
+ * trivially-met `level` requirement (so their data shape matches every other
+ * quest), but on the card they collapse to a single "Talk to {npc}" button that
+ * completes the quest in one click — the secondary Talk + Turn In buttons are
+ * hidden. Read from the quest's type rather than a hand-maintained list, so
+ * adding a quest giver is a data change only.
  */
-const TALK_COMPLETE_QUEST_IDS = new Set(
-  Object.entries(QUESTS as Record<string, { isIntro?: boolean }>)
-    .filter(([, def]) => def.isIntro)
-    .map(([id]) => id)
-)
+const isIntroQuest = (def: QuestDef) => def.questType === 'intro'
 
 interface NpcQuestCardProps {
   npcName: string
@@ -103,7 +98,7 @@ export default function NpcQuestCard({
   const visibleQuests = useMemo(() => {
     const ctx: RequirementContext = { inventory, killList, player }
     const pretalkRow = (): { questDef: QuestDef; progress: QuestProgress; state: QuestState } => ({
-      questDef: { title: `Talk to ${npcName}`, questType: 'main', number: 0, level: 1, objective: '', giver: { npcId: '', roomId: '', name: npcName, icon: npcIcon } },
+      questDef: { title: `Talk to ${npcName}`, questType: 'intro', number: 0, level: 1, objective: '', giver: { npcId: '', roomId: '', name: npcName, icon: npcIcon } },
       progress: { id: PRE_QUEST_TALK_ID, questId: PRE_QUEST_TALK_ID, progress: 0, completed: false },
       state: 'talk',
     })
@@ -129,7 +124,7 @@ export default function NpcQuestCard({
     // job was to open the chain, and the follow-ups it started are already on the
     // card. Drop it so the row stays about work the player can still do.
     const active = result.filter(
-      ({ progress, state }) => !(state === 'completed' && TALK_COMPLETE_QUEST_IDS.has(progress.questId))
+      ({ questDef, state }) => !(state === 'completed' && isIntroQuest(questDef))
     )
     // Everything the NPC had was that intro (its follow-ups haven't unlocked
     // yet): keep the NPC talkable rather than letting the card vanish.
@@ -164,22 +159,12 @@ export default function NpcQuestCard({
           const canTurnIn = isTurnIn
           // Intro "talk to NPC" quests: collapse to a single button that completes
           // in one click, hiding the secondary Talk + Turn In buttons.
-          const isTalkComplete = !isCompleted && TALK_COMPLETE_QUEST_IDS.has(progress.questId)
+          const isTalkComplete = !isCompleted && isIntroQuest(questDef)
 
           return (
             <div key={progress.questId} className="flex items-center gap-3 px-3 py-2.5">
               {/* Type label */}
-              {showTypeLabels && (
-                <span
-                  className={`shrink-0 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
-                    questDef.questType === 'main'
-                      ? 'bg-resource-gold/20 text-resource-gold'
-                      : 'bg-resource-mp/20 text-resource-mp'
-                  }`}
-                >
-                  {questDef.questType === 'main' ? 'Main' : 'Side'}
-                </span>
-              )}
+              {showTypeLabels && <QuestTypeTag type={questDef.questType} />}
 
               {/* Quest info */}
               <div className="flex-1 min-w-0">

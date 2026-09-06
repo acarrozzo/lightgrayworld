@@ -12,6 +12,13 @@
  *   - item slugs   : prisma/seed.ts  (every `slug: '...'` literal)
  *   - enemy slugs  : src/lib/game-data/enemies.js (ENEMIES[].slug)
  *   - quest ids    : keys of src/lib/game-data/quests.json
+ *   - room triggers: src/lib/game-engine/quest-room-triggers.js
+ *
+ * It also checks that every quest can actually start. A quest opens in one of
+ * three ways — another quest's startQuest effect, arriving in a room listed in
+ * QUEST_ROOM_TRIGGERS, or the registration seed — and one that has none of them
+ * is dead content: its giver only ever shows idle dialog and the chain behind
+ * it never appears. Six Rocky Flats and Blue Ocean intros shipped that way.
  *
  * Run: node scripts/validate-quests.js   (or: npm run validate-quests)
  */
@@ -22,9 +29,17 @@ const path = require('path')
 const ROOT = path.join(__dirname, '..')
 const QUESTS = require(path.join(ROOT, 'src/lib/game-data/quests.json'))
 const { ENEMIES } = require(path.join(ROOT, 'src/lib/game-data/enemies.js'))
+const { QUEST_ROOM_TRIGGERS } = require(path.join(ROOT, 'src/lib/game-engine/quest-room-triggers.js'))
+
+// The one quest a new account is born with (src/app/api/auth/register/route.ts).
+const SEEDED_AT_REGISTRATION = new Set(['quest_oldman_000'])
 
 // EquipSlot enum from prisma/schema.prisma — kept in sync manually (small, rarely changes).
 const EQUIP_SLOTS = new Set(['MAIN_HAND', 'OFF_HAND', 'HEAD', 'BODY', 'HANDS', 'FEET', 'RING', 'NECK', 'MOUNT', 'ARTIFACT', 'COMPANION'])
+// `intro` is the "go and talk to this person" quest that opens a giver's set.
+// It pays nothing — its reward is the quests it starts — so a reward on one is
+// an authoring mistake, not a design choice.
+const QUEST_TYPES = new Set(['main', 'side', 'intro'])
 const REWARD_TYPES = new Set(['currency', 'xp', 'item'])
 const REQUIREMENT_TYPES = new Set(['hasItem', 'hasAnyItem', 'killCount', 'killCountGroup', 'hasEquippedInSlot', 'level', 'hasFlag'])
 const EFFECT_TYPES = new Set(['startQuest', 'completeQuest'])
@@ -58,6 +73,13 @@ for (const [id, q] of Object.entries(QUESTS)) {
 
   if (!q.giver || !q.giver.npcId) err(id, 'missing giver.npcId')
   if (!q.giver || !q.giver.roomId) err(id, 'missing giver.roomId')
+
+  if (!QUEST_TYPES.has(q.questType)) err(id, `unknown questType "${q.questType}"`)
+  if (q.questType === 'intro' && (q.rewards ?? []).length > 0) {
+    err(id, 'intro quests give no rewards — move them to the quest this one starts')
+  }
+  // `isIntro` was folded into questType: 'intro'. A stray flag means stale authoring.
+  if ('isIntro' in q) err(id, 'isIntro is no longer a field — use questType: "intro"')
 
   for (const req of q.requirements ?? []) {
     if (!REQUIREMENT_TYPES.has(req.type)) {
@@ -116,6 +138,27 @@ for (const [id, q] of Object.entries(QUESTS)) {
         err(id, `${phase}: ${effect.type} references unknown quest "${effect.questId}"`)
       }
     }
+  }
+}
+
+// Reachability: every quest needs something that starts it.
+const startable = new Set(SEEDED_AT_REGISTRATION)
+for (const [roomId, trigger] of Object.entries(QUEST_ROOM_TRIGGERS)) {
+  if (!questIds.has(trigger.questId)) {
+    errors.push(`  [room ${roomId}] QUEST_ROOM_TRIGGERS references unknown quest "${trigger.questId}"`)
+  }
+  startable.add(trigger.questId)
+}
+for (const q of Object.values(QUESTS)) {
+  for (const phase of ['onAccept', 'onComplete']) {
+    for (const effect of q[phase] ?? []) {
+      if (effect.type === 'startQuest' && effect.questId) startable.add(effect.questId)
+    }
+  }
+}
+for (const id of questIds) {
+  if (!startable.has(id)) {
+    err(id, 'unreachable — no startQuest effect, room trigger, or registration seed opens it')
   }
 }
 

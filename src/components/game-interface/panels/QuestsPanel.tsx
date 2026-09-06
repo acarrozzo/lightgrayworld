@@ -7,6 +7,7 @@ import type { InventoryItem } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
 import { areRequirementsMet } from '@/lib/quest-requirements'
 import QuestRequirements from '@/components/QuestRequirements'
+import QuestTypeTag from '@/components/QuestTypeTag'
 import SubTabButton from '../SubTabButton'
 
 interface Quest {
@@ -261,9 +262,12 @@ export default function QuestsPanel({
                       <div key={quest.id} className="bg-surface-raised/50 border border-line-subtle/50 rounded-lg p-4 space-y-3">
                         <div className="flex items-start justify-between">
                           <div>
-                            {questDef.giver?.name && (
-                              <p className="text-fg-muted text-xs mb-1">{questDef.giver.name}</p>
-                            )}
+                            <div className="flex items-center gap-2 mb-1">
+                              <QuestTypeTag type={questDef.questType} />
+                              {questDef.giver?.name && (
+                                <p className="text-fg-muted text-xs">{questDef.giver.name}</p>
+                              )}
+                            </div>
                             <h4 className="text-fg-bright font-semibold text-base">{questDef.title}</h4>
                             <p className="text-fg-secondary text-sm mt-1">{questDef.summary}</p>
                           </div>
@@ -346,9 +350,12 @@ export default function QuestsPanel({
                       <div key={quest.id} className="bg-surface-raised/50 border border-line-subtle/50 rounded-lg p-4 space-y-3 opacity-75">
                         <div className="flex items-start justify-between">
                           <div>
-                            {questDef.giver?.name && (
-                              <p className="text-fg-muted text-xs mb-1">{questDef.giver.name}</p>
-                            )}
+                            <div className="flex items-center gap-2 mb-1">
+                              <QuestTypeTag type={questDef.questType} />
+                              {questDef.giver?.name && (
+                                <p className="text-fg-muted text-xs">{questDef.giver.name}</p>
+                              )}
+                            </div>
                             <h4 className="text-fg-bright font-semibold text-base">{questDef.title}</h4>
                             <p className="text-fg-secondary text-sm mt-1">{questDef.summary}</p>
                           </div>

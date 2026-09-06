@@ -169,8 +169,10 @@ async function acceptQuest(playerId, questId, choiceId = null, options = { syste
     }
   }
 
-  // One-main-quest-per-NPC gating (skip if system-started or if new quest is a side quest)
-  if (!options.system && questDef.questType !== 'side' && questDef.giver && questDef.giver.npcId) {
+  // One-main-quest-per-NPC gating. Side quests never block or get blocked, and
+  // intro quests ("talk to the NPC") are only ever system-started, so the gate
+  // is about main quests alone.
+  if (!options.system && questDef.questType === 'main' && questDef.giver && questDef.giver.npcId) {
     const activeQuests = await prisma.questProgress.findMany({
       where: {
         userId: playerId,
@@ -185,10 +187,10 @@ async function acceptQuest(playerId, questId, choiceId = null, options = { syste
       }
 
       const activeQuestDef = getQuestDef(activeQuest.questId)
-      // Only block on main quest conflicts — side quests from the same NPC are always allowed
+      // Only block on main quest conflicts — side and intro quests from the same NPC never block
       if (
         activeQuestDef &&
-        activeQuestDef.questType !== 'side' &&
+        activeQuestDef.questType === 'main' &&
         activeQuestDef.giver &&
         activeQuestDef.giver.npcId === questDef.giver.npcId
       ) {
@@ -613,6 +615,30 @@ async function completeQuest(playerId, questId) {
 }
 
 /**
+ * The feed line for finishing an intro quest. Intro quests have no reward and
+ * exist to walk the player to a quest giver, so "Quest completed: Talk to the
+ * Old Man. You received: nothing" is the wrong shape — the moment is meeting
+ * someone. Intro titles are authored as an imperative ("Talk to X", "Find X",
+ * "Read X"), and that verb is what turns into the past tense here; anything
+ * else falls back to meeting the giver by name.
+ * @param {Object} questDef
+ * @returns {string}
+ */
+function describeIntroCompletion(questDef) {
+  const title = questDef?.title || ''
+  const verbs = [
+    [/^Talk to (.+)$/i, 'meet'],
+    [/^Find (.+)$/i, 'find'],
+    [/^Read (.+)$/i, 'read'],
+  ]
+  for (const [pattern, verb] of verbs) {
+    const match = title.match(pattern)
+    if (match) return `You ${verb} ${match[1]}.`
+  }
+  return `You meet ${questDef?.giver?.name || 'the quest giver'}.`
+}
+
+/**
  * Get all quest progress for a player
  * @param {string} playerId - The player's ID
  * @returns {Promise<Array>} Array of quest progress entries
@@ -670,4 +696,5 @@ module.exports = {
   getAllQuestProgress,
   runQuestEffects,
   playerAcceptQuest,
+  describeIntroCompletion,
 }

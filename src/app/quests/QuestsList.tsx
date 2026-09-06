@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Icon from '@/components/Icon'
+import QuestTypeTag from '@/components/QuestTypeTag'
 
 // Serializable shapes built by the server page. All text here is already
 // resolved from the game data — this component only lays it out.
@@ -109,7 +110,7 @@ function QuestCard({
       <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm">
         <span className="w-6 shrink-0 text-right text-xs text-fg-muted">{q.number}</span>
         <span className="font-medium text-fg-bright">{q.title}</span>
-        <QuestTypeTag type={q.questType} />
+        <QuestTypeTag type={q.questType} variant="outlined" />
         <span className="ml-auto flex items-center gap-3">
           <span className="text-xs text-fg-muted">Lvl {q.level}</span>
           <span className="text-[10px] text-fg-disabled transition-transform group-open:rotate-90">▶</span>
@@ -136,9 +137,13 @@ function QuestCard({
 
         <Field label="Rewards">
           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-            {q.rewards.map((r, i) => (
-              <span key={i} className="text-resource-gold">{r}</span>
-            ))}
+            {q.rewards.length === 0 ? (
+              <span className="text-fg-muted">None — opens the quests below</span>
+            ) : (
+              q.rewards.map((r, i) => (
+                <span key={i} className="text-resource-gold">{r}</span>
+              ))
+            )}
           </div>
         </Field>
 
@@ -182,18 +187,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function QuestTypeTag({ type }: { type: string }) {
-  const isMain = type === 'main'
-  return (
-    <span
-      className={
-        'rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ' +
-        (isMain
-          ? 'border-resource-gold text-resource-gold'
-          : 'border-accent text-accent-hover')
-      }
-    >
-      {type}
-    </span>
-  )
-}

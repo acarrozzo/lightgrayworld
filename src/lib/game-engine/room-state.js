@@ -2036,6 +2036,9 @@ class RoomState {
     }
 
     const questTitle = questDef ? questDef.title : questId
+    // An intro quest is the walk to a quest giver, not work done for them: no
+    // "Quest Complete!" banner, no rewards block, and the feed says who you met.
+    const isIntro = questDef.questType === 'intro'
 
     // Build rewards message. Item rewards are enriched with their template name
     // (and icon) so the completion modal and feedback text can display them.
@@ -2105,11 +2108,11 @@ class RoomState {
         icon: questDef.giver?.icon || 'scroll',
         iconColor: 'yellow-400',
         title: questDef.giver?.name || 'Quest Complete',
-        header: 'Quest Complete!',
+        ...(isIntro ? {} : { header: 'Quest Complete!' }),
         message: questDef.completionDialog || null,
       },
       questComplete: {
-        questTitle: questDef.title,
+        questTitle: isIntro ? null : questDef.title,
         rewards: enrichedRewards,
         levelUp: result.levelUp?.leveled ? result.levelUp : null,
         newQuestTitles,
@@ -2125,7 +2128,14 @@ class RoomState {
     const playerEvents = [
       {
         event: 'action:feedback',
-        payload: this.createFeedbackPayload('complete_quest', 'success', `Quest completed: ${questTitle}.${rewardText}`, data),
+        payload: this.createFeedbackPayload(
+          'complete_quest',
+          'success',
+          isIntro
+            ? require('./services/quest-service').describeIntroCompletion(questDef)
+            : `Quest completed: ${questTitle}.${rewardText}`,
+          data
+        ),
       },
     ]
 

@@ -22,7 +22,8 @@ export interface NewQuestEntry {
 }
 
 export interface QuestCompleteData {
-  questTitle: string
+  /** Null for an intro quest: meeting someone is not a completed piece of work. */
+  questTitle: string | null
   rewards: Reward[]
   levelUp: LevelUp | null
   newQuestTitles: (string | NewQuestEntry)[]
@@ -42,8 +43,10 @@ export default function QuestCompleteRewards({ data }: Props) {
     .filter(r => r.type === 'item')
     .sort((a, b) => (b.highlighted ? 1 : 0) - (a.highlighted ? 1 : 0))
 
-  const hasContent =
-    xpReward || currencyReward || itemRewards.length > 0 || levelUp || newQuestTitles.length > 0
+  // An intro quest pays nothing and only opens the giver's set, so the trophy
+  // heading stays out of the way and the New Quests list carries the moment.
+  const hasRewards = !!xpReward || !!currencyReward || itemRewards.length > 0 || !!levelUp
+  const hasContent = hasRewards || newQuestTitles.length > 0
 
   if (!hasContent) return null
 
@@ -55,12 +58,14 @@ export default function QuestCompleteRewards({ data }: Props) {
           <p className="text-sm font-semibold text-fg-primary">{data.questTitle}</p>
         </div>
       )}
-      <div className="flex items-center justify-center gap-2 mb-3">
-        <Icon name="trophy" size={16} className="text-status-warning" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-status-warning">
-          Rewards
-        </span>
-      </div>
+      {hasRewards && (
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <Icon name="trophy" size={16} className="text-status-warning" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-status-warning">
+            Rewards
+          </span>
+        </div>
+      )}
 
       <div className="space-y-2">
         {levelUp && (

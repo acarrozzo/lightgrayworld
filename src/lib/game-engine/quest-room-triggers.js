@@ -32,6 +32,21 @@ const QUEST_ROOM_TRIGGERS = {
   '225': { questId: 'quest_wizardsguild_intro', npc: "the Wizard's Guild Recruiter" },
   '226': { questId: 'quest_warriorsguild_intro', npc: "the Warrior's Guild Recruiter" },
 
+  // ==================== ROCKY FLATS ====================
+  // The original's three "start quests" buttons had no gate beyond standing in
+  // the room; the Rocky Flats doors already ask for a guild membership. The
+  // Guild Leader's set is not here — it chains off the recruiter's boss quest.
+  '303': { questId: 'quest_dwarfcaptain_intro', npc: 'the Dwarf Captain' },
+  '307': { questId: 'quest_bountyboard_intro', npc: 'the Dwarf Guard Bounty Board' },
+  '308': { questId: 'quest_miningguild_intro', npc: 'the Mining Guild Recruiter' },
+
+  // ==================== BLUE OCEAN ====================
+  // Likewise ungated in the original: the Oasis, Crocodile Island and the
+  // Master Temple each opened their set the moment you pressed the button.
+  '413': { questId: 'quest_friendlypirate_intro', npc: 'the Friendly Pirate' },
+  '424': { questId: 'quest_junglejim_intro', npc: 'Jungle Jim' },
+  '425': { questId: 'quest_watertempleguardian_intro', npc: 'the Water Temple Guardian' },
+
   // ==================== DARK FOREST ====================
   // The original opened all three sets on discovery — the Outpost's and the
   // Tree Hut's once you were a Wizard's Guild member or had cracked the Forest

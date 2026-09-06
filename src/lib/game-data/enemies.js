@@ -1620,11 +1620,11 @@ const ENEMIES = [
   },
 
   // ==================== BLUE OCEAN — sharks ====================
-  // Warrior Pete's "Shark Hunter" targets. Defined here so the quest is complete
-  // the moment the Blue Ocean rooms land; nothing spawns them yet, which is the
-  // one thing standing between that quest and completion.
-  // Legacy eDexImm (dexterity immunity) and ePow (1-in-3 triple hit) have no
-  // modern equivalent and are dropped.
+  // Warrior Pete's "Shark Hunter" targets. Both roam the underwater rooms.
+  //
+  // Legacy eDexImm: a shark closes too fast to shoot, so arrows do nothing and
+  // you fight it with a blade or a spell. ePow (1-in-3 triple hit) is the
+  // `power` special below.
   {
     slug: 'hammerhead',
     zone: 'Under the Ocean',
@@ -1638,6 +1638,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isRangedImmune: true,
     damageType: 'MELEE',
     specials: ['power'],
     xpReward: 150,
@@ -1665,6 +1666,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isRangedImmune: true,
     damageType: 'MELEE',
     specials: ['power'],
     xpReward: 150,
@@ -2720,7 +2722,8 @@ const ENEMIES = [
   },
 
   // ---------- The six that hold the fifth levels ----------
-  // Legacy eDexImm (immune to ranged attacks) has no modern equivalent yet.
+  // The War Turtle's shell turns arrows: legacy `eDexImm`, and the reason Ranger
+  // Lego's quest tells you to put the bow away. Melee or magic only.
   {
     slug: 'war-turtle',
     zone: 'Neverending Mine',
@@ -2734,6 +2737,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isRangedImmune: true,
     damageType: 'MELEE',
     xpReward: 300,
     goldMin: 50,
@@ -2893,12 +2897,14 @@ const ENEMIES = [
   // live somewhere else: the Glowing Octopus under the Ocean, and King Squid,
   // the Stone Sphinx and the Gatekeeper at the far end of three later maps.
   //
-  // Defined here, spawned nowhere — the same treatment the sharks and the Dark
-  // Forest trolls already get in this file. Without a definition the quests that
-  // name them cannot even be authored (validate-quests rejects a dangling enemy
-  // slug), and a bounty board with two of its three postings unpostable is not
-  // the room the original built. Stats are the original's; each drop table is
-  // drawn from items that exist today and is worth revisiting when its map lands.
+  // Written ahead of their maps so the quests naming them could be authored at
+  // all (validate-quests rejects a dangling enemy slug), and a bounty board with
+  // two of its three postings unpostable is not the room the original built.
+  //
+  // Three of the four have since been spawned by the maps that hold them — the
+  // Glowing Octopus underwater, King Squid in the Blue Ocean, the Stone Sphinx
+  // in the Dark Keep's stairwell. Only the Gatekeeper is still waiting on its
+  // map (the Mountains, legacy r600/room619). Stats are the original's.
   {
     slug: 'glowing-octopus',
     zone: 'Under the Ocean',
@@ -2912,6 +2918,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isRangedImmune: true,
     damageType: 'MAGIC',
     xpReward: 200,
     goldMin: 50,
@@ -2960,7 +2967,7 @@ const ENEMIES = [
   },
   {
     slug: 'stone-sphinx',
-    zone: 'Mountains',
+    zone: 'Dark Keep',
     name: 'Stone Sphinx',
     description: 'A beast made completely of stone, and it guards the Dark Keep\'s stairwell as well as the mountain pass. Arrows shatter on it and magic slides off; it does not answer questions.',
     icon: 'enemy-StoneSphinx',
@@ -3350,8 +3357,9 @@ const ENEMIES = [
   // ==================== UNDER THE OCEAN ====================
   // The underwater battle set (battle-sets/blueocean-underwater.php), the
   // shark water, the Kraken and the Mud Cave. Legacy eDexImm (immune to ranged)
-  // sat on the turtle, the colossal squid, both sharks, the octopus and the
-  // Kraken; it has no modern equivalent yet and is dropped.
+  // sits on the turtle, the colossal squid, both sharks, the octopus and the
+  // Kraken: underwater, a bow is the wrong tool against anything that big and
+  // fast, and every one of them carries `isRangedImmune` below.
   {
     slug: 'mud-crab',
     zone: 'Mud Cave',
@@ -3399,6 +3407,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isRangedImmune: true,
     damageType: 'MELEE',
     xpReward: 110,
     goldMin: 1,
@@ -3427,6 +3436,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isRangedImmune: true,
     damageType: 'MELEE',
     xpReward: 190,
     goldMin: 1,
@@ -3455,6 +3465,7 @@ const ENEMIES = [
     isAggressive: true,
     isFriendly: false,
     isFlying: false,
+    isRangedImmune: true,
     damageType: 'RANGED',
     xpReward: 400,
     goldMin: 50,
