@@ -179,11 +179,11 @@ export default async function RoomsPage() {
     string,
     { roomId: string; name: string; icon: string; quests: string[] }
   >
-  const giversByRoom = new Map<string, Map<string, { name: string; icon: string; questCount: number }>>()
+  const giversByRoom = new Map<string, Map<string, { giverId: string; name: string; icon: string; questCount: number }>>()
   for (const [giverId, g] of Object.entries(giverData)) {
     if (!g?.roomId) continue
     if (!giversByRoom.has(g.roomId)) giversByRoom.set(g.roomId, new Map())
-    giversByRoom.get(g.roomId)!.set(giverId, { name: g.name, icon: g.icon, questCount: g.quests.length })
+    giversByRoom.get(g.roomId)!.set(giverId, { giverId, name: g.name, icon: g.icon, questCount: g.quests.length })
   }
 
   // Build a roomId -> exits map up front so we can detect one-way exits
@@ -317,6 +317,7 @@ export default async function RoomsPage() {
         icon: g.icon,
         type: 'quest-giver',
         questCount: g.questCount,
+        giverId: g.giverId,
       })
     }
     const npcs = Array.from(npcByName.values())

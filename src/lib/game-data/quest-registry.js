@@ -103,7 +103,7 @@ function factionStanding(factionId, progressRows) {
     factionId,
     name: faction.name,
     kind: faction.kind,
-    color: faction.color,
+    colorToken: faction.colorToken ?? null,
     done: completed,
     total,
     complete,

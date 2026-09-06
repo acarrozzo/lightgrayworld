@@ -213,10 +213,10 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
   const fixedQty = (qty?: number) => (qty && qty > 1 ? ` ×${qty}` : '')
 
   // Quests — item rewards. The quest title is the friendly source label.
-  for (const quest of Object.values(QUESTS)) {
+  for (const [questId, quest] of Object.entries(QUESTS)) {
     for (const reward of quest.rewards ?? []) {
       if (reward.type !== 'item' || !reward.itemSlug) continue
-      ensure(reward.itemSlug).quests.push({ label: `${quest.title}${fixedQty(reward.quantity)}` })
+      ensure(reward.itemSlug).quests.push({ questId, label: `${quest.title}${fixedQty(reward.quantity)}` })
     }
   }
 

@@ -22,3 +22,15 @@ export function roomHref(roomId: string) {
 export function roomDescHref(roomId: string) {
   return `/room-desc#${encodeURIComponent(roomId)}`
 }
+
+/**
+ * A quest and a quest giver share the Quests page but are separate anchors:
+ * a giver is the section, each of its quests a card inside it. Ids come from
+ * the quest registry, so both survive a retitling.
+ */
+export function questHref(questId: string) {
+  return `/quests#${encodeURIComponent(questId)}`
+}
+export function questGiverHref(giverId: string) {
+  return `/quests#${encodeURIComponent(giverId)}`
+}

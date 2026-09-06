@@ -31,11 +31,11 @@ interface ItemFilterBarProps {
   children?: ReactNode
 }
 
-const CHIP =
+export const CHIP =
   'relative px-2.5 py-1 text-[11px] font-medium rounded border transition-all duration-200 whitespace-nowrap flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed'
-const CHIP_IDLE = 'fill-surface-raised border-line-subtle/50 hover:border-line-strong/50'
-const CHIP_GROUP_ON = 'fill-resource-mp border-resource-mp/50'
-const CHIP_SLOT_ON = 'fill-stat-mag border-stat-mag/50'
+export const CHIP_IDLE = 'fill-surface-raised border-line-subtle/50 hover:border-line-strong/50'
+export const CHIP_GROUP_ON = 'fill-resource-mp border-resource-mp/50'
+export const CHIP_SLOT_ON = 'fill-stat-mag border-stat-mag/50'
 
 /**
  * Two-tier filter strip: Equipment / Consumables / Crafting / Misc on one row,

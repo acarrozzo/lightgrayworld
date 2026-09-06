@@ -5,7 +5,7 @@ import { useUrlEnum, useUrlString, useUrlFlag } from '@/components/world-tool/us
 import Icon from '@/components/Icon'
 import { roomColor } from '@/lib/theme/room-colors'
 import { ToneChip, Section, Empty } from '@/components/world-tool/ui'
-import { EntityLink, enemyHref, itemHref, roomDescHref } from '@/components/world-tool/EntityLink'
+import { EntityLink, enemyHref, itemHref, roomDescHref, questGiverHref } from '@/components/world-tool/EntityLink'
 import { Flame, Hammer, Search, Skull, Coins, Users, Zap, Lock, Eye, X } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -72,7 +72,7 @@ export type RoomNode = {
   exits: ExitInfo[]
   enemies: { mode: 'static' | 'probabilistic'; spawnChancePct?: number; enemies: EnemySpawn[] } | null
   items: { slug: string; name: string; icon: string; quantity: number; autoRespawn: boolean }[]
-  npcs: { name: string; icon?: string; type?: string; questCount?: number }[]
+  npcs: { name: string; icon?: string; type?: string; questCount?: number; giverId?: string }[]
   actions: RoomActionInfo[]
   secrets: SecretInfo[]
 }
@@ -1016,7 +1016,16 @@ function RoomDetail({
             {room.npcs.map((npc) => (
               <li key={npc.name} className="flex items-center gap-2 text-sm">
                 {npc.icon && <Icon name={npc.icon} size={18} />}
-                <span className="text-fg-bright">{npc.name}</span>
+                {npc.giverId ? (
+                  <EntityLink
+                    href={questGiverHref(npc.giverId)}
+                    title={`${npc.name}'s quests`}
+                  >
+                    {npc.name}
+                  </EntityLink>
+                ) : (
+                  <span className="text-fg-bright">{npc.name}</span>
+                )}
                 {npc.type === 'quest-giver' && (
                   <span className="rounded bg-accent/30 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent-hover">
                     {npc.questCount} quest{npc.questCount === 1 ? '' : 's'}

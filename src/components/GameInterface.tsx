@@ -3,7 +3,7 @@
 import { useGameStore } from '@/lib/game-state'
 import type { Room, Player } from '@/lib/game-state'
 import { useShallow } from 'zustand/react/shallow'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import React from 'react'
 import GameHeader from './GameHeader'
 import { type InputMode } from './game-interface/panels/FeedPanel'
@@ -37,6 +37,7 @@ import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
 import InventoryPanel from './game-interface/panels/InventoryPanel'
 import QuestsPanel from './game-interface/panels/QuestsPanel'
+import { countReadyQuests } from '@/lib/quest-journal'
 import WorldLayer, { type WorldTab } from './game-interface/WorldLayer'
 
 // Whether the world layer last opened full screen on this device. A browser
@@ -227,6 +228,13 @@ export default function GameInterface() {
   const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
   const [hasQuestUpdate, setHasQuestUpdate] = useState(false)
+  // Quests ready to turn in, for the tab badge. The same evaluation the
+  // journal and the NPC card use, so the number never disagrees with them.
+  const giversMet = useGameStore((s) => s.giversMet)
+  const readyQuestCount = useMemo(
+    () => countReadyQuests({ inventory, killList, player, quests, giversMet }),
+    [inventory, killList, player, quests, giversMet]
+  )
   const isInitialInventoryLoadRef = useRef(true)
   const previousInventoryRef = useRef<typeof inventory>([])
   const pendingEquipActionRef = useRef<{ playerItemId: string } | null>(null)
@@ -3187,7 +3195,7 @@ export default function GameInterface() {
     { id: 'explore', label: 'Explore', icon: 'world', color: 'blue' },
     { id: 'char', label: 'Char', icon: 'character', color: 'violet', badge: unspentPoints > 0 ? unspentPoints : undefined },
     { id: 'inventory', label: 'Inv', icon: 'inv', color: 'green', badge: newItemIds.size > 0 ? newItemIds.size : undefined },
-    { id: 'quests', label: 'Quests', icon: 'trophy', color: 'gold', badge: hasQuestUpdate ? true : undefined },
+    { id: 'quests', label: 'Quests', icon: 'trophy', color: 'gold', badge: readyQuestCount > 0 ? readyQuestCount : hasQuestUpdate ? true : undefined },
     { id: 'players', label: 'Players', icon: <MessageSquare size={14} />, color: 'pink', badge: totalDmUnread > 0 ? totalDmUnread : undefined },
     { id: 'settings', label: '', icon: <SettingsIcon size={14} />, color: 'gray' },
   ]

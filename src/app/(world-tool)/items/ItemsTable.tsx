@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { useUrlEnum, useUrlString, useUrlFlag } from '@/components/world-tool/useUrlState'
 import Icon from '@/components/Icon'
 import { Tag, SortableTh } from '@/components/world-tool/ui'
-import { EntityLink, enemyHref, roomHref, useAnchorTarget } from '@/components/world-tool/EntityLink'
+import { EntityLink, enemyHref, roomHref, questHref, useAnchorTarget } from '@/components/world-tool/EntityLink'
 
 export type ItemRow = {
   order: number
@@ -27,7 +27,7 @@ export type ItemRow = {
     // `roomId` / `slug` carry the link target; `label` is only ever display text.
     rooms: { roomId: string; label: string }[] // e.g. "Sand Crab Nest" or "Room 027 ×2"
     enemies: { slug: string; name: string; label: string }[] // e.g. { name: "Rat", label: "25%" }
-    quests: { label: string }[] // quest title, e.g. "Rat Problem ×5"
+    quests: { questId?: string; label: string }[] // quest title, e.g. "Rat Problem ×5"
     chests: { roomId?: string; label: string }[] // chest name, e.g. "Gold Chest ×3"
     searches: { roomId: string; label: string }[] // room name searched, e.g. "Cabin Basement"
     gathers: { roomId: string; label: string }[] // gathered resource, e.g. "Beach ×5 · 5m · shovel"
@@ -393,7 +393,7 @@ function SourceGroup({
   items,
 }: {
   label: string
-  items: { roomId?: string; label: string }[]
+  items: { roomId?: string; questId?: string; label: string }[]
 }) {
   if (items.length === 0) return null
   return (
@@ -405,6 +405,10 @@ function SourceGroup({
         <span key={i} className="text-fg-primary">
           {it.roomId ? (
             <EntityLink href={roomHref(it.roomId)} title={`Room ${it.roomId} in the World Atlas`}>
+              {it.label}
+            </EntityLink>
+          ) : it.questId ? (
+            <EntityLink href={questHref(it.questId)} title="This quest on the Quests page">
               {it.label}
             </EntityLink>
           ) : (

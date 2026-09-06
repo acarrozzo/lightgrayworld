@@ -2,6 +2,7 @@
 
 import React from 'react'
 import Icon from './Icon'
+import { ROOM_COLOR_TOKENS } from '@/lib/theme/room-colors'
 
 interface Reward {
   type: 'xp' | 'currency' | string
@@ -24,6 +25,8 @@ export interface NewQuestEntry {
 export interface QuestStanding {
   factionId: string
   name: string
+  /** Room-colour token for the faction's bar (theme/room-colors.ts). */
+  colorToken?: string | null
   done: number
   total: number
   complete: boolean
@@ -48,6 +51,7 @@ interface Props {
 
 export default function QuestCompleteRewards({ data }: Props) {
   const { rewards, levelUp, newQuestTitles, standing, becameMember } = data
+  const standingBarVar = standing?.colorToken ? ROOM_COLOR_TOKENS[standing.colorToken] ?? null : null
 
   const xpReward = rewards.find(r => r.type === 'xp')
   const currencyReward = rewards.find(r => r.type === 'currency')
@@ -145,8 +149,11 @@ export default function QuestCompleteRewards({ data }: Props) {
             </div>
             <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-surface-panel/60">
               <div
-                className={`h-full rounded-full ${standing.complete ? 'bg-resource-gold' : 'bg-resource-mp'}`}
-                style={{ width: `${standing.total > 0 ? Math.round((standing.done / standing.total) * 100) : 0}%` }}
+                className={`h-full rounded-full ${standingBarVar ? '' : 'bg-resource-mp'}`}
+                style={{
+                  width: `${standing.total > 0 ? Math.round((standing.done / standing.total) * 100) : 0}%`,
+                  ...(standingBarVar ? { backgroundColor: `var(${standingBarVar})` } : {}),
+                }}
               />
             </div>
             {becameMember && (

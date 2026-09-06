@@ -18,22 +18,28 @@
  * Mountains and Star City are declared so the Pillar's capstones can name
  * them; they have no givers until their maps are ported.
  *
+ * `colorToken` is the room-colour token (theme/room-colors.ts) the faction's
+ * standing bar is painted with: a region takes its world colour, a guild
+ * takes the colour its own rooms are titled in — the Wizard's Guild is
+ * arcane purple, the Warrior's Guild calm blue, the Mining Guild treasure
+ * gold, the Ranger's Guild its own world token — not its town's.
+ *
  * Shared by the server (membership checks, standing) and the client (journal
  * grouping, titles), like world-map.js.
  */
 const FACTIONS = [
-  { id: 'grassy-field', name: 'Grassy Field', kind: 'region', color: 'grassy-field', hubRoomId: '001', title: 'Grassy Field Savior' },
-  { id: 'forest', name: 'Forest', kind: 'region', color: 'forest', hubRoomId: '104', title: 'Forest Savior' },
-  { id: 'red-town', name: 'Red Town', kind: 'region', color: 'red-town', hubRoomId: '210', title: 'Red Town Savior' },
-  { id: 'warriors-guild', name: "Warrior's Guild", kind: 'guild', color: 'red-town', hubRoomId: '226', membershipQuest: 'quest_warriorsguild_000', memberTitle: 'Warrior', title: 'True Warrior' },
-  { id: 'wizards-guild', name: "Wizard's Guild", kind: 'guild', color: 'red-town', hubRoomId: '225', membershipQuest: 'quest_wizardsguild_000', memberTitle: 'Wizard', title: 'Powerful Wizard' },
-  { id: 'dwarf-village', name: 'Dwarf Village', kind: 'region', color: 'rocky-flats', hubRoomId: '303', title: 'Rocky Flats Savior' },
-  { id: 'mining-guild', name: 'Mining Guild', kind: 'guild', color: 'rocky-flats', hubRoomId: '308', membershipQuest: 'quest_miningguild_000', memberTitle: 'Miner', title: 'Master Miner' },
-  { id: 'ocean', name: 'Blue Ocean', kind: 'region', color: 'ocean', hubRoomId: '413', title: 'Blue Ocean Savior' },
-  { id: 'dark-forest', name: 'Dark Forest', kind: 'region', color: 'dark-forest', hubRoomId: '507', title: 'Dark Forest Savior' },
-  { id: 'rangers-guild', name: "Ranger's Guild", kind: 'guild', color: 'dark-forest', hubRoomId: '515', membershipQuest: 'quest_rangersguild_000', memberTitle: 'Ranger', title: 'Elite Ranger' },
-  { id: 'mountains', name: 'Mountains', kind: 'region', color: 'mountains', placeholder: true, title: 'Mountain Savior' },
-  { id: 'star-city', name: 'Star City', kind: 'region', color: 'star-city', placeholder: true, title: 'Eternal Mage' },
+  { id: 'grassy-field', name: 'Grassy Field', kind: 'region', colorToken: 'world.grassyField', hubRoomId: '001', title: 'Grassy Field Savior' },
+  { id: 'forest', name: 'Forest', kind: 'region', colorToken: 'world.forest', hubRoomId: '104', title: 'Forest Savior' },
+  { id: 'red-town', name: 'Red Town', kind: 'region', colorToken: 'world.redTown', hubRoomId: '210', title: 'Red Town Savior' },
+  { id: 'warriors-guild', name: "Warrior's Guild", kind: 'guild', colorToken: 'mood.calm', hubRoomId: '226', membershipQuest: 'quest_warriorsguild_000', memberTitle: 'Warrior', title: 'True Warrior' },
+  { id: 'wizards-guild', name: "Wizard's Guild", kind: 'guild', colorToken: 'mood.arcane', hubRoomId: '225', membershipQuest: 'quest_wizardsguild_000', memberTitle: 'Wizard', title: 'Powerful Wizard' },
+  { id: 'dwarf-village', name: 'Dwarf Village', kind: 'region', colorToken: 'world.rockyFlats', hubRoomId: '303', title: 'Rocky Flats Savior' },
+  { id: 'mining-guild', name: 'Mining Guild', kind: 'guild', colorToken: 'mood.treasure', hubRoomId: '308', membershipQuest: 'quest_miningguild_000', memberTitle: 'Miner', title: 'Master Miner' },
+  { id: 'ocean', name: 'Blue Ocean', kind: 'region', colorToken: 'world.ocean', hubRoomId: '413', title: 'Blue Ocean Savior' },
+  { id: 'dark-forest', name: 'Dark Forest', kind: 'region', colorToken: 'world.darkForest', hubRoomId: '507', title: 'Dark Forest Savior' },
+  { id: 'rangers-guild', name: "Ranger's Guild", kind: 'guild', colorToken: 'world.rangersGuild', hubRoomId: '515', membershipQuest: 'quest_rangersguild_000', memberTitle: 'Ranger', title: 'Elite Ranger' },
+  { id: 'mountains', name: 'Mountains', kind: 'region', colorToken: null, placeholder: true, title: 'Mountain Savior' },
+  { id: 'star-city', name: 'Star City', kind: 'region', colorToken: null, placeholder: true, title: 'Eternal Mage' },
 ]
 
 const FACTIONS_BY_ID = new Map(FACTIONS.map((f) => [f.id, f]))

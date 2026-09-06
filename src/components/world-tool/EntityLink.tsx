@@ -15,7 +15,7 @@ import Link from 'next/link'
 import { useEffect } from 'react'
 
 // Re-exported so callers can pull the link and its target from one place.
-export { enemyHref, itemHref, roomHref, roomDescHref } from './hrefs'
+export { enemyHref, itemHref, roomHref, roomDescHref, questHref, questGiverHref } from './hrefs'
 
 const LINK_CLASS =
   'text-accent-hover/85 underline decoration-line-subtle underline-offset-2 transition-colors hover:text-accent-hover hover:decoration-accent-hover'

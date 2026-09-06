@@ -1,11 +1,33 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { X } from 'lucide-react'
-import { QUESTS, GIVERS, listFactionGiverIds, factionStanding, isGiverRevealed, completedSet, questOrderIndex } from '@/lib/game-data/quest-registry'
-import { listLiveFactions } from '@/lib/game-data/factions'
-import { useGameStore, type QuestProgressRow } from '@/lib/game-state'
-import { areRequirementsMet, type QuestRequirement, type RequirementContext } from '@/lib/quest-requirements'
+import { X, Search, ChevronDown, Check, Circle, HelpCircle } from 'lucide-react'
+import { useGameStore } from '@/lib/game-state'
+import type { RequirementContext } from '@/lib/quest-requirements'
+import {
+  buildJournal,
+  applyJournalView,
+  loadJournalPrefs,
+  saveJournalPrefs,
+  isGroupCollapsed,
+  toggleGroupCollapsed,
+  isSectionCollapsed,
+  toggleSectionCollapsed,
+  sectionsAcrossFactions,
+  rowsAcrossSections,
+  unmetAcrossSections,
+  DEFAULT_PREFS,
+  STATUS_FILTERS,
+  SORT_MODES,
+  type JournalGroup,
+  type JournalGiverSection,
+  type JournalQuestRow,
+  type JournalPrefs,
+  type SortMode,
+} from '@/lib/quest-journal'
+import { CHIP, CHIP_IDLE, CHIP_GROUP_ON, CHIP_SLOT_ON } from '@/components/ItemFilterBar'
+import { getFaction } from '@/lib/game-data/factions'
+import { ROOM_COLOR_TOKENS } from '@/lib/theme/room-colors'
 import QuestRequirements from '@/components/QuestRequirements'
 import QuestTypeTag from '@/components/QuestTypeTag'
 import Icon from '@/components/Icon'
@@ -33,30 +55,7 @@ interface KillEntry {
   kills: number
 }
 
-type Tab = 'quests' | 'completed-quests' | 'kill-list' | 'battle-log'
-
-type QuestDef = {
-  giverId: string
-  questType: string
-  level: number
-  title: string
-  summary: string
-  objective: string
-  nextStep?: string
-  requirements?: QuestRequirement[]
-  rewards?: { type: string; amount?: number; itemSlug?: string; quantity?: number }[]
-}
-
-type GiverDef = {
-  name: string
-  spokenName?: string
-  roomId: string
-  icon: string
-  faction: string | null
-  hint?: string
-  quests: string[]
-  revealedBy?: { type: string }
-}
+type Tab = 'quests' | 'kill-list' | 'battle-log'
 
 interface QuestsPanelProps {
   isLoadingQuests: boolean
@@ -69,15 +68,11 @@ interface QuestsPanelProps {
 
 const QUEST_SUB_TABS: { id: Tab; label: string }[] = [
   { id: 'quests', label: 'Quests' },
-  { id: 'completed-quests', label: 'Completed' },
   { id: 'kill-list', label: 'Kill List' },
   { id: 'battle-log', label: 'Battle Log' },
 ]
 
-const QUEST_DEFS = QUESTS as Record<string, QuestDef>
-const GIVER_DEFS = GIVERS as Record<string, GiverDef>
-
-function rewardText(rewards: QuestDef['rewards']): string {
+function rewardText(rewards: { type: string; amount?: number; itemSlug?: string; quantity?: number }[] | undefined): string {
   return (rewards ?? [])
     .map((r) => {
       if (r.type === 'currency') return `${r.amount} Gold`
@@ -93,7 +88,7 @@ function rewardText(rewards: QuestDef['rewards']): string {
       return ''
     })
     .filter(Boolean)
-    .join(', ')
+    .join(' · ')
 }
 
 function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string, string> }) {
@@ -219,32 +214,124 @@ function KillListTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string, 
   )
 }
 
+/** The glyph that says a row's state at a glance. */
+function StateGlyph({ state }: { state: JournalQuestRow['state'] | 'not_met' }) {
+  if (state === 'not_met') return <HelpCircle size={14} className="shrink-0 text-fg-muted" aria-label="Not yet met" />
+  if (state === 'completed') return <Check size={14} className="shrink-0 text-status-success" aria-label="Done" />
+  if (state === 'ready') return <Circle size={12} className="shrink-0 fill-status-success text-status-success" aria-label="Ready to turn in" />
+  return <Circle size={12} className="shrink-0 text-fg-muted" aria-label="In progress" />
+}
+
 /**
- * One faction's heading in the journal: name, quests done out of total, a
- * bar, and the title once every quest is done. Standing is a count and
- * nothing more, so this is the whole of what a faction shows.
+ * One quest as a row that opens — the same shape as an inventory row. Closed
+ * it says title, giver, progress and readiness; open it adds the summary,
+ * objective, requirements, rewards and next step.
  */
-function FactionHeader({ name, done, total, title, kind }: { name: string; done: number; total: number; title: string | null; kind: string }) {
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0
-  const complete = total > 0 && done === total
+function QuestRow({
+  row,
+  open,
+  onToggle,
+  showGiver = false,
+  showFaction = false,
+}: {
+  row: JournalQuestRow
+  open: boolean
+  onToggle: () => void
+  /** Name the giver on the row — their heading is switched off. */
+  showGiver?: boolean
+  /** Name the faction on the row — its heading is switched off. */
+  showFaction?: boolean
+}) {
+  const isReady = row.state === 'ready'
+  const isDone = row.state === 'completed'
+  const factionName = row.giver.faction ? getFaction(row.giver.faction)?.name ?? null : null
+  // A finished quest is a line, not a card: its subtext waits inside the open view.
+  const secondLine = isDone
+    ? ''
+    : [showGiver ? row.giver.name : null, showFaction ? factionName : null, open ? null : row.def.objective].filter(Boolean).join(' · ')
+  const frame = isReady ? 'border-status-success/50 border-l-[3px] border-l-status-success' : 'border-line-subtle/40'
+  const surface = open ? 'bg-surface-raised/35' : 'bg-surface-raised/20 hover:bg-surface-raised/35'
+  const dim = isDone || row.aboveLevel ? 'opacity-70' : ''
+  const rewards = rewardText(row.def.rewards)
+
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-fg-bright truncate">{name}</h3>
-          {kind === 'guild' && <span className="text-[10px] uppercase tracking-wide text-fg-muted">guild</span>}
+    <div className={`border transition-colors duration-150 ${frame} ${surface} ${open ? 'rounded-md' : 'rounded-md'} ${dim}`}>
+      <div className={`flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 ${isDone ? 'min-h-[34px]' : 'min-h-[44px]'}`}>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="flex items-center gap-2.5 min-w-0 flex-1 text-left py-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+        >
+          <StateGlyph state={row.state} />
+          <span className="min-w-0 flex flex-col gap-px">
+            <span className="flex items-baseline gap-1.5 min-w-0">
+              <span className={`text-[13px] font-semibold truncate ${isDone ? 'text-fg-secondary line-through decoration-line-subtle' : 'text-fg-bright'}`}>{row.def.title}</span>
+              <QuestTypeTag type={row.def.questType} className="hidden sm:inline-flex" />
+            </span>
+            {secondLine && <span className="text-[11px] text-fg-muted truncate">{secondLine}</span>}
+          </span>
+        </button>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {row.aboveLevel && !isDone && (
+            <span
+              className="text-[10px] font-semibold leading-[16px] px-1.5 rounded-md border border-status-warning/50 text-status-warning tabular-nums"
+              title={`Recommended level ${row.def.level}`}
+            >
+              L{row.def.level}
+            </span>
+          )}
+          {row.progressLabel && (
+            <span className={`text-[11px] font-bold tabular-nums ${isReady ? 'text-status-success' : 'text-fg-secondary'}`}>{row.progressLabel}</span>
+          )}
+          {isReady && (
+            <span className="text-[9px] font-semibold uppercase tracking-[0.08em] leading-[14px] px-1 rounded-sm border border-status-success/50 text-status-success">
+              Ready
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={open ? 'Hide details' : 'Show details'}
+            className="w-5 h-8 flex items-center justify-center text-fg-muted hover:text-fg-primary rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+          >
+            <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
         </div>
-        <span className={`shrink-0 text-xs font-bold tabular-nums ${complete ? 'text-resource-gold' : 'text-fg-secondary'}`}>
-          {done}/{total}
-        </span>
       </div>
-      <div className="h-1 w-full overflow-hidden rounded-full bg-surface-panel/60">
-        <div className={`h-full rounded-full ${complete ? 'bg-resource-gold' : 'bg-resource-mp'}`} style={{ width: `${pct}%` }} />
-      </div>
-      {complete && title && (
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-resource-gold">
-          <Icon name="trophy" size={12} className="text-resource-gold" />
-          {title}
+      {open && (
+        <div className="border-t border-line-subtle/40 px-3 py-2.5 space-y-2 text-sm">
+          <p className="italic text-fg-secondary">{row.def.summary}</p>
+          <div className="grid grid-cols-[5.5rem_1fr] gap-x-2 gap-y-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-muted pt-0.5">Given by</span>
+            <span className="text-fg-secondary">
+              {row.giver.name}
+              {factionName ? ` · ${factionName}` : ''} · room {row.giver.roomId}
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-muted pt-0.5">Objective</span>
+            <span className="text-fg-primary">{row.def.objective}</span>
+            {rewards && (
+              <>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-muted pt-0.5">Reward</span>
+                <span className="text-resource-gold">{rewards}</span>
+              </>
+            )}
+            {row.def.level > 1 && (
+              <>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-muted pt-0.5">Level</span>
+                <span className={row.aboveLevel ? 'text-status-warning' : 'text-fg-secondary'}>{row.def.level}{row.aboveLevel ? ' — above yours' : ''}</span>
+              </>
+            )}
+          </div>
+          {!isDone && <QuestRequirements requirements={row.def.requirements} variant="full" />}
+          {isReady && (
+            <p className="text-status-success text-sm font-medium">
+              Ready to turn in — return to {row.giver.spokenName ?? row.giver.name} (room {row.giver.roomId}).
+            </p>
+          )}
+          {!isDone && !isReady && row.def.nextStep && (
+            <p className="text-fg-muted text-xs">Next: {row.def.nextStep}</p>
+          )}
         </div>
       )}
     </div>
@@ -252,149 +339,143 @@ function FactionHeader({ name, done, total, title, kind }: { name: string; done:
 }
 
 /** A giver the player has heard of but not yet talked to — the original's "Find these!". */
-function NotYetMetCard({ giver }: { giver: GiverDef }) {
+function GiverRow({ section, open, onToggle }: { section: JournalGiverSection; open: boolean; onToggle: () => void }) {
+  const row = section
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-dashed border-line-subtle/60 bg-surface-raised/20 px-3 py-2.5">
-      <Icon name={giver.icon} size={22} className="mt-0.5 shrink-0 text-fg-muted" />
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-fg-primary">{giver.name}</span>
-          <span className="rounded border border-line-subtle px-1.5 py-px text-[10px] uppercase tracking-wide text-fg-muted">Not yet met</span>
-        </div>
-        {giver.hint && <p className="mt-0.5 text-xs text-fg-secondary">{giver.hint}</p>}
+    <div className={`border border-dashed border-line-subtle/60 rounded-md transition-colors duration-150 ${open ? 'bg-surface-raised/25' : 'bg-surface-raised/10 hover:bg-surface-raised/25'}`}>
+      <div className="flex items-center gap-1.5 min-h-[44px] pl-2.5 pr-1.5 py-1">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="flex items-center gap-2.5 min-w-0 flex-1 text-left py-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+        >
+          <StateGlyph state="not_met" />
+          <Icon name={row.giver.icon} size={22} className="shrink-0 text-fg-muted" />
+          <span className="min-w-0 flex flex-col gap-px">
+            <span className="text-[13px] font-semibold text-fg-primary truncate">{row.giver.name}</span>
+            <span className="text-[11px] text-fg-muted truncate">Not yet met</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={open ? 'Hide hint' : 'Show hint'}
+          className="w-5 h-8 flex items-center justify-center text-fg-muted hover:text-fg-primary rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+        >
+          <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
       </div>
-    </div>
-  )
-}
-
-function ActiveQuestCard({ questId, questDef, giver, ctx }: { questId: string; questDef: QuestDef; giver: GiverDef | undefined; ctx: RequirementContext }) {
-  // Shared with the NPC card so the journal and the room agree on what
-  // "ready" means for every requirement type.
-  const isReadyToTurnIn = !!questDef.requirements && questDef.requirements.length > 0 && areRequirementsMet(questDef.requirements, ctx)
-  const rewards = rewardText(questDef.rewards)
-  return (
-    <div key={questId} className="bg-surface-raised/50 border border-line-subtle/50 rounded-lg p-4 space-y-3">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <QuestTypeTag type={questDef.questType} />
-            {giver?.name && <p className="text-fg-muted text-xs">{giver.name}</p>}
-          </div>
-          <h4 className="text-fg-bright font-semibold text-base">{questDef.title}</h4>
-          <p className="text-fg-secondary text-sm mt-1">{questDef.summary}</p>
-        </div>
-        <span className="px-2 py-1 bg-resource-mp/50 border border-resource-mp/50 text-resource-mp text-xs font-semibold rounded">
-          Active
-        </span>
-      </div>
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="text-fg-muted text-sm">Objective:</span>
-          <span className="text-fg-primary text-sm">{questDef.objective}</span>
-        </div>
-        {rewards && (
-          <div className="flex items-center gap-2">
-            <span className="text-fg-muted text-sm">Reward:</span>
-            <span className="text-fg-primary text-sm">{rewards}</span>
-          </div>
-        )}
-      </div>
-      <QuestRequirements requirements={questDef.requirements} variant="full" />
-      {isReadyToTurnIn && giver && (
-        <div className="pt-2 border-t border-line-subtle/50">
-          <p className="text-status-success text-sm font-medium">
-            Ready to turn in — return to {giver.spokenName ?? giver.name} to complete the quest.
-          </p>
-        </div>
-      )}
-      {questDef.nextStep && (
-        <div className="pt-2 border-t border-line-subtle/50">
-          <p className="text-fg-muted text-xs mt-2">Next: {questDef.nextStep}</p>
+      {open && (
+        <div className="border-t border-line-subtle/40 px-3 py-2.5 text-sm text-fg-secondary">
+          {row.giver.hint || `Find ${row.giver.spokenName ?? row.giver.name} in room ${row.giver.roomId}.`}
         </div>
       )}
     </div>
   )
-}
-
-function CompletedQuestCard({ questId, questDef, giver }: { questId: string; questDef: QuestDef; giver: GiverDef | undefined }) {
-  const rewards = rewardText(questDef.rewards)
-  return (
-    <div key={questId} className="bg-surface-raised/50 border border-line-subtle/50 rounded-lg p-4 space-y-3 opacity-75">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <QuestTypeTag type={questDef.questType} />
-            {giver?.name && <p className="text-fg-muted text-xs">{giver.name}</p>}
-          </div>
-          <h4 className="text-fg-bright font-semibold text-base">{questDef.title}</h4>
-          <p className="text-fg-secondary text-sm mt-1">{questDef.summary}</p>
-        </div>
-        <span className="px-2 py-1 bg-status-success/50 border border-status-success/50 text-status-success text-xs font-semibold rounded">
-          Done
-        </span>
-      </div>
-      {rewards && (
-        <div className="flex items-center gap-2">
-          <span className="text-fg-muted text-sm">Reward:</span>
-          <span className="text-fg-primary text-sm">{rewards}</span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-type FactionGroup = {
-  id: string
-  name: string
-  kind: string
-  standing: { done: number; total: number; title: string | null } | null
-  givers: { giverId: string; giver: GiverDef; met: boolean; revealed: boolean; active: string[]; completed: string[] }[]
 }
 
 /**
- * The journal grouped the way the original's quest tab was: by the people of
- * each land and guild. A faction shows once the player has heard of anyone in
- * it; a giver shows as "not yet met" until the first talk, then as their open
- * quests. The Grand Quest Pillar has no faction and closes the list.
+ * A met giver's heading inside their faction: icon, name, room, their quests
+ * done out of total, and how many are ready. Folds on its own.
  */
-function useFactionGroups(quests: QuestProgressRow[], giversMet: string[]): FactionGroup[] {
-  const player = useGameStore((s) => s.player)
-  return useMemo(() => {
-    const done = completedSet(quests)
-    const met = new Set(giversMet)
-    const rowsByQuest = new Map(quests.map((q) => [q.questId, q]))
-    const revealCtx = {
-      done,
-      met,
-      discoveredTeleports: player?.discoveredTeleports ?? [],
-      flags: (player ?? {}) as Record<string, unknown>,
-    }
-    const giverEntry = (giverId: string) => {
-      const giver = GIVER_DEFS[giverId]
-      const active: string[] = []
-      const completed: string[] = []
-      for (const questId of giver.quests) {
-        const row = rowsByQuest.get(questId)
-        if (!row) continue
-        if (row.completed) completed.push(questId)
-        else active.push(questId)
-      }
-      return { giverId, giver, met: met.has(giverId), revealed: isGiverRevealed(giver, revealCtx), active, completed }
-    }
+function GiverHeader({
+  section,
+  collapsed,
+  onToggle,
+  showFaction = false,
+}: {
+  section: JournalGiverSection
+  collapsed: boolean
+  onToggle: () => void
+  showFaction?: boolean
+}) {
+  const allDone = section.total > 0 && section.done === section.total
+  const factionName = showFaction && section.giver.faction ? getFaction(section.giver.faction)?.name ?? null : showFaction ? 'Grand Quests' : null
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      className="w-full flex items-center gap-2 rounded px-1 py-1 text-left hover:bg-surface-raised/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+    >
+      <ChevronDown size={12} className={`shrink-0 text-fg-muted transition-transform ${collapsed ? '-rotate-90' : ''}`} />
+      <Icon name={section.giver.icon} size={20} className={`shrink-0 ${allDone ? 'text-fg-muted' : 'text-fg-primary'}`} />
+      <span className={`text-[12px] font-semibold truncate ${allDone ? 'text-fg-secondary' : 'text-fg-bright'}`}>{section.giver.name}</span>
+      <span className="hidden sm:inline text-[10px] text-fg-muted">room {section.giver.roomId}</span>
+      {factionName && <span className="text-[10px] uppercase tracking-wide text-fg-muted truncate">{factionName}</span>}
+      {section.ready > 0 && (
+        <span className="text-[10px] font-bold leading-[16px] px-1.5 rounded-md border border-status-success/50 bg-status-success/15 text-status-success tabular-nums">
+          {section.ready} ready
+        </span>
+      )}
+      <span className={`ml-auto shrink-0 text-[11px] font-bold tabular-nums ${allDone ? 'text-status-success' : 'text-fg-secondary'}`}>
+        {section.done}/{section.total}
+      </span>
+    </button>
+  )
+}
 
-    const groups: FactionGroup[] = []
-    for (const faction of listLiveFactions()) {
-      const givers = listFactionGiverIds(faction.id).map(giverEntry).filter((g) => g.met || g.revealed)
-      if (givers.length === 0) continue
-      const standing = factionStanding(faction.id, quests)
-      groups.push({ id: faction.id, name: faction.name, kind: faction.kind, standing, givers })
-    }
-    const pillar = Object.keys(GIVER_DEFS).filter((id) => GIVER_DEFS[id].faction === null).map(giverEntry).filter((g) => g.met || g.revealed)
-    if (pillar.length > 0) {
-      groups.push({ id: 'grand-quests', name: 'Grand Quests', kind: 'grand', standing: null, givers: pillar })
-    }
-    return groups
-  }, [quests, giversMet, player])
+/**
+ * A faction's heading: fold toggle, name, quests done out of total, the bar,
+ * how many are ready, and the title once every quest is done. Standing is a
+ * count and nothing more, so this is the whole of what a faction shows.
+ */
+function GroupHeader({ group, collapsed, onToggle }: { group: JournalGroup; collapsed: boolean; onToggle: () => void }) {
+  const standing = group.standing
+  const pct = standing && standing.total > 0 ? Math.round((standing.done / standing.total) * 100) : 0
+  const complete = !!standing?.complete
+  const barVar = group.colorToken ? ROOM_COLOR_TOKENS[group.colorToken] ?? null : null
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      className="w-full text-left rounded-md px-1 py-1.5 hover:bg-surface-raised/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+    >
+      <div className="flex items-center gap-2">
+        <ChevronDown size={14} className={`shrink-0 text-fg-muted transition-transform ${collapsed ? '-rotate-90' : ''}`} />
+        <span className="text-sm font-bold uppercase tracking-wide text-fg-bright truncate">{group.name}</span>
+        {group.kind === 'guild' && <span className="text-[10px] uppercase tracking-wide text-fg-muted">guild</span>}
+        {group.ready > 0 && (
+          <span className="text-[10px] font-bold leading-[16px] px-1.5 rounded-md border border-status-success/50 bg-status-success/15 text-status-success tabular-nums">
+            {group.ready} ready
+          </span>
+        )}
+        {collapsed && group.notMet > 0 && (
+          <span className="text-[10px] text-fg-muted">{group.notMet} not met</span>
+        )}
+        <span className="ml-auto shrink-0 flex items-center gap-2">
+          {complete && standing?.title && (
+            <span className="hidden sm:flex items-center gap-1 text-[11px] font-semibold text-resource-gold">
+              <Icon name="trophy" size={12} className="text-resource-gold" />
+              {standing.title}
+            </span>
+          )}
+          {standing && (
+            <span className={`text-xs font-bold tabular-nums ${complete ? 'text-resource-gold' : 'text-fg-secondary'}`}>
+              {standing.done}/{standing.total}
+            </span>
+          )}
+        </span>
+      </div>
+      {standing && (
+        <div className="mt-1.5 ml-6 h-1 overflow-hidden rounded-full bg-surface-panel/60">
+          {/* The bar wears the colour the faction's rooms are titled in — a town's world colour, a guild's own. */}
+          <div
+            className={`h-full rounded-full ${barVar ? '' : 'bg-resource-mp'}`}
+            style={{ width: `${pct}%`, ...(barVar ? { backgroundColor: `var(${barVar})` } : {}) }}
+          />
+        </div>
+      )}
+      {complete && standing?.title && (
+        <div className="sm:hidden mt-1 ml-6 flex items-center gap-1 text-[11px] font-semibold text-resource-gold">
+          <Icon name="trophy" size={12} className="text-resource-gold" />
+          {standing.title}
+        </div>
+      )}
+    </button>
+  )
 }
 
 export default function QuestsPanel({
@@ -412,13 +493,140 @@ export default function QuestsPanel({
   const inventory = useGameStore((s) => s.inventory)
   const quests = useGameStore((s) => s.quests)
   const giversMet = useGameStore((s) => s.giversMet)
-  const requirementContext: RequirementContext = { inventory, killList, player, quests, giversMet }
-  const groups = useFactionGroups(quests, giversMet)
 
-  const activeGroups = groups.filter((g) => g.givers.some((e) => !e.met || e.active.length > 0))
-  const completedGroups = groups
-    .map((g) => ({ ...g, givers: g.givers.filter((e) => e.completed.length > 0) }))
-    .filter((g) => g.givers.length > 0)
+  // Per-device conveniences: folded factions, filter, sort. Loaded after mount
+  // so the server-rendered markup and the first client paint agree.
+  const [prefs, setPrefs] = useState<JournalPrefs>(DEFAULT_PREFS)
+  useEffect(() => {
+    setPrefs(loadJournalPrefs())
+  }, [])
+  const updatePrefs = useCallback((next: JournalPrefs) => {
+    setPrefs(next)
+    saveJournalPrefs(next)
+  }, [])
+
+  const [search, setSearch] = useState('')
+  const [openRows, setOpenRows] = useState<Set<string>>(() => new Set())
+  const toggleRow = (key: string) =>
+    setOpenRows((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  const ctx: RequirementContext = useMemo(
+    () => ({ inventory, killList, player, quests, giversMet }),
+    [inventory, killList, player, quests, giversMet]
+  )
+  const groups = useMemo(() => buildJournal(ctx), [ctx])
+  const view = useMemo(
+    () => applyJournalView(groups, { status: prefs.status, sort: prefs.sort, search }),
+    [groups, prefs.status, prefs.sort, search]
+  )
+
+  const totals = useMemo(() => {
+    const t = { all: 0, active: 0, ready: 0, not_met: 0, done: 0 }
+    for (const g of groups) {
+      t.active += g.active
+      t.ready += g.ready
+      t.not_met += g.notMet
+      t.done += g.done
+      t.all += g.givers.reduce((n, sec) => n + (sec.met ? sec.rows.length : 1), 0)
+    }
+    return t
+  }, [groups])
+
+  // What folds depends on which headings are on: factions when they show,
+  // otherwise the NPCs; a flat list has nothing to fold.
+  const topSections = useMemo(() => sectionsAcrossFactions(view).filter((sec) => sec.met), [view])
+  const allCollapsed = prefs.groupFaction
+    ? view.length > 0 && view.every((g) => isGroupCollapsed(g, prefs))
+    : topSections.length > 0 && topSections.every((sec) => isSectionCollapsed(sec, prefs))
+  const canFold = prefs.groupFaction || prefs.groupNpc
+  const foldAll = (fold: boolean) => {
+    if (prefs.groupFaction) {
+      const ids = groups.map((g) => g.id)
+      updatePrefs({ ...prefs, collapsed: fold ? [...new Set([...prefs.collapsed.filter((id) => id.startsWith('giver:')), ...ids])] : prefs.collapsed.filter((id) => id.startsWith('giver:')), unfolded: fold ? [] : ids })
+      return
+    }
+    const keys = sectionsAcrossFactions(groups).filter((sec) => sec.met).map((sec) => sec.key)
+    updatePrefs({ ...prefs, collapsed: fold ? [...new Set([...prefs.collapsed.filter((id) => !id.startsWith('giver:')), ...keys])] : prefs.collapsed.filter((id) => !id.startsWith('giver:')) })
+  }
+  const showGiverOnRows = !prefs.groupNpc
+  const showFactionOnRows = !prefs.groupFaction && !prefs.groupNpc
+  const showFactionOnGivers = !prefs.groupFaction
+
+  /** A met giver's heading plus rows, folded or not. */
+  const renderSection = (section: JournalGiverSection, indent: boolean) => {
+    const sectionCollapsed = isSectionCollapsed(section, prefs)
+    const live = groups.flatMap((g) => g.givers).find((sec) => sec.key === section.key) ?? section
+    return (
+      <div key={section.key} className="space-y-1">
+        <GiverHeader
+          section={live}
+          collapsed={sectionCollapsed}
+          onToggle={() => updatePrefs(toggleSectionCollapsed(section, prefs))}
+          showFaction={showFactionOnGivers}
+        />
+        {!sectionCollapsed && (
+          <div className={`space-y-1.5 ml-0 ${indent ? 'sm:ml-5' : ''}`}>
+            {section.rows.map((row) => (
+              <QuestRow key={row.key} row={row} open={openRows.has(row.key)} onToggle={() => toggleRow(row.key)} showFaction={showFactionOnRows} />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderUnmet = (section: JournalGiverSection) => (
+    <GiverRow key={section.key} section={section} open={openRows.has(section.key)} onToggle={() => toggleRow(section.key)} />
+  )
+
+  /** The rows of one faction with NPC headings off: one list, re-sorted across the faction. */
+  const renderFlatRows = (sections: JournalGiverSection[], indent: boolean) => (
+    <div className={`space-y-1.5 ml-0 ${indent ? 'sm:ml-6' : ''}`}>
+      {rowsAcrossSections(sections, prefs.sort).map((row) => (
+        <QuestRow key={row.key} row={row} open={openRows.has(row.key)} onToggle={() => toggleRow(row.key)} showGiver={showGiverOnRows} showFaction={showFactionOnRows} />
+      ))}
+      {unmetAcrossSections(sections).map(renderUnmet)}
+    </div>
+  )
+
+  /**
+   * The four layouts of the same view. Faction and NPC headings each switch
+   * off independently; with both off the journal is one sorted list.
+   */
+  const renderJournal = () => {
+    if (prefs.groupFaction) {
+      return view.map((group) => {
+        const collapsed = isGroupCollapsed(group, prefs)
+        return (
+          <section key={group.id} className="space-y-1.5">
+            <GroupHeader
+              group={groups.find((g) => g.id === group.id) ?? group}
+              collapsed={collapsed}
+              onToggle={() => updatePrefs(toggleGroupCollapsed(group, prefs))}
+            />
+            {!collapsed &&
+              (prefs.groupNpc ? (
+                <div className="space-y-2 ml-0 sm:ml-6">
+                  {group.givers.map((section) => (section.met ? renderSection(section, true) : renderUnmet(section)))}
+                </div>
+              ) : (
+                renderFlatRows(group.givers, true)
+              ))}
+          </section>
+        )
+      })
+    }
+    const sections = sectionsAcrossFactions(view)
+    if (prefs.groupNpc) {
+      return <div className="space-y-2">{sections.map((section) => (section.met ? renderSection(section, true) : renderUnmet(section)))}</div>
+    }
+    return renderFlatRows(sections, false)
+  }
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0">
@@ -442,98 +650,142 @@ export default function QuestsPanel({
               onClick={() => setActiveTab(activeTab === tab.id ? 'quests' : tab.id)}
             >
               {tab.label}
+              {tab.id === 'quests' && totals.ready > 0 && (
+                <span className="ml-1 text-[10px] font-bold text-status-success tabular-nums">{totals.ready}</span>
+              )}
             </SubTabButton>
           ))}
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-6">
+      {activeTab === 'quests' && (
+        <div className="flex-shrink-0 border-b border-line-subtle/50 px-4 py-2 space-y-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {STATUS_FILTERS.map((f) => {
+              const count = totals[f.id]
+              const active = prefs.status === f.id
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => updatePrefs({ ...prefs, status: f.id })}
+                  className={`${CHIP} ${active ? CHIP_GROUP_ON : CHIP_IDLE}`}
+                >
+                  <span>{f.label}</span>
+                  {count > 0 && (
+                    <span className={`text-[10px] font-normal tabular-nums ${f.id === 'ready' ? 'text-status-success' : active ? 'text-fg-bright/60' : 'text-fg-secondary/60'}`}>{count}</span>
+                  )}
+                </button>
+              )
+            })}
+            <span className="ml-auto flex items-center gap-1 text-[11px] text-fg-muted" role="group" aria-label="Group by">
+              <span className="hidden sm:inline">Group</span>
+              <button
+                type="button"
+                aria-pressed={prefs.groupFaction}
+                onClick={() => updatePrefs({ ...prefs, groupFaction: !prefs.groupFaction })}
+                className={`${CHIP} ${prefs.groupFaction ? CHIP_SLOT_ON : CHIP_IDLE}`}
+              >
+                Faction
+              </button>
+              <button
+                type="button"
+                aria-pressed={prefs.groupNpc}
+                onClick={() => updatePrefs({ ...prefs, groupNpc: !prefs.groupNpc })}
+                className={`${CHIP} ${prefs.groupNpc ? CHIP_SLOT_ON : CHIP_IDLE}`}
+              >
+                NPC
+              </button>
+            </span>
+            <label className="flex items-center gap-1 text-[11px] text-fg-muted">
+              <span className="hidden sm:inline">Sort</span>
+              <select
+                value={prefs.sort}
+                onChange={(e) => updatePrefs({ ...prefs, sort: e.target.value as SortMode })}
+                className="rounded border border-line-subtle/50 bg-surface-raised px-1.5 py-1 text-[11px] text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+                aria-label="Sort quests"
+              >
+                {SORT_MODES.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="relative flex-1 min-w-0">
+              <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search quests, givers, objectives"
+                aria-label="Search quests"
+                className="w-full rounded border border-line-subtle/50 bg-surface-raised pl-7 pr-2 py-1 text-[12px] text-fg-primary placeholder:text-fg-disabled focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+              />
+            </label>
+            {canFold && (
+              <button
+                type="button"
+                onClick={() => foldAll(!allCollapsed)}
+                className="shrink-0 text-[11px] text-fg-secondary hover:text-fg-bright underline-offset-2 hover:underline"
+              >
+                {allCollapsed ? 'Expand all' : 'Collapse all'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
-        {/* ── Quests tab: by faction, then by giver ── */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-5">
+
+        {/* ── Quests tab: by faction, rows that open ── */}
         {activeTab === 'quests' && (
           isLoadingQuests ? (
             <div className="text-fg-secondary text-sm">Unraveling your quest log...</div>
-          ) : activeGroups.length === 0 ? (
-            <div className="text-fg-secondary text-sm">No active quests. Find someone who needs help.</div>
+          ) : view.length === 0 ? (
+            <div className="text-fg-secondary text-sm">
+              {groups.length === 0
+                ? 'No quests yet. Find someone who needs help.'
+                : search.trim()
+                  ? 'Nothing matches that search.'
+                  : prefs.status === 'ready'
+                    ? 'Nothing is ready to turn in.'
+                    : prefs.status === 'not_met'
+                      ? 'You have met everyone you know of.'
+                      : prefs.status === 'done'
+                        ? 'No completed quests yet.'
+                        : 'No active quests.'}
+            </div>
           ) : (
-            activeGroups.map((group) => (
-              <section key={group.id} className="space-y-3">
-                {group.standing ? (
-                  <FactionHeader name={group.name} kind={group.kind} done={group.standing.done} total={group.standing.total} title={group.standing.title} />
-                ) : (
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-fg-bright">{group.name}</h3>
-                )}
-                {group.givers.map((entry) =>
-                  !entry.met ? (
-                    <NotYetMetCard key={entry.giverId} giver={entry.giver} />
-                  ) : (
-                    [...entry.active]
-                      .sort((a, b) => questOrderIndex(a) - questOrderIndex(b))
-                      .map((questId) => {
-                        const questDef = QUEST_DEFS[questId]
-                        if (!questDef) return null
-                        return <ActiveQuestCard key={questId} questId={questId} questDef={questDef} giver={entry.giver} ctx={requirementContext} />
-                      })
-                  )
-                )}
-              </section>
-            ))
+            renderJournal()
           )
         )}
 
-        {/* ── Completed Quests tab ── */}
-        {activeTab === 'completed-quests' && (
-          <>
-            {isLoadingQuests ? (
-              <div className="text-fg-secondary text-sm">Loading...</div>
-            ) : completedGroups.length === 0 ? (
-              <div className="text-fg-secondary text-sm">No completed quests yet.</div>
-            ) : (
-              completedGroups.map((group) => (
-                <section key={group.id} className="space-y-3">
-                  {group.standing ? (
-                    <FactionHeader name={group.name} kind={group.kind} done={group.standing.done} total={group.standing.total} title={group.standing.title} />
-                  ) : (
-                    <h3 className="text-sm font-bold uppercase tracking-wide text-fg-bright">{group.name}</h3>
-                  )}
-                  {group.givers.flatMap((entry) =>
-                    [...entry.completed]
-                      .sort((a, b) => questOrderIndex(a) - questOrderIndex(b))
-                      .map((questId) => {
-                        const questDef = QUEST_DEFS[questId]
-                        if (!questDef) return null
-                        return <CompletedQuestCard key={questId} questId={questId} questDef={questDef} giver={entry.giver} />
-                      })
-                  )}
-                </section>
-              ))
-            )}
-
-            {!isLoadingQuests && (
-              <div className="mt-6 pt-4 border-t border-line-subtle/50 space-y-3">
-                <button
-                  onClick={onResetQuests}
-                  disabled={isResettingQuests || !isLoggedIn}
-                  className="w-full px-4 py-2 bg-status-error/20 hover:bg-status-error/30 border border-status-error/50 hover:border-status-error/70 text-status-error/80 hover:text-status-error text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isResettingQuests ? 'Resetting...' : 'Reset Quests to Initial State'}
-                </button>
-                <p className="mt-1 text-xs text-fg-muted text-center">
-                  Resets all quests, met givers and chests to initial state
-                </p>
-                <button
-                  onClick={onSkipToChest}
-                  disabled={isResettingQuests || !isLoggedIn}
-                  className="w-full px-4 py-2 bg-resource-gold/20 hover:bg-resource-gold/30 border border-resource-gold/50 hover:border-resource-gold/70 text-resource-gold/80 hover:text-resource-gold text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isResettingQuests ? 'Resetting...' : 'Skip to Chest / Jack Flow'}
-                </button>
-                <p className="mt-1 text-xs text-fg-muted text-center">
-                  Completes Old Man &amp; Young Soldier quests, resets chest
-                </p>
-              </div>
-            )}
-          </>
+        {activeTab === 'quests' && !isLoadingQuests && isLoggedIn && (
+          <div className="mt-8 pt-4 border-t border-line-subtle/50 space-y-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-fg-disabled">Testing</p>
+            <button
+              onClick={onResetQuests}
+              disabled={isResettingQuests}
+              className="w-full px-4 py-2 bg-status-error/20 hover:bg-status-error/30 border border-status-error/50 hover:border-status-error/70 text-status-error/80 hover:text-status-error text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isResettingQuests ? 'Resetting...' : 'Reset Quests to Initial State'}
+            </button>
+            <p className="mt-1 text-xs text-fg-muted text-center">
+              Resets all quests, met givers and chests to initial state
+            </p>
+            <button
+              onClick={onSkipToChest}
+              disabled={isResettingQuests}
+              className="w-full px-4 py-2 bg-resource-gold/20 hover:bg-resource-gold/30 border border-resource-gold/50 hover:border-resource-gold/70 text-resource-gold/80 hover:text-resource-gold text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isResettingQuests ? 'Resetting...' : 'Skip to Chest / Jack Flow'}
+            </button>
+            <p className="mt-1 text-xs text-fg-muted text-center">
+              Completes Old Man &amp; Young Soldier quests, resets chest
+            </p>
+          </div>
         )}
 
         {/* ── Kill List tab ── */}
