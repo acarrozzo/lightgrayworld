@@ -250,12 +250,9 @@ async function unlockSpellTeacher(db, playerId, roomId) {
   const teacher = SPELL_TEACHER_ROOMS[roomId]
   if (!teacher) return null
 
-  if (teacher.requiresCompletedQuest) {
-    const progress = await db.questProgress.findUnique({
-      where: { userId_questId: { userId: playerId, questId: teacher.requiresCompletedQuest } },
-      select: { completed: true },
-    })
-    if (!progress?.completed) return null
+  if (teacher.requiresMembership) {
+    const { isMember } = require('./faction-service')
+    if (!(await isMember(playerId, teacher.requiresMembership, db))) return null
   }
 
   return meetSpellTeacher(db, playerId, teacher)
@@ -273,9 +270,12 @@ async function unlockSpellTeacher(db, playerId, roomId) {
  * @returns {Promise<Array<{ flag: string, message: string, spellTeachers: Record<string, boolean> }>>}
  */
 async function unlockSpellTeachersForQuest(db, playerId, questId) {
+  const { factionByMembershipQuest } = require('../../game-data/factions')
+  const guild = factionByMembershipQuest(questId)
+  if (!guild) return []
   const met = []
   for (const teacher of Object.values(SPELL_TEACHER_ROOMS)) {
-    if (teacher.requiresCompletedQuest !== questId) continue
+    if (teacher.requiresMembership !== guild.id) continue
     const result = await meetSpellTeacher(db, playerId, teacher)
     if (result) met.push(result)
   }

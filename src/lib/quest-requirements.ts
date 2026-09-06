@@ -1,4 +1,6 @@
-import type { InventoryItem, KillEntry, Player } from '@/lib/game-state'
+import type { InventoryItem, KillEntry, Player, QuestProgressRow } from '@/lib/game-state'
+import { getFaction } from '@/lib/game-data/factions'
+import { factionStanding, getGiver } from '@/lib/game-data/quest-registry'
 
 /**
  * Shared client-side evaluation of `quests.json` requirements.
@@ -23,12 +25,19 @@ export type QuestRequirement = {
   enemySlugs?: string[]
   minLevel?: number
   flag?: string
+  factionId?: string
+  factionIds?: string[]
+  giverId?: string
+  questId?: string
 }
 
 export type RequirementContext = {
   inventory: InventoryItem[]
   killList: KillEntry[]
   player: Player | null
+  /** Quest rows, for requirements that read other quests or faction standing. */
+  quests?: QuestProgressRow[]
+  giversMet?: string[]
 }
 
 export type RequirementProgress = {
@@ -84,8 +93,10 @@ export function isTrivialRequirement(req: QuestRequirement): boolean {
 export function getRequirementProgress(
   req: QuestRequirement,
   index: number,
-  { inventory, killList, player }: RequirementContext
+  ctx: RequirementContext
 ): RequirementProgress {
+  const { inventory, killList, player } = ctx
+  const quests = ctx.quests ?? []
   const base = { key: `${req.type}-${index}` }
 
   if (req.type === 'level') {
@@ -202,6 +213,68 @@ export function getRequirementProgress(
       total: 1,
       label: req.displayName ?? humanizeSlug(req.flag ?? ''),
       countable: false,
+    }
+  }
+
+  if (req.type === 'memberOf') {
+    const faction = getFaction(req.factionId ?? '')
+    const membershipQuest = faction?.membershipQuest
+    const met = !!membershipQuest && quests.some((q) => q.questId === membershipQuest && q.completed)
+    return {
+      ...base,
+      key: `member-${req.factionId}-${index}`,
+      met,
+      current: met ? 1 : 0,
+      total: 1,
+      label: `Member of the ${faction?.name ?? humanizeSlug(req.factionId ?? '')}`,
+      countable: false,
+    }
+  }
+
+  if (req.type === 'giverMet') {
+    const met = (ctx.giversMet ?? []).includes(req.giverId ?? '')
+    return {
+      ...base,
+      key: `met-${req.giverId}-${index}`,
+      met,
+      current: met ? 1 : 0,
+      total: 1,
+      label: `Met ${getGiver(req.giverId ?? '')?.spokenName ?? humanizeSlug(req.giverId ?? '')}`,
+      countable: false,
+    }
+  }
+
+  if (req.type === 'questCompleted') {
+    const met = quests.some((q) => q.questId === req.questId && q.completed)
+    return {
+      ...base,
+      key: `quest-${req.questId}-${index}`,
+      met,
+      current: met ? 1 : 0,
+      total: 1,
+      label: req.displayName ?? humanizeSlug(req.questId ?? ''),
+      countable: false,
+    }
+  }
+
+  if (req.type === 'factionsComplete') {
+    // The Pillar's capstones: every quest across the named factions, as one
+    // done/total line. A faction with no quests yet keeps the line unmet.
+    const standings = (req.factionIds ?? [])
+      .map((id) => factionStanding(id, quests))
+      .filter((s): s is NonNullable<typeof s> => !!s)
+    const done = standings.reduce((sum, s) => sum + s.done, 0)
+    const total = standings.reduce((sum, s) => sum + s.total, 0)
+    const met = standings.length > 0 && standings.every((s) => s.complete)
+    const names = standings.map((s) => (s.total === 0 ? `${s.name} (not yet open)` : s.name)).join(', ')
+    return {
+      ...base,
+      key: `factions-${index}`,
+      met,
+      current: Math.min(done, Math.max(total, 1)),
+      total: Math.max(total, 1),
+      label: `Every quest in ${names}`,
+      countable: total > 0,
     }
   }
 

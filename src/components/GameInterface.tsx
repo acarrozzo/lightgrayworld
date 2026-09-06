@@ -201,7 +201,9 @@ export default function GameInterface() {
   }, [])
   const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('roster')
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
-  const [quests, setQuests] = useState<Array<{ id: string; questId: string; progress: number; completed: boolean; data?: { accepted?: boolean } | null }>>([])
+  const quests = useGameStore((s) => s.quests)
+  const setQuests = useGameStore((s) => s.setQuests)
+  const setGiversMet = useGameStore((s) => s.setGiversMet)
   const [isLoadingQuests, setIsLoadingQuests] = useState(false)
   const [isResettingQuests, setIsResettingQuests] = useState(false)
   const [forceFeedFilter, setForceFeedFilter] = useState<'chat' | undefined>(undefined)
@@ -1534,6 +1536,9 @@ export default function GameInterface() {
       if (payload?.data?.quests) {
         setQuests(payload.data.quests)
       }
+      if (payload?.data?.giversMet) {
+        setGiversMet(payload.data.giversMet)
+      }
 
 
       // Update player state if provided in action feedback (e.g., from equip/unequip, quest completion)
@@ -1948,7 +1953,11 @@ export default function GameInterface() {
     let cancelled = false
     fetch('/api/game/quests/progress', { headers: getAuthHeaders() })
       .then((res) => res.json())
-      .then((data) => { if (!cancelled && data.success) setQuests(data.quests || []) })
+      .then((data) => {
+        if (cancelled || !data.success) return
+        setQuests(data.quests || [])
+        setGiversMet(data.giversMet || [])
+      })
       .catch(() => {})
     fetch('/api/player/kill-list', { headers: getAuthHeaders() })
       .then((res) => res.json())
@@ -1970,6 +1979,7 @@ export default function GameInterface() {
         .then((data) => {
           if (!cancelled && data.success) {
             setQuests(data.quests || [])
+            setGiversMet(data.giversMet || [])
           }
         })
         .catch((error) => {
@@ -2012,6 +2022,7 @@ export default function GameInterface() {
         const questData = await questResponse.json()
         if (questData.success) {
           setQuests(questData.quests || [])
+          setGiversMet(questData.giversMet || [])
         }
       } else {
         console.error('Failed to reset quests:', data.error)
@@ -2043,6 +2054,7 @@ export default function GameInterface() {
         const questData = await questResponse.json()
         if (questData.success) {
           setQuests(questData.quests || [])
+          setGiversMet(questData.giversMet || [])
         }
       } else {
         console.error('Failed to skip to chest:', data.error)
@@ -3067,11 +3079,9 @@ export default function GameInterface() {
       case 'quests':
         return (
           <QuestsPanel
-            quests={quests}
             isLoadingQuests={isLoadingQuests}
             isResettingQuests={isResettingQuests}
             isLoggedIn={isLoggedIn}
-            inventory={inventory}
             onResetQuests={handleResetQuests}
             onSkipToChest={handleSkipToChest}
             onClose={goToExplore}

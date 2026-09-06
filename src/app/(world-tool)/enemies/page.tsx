@@ -122,12 +122,13 @@ export default async function EnemiesPage() {
   const rows: EnemyRow[] = ENEMIES.map((e, i) => {
     const { main = [], always = [], firstKill = [] } = e.drops
     const drops: EnemyRow['drops'] = [
-      ...firstKill.map((slug) => ({ name: resolveName(slug), chance: 100, tag: 'first-kill' as const })),
+      ...firstKill.map((slug) => ({ slug, name: resolveName(slug), chance: 100, tag: 'first-kill' as const })),
       ...always.map((a) => {
         const { slug, qtyLabel } = normalizeAlways(a)
-        return { name: `${resolveName(slug)}${qtyLabel}`, chance: 100, tag: 'always' as const }
+        return { slug, name: `${resolveName(slug)}${qtyLabel}`, chance: 100, tag: 'always' as const }
       }),
       ...consolidateMain(main).map((d) => ({
+        slug: d.itemSlug,
         name: `${resolveName(d.itemSlug)}${d.qtyLabel}`,
         chance: Math.round(d.chance * 100),
       })),

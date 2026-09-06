@@ -19,7 +19,7 @@ async function handleCompleteQuest(request: AuthenticatedRequest) {
     }
 
     const user = request.user
-    const result = await completeQuest(user.id, questId) as { success: boolean; error?: string; player?: any; inventory?: any; quests?: any; levelUp?: any }
+    const result = await completeQuest(user.id, questId) as { success: boolean; error?: string; player?: any; inventory?: any; quests?: any; giversMet?: string[]; levelUp?: any; standing?: any }
 
     if (!result.success) {
       return NextResponse.json(
@@ -37,6 +37,9 @@ async function handleCompleteQuest(request: AuthenticatedRequest) {
       success: true,
       player: result.player,
       inventory: result.inventory,
+      quests: result.quests,
+      giversMet: result.giversMet,
+      standing: result.standing,
     })
   } catch (error) {
     console.error('Complete quest error:', error)

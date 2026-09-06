@@ -1,6 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useUrlEnum, useUrlString } from '@/components/world-tool/useUrlState'
+import { Field, ColumnHeading, Dash } from '@/components/world-tool/ui'
+import { EntityLink, roomHref, useAnchorTarget } from '@/components/world-tool/EntityLink'
 
 export type SideData = {
   title: string | null
@@ -56,8 +59,14 @@ const FILTERS: { key: RoomStatus | 'all'; label: string }[] = [
 ]
 
 export default function RoomDescCompare({ rows }: { rows: CompareRow[] }) {
-  const [status, setStatus] = useState<RoomStatus | 'all'>('all')
-  const [query, setQuery] = useState('')
+  const [status, setStatus] = useUrlEnum<RoomStatus | 'all'>(
+    'status',
+    ['all', 'same', 'differs', 'not-ported', 'new-only'] as const,
+    'all'
+  )
+  const [query, setQuery] = useUrlString('q', '')
+
+  useAnchorTarget()
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: rows.length }
@@ -130,10 +139,19 @@ export default function RoomDescCompare({ rows }: { rows: CompareRow[] }) {
 function RoomCompare({ row }: { row: CompareRow }) {
   const { legacy, current, diff } = row
   return (
-    <section className="overflow-hidden rounded-lg border border-line-subtle bg-surface-panel/30">
+    <section
+      data-anchor={row.roomId}
+      className="overflow-hidden rounded-lg border border-line-subtle bg-surface-panel/30"
+    >
       {/* Room header */}
       <div className="flex flex-wrap items-center gap-2 border-b border-line-subtle bg-surface-panel/70 px-3 py-2">
-        <span className="font-mono text-sm font-bold text-fg-bright">#{row.roomId}</span>
+        <EntityLink
+          href={roomHref(row.roomId)}
+          title={`Room ${row.roomId} in the World Atlas`}
+          className="font-mono text-sm font-bold"
+        >
+          #{row.roomId}
+        </EntityLink>
         <span className="text-sm text-fg-secondary">
           {legacy?.title ?? current?.title ?? '—'}
         </span>
@@ -204,19 +222,19 @@ function Side({
         </span>
       </div>
 
-      <Field label="Title" changed={diff.title}>
-        <span className="font-semibold text-fg-bright">{side.title ?? <Missing />}</span>
+      <Field label="Title" labelWidth="5.5rem" changed={diff.title}>
+        <span className="font-semibold text-fg-bright">{side.title ?? <Dash />}</span>
       </Field>
 
-      <Field label="Subtitle" changed={diff.subtitle}>
+      <Field label="Subtitle" labelWidth="5.5rem" changed={diff.subtitle}>
         {side.subtitle ? (
           <span className="italic text-fg-secondary">{side.subtitle}</span>
         ) : (
-          <Missing />
+          <Dash />
         )}
       </Field>
 
-      <Field label="Description" changed={diff.description}>
+      <Field label="Description" labelWidth="5.5rem" changed={diff.description}>
         {side.description ? (
           side.description.split('\n\n').map((p, i) => (
             <p key={i} className={i > 0 ? 'mt-1.5 text-fg-primary' : 'text-fg-primary'}>
@@ -224,13 +242,13 @@ function Side({
             </p>
           ))
         ) : (
-          <Missing />
+          <Dash />
         )}
       </Field>
 
-      <Field label="Actions" changed={diff.actions}>
+      <Field label="Actions" labelWidth="5.5rem" changed={diff.actions}>
         {side.actions.length === 0 ? (
-          <Missing />
+          <Dash />
         ) : (
           <div className="flex flex-wrap gap-1">
             {side.actions.map((a) => (
@@ -247,7 +265,7 @@ function Side({
       </Field>
 
       {side.links.length > 0 && (
-        <Field label="Panels">
+        <Field label="Panels" labelWidth="5.5rem">
           <div className="flex flex-wrap gap-1">
             {side.links.map((l) => (
               <span
@@ -261,9 +279,9 @@ function Side({
         </Field>
       )}
 
-      <Field label="Exits" changed={diff.exits}>
+      <Field label="Exits" labelWidth="5.5rem" changed={diff.exits}>
         {side.exits.length === 0 ? (
-          <Missing />
+          <Dash />
         ) : (
           <div className="flex flex-wrap gap-1">
             {side.exits.map((e) => (
@@ -281,39 +299,8 @@ function Side({
   )
 }
 
-function ColumnHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-[10px] font-bold uppercase tracking-widest text-fg-muted">{children}</h3>
-  )
-}
 
-function Field({
-  label,
-  changed,
-  children,
-}: {
-  label: string
-  changed?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div className="grid grid-cols-[5.5rem_1fr] gap-2 text-sm">
-      <span
-        className={
-          'text-xs font-semibold uppercase tracking-wide ' +
-          (changed ? 'text-status-warning' : 'text-fg-muted')
-        }
-      >
-        {label}
-      </span>
-      <div className={changed ? 'border-l-2 border-status-warning/50 pl-2' : ''}>{children}</div>
-    </div>
-  )
-}
 
-function Missing() {
-  return <span className="text-fg-disabled">—</span>
-}
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (

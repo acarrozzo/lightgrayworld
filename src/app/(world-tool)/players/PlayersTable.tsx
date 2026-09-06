@@ -1,8 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useUrlEnum, useUrlString } from '@/components/world-tool/useUrlState'
 import Link from 'next/link'
 import Icon from '@/components/Icon'
+import { Tag, SortableTh } from '@/components/world-tool/ui'
 
 export type PlayerRow = {
   id: string
@@ -108,16 +110,21 @@ function fmtRelative(ms: number) {
 }
 
 export default function PlayersTable({ rows }: { rows: PlayerRow[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>('level')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
-  const [query, setQuery] = useState('')
+  const [sortKey, setSortKey] = useUrlEnum<SortKey>(
+    'sort',
+    ['name', 'level', 'hpMax', 'mpMax', 'kills', 'deaths', 'physicalTraining',
+     'mentalTraining', 'completedQuests', 'xp', 'clicks', 'lastLogin'] as const,
+    'level'
+  )
+  const [sortDir, setSortDir] = useUrlEnum<'asc' | 'desc'>('dir', ['asc', 'desc'] as const, 'desc')
+  const [query, setQuery] = useUrlString('q', '')
   const [open, setOpen] = useState<Set<string>>(new Set())
 
   const getVal = SORTERS[sortKey]
 
   function clickHeader(key: SortKey) {
     if (key === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
     } else {
       setSortKey(key)
       setSortDir(key === 'name' ? 'asc' : 'desc')
@@ -177,17 +184,14 @@ export default function PlayersTable({ rows }: { rows: PlayerRow[] }) {
             <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
               <th className="w-8 px-3 py-2" />
               {COLUMNS.map((col) => (
-                <th
+                <SortableTh
                   key={col.key}
-                  onClick={() => clickHeader(col.key)}
-                  className={
-                    'cursor-pointer select-none px-3 py-2 font-medium hover:text-fg-primary ' +
-                    (col.align === 'right' ? 'text-right' : 'text-left')
-                  }
-                >
-                  {col.label}
-                  <SortArrow active={sortKey === col.key} dir={sortDir} />
-                </th>
+                  label={col.label}
+                  align={col.align}
+                  active={sortKey === col.key}
+                  dir={sortDir}
+                  onSort={() => clickHeader(col.key)}
+                />
               ))}
             </tr>
           </thead>
@@ -324,18 +328,4 @@ function DetailGrid({ r }: { r: PlayerRow }) {
   )
 }
 
-function SortArrow({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
-  return (
-    <span className={`ml-1 text-[10px] ${active ? 'text-fg-primary' : 'text-fg-disabled'}`}>
-      {active ? (dir === 'asc' ? '▲' : '▼') : '↕'}
-    </span>
-  )
-}
 
-function Tag({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <span className={`rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${className}`}>
-      {children}
-    </span>
-  )
-}

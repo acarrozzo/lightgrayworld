@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react'
 import { CheckCircle, MessageCircle } from 'lucide-react'
-import QUESTS from '@/lib/game-data/quests.json'
-import { useGameStore, type KillEntry } from '@/lib/game-state'
+import { QUESTS, questOrderIndex } from '@/lib/game-data/quest-registry'
+import { useGameStore, type KillEntry, type QuestProgressRow } from '@/lib/game-state'
 import {
   areRequirementsMet,
   getVisibleRequirementProgress,
@@ -15,49 +15,29 @@ import QuestTypeTag, { type QuestType } from './QuestTypeTag'
 import Icon from './Icon'
 
 type QuestDef = {
-  number: number
+  giverId: string
   questType: QuestType
   level: number
   title: string
   objective: string
-  giver: { npcId: string; roomId: string; name: string; icon: string }
   requirements?: QuestRequirement[]
   [key: string]: unknown
-}
-
-type QuestProgress = {
-  id: string
-  questId: string
-  progress: number
-  completed: boolean
-  data?: { accepted?: boolean } | null
 }
 
 type QuestState = 'talk' | 'in_progress' | 'turn_in' | 'completed'
 
 /**
- * Sentinel questId used when talking to an NPC that has no unlocked quests yet
- * (e.g. the Young Soldier before you've spoken to the Old Man). The backend
- * talk handler ignores the questId in this state and returns its intro/redirect
- * dialogue, so any non-real id works as long as it's used consistently here.
+ * Sentinel questId used when talking to a giver the player has not met yet.
+ * The talk handler ignores the questId in this state: the first talk is the
+ * meeting, which records it, opens the giver's quests, and shows the greeting.
  */
 export const PRE_QUEST_TALK_ID = '__pretalk__'
-
-/**
- * The intro "talk to the NPC" quests (`questType: 'intro'`). They carry a
- * trivially-met `level` requirement (so their data shape matches every other
- * quest), but on the card they collapse to a single "Talk to {npc}" button that
- * completes the quest in one click — the secondary Talk + Turn In buttons are
- * hidden. Read from the quest's type rather than a hand-maintained list, so
- * adding a quest giver is a data change only.
- */
-const isIntroQuest = (def: QuestDef) => def.questType === 'intro'
 
 interface NpcQuestCardProps {
   npcName: string
   npcIcon: string
   questIds: string[]
-  quests: QuestProgress[]
+  quests: QuestProgressRow[]
   killList: KillEntry[]
   onTurnIn: (questId: string) => void
   onTalk: (questId: string) => void
@@ -75,7 +55,7 @@ function unmetSummary(questDef: QuestDef, ctx: RequirementContext): string {
     .join(', ')
 }
 
-function resolveQuestState(questDef: QuestDef, progress: QuestProgress, ctx: RequirementContext): QuestState {
+function resolveQuestState(questDef: QuestDef, progress: QuestProgressRow, ctx: RequirementContext): QuestState {
   if (progress.completed) return 'completed'
   const reqs = questDef.requirements ?? []
   if (reqs.length === 0) return 'talk'
@@ -94,47 +74,37 @@ export default function NpcQuestCard({
 }: NpcQuestCardProps) {
   const inventory = useGameStore((s) => s.inventory)
   const player = useGameStore((s) => s.player)
+  const giversMet = useGameStore((s) => s.giversMet)
 
   const visibleQuests = useMemo(() => {
-    const ctx: RequirementContext = { inventory, killList, player }
-    const pretalkRow = (): { questDef: QuestDef; progress: QuestProgress; state: QuestState } => ({
-      questDef: { title: `Talk to ${npcName}`, questType: 'intro', number: 0, level: 1, objective: '', giver: { npcId: '', roomId: '', name: npcName, icon: npcIcon } },
+    const ctx: RequirementContext = { inventory, killList, player, quests, giversMet }
+    const pretalkRow = (): { questDef: QuestDef; progress: QuestProgressRow; state: QuestState } => ({
+      questDef: { giverId: '', title: `Talk to ${npcName}`, questType: 'side', level: 1, objective: '' },
       progress: { id: PRE_QUEST_TALK_ID, questId: PRE_QUEST_TALK_ID, progress: 0, completed: false },
       state: 'talk',
     })
 
-    const result: Array<{ questDef: QuestDef; progress: QuestProgress; state: QuestState }> = []
+    const result: Array<{ questDef: QuestDef; progress: QuestProgressRow; state: QuestState }> = []
 
     for (const questId of questIds) {
-      const questDef = QUESTS[questId as keyof typeof QUESTS] as QuestDef | undefined
+      const questDef = (QUESTS as Record<string, QuestDef>)[questId]
       if (!questDef) continue
 
       const progress = quests.find((q) => q.questId === questId)
-      if (!progress) continue // hidden if locked (no QuestProgress record)
+      if (!progress) continue // not open yet: no row
 
       result.push({ questDef, progress, state: resolveQuestState(questDef, progress, ctx) })
     }
 
-    // No unlocked quests yet (e.g. the Young Soldier before you've talked to the
-    // Old Man). Show a single Talk row through the normal display — the backend
-    // returns the appropriate "talk to the Old Man first" dialogue.
+    // Nothing open — the giver has not been met (or has nothing yet). One Talk
+    // row keeps them talkable; the server answers with the greeting or the
+    // giver's locked line.
     if (result.length === 0) return [pretalkRow()]
 
-    // A finished intro "Talk to {npc}" quest has nothing left to say — its whole
-    // job was to open the chain, and the follow-ups it started are already on the
-    // card. Drop it so the row stays about work the player can still do.
-    const active = result.filter(
-      ({ questDef, state }) => !(state === 'completed' && isIntroQuest(questDef))
-    )
-    // Everything the NPC had was that intro (its follow-ups haven't unlocked
-    // yet): keep the NPC talkable rather than letting the card vanish.
-    if (active.length === 0) return [pretalkRow()]
+    result.sort((a, b) => questOrderIndex(a.progress.questId) - questOrderIndex(b.progress.questId))
 
-    // Sort by quest number (authored order within each NPC's chain)
-    active.sort((a, b) => a.questDef.number - b.questDef.number)
-
-    return active
-  }, [questIds, quests, inventory, killList, player, npcName, npcIcon])
+    return result
+  }, [questIds, quests, giversMet, inventory, killList, player, npcName])
 
   if (visibleQuests.length === 0) return null
 
@@ -157,19 +127,17 @@ export default function NpcQuestCard({
           const isInProgress = state === 'in_progress'
           const isCompleted = state === 'completed'
           const canTurnIn = isTurnIn
-          // Intro "talk to NPC" quests: collapse to a single button that completes
-          // in one click, hiding the secondary Talk + Turn In buttons.
-          const isTalkComplete = !isCompleted && isIntroQuest(questDef)
+          const isPretalk = progress.questId === PRE_QUEST_TALK_ID
 
           return (
             <div key={progress.questId} className="flex items-center gap-3 px-3 py-2.5">
               {/* Type label */}
-              {showTypeLabels && <QuestTypeTag type={questDef.questType} />}
+              {showTypeLabels && !isPretalk && <QuestTypeTag type={questDef.questType} />}
 
               {/* Quest info */}
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-fg-bright truncate">{questDef.title}</div>
-                {!isCompleted && (
+                {!isCompleted && !isPretalk && (
                   <QuestRequirements requirements={questDef.requirements} variant="compact" className="mt-1" />
                 )}
                 {isTurnIn && (
@@ -180,23 +148,9 @@ export default function NpcQuestCard({
               {/* CTA */}
               {isCompleted ? (
                 <CheckCircle size={18} className="shrink-0 text-status-success" />
-              ) : isTalkComplete ? (
-                // Intro quests: single button that completes in one click.
-                // Disabled when quest requirements aren't met yet (e.g. chest1 flag).
-                <button
-                  disabled={isLoading || state === 'in_progress'}
-                  onClick={() => onTurnIn(progress.questId)}
-                  className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    state === 'in_progress'
-                      ? 'bg-surface-hover/60 text-fg-muted cursor-not-allowed'
-                      : 'fill-accent hover:bg-accent-hover'
-                  } ${isLoading ? 'opacity-60 cursor-wait' : ''}`}
-                >
-                  <MessageCircle size={16} />
-                  {isLoading ? '...' : `Talk to ${npcName}`}
-                </button>
               ) : isTalk ? (
-                // No-requirement quests: Talk only — completion happens via modal button
+                // Meeting the giver, or a quest with nothing to bring: Talk only —
+                // completion happens via the modal button.
                 <button
                   disabled={isLoading}
                   onClick={() => onTalk(progress.questId)}
@@ -223,7 +177,7 @@ export default function NpcQuestCard({
                   <button
                     disabled={!canTurnIn || isLoading}
                     onClick={() => canTurnIn && onTurnIn(progress.questId)}
-                    title={isInProgress ? `Still needed: ${unmetSummary(questDef, { inventory, killList, player })}` : undefined}
+                    title={isInProgress ? `Still needed: ${unmetSummary(questDef, { inventory, killList, player, quests, giversMet })}` : undefined}
                     className={`px-3 py-2 rounded-md text-sm font-semibold transition-colors ${
                       canTurnIn
                         ? 'fill-status-success'

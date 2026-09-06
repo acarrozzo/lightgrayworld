@@ -4,6 +4,10 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuth } from '@/lib/middleware'
 import { COMMON_ERRORS } from '@/lib/error-handling'
+const { earnedTitles, getQuestDef } = require('@/lib/game-data/quest-registry') as {
+  earnedTitles: (rows: { questId: string; completed: boolean }[]) => string[]
+  getQuestDef: (questId: string) => unknown
+}
 
 /**
  * Standings for the Players tab's Ranks board.
@@ -21,6 +25,8 @@ export interface RankRow {
   kills: number
   deaths: number
   completedQuests: number
+  /** Faction titles earned: one per faction at max standing. */
+  titles: string[]
   chestsOpened: number
   clicks: number
   uIcon: string | null
@@ -30,7 +36,7 @@ export interface RankRow {
 
 async function handleGetRanks() {
   try {
-    const [users, killAgg, questAgg] = await Promise.all([
+    const [users, killAgg, completedRows] = await Promise.all([
       prisma.user.findMany({
         select: {
           id: true,
@@ -47,15 +53,23 @@ async function handleGetRanks() {
         },
       }),
       prisma.killList.groupBy({ by: ['userId'], _sum: { kills: true } }),
-      prisma.questProgress.groupBy({
-        by: ['userId'],
+      prisma.questProgress.findMany({
         where: { completed: true },
-        _count: { _all: true },
+        select: { userId: true, questId: true, completed: true },
       }),
     ])
 
+    // Only quests that exist count: rows from retired ids (the old intro
+    // quests) stay in the table but are not achievements.
+    const completedByUser = new Map<string, { questId: string; completed: boolean }[]>()
+    for (const row of completedRows) {
+      if (!getQuestDef(row.questId)) continue
+      const list = completedByUser.get(row.userId) ?? []
+      list.push(row)
+      completedByUser.set(row.userId, list)
+    }
+
     const killsByUser = new Map(killAgg.map((k) => [k.userId, k._sum.kills ?? 0]))
-    const questsByUser = new Map(questAgg.map((q) => [q.userId, q._count._all]))
 
     const rows: RankRow[] = users.map((u) => ({
       id: u.id,
@@ -64,7 +78,8 @@ async function handleGetRanks() {
       xp: u.xp,
       kills: killsByUser.get(u.id) ?? 0,
       deaths: u.deaths,
-      completedQuests: questsByUser.get(u.id) ?? 0,
+      completedQuests: (completedByUser.get(u.id) ?? []).length,
+      titles: earnedTitles(completedByUser.get(u.id) ?? []),
       chestsOpened: [
         u.chest1, u.chest2, u.chest3, u.chest4, u.chest5,
         u.chest6, u.chest7, u.chest8, u.chest9, u.chest10,

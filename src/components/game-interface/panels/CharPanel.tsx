@@ -1,6 +1,7 @@
 'use client'
 
 import { Player, useGameStore, InventoryItem } from '@/lib/game-state'
+import { earnedTitles } from '@/lib/game-data/quest-registry'
 import React, { useMemo, useState } from 'react'
 import AvatarSelectionModal from '@/components/AvatarSelectionModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
@@ -55,6 +56,8 @@ function renderStatMods(metadata: any): React.ReactNode {
 
 export default function CharPanel({ player, onAction, onSwitchToInventory, onOpenBook, onOpenStatAllocation, onOpenTraining, onClose }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
+  const questRows = useGameStore((state) => state.quests)
+  const titles = earnedTitles(questRows)
   const setPlayer = useGameStore((state) => state.setPlayer)
   const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
   const isLoggedIn = useGameStore((state) => state.isLoggedIn)
@@ -217,6 +220,11 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                   <div className="space-y-0 text-left">
                     <div className="text-xs uppercase tracking-[0.3em] text-accent-hover/80">lvl {player.level}</div>
                     <h3 className="text-2xl font-semibold text-fg-bright">{player.username}</h3>
+                    {titles.length > 0 && (
+                      <p className="text-xs text-resource-gold" title="Faction titles: every quest for that faction is done">
+                        {titles.join(' · ')}
+                      </p>
+                    )}
                     <p className="text-sm text-fg-secondary">Room: {player.currentRoom || '???'}</p>
                   </div>
 

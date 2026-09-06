@@ -1935,29 +1935,27 @@ class RoomState {
       return this.createErrorResult('accept_quest', 'Player not found in this room')
     }
 
-    const { questId, choiceId } = action.data || {}
+    const { questId } = action.data || {}
     if (!questId) {
       return this.createErrorResult('accept_quest', 'Quest ID is required')
     }
 
     this.touchActivity()
 
-    const { playerAcceptQuest, getQuestDef } = require('./services/quest-service')
+    const { playerAcceptQuest, getQuestDef, getGiver } = require('./services/quest-service')
 
-    // Load quest definition early to validate room context
     const questDef = getQuestDef(questId)
     if (!questDef) {
       return this.createErrorResult('accept_quest', 'Quest not found')
     }
 
-    // Validate that player is in the quest giver's room
-    if (!questDef.giver || !questDef.giver.roomId) {
+    // The player must be standing with the giver.
+    const giver = getGiver(questDef.giverId)
+    if (!giver || !giver.roomId) {
       return this.createErrorResult('accept_quest', 'Quest giver information is missing')
     }
-
-    if (this.roomId !== questDef.giver.roomId) {
-      const npcName = this.getNpcFriendlyName(questDef.giver.npcId || 'the quest giver', questDef.giver)
-      return this.createErrorResult('accept_quest', `You need to speak to ${npcName} to do that.`)
+    if (this.roomId !== giver.roomId) {
+      return this.createErrorResult('accept_quest', `You need to speak to ${giver.spokenName || giver.name} to do that.`)
     }
 
     // playerAcceptQuest: sets data.accepted=true, immediately completes no-requirement quests
@@ -1977,6 +1975,7 @@ class RoomState {
     const data = {
       roomId: this.roomId,
       quests: result.quests,
+      giversMet: result.giversMet,
       ...(isCompleted ? { player: result.player, inventory: result.inventory } : {}),
     }
 
@@ -2011,22 +2010,20 @@ class RoomState {
 
     this.touchActivity()
 
-    const { completeQuest, getQuestDef } = require('./services/quest-service')
-    
-    // Load quest definition early to validate room context
+    const { completeQuest, getQuestDef, getGiver } = require('./services/quest-service')
+
     const questDef = getQuestDef(questId)
     if (!questDef) {
       return this.createErrorResult('complete_quest', 'Quest not found')
     }
 
-    // Validate that player is in the quest giver's room
-    if (!questDef.giver || !questDef.giver.roomId) {
+    // A turn-in happens with the giver, never from the journal.
+    const giver = getGiver(questDef.giverId)
+    if (!giver || !giver.roomId) {
       return this.createErrorResult('complete_quest', 'Quest giver information is missing')
     }
-
-    if (this.roomId !== questDef.giver.roomId) {
-      const npcName = this.getNpcFriendlyName(questDef.giver.npcId || 'the quest giver', questDef.giver)
-      return this.createErrorResult('complete_quest', `You need to speak to ${npcName} to do that.`)
+    if (this.roomId !== giver.roomId) {
+      return this.createErrorResult('complete_quest', `You need to speak to ${giver.spokenName || giver.name} to do that.`)
     }
 
     const result = await completeQuest(playerId, questId)
@@ -2035,14 +2032,11 @@ class RoomState {
       return this.createErrorResult('complete_quest', result.error || 'Failed to complete quest')
     }
 
-    const questTitle = questDef ? questDef.title : questId
-    // An intro quest is the walk to a quest giver, not work done for them: no
-    // "Quest Complete!" banner, no rewards block, and the feed says who you met.
-    const isIntro = questDef.questType === 'intro'
+    const questTitle = questDef.title || questId
 
     // Build rewards message. Item rewards are enriched with their template name
     // (and icon) so the completion modal and feedback text can display them.
-    const rewards = questDef?.rewards || []
+    const rewards = questDef.rewards || []
     const enrichedRewards = []
     const rewardMessages = []
     for (const reward of rewards) {
@@ -2064,62 +2058,64 @@ class RoomState {
     }
     const rewardText = rewardMessages.length > 0 ? ` You received: ${rewardMessages.join(', ')}.` : ''
 
-    // Build quest chain message if new quests were started
-    let questChainData = null
-    let toastMessage = null
-    if (result.startedQuestIds && result.startedQuestIds.length > 0) {
-      const { getQuestDef } = require('./services/quest-service')
-      
-      // Map quest IDs to quest definitions and format as "(number) title"
-      const questEntries = result.startedQuestIds
-        .map(questId => {
-          const def = getQuestDef(questId)
-          return def ? { number: def.number, title: def.title } : null
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.number - b.number)
-        .map(q => `(${q.number}) ${q.title}`)
-      
-      const formattedMessage = `New quests: ${questEntries.join(', ')}.`
-      
-      questChainData = {
-        startedQuestIds: result.startedQuestIds,
-        message: formattedMessage,
-      }
-      toastMessage = formattedMessage
+    // Standing with the giver's faction, as the feed and the popup tell it:
+    // the count after this turn-in, the title when it is the last one, and
+    // membership when this was a guild's initiation.
+    const standing = result.standing || null
+    const standingLines = []
+    if (result.becameMember && standing) {
+      standingLines.push(`You are now a member of the ${standing.name}.`)
     }
+    if (standing) {
+      standingLines.push(
+        standing.complete
+          ? `${standing.name} standing: ${standing.done}/${standing.total}. You are now the ${standing.title}!`
+          : `${standing.name} standing: ${standing.done}/${standing.total}.`
+      )
+    }
+    const standingText = standingLines.length > 0 ? ` ${standingLines.join(' ')}` : ''
 
-    // Build new quest entries for the rewards panel
+    // The giver's next quests, opened by this completion.
     const newQuestTitles = (result.startedQuestIds || [])
       .map(id => {
         const def = getQuestDef(id)
-        return def ? { title: `(${def.number}) ${def.title}`, objective: def.objective || null } : null
+        return def ? { title: def.title, objective: def.objective || null } : null
       })
       .filter(Boolean)
+
+    let questChainData = null
+    let toastMessage = null
+    if (newQuestTitles.length > 0) {
+      const formattedMessage = `New quests: ${newQuestTitles.map(q => q.title).join(', ')}.`
+      questChainData = { startedQuestIds: result.startedQuestIds, message: formattedMessage }
+      toastMessage = formattedMessage
+    }
 
     const data = {
       roomId: this.roomId,
       quests: result.quests,
+      giversMet: result.giversMet,
       inventory: result.inventory,
       player: result.player,
       showModal: true,
       modalContent: {
         type: 'icon',
-        icon: questDef.giver?.icon || 'scroll',
+        icon: giver.icon || 'scroll',
         iconColor: 'yellow-400',
-        title: questDef.giver?.name || 'Quest Complete',
-        ...(isIntro ? {} : { header: 'Quest Complete!' }),
+        title: giver.name || 'Quest Complete',
+        header: 'Quest Complete!',
         message: questDef.completionDialog || null,
       },
       questComplete: {
-        questTitle: isIntro ? null : questDef.title,
+        questTitle: questDef.title,
         rewards: enrichedRewards,
         levelUp: result.levelUp?.leveled ? result.levelUp : null,
         newQuestTitles,
+        standing,
+        becameMember: !!result.becameMember,
       },
     }
 
-    // Add quest chain data if quests were started
     if (questChainData) {
       data.questChain = questChainData
       data.toast = toastMessage
@@ -2131,9 +2127,7 @@ class RoomState {
         payload: this.createFeedbackPayload(
           'complete_quest',
           'success',
-          isIntro
-            ? require('./services/quest-service').describeIntroCompletion(questDef)
-            : `Quest completed: ${questTitle}.${rewardText}`,
+          `Quest completed: ${questTitle}.${rewardText}${standingText}`,
           data
         ),
       },
@@ -2195,19 +2189,6 @@ class RoomState {
    * @param {string} npcId - The NPC ID
    * @returns {string} Friendly NPC name
    */
-  /**
-   * Display name for a quest giver, for "you need to speak to X" messages.
-   *
-   * Reads `giver.name` from quests.json — the same field the NPC card renders —
-   * so a new quest giver never has to be registered in a second place. The
-   * npcId is only ever the last-resort fallback.
-   */
-  getNpcFriendlyName(npcId, giver = null) {
-    if (giver?.name) return giver.name
-    if (npcId === 'old_man') return 'the Old Man'
-    return npcId
-  }
-
   touchActivity() {
     this.lastActionAt = Date.now()
   }

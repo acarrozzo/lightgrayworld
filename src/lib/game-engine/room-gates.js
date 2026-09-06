@@ -120,24 +120,14 @@ async function captainQuestDone(playerId) {
  * quest in both cases.
  */
 async function guildMember(playerId) {
-  const done = await prisma.questProgress.findFirst({
-    where: {
-      userId: playerId,
-      completed: true,
-      questId: { in: ['quest_warriorsguild_000', 'quest_wizardsguild_000'] },
-    },
-    select: { id: true },
-  })
-  return !!done
+  const { isMemberOfAny } = require('./services/faction-service')
+  return isMemberOfAny(playerId, ['warriors-guild', 'wizards-guild'])
 }
 
 /** Has the player joined the Mining Guild — i.e. put Red Beard down? */
 async function miningGuildMember(playerId) {
-  const done = await prisma.questProgress.findUnique({
-    where: { userId_questId: { userId: playerId, questId: 'quest_miningguild_000' } },
-    select: { completed: true },
-  })
-  return !!done?.completed
+  const { isMember } = require('./services/faction-service')
+  return isMember(playerId, 'mining-guild')
 }
 
 /**
@@ -146,11 +136,8 @@ async function miningGuildMember(playerId) {
  * fallen tree (519), and opens the Ranger Shop.
  */
 async function rangerMember(playerId) {
-  const done = await prisma.questProgress.findUnique({
-    where: { userId_questId: { userId: playerId, questId: 'quest_rangersguild_000' } },
-    select: { completed: true },
-  })
-  return !!done?.completed
+  const { isMember } = require('./services/faction-service')
+  return isMember(playerId, 'rangers-guild')
 }
 
 /**

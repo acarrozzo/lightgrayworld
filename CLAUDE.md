@@ -94,7 +94,7 @@ Before changing a system, name its authoritative owner and decide what reconnect
 - `src/lib/game-engine/room-gates.js`, `lever-state.js`, `search-reveal-state.js`: access and discovery logic.
 - `src/lib/game-data/enemies.js`: enemy definitions and drops.
 - `src/lib/game-data/room-enemies.js`: room spawn/wave rules.
-- `src/lib/game-data/quests.json`: quest definitions; validate with `npm run validate-quests`.
+- `src/lib/game-data/quests.json`, `quest-givers.json`, `factions.js`, `quest-registry.js`: quests, the NPCs who give them (how each is revealed, met, and what they say), and the factions they count toward. Standing with a faction is derived — its quests done out of its total, a title at max — never stored; guild membership is the faction's `membershipQuest` turned in, asked through `services/faction-service.js`. Validate with `npm run validate-quests`.
 - `src/lib/game-data/crafting-recipes.js`: shared client/server recipe definitions.
 - `src/lib/game-data/world-map.js`, `teleport-destinations.js`: map sheets, the world region grid, and the fast-travel network. Shared by the server (arrival discoveries, teleport gating and MP cost) and the client (compass, Map view, World grid, Fast travel).
 - `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/`: durable schema and authored world/item data.

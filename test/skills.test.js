@@ -257,9 +257,9 @@ test('every teacher room names a real teacher in the ladder, and the guilds sit 
   }
   // The Warrior's Guild teaches only after its initiation; the Ranger Skills
   // room is already behind the guild's ladder, so it teaches on entry.
-  assert.equal(skills.SKILL_TEACHER_ROOMS['226'].requiresCompletedQuest, 'quest_warriorsguild_000')
+  assert.equal(skills.SKILL_TEACHER_ROOMS['226'].requiresMembership, 'warriors-guild')
   assert.equal(skills.SKILL_TEACHER_ROOMS['515d'].flag, 'rangerSkillFlag')
-  assert.equal(skills.SKILL_TEACHER_ROOMS['515d'].requiresCompletedQuest, undefined)
+  assert.equal(skills.SKILL_TEACHER_ROOMS['515d'].requiresMembership, undefined)
 })
 
 test("the Ranger's Guild raises Ranged and Aim to 25, Dodge to 10, and opens the upgrades at 20", () => {

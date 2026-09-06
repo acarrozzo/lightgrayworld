@@ -9,6 +9,7 @@ import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
 import ItemDropdownButton from './ItemDropdownButton'
 import Icon from './Icon'
 import NpcQuestCard from './NpcQuestCard'
+import { getFaction } from '@/lib/game-data/factions'
 import ActionFlyout from './ActionFlyout'
 import { useActionFlyout } from '@/hooks/useActionFlyout'
 import { BASIC_ACTION_NAMES } from './BasicActionButtons'
@@ -203,14 +204,14 @@ export default function RoomDisplay({
     )
   }
 
-  // Actions can declare `requiresCompletedQuest` to stay hidden until the player
-  // has finished that quest — both guilds use it so only the recruiter shows
+  // Actions can declare `requiresMembership` to stay hidden until the player
+  // has joined that guild — both guilds use it so only the recruiter shows
   // until you have joined. Presentation only; the server gates the action too.
-  const roomActions = getRoomActions(room.roomId).filter(
-    (a) =>
-      !a.requiresCompletedQuest ||
-      quests.some((q) => q.questId === a.requiresCompletedQuest && q.completed)
-  )
+  const roomActions = getRoomActions(room.roomId).filter((a) => {
+    if (!a.requiresMembership) return true
+    const membershipQuest = getFaction(a.requiresMembership)?.membershipQuest
+    return !!membershipQuest && quests.some((q) => q.questId === membershipQuest && q.completed)
+  })
 
   const handleAction = async (action: string) => {
     if (!onAction || isPerformingAction) return

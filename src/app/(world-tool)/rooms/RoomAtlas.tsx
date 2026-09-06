@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
+import { useUrlEnum, useUrlString, useUrlFlag } from '@/components/world-tool/useUrlState'
 import Icon from '@/components/Icon'
 import { roomColor } from '@/lib/theme/room-colors'
+import { ToneChip, Section, Empty } from '@/components/world-tool/ui'
+import { EntityLink, enemyHref, itemHref, roomDescHref } from '@/components/world-tool/EntityLink'
 import { Flame, Hammer, Search, Skull, Coins, Users, Zap, Lock, Eye, X } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -323,7 +326,36 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
     ) as Record<MapId, Map<string, Placed>>
   }, [nodes, nodeById])
 
-  const [activeMap, setActiveMap] = useState<MapId>('overworld')
+  // Sheet, selection and filters live in the query string, so any view of the
+  // atlas is a link: `/rooms?room=225` opens the Wizard's Guild on its own
+  // sheet, which is what every cross-link from the other pages targets.
+  const [activeMap, setActiveMapRaw] = useUrlEnum<MapId>('map', MAP_ORDER, 'overworld')
+  const [selectedId, setSelectedIdRaw] = useUrlString('room', '')
+  const [query, setQuery] = useUrlString('q', '')
+  const [safe, setSafe] = useUrlEnum<'all' | 'safe' | 'danger'>(
+    'safe',
+    ['all', 'safe', 'danger'] as const,
+    'all'
+  )
+  const [hasEnemies, setHasEnemies] = useUrlFlag('enemies')
+  const [gated, setGated] = useUrlFlag('gated')
+
+  const setActiveMap = setActiveMapRaw
+  const setSelectedId = useCallback(
+    (id: string | null) => setSelectedIdRaw(id ?? ''),
+    [setSelectedIdRaw]
+  )
+
+  // A room named in the URL decides the sheet, so a link into a room the
+  // reader has never opened lands on the right map rather than the default one.
+  const linkedRoom = selectedId ? nodeById.get(selectedId) : undefined
+  useEffect(() => {
+    if (linkedRoom && linkedRoom.map !== activeMap) setActiveMapRaw(linkedRoom.map)
+    // Only when the linked room changes: re-running on activeMap would fight
+    // the reader switching sheets with a room still selected.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedRoom?.roomId])
+
   const activeGroup = groupOf(activeMap)
   // Room counts per sheet, for the tab badges. Counted once rather than
   // re-filtering all 319 nodes inside each of the fifteen tab renders.
@@ -333,9 +365,25 @@ export default function RoomAtlas({ nodes, edges }: { nodes: RoomNode[]; edges: 
     return m
   }, [nodes])
   const sheetCount = (m: MapId) => countByMap.get(m) ?? 0
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoverId, setHoverId] = useState<string | null>(null)
-  const [filters, setFilters] = useState({ query: '', safe: 'all' as 'all' | 'safe' | 'danger', hasEnemies: false, gated: false })
+
+  // The rest of the component still reads a single `filters` object; only its
+  // storage moved to the URL.
+  const filters = useMemo(
+    () => ({ query, safe, hasEnemies, gated }),
+    [query, safe, hasEnemies, gated]
+  )
+  // The Toolbar still sets the whole object at once; this fans that out to the
+  // individual URL params so only the key that actually changed is written.
+  const setFilters = useCallback(
+    (f: typeof filters) => {
+      if (f.query !== query) setQuery(f.query)
+      if (f.safe !== safe) setSafe(f.safe)
+      if (f.hasEnemies !== hasEnemies) setHasEnemies(f.hasEnemies)
+      if (f.gated !== gated) setGated(f.gated)
+    },
+    [query, safe, hasEnemies, gated, setQuery, setSafe, setHasEnemies, setGated]
+  )
 
   const layout = layouts[activeMap]
   const view0 = useMemo(() => {
@@ -843,7 +891,16 @@ function RoomDetail({
     <div>
       {/* Sticky close bar */}
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line-subtle bg-surface-panel/95 px-4 py-2 backdrop-blur">
-        <span className="font-mono text-xs font-semibold text-fg-secondary">Room #{room.roomId}</span>
+        <span className="font-mono text-xs font-semibold text-fg-secondary">
+          Room #{room.roomId}
+          <EntityLink
+            href={roomDescHref(room.roomId)}
+            title="Compare with the original game"
+            className="ml-2 font-sans font-normal"
+          >
+            compare
+          </EntityLink>
+        </span>
         <button
           onClick={onClose}
           aria-label="Close room details"
@@ -904,10 +961,10 @@ function RoomDetail({
                   <span className="font-mono text-fg-secondary">#{e.to}</span>
                 )}
                 <span className="flex items-center gap-1">
-                  {e.hidden && <Tag color="var(--mood-arcane)" icon={Eye}>hidden</Tag>}
-                  {e.lever && <Tag color="var(--mood-treasure)" icon={Zap}>lever</Tag>}
-                  {e.gated && !e.hidden && !e.lever && <Tag color="var(--status-error)" icon={Lock}>gated</Tag>}
-                  {e.oneWay && <Tag color="var(--fg-secondary)">one-way</Tag>}
+                  {e.hidden && <ToneChip color="var(--mood-arcane)" icon={Eye}>hidden</ToneChip>}
+                  {e.lever && <ToneChip color="var(--mood-treasure)" icon={Zap}>lever</ToneChip>}
+                  {e.gated && !e.hidden && !e.lever && <ToneChip color="var(--status-error)" icon={Lock}>gated</ToneChip>}
+                  {e.oneWay && <ToneChip color="var(--fg-secondary)">one-way</ToneChip>}
                 </span>
               </li>
             ))}
@@ -935,7 +992,9 @@ function RoomDetail({
               {room.enemies.enemies.map((en) => (
                 <li key={en.slug} className="flex items-center gap-2 text-sm">
                   {en.icon && <Icon name={en.icon} size={18} />}
-                  <span className="text-fg-bright">{en.name}</span>
+                  <EntityLink href={enemyHref(en.slug)} title={`${en.name} in the Bestiary`}>
+                    {en.name}
+                  </EntityLink>
                   {en.level != null && <span className="text-xs text-fg-muted">Lv {en.level}</span>}
                   {en.chancePct != null && <span className="ml-auto text-xs font-semibold text-resource-gold">{en.chancePct}%</span>}
                 </li>
@@ -979,7 +1038,9 @@ function RoomDetail({
             {room.items.map((it) => (
               <li key={it.slug} className="flex items-center gap-2 text-sm">
                 <Icon name={it.icon} size={18} />
-                <span className="text-fg-bright">{it.name}</span>
+                <EntityLink href={itemHref(it.slug)} title={`${it.name} in the Item Compendium`}>
+                  {it.name}
+                </EntityLink>
                 {it.quantity > 1 && <span className="text-xs text-fg-muted">×{it.quantity}</span>}
                 {it.autoRespawn && <span className="ml-auto text-[10px] font-semibold uppercase text-status-success">respawns</span>}
               </li>
@@ -1029,20 +1090,6 @@ function RoomDetail({
   )
 }
 
-function Section({ icon: IconC, title, children }: { icon: typeof Zap; title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h3 className="mb-2 flex items-center gap-1.5 border-b border-line-subtle pb-1 text-xs font-bold uppercase tracking-wide text-fg-secondary">
-        <IconC className="h-3.5 w-3.5" />
-        {title}
-      </h3>
-      {children}
-    </section>
-  )
-}
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs italic text-fg-disabled">{children}</p>
-}
 function Badge({ color, text }: { color: string; text: string }) {
   return (
     <span className="rounded px-1.5 py-0.5 font-mono font-semibold text-fg-primary" style={{ backgroundColor: color }}>
@@ -1055,17 +1102,6 @@ function FeatureChip({ icon: IconC, label }: { icon: typeof Flame; label: string
     <span className="flex items-center gap-1 rounded border border-line-subtle fill-surface-raised px-1.5 py-0.5">
       <IconC className="h-3 w-3" />
       {label}
-    </span>
-  )
-}
-function Tag({ color, icon: IconC, children }: { color: string; icon?: typeof Lock; children: React.ReactNode }) {
-  return (
-    <span
-      className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
-      style={{ backgroundColor: `${color}22`, color }}
-    >
-      {IconC && <IconC className="h-2.5 w-2.5" />}
-      {children}
     </span>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Home, Skull, Sword, ScrollText, Map, Users, Palette, Sparkles, Swords, Columns2, type LucideIcon } from 'lucide-react'
+import { Home, Skull, Sword, ScrollText, Map, Users, Palette, Sparkles, Swords, Columns2, Hammer, Store, Package, Waypoints, type LucideIcon } from 'lucide-react'
 
 // Top navigation bar shared across the Light Gray World Tool pages.
 // To add a new World Tool page, add an entry here and pass its `key` as the
@@ -15,10 +15,14 @@ const NAV_ITEMS: { key: string; href: string; label: string; icon: LucideIcon }[
   // short, and the icon plus the URL already say what it is.
   { key: 'items', href: '/items', label: 'Items', icon: Sword },
   { key: 'quests', href: '/quests', label: 'Quests', icon: ScrollText },
+  { key: 'crafting', href: '/crafting', label: 'Crafting', icon: Hammer },
+  { key: 'shops', href: '/shops', label: 'Shops', icon: Store },
+  { key: 'chests', href: '/chests', label: 'Chests', icon: Package },
   { key: 'skills', href: '/skills', label: 'Skills', icon: Swords },
   { key: 'spells', href: '/spells', label: 'Spells', icon: Sparkles },
   { key: 'rooms', href: '/rooms', label: 'World Atlas', icon: Map },
   { key: 'room-desc', href: '/room-desc', label: 'Room Desc', icon: Columns2 },
+  { key: 'teleport', href: '/teleport', label: 'Teleport', icon: Waypoints },
   { key: 'players', href: '/players', label: 'Players', icon: Users },
   { key: 'themes', href: '/themes', label: 'Themes', icon: Palette },
 ]

@@ -101,7 +101,7 @@ type QtyShape = { qty?: number; min?: number; max?: number }
 type EnemyDropEntry = { itemSlug: string; chance: number } & QtyShape
 type AlwaysDrop = string | ({ itemSlug: string } & QtyShape)
 type EnemyDrops = { main?: EnemyDropEntry[]; always?: AlwaysDrop[]; firstKill?: string[] }
-type EnemySource = { name: string; drops: EnemyDrops }
+type EnemySource = { slug: string; name: string; drops: EnemyDrops }
 
 // --- Quest / chest / search source shapes -----------------------------------
 type QuestReward = { type: string; itemSlug?: string; quantity?: number }
@@ -191,21 +191,21 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
   for (const [key, { roomId, quantity }] of roomQty) {
     const slug = key.split('|')[0]
     const name = roomNames.get(roomId) ?? `Room ${roomId}`
-    ensure(slug).rooms.push({ label: quantity > 1 ? `${name} ×${quantity}` : name })
+    ensure(slug).rooms.push({ roomId, label: quantity > 1 ? `${name} ×${quantity}` : name })
   }
 
   // Enemies — firstKill, always, then weighted main rolls (as a percentage).
   for (const enemy of ENEMIES) {
     const { main = [], always = [], firstKill = [] } = enemy.drops ?? {}
     for (const slug of firstKill) {
-      ensure(slug).enemies.push({ name: enemy.name, label: 'first-kill' })
+      ensure(slug).enemies.push({ slug: enemy.slug, name: enemy.name, label: 'first-kill' })
     }
     for (const a of always) {
       const { slug, qtyLabel } = normalizeAlways(a)
-      ensure(slug).enemies.push({ name: enemy.name, label: `100%${qtyLabel}` })
+      ensure(slug).enemies.push({ slug: enemy.slug, name: enemy.name, label: `100%${qtyLabel}` })
     }
     for (const d of consolidateMain(main)) {
-      ensure(d.itemSlug).enemies.push({ name: enemy.name, label: `${Math.round(d.chance * 100)}%${d.qtyLabel}` })
+      ensure(d.itemSlug).enemies.push({ slug: enemy.slug, name: enemy.name, label: `${Math.round(d.chance * 100)}%${d.qtyLabel}` })
     }
   }
 
@@ -257,7 +257,7 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
       const slug = entry.effect?.itemSlug
       if (!slug || entry.effect?.type !== 'grantItem' || seen.has(slug)) continue
       seen.add(slug)
-      ensure(slug).searches.push({ label: name })
+      ensure(slug).searches.push({ roomId, label: name })
     }
   }
 
@@ -293,7 +293,7 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
       else nodes.set(key, { itemSlug: grant.itemSlug, suffix, count: 1 })
     }
     for (const { itemSlug, suffix, count } of nodes.values()) {
-      ensure(itemSlug).gathers.push({ label: `${name}${count > 1 ? ` ×${count}` : ''}${suffix}` })
+      ensure(itemSlug).gathers.push({ roomId, label: `${name}${count > 1 ? ` ×${count}` : ''}${suffix}` })
     }
   }
 

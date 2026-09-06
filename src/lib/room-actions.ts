@@ -1,5 +1,5 @@
-import QUESTS from './game-data/quests.json'
 import { getCraftingStation } from './game-data/crafting-recipes'
+import { listGiverQuestIds } from './game-data/quest-registry'
 
 export interface RoomAction {
   action: string
@@ -8,29 +8,25 @@ export interface RoomAction {
   className?: string
   questIds?: string[]
   /**
-   * Hide this action until the player has completed the named quest.
+   * Hide this action until the player is a member of the named guild
+   * (factions.js).
    *
-   * Presentation only — the server gates the action itself (see the guild NPCs'
-   * `preCheck` in room-action-handlers.js), so hiding the button is never what
-   * makes it safe. It exists so an NPC who has nothing to say yet does not
-   * advertise themselves: both guilds show only their recruiter until you have
-   * actually joined.
+   * Presentation only — the server gates the action itself (the guild NPCs'
+   * `meetRequirements`, the lair teleports' member check), so hiding the
+   * button is never what makes it safe. It exists so an NPC who has nothing
+   * to say yet does not advertise themselves: both guilds show only their
+   * recruiter until you have actually joined.
    */
-  requiresCompletedQuest?: string
+  requiresMembership?: string
 }
 
 /**
- * All quest IDs given by an NPC, ordered by their `number`. Derived from
- * quests.json (the single source of truth) so any quest with the matching
- * `giver.npcId` — including ones started later via onComplete effects —
- * surfaces in the NPC's room panel automatically, with no parallel list to
- * keep in sync here.
+ * A quest giver's quest ids in their authored order, from quest-givers.json —
+ * the single source of truth — so a quest added to a giver surfaces in the
+ * room panel with no parallel list to keep in sync here.
  */
-export function questIdsForNpc(npcId: string): string[] {
-  return Object.entries(QUESTS as Record<string, { giver?: { npcId?: string }; number?: number }>)
-    .filter(([, def]) => def.giver?.npcId === npcId)
-    .sort((a, b) => (a[1].number ?? 0) - (b[1].number ?? 0))
-    .map(([id]) => id)
+export function questIdsForNpc(giverId: string): string[] {
+  return listGiverQuestIds(giverId)
 }
 
 /**
@@ -126,6 +122,11 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '019': [
     { action: 'teleport to grassy field', label: 'Teleport to Grassy Field', icon: 'world', className: 'fill-hue-green' },
     { action: 'shovel sand', label: 'Shovel Sand', icon: 'shovel', className: 'fill-hue-gold' },
+  ],
+  '029': [
+    // The Grand Quest Pillar: the original room 029's four regional "Savior"
+    // grand quests, now a quest giver in the Destroyed Academy.
+    { action: 'examine grand pillar', label: 'Grand Quest Pillar', icon: 'pillar3', className: 'fill-hue-gold', questIds: questIdsForNpc('grand_quest_pillar') },
   ],
   '028h': [
     { action: 'search', label: 'Search', icon: 'eye', className: 'fill-hue-gold' },
@@ -249,21 +250,21 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '225': [
     { action: 'talk to wizard recruiter', label: "Wizard's Guild Recruiter", icon: 'npc-wizard', className: 'fill-mood-arcane', questIds: questIdsForNpc('wizards_guild_recruiter') },
-    { action: 'talk to wizard morty', label: 'Wizard Morty', icon: 'npc-wizard2', className: 'fill-mood-arcane', questIds: questIdsForNpc('wizard_morty'), requiresCompletedQuest: 'quest_wizardsguild_000' },
+    { action: 'talk to wizard morty', label: 'Wizard Morty', icon: 'npc-wizard2', className: 'fill-mood-arcane', questIds: questIdsForNpc('wizard_morty'), requiresMembership: 'wizards-guild' },
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'fill-mood-treasure' },
     { action: 'grab pack', label: "Grab Wizard's Pack", icon: 'npc-wizard', className: 'fill-mood-arcane' },
     { action: 'rest at wizard fire', label: "Rest at Wizard's Fire", icon: 'heal', className: 'fill-hue-blue' },
-    { action: 'teleport to kobold lair', label: 'Teleport to Kobold Lair', icon: 'world', className: 'fill-accent', requiresCompletedQuest: 'quest_wizardsguild_000' },
+    { action: 'teleport to kobold lair', label: 'Teleport to Kobold Lair', icon: 'world', className: 'fill-accent', requiresMembership: 'wizards-guild' },
   ],
   '226': [
     { action: 'talk to warrior recruiter', label: "Warrior's Guild Recruiter", icon: 'npc-warrior', className: 'fill-hue-blue', questIds: questIdsForNpc('warriors_guild_recruiter') },
-    { action: 'talk to warrior pete', label: 'Warrior Pete', icon: 'npc-warrior2', className: 'fill-hue-blue', questIds: questIdsForNpc('warrior_pete'), requiresCompletedQuest: 'quest_warriorsguild_000' },
+    { action: 'talk to warrior pete', label: 'Warrior Pete', icon: 'npc-warrior2', className: 'fill-hue-blue', questIds: questIdsForNpc('warrior_pete'), requiresMembership: 'warriors-guild' },
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'fill-mood-treasure' },
     { action: 'grab pack', label: "Grab Warrior's Pack", icon: 'npc-warrior', className: 'fill-hue-blue' },
     { action: 'rest at warrior fire', label: "Rest at Warrior's Fire", icon: 'heal', className: 'fill-hue-blue' },
-    { action: 'teleport to ogre lair', label: 'Teleport to Ogre Lair', icon: 'world', className: 'fill-accent', requiresCompletedQuest: 'quest_warriorsguild_000' },
+    { action: 'teleport to ogre lair', label: 'Teleport to Ogre Lair', icon: 'world', className: 'fill-accent', requiresMembership: 'warriors-guild' },
   ],
   '227': [
     { action: 'view shop', label: 'View Shop', icon: 'sword1', className: 'fill-mood-treasure' },
@@ -312,7 +313,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '308': [
     { action: 'talk to mining recruiter', label: 'Mining Guild Recruiter', icon: 'npc-miner2', className: 'fill-hue-gold', questIds: questIdsForNpc('mining_guild_recruiter') },
-    { action: 'talk to guild leader', label: 'Guild Leader', icon: 'npc-miner', className: 'fill-hue-gold', questIds: questIdsForNpc('mining_guild_leader'), requiresCompletedQuest: 'quest_miningguild_000' },
+    { action: 'talk to guild leader', label: 'Guild Leader', icon: 'npc-miner', className: 'fill-hue-gold', questIds: questIdsForNpc('mining_guild_leader'), requiresMembership: 'mining-guild' },
     { action: 'view shop', label: 'Supply Shop', icon: 'shop', className: 'fill-mood-treasure' },
     { action: 'grab pack', label: 'Grab Mining Pack', icon: 'inv', className: 'fill-hue-blue' },
     { action: 'rest at the forge', label: 'Rest at the Forge', icon: 'fire', className: 'fill-hue-green' },

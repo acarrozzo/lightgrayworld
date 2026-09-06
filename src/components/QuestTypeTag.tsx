@@ -1,33 +1,30 @@
 'use client'
 
 /**
- * The three kinds of quest in quests.json.
+ * The two kinds of quest in quests.json.
  *
- * - `main`  — the giver's story quest; one active per NPC at a time.
+ * - `main`  — the giver's story quest.
  * - `side`  — optional work from the same giver; never blocks anything.
- * - `intro` — "go and talk to this person". Pays nothing; finishing it is what
- *             opens the giver's main and side quests. Exists to walk the player
- *             somewhere and to carry the giver's first lines of dialog.
+ *
+ * Meeting a giver used to be a third kind ("intro"); it is now the giver's
+ * `greeting` and a GiverMet row, not a quest.
  */
-export type QuestType = 'main' | 'side' | 'intro'
+export type QuestType = 'main' | 'side'
 
-const LABELS: Record<QuestType, string> = { main: 'Main', side: 'Side', intro: 'Intro' }
+const LABELS: Record<QuestType, string> = { main: 'Main', side: 'Side' }
 
-// Gold for main and blue for side are the established pair; intro sits below
-// both in a quiet gray so it reads as a stepping stone rather than a goal.
+// Gold for main and blue for side are the established pair.
 const FILLED: Record<QuestType, string> = {
   main: 'bg-resource-gold/20 text-resource-gold',
   side: 'bg-resource-mp/20 text-resource-mp',
-  intro: 'bg-surface-hover/70 text-fg-muted',
 }
 const OUTLINED: Record<QuestType, string> = {
   main: 'border-resource-gold text-resource-gold',
   side: 'border-accent text-accent-hover',
-  intro: 'border-line-subtle text-fg-muted',
 }
 
 export function isQuestType(value: unknown): value is QuestType {
-  return value === 'main' || value === 'side' || value === 'intro'
+  return value === 'main' || value === 'side'
 }
 
 interface QuestTypeTagProps {

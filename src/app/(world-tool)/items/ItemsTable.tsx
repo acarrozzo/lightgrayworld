@@ -1,7 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useUrlEnum, useUrlString, useUrlFlag } from '@/components/world-tool/useUrlState'
 import Icon from '@/components/Icon'
+import { Tag, SortableTh } from '@/components/world-tool/ui'
+import { EntityLink, enemyHref, roomHref, useAnchorTarget } from '@/components/world-tool/EntityLink'
 
 export type ItemRow = {
   order: number
@@ -21,12 +24,13 @@ export type ItemRow = {
   canDrop: boolean
   equipable: boolean // weapon or armor
   sources: {
-    rooms: { label: string }[] // e.g. "Sand Crab Nest" or "Room 027 ×2"
-    enemies: { name: string; label: string }[] // e.g. { name: "Rat", label: "25%" }
+    // `roomId` / `slug` carry the link target; `label` is only ever display text.
+    rooms: { roomId: string; label: string }[] // e.g. "Sand Crab Nest" or "Room 027 ×2"
+    enemies: { slug: string; name: string; label: string }[] // e.g. { name: "Rat", label: "25%" }
     quests: { label: string }[] // quest title, e.g. "Rat Problem ×5"
-    chests: { label: string }[] // chest name, e.g. "Gold Chest ×3"
-    searches: { label: string }[] // room name searched, e.g. "Cabin Basement"
-    gathers: { label: string }[] // gathered resource, e.g. "Beach ×5 · 5m · shovel"
+    chests: { roomId?: string; label: string }[] // chest name, e.g. "Gold Chest ×3"
+    searches: { roomId: string; label: string }[] // room name searched, e.g. "Cabin Basement"
+    gathers: { roomId: string; label: string }[] // gathered resource, e.g. "Beach ×5 · 5m · shovel"
   }
 }
 
@@ -85,9 +89,10 @@ export default function ItemsTable({
   rows: ItemRow[]
   groups: string[]
 }) {
-  const [tab, setTab] = useState<string>('All')
-  const [grouped, setGrouped] = useState<boolean>(true)
-  const [hideUnavailable, setHideUnavailable] = useState<boolean>(false)
+  // Every control is in the query string, so a filtered compendium is a link.
+  const [tab, setTab] = useUrlString('tab', 'All')
+  const [grouped, setGrouped] = useUrlFlag('grouped', true)
+  const [hideUnavailable, setHideUnavailable] = useUrlFlag('hideUnavailable')
 
   // Whether any unavailable items exist at all — hide the toggle if not.
   const hasUnavailable = useMemo(() => rows.some(isUnavailable), [rows])
@@ -98,8 +103,14 @@ export default function ItemsTable({
     const hasWeapons = groups.some((g) => WEAPON_GROUPS.includes(g))
     return ['All', ...(hasWeapons ? ['All Weapons'] : []), ...groups]
   }, [groups])
-  const [sortKey, setSortKey] = useState<SortKey>('source')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [sortKey, setSortKey] = useUrlEnum<SortKey>(
+    'sort',
+    ['source', 'value', 'str', 'dex', 'mag', 'def'] as const,
+    'source'
+  )
+  const [sortDir, setSortDir] = useUrlEnum<'asc' | 'desc'>('dir', ['asc', 'desc'] as const, 'asc')
+
+  useAnchorTarget()
 
   const getVal = SORTERS[sortKey]
 
@@ -240,22 +251,21 @@ export default function ItemsTable({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
-              <th
-                onClick={() => clickHeader('source')}
-                className="cursor-pointer select-none px-3 py-2 font-medium hover:text-fg-primary"
-              >
-                Item
-                <SortArrow active={sortKey === 'source'} dir={sortDir} />
-              </th>
+              <SortableTh
+                label="Item"
+                active={sortKey === 'source'}
+                dir={sortDir}
+                onSort={() => clickHeader('source')}
+              />
               {COLUMNS.map((col) => (
-                <th
+                <SortableTh
                   key={col.key}
-                  onClick={() => clickHeader(col.key)}
-                  className="cursor-pointer select-none px-3 py-2 text-right font-medium hover:text-fg-primary"
-                >
-                  {col.label}
-                  <SortArrow active={sortKey === col.key} dir={sortDir} />
-                </th>
+                  label={col.label}
+                  align="right"
+                  active={sortKey === col.key}
+                  dir={sortDir}
+                  onSort={() => clickHeader(col.key)}
+                />
               ))}
               <th className="px-3 py-2 font-medium">Flags</th>
               <th className="px-3 py-2 font-medium">Source</th>
@@ -301,7 +311,7 @@ function ItemTr({ r }: { r: ItemRow }) {
   // Dim the whole row when an equipable item has no known world source.
   const dim = isUnavailable(r)
   return (
-    <tr className={`border-t border-line-subtle odd:bg-surface-panel/30 ${dim ? 'opacity-50' : ''}`}>
+    <tr data-anchor={r.slug} className={`border-t border-line-subtle odd:bg-surface-panel/30 ${dim ? 'opacity-50' : ''}`}>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           <ItemIcon icon={r.icon} />
@@ -328,6 +338,7 @@ function ItemCard({ r }: { r: ItemRow }) {
   const dim = isUnavailable(r)
   return (
     <div
+      data-anchor={r.slug}
       className={`rounded-lg border border-line-subtle bg-surface-panel/30 px-3 py-2.5 text-sm ${
         dim ? 'opacity-50' : ''
       }`}
@@ -377,7 +388,13 @@ function statCell(value: number, key: 'str' | 'dex' | 'mag' | 'def') {
 
 // A labelled row of source chips ("Drops", "Found in", "Quest", …). Renders
 // nothing when the list is empty.
-function SourceGroup({ label, items }: { label: string; items: { label: string }[] }) {
+function SourceGroup({
+  label,
+  items,
+}: {
+  label: string
+  items: { roomId?: string; label: string }[]
+}) {
   if (items.length === 0) return null
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -386,7 +403,13 @@ function SourceGroup({ label, items }: { label: string; items: { label: string }
       </span>
       {items.map((it, i) => (
         <span key={i} className="text-fg-primary">
-          {it.label}
+          {it.roomId ? (
+            <EntityLink href={roomHref(it.roomId)} title={`Room ${it.roomId} in the World Atlas`}>
+              {it.label}
+            </EntityLink>
+          ) : (
+            it.label
+          )}
         </span>
       ))}
     </div>
@@ -415,7 +438,10 @@ function SourceCell({ r }: { r: ItemRow }) {
           </span>
           {enemies.map((e, i) => (
             <span key={i} className="text-fg-primary">
-              {e.name} <span className="text-fg-muted">{e.label}</span>
+              <EntityLink href={enemyHref(e.slug)} title={`${e.name} in the Bestiary`}>
+                {e.name}
+              </EntityLink>{' '}
+              <span className="text-fg-muted">{e.label}</span>
             </span>
           ))}
         </div>
@@ -446,18 +472,4 @@ function ItemIcon({ icon }: { icon: string | null }) {
   return <Icon name={icon} size={20} />
 }
 
-function SortArrow({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
-  return (
-    <span className={`ml-1 text-[10px] ${active ? 'text-fg-primary' : 'text-fg-disabled'}`}>
-      {active ? (dir === 'asc' ? '▲' : '▼') : '↕'}
-    </span>
-  )
-}
 
-function Tag({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded border border-line-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fg-muted">
-      {children}
-    </span>
-  )
-}

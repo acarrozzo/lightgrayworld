@@ -99,7 +99,7 @@ const SKILL_TEACHERS = {
  * ported yet, so their flags stay false and their tiers show as "find a
  * teacher".
  *
- * @type {Record<string, { flag: string, message: string, requiresCompletedQuest?: string }>}
+ * @type {Record<string, { flag: string, message: string, requiresMembership?: string }>}
  */
 const SKILL_TEACHER_ROOMS = {
   '007': {
@@ -120,7 +120,7 @@ const SKILL_TEACHER_ROOMS = {
   },
   '226': {
     flag: 'warriorSkillFlag',
-    requiresCompletedQuest: 'quest_warriorsguild_000',
+    requiresMembership: 'warriors-guild',
     message: "You can now learn new skills from the Warrior's Guild!",
   },
   '515d': {

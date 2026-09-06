@@ -82,22 +82,9 @@ export async function POST(request: NextRequest) {
       include: { equipment: true }
     })
 
-    // Seed quest_oldman_000 for new players
-    try {
-      const { randomUUID } = require('crypto')
-      await prisma.questProgress.create({
-        data: {
-          id: randomUUID(),
-          userId: user.id,
-          questId: 'quest_oldman_000',
-          progress: 0,
-          completed: false,
-        },
-      })
-    } catch (error) {
-      console.error('Failed to seed quest_oldman_000 for new user:', error)
-      // Don't fail registration if quest seeding fails
-    }
+    // No quest row is seeded: the Old Man is revealed to everyone from the
+    // start (quest-givers.json `revealedBy: always`), and meeting him is the
+    // first talk in his cabin.
 
     try {
       await createWorldFeedEvent({

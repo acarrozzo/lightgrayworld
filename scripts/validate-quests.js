@@ -2,23 +2,27 @@
 /**
  * Quest data integrity check.
  *
- * Quests reference items, enemies, and other quests by slug/id. A typo in any
- * of these fails silently at runtime — the quest just becomes uncompletable or
- * never starts. This script cross-checks every reference in quests.json against
- * its source of truth and exits non-zero on any dangling reference, so the bug
- * is caught at author time instead of by a stuck player.
+ * Quests, givers and factions reference each other, items, enemies, rooms and
+ * regions by id. A typo in any of these fails silently at runtime — the quest
+ * never opens, the giver never reveals, the gate never passes. This script
+ * cross-checks every reference in quests.json, quest-givers.json and
+ * factions.js against its source of truth and exits non-zero on any dangling
+ * one, so the bug is caught at author time instead of by a stuck player.
  *
  * Sources (all static — no database needed):
  *   - item slugs   : prisma/seed.ts  (every `slug: '...'` literal)
  *   - enemy slugs  : src/lib/game-data/enemies.js (ENEMIES[].slug)
+ *   - room ids     : prisma/seed.ts  (every `roomId: '...'` literal)
+ *   - region ids   : src/lib/game-data/world-map.js (ALL_REGIONS[].id)
  *   - quest ids    : keys of src/lib/game-data/quests.json
- *   - room triggers: src/lib/game-engine/quest-room-triggers.js
+ *   - giver ids    : keys of src/lib/game-data/quest-givers.json
+ *   - faction ids  : src/lib/game-data/factions.js
  *
- * It also checks that every quest can actually start. A quest opens in one of
- * three ways — another quest's startQuest effect, arriving in a room listed in
- * QUEST_ROOM_TRIGGERS, or the registration seed — and one that has none of them
- * is dead content: its giver only ever shows idle dialog and the chain behind
- * it never appears. Six Rocky Flats and Blue Ocean intros shipped that way.
+ * It also checks the shape that makes the system work: every quest belongs to
+ * exactly one giver's list, every `after` points at an earlier quest of the same
+ * giver, every giver has a way of being revealed and a greeting, every guild's
+ * membership quest is one of its own givers' quests, and every live faction
+ * has at least one giver.
  *
  * Run: node scripts/validate-quests.js   (or: npm run validate-quests)
  */
@@ -28,138 +32,151 @@ const path = require('path')
 
 const ROOT = path.join(__dirname, '..')
 const QUESTS = require(path.join(ROOT, 'src/lib/game-data/quests.json'))
+const GIVERS = require(path.join(ROOT, 'src/lib/game-data/quest-givers.json'))
+const { FACTIONS } = require(path.join(ROOT, 'src/lib/game-data/factions.js'))
 const { ENEMIES } = require(path.join(ROOT, 'src/lib/game-data/enemies.js'))
-const { QUEST_ROOM_TRIGGERS } = require(path.join(ROOT, 'src/lib/game-engine/quest-room-triggers.js'))
-
-// The one quest a new account is born with (src/app/api/auth/register/route.ts).
-const SEEDED_AT_REGISTRATION = new Set(['quest_oldman_000'])
+const { ALL_REGIONS } = require(path.join(ROOT, 'src/lib/game-data/world-map.js'))
 
 // EquipSlot enum from prisma/schema.prisma — kept in sync manually (small, rarely changes).
 const EQUIP_SLOTS = new Set(['MAIN_HAND', 'OFF_HAND', 'HEAD', 'BODY', 'HANDS', 'FEET', 'RING', 'NECK', 'MOUNT', 'ARTIFACT', 'COMPANION'])
-// `intro` is the "go and talk to this person" quest that opens a giver's set.
-// It pays nothing — its reward is the quests it starts — so a reward on one is
-// an authoring mistake, not a design choice.
-const QUEST_TYPES = new Set(['main', 'side', 'intro'])
+const QUEST_TYPES = new Set(['main', 'side'])
 const REWARD_TYPES = new Set(['currency', 'xp', 'item'])
-const REQUIREMENT_TYPES = new Set(['hasItem', 'hasAnyItem', 'killCount', 'killCountGroup', 'hasEquippedInSlot', 'level', 'hasFlag'])
-const EFFECT_TYPES = new Set(['startQuest', 'completeQuest'])
+const REQUIREMENT_TYPES = new Set([
+  'hasItem', 'hasAnyItem', 'killCount', 'killCountGroup', 'hasEquippedInSlot', 'level', 'hasFlag',
+  'memberOf', 'giverMet', 'questCompleted', 'factionsComplete',
+])
+const REVEAL_TYPES = new Set(['always', 'questCompleted', 'giverMet', 'regionDiscovered', 'flag'])
+// Fields from the previous shape. Their presence means stale authoring.
+const RETIRED_QUEST_FIELDS = ['number', 'giver', 'onComplete', 'onAccept', 'completionMode', 'isIntro']
 
-// Item slugs: every `slug: '...'` / `slug: "..."` literal in the seed. This is a
-// superset (it includes any non-item slug defined there too), which is safe — a
-// genuinely missing slug is still absent from the set and gets flagged.
-function loadItemSlugs() {
+function loadSeedLiterals(key) {
   const seed = fs.readFileSync(path.join(ROOT, 'prisma/seed.ts'), 'utf8')
-  const slugs = new Set()
-  for (const m of seed.matchAll(/slug:\s*['"]([^'"]+)['"]/g)) slugs.add(m[1])
-  return slugs
+  const found = new Set()
+  for (const m of seed.matchAll(new RegExp(`${key}:\\s*['"]([^'"]+)['"]`, 'g'))) found.add(m[1])
+  return found
 }
 
-const itemSlugs = loadItemSlugs()
+// Item slugs: every `slug: '...'` literal in the seed. A superset (it includes
+// any non-item slug defined there too), which is safe — a genuinely missing
+// slug is still absent from the set and gets flagged.
+const itemSlugs = loadSeedLiterals('slug')
+const roomIds = loadSeedLiterals('roomId')
 const enemySlugs = new Set(ENEMIES.map((e) => e.slug))
+const regionIds = new Set(ALL_REGIONS.map((r) => r.id))
 const questIds = new Set(Object.keys(QUESTS))
+const giverIds = new Set(Object.keys(GIVERS))
+const factionById = new Map(FACTIONS.map((f) => [f.id, f]))
 
 const errors = []
 const warnings = []
 const err = (id, msg) => errors.push(`  [${id}] ${msg}`)
+const warn = (id, msg) => warnings.push(`  [${id}] ${msg}`)
 
-// Warn on duplicate `number` values (manual global sequence — easy to collide).
-const numberSeen = new Map()
+function checkRequirement(id, req, where) {
+  if (!REQUIREMENT_TYPES.has(req.type)) {
+    err(id, `${where}: unknown requirement type "${req.type}"`)
+    return
+  }
+  if (req.type === 'hasItem' && !itemSlugs.has(req.itemSlug)) err(id, `${where}: hasItem references unknown item slug "${req.itemSlug}"`)
+  if (req.type === 'hasAnyItem') {
+    if (!Array.isArray(req.items) || req.items.length === 0) err(id, `${where}: hasAnyItem requires a non-empty items array`)
+    else for (const entry of req.items) if (!itemSlugs.has(entry.itemSlug)) err(id, `${where}: hasAnyItem references unknown item slug "${entry.itemSlug}"`)
+  }
+  if (req.type === 'killCount' && !enemySlugs.has(req.enemySlug)) err(id, `${where}: killCount references unknown enemy slug "${req.enemySlug}"`)
+  if (req.type === 'killCountGroup') {
+    if (!Array.isArray(req.enemySlugs) || req.enemySlugs.length === 0) err(id, `${where}: killCountGroup requires a non-empty enemySlugs array`)
+    else for (const slug of req.enemySlugs) if (!enemySlugs.has(slug)) err(id, `${where}: killCountGroup references unknown enemy slug "${slug}"`)
+  }
+  if (req.type === 'hasEquippedInSlot' && !EQUIP_SLOTS.has(req.slot)) err(id, `${where}: hasEquippedInSlot references unknown slot "${req.slot}"`)
+  if (req.type === 'memberOf') {
+    const f = factionById.get(req.factionId)
+    if (!f) err(id, `${where}: memberOf references unknown faction "${req.factionId}"`)
+    else if (!f.membershipQuest) err(id, `${where}: memberOf references "${req.factionId}", which is not a guild`)
+  }
+  if (req.type === 'giverMet' && !giverIds.has(req.giverId)) err(id, `${where}: giverMet references unknown giver "${req.giverId}"`)
+  if (req.type === 'questCompleted' && !questIds.has(req.questId)) err(id, `${where}: questCompleted references unknown quest "${req.questId}"`)
+  if (req.type === 'factionsComplete') {
+    if (!Array.isArray(req.factionIds) || req.factionIds.length === 0) err(id, `${where}: factionsComplete requires a non-empty factionIds array`)
+    else for (const fid of req.factionIds) if (!factionById.has(fid)) err(id, `${where}: factionsComplete references unknown faction "${fid}"`)
+  }
+}
 
+// ---- factions
+const seenFactionIds = new Set()
+for (const f of FACTIONS) {
+  if (seenFactionIds.has(f.id)) err(`faction ${f.id}`, 'duplicate faction id')
+  seenFactionIds.add(f.id)
+  if (!['region', 'guild'].includes(f.kind)) err(`faction ${f.id}`, `unknown kind "${f.kind}"`)
+  if (f.kind === 'guild' && !f.membershipQuest) err(`faction ${f.id}`, 'a guild needs a membershipQuest')
+  if (f.membershipQuest) {
+    if (!questIds.has(f.membershipQuest)) err(`faction ${f.id}`, `membershipQuest "${f.membershipQuest}" is not a quest`)
+    else if (GIVERS[QUESTS[f.membershipQuest].giverId]?.faction !== f.id) err(`faction ${f.id}`, `membershipQuest "${f.membershipQuest}" is not given by one of its own givers`)
+  }
+  if (f.hubRoomId && !roomIds.has(f.hubRoomId)) err(`faction ${f.id}`, `hubRoomId "${f.hubRoomId}" is not a seeded room`)
+  if (!f.placeholder && !f.title) warn(`faction ${f.id}`, 'no title to earn at max standing')
+}
+
+// ---- givers
+const questOwner = new Map()
+for (const [giverId, g] of Object.entries(GIVERS)) {
+  const id = `giver ${giverId}`
+  if (!g.name) err(id, 'missing name')
+  if (!g.roomId) err(id, 'missing roomId')
+  else if (!roomIds.has(g.roomId)) err(id, `roomId "${g.roomId}" is not a seeded room`)
+  if (!g.action) err(id, 'missing action (the room action that talks to them)')
+  if (!g.icon) err(id, 'missing icon')
+  if (g.faction !== null && !factionById.has(g.faction)) err(id, `unknown faction "${g.faction}"`)
+  if (g.faction !== null && factionById.get(g.faction)?.placeholder) err(id, `faction "${g.faction}" is a placeholder — remove the flag now that it has a giver`)
+  if (!g.greeting) err(id, 'missing greeting (what they say on first meeting)')
+  if (!g.metLine) warn(id, 'no metLine; the feed will say "You meet <name>."')
+  const rule = g.revealedBy
+  if (!rule || !REVEAL_TYPES.has(rule.type)) err(id, `revealedBy has unknown type "${rule && rule.type}"`)
+  else {
+    if (rule.type === 'questCompleted' && !questIds.has(rule.questId)) err(id, `revealedBy references unknown quest "${rule.questId}"`)
+    if (rule.type === 'giverMet' && !giverIds.has(rule.giverId)) err(id, `revealedBy references unknown giver "${rule.giverId}"`)
+    if (rule.type === 'regionDiscovered' && !regionIds.has(rule.regionId)) err(id, `revealedBy references unknown region "${rule.regionId}"`)
+  }
+  for (const req of g.meetRequirements ?? []) checkRequirement(id, req, 'meetRequirements')
+  if ((g.meetRequirements ?? []).length > 0 && !g.lockedDialog) err(id, 'meetRequirements without a lockedDialog')
+  for (const entry of g.idleDialogs ?? []) {
+    if (entry.ifCompleted !== null && entry.ifCompleted !== undefined && !questIds.has(entry.ifCompleted)) err(id, `idleDialogs references unknown quest "${entry.ifCompleted}"`)
+    if (!entry.message) err(id, 'idleDialogs entry without a message')
+  }
+  if (!Array.isArray(g.quests) || g.quests.length === 0) err(id, 'a giver needs at least one quest')
+  for (const questId of g.quests ?? []) {
+    if (!questIds.has(questId)) { err(id, `lists unknown quest "${questId}"`); continue }
+    if (questOwner.has(questId)) err(id, `quest "${questId}" is also listed by ${questOwner.get(questId)}`)
+    questOwner.set(questId, giverId)
+    if (QUESTS[questId].giverId !== giverId) err(id, `quest "${questId}" says its giver is "${QUESTS[questId].giverId}"`)
+  }
+}
+
+// ---- quests
 for (const [id, q] of Object.entries(QUESTS)) {
-  if (typeof q.number === 'number') {
-    if (numberSeen.has(q.number)) warnings.push(`  number ${q.number} reused by ${numberSeen.get(q.number)} and ${id}`)
-    else numberSeen.set(q.number, id)
-  }
-
-  if (!q.giver || !q.giver.npcId) err(id, 'missing giver.npcId')
-  if (!q.giver || !q.giver.roomId) err(id, 'missing giver.roomId')
-
+  for (const field of RETIRED_QUEST_FIELDS) if (field in q) err(id, `"${field}" is no longer a field — givers, order and chains live in quest-givers.json`)
+  if (!q.giverId) err(id, 'missing giverId')
+  else if (!giverIds.has(q.giverId)) err(id, `unknown giver "${q.giverId}"`)
+  if (!questOwner.has(id)) err(id, 'not listed by any giver')
   if (!QUEST_TYPES.has(q.questType)) err(id, `unknown questType "${q.questType}"`)
-  if (q.questType === 'intro' && (q.rewards ?? []).length > 0) {
-    err(id, 'intro quests give no rewards — move them to the quest this one starts')
+  if (!q.title) err(id, 'missing title')
+  if (!q.completionDialog) warn(id, 'no completionDialog')
+  const list = GIVERS[q.giverId]?.quests ?? []
+  for (const prev of q.after ?? []) {
+    if (!questIds.has(prev)) { err(id, `after references unknown quest "${prev}"`); continue }
+    if (QUESTS[prev].giverId !== q.giverId) err(id, `after references "${prev}", which belongs to another giver — a cross-giver dependency is a revealedBy rule, not an after`)
+    else if (list.indexOf(prev) >= list.indexOf(id)) err(id, `after references "${prev}", which is listed after it`)
   }
-  // `isIntro` was folded into questType: 'intro'. A stray flag means stale authoring.
-  if ('isIntro' in q) err(id, 'isIntro is no longer a field — use questType: "intro"')
-
-  for (const req of q.requirements ?? []) {
-    if (!REQUIREMENT_TYPES.has(req.type)) {
-      err(id, `unknown requirement type "${req.type}"`)
-      continue
-    }
-    if (req.type === 'hasItem' && !itemSlugs.has(req.itemSlug)) {
-      err(id, `hasItem references unknown item slug "${req.itemSlug}"`)
-    }
-    if (req.type === 'hasAnyItem') {
-      if (!Array.isArray(req.items) || req.items.length === 0) {
-        err(id, 'hasAnyItem requires a non-empty items array')
-      } else {
-        for (const entry of req.items) {
-          if (!itemSlugs.has(entry.itemSlug)) {
-            err(id, `hasAnyItem references unknown item slug "${entry.itemSlug}"`)
-          }
-        }
-      }
-    }
-    if (req.type === 'killCount' && !enemySlugs.has(req.enemySlug)) {
-      err(id, `killCount references unknown enemy slug "${req.enemySlug}"`)
-    }
-    if (req.type === 'killCountGroup') {
-      if (!Array.isArray(req.enemySlugs) || req.enemySlugs.length === 0) {
-        err(id, 'killCountGroup requires a non-empty enemySlugs array')
-      } else {
-        for (const slug of req.enemySlugs) {
-          if (!enemySlugs.has(slug)) err(id, `killCountGroup references unknown enemy slug "${slug}"`)
-        }
-      }
-    }
-    if (req.type === 'hasEquippedInSlot' && !EQUIP_SLOTS.has(req.slot)) {
-      err(id, `hasEquippedInSlot references unknown slot "${req.slot}"`)
-    }
-  }
-
+  for (const req of q.requirements ?? []) checkRequirement(id, req, 'requirements')
   for (const reward of q.rewards ?? []) {
-    if (!REWARD_TYPES.has(reward.type)) {
-      err(id, `unknown reward type "${reward.type}"`)
-      continue
-    }
-    if (reward.type === 'item' && !itemSlugs.has(reward.itemSlug)) {
-      err(id, `item reward references unknown item slug "${reward.itemSlug}"`)
-    }
-  }
-
-  // onAccept + onComplete effects may reference other quests by id.
-  for (const phase of ['onAccept', 'onComplete']) {
-    for (const effect of q[phase] ?? []) {
-      if (!EFFECT_TYPES.has(effect.type)) {
-        err(id, `${phase}: unknown effect type "${effect.type}"`)
-        continue
-      }
-      if (!questIds.has(effect.questId)) {
-        err(id, `${phase}: ${effect.type} references unknown quest "${effect.questId}"`)
-      }
-    }
+    if (!REWARD_TYPES.has(reward.type)) { err(id, `unknown reward type "${reward.type}"`); continue }
+    if (reward.type === 'item' && !itemSlugs.has(reward.itemSlug)) err(id, `item reward references unknown item slug "${reward.itemSlug}"`)
   }
 }
 
-// Reachability: every quest needs something that starts it.
-const startable = new Set(SEEDED_AT_REGISTRATION)
-for (const [roomId, trigger] of Object.entries(QUEST_ROOM_TRIGGERS)) {
-  if (!questIds.has(trigger.questId)) {
-    errors.push(`  [room ${roomId}] QUEST_ROOM_TRIGGERS references unknown quest "${trigger.questId}"`)
-  }
-  startable.add(trigger.questId)
-}
-for (const q of Object.values(QUESTS)) {
-  for (const phase of ['onAccept', 'onComplete']) {
-    for (const effect of q[phase] ?? []) {
-      if (effect.type === 'startQuest' && effect.questId) startable.add(effect.questId)
-    }
-  }
-}
-for (const id of questIds) {
-  if (!startable.has(id)) {
-    err(id, 'unreachable — no startQuest effect, room trigger, or registration seed opens it')
-  }
+// ---- every live faction has someone speaking for it
+for (const f of FACTIONS) {
+  if (f.placeholder) continue
+  if (!Object.values(GIVERS).some((g) => g.faction === f.id)) err(`faction ${f.id}`, 'no giver speaks for this faction — mark it placeholder or add one')
 }
 
 if (warnings.length) {
@@ -173,4 +190,4 @@ if (errors.length) {
   process.exit(1)
 }
 
-console.log(`✅ Quest validation passed: ${questIds.size} quests, all references resolve.`)
+console.log(`✅ Quest validation passed: ${questIds.size} quests, ${giverIds.size} givers, ${FACTIONS.filter((f) => !f.placeholder).length} factions — all references resolve.`)

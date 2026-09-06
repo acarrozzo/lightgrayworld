@@ -1,0 +1,769 @@
+{
+  "old_man": {
+    "name": "Old Man",
+    "spokenName": "the Old Man",
+    "roomId": "003",
+    "action": "talk to old man",
+    "icon": "npc-oldman",
+    "iconColor": "yellow-400",
+    "faction": "grassy-field",
+    "revealedBy": {
+      "type": "always"
+    },
+    "hint": "Go to the cabin (Room 003) and speak with the Old Man. His cabin is to the southwest of the Grassy Field Crossroads.",
+    "metLine": "You meet the Old Man.",
+    "greeting": "Hey! Another Wanderer! I love having you guys around. An old man like me could always use a hand. First, can you bring me a flower.",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_oldman_004",
+        "message": "The Old Man rocks contentedly in his chair. \"The gator's gone, the rats are gone, and my wife's got her jam. You've been a true blessing to this old man, traveler.\""
+      },
+      {
+        "ifCompleted": "quest_oldman_003",
+        "message": "The Old Man rocks contentedly in his chair. \"The rats are gone, the gator is dealt with, and my wife got her flower. You've been a true blessing, traveler.\""
+      },
+      {
+        "ifCompleted": "quest_oldman_001",
+        "message": "The Old Man smiles warmly. \"Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask.\""
+      }
+    ],
+    "quests": [
+      "quest_oldman_001",
+      "quest_oldman_002",
+      "quest_oldman_003",
+      "quest_oldman_004"
+    ]
+  },
+  "young_soldier": {
+    "name": "Young Soldier",
+    "spokenName": "the Young Soldier",
+    "roomId": "007",
+    "action": "talk to young soldier",
+    "icon": "npc-youngsoldier",
+    "iconColor": "blue-400",
+    "faction": "grassy-field",
+    "revealedBy": {
+      "type": "giverMet",
+      "giverId": "old_man"
+    },
+    "hint": "Go to the Traning Area in the Grassy Field and talk to the Young Soldier.",
+    "meetRequirements": [
+      {
+        "type": "giverMet",
+        "giverId": "old_man"
+      }
+    ],
+    "lockedDialog": "\"What are you doing talking to me? You're supposed to talk to the Old Man west of here first.\"",
+    "metLine": "You meet the Young Soldier.",
+    "greeting": "I can't believe we're really giving experience for just talking to me.",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_youngsoldier_002",
+        "message": "You proved yourself, Wanderer. If you're looking for more work, head northwest to Jack Lumber's cabin. He's got quests that'll open the way to the Forest."
+      },
+      {
+        "ifCompleted": "quest_youngsoldier_001",
+        "message": "Wow, you can pick up a sword. I can't believe we're giving XP for this."
+      }
+    ],
+    "quests": [
+      "quest_youngsoldier_001",
+      "quest_youngsoldier_002",
+      "quest_youngsoldier_003"
+    ]
+  },
+  "jack_lumber": {
+    "name": "Jack Lumber",
+    "spokenName": "Jack Lumber",
+    "roomId": "024",
+    "action": "talk to jack lumber",
+    "icon": "npc-jacklumber",
+    "iconColor": "green-400",
+    "faction": "grassy-field",
+    "revealedBy": {
+      "type": "questCompleted",
+      "questId": "quest_youngsoldier_002"
+    },
+    "hint": "Use the Gold Key to open the Gold Chest at the Grassy Field Crossroads, then head northwest to Jack Lumber's cabin and speak with him.",
+    "meetRequirements": [
+      {
+        "type": "hasFlag",
+        "flag": "chest1",
+        "displayName": "Open the Gold Chest at the Crossroads"
+      }
+    ],
+    "lockedDialog": "\"How'd you get here? Go back and open that gold chest at the Crossroads first. Then we'll talk.\"",
+    "metLine": "You meet Jack Lumber.",
+    "greeting": "Ha! You cracked the chest! I knew you had it in you. I'm Jack Lumber — get it? Like Lumberjack! Listen, I've got some work that needs doing around here, and you look like just the Wanderer for the job.",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_jacklumber_000",
+        "message": "\"The Forest Path is open! Get out there and see what's beyond the Grassy Field. And remember — keep that hatchet sharp and your bow ready!\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"You've got work to do, Wanderer! Check your quests and get to it.\""
+      }
+    ],
+    "quests": [
+      "quest_jacklumber_001",
+      "quest_jacklumber_002",
+      "quest_jacklumber_000"
+    ]
+  },
+  "freddie": {
+    "name": "Freddie",
+    "spokenName": "Freddie",
+    "roomId": "103",
+    "action": "talk to freddie",
+    "icon": "npc-freddie",
+    "iconColor": "amber-400",
+    "faction": "grassy-field",
+    "revealedBy": {
+      "type": "questCompleted",
+      "questId": "quest_jacklumber_000"
+    },
+    "hint": "Take the Forest Path east from the Grassy Field, then north at the cow farm sign (Room 103), and introduce yourself to Freddie.",
+    "metLine": "You meet Freddie.",
+    "greeting": "Freddie wipes his hands on his apron. \"Let's craft with some leather. You can use my cows to gather some — but you have to pay!\" He nudges a crate of hammers toward you with his boot. \"Those are free, at least.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_freddie_001",
+        "message": "\"Look at that — proper leatherwork.\" Freddie slaps the workbench. \"Hides are still fifty gold a trip, mind. Hammer's free, though. Always is.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"Grab a hammer, pay the toll, take your five hides. Then find a crafting table and make something out of them.\""
+      }
+    ],
+    "quests": [
+      "quest_freddie_001"
+    ]
+  },
+  "forest_gnome": {
+    "name": "Forest Gnome",
+    "spokenName": "the Forest Gnome",
+    "roomId": "128",
+    "action": "talk to forest gnome",
+    "icon": "npc-forestgnome",
+    "iconColor": "green-400",
+    "faction": "forest",
+    "revealedBy": {
+      "type": "questCompleted",
+      "questId": "quest_jacklumber_000"
+    },
+    "hint": "Find the Forest Gnome's tree hut (Room 128), deep in the Forest — northwest of the Forest by a Cliff — and introduce yourself.",
+    "metLine": "You meet the Forest Gnome.",
+    "greeting": "The gnome peers down at you from the branches with a lazy grin. \"Welcome to my tree hut. Pretty nice right?\" He hops down. \"Since you're here — I've got a few things that need doing, and you look like you've got the legs for it.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_forestgnome_000",
+        "message": "\"Trolls handled, door hung, potions brewed. You're alright, Wanderer.\" The gnome stretches out in his hut. \"Spare hatchet's always here if you lose yours.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"Berries, wood, trolls — take them in whatever order suits you. Grab the spare hatchet on your way out.\""
+      }
+    ],
+    "quests": [
+      "quest_forestgnome_001",
+      "quest_forestgnome_002",
+      "quest_forestgnome_000"
+    ]
+  },
+  "hunter_bill": {
+    "name": "Hunter Bill",
+    "spokenName": "Hunter Bill",
+    "roomId": "118",
+    "action": "talk to hunter bill",
+    "icon": "npc-hunterbill",
+    "iconColor": "green-400",
+    "faction": "forest",
+    "revealedBy": {
+      "type": "questCompleted",
+      "questId": "quest_jacklumber_000"
+    },
+    "hint": "Find Hunter Bill's camp (Room 118), north through the Forest Entrance and past the massive tree, and introduce yourself.",
+    "metLine": "You meet Hunter Bill.",
+    "greeting": "A wiry man looks up from a half-strung bow and grins. \"Yo! I just love being in nature.\" He nods at the trees. \"Stick around a while. There's things out there worth hunting, and I'll make it worth your trouble.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_hunterbill_000",
+        "message": "\"Bigfoot and the whole six — nobody's done that in a while.\" Bill leans back against a tree. \"Go crack that gold chest northeast of here. You earned what's in it.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"Still hunting? Good. The forest gives up what it owes eventually — just keep walking it.\""
+      }
+    ],
+    "quests": [
+      "quest_hunterbill_001",
+      "quest_hunterbill_000"
+    ]
+  },
+  "red_guard_captain": {
+    "name": "Red Guard Captain",
+    "spokenName": "the Red Guard Captain",
+    "roomId": "215",
+    "action": "talk to red guard captain",
+    "icon": "npc-redguardcaptain",
+    "iconColor": "red-500",
+    "faction": "red-town",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "forest"
+    },
+    "hint": "Head north from the Grand Square to the Warrior's Way, on to the Red Guard Barracks, then northeast through the Captain's office and up to the Lookout Tower (Room 215).",
+    "metLine": "You meet the Red Guard Captain.",
+    "greeting": "The Captain does not turn around. \"Finally. I need your help cleaning up this town.\" He gestures out over the treetops without looking at you. \"Three jobs. Take them in any order.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_redguardcaptain_003",
+        "message": "\"Thieves down, swords delivered, sewers thinned. The tower ladder is yours whenever you want the forest.\" The Captain goes back to watching the treeline."
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"Still work on the board. Take them in whatever order suits you — the ladder opens the moment any one of them is done.\""
+      }
+    ],
+    "quests": [
+      "quest_redguardcaptain_001",
+      "quest_redguardcaptain_002",
+      "quest_redguardcaptain_003"
+    ]
+  },
+  "town_hall_plaza": {
+    "name": "Town Hall Plaza",
+    "spokenName": "the People at the Plaza",
+    "roomId": "221",
+    "action": "talk to the people",
+    "icon": "npc-townhallplaza",
+    "iconColor": "red-500",
+    "faction": "red-town",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "red-town"
+    },
+    "hint": "The Plaza (Room 221) is northeast of the Red Town Courtyard. Go and hear what the people there need.",
+    "metLine": "You meet the People at the Plaza.",
+    "greeting": "You barely make it three steps in. \"Help us! Please!\" A gardener, a chef and a couple with a crying child all start talking at once.",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_townhallplaza_003",
+        "message": "The gardener waves, the chef shouts something about the meatballs, and Suzie holds her bear up for you to see. Nobody here needs anything else from you today."
+      },
+      {
+        "ifCompleted": null,
+        "message": "The Plaza is as busy as ever. Flowers, meat, and one very upset little girl — take them in any order."
+      }
+    ],
+    "quests": [
+      "quest_townhallplaza_001",
+      "quest_townhallplaza_002",
+      "quest_townhallplaza_003"
+    ]
+  },
+  "mayor_rudolf": {
+    "name": "Mayor Rudolf",
+    "spokenName": "the Mayor",
+    "roomId": "222",
+    "action": "talk to mayor",
+    "icon": "npc-mayor",
+    "iconColor": "red-500",
+    "faction": "red-town",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "red-town"
+    },
+    "hint": "The Mayor's office (Room 222) is north of the Town Hall Plaza.",
+    "metLine": "You meet the Mayor.",
+    "greeting": "The Mayor puts down his pen. \"The Scorpion King has brought fear to this town for far too long.\" He slides a bounty notice across the desk. \"Name your price when it's done.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_mayorrudolf_000",
+        "message": "\"Red Town owes you a debt it cannot properly pay.\" The Mayor nods at the door west. \"The Gardens chest is yours. And the dining room north is open to you now.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"The Scorpion King, when you are ready. Below the Spider Cave, out in the Grassy Field. The bounty stands.\""
+      }
+    ],
+    "quests": [
+      "quest_mayorrudolf_000"
+    ]
+  },
+  "warriors_guild_recruiter": {
+    "name": "Warrior's Guild Recruiter",
+    "spokenName": "the Warrior's Guild Recruiter",
+    "roomId": "226",
+    "action": "talk to warrior recruiter",
+    "icon": "npc-warrior",
+    "iconColor": "blue-400",
+    "faction": "warriors-guild",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "red-town"
+    },
+    "hint": "The Warrior's Guild (Room 226) is northwest of the Grand Square.",
+    "metLine": "You meet the Warrior's Guild Recruiter.",
+    "greeting": "The recruiter looks you up and down without much hurry. \"Slay the Ogre Lieutenant and prove you're a true Warrior. Do that and this door is yours.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_warriorsguild_000",
+        "message": "\"Welcome, member. The rack is open to you, the fire is yours, and grab a pack on your way out. Pete has work if you want it.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"The Ogre Lieutenant, southwest in the Forest. Come back when it is done and the guild is yours.\""
+      }
+    ],
+    "quests": [
+      "quest_warriorsguild_000"
+    ]
+  },
+  "warrior_pete": {
+    "name": "Warrior Pete",
+    "spokenName": "Warrior Pete",
+    "roomId": "226",
+    "action": "talk to warrior pete",
+    "icon": "npc-warrior2",
+    "iconColor": "blue-400",
+    "faction": "warriors-guild",
+    "revealedBy": {
+      "type": "questCompleted",
+      "questId": "quest_warriorsguild_000"
+    },
+    "hint": "Pete stands with the other guild warriors outside the hall (Room 226), northwest of the Grand Square.",
+    "meetRequirements": [
+      {
+        "type": "memberOf",
+        "factionId": "warriors-guild"
+      }
+    ],
+    "lockedDialog": "\"Members only, friend.\" Pete jerks a thumb at the recruiter. \"Put down the Ogre Lieutenant first.\"",
+    "metLine": "You meet Warrior Pete.",
+    "greeting": "Pete looks over from the weapon rack. \"You say you're a warrior, huh? I don't see it.\" He counts three things off on his fingers. \"Prove me wrong.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_warriorpete_003",
+        "message": "\"Knights, sharks and three Champions.\" Pete grins for the first time. \"Fine. You’re a warrior. I’ll say it out loud and everything.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"Three things, any order. None of them are close by and none of them are easy. That’s rather the point.\""
+      }
+    ],
+    "quests": [
+      "quest_warriorpete_001",
+      "quest_warriorpete_002",
+      "quest_warriorpete_003"
+    ]
+  },
+  "wizards_guild_recruiter": {
+    "name": "Wizard's Guild Recruiter",
+    "spokenName": "the Wizard's Guild Recruiter",
+    "roomId": "225",
+    "action": "talk to wizard recruiter",
+    "icon": "npc-wizard",
+    "iconColor": "purple-400",
+    "faction": "wizards-guild",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "red-town"
+    },
+    "hint": "The Wizard's Guild (Room 225) is southeast of the Grand Square.",
+    "metLine": "You meet the Wizard's Guild Recruiter.",
+    "greeting": "The recruiter's attention settles on you all at once. \"Defeat the evil Kobold Master — at all costs. Then we can talk about what else you might learn here.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_wizardsguild_000",
+        "message": "\"Welcome, member. The stall is open to you, the fire is yours to rest at, and Morty has been asking after you.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"The Kobold Master, northwest in the Forest. Come back when it is done and the guild is yours.\""
+      }
+    ],
+    "quests": [
+      "quest_wizardsguild_000"
+    ]
+  },
+  "wizard_morty": {
+    "name": "Wizard Morty",
+    "spokenName": "Wizard Morty",
+    "roomId": "225",
+    "action": "talk to wizard morty",
+    "icon": "npc-wizard2",
+    "iconColor": "purple-400",
+    "faction": "wizards-guild",
+    "revealedBy": {
+      "type": "questCompleted",
+      "questId": "quest_wizardsguild_000"
+    },
+    "hint": "Morty is among the robed crowd outside the guild (Room 225), southeast of the Grand Square.",
+    "meetRequirements": [
+      {
+        "type": "memberOf",
+        "factionId": "wizards-guild"
+      }
+    ],
+    "lockedDialog": "\"Members only.\" Morty does not look up. \"Speak to the recruiter, put down the Kobold Master, then come back.\"",
+    "metLine": "You meet Wizard Morty.",
+    "greeting": "\"So you think you're a powerful wizard, huh.\" Morty does not look up from whatever he is stirring. \"Three things. Then we'll see.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_wizardmorty_003",
+        "message": "\"Gray matter, the dead of the Catacombs, and the Troll Queen herself.\" Morty finally looks impressed. \"Alright. You are a powerful wizard.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"Three things, remember. Take them in whatever order you like — they are all equally unpleasant.\""
+      }
+    ],
+    "quests": [
+      "quest_wizardmorty_001",
+      "quest_wizardmorty_002",
+      "quest_wizardmorty_003"
+    ]
+  },
+  "mining_guild_recruiter": {
+    "name": "Mining Guild Recruiter",
+    "spokenName": "the Mining Guild Recruiter",
+    "roomId": "308",
+    "action": "talk to mining recruiter",
+    "icon": "npc-miner2",
+    "iconColor": "yellow-600",
+    "faction": "mining-guild",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "rocky-flats"
+    },
+    "hint": "The Mining Guild (Room 308) is east of the Dwarf Village Square, which is northeast of the Rocky Flats Crossroads.",
+    "metLine": "You meet the Mining Guild Recruiter.",
+    "greeting": "He looks you over the way a man looks over a tool. “Our members do more than swing a pick. Prove you can do something about Red Beard and the Neverending Mine is yours.”",
+    "idleDialogs": [
+      {
+        "ifCompleted": null,
+        "message": "\"You are in. Talk to the Leader at the back — he is the one who decides what you are allowed to make.\""
+      }
+    ],
+    "quests": [
+      "quest_miningguild_000"
+    ]
+  },
+  "mining_guild_leader": {
+    "name": "Mining Guild Leader",
+    "spokenName": "the Mining Guild Leader",
+    "roomId": "308",
+    "action": "talk to guild leader",
+    "icon": "npc-miner",
+    "iconColor": "yellow-600",
+    "faction": "mining-guild",
+    "revealedBy": {
+      "type": "questCompleted",
+      "questId": "quest_miningguild_000"
+    },
+    "hint": "He is at the back of the Mining Guild hall (Room 308), same room as the recruiter.",
+    "meetRequirements": [
+      {
+        "type": "memberOf",
+        "factionId": "mining-guild"
+      }
+    ],
+    "lockedDialog": "The Guild Leader does not look up. \"Members. Talk to the recruiter.\"",
+    "metLine": "You meet the Mining Guild Leader.",
+    "greeting": "“Three things live down there that shouldn’t. Deal with them and I’ll teach you what to do with what you dig up.”",
+    "idleDialogs": [
+      {
+        "ifCompleted": null,
+        "message": "He demonstrates perfect mining form at you for a while, then goes back to the bench. Nothing more for now."
+      }
+    ],
+    "quests": [
+      "quest_miningguild_001",
+      "quest_miningguild_002",
+      "quest_miningguild_003"
+    ]
+  },
+  "dwarf_captain": {
+    "name": "Dwarf Captain",
+    "spokenName": "the Dwarf Captain",
+    "roomId": "303",
+    "action": "talk to dwarf captain",
+    "icon": "npc-dwarfcaptain",
+    "iconColor": "yellow-600",
+    "faction": "dwarf-village",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "rocky-flats"
+    },
+    "hint": "The Rocky Flats Crossroads (Room 303) is the hub of the map — northwest of the stone path in from Red Town.",
+    "metLine": "You meet the Dwarf Captain.",
+    "greeting": "“The Rocky Flats is full of danger,” he says, in the tone of a man who has said it a great many times. “Three things need doing. Pick one.”",
+    "idleDialogs": [
+      {
+        "ifCompleted": null,
+        "message": "\"The Rocky Flats is full of danger,\" he says, and goes back to watching the road. He has nothing else for you today."
+      }
+    ],
+    "quests": [
+      "quest_dwarfcaptain_001",
+      "quest_dwarfcaptain_002",
+      "quest_dwarfcaptain_003"
+    ]
+  },
+  "dwarf_bounty_board": {
+    "name": "Dwarf Guard Bounty Board",
+    "spokenName": "the Dwarf Guard Bounty Board",
+    "roomId": "307",
+    "action": "read bounty board",
+    "icon": "npc-bountyboard",
+    "iconColor": "yellow-600",
+    "faction": "dwarf-village",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "rocky-flats"
+    },
+    "hint": "The Bounty Board is in the Dwarf Village Square (Room 307), by the fire.",
+    "metLine": "You read the Dwarf Guard Bounty Board.",
+    "greeting": "Three postings, in three hands, none of them recent. The rewards at the bottom of each are not small.",
+    "idleDialogs": [
+      {
+        "ifCompleted": null,
+        "message": "The board is covered in wanted posters in three different hands, and every one of them has been collected on. Nothing new today."
+      }
+    ],
+    "quests": [
+      "quest_bountyboard_001",
+      "quest_bountyboard_002",
+      "quest_bountyboard_003"
+    ]
+  },
+  "friendly_pirate": {
+    "name": "Friendly Pirate",
+    "spokenName": "the Friendly Pirate",
+    "roomId": "413",
+    "action": "talk to friendly pirate",
+    "icon": "npc-pirate",
+    "iconColor": "blue-300",
+    "faction": "ocean",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "ocean"
+    },
+    "hint": "The Blue Oasis (Room 413) is the island in the middle of the Blue Ocean — south of the jetty that runs around the storm, or east of the water near the tornadoes. You will need a Wooden Boat (20 wood and a hammer, built at Jack Lumber's workshop or the Grand Square's table) or wings to cross the water.",
+    "metLine": "You meet the Friendly Pirate.",
+    "greeting": "“Aloha, matey! Welcome to my beautiful Oasis!” The pirate props himself up on one elbow. “Three things, if you’re the hunting kind. Squid, crabs, and the whole ocean’s worth of fish.”",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_friendlypirate_003",
+        "message": "\"Aloha, matey! Nothing left for you to hunt out here — but the berries are still fresh and the spring is still cold. Stay a while.\""
+      }
+    ],
+    "quests": [
+      "quest_friendlypirate_001",
+      "quest_friendlypirate_002",
+      "quest_friendlypirate_003"
+    ]
+  },
+  "jungle_jim": {
+    "name": "Jungle Jim",
+    "spokenName": "Jungle Jim",
+    "roomId": "424",
+    "action": "talk to jungle jim",
+    "icon": "npc-surfer",
+    "iconColor": "green-400",
+    "faction": "ocean",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "ocean"
+    },
+    "hint": "Crocodile Island (Room 424) is in the far southwest of the Blue Ocean, southwest of the tornado currents. Mind the crocodiles.",
+    "metLine": "You find Jungle Jim.",
+    "greeting": "“Bro! Nothing beats the waves here at Crocodile Island.” Jim plants his board in the sand. “Three things I could use a hand with, if you’re not busy being eaten.”",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_junglejim_003",
+        "message": "\"Bro! Look at you.\" Jim waxes his board. \"Nothing beats the waves here at Crocodile Island. Grab some colours if you're low.\""
+      }
+    ],
+    "quests": [
+      "quest_junglejim_001",
+      "quest_junglejim_002",
+      "quest_junglejim_003"
+    ]
+  },
+  "water_temple_guardian": {
+    "name": "Water Temple Guardian",
+    "spokenName": "the Water Temple Guardian",
+    "roomId": "425",
+    "action": "talk to water temple guardian",
+    "icon": "npc-guardian",
+    "iconColor": "blue-300",
+    "faction": "ocean",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "ocean"
+    },
+    "hint": "The Master Temple (Room 425) opens off each of the four Water Temples, but only once that temple’s boss is beaten — defeat any one of them and walk through.",
+    "metLine": "You find the Water Temple Guardian.",
+    "greeting": "“Defeat the Red, Green, Blue and Yellow guardians before you attempt to challenge me, the far superior Master Temple Guardian.”",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_watertempleguardian_004",
+        "message": "\"The four tests are behind you.\" The Guardian does not move, but the water around it does. \"I stand here, if you think you are ready for me.\""
+      }
+    ],
+    "quests": [
+      "quest_watertempleguardian_001",
+      "quest_watertempleguardian_002",
+      "quest_watertempleguardian_003",
+      "quest_watertempleguardian_004"
+    ]
+  },
+  "ranger_guard": {
+    "name": "Ranger Guard",
+    "spokenName": "the Ranger Guard",
+    "roomId": "502",
+    "action": "talk to ranger guard",
+    "icon": "npc-ranger",
+    "iconColor": "green-400",
+    "faction": "dark-forest",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "dark-forest"
+    },
+    "hint": "The Outpost (Room 502) is over the Stone Path Bridge, north through the Magical Gate at the top of the Forest's stone path.",
+    "metLine": "You find the Dark Forest Outpost.",
+    "greeting": "\"These dang Highwaymen need to be stopped. They keep robbing the innocent.\" The Ranger Guard looks you over. \"Three things, if you're up to them.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_rangerguard_003",
+        "message": "\"The road, the elders and the Keep's ground floor. That's the lot.\" The Ranger Guard leans on the palisade. \"Rest here whenever you like. The Guild is up in the trees, if you can find it.\""
+      }
+    ],
+    "quests": [
+      "quest_rangerguard_001",
+      "quest_rangerguard_002",
+      "quest_rangerguard_003"
+    ]
+  },
+  "dark_elf": {
+    "name": "Dark Elf",
+    "spokenName": "the Dark Elf",
+    "roomId": "506",
+    "action": "talk to dark elf",
+    "icon": "npc-darkelf",
+    "iconColor": "green-400",
+    "faction": "dark-forest",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "dark-forest"
+    },
+    "hint": "The Tree Hut (Room 506) is northwest of the Dark Forest Clearing, southeast of the teleport pillar.",
+    "metLine": "You find the Dark Elf's Tree Hut.",
+    "greeting": "\"Man this tea is good.\" The Dark Elf sets down his cup. \"Make yourself at home and grab one. I've several quests for the enthusiastic adventurer.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_darkelf_003",
+        "message": "\"Man this tea is good.\" The Dark Elf rocks in his chair. \"Nothing left for you to do for me, friend — but the fire is warm and the tea is hot. Sit.\""
+      }
+    ],
+    "quests": [
+      "quest_darkelf_001",
+      "quest_darkelf_002",
+      "quest_darkelf_003"
+    ]
+  },
+  "rangers_guild_recruiter": {
+    "name": "Ranger's Guild",
+    "spokenName": "the Ranger's Guild",
+    "roomId": "515",
+    "action": "talk to ranger recruiter",
+    "icon": "npc-ranger",
+    "iconColor": "green-400",
+    "faction": "rangers-guild",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "dark-forest"
+    },
+    "hint": "Search the Dark Grove east of the teleport pillar until it gives up a secret way west, then get lost in the trees. Northeast out of the trees somehow arrives at the base of the guild's tree (Room 515).",
+    "metLine": "You find the Ranger's Guild Entrance.",
+    "greeting": "\"Want to be a Ranger eh? There are fallen Rangers among us, defeat one and return here.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_rangersguild_000",
+        "message": "\"Welcome, Ranger.\" The guard on the bottom rung steps aside. \"Up you go. Flynn's shop is first on the left, Lego is straight on, and mind the Shaman — he floats.\""
+      }
+    ],
+    "quests": [
+      "quest_rangersguild_000"
+    ]
+  },
+  "ranger_lego": {
+    "name": "Ranger Lego",
+    "spokenName": "Ranger Lego",
+    "roomId": "515b",
+    "action": "talk to ranger lego",
+    "icon": "npc-ranger2",
+    "iconColor": "green-400",
+    "faction": "rangers-guild",
+    "revealedBy": {
+      "type": "questCompleted",
+      "questId": "quest_rangersguild_000"
+    },
+    "hint": "Lego's room (Room 515b) is north of the Ranger's Guild lobby, at the top of the ladder.",
+    "meetRequirements": [
+      {
+        "type": "memberOf",
+        "factionId": "rangers-guild"
+      }
+    ],
+    "lockedDialog": "\"Aye. Rangers only up here.\" Lego goes back to re-stringing his bow.",
+    "metLine": "You meet Ranger Lego.",
+    "greeting": "\"Aye. I only need the help of Elite Rangers. Let's see what you got.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_rangerlego_003",
+        "message": "\"Aye.\" Lego does not look up from the arrow he is fletching. \"Turtle, gargoyles, griffin. You're an Elite Ranger in my book. Go and shoot something.\""
+      }
+    ],
+    "quests": [
+      "quest_rangerlego_001",
+      "quest_rangerlego_002",
+      "quest_rangerlego_003"
+    ]
+  },
+  "grand_quest_pillar": {
+    "name": "Grand Quest Pillar",
+    "spokenName": "the Grand Quest Pillar",
+    "roomId": "029",
+    "action": "examine grand pillar",
+    "icon": "pillar3",
+    "iconColor": "yellow-400",
+    "faction": null,
+    "revealedBy": {
+      "type": "questCompleted",
+      "questId": "quest_jacklumber_000"
+    },
+    "hint": "The Grand Quest Pillar stands among the ruins of the Destroyed Academy, north of the Grassy Field.",
+    "metLine": "You find the Grand Quest Pillar.",
+    "greeting": "You lay a hand on the Grand Quest Pillar. Four names are carved into it, one for each land of Vega that still waits for a savior. Help everyone in a land and return here to claim its title.",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_grand_mountain",
+        "message": "The Pillar hums quietly. Every name carved into it is yours."
+      },
+      {
+        "ifCompleted": null,
+        "message": "The Pillar hums quietly. There are names still waiting to be earned."
+      }
+    ],
+    "quests": [
+      "quest_grand_grassy_field",
+      "quest_grand_red_town",
+      "quest_grand_rocky_flats",
+      "quest_grand_mountain"
+    ]
+  }
+}

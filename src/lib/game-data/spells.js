@@ -81,7 +81,7 @@ const SPELL_TEACHERS = {
  * not ported yet, so its flag stays false and its tier shows as
  * "find a teacher".
  *
- * @type {Record<string, { flag: string, message: string, requiresCompletedQuest?: string }>}
+ * @type {Record<string, { flag: string, message: string, requiresMembership?: string }>}
  */
 const SPELL_TEACHER_ROOMS = {
   '021': {
@@ -95,7 +95,7 @@ const SPELL_TEACHER_ROOMS = {
   },
   '225': {
     flag: 'wizardSkillFlag',
-    requiresCompletedQuest: 'quest_wizardsguild_000',
+    requiresMembership: 'wizards-guild',
     message: "You can now learn new spells from the Wizard's Guild!",
   },
 }

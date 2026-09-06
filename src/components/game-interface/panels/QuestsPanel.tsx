@@ -1,21 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { X } from 'lucide-react'
-import QUESTS from '@/lib/game-data/quests.json'
-import type { InventoryItem } from '@/lib/game-state'
-import { useGameStore } from '@/lib/game-state'
-import { areRequirementsMet } from '@/lib/quest-requirements'
+import { QUESTS, GIVERS, listFactionGiverIds, factionStanding, isGiverRevealed, completedSet, questOrderIndex } from '@/lib/game-data/quest-registry'
+import { listLiveFactions } from '@/lib/game-data/factions'
+import { useGameStore, type QuestProgressRow } from '@/lib/game-state'
+import { areRequirementsMet, type QuestRequirement, type RequirementContext } from '@/lib/quest-requirements'
 import QuestRequirements from '@/components/QuestRequirements'
 import QuestTypeTag from '@/components/QuestTypeTag'
+import Icon from '@/components/Icon'
 import SubTabButton from '../SubTabButton'
-
-interface Quest {
-  id: string
-  questId: string
-  progress: number
-  completed: boolean
-}
 
 interface BattleLogEntry {
   id: string
@@ -41,12 +35,33 @@ interface KillEntry {
 
 type Tab = 'quests' | 'completed-quests' | 'kill-list' | 'battle-log'
 
+type QuestDef = {
+  giverId: string
+  questType: string
+  level: number
+  title: string
+  summary: string
+  objective: string
+  nextStep?: string
+  requirements?: QuestRequirement[]
+  rewards?: { type: string; amount?: number; itemSlug?: string; quantity?: number }[]
+}
+
+type GiverDef = {
+  name: string
+  spokenName?: string
+  roomId: string
+  icon: string
+  faction: string | null
+  hint?: string
+  quests: string[]
+  revealedBy?: { type: string }
+}
+
 interface QuestsPanelProps {
-  quests: Quest[]
   isLoadingQuests: boolean
   isResettingQuests: boolean
   isLoggedIn: boolean
-  inventory: InventoryItem[]
   onResetQuests: () => void
   onSkipToChest: () => void
   onClose: () => void
@@ -58,6 +73,28 @@ const QUEST_SUB_TABS: { id: Tab; label: string }[] = [
   { id: 'kill-list', label: 'Kill List' },
   { id: 'battle-log', label: 'Battle Log' },
 ]
+
+const QUEST_DEFS = QUESTS as Record<string, QuestDef>
+const GIVER_DEFS = GIVERS as Record<string, GiverDef>
+
+function rewardText(rewards: QuestDef['rewards']): string {
+  return (rewards ?? [])
+    .map((r) => {
+      if (r.type === 'currency') return `${r.amount} Gold`
+      if (r.type === 'xp') return `${r.amount} XP`
+      if (r.type === 'item') {
+        const name = String(r.itemSlug || '')
+          .split('-')
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ')
+        const qty = r.quantity || 1
+        return qty > 1 ? `${name} x${qty}` : name
+      }
+      return ''
+    })
+    .filter(Boolean)
+    .join(', ')
+}
 
 function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string, string> }) {
   const [logs, setLogs] = useState<BattleLogEntry[]>([])
@@ -182,12 +219,188 @@ function KillListTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string, 
   )
 }
 
+/**
+ * One faction's heading in the journal: name, quests done out of total, a
+ * bar, and the title once every quest is done. Standing is a count and
+ * nothing more, so this is the whole of what a faction shows.
+ */
+function FactionHeader({ name, done, total, title, kind }: { name: string; done: number; total: number; title: string | null; kind: string }) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0
+  const complete = total > 0 && done === total
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-fg-bright truncate">{name}</h3>
+          {kind === 'guild' && <span className="text-[10px] uppercase tracking-wide text-fg-muted">guild</span>}
+        </div>
+        <span className={`shrink-0 text-xs font-bold tabular-nums ${complete ? 'text-resource-gold' : 'text-fg-secondary'}`}>
+          {done}/{total}
+        </span>
+      </div>
+      <div className="h-1 w-full overflow-hidden rounded-full bg-surface-panel/60">
+        <div className={`h-full rounded-full ${complete ? 'bg-resource-gold' : 'bg-resource-mp'}`} style={{ width: `${pct}%` }} />
+      </div>
+      {complete && title && (
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-resource-gold">
+          <Icon name="trophy" size={12} className="text-resource-gold" />
+          {title}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** A giver the player has heard of but not yet talked to — the original's "Find these!". */
+function NotYetMetCard({ giver }: { giver: GiverDef }) {
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-dashed border-line-subtle/60 bg-surface-raised/20 px-3 py-2.5">
+      <Icon name={giver.icon} size={22} className="mt-0.5 shrink-0 text-fg-muted" />
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-fg-primary">{giver.name}</span>
+          <span className="rounded border border-line-subtle px-1.5 py-px text-[10px] uppercase tracking-wide text-fg-muted">Not yet met</span>
+        </div>
+        {giver.hint && <p className="mt-0.5 text-xs text-fg-secondary">{giver.hint}</p>}
+      </div>
+    </div>
+  )
+}
+
+function ActiveQuestCard({ questId, questDef, giver, ctx }: { questId: string; questDef: QuestDef; giver: GiverDef | undefined; ctx: RequirementContext }) {
+  // Shared with the NPC card so the journal and the room agree on what
+  // "ready" means for every requirement type.
+  const isReadyToTurnIn = !!questDef.requirements && questDef.requirements.length > 0 && areRequirementsMet(questDef.requirements, ctx)
+  const rewards = rewardText(questDef.rewards)
+  return (
+    <div key={questId} className="bg-surface-raised/50 border border-line-subtle/50 rounded-lg p-4 space-y-3">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <QuestTypeTag type={questDef.questType} />
+            {giver?.name && <p className="text-fg-muted text-xs">{giver.name}</p>}
+          </div>
+          <h4 className="text-fg-bright font-semibold text-base">{questDef.title}</h4>
+          <p className="text-fg-secondary text-sm mt-1">{questDef.summary}</p>
+        </div>
+        <span className="px-2 py-1 bg-resource-mp/50 border border-resource-mp/50 text-resource-mp text-xs font-semibold rounded">
+          Active
+        </span>
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-fg-muted text-sm">Objective:</span>
+          <span className="text-fg-primary text-sm">{questDef.objective}</span>
+        </div>
+        {rewards && (
+          <div className="flex items-center gap-2">
+            <span className="text-fg-muted text-sm">Reward:</span>
+            <span className="text-fg-primary text-sm">{rewards}</span>
+          </div>
+        )}
+      </div>
+      <QuestRequirements requirements={questDef.requirements} variant="full" />
+      {isReadyToTurnIn && giver && (
+        <div className="pt-2 border-t border-line-subtle/50">
+          <p className="text-status-success text-sm font-medium">
+            Ready to turn in — return to {giver.spokenName ?? giver.name} to complete the quest.
+          </p>
+        </div>
+      )}
+      {questDef.nextStep && (
+        <div className="pt-2 border-t border-line-subtle/50">
+          <p className="text-fg-muted text-xs mt-2">Next: {questDef.nextStep}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CompletedQuestCard({ questId, questDef, giver }: { questId: string; questDef: QuestDef; giver: GiverDef | undefined }) {
+  const rewards = rewardText(questDef.rewards)
+  return (
+    <div key={questId} className="bg-surface-raised/50 border border-line-subtle/50 rounded-lg p-4 space-y-3 opacity-75">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <QuestTypeTag type={questDef.questType} />
+            {giver?.name && <p className="text-fg-muted text-xs">{giver.name}</p>}
+          </div>
+          <h4 className="text-fg-bright font-semibold text-base">{questDef.title}</h4>
+          <p className="text-fg-secondary text-sm mt-1">{questDef.summary}</p>
+        </div>
+        <span className="px-2 py-1 bg-status-success/50 border border-status-success/50 text-status-success text-xs font-semibold rounded">
+          Done
+        </span>
+      </div>
+      {rewards && (
+        <div className="flex items-center gap-2">
+          <span className="text-fg-muted text-sm">Reward:</span>
+          <span className="text-fg-primary text-sm">{rewards}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+type FactionGroup = {
+  id: string
+  name: string
+  kind: string
+  standing: { done: number; total: number; title: string | null } | null
+  givers: { giverId: string; giver: GiverDef; met: boolean; revealed: boolean; active: string[]; completed: string[] }[]
+}
+
+/**
+ * The journal grouped the way the original's quest tab was: by the people of
+ * each land and guild. A faction shows once the player has heard of anyone in
+ * it; a giver shows as "not yet met" until the first talk, then as their open
+ * quests. The Grand Quest Pillar has no faction and closes the list.
+ */
+function useFactionGroups(quests: QuestProgressRow[], giversMet: string[]): FactionGroup[] {
+  const player = useGameStore((s) => s.player)
+  return useMemo(() => {
+    const done = completedSet(quests)
+    const met = new Set(giversMet)
+    const rowsByQuest = new Map(quests.map((q) => [q.questId, q]))
+    const revealCtx = {
+      done,
+      met,
+      discoveredTeleports: player?.discoveredTeleports ?? [],
+      flags: (player ?? {}) as Record<string, unknown>,
+    }
+    const giverEntry = (giverId: string) => {
+      const giver = GIVER_DEFS[giverId]
+      const active: string[] = []
+      const completed: string[] = []
+      for (const questId of giver.quests) {
+        const row = rowsByQuest.get(questId)
+        if (!row) continue
+        if (row.completed) completed.push(questId)
+        else active.push(questId)
+      }
+      return { giverId, giver, met: met.has(giverId), revealed: isGiverRevealed(giver, revealCtx), active, completed }
+    }
+
+    const groups: FactionGroup[] = []
+    for (const faction of listLiveFactions()) {
+      const givers = listFactionGiverIds(faction.id).map(giverEntry).filter((g) => g.met || g.revealed)
+      if (givers.length === 0) continue
+      const standing = factionStanding(faction.id, quests)
+      groups.push({ id: faction.id, name: faction.name, kind: faction.kind, standing, givers })
+    }
+    const pillar = Object.keys(GIVER_DEFS).filter((id) => GIVER_DEFS[id].faction === null).map(giverEntry).filter((g) => g.met || g.revealed)
+    if (pillar.length > 0) {
+      groups.push({ id: 'grand-quests', name: 'Grand Quests', kind: 'grand', standing: null, givers: pillar })
+    }
+    return groups
+  }, [quests, giversMet, player])
+}
+
 export default function QuestsPanel({
-  quests,
   isLoadingQuests,
   isResettingQuests,
   isLoggedIn,
-  inventory,
   onResetQuests,
   onSkipToChest,
   onClose,
@@ -196,7 +409,16 @@ export default function QuestsPanel({
   const getAuthHeaders = useGameStore((s) => s.getAuthHeaders)
   const killList = useGameStore((s) => s.killList)
   const player = useGameStore((s) => s.player)
-  const requirementContext = { inventory, killList, player }
+  const inventory = useGameStore((s) => s.inventory)
+  const quests = useGameStore((s) => s.quests)
+  const giversMet = useGameStore((s) => s.giversMet)
+  const requirementContext: RequirementContext = { inventory, killList, player, quests, giversMet }
+  const groups = useFactionGroups(quests, giversMet)
+
+  const activeGroups = groups.filter((g) => g.givers.some((e) => !e.met || e.active.length > 0))
+  const completedGroups = groups
+    .map((g) => ({ ...g, givers: g.givers.filter((e) => e.completed.length > 0) }))
+    .filter((g) => g.givers.length > 0)
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0">
@@ -225,102 +447,38 @@ export default function QuestsPanel({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-6">
 
-        {/* ── Quests tab (active only) ── */}
+        {/* ── Quests tab: by faction, then by giver ── */}
         {activeTab === 'quests' && (
-          <>
-            {isLoadingQuests ? (
-              <div className="text-fg-secondary text-sm">Unraveling your quest log...</div>
-            ) : (() => {
-              const activeQuests = [...quests]
-                .sort((a, b) => {
-                  const aNum = QUESTS[a.questId as keyof typeof QUESTS]?.number || 999
-                  const bNum = QUESTS[b.questId as keyof typeof QUESTS]?.number || 999
-                  return aNum - bNum
-                })
-                .filter(q => !q.completed)
-
-              if (activeQuests.length === 0) {
-                return <div className="text-fg-secondary text-sm">No active quests.</div>
-              }
-
-              return (
-                <div className="space-y-4">
-                  {activeQuests.map((quest) => {
-                    const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
-                    if (!questDef) return null
-
-                    // Shared with the NPC card so the journal and the room agree
-                    // on what "ready" means for every requirement type.
-                    const isReadyToTurnIn =
-                      questDef.completionMode === 'turn_in' &&
-                      !!questDef.requirements &&
-                      areRequirementsMet(questDef.requirements, requirementContext)
-
-                    return (
-                      <div key={quest.id} className="bg-surface-raised/50 border border-line-subtle/50 rounded-lg p-4 space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <QuestTypeTag type={questDef.questType} />
-                              {questDef.giver?.name && (
-                                <p className="text-fg-muted text-xs">{questDef.giver.name}</p>
-                              )}
-                            </div>
-                            <h4 className="text-fg-bright font-semibold text-base">{questDef.title}</h4>
-                            <p className="text-fg-secondary text-sm mt-1">{questDef.summary}</p>
-                          </div>
-                          <span className="px-2 py-1 bg-resource-mp/50 border border-resource-mp/50 text-resource-mp text-xs font-semibold rounded">
-                            Active
-                          </span>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-fg-muted text-sm">Objective:</span>
-                            <span className="text-fg-primary text-sm">{questDef.objective}</span>
-                          </div>
-                          {questDef.rewards && questDef.rewards.length > 0 && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-fg-muted text-sm">Reward:</span>
-                              <span className="text-fg-primary text-sm">
-                                {questDef.rewards.map((r: any) => {
-                                  if (r.type === 'currency') return `${r.amount} Gold`
-                                  if (r.type === 'xp') return `${r.amount} XP`
-                                  if (r.type === 'item') {
-                                    const name = String(r.itemSlug || '')
-                                      .split('-')
-                                      .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-                                      .join(' ')
-                                    const qty = r.quantity || 1
-                                    return qty > 1 ? `${name} x${qty}` : name
-                                  }
-                                  return ''
-                                }).filter(Boolean).join(', ')}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <QuestRequirements requirements={questDef.requirements} variant="full" />
-                        {isReadyToTurnIn && questDef.giver && (
-                          <div className="pt-2 border-t border-line-subtle/50">
-                            <p className="text-status-success text-sm font-medium">
-                              Ready to turn in — return to {questDef.giver.name} to complete the quest.
-                            </p>
-                          </div>
-                        )}
-                        {questDef.nextStep && (
-                          <div className="pt-2 border-t border-line-subtle/50">
-                            <p className="text-fg-muted text-xs mt-2">Next: {questDef.nextStep}</p>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-          </>
+          isLoadingQuests ? (
+            <div className="text-fg-secondary text-sm">Unraveling your quest log...</div>
+          ) : activeGroups.length === 0 ? (
+            <div className="text-fg-secondary text-sm">No active quests. Find someone who needs help.</div>
+          ) : (
+            activeGroups.map((group) => (
+              <section key={group.id} className="space-y-3">
+                {group.standing ? (
+                  <FactionHeader name={group.name} kind={group.kind} done={group.standing.done} total={group.standing.total} title={group.standing.title} />
+                ) : (
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-fg-bright">{group.name}</h3>
+                )}
+                {group.givers.map((entry) =>
+                  !entry.met ? (
+                    <NotYetMetCard key={entry.giverId} giver={entry.giver} />
+                  ) : (
+                    [...entry.active]
+                      .sort((a, b) => questOrderIndex(a) - questOrderIndex(b))
+                      .map((questId) => {
+                        const questDef = QUEST_DEFS[questId]
+                        if (!questDef) return null
+                        return <ActiveQuestCard key={questId} questId={questId} questDef={questDef} giver={entry.giver} ctx={requirementContext} />
+                      })
+                  )
+                )}
+              </section>
+            ))
+          )
         )}
 
         {/* ── Completed Quests tab ── */}
@@ -328,59 +486,28 @@ export default function QuestsPanel({
           <>
             {isLoadingQuests ? (
               <div className="text-fg-secondary text-sm">Loading...</div>
-            ) : (() => {
-              const completedQuests = [...quests]
-                .sort((a, b) => {
-                  const aNum = QUESTS[a.questId as keyof typeof QUESTS]?.number || 999
-                  const bNum = QUESTS[b.questId as keyof typeof QUESTS]?.number || 999
-                  return aNum - bNum
-                })
-                .filter(q => q.completed)
-
-              if (completedQuests.length === 0) {
-                return <div className="text-fg-secondary text-sm">No completed quests yet.</div>
-              }
-
-              return (
-                <div className="space-y-4">
-                  {completedQuests.map((quest) => {
-                    const questDef = QUESTS[quest.questId as keyof typeof QUESTS]
-                    if (!questDef) return null
-                    return (
-                      <div key={quest.id} className="bg-surface-raised/50 border border-line-subtle/50 rounded-lg p-4 space-y-3 opacity-75">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <QuestTypeTag type={questDef.questType} />
-                              {questDef.giver?.name && (
-                                <p className="text-fg-muted text-xs">{questDef.giver.name}</p>
-                              )}
-                            </div>
-                            <h4 className="text-fg-bright font-semibold text-base">{questDef.title}</h4>
-                            <p className="text-fg-secondary text-sm mt-1">{questDef.summary}</p>
-                          </div>
-                          <span className="px-2 py-1 bg-status-success/50 border border-status-success/50 text-status-success text-xs font-semibold rounded">
-                            Done
-                          </span>
-                        </div>
-                        {questDef.rewards && questDef.rewards.length > 0 && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-fg-muted text-sm">Reward:</span>
-                            <span className="text-fg-primary text-sm">
-                              {questDef.rewards.map((r: any) => {
-                                if (r.type === 'currency') return `${r.amount} Gold`
-                                if (r.type === 'xp') return `${r.amount} XP`
-                                return ''
-                              }).filter(Boolean).join(', ')}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()}
+            ) : completedGroups.length === 0 ? (
+              <div className="text-fg-secondary text-sm">No completed quests yet.</div>
+            ) : (
+              completedGroups.map((group) => (
+                <section key={group.id} className="space-y-3">
+                  {group.standing ? (
+                    <FactionHeader name={group.name} kind={group.kind} done={group.standing.done} total={group.standing.total} title={group.standing.title} />
+                  ) : (
+                    <h3 className="text-sm font-bold uppercase tracking-wide text-fg-bright">{group.name}</h3>
+                  )}
+                  {group.givers.flatMap((entry) =>
+                    [...entry.completed]
+                      .sort((a, b) => questOrderIndex(a) - questOrderIndex(b))
+                      .map((questId) => {
+                        const questDef = QUEST_DEFS[questId]
+                        if (!questDef) return null
+                        return <CompletedQuestCard key={questId} questId={questId} questDef={questDef} giver={entry.giver} />
+                      })
+                  )}
+                </section>
+              ))
+            )}
 
             {!isLoadingQuests && (
               <div className="mt-6 pt-4 border-t border-line-subtle/50 space-y-3">
@@ -392,7 +519,7 @@ export default function QuestsPanel({
                   {isResettingQuests ? 'Resetting...' : 'Reset Quests to Initial State'}
                 </button>
                 <p className="mt-1 text-xs text-fg-muted text-center">
-                  Resets all quests and chest to initial state
+                  Resets all quests, met givers and chests to initial state
                 </p>
                 <button
                   onClick={onSkipToChest}

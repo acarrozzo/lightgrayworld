@@ -14,7 +14,7 @@
  *                                            sale, and is the player standing in
  *                                            the shop that sells it?" check)
  *
- * `requiresQuest`, where present, is the completed quest that opens the shop —
+ * `requiresMembership`, where present, is the guild (factions.js) that opens the shop —
  * guild membership, in every case so far. It lives here rather than on the room
  * action because BOTH consumers have to honour it: hiding the stock list is not
  * what makes a purchase illegal, the buy route refusing it is.
@@ -27,7 +27,7 @@
  *
  * `stock` is ordered for display: weapons, then armour, then consumables.
  *
- * @typedef {{ name: string, stock: string[], requiresQuest?: string }} Shop
+ * @typedef {{ name: string, stock: string[], requiresMembership?: string }} Shop
  * @type {Record<string, Shop>}
  */
 const SHOPS = {
@@ -98,10 +98,10 @@ const SHOPS = {
     ],
   },
 
-  // The Wizard's Guild stall, open to members only (`requiresQuest`).
+  // The Wizard's Guild stall, open to members only (`requiresMembership`).
   '225': {
     name: "Wizard's Guild Store",
-    requiresQuest: 'quest_wizardsguild_000',
+    requiresMembership: 'wizards-guild',
     stock: [
       'wand',
       'wizard-staff',
@@ -122,7 +122,7 @@ const SHOPS = {
   // The Warrior's Guild stall, likewise members only.
   '226': {
     name: "Warrior's Guild Store",
-    requiresQuest: 'quest_warriorsguild_000',
+    requiresMembership: 'warriors-guild',
     stock: [
       'iron-dagger',
       'iron-sword',
@@ -196,7 +196,7 @@ const SHOPS = {
   // hammer works a better metal at the forge.
   '308': {
     name: 'Mining Guild Supply Shop',
-    requiresQuest: 'quest_miningguild_000',
+    requiresMembership: 'mining-guild',
     stock: [
       'pickaxe',
       'hammer',
@@ -238,7 +238,7 @@ const SHOPS = {
   // Ammo is sold by the round at the item's own value, as Adam's sells it.
   '515e': {
     name: 'Ranger Shop',
-    requiresQuest: 'quest_rangersguild_000',
+    requiresMembership: 'rangers-guild',
     stock: [
       'mithril-boomerang',
       'mithril-bow',
@@ -271,8 +271,8 @@ function shopSellsItem(roomId, itemSlug) {
 }
 
 /** The quest that must be completed to trade here, or null if anyone may. */
-function shopRequiresQuest(roomId) {
-  return SHOPS[roomId]?.requiresQuest ?? null
+function shopRequiresMembership(roomId) {
+  return SHOPS[roomId]?.requiresMembership ?? null
 }
 
-module.exports = { SHOPS, getShop, shopSellsItem, shopRequiresQuest }
+module.exports = { SHOPS, getShop, shopSellsItem, shopRequiresMembership }

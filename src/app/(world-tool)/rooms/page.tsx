@@ -175,19 +175,15 @@ export default async function RoomsPage() {
 
   // 3. Quest givers grouped by the room they stand in (richer than the bare DB
   //    NPC rows — carries an icon and a count of quests offered).
-  const questData = require('@/lib/game-data/quests.json') as Record<
+  const giverData = require('@/lib/game-data/quest-givers.json') as Record<
     string,
-    { giver: { npcId: string; roomId: string; name: string; icon: string } }
+    { roomId: string; name: string; icon: string; quests: string[] }
   >
   const giversByRoom = new Map<string, Map<string, { name: string; icon: string; questCount: number }>>()
-  for (const q of Object.values(questData)) {
-    const g = q.giver
+  for (const [giverId, g] of Object.entries(giverData)) {
     if (!g?.roomId) continue
     if (!giversByRoom.has(g.roomId)) giversByRoom.set(g.roomId, new Map())
-    const byNpc = giversByRoom.get(g.roomId)!
-    const existing = byNpc.get(g.npcId)
-    if (existing) existing.questCount += 1
-    else byNpc.set(g.npcId, { name: g.name, icon: g.icon, questCount: 1 })
+    giversByRoom.get(g.roomId)!.set(giverId, { name: g.name, icon: g.icon, questCount: g.quests.length })
   }
 
   // Build a roomId -> exits map up front so we can detect one-way exits

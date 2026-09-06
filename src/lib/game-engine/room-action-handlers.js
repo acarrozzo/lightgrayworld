@@ -9,6 +9,7 @@ const { grantTeleport } = require('./teleport-grants')
 const { getRecipeById, isRecipeAvailableInRoom, whereToCraft, describeCraft } = require('../game-data/crafting-recipes')
 const { getShop } = require('../game-data/shops')
 const { goldChestFlagForRoom } = require('../game-data/gold-chests')
+const { isMember } = require('./services/faction-service')
 
 /**
  * Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
@@ -67,58 +68,88 @@ function resolveIdleDialog(idleDialogs, progressById) {
 }
 
 /**
- * Build a generic "talk to NPC" handler driven entirely by quest data.
+ * Build the "talk to" handler for a quest giver, driven entirely by
+ * quest-givers.json + quests.json.
  *
- * For the NPC's quests (sorted by number) it finds the active one — honoring
- * a clicked `targetQuestId` when several are active at once — and renders:
- *  - a turn-in prompt (completionDialog + "Complete Quest" button) when the
- *    requirements are met (and the player isn't just viewing via introOnly), or
- *  - a reminder (reminderDialog) otherwise.
- * When no quest is active it shows an idle dialog from `npc.idleDialogs`.
+ * The first talk is the meeting — the original's "start quests" button. The
+ * giver's `meetRequirements` are checked first (a failed one shows
+ * `lockedDialog` and nothing else happens); then the meeting is recorded, the
+ * giver's open quests appear, and the player sees the greeting with the New
+ * Quests list.
  *
- * All dialog text lives in quests.json; this factory carries only the NPC's
- * presentation (icon/color/title) and its idle-dialog cascade.
+ * After that, for the giver's active quests (honoring a clicked
+ * `targetQuestId` when several are active) it renders a turn-in prompt
+ * (completionDialog + "Complete Quest") when the requirements are met (and
+ * the player isn't just viewing via introOnly), or a reminder
+ * (reminderDialog) otherwise. With no quest active it shows an idle line from
+ * the giver's `idleDialogs`.
  */
-function createNpcTalkHandler(npc) {
+function createNpcTalkHandler({ giverId, action }) {
   return async (playerId, roomState, actionData = {}) => {
-    const { listQuestsByGiver, getQuestProgress, checkQuestRequirements } = require('./services/quest-service')
+    const qs = require('./services/quest-service')
+    const giver = qs.getGiver(giverId)
+    if (!giver) {
+      return createErrorResult(action, 'There is nobody here by that name.')
+    }
     const introOnly = !!actionData.introOnly
     const targetQuestId = actionData.questId ?? null
 
     roomState.touchActivity()
 
-    // Optional pre-check: if it fails, show a specific message and bail.
-    if (npc.preCheck) {
-      const passed = await npc.preCheck(playerId)
-      if (!passed) {
-        const npcModalObj = { type: 'icon', icon: npc.icon, iconColor: npc.iconColor, title: npc.title, message: npc.preCheckMessage || 'Come back later.' }
-        return {
-          success: true,
-          action: npc.action,
-          playerEvents: [{
-            event: 'action:feedback',
-            payload: createActionFeedbackPayload(npc.action, 'success', `You talk to the ${npc.title}.`, { roomId: roomState.roomId, showModal: true, modalContent: npcModalObj }),
-          }],
-        }
-      }
-    }
-
     const npcModal = (extra = {}) => ({
       type: 'icon',
-      icon: npc.icon,
-      iconColor: npc.iconColor,
-      title: npc.title,
+      icon: giver.icon,
+      iconColor: giver.iconColor,
+      title: giver.name,
       ...extra,
     })
     const feedback = (message, data) =>
-      createActionFeedbackPayload(npc.action, 'success', message, { roomId: roomState.roomId, showModal: true, ...data })
-    const result = payload => ({ success: true, action: npc.action, playerEvents: [{ event: 'action:feedback', payload }] })
+      createActionFeedbackPayload(action, 'success', message, { roomId: roomState.roomId, showModal: true, ...data })
+    const result = payload => ({ success: true, action, playerEvents: [{ event: 'action:feedback', payload }] })
+    const spoken = giver.spokenName || giver.name
 
-    const quests = listQuestsByGiver(npc.npcId)
+    const met = await qs.getGiverMet(playerId, giverId)
+    if (!met) {
+      if (giver.meetRequirements && giver.meetRequirements.length > 0) {
+        const gate = await qs.checkRequirements(playerId, giver.meetRequirements)
+        if (!gate.met) {
+          return result(
+            feedback(`You talk to ${spoken}.`, {
+              modalContent: npcModal({ message: giver.lockedDialog || 'Come back later.' }),
+            })
+          )
+        }
+      }
+
+      const meeting = await qs.meetGiver(playerId, giverId)
+      const state = await qs.getQuestState(playerId)
+      const newQuestTitles = meeting.openedQuestIds
+        .map(id => {
+          const def = qs.getQuestDef(id)
+          return def ? { title: def.title, objective: def.objective || null } : null
+        })
+        .filter(Boolean)
+      const chainMessage =
+        newQuestTitles.length > 0 ? `New quests: ${newQuestTitles.map(q => q.title).join(', ')}.` : null
+
+      return result(
+        feedback(giver.metLine || `You meet ${spoken}.`, {
+          quests: state.quests,
+          giversMet: state.giversMet,
+          modalContent: npcModal({ message: giver.greeting }),
+          questComplete: { questTitle: null, rewards: [], levelUp: null, newQuestTitles },
+          ...(chainMessage
+            ? { questChain: { startedQuestIds: meeting.openedQuestIds, message: chainMessage }, toast: chainMessage }
+            : {}),
+        })
+      )
+    }
+
+    const quests = qs.listQuestsByGiver(giverId)
 
     const progressById = {}
     for (const quest of quests) {
-      progressById[quest.id] = await getQuestProgress(playerId, quest.id)
+      progressById[quest.id] = await qs.getQuestProgress(playerId, quest.id)
     }
 
     const activeQuests = quests.filter(quest => {
@@ -127,7 +158,7 @@ function createNpcTalkHandler(npc) {
     })
 
     // Prefer a specifically-clicked quest when multiple are active at once;
-    // otherwise take the first active quest by number.
+    // otherwise take the first active quest in the giver's order.
     let activeQuest = null
     if (targetQuestId) {
       activeQuest = activeQuests.find(quest => quest.id === targetQuestId) || null
@@ -137,16 +168,16 @@ function createNpcTalkHandler(npc) {
     }
 
     if (activeQuest) {
-      const requirements = await checkQuestRequirements(playerId, activeQuest.id)
+      const requirements = await qs.checkQuestRequirements(playerId, activeQuest.id)
       const hasRequirements = (activeQuest.requirements || []).length > 0
       // Show the turn-in prompt when requirements are met. `introOnly` (viewing a
       // quest from the list) suppresses it — but only for quests that actually have
-      // requirements, so requirement-less intro quests still offer their button.
+      // requirements, so a requirement-less quest still offers its button.
       const showTurnIn = requirements.met && (!introOnly || !hasRequirements)
 
       if (showTurnIn) {
         return result(
-          feedback(`You approach the ${npc.title}.`, {
+          feedback(`You approach ${spoken}.`, {
             modalContent: npcModal({ message: activeQuest.completionDialog }),
             questComplete: {
               questTitle: activeQuest.title,
@@ -160,19 +191,23 @@ function createNpcTalkHandler(npc) {
       }
 
       return result(
-        feedback(`You talk to the ${npc.title}.`, {
+        feedback(`You talk to ${spoken}.`, {
           modalContent: npcModal({ message: renderReminderDialog(activeQuest, requirements) }),
         })
       )
     }
 
-    // No active quest — show the NPC's idle dialog.
-    return result(
-      feedback(`You talk to the ${npc.title}.`, {
-        modalContent: npcModal({ message: resolveIdleDialog(npc.idleDialogs, progressById) }),
-      })
-    )
+    // No active quest — show the giver's idle dialog.
+    const idle =
+      resolveIdleDialog(giver.idleDialogs, progressById) || `${giver.name} has nothing more for you right now.`
+    return result(feedback(`You talk to ${spoken}.`, { modalContent: npcModal({ message: idle }) }))
   }
+}
+
+/** A room table entry for a giver's talk action, keyed by the giver's `action`. */
+function npcTalk(giverId) {
+  const giver = require('../game-data/quest-registry').getGiver(giverId)
+  return createNpcTalkHandler({ giverId, action: giver ? giver.action : `talk to ${giverId}` })
 }
 
 /**
@@ -184,8 +219,8 @@ function createNpcTalkHandler(npc) {
  * charges `ItemTemplate.value` via shop-pricing, so what the card shows and what
  * the player is charged come from the same column.
  *
- * A shop's own `requiresQuest` (shops.js) is checked first, so the stock list and
- * the buy route agree about who may trade. `gate`, when given, is an extra
+ * A shop's own `requiresMembership` (shops.js) is checked first, so the stock list
+ * and the buy route agree about who may trade. `gate`, when given, is an extra
  * async (playerId) => boolean layered on top of it.
  */
 function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'basicshop', iconColor = 'amber-500' } = {}) {
@@ -198,9 +233,9 @@ function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'ba
       return createErrorResult('view shop', 'There is no shop here.')
     }
 
-    const { shopRequiresQuest } = require('../game-data/shops')
-    const requiredQuest = shopRequiresQuest(roomId)
-    const membershipOk = requiredQuest ? await makeGuildMemberCheck(requiredQuest)(playerId) : true
+    const { shopRequiresMembership } = require('../game-data/shops')
+    const requiredMembership = shopRequiresMembership(roomId)
+    const membershipOk = requiredMembership ? await isMember(playerId, requiredMembership) : true
 
     if (!membershipOk || (gate && !(await gate(playerId)))) {
       return {
@@ -282,18 +317,13 @@ function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'ba
 }
 
 /**
- * Is the player a member of the given guild? Membership is the guild's
- * initiation quest being complete — the same fact the guild's `up` gate reads.
+ * Is the player a member of the given guild? The same fact the guild's `up`
+ * gate, its shop and its trainers read.
  */
-function makeGuildMemberCheck(questId) {
-  return async (playerId) => {
-    const { prisma } = require('../db-client')
-    const progress = await prisma.questProgress.findUnique({
-      where: { userId_questId: { userId: playerId, questId } },
-      select: { completed: true },
-    })
-    return !!progress?.completed
-  }
+function makeGuildMemberCheck(factionId) {
+  // "Member" means the guild's initiation is turned in — defined once, in
+  // factions.js, so a door, a pack and a trainer can never disagree about it.
+  return (playerId) => isMember(playerId, factionId)
 }
 
 /**
@@ -1320,14 +1350,14 @@ function makeRepeatableChestHandler({
  * Both guilds run the same pack with their own colour of supplies: the warriors
  * stock red (HP), the wizards blue (MP).
  */
-function makeGuildPackHandler({ questId, label, icon, iconColor, joinMessage, pack }) {
+function makeGuildPackHandler({ factionId, label, icon, iconColor, joinMessage, pack }) {
   return async (playerId, roomState) => {
     const { getHeldQuantity, grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
 
     roomState.touchActivity()
 
-    const isMember = await makeGuildMemberCheck(questId)(playerId)
-    if (!isMember) {
+    const member = await makeGuildMemberCheck(factionId)(playerId)
+    if (!member) {
       return {
         success: true,
         action: 'grab pack',
@@ -1394,7 +1424,7 @@ function makeGuildPackHandler({ questId, label, icon, iconColor, joinMessage, pa
 /** The Warrior's Guild pack: reds, meatballs, red potions, red balm. */
 const makeWarriorPackHandler = () =>
   makeGuildPackHandler({
-    questId: 'quest_warriorsguild_000',
+    factionId: 'warriors-guild',
     label: "Warrior's Pack",
     icon: 'npc-warrior',
     iconColor: 'blue-400',
@@ -1410,7 +1440,7 @@ const makeWarriorPackHandler = () =>
 /** The Wizard's Guild pack: the same four slots in blue. */
 const makeWizardPackHandler = () =>
   makeGuildPackHandler({
-    questId: 'quest_wizardsguild_000',
+    factionId: 'wizards-guild',
     label: "Wizard's Pack",
     icon: 'npc-wizard',
     iconColor: 'purple-400',
@@ -1433,7 +1463,7 @@ const makeWizardPackHandler = () =>
 /** The Mining Guild's pack: potions, food, and a pickaxe to break. */
 const makeMiningPackHandler = () =>
   makeGuildPackHandler({
-    questId: 'quest_miningguild_000',
+    factionId: 'mining-guild',
     label: 'Mining Pack',
     icon: 'npc-miner2',
     iconColor: 'yellow-600',
@@ -1447,7 +1477,7 @@ const makeMiningPackHandler = () =>
     ],
   })
 
-function makeGuildTeleportHandler({ action, questId, toRoomId, label, icon, iconColor, joinMessage, message }) {
+function makeGuildTeleportHandler({ action, factionId, toRoomId, label, icon, iconColor, joinMessage, message }) {
   return async (playerId, roomState) => {
     roomState.touchActivity()
 
@@ -1465,7 +1495,7 @@ function makeGuildTeleportHandler({ action, questId, toRoomId, label, icon, icon
       ],
     })
 
-    if (!(await makeGuildMemberCheck(questId)(playerId))) {
+    if (!(await makeGuildMemberCheck(factionId)(playerId))) {
       return respond('info', joinMessage, {
         showModal: true,
         modalContent: { type: 'icon', icon, iconColor, title: label, message: joinMessage },
@@ -1935,31 +1965,7 @@ const ROOM_ACTIONS = {
     'ex cabin': "You examine the cabin. It's warm and cozy, with a cooking fire burning and the Old Man rocking in his chair.",
     'attack dummy': 'You attack the training dummy. Your weapon strikes true!',
     'craft': executeCraft,
-    'talk to old man': createNpcTalkHandler({
-      npcId: 'old_man',
-      action: 'talk to old man',
-      icon: 'npc-oldman',
-      iconColor: 'yellow-400',
-      title: 'Old Man',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_oldman_004',
-          message: 'The Old Man rocks contentedly in his chair. "The gator\'s gone, the rats are gone, and my wife\'s got her jam. You\'ve been a true blessing to this old man, traveler."',
-        },
-        {
-          ifCompleted: 'quest_oldman_003',
-          message: 'The Old Man rocks contentedly in his chair. "The rats are gone, the gator is dealt with, and my wife got her flower. You\'ve been a true blessing, traveler."',
-        },
-        {
-          ifCompleted: 'quest_oldman_001',
-          message: 'The Old Man smiles warmly. "Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask."',
-        },
-        {
-          ifCompleted: null,
-          message: 'The Old Man looks up from his rocking chair with a warm smile. "Ah, traveler! Welcome to my cabin. I\'m glad you found your way here."',
-        },
-      ],
-    }),
+    'talk to old man': npcTalk('old_man'),
   },
   '007': {
     // Ported from the original's Spider Cave Entrance sign. The warning and the
@@ -1978,27 +1984,7 @@ const ROOM_ACTIONS = {
           'Beware the spiders and scorpions that live in the cave to the south. You will need a weapon if you want to survive. If you do not have one, speak to the Young Soldier here — he will see you armed and trained before you go down.',
       },
     },
-    'talk to young soldier':createNpcTalkHandler({
-      npcId: 'young_soldier',
-      action: 'talk to young soldier',
-      icon: 'npc-youngsoldier',
-      iconColor: 'blue-400',
-      title: 'Young Soldier',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_youngsoldier_002',
-          message: 'You proved yourself, Wanderer. If you\'re looking for more work, head northwest to Jack Lumber\'s cabin. He\'s got quests that\'ll open the way to the Forest.',
-        },
-        {
-          ifCompleted: 'quest_youngsoldier_001',
-          message: 'Wow, you can pick up a sword. I can\'t believe we\'re giving XP for this.',
-        },
-        {
-          ifCompleted: null,
-          message: '"What are you doing talking to me? You\'re supposed to talk to the Old Man west of here first."',
-        },
-      ],
-    }),
+    'talk to young soldier': npcTalk('young_soldier'),
   },
   '004': {},
   '005': {
@@ -2073,34 +2059,14 @@ const ROOM_ACTIONS = {
     'view shop': makeShopHandler('006'),
   },
   '024': {
-    'talk to jack lumber': createNpcTalkHandler({
-      npcId: 'jack_lumber',
-      action: 'talk to jack lumber',
-      icon: 'npc-jacklumber',
-      iconColor: 'green-400',
-      title: 'Jack Lumber',
-      preCheck: async (playerId) => {
-        const { prisma } = require('../db-client')
-        const user = await prisma.user.findUnique({ where: { id: playerId }, select: { chest1: true } })
-        return !!user?.chest1
-      },
-      preCheckMessage: "\"How'd you get here? Go back and open that gold chest at the Crossroads first. Then we'll talk.\"",
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_jacklumber_000',
-          message: '"The Forest Path is open! Get out there and see what\'s beyond the Grassy Field. And remember — keep that hatchet sharp and your bow ready!"',
-        },
-        {
-          ifCompleted: 'quest_jacklumber_intro',
-          message: '"You\'ve got work to do, Wanderer! Check your quests and get to it."',
-        },
-        {
-          ifCompleted: null,
-          message: '"I\'m Jack Lumber, get it! Like Lumberjack! Come back when you\'ve proven yourself to the Young Soldier and I\'ll show you what I can do."',
-        },
-      ],
-    }),
+    'talk to jack lumber': npcTalk('jack_lumber'),
     'craft': executeCraft,
+  },
+  '029': {
+    // The Grand Quest Pillar, in the ruins of the Destroyed Academy: the
+    // original's room 029, where the four regional "Savior" grand quests were
+    // started and claimed. Now a quest giver like any other.
+    'examine grand pillar': npcTalk('grand_quest_pillar'),
   },
   '025': {
     // Jack's tree farm is the starter tree and deliberately unlike every other
@@ -2156,27 +2122,7 @@ const ROOM_ACTIONS = {
   // The farm gate is a toll, not a quest: 50 gold buys one trip north, and the
   // gate spends the pass on the way through (see ROOM_GATES['103']).
   '103': {
-    'talk to freddie': createNpcTalkHandler({
-      npcId: 'freddie',
-      action: 'talk to freddie',
-      icon: 'npc-freddie',
-      iconColor: 'amber-400',
-      title: 'Freddie',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_freddie_001',
-          message: '"Look at that — proper leatherwork." Freddie slaps the workbench. "Hides are still fifty gold a trip, mind. Hammer\'s free, though. Always is."',
-        },
-        {
-          ifCompleted: 'quest_freddie_intro',
-          message: '"Grab a hammer, pay the toll, take your five hides. Then find a crafting table and make something out of them."',
-        },
-        {
-          ifCompleted: null,
-          message: 'A wiry man in a leather apron looks up from a half-tanned hide. "Afternoon. Cows are through the gate. Gate\'s fifty gold."',
-        },
-      ],
-    }),
+    'talk to freddie': npcTalk('freddie'),
     'pay toll': async (playerId, roomState) => {
       const { prisma } = require('../db-client')
       const { isLeverPulled, pullLever, COW_TOLL } = require('./lever-state')
@@ -2561,27 +2507,7 @@ const ROOM_ACTIONS = {
         overchargeBonus: 10,
         overchargeMessage: "You rest at Hunter Bill's camp and supercharge yourself. Your HP and MP are fully restored, plus an extra +10 to each.",
       }),
-    'talk to hunter bill': createNpcTalkHandler({
-      npcId: 'hunter_bill',
-      action: 'talk to hunter bill',
-      icon: 'npc-hunterbill',
-      iconColor: 'green-400',
-      title: 'Hunter Bill',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_hunterbill_000',
-          message: '"Bigfoot and the whole six — nobody\'s done that in a while." Bill leans back against a tree. "Go crack that gold chest northeast of here. You earned what\'s in it."',
-        },
-        {
-          ifCompleted: 'quest_hunterbill_intro',
-          message: '"Still hunting? Good. The forest gives up what it owes eventually — just keep walking it."',
-        },
-        {
-          ifCompleted: null,
-          message: 'The hunter glances up from his bow and goes back to stringing it. "Come find me once the forest lets you in properly."',
-        },
-      ],
-    }),
+    'talk to hunter bill': npcTalk('hunter_bill'),
   },
   '119': {
     'open gold chest': makeGoldChestHandler({
@@ -2593,27 +2519,7 @@ const ROOM_ACTIONS = {
     }),
   },
   '128': {
-    'talk to forest gnome': createNpcTalkHandler({
-      npcId: 'forest_gnome',
-      action: 'talk to forest gnome',
-      icon: 'npc-forestgnome',
-      iconColor: 'green-400',
-      title: 'Forest Gnome',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_forestgnome_000',
-          message: '"Trolls handled, door hung, potions brewed. You\'re alright, Wanderer." The gnome stretches out in his hut. "Spare hatchet\'s always here if you lose yours."',
-        },
-        {
-          ifCompleted: 'quest_forestgnome_intro',
-          message: '"Berries, wood, trolls — take them in whatever order suits you. Grab the spare hatchet on your way out."',
-        },
-        {
-          ifCompleted: null,
-          message: 'The gnome watches you from the branches without climbing down. "Nice hut, isn\'t it? Come find me once you\'ve earned your way into this forest properly."',
-        },
-      ],
-    }),
+    'talk to forest gnome': npcTalk('forest_gnome'),
   },
   // ==================== RED TOWN ====================
   // Seven quest givers across five rooms, six shops, four chests, two rest
@@ -2623,125 +2529,23 @@ const ROOM_ACTIONS = {
 
   // --- Red Guard Captain, Forest Lookout (215) ---
   '215': {
-    'talk to red guard captain': createNpcTalkHandler({
-      npcId: 'red_guard_captain',
-      action: 'talk to red guard captain',
-      icon: 'npc-redguardcaptain',
-      iconColor: 'red-500',
-      title: 'Red Guard Captain',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_redguardcaptain_003',
-          message: '"Thieves down, swords delivered, sewers thinned. The tower ladder is yours whenever you want the forest." The Captain goes back to watching the treeline.',
-        },
-        {
-          ifCompleted: 'quest_redguardcaptain_intro',
-          message: '"Still work on the board. Take them in whatever order suits you — the ladder opens the moment any one of them is done."',
-        },
-        {
-          ifCompleted: null,
-          message: 'The Captain keeps his eyes on the trees. "Unless you have business up here, mind the ladder on your way down."',
-        },
-      ],
-    }),
+    'talk to red guard captain': npcTalk('red_guard_captain'),
   },
 
   // --- Town Hall Plaza (221) ---
   '221': {
-    'talk to the people': createNpcTalkHandler({
-      npcId: 'town_hall_plaza',
-      action: 'talk to the people',
-      icon: 'npc-townhallplaza',
-      iconColor: 'red-500',
-      title: 'Town Hall Plaza',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_townhallplaza_003',
-          message: 'The gardener waves, the chef shouts something about the meatballs, and Suzie holds her bear up for you to see. Nobody here needs anything else from you today.',
-        },
-        {
-          ifCompleted: 'quest_townhallplaza_intro',
-          message: 'The Plaza is as busy as ever. Flowers, meat, and one very upset little girl — take them in any order.',
-        },
-        {
-          ifCompleted: null,
-          message: 'People mill about the benches and tables, trading and passing through. Nobody has asked you for anything yet.',
-        },
-      ],
-    }),
+    'talk to the people': npcTalk('town_hall_plaza'),
   },
 
   // --- Mayor Rudolf, Town Hall Office (222) ---
   '222': {
-    'talk to mayor': createNpcTalkHandler({
-      npcId: 'mayor_rudolf',
-      action: 'talk to mayor',
-      icon: 'npc-mayor',
-      iconColor: 'red-500',
-      title: 'Mayor Rudolf',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_mayorrudolf_000',
-          message: '"Red Town owes you a debt it cannot properly pay." The Mayor nods at the door west. "The Gardens chest is yours. And the dining room north is open to you now."',
-        },
-        {
-          ifCompleted: 'quest_mayorrudolf_intro',
-          message: '"The Scorpion King, when you are ready. Below the Spider Cave, out in the Grassy Field. The bounty stands."',
-        },
-        {
-          ifCompleted: null,
-          message: 'The Mayor works through a stack of paperwork without looking up. "Whatever it is, put it on the pile."',
-        },
-      ],
-    }),
+    'talk to mayor': npcTalk('mayor_rudolf'),
   },
 
   // --- Wizard's Guild (225): two quest givers, a stall, a fire and the lair teleport ---
   '225': {
-    'talk to wizard recruiter': createNpcTalkHandler({
-      npcId: 'wizards_guild_recruiter',
-      action: 'talk to wizard recruiter',
-      icon: 'npc-wizard',
-      iconColor: 'purple-400',
-      title: "Wizard's Guild Recruiter",
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_wizardsguild_000',
-          message: '"Welcome, member. The stall is open to you, the fire is yours to rest at, and Morty has been asking after you."',
-        },
-        {
-          ifCompleted: 'quest_wizardsguild_intro',
-          message: '"The Kobold Master, northwest in the Forest. Come back when it is done and the guild is yours."',
-        },
-        {
-          ifCompleted: null,
-          message: 'The robed crowd talks over you about potions and reagents. Nobody has offered you anything yet.',
-        },
-      ],
-    }),
-    'talk to wizard morty': createNpcTalkHandler({
-      npcId: 'wizard_morty',
-      action: 'talk to wizard morty',
-      icon: 'npc-wizard2',
-      iconColor: 'purple-400',
-      title: 'Wizard Morty',
-      preCheck: makeGuildMemberCheck('quest_wizardsguild_000'),
-      preCheckMessage: '"Members only." Morty does not look up. "Speak to the recruiter, put down the Kobold Master, then come back."',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_wizardmorty_003',
-          message: '"Gray matter, the dead of the Catacombs, and the Troll Queen herself." Morty finally looks impressed. "Alright. You are a powerful wizard."',
-        },
-        {
-          ifCompleted: 'quest_wizardmorty_intro',
-          message: '"Three things, remember. Take them in whatever order you like — they are all equally unpleasant."',
-        },
-        {
-          ifCompleted: null,
-          message: 'Morty stirs something and ignores you entirely.',
-        },
-      ],
-    }),
+    'talk to wizard recruiter': npcTalk('wizards_guild_recruiter'),
+    'talk to wizard morty': npcTalk('wizard_morty'),
     'view shop': makeShopHandler('225', {
       lockedMessage: 'The stall keeper shakes her head. "Guild members only. Speak to the recruiter."',
       icon: 'npc-wizard',
@@ -2760,7 +2564,7 @@ const ROOM_ACTIONS = {
       },
     },
     'rest at wizard fire': async (playerId, roomState) => {
-      const isMember = await makeGuildMemberCheck('quest_wizardsguild_000')(playerId)
+      const isMember = await makeGuildMemberCheck('wizards-guild')(playerId)
       if (!isMember) {
         return {
           success: true,
@@ -2792,7 +2596,7 @@ const ROOM_ACTIONS = {
     'grab pack': makeWizardPackHandler(),
     'teleport to kobold lair': makeGuildTeleportHandler({
       action: 'teleport to kobold lair',
-      questId: 'quest_wizardsguild_000',
+      factionId: 'wizards-guild',
       toRoomId: '115',
       label: "Wizard's Guild",
       icon: 'npc-wizard',
@@ -2804,50 +2608,8 @@ const ROOM_ACTIONS = {
 
   // --- Warrior's Guild (226): two quest givers, a stall, a fire and the Warrior's Pack ---
   '226': {
-    'talk to warrior recruiter': createNpcTalkHandler({
-      npcId: 'warriors_guild_recruiter',
-      action: 'talk to warrior recruiter',
-      icon: 'npc-warrior',
-      iconColor: 'blue-400',
-      title: "Warrior's Guild Recruiter",
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_warriorsguild_000',
-          message: '"Welcome, member. The rack is open to you, the fire is yours, and grab a pack on your way out. Pete has work if you want it."',
-        },
-        {
-          ifCompleted: 'quest_warriorsguild_intro',
-          message: '"The Ogre Lieutenant, southwest in the Forest. Come back when it is done and the guild is yours."',
-        },
-        {
-          ifCompleted: null,
-          message: 'The warriors outside the hall size you up and go back to their conversation.',
-        },
-      ],
-    }),
-    'talk to warrior pete': createNpcTalkHandler({
-      npcId: 'warrior_pete',
-      action: 'talk to warrior pete',
-      icon: 'npc-warrior2',
-      iconColor: 'blue-400',
-      title: 'Warrior Pete',
-      preCheck: makeGuildMemberCheck('quest_warriorsguild_000'),
-      preCheckMessage: '"Members only, friend." Pete jerks a thumb at the recruiter. "Put down the Ogre Lieutenant first."',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_warriorpete_003',
-          message: '"Knights, sharks and three Champions." Pete grins for the first time. "Fine. You’re a warrior. I’ll say it out loud and everything."',
-        },
-        {
-          ifCompleted: 'quest_warriorpete_intro',
-          message: '"Three things, any order. None of them are close by and none of them are easy. That’s rather the point."',
-        },
-        {
-          ifCompleted: null,
-          message: 'Pete leans on the weapon rack and says nothing.',
-        },
-      ],
-    }),
+    'talk to warrior recruiter': npcTalk('warriors_guild_recruiter'),
+    'talk to warrior pete': npcTalk('warrior_pete'),
     'view shop': makeShopHandler('226', {
       lockedMessage: 'The quartermaster folds his arms. "Guild members only. Talk to the recruiter."',
       icon: 'npc-warrior',
@@ -2866,7 +2628,7 @@ const ROOM_ACTIONS = {
       },
     },
     'rest at warrior fire': async (playerId, roomState) => {
-      const isMember = await makeGuildMemberCheck('quest_warriorsguild_000')(playerId)
+      const isMember = await makeGuildMemberCheck('warriors-guild')(playerId)
       if (!isMember) {
         return {
           success: true,
@@ -2898,7 +2660,7 @@ const ROOM_ACTIONS = {
     'grab pack': makeWarriorPackHandler(),
     'teleport to ogre lair': makeGuildTeleportHandler({
       action: 'teleport to ogre lair',
-      questId: 'quest_warriorsguild_000',
+      factionId: 'warriors-guild',
       toRoomId: '111',
       label: "Warrior's Guild",
       icon: 'npc-warrior',
@@ -3119,16 +2881,7 @@ const ROOM_ACTIONS = {
 
   // --- The Crossroads: the Dwarf Captain, and the map directory beside him ---
   '303': {
-    'talk to dwarf captain': createNpcTalkHandler({
-      npcId: 'dwarf_captain',
-      action: 'talk to dwarf captain',
-      title: 'Dwarf Captain',
-      icon: 'npc-dwarfcaptain',
-      iconColor: 'yellow-600',
-      idleDialogs: [
-        { message: '"The Rocky Flats is full of danger," he says, and goes back to watching the road. He has nothing else for you today.' },
-      ],
-    }),
+    'talk to dwarf captain': npcTalk('dwarf_captain'),
     'read sign': {
       showModal: true,
       message: 'You read the Rocky Flats Map Directory.',
@@ -3188,16 +2941,7 @@ const ROOM_ACTIONS = {
 
   // --- The Dwarf Village Square: the Bounty Board, the coal fire, the directory ---
   '307': {
-    'read bounty board': createNpcTalkHandler({
-      npcId: 'dwarf_bounty_board',
-      action: 'read bounty board',
-      title: 'Dwarf Guard Bounty Board',
-      icon: 'npc-bountyboard',
-      iconColor: 'yellow-600',
-      idleDialogs: [
-        { message: 'The board is covered in wanted posters in three different hands, and every one of them has been collected on. Nothing new today.' },
-      ],
-    }),
+    'read bounty board': npcTalk('dwarf_bounty_board'),
     'rest at the coal fire': async (playerId, roomState) =>
       roomState.applyRest(playerId, {
         action: 'rest at the coal fire',
@@ -3232,28 +2976,8 @@ const ROOM_ACTIONS = {
   // The whole guild in one room. See the note on room 308 in prisma/seed.ts for
   // why the original's five interior rooms are folded in here.
   '308': {
-    'talk to mining recruiter': createNpcTalkHandler({
-      npcId: 'mining_guild_recruiter',
-      action: 'talk to mining recruiter',
-      title: 'Mining Guild Recruiter',
-      icon: 'npc-miner2',
-      iconColor: 'yellow-600',
-      idleDialogs: [
-        { message: '"You are in. Talk to the Leader at the back — he is the one who decides what you are allowed to make."' },
-      ],
-    }),
-    'talk to guild leader': createNpcTalkHandler({
-      npcId: 'mining_guild_leader',
-      action: 'talk to guild leader',
-      title: 'Mining Guild Leader',
-      icon: 'npc-miner',
-      iconColor: 'yellow-600',
-      preCheck: makeGuildMemberCheck('quest_miningguild_000'),
-      preCheckMessage: 'The Guild Leader does not look up. "Members. Talk to the recruiter."',
-      idleDialogs: [
-        { message: 'He demonstrates perfect mining form at you for a while, then goes back to the bench. Nothing more for now.' },
-      ],
-    }),
+    'talk to mining recruiter': npcTalk('mining_guild_recruiter'),
+    'talk to guild leader': npcTalk('mining_guild_leader'),
     'view shop': makeShopHandler('308', {
       lockedMessage: 'Join the Mining Guild to buy from its supply shop. Speak to the recruiter.',
       icon: 'npc-miner2',
@@ -3261,7 +2985,7 @@ const ROOM_ACTIONS = {
     }),
     'grab pack': makeMiningPackHandler(),
     'rest at the forge': async (playerId, roomState) => {
-      const isMember = await makeGuildMemberCheck('quest_miningguild_000')(playerId)
+      const isMember = await makeGuildMemberCheck('mining-guild')(playerId)
       if (!isMember) {
         return {
           success: true,
@@ -3467,23 +3191,7 @@ const ROOM_ACTIONS = {
 
   // --- The Blue Oasis: the Friendly Pirate, his berries, and his spring ---
   '413': {
-    'talk to friendly pirate': createNpcTalkHandler({
-      npcId: 'friendly_pirate',
-      action: 'talk to friendly pirate',
-      title: 'Friendly Pirate',
-      icon: 'npc-pirate',
-      iconColor: 'blue-300',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_friendlypirate_003',
-          message: '"Aloha, matey! Nothing left for you to hunt out here — but the berries are still fresh and the spring is still cold. Stay a while."',
-        },
-        {
-          ifCompleted: null,
-          message: '"Aloha, matey! Welcome to my beautiful Oasis!" The pirate stretches out on the sand. "Pick some berries, have a rest, and come find me when you want some work."',
-        },
-      ],
-    }),
+    'talk to friendly pirate': npcTalk('friendly_pirate'),
     'pick redberry': makeGatherAction({
       itemSlug: 'redberry',
       itemNamePlural: 'redberries',
@@ -3508,23 +3216,7 @@ const ROOM_ACTIONS = {
 
   // --- Crocodile Island: Jungle Jim's tree hut ---
   '424': {
-    'talk to jungle jim': createNpcTalkHandler({
-      npcId: 'jungle_jim',
-      action: 'talk to jungle jim',
-      title: 'Jungle Jim',
-      icon: 'npc-surfer',
-      iconColor: 'green-400',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_junglejim_003',
-          message: '"Bro! Look at you." Jim waxes his board. "Nothing beats the waves here at Crocodile Island. Grab some colours if you\'re low."',
-        },
-        {
-          ifCompleted: null,
-          message: '"Bro! Nothing beats the waves here at Crocodile Island." Jim looks up from his board. "Watch the crocs. And if you want to help a guy out, I\'ve got a few things that need doing."',
-        },
-      ],
-    }),
+    'talk to jungle jim': npcTalk('jungle_jim'),
     'grab colors': makeTopUpPackHandler({
       action: 'grab colors',
       label: "Jungle Jim's Colours",
@@ -3543,23 +3235,7 @@ const ROOM_ACTIONS = {
 
   // --- The Master Temple: the Guardian, the glory, the pack, the altar ---
   '425': {
-    'talk to water temple guardian': createNpcTalkHandler({
-      npcId: 'water_temple_guardian',
-      action: 'talk to water temple guardian',
-      title: 'Water Temple Guardian',
-      icon: 'npc-guardian',
-      iconColor: 'blue-300',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_watertempleguardian_004',
-          message: '"The four tests are behind you." The Guardian does not move, but the water around it does. "I stand here, if you think you are ready for me."',
-        },
-        {
-          ifCompleted: null,
-          message: '"Defeat the Red, Green, Blue and Yellow guardians before you attempt to challenge me, the far superior Master Temple Guardian."',
-        },
-      ],
-    }),
+    'talk to water temple guardian': npcTalk('water_temple_guardian'),
     'bathe in glory': batheInGlory,
     'grab master pack': makeTopUpPackHandler({
       action: 'grab master pack',
@@ -3780,23 +3456,7 @@ const ROOM_ACTIONS = {
 
   // --- The Dark Forest Outpost: the Ranger Guard, and a real bed ---
   '502': {
-    'talk to ranger guard': createNpcTalkHandler({
-      npcId: 'ranger_guard',
-      action: 'talk to ranger guard',
-      title: 'Ranger Guard',
-      icon: 'npc-ranger',
-      iconColor: 'green-400',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_rangerguard_003',
-          message: '"The road, the elders and the Keep\'s ground floor. That\'s the lot." The Ranger Guard leans on the palisade. "Rest here whenever you like. The Guild is up in the trees, if you can find it."',
-        },
-        {
-          ifCompleted: null,
-          message: '"These dang Highwaymen need to be stopped. They keep robbing the innocent." The Ranger Guard nods west, toward the toll. "Rest here if you need it. The forest is up the ledge to the northeast — once you\'ve shown me you can handle the road."',
-        },
-      ],
-    }),
+    'talk to ranger guard': npcTalk('ranger_guard'),
     'rest at the outpost': async (playerId, roomState) =>
       roomState.applyRest(playerId, {
         action: 'rest at the outpost',
@@ -3849,23 +3509,7 @@ const ROOM_ACTIONS = {
 
   // --- The Dark Elf's Tree Hut: quests, a fire, and the tea ---
   '506': {
-    'talk to dark elf': createNpcTalkHandler({
-      npcId: 'dark_elf',
-      action: 'talk to dark elf',
-      title: 'Dark Elf',
-      icon: 'npc-darkelf',
-      iconColor: 'green-400',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_darkelf_003',
-          message: '"Man this tea is good." The Dark Elf rocks in his chair. "Nothing left for you to do for me, friend — but the fire is warm and the tea is hot. Sit."',
-        },
-        {
-          ifCompleted: null,
-          message: '"Man this tea is good." The Dark Elf gestures at the table with his cup. "Grab one. Make yourself at home. And if you\'re the enthusiastic sort, I\'ve a few things that want doing."',
-        },
-      ],
-    }),
+    'talk to dark elf': npcTalk('dark_elf'),
     'rest at the tree hut': async (playerId, roomState) =>
       roomState.applyRest(playerId, {
         action: 'rest at the tree hut',
@@ -3973,23 +3617,7 @@ const ROOM_ACTIONS = {
 
   // --- The Ranger's Guild Entrance: the recruiter at the foot of the tree ---
   '515': {
-    'talk to ranger recruiter': createNpcTalkHandler({
-      npcId: 'rangers_guild_recruiter',
-      action: 'talk to ranger recruiter',
-      title: "Ranger's Guild",
-      icon: 'npc-ranger',
-      iconColor: 'green-400',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_rangersguild_000',
-          message: '"Welcome, Ranger." The guard on the bottom rung steps aside. "Up you go. Flynn\'s shop is first on the left, Lego is straight on, and mind the Shaman — he floats."',
-        },
-        {
-          ifCompleted: null,
-          message: '"Want to be a Ranger eh? There are fallen Rangers among us. Defeat one and return here."',
-        },
-      ],
-    }),
+    'talk to ranger recruiter': npcTalk('rangers_guild_recruiter'),
     'read sign': {
       showModal: true,
       message: "You read the Ranger's Guild sign.",
@@ -4013,7 +3641,7 @@ const ROOM_ACTIONS = {
   // --- The Ranger's Guild Lobby: the fire, the pack, and a rest ---
   '515a': {
     'grab ranger pack': makeGuildPackHandler({
-      questId: 'quest_rangersguild_000',
+      factionId: 'rangers-guild',
       label: "Ranger's Pack",
       icon: 'npc-ranger',
       iconColor: 'green-400',
@@ -4035,23 +3663,7 @@ const ROOM_ACTIONS = {
 
   // --- Lego's Quests ---
   '515b': {
-    'talk to ranger lego': createNpcTalkHandler({
-      npcId: 'ranger_lego',
-      action: 'talk to ranger lego',
-      title: 'Ranger Lego',
-      icon: 'npc-ranger2',
-      iconColor: 'green-400',
-      idleDialogs: [
-        {
-          ifCompleted: 'quest_rangerlego_003',
-          message: '"Aye." Lego does not look up from the arrow he is fletching. "Turtle, gargoyles, griffin. You\'re an Elite Ranger in my book. Go and shoot something."',
-        },
-        {
-          ifCompleted: null,
-          message: '"Aye. I only need the help of Elite Rangers. Let\'s see what you got." Lego goes back to re-stringing his bow.',
-        },
-      ],
-    }),
+    'talk to ranger lego': npcTalk('ranger_lego'),
   },
 
   // --- The Silver Shaman: the Silver Aura ---

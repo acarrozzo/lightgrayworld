@@ -18,6 +18,7 @@ type RankRow = {
   kills: number
   deaths: number
   completedQuests: number
+  titles: string[]
   chestsOpened: number
   clicks: number
   uIcon: string | null
@@ -183,6 +184,9 @@ export default function RanksPanel({ onOpenProfile }: RanksPanelProps) {
                       )}
                     </div>
                     <div className="text-[9px] text-fg-muted">{active.describe(row)}</div>
+                    {row.titles?.length > 0 && (
+                      <div className="truncate text-[9px] text-resource-gold">{row.titles.join(' · ')}</div>
+                    )}
                   </div>
                   <span className="shrink-0 text-xs font-semibold tabular-nums text-fg-primary">
                     {valueOf(row, board).toLocaleString()}

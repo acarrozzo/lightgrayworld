@@ -152,6 +152,7 @@ model User {
   playerRoomEnemies         PlayerRoomEnemy[]
   PlayerItem                PlayerItem[]
   quests                    QuestProgress[]
+  giversMet                 GiverMet[]
   sessions                  Session[]
   actionCaps                ActionCap[]
   room                      Room            @relation("RoomPlayers", fields: [currentRoom], references: [roomId])
@@ -205,6 +206,17 @@ model PlayerRoomEnemy {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roomId])
+  @@index([userId])
+}
+
+model GiverMet {
+  id      String   @id @default(cuid())
+  userId  String
+  giverId String
+  metAt   DateTime @default(now())
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, giverId])
   @@index([userId])
 }
 

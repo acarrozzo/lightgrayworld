@@ -67,8 +67,10 @@ export default function QuestRequirements({
   const inventory = useGameStore((s) => s.inventory)
   const killList = useGameStore((s) => s.killList)
   const player = useGameStore((s) => s.player)
+  const quests = useGameStore((s) => s.quests)
+  const giversMet = useGameStore((s) => s.giversMet)
 
-  const progress = getVisibleRequirementProgress(requirements, { inventory, killList, player })
+  const progress = getVisibleRequirementProgress(requirements, { inventory, killList, player, quests, giversMet })
   if (progress.length === 0) return null
 
   if (variant === 'compact') {

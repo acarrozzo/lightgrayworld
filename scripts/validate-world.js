@@ -104,15 +104,13 @@ const ACCEPTED = {
   // 029 now has one, since it is reachable (see below).
   roomsWithoutMapCoords: new Set(['031']),
 
-  // 029 ("Guardian Angel", the Destroyed Academy) is reachable and empty, and
-  // that is a deliberate choice rather than an unfinished port left showing.
-  //
-  // The original gated 005-north on the Goblin Chief kill ("Complete Jack
-  // Lumber's quests to open this gate") and put the Grand Quest 1-4 chain in
-  // 029. Neither is ported. Rather than restore the gate, the room is left open
-  // as a teaser for content still to come — so a bare room with an epic
-  // description is expected here, not a bug.
-  openEmptyRooms: new Set(['029']),
+  // 029 ("Guardian Angel", the Destroyed Academy) holds the Grand Quest
+  // Pillar again — the original's four regional "Savior" grand quests, now
+  // quests from the `grand_quest_pillar` giver. The original also gated
+  // 005-north on the Goblin Chief kill; that gate is deliberately not
+  // restored, so the room stays reachable as a teaser until the Pillar's
+  // giver is revealed by that same kill.
+  openEmptyRooms: new Set([]),
 
   // Enemies authored ahead of the map that will hold them. They are named by
   // acceptable quests, so they must exist — they simply have no spawn yet.
@@ -255,6 +253,8 @@ const {
   isFixedTeleportDestination,
 } = load('src/lib/game-data/teleport-destinations.js')
 const QUESTS = load('src/lib/game-data/quests.json')
+const { FACTIONS } = load('src/lib/game-data/factions.js')
+const GUILD_IDS = new Set(FACTIONS.filter((f) => f.membershipQuest).map((f) => f.id))
 
 const enemySlugs = new Set(ENEMIES.map((e) => e.slug))
 const questIds = new Set(Object.keys(QUESTS))
@@ -361,8 +361,8 @@ for (const [roomId, shop] of Object.entries(SHOPS)) {
     const slug = typeof entry === 'string' ? entry : entry.slug ?? entry.itemSlug
     if (!itemSlugs.has(slug)) err('shops', `${roomId} stocks unknown item "${slug}"`)
   }
-  if (shop.requiresQuest && !questIds.has(shop.requiresQuest)) {
-    err('shops', `${roomId} requires unknown quest "${shop.requiresQuest}"`)
+  if (shop.requiresMembership && !GUILD_IDS.has(shop.requiresMembership)) {
+    err('shops', `${roomId} requires membership of unknown guild "${shop.requiresMembership}"`)
   }
 }
 

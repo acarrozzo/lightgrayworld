@@ -22,6 +22,7 @@ async function handleAcceptQuest(request: AuthenticatedRequest) {
       success: boolean
       error?: string
       quests?: any[]
+      giversMet?: string[]
       player?: any
       inventory?: any
       levelUp?: any
@@ -43,6 +44,7 @@ async function handleAcceptQuest(request: AuthenticatedRequest) {
     return NextResponse.json({
       success: true,
       quests: result.quests,
+      giversMet: result.giversMet,
       player: result.player,
       inventory: result.inventory,
       startedQuestIds: result.startedQuestIds,

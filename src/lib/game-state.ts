@@ -322,6 +322,15 @@ export interface KillEntry {
   kills: number
 }
 
+/** One QuestProgress row: a quest the player can see, `completed` once turned in. */
+export interface QuestProgressRow {
+  id: string
+  questId: string
+  progress: number
+  completed: boolean
+  data?: { accepted?: boolean } | null
+}
+
 export interface GameState {
   // Player state
   player: Player | null
@@ -329,6 +338,9 @@ export interface GameState {
   token: string | null
   inventory: InventoryItem[]
   killList: KillEntry[]
+  /** Quest rows and the quest givers met — the journal's two inputs. */
+  quests: QuestProgressRow[]
+  giversMet: string[]
 
   // Room state
   currentRoom: Room | null
@@ -352,6 +364,8 @@ export interface GameState {
   setPlayer: (player: Player | null) => void
   setInventory: (inventory: InventoryItem[]) => void
   setKillList: (kills: KillEntry[]) => void
+  setQuests: (quests: QuestProgressRow[]) => void
+  setGiversMet: (giversMet: string[]) => void
   incrementKill: (monster: string) => void
   setCurrentRoom: (room: Room | null) => void
   setRoomPlayers: (players: Player[]) => void
@@ -387,6 +401,8 @@ export const useGameStore = create<GameState>()(
       token: null,
       inventory: [],
       killList: [],
+      quests: [],
+      giversMet: [],
       currentRoom: null,
       roomPlayers: [],
       roomCache: {},
@@ -400,6 +416,8 @@ export const useGameStore = create<GameState>()(
       setPlayer: (player) => set({ player }),
       setInventory: (inventory) => set({ inventory }),
       setKillList: (killList) => set({ killList }),
+      setQuests: (quests) => set({ quests }),
+      setGiversMet: (giversMet) => set({ giversMet }),
       incrementKill: (monster) =>
         set((state) => {
           const existing = state.killList.find((k) => k.monster === monster)

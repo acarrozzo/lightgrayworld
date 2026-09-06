@@ -1,42 +1,6 @@
 {
-  "quest_oldman_000": {
-    "number": 1,
-    "questType": "intro",
-    "level": 1,
-    "title": "Talk to the Old Man",
-    "summary": "Find the Old Man in his cozy wood cabin.",
-    "objective": "Talk to the Old Man in his cabin.",
-    "nextStep": "Go to the cabin (Room 003) and speak with the Old Man. His cabin is to the southwest of the Grassy Field Crossroads.",
-    "reminderDialog": "You haven't met the Old Man yet. Head to his cabin (Room 003), southwest of the Grassy Field Crossroads, and introduce yourself.",
-    "completionDialog": "Hey! Another Wanderer! I love having you guys around. An old man like me could always use a hand. First, can you bring me a flower.",
-    "giver": {
-      "npcId": "old_man",
-      "roomId": "003",
-      "name": "Old Man",
-      "icon": "npc-oldman"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_oldman_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_youngsoldier_000"
-      }
-    ]
-  },
   "quest_oldman_001": {
-    "number": 2,
+    "giverId": "old_man",
     "questType": "main",
     "level": 1,
     "title": "A Flower for my Wife",
@@ -45,13 +9,6 @@
     "nextStep": "Find a Yellow Flower in the flower patch to the north, then return to the Old Man in Room his cabin.",
     "reminderDialog": "Have you found that yellow flower yet? You can find them in the flower patch to the north. Just bring me one when you have it!",
     "completionDialog": "A yellow flower! Perfect! My wife loved flowers, I will put this on her grave later tonight.",
-    "giver": {
-      "npcId": "old_man",
-      "roomId": "003",
-      "name": "Old Man",
-      "icon": "npc-oldman"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasItem",
@@ -69,48 +26,10 @@
         "type": "xp",
         "amount": 5
       }
-    ],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_oldman_002"
-      }
-    ]
-  },
-  "quest_youngsoldier_000": {
-    "number": 3,
-    "questType": "intro",
-    "level": 1,
-    "title": "Talk to the Young Soldier",
-    "summary": "A young soldier waits impatiently.",
-    "objective": "Talk to the Young Soldier east of here.",
-    "nextStep": "Go to the Traning Area in the Grassy Field and talk to the Young Soldier.",
-    "reminderDialog": "The Young Soldier is waiting impatiently.",
-    "completionDialog": "I can't believe we're really giving experience for just talking to me.",
-    "giver": {
-      "npcId": "young_soldier",
-      "roomId": "007",
-      "name": "Young Soldier",
-      "icon": "npc-youngsoldier"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_youngsoldier_001"
-      }
     ]
   },
   "quest_youngsoldier_001": {
-    "number": 4,
+    "giverId": "young_soldier",
     "questType": "main",
     "level": 1,
     "title": "Equip a Weapon",
@@ -119,13 +38,6 @@
     "nextStep": "Open Inventory and equip something into Main Hand.",
     "reminderDialog": "This is so easy. Just pick up and equip a weapon. Open your INV and equip a weapon in your Main Hand, the higher the STR the better.",
     "completionDialog": "Wow, you can pick up a sword. I can't believe we're giving XP for this.",
-    "giver": {
-      "npcId": "young_soldier",
-      "roomId": "007",
-      "name": "Young Soldier",
-      "icon": "npc-youngsoldier"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasEquippedInSlot",
@@ -143,20 +55,10 @@
         "type": "xp",
         "amount": 5
       }
-    ],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_youngsoldier_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_youngsoldier_003"
-      }
     ]
   },
   "quest_youngsoldier_002": {
-    "number": 5,
+    "giverId": "young_soldier",
     "questType": "main",
     "level": 1,
     "title": "Collect the Scorpion Tails",
@@ -165,13 +67,9 @@
     "nextStep": "Hunt Scorpions for their tails, gather 5 of them, then return to the Young Soldier.",
     "reminderDialog": "Still short on tails? Bring me 5 Scorpion Tails and I'll know you're ready.",
     "completionDialog": "Very well Wanderer. You're no longer just an adventurer with a weapon, you're one who knows how to use it. I think you're ready to explore this world.\"",
-    "giver": {
-      "npcId": "young_soldier",
-      "roomId": "007",
-      "name": "Young Soldier",
-      "icon": "npc-youngsoldier"
-    },
-    "completionMode": "turn_in",
+    "after": [
+      "quest_youngsoldier_001"
+    ],
     "requirements": [
       {
         "type": "hasItem",
@@ -195,209 +93,113 @@
         "itemSlug": "gold-key",
         "quantity": 1
       }
-    ],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_jacklumber_intro"
-      }
     ]
   },
-  "quest_jacklumber_intro": {
-    "number": 10,
-    "questType": "intro",
-    "level": 1,
-    "title": "Talk to Jack Lumber",
-    "summary": "A lumberjack lives north of the Forest Gate. He might have work for a proven Wanderer.",
-    "objective": "Open the Gold Chest and talk to Jack Lumber in his cabin.",
-    "nextStep": "Use the Gold Key to open the Gold Chest at the Grassy Field Crossroads, then head northwest to Jack Lumber's cabin and speak with him.",
-    "reminderDialog": "You found me! But before we get to work, you should go open that gold chest back at the Crossroads. Come back after you've cracked it open.",
-    "completionDialog": "Ha! You cracked the chest! I knew you had it in you. I'm Jack Lumber — get it? Like Lumberjack! Listen, I've got some work that needs doing around here, and you look like just the Wanderer for the job.",
-    "giver": {
-      "npcId": "jack_lumber",
-      "roomId": "024",
-      "name": "Jack Lumber",
-      "icon": "npc-jacklumber"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "hasFlag",
-        "flag": "chest1",
-        "displayName": "Gold Chest opened"
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_jacklumber_000"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_jacklumber_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_jacklumber_002"
-      }
-    ]
-  },
-  "quest_jacklumber_000": {
-    "number": 13,
+  "quest_oldman_002": {
+    "giverId": "old_man",
     "questType": "main",
-    "level": 10,
-    "title": "The Chief's Cloak",
-    "summary": "Jack Lumber wants the Goblin Chief's cloak. Wearing it lets you walk past the Goblin Titan without getting torn apart.",
-    "objective": "Defeat the Goblin Chief in the Bat Cave and bring his cloak to Jack Lumber.",
-    "nextStep": "Head into the Bat Cave, hunt down the Goblin Chief, take his cloak, then bring it back to Jack in his cabin north of the Forest Gate.",
-    "reminderDialog": "Still no cloak? The Goblin Chief's hiding somewhere deep in the Bat Cave. Go find him, take the cloak off his back, and bring it here. Simple as chopping a tree!",
-    "completionDialog": "Well I'll be! You actually got it! With that cloak the Goblin Titan won't give you trouble on the way through. The Forest Path east of here is all yours now, Wanderer. Go see what's out there.",
-    "giver": {
-      "npcId": "jack_lumber",
-      "roomId": "024",
-      "name": "Jack Lumber",
-      "icon": "npc-jacklumber"
-    },
-    "completionMode": "turn_in",
+    "level": 3,
+    "title": "Rat Problem",
+    "summary": "The Old Man's basement has been overrun with giant rats. He needs someone brave enough to deal with them.",
+    "objective": "Defeat 2 Giant Rats in the Cabin Basement.",
+    "nextStep": "Head down into the Cabin Basement and defeat 2 Giant Rats, then return to the Old Man.",
+    "reminderDialog": "I got so many rats down there. Go on down and take out two of the giant ones, not the little ones.",
+    "completionDialog": "Excellent! Rats ain't got nothing on you. Now it's time to deal with the gator.",
+    "after": [
+      "quest_oldman_001"
+    ],
     "requirements": [
       {
-        "type": "hasItem",
-        "itemSlug": "goblin-cloak",
-        "quantity": 1,
-        "displayName": "Goblin Cloak"
+        "type": "killCount",
+        "enemySlug": "giant-rat",
+        "count": 2,
+        "displayName": "Giant Rats"
       }
     ],
     "consumeRequirementsOnComplete": false,
     "rewards": [
       {
         "type": "currency",
-        "amount": 1000
+        "amount": 15
       },
       {
         "type": "xp",
-        "amount": 200
+        "amount": 8
       },
       {
         "type": "item",
-        "itemSlug": "battle-axe",
-        "quantity": 1
-      }
-    ],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_freddie_intro"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_forestgnome_intro"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_hunterbill_intro"
+        "itemSlug": "cooked-meat",
+        "quantity": 5
       }
     ]
   },
-  "quest_jacklumber_001": {
-    "number": 11,
+  "quest_oldman_003": {
+    "giverId": "old_man",
+    "questType": "main",
+    "level": 5,
+    "title": "The Gator",
+    "summary": "With the rats cleared out, the Old Man turns his attention to a bigger problem — a massive gator lurking in the marsh behind his cabin.",
+    "objective": "Defeat the Gator in the Marsh behind the cabin.",
+    "nextStep": "Head southwest into the Marsh and defeat the Gator, then return to the Old Man.",
+    "reminderDialog": "That gator is still out there in the swamp. Head southwest into the marsh and deal with it when you're ready.",
+    "completionDialog": "Nice work Wanderer! NEXT QUEST INFO GOES HERE",
+    "after": [
+      "quest_oldman_002"
+    ],
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "gator",
+        "count": 1,
+        "displayName": "Gator"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 30
+      },
+      {
+        "type": "xp",
+        "amount": 20
+      }
+    ]
+  },
+  "quest_oldman_004": {
+    "giverId": "old_man",
     "questType": "side",
-    "level": 2,
-    "title": "Boomerang Some Bats",
-    "summary": "Jack says the Bat Cave is crawling with bats. Bring him their wings and he'll make it worth your while.",
-    "objective": "Collect 5 Bat Wings from the Bat Cave.",
-    "nextStep": "Head into the Bat Cave south of the Stone Path and hunt bats for their wings. Bats fly, so you'll need a ranged weapon like a boomerang or bow to hit them. Bring 5 Bat Wings back to Jack.",
-    "reminderDialog": "Only got {progress} of {count} wings so far? Remember, bats fly — you need a ranged weapon to hit them. Equip your boomerang or craft a bow and get back in there!",
-    "completionDialog": "Five wings, nice haul! Here's a little something for your feet. And remember — any enemy that flies is out of reach of a sword. Always keep a ranged weapon handy for those.",
-    "giver": {
-      "npcId": "jack_lumber",
-      "roomId": "024",
-      "name": "Jack Lumber",
-      "icon": "npc-jacklumber"
-    },
-    "completionMode": "turn_in",
+    "level": 1,
+    "title": "Blueberry Jam",
+    "summary": "The Old Man has a craving for his wife's famous blueberry jam. He needs a good haul of fresh blueberries.",
+    "objective": "Bring 10 Blueberries to the Old Man.",
+    "nextStep": "Gather 10 Blueberries from the blueberry patch, then return to the Old Man.",
+    "reminderDialog": "The Old Man leans back with a wistful look. \"My wife makes the most wonderful blueberry jam, but we're fresh out of berries. Head over to the blueberry patch and bring me back ten of 'em when you get a chance.\"",
+    "completionDialog": "The Old Man's eyes go wide. \"Well I'll be — you actually got 'em! Those'll make the finest jam this side of the bayou. My wife is going to be absolutely delighted, I tell you.\"",
+    "after": [
+      "quest_oldman_002"
+    ],
     "requirements": [
       {
         "type": "hasItem",
-        "itemSlug": "bat-wing",
-        "quantity": 5,
-        "displayName": "Bat Wings"
+        "itemSlug": "blueberry",
+        "quantity": 10
       }
     ],
     "consumeRequirementsOnComplete": true,
     "rewards": [
       {
-        "type": "xp",
-        "amount": 50
-      },
-      {
         "type": "currency",
-        "amount": 100
+        "amount": 12
       },
-      {
-        "type": "item",
-        "itemSlug": "green-boots",
-        "quantity": 1
-      }
-    ],
-    "onComplete": []
-  },
-  "quest_jacklumber_002": {
-    "number": 12,
-    "questType": "side",
-    "level": 2,
-    "title": "Jack's Woodworking Lesson",
-    "summary": "Jack offers to teach you the basics of woodworking. Chop some wood and craft a Wooden Bow at his workshop.",
-    "objective": "Craft a Wooden Bow at Jack's workshop.",
-    "nextStep": "Pick up the hatchet at Jack's cabin and head north to the Tree Farm to chop five wood. A bow needs a length of string too: there is one lying in the Abandoned Workshop in the Bat Cave. Then come back to Jack's cabin and use the crafting table to craft a Wooden Bow.",
-    "reminderDialog": "Still working on that bow? Grab the hatchet here if you haven't, chop five wood up north at the farm, and fetch a string from that old workshop in the Bat Cave. Then use my crafting table to put a bow together. Easy!",
-    "completionDialog": "Now THAT is a proper bow! You've got the basics of woodworking down. Keep the bow — it'll serve you well against those flying critters. Here's some materials to get you started on your next project.",
-    "giver": {
-      "npcId": "jack_lumber",
-      "roomId": "024",
-      "name": "Jack Lumber",
-      "icon": "npc-jacklumber"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "hasItem",
-        "itemSlug": "wooden-bow",
-        "quantity": 1,
-        "displayName": "Wooden Bow"
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [
       {
         "type": "xp",
-        "amount": 50
-      },
-      {
-        "type": "currency",
-        "amount": 100
-      },
-      {
-        "type": "item",
-        "itemSlug": "wood",
-        "quantity": 10
-      },
-      {
-        "type": "item",
-        "itemSlug": "stone",
-        "quantity": 5
-      },
-      {
-        "type": "item",
-        "itemSlug": "iron",
-        "quantity": 3
+        "amount": 8
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_youngsoldier_003": {
-    "number": 9,
+    "giverId": "young_soldier",
     "questType": "side",
     "level": 1,
     "title": "Training Armor Pro",
@@ -406,13 +208,9 @@
     "nextStep": "Defeat a Sand Crab for the Training Helmet, a Gator for the Training Armor, a Spider for the Training Gloves, and a Scorpion for the Training Boots. Then return to the Young Soldier.",
     "reminderDialog": "Still missing some gear? Each beast drops one piece: the Sand Crab carries the Helmet, the Gator the Armor, the Spider the Gloves, and the Scorpion the Boots. Come back once you've got all four.",
     "completionDialog": "Now THAT is a proper recruit. Full kit, head to toe. You wear it well, Wanderer.",
-    "giver": {
-      "npcId": "young_soldier",
-      "roomId": "007",
-      "name": "Young Soldier",
-      "icon": "npc-youngsoldier"
-    },
-    "completionMode": "turn_in",
+    "after": [
+      "quest_youngsoldier_001"
+    ],
     "requirements": [
       {
         "type": "hasItem",
@@ -452,166 +250,123 @@
       }
     ]
   },
-  "quest_oldman_002": {
-    "number": 6,
-    "questType": "main",
-    "level": 3,
-    "title": "Rat Problem",
-    "summary": "The Old Man's basement has been overrun with giant rats. He needs someone brave enough to deal with them.",
-    "objective": "Defeat 2 Giant Rats in the Cabin Basement.",
-    "nextStep": "Head down into the Cabin Basement and defeat 2 Giant Rats, then return to the Old Man.",
-    "reminderDialog": "I got so many rats down there. Go on down and take out two of the giant ones, not the little ones.",
-    "completionDialog": "Excellent! Rats ain't got nothing on you. Now it's time to deal with the gator.",
-    "giver": {
-      "npcId": "old_man",
-      "roomId": "003",
-      "name": "Old Man",
-      "icon": "npc-oldman"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "killCount",
-        "enemySlug": "giant-rat",
-        "count": 2,
-        "displayName": "Giant Rats"
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [
-      {
-        "type": "currency",
-        "amount": 15
-      },
-      {
-        "type": "xp",
-        "amount": 8
-      },
-      {
-        "type": "item",
-        "itemSlug": "cooked-meat",
-        "quantity": 5
-      }
-    ],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_oldman_003"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_oldman_004"
-      }
-    ]
-  },
-  "quest_oldman_003": {
-    "number": 7,
-    "questType": "main",
-    "level": 5,
-    "title": "The Gator",
-    "summary": "With the rats cleared out, the Old Man turns his attention to a bigger problem — a massive gator lurking in the marsh behind his cabin.",
-    "objective": "Defeat the Gator in the Marsh behind the cabin.",
-    "nextStep": "Head southwest into the Marsh and defeat the Gator, then return to the Old Man.",
-    "reminderDialog": "That gator is still out there in the swamp. Head southwest into the marsh and deal with it when you're ready.",
-    "completionDialog": "Nice work Wanderer! NEXT QUEST INFO GOES HERE",
-    "giver": {
-      "npcId": "old_man",
-      "roomId": "003",
-      "name": "Old Man",
-      "icon": "npc-oldman"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "killCount",
-        "enemySlug": "gator",
-        "count": 1,
-        "displayName": "Gator"
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [
-      {
-        "type": "currency",
-        "amount": 30
-      },
-      {
-        "type": "xp",
-        "amount": 20
-      }
-    ]
-  },
-  "quest_oldman_004": {
-    "number": 8,
+  "quest_jacklumber_001": {
+    "giverId": "jack_lumber",
     "questType": "side",
-    "level": 1,
-    "title": "Blueberry Jam",
-    "summary": "The Old Man has a craving for his wife's famous blueberry jam. He needs a good haul of fresh blueberries.",
-    "objective": "Bring 10 Blueberries to the Old Man.",
-    "nextStep": "Gather 10 Blueberries from the blueberry patch, then return to the Old Man.",
-    "reminderDialog": "The Old Man leans back with a wistful look. \"My wife makes the most wonderful blueberry jam, but we're fresh out of berries. Head over to the blueberry patch and bring me back ten of 'em when you get a chance.\"",
-    "completionDialog": "The Old Man's eyes go wide. \"Well I'll be — you actually got 'em! Those'll make the finest jam this side of the bayou. My wife is going to be absolutely delighted, I tell you.\"",
-    "giver": {
-      "npcId": "old_man",
-      "roomId": "003",
-      "name": "Old Man",
-      "icon": "npc-oldman"
-    },
-    "completionMode": "turn_in",
+    "level": 2,
+    "title": "Boomerang Some Bats",
+    "summary": "Jack says the Bat Cave is crawling with bats. Bring him their wings and he'll make it worth your while.",
+    "objective": "Collect 5 Bat Wings from the Bat Cave.",
+    "nextStep": "Head into the Bat Cave south of the Stone Path and hunt bats for their wings. Bats fly, so you'll need a ranged weapon like a boomerang or bow to hit them. Bring 5 Bat Wings back to Jack.",
+    "reminderDialog": "Only got {progress} of {count} wings so far? Remember, bats fly — you need a ranged weapon to hit them. Equip your boomerang or craft a bow and get back in there!",
+    "completionDialog": "Five wings, nice haul! Here's a little something for your feet. And remember — any enemy that flies is out of reach of a sword. Always keep a ranged weapon handy for those.",
     "requirements": [
       {
         "type": "hasItem",
-        "itemSlug": "blueberry",
-        "quantity": 10
+        "itemSlug": "bat-wing",
+        "quantity": 5,
+        "displayName": "Bat Wings"
       }
     ],
     "consumeRequirementsOnComplete": true,
     "rewards": [
       {
-        "type": "currency",
-        "amount": 12
+        "type": "xp",
+        "amount": 50
       },
       {
-        "type": "xp",
-        "amount": 8
+        "type": "currency",
+        "amount": 100
+      },
+      {
+        "type": "item",
+        "itemSlug": "green-boots",
+        "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
-  "quest_freddie_intro": {
-    "number": 14,
-    "questType": "intro",
-    "level": 11,
-    "title": "Talk to Freddie",
-    "summary": "A cow farm and leather workshop sits just off the Forest Path. The man who runs it charges for the hides and gives away the hammers.",
-    "objective": "Talk to Freddie at his Cow Farm.",
-    "nextStep": "Take the Forest Path east from the Grassy Field, then north at the cow farm sign (Room 103), and introduce yourself to Freddie.",
-    "reminderDialog": "You haven't met Freddie yet. His cow farm is north off the Forest Path, the first turning after you leave the Grassy Field.",
-    "completionDialog": "Freddie wipes his hands on his apron. \"Let's craft with some leather. You can use my cows to gather some — but you have to pay!\" He nudges a crate of hammers toward you with his boot. \"Those are free, at least.\"",
-    "giver": {
-      "npcId": "freddie",
-      "roomId": "103",
-      "name": "Freddie",
-      "icon": "npc-freddie"
-    },
-    "completionMode": "turn_in",
+  "quest_jacklumber_002": {
+    "giverId": "jack_lumber",
+    "questType": "side",
+    "level": 2,
+    "title": "Jack's Woodworking Lesson",
+    "summary": "Jack offers to teach you the basics of woodworking. Chop some wood and craft a Wooden Bow at his workshop.",
+    "objective": "Craft a Wooden Bow at Jack's workshop.",
+    "nextStep": "Pick up the hatchet at Jack's cabin and head north to the Tree Farm to chop five wood. A bow needs a length of string too: there is one lying in the Abandoned Workshop in the Bat Cave. Then come back to Jack's cabin and use the crafting table to craft a Wooden Bow.",
+    "reminderDialog": "Still working on that bow? Grab the hatchet here if you haven't, chop five wood up north at the farm, and fetch a string from that old workshop in the Bat Cave. Then use my crafting table to put a bow together. Easy!",
+    "completionDialog": "Now THAT is a proper bow! You've got the basics of woodworking down. Keep the bow — it'll serve you well against those flying critters. Here's some materials to get you started on your next project.",
     "requirements": [
       {
-        "type": "level",
-        "minLevel": 0
+        "type": "hasItem",
+        "itemSlug": "wooden-bow",
+        "quantity": 1,
+        "displayName": "Wooden Bow"
       }
     ],
     "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
+    "rewards": [
       {
-        "type": "startQuest",
-        "questId": "quest_freddie_001"
+        "type": "xp",
+        "amount": 50
+      },
+      {
+        "type": "currency",
+        "amount": 100
+      },
+      {
+        "type": "item",
+        "itemSlug": "wood",
+        "quantity": 10
+      },
+      {
+        "type": "item",
+        "itemSlug": "stone",
+        "quantity": 5
+      },
+      {
+        "type": "item",
+        "itemSlug": "iron",
+        "quantity": 3
+      }
+    ]
+  },
+  "quest_jacklumber_000": {
+    "giverId": "jack_lumber",
+    "questType": "main",
+    "level": 10,
+    "title": "The Chief's Cloak",
+    "summary": "Jack Lumber wants the Goblin Chief's cloak. Wearing it lets you walk past the Goblin Titan without getting torn apart.",
+    "objective": "Defeat the Goblin Chief in the Bat Cave and bring his cloak to Jack Lumber.",
+    "nextStep": "Head into the Bat Cave, hunt down the Goblin Chief, take his cloak, then bring it back to Jack in his cabin north of the Forest Gate.",
+    "reminderDialog": "Still no cloak? The Goblin Chief's hiding somewhere deep in the Bat Cave. Go find him, take the cloak off his back, and bring it here. Simple as chopping a tree!",
+    "completionDialog": "Well I'll be! You actually got it! With that cloak the Goblin Titan won't give you trouble on the way through. The Forest Path east of here is all yours now, Wanderer. Go see what's out there.",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "goblin-cloak",
+        "quantity": 1,
+        "displayName": "Goblin Cloak"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "currency",
+        "amount": 1000
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemSlug": "battle-axe",
+        "quantity": 1
       }
     ]
   },
   "quest_freddie_001": {
-    "number": 15,
+    "giverId": "freddie",
     "questType": "main",
     "level": 11,
     "title": "Craft with Leather",
@@ -620,13 +375,6 @@
     "nextStep": "Take a free hammer from Freddie, pay his 50 gold toll and gather leather from the cows to the north (5 a trip). Then use the leather bench right here at the farm — or the crafting table in Red Town's Grand Square — and craft a leather hood, gloves or boots for 3 leather apiece.",
     "reminderDialog": "\"Still nothing to show me? Hammer's in the crate, hides are through the gate, and the bench is right here. Three leather makes a hood.\"",
     "completionDialog": "Freddie turns the piece over twice and hands it back. \"That'll hold. Come get hides whenever you like — and if you want more than five at a go, hunt them in the forest.\" He loads you up with supplies on the way out.",
-    "giver": {
-      "npcId": "freddie",
-      "roomId": "103",
-      "name": "Freddie",
-      "icon": "npc-freddie"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasAnyItem",
@@ -684,51 +432,10 @@
         "itemSlug": "red-potion",
         "quantity": 3
       }
-    ],
-    "onComplete": []
-  },
-  "quest_forestgnome_intro": {
-    "number": 16,
-    "questType": "intro",
-    "level": 13,
-    "title": "Talk to the Forest Gnome",
-    "summary": "A gnome keeps a cozy tree hut deep in the Forest. He has work for a Wanderer — and a spare hatchet.",
-    "objective": "Talk to the Forest Gnome at his tree hut.",
-    "nextStep": "Find the Forest Gnome's tree hut (Room 128), deep in the Forest — northwest of the Forest by a Cliff — and introduce yourself.",
-    "reminderDialog": "You haven't met the Forest Gnome yet. His tree hut sits among the branches deep in the Forest — go and say hello.",
-    "completionDialog": "The gnome peers down at you from the branches with a lazy grin. \"Welcome to my tree hut. Pretty nice right?\" He hops down. \"Since you're here — I've got a few things that need doing, and you look like you've got the legs for it.\"",
-    "giver": {
-      "npcId": "forest_gnome",
-      "roomId": "128",
-      "name": "Forest Gnome",
-      "icon": "npc-forestgnome"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_forestgnome_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_forestgnome_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_forestgnome_000"
-      }
     ]
   },
   "quest_forestgnome_001": {
-    "number": 17,
+    "giverId": "forest_gnome",
     "questType": "side",
     "level": 13,
     "title": "Gnome Needs Berries",
@@ -737,13 +444,6 @@
     "nextStep": "Pick berries from the bushes scattered around the Forest — redberries by the river, the small graveyard and the abandoned campsite; blueberries at the forest dead end and atop the hill. Plenty of enemies drop them too.",
     "reminderDialog": "\"Still short on berries? They grow all over this forest — red ones down by the river and the graveyard, blue ones at the dead end and up on the hill. Twenty of each, that's all I ask.\"",
     "completionDialog": "\"Twenty and twenty, just like I asked!\" The gnome takes the whole lot, smashes it together on the spot, and hands you back an armful of potions. \"Waste not!\"",
-    "giver": {
-      "npcId": "forest_gnome",
-      "roomId": "128",
-      "name": "Forest Gnome",
-      "icon": "npc-forestgnome"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasItem",
@@ -778,11 +478,10 @@
         "itemSlug": "blue-potion",
         "quantity": 5
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_forestgnome_002": {
-    "number": 18,
+    "giverId": "forest_gnome",
     "questType": "side",
     "level": 13,
     "title": "New Tree Hut Door",
@@ -791,13 +490,6 @@
     "nextStep": "Chop trees anywhere in the Forest with a hatchet — there's a spare one here at the tree hut if you need one — then bring 20 wood back.",
     "reminderDialog": "\"Only {progress} of {count} wood so far? Take a hatchet — there's a spare one right here — and chop the trees around this forest. Twenty pieces and I can finally build that door.\"",
     "completionDialog": "\"Twenty pieces! That's a door and then some.\" The gnome passes you a coil of leather and an iron hatchet. \"Keep that one. It bites deeper than yours — you'll bring back twice the wood from every tree.\"",
-    "giver": {
-      "npcId": "forest_gnome",
-      "roomId": "128",
-      "name": "Forest Gnome",
-      "icon": "npc-forestgnome"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasItem",
@@ -826,11 +518,10 @@
         "itemSlug": "iron-hatchet",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_forestgnome_000": {
-    "number": 19,
+    "giverId": "forest_gnome",
     "questType": "main",
     "level": 13,
     "title": "Troll Base Camp",
@@ -839,13 +530,6 @@
     "nextStep": "The Troll Base Camp lies at the far north of the Forest. Defeat 3 Trolls there, then return to the tree hut.",
     "reminderDialog": "\"Only {progress} of {count} trolls down? They're camped up north, guarding the gate to the Dark Forest. Three of them, then come see me.\"",
     "completionDialog": "\"Three trolls! Ha!\" The gnome tosses you a fresh pair of gloves. \"Made these myself. Troll hide — still warm.\"",
-    "giver": {
-      "npcId": "forest_gnome",
-      "roomId": "128",
-      "name": "Forest Gnome",
-      "icon": "npc-forestgnome"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -869,47 +553,10 @@
         "itemSlug": "troll-gloves",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_hunterbill_intro": {
-    "number": 20,
-    "questType": "intro",
-    "level": 13,
-    "title": "Talk to Hunter Bill",
-    "summary": "A hunter keeps a camp under the canopy near the Forest entrance. He tracks everything that moves out here.",
-    "objective": "Talk to Hunter Bill at his camp.",
-    "nextStep": "Find Hunter Bill's camp (Room 118), north through the Forest Entrance and past the massive tree, and introduce yourself.",
-    "reminderDialog": "You haven't met Hunter Bill yet. His camp sits under the canopy near the Forest entrance — go and say hello.",
-    "completionDialog": "A wiry man looks up from a half-strung bow and grins. \"Yo! I just love being in nature.\" He nods at the trees. \"Stick around a while. There's things out there worth hunting, and I'll make it worth your trouble.\"",
-    "giver": {
-      "npcId": "hunter_bill",
-      "roomId": "118",
-      "name": "Hunter Bill",
-      "icon": "npc-hunterbill"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_hunterbill_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_hunterbill_000"
-      }
     ]
   },
   "quest_hunterbill_001": {
-    "number": 21,
+    "giverId": "hunter_bill",
     "questType": "side",
     "level": 13,
     "title": "Bigfoot Sighting",
@@ -918,13 +565,6 @@
     "nextStep": "Bigfoot turns up anywhere in the Forest, but only rarely. Keep hunting until he shows himself, then return to Bill's camp.",
     "reminderDialog": "\"No Bigfoot yet? He's out there. Doesn't matter which part of the forest — keep walking it and he'll turn up eventually.\"",
     "completionDialog": "Bill lets out a low whistle. \"You actually found him.\" He drags a heavy fur cloak out of his tent. \"Made this from the last one. Been waiting for somebody who'd earned it.\"",
-    "giver": {
-      "npcId": "hunter_bill",
-      "roomId": "118",
-      "name": "Hunter Bill",
-      "icon": "npc-hunterbill"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -948,11 +588,10 @@
         "itemSlug": "sasquatch-cloak",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_hunterbill_000": {
-    "number": 22,
+    "giverId": "hunter_bill",
     "questType": "main",
     "level": 13,
     "title": "Forest Hunter",
@@ -961,13 +600,6 @@
     "nextStep": "All six roam the Forest. Travel it until each one crosses your path, then return to Bill's camp.",
     "reminderDialog": "\"Still got some hunting left. Wild Boar, Wolf, Coyote, Buck, Bear, Stag — one of each, and they're all in this forest somewhere.\"",
     "completionDialog": "\"All six.\" Bill hands over a light, worn shield, then a heavy gold key. \"That key opens the gold chest northeast of here. Best gear in the forest is sitting in it.\"",
-    "giver": {
-      "npcId": "hunter_bill",
-      "roomId": "118",
-      "name": "Hunter Bill",
-      "icon": "npc-hunterbill"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1026,56 +658,10 @@
         "itemSlug": "gold-key",
         "quantity": 1
       }
-    ],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_redguardcaptain_intro"
-      }
-    ]
-  },
-  "quest_redguardcaptain_intro": {
-    "number": 23,
-    "questType": "intro",
-    "level": 15,
-    "title": "Talk to the Red Guard Captain",
-    "summary": "The Captain runs Red Town's security from the lookout tower above the Barracks. He is not short of work.",
-    "objective": "Talk to the Red Guard Captain at the Forest Lookout.",
-    "nextStep": "Head north from the Grand Square to the Warrior's Way, on to the Red Guard Barracks, then northeast through the Captain's office and up to the Lookout Tower (Room 215).",
-    "reminderDialog": "You haven't met the Red Guard Captain yet. He keeps watch from the Lookout Tower above the Barracks, north of the Grand Square.",
-    "completionDialog": "The Captain does not turn around. \"Finally. I need your help cleaning up this town.\" He gestures out over the treetops without looking at you. \"Three jobs. Take them in any order.\"",
-    "giver": {
-      "npcId": "red_guard_captain",
-      "roomId": "215",
-      "name": "Red Guard Captain",
-      "icon": "npc-redguardcaptain"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_redguardcaptain_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_redguardcaptain_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_redguardcaptain_003"
-      }
     ]
   },
   "quest_redguardcaptain_001": {
-    "number": 24,
+    "giverId": "red_guard_captain",
     "questType": "side",
     "level": 15,
     "title": "Bring 3 Thieves to Justice",
@@ -1084,13 +670,6 @@
     "nextStep": "Thieves turn up anywhere in Red Town and along the stone paths — more often in the back alleys and the sewers. Take down three, then return to the Lookout Tower.",
     "reminderDialog": "\"{progress} of {count} so far. They're out there — walk the roads and the alleys and they'll find you soon enough.\"",
     "completionDialog": "\"Three fewer.\" The Captain finally turns round and hands you a crossbow, then two heavy quivers. \"Take these. You'll want the reach.\"",
-    "giver": {
-      "npcId": "red_guard_captain",
-      "roomId": "215",
-      "name": "Red Guard Captain",
-      "icon": "npc-redguardcaptain"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1124,11 +703,10 @@
         "itemSlug": "crossbow-bolt",
         "quantity": 50
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_redguardcaptain_002": {
-    "number": 25,
+    "giverId": "red_guard_captain",
     "questType": "side",
     "level": 15,
     "title": "Swords for the Red Guard",
@@ -1137,13 +715,6 @@
     "nextStep": "Alpha Scorpions, Orcs, Kobolds and Tarantulas drop Long Swords. Adam's General Store and Michael's Weapon Shop both sell them if you'd rather save the time.",
     "reminderDialog": "\"{progress} of {count} swords. Buy them from Adam or Michael, or take them off an Alpha Scorpion, Orc, Kobold or Tarantula — I don't much mind which.\"",
     "completionDialog": "\"Five. That'll arm the night watch.\" He pulls an officer's helm off the rack and puts it in your hands. \"Elite issue. Don't lose it.\"",
-    "giver": {
-      "npcId": "red_guard_captain",
-      "roomId": "215",
-      "name": "Red Guard Captain",
-      "icon": "npc-redguardcaptain"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasItem",
@@ -1167,11 +738,10 @@
         "itemSlug": "battle-helm",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_redguardcaptain_003": {
-    "number": 26,
+    "giverId": "red_guard_captain",
     "questType": "main",
     "level": 15,
     "title": "Sewer Pest Control",
@@ -1180,13 +750,6 @@
     "nextStep": "The sewer entrances are in the Red Town Courtyard and in the back alley east of Wizards Way. All three live down there.",
     "reminderDialog": "\"Still crawling down there. A Tarantula, a Sewer Rat and a Red Gator — one of each and I'll call it done.\"",
     "completionDialog": "\"One of each. The sewers are a slightly less awful place.\" He hands over a flail with three spiked heads. \"Found it down there years ago. It suits you better than it ever suited me.\"",
-    "giver": {
-      "npcId": "red_guard_captain",
-      "roomId": "215",
-      "name": "Red Guard Captain",
-      "icon": "npc-redguardcaptain"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1222,51 +785,10 @@
         "itemSlug": "three-chained-flail",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_townhallplaza_intro": {
-    "number": 27,
-    "questType": "intro",
-    "level": 15,
-    "title": "Talk to the People at the Plaza",
-    "summary": "The Town Hall Plaza is full of citizens taking care of business — and several of them are offering rewards for help.",
-    "objective": "Talk to the people at the Town Hall Plaza.",
-    "nextStep": "The Plaza (Room 221) is northeast of the Red Town Courtyard. Go and hear what the people there need.",
-    "reminderDialog": "You haven't spoken to anyone at the Plaza yet. It's northeast of the Red Town Courtyard.",
-    "completionDialog": "You barely make it three steps in. \"Help us! Please!\" A gardener, a chef and a couple with a crying child all start talking at once.",
-    "giver": {
-      "npcId": "town_hall_plaza",
-      "roomId": "221",
-      "name": "Town Hall Plaza",
-      "icon": "npc-townhallplaza"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_townhallplaza_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_townhallplaza_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_townhallplaza_003"
-      }
     ]
   },
   "quest_townhallplaza_001": {
-    "number": 28,
+    "giverId": "town_hall_plaza",
     "questType": "side",
     "level": 15,
     "title": "Twice as Nice",
@@ -1275,13 +797,6 @@
     "nextStep": "Pick one in the Grassy Field flower patch, then pick the second from the Babylon Gardens — west of the Mayor's office, up from the Plaza.",
     "reminderDialog": "\"Only {progress} of {count} flowers. One grows out in the Grassy Field, and you can pick the other right here in the Babylon Gardens.\"",
     "completionDialog": "\"Two! A matched pair!\" The gardener is far more pleased than two flowers warrant, and presses a crate of potions on you — wings and gills both. \"For the places flowers don't grow.\"",
-    "giver": {
-      "npcId": "town_hall_plaza",
-      "roomId": "221",
-      "name": "Town Hall Plaza",
-      "icon": "npc-townhallplaza"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasItem",
@@ -1310,11 +825,10 @@
         "itemSlug": "gills-potion",
         "quantity": 5
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_townhallplaza_002": {
-    "number": 29,
+    "giverId": "town_hall_plaza",
     "questType": "side",
     "level": 15,
     "title": "Cookin up some Meat-a-balls",
@@ -1323,13 +837,6 @@
     "nextStep": "Many creatures drop raw meat. Cook it over a fire — there's one right in the Grand Square, and the Old Man keeps one burning in his cabin — and bring five cooked pieces back.",
     "reminderDialog": "\"{progress} of {count} pieces! Cook the raw meat over a fire, eh? There's a good one in the Grand Square.\"",
     "completionDialog": "\"Bellissimo!\" The chef takes the meat and walks you through it start to finish. You leave with five meatballs and the recipe in your head. They restore 400 HP a piece.",
-    "giver": {
-      "npcId": "town_hall_plaza",
-      "roomId": "221",
-      "name": "Town Hall Plaza",
-      "icon": "npc-townhallplaza"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasItem",
@@ -1353,11 +860,10 @@
         "itemSlug": "meatball",
         "quantity": 5
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_townhallplaza_003": {
-    "number": 30,
+    "giverId": "town_hall_plaza",
     "questType": "main",
     "level": 15,
     "title": "Stolen Teddy Bear",
@@ -1366,13 +872,6 @@
     "nextStep": "The Master Thief holds the Thieve's Den treasure room. Get into the sewers, find the false wall at the dead end — or the secret entrance off the back alley — and work your way in.",
     "reminderDialog": "\"The Master Thief still has it. He's down in the Den, past the training room. Please — she hasn't slept.\"",
     "completionDialog": "Little Suzie cheers when you hand over the stuffed animal, and will not let go of it again. Her parents press what they have on you — a ring off the father's hand and two jars of good balm. \"It isn't much. She hasn't slept in a week.\"",
-    "giver": {
-      "npcId": "town_hall_plaza",
-      "roomId": "221",
-      "name": "Town Hall Plaza",
-      "icon": "npc-townhallplaza"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1401,43 +900,10 @@
         "itemSlug": "red-balm",
         "quantity": 2
       }
-    ],
-    "onComplete": []
-  },
-  "quest_mayorrudolf_intro": {
-    "number": 31,
-    "questType": "intro",
-    "level": 20,
-    "title": "Talk to the Mayor",
-    "summary": "Mayor Rudolf runs Red Town from the top floor of Town Hall. He has been waiting for someone capable.",
-    "objective": "Talk to Mayor Rudolf in the Town Hall Office.",
-    "nextStep": "The Mayor's office (Room 222) is north of the Town Hall Plaza.",
-    "reminderDialog": "You haven't met the Mayor yet. His office is at the top of Town Hall, north of the Plaza.",
-    "completionDialog": "The Mayor puts down his pen. \"The Scorpion King has brought fear to this town for far too long.\" He slides a bounty notice across the desk. \"Name your price when it's done.\"",
-    "giver": {
-      "npcId": "mayor_rudolf",
-      "roomId": "222",
-      "name": "Mayor Rudolf",
-      "icon": "npc-mayor"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_mayorrudolf_000"
-      }
     ]
   },
   "quest_mayorrudolf_000": {
-    "number": 32,
+    "giverId": "mayor_rudolf",
     "questType": "main",
     "level": 20,
     "title": "Scorpion King Bounty",
@@ -1446,13 +912,6 @@
     "nextStep": "The Scorpion King holds the throne room at the end of the lair below the Grassy Field Spider Cave. A lever down there opens the secret passage to him.",
     "reminderDialog": "\"The Scorpion King still sits down there. His lair runs below the Spider Cave, out in the Grassy Field. Find the lever, find the passage, finish it.\"",
     "completionDialog": "\"It's done.\" The Mayor counts out a sum that takes both hands, then adds a red stone talisman and a heavy gold key. \"That key opens the chest in the Babylon Gardens. West of this office, and down. You've earned whatever is in it.\"",
-    "giver": {
-      "npcId": "mayor_rudolf",
-      "roomId": "222",
-      "name": "Mayor Rudolf",
-      "icon": "npc-mayor"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1481,43 +940,10 @@
         "itemSlug": "gold-key",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_warriorsguild_intro": {
-    "number": 33,
-    "questType": "intro",
-    "level": 18,
-    "title": "Talk to the Warrior's Guild Recruiter",
-    "summary": "Sword and axe wielding warriors congregate outside the guild's massive stone hall. One of them is clearly recruiting.",
-    "objective": "Talk to the Warrior's Guild Recruiter.",
-    "nextStep": "The Warrior's Guild (Room 226) is northwest of the Grand Square.",
-    "reminderDialog": "You haven't spoken to the Warrior's Guild Recruiter yet. The guild is northwest of the Grand Square.",
-    "completionDialog": "The recruiter looks you up and down without much hurry. \"Slay the Ogre Lieutenant and prove you're a true Warrior. Do that and this door is yours.\"",
-    "giver": {
-      "npcId": "warriors_guild_recruiter",
-      "roomId": "226",
-      "name": "Warrior's Guild Recruiter",
-      "icon": "npc-warrior"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_warriorsguild_000"
-      }
     ]
   },
   "quest_warriorsguild_000": {
-    "number": 34,
+    "giverId": "warriors_guild_recruiter",
     "questType": "main",
     "level": 18,
     "title": "Defeat the Ogre Lieutenant",
@@ -1526,13 +952,6 @@
     "nextStep": "The Ogre Lair is in the southwest of the Forest. Follow the path out of town north, then head west when you reach the Forest.",
     "reminderDialog": "\"The Ogre Lieutenant is still breathing. His lair is southwest in the Forest. Come back when that's no longer true.\"",
     "completionDialog": "\"Then you're one of us.\" The recruiter hauls two blades off the display rack — a bastard sword and a great sword — and hands them over. \"Signing bonus. The guild's skills and its quests are open to you now.\"",
-    "giver": {
-      "npcId": "warriors_guild_recruiter",
-      "roomId": "226",
-      "name": "Warrior's Guild Recruiter",
-      "icon": "npc-warrior"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1561,56 +980,10 @@
         "itemSlug": "great-sword",
         "quantity": 1
       }
-    ],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_warriorpete_intro"
-      }
-    ]
-  },
-  "quest_warriorpete_intro": {
-    "number": 35,
-    "questType": "intro",
-    "level": 20,
-    "title": "Talk to Warrior Pete",
-    "summary": "Now that you're in the guild, one of its warriors would like a word. He is not impressed.",
-    "objective": "Talk to Warrior Pete at the Warrior's Guild.",
-    "nextStep": "Pete stands with the other guild warriors outside the hall (Room 226), northwest of the Grand Square.",
-    "reminderDialog": "You haven't spoken to Warrior Pete yet. He's outside the guild hall with the rest of them.",
-    "completionDialog": "Pete looks over from the weapon rack. \"You say you're a warrior, huh? I don't see it.\" He counts three things off on his fingers. \"Prove me wrong.\"",
-    "giver": {
-      "npcId": "warrior_pete",
-      "roomId": "226",
-      "name": "Warrior Pete",
-      "icon": "npc-warrior2"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_warriorpete_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_warriorpete_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_warriorpete_003"
-      }
     ]
   },
   "quest_warriorpete_001": {
-    "number": 36,
+    "giverId": "warrior_pete",
     "questType": "side",
     "level": 20,
     "title": "Banish the Skeleton Knights",
@@ -1619,13 +992,6 @@
     "nextStep": "The Catacombs run west off the sewers. Head down into the sewers and northwest to the great stone wall, then search it for the door.",
     "reminderDialog": "\"{progress} of {count}. They're in the Catacombs under town — through the sewers, northwest, past the stone door.\"",
     "completionDialog": "\"Three back to hell.\" Pete tosses you a pair of knuckles carved out of something that used to walk. \"Bone Knuckles. Suits you.\"",
-    "giver": {
-      "npcId": "warrior_pete",
-      "roomId": "226",
-      "name": "Warrior Pete",
-      "icon": "npc-warrior2"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1649,11 +1015,10 @@
         "itemSlug": "bone-knuckles",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_warriorpete_002": {
-    "number": 37,
+    "giverId": "warrior_pete",
     "questType": "side",
     "level": 20,
     "title": "Shark Hunter",
@@ -1662,13 +1027,6 @@
     "nextStep": "The Blue Ocean lies west of the Grassy Field. Get beneath it with a Gills Potion or a Gills spell — both sharks are down there. Neither can be shot: a shark closes far too fast for arrows, so carry a blade or a spell.",
     "reminderDialog": "\"Still dry, I see. A Great White and a Hammerhead, both under the Blue Ocean. You'll need gills to get to them.\"",
     "completionDialog": "\"Both of them.\" Pete brings out two swords he's clearly been sitting on for a while. \"Great White Sword and the Hammerhead Hammer. Best steel in the building.\"",
-    "giver": {
-      "npcId": "warrior_pete",
-      "roomId": "226",
-      "name": "Warrior Pete",
-      "icon": "npc-warrior2"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1703,11 +1061,10 @@
         "itemSlug": "hammerhead-hammer",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_warriorpete_003": {
-    "number": 38,
+    "giverId": "warrior_pete",
     "questType": "side",
     "level": 20,
     "title": "True Troll Champion",
@@ -1716,13 +1073,6 @@
     "nextStep": "Troll Champions hold the Dark Forest, north of the regular Forest.",
     "reminderDialog": "\"{progress} of {count} Champions. They're in the Dark Forest, north of the regular one. Take your time — or don't, and see how that goes.\"",
     "completionDialog": "\"Three Champions.\" Pete drags a suit of reforged plate out from under a bench. \"Made from the last lot. Wear it with some pride.\"",
-    "giver": {
-      "npcId": "warrior_pete",
-      "roomId": "226",
-      "name": "Warrior Pete",
-      "icon": "npc-warrior2"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1746,43 +1096,10 @@
         "itemSlug": "champion-armor",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_wizardsguild_intro": {
-    "number": 39,
-    "questType": "intro",
-    "level": 18,
-    "title": "Talk to the Wizard's Guild Recruiter",
-    "summary": "Robed men and women mingle outside the Wizard's Guild, talking magic and potions. One of them is watching you.",
-    "objective": "Talk to the Wizard's Guild Recruiter.",
-    "nextStep": "The Wizard's Guild (Room 225) is southeast of the Grand Square.",
-    "reminderDialog": "You haven't spoken to the Wizard's Guild Recruiter yet. The guild is southeast of the Grand Square.",
-    "completionDialog": "The recruiter's attention settles on you all at once. \"Defeat the evil Kobold Master — at all costs. Then we can talk about what else you might learn here.\"",
-    "giver": {
-      "npcId": "wizards_guild_recruiter",
-      "roomId": "225",
-      "name": "Wizard's Guild Recruiter",
-      "icon": "npc-wizard"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_wizardsguild_000"
-      }
     ]
   },
   "quest_wizardsguild_000": {
-    "number": 40,
+    "giverId": "wizards_guild_recruiter",
     "questType": "main",
     "level": 18,
     "title": "Defeat the Kobold Master",
@@ -1791,13 +1108,6 @@
     "nextStep": "The Kobold Lair is in the northwest of the Forest. Follow the path out of town all the way north, then southwest when the path runs out.",
     "reminderDialog": "\"The Kobold Master still holds his chambers. Northwest of the Forest. Magic will serve you better than steel down there.\"",
     "completionDialog": "\"Then you are one of us.\" The recruiter hands you a staff and a pointed hat with no ceremony whatsoever. \"Signing bonus. The guild's spells and its quests are open to you.\"",
-    "giver": {
-      "npcId": "wizards_guild_recruiter",
-      "roomId": "225",
-      "name": "Wizard's Guild Recruiter",
-      "icon": "npc-wizard"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1826,56 +1136,10 @@
         "itemSlug": "wizard-hat",
         "quantity": 1
       }
-    ],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_wizardmorty_intro"
-      }
-    ]
-  },
-  "quest_wizardmorty_intro": {
-    "number": 41,
-    "questType": "intro",
-    "level": 20,
-    "title": "Talk to Wizard Morty",
-    "summary": "Now that you're in the guild, one of its wizards has some opinions about your abilities.",
-    "objective": "Talk to Wizard Morty at the Wizard's Guild.",
-    "nextStep": "Morty is among the robed crowd outside the guild (Room 225), southeast of the Grand Square.",
-    "reminderDialog": "You haven't spoken to Wizard Morty yet. He's outside the guild with the rest of them.",
-    "completionDialog": "\"So you think you're a powerful wizard, huh.\" Morty does not look up from whatever he is stirring. \"Three things. Then we'll see.\"",
-    "giver": {
-      "npcId": "wizard_morty",
-      "roomId": "225",
-      "name": "Wizard Morty",
-      "icon": "npc-wizard2"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_wizardmorty_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_wizardmorty_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_wizardmorty_003"
-      }
     ]
   },
   "quest_wizardmorty_001": {
-    "number": 42,
+    "giverId": "wizard_morty",
     "questType": "side",
     "level": 20,
     "title": "Rare Gray Matter",
@@ -1884,13 +1148,6 @@
     "nextStep": "Gray matter comes off rare enemies — the named dead in the Catacombs carry it, and so do the rarer things you'll meet as you travel.",
     "reminderDialog": "\"No gray matter yet? Rare creatures drop it. Keep travelling and something unusual will cross your path eventually.\"",
     "completionDialog": "Morty takes the lump, turns it over twice and does something to it you do not follow at all. What he hands back is a wand. \"Gray Wand. Try not to point it at anything you like.\"",
-    "giver": {
-      "npcId": "wizard_morty",
-      "roomId": "225",
-      "name": "Wizard Morty",
-      "icon": "npc-wizard2"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasItem",
@@ -1919,11 +1176,10 @@
         "itemSlug": "blue-potion",
         "quantity": 5
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_wizardmorty_002": {
-    "number": 43,
+    "giverId": "wizard_morty",
     "questType": "side",
     "level": 20,
     "title": "Omar & Victoria the Dead",
@@ -1932,13 +1188,6 @@
     "nextStep": "Both are deep in the Catacombs below Red Town — Victoria keeps the Sacred Altar, Omar the Sacrificial Chamber. Omar hits like a falling headstone; Victoria attacks with magic, so your MAG is what stands between you and her.",
     "reminderDialog": "\"Still standing, are they. Victoria keeps the altar, Omar the chamber below it. Mind her casting — steel won't help you there.\"",
     "completionDialog": "\"Both of them. Quietly, too.\" Morty passes you a pair of boots that are not entirely leather. \"Bone Boots. They were hers, before.\"",
-    "giver": {
-      "npcId": "wizard_morty",
-      "roomId": "225",
-      "name": "Wizard Morty",
-      "icon": "npc-wizard2"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -1968,11 +1217,10 @@
         "itemSlug": "bone-boots",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_wizardmorty_003": {
-    "number": 44,
+    "giverId": "wizard_morty",
     "questType": "side",
     "level": 20,
     "title": "Magic and the Troll Queen",
@@ -1981,13 +1229,6 @@
     "nextStep": "Her nest is deep in the Dark Forest, far to the north. She fights with magic and shrugs off ordinary weapons — bring spells.",
     "reminderDialog": "\"The Troll Queen still holds her nest. Far north, deep in the Dark Forest. Use magic on her. I cannot stress that enough.\"",
     "completionDialog": "\"You actually did it.\" Morty produces a staff that is far too heavy for him to be holding so casually. \"Solomon Staff. It'll cost you some strength to carry — worth every point.\"",
-    "giver": {
-      "npcId": "wizard_morty",
-      "roomId": "225",
-      "name": "Wizard Morty",
-      "icon": "npc-wizard2"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2011,43 +1252,10 @@
         "itemSlug": "solomon-staff",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_miningguild_intro": {
-    "number": 45,
-    "questType": "intro",
-    "level": 25,
-    "title": "Talk to the Mining Guild Recruiter",
-    "summary": "The forge at the back of the Dwarf Village never stops, and one of the miners standing outside it is not there to work.",
-    "objective": "Talk to the Mining Guild Recruiter.",
-    "nextStep": "The Mining Guild (Room 308) is east of the Dwarf Village Square, which is northeast of the Rocky Flats Crossroads.",
-    "reminderDialog": "You have not spoken to the Mining Guild Recruiter yet. The guild hall is east of the village square.",
-    "completionDialog": "He looks you over the way a man looks over a tool. “Our members do more than swing a pick. Prove you can do something about Red Beard and the Neverending Mine is yours.”",
-    "giver": {
-      "npcId": "mining_guild_recruiter",
-      "roomId": "308",
-      "name": "Mining Guild Recruiter",
-      "icon": "npc-miner2"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_miningguild_000"
-      }
     ]
   },
   "quest_miningguild_000": {
-    "number": 46,
+    "giverId": "mining_guild_recruiter",
     "questType": "main",
     "level": 30,
     "title": "Red Beard the Traitor",
@@ -2056,13 +1264,6 @@
     "nextStep": "The Red Fort is west of the grass path south of the Crossroads. Courtyard, hallway, barracks, then north into the war room.",
     "reminderDialog": "“Red Beard is still breathing and still in that fort. West across the grass, then keep going west.”",
     "completionDialog": "“Then you’re one of us.” He hands over a bundle of picks and one good iron one. “The mine is open. Mind the rock, mind the things in it, and bring the guild something back.”",
-    "giver": {
-      "npcId": "mining_guild_recruiter",
-      "roomId": "308",
-      "name": "Mining Guild Recruiter",
-      "icon": "npc-miner2"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2091,56 +1292,10 @@
         "itemSlug": "iron-pickaxe",
         "quantity": 1
       }
-    ],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_guildleader_intro"
-      }
-    ]
-  },
-  "quest_guildleader_intro": {
-    "number": 47,
-    "questType": "intro",
-    "level": 30,
-    "title": "Talk to the Mining Guild Leader",
-    "summary": "The Guild Leader holds the far end of the hall and demonstrates perfect mining form at anyone who stands still long enough.",
-    "objective": "Talk to the Mining Guild Leader.",
-    "nextStep": "He is at the back of the Mining Guild hall (Room 308), same room as the recruiter.",
-    "reminderDialog": "The Guild Leader is still waiting at the back of the hall.",
-    "completionDialog": "“Three things live down there that shouldn’t. Deal with them and I’ll teach you what to do with what you dig up.”",
-    "giver": {
-      "npcId": "mining_guild_leader",
-      "roomId": "308",
-      "name": "Mining Guild Leader",
-      "icon": "npc-miner"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_miningguild_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_miningguild_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_miningguild_003"
-      }
     ]
   },
   "quest_miningguild_001": {
-    "number": 48,
+    "giverId": "mining_guild_leader",
     "questType": "main",
     "level": 30,
     "title": "Iron Boss: The Phoenix",
@@ -2149,13 +1304,6 @@
     "nextStep": "Dig down from the mine head. The Phoenix flies — melee cannot reach it, so bring a bow or a crossbow and the ammunition for it.",
     "reminderDialog": "“The Phoenix is still up there. And you still can’t hit it with a sword, before you ask again.”",
     "completionDialog": "“Good. Iron’s yours.” He pushes a hammer across the bench. “Any forge fire will do — ours is the best of them, but Red Town’s will serve.”",
-    "giver": {
-      "npcId": "mining_guild_leader",
-      "roomId": "308",
-      "name": "Mining Guild Leader",
-      "icon": "npc-miner"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2189,11 +1337,10 @@
         "itemSlug": "iron-hammer",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_miningguild_002": {
-    "number": 49,
+    "giverId": "mining_guild_leader",
     "questType": "main",
     "level": 40,
     "title": "Steel Boss: The Cyclops",
@@ -2202,13 +1349,6 @@
     "nextStep": "Mine Level 20. Do not count on your armour — its attacks are pure, so your DEF never enters the arithmetic.",
     "reminderDialog": "“Still down there, is it. Your shield won’t help. Bring more health than you think you need.”",
     "completionDialog": "“Steel next, then.” He hands you a steel hammer and a pick to match. “Coal and iron make steel. You’ll work the rest out.”",
-    "giver": {
-      "npcId": "mining_guild_leader",
-      "roomId": "308",
-      "name": "Mining Guild Leader",
-      "icon": "npc-miner"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2242,11 +1382,10 @@
         "itemSlug": "steel-hammer",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_miningguild_003": {
-    "number": 50,
+    "giverId": "mining_guild_leader",
     "questType": "main",
     "level": 60,
     "title": "Mithril Boss: The Minotaur",
@@ -2255,13 +1394,6 @@
     "nextStep": "Mine Level 30. It is strong, it is fast, and when it goes into a rage nothing you are wearing matters.",
     "reminderDialog": "“Mine Level 30. It has been down there longer than the guild has been up here. Go carefully.”",
     "completionDialog": "The whole hall goes quiet for a moment. “Mithril,” says the Guild Leader, and hands you the hammer for it. “Nobody has brought that back before.”",
-    "giver": {
-      "npcId": "mining_guild_leader",
-      "roomId": "308",
-      "name": "Mining Guild Leader",
-      "icon": "npc-miner"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2290,51 +1422,10 @@
         "itemSlug": "mithril-hammer",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_dwarfcaptain_intro": {
-    "number": 51,
-    "questType": "intro",
-    "level": 15,
-    "title": "Talk to the Dwarf Captain",
-    "summary": "The Dwarven Captain keeps the law for the whole of the Rocky Flats from a post in the middle of the Crossroads, and he is short-handed.",
-    "objective": "Talk to the Dwarf Captain.",
-    "nextStep": "The Rocky Flats Crossroads (Room 303) is the hub of the map — northwest of the stone path in from Red Town.",
-    "reminderDialog": "The Dwarf Captain is still standing his post at the Crossroads.",
-    "completionDialog": "“The Rocky Flats is full of danger,” he says, in the tone of a man who has said it a great many times. “Three things need doing. Pick one.”",
-    "giver": {
-      "npcId": "dwarf_captain",
-      "roomId": "303",
-      "name": "Dwarf Captain",
-      "icon": "npc-dwarfcaptain"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_dwarfcaptain_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_dwarfcaptain_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_dwarfcaptain_003"
-      }
     ]
   },
   "quest_dwarfcaptain_001": {
-    "number": 52,
+    "giverId": "dwarf_captain",
     "questType": "side",
     "level": 23,
     "title": "Clear out the Abandoned Mine",
@@ -2343,13 +1434,6 @@
     "nextStep": "The Abandoned Mine is northeast off the muddy path west of the Crossroads. Down the shaft, then southwest, west, northeast — one of them in each room.",
     "reminderDialog": "“{progress} of {count}. Skeevers on the tracks, dartwings in the nests, and the worm at the far end. All three.”",
     "completionDialog": "“That’s the mine, then.” The Captain hands you a heavy gold key. “There’s a chest in the Treasury north of here that this opens. Consider it settled.”",
-    "giver": {
-      "npcId": "dwarf_captain",
-      "roomId": "303",
-      "name": "Dwarf Captain",
-      "icon": "npc-dwarfcaptain"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2385,11 +1469,10 @@
         "itemSlug": "gold-key",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_dwarfcaptain_002": {
-    "number": 53,
+    "giverId": "dwarf_captain",
     "questType": "side",
     "level": 20,
     "title": "Glowing Sea Monster",
@@ -2398,13 +1481,6 @@
     "nextStep": "Under the Blue Ocean, a long way down. You will want gills before you go looking — and something other than a bow, because arrows will not find it.",
     "reminderDialog": "“Still nobody has seen it up close and come back to say so.”",
     "completionDialog": "“So it is real.” The Captain unwraps a bow with a charge laid into the limbs, and two heavy quivers with it. “You’ll want the reach out there.”",
-    "giver": {
-      "npcId": "dwarf_captain",
-      "roomId": "303",
-      "name": "Dwarf Captain",
-      "icon": "npc-dwarfcaptain"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2433,11 +1509,10 @@
         "itemSlug": "arrow",
         "quantity": 200
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_dwarfcaptain_003": {
-    "number": 54,
+    "giverId": "dwarf_captain",
     "questType": "side",
     "level": 25,
     "title": "Missing Dwarf Axeman",
@@ -2446,13 +1521,6 @@
     "nextStep": "The Stone Grotto is behind a carved stone door southwest of the grass path. A switch in the Red Fort Kitchen opens it.",
     "reminderDialog": "“No word yet. The Grotto is where he was headed — if you can get the door open.”",
     "completionDialog": "“You found him.” The Captain looks genuinely relieved for about a second. “Whatever had hold of him has let go. He owes you, and dwarves are unbearable about owing people.”",
-    "giver": {
-      "npcId": "dwarf_captain",
-      "roomId": "303",
-      "name": "Dwarf Captain",
-      "icon": "npc-dwarfcaptain"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2481,51 +1549,10 @@
         "itemSlug": "haunted-helm",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_bountyboard_intro": {
-    "number": 55,
-    "questType": "intro",
-    "level": 20,
-    "title": "Read the Dwarf Guard Bounty Board",
-    "summary": "A board of wanted posters stands beside the coal fire in the village square, built by the Dwarven Guard and kept unpleasantly up to date.",
-    "objective": "Read the Bounty Board.",
-    "nextStep": "The Bounty Board is in the Dwarf Village Square (Room 307), by the fire.",
-    "reminderDialog": "You have not read the Bounty Board yet. It is beside the fire in the village square.",
-    "completionDialog": "Three postings, in three hands, none of them recent. The rewards at the bottom of each are not small.",
-    "giver": {
-      "npcId": "dwarf_bounty_board",
-      "roomId": "307",
-      "name": "Dwarf Guard Bounty Board",
-      "icon": "npc-bountyboard"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_bountyboard_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_bountyboard_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_bountyboard_003"
-      }
     ]
   },
   "quest_bountyboard_001": {
-    "number": 56,
+    "giverId": "dwarf_bounty_board",
     "questType": "side",
     "level": 20,
     "title": "Grunt Bounty",
@@ -2534,13 +1561,6 @@
     "nextStep": "Anywhere. Goblins and ogres in the Forest and its lairs, kobolds under it, skeletons in the Catacombs, bandits in the Red Fort and Red Town’s alleys, trolls in the north of the Forest.",
     "reminderDialog": "“The posting is still up. Ten each — goblins, ogres, kobolds, skeletons, bandits, trolls. Every kind counts, not just the big ones.”",
     "completionDialog": "The Guard tallies your count twice, then hands over a very large axe and a very heavy purse. “The roads are quieter. That was the point.”",
-    "giver": {
-      "npcId": "dwarf_bounty_board",
-      "roomId": "307",
-      "name": "Dwarf Guard Bounty Board",
-      "icon": "npc-bountyboard"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCountGroup",
@@ -2638,11 +1658,10 @@
         "itemSlug": "axe-of-slaughter",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_bountyboard_002": {
-    "number": 57,
+    "giverId": "dwarf_bounty_board",
     "questType": "side",
     "level": 23,
     "title": "B-Squad Bounty",
@@ -2651,13 +1670,6 @@
     "nextStep": "The Hill Ogre holds the outcrop behind the hill in the Forest. The Scorpion Queen is deep in the Scorpion Pit under the Grassy Field. The Butcher runs the Red Fort Kitchen.",
     "reminderDialog": "“{progress} of {count}. Hill Ogre, Scorpion Queen, Butcher. None of them are hiding.”",
     "completionDialog": "“B-Squad,” says the Guard, with feeling, and hands you a staff crowned with a scorpion’s tail. “They were somewhat impressive. Somewhat.”",
-    "giver": {
-      "npcId": "dwarf_bounty_board",
-      "roomId": "307",
-      "name": "Dwarf Guard Bounty Board",
-      "icon": "npc-bountyboard"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2693,11 +1705,10 @@
         "itemSlug": "staff-of-the-scorpion",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_bountyboard_003": {
-    "number": 58,
+    "giverId": "dwarf_bounty_board",
     "questType": "side",
     "level": 55,
     "title": "Elite Bounty",
@@ -2706,13 +1717,6 @@
     "nextStep": "King Squid is under the Blue Ocean, the Stone Sphinx sits in the mountain pass, and the Gatekeeper holds the gate of the Dark Keep.",
     "reminderDialog": "“{progress} of {count}. That posting has been up a long time. It will keep.”",
     "completionDialog": "The Guard reads your count, reads it again, and takes a gilded falchion down off the wall behind the board. “That one has been hanging there since before I took this post.”",
-    "giver": {
-      "npcId": "dwarf_bounty_board",
-      "roomId": "307",
-      "name": "Dwarf Guard Bounty Board",
-      "icon": "npc-bountyboard"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2748,51 +1752,10 @@
         "itemSlug": "gilded-falcion",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_friendlypirate_intro": {
-    "number": 59,
-    "questType": "intro",
-    "level": 13,
-    "title": "Talk to the Friendly Pirate",
-    "summary": "The Friendly Pirate can be found relaxing at the Blue Oasis. Go hang with him and pick some fresh berries on his beautiful island.",
-    "objective": "Talk to the Friendly Pirate.",
-    "nextStep": "The Blue Oasis (Room 413) is the island in the middle of the Blue Ocean — south of the jetty that runs around the storm, or east of the water near the tornadoes. You will need a Wooden Boat (20 wood and a hammer, built at Jack Lumber's workshop or the Grand Square's table) or wings to cross the water.",
-    "reminderDialog": "The Friendly Pirate is still relaxing at the Blue Oasis.",
-    "completionDialog": "“Aloha, matey! Welcome to my beautiful Oasis!” The pirate props himself up on one elbow. “Three things, if you’re the hunting kind. Squid, crabs, and the whole ocean’s worth of fish.”",
-    "giver": {
-      "npcId": "friendly_pirate",
-      "roomId": "413",
-      "name": "Friendly Pirate",
-      "icon": "npc-pirate"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_friendlypirate_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_friendlypirate_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_friendlypirate_003"
-      }
     ]
   },
   "quest_friendlypirate_001": {
-    "number": 60,
+    "giverId": "friendly_pirate",
     "questType": "side",
     "level": 13,
     "title": "Like a Squid",
@@ -2801,13 +1764,6 @@
     "nextStep": "Squid turn up anywhere on the open ocean and under it. Keep sailing and they will find you.",
     "reminderDialog": "“{progress} of {count}. Squid, matey. They’re everywhere out there — that’s rather the problem.”",
     "completionDialog": "“Three squid!” The Pirate smiles and, while humming ‘Like a Squid’, hands you a perfectly balanced Calamari Cap.",
-    "giver": {
-      "npcId": "friendly_pirate",
-      "roomId": "413",
-      "name": "Friendly Pirate",
-      "icon": "npc-pirate"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2831,11 +1787,10 @@
         "itemSlug": "calamari-cap",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_friendlypirate_002": {
-    "number": 61,
+    "giverId": "friendly_pirate",
     "questType": "side",
     "level": 6,
     "title": "Mud Crab Extermination",
@@ -2844,13 +1799,6 @@
     "nextStep": "Mud Island is southeast of the Blue Ocean Crossing. The crabs are on the island and, in far greater numbers, in the cave beneath it — the nest at the back never empties.",
     "reminderDialog": "“{progress} of {count}. Twenty, matey. The cave under the island is where they come from.”",
     "completionDialog": "“NICE! Twenty mud crabs!” The Pirate rummages through his bag of loot and hands you a surprisingly strong pair of Mud Boots.",
-    "giver": {
-      "npcId": "friendly_pirate",
-      "roomId": "413",
-      "name": "Friendly Pirate",
-      "icon": "npc-pirate"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2874,11 +1822,10 @@
         "itemSlug": "mud-boots",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_friendlypirate_003": {
-    "number": 62,
+    "giverId": "friendly_pirate",
     "questType": "side",
     "level": 25,
     "title": "Ocean Hunter Pro",
@@ -2887,13 +1834,6 @@
     "nextStep": "The four fish are anywhere on the ocean; keep hunting until you find them all. The Crocodile lives in the tornado currents around Crocodile Island, in the far west.",
     "reminderDialog": "“{progress} of {count}. All five, matey. The crocs are out west by Jim’s island, if that’s the one you’re missing.”",
     "completionDialog": "“Awesome! A true Ocean Hunter Pro.” The Pirate reaches into his front pocket and hands you a shiny Gold Key, a stack of gills potions and a light green shield. “There’s a gold chest somewhere under the ocean, if you can breathe down there long enough to find it.”",
-    "giver": {
-      "npcId": "friendly_pirate",
-      "roomId": "413",
-      "name": "Friendly Pirate",
-      "icon": "npc-pirate"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -2951,51 +1891,10 @@
         "itemSlug": "gold-key",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_junglejim_intro": {
-    "number": 63,
-    "questType": "intro",
-    "level": 20,
-    "title": "Find Jungle Jim",
-    "summary": "Jungle Jim likes to get away from it all and do some surfing on Crocodile Island.",
-    "objective": "Find Jungle Jim.",
-    "nextStep": "Crocodile Island (Room 424) is in the far southwest of the Blue Ocean, southwest of the tornado currents. Mind the crocodiles.",
-    "reminderDialog": "Jungle Jim is still out on Crocodile Island, and the surf is still up.",
-    "completionDialog": "“Bro! Nothing beats the waves here at Crocodile Island.” Jim plants his board in the sand. “Three things I could use a hand with, if you’re not busy being eaten.”",
-    "giver": {
-      "npcId": "jungle_jim",
-      "roomId": "424",
-      "name": "Jungle Jim",
-      "icon": "npc-surfer"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_junglejim_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_junglejim_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_junglejim_003"
-      }
     ]
   },
   "quest_junglejim_001": {
-    "number": 64,
+    "giverId": "jungle_jim",
     "questType": "side",
     "level": 20,
     "title": "Third Times a Charm",
@@ -3004,13 +1903,6 @@
     "nextStep": "The first flower is in the Grassy Field and the second in the Red Town Babylon Gardens. The third grows on the ocean floor behind a coral door, under the whirlpool by the Green Temple — the lever that opens the door is in the reef, south of the wide underwater floor.",
     "reminderDialog": "“{progress} of {count} flowers, bro. The third one’s under the sea, and it won’t let you pick it without the other two.”",
     "completionDialog": "“Three flowers!” Jim takes them reverently and hands you a vicious bo and a bow to match, each laced with a toxic poison. “Jim Bo and Jim Bow. Don’t ask.”",
-    "giver": {
-      "npcId": "jungle_jim",
-      "roomId": "424",
-      "name": "Jungle Jim",
-      "icon": "npc-surfer"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasItem",
@@ -3039,11 +1931,10 @@
         "itemSlug": "jim-bow",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_junglejim_002": {
-    "number": 65,
+    "giverId": "jungle_jim",
     "questType": "side",
     "level": 25,
     "title": "Angry Birds",
@@ -3052,13 +1943,6 @@
     "nextStep": "Hawks are in the Forest, Albatrosses dive at boats all over the Blue Ocean, and the Falcon is in the Dark Forest, beyond the Forest. All three fly, so bring a bow.",
     "reminderDialog": "“{progress} of {count}, bro. Hawk in the forest, albatross out on the water, falcon in the dark woods. I’m not going near any of them.”",
     "completionDialog": "“The angry birds are down!” Jim exhales for what seems like the first time in a while and hands you a really Sharp Katana and a really Heavy Katana.",
-    "giver": {
-      "npcId": "jungle_jim",
-      "roomId": "424",
-      "name": "Jungle Jim",
-      "icon": "npc-surfer"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3099,11 +1983,10 @@
         "itemSlug": "heavy-katana",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_junglejim_003": {
-    "number": 66,
+    "giverId": "jungle_jim",
     "questType": "side",
     "level": 25,
     "title": "Iron Warrior",
@@ -3112,13 +1995,6 @@
     "nextStep": "The Mining Guild in the Rocky Flats forges iron, the Warrior’s Guild in Red Town sells some, and barracudas drop the odd hood. Any iron weapon will do for the hand.",
     "reminderDialog": "“Full iron, bro. Head, body, hands, feet, and something to swing. I’ll know it when I see it.”",
     "completionDialog": "“JUNGLE JIM IS IMPRESSED!” He walks a circle around you. “That is some nice iron. Here — finish the set.” He hands you a pair of devastating Iron Knuckles.",
-    "giver": {
-      "npcId": "jungle_jim",
-      "roomId": "424",
-      "name": "Jungle Jim",
-      "icon": "npc-surfer"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasAnyItem",
@@ -3238,55 +2114,10 @@
         "itemSlug": "iron-knuckles",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_watertempleguardian_intro": {
-    "number": 67,
-    "questType": "intro",
-    "level": 35,
-    "title": "Find the Water Temple Guardian",
-    "summary": "The Master Temple shimmers with light. The pillars appear like ice but are warm to the touch. Waterfalls flow down the temple sides and green vines twist their way up.",
-    "objective": "Find the Water Temple Guardian.",
-    "nextStep": "The Master Temple (Room 425) opens off each of the four Water Temples, but only once that temple’s boss is beaten — defeat any one of them and walk through.",
-    "reminderDialog": "The Water Temple Guardian is still standing watch on the main platform of the Master Temple.",
-    "completionDialog": "“Defeat the Red, Green, Blue and Yellow guardians before you attempt to challenge me, the far superior Master Temple Guardian.”",
-    "giver": {
-      "npcId": "water_temple_guardian",
-      "roomId": "425",
-      "name": "Water Temple Guardian",
-      "icon": "npc-guardian"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_watertempleguardian_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_watertempleguardian_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_watertempleguardian_003"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_watertempleguardian_004"
-      }
     ]
   },
   "quest_watertempleguardian_001": {
-    "number": 68,
+    "giverId": "water_temple_guardian",
     "questType": "side",
     "level": 35,
     "title": "Test of Strength",
@@ -3295,13 +2126,6 @@
     "nextStep": "The Red Water Temple is in the far west of the Blue Ocean, west of the tornado currents. Attack to summon him.",
     "reminderDialog": "“The Barbarian still holds the Red temple. Strength, not cleverness.”",
     "completionDialog": "“The Test of Strength is passed.” The Guardian hands you a shiny pair of Thunder Boots.",
-    "giver": {
-      "npcId": "water_temple_guardian",
-      "roomId": "425",
-      "name": "Water Temple Guardian",
-      "icon": "npc-guardian"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3325,11 +2149,10 @@
         "itemSlug": "thunder-boots",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_watertempleguardian_002": {
-    "number": 69,
+    "giverId": "water_temple_guardian",
     "questType": "side",
     "level": 35,
     "title": "Test of Dexterity",
@@ -3338,13 +2161,6 @@
     "nextStep": "The Green Water Temple is in the southwest of the Blue Ocean, west of the calm water by the Swamp. Attack to summon him; his bow is answered with DEX, not armour.",
     "reminderDialog": "“The Ranger still holds the Green temple. He will not tire before you do.”",
     "completionDialog": "“The Test of Dexterity is passed.” The Guardian hands you the smoothest pair of Silk Bracers you have ever seen.",
-    "giver": {
-      "npcId": "water_temple_guardian",
-      "roomId": "425",
-      "name": "Water Temple Guardian",
-      "icon": "npc-guardian"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3368,11 +2184,10 @@
         "itemSlug": "silk-bracers",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_watertempleguardian_003": {
-    "number": 70,
+    "giverId": "water_temple_guardian",
     "questType": "side",
     "level": 35,
     "title": "Test of Magic",
@@ -3381,13 +2196,6 @@
     "nextStep": "The Blue Water Temple is in the north of the Blue Ocean, northeast off the jetty that runs around the storm. Attack to summon him; his magic is answered with MAG, and yours does nothing to him.",
     "reminderDialog": "“The Wizard still holds the Blue temple. Your spells will not touch him.”",
     "completionDialog": "“The Test of Magic is passed.” The Guardian hands you a snazzy Coral Necklace.",
-    "giver": {
-      "npcId": "water_temple_guardian",
-      "roomId": "425",
-      "name": "Water Temple Guardian",
-      "icon": "npc-guardian"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3411,11 +2219,10 @@
         "itemSlug": "coral-necklace",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_watertempleguardian_004": {
-    "number": 71,
+    "giverId": "water_temple_guardian",
     "questType": "side",
     "level": 35,
     "title": "Test of Defense",
@@ -3424,13 +2231,6 @@
     "nextStep": "The Yellow Water Temple is in the east of the Blue Ocean, south of the beachside current. Attack to summon him, and bring big hits.",
     "reminderDialog": "“The Walrus still holds the Yellow temple. Small blows bounce off it.”",
     "completionDialog": "“The Test of Defense is passed.” The Guardian hands you a really Heavy Spear. “All four. Now you may challenge me.”",
-    "giver": {
-      "npcId": "water_temple_guardian",
-      "roomId": "425",
-      "name": "Water Temple Guardian",
-      "icon": "npc-guardian"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3454,51 +2254,10 @@
         "itemSlug": "heavy-spear",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_rangerguard_intro": {
-    "number": 72,
-    "questType": "intro",
-    "level": 25,
-    "title": "Find the Dark Forest Outpost",
-    "summary": "A sturdy guard outpost is manned by members of the Ranger's Guild, protecting everyone in town from all the danger in the mountains.",
-    "objective": "Find the Dark Forest Outpost.",
-    "nextStep": "The Outpost (Room 502) is over the Stone Path Bridge, north through the Magical Gate at the top of the Forest's stone path.",
-    "reminderDialog": "The Ranger Guard is still at his post over the bridge, north of the Magical Gate.",
-    "completionDialog": "\"These dang Highwaymen need to be stopped. They keep robbing the innocent.\" The Ranger Guard looks you over. \"Three things, if you're up to them.\"",
-    "giver": {
-      "npcId": "ranger_guard",
-      "roomId": "502",
-      "name": "Ranger Guard",
-      "icon": "npc-ranger"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_rangerguard_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_rangerguard_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_rangerguard_003"
-      }
     ]
   },
   "quest_rangerguard_001": {
-    "number": 73,
+    "giverId": "ranger_guard",
     "questType": "side",
     "level": 25,
     "title": "Protect the Mountain Path",
@@ -3507,13 +2266,6 @@
     "nextStep": "They patrol the stone path west of the Outpost, between the bridge and the Highway Toll. The Highwayman at the toll gate will fight anyone who asks.",
     "reminderDialog": "\"{progress} of {count} so far. They can be found patrolling the stone path to the mountains — and one of them is standing right at the toll.\"",
     "completionDialog": "\"You have indeed defeated 5 Bowmen and 5 Highwaymen.\" The Ranger Guard pulls a wrapped blade from behind the palisade. \"A deadly Black Blade. It's yours.\"",
-    "giver": {
-      "npcId": "ranger_guard",
-      "roomId": "502",
-      "name": "Ranger Guard",
-      "icon": "npc-ranger"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3543,11 +2295,10 @@
         "itemSlug": "black-blade",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_rangerguard_002": {
-    "number": 74,
+    "giverId": "ranger_guard",
     "questType": "side",
     "level": 30,
     "title": "Elder Slayer",
@@ -3556,13 +2307,6 @@
     "nextStep": "Troll Elders roam the whole Dark Forest, north of the teleport pillar — the trolls' most common rank after the plain Troll.",
     "reminderDialog": "\"{progress} of {count} elders down. They can be found anywhere in the Dark Forest. Mind the power swings.\"",
     "completionDialog": "\"You have indeed defeated 3 Troll Elders.\" The Ranger Guard whistles, and a Dire Wolf comes running in out of the trees. \"The wolf is now yours.\"",
-    "giver": {
-      "npcId": "ranger_guard",
-      "roomId": "502",
-      "name": "Ranger Guard",
-      "icon": "npc-ranger"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3586,11 +2330,10 @@
         "itemSlug": "dire-wolf",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_rangerguard_003": {
-    "number": 75,
+    "giverId": "ranger_guard",
     "questType": "side",
     "level": 45,
     "title": "Dark Keep First Floor",
@@ -3599,13 +2342,6 @@
     "nextStep": "The Dark Keep is west of the Gold Chest, past the courtyard. The three haunt its ground floor: the Main Hall, the Storeroom and the Burial Chamber. The demon flies, so bring a bow.",
     "reminderDialog": "\"{progress} of {count}. The Dark Keep can be reached by heading west in the Dark Forest — the courtyard is past the gold chest. Lurker, Winged Demon, Undead Orc.\"",
     "completionDialog": "\"You have indeed defeated a Lurker, a Winged Demon and an Undead Orc.\" The Ranger Guard hands you a mean looking Demon Cape. \"Try not to become one.\"",
-    "giver": {
-      "npcId": "ranger_guard",
-      "roomId": "502",
-      "name": "Ranger Guard",
-      "icon": "npc-ranger"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3641,51 +2377,10 @@
         "itemSlug": "demon-cape",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_darkelf_intro": {
-    "number": 76,
-    "questType": "intro",
-    "level": 25,
-    "title": "Find the Dark Elf's Tree Hut",
-    "summary": "Come relax and have some special tea with the Dark Elf in his cozy tree hut.",
-    "objective": "Find the Dark Elf's Tree Hut.",
-    "nextStep": "The Tree Hut (Room 506) is northwest of the Dark Forest Clearing, southeast of the teleport pillar.",
-    "reminderDialog": "The Dark Elf is still in his tree hut, between the clearing and the teleport pillar, drinking tea.",
-    "completionDialog": "\"Man this tea is good.\" The Dark Elf sets down his cup. \"Make yourself at home and grab one. I've several quests for the enthusiastic adventurer.\"",
-    "giver": {
-      "npcId": "dark_elf",
-      "roomId": "506",
-      "name": "Dark Elf",
-      "icon": "npc-darkelf"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_darkelf_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_darkelf_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_darkelf_003"
-      }
     ]
   },
   "quest_darkelf_001": {
-    "number": 77,
+    "giverId": "dark_elf",
     "questType": "side",
     "level": 25,
     "title": "Dark Forest Lumberjack",
@@ -3694,13 +2389,6 @@
     "nextStep": "Every tree in the Dark Forest can be chopped, and there is an iron hatchet leaning on the sign at the teleport pillar. The Forest to the south has trees too.",
     "reminderDialog": "\"You ready for a big order, traveler? Return here with 50 wood. {progress} of {count} so far — pick up a hatchet and go into the Forest and chop.\"",
     "completionDialog": "\"That's a lot of wood!\" The Dark Elf stacks it by the fire and hands you a freshly crafted Mithril Hatchet, and two rings off his own fingers. \"Six a swing with that. Don't lose it.\"",
-    "giver": {
-      "npcId": "dark_elf",
-      "roomId": "506",
-      "name": "Dark Elf",
-      "icon": "npc-darkelf"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "hasItem",
@@ -3734,11 +2422,10 @@
         "itemSlug": "mithril-hatchet",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_darkelf_002": {
-    "number": 78,
+    "giverId": "dark_elf",
     "questType": "side",
     "level": 25,
     "title": "Shaman & Sorcerer Slayer",
@@ -3747,13 +2434,6 @@
     "nextStep": "Both can be found anywhere in the Dark Forest. Both attack with magic, so your MAG is what defends you.",
     "reminderDialog": "\"I have a shiny gold key with your name on it. {progress} of {count} — return here after you slay a Troll Shaman and a Troll Sorcerer and it's all yours.\"",
     "completionDialog": "\"I present to you this marvelous Gold Key.\" The Dark Elf drops it in your palm. \"Use it to open the Dark Forest Gold Chest north of the pillar, or any other Gold Chest you like.\"",
-    "giver": {
-      "npcId": "dark_elf",
-      "roomId": "506",
-      "name": "Dark Elf",
-      "icon": "npc-darkelf"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3783,11 +2463,10 @@
         "itemSlug": "gold-key",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_darkelf_003": {
-    "number": 79,
+    "giverId": "dark_elf",
     "questType": "side",
     "level": 30,
     "title": "Ent Hunter",
@@ -3796,13 +2475,6 @@
     "nextStep": "Ents are rare anywhere in the Dark Forest and commonest in the Dark Grove, east of the teleport pillar. Magic does nothing to wood; bring a blade or a bow.",
     "reminderDialog": "\"Still no tree? They are rare creatures found in the Dark Forest. Try the grove east of the pillar — and don't bother with spells.\"",
     "completionDialog": "\"You have indeed beat up a tree!\" A marvelous sky hawk drops out of the canopy and lands on the Dark Elf's chair. Its feathers look like tempered mithril. \"This bird is ready to go.\"",
-    "giver": {
-      "npcId": "dark_elf",
-      "roomId": "506",
-      "name": "Dark Elf",
-      "icon": "npc-darkelf"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3826,43 +2498,10 @@
         "itemSlug": "sky-hawk",
         "quantity": 1
       }
-    ],
-    "onComplete": []
-  },
-  "quest_rangersguild_intro": {
-    "number": 80,
-    "questType": "intro",
-    "level": 30,
-    "title": "Find the Ranger's Guild Entrance",
-    "summary": "The Ranger's Guild is hidden somewhere in the Dark Forest. You must search and be clever to find your way.",
-    "objective": "Find the Ranger's Guild Entrance.",
-    "nextStep": "Search the Dark Grove east of the teleport pillar until it gives up a secret way west, then get lost in the trees. Northeast out of the trees somehow arrives at the base of the guild's tree (Room 515).",
-    "reminderDialog": "The guild is still hidden in the trees. Search the Dark Grove, go west, and try northeast when you are lost.",
-    "completionDialog": "\"Want to be a Ranger eh? There are fallen Rangers among us, defeat one and return here.\"",
-    "giver": {
-      "npcId": "rangers_guild_recruiter",
-      "roomId": "515",
-      "name": "Ranger's Guild",
-      "icon": "npc-ranger"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_rangersguild_000"
-      }
     ]
   },
   "quest_rangersguild_000": {
-    "number": 81,
+    "giverId": "rangers_guild_recruiter",
     "questType": "main",
     "level": 30,
     "title": "Ranger's Initiation",
@@ -3871,13 +2510,6 @@
     "nextStep": "Dark Rangers hide anywhere in the Dark Forest and are commonest when you are Lost in the Trees. Arrows never find them — use a blade or a spell.",
     "reminderDialog": "\"Still no Dark Ranger? They rarely spawn in the Dark Forest. Lost in the Trees is where most of them are caught — with a blade, not a bow.\"",
     "completionDialog": "\"You have indeed defeated a Dark Ranger! You are now an official member of the Rangers Guild.\" You are handed a sleek and powerful Greenhorn Bow. \"Up the ladder with you.\"",
-    "giver": {
-      "npcId": "rangers_guild_recruiter",
-      "roomId": "515",
-      "name": "Ranger's Guild",
-      "icon": "npc-ranger"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3901,56 +2533,10 @@
         "itemSlug": "greenhorn-bow",
         "quantity": 1
       }
-    ],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_rangerlego_intro"
-      }
-    ]
-  },
-  "quest_rangerlego_intro": {
-    "number": 82,
-    "questType": "intro",
-    "level": 35,
-    "title": "Talk to Ranger Lego",
-    "summary": "Young Ranger Lego is just chillin in the guild re-stringing his bow and crafting some arrows. He has 3 quests for you to complete.",
-    "objective": "Talk to Ranger Lego.",
-    "nextStep": "Lego's room (Room 515b) is north of the Ranger's Guild lobby, at the top of the ladder.",
-    "reminderDialog": "Lego is still up in the guild, north of the lobby, fletching arrows.",
-    "completionDialog": "\"Aye. I only need the help of Elite Rangers. Let's see what you got.\"",
-    "giver": {
-      "npcId": "ranger_lego",
-      "roomId": "515b",
-      "name": "Ranger Lego",
-      "icon": "npc-ranger2"
-    },
-    "completionMode": "turn_in",
-    "requirements": [
-      {
-        "type": "level",
-        "minLevel": 0
-      }
-    ],
-    "consumeRequirementsOnComplete": false,
-    "rewards": [],
-    "onComplete": [
-      {
-        "type": "startQuest",
-        "questId": "quest_rangerlego_001"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_rangerlego_002"
-      },
-      {
-        "type": "startQuest",
-        "questId": "quest_rangerlego_003"
-      }
     ]
   },
   "quest_rangerlego_001": {
-    "number": 83,
+    "giverId": "ranger_lego",
     "questType": "side",
     "level": 25,
     "title": "Stubborn War Turtle",
@@ -3959,13 +2545,6 @@
     "nextStep": "The War Turtle fills the shaft at Mine Level 5 in the Neverending Mine, under the Rocky Flats. It blocks ranged attacks, so put away your bow.",
     "reminderDialog": "\"That turtle is still down there at level 5 in the Mine. He blocks ranged attacks so put away your bow.\"",
     "completionDialog": "\"You have indeed defeated a War Turtle!\" Lego shoulders his own bow. \"I can join you in battle now. Every swing you take, I take a shot.\"",
-    "giver": {
-      "npcId": "ranger_lego",
-      "roomId": "515b",
-      "name": "Ranger Lego",
-      "icon": "npc-ranger2"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -3989,11 +2568,10 @@
         "itemSlug": "elf-ranger",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_rangerlego_002": {
-    "number": 84,
+    "giverId": "ranger_lego",
     "questType": "side",
     "level": 45,
     "title": "Gargoyle Hunter",
@@ -4002,13 +2580,6 @@
     "nextStep": "Both roost in the Cathedral in the Stone Mountains, beyond the Highway Toll west of the Outpost. The mountain road is snowed in for now.",
     "reminderDialog": "\"{progress} of {count}. Find both of them in the Cathedral in the Stone Mountain Map — once the pass is open.\"",
     "completionDialog": "\"You have indeed defeated a white and grey gargoyle!\" Lego hands you a perfectly balanced Ranger Shield.",
-    "giver": {
-      "npcId": "ranger_lego",
-      "roomId": "515b",
-      "name": "Ranger Lego",
-      "icon": "npc-ranger2"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -4038,11 +2609,10 @@
         "itemSlug": "ranger-shield",
         "quantity": 1
       }
-    ],
-    "onComplete": []
+    ]
   },
   "quest_rangerlego_003": {
-    "number": 85,
+    "giverId": "ranger_lego",
     "questType": "side",
     "level": 50,
     "title": "The Griffin",
@@ -4051,13 +2621,6 @@
     "nextStep": "The Griffin is at Mine Level 25 in the Neverending Mine. It flies and shrugs off blades; bring a bow and a lot of arrows, or magic.",
     "reminderDialog": "\"The Griffin is still down at level 25 in the Mine. It flies, and steel bounces off it.\"",
     "completionDialog": "\"You have indeed defeated the Griffin!\" Lego whistles, and a Green Griffin comes flying in through the canopy. \"A new mount. Try not to fall off.\"",
-    "giver": {
-      "npcId": "ranger_lego",
-      "roomId": "515b",
-      "name": "Ranger Lego",
-      "icon": "npc-ranger2"
-    },
-    "completionMode": "turn_in",
     "requirements": [
       {
         "type": "killCount",
@@ -4081,7 +2644,133 @@
         "itemSlug": "green-griffin",
         "quantity": 1
       }
+    ]
+  },
+  "quest_grand_grassy_field": {
+    "giverId": "grand_quest_pillar",
+    "questType": "main",
+    "level": 10,
+    "title": "Grassy Field Savior",
+    "summary": "Help everyone in the Grassy Field and the Pillar will name you Grassy Field Savior.",
+    "objective": "Complete every quest in the Grassy Field, then return to the Grand Quest Pillar.",
+    "nextStep": "Finish every quest given in the Grassy Field. The Pillar keeps count.",
+    "reminderDialog": "Grassy Field Savior is not earned yet. To earn it you need to help the good people of the Grassy Field.",
+    "completionDialog": "Congratulations! You have saved the Grassy Field from certain doom!",
+    "requirements": [
+      {
+        "type": "factionsComplete",
+        "factionIds": [
+          "grassy-field"
+        ]
+      }
     ],
-    "onComplete": []
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 200
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      }
+    ]
+  },
+  "quest_grand_red_town": {
+    "giverId": "grand_quest_pillar",
+    "questType": "main",
+    "level": 20,
+    "title": "Red Town Savior",
+    "summary": "Help everyone in the Forest and Red Town and the Pillar will name you Red Town Savior.",
+    "objective": "Complete every quest in the Forest and Red Town, then return to the Grand Quest Pillar.",
+    "nextStep": "Finish every quest given in the Forest and Red Town. The Pillar keeps count.",
+    "reminderDialog": "Red Town Savior is not earned yet. To earn it you need to help the good people of the Forest and Red Town.",
+    "completionDialog": "Congratulations! You have saved Red Town and the Forest from certain doom!",
+    "requirements": [
+      {
+        "type": "factionsComplete",
+        "factionIds": [
+          "forest",
+          "red-town",
+          "warriors-guild",
+          "wizards-guild"
+        ]
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 5000
+      },
+      {
+        "type": "currency",
+        "amount": 10000
+      }
+    ]
+  },
+  "quest_grand_rocky_flats": {
+    "giverId": "grand_quest_pillar",
+    "questType": "main",
+    "level": 35,
+    "title": "Rocky Flats Savior",
+    "summary": "Help everyone in the Rocky Flats and the Blue Ocean and the Pillar will name you Rocky Flats Savior.",
+    "objective": "Complete every quest in the Rocky Flats and the Blue Ocean, then return to the Grand Quest Pillar.",
+    "nextStep": "Finish every quest given in the Rocky Flats and the Blue Ocean. The Pillar keeps count.",
+    "reminderDialog": "Rocky Flats Savior is not earned yet. To earn it you need to help the good people of the Rocky Flats and the Blue Ocean.",
+    "completionDialog": "Congratulations! You have saved the Rocky Flats and the Blue Ocean from certain doom!",
+    "requirements": [
+      {
+        "type": "factionsComplete",
+        "factionIds": [
+          "dwarf-village",
+          "mining-guild",
+          "ocean"
+        ]
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 10000
+      },
+      {
+        "type": "currency",
+        "amount": 20000
+      }
+    ]
+  },
+  "quest_grand_mountain": {
+    "giverId": "grand_quest_pillar",
+    "questType": "main",
+    "level": 50,
+    "title": "Mountain Savior",
+    "summary": "Help everyone in the Mountains and the Dark Forest and the Pillar will name you Mountain Savior.",
+    "objective": "Complete every quest in the Mountains and the Dark Forest, then return to the Grand Quest Pillar.",
+    "nextStep": "Finish every quest given in the Mountains and the Dark Forest. The Pillar keeps count.",
+    "reminderDialog": "Mountain Savior is not earned yet. To earn it you need to help the good people of the Mountains and the Dark Forest.",
+    "completionDialog": "Congratulations! You have saved the Mountains and the Dark Forest from certain doom!",
+    "requirements": [
+      {
+        "type": "factionsComplete",
+        "factionIds": [
+          "dark-forest",
+          "rangers-guild",
+          "mountains"
+        ]
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 20000
+      },
+      {
+        "type": "currency",
+        "amount": 50000
+      }
+    ]
   }
 }

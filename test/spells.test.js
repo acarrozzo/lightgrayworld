@@ -103,9 +103,9 @@ test('the teacher rooms name real flags: Pajama Shaman 021, Traveling Wizard 105
   assert.equal(rooms['021'].flag, 'pajamaShamanFlag')
   assert.equal(rooms['105'].flag, 'travelingWizardFlag')
   assert.equal(rooms['225'].flag, 'wizardSkillFlag')
-  assert.equal(rooms['021'].requiresCompletedQuest, undefined)
-  assert.equal(rooms['105'].requiresCompletedQuest, undefined)
-  assert.equal(rooms['225'].requiresCompletedQuest, 'quest_wizardsguild_000')
+  assert.equal(rooms['021'].requiresMembership, undefined)
+  assert.equal(rooms['105'].requiresMembership, undefined)
+  assert.equal(rooms['225'].requiresMembership, 'wizards-guild')
   for (const [roomId, teacher] of Object.entries(rooms)) {
     const known = spells.SPELL_TEACHERS[teacher.flag]
     assert.ok(known, `${roomId}: unknown teacher flag ${teacher.flag}`)

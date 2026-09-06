@@ -1,6 +1,6 @@
 export const runtime = 'nodejs'
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { COMMON_ERRORS } from '@/lib/error-handling'
 import { prisma } from '@/lib/prisma'
@@ -20,46 +20,33 @@ async function handleResetQuests(request: AuthenticatedRequest) {
     const url = new URL(request.url)
     const mode = url.searchParams.get('mode')
 
-    if (mode === 'skip-to-chest') {
-      // Complete all Old Man and Young Soldier quests, start Jack intro quest
-      await prisma.questProgress.deleteMany({
-        where: { userId: user.id },
-      })
+    // Both modes start from nothing: no quests, nobody met, chests unopened.
+    await prisma.questProgress.deleteMany({ where: { userId: user.id } })
+    await prisma.giverMet.deleteMany({ where: { userId: user.id } })
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { chest1: false, chest2: false },
+    })
 
-      // Reset the gold-chest opened flags
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { chest1: false, chest2: false },
+    if (mode === 'skip-to-chest') {
+      // The Old Man and the Young Soldier met and finished with; Jack Lumber
+      // is revealed by the Scorpion Tails quest and waits behind the chest.
+      await prisma.giverMet.createMany({
+        data: ['old_man', 'young_soldier'].map((giverId) => ({ id: randomUUID(), userId: user.id, giverId })),
       })
 
       const completedQuests = [
-        'quest_oldman_000', 'quest_oldman_001', 'quest_oldman_002',
-        'quest_oldman_003', 'quest_oldman_004',
-        'quest_youngsoldier_000', 'quest_youngsoldier_001',
-        'quest_youngsoldier_002', 'quest_youngsoldier_003',
+        'quest_oldman_001', 'quest_oldman_002', 'quest_oldman_003', 'quest_oldman_004',
+        'quest_youngsoldier_001', 'quest_youngsoldier_002', 'quest_youngsoldier_003',
       ]
-
-      for (const questId of completedQuests) {
-        await prisma.questProgress.create({
-          data: {
-            id: randomUUID(),
-            userId: user.id,
-            questId,
-            progress: 1,
-            completed: true,
-          },
-        })
-      }
-
-      // Start Jack's intro quest (not completed)
-      await prisma.questProgress.create({
-        data: {
+      await prisma.questProgress.createMany({
+        data: completedQuests.map((questId) => ({
           id: randomUUID(),
           userId: user.id,
-          questId: 'quest_jacklumber_intro',
-          progress: 0,
-          completed: false,
-        },
+          questId,
+          progress: 1,
+          completed: true,
+        })),
       })
 
       // Grant a Gold Key so the player can open the chest
@@ -87,28 +74,6 @@ async function handleResetQuests(request: AuthenticatedRequest) {
       })
     }
 
-    // Default: full reset
-    await prisma.questProgress.deleteMany({
-      where: { userId: user.id },
-    })
-
-    // Reset the gold-chest opened flags
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { chest1: false, chest2: false },
-    })
-
-    // Create quest_oldman_000 as active (not completed, progress 0)
-    await prisma.questProgress.create({
-      data: {
-        id: randomUUID(),
-        userId: user.id,
-        questId: 'quest_oldman_000',
-        progress: 0,
-        completed: false,
-      },
-    })
-
     return NextResponse.json({
       success: true,
       message: 'Quests reset to initial state',
@@ -123,4 +88,3 @@ async function handleResetQuests(request: AuthenticatedRequest) {
 }
 
 export const POST = withAuth(handleResetQuests)
-

@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import { prisma } from '@/lib/prisma'
 import PlayersTable, { type PlayerRow } from './PlayersTable'
 import WorldToolNav from '@/components/WorldToolNav'
+const { getQuestDef } = require('@/lib/game-data/quest-registry') as { getQuestDef: (questId: string) => unknown }
 import { resolveEquipmentNames, type EquipmentSource } from '@/lib/items/equipment-resolution'
 
 export const metadata = {
@@ -23,7 +24,7 @@ function resolveEquip(u: {
 }
 
 export default async function PlayersPage() {
-  const [users, killAgg, questAgg] = await Promise.all([
+  const [users, killAgg, completedRows] = await Promise.all([
     prisma.user.findMany({
       select: {
         id: true,
@@ -56,15 +57,19 @@ export default async function PlayersPage() {
       },
     }),
     prisma.killList.groupBy({ by: ['userId'], _sum: { kills: true } }),
-    prisma.questProgress.groupBy({
-      by: ['userId'],
+    prisma.questProgress.findMany({
       where: { completed: true },
-      _count: { _all: true },
+      select: { userId: true, questId: true },
     }),
   ])
 
   const killsByUser = new Map(killAgg.map((k) => [k.userId, k._sum.kills ?? 0]))
-  const questsByUser = new Map(questAgg.map((q) => [q.userId, q._count._all]))
+  // Only quests that exist count — rows from retired ids stay in the table.
+  const questsByUser = new Map<string, number>()
+  for (const row of completedRows) {
+    if (!getQuestDef(row.questId)) continue
+    questsByUser.set(row.userId, (questsByUser.get(row.userId) ?? 0) + 1)
+  }
 
   const rows: PlayerRow[] = users.map((u) => {
     const { weapon, helmet, body } = resolveEquip(u)

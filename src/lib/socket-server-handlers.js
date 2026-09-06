@@ -26,10 +26,8 @@ const { getEnemy } = require('./game-data/enemies.js')
 const { loadRoomRoster } = require('./game-engine/services/room-roster-service.js')
 const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service.js')
 const { buildGatherCooldowns } = require('./game-engine/services/gather-status.js')
-const { applyRoomQuestTrigger } = require('./game-engine/quest-room-triggers.js')
 const { SPELL_SELECT, projectSpellState, unlockSpellTeacher } = require('./game-engine/services/spell-service.js')
 const { SKILL_SELECT, projectSkillState, unlockSkillTeacher } = require('./game-engine/services/skill-service.js')
-const { getAllQuestProgress } = require('./game-engine/services/quest-service.js')
 const {
   getRoomStateNote,
   getRoomActionOverrides,
@@ -547,31 +545,6 @@ async function chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom, 
     })
   } catch (error) {
     console.error(`[Socket] Error charging teleport MP for ${player.username}:`, error)
-  }
-}
-
-/**
- * Quests that open by arriving somewhere (town quest givers). `toRoom` is the
- * engine-confirmed destination, not the client's request. The quest list rides
- * on action:feedback's `data.quests`, which the client already folds into its
- * store — no bespoke event needed.
- */
-async function announceRoomQuest(socket, player, toRoom) {
-  try {
-    const started = await applyRoomQuestTrigger(player.id, toRoom)
-    if (!started) return
-    const quests = await getAllQuestProgress(player.id)
-    socket.emit('action:feedback', {
-      action: 'quest started',
-      message: `You have work from ${started.npc}: ${started.quest.title}.`,
-      outcome: 'success',
-      ts: Date.now(),
-      timestamp: new Date().toISOString(),
-      success: true,
-      data: { roomId: toRoom, quests },
-    })
-  } catch (error) {
-    console.error('[Socket] Error applying room quest trigger:', error)
   }
 }
 
@@ -1439,8 +1412,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // The room is already on the player's screen (the engine's feedback
           // carried it); what they are waiting on now is whatever is waiting for
           // them. So the ambush roll starts the moment the socket is in the new
-          // room, and the durable writes — current room, map unlocks, the
-          // arrival quest — run beside it instead of ahead of it. They used to
+          // room, and the durable writes — current room, map unlocks — run
+          // beside it instead of ahead of it. They used to
           // run first, in sequence, with two room-chat rows nothing ever read.
           await Promise.all([
             maybeStartAutoBattle({ socket, player, toRoom, gameEngine }),
@@ -1448,7 +1421,6 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             persisted,
             chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom, charge: teleportCharge }),
             applyArrivalDiscoveries(prisma, socket, player, toRoom),
-            announceRoomQuest(socket, player, toRoom),
             announceSpellTeacher(prisma, socket, player, toRoom),
             announceSkillTeacher(prisma, socket, player, toRoom),
           ])
@@ -1773,7 +1745,6 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               persisted,
               chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom: toRoomId, charge: teleportCharge }),
               applyArrivalDiscoveries(prisma, socket, player, toRoomId),
-              announceRoomQuest(socket, player, toRoomId),
               announceSpellTeacher(prisma, socket, player, toRoomId),
               announceSkillTeacher(prisma, socket, player, toRoomId),
             ])

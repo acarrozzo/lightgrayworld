@@ -1,7 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useUrlEnum, useUrlString, useUrlFlag } from '@/components/world-tool/useUrlState'
 import Icon from '@/components/Icon'
+import { Tag, SortableTh } from '@/components/world-tool/ui'
+import { EntityLink, itemHref, useAnchorTarget } from '@/components/world-tool/EntityLink'
 
 export type EnemyRow = {
   order: number
@@ -21,7 +24,7 @@ export type EnemyRow = {
   isFriendly: boolean
   /** Enemy perk ids from game-data/enemy-specials.js, e.g. ['power']. */
   specials: string[]
-  drops: { name: string; chance: number; tag?: 'always' | 'first-kill' }[]
+  drops: { slug: string; name: string; chance: number; tag?: 'always' | 'first-kill' }[]
 }
 
 // Sortable columns. `get` pulls the value used for comparison.
@@ -52,16 +55,22 @@ export default function EnemiesTable({
   rows: EnemyRow[]
   zones: string[]
 }) {
-  const [area, setArea] = useState<string>('all')
-  const [grouped, setGrouped] = useState<boolean>(true)
-  const [sortKey, setSortKey] = useState<SortKey>('source')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [area, setArea] = useUrlString('area', 'all')
+  const [grouped, setGrouped] = useUrlFlag('grouped', true)
+  const [sortKey, setSortKey] = useUrlEnum<SortKey>(
+    'sort',
+    ['source', 'level', 'hp', 'att', 'def', 'xp', 'gold'] as const,
+    'source'
+  )
+  const [sortDir, setSortDir] = useUrlEnum<'asc' | 'desc'>('dir', ['asc', 'desc'] as const, 'asc')
+
+  useAnchorTarget()
 
   const getVal = SORTERS[sortKey]
 
   function clickHeader(key: SortKey) {
     if (key === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
     } else {
       setSortKey(key)
       setSortDir('asc')
@@ -144,22 +153,21 @@ export default function EnemiesTable({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
-              <th
-                onClick={() => clickHeader('source')}
-                className="cursor-pointer select-none px-3 py-2 font-medium hover:text-fg-primary"
-              >
-                Enemy
-                <SortArrow active={sortKey === 'source'} dir={sortDir} />
-              </th>
+              <SortableTh
+                label="Enemy"
+                active={sortKey === 'source'}
+                dir={sortDir}
+                onSort={() => clickHeader('source')}
+              />
               {COLUMNS.map((col) => (
-                <th
+                <SortableTh
                   key={col.key}
-                  onClick={() => clickHeader(col.key)}
-                  className="cursor-pointer select-none px-3 py-2 text-right font-medium hover:text-fg-primary"
-                >
-                  {col.label}
-                  <SortArrow active={sortKey === col.key} dir={sortDir} />
-                </th>
+                  label={col.label}
+                  align="right"
+                  active={sortKey === col.key}
+                  dir={sortDir}
+                  onSort={() => clickHeader(col.key)}
+                />
               ))}
               <th className="px-3 py-2 font-medium">1st</th>
               <th className="px-3 py-2 font-medium">Always</th>
@@ -209,7 +217,7 @@ function EnemyTr({ r }: { r: EnemyRow }) {
   const firstDrops = r.drops.filter((d) => d.tag === 'first-kill')
   const chanceDrops = r.drops.filter((d) => !d.tag)
   return (
-    <tr className="border-t border-line-subtle odd:bg-surface-panel/30">
+    <tr data-anchor={r.slug} className="border-t border-line-subtle odd:bg-surface-panel/30">
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           <Icon name={r.icon} size={20} />
@@ -233,7 +241,9 @@ function EnemyTr({ r }: { r: EnemyRow }) {
           : firstDrops.map((d, i) => (
               <span key={i}>
                 {i > 0 && <span className="text-fg-disabled">, </span>}
-                {d.name}
+                <EntityLink href={itemHref(d.slug)} title={`${d.name} in the Item Compendium`}>
+                  {d.name}
+                </EntityLink>
               </span>
             ))}
       </td>
@@ -243,7 +253,9 @@ function EnemyTr({ r }: { r: EnemyRow }) {
           : alwaysDrops.map((d, i) => (
               <span key={i}>
                 {i > 0 && <span className="text-fg-disabled">, </span>}
-                {d.name}
+                <EntityLink href={itemHref(d.slug)} title={`${d.name} in the Item Compendium`}>
+                  {d.name}
+                </EntityLink>
               </span>
             ))}
       </td>
@@ -253,7 +265,9 @@ function EnemyTr({ r }: { r: EnemyRow }) {
           : chanceDrops.map((d, i) => (
               <span key={i}>
                 {i > 0 && <span className="text-fg-disabled">, </span>}
-                <span className="text-fg-primary">{d.name}</span>
+                <EntityLink href={itemHref(d.slug)} title={`${d.name} in the Item Compendium`}>
+                  {d.name}
+                </EntityLink>
                 <span className="text-fg-muted"> ({d.chance}%)</span>
               </span>
             ))}
@@ -264,7 +278,7 @@ function EnemyTr({ r }: { r: EnemyRow }) {
 
 function EnemyCard({ r }: { r: EnemyRow }) {
   return (
-    <div className="rounded-lg border border-line-subtle bg-surface-panel/30 px-3 py-2.5 text-sm">
+    <div data-anchor={r.slug} className="rounded-lg border border-line-subtle bg-surface-panel/30 px-3 py-2.5 text-sm">
       <div className="flex items-center gap-2 mb-2">
         <Icon name={r.icon} size={20} />
         <span className="font-medium text-fg-bright">{r.name}</span>
@@ -296,7 +310,9 @@ function EnemyCard({ r }: { r: EnemyRow }) {
                                        [`${d.chance}%`, 'text-fg-primary']
             return (
               <span key={i}>
-                <span className={nameColor}>{d.name}</span>
+                <EntityLink href={itemHref(d.slug)} className={nameColor}>
+                  {d.name}
+                </EntityLink>
                 <span className="text-fg-muted"> ({label})</span>
               </span>
             )
@@ -307,18 +323,4 @@ function EnemyCard({ r }: { r: EnemyRow }) {
   )
 }
 
-function SortArrow({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
-  return (
-    <span className={`ml-1 text-[10px] ${active ? 'text-fg-primary' : 'text-fg-disabled'}`}>
-      {active ? (dir === 'asc' ? '▲' : '▼') : '↕'}
-    </span>
-  )
-}
 
-function Tag({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded border border-line-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fg-muted">
-      {children}
-    </span>
-  )
-}

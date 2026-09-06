@@ -21,12 +21,25 @@ export interface NewQuestEntry {
   objective: string | null
 }
 
+export interface QuestStanding {
+  factionId: string
+  name: string
+  done: number
+  total: number
+  complete: boolean
+  title: string | null
+}
+
 export interface QuestCompleteData {
-  /** Null for an intro quest: meeting someone is not a completed piece of work. */
+  /** Null when meeting a giver: meeting someone is not a completed piece of work. */
   questTitle: string | null
   rewards: Reward[]
   levelUp: LevelUp | null
   newQuestTitles: (string | NewQuestEntry)[]
+  /** Standing with the giver's faction after this turn-in; absent for the Pillar. */
+  standing?: QuestStanding | null
+  /** This turn-in was a guild's initiation. */
+  becameMember?: boolean
 }
 
 interface Props {
@@ -34,7 +47,7 @@ interface Props {
 }
 
 export default function QuestCompleteRewards({ data }: Props) {
-  const { rewards, levelUp, newQuestTitles } = data
+  const { rewards, levelUp, newQuestTitles, standing, becameMember } = data
 
   const xpReward = rewards.find(r => r.type === 'xp')
   const currencyReward = rewards.find(r => r.type === 'currency')
@@ -46,7 +59,7 @@ export default function QuestCompleteRewards({ data }: Props) {
   // An intro quest pays nothing and only opens the giver's set, so the trophy
   // heading stays out of the way and the New Quests list carries the moment.
   const hasRewards = !!xpReward || !!currencyReward || itemRewards.length > 0 || !!levelUp
-  const hasContent = hasRewards || newQuestTitles.length > 0
+  const hasContent = hasRewards || newQuestTitles.length > 0 || !!standing
 
   if (!hasContent) return null
 
@@ -120,6 +133,32 @@ export default function QuestCompleteRewards({ data }: Props) {
               </span>
             </div>
           )
+        )}
+
+        {standing && (
+          <div className={`mt-1 rounded-md px-3 py-2 ${standing.complete ? 'border border-resource-gold/60 bg-resource-gold/10' : 'bg-surface-raised/60'}`}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-fg-secondary">{standing.name}</span>
+              <span className={`text-xs font-bold tabular-nums ${standing.complete ? 'text-resource-gold' : 'text-fg-bright'}`}>
+                {standing.done}/{standing.total}
+              </span>
+            </div>
+            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-surface-panel/60">
+              <div
+                className={`h-full rounded-full ${standing.complete ? 'bg-resource-gold' : 'bg-resource-mp'}`}
+                style={{ width: `${standing.total > 0 ? Math.round((standing.done / standing.total) * 100) : 0}%` }}
+              />
+            </div>
+            {becameMember && (
+              <div className="mt-1.5 text-center text-xs text-status-success">You are now a member of the {standing.name}.</div>
+            )}
+            {standing.complete && standing.title && (
+              <div className="mt-1.5 flex items-center justify-center gap-1.5">
+                <Icon name="trophy" size={14} className="text-resource-gold" />
+                <span className="text-sm font-bold text-resource-gold">{standing.title}</span>
+              </div>
+            )}
+          </div>
         )}
 
         {newQuestTitles.length > 0 && (
