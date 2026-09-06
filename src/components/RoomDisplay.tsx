@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Player } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
+import { goldChestFlagForRoom } from '@/lib/game-data/gold-chests'
 import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
 import ItemDropdownButton from './ItemDropdownButton'
 import Icon from './Icon'
@@ -59,8 +60,13 @@ export default function RoomDisplay({
   quests = [],
   killList = [],
 }: RoomDisplayProps) {
-  // Persisted "gold chest opened" flag (chest1) — drives the opened-button look.
-  const goldChestOpened = useGameStore((state) => state.player?.chest1 ?? false)
+  // Persisted "gold chest opened" flag for THIS room's chest (chest1 for the
+  // Grassy Field, chest2 for the Forest, ...) — drives the opened-button look.
+  // A room without a gold chest resolves to no flag and never reads as opened.
+  const goldChestFlag = goldChestFlagForRoom(room?.roomId)
+  const goldChestOpened = useGameStore((state) =>
+    goldChestFlag ? Boolean(state.player?.[goldChestFlag]) : false
+  )
   // Live inventory, used to tell whether a capped gather node (e.g. Jack's
   // starter tree, which stops at 5 wood) is currently tapped out. Reading the
   // store means the button flips the instant the cap is hit or spent back down,

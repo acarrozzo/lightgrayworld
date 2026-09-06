@@ -16,6 +16,7 @@ const {
 } = require('./game-data/teleport-destinations.js')
 const { getMapSheetForRoom, getTeleportHubByRoom } = require('./game-data/world-map.js')
 const { MAP_STATE_SELECT, projectMapState } = require('./game-engine/services/map-state.js')
+const { GOLD_CHEST_SELECT, projectGoldChestState } = require('./game-data/gold-chests.js')
 const { debugLog } = require('./debug-log.js')
 const {
   consumeTeleportGrant,
@@ -575,8 +576,9 @@ async function announceRoomQuest(socket, player, toRoom) {
 }
 
 /**
- * Spell teachers met by walking in (the Pajama Shaman's crash course). Same
- * shape as the arrival quest: the flag is written once, guarded server-side,
+ * Spell teachers met by walking in — the Pajama Shaman's crash course, the
+ * Traveling Wizard's camp, and the Wizard's Guild once its initiation is done.
+ * Same shape as the arrival quest: the flag is written once, guarded server-side,
  * and the player hears about it through action:feedback, whose `data.player`
  * the client already merges into its store — so the spellbook's caps update
  * without a bespoke event.
@@ -767,8 +769,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             roomData: normalizedRoomData,
           })
           await maybeStartAutoBattle({ socket: memberSocket, player: memberPlayer, toRoom, gameEngine })
-          // A member pulled into a hub has stood in it just as the leader has.
+          // A member pulled into a hub has stood in it just as the leader has,
+          // and has met whoever teaches there.
           await applyArrivalDiscoveries(prisma, memberSocket, memberPlayer, toRoom)
+          await Promise.all([
+            announceSpellTeacher(prisma, memberSocket, memberPlayer, toRoom),
+            announceSkillTeacher(prisma, memberSocket, memberPlayer, toRoom),
+          ])
         }
       } catch (err) {
         console.error(`[Party] Failed to pull member ${memberId} from ${fromRoom} to ${toRoom}:`, err)
@@ -1023,6 +1030,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             ...MAP_STATE_SELECT,
             ...SPELL_SELECT,
             ...SKILL_SELECT,
+            ...GOLD_CHEST_SELECT,
           },
         })
 
@@ -1074,6 +1082,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // Skill levels and their teachers too, for the battle Skills list,
           // the book's caps and the passives the Character panel shows.
           ...projectSkillState(dbPlayer),
+          // Which gold chests this player has opened, so each room's chest
+          // button draws as opened (or not) straight from the reconnect.
+          ...projectGoldChestState(dbPlayer),
           socketId: socket.id,
           lastActive: new Date(),
         }
@@ -1208,6 +1219,16 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
         }
         await maybeStartAutoBattle({ socket, player: playerData, toRoom: playerData.currentRoom, gameEngine })
+
+        // A player who logs in standing in a teacher's room meets them now. The
+        // writes are guarded, so for almost everyone this is a no-op; for a
+        // character last saved there before teachers existed, or who turned in
+        // a guild initiation and logged out, it is the unlock an arrival would
+        // have given.
+        await Promise.all([
+          announceSpellTeacher(prisma, socket, playerData, playerData.currentRoom),
+          announceSkillTeacher(prisma, socket, playerData, playerData.currentRoom),
+        ])
 
         recordWorldFeedEventSafe({
           userId: playerData.id,

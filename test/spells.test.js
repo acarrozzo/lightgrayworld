@@ -98,6 +98,22 @@ test('typed commands resolve to spells, with and without "cast"', () => {
   assert.equal(spells.findSpellByCommand('rest'), null)
 })
 
+test('the teacher rooms name real flags: Pajama Shaman 021, Traveling Wizard 105, Wizard\'s Guild 225 behind its initiation', () => {
+  const rooms = spells.SPELL_TEACHER_ROOMS
+  assert.equal(rooms['021'].flag, 'pajamaShamanFlag')
+  assert.equal(rooms['105'].flag, 'travelingWizardFlag')
+  assert.equal(rooms['225'].flag, 'wizardSkillFlag')
+  assert.equal(rooms['021'].requiresCompletedQuest, undefined)
+  assert.equal(rooms['105'].requiresCompletedQuest, undefined)
+  assert.equal(rooms['225'].requiresCompletedQuest, 'quest_wizardsguild_000')
+  for (const [roomId, teacher] of Object.entries(rooms)) {
+    const known = spells.SPELL_TEACHERS[teacher.flag]
+    assert.ok(known, `${roomId}: unknown teacher flag ${teacher.flag}`)
+    assert.equal(known.roomId, roomId, `${roomId}: SPELL_TEACHERS places ${teacher.flag} elsewhere`)
+    assert.ok(teacher.message, `${roomId}: needs a feed line`)
+  }
+})
+
 test('every spell names its User column and a teacher ladder in ascending order', () => {
   for (const spell of spells.SPELLS) {
     assert.ok(spells.SPELL_COLUMNS.includes(spell.column), spell.id)

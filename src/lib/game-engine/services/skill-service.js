@@ -204,14 +204,36 @@ async function learnSkill(playerId, skillId, { mode = 'one' } = {}) {
 }
 
 /**
- * Meeting a skill teacher by walking into their room. Idempotent: the guarded
- * write matches only while the flag is still false, so the message plays
- * exactly once per player. A teacher behind a quest (the Warrior's Guild's
- * initiation) stays silent until that quest is turned in.
+ * The guarded flag write every teacher meeting comes down to: it matches only
+ * while the flag is still false, so the message plays exactly once per player
+ * however many arrivals, logins or turn-ins race for it.
  *
  * @param {import('@prisma/client').PrismaClient} db
  * @param {string} playerId
- * @param {string} roomId  The server's authoritative destination room.
+ * @param {{ flag: string, message: string }} teacher
+ * @returns {Promise<{ flag: string, message: string, skillTeachers: Record<string, boolean> }|null>}
+ */
+async function meetSkillTeacher(db, playerId, teacher) {
+  const applied = await db.user.updateMany({
+    where: { id: playerId, [teacher.flag]: false },
+    data: { [teacher.flag]: true },
+  })
+  if (applied.count === 0) return null
+
+  const row = await db.user.findUnique({ where: { id: playerId }, select: SKILL_SELECT })
+  return { flag: teacher.flag, message: teacher.message, skillTeachers: projectSkillState(row).skillTeachers }
+}
+
+/**
+ * Meeting a skill teacher by standing in their room — on arrival, on login,
+ * or pulled in by a party leader. A teacher behind a quest (the Warrior's
+ * Guild's initiation) stays silent until that quest is turned in; since the
+ * turn-in happens inside the guild with no arrival after it, that moment is
+ * covered by `unlockSkillTeachersForQuest`.
+ *
+ * @param {import('@prisma/client').PrismaClient} db
+ * @param {string} playerId
+ * @param {string} roomId  The server's authoritative room.
  * @returns {Promise<{ flag: string, message: string, skillTeachers: Record<string, boolean> }|null>}
  */
 async function unlockSkillTeacher(db, playerId, roomId) {
@@ -226,14 +248,29 @@ async function unlockSkillTeacher(db, playerId, roomId) {
     if (!progress?.completed) return null
   }
 
-  const applied = await db.user.updateMany({
-    where: { id: playerId, [teacher.flag]: false },
-    data: { [teacher.flag]: true },
-  })
-  if (applied.count === 0) return null
+  return meetSkillTeacher(db, playerId, teacher)
+}
 
-  const row = await db.user.findUnique({ where: { id: playerId }, select: SKILL_SELECT })
-  return { flag: teacher.flag, message: teacher.message, skillTeachers: projectSkillState(row).skillTeachers }
+/**
+ * Meeting every skill teacher a just-completed quest unlocks. The quest
+ * service calls this once the completion has committed, so the guild's "you
+ * can now learn" line follows its "then you're one of us" — the original
+ * checked the flag on the very next page load in the guild, which is the same
+ * moment. The quest is the whole condition: it is only turned in at the guild.
+ *
+ * @param {import('@prisma/client').PrismaClient} db
+ * @param {string} playerId
+ * @param {string} questId  The quest that just completed.
+ * @returns {Promise<Array<{ flag: string, message: string, skillTeachers: Record<string, boolean> }>>}
+ */
+async function unlockSkillTeachersForQuest(db, playerId, questId) {
+  const met = []
+  for (const teacher of Object.values(SKILL_TEACHER_ROOMS)) {
+    if (teacher.requiresCompletedQuest !== questId) continue
+    const result = await meetSkillTeacher(db, playerId, teacher)
+    if (result) met.push(result)
+  }
+  return met
 }
 
 module.exports = {
@@ -244,4 +281,5 @@ module.exports = {
   getSkillState,
   learnSkill,
   unlockSkillTeacher,
+  unlockSkillTeachersForQuest,
 }

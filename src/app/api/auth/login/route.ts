@@ -9,6 +9,7 @@ import { recomputeStatMods } from '@/lib/game-engine/services/equipment-service'
 import { SPELL_SELECT, projectSpellState } from '@/lib/game-engine/services/spell-service'
 import { SKILL_SELECT, projectSkillState } from '@/lib/game-engine/services/skill-service'
 import { MAP_STATE_SELECT, projectMapState } from '@/lib/game-engine/services/map-state'
+import { GOLD_CHEST_SELECT, projectGoldChestState } from '@/lib/game-data/gold-chests'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
         uIconColor: true,
         clicks: true,
         deaths: true,
-        chest1: true,
+        ...GOLD_CHEST_SELECT,
         ...SPELL_SELECT,
         ...SKILL_SELECT,
         ...MAP_STATE_SELECT,
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
       uIconColor: freshUser!.uIconColor ?? DEFAULT_AVATAR_COLOR,
       clicks: freshUser!.clicks,
       deaths: freshUser!.deaths,
-      chest1: freshUser!.chest1,
+      ...projectGoldChestState(freshUser),
       ...projectSpellState(freshUser),
       ...projectSkillState(freshUser),
       ...projectMapState(freshUser),

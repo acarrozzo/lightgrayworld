@@ -214,19 +214,16 @@ async function learnSpell(playerId, spellId, { mode = 'one' } = {}) {
 }
 
 /**
- * Meeting a spell teacher by walking into their room. Idempotent: the guarded
- * write matches only while the flag is still false, so the crash-course
- * message plays exactly once per player.
+ * The guarded flag write every teacher meeting comes down to: it matches only
+ * while the flag is still false, so the crash-course message plays exactly
+ * once per player however many arrivals, logins or turn-ins race for it.
  *
  * @param {import('@prisma/client').PrismaClient} db
  * @param {string} playerId
- * @param {string} roomId  The server's authoritative destination room.
+ * @param {{ flag: string, message: string }} teacher
  * @returns {Promise<{ flag: string, message: string, spellTeachers: Record<string, boolean> }|null>}
  */
-async function unlockSpellTeacher(db, playerId, roomId) {
-  const teacher = SPELL_TEACHER_ROOMS[roomId]
-  if (!teacher) return null
-
+async function meetSpellTeacher(db, playerId, teacher) {
   const applied = await db.user.updateMany({
     where: { id: playerId, [teacher.flag]: false },
     data: { [teacher.flag]: true },
@@ -235,6 +232,54 @@ async function unlockSpellTeacher(db, playerId, roomId) {
 
   const row = await db.user.findUnique({ where: { id: playerId }, select: SPELL_SELECT })
   return { flag: teacher.flag, message: teacher.message, spellTeachers: projectSpellState(row).spellTeachers }
+}
+
+/**
+ * Meeting a spell teacher by standing in their room — on arrival, on login,
+ * or pulled in by a party leader. A teacher behind a quest (the Wizard's
+ * Guild's initiation) stays silent until that quest is turned in; since the
+ * turn-in happens inside the guild with no arrival after it, that moment is
+ * covered by `unlockSpellTeachersForQuest`.
+ *
+ * @param {import('@prisma/client').PrismaClient} db
+ * @param {string} playerId
+ * @param {string} roomId  The server's authoritative room.
+ * @returns {Promise<{ flag: string, message: string, spellTeachers: Record<string, boolean> }|null>}
+ */
+async function unlockSpellTeacher(db, playerId, roomId) {
+  const teacher = SPELL_TEACHER_ROOMS[roomId]
+  if (!teacher) return null
+
+  if (teacher.requiresCompletedQuest) {
+    const progress = await db.questProgress.findUnique({
+      where: { userId_questId: { userId: playerId, questId: teacher.requiresCompletedQuest } },
+      select: { completed: true },
+    })
+    if (!progress?.completed) return null
+  }
+
+  return meetSpellTeacher(db, playerId, teacher)
+}
+
+/**
+ * Meeting every spell teacher a just-completed quest unlocks (the Wizard's
+ * Guild after the Kobold Master). Called by the quest service once the
+ * completion has committed, so the guild's line follows the turn-in the way
+ * the original's next page load did.
+ *
+ * @param {import('@prisma/client').PrismaClient} db
+ * @param {string} playerId
+ * @param {string} questId  The quest that just completed.
+ * @returns {Promise<Array<{ flag: string, message: string, spellTeachers: Record<string, boolean> }>>}
+ */
+async function unlockSpellTeachersForQuest(db, playerId, questId) {
+  const met = []
+  for (const teacher of Object.values(SPELL_TEACHER_ROOMS)) {
+    if (teacher.requiresCompletedQuest !== questId) continue
+    const result = await meetSpellTeacher(db, playerId, teacher)
+    if (result) met.push(result)
+  }
+  return met
 }
 
 /**
@@ -304,5 +349,6 @@ module.exports = {
   getSpellState,
   learnSpell,
   unlockSpellTeacher,
+  unlockSpellTeachersForQuest,
   castHealSpell,
 }

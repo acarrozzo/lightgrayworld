@@ -8,6 +8,7 @@ import { recomputeStatMods } from '@/lib/game-engine/services/equipment-service'
 import { projectSpellState } from '@/lib/game-engine/services/spell-service'
 import { projectSkillState } from '@/lib/game-engine/services/skill-service'
 import { projectMapState } from '@/lib/game-engine/services/map-state'
+import { projectGoldChestState } from '@/lib/game-data/gold-chests'
 
 async function handleGetMe(request: AuthenticatedRequest) {
   try {
@@ -60,7 +61,7 @@ async function handleGetMe(request: AuthenticatedRequest) {
       uIconColor: freshUser.uIconColor,
       clicks: freshUser.clicks,
       deaths: freshUser.deaths,
-      chest1: freshUser.chest1,
+      ...projectGoldChestState(freshUser),
       ...projectSpellState(freshUser),
       ...projectSkillState(freshUser),
       ...projectMapState(freshUser),

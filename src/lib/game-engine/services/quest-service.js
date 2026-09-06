@@ -3,6 +3,8 @@ const { playerHasItem, getPlayerInventory, removeItemBySlug, grantItemOnce } = r
 const { getItemBySlug } = require('./inventory-service')
 const QUESTS = require('../../game-data/quests.json')
 const { checkAndApplyLevelUp } = require('./leveling-service')
+const { unlockSkillTeachersForQuest } = require('./skill-service')
+const { unlockSpellTeachersForQuest } = require('./spell-service')
 
 /**
  * Get quest definition from registry
@@ -571,20 +573,42 @@ async function completeQuest(playerId, questId) {
     startedQuestIds = effectResult.startedQuestIds || []
   }
 
-  // Run post-transaction reads in parallel
-  const [levelUp, inventory, quests] = await Promise.all([
+  // Run post-transaction reads in parallel. The teacher unlocks ride along:
+  // a guild's initiation is turned in inside the guild, so no arrival follows
+  // it to introduce the teacher — the quest completing is that moment. They
+  // are guarded writes, so a failure here costs the player a feed line, never
+  // the quest, which has already committed.
+  const teachersOrNone = (promise, kind) =>
+    promise.catch((err) => {
+      console.error(`[Quest] Failed to unlock ${kind} teacher after ${questId}:`, err)
+      return []
+    })
+  const [levelUp, inventory, quests, skillTeachersMet, spellTeachersMet] = await Promise.all([
     checkAndApplyLevelUp(playerId),
     getPlayerInventory(playerId),
     getAllQuestProgress(playerId),
+    teachersOrNone(unlockSkillTeachersForQuest(prisma, playerId, questId), 'skill'),
+    teachersOrNone(unlockSpellTeachersForQuest(prisma, playerId, questId), 'spell'),
   ])
+
+  // Each met teacher in the shape an arrival announces one: a feed line and
+  // the `player` fragment the client merges into its store.
+  const teachersMet = [
+    ...skillTeachersMet.map((met) => ({ kind: 'skill', message: met.message, player: { skillTeachers: met.skillTeachers } })),
+    ...spellTeachersMet.map((met) => ({ kind: 'spell', message: met.message, player: { spellTeachers: met.spellTeachers } })),
+  ]
+  const player = teachersMet.length
+    ? Object.assign({}, result.updatedUser, ...teachersMet.map((met) => met.player))
+    : result.updatedUser
 
   return {
     success: true,
-    player: result.updatedUser,
+    player,
     inventory,
     quests,
     startedQuestIds,
     levelUp,
+    teachersMet,
   }
 }
 

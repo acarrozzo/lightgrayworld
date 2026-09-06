@@ -2004,8 +2004,8 @@ export default function GameInterface() {
       const data = await response.json()
       
       if (data.success) {
-        // Refresh quests and player state (chest1 was reset)
-        if (player) setPlayer({ ...player, chest1: false })
+        // Refresh quests and player state (the reset route clears chest1 and chest2)
+        if (player) setPlayer({ ...player, chest1: false, chest2: false })
         const questResponse = await fetch('/api/game/quests/progress', {
           headers: getAuthHeaders(),
         })
@@ -2035,8 +2035,8 @@ export default function GameInterface() {
       })
       const data = await response.json()
       if (data.success) {
-        // Refresh quests and player state (chest1 was reset)
-        if (player) setPlayer({ ...player, chest1: false })
+        // Refresh quests and player state (the reset route clears chest1 and chest2)
+        if (player) setPlayer({ ...player, chest1: false, chest2: false })
         const questResponse = await fetch('/api/game/quests/progress', {
           headers: getAuthHeaders(),
         })

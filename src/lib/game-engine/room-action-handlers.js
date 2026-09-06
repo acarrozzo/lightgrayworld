@@ -8,6 +8,7 @@ const { checkAndConsumeCooldown } = require('./services/action-cap-service')
 const { grantTeleport } = require('./teleport-grants')
 const { getRecipeById, isRecipeAvailableInRoom, whereToCraft, describeCraft } = require('../game-data/crafting-recipes')
 const { getShop } = require('../game-data/shops')
+const { goldChestFlagForRoom } = require('../game-data/gold-chests')
 
 /**
  * Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
@@ -886,22 +887,27 @@ async function executeCraft(playerId, roomState, actionData = {}) {
 class CraftError extends Error {}
 
 /**
- * Build a gold-chest "open" handler. Both gold chests behave identically: they
- * are locked until the player is holding a Gold Key, the key is consumed on the
- * first open, and a persistent per-player flag (`chest1`/`chest2`) records the
- * open so the chest can never be looted twice. The loot itself comes from the
- * shared CHEST_LOOT registry, keyed by room, so the open flow, the "already
- * opened" reminder, and the World Tool's item-source index never drift apart.
+ * Build a gold-chest "open" handler. Every gold chest behaves identically: it
+ * is locked until the player is holding a Gold Key, the key is consumed on the
+ * first open, and a persistent per-player flag (`chest1`, `chest2`, ...) records
+ * the open so the chest can never be looted twice. The flag comes from the
+ * shared game-data/gold-chests table, keyed by room, which the client reads
+ * too to draw the button as opened. The loot itself comes from the shared
+ * CHEST_LOOT registry, keyed by room, so the open flow, the "already opened"
+ * reminder, and the World Tool's item-source index never drift apart.
  *
  * @param {Object} opts
- * @param {string} opts.roomId       - CHEST_LOOT key for this chest's loot table
- * @param {string} opts.flagField    - User boolean column recording the open
+ * @param {string} opts.roomId       - CHEST_LOOT / gold-chests key for this chest
  * @param {number} opts.goldMin      - Lowest gold roll (inclusive)
  * @param {number} opts.goldMax      - Highest gold roll (inclusive)
  * @param {string} opts.lockedMessage - Shown when the player has no Gold Key;
  *                                      names where this chest's key comes from
  */
-function makeGoldChestHandler({ roomId, flagField, goldMin, goldMax, lockedMessage }) {
+function makeGoldChestHandler({ roomId, goldMin, goldMax, lockedMessage }) {
+  const flagField = goldChestFlagForRoom(roomId)
+  if (!flagField) {
+    throw new Error(`Gold chest in room ${roomId} has no flag in game-data/gold-chests`)
+  }
   return async (playerId, roomState) => {
     const { prisma } = require('../db-client')
     const {
@@ -1910,7 +1916,6 @@ const ROOM_ACTIONS = {
     },
     'open gold chest': makeGoldChestHandler({
       roomId: '001',
-      flagField: 'chest1',
       goldMin: 100,
       goldMax: 200,
       lockedMessage:
@@ -2581,7 +2586,6 @@ const ROOM_ACTIONS = {
   '119': {
     'open gold chest': makeGoldChestHandler({
       roomId: '119',
-      flagField: 'chest2',
       goldMin: 500,
       goldMax: 1000,
       lockedMessage:
@@ -2998,7 +3002,6 @@ const ROOM_ACTIONS = {
     'pick flower': pickGardenFlower,
     'open gold chest': makeGoldChestHandler({
       roomId: '224',
-      flagField: 'chest3',
       goldMin: 2000,
       goldMax: 2000,
       lockedMessage:
@@ -3314,7 +3317,6 @@ const ROOM_ACTIONS = {
   '309': {
     'open gold chest': makeGoldChestHandler({
       roomId: '309',
-      flagField: 'chest4',
       goldMin: 1500,
       goldMax: 2000,
       lockedMessage:
@@ -3701,7 +3703,6 @@ const ROOM_ACTIONS = {
   '485': {
     'open gold chest': makeGoldChestHandler({
       roomId: '485',
-      flagField: 'chest5',
       goldMin: 5000,
       goldMax: 5000,
       lockedMessage:
@@ -3963,7 +3964,6 @@ const ROOM_ACTIONS = {
   '513': {
     'open gold chest': makeGoldChestHandler({
       roomId: '513',
-      flagField: 'chest6',
       goldMin: 5000,
       goldMax: 5000,
       lockedMessage:

@@ -91,9 +91,13 @@ const SKILL_TEACHERS = {
 /**
  * Rooms whose arrival introduces a teacher, with the original's feed line.
  * The Warrior's Guild only teaches once its initiation (the Ogre Lieutenant)
- * has been turned in — the original's `quest19 >= 2`. The Master Trainer,
- * Ranger's Guild and Star City rooms are not ported yet, so their flags stay
- * false and their tiers show as "find a teacher".
+ * has been turned in — the original's `quest19 >= 2`; that flag is also set
+ * the moment the quest completes, since the turn-in happens inside the guild
+ * and no arrival follows it. The Ranger Skills room sits behind the guild's
+ * rope ladder (a Dark Ranger kill), so like the original it teaches on entry
+ * with no further check. The Master Trainer and Star City rooms are not
+ * ported yet, so their flags stay false and their tiers show as "find a
+ * teacher".
  *
  * @type {Record<string, { flag: string, message: string, requiresCompletedQuest?: string }>}
  */
@@ -118,6 +122,10 @@ const SKILL_TEACHER_ROOMS = {
     flag: 'warriorSkillFlag',
     requiresCompletedQuest: 'quest_warriorsguild_000',
     message: "You can now learn new skills from the Warrior's Guild!",
+  },
+  '515d': {
+    flag: 'rangerSkillFlag',
+    message: "You can now learn new skills from the Ranger's Guild!",
   },
 }
 

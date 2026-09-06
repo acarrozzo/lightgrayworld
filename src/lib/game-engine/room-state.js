@@ -2133,6 +2133,19 @@ class RoomState {
       playerEvents.push({ event: 'player:level-up', payload: result.levelUp })
     }
 
+    // A teacher this quest unlocked (a guild's initiation) is announced the
+    // way an arrival announces one, so the book's caps update through the
+    // client path that already exists.
+    for (const met of result.teachersMet || []) {
+      playerEvents.push({
+        event: 'action:feedback',
+        payload: this.createFeedbackPayload(`${met.kind} teacher`, 'success', met.message, {
+          roomId: this.roomId,
+          player: met.player,
+        }),
+      })
+    }
+
     return {
       success: true,
       action: 'complete_quest',

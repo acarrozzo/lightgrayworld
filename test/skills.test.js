@@ -247,3 +247,26 @@ test('Dodge turns an enemy hit into nothing at 100%, and never fires at 0%', () 
   assert.equal(turn.playerDodged, true)
   assert.equal(turn.enemyDealtDamage, 0)
 })
+
+test('every teacher room names a real teacher in the ladder, and the guilds sit where they should', () => {
+  for (const [roomId, teacher] of Object.entries(skills.SKILL_TEACHER_ROOMS)) {
+    const known = skills.SKILL_TEACHERS[teacher.flag]
+    assert.ok(known, `${roomId} teaches with unknown flag ${teacher.flag}`)
+    assert.equal(known.roomId, roomId, `${teacher.flag} is listed at ${known.roomId} but taught at ${roomId}`)
+    assert.ok(teacher.message, `${roomId} has no feed line`)
+  }
+  // The Warrior's Guild teaches only after its initiation; the Ranger Skills
+  // room is already behind the guild's ladder, so it teaches on entry.
+  assert.equal(skills.SKILL_TEACHER_ROOMS['226'].requiresCompletedQuest, 'quest_warriorsguild_000')
+  assert.equal(skills.SKILL_TEACHER_ROOMS['515d'].flag, 'rangerSkillFlag')
+  assert.equal(skills.SKILL_TEACHER_ROOMS['515d'].requiresCompletedQuest, undefined)
+})
+
+test("the Ranger's Guild raises Ranged and Aim to 25, Dodge to 10, and opens the upgrades at 20", () => {
+  const flags = { jackLumberFlag: true, hunterBillFlag: true, rangerSkillFlag: true }
+  assert.equal(skills.getSkillMaxLevel(skills.getSkill('ranged'), flags), 25)
+  assert.equal(skills.getSkillMaxLevel(skills.getSkill('aim'), flags), 25)
+  assert.equal(skills.getSkillMaxLevel(skills.getSkill('dodge'), flags), 10)
+  assert.equal(skills.getSkillMaxLevel(skills.getSkill('multi-arrow'), flags), 20)
+  assert.equal(skills.getSkillMaxLevel(skills.getSkill('bolt-upgrade'), flags), 20)
+})

@@ -73,18 +73,30 @@ const SPELL_TEACHERS = {
 }
 
 /**
- * Rooms whose arrival introduces a teacher. Only the Pajama Shaman is wired
- * for now: the original set `travelingwizardFlag` on any arrival in 105, and
- * `wizardskillFlag` in 225 once the guild initiation was complete, so the next
- * slices are one entry each here (plus the guild's quest condition).
+ * Rooms whose arrival introduces a teacher, with the original's feed line.
+ * The original set `travelingwizardFlag` on any arrival in 105, and
+ * `wizardskillFlag` on entering the guild interior (225b), which only members
+ * could reach — here the guild is one room, so the flag waits on the
+ * initiation quest (the Kobold Master) being turned in. Star City (701) is
+ * not ported yet, so its flag stays false and its tier shows as
+ * "find a teacher".
  *
- * @type {Record<string, { flag: string, message: string }>}
+ * @type {Record<string, { flag: string, message: string, requiresCompletedQuest?: string }>}
  */
 const SPELL_TEACHER_ROOMS = {
   '021': {
     flag: 'pajamaShamanFlag',
     message:
       'The Pajama Shaman gives you a crash course in Magic! You can now learn the Magic Missile, Fireball and Heal spells.',
+  },
+  '105': {
+    flag: 'travelingWizardFlag',
+    message: 'You can now learn new spells from the Traveling Wizard!',
+  },
+  '225': {
+    flag: 'wizardSkillFlag',
+    requiresCompletedQuest: 'quest_wizardsguild_000',
+    message: "You can now learn new spells from the Wizard's Guild!",
   },
 }
 

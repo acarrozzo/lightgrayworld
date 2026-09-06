@@ -61,7 +61,16 @@ export interface Player {
   /** Skill teachers met, keyed by flag column (`youngSoldierFlag`, ...). */
   skillTeachers?: Record<string, boolean>
   deaths?: number
+  /**
+   * One-time gold chests opened, keyed by the User column that stores them.
+   * game-data/gold-chests.js says which room each flag belongs to.
+   */
   chest1?: boolean
+  chest2?: boolean
+  chest3?: boolean
+  chest4?: boolean
+  chest5?: boolean
+  chest6?: boolean
   grassyFieldMap?: boolean
   grassyFieldUndergroundMap?: boolean
   forestUndergroundMap?: boolean

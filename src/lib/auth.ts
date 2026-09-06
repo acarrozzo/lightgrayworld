@@ -34,7 +34,13 @@ export interface AuthUser {
   uIconColor: string
   clicks?: number
   deaths?: number
+  /** Gold chests opened, keyed by User column (game-data/gold-chests.js). */
   chest1?: boolean
+  chest2?: boolean
+  chest3?: boolean
+  chest4?: boolean
+  chest5?: boolean
+  chest6?: boolean
   /** Spell levels keyed by User column (`magicMissile`, `fireball`, ...). */
   spells?: Record<string, number>
   /** Spell teachers met, keyed by User flag column (`pajamaShamanFlag`, ...). */
