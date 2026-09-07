@@ -4,8 +4,9 @@ import { Map as MapIcon, Sparkles } from 'lucide-react'
 import Compass from '@/components/Compass'
 import BasicActionButtons from '@/components/BasicActionButtons'
 import WorldLayer, { type WorldTab } from './WorldLayer'
+import { DangerCorner, LedgerFlyout, QuickLinksCorner, type LedgerActions } from './CompassLedger'
 import type { MapConfigEntry } from './constants'
-import type { Player } from '@/lib/game-state'
+import type { InventoryItem, Player } from '@/lib/game-state'
 
 const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
 
@@ -20,9 +21,11 @@ const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
  */
 export type ExploreSubView = 'compass' | 'world'
 
-interface ExplorePanelProps {
+interface ExplorePanelProps extends LedgerActions {
   room: any
   player: Player | null
+  /** For the corner ledger: the equipped weapon and helmet by name. */
+  inventory?: InventoryItem[]
   subView: ExploreSubView
   worldTab: WorldTab
   onWorldTabChange: (tab: WorldTab) => void
@@ -64,6 +67,11 @@ const CORNER_BUTTON_BASE =
 export default function ExplorePanel({
   room,
   player,
+  inventory,
+  onOpenTraining,
+  onOpenStats,
+  onOpenBook,
+  onOpenInventory,
   subView,
   worldTab,
   onWorldTabChange,
@@ -113,6 +121,7 @@ export default function ExplorePanel({
   }
 
   const dimmedClasses = isDimmed ? 'opacity-20 pointer-events-none' : ''
+  const ledger = { room, player, inventory, onOpenTraining, onOpenStats, onOpenBook, onOpenInventory }
 
   return (
     <div
@@ -120,6 +129,22 @@ export default function ExplorePanel({
         isSidebar ? 'flex-1 min-h-0 p-4 gap-3' : 'px-2 py-3'
       }`}
     >
+      {/* The corner ledger, from the original nav band: danger and room
+          top-right, points / weapon / gold with their links bottom-left. Dims
+          with the compass; the room card carries the same facts in battle.
+          The strip has no corners to spare, so there the whole ledger sits
+          behind one button at the top-left and opens as a flyout. */}
+      {!isSidebar && <LedgerFlyout {...ledger} />}
+      {isSidebar && (
+        <>
+          <div className={`absolute top-2 right-2 z-10 transition-opacity duration-300 ${dimmedClasses}`}>
+            <DangerCorner room={room} player={player} />
+          </div>
+          <div className={`absolute bottom-2 left-2 z-10 transition-opacity duration-300 ${dimmedClasses}`}>
+            <QuickLinksCorner {...ledger} />
+          </div>
+        </>
+      )}
       {/* Map and Teleport: top left of the D-pad area in the sidebar, where the
           compass's up/down column leaves the corner free; top right on the
           strip, above the action column. The sidebar labels both; the strip

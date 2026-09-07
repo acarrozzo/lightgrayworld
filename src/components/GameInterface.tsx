@@ -3474,6 +3474,7 @@ export default function GameInterface() {
             : undefined
         }
         clicks={player?.clicks}
+        currency={player?.currency}
         unspentPoints={unspentPoints}
         onCharacterClick={() => handleCenterTabChange(centerActiveTab === 'char' ? null : 'char')}
         isConnected={socket?.connected ?? false}
@@ -3509,6 +3510,14 @@ export default function GameInterface() {
                 onAction={handleAction}
                 onTeleport={handleTeleport}
                 player={player}
+                inventory={inventory}
+                onOpenTraining={() => setTrainingModalOpen(true)}
+                onOpenStats={() => setStatModalOpen(true)}
+                onOpenBook={(tab) => {
+                  setBookTab(tab)
+                  setSpellbookOpen(true)
+                }}
+                onOpenInventory={handleSwitchToInventory}
                 isPartyMember={isPartyMember}
                 teleportBlockedReason={teleportBlockedReason}
                 onOpenWorldDocked={openWorldDocked}
@@ -3671,7 +3680,15 @@ export default function GameInterface() {
                   onAction={handleAction}
                   onTeleport={handleTeleport}
                   player={player}
-                isPartyMember={isPartyMember}
+                  inventory={inventory}
+                  onOpenTraining={() => setTrainingModalOpen(true)}
+                  onOpenStats={() => setStatModalOpen(true)}
+                  onOpenBook={(tab) => {
+                    setBookTab(tab)
+                    setSpellbookOpen(true)
+                  }}
+                  onOpenInventory={handleSwitchToInventory}
+                  isPartyMember={isPartyMember}
                   teleportBlockedReason={teleportBlockedReason}
                   onOpenWorldDocked={openWorldDocked}
                   onOpenWorldOverlay={openWorldOverlay}
