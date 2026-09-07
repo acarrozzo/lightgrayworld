@@ -23,10 +23,10 @@ const { getSkill, findSkillByCommand, isStrikeSkill, weaponFits, weaponFitReason
 const { getSkillState } = require('./services/skill-service')
 const { rand } = require('./battle-calculator')
 const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn, fetchEquippedWeapon } = require('./battle-action-handlers')
-const { getRoomEnemies, isProbabilistic, getRoomPriorityEnemy, rollRoomEnemyGroup } = require('../game-data/room-enemies')
+const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('../game-data/room-enemies')
 const { getEnemy } = require('../game-data/enemies')
 const { getRevealDefinition, getNextRevealStage, markRevealed, clearRevealed } = require('./search-reveal-state')
-const { saveRoomRoster } = require('./services/room-roster-service')
+const { savePresentEnemy } = require('./services/present-enemy-service')
 
 const EXIT_DIRECTIONS = [
   'north',
@@ -509,9 +509,9 @@ class RoomState {
     this.players = new Map()
     this.activeBattles = new Map()
     // Per-player enemy state for probabilistic rooms.
-    // Map<playerId, { roster: string[] }>
-    // roster = the set of enemy slugs currently present; out of battle the player may
-    // attack any of them. Empty roster = no enemies present. Key absent = not yet rolled.
+    // Map<playerId, { present: string | null }>
+    // present = the slug of the one enemy standing before this player, as in the
+    // original: one enemy at a time. null = nothing here. Key absent = not yet rolled.
     this.playerEnemyState = new Map()
     this.lastActionAt = null
     this.lastTickPlayerCount = null
@@ -540,108 +540,64 @@ class RoomState {
     }
   }
 
-  // --- Per-player enemy state helpers (probabilistic rooms) ---
+  // --- Per-player present enemy (probabilistic rooms) ---
   //
-  // Enemies present for a player are a flat roster: out of battle the player may
-  // attack any of them. Index 0 is the default target for the bare 'attack' action
-  // and there is no post-battle grace.
+  // One enemy at a time. Out of battle the player may attack it; a hostile one
+  // blocks leaving and a neutral one waits. There is no post-battle grace.
 
-  // Fire-and-forget: mirror this player's current in-memory roster to the DB so it
-  // survives a page refresh / reconnect. An empty roster deletes the persisted row.
+  // Fire-and-forget: mirror this player's present enemy to the DB so it survives a
+  // page refresh / reconnect. Nothing present deletes the persisted row.
   // NOT called from removePlayer — a disconnect must leave the DB row intact so the
-  // roster can be restored on the next login.
-  syncRosterToDb(playerId) {
-    const slugs = this.playerEnemyState.get(playerId)?.roster ?? []
-    saveRoomRoster(playerId, this.roomId, slugs).catch(() => {})
+  // enemy can be restored on the next login.
+  syncPresentEnemyToDb(playerId) {
+    const slug = this.playerEnemyState.get(playerId)?.present ?? null
+    savePresentEnemy(playerId, this.roomId, slug).catch(() => {})
   }
 
-  // A present enemy slug (roster[0]), used as a default target for the bare
-  // 'attack' action.
-  getPlayerActiveEnemy(playerId) {
-    return this.playerEnemyState.get(playerId)?.roster?.[0] ?? null
+  // The slug of the enemy present for this player, or null.
+  getPresentEnemy(playerId) {
+    return this.playerEnemyState.get(playerId)?.present ?? null
   }
 
-  // Returns a present enemy slug (roster[0]), or null.
-  getPlayerEnemySlug(playerId) {
-    return this.playerEnemyState.get(playerId)?.roster?.[0] ?? null
-  }
-
-  // The full list of enemies currently present for this player.
-  getPlayerEnemyRoster(playerId) {
-    return this.playerEnemyState.get(playerId)?.roster ?? []
-  }
-
-  setPlayerActiveEnemy(playerId, slug) {
-    this.playerEnemyState.set(playerId, { roster: slug ? [slug] : [] })
-    this.syncRosterToDb(playerId)
-  }
-
-  // Seeds the full roster of present enemies (used on room entry to place a fresh
-  // wave, or to restore a roster persisted across a room transition).
-  setPlayerEnemyRoster(playerId, slugs) {
-    this.playerEnemyState.set(playerId, { roster: Array.isArray(slugs) ? slugs : [] })
-    this.syncRosterToDb(playerId)
-  }
-
-  // Removes one defeated enemy (by slug) from the roster after a battle win.
-  // No grace period — the next turn action can immediately provoke another enemy.
-  // Returns the number still present.
-  removeEnemyFromRoster(playerId, slug) {
-    const state = this.playerEnemyState.get(playerId)
-    const roster = state?.roster ? [...state.roster] : []
-    const idx = roster.indexOf(slug)
-    if (idx !== -1) roster.splice(idx, 1)
-    this.playerEnemyState.set(playerId, { roster })
-    this.syncRosterToDb(playerId)
-    return roster.length
+  // Places the one enemy present for this player (null removes it). Used on room
+  // entry, to restore an enemy persisted across a move or a refresh, and by the
+  // hand-authored "challenge" buttons that call a named enemy out.
+  setPresentEnemy(playerId, slug) {
+    this.playerEnemyState.set(playerId, { present: slug || null })
+    this.syncPresentEnemyToDb(playerId)
   }
 
   clearPlayerEnemyState(playerId) {
     this.playerEnemyState.delete(playerId)
-    // Deletes the persisted row (roster now empty) so a cleared/abandoned room
-    // isn't restored on the next login.
-    this.syncRosterToDb(playerId)
+    // Deletes the persisted row so a cleared/abandoned room isn't restored on the
+    // next login.
+    this.syncPresentEnemyToDb(playerId)
   }
 
-  // True if any aggressive enemy is present in the player's roster. Used to block
-  // movement — the player cannot leave while hostiles remain.
-  hasHostileEnemies(playerId) {
-    return this.getPlayerEnemyRoster(playerId).some((slug) => getEnemy(slug)?.isAggressive)
+  // True if a hostile (aggressive) enemy is present. Used to block movement — the
+  // player cannot leave while it stands there.
+  hasHostileEnemy(playerId) {
+    const slug = this.getPresentEnemy(playerId)
+    return Boolean(slug && getEnemy(slug)?.isAggressive)
   }
 
-  // Picks the HOSTILE (aggressive) enemy to engage the player first, or null.
-  // The room's designated `priority` enemy strikes first when it is present and
-  // aggressive; otherwise a random present hostile is chosen.
-  pickHostileTarget(slugs) {
-    const hostiles = slugs.filter((slug) => getEnemy(slug)?.isAggressive)
-    if (!hostiles.length) return null
-    const prioritySlug = getRoomPriorityEnemy(this.roomId)
-    if (prioritySlug && hostiles.includes(prioritySlug)) return prioritySlug
-    return hostiles[Math.floor(Math.random() * hostiles.length)]
-  }
-
-  // Rolls a fresh wave (the whole group at once) only when nothing is present.
-  // Returns { spawned: string[] } for a newly-rolled wave, or null otherwise.
+  // Rolls for an enemy only when none is present. Returns the freshly spawned slug,
+  // or null when nothing new appeared.
   maybeSpawnEnemy(playerId) {
     if (!isProbabilistic(this.roomId)) return null
 
     const battle = this.activeBattles.get(playerId)
     if (battle?.isActive) return null
 
-    // Enemies already present — no new wave (engagement handled by caller).
-    if (this.playerEnemyState.get(playerId)?.roster?.length) return null
+    // Something is already here — no new roll (engagement handled by caller).
+    if (this.playerEnemyState.get(playerId)?.present) return null
 
-    const group = rollRoomEnemyGroup(this.roomId)
-    this.playerEnemyState.set(playerId, { roster: group })
-    // Persist only when a wave actually spawned; a miss leaves the (empty) state
-    // unchanged, so there's nothing new to write.
-    if (group.length) this.syncRosterToDb(playerId)
-    return group.length ? { spawned: group } : null
-  }
-
-  // Maps a list of enemy slugs to full enemy objects (for client display payloads).
-  buildEnemyList(slugs) {
-    return slugs.map((slug) => getEnemy(slug)).filter(Boolean)
+    const slug = rollRoomEnemy(this.roomId)
+    this.playerEnemyState.set(playerId, { present: slug })
+    // Persist only when something actually spawned; a miss leaves the (empty)
+    // state unchanged, so there's nothing new to write.
+    if (slug) this.syncPresentEnemyToDb(playerId)
+    return slug
   }
 
   updatePlayer(playerId, updater) {
@@ -825,27 +781,22 @@ class RoomState {
   }
 
   // After a turn action: resolve enemy presence and append notification / auto-battle
-  // events. Announces a freshly-rolled wave (all enemies at once), then — if any hostile
-  // enemy is present — a random one of them attacks the player. No post-battle grace.
+  // events. Announces a freshly-rolled enemy, then — if it is hostile — it attacks
+  // the player. No post-battle grace.
   async appendSpawnEvents(result, playerId) {
     if (!isProbabilistic(this.roomId)) return result
 
     const battle = this.activeBattles.get(playerId)
     if (battle?.isActive) return result
 
-    const spawned = this.maybeSpawnEnemy(playerId)
+    const spawnedSlug = this.maybeSpawnEnemy(playerId)
 
-    const roster = this.getPlayerEnemyRoster(playerId)
-    if (!roster.length) return result
+    const slug = this.getPresentEnemy(playerId)
+    const enemy = slug ? getEnemy(slug) : null
+    if (!enemy) return result
 
-    // Announce a freshly-rolled wave (the whole group at once).
-    if (spawned?.spawned?.length) {
-      const enemies = this.buildEnemyList(roster)
-      const names = enemies.map((e) => e.name)
-      const message = enemies.length === 1
-        ? `A ${names[0]} emerges from the darkness!`
-        : `${enemies.length} enemies emerge from the darkness: ${names.join(', ')}!`
-
+    // Announce a freshly-rolled enemy.
+    if (spawnedSlug) {
       result = {
         ...result,
         playerEvents: [
@@ -855,23 +806,22 @@ class RoomState {
             payload: this.createFeedbackPayload(
               'enemy_spawn',
               'danger',
-              message,
-              { enemySlug: roster[0], enemyName: enemies[0]?.name, enemy: enemies[0], enemies }
+              `A ${enemy.name} emerges from the darkness!`,
+              { enemySlug: slug, enemyName: enemy.name, enemy }
             ),
           },
         ],
       }
     }
 
-    // The priority (or a random) present hostile enemy attacks the player.
-    // The enemy only gets the ambush free hit when it FRESHLY spawned this turn
-    // (you were caught off guard). An enemy that was already present and known is
-    // engaged without advantage — consistent with a deliberate attack.
-    const targetSlug = this.pickHostileTarget(roster)
-    if (targetSlug) {
-      const isAmbush = Boolean(spawned?.spawned?.length)
+    // A hostile enemy attacks the player. It only gets the ambush free hit when it
+    // FRESHLY spawned this turn (you were caught off guard). An enemy that was
+    // already present and known is engaged without advantage — consistent with a
+    // deliberate attack.
+    if (enemy.isAggressive) {
+      const isAmbush = Boolean(spawnedSlug)
       const battleResult = await executeStartBattle(
-        { type: 'start_battle', data: { enemySlug: targetSlug, isAutoInitiated: isAmbush } },
+        { type: 'start_battle', data: { enemySlug: slug, isAutoInitiated: isAmbush } },
         playerId,
         this
       )
@@ -984,10 +934,11 @@ class RoomState {
       return this.createErrorResult('move', 'You cannot leave while in combat. Fight or flee.')
     }
 
-    // Cannot leave while any hostile (aggressive) enemy is still present. Passive
-    // enemies do not block movement and persist with the player across the move.
-    if (this.hasHostileEnemies(playerId)) {
-      return this.createErrorResult('move', 'You cannot leave while hostile enemies are here. Defeat them first.')
+    // Cannot leave while a hostile (aggressive) enemy is present. A neutral enemy
+    // does not block movement and waits here for the player to return.
+    if (this.hasHostileEnemy(playerId)) {
+      const hostile = getEnemy(this.getPresentEnemy(playerId))
+      return this.createErrorResult('move', `You cannot leave while the ${hostile?.name ?? 'enemy'} is here. Defeat it first.`)
     }
 
     // The source is always the room this RoomState represents — the room the
@@ -1106,9 +1057,9 @@ class RoomState {
     console.log(`[RoomState:${this.roomId}] executeMove - ${player.username} moving from ${fromRoom} to ${toRoom}`)
 
     this.touchActivity()
-    // Persist the full roster (passive enemies only — hostiles block the move above)
-    // so the same wave is restored if the player returns to this room.
-    const departingEnemyRoster = this.getPlayerEnemyRoster(playerId)
+    // Carry the present enemy (a neutral one — a hostile blocks the move above) so
+    // the same enemy is waiting if the player returns to this room.
+    const departingEnemy = this.getPresentEnemy(playerId)
     this.removePlayer(playerId)
 
     const toRoomName = action.data?.toRoomName || toRoom
@@ -1164,7 +1115,7 @@ class RoomState {
       transfer: {
         toRoomId: toRoom,
         fromRoomId: this.roomId,
-        fromRoomEnemyRoster: departingEnemyRoster,
+        fromRoomEnemy: departingEnemy,
         playerState: {
           ...player,
           roomId: toRoom,
@@ -1227,9 +1178,9 @@ class RoomState {
     let target = null
 
     if (isProbabilistic(this.roomId)) {
-      // For probabilistic rooms, use the player's currently spawned enemy.
-      const activeSlug = this.getPlayerActiveEnemy(playerId)
-      target = activeSlug ? getEnemy(activeSlug) : null
+      // For probabilistic rooms, use the enemy currently present for the player.
+      const presentSlug = this.getPresentEnemy(playerId)
+      target = presentSlug ? getEnemy(presentSlug) : null
     } else {
       const roomEnemyData = getRoomEnemies(this.roomId)
       const slugs = roomEnemyData?.enemies ?? []

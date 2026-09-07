@@ -185,13 +185,15 @@ export async function GET(request: NextRequest) {
 
     const normalizedRoom = normalizeRoomData(room)
 
-    // Attach static enemy data for rooms that have enemies
-    const { getRoomEnemies } = require('@/lib/game-data/room-enemies')
+    // Attach the always-present enemy of a static room. Probabilistic rooms
+    // start empty here; the live enemy arrives over the socket (enemy_spawn).
+    const { getRoomEnemies, isProbabilistic } = require('@/lib/game-data/room-enemies')
     const { getEnemy } = require('@/lib/game-data/enemies')
     const roomEnemyConfig = getRoomEnemies(roomId)
-    const roomEnemies = roomEnemyConfig
-      ? roomEnemyConfig.enemies.map((slug: string) => getEnemy(slug)).filter(Boolean)
-      : []
+    const roomEnemy =
+      roomEnemyConfig && !isProbabilistic(roomId)
+        ? (getEnemy(roomEnemyConfig.enemies[0]) ?? null)
+        : null
 
     const {
       getRoomStateNote,
@@ -216,7 +218,7 @@ export async function GET(request: NextRequest) {
       room: {
         ...normalizedRoom,
         ...(exitOverlay || {}),
-        enemies: roomEnemies,
+        enemy: roomEnemy,
         stateNote,
         actionOverrides,
         // Which exits carry a gate, so the client can skip its optimistic room

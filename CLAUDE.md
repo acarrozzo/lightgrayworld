@@ -77,7 +77,7 @@ React UI
 
 Treat each kind of state according to its lifetime:
 
-- **Durable PostgreSQL/Prisma state:** accounts, player progression and vitals, current room, inventory, equipped `PlayerItem` rows, item templates, rooms, quests, battle logs, chat/DM history, action caps, and persisted per-player room enemy rosters.
+- **Durable PostgreSQL/Prisma state:** accounts, player progression and vitals, current room, inventory, equipped `PlayerItem` rows, item templates, rooms, quests, battle logs, chat/DM history, action caps, and the persisted per-player present room enemy.
 - **Ephemeral server state:** active sockets, live room membership, active battles, action queues, party/follow relationships, ghosts/idle presence, lever state, and temporary search reveals. This state disappears on process restart unless intentionally persisted.
 - **Client projection:** Zustand player/room/inventory/battle/party state, room caches, pending movement, panels, notifications, and local presentation preferences.
 - **Local browser persistence:** feed/settings conveniences only. Never make local storage authoritative for rewards, location, progress, inventory, combat, or access.
@@ -87,9 +87,9 @@ Before changing a system, name its authoritative owner and decide what reconnect
 ### Important repository areas
 
 - `src/lib/game-engine/engine.js`: tick orchestration, per-player action serialization, result routing, room transfers.
-- `src/lib/game-engine/room-state.js`: room actions, player-scoped enemy rosters, movement rules, battle integration, ambient updates.
+- `src/lib/game-engine/room-state.js`: room actions, the player-scoped present enemy (one per room, as in the original), movement rules, battle integration, ambient updates.
 - `src/lib/game-engine/battle-*.js`: battle state, formulas, action resolution, rewards, defeat.
-- `src/lib/game-engine/services/`: inventory, equipment, quests, leveling, room items, cooldowns, roster persistence.
+- `src/lib/game-engine/services/`: inventory, equipment, quests, leveling, room items, cooldowns, present-enemy persistence.
 - `src/lib/game-engine/room-action-handlers.js`: hand-authored room interactions, gathering, chests, crafting, and environmental actions.
 - `src/lib/game-engine/room-gates.js`, `lever-state.js`, `search-reveal-state.js`: access and discovery logic.
 - `src/lib/game-data/enemies.js`: enemy definitions and drops.
@@ -150,7 +150,7 @@ The current model is not a shared-enemy MMO combat model:
 - Parties are ephemeral leader/follower groups of up to six. Members are pulled with the leader and cannot move independently while following.
 - Battles are currently player-scoped. Co-located active combatants and party members grant a 10% offensive and defensive bonus per other counted combatant.
 
-Preserve that model unless the user explicitly chooses a shared encounter/party-combat redesign. Do not gradually mix shared enemy HP, individual enemy rosters, shared loot, and independent rewards; that creates unclear ownership and exploits.
+Preserve that model unless the user explicitly chooses a shared encounter/party-combat redesign. Do not gradually mix shared enemy HP, individual present enemies, shared loot, and independent rewards; that creates unclear ownership and exploits.
 
 For every multiplayer change, reason through:
 

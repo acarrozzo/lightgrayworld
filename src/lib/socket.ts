@@ -201,7 +201,7 @@ export interface BattleDropDetail {
   firstKill: boolean
 }
 
-// A room-enemy snapshot as sent to the client for the room roster display.
+// The enemy present in a room, as sent to the client for the room display.
 // Structurally matches RoomEnemy in components/RoomBox.tsx.
 export interface RoomEnemySnapshot {
   slug: string
@@ -227,9 +227,8 @@ export interface BattleVictoryPayload {
   playerMpMax?: number
   lastTurnResult?: Record<string, any>
   summary?: BattleSummary
-  // Multi-enemy waves: the enemies still present after this kill, and whether the
-  // whole wave is cleared. Absent for static (non-probabilistic) rooms.
-  remainingEnemies?: RoomEnemySnapshot[]
+  // True when the room is empty again after this kill (a probabilistic room's
+  // one enemy is gone). False for static rooms, whose enemy is always there.
   clearRoomEnemies?: boolean
 }
 

@@ -61,16 +61,16 @@ function settleBattleWinPersistence(playerId, battleState, rewards) {
  * Defeat can arrive from three places — the opening ambush turn, an ordinary
  * attack turn, and a support turn — and every one of them must leave the same
  * state behind. Keeping them as three hand-maintained copies is exactly how the
- * opening-turn path drifted: it never cleared the player's enemy roster, so the
+ * opening-turn path drifted: it never cleared the player's present enemy, so the
  * hostile that had just killed them stayed in the room, and the respawn move was
- * then refused with "you cannot leave while hostile enemies are here". The
+ * then refused with "you cannot leave while the enemy is here". The
  * player sat at 1 HP in the room that killed them while the database already
  * said they were in the respawn room — recoverable only by refreshing.
  */
 async function resolveBattleDefeat(playerId, roomState, battleState, enemyName, enemySlug) {
   battleState.end()
   roomState.activeBattles.delete(playerId)
-  // The player respawns elsewhere: clear the enemy slot so the wave does not
+  // The player respawns elsewhere: clear the enemy slot so the killer does not
   // carry over, and so nothing blocks the move out of this room.
   roomState.clearPlayerEnemyState(playerId)
 
@@ -315,7 +315,7 @@ function describeSpellStrike(enemyName, turn) {
 /**
  * A static room's `challenge` (game-data/room-enemies.js): the quests that must
  * all be turned in before its boss can be fought. Data on the spawn table,
- * evaluated here, so the rule lives beside the roster it protects and no path
+ * evaluated here, so the rule lives beside the enemy it protects and no path
  * into a fight skips it.
  */
 async function meetsChallenge(playerId, challenge) {
@@ -343,8 +343,7 @@ async function executeStartBattle(action, playerId, roomState) {
   if (!enemySlug) return errorResult('start_battle', 'No enemy specified.')
 
   if (isProbabilistic(roomState.roomId)) {
-    const present = roomState.getPlayerEnemyRoster(playerId)
-    if (!present.includes(enemySlug)) {
+    if (roomState.getPresentEnemy(playerId) !== enemySlug) {
       return errorResult('start_battle', 'That enemy is not here.')
     }
   } else {
@@ -355,7 +354,7 @@ async function executeStartBattle(action, playerId, roomState) {
     // A boss that stands in plain sight but will not be fought until the
     // player has earned it — the Master Temple's Guardian behind its four
     // tests. Declared on the room's spawn table so the rule lives beside the
-    // roster it protects, and checked here so no path into a fight skips it.
+    // enemy it protects, and checked here so no path into a fight skips it.
     if (roomConfig.challenge && !(await meetsChallenge(playerId, roomConfig.challenge))) {
       return errorResult('start_battle', roomConfig.challenge.message || 'You cannot fight that yet.')
     }
@@ -554,13 +553,10 @@ async function executeStartBattle(action, playerId, roomState) {
   if (!isAdvantageTurn && battleState.isEnemyDead()) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
-    // Remove the defeated enemy from the present set; any others remain (no grace).
-    // Only fully clear the room display when none are left.
-    let remainingCount = 0
-    let remainingEnemies = []
+    // The defeated enemy is gone; the room is empty again for this player (no
+    // grace — the next turn action can immediately provoke another).
     if (isProbabilistic(roomState.roomId)) {
-      remainingCount = roomState.removeEnemyFromRoster(playerId, enemySlug)
-      remainingEnemies = roomState.buildEnemyList(roomState.getPlayerEnemyRoster(playerId))
+      roomState.setPresentEnemy(playerId, null)
     }
 
     const ownedFirstKillSlugs = await getOwnedFirstKillSlugs(playerId, enemy)
@@ -580,8 +576,7 @@ async function executeStartBattle(action, playerId, roomState) {
         ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
         message: `You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
-        clearRoomEnemies: isProbabilistic(roomState.roomId) && remainingCount === 0,
-        remainingEnemies,
+        clearRoomEnemies: isProbabilistic(roomState.roomId),
         summary: {
           outcome: 'WIN',
           enemyName: enemy.name,
@@ -708,13 +703,10 @@ async function executePlayerAttack(action, playerId, roomState) {
   if (battleState.isEnemyDead()) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
-    // Remove the defeated enemy from the present set; any others remain (no grace —
-    // the next turn action can immediately provoke another enemy).
-    let remainingCount = 0
-    let remainingEnemies = []
+    // The defeated enemy is gone; the room is empty again for this player (no
+    // grace — the next turn action can immediately provoke another).
     if (isProbabilistic(roomState.roomId)) {
-      remainingCount = roomState.removeEnemyFromRoster(playerId, battleState.enemySlug)
-      remainingEnemies = roomState.buildEnemyList(roomState.getPlayerEnemyRoster(playerId))
+      roomState.setPresentEnemy(playerId, null)
     }
 
     // Compute rewards synchronously — no DB — so we can emit victory immediately.
@@ -751,8 +743,7 @@ async function executePlayerAttack(action, playerId, roomState) {
             ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
             message: winMsg,
-            clearRoomEnemies: isProbabilistic(roomState.roomId) && remainingCount === 0,
-            remainingEnemies,
+            clearRoomEnemies: isProbabilistic(roomState.roomId),
             summary: {
               outcome: 'WIN',
               enemyName: battleState.enemyName,
@@ -1039,9 +1030,9 @@ async function executePlayerFlee(action, playerId, roomState) {
 
   battleState.end()
   roomState.activeBattles.delete(playerId)
-  // Fleeing abandons the room's enemies entirely: clear the roster so the retreat
-  // move isn't blocked by the "can't leave while hostiles are here" rule, and so a
-  // fresh wave rolls if the player ever returns.
+  // Fleeing abandons the room's enemy entirely: clear the slot so the retreat
+  // move isn't blocked by the "can't leave while a hostile is here" rule, and so a
+  // fresh roll happens if the player ever returns.
   roomState.clearPlayerEnemyState(playerId)
   await prisma.user.update({ where: { id: playerId }, data: { inFight: false } })
 
@@ -1078,7 +1069,7 @@ module.exports = {
   // strike is even attempted.
   fetchEquippedWeapon,
   // Exported so the shared defeat teardown can be exercised directly: the bug it
-  // fixes (a roster left behind, blocking the respawn move) is invisible from
+  // fixes (an enemy left behind, blocking the respawn move) is invisible from
   // the outside until a player is already stuck.
   resolveBattleDefeat,
 }

@@ -1784,9 +1784,9 @@ function makeLeverHandler({ roomId, leverName, alreadyMessage, flipMessage, moda
 /**
  * A button that starts a fight with a named enemy: "battle forest princess",
  * "challenge the troll king", "grab crown". In a static room the enemy is
- * already on the roster; in a probabilistic one it is placed there first, so
- * the fight goes through the same start_battle path as an ambush and the
- * roster bookkeeping after it (win, flee, defeat) is unchanged. `ambush` makes
+ * already standing there; in a probabilistic one it is made the present enemy
+ * first, so the fight goes through the same start_battle path as an ambush and
+ * the bookkeeping after it (win, flee, defeat) is unchanged. `ambush` makes
  * it the enemy's turn first — the Dark Prince swooping in on whoever reaches
  * for the crown.
  */
@@ -1799,8 +1799,8 @@ function makeSummonHandler({ action, enemySlug, message, ambush = false }) {
     if (roomState.activeBattles.get(playerId)?.isActive) {
       return createErrorResult(action, 'You are already in a battle.')
     }
-    if (isProbabilistic(roomState.roomId) && !roomState.getPlayerEnemyRoster(playerId).includes(enemySlug)) {
-      roomState.setPlayerEnemyRoster(playerId, [enemySlug])
+    if (isProbabilistic(roomState.roomId) && roomState.getPresentEnemy(playerId) !== enemySlug) {
+      roomState.setPresentEnemy(playerId, enemySlug)
     }
 
     const battle = await executeStartBattle(

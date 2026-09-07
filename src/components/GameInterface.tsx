@@ -241,7 +241,8 @@ export default function GameInterface() {
   const isInitialInventoryLoadRef = useRef(true)
   const previousInventoryRef = useRef<typeof inventory>([])
   const pendingEquipActionRef = useRef<{ playerItemId: string } | null>(null)
-  const [roomEnemies, setRoomEnemies] = useState<RoomEnemy[]>([])
+  // The one enemy present in the room for this player, or null. Server-owned.
+  const [roomEnemy, setRoomEnemy] = useState<RoomEnemy | null>(null)
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
   const isPartyMember = !!party && !!player && party.leaderId !== player.id
@@ -278,7 +279,7 @@ export default function GameInterface() {
     fromRoomId: string
     previousRoom: Room | null
     previousPlayers: Player[]
-    previousEnemies: RoomEnemy[]
+    previousEnemy: RoomEnemy | null
   } | null>(null)
   // Which room's gather countdowns arrived with the room itself (socket move
   // payload or HTTP room load), so the per-room hydrate effect can skip its
@@ -667,7 +668,7 @@ export default function GameInterface() {
         cacheRoom(normalizedRoom)
         setCurrentRoom(normalizedRoom)
         setRoomPlayers(stampPartyLeaders(normalizedRoom.players, normalizedRoom.roomId))
-        setRoomEnemies((providedRoom as any).enemies || [])
+        setRoomEnemy((providedRoom as any).enemy ?? null)
 
         if (player && player.currentRoom !== normalizedRoom.roomId) {
           setPlayer({ ...player, currentRoom: normalizedRoom.roomId })
@@ -746,7 +747,7 @@ export default function GameInterface() {
           cacheRoom(normalizedRoom)
           setCurrentRoom(normalizedRoom)
           setRoomPlayers(stampPartyLeaders(roomPlayers, normalizedRoom.roomId))
-          setRoomEnemies(Array.isArray(roomData.room?.enemies) ? roomData.room.enemies : [])
+          setRoomEnemy(roomData.room?.enemy ?? null)
         }
 
         // The server owns `currentRoom`: the authoritative socket move path
@@ -929,7 +930,7 @@ export default function GameInterface() {
   const enterRoomOptimistically = (cachedRoom: Room) => {
     setCurrentRoom(cachedRoom)
     setRoomPlayers([])
-    setRoomEnemies([])
+    setRoomEnemy(null)
     // Track that we entered this room via optimistic cache
     enteredViaCacheRoomIdRef.current = cachedRoom.roomId
     // Update player room optimistically
@@ -1062,7 +1063,7 @@ export default function GameInterface() {
         fromRoomId: currentRoom.roomId,
         previousRoom: previousRoom,
         previousPlayers: useGameStore.getState().roomPlayers,
-        previousEnemies: roomEnemies,
+        previousEnemy: roomEnemy,
       }
 
       // Set move-in-progress flag
@@ -1167,7 +1168,7 @@ export default function GameInterface() {
         fromRoomId: currentRoom.roomId,
         previousRoom: previousRoom,
         previousPlayers: useGameStore.getState().roomPlayers,
-        previousEnemies: roomEnemies,
+        previousEnemy: roomEnemy,
       }
 
       // Set move-in-progress flag
@@ -1673,7 +1674,7 @@ export default function GameInterface() {
               console.log(`[GameInterface] Rolling back optimistic update - restoring room ${pendingMove.previousRoom.roomId}`)
               setCurrentRoom(pendingMove.previousRoom)
               setRoomPlayers(pendingMove.previousPlayers)
-              setRoomEnemies(pendingMove.previousEnemies)
+              setRoomEnemy(pendingMove.previousEnemy)
               enteredViaCacheRoomIdRef.current = null
               
               // Restore player room state
@@ -1813,13 +1814,9 @@ export default function GameInterface() {
           })
         }
       } else if (payload?.action === 'enemy_spawn') {
-        // A probabilistic wave has appeared — show the full ordered list of present
-        // enemies (front enemy is fought first). Fall back to the single enemy for
-        // older payloads that don't include the list.
-        if (Array.isArray(payload?.data?.enemies) && payload.data.enemies.length > 0) {
-          setRoomEnemies(payload.data.enemies)
-        } else if (payload?.data?.enemy) {
-          setRoomEnemies([payload.data.enemy])
+        // An enemy has appeared (or was already here on entry/refresh) — show it.
+        if (payload?.data?.enemy) {
+          setRoomEnemy(payload.data.enemy)
         }
       }
 
@@ -2326,12 +2323,10 @@ export default function GameInterface() {
         if (payload.summary) setBattleResult(payload.summary)
         if (payload.summary?.enemySlug) incrementKill(payload.summary.enemySlug)
         clearBattle()
-        // Clear the room display only when the whole wave is defeated; otherwise show
-        // the enemies still present (the next front enemy steps up).
+        // A probabilistic room is empty again after the kill; a static room's
+        // enemy is always there and stays on screen.
         if (payload.clearRoomEnemies) {
-          setRoomEnemies([])
-        } else if (Array.isArray(payload.remainingEnemies)) {
-          setRoomEnemies(payload.remainingEnemies)
+          setRoomEnemy(null)
         }
         const currentPlayer = useGameStore.getState().player
         if (currentPlayer) {
@@ -2411,7 +2406,7 @@ export default function GameInterface() {
           message: payload.message || 'You black out...',
           ts: Date.now(),
         })
-        setRoomEnemies([])
+        setRoomEnemy(null)
       }
       // Same macrotask-deferral as victory: ensure setBattleStarted renders first.
       const lt = payload.summary?.lastTurn
@@ -2461,9 +2456,9 @@ export default function GameInterface() {
       if (returnRoomId && returnRoomId !== currentRoomRef.current?.roomId) {
         handleActionRef.current({ type: 'teleport', data: { toRoomId: returnRoomId } })
       } else {
-        // Fleeing in place: the server abandoned the room's wave, so clear the
-        // local roster to match (otherwise the fled-from enemies linger on screen).
-        setRoomEnemies([])
+        // Fleeing in place: the server abandoned the room's enemy, so clear the
+        // local one to match (otherwise the fled-from enemy lingers on screen).
+        setRoomEnemy(null)
       }
     })
 
@@ -3599,10 +3594,6 @@ export default function GameInterface() {
                             return
                           }
                           clearBattleResult()
-                          const nextHostile = roomEnemies.find((e) => e.isAggressive)
-                          if (nextHostile) {
-                            handleAction({ type: 'start_battle', data: { enemySlug: nextHostile.slug } })
-                          }
                         }}
                         isActing={isLoadingRoom}
                         playerName={player.username}
@@ -3637,7 +3628,7 @@ export default function GameInterface() {
                     worldTick={worldTick}
                     actionResult={actionResult}
                     isLoadingRoom={isLoadingRoom}
-                    roomEnemies={roomEnemies}
+                    roomEnemy={roomEnemy}
                     isInBattle={battle.isInBattle}
                     quests={quests}
                     killList={killList}

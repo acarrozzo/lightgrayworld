@@ -8,7 +8,7 @@ const {
   ROOM_ITEMS_SELECT,
   normalizeRoomData,
 } = require('./game-engine/services/room-normalization.js')
-const { getRoomEnemies, isProbabilistic, rollRoomEnemyGroup } = require('./game-data/room-enemies.js')
+const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('./game-data/room-enemies.js')
 const {
   TELEPORT_MP_COST,
   getTeleportDestination,
@@ -23,7 +23,7 @@ const {
   clearTeleportGrants,
 } = require('./game-engine/teleport-grants.js')
 const { getEnemy } = require('./game-data/enemies.js')
-const { loadRoomRoster } = require('./game-engine/services/room-roster-service.js')
+const { loadPresentEnemy } = require('./game-engine/services/present-enemy-service.js')
 const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service.js')
 const { buildGatherCooldowns } = require('./game-engine/services/gather-status.js')
 const { SPELL_SELECT, projectSpellState, unlockSpellTeacher } = require('./game-engine/services/spell-service.js')
@@ -110,12 +110,11 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
     const destRoomState = gameEngine.getOrCreateRoom(toRoom)
 
     // Use a persisted enemy if transferPlayer already restored one for this room,
-    // otherwise roll a fresh wave (the whole group at once).
-    let slug = destRoomState.getPlayerActiveEnemy(player.id)
+    // otherwise roll for one now.
+    let slug = destRoomState.getPresentEnemy(player.id)
     if (!slug) {
-      const group = rollRoomEnemyGroup(toRoom)
-      destRoomState.setPlayerEnemyRoster(player.id, group)
-      slug = group[0] || null
+      slug = rollRoomEnemy(toRoom)
+      destRoomState.setPresentEnemy(player.id, slug)
     }
 
     if (!slug) return
@@ -123,24 +122,17 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
     const enemy = getEnemy(slug)
     if (!enemy) return
 
-    // Notify the player about every enemy present on entry; out of battle they may
-    // attack any of them.
-    const roster = destRoomState.getPlayerEnemyRoster(player.id)
-    const enemies = destRoomState.buildEnemyList(roster)
-    const names = enemies.map((e) => e.name)
-    const message = names.length <= 1
-      ? `A ${enemy.name} is here!`
-      : `${names.length} enemies are here: ${names.join(', ')}!`
+    // Tell the player what is here; out of battle they may attack it.
     emitActionFeedback(socket, {
       action: 'enemy_spawn',
-      message,
+      message: `A ${enemy.name} is here!`,
       outcome: 'danger',
-      data: { enemySlug: slug, enemyName: enemy.name, enemy, enemies },
+      data: { enemySlug: slug, enemyName: enemy.name, enemy },
     })
 
-    // A random present hostile enemy ambushes the player on entry.
-    const targetSlug = destRoomState.pickHostileTarget(roster)
-    if (!targetSlug) return
+    // A hostile enemy ambushes the player on entry; a neutral one waits.
+    if (!enemy.isAggressive) return
+    const targetSlug = slug
 
     if (destRoomState.activeBattles.has(player.id)) return
     try {
@@ -824,19 +816,19 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
    * The destination room as this player will see it: the room record plus
    * everything per-player or live that the database does not hold — exit
    * overlays for passages they have not opened, lever and reveal notes, the
-   * static enemy list, who is standing there, and the gather countdowns. One
+   * static enemy, who is standing there, and the gather countdowns. One
    * builder for both ways of arriving, so a teleport into a lever room shows
    * the same exits a walk in would.
    */
   const buildDestinationRoomData = ({ destinationRoom, toRoom, player, gatherCooldowns }) => {
-    // Probabilistic rooms start with no enemies — the spawn roll happens in
+    // Probabilistic rooms start with no enemy — the spawn roll happens in
     // maybeStartAutoBattle after the move succeeds, and the client is told via
-    // an enemy_spawn action:feedback.
+    // an enemy_spawn action:feedback. A static room's enemy is always there.
     const destEnemyConfig = getRoomEnemies(toRoom)
-    const destEnemies =
+    const destEnemy =
       destEnemyConfig && !isProbabilistic(toRoom)
-        ? destEnemyConfig.enemies.map((slug) => getEnemy(slug)).filter(Boolean)
-        : []
+        ? (getEnemy(destEnemyConfig.enemies[0]) ?? null)
+        : null
 
     const leverStateNote = getRoomStateNote(player.id, toRoom)
     const searchRevealStateNote = getSearchRevealStateNote(player.id, toRoom)
@@ -853,7 +845,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       players: buildLiveRoomPlayers(toRoom, player),
       items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
       npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
-      enemies: destEnemies,
+      enemy: destEnemy,
       stateNote: leverStateNote || searchRevealStateNote || null,
       actionOverrides: getRoomActionOverrides(player.id, toRoom),
       gatedExits: getGatedDirections(toRoom),
@@ -1174,21 +1166,21 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // follow on the same socket, so ordering guarantees no gap between the two.
         socket.emit(SOCKET_EVENTS.WORLD_PRESENCE_SYNC, buildPresenceSync())
 
-        // Restore any persisted enemy roster for the current room so a refresh resumes
-        // the exact wave that was there (full-HP battles) — this closes the "refresh to
-        // reset the room" exploit. If nothing is persisted (the room was empty or fully
+        // Restore the persisted enemy for the current room so a refresh resumes
+        // the same enemy that was there (full-HP battle) — this closes the "refresh
+        // to reset the room" exploit. If nothing is persisted (the room was empty or
         // cleared), maybeStartAutoBattle rolls a fresh spawn check instead, same as
-        // entering the room. Restored aggressive enemies ambush with a free hit, same
-        // as walking in. Runs after login:success so the client has room context.
+        // entering the room. A restored hostile ambushes with a free hit, same as
+        // walking in. Runs after login:success so the client has room context.
         if (isProbabilistic(playerData.currentRoom)) {
           try {
-            const savedRoster = await loadRoomRoster(playerData.id, playerData.currentRoom)
-            if (savedRoster && savedRoster.length) {
+            const savedSlug = await loadPresentEnemy(playerData.id, playerData.currentRoom)
+            if (savedSlug) {
               const destRoomState = gameEngine.getOrCreateRoom(playerData.currentRoom)
-              destRoomState.setPlayerEnemyRoster(playerData.id, savedRoster)
+              destRoomState.setPresentEnemy(playerData.id, savedSlug)
             }
           } catch (err) {
-            console.error('[Socket] Failed to restore persisted room roster:', err)
+            console.error('[Socket] Failed to restore persisted room enemy:', err)
           }
         }
         await maybeStartAutoBattle({ socket, player: playerData, toRoom: playerData.currentRoom, gameEngine })

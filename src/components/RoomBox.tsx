@@ -57,7 +57,7 @@ interface RoomBoxProps {
   }
   actionResult?: any
   isLoadingRoom?: boolean
-  roomEnemies?: RoomEnemy[]
+  roomEnemy?: RoomEnemy | null
   isInBattle?: boolean
   isPartyMember?: boolean
   quests?: Array<{ id: string; questId: string; progress: number; completed: boolean }>
@@ -74,7 +74,7 @@ export default function RoomBox({
   worldTick,
   actionResult,
   isLoadingRoom = false,
-  roomEnemies = [],
+  roomEnemy = null,
   isInBattle = false,
   isPartyMember = false,
   quests = [],
@@ -138,52 +138,47 @@ export default function RoomBox({
       {/* Room Description */}
       <p className="text-fg-primary/90 leading-relaxed text-sm sm:text-base">{room.description}</p>
 
-      {/* Enemies in Room */}
-      {roomEnemies.length > 0 && (
-        <div className="space-y-2">
-          {roomEnemies.map((enemy, index) => (
-            <div
-              key={`${enemy.slug}-${index}`}
-              className={`inline-flex items-center gap-3 rounded-lg border px-3 py-2.5 ${enemy.isAggressive ? 'border-action-attack/40 bg-action-attack/30 shadow-sm shadow-shadow/20' : 'border-line-subtle/30 bg-surface-raised/30'}`}
-            >
-              <img
-                src={`/icons/enemy/${encodeURIComponent(enemy.name)}.svg`}
-                alt={enemy.name}
-                className="w-12 h-12 shrink-0 object-contain brightness-0 invert"
-              />
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-sm font-semibold truncate ${enemy.isAggressive ? 'text-enemy-hostile' : 'text-fg-bright'}`}>
-                    {enemy.name}
-                  </span>
-                  {enemy.isAggressive ? (
-                    <span className="text-[10px] font-bold text-enemy-hostile bg-action-attack/30 border border-action-attack/40 px-1 rounded shrink-0">
-                      HOSTILE
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-fg-muted bg-surface-raised/60 px-1 rounded shrink-0">
-                      neutral
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2.5 text-xs mt-0.5">
-                  <span className="text-fg-bright font-bold text-sm">Lv. {enemy.level}</span>
-                  <span className="text-fg-disabled">·</span>
-                  <span className="text-fg-muted">HP <span className="font-semibold text-terrain-grass">{enemy.hp}</span></span>
-                  <span className="text-fg-muted">ATT <span className="font-semibold text-enemy-hostile">{enemy.att}</span></span>
-                  <span className="text-fg-muted">DEF <span className="font-semibold text-resource-gold">{enemy.def}</span></span>
-                </div>
-              </div>
-              <button
-                onClick={() => onAction({ type: 'start_battle', data: { enemySlug: enemy.slug } })}
-                disabled={isInBattle || isLoadingRoom}
-                title={isInBattle ? 'You are already in combat' : `Attack the ${enemy.name}`}
-                className="ml-1 shrink-0 px-3.5 py-1.5 text-xs font-semibold fill-action-attack disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition-all duration-150 shadow-sm active:scale-[0.97]"
-              >
-                Attack
-              </button>
+      {/* Enemy in Room — one at a time, as in the original */}
+      {roomEnemy && (
+        <div
+          className={`inline-flex items-center gap-3 rounded-lg border px-3 py-2.5 ${roomEnemy.isAggressive ? 'border-action-attack/40 bg-action-attack/30 shadow-sm shadow-shadow/20' : 'border-line-subtle/30 bg-surface-raised/30'}`}
+        >
+          <img
+            src={`/icons/enemy/${encodeURIComponent(roomEnemy.name)}.svg`}
+            alt={roomEnemy.name}
+            className="w-12 h-12 shrink-0 object-contain brightness-0 invert"
+          />
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className={`text-sm font-semibold truncate ${roomEnemy.isAggressive ? 'text-enemy-hostile' : 'text-fg-bright'}`}>
+                {roomEnemy.name}
+              </span>
+              {roomEnemy.isAggressive ? (
+                <span className="text-[10px] font-bold text-enemy-hostile bg-action-attack/30 border border-action-attack/40 px-1 rounded shrink-0">
+                  HOSTILE
+                </span>
+              ) : (
+                <span className="text-[10px] text-fg-muted bg-surface-raised/60 px-1 rounded shrink-0">
+                  neutral
+                </span>
+              )}
             </div>
-          ))}
+            <div className="flex items-center gap-2.5 text-xs mt-0.5">
+              <span className="text-fg-bright font-bold text-sm">Lv. {roomEnemy.level}</span>
+              <span className="text-fg-disabled">·</span>
+              <span className="text-fg-muted">HP <span className="font-semibold text-terrain-grass">{roomEnemy.hp}</span></span>
+              <span className="text-fg-muted">ATT <span className="font-semibold text-enemy-hostile">{roomEnemy.att}</span></span>
+              <span className="text-fg-muted">DEF <span className="font-semibold text-resource-gold">{roomEnemy.def}</span></span>
+            </div>
+          </div>
+          <button
+            onClick={() => onAction({ type: 'start_battle', data: { enemySlug: roomEnemy.slug } })}
+            disabled={isInBattle || isLoadingRoom}
+            title={isInBattle ? 'You are already in combat' : `Attack the ${roomEnemy.name}`}
+            className="ml-1 shrink-0 px-3.5 py-1.5 text-xs font-semibold fill-action-attack disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition-all duration-150 shadow-sm active:scale-[0.97]"
+          >
+            Attack
+          </button>
         </div>
       )}
 

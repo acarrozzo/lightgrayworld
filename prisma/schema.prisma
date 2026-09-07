@@ -192,16 +192,16 @@ model KillList {
   @@unique([userId, monster])
 }
 
-// Persists a player's per-room enemy roster (the wave still present in a room)
-// so it survives a page refresh / reconnect. Prevents the "refresh to reset the
-// room" exploit: on login the roster is restored verbatim (full-HP battles) instead
-// of rolling a fresh, potentially easier/empty wave. Rows are deleted when a room's
-// wave is cleared or abandoned. enemySlugs is ordered — index 0 is fought first.
+// Persists the one enemy present for a player in a room so it survives a page
+// refresh / reconnect. Prevents the "refresh to reset the room" exploit: on login
+// the same enemy is restored (full-HP battle) instead of rolling a fresh,
+// potentially easier/empty room. The row is deleted when the enemy is defeated
+// or abandoned. One enemy per room per player, as in the original.
 model PlayerRoomEnemy {
   id         String   @id @default(cuid())
   userId     String
   roomId     String
-  enemySlugs String[]
+  enemySlug  String
   updatedAt  DateTime @updatedAt
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

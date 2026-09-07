@@ -2,7 +2,6 @@ const { TickClock, WORLD_TICK_MS } = require('./tick-clock')
 const { RoomState } = require('./room-state')
 const { PlayerActionQueue } = require('./player-action-queue')
 const { prisma } = require('../db-client')
-const { topUpRoomEnemyGroup } = require('../game-data/room-enemies')
 const { updatePresence } = require('../services/presence-store')
 const { debugLog, quietActionLogger } = require('../debug-log')
 
@@ -405,7 +404,7 @@ class GameEngine {
         playerState: result.transfer.playerState,
         fromRoomId: result.transfer.fromRoomId || roomId,
         toRoomId: result.transfer.toRoomId,
-        fromRoomEnemyRoster: result.transfer.fromRoomEnemyRoster,
+        fromRoomEnemy: result.transfer.fromRoomEnemy,
       })
     }
   }
@@ -431,18 +430,20 @@ class GameEngine {
     }
   }
 
-  transferPlayer({ playerState, fromRoomId, toRoomId, fromRoomEnemyRoster }) {
+  transferPlayer({ playerState, fromRoomId, toRoomId, fromRoomEnemy }) {
     if (!playerState?.id || !toRoomId) {
       return
     }
 
-    // Persist the full enemy roster the player leaves behind, so returning to the
-    // room restores the same wave instead of rolling a fresh one.
-    if (Array.isArray(fromRoomEnemyRoster) && fromRoomEnemyRoster.length) {
+    // Remember the enemy the player leaves behind (a neutral one — hostiles block
+    // the move), so returning to the room finds it waiting instead of rolling anew.
+    // The DB row written when it appeared is the durable copy; this is the
+    // process-local one for the common walk-away-and-back.
+    if (typeof fromRoomEnemy === 'string' && fromRoomEnemy) {
       if (!this.persistedEnemies.has(playerState.id)) {
         this.persistedEnemies.set(playerState.id, new Map())
       }
-      this.persistedEnemies.get(playerState.id).set(fromRoomId, fromRoomEnemyRoster)
+      this.persistedEnemies.get(playerState.id).set(fromRoomId, fromRoomEnemy)
     }
 
     const fromRoom = this.rooms.get(fromRoomId)
@@ -453,12 +454,9 @@ class GameEngine {
     const destinationRoom = this.getOrCreateRoom(toRoomId)
     destinationRoom.addPlayer({ ...playerState, roomId: toRoomId })
 
-    const persistedRoster = this.persistedEnemies.get(playerState.id)?.get(toRoomId)
-    if (persistedRoster) {
-      // On re-entry, refill a partial leftover roster back toward the room's wave
-      // size (gated by spawnChance), re-adding any missing guaranteed enemies.
-      const refilledRoster = topUpRoomEnemyGroup(toRoomId, persistedRoster)
-      destinationRoom.setPlayerEnemyRoster(playerState.id, refilledRoster)
+    const persistedEnemy = this.persistedEnemies.get(playerState.id)?.get(toRoomId)
+    if (persistedEnemy) {
+      destinationRoom.setPresentEnemy(playerState.id, persistedEnemy)
       this.persistedEnemies.get(playerState.id).delete(toRoomId)
     }
   }
