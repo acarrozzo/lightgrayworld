@@ -147,7 +147,7 @@ class BattleState {
       isAdvantageTurn: false,
       playerHp,
       playerHpMax,
-      playerStr: this.baseStr,
+      playerStr: this.equippedWeaponCategory === 'RANGED' ? this.baseDex : this.baseStr,
       playerDef: this.baseDef,
     }
   }

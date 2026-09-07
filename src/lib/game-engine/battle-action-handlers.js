@@ -1,6 +1,6 @@
 const { prisma } = require('../db-client')
 const { BattleState } = require('./battle-state')
-const { resolveTurn, resolveEnemyAttack, getOtherCombatantCount, totalDamageToEnemy } = require('./battle-calculator')
+const { resolveTurn, resolveEnemyAttack, getOtherCombatantCount, totalDamageToEnemy, pickPlayerOffensiveStat } = require('./battle-calculator')
 const { calcBattleWinRewards, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
 const { getEnemyTraits } = require('../game-data/enemy-traits')
@@ -441,7 +441,9 @@ async function executeStartBattle(action, playerId, roomState) {
       enemyRaw: enemyAtk.enemyRaw,
       enemyBlocked: 0,
       playerBlocked: enemyAtk.playerBlock,
-      playerStrMax: Math.floor(battleState.baseStr * (1 + otherCombatants * 0.1)),
+      // The stat the player will swing with — DEX behind a bow — so the panel can
+      // show the roll range before the first strike.
+      playerStrMax: Math.floor(pickPlayerOffensiveStat(battleState) * (1 + otherCombatants * 0.1)),
       playerDefMax: enemyAtk.effectiveDef,
       enemyStrMax: enemy.att,
       multiplayerBonus: otherCombatants > 0,
@@ -507,7 +509,9 @@ async function executeStartBattle(action, playerId, roomState) {
     isAdvantageTurn,
     playerHp: playerStats.hp,
     playerHpMax: playerStats.hpMax,
-    playerStr: battleState.baseStr,
+    // Effective offensive stat (STR melee, DEX ranged, with the group bonus):
+    // the top of the Attack roll, shown as its damage range from turn one.
+    playerStr: Math.floor(pickPlayerOffensiveStat(battleState) * (1 + otherCombatants * 0.1)),
     playerDef: battleState.baseDef,
   }
 

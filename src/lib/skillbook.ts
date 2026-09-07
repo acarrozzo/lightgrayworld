@@ -91,6 +91,7 @@ export const isShieldItem = registry.isShieldItem
 export const weaponFits = registry.weaponFits
 export const weaponFitReason = registry.weaponFitReason
 export const weaponKind = registry.weaponKind
+export const previewSkillBonus = registry.previewSkillBonus
 
 /** Skills paint with the same decorative hue roles spells do. */
 export const skillTone = spellTone

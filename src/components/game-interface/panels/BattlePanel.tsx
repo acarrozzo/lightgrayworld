@@ -6,10 +6,11 @@ import EnemyTraitTags from '@/components/EnemyTraitTags'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { LogOut } from 'lucide-react'
 import { getItemActions, resolveItemIcon } from '@/lib/item-actions'
-import { getCastableSpells, spellTone } from '@/lib/spellbook'
-import { gearContextFromInventory, getStrikeSkills, skillTone, weaponFitReason } from '@/lib/skillbook'
+import { effectiveMag, getCastableSpells, spellTone } from '@/lib/spellbook'
+import { gearContextFromInventory, getStrikeSkills, previewSkillBonus, skillTone, weaponFits, type SkillbookEntry } from '@/lib/skillbook'
+import { effectiveStats } from '@/lib/effective-stats'
 
-type BattleTab = 'skills' | 'spells' | 'items'
+type BattleTab = 'spells' | 'items'
 
 interface BattlePanelProps {
   battle: BattleState
@@ -467,10 +468,15 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
 
 // ─── Command deck ──────────────────────────────────────────────────────────
 //
-// The action area under the turn readout. Attack is a full-width control that
-// never moves; a filled three-way switch under it picks the list — Spells,
-// Items, Gear — and every row in the list is one tap. Retreat lives in the
-// In Battle strip's corner (the original's spot) and takes two taps.
+// The action area under the turn readout. The strike row never moves: Attack
+// on the left, and beside it every learned strike the weapon in hand can carry
+// (Slice for a one-hander, Smash for two, Aim behind a bow, Magic Strike with
+// anything) as power-attack buttons. Every one of them wears its damage range
+// — the raw roll before the enemy's block, the original's "(max N)" made
+// honest: a swing rolls 0–STR (or DEX), a strike adds its bonus roll on top.
+// A filled two-way switch under the row picks the list — Items, Spells — and
+// every row in the list is one tap. Retreat lives in the In Battle strip's
+// corner (the original's spot) and takes two taps.
 
 /** How long a first Retreat tap stays armed before it quietly disarms. */
 const RETREAT_CONFIRM_MS = 2500
@@ -535,6 +541,57 @@ function DeckRow({
   )
 }
 
+/** A damage range as the deck prints it: the raw roll, before the enemy blocks. */
+function rangeText(lo: number, hi: number): string {
+  return `${Math.max(0, lo)}–${Math.max(0, hi)}`
+}
+
+/**
+ * One strike beside Attack — a power attack. Reads top to bottom: what it
+ * is, what it can roll (swing plus bonus), what it costs. Refused strikes stay
+ * visible and dimmed with the reason in place of the cost; the server refuses
+ * them too, without spending the turn.
+ */
+function StrikeButton({
+  entry,
+  range,
+  reason,
+  disabled,
+  onClick,
+}: {
+  entry: SkillbookEntry
+  /** Total roll range, swing included; null when the strike cannot land at all. */
+  range: { lo: number; hi: number } | null
+  reason: string | null
+  disabled: boolean
+  onClick: () => void
+}) {
+  const tone = skillTone(entry.def.hue)
+  const cost = entry.castCost ?? 0
+  const label = range ? `${entry.def.name}, ${rangeText(range.lo, range.hi)} damage, ${cost} MP` : `${entry.def.name}, ${cost} MP`
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={reason ?? `${entry.def.name} lvl ${entry.level} — ${entry.def.formula}`}
+      aria-label={reason ? `${label}. ${reason}` : label}
+      className={`flex-1 min-w-[72px] max-w-[116px] h-16 rounded-xl flex flex-col items-center justify-center gap-0.5 px-1.5 shadow-md shadow-shadow/40 transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${tone.fill}`}
+    >
+      <span className="flex items-center gap-1 max-w-full">
+        <Icon name={entry.def.icon} size={14} className="opacity-90 flex-shrink-0" />
+        <span className="text-[10px] font-bold leading-none truncate">{entry.def.name}</span>
+      </span>
+      <span className="text-[15px] font-black tabular-nums leading-none">
+        {range ? rangeText(range.lo, range.hi) : '—'}
+      </span>
+      <span className={`text-[9px] font-semibold tabular-nums leading-none ${reason ? 'underline decoration-dotted' : 'opacity-85'}`}>
+        {reason ?? `${cost} MP`}
+      </span>
+    </button>
+  )
+}
+
 export default function BattlePanel({
   battle,
   battleResult,
@@ -556,11 +613,15 @@ export default function BattlePanel({
   inventory,
   player,
 }: BattlePanelProps) {
-  // Open on the list most players reach for: strikes if any are known, then
-  // spells, and a character with neither lands on Items.
-  const [activeTab, setActiveTab] = useState<BattleTab>(() =>
-    getStrikeSkills(player).length > 0 ? 'skills' : getCastableSpells(player).length > 0 ? 'spells' : 'items'
-  )
+  // Open on Items. A caster — MAG strictly the highest of the four effective
+  // stats, with a spell to cast — opens on Spells instead. Strikes are not a
+  // list; they sit beside Attack.
+  const [activeTab, setActiveTab] = useState<BattleTab>(() => {
+    if (getCastableSpells(player).length === 0) return 'items'
+    const stats = effectiveStats(player, inventory)
+    const mag = stats.mag.total
+    return mag > stats.str.total && mag > stats.dex.total && mag > stats.def.total ? 'spells' : 'items'
+  })
   const [retreatArmed, setRetreatArmed] = useState(false)
   const retreatTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -608,10 +669,48 @@ export default function BattlePanel({
   const consumables = inventory.filter(
     (item) => item.template.type === 'CONSUMABLE' && getItemActions(item.template.slug, item.template.metadata as any).length > 0
   )
-  // Strikes the player knows. What is in hand decides which of them fit —
-  // Slice wants one hand, Smash two, Aim a ranged weapon — and the row says so.
+  // ── Damage ranges ──
+  // The top of the swing is the effective offensive stat the server rolls
+  // against (STR melee, DEX ranged, group bonus folded in). The server sends
+  // it at battle start and after every turn; the client formula covers the
+  // gap on a fresh hydration. The enemy blocks 0–DEF on top of this, which the
+  // header already shows, so the range here is the raw roll — the original's
+  // "(max N)".
+  const groupScale = 1 + (battle.bonusPercent ?? 0) / 100
+  const swingMax = battle.playerStrMax ?? Math.floor(effectiveStats(player, inventory)[isRanged ? 'dex' : 'str'].total * groupScale)
+  const enemyFlies = battle.enemyTraits.some((trait) => trait.id === 'flying')
+  const enemyImmuneToWeapon = battle.enemyTraits.some((trait) => trait.id === (isRanged ? 'immune-ranged' : 'immune-melee'))
+  const enemyImmuneToMagic = battle.enemyTraits.some((trait) => trait.id === 'immune-magic')
+  // A bare melee swing cannot reach something airborne, and nothing rolls
+  // against a weapon immunity. Attack still sends (the server explains), but
+  // the range gives way to the reason.
+  const attackBlockedBy = enemyImmuneToWeapon ? "Can't hurt it" : enemyFlies && !isRanged ? "Can't reach" : null
+
+  // Strikes the weapon in hand can carry — Slice wants one hand, Smash two,
+  // Aim a ranged weapon, Magic Strike anything. The rest stay in the book.
   const gear = gearContextFromInventory(inventory)
-  const strikeSkills = getStrikeSkills(player)
+  const strikes = getStrikeSkills(player)
+    .filter((entry) => weaponFits(entry.def, gear))
+    .map((entry) => {
+      // Magic Strike scales with MAG, which the group bonus also lifts.
+      const bonus = entry.def.magic && groupScale > 1
+        ? previewSkillBonus(entry.def, Math.max(1, entry.level), Math.floor(effectiveMag(player) * groupScale))
+        : entry.preview
+      const cost = entry.castCost ?? 0
+      // The server drops a strike whose bonus cannot land before charging MP:
+      // a Slice at a flyer is a plain missed swing, a Magic Strike on a
+      // magic-immune enemy fizzles but the sword still bites.
+      const reason =
+        enemyImmuneToWeapon ? "Can't hurt it"
+        : enemyFlies && !isRanged && !entry.def.magic ? "Can't reach"
+        : entry.def.magic && enemyImmuneToMagic ? 'Magic fizzles'
+        : playerMp < cost ? 'Not enough MP'
+        : null
+      const range = bonus && !enemyImmuneToWeapon && !(enemyFlies && !isRanged && !entry.def.magic)
+        ? { lo: bonus.min, hi: Math.max(0, swingMax) + bonus.max }
+        : null
+      return { entry, range, reason, cost }
+    })
 
   // Bows and the crossbow spend ammo; the server refuses a shot with none left
   // without spending the turn. Count from the bag so the number is right before
@@ -631,9 +730,8 @@ export default function BattlePanel({
   }
 
   const tabs: { id: BattleTab; label: string; icon: string; count: number; fill: string }[] = [
-    { id: 'skills', label: 'Skills', icon: 'slice', count: strikeSkills.length, fill: isRanged ? 'fill-stat-dex' : 'fill-stat-str' },
-    { id: 'spells', label: 'Spells', icon: 'magic', count: castableSpells.length, fill: 'fill-stat-mag' },
     { id: 'items', label: 'Items', icon: 'inv', count: consumables.length, fill: 'fill-resource-gold' },
+    { id: 'spells', label: 'Spells', icon: 'magic', count: castableSpells.length, fill: 'fill-stat-mag' },
   ]
 
   return (
@@ -952,36 +1050,62 @@ export default function BattlePanel({
       {/* ── Command deck ── */}
       <div className="border-t border-line-subtle/50 px-3 pt-3 pb-3 flex flex-col gap-2">
 
-        {/* Attack: ranged strikes are DEX, melee are STR — the same split the
-            combat formulas use, so the control wears the stat it rolls against. */}
-        <button
-          type="button"
-          onClick={onAttack}
-          disabled={isActing || outOfAmmo}
-          title={outOfAmmo && ammo ? `No ${ammo.label} left — equip another weapon from your bag` : undefined}
-          className={`w-full h-14 rounded-xl flex items-center gap-3 px-4 text-left shadow-md shadow-shadow/40 transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${isRanged ? 'fill-stat-dex' : 'fill-stat-str'}`}
-        >
-          <Icon name={weaponIconName ?? 'equipment-fists'} size={32} className="opacity-90 flex-shrink-0" />
-          <span className="flex-1 min-w-0 flex flex-col gap-1 leading-none">
-            <span className="text-base font-black uppercase tracking-[0.12em]">{isActing ? '…' : 'Attack'}</span>
-            <span className="text-[11px] font-medium opacity-85 truncate">{weaponName ?? 'Fists'}</span>
-          </span>
-          {/* Ammo-spending weapons show what's left on the control itself, so
-              running dry is visible before it blocks a shot. */}
-          {ammo && (
-            <span
-              className={`flex-shrink-0 text-[10px] font-bold tabular-nums px-2 py-1 rounded-md ${
-                ammo.remaining <= 0 ? 'fill-status-error' : ammo.remaining <= 5 ? 'fill-resource-gold' : 'bg-surface-canvas/35'
-              }`}
-              style={{ textShadow: 'none' }}
-            >
-              {ammo.remaining <= 0 ? `No ${ammo.label}` : `${ammo.remaining} ${ammo.label}`}
+        {/* The strike row: Attack, then the power attacks the weapon can carry. */}
+        <div className="flex items-stretch gap-1.5">
+          {/* Attack: ranged strikes are DEX, melee are STR — the same split the
+              combat formulas use, so the control wears the stat it rolls against
+              and prints the roll it can make: 0 to that stat, before the block. */}
+          <button
+            type="button"
+            onClick={onAttack}
+            disabled={isActing || outOfAmmo}
+            title={outOfAmmo && ammo ? `No ${ammo.label} left — equip another weapon from your bag` : `Rolls 0–${Math.max(0, swingMax)} ${isRanged ? 'DEX' : 'STR'}; the ${battle.enemyName} blocks 0–${battle.enemyDef ?? '?'}`}
+            aria-label={attackBlockedBy ? `Attack with ${weaponName ?? 'fists'}. ${attackBlockedBy}` : `Attack with ${weaponName ?? 'fists'}, ${rangeText(0, swingMax)} damage`}
+            className={`flex-[2] min-w-0 h-16 rounded-xl flex items-center gap-2.5 px-3 text-left shadow-md shadow-shadow/40 transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${isRanged ? 'fill-stat-dex' : 'fill-stat-str'}`}
+          >
+            <Icon name={weaponIconName ?? 'equipment-fists'} size={30} className="opacity-90 flex-shrink-0" />
+            <span className="flex-1 min-w-0 flex flex-col gap-1 leading-none">
+              <span className="text-base font-black uppercase tracking-[0.12em]">{isActing ? '…' : 'Attack'}</span>
+              <span className="text-[11px] font-medium opacity-85 truncate">{weaponName ?? 'Fists'}</span>
             </span>
-          )}
-        </button>
+            <span className="flex-shrink-0 flex flex-col items-end gap-1 leading-none">
+              {/* The damage range, or why there is none against this enemy. */}
+              {attackBlockedBy ? (
+                <span className="text-[11px] font-bold leading-none whitespace-nowrap">{attackBlockedBy}</span>
+              ) : (
+                <span className="text-[15px] font-black tabular-nums leading-none">{rangeText(0, swingMax)}</span>
+              )}
+              {/* Ammo-spending weapons show what's left on the control itself, so
+                  running dry is visible before it blocks a shot. */}
+              {ammo ? (
+                <span
+                  className={`text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-md whitespace-nowrap ${
+                    ammo.remaining <= 0 ? 'fill-status-error' : ammo.remaining <= 5 ? 'fill-resource-gold' : 'bg-surface-canvas/35'
+                  }`}
+                  style={{ textShadow: 'none' }}
+                >
+                  {ammo.remaining <= 0 ? `No ${ammo.label}` : `${ammo.remaining} ${ammo.label}`}
+                </span>
+              ) : !attackBlockedBy && (
+                <span className="text-[9px] font-semibold uppercase tracking-wider opacity-85 leading-none">dmg</span>
+              )}
+            </span>
+          </button>
 
-        {/* The switch: one filled segment, counts on all three. */}
-        <div role="tablist" aria-label="Battle actions" className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle">
+          {strikes.map(({ entry, range, reason }) => (
+            <StrikeButton
+              key={entry.def.id}
+              entry={entry}
+              range={range}
+              reason={reason}
+              disabled={isActing || outOfAmmo || Boolean(reason)}
+              onClick={() => onUseSkill(entry.def.id)}
+            />
+          ))}
+        </div>
+
+        {/* The switch: one filled segment, counts on both. */}
+        <div role="tablist" aria-label="Battle actions" className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle">
           {tabs.map((tab) => {
             const selected = activeTab === tab.id
             return (
@@ -1015,30 +1139,31 @@ export default function BattlePanel({
           aria-labelledby={`battle-tab-${activeTab}`}
           className="flex flex-col gap-1.5 max-h-60 overflow-y-auto overscroll-contain"
         >
-          {activeTab === 'skills' && (
-            strikeSkills.length === 0 ? (
-              <p className="text-xs text-fg-disabled italic py-2 px-1">No attack skills learned yet.</p>
+          {activeTab === 'items' && (
+            consumables.length === 0 ? (
+              <p className="text-xs text-fg-disabled italic py-2 px-1">No items to use.</p>
             ) : (
-              strikeSkills.map((entry) => {
-                const tone = skillTone(entry.def.hue)
-                const cost = entry.castCost ?? 0
-                const reason =
-                  weaponFitReason(entry.def, gear)
-                  ?? (playerMp < cost ? 'Not enough MP' : null)
-                const range = entry.preview ? `+${entry.preview.min}–${entry.preview.max} on the swing` : null
+              consumables.map((item) => {
+                const actions = getItemActions(item.template.slug, item.template.metadata as any)
+                const primaryAction = actions[0]
+                const effect = primaryAction.effect ?? null
+                const restores = effect?.includes('HP') ? 'hp' : effect?.includes('MP') ? 'mp' : null
                 return (
                   <DeckRow
-                    key={entry.def.id}
-                    icon={entry.def.icon}
-                    iconClass={`${tone.text} opacity-90`}
-                    name={entry.def.name}
-                    detail={`lvl ${entry.level}${range ? ` · ${range}` : ''}`}
-                    right={<span className="text-xs font-bold text-resource-mp tabular-nums whitespace-nowrap">{cost} MP</span>}
-                    reason={reason}
-                    verb="Use"
-                    verbClass={tone.fill}
-                    disabled={isActing || outOfAmmo || Boolean(reason)}
-                    onClick={() => onUseSkill(entry.def.id)}
+                    key={item.id}
+                    icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
+                    iconClass="text-fg-bright opacity-80"
+                    name={item.template.name}
+                    detail={item.quantity > 1 ? `×${item.quantity}` : 'Last one'}
+                    right={effect && (
+                      <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${restores === 'hp' ? 'text-resource-hp' : restores === 'mp' ? 'text-resource-mp' : 'text-fg-secondary'}`}>
+                        {effect}
+                      </span>
+                    )}
+                    verb={primaryAction.label}
+                    verbClass={restores === 'hp' ? 'fill-resource-hp' : restores === 'mp' ? 'fill-resource-mp' : 'fill-accent'}
+                    disabled={isActing}
+                    onClick={() => onUseItem(item.id, primaryAction.action)}
                   />
                 )
               })
@@ -1076,38 +1201,6 @@ export default function BattlePanel({
               })
             )
           )}
-
-          {activeTab === 'items' && (
-            consumables.length === 0 ? (
-              <p className="text-xs text-fg-disabled italic py-2 px-1">No items to use.</p>
-            ) : (
-              consumables.map((item) => {
-                const actions = getItemActions(item.template.slug, item.template.metadata as any)
-                const primaryAction = actions[0]
-                const effect = primaryAction.effect ?? null
-                const restores = effect?.includes('HP') ? 'hp' : effect?.includes('MP') ? 'mp' : null
-                return (
-                  <DeckRow
-                    key={item.id}
-                    icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
-                    iconClass="text-fg-bright opacity-80"
-                    name={item.template.name}
-                    detail={item.quantity > 1 ? `×${item.quantity}` : 'Last one'}
-                    right={effect && (
-                      <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${restores === 'hp' ? 'text-resource-hp' : restores === 'mp' ? 'text-resource-mp' : 'text-fg-secondary'}`}>
-                        {effect}
-                      </span>
-                    )}
-                    verb={primaryAction.label}
-                    verbClass={restores === 'hp' ? 'fill-resource-hp' : restores === 'mp' ? 'fill-resource-mp' : 'fill-accent'}
-                    disabled={isActing}
-                    onClick={() => onUseItem(item.id, primaryAction.action)}
-                  />
-                )
-              })
-            )
-          )}
-
         </div>
       </div>
     </div>
