@@ -198,24 +198,27 @@ export default function Compass({
 
   return (
     <div
-      className={`compass flex justify-center ${className}`}
+      className={`compass @container flex justify-center ${className}`}
       title={isLocked ? lockedHint : undefined}
       // The breathing room between the ring and its two side columns. Scales
-      // with the viewport between 12px on a narrow phone and 24px on desktop,
-      // and the ring wrapper's horizontal margin reserves column + gap on both
-      // sides, so centring the wrapper centres the ring and nothing overflows.
-      style={{ '--compass-side-gap': 'clamp(0.75rem, 4vw, 1.5rem)' } as React.CSSProperties}
+      // with the compass's own width (a phone strip or a resizable desktop
+      // panel) between 12px and 24px, and the ring wrapper's horizontal margin
+      // reserves column + gap on both sides, so centring the wrapper centres
+      // the ring and nothing overflows. The ring itself steps up from the
+      // compact size once the container is 24rem wide, the point where the
+      // large ring plus both columns fit.
+      style={{ '--compass-side-gap': 'clamp(0.75rem, 4cqw, 1.5rem)' } as React.CSSProperties}
     >
       {/* Main D-pad */}
-      <div className="relative w-56 sm:w-64 mx-[calc(2.5rem+var(--compass-side-gap))]">
-        <div className="relative w-56 sm:w-64 h-56 sm:h-64">
+      <div className="relative w-56 @sm:w-64 mx-[calc(2.5rem+var(--compass-side-gap))]">
+        <div className="relative w-56 @sm:w-64 h-56 @sm:h-64">
           {/* Map circle in center. Also opens the map; the Map button in the
               corner of the Explore panel is the labelled way in. */}
           <div className="absolute inset-0 flex items-center justify-center">
             <button
               type="button"
               onClick={() => onNavigateToMap?.()}
-              className="w-[120px] sm:w-[150px] h-[120px] sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-[background-position] duration-[350ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-[10px] sm:border-[25px] border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl"
+              className="w-[120px] @sm:w-[150px] h-[120px] @sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-[background-position] duration-[350ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-[10px] @sm:border-[25px] border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl"
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition

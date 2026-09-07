@@ -338,7 +338,7 @@ export default function TabContainer({
   return (
     <div className={`flex-1 flex flex-col min-h-0 ${containerClassName}`}>
       {/* Tab Navigation */}
-      <div ref={headerRef} className={`relative z-10 hidden md:flex gap-2 ${defaultHeaderPadding} bg-surface-panel/95 backdrop-blur-sm flex-shrink-0 flex-wrap justify-between items-center ${headerClassName}`}>
+      <div ref={headerRef} className={`relative z-10 hidden md:flex gap-2 ${defaultHeaderPadding} bg-surface-panel/95 backdrop-blur-sm flex-shrink-0 flex-wrap justify-between items-center ${wrap ? '@container' : ''} ${headerClassName}`}>
         {/* Left side elements */}
         {leftElement && (
           <div ref={leftElementRef} className="flex items-center gap-2 flex-shrink-0">
@@ -348,7 +348,11 @@ export default function TabContainer({
         
         {/* Centered tabs */}
         {/* Wrapped tabs stretch to one height so a tab with no label (the gear)
-            still matches its neighbours and centres its icon. */}
+            still matches its neighbours and centres its icon. When the header's
+            content box is narrower than 384px (a side panel resized under
+            about 410px) they drop their labels and stay on one row rather
+            than wrapping. The query measures inside the header's padding,
+            so the threshold is the six tabs' minimum widths plus gaps. */}
         <div ref={tabsContainerRef} className={`flex-1 flex justify-left md:justify-center gap-2 px-0 ${wrap ? 'items-stretch flex-wrap' : 'items-center flex-nowrap lg:pr-[56px] xl:px-0'}`}>
           {/* max-w-[848px] lg:max-w-[904px] xl:max-w-[848px] */}
 
@@ -368,7 +372,7 @@ export default function TabContainer({
                   }}
                   onClick={() => handleTabChange(tab.id)}
                   className={wrap
-                    ? `${buttonPadding} flex-1 basis-0 min-w-[56px] text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow ${getButtonColorClasses(tab, isActive)}`
+                    ? `${buttonPadding} flex-1 basis-0 min-w-[56px] @max-[384px]:min-w-0 text-[11px] font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 relative rounded-lg shadow-sm hover:shadow ${getButtonColorClasses(tab, isActive)}`
                     : `${buttonPadding} h-8 text-sm font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow flex-shrink-0 ${getButtonColorClasses(tab, isActive)}`
                   }
                 >
@@ -389,7 +393,7 @@ export default function TabContainer({
                       </span>
                     )
                   )}
-                  {tab.label && <span className={wrap ? 'leading-none' : ''}>{tab.label}</span>}
+                  {tab.label && <span className={wrap ? 'leading-none @max-[384px]:hidden' : ''}>{tab.label}</span>}
                   <NotificationBadge value={tab.badge} className="absolute -top-1 -right-1" />
                 </button>
                 {isFirstExploreTab && (

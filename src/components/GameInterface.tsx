@@ -40,6 +40,8 @@ import InventoryPanel from './game-interface/panels/InventoryPanel'
 import QuestsPanel from './game-interface/panels/QuestsPanel'
 import { countReadyQuests } from '@/lib/quest-journal'
 import WorldLayer, { type WorldTab } from './game-interface/WorldLayer'
+import PanelResizeHandle from './game-interface/PanelResizeHandle'
+import { useResizablePanel, useViewportWidth } from './game-interface/useResizablePanel'
 
 // Whether the world layer last opened full screen on this device. A browser
 // convenience only, never authoritative for anything.
@@ -58,6 +60,19 @@ const writePrefersWorldFullscreen = (value: boolean) => {
     // Storage can be unavailable (private mode, blocked); the layer still works.
   }
 }
+
+// Desktop side-panel widths. They reset to the default on every page load.
+// The left panel's floor is what the compact compass ring, its two side
+// columns, and the panel padding need (224 + 2 × 52 + 32); the feed's floor is
+// where its icon-less chip rows and input still read. The ceiling leaves the
+// explore column room for the room card no matter how wide either panel is
+// dragged.
+const LEFT_PANEL_DEFAULT = 420
+const LEFT_PANEL_MIN = 360
+const FEED_PANEL_DEFAULT = 360
+const FEED_PANEL_MIN = 300
+const PANEL_MAX = 720
+const CENTER_MIN = 480
 import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
 import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/PlayersPanel'
@@ -156,6 +171,31 @@ export default function GameInterface() {
   const [worldTab, setWorldTab] = useState<WorldTab>('map')
   // Desktop world feed starts open; the toggle only affects this session.
   const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(true)
+
+  // Each side panel's ceiling is bounded by the viewport minus the other panel
+  // and the explore column's floor, so neither can drag the room off screen.
+  // Until the viewport is measured (0 before mount) the budget is unbounded so
+  // the default width is not clamped down to the minimum on first render.
+  const viewportWidth = useViewportWidth()
+  const panelBudget = viewportWidth > 0 ? viewportWidth - CENTER_MIN : Infinity
+  const [feedWidthForBounds, setFeedWidthForBounds] = useState(FEED_PANEL_DEFAULT)
+  const leftPanel = useResizablePanel({
+    side: 'left',
+    defaultWidth: LEFT_PANEL_DEFAULT,
+    minWidth: LEFT_PANEL_MIN,
+    maxWidth: Math.min(PANEL_MAX, panelBudget - (isFeedPanelOpen ? feedWidthForBounds : 0)),
+    label: 'Resize the left panel',
+  })
+  const feedPanel = useResizablePanel({
+    side: 'right',
+    defaultWidth: FEED_PANEL_DEFAULT,
+    minWidth: FEED_PANEL_MIN,
+    maxWidth: Math.min(PANEL_MAX, panelBudget - leftPanel.width),
+    label: 'Resize the World Feed panel',
+  })
+  useEffect(() => {
+    setFeedWidthForBounds(feedPanel.width)
+  }, [feedPanel.width])
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
   // The spellbook: global (learning never needed a teacher present in the
   // original either), opened from the Character panel or the shaman's tent.
@@ -3483,7 +3523,11 @@ export default function GameInterface() {
 
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Left: on desktop (lg+), tab bar at top; D-pad default, panel content when tab active */}
-        <div className="hidden lg:flex flex-col flex-shrink-0 w-[420px] border-r border-line-subtle/30 bg-surface-panel/95 min-h-0 overflow-hidden">
+        <div
+          className="relative hidden lg:flex flex-col flex-shrink-0 border-r border-line-subtle/30 bg-surface-panel/95 min-h-0 overflow-hidden"
+          style={{ width: leftPanel.width }}
+        >
+          <PanelResizeHandle edge="right" isDragging={leftPanel.isDragging} handleProps={leftPanel.handleProps} />
           <TabContainer
             tabs={panelTabs}
             defaultTab="explore"
@@ -3563,7 +3607,10 @@ export default function GameInterface() {
           </button>
           {currentRoom && (
             <div className="bg-surface-panel/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
-              <div className="flex-1 min-h-0 overflow-y-auto h-full">
+              {/* The room column is a container: with two resizable side
+                  panels it can be far narrower than the viewport, so what
+                  renders inside sizes against it, not the window. */}
+              <div className="@container flex-1 min-h-0 overflow-y-auto h-full">
                 <div className="max-w-4xl mx-auto w-full">
                   {!socket?.connected && (
                     <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-line-subtle/30 bg-surface-panel/60">
@@ -3705,7 +3752,11 @@ export default function GameInterface() {
 
         {/* Right: Feed panel — desktop only */}
         {isFeedPanelOpen && (
-          <div className="hidden lg:flex flex-col flex-shrink-0 w-[360px] border-l border-line-subtle/30 bg-surface-panel/95 min-h-0 overflow-hidden">
+          <div
+            className="relative hidden lg:flex flex-col flex-shrink-0 border-l border-line-subtle/30 bg-surface-panel/95 min-h-0 overflow-hidden"
+            style={{ width: feedPanel.width }}
+          >
+            <PanelResizeHandle edge="left" isDragging={feedPanel.isDragging} handleProps={feedPanel.handleProps} />
             <div className="flex items-center justify-between px-3 py-2 border-b border-line-subtle/30">
               <span className="text-sm font-medium text-fg-primary">World Feed</span>
               <button

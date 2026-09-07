@@ -52,7 +52,7 @@ export default function TravelerCard({ traveler, onAction, isInBattle = false, i
         </div>
       </div>
 
-      <div className="flex basis-full items-center justify-end gap-1.5 sm:basis-auto">
+      <div className="flex basis-full items-center justify-end gap-1.5 @md:basis-auto">
         {traveler.actions.map((a) => (
           <button
             key={a.action}

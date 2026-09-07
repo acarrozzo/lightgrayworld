@@ -684,7 +684,11 @@ export default function FeedPanel({
         </button>
       )}
 
-      <div className="worldFeedControls px-4 py-2 border-b border-line-subtle/60 bg-surface-panel/70 flex flex-col gap-2">
+      {/* A container so the chip rows below can drop their icons when the
+          panel is resized narrow, keeping each row on one line. The query
+          measures inside this element's padding, so 320px of content is a
+          panel of about 350px; the 360px default keeps its icons. */}
+      <div className="worldFeedControls @container px-4 py-2 border-b border-line-subtle/60 bg-surface-panel/70 flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {(['all', 'chat', 'events', 'actions'] as FilterType[]).map((key) => {
             const isActive = filter === key
@@ -714,7 +718,7 @@ export default function FeedPanel({
                 {IconComponent && (
                   <IconComponent 
                     size={12} 
-                    className="mr-1 shrink-0" 
+                    className="mr-1 shrink-0 @max-[320px]:hidden" 
                     aria-hidden="true"
                   />
                 )}
@@ -1103,7 +1107,7 @@ export default function FeedPanel({
               >
                 <IconComponent 
                   size={12} 
-                  className="mr-1 shrink-0" 
+                  className="mr-1 shrink-0 @max-[320px]:hidden" 
                   aria-hidden="true"
                 />
                 {labelMap[mode]}

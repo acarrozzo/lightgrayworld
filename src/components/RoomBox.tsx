@@ -105,11 +105,14 @@ export default function RoomBox({
     const timer = setTimeout(() => setTravelerNoteVisible(false), remaining)
     return () => clearTimeout(timer)
   }, [noteTs])
+  // Sizes key off the room column (a container), not the viewport: between
+  // two desktop side panels the column can be phone-narrow. Below 28rem the
+  // compact set is used, as on a phone.
   const iconSizeClasses: Record<string, string> = {
-    sm: 'w-12 h-12 sm:w-20 sm:h-20',
-    md: 'w-20 h-20 sm:w-32 sm:h-32',
-    lg: 'w-24 h-24 sm:w-40 sm:h-40',
-    xl: 'w-36 h-36 sm:w-60 sm:h-60',
+    sm: 'w-12 h-12 @md:w-20 @md:h-20',
+    md: 'w-20 h-20 @md:w-32 @md:h-32',
+    lg: 'w-24 h-24 @md:w-40 @md:h-40',
+    xl: 'w-36 h-36 @md:w-60 @md:h-60',
   }
   const iconClassName = iconSizeClasses[room.iconSize ?? ''] ?? iconSizeClasses.sm
 
@@ -128,9 +131,12 @@ export default function RoomBox({
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-4">
-      {/* Header with icon and two-line title */}
-      <div className="flex items-center gap-4">
+    <div className="p-4 @md:p-6 space-y-4">
+      {/* Header with icon and two-line title. On desktop the feed toggle
+          floats at the column's top right, so a column narrower than the
+          content cap plus the button's clearance keeps the title out from
+          under it. */}
+      <div className="flex items-center gap-4 lg:@max-[992px]:pr-10">
         <div style={{ color: roomColor(room.iconColor, room.region, 'icon') }}>
           <Icon name={room.icon || 'sun'} className={iconClassName} color="current" />
         </div>
@@ -144,14 +150,14 @@ export default function RoomBox({
             </p>
           )}
           <h3
-            className="text-xl sm:text-2xl font-bold"
+            className="text-xl @md:text-2xl font-bold"
             style={{ color: roomColor(room.nameColor, room.region, 'title') }}
           >
             {room.name}
           </h3>
           {hasSubtitle && subtitlePlacement === 'below' && (
             <p
-              className="font-bold text-base sm:text-lg"
+              className="font-bold text-base @md:text-lg"
               style={{ color: roomColor(room.subtitleColor, room.region, 'subtitle') }}
             >
               {subtitleText}
@@ -161,12 +167,13 @@ export default function RoomBox({
       </div>
 
       {/* Room Description */}
-      <p className="text-fg-primary/90 leading-relaxed text-sm sm:text-base">{room.description}</p>
+      <p className="text-fg-primary/90 leading-relaxed text-sm @md:text-base">{room.description}</p>
 
-      {/* Enemy in Room — one at a time, as in the original */}
+      {/* Enemy in Room — one at a time, as in the original. In a narrow
+          column the Attack button drops to its own line under the stats. */}
       {roomEnemy && (
         <div
-          className={`inline-flex items-center gap-3 rounded-lg border px-3 py-2.5 ${roomEnemy.isAggressive ? 'border-action-attack/40 bg-action-attack/30 shadow-sm shadow-shadow/20' : 'border-line-subtle/30 bg-surface-raised/30'}`}
+          className={`inline-flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2.5 ${roomEnemy.isAggressive ? 'border-action-attack/40 bg-action-attack/30 shadow-sm shadow-shadow/20' : 'border-line-subtle/30 bg-surface-raised/30'}`}
         >
           <img
             src={`/icons/enemy/${encodeURIComponent(roomEnemy.name)}.svg`}
@@ -196,14 +203,16 @@ export default function RoomBox({
               <span className="text-fg-muted">DEF <span className="font-semibold text-resource-gold">{roomEnemy.def}</span></span>
             </div>
           </div>
-          <button
-            onClick={() => onAction({ type: 'start_battle', data: { enemySlug: roomEnemy.slug } })}
-            disabled={isInBattle || isLoadingRoom}
-            title={isInBattle ? 'You are already in combat' : `Attack the ${roomEnemy.name}`}
-            className="ml-1 shrink-0 px-3.5 py-1.5 text-xs font-semibold fill-action-attack disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition-all duration-150 shadow-sm active:scale-[0.97]"
-          >
-            Attack
-          </button>
+          <div className="flex basis-full justify-end @md:basis-auto @md:ml-1">
+            <button
+              onClick={() => onAction({ type: 'start_battle', data: { enemySlug: roomEnemy.slug } })}
+              disabled={isInBattle || isLoadingRoom}
+              title={isInBattle ? 'You are already in combat' : `Attack the ${roomEnemy.name}`}
+              className="shrink-0 px-3.5 py-1.5 text-xs font-semibold fill-action-attack disabled:opacity-40 disabled:cursor-not-allowed rounded-md transition-all duration-150 shadow-sm active:scale-[0.97]"
+            >
+              Attack
+            </button>
+          </div>
         </div>
       )}
 
