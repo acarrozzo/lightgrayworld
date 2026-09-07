@@ -115,7 +115,7 @@ export interface InventoryItem {
 }
 
 export interface BattleActionMeta {
-  kind: 'use_item' | 'equip_item' | 'unequip_item' | 'cast_spell'
+  kind: 'use_item' | 'equip_item' | 'unequip_item' | 'cast_spell' | 'auto_equip'
   itemSlug: string
   itemName: string
   itemMetadata: { icon?: string } | null

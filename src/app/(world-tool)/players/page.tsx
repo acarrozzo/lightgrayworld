@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/prisma'
 import PlayersTable, { type PlayerRow } from './PlayersTable'
-import WorldToolNav from '@/components/WorldToolNav'
 const { getQuestDef } = require('@/lib/game-data/quest-registry') as { getQuestDef: (questId: string) => unknown }
 import { resolveEquipmentNames, type EquipmentSource } from '@/lib/items/equipment-resolution'
 
@@ -108,17 +107,14 @@ export default async function PlayersPage() {
   })
 
   return (
-    <div className="min-h-screen fill-surface-canvas">
-      <WorldToolNav active="players" />
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-fg-bright">Players</h1>
-          <p className="mt-1 text-sm text-fg-secondary">
-            {rows.length} players — click a name for the full profile, or a row to expand details.
-          </p>
-        </header>
-        <PlayersTable rows={rows} />
-      </div>
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-fg-bright">Players</h1>
+        <p className="mt-1 text-sm text-fg-secondary">
+          {rows.length} players — click a name for the full profile, or a row to expand details.
+        </p>
+      </header>
+      <PlayersTable rows={rows} />
     </div>
   )
 }

@@ -1,6 +1,5 @@
 export const runtime = 'nodejs'
 
-import WorldToolNav from '@/components/WorldToolNav'
 import ThemeReference from './ThemeReference'
 
 export const metadata = {
@@ -10,10 +9,5 @@ export const metadata = {
 }
 
 export default function ThemesPage() {
-  return (
-    <div className="min-h-screen fill-surface-canvas">
-      <WorldToolNav active="themes" />
-      <ThemeReference />
-    </div>
-  )
+  return <ThemeReference />
 }

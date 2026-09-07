@@ -1,79 +1,86 @@
 const { prisma } = require('../../db-client')
 const { getPlayerInventory } = require('./inventory-service')
 
+/** The player projection an equip result carries back to the client. */
+const PLAYER_SELECT = {
+  id: true,
+  username: true,
+  level: true,
+  hp: true,
+  hpMax: true,
+  mp: true,
+  mpMax: true,
+  currentRoom: true,
+  isActive: true,
+  xp: true,
+  cp: true,
+  tp: true,
+  sp: true,
+  currency: true,
+  physicalTraining: true,
+  mentalTraining: true,
+  str: true,
+  dex: true,
+  mag: true,
+  def: true,
+  strMod: true,
+  dexMod: true,
+  magMod: true,
+  defMod: true,
+  uIcon: true,
+  uIconColor: true,
+}
+
+const MOD_SELECT = { strMod: true, dexMod: true, magMod: true, defMod: true }
+
+/**
+ * Sum the stat modifiers of a set of equipped rows (each with its
+ * ItemTemplate.metadata). Lenient: only the four known stats count, anything
+ * else in `statMods` is ignored.
+ * @param {Array<{ ItemTemplate?: { metadata?: any } | null }>} equippedItems
+ * @returns {{ str: number, dex: number, mag: number, def: number }}
+ */
+function sumStatMods(equippedItems) {
+  const totals = { str: 0, dex: 0, mag: 0, def: 0 }
+  for (const item of equippedItems) {
+    const statMods = item?.ItemTemplate?.metadata?.statMods
+    if (!statMods || typeof statMods !== 'object') continue
+    for (const key of Object.keys(totals)) {
+      if (typeof statMods[key] === 'number') totals[key] += statMods[key]
+    }
+  }
+  return totals
+}
+
 /**
  * Recompute stat modifiers from all equipped items and update the User row.
- * 
+ *
+ * Pass `tx` to run inside a transaction the caller holds, so the mods land
+ * with the equip change they describe; pass `select` to get the updated
+ * player row back in that shape instead of just the four mods (one round
+ * trip instead of a follow-up read).
+ *
  * @param {string} playerId - The player's ID
- * @returns {Promise<{strMod: number, dexMod: number, magMod: number, defMod: number}>}
+ * @param {{ tx?: import('@prisma/client').Prisma.TransactionClient|null, select?: Object|null }} [options]
+ * @returns {Promise<{strMod: number, dexMod: number, magMod: number, defMod: number}|Object>}
  */
-async function recomputeStatMods(playerId) {
-  // Load all equipped items with their templates
-  const equippedItems = await prisma.playerItem.findMany({
-    where: {
-      playerId,
-      isEquipped: true,
-    },
-    include: {
-      ItemTemplate: {
-        select: {
-          metadata: true,
-        },
-      },
-    },
+async function recomputeStatMods(playerId, options = {}) {
+  const { tx = null, select = null } = options
+  const db = tx || prisma
+
+  const equippedItems = await db.playerItem.findMany({
+    where: { playerId, isEquipped: true },
+    include: { ItemTemplate: { select: { metadata: true } } },
   })
+  const totals = sumStatMods(equippedItems)
 
-  // Initialize mod totals
-  const modTotals = {
-    str: 0,
-    dex: 0,
-    mag: 0,
-    def: 0,
-  }
-
-  // Sum mods from all equipped items
-  for (const item of equippedItems) {
-    if (!item.ItemTemplate || !item.ItemTemplate.metadata) {
-      continue
-    }
-
-    const metadata = item.ItemTemplate.metadata
-    const statMods = metadata.statMods
-
-    if (statMods && typeof statMods === 'object') {
-      // Handle lenient format - allow any keys, only process known stats
-      if (typeof statMods.str === 'number') {
-        modTotals.str += statMods.str
-      }
-      if (typeof statMods.dex === 'number') {
-        modTotals.dex += statMods.dex
-      }
-      if (typeof statMods.mag === 'number') {
-        modTotals.mag += statMods.mag
-      }
-      if (typeof statMods.def === 'number') {
-        modTotals.def += statMods.def
-      }
-    }
-  }
-
-  // Update User row with computed mod totals
-  await prisma.user.update({
+  const player = await db.user.update({
     where: { id: playerId },
-    data: {
-      strMod: modTotals.str,
-      dexMod: modTotals.dex,
-      magMod: modTotals.mag,
-      defMod: modTotals.def,
-    },
+    data: { strMod: totals.str, dexMod: totals.dex, magMod: totals.mag, defMod: totals.def },
+    select: select || MOD_SELECT,
   })
 
-  return {
-    strMod: modTotals.str,
-    dexMod: modTotals.dex,
-    magMod: modTotals.mag,
-    defMod: modTotals.def,
-  }
+  return select ? player : { strMod: player.strMod, dexMod: player.dexMod, magMod: player.magMod, defMod: player.defMod }
 }
 
 /**
@@ -217,34 +224,7 @@ async function equipItem(playerId, playerItemId) {
   const inventory = await getPlayerInventory(playerId)
   const player = await prisma.user.findUnique({
     where: { id: playerId },
-    select: {
-      id: true,
-      username: true,
-      level: true,
-      hp: true,
-      hpMax: true,
-      mp: true,
-      mpMax: true,
-      currentRoom: true,
-      isActive: true,
-      xp: true,
-      cp: true,
-      tp: true,
-      sp: true,
-      currency: true,
-      physicalTraining: true,
-      mentalTraining: true,
-      str: true,
-      dex: true,
-      mag: true,
-      def: true,
-      strMod: true,
-      dexMod: true,
-      magMod: true,
-      defMod: true,
-      uIcon: true,
-      uIconColor: true,
-    },
+    select: PLAYER_SELECT,
   })
 
   return {
@@ -316,34 +296,7 @@ async function unequipItem(playerId, playerItemId) {
   const inventory = await getPlayerInventory(playerId)
   const player = await prisma.user.findUnique({
     where: { id: playerId },
-    select: {
-      id: true,
-      username: true,
-      level: true,
-      hp: true,
-      hpMax: true,
-      mp: true,
-      mpMax: true,
-      currentRoom: true,
-      isActive: true,
-      xp: true,
-      cp: true,
-      tp: true,
-      sp: true,
-      currency: true,
-      physicalTraining: true,
-      mentalTraining: true,
-      str: true,
-      dex: true,
-      mag: true,
-      def: true,
-      strMod: true,
-      dexMod: true,
-      magMod: true,
-      defMod: true,
-      uIcon: true,
-      uIconColor: true,
-    },
+    select: PLAYER_SELECT,
   })
 
   return {
@@ -360,8 +313,10 @@ async function unequipItem(playerId, playerItemId) {
 }
 
 module.exports = {
+  PLAYER_SELECT,
   equipItem,
   unequipItem,
+  sumStatMods,
   recomputeStatMods,
 }
 

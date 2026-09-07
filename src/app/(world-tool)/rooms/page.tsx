@@ -2,7 +2,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/prisma'
-import WorldToolNav from '@/components/WorldToolNav'
+import { cachedWorldToolData } from '@/lib/world-tool/cached'
+import { ATLAS_EXCLUDED_ROOMS } from '@/lib/world-tool/atlas'
 import { resolveItemIcon } from '@/lib/item-actions'
 import RoomAtlas, {
   type MapId,
@@ -112,7 +113,7 @@ const RED_TOWN_SEWERS = [
   '232u', '232v', '232w', '232x', '232y', '232z',
 ]
 // Isolated special rooms that don't belong to any map.
-const EXCLUDED = new Set(['000', '999', '088'])
+const EXCLUDED = new Set(ATLAS_EXCLUDED_ROOMS)
 const ROCKY_FLATS_UNDERGROUND = ['315a', '315b', '315c', '315d', '321b']
 const UNDER_THE_OCEAN = [
   '480', '481', '482', '483', '484', '485', '486', '487', '488', '489',
@@ -152,25 +153,37 @@ function prettifySlug(slug: string): string {
     .join(' ')
 }
 
+// Rooms with their NPCs and ground items, and the templates for every loot slug
+// the engine config names — at once, since neither query depends on the other,
+// and cached in production (see lib/world-tool/cached.ts). The NPC and item
+// rows carry timestamps that come back from the cache as strings; nothing
+// below reads them.
+const loadAtlasData = cachedWorldToolData('rooms', () => {
+  const lootSlugs = Array.from(new Set(ROOM_LOOT.map((l) => l.slug)))
+  return Promise.all([
+    prisma.room.findMany({
+      include: {
+        npcs: true,
+        items: { include: { ItemTemplate: { select: { slug: true, name: true, metadata: true } } } },
+      },
+      orderBy: { roomId: 'asc' },
+    }),
+    lootSlugs.length
+      ? prisma.itemTemplate.findMany({
+          where: { slug: { in: lootSlugs } },
+          select: { slug: true, name: true, metadata: true },
+        })
+      : Promise.resolve([]),
+  ])
+})
+
 export default async function RoomsPage() {
-  // 1. Rooms (with their NPCs and ground items) straight from the DB.
-  const rooms = await prisma.room.findMany({
-    include: {
-      npcs: true,
-      items: { include: { ItemTemplate: { select: { slug: true, name: true, metadata: true } } } },
-    },
-    orderBy: { roomId: 'asc' },
-  })
+  // 1. Rooms (with their NPCs and ground items) and the template for every loot
+  //    slug the engine config names.
+  const [rooms, lootTemplates] = await loadAtlasData()
 
   // 2. Resolve names/icons for every slug referenced by the engine config.
   const enemyBySlug = new Map(ENEMIES.map((e) => [e.slug, e]))
-  const lootSlugs = Array.from(new Set(ROOM_LOOT.map((l) => l.slug)))
-  const lootTemplates = lootSlugs.length
-    ? await prisma.itemTemplate.findMany({
-        where: { slug: { in: lootSlugs } },
-        select: { slug: true, name: true, metadata: true },
-      })
-    : []
   const lootBySlug = new Map(lootTemplates.map((t) => [t.slug, t]))
 
   // 3. Quest givers grouped by the room they stand in (richer than the bare DB
@@ -401,19 +414,18 @@ export default async function RoomsPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col fill-surface-canvas">
-      <WorldToolNav active="rooms" />
-      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-8">
-        <header className="mb-4">
-          <h1 className="text-2xl font-bold text-fg-bright">World Atlas</h1>
-          <p className="mt-1 text-sm text-fg-secondary">
-            {nodes.length} rooms laid out across {new Set(nodes.map((n) => n.map)).size} map sheets,
-            oriented by their compass exits. Click a room to inspect its enemies, loot, NPCs,
-            actions, gates, and secrets.
-          </p>
-        </header>
-        <RoomAtlas nodes={nodes} edges={edges} />
-      </div>
+    // min-h-full so the atlas can grow to the column; the layout's content
+    // column is the scroll container, so this is what "fill the page" means.
+    <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col px-4 py-8">
+      <header className="mb-4">
+        <h1 className="text-2xl font-bold text-fg-bright">World Atlas</h1>
+        <p className="mt-1 text-sm text-fg-secondary">
+          {nodes.length} rooms laid out across {new Set(nodes.map((n) => n.map)).size} map sheets,
+          oriented by their compass exits. Click a room to inspect its enemies, loot, NPCs,
+          actions, gates, and secrets.
+        </p>
+      </header>
+      <RoomAtlas nodes={nodes} edges={edges} />
     </div>
   )
 }

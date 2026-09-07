@@ -17,6 +17,7 @@ import {
   rowsAcrossSections,
   unmetAcrossSections,
   DEFAULT_PREFS,
+  isViewFiltered,
   STATUS_FILTERS,
   SORT_MODES,
   type JournalGroup,
@@ -266,7 +267,7 @@ function QuestRow({
           <StateGlyph state={row.state} />
           <span className="min-w-0 flex flex-col gap-px">
             <span className="flex items-baseline gap-1.5 min-w-0">
-              <span className={`text-[13px] font-semibold truncate ${isDone ? 'text-fg-secondary line-through decoration-line-subtle' : 'text-fg-bright'}`}>{row.def.title}</span>
+              <span className={`text-[13px] font-semibold truncate ${isDone ? 'text-status-success' : 'text-fg-bright'}`}>{row.def.title}</span>
               <QuestTypeTag type={row.def.questType} className="hidden sm:inline-flex" />
             </span>
             {secondLine && <span className="text-[11px] text-fg-muted truncate">{secondLine}</span>}
@@ -551,7 +552,11 @@ export default function QuestsPanel({
       return
     }
     const keys = sectionsAcrossFactions(groups).filter((sec) => sec.met).map((sec) => sec.key)
-    updatePrefs({ ...prefs, collapsed: fold ? [...new Set([...prefs.collapsed.filter((id) => !id.startsWith('giver:')), ...keys])] : prefs.collapsed.filter((id) => !id.startsWith('giver:')) })
+    updatePrefs({
+      ...prefs,
+      collapsed: fold ? [...new Set([...prefs.collapsed.filter((id) => !id.startsWith('giver:')), ...keys])] : prefs.collapsed.filter((id) => !id.startsWith('giver:')),
+      unfolded: fold ? prefs.unfolded.filter((id) => !id.startsWith('giver:')) : [...new Set([...prefs.unfolded, ...keys])],
+    })
   }
   const showGiverOnRows = !prefs.groupNpc
   const showFactionOnRows = !prefs.groupFaction && !prefs.groupNpc
@@ -679,14 +684,17 @@ export default function QuestsPanel({
                 </button>
               )
             })}
-            <span className="ml-auto flex items-center gap-1 text-[11px] text-fg-muted" role="group" aria-label="Group by">
-              <span className="hidden sm:inline">Group</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="flex items-center gap-1 text-[11px] text-fg-muted" role="group" aria-label="Group by">
+              <span>Group by</span>
               <button
                 type="button"
                 aria-pressed={prefs.groupFaction}
                 onClick={() => updatePrefs({ ...prefs, groupFaction: !prefs.groupFaction })}
                 className={`${CHIP} ${prefs.groupFaction ? CHIP_SLOT_ON : CHIP_IDLE}`}
               >
+                {prefs.groupFaction ? <Check size={11} aria-hidden="true" /> : <span className="inline-block w-[11px]" aria-hidden="true" />}
                 Faction
               </button>
               <button
@@ -695,11 +703,12 @@ export default function QuestsPanel({
                 onClick={() => updatePrefs({ ...prefs, groupNpc: !prefs.groupNpc })}
                 className={`${CHIP} ${prefs.groupNpc ? CHIP_SLOT_ON : CHIP_IDLE}`}
               >
+                {prefs.groupNpc ? <Check size={11} aria-hidden="true" /> : <span className="inline-block w-[11px]" aria-hidden="true" />}
                 NPC
               </button>
             </span>
             <label className="flex items-center gap-1 text-[11px] text-fg-muted">
-              <span className="hidden sm:inline">Sort</span>
+              <span>Sort</span>
               <select
                 value={prefs.sort}
                 onChange={(e) => updatePrefs({ ...prefs, sort: e.target.value as SortMode })}
@@ -724,6 +733,19 @@ export default function QuestsPanel({
                 className="w-full rounded border border-line-subtle/50 bg-surface-raised pl-7 pr-2 py-1 text-[12px] text-fg-primary placeholder:text-fg-disabled focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
               />
             </label>
+            {isViewFiltered(prefs, search) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('')
+                  updatePrefs({ ...prefs, status: 'all', sort: 'world' })
+                }}
+                className="shrink-0 text-[11px] text-status-warning hover:text-fg-bright underline-offset-2 hover:underline"
+                title="Reset filter, sort and search"
+              >
+                Clear
+              </button>
+            )}
             {canFold && (
               <button
                 type="button"

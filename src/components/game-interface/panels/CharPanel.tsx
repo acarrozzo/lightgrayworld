@@ -2,7 +2,7 @@
 
 import { Player, useGameStore, InventoryItem } from '@/lib/game-state'
 import { earnedTitles } from '@/lib/game-data/quest-registry'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import AvatarSelectionModal from '@/components/AvatarSelectionModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
@@ -11,6 +11,8 @@ import Icon from '@/components/Icon'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { buildSpellbook, hasLearnableSpell, spellTone } from '@/lib/spellbook'
 import { buildSkillbook, gearContextFromInventory, hasLearnableSkill, passiveSkillBonuses, skillTone } from '@/lib/skillbook'
+import AutoEquipRow from '@/components/game-interface/AutoEquipRow'
+import { describeStat, effectiveStats, type StatBreakdown } from '@/lib/effective-stats'
 
 import type { FilterTab } from '@/lib/inventory-categories'
 
@@ -95,6 +97,8 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
   // What the passives add for what is in hand right now — shown on the stats.
   const gear = useMemo(() => gearContextFromInventory(inventory), [inventory])
   const passives = useMemo(() => passiveSkillBonuses(player, gear), [player, gear])
+  // The four stats as combat rolls them — the same numbers the header shows.
+  const stats = useMemo(() => effectiveStats(player, inventory), [player, inventory])
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
@@ -111,6 +115,24 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
       })
     return map
   }, [inventory])
+
+  // Slots whose item just changed — a manual equip, an auto-equip loadout —
+  // flash for a moment so the eye finds what moved.
+  const prevSlotItemsRef = useRef<Map<string, string | null> | null>(null)
+  const [flashSlots, setFlashSlots] = useState<Set<string>>(() => new Set())
+  useEffect(() => {
+    const now = new Map<string, string | null>()
+    for (const slot of Object.values(EquipSlot)) now.set(slot, equippedBySlot.get(slot)?.id ?? null)
+    const prev = prevSlotItemsRef.current
+    prevSlotItemsRef.current = now
+    if (!prev) return
+    const changed = new Set<string>()
+    for (const [slot, id] of now) if (prev.get(slot) !== id) changed.add(slot)
+    if (changed.size === 0) return
+    setFlashSlots(changed)
+    const timer = setTimeout(() => setFlashSlots(new Set()), 1500)
+    return () => clearTimeout(timer)
+  }, [equippedBySlot])
 
   // Map EquipSlot to FilterTab
   const getFilterForSlot = (slot: EquipSlot): FilterTab => {
@@ -286,11 +308,12 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
-                <StatDisplay label="STR" core={player.str ?? 0} mod={player.strMod ?? 0} bonus={passives.str} compact color="text-stat-str" />
-                <StatDisplay label="DEX" core={player.dex ?? 0} mod={player.dexMod ?? 0} bonus={passives.dex} compact color="text-stat-dex" />
-                <StatDisplay label="MAG" core={player.mag ?? 0} mod={player.magMod ?? 0} compact color="text-stat-mag" />
-                <StatDisplay label="DEF" core={player.def ?? 0} mod={player.defMod ?? 0} bonus={passives.def} compact color="text-stat-def" />
+                <StatDisplay label="STR" stat={stats.str} compact color="text-stat-str" />
+                <StatDisplay label="DEX" stat={stats.dex} compact color="text-stat-dex" />
+                <StatDisplay label="MAG" stat={stats.mag} compact color="text-stat-mag" />
+                <StatDisplay label="DEF" stat={stats.def} compact color="text-stat-def" />
               </div>
+              <AutoEquipRow disabled={!isLoggedIn || !onAction} onAction={onAction} />
             </div>
 
             {/* Equipment Display */}
@@ -300,6 +323,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 {/* Row 1: MAIN_HAND, OFF_HAND */}
                 <EquipmentSlot
                   slot={EquipSlot.MAIN_HAND}
+                  flash={flashSlots.has(EquipSlot.MAIN_HAND)}
                   item={equippedBySlot.get(EquipSlot.MAIN_HAND)}
                   onUnequip={(playerItemId) =>
                     onAction?.({
@@ -311,6 +335,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 />
                 <EquipmentSlot
                   slot={EquipSlot.OFF_HAND}
+                  flash={flashSlots.has(EquipSlot.OFF_HAND)}
                   item={equippedBySlot.get(EquipSlot.OFF_HAND)}
                   ghostItem={(() => {
                     const main = equippedBySlot.get(EquipSlot.MAIN_HAND)
@@ -327,6 +352,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 {/* Row 2: HEAD, BODY */}
                 <EquipmentSlot
                   slot={EquipSlot.HEAD}
+                  flash={flashSlots.has(EquipSlot.HEAD)}
                   item={equippedBySlot.get(EquipSlot.HEAD)}
                   onUnequip={(playerItemId) =>
                     onAction?.({
@@ -338,6 +364,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 />
                 <EquipmentSlot
                   slot={EquipSlot.BODY}
+                  flash={flashSlots.has(EquipSlot.BODY)}
                   item={equippedBySlot.get(EquipSlot.BODY)}
                   onUnequip={(playerItemId) =>
                     onAction?.({
@@ -350,6 +377,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 {/* Row 3: HANDS, FEET */}
                 <EquipmentSlot
                   slot={EquipSlot.HANDS}
+                  flash={flashSlots.has(EquipSlot.HANDS)}
                   item={equippedBySlot.get(EquipSlot.HANDS)}
                   onUnequip={(playerItemId) =>
                     onAction?.({
@@ -361,6 +389,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 />
                 <EquipmentSlot
                   slot={EquipSlot.FEET}
+                  flash={flashSlots.has(EquipSlot.FEET)}
                   item={equippedBySlot.get(EquipSlot.FEET)}
                   onUnequip={(playerItemId) =>
                     onAction?.({
@@ -373,6 +402,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 {/* Row 4: RING */}
                 <EquipmentSlot
                   slot={EquipSlot.RING}
+                  flash={flashSlots.has(EquipSlot.RING)}
                   item={equippedBySlot.get(EquipSlot.RING)}
                   onUnequip={(playerItemId) =>
                     onAction?.({
@@ -384,6 +414,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 />
                 <EquipmentSlot
                   slot={EquipSlot.NECK}
+                  flash={flashSlots.has(EquipSlot.NECK)}
                   item={equippedBySlot.get(EquipSlot.NECK)}
                   onUnequip={(playerItemId) =>
                     onAction?.({
@@ -396,6 +427,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 {/* Row 5: MOUNT, ARTIFACT */}
                 <EquipmentSlot
                   slot={EquipSlot.MOUNT}
+                  flash={flashSlots.has(EquipSlot.MOUNT)}
                   item={equippedBySlot.get(EquipSlot.MOUNT)}
                   onUnequip={(playerItemId) =>
                     onAction?.({
@@ -407,6 +439,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 />
                 <EquipmentSlot
                   slot={EquipSlot.ARTIFACT}
+                  flash={flashSlots.has(EquipSlot.ARTIFACT)}
                   item={equippedBySlot.get(EquipSlot.ARTIFACT)}
                   onUnequip={(playerItemId) =>
                     onAction?.({
@@ -419,6 +452,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 {/* Row 6: COMPANION — swings beside you on every attack turn */}
                 <EquipmentSlot
                   slot={EquipSlot.COMPANION}
+                  flash={flashSlots.has(EquipSlot.COMPANION)}
                   item={equippedBySlot.get(EquipSlot.COMPANION)}
                   onUnequip={(playerItemId) =>
                     onAction?.({
@@ -574,22 +608,22 @@ function StatBox({ label, value, subtle = false, compact = false }: StatBoxProps
 
 interface StatDisplayProps {
   label: string
-  core: number
-  mod: number
-  /** What the passive skills add for what is in hand right now (the original's "+3 one-handed"). */
-  bonus?: number
+  /** The stat as combat rolls it: core, gear, running buffs, and the passive skills for what is in hand. */
+  stat: StatBreakdown
 }
 
-function StatDisplay({ label, core, mod, bonus = 0, compact = false, color }: StatDisplayProps & { compact?: boolean; color?: string }) {
-  const effective = core + mod + bonus
-
+function StatDisplay({ label, stat, compact = false, color }: StatDisplayProps & { compact?: boolean; color?: string }) {
   return (
-    <div className={`rounded-xl border border-line-subtle/40 bg-surface-panel/60 text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'}`}>
+    <div
+      className={`rounded-xl border border-line-subtle/40 bg-surface-panel/60 text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'}`}
+      title={describeStat(label, stat)}
+    >
       <p className={`text-xs uppercase tracking-wide leading-none ${color ?? 'text-fg-secondary'}`}>{label}</p>
-      <p className={`font-bold ${color ?? 'text-fg-bright'} ${compact ? 'text-lg mt-0.5' : 'text-2xl mt-1'}`}>{effective}</p>
+      <p className={`font-bold ${color ?? 'text-fg-bright'} ${compact ? 'text-lg mt-0.5' : 'text-2xl mt-1'}`}>{stat.total}</p>
       <p className="text-xs text-fg-muted leading-none tabular-nums">
-        {core}
-        {bonus > 0 && <span className="text-fg-disabled"> · +{bonus} skill</span>}
+        {stat.core}
+        {stat.buff > 0 && <span className="text-fg-disabled"> · +{stat.buff} buff</span>}
+        {stat.skill > 0 && <span className="text-fg-disabled"> · +{stat.skill} skill</span>}
       </p>
     </div>
   )
@@ -599,12 +633,17 @@ interface EquipmentSlotProps {
   slot: EquipSlot
   item?: InventoryItem
   ghostItem?: InventoryItem
+  /** The item here just changed: a short ring so the change is seen. */
+  flash?: boolean
   onUnequip: (playerItemId: string) => void
   onSwitchToInventory?: () => void
 }
 
-function EquipmentSlot({ slot, item, ghostItem, onUnequip, onSwitchToInventory }: EquipmentSlotProps) {
+const FLASH = 'ring-2 ring-accent/70'
+
+function EquipmentSlot({ slot, item, ghostItem, flash = false, onUnequip, onSwitchToInventory }: EquipmentSlotProps) {
   const slotName = slot.replace(/_/g, ' ')
+  const flashClass = flash ? FLASH : ''
 
   if (item) {
     const mods = renderStatMods(item.template.metadata)
@@ -613,7 +652,7 @@ function EquipmentSlot({ slot, item, ghostItem, onUnequip, onSwitchToInventory }
     return (
       <button
         onClick={() => onSwitchToInventory?.()}
-        className="rounded-lg border border-line-subtle/80 bg-surface-panel/80 px-3 py-2 text-left hover:bg-surface-raised/80 transition-colors flex items-center gap-2"
+        className={`rounded-lg border border-line-subtle/80 bg-surface-panel/80 px-3 py-2 text-left hover:bg-surface-raised/80 transition-all duration-500 flex items-center gap-2 ${flashClass}`}
       >
         <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-surface-hover/40 border border-line-strong/30">
           <Icon name={icon} size={22} className="text-fg-primary" />
@@ -632,7 +671,7 @@ function EquipmentSlot({ slot, item, ghostItem, onUnequip, onSwitchToInventory }
     const ghostIcon = resolveItemIcon(ghostItem.template.metadata as { icon?: string } | null, ghostItem.template.slug ?? '')
 
     return (
-      <div className="rounded-lg border border-line-subtle/80 bg-surface-panel/80 px-3 py-2 cursor-default select-none">
+      <div className={`rounded-lg border border-line-subtle/80 bg-surface-panel/80 px-3 py-2 cursor-default select-none transition-all duration-500 ${flashClass}`}>
         <div className="flex items-center gap-2 opacity-35">
           <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-surface-hover/40 border border-line-strong/30">
             <Icon name={ghostIcon} size={22} className="text-fg-primary" />
@@ -650,7 +689,7 @@ function EquipmentSlot({ slot, item, ghostItem, onUnequip, onSwitchToInventory }
   return (
     <button
       onClick={() => onSwitchToInventory?.()}
-      className="rounded-lg border border-line-subtle/70 bg-surface-panel/60 px-3 py-2 text-left hover:bg-surface-raised/60 hover:border-line-subtle transition-colors cursor-pointer"
+      className={`rounded-lg border border-line-subtle/70 bg-surface-panel/60 px-3 py-2 text-left hover:bg-surface-raised/60 hover:border-line-subtle transition-all duration-500 cursor-pointer ${flashClass}`}
     >
       <p className="text-xs uppercase tracking-wide text-fg-secondary">{slotName}</p>
       <p className="text-sm text-fg-muted mt-0.5">- - -</p>

@@ -2,8 +2,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/prisma'
+import { cachedWorldToolData } from '@/lib/world-tool/cached'
 import ItemsTable, { type ItemRow } from './ItemsTable'
-import WorldToolNav from '@/components/WorldToolNav'
 import { resolveItemIcon } from '@/lib/item-actions'
 
 // Source data — where equipable items come from in the world. Required live so
@@ -300,25 +300,32 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
   return sources
 }
 
-export default async function ItemsPage() {
-  const items = await prisma.itemTemplate.findMany({
-    orderBy: { id: 'asc' },
-    select: {
-      slug: true,
-      name: true,
-      type: true,
-      value: true,
-      max: true,
-      canSell: true,
-      canDrop: true,
-      equipSlot: true,
-      weaponCategory: true,
-      metadata: true,
-    },
-  })
+// Every template, and the room names their sources point at — both at once,
+// and cached in production: see lib/world-tool/cached.ts.
+const loadItemData = cachedWorldToolData('items', () =>
+  Promise.all([
+    prisma.itemTemplate.findMany({
+      orderBy: { id: 'asc' },
+      select: {
+        slug: true,
+        name: true,
+        type: true,
+        value: true,
+        max: true,
+        canSell: true,
+        canDrop: true,
+        equipSlot: true,
+        weaponCategory: true,
+        metadata: true,
+      },
+    }),
+    // Resolve roomId → friendly name so room sources read nicely.
+    prisma.room.findMany({ select: { roomId: true, name: true } }),
+  ])
+)
 
-  // Resolve roomId → friendly name so room sources read nicely.
-  const dbRooms = await prisma.room.findMany({ select: { roomId: true, name: true } })
+export default async function ItemsPage() {
+  const [items, dbRooms] = await loadItemData()
   const roomNames = new Map(dbRooms.map((r) => [r.roomId, r.name]))
   const sourceMap = buildSourceMap(roomNames)
 
@@ -364,17 +371,14 @@ export default async function ItemsPage() {
   })
 
   return (
-    <div className="min-h-screen fill-surface-canvas">
-      <WorldToolNav active="items" />
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-fg-bright">Item Compendium</h1>
-          <p className="mt-1 text-sm text-fg-secondary">
-            {rows.length} items — pulled live from the game data.
-          </p>
-        </header>
-        <ItemsTable rows={rows} groups={groups} />
-      </div>
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-fg-bright">Item Compendium</h1>
+        <p className="mt-1 text-sm text-fg-secondary">
+          {rows.length} items — pulled live from the game data.
+        </p>
+      </header>
+      <ItemsTable rows={rows} groups={groups} />
     </div>
   )
 }

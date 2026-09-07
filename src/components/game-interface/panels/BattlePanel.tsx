@@ -758,6 +758,7 @@ export default function BattlePanel({
               <p className="text-[10px] text-fg-disabled uppercase tracking-widest">
                 {supportAction.kind === 'equip_item' ? 'Equipped'
                   : supportAction.kind === 'unequip_item' ? 'Unequipped'
+                  : supportAction.kind === 'auto_equip' ? 'Auto-equipped'
                   : supportAction.kind === 'cast_spell' ? 'Cast'
                   : 'Used'}
               </p>

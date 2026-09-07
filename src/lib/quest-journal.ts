@@ -383,9 +383,20 @@ export function isGroupCollapsed(group: JournalGroup, prefs: JournalPrefs): bool
   return false
 }
 
-/** A giver's rows fold independently of their faction; remembered the same way. */
+/** Every one of the giver's quests turned in. */
+export function isSectionFinished(section: JournalGiverSection): boolean {
+  return section.met && section.total > 0 && section.done === section.total
+}
+
+/**
+ * A giver's rows fold independently of their faction and are remembered the
+ * same way: folded when the player folded them, or when the giver is finished
+ * with and the player never unfolded them.
+ */
 export function isSectionCollapsed(section: JournalGiverSection, prefs: JournalPrefs): boolean {
-  return prefs.collapsed.includes(section.key)
+  if (prefs.collapsed.includes(section.key)) return true
+  if (isSectionFinished(section) && !prefs.unfolded.includes(section.key)) return true
+  return false
 }
 
 export function toggleSectionCollapsed(section: JournalGiverSection, prefs: JournalPrefs): JournalPrefs {
@@ -393,7 +404,13 @@ export function toggleSectionCollapsed(section: JournalGiverSection, prefs: Jour
   return {
     ...prefs,
     collapsed: collapsed ? prefs.collapsed.filter((id) => id !== section.key) : [...new Set([...prefs.collapsed, section.key])],
+    unfolded: collapsed ? [...new Set([...prefs.unfolded, section.key])] : prefs.unfolded.filter((id) => id !== section.key),
   }
+}
+
+/** True when any of filter, sort or search is off its default. */
+export function isViewFiltered(prefs: Pick<JournalPrefs, 'status' | 'sort'>, search: string): boolean {
+  return prefs.status !== 'all' || prefs.sort !== 'world' || search.trim().length > 0
 }
 
 export function toggleGroupCollapsed(group: JournalGroup, prefs: JournalPrefs): JournalPrefs {

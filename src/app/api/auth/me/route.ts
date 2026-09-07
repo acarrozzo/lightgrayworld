@@ -9,6 +9,7 @@ import { projectSpellState } from '@/lib/game-engine/services/spell-service'
 import { projectSkillState } from '@/lib/game-engine/services/skill-service'
 import { projectMapState } from '@/lib/game-engine/services/map-state'
 import { projectGoldChestState } from '@/lib/game-data/gold-chests'
+import { projectBuffState } from '@/lib/game-engine/services/buff-service'
 
 async function handleGetMe(request: AuthenticatedRequest) {
   try {
@@ -65,6 +66,7 @@ async function handleGetMe(request: AuthenticatedRequest) {
       ...projectSpellState(freshUser),
       ...projectSkillState(freshUser),
       ...projectMapState(freshUser),
+      ...projectBuffState(freshUser),
     }
 
     return NextResponse.json({

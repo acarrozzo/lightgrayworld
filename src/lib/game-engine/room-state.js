@@ -14,6 +14,7 @@ function isAllowedWhileDead(action) {
 const { pickupRoomItem, dropRoomItem, getRoomItems } = require('./services/room-item-service')
 const { getPlayerInventory, grantItemOnce, getItemBySlug } = require('./services/inventory-service')
 const { equipItem, unequipItem } = require('./services/equipment-service')
+const { autoEquip, isAutoEquipMode } = require('./services/auto-equip-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
 const { getSpell, findSpellByCommand, isCastable } = require('../game-data/spells')
@@ -497,6 +498,7 @@ const TURN_ACTIONS = new Set([
   'use_item',
   'equip_item',
   'unequip_item',
+  'auto_equip',
   'pickup_item',
   'drop_item',
 ])
@@ -768,6 +770,9 @@ class RoomState {
       case 'unequip_item':
         result = await this.executeUnequipItem(action, playerId)
         break
+      case 'auto_equip':
+        result = await this.executeAutoEquip(action, playerId)
+        break
       case 'accept_quest':
         return await this.executeAcceptQuest(action, playerId)
       case 'complete_quest':
@@ -778,7 +783,8 @@ class RoomState {
 
     // After a TURN_ACTION completes, the room's hazard (if it has one) bites,
     // then check for enemy spawn in probabilistic rooms.
-    if (result?.success && TURN_ACTIONS.has(action.type)) {
+    // A turn action that turned out to be a no-op (`noTurn`) rolls nothing.
+    if (result?.success && !result.noTurn && TURN_ACTIONS.has(action.type)) {
       result = await this.appendHazardEvents(result, playerId)
       result = await this.appendSpawnEvents(result, playerId)
     }
@@ -1874,6 +1880,81 @@ class RoomState {
         itemMetadata: result.item?.metadata ?? null,
         actionVerb: 'equip',
         effectText: null,
+      })
+      return mergeSupportTurnIntoResult(baseResult, supportTurn)
+    }
+
+    return baseResult
+  }
+
+  // The original's MAX buttons: dress for one stat in a single action. It
+  // costs one turn, like a single equip — the hazard and spawn rolls run once,
+  // and in battle the enemy gets one swing, not one per slot. When nothing
+  // needs to change it costs nothing.
+  async executeAutoEquip(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('auto_equip', 'Player not found in this room')
+    }
+
+    const { mode, skipNegatives } = action.data || {}
+    if (!isAutoEquipMode(mode)) {
+      return this.createErrorResult('auto_equip', 'Choose 1H, 2H, DEX, MAG or DEF to auto-equip')
+    }
+
+    this.touchActivity()
+
+    const result = await autoEquip(playerId, { mode, skipNegatives: skipNegatives === true })
+    if (!result.success) {
+      return this.createErrorResult('auto_equip', result.message)
+    }
+
+    const data = {
+      inventory: result.inventory,
+      player: result.player,
+      autoEquip: {
+        mode,
+        label: result.label,
+        stat: result.stat,
+        before: result.before,
+        after: result.after,
+        changes: result.changes,
+      },
+    }
+
+    if (!result.changed) {
+      return {
+        success: true,
+        action: 'auto_equip',
+        noTurn: true,
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload('auto_equip', 'info', result.message, data),
+          },
+        ],
+      }
+    }
+
+    const baseResult = {
+      success: true,
+      action: 'auto_equip',
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('auto_equip', 'success', result.message, data),
+        },
+      ],
+    }
+
+    if (this.activeBattles.get(playerId)?.isActive) {
+      const supportTurn = await resolveSupportTurn(playerId, this, {
+        kind: 'auto_equip',
+        itemSlug: 'auto-equip',
+        itemName: `${result.label} gear`,
+        itemMetadata: { icon: 'magicarmor' },
+        actionVerb: 'auto-equip',
+        effectText: `${result.stat.toUpperCase()} ${result.before} → ${result.after}`,
       })
       return mergeSupportTurnIntoResult(baseResult, supportTurn)
     }

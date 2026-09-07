@@ -1836,7 +1836,8 @@ async function learnSilverAura(playerId, roomState) {
   const { prisma } = require('../db-client')
   roomState.touchActivity()
 
-  const respond = (outcome, message) => ({
+  const { BUFF_SELECT, projectBuffState } = require('./services/buff-service')
+  const respond = (outcome, message, extra = {}) => ({
     success: outcome === 'success',
     action: 'learn silver aura',
     playerEvents: [
@@ -1846,6 +1847,7 @@ async function learnSilverAura(playerId, roomState) {
           roomId: roomState.roomId,
           showModal: true,
           modalContent: { type: 'icon', icon: 'pillar2', iconColor: 'gray-300', title: 'The Silver Shaman', message },
+          ...extra,
         }),
       },
     ],
@@ -1875,10 +1877,13 @@ async function learnSilverAura(playerId, roomState) {
     )
   }
 
-  await prisma.user.update({ where: { id: playerId }, data: { silverAura: true } })
+  const updated = await prisma.user.update({ where: { id: playerId }, data: { silverAura: true }, select: BUFF_SELECT })
   return respond(
     'success',
-    'The Silver Shaman drifts down out of the corner, touches your breastplate, and the silver on you rings like a bell. You learn the Silver Aura! +20 to STR, DEX, MAG and DEF, always, in anything you wear.'
+    'The Silver Shaman drifts down out of the corner, touches your breastplate, and the silver on you rings like a bell. You learn the Silver Aura! +20 to STR, DEX, MAG and DEF, always, in anything you wear.',
+    // A standing bonus the stats read at once: hand the client its buff view
+    // so the header and the character panel show the +20 now, not next login.
+    { player: projectBuffState(updated) }
   )
 }
 

@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { useUrlEnum, useUrlString, useUrlFlag } from '@/components/world-tool/useUrlState'
+import { useIsWide } from '@/components/world-tool/useIsWide'
 import Icon from '@/components/Icon'
 import { Tag, SortableTh } from '@/components/world-tool/ui'
 import { EntityLink, enemyHref, roomHref, questHref, useAnchorTarget } from '@/components/world-tool/EntityLink'
@@ -111,6 +112,7 @@ export default function ItemsTable({
   const [sortDir, setSortDir] = useUrlEnum<'asc' | 'desc'>('dir', ['asc', 'desc'] as const, 'asc')
 
   useAnchorTarget()
+  const wide = useIsWide()
 
   const getVal = SORTERS[sortKey]
 
@@ -227,64 +229,66 @@ export default function ItemsTable({
         <span className="ml-auto text-xs text-fg-muted">{sorted.length} shown</span>
       </div>
 
-      {/* Mobile cards */}
-      <div className="md:hidden space-y-2">
-        {sorted.length === 0 && (
-          <p className="py-6 text-center text-fg-muted text-sm">No items match this filter.</p>
-        )}
-        {grid
-          ? grid.map((g) => (
-              <div key={g.group}>
-                <p className="px-1 py-2 text-xs font-semibold uppercase tracking-wide text-fg-secondary">
-                  {g.group}
-                </p>
-                {g.rows.map((r) => (
-                  <ItemCard key={r.slug} r={r} />
-                ))}
-              </div>
-            ))
-          : sorted.map((r) => <ItemCard key={r.slug} r={r} />)}
-      </div>
-
-      {/* Desktop table */}
-      <div className="hidden md:block overflow-x-auto rounded-lg border border-line-subtle">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
-              <SortableTh
-                label="Item"
-                active={sortKey === 'source'}
-                dir={sortDir}
-                onSort={() => clickHeader('source')}
-              />
-              {COLUMNS.map((col) => (
+      {/* One layout, not both: cards below md, the table from md up. */}
+      {!wide && (
+        <div className="space-y-2">
+          {sorted.length === 0 && (
+            <p className="py-6 text-center text-fg-muted text-sm">No items match this filter.</p>
+          )}
+          {grid
+            ? grid.map((g) => (
+                <div key={g.group}>
+                  <p className="px-1 py-2 text-xs font-semibold uppercase tracking-wide text-fg-secondary">
+                    {g.group}
+                  </p>
+                  {g.rows.map((r) => (
+                    <ItemCard key={r.slug} r={r} />
+                  ))}
+                </div>
+              ))
+            : sorted.map((r) => <ItemCard key={r.slug} r={r} />)}
+        </div>
+      )}
+      {wide && (
+        <div className="overflow-x-auto rounded-lg border border-line-subtle">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
                 <SortableTh
-                  key={col.key}
-                  label={col.label}
-                  align="right"
-                  active={sortKey === col.key}
+                  label="Item"
+                  active={sortKey === 'source'}
                   dir={sortDir}
-                  onSort={() => clickHeader(col.key)}
+                  onSort={() => clickHeader('source')}
                 />
-              ))}
-              <th className="px-3 py-2 font-medium">Flags</th>
-              <th className="px-3 py-2 font-medium">Source</th>
-            </tr>
-          </thead>
-          <tbody>
-            {grid
-              ? grid.map((g) => <GroupBlock key={g.group} group={g.group} rows={g.rows} />)
-              : sorted.map((r) => <ItemTr key={r.slug} r={r} />)}
-            {sorted.length === 0 && (
-              <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-fg-muted">
-                  No items match this filter.
-                </td>
+                {COLUMNS.map((col) => (
+                  <SortableTh
+                    key={col.key}
+                    label={col.label}
+                    align="right"
+                    active={sortKey === col.key}
+                    dir={sortDir}
+                    onSort={() => clickHeader(col.key)}
+                  />
+                ))}
+                <th className="px-3 py-2 font-medium">Flags</th>
+                <th className="px-3 py-2 font-medium">Source</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {grid
+                ? grid.map((g) => <GroupBlock key={g.group} group={g.group} rows={g.rows} />)
+                : sorted.map((r) => <ItemTr key={r.slug} r={r} />)}
+              {sorted.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-3 py-6 text-center text-fg-muted">
+                    No items match this filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

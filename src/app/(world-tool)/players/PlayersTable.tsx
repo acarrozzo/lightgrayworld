@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useUrlEnum, useUrlString } from '@/components/world-tool/useUrlState'
+import { useIsWide } from '@/components/world-tool/useIsWide'
 import Link from 'next/link'
 import Icon from '@/components/Icon'
 import { Tag, SortableTh } from '@/components/world-tool/ui'
@@ -119,6 +120,7 @@ export default function PlayersTable({ rows }: { rows: PlayerRow[] }) {
   const [sortDir, setSortDir] = useUrlEnum<'asc' | 'desc'>('dir', ['asc', 'desc'] as const, 'desc')
   const [query, setQuery] = useUrlString('q', '')
   const [open, setOpen] = useState<Set<string>>(new Set())
+  const wide = useIsWide()
 
   const getVal = SORTERS[sortKey]
 
@@ -167,48 +169,50 @@ export default function PlayersTable({ rows }: { rows: PlayerRow[] }) {
         <span className="ml-auto text-xs text-fg-muted">{sorted.length} shown</span>
       </div>
 
-      {/* Mobile cards */}
-      <div className="md:hidden space-y-2">
-        {sorted.length === 0 && (
-          <p className="py-6 text-center text-sm text-fg-muted">No players match this search.</p>
-        )}
-        {sorted.map((r) => (
-          <PlayerCard key={r.id} r={r} expanded={open.has(r.id)} onToggle={() => toggle(r.id)} />
-        ))}
-      </div>
-
-      {/* Desktop table */}
-      <div className="hidden overflow-x-auto rounded-lg border border-line-subtle md:block">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
-              <th className="w-8 px-3 py-2" />
-              {COLUMNS.map((col) => (
-                <SortableTh
-                  key={col.key}
-                  label={col.label}
-                  align={col.align}
-                  active={sortKey === col.key}
-                  dir={sortDir}
-                  onSort={() => clickHeader(col.key)}
-                />
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((r) => (
-              <PlayerTr key={r.id} r={r} expanded={open.has(r.id)} onToggle={() => toggle(r.id)} />
-            ))}
-            {sorted.length === 0 && (
-              <tr>
-                <td colSpan={COLUMNS.length + 1} className="px-3 py-6 text-center text-fg-muted">
-                  No players match this search.
-                </td>
+      {/* One layout, not both: cards below md, the table from md up. */}
+      {!wide && (
+        <div className="space-y-2">
+          {sorted.length === 0 && (
+            <p className="py-6 text-center text-sm text-fg-muted">No players match this search.</p>
+          )}
+          {sorted.map((r) => (
+            <PlayerCard key={r.id} r={r} expanded={open.has(r.id)} onToggle={() => toggle(r.id)} />
+          ))}
+        </div>
+      )}
+      {wide && (
+        <div className="overflow-x-auto rounded-lg border border-line-subtle">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
+                <th className="w-8 px-3 py-2" />
+                {COLUMNS.map((col) => (
+                  <SortableTh
+                    key={col.key}
+                    label={col.label}
+                    align={col.align}
+                    active={sortKey === col.key}
+                    dir={sortDir}
+                    onSort={() => clickHeader(col.key)}
+                  />
+                ))}
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {sorted.map((r) => (
+                <PlayerTr key={r.id} r={r} expanded={open.has(r.id)} onToggle={() => toggle(r.id)} />
+              ))}
+              {sorted.length === 0 && (
+                <tr>
+                  <td colSpan={COLUMNS.length + 1} className="px-3 py-6 text-center text-fg-muted">
+                    No players match this search.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

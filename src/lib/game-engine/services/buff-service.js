@@ -55,6 +55,9 @@ const STANDING_BONUS_FIELDS = {
   silverAura: { stats: ['str', 'dex', 'mag', 'def'], amount: 20 },
 }
 
+/** The standing-bonus flags, for the buff view the client keeps. */
+const STANDING_FIELDS = Object.keys(STANDING_BONUS_FIELDS)
+
 /** Prisma `select` covering every buff countdown and standing bonus. */
 const BUFF_SELECT = Object.fromEntries(
   [...BUFF_FIELDS, ...Object.keys(STANDING_BONUS_FIELDS)].map((field) => [field, true])
@@ -81,6 +84,21 @@ function getStatBuffBonuses(row) {
 }
 
 /**
+ * The client-facing view of a User row's buffs: every countdown, plus each
+ * standing bonus as 1/0, so getStatBuffBonuses reads the same shape on both
+ * sides. `player.buffs` on the client is exactly this object — the header
+ * and the character panel add it to the stats the way BattleState does.
+ * @param {Object|null|undefined} row
+ * @returns {{ buffs: Record<string, number> }}
+ */
+function projectBuffState(row) {
+  const buffs = {}
+  for (const field of BUFF_FIELDS) buffs[field] = Number(row?.[field] ?? 0)
+  for (const field of STANDING_FIELDS) buffs[field] = row?.[field] ? 1 : 0
+  return { buffs }
+}
+
+/**
  * Decrement every running buff by one click.
  *
  * Written as a single clamped UPDATE so it costs one round trip and can never
@@ -95,7 +113,7 @@ function getStatBuffBonuses(row) {
 async function tickBuffs(prisma, playerId) {
   const setClause = BUFF_FIELDS.map((f) => `"${f}" = GREATEST(0, "${f}" - 1)`).join(', ')
   const prevClause = BUFF_FIELDS.map((f) => `"${f}" AS "prev_${f}"`).join(', ')
-  const returnClause = BUFF_FIELDS.map((f) => `"${f}"`).join(', ')
+  const returnClause = [...BUFF_FIELDS, ...STANDING_FIELDS].map((f) => `"${f}"`).join(', ')
 
   // Field names come from the module-level BUFF_FIELDS allow-list, never input.
   const rows = await prisma.$queryRawUnsafe(
@@ -117,6 +135,7 @@ async function tickBuffs(prisma, playerId) {
     buffs[field] = value
     if (value === 0 && Number(prev[`prev_${field}`] ?? 0) > 0) expired.push(field)
   }
+  for (const field of STANDING_FIELDS) buffs[field] = row[field] ? 1 : 0
 
   return { buffs, expired }
 }
@@ -169,23 +188,28 @@ const BUFF_LABELS = {
  */
 async function clearBuffs(prisma, playerId) {
   const setClause = BUFF_FIELDS.map((f) => `"${f}" = 0`).join(', ')
-  const returnClause = BUFF_FIELDS.map((f) => `"${f}"`).join(', ')
+  const returnClause = [...BUFF_FIELDS, ...STANDING_FIELDS].map((f) => `"${f}"`).join(', ')
   // Field names come from the module-level BUFF_FIELDS allow-list, never input.
   const rows = await prisma.$queryRawUnsafe(
     `UPDATE "User" SET ${setClause} WHERE id = $1 RETURNING ${returnClause}`,
     playerId
   )
   const row = rows[0] || {}
-  return Object.fromEntries(BUFF_FIELDS.map((f) => [f, Number(row[f] ?? 0)]))
+  return {
+    ...Object.fromEntries(BUFF_FIELDS.map((f) => [f, Number(row[f] ?? 0)])),
+    ...Object.fromEntries(STANDING_FIELDS.map((f) => [f, row[f] ? 1 : 0])),
+  }
 }
 
 module.exports = {
   STANDING_BONUS_FIELDS,
+  STANDING_FIELDS,
   STAT_BUFF_FIELDS,
   BUFF_FIELDS,
   BUFF_SELECT,
   BUFF_LABELS,
   getStatBuffBonuses,
+  projectBuffState,
   tickBuffs,
   applyBuff,
   clearBuffs,

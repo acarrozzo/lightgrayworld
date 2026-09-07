@@ -34,3 +34,22 @@ export function questHref(questId: string) {
 export function questGiverHref(giverId: string) {
   return `/quests#${encodeURIComponent(giverId)}`
 }
+
+/**
+ * The reference pages that are server-rendered tables rather than client
+ * lists. Their rows carry `data-anchor` too, so a hit from the rail's search
+ * lands on the row and flashes it like everywhere else.
+ */
+export function skillHref(skillId: string) {
+  return `/skills#${encodeURIComponent(skillId)}`
+}
+export function spellHref(spellId: string) {
+  return `/spells#${encodeURIComponent(spellId)}`
+}
+export function recipeHref(recipeId: string) {
+  return `/crafting#${encodeURIComponent(recipeId)}`
+}
+/** A shop is keyed by the room it stands in. */
+export function shopHref(roomId: string) {
+  return `/shops#${encodeURIComponent(roomId)}`
+}

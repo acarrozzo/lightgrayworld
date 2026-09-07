@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/prisma'
-import WorldToolNav from '@/components/WorldToolNav'
+import { cachedWorldToolData } from '@/lib/world-tool/cached'
 import RoomDescCompare, { type CompareRow, type SideData } from './RoomDescCompare'
 import legacyData from '@/lib/game-data/legacy-rooms.json'
 
@@ -51,8 +51,13 @@ const sameList = (a: string[], b: string[]) => {
   return x.length === y.length && x.every((v, i) => v === y[i])
 }
 
+// Every room row, cached in production: see lib/world-tool/cached.ts.
+const loadRoomsForCompare = cachedWorldToolData('room-desc', () =>
+  prisma.room.findMany({ orderBy: { roomId: 'asc' } })
+)
+
 export default async function RoomDescPage() {
-  const rooms = await prisma.room.findMany({ orderBy: { roomId: 'asc' } })
+  const rooms = await loadRoomsForCompare()
 
   const legacyRooms = (legacyData as { rooms: LegacyRoom[] }).rooms
   const legacyById = new Map(legacyRooms.map((r) => [r.roomId, r]))
@@ -125,28 +130,25 @@ export default async function RoomDescPage() {
   })
 
   return (
-    <div className="min-h-screen fill-surface-canvas">
-      <WorldToolNav active="room-desc" />
-      <div className="mx-auto max-w-[110rem] px-4 py-8">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-fg-bright">Room Desc</h1>
-          <p className="mt-1 max-w-4xl text-sm text-fg-secondary">
-            Every room in the original game beside its counterpart in the recreation — title,
-            subtitle, description, actions and exits, field by field. {legacyRooms.length} rooms in
-            the original, {rooms.length} in the new game. A field is marked changed only when the
-            two genuinely differ; case and spacing are ignored, nothing else is.
-          </p>
-          <p className="mt-2 max-w-4xl text-xs text-fg-muted">
-            The original&rsquo;s side is a snapshot in{' '}
-            <code className="text-fg-secondary">src/lib/game-data/legacy-rooms.json</code>, scraped
-            from the reference game by{' '}
-            <code className="text-fg-secondary">npm run generate-legacy-rooms</code>. The reference
-            itself is never read at runtime and never modified. The new game&rsquo;s side is live
-            from the database and the engine&rsquo;s room-action table, so it moves as you port.
-          </p>
-        </header>
-        <RoomDescCompare rows={rows} />
-      </div>
+    <div className="mx-auto max-w-[110rem] px-4 py-8">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-fg-bright">Room Desc</h1>
+        <p className="mt-1 max-w-4xl text-sm text-fg-secondary">
+          Every room in the original game beside its counterpart in the recreation — title,
+          subtitle, description, actions and exits, field by field. {legacyRooms.length} rooms in
+          the original, {rooms.length} in the new game. A field is marked changed only when the
+          two genuinely differ; case and spacing are ignored, nothing else is.
+        </p>
+        <p className="mt-2 max-w-4xl text-xs text-fg-muted">
+          The original&rsquo;s side is a snapshot in{' '}
+          <code className="text-fg-secondary">src/lib/game-data/legacy-rooms.json</code>, scraped
+          from the reference game by{' '}
+          <code className="text-fg-secondary">npm run generate-legacy-rooms</code>. The reference
+          itself is never read at runtime and never modified. The new game&rsquo;s side is live
+          from the database and the engine&rsquo;s room-action table, so it moves as you port.
+        </p>
+      </header>
+      <RoomDescCompare rows={rows} />
     </div>
   )
 }

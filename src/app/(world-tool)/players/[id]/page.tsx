@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Icon from '@/components/Icon'
-import WorldToolNav from '@/components/WorldToolNav'
 
 // Resolve every equipment slot the way the public-profile route does:
 // legacy `Equipment` string slots as the fallback, equipped `PlayerItem` rows override.
@@ -110,92 +109,89 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   ].filter(Boolean).length
 
   return (
-    <div className="min-h-screen fill-surface-canvas">
-      <WorldToolNav active="players" />
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        <Link href="/players" className="text-sm text-accent-hover hover:underline">
-          ← Back to Players
-        </Link>
+    <div className="mx-auto max-w-5xl px-4 py-8">
+      <Link href="/players" className="text-sm text-accent-hover hover:underline">
+        ← Back to Players
+      </Link>
 
-        {/* Header */}
-        <header className="mt-4 mb-6 flex items-center gap-4">
-          <Icon name={user.uIcon} size={48} color={user.uIconColor} />
-          <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-fg-bright">
-              {user.username}
-              {user.inFight && (
-                <span className="rounded border border-status-error px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-status-error">
-                  in battle
-                </span>
-              )}
-              {!user.isActive && (
-                <span className="rounded border border-line-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fg-muted">
-                  inactive
-                </span>
-              )}
-            </h1>
-            <p className="text-sm text-fg-secondary">
-              Level {user.level} · {user.characterRace} {user.characterClass}
-            </p>
-          </div>
-        </header>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <Section title="Vitals & Attributes">
-            <Stat label="Max HP" value={`${user.hp} / ${user.hpMax}`} color="text-status-error" />
-            <Stat label="Max MP" value={`${user.mp} / ${user.mpMax}`} color="text-resource-mp" />
-            <Stat label="STR" value={`${user.str}${user.strMod ? ` (+${user.strMod})` : ''}`} color="text-resource-hp" />
-            <Stat label="DEX" value={`${user.dex}${user.dexMod ? ` (+${user.dexMod})` : ''}`} color="text-status-success" />
-            <Stat label="MAG" value={`${user.mag}${user.magMod ? ` (+${user.magMod})` : ''}`} color="text-action-search" />
-            <Stat label="DEF" value={`${user.def}${user.defMod ? ` (+${user.defMod})` : ''}`} color="text-resource-gold" />
-            <Stat label="Physical Training" value={user.physicalTraining} color="text-action-attack" />
-            <Stat label="Mental Training" value={user.mentalTraining} color="text-stat-mag" />
-          </Section>
-
-          <Section title="Progression">
-            <Stat label="Level" value={user.level} color="text-status-warning" />
-            <Stat label="XP (current)" value={user.xp.toLocaleString()} color="text-status-success" />
-            <Stat label="Currency" value={user.currency} color="text-status-warning" />
-            <Stat label="Total Clicks" value={user.clicks.toLocaleString()} />
-            <Stat label="Deaths" value={user.deaths} color="text-status-error" />
-            <Stat label="Chests Opened" value={`${chestsOpened} / 10`} color="text-resource-gold" />
-            <Stat label="Daily Chests" value={user.dailyChestCount} color="text-resource-gold" />
-            <Stat label="Completed Quests" value={`${completedQuestCount} / ${questCount}`} color="text-status-success" />
-          </Section>
-
-          <Section title="Location & Activity">
-            <Stat label="Current Room" value={`${user.room?.name || user.currentRoom} (${user.currentRoom})`} color="text-action-search" />
-            <Stat label="Recall Room" value={user.recallRoom} color="text-action-search" />
-            <Stat label="Last Login" value={dateWithRelative(user.lastActive)} />
-            <Stat label="Account Created" value={fmtDate(user.createdAt)} />
-          </Section>
-
-          <Section title="Combat">
-            <Stat label="Total Kills" value={totalKills} color="text-fg-bright" />
-            <Stat
-              label="Last Enemy Fought"
-              value={lastBattle ? `${lastBattle.enemyName} (${lastBattle.outcome})` : '—'}
-              color={lastBattle?.outcome === 'victory' ? 'text-status-success' : lastBattle ? 'text-status-error' : undefined}
-            />
-            {lastBattle && (
-              <Stat label="Last Battle" value={fmtDate(lastBattle.createdAt)} />
+      {/* Header */}
+      <header className="mt-4 mb-6 flex items-center gap-4">
+        <Icon name={user.uIcon} size={48} color={user.uIconColor} />
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-fg-bright">
+            {user.username}
+            {user.inFight && (
+              <span className="rounded border border-status-error px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-status-error">
+                in battle
+              </span>
             )}
-          </Section>
-
-          <Section title="Equipment">
-            {EQUIP_SLOTS.map((s) => (
-              <Stat key={s.key} label={s.label} value={equip[s.key]} />
-            ))}
-          </Section>
-
-          <Section title={`Kill List (${kills.length})`}>
-            {kills.length === 0 ? (
-              <p className="text-sm text-fg-muted">No kills recorded.</p>
-            ) : (
-              kills.map((k) => <Stat key={k.id} label={k.monster} value={k.kills} color="text-fg-bright" />)
+            {!user.isActive && (
+              <span className="rounded border border-line-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fg-muted">
+                inactive
+              </span>
             )}
-          </Section>
+          </h1>
+          <p className="text-sm text-fg-secondary">
+            Level {user.level} · {user.characterRace} {user.characterClass}
+          </p>
         </div>
+      </header>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Section title="Vitals & Attributes">
+          <Stat label="Max HP" value={`${user.hp} / ${user.hpMax}`} color="text-status-error" />
+          <Stat label="Max MP" value={`${user.mp} / ${user.mpMax}`} color="text-resource-mp" />
+          <Stat label="STR" value={`${user.str}${user.strMod ? ` (+${user.strMod})` : ''}`} color="text-resource-hp" />
+          <Stat label="DEX" value={`${user.dex}${user.dexMod ? ` (+${user.dexMod})` : ''}`} color="text-status-success" />
+          <Stat label="MAG" value={`${user.mag}${user.magMod ? ` (+${user.magMod})` : ''}`} color="text-action-search" />
+          <Stat label="DEF" value={`${user.def}${user.defMod ? ` (+${user.defMod})` : ''}`} color="text-resource-gold" />
+          <Stat label="Physical Training" value={user.physicalTraining} color="text-action-attack" />
+          <Stat label="Mental Training" value={user.mentalTraining} color="text-stat-mag" />
+        </Section>
+
+        <Section title="Progression">
+          <Stat label="Level" value={user.level} color="text-status-warning" />
+          <Stat label="XP (current)" value={user.xp.toLocaleString()} color="text-status-success" />
+          <Stat label="Currency" value={user.currency} color="text-status-warning" />
+          <Stat label="Total Clicks" value={user.clicks.toLocaleString()} />
+          <Stat label="Deaths" value={user.deaths} color="text-status-error" />
+          <Stat label="Chests Opened" value={`${chestsOpened} / 10`} color="text-resource-gold" />
+          <Stat label="Daily Chests" value={user.dailyChestCount} color="text-resource-gold" />
+          <Stat label="Completed Quests" value={`${completedQuestCount} / ${questCount}`} color="text-status-success" />
+        </Section>
+
+        <Section title="Location & Activity">
+          <Stat label="Current Room" value={`${user.room?.name || user.currentRoom} (${user.currentRoom})`} color="text-action-search" />
+          <Stat label="Recall Room" value={user.recallRoom} color="text-action-search" />
+          <Stat label="Last Login" value={dateWithRelative(user.lastActive)} />
+          <Stat label="Account Created" value={fmtDate(user.createdAt)} />
+        </Section>
+
+        <Section title="Combat">
+          <Stat label="Total Kills" value={totalKills} color="text-fg-bright" />
+          <Stat
+            label="Last Enemy Fought"
+            value={lastBattle ? `${lastBattle.enemyName} (${lastBattle.outcome})` : '—'}
+            color={lastBattle?.outcome === 'victory' ? 'text-status-success' : lastBattle ? 'text-status-error' : undefined}
+          />
+          {lastBattle && (
+            <Stat label="Last Battle" value={fmtDate(lastBattle.createdAt)} />
+          )}
+        </Section>
+
+        <Section title="Equipment">
+          {EQUIP_SLOTS.map((s) => (
+            <Stat key={s.key} label={s.label} value={equip[s.key]} />
+          ))}
+        </Section>
+
+        <Section title={`Kill List (${kills.length})`}>
+          {kills.length === 0 ? (
+            <p className="text-sm text-fg-muted">No kills recorded.</p>
+          ) : (
+            kills.map((k) => <Stat key={k.id} label={k.monster} value={k.kills} color="text-fg-bright" />)
+          )}
+        </Section>
       </div>
     </div>
   )

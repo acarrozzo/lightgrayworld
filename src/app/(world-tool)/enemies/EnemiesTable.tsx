@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { useUrlEnum, useUrlString, useUrlFlag } from '@/components/world-tool/useUrlState'
+import { useIsWide } from '@/components/world-tool/useIsWide'
 import Icon from '@/components/Icon'
 import { Tag, SortableTh } from '@/components/world-tool/ui'
 import { EntityLink, itemHref, useAnchorTarget } from '@/components/world-tool/EntityLink'
@@ -65,6 +66,7 @@ export default function EnemiesTable({
   const [sortDir, setSortDir] = useUrlEnum<'asc' | 'desc'>('dir', ['asc', 'desc'] as const, 'asc')
 
   useAnchorTarget()
+  const wide = useIsWide()
 
   const getVal = SORTERS[sortKey]
 
@@ -133,63 +135,65 @@ export default function EnemiesTable({
         </span>
       </div>
 
-      {/* Mobile cards */}
-      <div className="md:hidden space-y-2">
-        {sorted.length === 0 && (
-          <p className="py-6 text-center text-fg-muted text-sm">No enemies match this filter.</p>
-        )}
-        {groups
-          ? groups.map((g) => (
-              <div key={g.zone}>
-                <p className="px-1 py-2 text-xs font-semibold uppercase tracking-wide text-fg-secondary">{g.zone}</p>
-                {g.rows.map((r) => <EnemyCard key={r.slug} r={r} />)}
-              </div>
-            ))
-          : sorted.map((r) => <EnemyCard key={r.slug} r={r} />)}
-      </div>
-
-      {/* Desktop table */}
-      <div className="hidden md:block overflow-x-auto rounded-lg border border-line-subtle">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
-              <SortableTh
-                label="Enemy"
-                active={sortKey === 'source'}
-                dir={sortDir}
-                onSort={() => clickHeader('source')}
-              />
-              {COLUMNS.map((col) => (
+      {/* One layout, not both: cards below md, the table from md up. */}
+      {!wide && (
+        <div className="space-y-2">
+          {sorted.length === 0 && (
+            <p className="py-6 text-center text-fg-muted text-sm">No enemies match this filter.</p>
+          )}
+          {groups
+            ? groups.map((g) => (
+                <div key={g.zone}>
+                  <p className="px-1 py-2 text-xs font-semibold uppercase tracking-wide text-fg-secondary">{g.zone}</p>
+                  {g.rows.map((r) => <EnemyCard key={r.slug} r={r} />)}
+                </div>
+              ))
+            : sorted.map((r) => <EnemyCard key={r.slug} r={r} />)}
+        </div>
+      )}
+      {wide && (
+        <div className="overflow-x-auto rounded-lg border border-line-subtle">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="bg-surface-panel text-left text-xs uppercase tracking-wide text-fg-muted">
                 <SortableTh
-                  key={col.key}
-                  label={col.label}
-                  align="right"
-                  active={sortKey === col.key}
+                  label="Enemy"
+                  active={sortKey === 'source'}
                   dir={sortDir}
-                  onSort={() => clickHeader(col.key)}
+                  onSort={() => clickHeader('source')}
                 />
-              ))}
-              <th className="px-3 py-2 font-medium">1st</th>
-              <th className="px-3 py-2 font-medium">Always</th>
-              <th className="px-3 py-2 font-medium">Drops</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups
-              ? groups.map((g) => (
-                  <GroupBlock key={g.zone} zone={g.zone} rows={g.rows} />
-                ))
-              : sorted.map((r) => <EnemyTr key={r.slug} r={r} />)}
-            {sorted.length === 0 && (
-              <tr>
-                <td colSpan={10} className="px-3 py-6 text-center text-fg-muted">
-                  No enemies match this filter.
-                </td>
+                {COLUMNS.map((col) => (
+                  <SortableTh
+                    key={col.key}
+                    label={col.label}
+                    align="right"
+                    active={sortKey === col.key}
+                    dir={sortDir}
+                    onSort={() => clickHeader(col.key)}
+                  />
+                ))}
+                <th className="px-3 py-2 font-medium">1st</th>
+                <th className="px-3 py-2 font-medium">Always</th>
+                <th className="px-3 py-2 font-medium">Drops</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {groups
+                ? groups.map((g) => (
+                    <GroupBlock key={g.zone} zone={g.zone} rows={g.rows} />
+                  ))
+                : sorted.map((r) => <EnemyTr key={r.slug} r={r} />)}
+              {sorted.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="px-3 py-6 text-center text-fg-muted">
+                    No enemies match this filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

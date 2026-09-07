@@ -1017,6 +1017,7 @@ function describeSupportAction(meta) {
   const effect = meta.effectText ? ` (${meta.effectText})` : ''
   if (meta.kind === 'equip_item') return `You equip the ${name}.`
   if (meta.kind === 'unequip_item') return `You unequip the ${name}.`
+  if (meta.kind === 'auto_equip') return `You auto-equip your ${name}${effect}.`
   if (meta.kind === 'cast_spell') return `You cast ${name}${effect}.`
   const verb = meta.actionVerb || 'use'
   // Capitalize the verb's past-tense-ish form for "use" → "use the X"

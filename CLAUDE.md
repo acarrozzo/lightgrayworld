@@ -103,7 +103,7 @@ Before changing a system, name its authoritative owner and decide what reconnect
 - `src/lib/theme/`: terminal colour themes. Themes are typed recipes in `themes/`, derived by `factory.ts`, flattened to CSS variables by `tokens.ts`, and emitted to the committed `src/app/generated-themes.css` by `npm run generate-themes`. Components use semantic roles (`text-status-error`, `bg-surface-panel`, `.fill-action-attack`, `roomColor(...)`), never raw Tailwind colours or hex. Room colour overrides in the seed are tokens from `room-colors.ts`. `npm run validate-themes` checks contrast and distinctness.
 - `src/components/GameInterface.tsx`: current top-level gameplay coordinator and layout.
 - `src/components/game-interface/panels/`: focused character, inventory, quest, battle, map, party, player, feed, chat, crafting, and settings views.
-- `src/app/rooms`, `src/app/items`, `src/app/enemies`, `src/app/quests`, `src/app/players`, `src/app/world-tool`: read-oriented world reference tools.
+- `src/app/(world-tool)/`: the World Tool's read-oriented reference pages (`/enemies`, `/items`, `/rooms`, `/quests`, `/players`, …) under one layout that supplies the left rail and the scroll container. `src/lib/world-tool/pages.ts` is the page registry the rail and the home launcher share; `search-index.ts` is what the rail's search can find. Add a page to the registry, not to a nav.
 - `public/icons`, `public/img`: visual assets and maps. Generated sprite artifacts are intentionally ignored.
 
 ### Known seams to handle carefully

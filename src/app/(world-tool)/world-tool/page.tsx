@@ -2,51 +2,68 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import WorldToolNav from '@/components/WorldToolNav'
+import { WORLD_TOOL_GROUPS } from '@/lib/world-tool/pages'
+import { loadWorldToolCounts } from '@/lib/world-tool/counts'
 
 export const metadata = {
   title: 'Light Gray World Tool',
-  description: 'The Light Gray World Tool — browse enemies and items.',
+  description:
+    'The Light Gray World Tool — every enemy, item, quest, skill, spell, recipe, shop, chest, room and player, read live from the game.',
 }
 
-const PAGES = [
-  { href: '/enemies', label: 'Bestiary', description: 'Every enemy, with their stats and drops.' },
-  { href: '/items', label: 'Item Compendium', description: 'Every item, with their stats, value, and properties.' },
-  { href: '/quests', label: 'Quests', description: 'Every quest, grouped by giver, with objectives, requirements, and rewards.' },
-  { href: '/skills', label: 'Skills', description: 'Every skill, by group — weapon proficiencies, special attacks, defenses, upgrades — with what it does, what it costs, and the teachers that unlock each level.' },
-  { href: '/spells', label: 'Spells', description: 'Every spell, by school, with its formula, learning and casting costs, and the teachers that unlock each level.' },
-  { href: '/crafting', label: 'Crafting', description: 'Every recipe, by family — what it takes, what it makes, which station it needs, and the rooms you can make it in.' },
-  { href: '/shops', label: 'Shops', description: 'Every shop, with the room it stands in, its stock and prices, and any membership it requires.' },
-  { href: '/chests', label: 'Chests', description: 'The one-time gold chests and the repeatable ones, with their full loot tables, pool odds and rooms.' },
-  { href: '/teleport', label: 'Teleport', description: 'The fast-travel network — every destination, the region it belongs to, what unlocks it and what it costs.' },
-  { href: '/rooms', label: 'World Atlas', description: 'Compass-oriented maps of every region — Grassy Field through the Dark Forest, each with the areas below it — showing enemies, spawn logic, NPCs, loot, actions, gates, and secrets.' },
-  { href: '/room-desc', label: 'Room Desc', description: "Every room's title, subtitle, description, actions and exits in the original game beside the recreation, field by field, with the differences flagged." },
-  { href: '/players', label: 'Players', description: 'Every player, with level, vitals, equipment, kills, quests, and progression. Sort and drill into full profiles.' },
-  { href: '/themes', label: 'Terminal Themes', description: 'Every semantic colour role — actions, resources, stats, combat, feed channels, room mood and world regions — shown across every terminal theme, with what each role means and where it is used.' },
-]
+/**
+ * The launcher: every page, in the same groups as the rail, each with a live
+ * count of what it documents. The list and the rail read one registry, so
+ * they cannot disagree about what pages exist.
+ */
+export default async function WorldToolHomePage() {
+  const counts = await loadWorldToolCounts()
 
-export default function WorldToolHomePage() {
   return (
-    <div className="min-h-screen fill-surface-canvas">
-      <WorldToolNav active="home" />
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-fg-bright">Light Gray World Tool</h1>
-        </header>
-        <ul className="flex flex-col gap-3">
-          {PAGES.map((page) => (
-            <li key={page.href}>
-              <Link
-                href={page.href}
-                className="block rounded border border-line-subtle/80 bg-surface-panel px-4 py-3 transition-colors hover:border-line-subtle hover:bg-surface-raised"
-              >
-                <span className="text-base font-medium text-fg-bright">{page.label}</span>
-                <span className="mt-1 block text-sm text-fg-secondary">{page.description}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold text-fg-bright">Light Gray World Tool</h1>
+        <p className="mt-1 max-w-3xl text-sm text-fg-secondary">
+          A reference for everything in the game, read from the same definitions the engine plays by.
+          Search the rail for any enemy, item, room, quest, skill, spell, recipe or shop and jump straight to it.
+        </p>
+      </header>
+
+      {WORLD_TOOL_GROUPS.map((group) => (
+        <section key={group.id} className="mb-8" aria-labelledby={`wt-group-${group.id}`}>
+          <h2
+            id={`wt-group-${group.id}`}
+            className="mb-3 border-b border-line-subtle pb-1 text-xs font-bold uppercase tracking-widest text-fg-muted"
+          >
+            {group.label}
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {group.pages.map((page) => {
+              const PageIcon = page.icon
+              const count = counts[page.key]
+              return (
+                <li key={page.key}>
+                  <Link
+                    href={page.href}
+                    className="flex h-full flex-col rounded border border-line-subtle/80 bg-surface-panel px-4 py-3 transition-colors hover:border-line-subtle hover:bg-surface-raised"
+                  >
+                    <span className="flex items-center gap-2">
+                      <PageIcon className="h-4 w-4 shrink-0 text-fg-secondary" aria-hidden="true" />
+                      <span className="text-base font-medium text-fg-bright">{page.label}</span>
+                      {count != null && (
+                        <span className="ml-auto whitespace-nowrap text-xs tabular-nums text-fg-muted">
+                          {count.toLocaleString()} {page.unit}
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-1 block text-sm text-fg-secondary">{page.description}</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      ))}
     </div>
   )
 }

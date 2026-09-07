@@ -16,6 +16,8 @@ interface GameHeaderProps {
   dex?: number
   mag?: number
   def?: number
+  /** "STR 31 = 20 core + 8 gear + 3 skill" per stat, shown on hover. */
+  statTitles?: Partial<Record<'str' | 'dex' | 'mag' | 'def', string>>
   clicks?: number
   /** Unspent Core + Training Points. Desktop shows a pill beside the name; on phones the Char tab badge carries it instead, the bar has no room. */
   unspentPoints?: number
@@ -61,7 +63,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
   let xpInLevel = 0
   let xpNeeded = 1
   let xpPct = 0
@@ -141,10 +143,10 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
 
           {/* Right group - core stats + connection dot */}
           <div className="flex items-center gap-2 shrink-0">
-            {str !== undefined && <span className="text-stat-str">{str}</span>}
-            {dex !== undefined && <span className="text-stat-dex">{dex}</span>}
-            {mag !== undefined && <span className="text-stat-mag">{mag}</span>}
-            {def !== undefined && <span className="text-stat-def">{def}</span>}
+            {str !== undefined && <span className="text-stat-str" title={statTitles?.str}>{str}</span>}
+            {dex !== undefined && <span className="text-stat-dex" title={statTitles?.dex}>{dex}</span>}
+            {mag !== undefined && <span className="text-stat-mag" title={statTitles?.mag}>{mag}</span>}
+            {def !== undefined && <span className="text-stat-def" title={statTitles?.def}>{def}</span>}
             {/* The connection indicator is desktop-only, so on mobile this
                 trails the stats — still the last control in the bar. */}
             <ThemeSwitcher className="ml-0.5" />
@@ -231,25 +233,25 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
               {str !== undefined && (
                 <>
                   <span className="text-fg-muted hidden lg:inline">STR </span>
-                  <span className="text-stat-str">{str}</span>
+                  <span className="text-stat-str" title={statTitles?.str}>{str}</span>
                 </>
               )}
               {dex !== undefined && (
                 <>
                   <span className="text-fg-muted hidden lg:inline">DEX </span>
-                  <span className="text-stat-dex">{dex}</span>
+                  <span className="text-stat-dex" title={statTitles?.dex}>{dex}</span>
                 </>
               )}
               {mag !== undefined && (
                 <>
                   <span className="text-fg-muted hidden lg:inline">MAG </span>
-                  <span className="text-stat-mag">{mag}</span>
+                  <span className="text-stat-mag" title={statTitles?.mag}>{mag}</span>
                 </>
               )}
               {def !== undefined && (
                 <>
                   <span className="text-fg-muted hidden lg:inline">DEF </span>
-                  <span className="text-stat-def">{def}</span>
+                  <span className="text-stat-def" title={statTitles?.def}>{def}</span>
                 </>
               )}
             </div>

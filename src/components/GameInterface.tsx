@@ -21,6 +21,7 @@ import SkillsAndSpellsModal, { type BookTab } from './SkillsAndSpellsModal'
 import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { resolveItemIcon } from '@/lib/item-actions'
+import { describeStat, effectiveStats } from '@/lib/effective-stats'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
@@ -122,6 +123,8 @@ export default function GameInterface() {
     ? resolveItemIcon(equippedWeapon.template.metadata as { icon?: string } | null, equippedWeapon.template.slug ?? '')
     : 'equipment-fists'
   const weaponName = equippedWeapon?.template.name ?? null
+  // The four stats as combat rolls them: core + gear + buffs + skill passives.
+  const stats = useMemo(() => effectiveStats(player, inventory), [player, inventory])
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [levelUpData, setLevelUpData] = useState<LevelUpPayload | null>(null)
@@ -1695,6 +1698,7 @@ export default function GameInterface() {
       if (isMoveAction) eventType = 'room-travel'
       else if (action === 'teleport') eventType = 'teleport'
       else if (action === 'equip_item') eventType = 'equip'
+      else if (action === 'auto_equip') eventType = 'equip'
       else if (action === 'enemy_spawn') eventType = 'enemy-spawn'
       else if (action) eventType = 'action-feedback'
 
@@ -2395,7 +2399,7 @@ export default function GameInterface() {
           setPlayer({
             ...current,
             hp: payload.playerHp ?? 0,
-            ...(payload.buffs ? { buffs: payload.buffs } : {}),
+            ...(payload.buffs ? { buffs: { ...current.buffs, ...payload.buffs } } : {}),
           })
         }
         respawnRoomRef.current = payload.respawnRoomId ?? null
@@ -2495,7 +2499,8 @@ export default function GameInterface() {
       const { player: currentPlayer, setPlayer: sp } = useGameStore.getState()
       if (!currentPlayer) return
       const next = { ...currentPlayer, clicks: payload.clicks }
-      if (payload.buffs) next.buffs = payload.buffs
+      // Merge: a tick reports the countdowns; standing bonuses ride along untouched.
+      if (payload.buffs) next.buffs = { ...currentPlayer.buffs, ...payload.buffs }
       if (typeof payload.hp === 'number') next.hp = payload.hp
       if (typeof payload.mp === 'number') next.mp = payload.mp
       sp(next)
@@ -3435,10 +3440,20 @@ export default function GameInterface() {
         xp={player?.xp}
         xpGain={xpGain}
         xpGainKey={xpGainKey}
-        str={player ? (player.str ?? 0) + (player.strMod ?? 0) : undefined}
-        dex={player ? (player.dex ?? 0) + (player.dexMod ?? 0) : undefined}
-        mag={player ? (player.mag ?? 0) + (player.magMod ?? 0) : undefined}
-        def={player ? (player.def ?? 0) + (player.defMod ?? 0) : undefined}
+        str={player ? stats.str.total : undefined}
+        dex={player ? stats.dex.total : undefined}
+        mag={player ? stats.mag.total : undefined}
+        def={player ? stats.def.total : undefined}
+        statTitles={
+          player
+            ? {
+                str: describeStat('STR', stats.str),
+                dex: describeStat('DEX', stats.dex),
+                mag: describeStat('MAG', stats.mag),
+                def: describeStat('DEF', stats.def),
+              }
+            : undefined
+        }
         clicks={player?.clicks}
         unspentPoints={unspentPoints}
         onCharacterClick={() => handleCenterTabChange(centerActiveTab === 'char' ? null : 'char')}

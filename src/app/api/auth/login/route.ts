@@ -10,6 +10,7 @@ import { SPELL_SELECT, projectSpellState } from '@/lib/game-engine/services/spel
 import { SKILL_SELECT, projectSkillState } from '@/lib/game-engine/services/skill-service'
 import { MAP_STATE_SELECT, projectMapState } from '@/lib/game-engine/services/map-state'
 import { GOLD_CHEST_SELECT, projectGoldChestState } from '@/lib/game-data/gold-chests'
+import { BUFF_SELECT, projectBuffState } from '@/lib/game-engine/services/buff-service'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
         ...SPELL_SELECT,
         ...SKILL_SELECT,
         ...MAP_STATE_SELECT,
+        ...BUFF_SELECT,
       },
     })
 
@@ -132,6 +134,9 @@ export async function POST(request: NextRequest) {
       ...projectSpellState(freshUser),
       ...projectSkillState(freshUser),
       ...projectMapState(freshUser),
+      // Running buffs and standing auras, so the header's stats are right
+      // from the first render rather than after the first counted click.
+      ...projectBuffState(freshUser),
     })
 
     return NextResponse.json(authResponse)

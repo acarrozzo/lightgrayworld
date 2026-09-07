@@ -2,8 +2,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/prisma'
+import { cachedWorldToolData } from '@/lib/world-tool/cached'
 import EnemiesTable, { type EnemyRow } from './EnemiesTable'
-import WorldToolNav from '@/components/WorldToolNav'
 
 export const metadata = {
   title: 'Bestiary — Light Gray RPG',
@@ -101,16 +101,21 @@ function consolidateMain(entries: EnemyDropEntry[]): { itemSlug: string; chance:
   return Array.from(map.entries()).map(([itemSlug, v]) => ({ itemSlug, ...v }))
 }
 
-export default async function EnemiesPage() {
-  // Resolve drop item slugs to their canonical display names from the DB,
-  // so renaming an item in the source updates the name shown here too.
+// The drop-name lookup, cached in production: see lib/world-tool/cached.ts.
+const loadDropTemplates = cachedWorldToolData('enemies', async () => {
   const dropSlugs = Array.from(new Set(ENEMIES.flatMap((e) => allDropSlugs(e.drops))))
-  const items = dropSlugs.length
-    ? await prisma.itemTemplate.findMany({
+  return dropSlugs.length
+    ? prisma.itemTemplate.findMany({
         where: { slug: { in: dropSlugs } },
         select: { slug: true, name: true },
       })
     : []
+})
+
+export default async function EnemiesPage() {
+  // Resolve drop item slugs to their canonical display names from the DB,
+  // so renaming an item in the source updates the name shown here too.
+  const items = await loadDropTemplates()
   const itemNameBySlug = new Map(items.map((i) => [i.slug, i.name]))
 
   function resolveName(slug: string) {
@@ -162,17 +167,14 @@ export default async function EnemiesPage() {
   })
 
   return (
-    <div className="min-h-screen fill-surface-canvas">
-      <WorldToolNav active="enemies" />
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-fg-bright">Bestiary</h1>
-          <p className="mt-1 text-sm text-fg-secondary">
-            {rows.length} enemies — pulled live from the game data.
-          </p>
-        </header>
-        <EnemiesTable rows={rows} zones={zones} />
-      </div>
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-fg-bright">Bestiary</h1>
+        <p className="mt-1 text-sm text-fg-secondary">
+          {rows.length} enemies — pulled live from the game data.
+        </p>
+      </header>
+      <EnemiesTable rows={rows} zones={zones} />
     </div>
   )
 }

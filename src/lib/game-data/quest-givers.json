@@ -6,6 +6,7 @@
     "action": "talk to old man",
     "icon": "npc-oldman",
     "iconColor": "yellow-400",
+    "colorToken": "mood.treasure",
     "faction": "grassy-field",
     "revealedBy": {
       "type": "always"
@@ -41,6 +42,7 @@
     "action": "talk to young soldier",
     "icon": "npc-youngsoldier",
     "iconColor": "blue-400",
+    "colorToken": "mood.calm",
     "faction": "grassy-field",
     "revealedBy": {
       "type": "giverMet",
@@ -79,6 +81,7 @@
     "action": "talk to jack lumber",
     "icon": "npc-jacklumber",
     "iconColor": "green-400",
+    "colorToken": "terrain.wood",
     "faction": "grassy-field",
     "revealedBy": {
       "type": "questCompleted",
@@ -118,6 +121,7 @@
     "action": "talk to freddie",
     "icon": "npc-freddie",
     "iconColor": "amber-400",
+    "colorToken": "terrain.sand",
     "faction": "grassy-field",
     "revealedBy": {
       "type": "questCompleted",
@@ -147,6 +151,7 @@
     "action": "talk to forest gnome",
     "icon": "npc-forestgnome",
     "iconColor": "green-400",
+    "colorToken": "terrain.grass",
     "faction": "forest",
     "revealedBy": {
       "type": "questCompleted",
@@ -178,6 +183,7 @@
     "action": "talk to hunter bill",
     "icon": "npc-hunterbill",
     "iconColor": "green-400",
+    "colorToken": "world.forestUnderground",
     "faction": "forest",
     "revealedBy": {
       "type": "questCompleted",
@@ -208,6 +214,7 @@
     "action": "talk to red guard captain",
     "icon": "npc-redguardcaptain",
     "iconColor": "red-500",
+    "colorToken": "mood.danger",
     "faction": "red-town",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -239,6 +246,7 @@
     "action": "talk to the people",
     "icon": "npc-townhallplaza",
     "iconColor": "red-500",
+    "colorToken": "world.redTown",
     "faction": "red-town",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -270,6 +278,7 @@
     "action": "talk to mayor",
     "icon": "npc-mayor",
     "iconColor": "red-500",
+    "colorToken": "mood.treasure",
     "faction": "red-town",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -299,6 +308,7 @@
     "action": "talk to warrior recruiter",
     "icon": "npc-warrior",
     "iconColor": "blue-400",
+    "colorToken": "mood.calm",
     "faction": "warriors-guild",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -328,6 +338,7 @@
     "action": "talk to warrior pete",
     "icon": "npc-warrior2",
     "iconColor": "blue-400",
+    "colorToken": "mood.calm",
     "faction": "warriors-guild",
     "revealedBy": {
       "type": "questCompleted",
@@ -366,6 +377,7 @@
     "action": "talk to wizard recruiter",
     "icon": "npc-wizard",
     "iconColor": "purple-400",
+    "colorToken": "mood.arcane",
     "faction": "wizards-guild",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -395,6 +407,7 @@
     "action": "talk to wizard morty",
     "icon": "npc-wizard2",
     "iconColor": "purple-400",
+    "colorToken": "mood.sacred",
     "faction": "wizards-guild",
     "revealedBy": {
       "type": "questCompleted",
@@ -433,6 +446,7 @@
     "action": "talk to mining recruiter",
     "icon": "npc-miner2",
     "iconColor": "yellow-600",
+    "colorToken": "mood.treasure",
     "faction": "mining-guild",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -458,6 +472,7 @@
     "action": "talk to guild leader",
     "icon": "npc-miner",
     "iconColor": "yellow-600",
+    "colorToken": "world.neverendingMine",
     "faction": "mining-guild",
     "revealedBy": {
       "type": "questCompleted",
@@ -492,6 +507,7 @@
     "action": "talk to dwarf captain",
     "icon": "npc-dwarfcaptain",
     "iconColor": "yellow-600",
+    "colorToken": "world.rockyFlats",
     "faction": "dwarf-village",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -519,6 +535,7 @@
     "action": "read bounty board",
     "icon": "npc-bountyboard",
     "iconColor": "yellow-600",
+    "colorToken": "terrain.stone",
     "faction": "dwarf-village",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -546,6 +563,7 @@
     "action": "talk to friendly pirate",
     "icon": "npc-pirate",
     "iconColor": "blue-300",
+    "colorToken": "terrain.water",
     "faction": "ocean",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -573,6 +591,7 @@
     "action": "talk to jungle jim",
     "icon": "npc-surfer",
     "iconColor": "green-400",
+    "colorToken": "terrain.grass",
     "faction": "ocean",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -600,6 +619,7 @@
     "action": "talk to water temple guardian",
     "icon": "npc-guardian",
     "iconColor": "blue-300",
+    "colorToken": "mood.sacred",
     "faction": "ocean",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -628,6 +648,7 @@
     "action": "talk to ranger guard",
     "icon": "npc-ranger",
     "iconColor": "green-400",
+    "colorToken": "world.darkForest",
     "faction": "dark-forest",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -655,6 +676,7 @@
     "action": "talk to dark elf",
     "icon": "npc-darkelf",
     "iconColor": "green-400",
+    "colorToken": "mood.arcane",
     "faction": "dark-forest",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -682,6 +704,7 @@
     "action": "talk to ranger recruiter",
     "icon": "npc-ranger",
     "iconColor": "green-400",
+    "colorToken": "world.rangersGuild",
     "faction": "rangers-guild",
     "revealedBy": {
       "type": "regionDiscovered",
@@ -707,6 +730,7 @@
     "action": "talk to ranger lego",
     "icon": "npc-ranger2",
     "iconColor": "green-400",
+    "colorToken": "terrain.forest",
     "faction": "rangers-guild",
     "revealedBy": {
       "type": "questCompleted",
@@ -741,6 +765,7 @@
     "action": "examine grand pillar",
     "icon": "pillar3",
     "iconColor": "yellow-400",
+    "colorToken": "world.lobby",
     "faction": null,
     "revealedBy": {
       "type": "questCompleted",

@@ -2,8 +2,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { prisma } from '@/lib/prisma'
+import { cachedWorldToolData } from '@/lib/world-tool/cached'
 import QuestsList, { type FactionGroup, type GiverGroup, type QuestRow } from './QuestsList'
-import WorldToolNav from '@/components/WorldToolNav'
 import { ROOM_COLOR_TOKENS, legacyRoomColorToken } from '@/lib/theme/room-colors'
 
 export const metadata = {
@@ -105,9 +105,10 @@ function prettifySlug(slug: string): string {
     .join(' ')
 }
 
-export default async function QuestsPage() {
-  // Resolve item slugs from hasItem requirements and item rewards to their
-  // canonical DB names, so renaming an item in the source updates the name here.
+// Resolve item slugs from hasItem requirements and item rewards to their
+// canonical DB names, so renaming an item in the source updates the name here.
+// Cached in production: see lib/world-tool/cached.ts.
+const loadQuestItemNames = cachedWorldToolData('quests', async () => {
   const itemSlugs = Array.from(
     new Set(
       Object.values(QUESTS).flatMap((q) => [
@@ -117,12 +118,16 @@ export default async function QuestsPage() {
       ])
     )
   )
-  const items = itemSlugs.length
-    ? await prisma.itemTemplate.findMany({
+  return itemSlugs.length
+    ? prisma.itemTemplate.findMany({
         where: { slug: { in: itemSlugs } },
         select: { slug: true, name: true },
       })
     : []
+})
+
+export default async function QuestsPage() {
+  const items = await loadQuestItemNames()
   const itemNameBySlug = new Map(items.map((i) => [i.slug, i.name]))
   const enemyNameBySlug = new Map(ENEMIES.map((e) => [e.slug, e.name]))
   const factionById = new Map(FACTIONS.map((f) => [f.id, f]))
@@ -303,18 +308,15 @@ export default async function QuestsPage() {
   const giverCount = Object.keys(GIVERS).length
 
   return (
-    <div className="min-h-screen fill-surface-canvas">
-      <WorldToolNav active="quests" />
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-fg-bright">Quests</h1>
-          <p className="mt-1 text-sm text-fg-secondary">
-            {questCount} quests from {giverCount} quest givers across {groups.length - (pillarGivers.length ? 1 : 0)} factions — pulled live from the game data.
-            Standing with a faction is its quests done out of its total; every quest done earns its title.
-          </p>
-        </header>
-        <QuestsList groups={groups} />
-      </div>
+    <div className="mx-auto max-w-7xl px-4 py-8">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-fg-bright">Quests</h1>
+        <p className="mt-1 text-sm text-fg-secondary">
+          {questCount} quests from {giverCount} quest givers across {groups.length - (pillarGivers.length ? 1 : 0)} factions — pulled live from the game data.
+          Standing with a faction is its quests done out of its total; every quest done earns its title.
+        </p>
+      </header>
+      <QuestsList groups={groups} />
     </div>
   )
 }
