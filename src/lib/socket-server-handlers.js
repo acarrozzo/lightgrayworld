@@ -24,6 +24,7 @@ const {
 } = require('./game-engine/teleport-grants.js')
 const { getEnemy } = require('./game-data/enemies.js')
 const { loadPresentEnemy } = require('./game-engine/services/present-enemy-service.js')
+const { listTravelersInRoom } = require('./game-engine/traveler-state.js')
 const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service.js')
 const { buildGatherCooldowns } = require('./game-engine/services/gather-status.js')
 const { SPELL_SELECT, projectSpellState, unlockSpellTeacher } = require('./game-engine/services/spell-service.js')
@@ -846,6 +847,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       items: Array.isArray(destinationRoom.items) ? destinationRoom.items : [],
       npcs: Array.isArray(destinationRoom.npcs) ? destinationRoom.npcs : [],
       enemy: destEnemy,
+      travelers: listTravelersInRoom(toRoom),
       stateNote: leverStateNote || searchRevealStateNote || null,
       actionOverrides: getRoomActionOverrides(player.id, toRoom),
       gatedExits: getGatedDirections(toRoom),

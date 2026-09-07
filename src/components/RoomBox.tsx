@@ -1,6 +1,7 @@
 'use client'
 
 import RoomDisplay from './RoomDisplay'
+import TravelerCard from './TravelerCard'
 import type { Room, Player } from '@/lib/game-state'
 import Icon from './Icon'
 import { useMemo } from 'react'
@@ -179,6 +180,21 @@ export default function RoomBox({
           >
             Attack
           </button>
+        </div>
+      )}
+
+      {/* Travelers passing through — shared by everyone here */}
+      {Array.isArray(room.travelers) && room.travelers.length > 0 && (
+        <div className="space-y-2">
+          {room.travelers.map((traveler) => (
+            <TravelerCard
+              key={traveler.id}
+              traveler={traveler}
+              onAction={onAction}
+              isInBattle={isInBattle}
+              isLoadingRoom={isLoadingRoom}
+            />
+          ))}
         </div>
       )}
 

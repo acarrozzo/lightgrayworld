@@ -63,6 +63,29 @@ export function useGameSocketBindings(
     })
   }, [socket, socketHandlers, updateRoomItems])
 
+  // Travelers arriving in or leaving a room the player can see. The list
+  // replaces the room's, and the line goes to the feed like any room event.
+  useEffect(() => {
+    if (!socket) return
+    return socketHandlers.onRoomTravelers((payload) => {
+      if (!payload?.roomId || !Array.isArray(payload.travelers)) return
+      const { currentRoom, setCurrentRoom } = useGameStore.getState()
+      if (currentRoom?.roomId !== payload.roomId) return
+      setCurrentRoom({ ...currentRoom, travelers: payload.travelers })
+      if (payload.line?.message) {
+        appendWorldFeed({
+          type: 'room',
+          roomId: payload.roomId,
+          message: payload.line.message,
+          outcome: payload.line.outcome ?? 'info',
+          eventType: 'traveler',
+          isSelf: false,
+          ts: payload.ts,
+        })
+      }
+    })
+  }, [socket, socketHandlers, appendWorldFeed])
+
   // World feed: logins, deaths and other world-scale events.
   useEffect(() => {
     if (!socket) return

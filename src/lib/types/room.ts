@@ -32,6 +32,43 @@ export interface RoomViewNavigation {
   down?: string
 }
 
+/** One action a traveler offers while standing here ("talk to sherman"). */
+export interface TravelerActionView {
+  action: string
+  label: string
+  icon?: string
+  className?: string
+}
+
+/**
+ * A traveler standing in a room, as the server describes it: shared by everyone
+ * there, gone when it moves on. `enemy` is present for one that can be fought.
+ */
+export interface TravelerView {
+  id: string
+  kind: 'creature' | 'npc' | string
+  name: string
+  title?: string | null
+  description: string
+  icon: string
+  iconFile: string
+  actions: TravelerActionView[]
+  enemy: {
+    slug: string
+    name: string
+    description: string
+    icon: string
+    level: number
+    hp: number
+    att: number
+    def: number
+    isAggressive: boolean
+    isFriendly: boolean
+  } | null
+  /** For a scheduled traveler, when it moves on; null for a wanderer. */
+  leavesAt?: number | null
+}
+
 export interface RoomView extends RoomViewNavigation {
   id: string
   roomId: string
@@ -64,6 +101,8 @@ export interface RoomView extends RoomViewNavigation {
   players: any[]
   items: RoomItemView[]
   npcs: any[]
+  /** Who is passing through right now. Live: updated by `room:travelers`. */
+  travelers?: TravelerView[]
 }
 
 

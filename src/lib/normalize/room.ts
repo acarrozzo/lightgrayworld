@@ -71,6 +71,7 @@ export function normalizeRoom(room: RawRoom | null | undefined): RoomView | null
       : [],
     items: normalizeRoomItems(room.items),
     npcs: Array.isArray(room.npcs) ? room.npcs : [],
+    travelers: Array.isArray(room.travelers) ? room.travelers : [],
   } as RoomView
 }
 

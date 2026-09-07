@@ -3,6 +3,7 @@ const { RoomState } = require('./room-state')
 const { PlayerActionQueue } = require('./player-action-queue')
 const { prisma } = require('../db-client')
 const { updatePresence } = require('../services/presence-store')
+const travelerState = require('./traveler-state')
 const { debugLog, quietActionLogger } = require('../debug-log')
 
 /**
@@ -44,6 +45,9 @@ class GameEngine {
       this.lastTickElapsed = performance.now() - start
     })
 
+    // The travelers' own clock: the world tick is hourly, a bunny is not.
+    travelerState.start({ io: this.io })
+
     this.metricsTimer = setInterval(() => {
       this.logMetrics()
     }, METRICS_INTERVAL_MS)
@@ -53,6 +57,7 @@ class GameEngine {
 
   stop() {
     this.tickClock.stop()
+    travelerState.stop()
     if (this.metricsTimer) {
       clearInterval(this.metricsTimer)
       this.metricsTimer = null

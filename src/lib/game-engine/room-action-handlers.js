@@ -225,9 +225,6 @@ function npcTalk(giverId) {
  */
 function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'basicshop', iconColor = 'amber-500' } = {}) {
   return async (playerId, roomState) => {
-    const { prisma } = require('../db-client')
-    const { getPlayerInventory } = require('./services/inventory-service')
-
     const shop = getShop(roomId)
     if (!shop) {
       return createErrorResult('view shop', 'There is no shop here.')
@@ -260,59 +257,102 @@ function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'ba
       }
     }
 
-    const player = await prisma.user.findUnique({
-      where: { id: playerId },
-      select: { currency: true },
-    })
-    if (!player) {
-      return createErrorResult('view shop', 'Player not found')
-    }
+    return buildShopModalResult({ shop, playerId, roomState })
+  }
+}
 
-    const templates = await prisma.itemTemplate.findMany({
-      where: { slug: { in: shop.stock } },
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        description: true,
-        value: true,
-        type: true,
-        max: true,
-        equipSlot: true,
-        weaponCategory: true,
-        metadata: true,
+/**
+ * The stock list as the client renders it: the shop's templates in the
+ * registry's order, the player's gold and inventory for the sell side. Shared
+ * by every fixed shop (makeShopHandler) and by a shop that moves (Wendell's
+ * cart, traveler-action-handlers.js), so a cart and a counter look the same.
+ * Gating — membership, a traveler actually standing here — is the caller's.
+ */
+async function buildShopModalResult({ shop, playerId, roomState, action = 'view shop', extra = {} }) {
+  const { prisma } = require('../db-client')
+  const { getPlayerInventory } = require('./services/inventory-service')
+
+  const player = await prisma.user.findUnique({
+    where: { id: playerId },
+    select: { currency: true },
+  })
+  if (!player) {
+    return createErrorResult(action, 'Player not found')
+  }
+
+  const templates = await prisma.itemTemplate.findMany({
+    where: { slug: { in: shop.stock } },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      description: true,
+      value: true,
+      type: true,
+      max: true,
+      equipSlot: true,
+      weaponCategory: true,
+      metadata: true,
+    },
+  })
+
+  // Preserve the registry's display order — findMany returns rows in whatever
+  // order Postgres likes, and the stock list is deliberately grouped.
+  const bySlug = new Map(templates.map((t) => [t.slug, t]))
+  const shopItems = shop.stock.map((slug) => bySlug.get(slug)).filter(Boolean)
+
+  const inventory = await getPlayerInventory(playerId)
+
+  roomState.touchActivity()
+
+  return {
+    success: true,
+    action,
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(action, 'success', `You browse ${shop.name}.`, {
+          roomId: roomState.roomId,
+          showModal: true,
+          modalContent: {
+            type: 'shop',
+            shopName: shop.name,
+            shopItems,
+            playerCurrency: player.currency,
+            playerInventory: inventory,
+            ...extra,
+          },
+        }),
       },
-    })
+    ],
+  }
+}
 
-    // Preserve the registry's display order — findMany returns rows in whatever
-    // order Postgres likes, and the stock list is deliberately grouped.
-    const bySlug = new Map(templates.map((t) => [t.slug, t]))
-    const shopItems = shop.stock.map((slug) => bySlug.get(slug)).filter(Boolean)
-
-    const inventory = await getPlayerInventory(playerId)
-
-    roomState.touchActivity()
-
-    return {
-      success: true,
-      action: 'view shop',
-      playerEvents: [
-        {
-          event: 'action:feedback',
-          payload: createActionFeedbackPayload('view shop', 'success', `You browse ${shop.name}.`, {
-            roomId: roomState.roomId,
-            showModal: true,
-            modalContent: {
-              type: 'shop',
-              shopName: shop.name,
-              shopItems,
-              playerCurrency: player.currency,
-              playerInventory: inventory,
-            },
-          }),
-        },
-      ],
+/**
+ * A directory sign that also knows when Wendell's cart is due. His loop is a
+ * function of the clock (game-data/travelers.js), so a sign can promise it —
+ * the schedule becomes something you read in the world rather than a hidden
+ * timer. Relative times only: the server does not know the reader's clock.
+ */
+function withMerchantNotice(roomId, handler) {
+  return async (playerId, roomState) => {
+    const { getTraveler, routeNextArrivalAt } = require('../game-data/travelers')
+    const merchant = getTraveler('merchant')
+    const due = merchant ? routeNextArrivalAt(merchant, roomId) : null
+    const about = (ms) => {
+      const minutes = Math.max(1, Math.round(ms / 60000))
+      return minutes === 1 ? 'about a minute' : `about ${minutes} minutes`
     }
+    const now = Date.now()
+    const notice = !due
+      ? null
+      : due.here
+        ? `Wendell's cart is here now, leaving in ${about(due.leavesAt - now)}.`
+        : `Wendell's cart is due back in ${about(due.arrivesAt - now)}.`
+    const withNotice = notice
+      ? { ...handler, modalContent: { ...handler.modalContent, notice } }
+      : handler
+    return executeBasicDisplay('read sign', handler.message, playerId, roomState, true, withNotice)
   }
 }
 
@@ -1913,7 +1953,7 @@ const ROOM_ACTIONS = {
     },
   },
   '001': {
-    'read sign': {
+    'read sign': withMerchantNotice('001', {
       showModal: true,
       message: "You read the sign. It says: 'Welcome to Grassy Field Crossroads!'",
       modalContent: {
@@ -1948,7 +1988,7 @@ const ROOM_ACTIONS = {
         questMessage: "Visit the OLD MAN at the cabin to start your first quest.",
         questMessageDescription: 'The Old Man will give you your first quest and help you learn the basics of the game.'
       }
-    },
+    }),
     'open gold chest': makeGoldChestHandler({
       roomId: '001',
       goldMin: 100,
@@ -2693,7 +2733,7 @@ const ROOM_ACTIONS = {
         overchargeMessage: 'You rest at the fountain and supercharge yourself. Your HP and MP are fully restored, plus an extra +25 to each.',
       }),
     'craft': executeCraft,
-    'read sign': {
+    'read sign': withMerchantNotice('210', {
       showModal: true,
       message: 'You read the Red Town Directory.',
       modalContent: {
@@ -2716,7 +2756,7 @@ const ROOM_ACTIONS = {
         questMessage: 'Guilds are scattered throughout the land, and always the best place to learn stronger skills and spells.',
         questMessageDescription: 'Both Red Town guilds take an initiation quest before they take you.',
       },
-    },
+    }),
   },
 
   // --- The Red Guard Captain's office: the sign over the bowl of spare rings.
@@ -4338,5 +4378,10 @@ module.exports = {
   REPEATABLE_CHEST_LOOT,
   getGatherActionForRoom,
   getGatherActionsForRoom,
+  // The result and payload builders every action shares, and the shop modal,
+  // for the traveler actions that live in their own module.
+  createActionFeedbackPayload,
+  createErrorResult,
+  buildShopModalResult,
 }
 

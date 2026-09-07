@@ -321,6 +321,14 @@ for (const config of Object.values(ROOM_ENEMIES)) {
     spawnedEnemies.add(typeof entry === 'string' ? entry : entry.slug)
   }
 }
+// A traveler that can be fought (the field's bunny) is placed by its own
+// movement, not by a room table; it counts as spawned, and must exist.
+const { TRAVELERS } = load('src/lib/game-data/travelers.js')
+for (const traveler of TRAVELERS) {
+  if (!traveler.enemySlug) continue
+  if (!enemySlugs.has(traveler.enemySlug)) err('travelers', `${traveler.id} fights as unknown enemy "${traveler.enemySlug}"`)
+  spawnedEnemies.add(traveler.enemySlug)
+}
 for (const slug of enemySlugs) {
   if (!spawnedEnemies.has(slug) && !ACCEPTED.unspawnedEnemies.has(slug)) {
     warn('enemies', `"${slug}" is defined but never spawned (add to ACCEPTED.unspawnedEnemies if authored ahead of its map)`)

@@ -164,6 +164,8 @@ export default function GameInterface() {
   const [bookTab, setBookTab] = useState<BookTab>('skills')
   const [shopModalData, setShopModalData] = useState<{
     shopName?: string
+    /** Set when the shop is a traveler's cart; the modal closes when they leave. */
+    travelerId?: string
     shopItems: Array<{ id: string; slug: string; name: string; description: string; value: number; type: string }>
     playerCurrency: number
     playerInventory: typeof inventory
@@ -918,6 +920,25 @@ export default function GameInterface() {
 
   const handleActionRef = useRef<(input: string | { type: string; data?: any }) => void>(() => {})
 
+  // A traveling shop closes when its owner moves on. The room's traveler list
+  // is the server's word on who is here; when the cart's owner drops out of it
+  // the modal goes too, so nobody buys from an empty road.
+  useEffect(() => {
+    const travelerId = shopModalData?.travelerId
+    if (!isShopModalOpen || !travelerId) return
+    const present = (currentRoom?.travelers ?? []).some((t) => t.id === travelerId)
+    if (present) return
+    setIsShopModalOpen(false)
+    setShopModalData(null)
+    appendWorldFeed({
+      type: 'action',
+      isSelf: true,
+      eventType: 'traveler',
+      outcome: 'info',
+      message: `${shopModalData?.shopName ?? 'The cart'} has packed up and moved on.`,
+    })
+  }, [isShopModalOpen, shopModalData, currentRoom?.travelers, appendWorldFeed])
+
   /**
    * Show a cached destination while the server decides the move.
    *
@@ -928,7 +949,9 @@ export default function GameInterface() {
    * until the answer arrived.
    */
   const enterRoomOptimistically = (cachedRoom: Room) => {
-    setCurrentRoom(cachedRoom)
+    // Travelers are live too: the cached copy remembers who was passing
+    // through last visit, and the server's answer replaces it.
+    setCurrentRoom({ ...cachedRoom, travelers: [] })
     setRoomPlayers([])
     setRoomEnemy(null)
     // Track that we entered this room via optimistic cache
@@ -1725,6 +1748,7 @@ export default function GameInterface() {
           setIsShopModalOpen(true)
           setShopModalData({
             shopName: modalContent.shopName,
+            travelerId: typeof modalContent.travelerId === 'string' ? modalContent.travelerId : undefined,
             shopItems: modalContent.shopItems || [],
             playerCurrency: modalContent.playerCurrency || 0,
             playerInventory: modalContent.playerInventory || [],

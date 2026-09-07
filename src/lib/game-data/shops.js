@@ -275,4 +275,24 @@ function shopRequiresMembership(roomId) {
   return SHOPS[roomId]?.requiresMembership ?? null
 }
 
-module.exports = { SHOPS, getShop, shopSellsItem, shopRequiresMembership }
+/**
+ * Every shop trading in `roomId` right now: the room's own, plus any traveler
+ * with a cart standing there (game-data/travelers.js). A route traveler's
+ * position is a function of the clock, so this needs no engine state and
+ * gives the buy route and the socket server the same answer. A wandering
+ * traveler with a shop would need game-engine/traveler-state.js; none has one.
+ */
+function getShopsAt(roomId, now = Date.now()) {
+  const { TRAVELERS, routeRoomAt, travelerStockAt } = require('./travelers')
+  const shops = []
+  const fixed = getShop(roomId)
+  if (fixed) shops.push({ ...fixed, source: 'room' })
+  for (const traveler of TRAVELERS) {
+    if (!traveler.shop || traveler.movement.type !== 'route') continue
+    if (routeRoomAt(traveler, now) !== roomId) continue
+    shops.push({ name: traveler.shop.name, stock: travelerStockAt(traveler, roomId), source: traveler.id })
+  }
+  return shops
+}
+
+module.exports = { SHOPS, getShop, shopSellsItem, shopRequiresMembership, getShopsAt }

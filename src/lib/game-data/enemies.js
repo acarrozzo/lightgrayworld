@@ -49,6 +49,34 @@ const ENEMIES = [
       always: [{ itemSlug: 'raw-meat', qty: 1 }],
     },
   },
+  // The field's bunny. Not placed by any room table: it is a traveler
+  // (game-data/travelers.js) that hops between the open field rooms, and this
+  // is what you fight if you decide to. Killing it takes it away for everyone
+  // for a while.
+  {
+    slug: 'bunny',
+    zone: 'Grassy Field',
+    name: 'Bunny',
+    description: 'A small brown bunny, all ears and nerves. It would very much rather be eating.',
+    icon: 'enemy-Bunny',
+    level: 1,
+    hp: 2,
+    att: 1,
+    def: 0,
+    isAggressive: false,
+    isFriendly: false,
+    isFlying: false,
+    damageType: 'MELEE',
+    xpReward: 1,
+    goldMin: 0,
+    goldMax: 0,
+    drops: {
+      main: [
+        { itemSlug: 'raw-meat', chance: 0.5 },
+        { itemSlug: 'redberry', chance: 0.25 },
+      ],
+    },
+  },
   {
     slug: 'sand-crab',
     zone: 'Grassy Field',

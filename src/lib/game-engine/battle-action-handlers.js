@@ -4,6 +4,8 @@ const { resolveTurn, resolveEnemyAttack, getOtherCombatantCount, totalDamageToEn
 const { calcBattleWinRewards, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
 const { isProbabilistic } = require('../game-data/room-enemies')
+const { getTravelerByEnemySlug } = require('../game-data/travelers')
+const travelerState = require('./traveler-state')
 const { getRoomEnemies } = require('../game-data/room-enemies')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 const { grantTeleport } = require('./teleport-grants')
@@ -342,7 +344,14 @@ async function executeStartBattle(action, playerId, roomState) {
   const { enemySlug, isAutoInitiated = false, spell = null, skill = null } = action.data || {}
   if (!enemySlug) return errorResult('start_battle', 'No enemy specified.')
 
-  if (isProbabilistic(roomState.roomId)) {
+  // A traveler (the field's bunny) is fought wherever it happens to be
+  // standing; it belongs to no room's table and never to the per-player slot.
+  const traveler = getTravelerByEnemySlug(enemySlug)
+  if (traveler) {
+    if (!travelerState.isTravelerInRoom(traveler.id, roomState.roomId)) {
+      return errorResult('start_battle', `The ${traveler.name} isn't here.`)
+    }
+  } else if (isProbabilistic(roomState.roomId)) {
     if (roomState.getPresentEnemy(playerId) !== enemySlug) {
       return errorResult('start_battle', 'That enemy is not here.')
     }
@@ -412,6 +421,7 @@ async function executeStartBattle(action, playerId, roomState) {
 
   const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats, equippedWeaponCategory, companion, gear: equippedWeapon })
   roomState.activeBattles.set(playerId, battleState)
+  travelerState.onBattleStarted(roomState.roomId)
 
   await prisma.user.update({ where: { id: playerId }, data: { inFight: true } })
   roomState.touchActivity()
@@ -558,6 +568,10 @@ async function executeStartBattle(action, playerId, roomState) {
     if (isProbabilistic(roomState.roomId)) {
       roomState.setPresentEnemy(playerId, null)
     }
+    // A shared traveler dies for everyone: it leaves the field until it
+    // respawns. A no-op if another player's kill already took it.
+    const slainTraveler = getTravelerByEnemySlug(enemySlug)
+    if (slainTraveler) travelerState.onTravelerKilled(slainTraveler.id, roomState.roomId)
 
     const ownedFirstKillSlugs = await getOwnedFirstKillSlugs(playerId, enemy)
     const rewards = calcBattleWinRewards(battleState, ownedFirstKillSlugs)
@@ -708,6 +722,8 @@ async function executePlayerAttack(action, playerId, roomState) {
     if (isProbabilistic(roomState.roomId)) {
       roomState.setPresentEnemy(playerId, null)
     }
+    const slainTraveler = getTravelerByEnemySlug(battleState.enemySlug)
+    if (slainTraveler) travelerState.onTravelerKilled(slainTraveler.id, roomState.roomId)
 
     // Compute rewards synchronously — no DB — so we can emit victory immediately.
     // firstKill drops are gated on current ownership, so read what the player already holds first.

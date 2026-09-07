@@ -22,6 +22,8 @@ type DirectoryModalContent = {
   locations?: DirectoryLocation[]
   questMessage?: string
   questMessageDescription?: string
+  /** A live line the server adds when it has one — Wendell's cart schedule. */
+  notice?: string
   title?: string
 }
 
@@ -98,6 +100,11 @@ export function DirectoryContent({ modalContent, buttons }: DirectoryContentProp
             )}
             <div className="border-t border-resource-gold/50 my-4"></div>
           </>
+        )}
+
+        {/* Live notice — a line the server knows the answer to right now */}
+        {modalContent.notice && (
+          <p className="text-sm italic text-fg-secondary leading-relaxed">{modalContent.notice}</p>
         )}
       </div>
     </div>

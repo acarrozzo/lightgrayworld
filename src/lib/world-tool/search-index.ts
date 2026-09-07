@@ -23,6 +23,7 @@ import {
   spellHref,
   recipeHref,
   shopHref,
+  travelerHref,
 } from '@/components/world-tool/hrefs'
 import { ATLAS_EXCLUDED_ROOMS } from './atlas'
 import type { SearchEntry } from './search-types'
@@ -44,6 +45,9 @@ const { CRAFTING_RECIPES, CRAFTING_FAMILIES } = require('@/lib/game-data/craftin
 }
 const { SHOPS } = require('@/lib/game-data/shops') as {
   SHOPS: Record<string, { name: string }>
+}
+const { TRAVELERS } = require('@/lib/game-data/travelers') as {
+  TRAVELERS: { id: string; name: string; title?: string; kind: string; movement: { type: string } }[]
 }
 
 const words = (s: string) => s.toLowerCase().replace(/_/g, ' ')
@@ -107,6 +111,11 @@ export const buildSearchIndex = cachedWorldToolData('search-index', async (): Pr
     const where = roomName.get(roomId)
     const sub = where && where !== shop.name ? `#${roomId} · ${where}` : `#${roomId}`
     entries.push({ type: 'shop', id: roomId, name: shop.name, sub, href: shopHref(roomId) })
+  }
+  for (const t of TRAVELERS) {
+    const name = t.title ? `${t.name} ${t.title}` : t.name
+    const sub = t.movement.type === 'route' ? 'walks a loop' : `${t.kind} · roams`
+    entries.push({ type: 'traveler', id: t.id, name, sub, href: travelerHref(t.id) })
   }
 
   return entries

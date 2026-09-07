@@ -27,6 +27,7 @@ const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('../game-data
 const { getEnemy } = require('../game-data/enemies')
 const { getRevealDefinition, getNextRevealStage, markRevealed, clearRevealed } = require('./search-reveal-state')
 const { savePresentEnemy } = require('./services/present-enemy-service')
+const { executeTravelerAction } = require('./traveler-action-handlers')
 
 const EXIT_DIRECTIONS = [
   'north',
@@ -661,6 +662,13 @@ class RoomState {
     // If room-specific handler returned a result, use it
     if (roomSpecificResult !== null) {
       return roomSpecificResult
+    }
+
+    // A traveler's action ("talk to sherman") belongs to whoever is standing
+    // here right now, not to the room, so it is looked up by presence.
+    const travelerResult = await executeTravelerAction(this.roomId, actionName, playerId, this)
+    if (travelerResult !== null) {
+      return travelerResult
     }
 
     // A typed "cast fireball" / "fireball" is the same as the Spells button.

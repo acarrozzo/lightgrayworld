@@ -29,8 +29,7 @@ import {
   Swords,
   Users,
   Waypoints,
-  type LucideIcon,
-} from 'lucide-react'
+  type LucideIcon, Footprints } from 'lucide-react'
 
 export type WorldToolPageKey =
   | 'enemies'
@@ -43,6 +42,7 @@ export type WorldToolPageKey =
   | 'chests'
   | 'rooms'
   | 'teleport'
+  | 'travelers'
   | 'players'
   | 'room-desc'
   | 'themes'
@@ -104,6 +104,8 @@ export const WORLD_TOOL_GROUPS: WorldToolGroup[] = [
         description: 'Compass-oriented maps of every region and the areas below it, with enemies, loot, NPCs, actions, gates, and secrets.' },
       { key: 'teleport', href: '/teleport', label: 'Teleport', unit: 'destinations', icon: Waypoints,
         description: 'The fast-travel network — every destination, its region, what unlocks it and what it costs.' },
+      { key: 'travelers', href: '/travelers', label: 'Travelers', unit: 'travelers', icon: Footprints,
+        description: 'Who moves through the world — where each traveler roams or the loop it walks, how fast, what it says and what it sells.' },
     ],
   },
   {

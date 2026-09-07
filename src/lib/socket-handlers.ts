@@ -22,7 +22,7 @@ import {
   RoomPartyStatePayload,
   WorldPresenceSyncPayload,
   WorldPresenceUpdatePayload,
-} from './socket'
+ RoomTravelersPayload,} from './socket'
 
 // Centralized socket event handlers to reduce duplication
 export class SocketEventHandlers {
@@ -147,6 +147,10 @@ export class SocketEventHandlers {
 
   onRoomItemsUpdate(handler: (payload: { roomId: string; items: any[] }) => void): () => void {
     return this.on('room:items:update', handler)
+  }
+
+  onRoomTravelers(handler: (payload: RoomTravelersPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.ROOM_TRAVELERS, handler)
   }
 
   onWorldTick(handler: (payload: WorldTickPayload) => void): () => void {

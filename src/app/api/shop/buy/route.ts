@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { getPlayerInventory } from '@/lib/game-engine/services/inventory-service'
 import { getBuyPrice } from '@/lib/shop-pricing'
-const { getShop, shopSellsItem, shopRequiresMembership } = require('@/lib/game-data/shops')
+const { getShopsAt } = require('@/lib/game-data/shops')
 const { isMember } = require('@/lib/game-engine/services/faction-service')
 
 // Raised inside the buy transaction when the guarded gold decrement matches no
@@ -45,21 +45,23 @@ async function handleBuy(request: AuthenticatedRequest) {
       )
     }
 
-    // A purchase is only legal from the shop the player is standing in, and only
+    // A purchase is only legal from a shop trading where the player is standing
+    // — the room's own, or a traveling cart that is here right now — and only
     // for something that shop actually stocks. Without this, any authenticated
     // client could name any slug in the game and buy it at base value from
     // anywhere — the shop UI's stock list would be the only thing stopping them.
-    const shop = getShop(player.currentRoom)
-    if (!shop) {
+    const shops: Array<{ name: string; stock: string[]; requiresMembership?: string }> = getShopsAt(player.currentRoom)
+    if (shops.length === 0) {
       return NextResponse.json(
         { success: false, message: 'There is no shop here.' },
         { status: 400 }
       )
     }
 
-    if (!shopSellsItem(player.currentRoom, itemSlug)) {
+    const shop = shops.find((s) => s.stock.includes(itemSlug))
+    if (!shop) {
       return NextResponse.json(
-        { success: false, message: `${shop.name} does not sell that.` },
+        { success: false, message: shops.length > 1 ? 'Nobody here sells that.' : `${shops[0].name} does not sell that.` },
         { status: 400 }
       )
     }
@@ -67,7 +69,7 @@ async function handleBuy(request: AuthenticatedRequest) {
     // A guild stall only trades with members. The room action hides the stock
     // list from everyone else, but hiding it is not what makes the purchase
     // illegal — this is. Standing in the room is not enough.
-    const requiredMembership = shopRequiresMembership(player.currentRoom)
+    const requiredMembership = shop.requiresMembership
     if (requiredMembership) {
       if (!(await isMember(request.user.id, requiredMembership))) {
         return NextResponse.json(

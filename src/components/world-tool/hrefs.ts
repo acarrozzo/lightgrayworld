@@ -49,6 +49,10 @@ export function spellHref(spellId: string) {
 export function recipeHref(recipeId: string) {
   return `/crafting#${encodeURIComponent(recipeId)}`
 }
+/** A traveler is keyed by its registry id (game-data/travelers.js). */
+export function travelerHref(travelerId: string) {
+  return `/travelers#${encodeURIComponent(travelerId)}`
+}
 /** A shop is keyed by the room it stands in. */
 export function shopHref(roomId: string) {
   return `/shops#${encodeURIComponent(roomId)}`

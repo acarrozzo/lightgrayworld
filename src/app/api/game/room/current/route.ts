@@ -189,6 +189,7 @@ export async function GET(request: NextRequest) {
     // start empty here; the live enemy arrives over the socket (enemy_spawn).
     const { getRoomEnemies, isProbabilistic } = require('@/lib/game-data/room-enemies')
     const { getEnemy } = require('@/lib/game-data/enemies')
+    const { listTravelersInRoom } = require('@/lib/game-engine/traveler-state')
     const roomEnemyConfig = getRoomEnemies(roomId)
     const roomEnemy =
       roomEnemyConfig && !isProbabilistic(roomId)
@@ -219,6 +220,7 @@ export async function GET(request: NextRequest) {
         ...normalizedRoom,
         ...(exitOverlay || {}),
         enemy: roomEnemy,
+        travelers: listTravelersInRoom(roomId),
         stateNote,
         actionOverrides,
         // Which exits carry a gate, so the client can skip its optimistic room

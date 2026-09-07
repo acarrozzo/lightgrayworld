@@ -203,6 +203,18 @@ export interface BattleDropDetail {
 
 // The enemy present in a room, as sent to the client for the room display.
 // Structurally matches RoomEnemy in components/RoomBox.tsx.
+/**
+ * A room's travelers changed — one arrived, left, was killed or came back.
+ * Carries the room's whole current list (replace, don't merge) and the one feed
+ * line that explains the change. Sent to everyone in the room.
+ */
+export interface RoomTravelersPayload {
+  roomId: string
+  travelers: import('./types/room').TravelerView[]
+  line: { message: string; outcome: ActionFeedbackOutcome } | null
+  ts: number
+}
+
 export interface RoomEnemySnapshot {
   slug: string
   name: string

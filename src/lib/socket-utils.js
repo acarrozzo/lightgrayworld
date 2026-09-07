@@ -50,6 +50,7 @@ const SOCKET_EVENTS = {
   PLAYER_LEFT: 'player-left',
   ROOM_PLAYER_MOVED: 'room:player-moved',
   ROOM_ITEMS_UPDATE: 'room:items:update',
+  ROOM_TRAVELERS: 'room:travelers',
   ROOM_PARTY_STATE: 'room:party-state',
   WORLD_TICK: 'world:tick',
   WORLD_ACTIVITY: 'world:activity',
