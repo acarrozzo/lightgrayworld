@@ -103,6 +103,12 @@ export interface RoomView extends RoomViewNavigation {
   npcs: any[]
   /** Who is passing through right now. Live: updated by `room:travelers`. */
   travelers?: TravelerView[]
+  /**
+   * Client-only: the last departure from this room, shown in the room panel
+   * for a short while so a player without the feed open still sees which way
+   * the traveler went. Replaced by the next room.
+   */
+  travelerNote?: { message: string; ts: number } | null
 }
 
 

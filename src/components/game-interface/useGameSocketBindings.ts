@@ -71,7 +71,12 @@ export function useGameSocketBindings(
       if (!payload?.roomId || !Array.isArray(payload.travelers)) return
       const { currentRoom, setCurrentRoom } = useGameStore.getState()
       if (currentRoom?.roomId !== payload.roomId) return
-      setCurrentRoom({ ...currentRoom, travelers: payload.travelers })
+      // A departure is pinned to the room panel too: that is where the player
+      // is looking, and the card it explains has just vanished from there.
+      const departed = payload.change === 'leave' || payload.change === 'gone'
+      const travelerNote =
+        departed && payload.line?.message ? { message: payload.line.message, ts: payload.ts ?? Date.now() } : currentRoom.travelerNote ?? null
+      setCurrentRoom({ ...currentRoom, travelers: payload.travelers, travelerNote })
       if (payload.line?.message) {
         appendWorldFeed({
           type: 'room',

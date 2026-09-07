@@ -19,6 +19,10 @@ const {
 } = require('../game-data/travelers')
 const travelerState = require('./traveler-state')
 
+function fill(line, vars) {
+  return String(line || '').replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? '')
+}
+
 function modalResult(action, traveler, roomState, message, lead) {
   const { createActionFeedbackPayload } = require('./room-action-handlers')
   return {
@@ -89,6 +93,17 @@ async function executeTravelerAction(roomId, action, playerId, roomState) {
   switch (normalized) {
     case 'watch bunny':
       return lineResult(normalized, roomState, pickLine(traveler.lines.watch))
+
+    case 'catch bunny': {
+      // Nobody catches the bunny. It either bolts into the next room (the
+      // room hears the startle line and sees the card go) or hops out of reach.
+      const outcome = travelerState.startleTraveler(traveler.id, roomId)
+      if (!outcome) return createErrorResult(normalized, `${traveler.name} isn't here any more.`)
+      const line = outcome.bolted
+        ? fill(pickLine(traveler.lines.catchMiss), { to: outcome.direction })
+        : pickLine(traveler.lines.catchStay)
+      return lineResult(normalized, roomState, line)
+    }
 
     case 'talk to sherman':
       return modalResult(normalized, traveler, roomState, shermanLine(traveler, roomId), `You talk to ${traveler.spokenName || traveler.name}.`)

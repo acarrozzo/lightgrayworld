@@ -4,7 +4,7 @@ import RoomDisplay from './RoomDisplay'
 import TravelerCard from './TravelerCard'
 import type { Room, Player } from '@/lib/game-state'
 import Icon from './Icon'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { roomColor } from '@/lib/theme/room-colors'
 
 const DIRECTIONS = [
@@ -81,6 +81,26 @@ export default function RoomBox({
   quests = [],
   killList = [],
 }: RoomBoxProps) {
+
+  // A departure note stays up long enough to be read, then goes on its own.
+  // Keyed on the note's timestamp so a new departure restarts the clock.
+  const TRAVELER_NOTE_MS = 25_000
+  const noteTs = room?.travelerNote?.ts ?? null
+  const [travelerNoteVisible, setTravelerNoteVisible] = useState(false)
+  useEffect(() => {
+    if (noteTs == null) {
+      setTravelerNoteVisible(false)
+      return
+    }
+    const remaining = TRAVELER_NOTE_MS - (Date.now() - noteTs)
+    if (remaining <= 0) {
+      setTravelerNoteVisible(false)
+      return
+    }
+    setTravelerNoteVisible(true)
+    const timer = setTimeout(() => setTravelerNoteVisible(false), remaining)
+    return () => clearTimeout(timer)
+  }, [noteTs])
   const iconSizeClasses: Record<string, string> = {
     sm: 'w-12 h-12 sm:w-20 sm:h-20',
     md: 'w-20 h-20 sm:w-32 sm:h-32',
@@ -181,6 +201,11 @@ export default function RoomBox({
             Attack
           </button>
         </div>
+      )}
+
+      {/* Where the last traveler went — the feed line, pinned where the player looks */}
+      {travelerNoteVisible && room.travelerNote?.message && (
+        <p className="text-xs text-resource-gold/80 italic">{room.travelerNote.message}</p>
       )}
 
       {/* Travelers passing through — shared by everyone here */}

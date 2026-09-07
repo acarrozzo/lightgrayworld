@@ -212,6 +212,8 @@ export interface RoomTravelersPayload {
   roomId: string
   travelers: import('./types/room').TravelerView[]
   line: { message: string; outcome: ActionFeedbackOutcome } | null
+  /** What happened here: someone arrived, left, was killed, or came back. */
+  change?: 'arrive' | 'leave' | 'gone' | 'respawn' | null
   ts: number
 }
 

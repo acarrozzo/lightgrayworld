@@ -96,7 +96,13 @@ const TRAVELERS = [
     enemySlug: 'bunny',
     respawnMs: 5 * MINUTE,
     movement: { type: 'wander', rooms: Object.keys(FIELD_EXITS), everyMs: [1 * MINUTE, 2 * MINUTE] },
-    actions: [{ action: 'watch bunny', label: 'Watch', icon: 'enemy-Bunny' }],
+    actions: [
+      { action: 'watch bunny', label: 'Watch', icon: 'enemy-Bunny' },
+      { action: 'catch bunny', label: 'Catch', icon: 'enemy-Bunny' },
+    ],
+    // Trying to catch it: most of the time it bolts into the next room (a real
+    // move, everyone sees it go); sometimes it just hops out of reach and stays.
+    catchBoltChance: 0.7,
     lines: {
       arrive: [
         'A bunny hops in from the {from}.',
@@ -112,6 +118,24 @@ const TRAVELERS = [
         'A bunny hops out from under a bush, as if nothing ever happened.',
       ],
       gone: ['The bunny is gone.'],
+      // First person, to the one who lunged. {to} is the exit it took.
+      catchMiss: [
+        'You lunge. The bunny is gone to the {to} before your hands close on grass.',
+        'You creep up, you pounce, you get a mouthful of field. The bunny bolts {to}.',
+        'You almost have it. Almost. It kicks off your palm and streaks off to the {to}.',
+      ],
+      // First person, when it dodges but does not leave.
+      catchStay: [
+        'You grab. The bunny hops exactly one bunny-length to the left and looks at you.',
+        'You dive. The bunny is not where you dove. It is behind you, chewing.',
+        'You close your hands on nothing. The bunny has moved a foot and is unimpressed.',
+      ],
+      // What the room sees when it bolts. Neutral, so it reads right for the
+      // lunger and the bystanders alike.
+      startle: [
+        'The bunny startles and bolts to the {to}.',
+        'Something spooks the bunny. It is gone to the {to} in two hops.',
+      ],
       watch: [
         'The bunny nibbles a blade of grass, then another, then the same one again.',
         'The bunny freezes, stares straight through you for a long moment, and goes back to eating.',

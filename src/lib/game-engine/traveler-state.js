@@ -126,12 +126,18 @@ function listTravelersInRoom(roomId, now = Date.now()) {
 
 // --- Emitting --------------------------------------------------------------
 
-function emitRoom(roomId, line, now = Date.now()) {
+/**
+ * `change` says what happened from this room's point of view — arrive, leave,
+ * gone (killed), respawn — so the client can put a departure where the player
+ * is actually looking, not only in the feed.
+ */
+function emitRoom(roomId, line, now = Date.now(), change = null) {
   if (!state.io || !roomId) return
   state.io.to(`room-${roomId}`).emit(ROOM_TRAVELERS_EVENT, {
     roomId,
     travelers: listTravelersInRoom(roomId, now),
     line: line ? { message: line, outcome: 'info' } : null,
+    change,
     ts: now,
   })
 }
@@ -151,27 +157,48 @@ function seedWanderer(traveler, now) {
   placeWanderer(traveler, randomItem(traveler.movement.rooms), now)
 }
 
-/** Move one wanderer to an adjacent room of its range, announcing both ends. */
-function moveWanderer(traveler, now) {
+/**
+ * Move one wanderer to an adjacent room of its range, announcing both ends.
+ * `leaveLines` picks the departure's voice: its usual line, a flee, a startle.
+ * Returns the exit it took, or null if it had nowhere to go.
+ */
+function moveWanderer(traveler, now, leaveLines = null) {
   const entry = state.wanderers.get(traveler.id)
-  if (!entry) return
+  if (!entry) return null
   const exits = wanderExits(traveler, entry.roomId)
   if (exits.length === 0) {
     entry.nextMoveAt = now + randomBetween(traveler.movement.everyMs)
-    return
+    return null
   }
   const { direction, to } = randomItem(exits)
   const from = entry.roomId
-  const leaveLines = entry.fleeing && traveler.lines.flee ? traveler.lines.flee : traveler.lines.leave
+  const lines = leaveLines || (entry.fleeing && traveler.lines.flee ? traveler.lines.flee : traveler.lines.leave)
   placeWanderer(traveler, to, now)
-  emitRoom(from, fill(pickLine(leaveLines), { to: direction }), now)
-  emitRoom(to, fill(pickLine(traveler.lines.arrive), { from: oppositeDirection(direction) }), now)
+  emitRoom(from, fill(pickLine(lines), { to: direction }), now, 'leave')
+  emitRoom(to, fill(pickLine(traveler.lines.arrive), { from: oppositeDirection(direction) }), now, 'arrive')
+  return direction
+}
+
+/**
+ * Someone lunged at a wanderer standing in `roomId`. Most of the time it bolts
+ * into the next room — a real move the whole room sees — and sometimes it just
+ * hops out of reach and stays. Returns { bolted, direction } or null when the
+ * traveler is not there to be lunged at.
+ */
+function startleTraveler(travelerId, roomId, now = Date.now()) {
+  const traveler = getTraveler(travelerId)
+  if (!traveler || traveler.movement.type !== 'wander') return null
+  if (!isTravelerInRoom(travelerId, roomId, now)) return null
+  const chance = typeof traveler.catchBoltChance === 'number' ? traveler.catchBoltChance : 0.7
+  if (state.random() >= chance) return { bolted: false, direction: null }
+  const direction = moveWanderer(traveler, now, traveler.lines.startle || traveler.lines.leave)
+  return direction ? { bolted: true, direction } : { bolted: false, direction: null }
 }
 
 function respawnWanderer(traveler, now) {
   const roomId = randomItem(traveler.movement.rooms)
   placeWanderer(traveler, roomId, now)
-  emitRoom(roomId, pickLine(traveler.lines.respawn || traveler.lines.arrive), now)
+  emitRoom(roomId, pickLine(traveler.lines.respawn || traveler.lines.arrive), now, 'respawn')
 }
 
 /** Announce a route traveler that has crossed into a new stop since last tick. */
@@ -187,8 +214,8 @@ function checkRoute(traveler, now) {
   const to = position.stop.roomId
   state.route.set(traveler.id, { roomId: to, index: position.index })
   if (from === to) return
-  emitRoom(from, fill(pickLine(traveler.lines.leave), { to: position.stop.via }), now)
-  emitRoom(to, fill(pickLine(traveler.lines.arrive), { from: oppositeDirection(position.stop.via) }), now)
+  emitRoom(from, fill(pickLine(traveler.lines.leave), { to: position.stop.via }), now, 'leave')
+  emitRoom(to, fill(pickLine(traveler.lines.arrive), { from: oppositeDirection(position.stop.via) }), now, 'arrive')
 }
 
 /** One pass: everything that is due at `now`. Exported so tests can drive it. */
@@ -226,8 +253,8 @@ function onTravelerKilled(travelerId, roomId, now = Date.now()) {
   entry.goneUntil = now + (traveler.respawnMs || 5 * 60 * 1000)
   entry.nextMoveAt = Infinity
   const line = pickLine(traveler.lines.gone)
-  emitRoom(from, line, now)
-  if (roomId && roomId !== from) emitRoom(roomId, line, now)
+  emitRoom(from, line, now, 'gone')
+  if (roomId && roomId !== from) emitRoom(roomId, line, now, 'gone')
   return true
 }
 
@@ -304,4 +331,5 @@ module.exports = {
   buildTravelerView,
   onTravelerKilled,
   onBattleStarted,
+  startleTraveler,
 }

@@ -84,6 +84,9 @@ test('a wanderer is seeded inside its range and moves only to an adjacent room o
   const arrival = io.sent.find((m) => m.room === `room-${after}` && m.payload.travelers.some((v) => v.id === 'bunny'))
   assert.ok(arrival, 'the destination list now has the bunny')
   assert.match(arrival.payload.line.message, /from the (north|south|east|west|northeast|northwest|southeast|southwest)/)
+  assert.equal(arrival.payload.change, 'arrive')
+  const departure = io.sent.find((m) => m.room === `room-${start}`)
+  assert.equal(departure.payload.change, 'leave')
 })
 
 test('a killed bunny is gone for everyone until it respawns, and a second kill changes nothing', () => {
@@ -96,6 +99,7 @@ test('a killed bunny is gone for everyone until it respawns, and a second kill c
   assert.equal(state.onTravelerKilled('bunny', room, 2000), false)
   const gone = io.sent.find((m) => m.room === `room-${room}`)
   assert.equal(gone.payload.travelers.some((v) => v.id === 'bunny'), false)
+  assert.equal(gone.payload.change, 'gone')
   // Not back one second early; back at the respawn time, somewhere in range.
   state.tick(1000 + bunny.respawnMs - 1000)
   assert.equal(state.roomIdOf('bunny', 1000 + bunny.respawnMs - 1000), null)
@@ -120,7 +124,7 @@ test('a traveler view carries the enemy card numbers and the actions', () => {
   const room = state.roomIdOf('bunny', 0)
   const [view] = state.listTravelersInRoom(room, 0).filter((v) => v.id === 'bunny')
   assert.equal(view.enemy.slug, 'bunny')
-  assert.deepEqual(view.actions.map((a) => a.action), ['watch bunny'])
+  assert.deepEqual(view.actions.map((a) => a.action), ['watch bunny', 'catch bunny'])
   const merchantView = state.buildTravelerView(merchant, travelers.routeRoomAt(merchant, 0), 0)
   assert.ok(merchantView.leavesAt > 0)
   assert.equal(merchantView.enemy, null)
@@ -171,4 +175,28 @@ test('a sign can promise when the cart is due', () => {
   assert.equal(away.here, false)
   assert.equal(away.arrivesAt, travelers.routePeriodMs(merchant))
   assert.equal(travelers.routeNextArrivalAt(merchant, '999', 0), null)
+})
+
+test('trying to catch the bunny sends it into the next room, or not, but never into your hands', () => {
+  const io = fakeIo()
+  state.start({ io, now: 0, timer: false })
+  const room = state.roomIdOf('bunny', 0)
+  // Force the bolt: random below the chance, then any exit.
+  state.setRandom(() => 0)
+  const bolted = state.startleTraveler('bunny', room, 5000)
+  assert.equal(bolted.bolted, true)
+  const after = state.roomIdOf('bunny', 5000)
+  assert.notEqual(after, room)
+  assert.ok(travelers.wanderExits(bunny, room).some((e) => e.to === after && e.direction === bolted.direction))
+  const startle = io.sent.find((m) => m.room === `room-${room}` && m.payload.change === 'leave')
+  assert.ok(bunny.lines.startle.some((l) => startle.payload.line.message.startsWith(l.split('{')[0])), 'the room hears the startle line')
+  // Force the dodge: random at or above the chance. It stays, nothing is emitted.
+  io.sent.length = 0
+  state.setRandom(() => 0.99)
+  const stayed = state.startleTraveler('bunny', after, 6000)
+  assert.deepEqual(stayed, { bolted: false, direction: null })
+  assert.equal(state.roomIdOf('bunny', 6000), after)
+  assert.equal(io.sent.length, 0)
+  // Lunging where it is not gives nothing to lunge at.
+  assert.equal(state.startleTraveler('bunny', room, 6000), null)
 })
