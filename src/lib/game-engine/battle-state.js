@@ -1,5 +1,6 @@
 const { getStatBuffBonuses } = require('./services/buff-service')
 const { getPassiveSkillBonuses } = require('../game-data/skills')
+const { getEnemyTraits } = require('../game-data/enemy-traits')
 
 /**
  * What the player is holding, as the skills read it: the weapon's category,
@@ -142,6 +143,7 @@ class BattleState {
       enemyAtt: this.enemy.att,
       enemyDef: this.enemy.def,
       enemyDescription: this.enemy.description,
+      enemyTraits: getEnemyTraits(this.enemy),
       isAdvantageTurn: false,
       playerHp,
       playerHpMax,

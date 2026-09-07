@@ -2,6 +2,7 @@
 
 import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player } from '@/lib/game-state'
 import Icon from '@/components/Icon'
+import EnemyTraitTags from '@/components/EnemyTraitTags'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { LogOut } from 'lucide-react'
 import { getItemActions, resolveItemIcon } from '@/lib/item-actions'
@@ -734,7 +735,10 @@ export default function BattlePanel({
             </div>
             <HpBar current={battle.enemyCurrentHp} max={battle.enemyMaxHp} color="bg-resource-hp" rtl initialPct={100} />
           </div>
-          <div className="mt-auto flex items-center gap-3">
+          {/* Trait row left of ATT/DEF, as the original HUD placed its buffBoxes.
+              The tag for the special that just fired glows with the damage number. */}
+          <div className="mt-auto flex items-center justify-end flex-wrap gap-x-3 gap-y-1">
+            <EnemyTraitTags traits={battle.enemyTraits} activeId={enemyAction?.id} align="end" className="justify-end" />
             <div className="flex flex-col items-center">
               <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">ATT</span>
               <span className="text-xs font-black text-stat-def leading-none mt-0.5">{battle.enemyAtt ?? '—'}</span>

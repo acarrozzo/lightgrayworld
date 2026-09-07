@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { RoomView, RoomItemView } from '@/lib/types/room'
 import { EquipSlot, WeaponCategory } from '@prisma/client'
-import { PartySnapshot } from '@/lib/socket'
+import { EnemyTrait, PartySnapshot } from '@/lib/socket'
 
 export interface Player {
   id: string
@@ -173,6 +173,8 @@ export interface BattleState {
   enemyLevel: number | null
   enemyAtt: number | null
   enemyDef: number | null
+  /** The enemy's standing tag row: perks, Flying, attack type, immunities. */
+  enemyTraits: EnemyTrait[]
   enemyCurrentHp: number
   enemyMaxHp: number
   turnCount: number
@@ -229,6 +231,7 @@ const INITIAL_BATTLE_STATE: BattleState = {
   enemyLevel: null,
   enemyAtt: null,
   enemyDef: null,
+  enemyTraits: [],
   enemyCurrentHp: 0,
   enemyMaxHp: 0,
   turnCount: 0,
@@ -377,7 +380,7 @@ export interface GameState {
   cacheRoom: (room: Room) => void
   getCachedRoom: (roomId: string) => Room | null
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
-  setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
+  setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyTraits?: EnemyTrait[]; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
   updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; companion?: BattleCompanionStrike | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number }) => void
   clearBattle: () => void
   setBattleResult: (result: BattleResult) => void
@@ -507,6 +510,7 @@ export const useGameStore = create<GameState>()(
             enemyLevel: payload.enemyLevel,
             enemyAtt: payload.enemyAtt,
             enemyDef: payload.enemyDef,
+            enemyTraits: payload.enemyTraits ?? [],
             enemyCurrentHp: payload.enemyCurrentHp,
             enemyMaxHp: payload.enemyMaxHp,
             turnCount: payload.turnCount,
@@ -615,6 +619,7 @@ export const useGameStore = create<GameState>()(
                   enemyLevel: payload.battle.enemyLevel,
                   enemyAtt: payload.battle.enemyAtt,
                   enemyDef: payload.battle.enemyDef,
+                  enemyTraits: payload.battle.enemyTraits ?? [],
                   enemyCurrentHp: payload.battle.enemyCurrentHp,
                   enemyMaxHp: payload.battle.enemyMaxHp,
                   turnCount: payload.battle.turnCount,

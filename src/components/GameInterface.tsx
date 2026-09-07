@@ -2316,6 +2316,7 @@ export default function GameInterface() {
         enemyLevel: payload.enemyLevel,
         enemyAtt: payload.enemyAtt,
         enemyDef: payload.enemyDef,
+        enemyTraits: payload.enemyTraits ?? [],
         enemyCurrentHp: payload.enemyCurrentHp,
         enemyMaxHp: payload.enemyMaxHp,
         turnCount: payload.turnCount,

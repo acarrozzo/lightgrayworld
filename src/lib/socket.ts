@@ -28,12 +28,25 @@ export interface BattleSnapshot {
   canFlee: boolean
 }
 
+/**
+ * One tag in the enemy's trait row — a perk (power, bite…), Flying, its attack
+ * type, or an immunity. Derived server-side from the enemy definition by
+ * game-data/enemy-traits.js; `tone` is a semantic colour role the UI maps.
+ */
+export interface EnemyTrait {
+  id: string
+  label: string
+  title: string
+  tone: 'crit' | 'sky' | 'str' | 'dex' | 'mag'
+}
+
 export interface BattleStartedPayload extends BattleSnapshot {
   enemyIcon: string
   enemyLevel: number
   enemyAtt: number
   enemyDef: number
   enemyDescription: string
+  enemyTraits: EnemyTrait[]
   isAdvantageTurn: boolean
   playerHp: number
   playerHpMax: number

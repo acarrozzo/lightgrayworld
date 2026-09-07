@@ -26,6 +26,8 @@ const ENEMY_SPECIALS = {
   power: {
     id: 'power',
     name: 'Power Attack',
+    label: 'Power',
+    rule: 'Power Attack: 1 in 3 attacks rolls ATT three times and sums them.',
     // 1/3 — the original's `$enemypowerattack = rand(1, 3); ... == 1`.
     chance: 1 / 3,
     // Three independent ATT rolls summed. NOT `normal damage x3`: each roll is
@@ -40,6 +42,8 @@ const ENEMY_SPECIALS = {
   crit: {
     id: 'crit',
     name: 'Critical Attack',
+    label: 'Crit',
+    rule: 'Critical Attack: 1 in 10 attacks rolls ATT ten times and sums them.',
     // 1/10 — `$enemycritattack = rand(1, 10); ... == 1`.
     chance: 1 / 10,
     // Ten independent ATT rolls summed, blocked once. Averages 5x ATT, which is
@@ -53,6 +57,8 @@ const ENEMY_SPECIALS = {
   rage: {
     id: 'rage',
     name: 'Rage',
+    label: 'Rage',
+    rule: 'Rage: 1 in 5 attacks lands 2 to 4 hits at full ATT. Your DEF does not block them.',
     // 1/5 — `$enemyrage = rand(1, 5); ... == 1`.
     chance: 1 / 5,
     // A 2-to-4 hit combo at FULL attack each, with no roll and no block. The
@@ -67,6 +73,8 @@ const ENEMY_SPECIALS = {
   bite: {
     id: 'bite',
     name: 'Bite',
+    label: 'Bite',
+    rule: 'Bite: 1 in 5 attacks hits twice at full ATT. Your DEF does not block it.',
     // 1/5 — `$enemybite = rand(1, 5); ... == 1`.
     chance: 1 / 5,
     // Two hits at full attack, pure. Rats, skeevers and the War Turtle all carry
@@ -77,6 +85,8 @@ const ENEMY_SPECIALS = {
   pure: {
     id: 'pure',
     name: 'Pure Attack',
+    label: 'Pure',
+    rule: 'Pure Attack: every attack deals full ATT. Your DEF never blocks it.',
     // Not a proc: the original's `ePureA` is a standing property that replaced
     // the damage line on EVERY attack (`$edamagetotal = $enemyatt`). Declared
     // here at chance 1 so it flows through the same selection step as the rest.

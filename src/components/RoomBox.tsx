@@ -7,6 +7,8 @@ import type { Room, Player } from '@/lib/game-state'
 import Icon from './Icon'
 import { useEffect, useMemo, useState } from 'react'
 import { roomColor } from '@/lib/theme/room-colors'
+import { getEnemyTraits } from '@/lib/game-data/enemy-traits'
+import EnemyTraitTags from './EnemyTraitTags'
 
 const DIRECTIONS = [
   'north',
@@ -34,6 +36,13 @@ export interface RoomEnemy {
   def: number
   isAggressive: boolean
   isFriendly: boolean
+  /** Trait flags from the enemy definition, read by getEnemyTraits for the tag row. */
+  specials?: string[]
+  isFlying?: boolean
+  damageType?: 'MELEE' | 'RANGED' | 'MAGIC'
+  isMeleeImmune?: boolean
+  isRangedImmune?: boolean
+  isMagicImmune?: boolean
 }
 
 interface RoomBoxProps {
@@ -202,6 +211,7 @@ export default function RoomBox({
               <span className="text-fg-muted">ATT <span className="font-semibold text-enemy-hostile">{roomEnemy.att}</span></span>
               <span className="text-fg-muted">DEF <span className="font-semibold text-resource-gold">{roomEnemy.def}</span></span>
             </div>
+            <EnemyTraitTags traits={getEnemyTraits(roomEnemy)} className="mt-1.5" />
           </div>
           <div className="flex basis-full justify-end @md:basis-auto @md:ml-1">
             <button

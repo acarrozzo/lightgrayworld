@@ -3,6 +3,7 @@ const { BattleState } = require('./battle-state')
 const { resolveTurn, resolveEnemyAttack, getOtherCombatantCount, totalDamageToEnemy } = require('./battle-calculator')
 const { calcBattleWinRewards, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
+const { getEnemyTraits } = require('../game-data/enemy-traits')
 const { isProbabilistic } = require('../game-data/room-enemies')
 const { getTravelerByEnemySlug } = require('../game-data/travelers')
 const travelerState = require('./traveler-state')
@@ -500,6 +501,9 @@ async function executeStartBattle(action, playerId, roomState) {
     enemyAtt: enemy.att,
     enemyDef: enemy.def,
     enemyDescription: enemy.description,
+    // The HUD's tag row (perks, Flying, attack type, immunities) — static per
+    // enemy, sent once here and again on resume so a reconnect keeps it.
+    enemyTraits: getEnemyTraits(enemy),
     isAdvantageTurn,
     playerHp: playerStats.hp,
     playerHpMax: playerStats.hpMax,
