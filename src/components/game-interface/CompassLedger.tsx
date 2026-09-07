@@ -40,12 +40,14 @@ interface LedgerProps extends LedgerActions {
 }
 
 const LINK =
-  'text-fg-secondary hover:text-fg-bright border-b border-dotted border-fg-disabled hover:border-fg-secondary transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-line-focus rounded-sm'
+  'text-fg-secondary hover:text-fg-bright hover:underline underline-offset-2 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-line-focus rounded-sm disabled:text-fg-muted disabled:no-underline'
 
+/** A quiet text link with a trailing chevron. The chevron is the only decoration. */
 function Link({ onClick, children, title }: { onClick?: () => void; children: React.ReactNode; title?: string }) {
   return (
-    <button type="button" onClick={onClick} disabled={!onClick} className={`${LINK} disabled:border-transparent disabled:text-fg-muted`} title={title}>
-      {children} ›
+    <button type="button" onClick={onClick} disabled={!onClick} className={LINK} title={title}>
+      {children}
+      <span className="text-fg-muted"> ›</span>
     </button>
   )
 }
@@ -58,8 +60,8 @@ function equippedIn(inventory: InventoryItem[] | undefined, slot: 'MAIN_HAND'): 
 /** A point count in its colour, muted at zero. */
 function Points({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <span>
-      <span className="text-fg-muted">{label}</span>{' '}
+    <span className="inline-flex items-baseline gap-1">
+      <span className="text-fg-muted">{label}</span>
       <span className={`font-semibold tabular-nums ${value > 0 ? tone : 'text-fg-muted'}`}>{value}</span>
     </span>
   )
@@ -106,27 +108,46 @@ export function DangerCorner({ room, player, align = 'right' }: { room: LedgerRo
 export function QuickLinksCorner({ player, inventory, onOpenTraining, onOpenStats, onOpenBook, onOpenInventory }: LedgerProps) {
   if (!player) return null
   const weapon = equippedIn(inventory, 'MAIN_HAND')
+  // Plain left-aligned lines, one fact each, the link following its fact on
+  // the same line. No columns: the numbers and names are all different
+  // widths and nothing to the right of them needs to line up.
   return (
-    <div className="text-[11px] leading-[15px] whitespace-nowrap">
-      <div>
-        <Points label="TP" value={player.tp ?? 0} tone="text-accent" />
-        <span className="text-fg-muted"> · </span>
-        <Link onClick={onOpenTraining} title="Spend training points">Training</Link>
-      </div>
-      <div>
+    <div className="flex flex-col gap-0.5 text-[11px] leading-4 whitespace-nowrap">
+      {/* Unspent training points are the one thing here that should not wait:
+          the row turns into a lit pill with a pulse, and the link lights with it. */}
+      {(player.tp ?? 0) > 0 ? (
+        <div className="flex items-center gap-2">
+          <span className="relative inline-flex items-center gap-1 rounded-full fill-accent px-1.5 py-px font-bold tabular-nums">
+            <span className="absolute inset-0 rounded-full bg-accent/60 animate-ping-slow" aria-hidden="true" />
+            <span className="relative">TP {player.tp}</span>
+          </span>
+          <button
+            type="button"
+            onClick={onOpenTraining}
+            disabled={!onOpenTraining}
+            title="Spend training points"
+            className="font-semibold text-accent hover:text-fg-bright hover:underline underline-offset-2 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-line-focus rounded-sm disabled:text-fg-muted disabled:no-underline"
+          >
+            Train now<span className="text-accent/70"> ›</span>
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-baseline gap-2">
+          <Points label="TP" value={0} tone="text-accent" />
+          <Link onClick={onOpenTraining} title="Spend training points">Training</Link>
+        </div>
+      )}
+      <div className="flex items-baseline gap-2">
         <Points label="CP" value={player.cp ?? 0} tone="text-hue-purple" />
-        <span className="text-fg-muted"> · </span>
         <Link onClick={onOpenStats} title="Spend core stat points">Stats</Link>
       </div>
-      <div>
+      <div className="flex items-baseline gap-2">
         <Points label="SP" value={player.sp ?? 0} tone="text-stat-mag" />
-        <span className="text-fg-muted"> · </span>
-        <Link onClick={onOpenBook ? () => onOpenBook('skills') : undefined} title="Open the skills book">Skills</Link>{' '}
+        <Link onClick={onOpenBook ? () => onOpenBook('skills') : undefined} title="Open the skills book">Skills</Link>
         <Link onClick={onOpenBook ? () => onOpenBook('spells') : undefined} title="Open the spells book">Spells</Link>
       </div>
-      <div>
+      <div className="flex items-baseline gap-2">
         <ItemName item={weapon} empty="Bare hands" />
-        <span className="text-fg-muted"> · </span>
         <Link onClick={onOpenInventory ? () => onOpenInventory('main') : undefined} title="Weapons in your bag">Weapons</Link>
       </div>
       <div>

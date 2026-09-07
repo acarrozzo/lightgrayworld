@@ -1,15 +1,24 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
-import { ArrowBigUp, ArrowBigUpDash } from 'lucide-react'
+import { ArrowBigUp, ArrowBigUpDash, Map as MapIcon, Sparkles } from 'lucide-react'
 import { getRoomMapPosition } from './game-interface/room-map-positions'
 import { getRoomMapView } from './game-interface/utils'
 import { roomColor } from '@/lib/theme/room-colors'
+
+const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
 
 interface CompassProps {
   room: any
   onAction?: (action: string) => void
   onNavigateToMap?: () => void
+  /**
+   * Map and Teleport sit to the right of the ring as two filled circles, the
+   * matched pair to the up/down column on the left. They open a view rather
+   * than move the player, so the fill colour, not the shape, says which.
+   */
+  onOpenTeleport?: () => void
+  isTeleportDisabled?: boolean
   isMoveInProgress?: boolean
   /**
    * Party followers travel with their leader and cannot move on their own; the
@@ -20,9 +29,9 @@ interface CompassProps {
   isLocked?: boolean
   lockedHint?: string
   /**
-   * Overrides the outer sizing box. The default centres the D-pad in whatever
-   * column it is given; the mobile strip narrows it so the basic-action buttons
-   * fit beside it. Must leave 48px of left inset for the up/down buttons.
+   * Classes for the outer box. The D-pad centres itself inside it, and the
+   * ring wrapper's own margins reserve room for the two side columns, so the
+   * box needs no inset of its own; give it a width and the rest follows.
    */
   className?: string
 }
@@ -92,10 +101,12 @@ export default function Compass({
   room,
   onAction,
   onNavigateToMap,
+  onOpenTeleport,
+  isTeleportDisabled = false,
   isMoveInProgress = false,
   isLocked = false,
   lockedHint = 'Following your party — leave to move freely',
-  className = 'w-full sm:max-w-[380px] max-w-[320px] mx-auto',
+  className = 'w-full',
 }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
   const [currentPosition, setCurrentPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
@@ -186,10 +197,18 @@ export default function Compass({
   }
 
   return (
-    <div className={`compass ${className}`} title={isLocked ? lockedHint : undefined}>
+    <div
+      className={`compass flex justify-center ${className}`}
+      title={isLocked ? lockedHint : undefined}
+      // The breathing room between the ring and its two side columns. Scales
+      // with the viewport between 12px on a narrow phone and 24px on desktop,
+      // and the ring wrapper's horizontal margin reserves column + gap on both
+      // sides, so centring the wrapper centres the ring and nothing overflows.
+      style={{ '--compass-side-gap': 'clamp(0.75rem, 4vw, 1.5rem)' } as React.CSSProperties}
+    >
       {/* Main D-pad */}
-      <div className="relative">
-        <div className="relative w-56 sm:w-64 h-56 sm:h-64 mx-auto">
+      <div className="relative w-56 sm:w-64 mx-[calc(2.5rem+var(--compass-side-gap))]">
+        <div className="relative w-56 sm:w-64 h-56 sm:h-64">
           {/* Map circle in center. Also opens the map; the Map button in the
               corner of the Explore panel is the labelled way in. */}
           <div className="absolute inset-0 flex items-center justify-center">
@@ -251,7 +270,7 @@ export default function Compass({
         </div>
 
         {/* Vertical directions (up/down) */}
-        <div className="absolute -left-12 top-1/2 transform -translate-y-1/2 flex flex-col gap-2">
+        <div className="absolute right-full mr-[var(--compass-side-gap)] top-1/2 -translate-y-1/2 flex flex-col gap-2">
           {verticalDirections.map((dir) => {
             const hiddenForRoom = HIDDEN_EXITS[room.roomId] ?? []
             const isAvailable = !!room[dir.key] && !hiddenForRoom.includes(dir.key)
@@ -283,6 +302,36 @@ export default function Compass({
               </button>
             )
           })}
+        </div>
+
+        {/* Map and Teleport: the right-hand column, mirroring up/down. Same
+            40px circles as the exits, filled in the colour of what they open. */}
+        <div className="absolute left-full ml-[var(--compass-side-gap)] top-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onNavigateToMap?.()}
+              aria-label="Open the map"
+              title={`Map — ${mapTitle}`}
+              className="w-10 h-10 rounded-full border border-fg-bright/10 fill-hue-sky shadow-sm shadow-shadow flex items-center justify-center transition-all duration-200 hover:brightness-110 hover:border-fg-bright/20 active:scale-[0.95] focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+            >
+              <MapIcon className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden="true" />
+            </button>
+            <span className="text-[9px] uppercase tracking-widest text-fg-muted leading-none" aria-hidden="true">Map</span>
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onOpenTeleport?.()}
+              disabled={isTeleportDisabled || !onOpenTeleport}
+              aria-label="Open fast travel"
+              title={`Teleport — ${TELEPORT_MP_COST} MP`}
+              className="w-10 h-10 rounded-full border border-fg-bright/10 fill-resource-mp shadow-sm shadow-shadow flex items-center justify-center transition-all duration-200 hover:brightness-110 hover:border-fg-bright/20 active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+            >
+              <Sparkles className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden="true" />
+            </button>
+            <span className="text-[9px] uppercase tracking-widest text-fg-muted leading-none" aria-hidden="true">Tele</span>
+          </div>
         </div>
 
         {/* No spinner over the map while it pans: the exit buttons already show

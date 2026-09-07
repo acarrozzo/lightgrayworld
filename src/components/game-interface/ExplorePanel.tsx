@@ -1,19 +1,15 @@
 'use client'
 
-import { Map as MapIcon, Sparkles } from 'lucide-react'
 import Compass from '@/components/Compass'
-import BasicActionButtons from '@/components/BasicActionButtons'
 import WorldLayer, { type WorldTab } from './WorldLayer'
 import { DangerCorner, LedgerFlyout, QuickLinksCorner, type LedgerActions } from './CompassLedger'
 import type { MapConfigEntry } from './constants'
 import type { InventoryItem, Player } from '@/lib/game-state'
 
-const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
-
 /**
  * What the Explore panel is showing. `compass` is the panel itself — the
  * D-pad and the actions — and `world` is the Map / Teleport layer docked over
- * it, opened from the two buttons in the panel's top-right corner or the
+ * it, opened from the Map and Teleport pills under the action buttons or the
  * mini-map in the D-pad's centre. The layer closes from the X in its own
  * header; Escape, travelling, or entering battle also return to the compass.
  * The mobile strip has no height for the layer, so there every one of those
@@ -54,15 +50,8 @@ interface ExplorePanelProps extends LedgerActions {
    * Map and Teleport buttons open the full-screen overlay directly.
    */
   variant?: 'sidebar' | 'strip'
-  /** Latest action result, for the flyout on the basic-action buttons. */
-  actionResult?: any
   isLoadingRoom?: boolean
-  currentAction?: string
 }
-
-/** The two corner controls share one look: a quiet outlined pill in the colour of what it opens. */
-const CORNER_BUTTON_BASE =
-  'flex items-center justify-center gap-1 rounded-md border bg-surface-panel/85 font-medium shadow-sm backdrop-blur-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:opacity-40 disabled:cursor-not-allowed'
 
 export default function ExplorePanel({
   room,
@@ -90,9 +79,7 @@ export default function ExplorePanel({
   showBattleBadge = false,
   isPartyMember = false,
   variant = 'sidebar',
-  actionResult,
   isLoadingRoom = false,
-  currentAction = '',
 }: ExplorePanelProps) {
   const isSidebar = variant === 'sidebar'
   // Only the sidebar is tall enough to hold the layer; the mobile strip sends
@@ -129,83 +116,41 @@ export default function ExplorePanel({
         isSidebar ? 'flex-1 min-h-0 p-4 gap-3' : 'px-2 py-3'
       }`}
     >
-      {/* The corner ledger, from the original nav band: danger and room
-          top-right, points / weapon / gold with their links bottom-left. Dims
-          with the compass; the room card carries the same facts in battle.
-          The strip has no corners to spare, so there the whole ledger sits
-          behind one button at the top-left and opens as a flyout. */}
+      {/* The corner ledger, from the original nav band: points / weapon / gold
+          with their links top-left, where the original kept its quick links;
+          danger and room top-right. Dims with the compass; the room card
+          carries the same facts in battle. The strip has no corners to spare,
+          so there the whole ledger sits behind one button at the top-left and
+          opens as a flyout. */}
       {!isSidebar && <LedgerFlyout {...ledger} />}
       {isSidebar && (
         <>
+          <div className={`absolute top-2 left-2 z-10 transition-opacity duration-300 ${dimmedClasses}`}>
+            <QuickLinksCorner {...ledger} />
+          </div>
           <div className={`absolute top-2 right-2 z-10 transition-opacity duration-300 ${dimmedClasses}`}>
             <DangerCorner room={room} player={player} />
           </div>
-          <div className={`absolute bottom-2 left-2 z-10 transition-opacity duration-300 ${dimmedClasses}`}>
-            <QuickLinksCorner {...ledger} />
-          </div>
         </>
       )}
-      {/* Map and Teleport: top left of the D-pad area in the sidebar, where the
-          compass's up/down column leaves the corner free; top right on the
-          strip, above the action column. The sidebar labels both; the strip
-          labels Map and keeps Teleport to its glyph, the space being what it is. */}
-      <div className={`absolute top-2 z-10 flex gap-1.5 transition-opacity duration-300 ${isSidebar ? 'left-2' : 'right-2'} ${dimmedClasses}`}>
-        <button
-          type="button"
-          onClick={() => openWorld('map')}
-          aria-label="Open the map"
-          title="Map"
-          className={`${CORNER_BUTTON_BASE} border-hue-sky/60 text-hue-sky hover:bg-hue-sky/15 hover:border-hue-sky ${
-            isSidebar ? 'h-8 px-3 text-[13px]' : 'h-8 px-2.5 text-xs'
-          }`}
-        >
-          <MapIcon size={isSidebar ? 15 : 14} aria-hidden="true" />
-          <span>Map</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => openWorld('teleport')}
-          disabled={isLoadingRoom}
-          aria-label="Open fast travel"
-          title={`Teleport — ${TELEPORT_MP_COST} MP`}
-          className={`${CORNER_BUTTON_BASE} border-resource-mp/60 text-resource-mp hover:bg-resource-mp/15 hover:border-resource-mp ${
-            isSidebar ? 'h-8 px-3 text-[13px]' : 'h-8 w-8'
-          }`}
-        >
-          <Sparkles size={isSidebar ? 15 : 14} aria-hidden="true" />
-          {isSidebar && <span>Teleport</span>}
-        </button>
-      </div>
 
       {/* Desktop stacks the actions under the D-pad; the short mobile strip puts
           them in a column beside it to save vertical space. The Compass keeps a
           48px left inset for its up/down buttons. */}
       <div
         className={`flex transition-opacity duration-300 ${
-          isSidebar ? 'flex-col items-center gap-4' : 'flex-row items-center justify-center gap-2'
+          isSidebar ? 'flex-col items-center gap-4' : 'relative w-full items-center justify-center'
         } ${dimmedClasses}`}
       >
         <Compass
           room={room}
           onAction={onAction}
           onNavigateToMap={() => openWorld('map')}
+          onOpenTeleport={() => openWorld('teleport')}
+          isTeleportDisabled={isLoadingRoom}
           isMoveInProgress={isMoveInProgress}
           isLocked={isPartyMember}
-          className={
-            isSidebar
-              ? 'w-full sm:max-w-[380px] max-w-[320px] mx-auto'
-              : 'w-[272px] sm:w-[304px] shrink-0 pl-12'
-          }
-        />
-        <BasicActionButtons
-          onAction={onAction}
-          actionResult={actionResult}
-          isLoadingRoom={isLoadingRoom}
-          currentAction={currentAction}
-          containerClassName={
-            isSidebar ? 'flex flex-wrap justify-center gap-2' : 'flex flex-col gap-1.5 shrink-0'
-          }
-          sizeClassName={isSidebar ? 'px-4 py-1.5 text-sm' : 'px-2.5 py-1.5 text-xs w-full'}
+          className="w-full"
         />
       </div>
       {isSidebar && isPartyMember && !isDimmed && (

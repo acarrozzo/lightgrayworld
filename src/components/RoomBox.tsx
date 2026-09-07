@@ -2,6 +2,7 @@
 
 import RoomDisplay from './RoomDisplay'
 import TravelerCard from './TravelerCard'
+import BasicActionButtons from './BasicActionButtons'
 import type { Room, Player } from '@/lib/game-state'
 import Icon from './Icon'
 import { useEffect, useMemo, useState } from 'react'
@@ -58,6 +59,8 @@ interface RoomBoxProps {
   }
   actionResult?: any
   isLoadingRoom?: boolean
+  /** The action in flight, so its button can show it is working. */
+  currentAction?: string
   roomEnemy?: RoomEnemy | null
   isInBattle?: boolean
   isPartyMember?: boolean
@@ -75,6 +78,7 @@ export default function RoomBox({
   worldTick,
   actionResult,
   isLoadingRoom = false,
+  currentAction = '',
   roomEnemy = null,
   isInBattle = false,
   isPartyMember = false,
@@ -260,6 +264,16 @@ export default function RoomBox({
         killList={killList}
       />
 
+      {/* The three persistent actions, last in the room as the original kept
+          them: everything the room offers comes first, then what you can
+          always do. This is their only copy: the result flyout anchors here. */}
+      <BasicActionButtons
+        onAction={onAction}
+        actionResult={actionResult}
+        isLoadingRoom={isLoadingRoom}
+        currentAction={currentAction}
+        containerClassName="flex flex-wrap gap-2 mt-4 pt-4 border-t border-line-subtle/30"
+      />
     </div>
   )
 }

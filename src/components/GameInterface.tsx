@@ -3474,7 +3474,6 @@ export default function GameInterface() {
             : undefined
         }
         clicks={player?.clicks}
-        currency={player?.currency}
         unspentPoints={unspentPoints}
         onCharacterClick={() => handleCenterTabChange(centerActiveTab === 'char' ? null : 'char')}
         isConnected={socket?.connected ?? false}
@@ -3530,9 +3529,7 @@ export default function GameInterface() {
                 isMoveInProgress={isMoveInProgress}
                 isDimmed={battle.isInBattle || player.hp <= 0}
                 showBattleBadge={battle.isInBattle}
-                actionResult={actionResult}
                 isLoadingRoom={isLoadingRoom}
-                currentAction={action}
               />
             </div>
           )}
@@ -3661,6 +3658,7 @@ export default function GameInterface() {
                     worldTick={worldTick}
                     actionResult={actionResult}
                     isLoadingRoom={isLoadingRoom}
+                    currentAction={action}
                     roomEnemy={roomEnemy}
                     isInBattle={battle.isInBattle}
                     quests={quests}
@@ -3698,9 +3696,7 @@ export default function GameInterface() {
                   availableMaps={availableMaps}
                   onMapChange={handleMapChange}
                   isMoveInProgress={isMoveInProgress}
-                  actionResult={actionResult}
                   isLoadingRoom={isLoadingRoom}
-                  currentAction={action}
                 />
               </div>
             </div>

@@ -347,7 +347,9 @@ export default function TabContainer({
         )}
         
         {/* Centered tabs */}
-        <div ref={tabsContainerRef} className={`flex-1 flex items-center justify-left md:justify-center gap-2 px-0 ${wrap ? 'flex-wrap' : 'flex-nowrap lg:pr-[56px] xl:px-0'}`}>
+        {/* Wrapped tabs stretch to one height so a tab with no label (the gear)
+            still matches its neighbours and centres its icon. */}
+        <div ref={tabsContainerRef} className={`flex-1 flex justify-left md:justify-center gap-2 px-0 ${wrap ? 'items-stretch flex-wrap' : 'items-center flex-nowrap lg:pr-[56px] xl:px-0'}`}>
           {/* max-w-[848px] lg:max-w-[904px] xl:max-w-[848px] */}
 
           {/* Render visible tabs */}
@@ -387,10 +389,7 @@ export default function TabContainer({
                       </span>
                     )
                   )}
-                  {wrap
-                    ? <span className={`leading-none ${!tab.label ? 'invisible' : ''}`}>{tab.label || 'W'}</span>
-                    : tab.label && <span>{tab.label}</span>
-                  }
+                  {tab.label && <span className={wrap ? 'leading-none' : ''}>{tab.label}</span>}
                   <NotificationBadge value={tab.badge} className="absolute -top-1 -right-1" />
                 </button>
                 {isFirstExploreTab && (

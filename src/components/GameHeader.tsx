@@ -1,7 +1,6 @@
 'use client'
 
 import ThemeSwitcher from '@/components/ThemeSwitcher'
-import { formatGold } from '@/lib/danger-verdict'
 
 interface GameHeaderProps {
   playerName?: string
@@ -13,8 +12,6 @@ interface GameHeaderProps {
   xp?: number
   xpGain?: number | null
   xpGainKey?: number
-  /** Gold on hand. The original kept it in the nav's quick links; it sits beside XP here so it is never more than a glance away. */
-  currency?: number
   str?: number
   dex?: number
   mag?: number
@@ -66,7 +63,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, currency, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
   let xpInLevel = 0
   let xpNeeded = 1
   let xpPct = 0
@@ -130,11 +127,6 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                     label="XP"
                     value={`${xpPct}%`}
                   />
-                )}
-                {currency !== undefined && (
-                  <span className="text-resource-gold tabular-nums shrink-0" title={`${currency.toLocaleString()} gold`}>
-                    {formatGold(currency)}g
-                  </span>
                 )}
                 {xpGain != null && xpGain > 0 && (
                   <span
@@ -210,11 +202,6 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                       label="XP"
                       value={`${xpPct}%`}
                     />
-                  )}
-                  {currency !== undefined && (
-                    <span className="text-resource-gold tabular-nums" title={`${currency.toLocaleString()} gold`}>
-                      {formatGold(currency)} <span className="text-fg-muted">gold</span>
-                    </span>
                   )}
                   {xpGain != null && xpGain > 0 && (
                     <span
