@@ -1,6 +1,7 @@
 'use client'
 
 import ThemeSwitcher from '@/components/ThemeSwitcher'
+import type { ItemPreview } from '@/lib/game-state'
 
 interface GameHeaderProps {
   playerName?: string
@@ -24,16 +25,29 @@ interface GameHeaderProps {
   onCharacterClick?: () => void
   isConnected?: boolean
   onRefresh?: () => void
+  /** What the consumable under the pointer in the battle deck would do; ghosted onto the bars and stats. */
+  itemPreview?: ItemPreview | null
 }
 
-function StatBar({ pct, fillClass, label, value, over, className }: {
+/** How far a bar would fill if `amount` landed now, as a share of the bar past the current fill. */
+function previewPct(current: number, max: number, amount: number): number {
+  if (max <= 0 || amount <= 0 || current >= max) return 0
+  return ((Math.min(max, current + amount) - current) / max) * 100
+}
+
+function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, value, over, className }: {
   pct: number
   fillClass: string
+  /** Fill for the ghosted preview segment. */
+  ghostClass?: string
+  /** Extra width, past `pct`, a hovered heal would add. */
+  previewPct?: number
   label: string
   value: string
   over?: boolean
   className?: string
 }) {
+  const fillPct = Math.min(100, Math.max(0, pct))
   return (
     <div
       className={`relative h-4 rounded-full bg-surface-raised/90 overflow-hidden shadow-[inset_0_1px_3px_var(--shadow)] ${className ?? ''}`}
@@ -41,13 +55,26 @@ function StatBar({ pct, fillClass, label, value, over, className }: {
     >
       <div
         className={`h-full rounded-full transition-[width] duration-500 ease-out ${fillClass}`}
-        style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+        style={{ width: `${fillPct}%` }}
       />
+      {previewPct > 0 && (
+        <div
+          className={`absolute top-0 h-full rounded-r-full opacity-50 animate-pulse ${ghostClass ?? fillClass}`}
+          style={{ left: `${fillPct}%`, width: `${Math.min(100 - fillPct, previewPct)}%` }}
+          aria-hidden="true"
+        />
+      )}
       <span className="absolute inset-0 flex items-center justify-center text-[10px] leading-none font-semibold label-over-fill tabular-nums">
         <span className={over ? 'font-bold' : ''}>{value}</span>
       </span>
     </div>
   )
+}
+
+/** The "+20" a hovered buff would add to a stat, beside the number. */
+function StatBump({ amount }: { amount?: number }) {
+  if (!amount || amount <= 0) return null
+  return <span className="text-combat-heal font-bold tabular-nums animate-pulse">+{amount}</span>
 }
 
 function UnspentPill({ count }: { count?: number }) {
@@ -63,7 +90,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh, itemPreview }: GameHeaderProps) {
   let xpInLevel = 0
   let xpNeeded = 1
   let xpPct = 0
@@ -101,6 +128,8 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                     className="w-12 shrink-0"
                     pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
                     fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp"
+                    ghostClass="bg-resource-hp"
+                    previewPct={previewPct(hp, hpMax, itemPreview?.hp ?? 0)}
                     label="HP"
                     value={`${hp}/${hpMax}`}
                     over={hp > hpMax}
@@ -111,6 +140,8 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                     className="w-12 shrink-0"
                     pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
                     fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp"
+                    ghostClass="bg-resource-mp"
+                    previewPct={previewPct(mp, mpMax, itemPreview?.mp ?? 0)}
                     label="MP"
                     value={`${mp}/${mpMax}`}
                     over={mp > mpMax}
@@ -143,10 +174,10 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
 
           {/* Right group - core stats + connection dot */}
           <div className="flex items-center gap-2 shrink-0">
-            {str !== undefined && <span className="text-stat-str" title={statTitles?.str}>{str}</span>}
-            {dex !== undefined && <span className="text-stat-dex" title={statTitles?.dex}>{dex}</span>}
-            {mag !== undefined && <span className="text-stat-mag" title={statTitles?.mag}>{mag}</span>}
-            {def !== undefined && <span className="text-stat-def" title={statTitles?.def}>{def}</span>}
+            {str !== undefined && <><span className="text-stat-str" title={statTitles?.str}>{str}</span><StatBump amount={itemPreview?.stats?.str} /></>}
+            {dex !== undefined && <><span className="text-stat-dex" title={statTitles?.dex}>{dex}</span><StatBump amount={itemPreview?.stats?.dex} /></>}
+            {mag !== undefined && <><span className="text-stat-mag" title={statTitles?.mag}>{mag}</span><StatBump amount={itemPreview?.stats?.mag} /></>}
+            {def !== undefined && <><span className="text-stat-def" title={statTitles?.def}>{def}</span><StatBump amount={itemPreview?.stats?.def} /></>}
             {/* The connection indicator is desktop-only, so on mobile this
                 trails the stats — still the last control in the bar. */}
             <ThemeSwitcher className="ml-0.5" />
@@ -176,6 +207,8 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                       className="w-16"
                       pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
                       fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp"
+                    ghostClass="bg-resource-hp"
+                    previewPct={previewPct(hp, hpMax, itemPreview?.hp ?? 0)}
                       label="HP"
                       value={`${hp}/${hpMax}`}
                       over={hp > hpMax}
@@ -186,6 +219,8 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                       className="w-16"
                       pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
                       fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp"
+                    ghostClass="bg-resource-mp"
+                    previewPct={previewPct(mp, mpMax, itemPreview?.mp ?? 0)}
                       label="MP"
                       value={`${mp}/${mpMax}`}
                       over={mp > mpMax}
@@ -233,25 +268,25 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
               {str !== undefined && (
                 <>
                   <span className="text-fg-muted hidden lg:inline">STR </span>
-                  <span className="text-stat-str" title={statTitles?.str}>{str}</span>
+                  <span className="text-stat-str" title={statTitles?.str}>{str}</span><StatBump amount={itemPreview?.stats?.str} />
                 </>
               )}
               {dex !== undefined && (
                 <>
                   <span className="text-fg-muted hidden lg:inline">DEX </span>
-                  <span className="text-stat-dex" title={statTitles?.dex}>{dex}</span>
+                  <span className="text-stat-dex" title={statTitles?.dex}>{dex}</span><StatBump amount={itemPreview?.stats?.dex} />
                 </>
               )}
               {mag !== undefined && (
                 <>
                   <span className="text-fg-muted hidden lg:inline">MAG </span>
-                  <span className="text-stat-mag" title={statTitles?.mag}>{mag}</span>
+                  <span className="text-stat-mag" title={statTitles?.mag}>{mag}</span><StatBump amount={itemPreview?.stats?.mag} />
                 </>
               )}
               {def !== undefined && (
                 <>
                   <span className="text-fg-muted hidden lg:inline">DEF </span>
-                  <span className="text-stat-def" title={statTitles?.def}>{def}</span>
+                  <span className="text-stat-def" title={statTitles?.def}>{def}</span><StatBump amount={itemPreview?.stats?.def} />
                 </>
               )}
             </div>

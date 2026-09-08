@@ -334,6 +334,16 @@ export interface QuestProgressRow {
   data?: { accepted?: boolean } | null
 }
 
+/**
+ * What the consumable under the pointer would do: signed HP and MP (the bars
+ * preview the positive parts) and any flat core-stat bonus a buff would add.
+ */
+export interface ItemPreview {
+  hp: number
+  mp: number
+  stats?: Partial<Record<'str' | 'dex' | 'mag' | 'def', number>>
+}
+
 export interface GameState {
   // Player state
   player: Player | null
@@ -358,6 +368,13 @@ export interface GameState {
 
   // Post-battle result (shown after battle ends, null when dismissed)
   battleResult: BattleResult | null
+
+  /**
+   * What the consumable under the pointer would do, so the HP/MP bars and
+   * stat readouts can show it before the tap. Presentation only: set on
+   * hover/focus of a battle deck item, cleared on leave, use, and battle end.
+   */
+  itemPreview: ItemPreview | null
 
   // UI state
   isLoading: boolean
@@ -385,6 +402,7 @@ export interface GameState {
   clearBattle: () => void
   setBattleResult: (result: BattleResult) => void
   clearBattleResult: () => void
+  setItemPreview: (preview: ItemPreview | null) => void
   setParty: (party: PartySnapshot | null) => void
   clearParty: () => void
   hydrateSession: (payload: {
@@ -412,6 +430,7 @@ export const useGameStore = create<GameState>()(
       battle: { ...INITIAL_BATTLE_STATE },
       party: null,
       battleResult: null,
+      itemPreview: null,
       isLoading: false,
       error: null,
       
@@ -569,9 +588,11 @@ export const useGameStore = create<GameState>()(
         })),
 
       clearBattle: () =>
-        set({ battle: { ...INITIAL_BATTLE_STATE } }),
+        set({ battle: { ...INITIAL_BATTLE_STATE }, itemPreview: null }),
 
       setBattleResult: (result) => set({ battleResult: result }),
+
+      setItemPreview: (preview) => set({ itemPreview: preview }),
 
       clearBattleResult: () => set({ battleResult: null }),
 

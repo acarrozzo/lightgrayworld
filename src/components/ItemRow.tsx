@@ -4,7 +4,7 @@ import React, { type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 import Icon from './Icon'
 import type { InventoryItem } from '@/lib/game-state'
-import { resolveItemIcon } from '@/lib/item-actions'
+import { resolveItemIcon, summarizeConsumable } from '@/lib/item-actions'
 import {
   getCraftingKind,
   getStatMods,
@@ -106,15 +106,18 @@ function weaponMeta(item: InventoryItem): string | null {
 }
 
 function consumableMeta(item: InventoryItem): string | null {
-  const consumable = (item.template.metadata as any)?.consumable
-  if (!consumable || typeof consumable !== 'object') return null
-  const verb = String(consumable.verb || 'use')
-  const label = verb.charAt(0).toUpperCase() + verb.slice(1)
-  if (typeof consumable.stat === 'string') {
-    const amount = Number(consumable.amount) || 0
-    return `${label} · ${amount >= 0 ? 'restores' : 'drains'} ${consumable.stat.toUpperCase()}`
+  const summary = summarizeConsumable(item.template.metadata as any)
+  if (!summary) return null
+  const what: string[] = []
+  if (summary.hp < 0 || summary.mp < 0) {
+    what.push(`drains ${[summary.hp < 0 && 'HP', summary.mp < 0 && 'MP'].filter(Boolean).join(' and ')}`)
+  } else if (summary.hp > 0 || summary.mp > 0) {
+    what.push(`restores ${[summary.hp > 0 && 'HP', summary.mp > 0 && 'MP'].filter(Boolean).join(' and ')}`)
   }
-  return label
+  for (const buff of summary.buffs) {
+    what.push(buff.clicks > 0 ? `${buff.short} for ${buff.clicks} clicks` : buff.short)
+  }
+  return what.length ? `${summary.label} · ${what.join(', ')}` : summary.label
 }
 
 /** The default second line of a row: mods for gear, effect for consumables, kind for the rest. */

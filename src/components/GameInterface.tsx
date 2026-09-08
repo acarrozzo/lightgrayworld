@@ -101,6 +101,7 @@ export default function GameInterface() {
     battle,
     battleResult,
     party,
+    itemPreview,
   } = useGameStore(useShallow((s) => ({
     player: s.player,
     currentRoom: s.currentRoom,
@@ -111,6 +112,7 @@ export default function GameInterface() {
     battle: s.battle,
     battleResult: s.battleResult,
     party: s.party,
+    itemPreview: s.itemPreview,
   })))
 
   // Actions — stable references, never cause re-renders
@@ -3497,6 +3499,7 @@ export default function GameInterface() {
         hpMax={player?.hpMax}
         mp={player?.mp}
         mpMax={player?.mpMax}
+        itemPreview={itemPreview}
         xp={player?.xp}
         xpGain={xpGain}
         xpGainKey={xpGainKey}

@@ -1,11 +1,11 @@
 'use client'
 
-import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player } from '@/lib/game-state'
+import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player, useGameStore, type ItemPreview } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { LogOut } from 'lucide-react'
-import { getItemActions, resolveItemIcon } from '@/lib/item-actions'
+import { getItemActions, resolveItemIcon, summarizeConsumable, type ConsumableSummary } from '@/lib/item-actions'
 import { effectiveMag, getCastableSpells, spellTone } from '@/lib/spellbook'
 import { gearContextFromInventory, getStrikeSkills, previewSkillBonus, skillTone, weaponFits, type SkillbookEntry } from '@/lib/skillbook'
 import { effectiveStats } from '@/lib/effective-stats'
@@ -37,8 +37,16 @@ interface BattlePanelProps {
   player: Player
 }
 
-function HpBar({ current, max, color, rtl = false, initialPct }: { current: number; max: number; color: string; rtl?: boolean; initialPct?: number }) {
+/** How much of `amount` would actually land, with the bar's ceiling in the way. */
+function healThatLands(current: number, max: number, amount: number): number {
+  if (amount <= 0 || current >= max) return 0
+  return Math.min(max, current + amount) - current
+}
+
+function HpBar({ current, max, color, rtl = false, initialPct, preview = 0 }: { current: number; max: number; color: string; rtl?: boolean; initialPct?: number; preview?: number }) {
   const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0
+  // A hovered restorer ghosts its heal onto the bar, capped at the ceiling.
+  const previewPct = max > 0 ? (healThatLands(current, max, preview) / max) * 100 : 0
   // initialPct lets the caller seed the "previous" percentage so the drain
   // animation fires on the first render even when current is already 0 at mount
   // (e.g. 1-turn kills where the server sends post-damage state).
@@ -73,6 +81,13 @@ function HpBar({ current, max, color, rtl = false, initialPct }: { current: numb
         className={`${color} h-2 rounded-full absolute top-0 transition-all duration-300 ${rtl ? 'right-0' : 'left-0'}`}
         style={{ width: `${pct}%` }}
       />
+      {previewPct > 0 && (
+        <div
+          className={`${color} h-2 rounded-r-full absolute top-0 opacity-50 animate-pulse`}
+          style={{ left: `${pct}%`, width: `${Math.min(100 - pct, previewPct)}%` }}
+          aria-hidden="true"
+        />
+      )}
     </div>
   )
 }
@@ -505,6 +520,7 @@ function DeckRow({
   verbClass,
   disabled,
   onClick,
+  onHoverChange,
 }: {
   icon: string
   iconClass: string
@@ -517,12 +533,18 @@ function DeckRow({
   verbClass: string
   disabled: boolean
   onClick: () => void
+  /** Pointer or focus arriving on (true) or leaving (false) the row. */
+  onHoverChange?: (hovering: boolean) => void
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
+      onMouseEnter={onHoverChange ? () => onHoverChange(true) : undefined}
+      onMouseLeave={onHoverChange ? () => onHoverChange(false) : undefined}
+      onFocus={onHoverChange ? () => onHoverChange(true) : undefined}
+      onBlur={onHoverChange ? () => onHoverChange(false) : undefined}
       title={reason ?? undefined}
       className="w-full min-h-[52px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg border border-line-strong/70 bg-surface-raised/45 text-left transition-all duration-150 hover:bg-surface-raised/70 active:scale-[0.99] disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:bg-surface-raised/45 disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
     >
@@ -536,6 +558,82 @@ function DeckRow({
       ) : right}
       <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1.5 rounded-md flex-shrink-0 ${disabled ? 'bg-surface-raised text-fg-muted' : verbClass}`}>
         {verb}
+      </span>
+    </button>
+  )
+}
+
+/** One consumable the deck can offer, read once. */
+interface DeckItem {
+  item: InventoryItem
+  summary: ConsumableSummary
+  /** The verb the server expects: "drink", "eat". */
+  action: string
+}
+
+/**
+ * A DeckRow cut down for the HP and MP ladders: smaller icon, the verb and
+ * count on the second line, and the effect ("+100 HP") as the button itself,
+ * the way the bag labels it. A coloured rail says which ladder it belongs to
+ * at a glance; the verb gives way to the reason when the item has nothing to
+ * restore.
+ */
+function DeckTile({
+  icon,
+  iconClass,
+  railClass,
+  name,
+  quantity,
+  effect,
+  reason,
+  verb,
+  verbClass,
+  disabled,
+  onClick,
+  onHoverChange,
+}: {
+  icon: string
+  iconClass: string
+  railClass: string
+  name: string
+  quantity: number
+  effect: string
+  reason: string | null
+  verb: string
+  verbClass: string
+  disabled: boolean
+  onClick: () => void
+  /** Pointer or focus arriving on (true) or leaving (false) the tile. */
+  onHoverChange?: (hovering: boolean) => void
+}) {
+  const count = quantity > 1 ? `×${quantity}` : 'Last one'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={onHoverChange ? () => onHoverChange(true) : undefined}
+      onMouseLeave={onHoverChange ? () => onHoverChange(false) : undefined}
+      onFocus={onHoverChange ? () => onHoverChange(true) : undefined}
+      onBlur={onHoverChange ? () => onHoverChange(false) : undefined}
+      title={reason ?? `${verb} · ${effect}`}
+      aria-label={`${verb} ${name}, ${effect}, ${count}${reason ? `. ${reason}` : ''}`}
+      className={`w-full min-h-[48px] flex items-center gap-2 pl-2 pr-1.5 py-1.5 rounded-lg border border-line-strong/70 border-l-[3px] ${railClass} bg-surface-raised/45 text-left transition-all duration-150 hover:bg-surface-raised/70 active:scale-[0.99] disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:bg-surface-raised/45 disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus`}
+    >
+      <Icon name={icon} size={22} className={`${iconClass} flex-shrink-0`} />
+      <span className="flex-1 min-w-0 flex flex-col gap-0.5 leading-tight">
+        <span className="text-xs font-bold text-fg-primary truncate">{name}</span>
+        <span className="text-[10px] tabular-nums truncate">
+          {reason ? (
+            <span className="font-bold text-status-error">{reason}</span>
+          ) : (
+            <span className="text-fg-muted">{verb}</span>
+          )}
+          <span className="text-fg-muted"> · {count}</span>
+        </span>
+      </span>
+      <span className={`text-[10px] font-bold tabular-nums whitespace-nowrap px-1.5 py-1 rounded-md flex-shrink-0 ${disabled ? 'bg-surface-raised text-fg-muted' : verbClass}`}>
+        {effect}
       </span>
     </button>
   )
@@ -625,6 +723,21 @@ export default function BattlePanel({
   const [retreatArmed, setRetreatArmed] = useState(false)
   const retreatTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // The item under the pointer: a restorer ghosts onto the HP/MP bars here
+  // and in the header, a buff puts its "+20" beside the stat it lifts.
+  // Cleared when the pointer leaves, when the item is used (the tile may
+  // vanish without a leave event), and when the deck unmounts.
+  const itemPreview = useGameStore((s) => s.itemPreview)
+  const setItemPreview = useGameStore((s) => s.setItemPreview)
+  const previewOnHover = useCallback((preview: ItemPreview | null) => (hovering: boolean) => {
+    setItemPreview(hovering ? preview : null)
+  }, [setItemPreview])
+  useEffect(() => () => setItemPreview(null), [setItemPreview])
+  const spendItem = useCallback((playerItemId: string, action: string) => {
+    setItemPreview(null)
+    onUseItem(playerItemId, action)
+  }, [onUseItem, setItemPreview])
+
   const disarmRetreat = useCallback(() => {
     if (retreatTimer.current) clearTimeout(retreatTimer.current)
     retreatTimer.current = null
@@ -666,9 +779,36 @@ export default function BattlePanel({
     : String(battle.enemyRaw)
   const enemyIsDead = battle.enemyCurrentHp <= 0
 
-  const consumables = inventory.filter(
-    (item) => item.template.type === 'CONSUMABLE' && getItemActions(item.template.slug, item.template.metadata as any).length > 0
-  )
+  // ── The bag, sorted for a fight ──
+  // Every consumable that can help, read into what it does. HP and MP
+  // restorers stand in two ladders, strongest first; an item that fills both
+  // gets a full-width row under them; buffs (and anything else) sit last.
+  // The Flower, which costs HP, stays in the bag: nothing in this list hurts.
+  const deckItems: DeckItem[] = inventory
+    .filter((item) => item.template.type === 'CONSUMABLE')
+    .map((item) => {
+      const summary = summarizeConsumable(item.template.metadata as any)
+      const action = getItemActions(item.template.slug, item.template.metadata as any)[0] ?? null
+      return summary && action && summary.group !== 'harm' ? { item, summary, action: action.action } : null
+    })
+    .filter((entry): entry is DeckItem => entry !== null)
+  const byAmount = (pick: (summary: ConsumableSummary) => number) => (a: DeckItem, b: DeckItem) => pick(b.summary) - pick(a.summary)
+  const hpItems = deckItems.filter((entry) => entry.summary.group === 'hp').sort(byAmount((summary) => summary.hp))
+  const mpItems = deckItems.filter((entry) => entry.summary.group === 'mp').sort(byAmount((summary) => summary.mp))
+  const bothItems = deckItems.filter((entry) => entry.summary.group === 'both').sort(byAmount((summary) => summary.hp + summary.mp))
+  // Stat buffs before abilities (wings, gills), which do nothing for a fight.
+  const buffItems = deckItems
+    .filter((entry) => entry.summary.group === 'buff' || entry.summary.group === 'other')
+    .sort((a, b) => Number(b.summary.buffs.some((buff) => buff.short.startsWith('+'))) - Number(a.summary.buffs.some((buff) => buff.short.startsWith('+'))))
+  const hpFull = battle.playerHp >= battle.playerHpMax
+  const mpFull = playerMp >= playerMpMax
+  // The number beside the vitals is the item's full amount, the same "+100"
+  // its button wears; the ghost on the bar is the part that lands.
+  const previewHp = Math.max(0, itemPreview?.hp ?? 0)
+  const previewMp = Math.max(0, itemPreview?.mp ?? 0)
+  // The stat the card shows beside DEF is whichever the weapon rolls.
+  const previewOffense = itemPreview?.stats?.[spellCast ? 'mag' : isRanged ? 'dex' : 'str'] ?? 0
+  const previewDef = itemPreview?.stats?.def ?? 0
   // ── Damage ranges ──
   // The top of the swing is the effective offensive stat the server rolls
   // against (STR melee, DEX ranged, group bonus folded in). The server sends
@@ -730,7 +870,7 @@ export default function BattlePanel({
   }
 
   const tabs: { id: BattleTab; label: string; icon: string; count: number; fill: string }[] = [
-    { id: 'items', label: 'Items', icon: 'inv', count: consumables.length, fill: 'fill-resource-gold' },
+    { id: 'items', label: 'Items', icon: 'inv', count: deckItems.length, fill: 'fill-resource-gold' },
     { id: 'spells', label: 'Spells', icon: 'magic', count: castableSpells.length, fill: 'fill-stat-mag' },
   ]
 
@@ -783,8 +923,11 @@ export default function BattlePanel({
               {battle.playerHp > battle.playerHpMax && (
                 <span className="text-[11px] font-bold text-stat-def tabular-nums">+{battle.playerHp - battle.playerHpMax}</span>
               )}
+              {previewHp > 0 && (
+                <span className="text-[11px] font-bold text-combat-heal tabular-nums animate-pulse">+{previewHp}</span>
+              )}
             </div>
-            <HpBar current={battle.playerHp} max={battle.playerHpMax} color="bg-resource-hp" />
+            <HpBar current={battle.playerHp} max={battle.playerHpMax} color="bg-resource-hp" preview={itemPreview?.hp ?? 0} />
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-1">
@@ -793,19 +936,28 @@ export default function BattlePanel({
               {playerMp > playerMpMax && (
                 <span className="text-[11px] font-bold text-stat-def tabular-nums">+{playerMp - playerMpMax}</span>
               )}
+              {previewMp > 0 && (
+                <span className="text-[11px] font-bold text-combat-heal tabular-nums animate-pulse">+{previewMp}</span>
+              )}
             </div>
-            <HpBar current={playerMp} max={playerMpMax} color="bg-resource-mp" />
+            <HpBar current={playerMp} max={playerMpMax} color="bg-resource-mp" preview={itemPreview?.mp ?? 0} />
           </div>
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-center">
               {/* The stat the last strike rolled: MAG for a spell, else the weapon's. */}
               <span className={`text-[9px] uppercase tracking-widest leading-none ${spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{spellCast ? 'MAG' : isRanged ? 'DEX' : 'STR'}</span>
-              <span className={`text-xs font-black leading-none mt-0.5 ${spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{battle.playerStrMax ?? '—'}</span>
+              <span className={`text-xs font-black leading-none mt-0.5 ${spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>
+                {battle.playerStrMax ?? '—'}
+                {previewOffense > 0 && <span className="text-combat-heal tabular-nums animate-pulse"> +{previewOffense}</span>}
+              </span>
             </div>
             <div className="w-px h-5 bg-surface-hover/60" />
             <div className="flex flex-col items-center">
               <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">DEF</span>
-              <span className="text-xs font-black text-stat-def leading-none mt-0.5">{battle.playerDefMax ?? '—'}</span>
+              <span className="text-xs font-black text-stat-def leading-none mt-0.5">
+                {battle.playerDefMax ?? '—'}
+                {previewDef > 0 && <span className="text-combat-heal tabular-nums animate-pulse"> +{previewDef}</span>}
+              </span>
             </div>
           </div>
         </div>
@@ -1137,36 +1289,112 @@ export default function BattlePanel({
           role="tabpanel"
           id={`battle-deck-${activeTab}`}
           aria-labelledby={`battle-tab-${activeTab}`}
-          className="flex flex-col gap-1.5 max-h-60 overflow-y-auto overscroll-contain"
+          className="@container flex flex-col gap-1.5 max-h-60 overflow-y-auto overscroll-contain"
         >
           {activeTab === 'items' && (
-            consumables.length === 0 ? (
+            deckItems.length === 0 ? (
               <p className="text-xs text-fg-disabled italic py-2 px-1">No items to use.</p>
             ) : (
-              consumables.map((item) => {
-                const actions = getItemActions(item.template.slug, item.template.metadata as any)
-                const primaryAction = actions[0]
-                const effect = primaryAction.effect ?? null
-                const restores = effect?.includes('HP') ? 'hp' : effect?.includes('MP') ? 'mp' : null
-                return (
-                  <DeckRow
-                    key={item.id}
-                    icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
-                    iconClass="text-fg-bright opacity-80"
-                    name={item.template.name}
-                    detail={item.quantity > 1 ? `×${item.quantity}` : 'Last one'}
-                    right={effect && (
-                      <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${restores === 'hp' ? 'text-resource-hp' : restores === 'mp' ? 'text-resource-mp' : 'text-fg-secondary'}`}>
-                        {effect}
-                      </span>
-                    )}
-                    verb={primaryAction.label}
-                    verbClass={restores === 'hp' ? 'fill-resource-hp' : restores === 'mp' ? 'fill-resource-mp' : 'fill-accent'}
-                    disabled={isActing}
-                    onClick={() => onUseItem(item.id, primaryAction.action)}
-                  />
-                )
-              })
+              <>
+                {/* Two ladders, HP then MP, strongest first. Side by side when
+                    the list is wide enough for two tiles with their verb pills;
+                    stacked in a narrow panel. */}
+                {(hpItems.length > 0 || mpItems.length > 0) && (
+                  <div className="grid grid-cols-1 @min-[380px]:grid-cols-2 gap-1.5">
+                    {([
+                      { key: 'hp', heading: 'HP', items: hpItems, full: hpFull, reason: 'Full HP', text: 'text-resource-hp', rail: 'border-l-resource-hp', fill: 'fill-resource-hp' },
+                      { key: 'mp', heading: 'MP', items: mpItems, full: mpFull, reason: 'Full MP', text: 'text-resource-mp', rail: 'border-l-resource-mp', fill: 'fill-resource-mp' },
+                    ] as const).map((column) => (
+                      <div key={column.key} className="flex flex-col gap-1 min-w-0">
+                        <span className={`text-[9px] font-bold uppercase tracking-wider px-1 ${column.text}`}>{column.heading}</span>
+                        {column.items.length === 0 ? (
+                          <span className="text-[10px] text-fg-disabled italic px-1 py-1.5">None</span>
+                        ) : column.items.map(({ item, summary, action }) => (
+                          <DeckTile
+                            key={item.id}
+                            icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
+                            iconClass={`${column.text} opacity-90`}
+                            railClass={column.rail}
+                            name={item.template.name}
+                            quantity={item.quantity}
+                            effect={summary.effect}
+                            reason={column.full ? column.reason : null}
+                            verb={summary.label}
+                            verbClass={column.fill}
+                            disabled={isActing || column.full}
+                            onClick={() => spendItem(item.id, action)}
+                            onHoverChange={column.full ? undefined : previewOnHover({ hp: summary.hp, mp: summary.mp })}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Restores both: full rows under the ladders, the two numbers in their own colours. */}
+                {bothItems.length > 0 && <span className="text-[9px] font-bold uppercase tracking-wider px-1 text-hue-purple">HP & MP</span>}
+                {bothItems.map(({ item, summary, action }) => {
+                  const reason = hpFull && mpFull ? 'Full HP & MP' : null
+                  return (
+                    <DeckRow
+                      key={item.id}
+                      icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
+                      iconClass="text-hue-purple opacity-90"
+                      name={item.template.name}
+                      detail={item.quantity > 1 ? `×${item.quantity}` : 'Last one'}
+                      right={
+                        <span className="text-xs font-bold tabular-nums whitespace-nowrap flex items-center gap-1.5">
+                          <span className="text-resource-hp">+{summary.hp} HP</span>
+                          <span className="text-resource-mp">+{summary.mp} MP</span>
+                        </span>
+                      }
+                      reason={reason}
+                      verb={summary.label}
+                      verbClass="fill-hue-purple"
+                      disabled={isActing || Boolean(reason)}
+                      onClick={() => spendItem(item.id, action)}
+                      onHoverChange={reason ? undefined : previewOnHover({ hp: summary.hp, mp: summary.mp })}
+                    />
+                  )
+                })}
+
+                {/* Buffs and the rest: full rows. The button is what the buff
+                    does ("+20 STR", "Wings"), the way the tiles wear "+100 HP";
+                    how long it lasts sits beside it, the verb under the name. */}
+                {buffItems.length > 0 && (
+                  <>
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1 text-fg-muted">Buffs</span>
+                    {buffItems.map(({ item, summary, action }) => {
+                      const shorts = summary.buffs.map((buff) => buff.short)
+                      const clicks = summary.buffs.find((buff) => buff.clicks > 0)?.clicks ?? 0
+                      const bonus: NonNullable<ItemPreview['stats']> = {}
+                      for (const buff of summary.buffs) {
+                        for (const [stat, amount] of Object.entries(buff.bonus) as [keyof typeof bonus, number][]) {
+                          bonus[stat] = (bonus[stat] ?? 0) + amount
+                        }
+                      }
+                      const count = item.quantity > 1 ? `×${item.quantity}` : 'Last one'
+                      return (
+                        <DeckRow
+                          key={item.id}
+                          icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
+                          iconClass="text-fg-bright opacity-80"
+                          name={item.template.name}
+                          detail={`${summary.label} · ${count}`}
+                          right={clicks > 0 ? (
+                            <span className="text-[10px] font-semibold tabular-nums whitespace-nowrap text-fg-muted">{clicks} clicks</span>
+                          ) : undefined}
+                          verb={shorts.length > 0 ? shorts.join(' · ') : summary.label}
+                          verbClass="fill-accent"
+                          disabled={isActing}
+                          onClick={() => spendItem(item.id, action)}
+                          onHoverChange={Object.keys(bonus).length > 0 ? previewOnHover({ hp: 0, mp: 0, stats: bonus }) : undefined}
+                        />
+                      )
+                    })}
+                  </>
+                )}
+              </>
             )
           )}
 
