@@ -37,8 +37,8 @@ export const metadata = {
 const { ROOM_ENEMIES } = require('@/lib/game-data/room-enemies') as {
   ROOM_ENEMIES: Record<string, RoomEnemyConfig>
 }
-const { ROOM_LOOT } = require('@/lib/game-engine/config/room-loot') as {
-  ROOM_LOOT: { roomId: string; slug: string; quantity?: number; autoRespawn?: boolean }[]
+const { ROOM_SUPPLIES } = require('@/lib/game-engine/config/room-supplies') as {
+  ROOM_SUPPLIES: { roomId: string; slug: string; mode: 'take' | 'topUp'; cap?: number }[]
 }
 const { ROOM_GATES } = require('@/lib/game-engine/room-gates') as {
   ROOM_GATES: Record<string, Record<string, GateDef>>
@@ -153,13 +153,13 @@ function prettifySlug(slug: string): string {
     .join(' ')
 }
 
-// Rooms with their NPCs and ground items, and the templates for every loot slug
+// Rooms with their NPCs and dropped items, and the templates for every supply slug
 // the engine config names — at once, since neither query depends on the other,
 // and cached in production (see lib/world-tool/cached.ts). The NPC and item
 // rows carry timestamps that come back from the cache as strings; nothing
 // below reads them.
 const loadAtlasData = cachedWorldToolData('rooms', () => {
-  const lootSlugs = Array.from(new Set(ROOM_LOOT.map((l) => l.slug)))
+  const lootSlugs = Array.from(new Set(ROOM_SUPPLIES.map((l) => l.slug)))
   return Promise.all([
     prisma.room.findMany({
       include: {
@@ -178,7 +178,7 @@ const loadAtlasData = cachedWorldToolData('rooms', () => {
 })
 
 export default async function RoomsPage() {
-  // 1. Rooms (with their NPCs and ground items) and the template for every loot
+  // 1. Rooms (with their NPCs and dropped items) and the template for every supply
   //    slug the engine config names.
   const [rooms, lootTemplates] = await loadAtlasData()
 
@@ -306,16 +306,17 @@ export default async function RoomsPage() {
       }
     }
 
-    // --- Items / loot (config-driven, resolved to DB names + icons) ---
-    const items = ROOM_LOOT.filter((l) => l.roomId === room.roomId).map((l) => {
+    // --- Supplies: what the room hands out for free, per player (config-driven,
+    // resolved to DB names + icons) ---
+    const items = ROOM_SUPPLIES.filter((l) => l.roomId === room.roomId).map((l) => {
       const t = lootBySlug.get(l.slug)
       const meta = (t?.metadata as { icon?: string } | null) ?? null
+      const cap = l.cap ?? 1
       return {
         slug: l.slug,
         name: t?.name ?? prettifySlug(l.slug),
         icon: resolveItemIcon(meta, l.slug),
-        quantity: l.quantity ?? 1,
-        autoRespawn: l.autoRespawn !== false,
+        rule: l.mode === 'take' ? 'one each' : `up to ${cap}`,
       }
     })
 

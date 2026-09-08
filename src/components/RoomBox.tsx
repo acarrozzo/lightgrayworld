@@ -4,6 +4,7 @@ import RoomDisplay from './RoomDisplay'
 import TravelerCard from './TravelerCard'
 import BasicActionButtons from './BasicActionButtons'
 import type { Room, Player } from '@/lib/game-state'
+import type { GatherCooldownView, SupplyView } from '@/lib/types/room'
 import Icon from './Icon'
 import { useEffect, useMemo, useState } from 'react'
 import { roomColor } from '@/lib/theme/room-colors'
@@ -51,16 +52,8 @@ interface RoomBoxProps {
   currentPlayerId?: string
   onAction: (action: string | { type: string; data?: any }) => void | Promise<void>
   onOpenPlayerProfile?: (player: Player) => void
-  gatherCooldowns?: Array<{
-    action: string
-    cooldownSeconds: number
-    secondsRemaining: number
-    quantity?: number | null
-    itemSlug?: string | null
-    itemNamePlural?: string | null
-    maxHeld?: number | null
-    readyLabel?: string | null
-  }>
+  gatherCooldowns?: GatherCooldownView[]
+  supplies?: SupplyView[]
   worldTick?: {
     tickNumber: number
     nextTickAt: number
@@ -84,6 +77,7 @@ export default function RoomBox({
   onAction,
   onOpenPlayerProfile,
   gatherCooldowns,
+  supplies,
   worldTick,
   actionResult,
   isLoadingRoom = false,
@@ -275,6 +269,7 @@ export default function RoomBox({
         onAction={onAction}
         onOpenPlayerProfile={onOpenPlayerProfile}
         gatherCooldowns={gatherCooldowns}
+        supplies={supplies}
         showHeader={false}
         className="mt-2"
         worldTick={worldTick}

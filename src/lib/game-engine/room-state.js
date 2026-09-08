@@ -59,6 +59,38 @@ function findExitDirection(room, toRoomId) {
 }
 
 const SEARCH_LOOT_TABLES = {
+  // The Spider Cave Entrance. The original's search here: a coin flip, and a
+  // Wooden Necklace in the rocks for whoever does not already have one — "you
+  // leave it for the next adventurer" once you do.
+  '007': {
+    chance: 0.5,
+    failMessage: 'You search the Cave Entrance and think you see something in the rocks, you should search again.',
+    onlyWhileMissing: {
+      itemSlug: 'wooden-necklace',
+      message: 'You find a Wooden Necklace, but you already have one, so you leave it for the next adventurer.',
+    },
+    entries: [
+      { message: 'You search the Cave Entrance and find a Wooden Necklace!', effect: { type: 'grantItem', itemSlug: 'wooden-necklace', quantity: 1 } },
+    ],
+  },
+  // The Swampy Marsh. A coin flip, then one of ten things out of the mud —
+  // the original's spread, bitchin' Battle Axe included.
+  '013': {
+    chance: 0.5,
+    failMessage: 'You search the swampy marsh but find nothing.',
+    entries: [
+      { message: 'You search the swampy marsh and find 2 Blueberries!', effect: { type: 'grantItem', itemSlug: 'blueberry', quantity: 2 } },
+      { message: 'You search the swampy marsh and find 4 Redberries!', effect: { type: 'grantItem', itemSlug: 'redberry', quantity: 4 } },
+      { message: 'You search the swampy marsh and find 10 bolts!', effect: { type: 'grantItem', itemSlug: 'crossbow-bolt', quantity: 10 } },
+      { message: 'You search the swampy marsh and find 2 bolts!', effect: { type: 'grantItem', itemSlug: 'crossbow-bolt', quantity: 2 } },
+      { message: (amount) => `You search the swampy marsh and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 10, max: 30 } },
+      { message: (amount) => `You search the swampy marsh and find ${amount} arrows!`, effect: { type: 'grantItem', itemSlug: 'arrow', minQty: 2, maxQty: 4 } },
+      { message: "You search the swampy marsh and find a bitchin' Battle Axe!", effect: { type: 'grantItem', itemSlug: 'battle-axe', quantity: 1 } },
+      { message: 'You search the swampy marsh and find a Red Potion!', effect: { type: 'grantItem', itemSlug: 'red-potion', quantity: 1 } },
+      { message: 'You search the swampy marsh and find a Morning Star!', effect: { type: 'grantItem', itemSlug: 'morning-star', quantity: 1 } },
+      { message: 'You search the swampy marsh and find a Long Sword!', effect: { type: 'grantItem', itemSlug: 'long-sword', quantity: 1 } },
+    ],
+  },
   '003b': {
     failMessage: 'You search the cabin basement but find nothing.',
     entries: [
@@ -502,6 +534,7 @@ const TURN_ACTIONS = new Set([
   'auto_equip',
   'pickup_item',
   'drop_item',
+  'take_supply',
 ])
 
 class RoomState {
@@ -709,6 +742,9 @@ class RoomState {
       case 'drop_item':
         result = await this.executeDropItem(action, playerId)
         break
+      case 'take_supply':
+        result = await this.executeTakeSupply(action, playerId)
+        break
       case 'move':
         return await this.executeMove(action, playerId)
       case 'chat':
@@ -886,6 +922,62 @@ class RoomState {
     }
   }
 
+  /**
+   * Take one of the room's free supplies (config/room-supplies.js): the spare
+   * hatchet, a bundle from the arrow crate. Per player, so nothing is
+   * broadcast — the next visitor's shelf is untouched. Costs a turn like a
+   * pickup does; a polite refusal (already at the line) is a no-op turn.
+   */
+  async executeTakeSupply(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('take_supply', 'Player not found in this room')
+    }
+
+    const slug = typeof action.data?.slug === 'string' ? action.data.slug.trim() : ''
+    if (!slug) {
+      return this.createErrorResult('take_supply', 'Supply slug is required')
+    }
+
+    this.touchActivity()
+
+    const { takeSupply } = require('./services/room-supply-service')
+    const result = await takeSupply(playerId, this.roomId, slug)
+
+    if (!result.success) {
+      if (result.outcome !== 'info') {
+        return this.createErrorResult('take_supply', result.message)
+      }
+      return {
+        success: true,
+        noTurn: true,
+        action: 'take_supply',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload('take_supply', 'info', result.message, { slug }),
+          },
+        ],
+      }
+    }
+
+    return {
+      success: true,
+      action: 'take_supply',
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('take_supply', 'success', result.message, {
+            slug,
+            quantity: result.quantity,
+            inventory: result.inventory,
+            supplies: result.supplies,
+          }),
+        },
+      ],
+    }
+  }
+
   async executeDropItem(action, playerId) {
     const player = this.players.get(playerId)
     if (!player) {
@@ -899,7 +991,7 @@ class RoomState {
 
     this.touchActivity()
 
-    const result = await dropRoomItem(playerId, playerItemId, quantity, this.roomId)
+    const result = await dropRoomItem(playerId, playerItemId, quantity, this.roomId, player.username ?? null)
 
     if (!result.success) {
       return this.createErrorResult('drop_item', result.message)

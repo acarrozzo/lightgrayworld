@@ -90,6 +90,7 @@ Before changing a system, name its authoritative owner and decide what reconnect
 - `src/lib/game-engine/room-state.js`: room actions, the player-scoped present enemy (one per room, as in the original), movement rules, battle integration, ambient updates.
 - `src/lib/game-engine/battle-*.js`: battle state, formulas, action resolution, rewards, defeat.
 - `src/lib/game-engine/services/`: inventory, equipment, quests, leveling, room items, cooldowns, present-enemy persistence.
+- `src/lib/game-engine/config/room-supplies.js`, `services/room-supply-service.js`: what a room hands a player for free, per player, as in the original — `take` (one each while held) or `topUp` (refill to N). The room's line is separate from `ItemTemplate.max`, which is only the bag's cap. Shared `RoomItem` rows are only what players drop. Harvests (trees, berries, sand, stone) stay room actions built by `makeGatherAction`: a batch on a rolling cooldown, no held cap.
 - `src/lib/game-engine/room-action-handlers.js`: hand-authored room interactions, gathering, chests, crafting, and environmental actions.
 - `src/lib/game-engine/room-gates.js`, `lever-state.js`, `search-reveal-state.js`: access and discovery logic.
 - `src/lib/game-data/enemies.js`: enemy definitions and drops.

@@ -142,30 +142,16 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '103': [
     { action: 'talk to freddie', label: 'Freddie', icon: 'npc-freddie', className: 'fill-mood-treasure', questIds: questIdsForNpc('freddie') },
     { action: 'pay toll', label: 'Pay Toll (50 gold)', icon: 'gate', className: 'fill-hue-gold' },
-    { action: 'get hammer', label: 'Get Hammer', icon: 'craft', className: 'fill-action-craft' },
     craftingAction('103'),
-  ],
-  '103c': [
-    { action: 'get wood', label: 'Get Wood', icon: 'wood', className: 'fill-mood-treasure' },
   ],
   '104': [
     { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
   ],
-  '117': [
-    { action: 'get leather', label: 'Get Leather', icon: 'leather', className: 'fill-mood-treasure' },
-  ],
   '120': [
     { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'fill-hue-red' },
-    { action: 'grab ring', label: 'Grab Ring', icon: 'ring', className: 'fill-hue-green' },
   ],
   '121': [
     { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
-  ],
-  '124': [
-    { action: 'grab arrows', label: 'Grab Arrows', icon: 'arrow', className: 'fill-mood-treasure' },
-  ],
-  '131': [
-    { action: 'fish', label: 'Fish the Lake', icon: 'fish', className: 'fill-hue-blue' },
   ],
   '125': [
     { action: 'pick redberry', label: 'Pick Redberry', icon: 'redberry', className: 'fill-hue-red' },
@@ -302,9 +288,6 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '306': [
     { action: 'rest on the ledge', label: 'Rest on the Ledge', icon: 'heal', className: 'fill-hue-green' },
-    { action: 'grab arrows', label: 'Grab Arrows', icon: 'arrow', className: 'fill-mood-treasure' },
-    { action: 'grab bolts', label: 'Grab Bolts', icon: 'boltupgrade', className: 'fill-mood-treasure' },
-    { action: 'grab polearm', label: 'Grab Polearm', icon: 'equipment-polearm', className: 'fill-surface-selected' },
   ],
   '307': [
     { action: 'read bounty board', label: 'Bounty Board', icon: 'npc-bountyboard', className: 'fill-hue-gold', questIds: questIdsForNpc('dwarf_bounty_board') },
@@ -326,17 +309,11 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '310': [
     { action: 'view shop', label: 'View Shop', icon: 'shop', className: 'fill-hue-sky' },
   ],
-  '311': [
-    { action: 'grab pickaxe', label: 'Grab Pickaxe', icon: 'pickaxe', className: 'fill-mood-treasure' },
-    { action: 'grab red potion', label: 'Grab Red Potions', icon: 'red-potion', className: 'fill-hue-red' },
-    { action: 'grab blue potion', label: 'Grab Blue Potions', icon: 'blue-potion', className: 'fill-hue-blue' },
-  ],
   '315': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '321b': [
     { action: 'ex gloves', label: 'Examine Gloves', icon: 'hand', className: 'fill-hue-blue' },
-    { action: 'grab gloves', label: 'Grab Gloves', icon: 'hand', className: 'fill-mood-treasure' },
   ],
   '322': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
@@ -402,11 +379,9 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '506': [
     { action: 'talk to dark elf', label: 'Dark Elf', icon: 'npc-darkelf', className: 'fill-hue-green', questIds: questIdsForNpc('dark_elf') },
     { action: 'rest at the tree hut', label: 'Rest at the Fireplace', icon: 'heal', className: 'fill-hue-green' },
-    { action: 'grab tea', label: 'Grab Tea', icon: 'tea', className: 'fill-mood-treasure' },
   ],
   '507': [
     { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
-    { action: 'grab iron hatchet', label: 'Grab Iron Hatchet', icon: 'axelog', className: 'fill-mood-treasure' },
   ],
   '511': [
     { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },

@@ -5,7 +5,7 @@
  *
  * The world is authored across a dozen files that reference each other only by
  * string id: the seed owns room topology, room-enemies owns spawns, enemies owns
- * drops, room-gates owns access, room-loot owns ground items, shops and recipes
+ * drops, room-gates owns access, room-supplies owns what rooms hand out, shops and recipes
  * own trade and crafting, and two client tables own the map and the action
  * buttons. Nothing checks that those references agree, so a typo fails silently
  * at runtime — a drop that never drops, a button that errors, a marker drawn on
@@ -244,7 +244,7 @@ const { ENEMIES } = load('src/lib/game-data/enemies.js')
 const { ROOM_ENEMIES } = load('src/lib/game-data/room-enemies.js')
 const { ROOM_GATES } = load('src/lib/game-engine/room-gates.js')
 const { REVEAL_DEFINITIONS } = load('src/lib/game-engine/search-reveal-state.js')
-const { ROOM_LOOT } = load('src/lib/game-engine/config/room-loot.js')
+const { ROOM_SUPPLIES, SUPPLY_MODES } = load('src/lib/game-engine/config/room-supplies.js')
 const { SHOPS } = load('src/lib/game-data/shops.js')
 const { CRAFTING_ROOMS, CRAFTING_RECIPES } = load('src/lib/game-data/crafting-recipes.js')
 const { ROOM_ACTIONS: SERVER_ROOM_ACTIONS } = load('src/lib/game-engine/room-action-handlers.js')
@@ -358,9 +358,15 @@ for (const enemy of ENEMIES) {
 
 // ─── 4. Ground loot, shops, crafting ──────────────────────────────────────────
 
-for (const entry of ROOM_LOOT) {
-  if (!isRoom(entry.roomId)) err('room-loot', `loot placed in "${entry.roomId}", which is not a seeded room`)
-  if (!itemSlugs.has(entry.slug)) err('room-loot', `${entry.roomId} holds unknown item "${entry.slug}"`)
+const supplyKeys = new Set()
+for (const entry of ROOM_SUPPLIES) {
+  if (!isRoom(entry.roomId)) err('room-supplies', `supply placed in "${entry.roomId}", which is not a seeded room`)
+  if (!itemSlugs.has(entry.slug)) err('room-supplies', `${entry.roomId} offers unknown item "${entry.slug}"`)
+  if (!SUPPLY_MODES.has(entry.mode)) err('room-supplies', `${entry.roomId} ${entry.slug} has unknown mode "${entry.mode}"`)
+  if (entry.cap != null && (!Number.isInteger(entry.cap) || entry.cap < 1)) err('room-supplies', `${entry.roomId} ${entry.slug} has a cap of ${entry.cap}`)
+  const key = `${entry.roomId}|${entry.slug}`
+  if (supplyKeys.has(key)) err('room-supplies', `${entry.roomId} offers ${entry.slug} twice`)
+  supplyKeys.add(key)
 }
 
 for (const [roomId, shop] of Object.entries(SHOPS)) {
@@ -562,7 +568,7 @@ for (const roomId of ACCEPTED.openEmptyRooms) {
   const gained = []
   if (Object.keys(SERVER_ROOM_ACTIONS[roomId] || {}).length) gained.push('room actions')
   if (ROOM_ENEMIES[roomId]) gained.push('a spawn table')
-  if (ROOM_LOOT.some((entry) => entry.roomId === roomId)) gained.push('ground loot')
+  if (ROOM_SUPPLIES.some((entry) => entry.roomId === roomId)) gained.push('supplies')
   if (Object.keys(ROOM_GATES[roomId] || {}).length) gained.push('a gate')
 
   if (gained.length) {

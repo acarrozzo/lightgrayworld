@@ -1,6 +1,7 @@
 'use client'
 
 import { useGameStore } from '@/lib/game-state'
+import type { GatherCooldownView, SupplyView } from '@/lib/types/room'
 import type { Room, Player } from '@/lib/game-state'
 import { useShallow } from 'zustand/react/shallow'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -230,16 +231,10 @@ export default function GameInterface() {
     tickIntervalMs: number
   } | undefined>(undefined)
   // Rolling gather cooldown for the current room (sand / berries); null if none.
-  const [gatherCooldowns, setGatherCooldowns] = useState<Array<{
-    action: string
-    cooldownSeconds: number
-    secondsRemaining: number
-    quantity: number | null
-    itemSlug?: string | null
-    itemNamePlural?: string | null
-    maxHeld?: number | null
-    readyLabel?: string | null
-  }>>([])
+  const [gatherCooldowns, setGatherCooldowns] = useState<GatherCooldownView[]>([])
+  // The room's supply shelf for this player (the spare hatchet, the arrow
+  // crate); per player, so it rides beside the room like the countdowns do.
+  const [supplies, setSupplies] = useState<SupplyView[]>([])
   const [centerActiveTab, setCenterActiveTab] = useState<string>('explore')
   // Returning to Explore always lands on the compass — a sub-view left open
   // before switching tabs never greets you on the way back.
@@ -452,6 +447,7 @@ export default function GameInterface() {
 
       gatherHydratedRoomIdRef.current = roomId
       setGatherCooldowns(data.gatherCooldowns ?? [])
+      setSupplies(Array.isArray(data.supplies) ? data.supplies : [])
     } catch (error) {
       console.error(`[hydrateGatherCooldown] Error for room ${roomId}:`, error)
     }
@@ -691,7 +687,7 @@ export default function GameInterface() {
     if (providedRoomData && providedRoomData.roomId) {
       // The countdowns ride alongside the room; they are per-player state, not
       // part of the room record, so they stay out of the room cache.
-      const { gatherCooldowns: providedGatherCooldowns, ...providedRoom } = providedRoomData
+      const { gatherCooldowns: providedGatherCooldowns, supplies: providedSupplies, ...providedRoom } = providedRoomData
       const normalizedRoom = normalizeRoom({
         ...providedRoom,
         // Preserve worldTick if present in provided data
@@ -709,6 +705,7 @@ export default function GameInterface() {
           gatherHydratedRoomIdRef.current = normalizedRoom.roomId
           setGatherCooldowns(providedGatherCooldowns)
         }
+        if (Array.isArray(providedSupplies)) setSupplies(providedSupplies)
         cacheRoom(normalizedRoom)
         setCurrentRoom(normalizedRoom)
         setRoomPlayers(stampPartyLeaders(normalizedRoom.players, normalizedRoom.roomId))
@@ -788,6 +785,7 @@ export default function GameInterface() {
             gatherHydratedRoomIdRef.current = normalizedRoom.roomId
             setGatherCooldowns(roomData.gatherCooldowns)
           }
+          if (Array.isArray(roomData.supplies)) setSupplies(roomData.supplies)
           cacheRoom(normalizedRoom)
           setCurrentRoom(normalizedRoom)
           setRoomPlayers(stampPartyLeaders(roomPlayers, normalizedRoom.roomId))
@@ -1646,6 +1644,12 @@ export default function GameInterface() {
 
       if (payload?.data?.roomItems && currentRoomRef.current?.roomId) {
         updateRoomItems(currentRoomRef.current.roomId, normalizeRoomItems(payload.data.roomItems))
+      }
+
+      // A take refreshes the shelf it came from; the server sends the whole
+      // list back so held counts and availability never drift.
+      if (Array.isArray(payload?.data?.supplies)) {
+        setSupplies(payload.data.supplies)
       }
 
       if ((payload?.data?.stateNote !== undefined || payload?.data?.actionOverrides !== undefined || payload?.data?.roomPatch !== undefined) && currentRoomRef.current) {
@@ -3706,6 +3710,7 @@ export default function GameInterface() {
                     isPartyMember={isPartyMember}
                     onOpenPlayerProfile={handleOpenPlayerProfile}
                     gatherCooldowns={gatherCooldowns}
+                    supplies={supplies}
                     worldTick={worldTick}
                     actionResult={actionResult}
                     isLoadingRoom={isLoadingRoom}

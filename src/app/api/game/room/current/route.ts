@@ -82,10 +82,6 @@ export async function GET(request: NextRequest) {
       ? requestedRoomId
       : user?.currentRoom || '001'
 
-    // Ensure auto-respawn items exist in the room
-    const { ensureAutoRespawnItems } = require('@/lib/game-engine/services/room-item-service')
-    await ensureAutoRespawnItems(roomId)
-
     const room = await prisma.room.findUnique({
       where: { roomId },
       select: {
@@ -242,6 +238,8 @@ export async function GET(request: NextRequest) {
       try {
         const { buildGatherCooldowns } = require('@/lib/game-engine/services/gather-status')
         payload.gatherCooldowns = await buildGatherCooldowns(user.id, roomId)
+        const { buildSupplyStatus } = require('@/lib/game-engine/services/room-supply-service')
+        payload.supplies = await buildSupplyStatus(user.id, roomId)
       } catch (error) {
         console.error('[Room API] Error computing gather cooldown:', error)
       }

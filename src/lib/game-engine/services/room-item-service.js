@@ -1,53 +1,21 @@
 const { prisma } = require('../../db-client')
 const { getPlayerInventory } = require('./inventory-service')
-const { normalizeRoomItems } = require('./room-normalization.js')
-const { ROOM_LOOT } = require('../config/room-loot')
+const { normalizeRoomItems, ROOM_ITEMS_INCLUDE } = require('./room-normalization.js')
+const { countedName } = require('./item-names')
 
 /**
- * Pluralize an item name
- * @param {string} name - The item name
- * @returns {string} - The pluralized name
+ * Room items are what players leave on the ground: a shared pile per
+ * (room, template) that anyone present can pick from. What a room *provides*
+ * — the spare hatchet, the guard's arrow crate — is not a room item; that is
+ * per player and lives in config/room-supplies.js.
  */
-function pluralizeItemName(name) {
-  if (!name) return name
-  // Handle words ending in 'y' (e.g., berry -> berries)
-  if (name.endsWith('y')) {
-    return name.slice(0, -1) + 'ies'
-  }
-  // Handle words ending in 's', 'x', 'z', 'ch', 'sh' (add 'es')
-  if (name.match(/[sxz]|[cs]h$/)) {
-    return name + 'es'
-  }
-  // Default: add 's'
-  return name + 's'
-}
 
-/**
- * Format pickup message with proper quantity and pluralization
- * @param {string} itemName - The item name
- * @param {number} quantity - The quantity being picked up
- * @returns {string} - The formatted message
- */
 function formatPickupMessage(itemName, quantity) {
-  if (quantity === 1) {
-    return `You pick up a ${itemName}.`
-  }
-  const pluralName = pluralizeItemName(itemName)
-  return `You pick up ${quantity} ${pluralName}.`
+  return `You pick up ${countedName(itemName, quantity)}.`
 }
 
-/**
- * Format drop message with proper quantity and pluralization
- * @param {string} itemName - The item name
- * @param {number} quantity - The quantity being dropped
- * @returns {string} - The formatted message
- */
 function formatDropMessage(itemName, quantity) {
-  if (quantity === 1) {
-    return `You drop a ${itemName}.`
-  }
-  const pluralName = pluralizeItemName(itemName)
-  return `You drop ${quantity} ${pluralName}.`
+  return `You drop ${countedName(itemName, quantity)}.`
 }
 
 /**
@@ -93,13 +61,18 @@ async function pickupRoomItem(playerId, roomItemId, quantity, playerCurrentRoom)
     },
   })
 
+  // The bag's own limit. A pile is shared, so the only cap a pickup meets is
+  // the player's: name it, and how far they are from it.
   const currentPlayerQty = existingPlayerItem?.quantity || 0
   const maxAllowed = template.max ?? Infinity
 
   if (currentPlayerQty + quantity > maxAllowed) {
     return {
       success: false,
-      message: `You can only carry ${maxAllowed} of this item`,
+      message:
+        currentPlayerQty >= maxAllowed
+          ? `Your bag already holds ${maxAllowed} ${template.name} — that is as many as it can carry.`
+          : `Your bag can only hold ${maxAllowed} ${template.name}; you have room for ${maxAllowed - currentPlayerQty} more.`,
     }
   }
 
@@ -156,9 +129,16 @@ async function pickupRoomItem(playerId, roomItemId, quantity, playerCurrentRoom)
 }
 
 /**
- * Drop an item from inventory into the current room (transactional)
+ * Drop an item from inventory into the current room (transactional).
+ *
+ * @param {string} playerId
+ * @param {string} playerItemId
+ * @param {number} quantity
+ * @param {string} playerCurrentRoom
+ * @param {string | null} droppedByName - shown on the pile ("left by Sherman");
+ *   the latest dropper onto a shared pile takes the credit.
  */
-async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom) {
+async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom, droppedByName = null) {
   if (!quantity || quantity < 1) {
     return { success: false, message: 'Invalid quantity' }
   }
@@ -213,7 +193,7 @@ async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom)
     if (existingRoomItem) {
       await tx.roomItem.update({
         where: { id: existingRoomItem.id },
-        data: { quantity: { increment: quantity } },
+        data: { quantity: { increment: quantity }, droppedByName, updatedAt: new Date() },
       })
     } else {
       const { randomUUID } = require('crypto')
@@ -223,6 +203,7 @@ async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom)
           roomId: playerCurrentRoom,
           templateId: template.id,
           quantity,
+          droppedByName,
         },
       })
     }
@@ -248,111 +229,14 @@ async function dropRoomItem(playerId, playerItemId, quantity, playerCurrentRoom)
 async function getRoomItems(roomId) {
   const items = await prisma.roomItem.findMany({
     where: { roomId },
-    include: {
-      ItemTemplate: {
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          description: true,
-          type: true,
-          canSell: true,
-          canDrop: true,
-          equipSlot: true,
-        },
-      },
-    },
+    ...ROOM_ITEMS_INCLUDE.items,
   })
 
   return normalizeRoomItems(items)
-}
-
-/**
- * Ensure all auto-respawn items exist in the given room.
- * This function checks each item that should auto-respawn and creates it if missing.
- *
- * The set of items that belong in each room is defined declaratively in
- * config/room-loot.js (the same source of truth used by the seed). Since
- * RoomItems are deleted when fully picked up, we check each configured
- * auto-respawn item individually and recreate it if missing.
- *
- * Note: This checks each item individually, so items will respawn even if other
- * auto-respawn items are still present in the room.
- *
- * @param {string} roomId - The room ID to check for auto-respawn items
- * @returns {Promise<void>}
- */
-async function ensureAutoRespawnItems(roomId) {
-  try {
-    const itemsToCheck = ROOM_LOOT.filter(
-      (entry) => entry.roomId === roomId && entry.autoRespawn !== false
-    )
-    if (itemsToCheck.length === 0) {
-      // No auto-respawn items configured for this room
-      return
-    }
-
-    // Batch all reads instead of querying per-item: one lookup for the
-    // templates and one for the room's existing items. This keeps a large
-    // loot table (e.g. the Solar Office) from firing ~100 sequential queries
-    // on every room entry.
-    //
-    // The two reads do not depend on each other — the room's existing rows are
-    // filtered by room, not by the template ids — so they go out together.
-    // This runs on every step between rooms, ahead of the room the player is
-    // waiting to see, and each sequential round trip is felt as travel delay.
-    const slugs = itemsToCheck.map((entry) => entry.slug)
-    const [templates, existingItems] = await Promise.all([
-      prisma.itemTemplate.findMany({
-        where: { slug: { in: slugs } },
-        select: { id: true, slug: true },
-      }),
-      prisma.roomItem.findMany({
-        where: { roomId },
-        select: { templateId: true },
-      }),
-    ])
-    const templateBySlug = new Map(templates.map((t) => [t.slug, t]))
-    const existingTemplateIds = new Set(existingItems.map((item) => item.templateId))
-
-    const { randomUUID } = require('crypto')
-    const toCreate = []
-    for (const entry of itemsToCheck) {
-      const template = templateBySlug.get(entry.slug)
-      if (!template) {
-        console.warn(`[ensureAutoRespawnItems] Template not found for slug: ${entry.slug}`)
-        continue
-      }
-      if (existingTemplateIds.has(template.id)) {
-        continue
-      }
-      toCreate.push({
-        id: randomUUID(),
-        roomId,
-        templateId: template.id,
-        quantity: entry.quantity ?? 1,
-        autoRespawn: true,
-      })
-    }
-
-    if (toCreate.length > 0) {
-      await prisma.roomItem.createMany({ data: toCreate })
-      console.log(
-        `[ensureAutoRespawnItems] Created ${toCreate.length} item(s) in room ${roomId}: ${toCreate
-          .map((item) => item.templateId)
-          .join(', ')}`
-      )
-    }
-  } catch (error) {
-    console.error(`[ensureAutoRespawnItems] Error ensuring auto-respawn items for room ${roomId}:`, error)
-    // Don't throw - this is a non-critical operation
-  }
 }
 
 module.exports = {
   pickupRoomItem,
   dropRoomItem,
   getRoomItems,
-  ensureAutoRespawnItems,
 }
-

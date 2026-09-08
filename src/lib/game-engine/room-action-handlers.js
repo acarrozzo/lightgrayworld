@@ -3,8 +3,9 @@
  * Handles execution of actions that are unique to specific rooms
  */
 const { grantPersonalItemOnce } = require('./effects')
-const { grantItemOnce, playerHasItem, getHeldQuantity, removeItemBySlug, getPlayerInventory } = require('./services/inventory-service')
+const { grantItemOnce, playerHasItem, removeItemBySlug, getPlayerInventory } = require('./services/inventory-service')
 const { checkAndConsumeCooldown } = require('./services/action-cap-service')
+const { feedTally } = require('./services/room-supply-service')
 const { grantTeleport } = require('./teleport-grants')
 const { getRecipeById, isRecipeAvailableInRoom, whereToCraft, describeCraft } = require('../game-data/crafting-recipes')
 const { getShop } = require('../game-data/shops')
@@ -551,60 +552,45 @@ const CHEST_LOOT = {
 }
 
 /**
- * Build a rolling-cooldown gather action: grants `quantity` of an item in one
- * click, then locks for `cooldownMs` (window starts at the moment of collection,
- * decoupled from the global world tick). Optionally requires a tool in inventory.
+ * Build a harvest: a rolling-cooldown gather that grants a batch in one click,
+ * then locks for `cooldownMs` (window starts at the moment of collection,
+ * decoupled from the global world tick). Optionally requires a tool.
  *
- * `toolTiers` (best tool first, e.g. `[{ slug: 'iron-hatchet', quantity: 10,
- * label: 'iron hatchet' }, { slug: 'hatchet', quantity: 5, label: 'hatchet' }]`)
+ * `toolTiers` (best tool first, e.g. `[{ slug: 'iron-hatchet', quantity: 2,
+ * label: 'iron hatchet' }, { slug: 'hatchet', quantity: 1, label: 'hatchet' }]`)
  * replaces `toolRequired`: owning any tier unlocks the action, and the best tier
  * held sets the batch size. `effects` still carries the lowest tier's yield so
  * the declared quantity (what getGatherActionsForRoom reports to the UI) stays
  * the baseline; `resolve` upgrades it per player at execution time.
+ *
+ * There is deliberately no held cap: a harvest can be farmed at the pace of
+ * its timer (the room-supplies decision). What a room hands out for free —
+ * "one each", "up to 50" — is not a harvest; that is config/room-supplies.js.
+ *
+ * The feed line always closes with the original's tally: "[ +5 redberries = 12 ]".
+ * `collectMessage(collected, tier)` supplies the prose in front of it.
  */
-function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantity = 5, toolRequired = null, toolTiers = null, emptyVerb = 'appear', missingToolMessage = null, maxHeld = null, maxHeldMessage = null, readyLabel = null, topUpTo = null, topUpMessage = null }) {
+function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantity = 5, toolRequired = null, toolTiers = null, emptyVerb = 'appear', missingToolMessage = null, readyLabel = null, collectMessage = null }) {
   const tiers = Array.isArray(toolTiers) && toolTiers.length > 0 ? toolTiers : null
   const baseQuantity = tiers ? tiers[tiers.length - 1].quantity : quantity
-  // A top-up node hands you back up to its number rather than a fixed batch, so
-  // it can never be farmed above that line. The original wrote these as
-  // `SET leather = 5` — a refill, not an addition — and the Forest's free
-  // supplies (leather, arrows, wood, the lake's fish) all work that way.
-  const cap = typeof topUpTo === 'number' ? topUpTo : maxHeld
 
   return {
-    // Explicit marker: a gather is not always identifiable by its cooldown,
-    // since a capped node (Jack's tree) can have a cap and no timer at all.
+    // Explicit marker so the room panel and the World Tool can find every
+    // harvest without inferring it from a cooldown.
     isGather: true,
     ...(cooldownMs ? { cooldownMs } : {}),
     ...(toolRequired ? { toolRequired } : {}),
-    ...(tiers ? { toolRequiredAny: tiers.map((tier) => tier.slug) } : {}),
-    // Surfaced to the room UI so a capped node can label its own resource
-    // ("3 wood left" / "5/5 wood") without the client hardcoding item names.
+    // The tiers are surfaced whole: the client holds the live inventory and
+    // labels the button with the tool the player will actually swing.
+    ...(tiers ? { toolRequiredAny: tiers.map((tier) => tier.slug), toolTiers: tiers } : {}),
+    // Surfaced to the room UI so a node can name its own resource without
+    // the client hardcoding item names.
     itemNamePlural,
     // What the ready-state badge calls this node ("Tree"). Nodes that name
     // themselves show that name; the rest fall back to a plain "Ready" plus the
     // batch size on the client.
     ...(readyLabel ? { readyLabel } : {}),
-    ...(typeof cap === 'number'
-      ? {
-          maxHeld: cap,
-          precondition: async (playerId) => {
-            const held = await getHeldQuantity(playerId, itemSlug)
-            return held >= cap
-              ? { allowed: false, capInfo: { atMaxHeld: true, held } }
-              : { allowed: true }
-          },
-        }
-      : {}),
-    effects: [{ type: 'grantItem', itemSlug, quantity: typeof topUpTo === 'number' ? topUpTo : baseQuantity }],
-    ...(typeof topUpTo === 'number'
-      ? {
-          resolve: async (playerId) => {
-            const held = await getHeldQuantity(playerId, itemSlug)
-            return { effects: [{ type: 'grantItem', itemSlug, quantity: Math.max(0, topUpTo - held) }], context: null }
-          },
-        }
-      : {}),
+    effects: [{ type: 'grantItem', itemSlug, quantity: baseQuantity }],
     ...(tiers
       ? {
           resolve: async (playerId) => {
@@ -626,16 +612,12 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
       if (capInfo?.missingTool) {
         return missingToolMessage || `You need a ${capInfo.missingTool} to do that.`
       }
-      if (capInfo?.atMaxHeld) {
-        return maxHeldMessage || `You already have ${cap} ${itemNamePlural}. Come back if you run low.`
-      }
-      if (typeof topUpTo === 'number' && effects?.[0]?.success) {
-        const collected = effects?.[0]?.quantity ?? 0
-        return topUpMessage
-          ? topUpMessage(collected, topUpTo)
-          : `You collect ${collected} ${itemNamePlural}, bringing you back up to ${topUpTo}.`
-      }
       if (!effects?.[0]?.success) {
+        // The bag, not the node: the grant refused because the stack is at
+        // the template's max. Say so rather than blaming the timer.
+        if (effects?.[0]?.message === 'Max quantity reached for this item') {
+          return `Your bag cannot hold any more ${itemNamePlural}.`
+        }
         if (!cooldownMs) return `No more ${itemNamePlural} here right now.`
         const secondsRemaining = capInfo?.secondsUntilReset ?? 0
         return `No more ${itemNamePlural} right now. More will ${emptyVerb} in ${formatTimeRemaining(secondsRemaining)}.`
@@ -645,13 +627,43 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
       const entry = Array.isArray(inventory)
         ? inventory.find((i) => i?.template?.slug === itemSlug)
         : null
-      const total = entry?.quantity
       const collected = effects?.[0]?.quantity ?? baseQuantity
-      const withTool = context?.tier?.label ? ` with your ${context.tier.label}` : ''
-      return `You collect ${collected} ${itemNamePlural}${withTool}${typeof total === 'number' ? ` (${total})` : ''}.`
+      const total = typeof entry?.quantity === 'number' ? entry.quantity : collected
+      const tier = context?.tier ?? null
+      const prose = typeof collectMessage === 'function'
+        ? collectMessage(collected, tier)
+        : `You collect ${collected} ${itemNamePlural}${tier?.label ? ` with your ${tier.label}` : ''}.`
+      return `${prose} ${feedTally(collected, total, itemNamePlural)}`
     },
     determineOutcome: ({ success }) => (success ? 'success' : 'info'),
   }
+}
+
+/**
+ * The berry bushes. Every one is a harvest on a timer with no held cap — red
+ * every 15 minutes, blue every 30 — and the rooms differ only in how big a
+ * handful they give.
+ */
+function makeRedberryAction(quantity = 5) {
+  return makeGatherAction({
+    itemSlug: 'redberry',
+    itemNamePlural: 'redberries',
+    cooldownMs: 15 * 60 * 1000,
+    quantity,
+    emptyVerb: 'grow',
+    collectMessage: (n) => `You pick ${n} redberries.`,
+  })
+}
+
+function makeBlueberryAction(quantity = 5) {
+  return makeGatherAction({
+    itemSlug: 'blueberry',
+    itemNamePlural: 'blueberries',
+    cooldownMs: 30 * 60 * 1000,
+    quantity,
+    emptyVerb: 'grow',
+    collectMessage: (n) => `You pick ${n} blueberries.`,
+  })
 }
 
 /**
@@ -676,6 +688,7 @@ function makeChopWoodAction({ missingToolMessage, readyLabel = 'Tree' }) {
       { slug: 'hatchet', quantity: 1, label: 'hatchet' },
     ],
     missingToolMessage,
+    collectMessage: (n, tier) => `You chop down some wood with your ${tier?.label ?? 'hatchet'}.`,
   })
 }
 
@@ -691,6 +704,7 @@ function makeSandAction() {
     toolRequired: 'shovel',
     emptyVerb: 'settle',
     missingToolMessage: 'You need a shovel to dig for sand here.',
+    collectMessage: (n) => `You shovel up ${n} sand.`,
   })
 }
 
@@ -706,6 +720,7 @@ function makeDirtAction() {
     toolRequired: 'shovel',
     emptyVerb: 'settle',
     missingToolMessage: 'You need a shovel to dig for dirt here.',
+    collectMessage: (n) => `You shovel up ${n} dirt.`,
   })
 }
 
@@ -721,6 +736,7 @@ function makeStoneAction() {
     toolRequired: 'pickaxe',
     emptyVerb: 'settle',
     missingToolMessage: 'You need a pickaxe to mine stone here.',
+    collectMessage: (n) => `You mine ${n} stone.`,
   })
 }
 
@@ -734,43 +750,8 @@ function makeWheatAction() {
     cooldownMs: 60 * 60 * 1000,
     quantity: 5,
     emptyVerb: 'grow',
+    collectMessage: (n) => `You pick ${n} wheat.`,
   })
-}
-
-/**
- * A free item you can only ever hold one of at a time: the Forest's replacement
- * Ring of Dexterity III (120) and Freddie's spare hammer (103). The original's
- * shape exactly — "you already have one, come back if you lose it" — so these
- * cannot be farmed, only replaced. Kept as an action rather than a ROOM_LOOT
- * drop because room items are shared and respawn per visit, which would make a
- * +3 ring infinitely duplicable.
- */
-function makeFreeItemAction({ itemSlug, itemName, capLabel, icon, iconColor = 'amber-400', grantMessage, alreadyHaveMessage }) {
-  return {
-    // A gather node with a cap of one: that is what "free replacement" means,
-    // and declaring it that way gets it a countdown-free cap badge in the room
-    // and a row in the World Tool's item-source index for free.
-    isGather: true,
-    // The badge beside the button reads "1 hammer left" / "1/1 hammer", so it
-    // wants the bare noun, not the article-carrying name the messages use.
-    itemNamePlural: capLabel ?? itemName,
-    maxHeld: 1,
-    precondition: async (playerId) => {
-      const held = await getHeldQuantity(playerId, itemSlug)
-      return held >= 1 ? { allowed: false, capInfo: { alreadyHeld: true } } : { allowed: true }
-    },
-    effects: [{ type: 'grantItem', itemSlug, quantity: 1 }],
-    generateMessage: (effects, capInfo) => {
-      if (capInfo?.alreadyHeld) {
-        return alreadyHaveMessage || `You already have ${itemName}. Come back here for another if you lose it.`
-      }
-      if (!effects?.[0]?.success) return `You cannot carry another ${itemName} right now.`
-      return grantMessage || `You pick up ${itemName}.`
-    },
-    determineOutcome: ({ success }) => (success ? 'success' : 'info'),
-    showModal: true,
-    modalContent: { type: 'icon', icon, iconColor, title: itemName, message: grantMessage },
-  }
 }
 
 /**
@@ -1998,13 +1979,7 @@ const ROOM_ACTIONS = {
     }),
   },
   '002': {
-    'pick redberry': makeGatherAction({
-      itemSlug: 'redberry',
-      itemNamePlural: 'redberries',
-      cooldownMs: 15 * 60 * 1000,
-      quantity: 5,
-      emptyVerb: 'grow',
-    }),
+    'pick redberry': makeRedberryAction(5),
   },
   '003': {
     'ex cabin': "You examine the cabin. It's warm and cozy, with a cooking fire burning and the Old Man rocking in his chair.",
@@ -2033,13 +2008,7 @@ const ROOM_ACTIONS = {
   },
   '004': {},
   '005': {
-    'pick blueberry': makeGatherAction({
-      itemSlug: 'blueberry',
-      itemNamePlural: 'blueberries',
-      cooldownMs: 30 * 60 * 1000,
-      quantity: 5,
-      emptyVerb: 'grow',
-    }),
+    'pick blueberry': makeBlueberryAction(5),
   },
   '014': { 'shovel dirt': makeDirtAction() },
   '015': { 'shovel sand': makeSandAction(), 'mine stone': makeStoneAction() },
@@ -2114,23 +2083,24 @@ const ROOM_ACTIONS = {
     'examine grand pillar': npcTalk('grand_quest_pillar'),
   },
   '025': {
-    // Jack's tree farm is the starter tree and deliberately unlike every other
-    // one: no timer at all — click away for 1 wood a chop — but it refuses once
-    // you're holding 5. The cap, not a cooldown, is what limits it, so it can't
-    // be farmed. That's enough to learn crafting (a Wooden Bow costs 3) without
-    // the Forest's per-room walk, and it tops back up whenever you spend down.
+    // Jack's tree farm is the starter tree: planted for it, so a chop is worth
+    // 3 wood whatever hatchet you swing (the original rolled 2–4), on the same
+    // 15-minute regrow every other tree keeps. That is a Wooden Bow's worth
+    // per visit, enough to learn crafting without the Forest walk, and there is
+    // no held cap here or anywhere else — a tree can be farmed at its own pace.
     'chop wood': makeGatherAction({
       itemSlug: 'wood',
       itemNamePlural: 'wood',
-      quantity: 1,
+      cooldownMs: 15 * 60 * 1000,
       emptyVerb: 'grow',
+      readyLabel: "Jack's tree",
       toolTiers: [
-        { slug: 'iron-hatchet', quantity: 1, label: 'iron hatchet' },
-        { slug: 'hatchet', quantity: 1, label: 'hatchet' },
+        { slug: 'mithril-hatchet', quantity: 3, label: 'mithril hatchet' },
+        { slug: 'iron-hatchet', quantity: 3, label: 'iron hatchet' },
+        { slug: 'hatchet', quantity: 3, label: 'hatchet' },
       ],
       missingToolMessage: 'You need a hatchet to chop wood here. There should be one at Jack\'s cabin to the south.',
-      maxHeld: 5,
-      maxHeldMessage: 'You already have 5 wood — enough for anything Jack will teach you. Come back if you run low.',
+      collectMessage: (n, tier) => `You chop down some wood from Jack's farm with your ${tier?.label ?? 'hatchet'}.`,
     }),
   },
   '020': {
@@ -2232,27 +2202,8 @@ const ROOM_ACTIONS = {
         ],
       }
     },
-    'get hammer': makeFreeItemAction({
-      itemSlug: 'hammer',
-      itemName: 'a hammer',
-      capLabel: 'hammer',
-      icon: 'craft',
-      iconColor: 'amber-500',
-      grantMessage: 'You take a hammer from the crate by the workshop door. You will need it to work leather.',
-      alreadyHaveMessage: 'You already have a hammer. If you lose it, come back here for another free one.',
-    }),
   },
 
-  // --- More Cows (103c): the woodpile behind the farm ---
-  '103c': {
-    'get wood': makeGatherAction({
-      itemSlug: 'wood',
-      itemNamePlural: 'wood',
-      topUpTo: 5,
-      maxHeldMessage: "You can't pick up more than 5 pieces of wood here. Come back if you run low.",
-      topUpMessage: (collected) => `You grab a stack of ${collected} wood from behind the fence.`,
-    }),
-  },
 
   // --- Forest Gate directory (104) ---
   '104': {
@@ -2305,38 +2256,8 @@ const ROOM_ACTIONS = {
     },
   },
 
-  // --- Under the Massive Tree (117): the leather stack ---
-  '117': {
-    'get leather': makeGatherAction({
-      itemSlug: 'leather',
-      itemNamePlural: 'leather',
-      topUpTo: 5,
-      maxHeldMessage: 'You already have 5 leather. Come back if you run low — for more than 5 you will have to hunt for it.',
-      topUpMessage: (collected) => `You pick up ${collected} pieces of leather from the stack under the tree.`,
-    }),
-  },
 
-  // --- Red Guard Tower (124): the arrow bundles at its base ---
-  '124': {
-    'grab arrows': makeGatherAction({
-      itemSlug: 'arrow',
-      itemNamePlural: 'arrows',
-      topUpTo: 50,
-      maxHeldMessage: 'You already have more than 50 arrows. Come back if you run low.',
-      topUpMessage: (collected) => `You grab a bundle of arrows from the guard stores. [ +${collected} arrows ]`,
-    }),
-  },
 
-  // --- Forest Lake (131): the bluefish shallows ---
-  '131': {
-    'fish': makeGatherAction({
-      itemSlug: 'bluefish',
-      itemNamePlural: 'bluefish',
-      topUpTo: 10,
-      maxHeldMessage: 'There are no more fish left in the lake. Come back later.',
-      topUpMessage: (collected) => `You fish in the lake and catch ${collected} bluefish.`,
-    }),
-  },
 
   // ==================== FOREST UNDERGROUND ====================
   // The two lair entrances warn you what is below and what it drops. Both signs
@@ -2490,58 +2411,19 @@ const ROOM_ACTIONS = {
   },
 
   '120': {
-    'pick redberry': makeGatherAction({
-      itemSlug: 'redberry',
-      itemNamePlural: 'redberries',
-      cooldownMs: 15 * 60 * 1000,
-      quantity: 20,
-      emptyVerb: 'grow',
-    }),
-    'grab ring': makeFreeItemAction({
-      itemSlug: 'ring-of-dexterity-iii',
-      itemName: 'a Ring of Dexterity III',
-      capLabel: 'Ring of Dexterity III',
-      icon: 'ring',
-      iconColor: 'green-400',
-      grantMessage: 'You pick a Ring of Dexterity III out of the silt at the river\'s edge. Somebody lost this a long time ago.',
-      alreadyHaveMessage: 'You already have a Ring of Dexterity III. If you lose it, come back here for another free one.',
-    }),
+    'pick redberry': makeRedberryAction(20),
   },
   '125': {
-    'pick redberry': makeGatherAction({
-      itemSlug: 'redberry',
-      itemNamePlural: 'redberries',
-      cooldownMs: 15 * 60 * 1000,
-      quantity: 10,
-      emptyVerb: 'grow',
-    }),
+    'pick redberry': makeRedberryAction(10),
   },
   '130': {
-    'pick redberry': makeGatherAction({
-      itemSlug: 'redberry',
-      itemNamePlural: 'redberries',
-      cooldownMs: 15 * 60 * 1000,
-      quantity: 15,
-      emptyVerb: 'grow',
-    }),
+    'pick redberry': makeRedberryAction(15),
   },
   '129': {
-    'pick blueberry': makeGatherAction({
-      itemSlug: 'blueberry',
-      itemNamePlural: 'blueberries',
-      cooldownMs: 30 * 60 * 1000,
-      quantity: 10,
-      emptyVerb: 'grow',
-    }),
+    'pick blueberry': makeBlueberryAction(10),
   },
   '135': {
-    'pick blueberry': makeGatherAction({
-      itemSlug: 'blueberry',
-      itemNamePlural: 'blueberries',
-      cooldownMs: 30 * 60 * 1000,
-      quantity: 15,
-      emptyVerb: 'grow',
-    }),
+    'pick blueberry': makeBlueberryAction(15),
   },
   '118': {
     // Bill's fire supercharges rather than merely restoring — the original set
@@ -2760,9 +2642,9 @@ const ROOM_ACTIONS = {
   },
 
   // --- The Red Guard Captain's office: the sign over the bowl of spare rings.
-  // The ring itself is a room item (see config/room-loot.js), so picking it up
-  // uses the shared pickup flow and the autoRespawn refill is what makes "if you
-  // lose it, come back for another free one" true.
+  // The ring itself is a room supply (config/room-supplies.js): one each, per
+  // player, which is what makes "if you lose it, come back for another free
+  // one" true without the bowl ever running dry for the next guard.
   '214': {
     'read sign': {
       showModal: true,
@@ -2953,29 +2835,6 @@ const ROOM_ACTIONS = {
 
   // --- The Ledge: the Dwarf Guard's supply crate, and a place to rest ---
   '306': {
-    'grab arrows': makeGatherAction({
-      itemSlug: 'arrow',
-      itemNamePlural: 'arrows',
-      topUpTo: 50,
-      maxHeldMessage: 'You already have more than 50 arrows. Come back if you run low.',
-      topUpMessage: (collected) => `You take a bundle of arrows from the guard's crate. [ +${collected} arrows ]`,
-    }),
-    'grab bolts': makeGatherAction({
-      itemSlug: 'crossbow-bolt',
-      itemNamePlural: 'bolts',
-      topUpTo: 50,
-      maxHeldMessage: 'You already have more than 50 bolts. Come back if you run low.',
-      topUpMessage: (collected) => `You take a bundle of bolts from the guard's crate. [ +${collected} bolts ]`,
-    }),
-    'grab polearm': makeFreeItemAction({
-      itemSlug: 'polearm',
-      itemName: 'a polearm',
-      capLabel: 'polearm',
-      icon: 'equipment-polearm',
-      iconColor: 'gray-400',
-      grantMessage: 'You take the spare polearm off the rack and stow it in your pack.',
-      alreadyHaveMessage: 'You already have a polearm. If you lose it, come back here for another free one.',
-    }),
     'rest on the ledge': async (playerId, roomState) =>
       roomState.applyRest(playerId, {
         action: 'rest on the ledge',
@@ -3096,32 +2955,6 @@ const ROOM_ACTIONS = {
   // --- The Silver Shop ---
   '310': { 'view shop': makeShopHandler('310', { icon: 'shop', iconColor: 'blue-300' }) },
 
-  // --- The mine head: free supplies for anyone going down ---
-  '311': {
-    'grab pickaxe': makeFreeItemAction({
-      itemSlug: 'pickaxe',
-      itemName: 'a pickaxe',
-      capLabel: 'pickaxe',
-      icon: 'pickaxe',
-      iconColor: 'amber-400',
-      grantMessage: 'You take a pickaxe off the trestle. It will not survive the whole mine, but it will get you started.',
-      alreadyHaveMessage: 'You already have a pickaxe. Come back if you break it — and you will break it.',
-    }),
-    'grab red potion': makeGatherAction({
-      itemSlug: 'red-potion',
-      itemNamePlural: 'red potions',
-      topUpTo: 5,
-      maxHeldMessage: 'You already have 5 red potions. Come back if you run low.',
-      topUpMessage: (collected) => `You take ${collected} red potions from the miners' stores.`,
-    }),
-    'grab blue potion': makeGatherAction({
-      itemSlug: 'blue-potion',
-      itemNamePlural: 'blue potions',
-      topUpTo: 5,
-      maxHeldMessage: 'You already have 5 blue potions. Come back if you run low.',
-      topUpMessage: (collected) => `You take ${collected} blue potions from the miners' stores.`,
-    }),
-  },
 
   // --- The Abandoned Mine's sign ---
   '315': {
@@ -3152,16 +2985,6 @@ const ROOM_ACTIONS = {
           'The gloves seem to be an antiquated offering. They are under a thick layer of dust, and you do not think anyone will mind if you take them.',
       },
     },
-    'grab gloves': makeFreeItemAction({
-      itemSlug: 'grotto-gloves',
-      itemName: 'the Grotto Gloves',
-      capLabel: 'grotto gloves',
-      icon: 'hand',
-      iconColor: 'blue-400',
-      grantMessage: 'You lift the magical Grotto Gloves out of the statue’s open hands. Look at you go.',
-      alreadyHaveMessage:
-        'A loud voice comes from every direction at once: "The Dwarven gods allow you ONE pair of grotto gloves!!!"',
-    }),
   },
 
   // --- The Red Fort's sign ---
@@ -3237,20 +3060,8 @@ const ROOM_ACTIONS = {
   // --- The Blue Oasis: the Friendly Pirate, his berries, and his spring ---
   '413': {
     'talk to friendly pirate': npcTalk('friendly_pirate'),
-    'pick redberry': makeGatherAction({
-      itemSlug: 'redberry',
-      itemNamePlural: 'redberries',
-      topUpTo: 20,
-      maxHeldMessage: 'You already have more than 20 redberries! Come back if you run low.',
-      topUpMessage: (collected) => `You pick redberries off the bushes. [ +${collected} redberries ]`,
-    }),
-    'pick blueberry': makeGatherAction({
-      itemSlug: 'blueberry',
-      itemNamePlural: 'blueberries',
-      topUpTo: 20,
-      maxHeldMessage: 'You already have more than 20 blueberries! Come back if you run low.',
-      topUpMessage: (collected) => `You pick blueberries off the bushes. [ +${collected} blueberries ]`,
-    }),
+    'pick redberry': makeRedberryAction(20),
+    'pick blueberry': makeBlueberryAction(20),
     'rest at the oasis': async (playerId, roomState) =>
       roomState.applyRest(playerId, {
         action: 'rest at the oasis',
@@ -3562,13 +3373,6 @@ const ROOM_ACTIONS = {
         overchargeMessage: 'You rest at the Tree Hut fireplace and super charge your health and mana. (+75 HP, +75 MP)',
       }),
     // The original set your tea to five if you had fewer: a top-up, not a farm.
-    'grab tea': makeGatherAction({
-      itemSlug: 'tea',
-      itemNamePlural: 'cups of tea',
-      topUpTo: 5,
-      maxHeldMessage: 'You already have five cups of tea. Drink one first.',
-      topUpMessage: (collected) => `You pick up ${collected} cup${collected === 1 ? '' : 's'} o' tea from the table! [ ${collected} tea ]`,
-    }),
   },
 
   // --- The Dark Forest Teleport: the directory, and a spare axe ---
@@ -3593,15 +3397,6 @@ const ROOM_ACTIONS = {
         questMessageDescription: 'Every tree in this wood can be chopped. The Dark Elf pays well for the timber.',
       },
     },
-    'grab iron hatchet': makeFreeItemAction({
-      itemSlug: 'iron-hatchet',
-      itemName: 'an Iron Hatchet',
-      capLabel: 'iron hatchet',
-      icon: 'axelog',
-      iconColor: 'amber-400',
-      grantMessage: 'You pick up the iron hatchet. You are too cool.',
-      alreadyHaveMessage: 'You already have an iron hatchet. Come back here for another if you lose it.',
-    }),
   },
 
   // --- Champion's Camp: the lever that opens the silver chest door ---
@@ -4339,13 +4134,13 @@ function getGatherActionForRoom(roomId) {
  * A room can host more than one (e.g. shovel sand + mine stone), so this returns
  * every match; the singular helper above is kept for callers that want the first.
  *
- * `itemSlug` / `itemNamePlural` / `maxHeld` are static definition data, not
+ * `itemSlug` / `itemNamePlural` / `toolTiers` are static definition data, not
  * player state: the client already holds a live inventory, so it can decide on
  * its own whether the player is at a node's cap and re-render the moment that
  * changes — no per-player query here, and nothing to go stale.
  *
  * @returns {Array<{ action: string, cooldownMs: number, quantity: number|null,
- *                   itemSlug: string|null, itemNamePlural: string|null, maxHeld: number|null,
+ *                   itemSlug: string|null, itemNamePlural: string|null, toolRequired: string|null, toolTiers: Array<{slug,quantity,label}>|null,
  *                   readyLabel: string|null }>}
  */
 function getGatherActionsForRoom(roomId) {
@@ -4363,7 +4158,8 @@ function getGatherActionsForRoom(roomId) {
         quantity: grant?.quantity ?? null,
         itemSlug: grant?.itemSlug ?? null,
         itemNamePlural: def.itemNamePlural ?? null,
-        maxHeld: typeof def.maxHeld === 'number' ? def.maxHeld : null,
+        toolRequired: def.toolRequired ?? null,
+        toolTiers: Array.isArray(def.toolTiers) ? def.toolTiers : null,
         readyLabel: def.readyLabel ?? null,
       })
     }

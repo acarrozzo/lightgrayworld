@@ -2,7 +2,6 @@ import { PrismaClient, ItemType, EquipSlot, WeaponCategory } from '@prisma/clien
 import { PrismaPg } from '@prisma/adapter-pg'
 import { normalizeConnectionString } from '../src/lib/db-connection-string.js'
 import bcrypt from 'bcryptjs'
-import { ROOM_LOOT } from '../src/lib/game-engine/config/room-loot'
 
 // Prisma 7 requires an explicit driver adapter. Seeding writes a lot of rows,
 // so prefer the direct (non-pooled) connection when one is configured.
@@ -8495,7 +8494,7 @@ async function main() {
       name: 'Redberry',
       description: 'A juicy redberry that restores 5 HP.',
       type: ItemType.CONSUMABLE,
-      max: 99999,
+      max: 999,
       value: 10,
       metadata: {
         icon: 'redberry',
@@ -8508,7 +8507,7 @@ async function main() {
       name: 'Blueberry',
       description: 'A juicy blueberry that restores 5 MP.',
       type: ItemType.CONSUMABLE,
-      max: 99999,
+      max: 999,
       value: 10,
       metadata: {
         icon: 'blueberry',
@@ -8521,7 +8520,7 @@ async function main() {
       name: 'Bat Wing',
       description: 'A thin, leathery wing torn from a cave bat. A common crafting material.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 5,
     },
     {
@@ -8530,7 +8529,7 @@ async function main() {
       name: 'Welcome Book',
       description: 'A leather-bound book welcoming adventurers to the world.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 10,
       canSell: true,
       canDrop: false,
@@ -8554,7 +8553,7 @@ async function main() {
       name: 'Shovel',
       description: 'A sturdy shovel for digging.',
       type: ItemType.MISC,
-      max: 1,
+      max: 99,
       value: 10,
       metadata: { crafting: { kind: 'tool' } },
     },
@@ -8614,7 +8613,7 @@ async function main() {
       name: 'Dirt',
       description: 'A handful of common dirt, useful for crafting and building.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 10,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -8624,7 +8623,7 @@ async function main() {
       name: 'Wheat',
       description: 'A bundle of golden wheat, useful for crafting and cooking.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 10,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -8634,7 +8633,7 @@ async function main() {
       name: 'Sand',
       description: 'Fine grains of sand, collected from the beach.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 10,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -8644,7 +8643,7 @@ async function main() {
       name: 'Stone',
       description: 'A solid piece of stone, useful for construction and crafting.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 10,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -8654,7 +8653,7 @@ async function main() {
       name: 'Wood',
       description: 'A piece of wood, harvested from trees.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 10,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -8664,7 +8663,7 @@ async function main() {
       name: 'Leather',
       description: 'A cured hide, cut and ready for working. A staple of light armor and bindings.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 25,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -8674,7 +8673,7 @@ async function main() {
       name: 'Iron',
       description: 'A piece of iron ore, useful for forging and crafting.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 15,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -8684,7 +8683,7 @@ async function main() {
       name: 'Hatchet',
       description: 'A small axe used for chopping wood.',
       type: ItemType.MISC,
-      max: 1,
+      max: 99,
       value: 10,
       metadata: { crafting: { kind: 'tool' } },
     },
@@ -8694,7 +8693,7 @@ async function main() {
       name: 'Iron Hatchet',
       description: 'A hatchet with a forged iron head. It bites deeper than a plain one, bringing back twice the wood from every tree.',
       type: ItemType.MISC,
-      max: 1,
+      max: 99,
       value: 200,
       metadata: { icon: 'axelog', crafting: { kind: 'tool' } },
     },
@@ -8706,7 +8705,7 @@ async function main() {
       type: ItemType.MISC,
       // Stacks to ten: swinging one in the Neverending Mine breaks it on a
       // 1-in-50, and the whole point of the guild's supply shop is buying more.
-      max: 10,
+      max: 99,
       value: 10,
       metadata: { crafting: { kind: 'tool' } },
     },
@@ -8716,7 +8715,7 @@ async function main() {
       name: 'Hammer',
       description: 'A heavy hammer for building and crafting.',
       type: ItemType.MISC,
-      max: 1,
+      max: 99,
       value: 10,
       metadata: { crafting: { kind: 'tool' } },
     },
@@ -8738,7 +8737,7 @@ async function main() {
       name: 'Bo',
       description: 'A long wooden staff that requires both hands to wield effectively.',
       type: ItemType.EQUIPMENT,
-      max: 1,
+      max: 999,
       value: 400,
       equipSlot: EquipSlot.MAIN_HAND,
       weaponCategory: WeaponCategory.MELEE,
@@ -10938,7 +10937,7 @@ async function main() {
       name: 'Coal',
       description: 'A lump of black coal, hewn out of the deep mine. The forge burns it and steel starts with it.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 25,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -10948,7 +10947,7 @@ async function main() {
       name: 'Mithril',
       description: 'A sliver of pale, impossibly light mithril. Only the deepest seams carry it, and only a mithril pick will free it.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 100,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -10958,7 +10957,7 @@ async function main() {
       name: 'Mud',
       description: 'A handful of wet mine mud. It comes up with everything else.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 5,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -10968,7 +10967,7 @@ async function main() {
       name: 'Water',
       description: 'A skin of clean water, scooped out of a mine pool.',
       type: ItemType.MISC,
-      max: 99999,
+      max: 999,
       value: 5,
       metadata: { crafting: { kind: 'material' } },
     },
@@ -10978,7 +10977,7 @@ async function main() {
       name: 'Iron Pickaxe',
       description: 'An iron-headed pickaxe. Bites through stone, and frees the iron a plain pick only scratches.',
       type: ItemType.MISC,
-      max: 10,
+      max: 99,
       value: 15000,
       metadata: { icon: 'pickaxe', crafting: { kind: 'tool' } },
     },
@@ -10988,7 +10987,7 @@ async function main() {
       name: 'Steel Pickaxe',
       description: 'A steel pickaxe. Everything a plain or iron pick can take, plus the coal seams below Mine Level 10.',
       type: ItemType.MISC,
-      max: 10,
+      max: 99,
       value: 50000,
       metadata: { icon: 'pickaxe', crafting: { kind: 'tool' } },
     },
@@ -10998,7 +10997,7 @@ async function main() {
       name: 'Mithril Pickaxe',
       description: 'The last pick. Nothing in the mine is too hard for it, mithril included.',
       type: ItemType.MISC,
-      max: 10,
+      max: 99,
       value: 250000,
       metadata: { icon: 'pickaxe', crafting: { kind: 'tool' } },
     },
@@ -11008,7 +11007,7 @@ async function main() {
       name: 'Iron Hammer',
       description: 'A forge hammer with an iron head. Required to work iron at a crafting fire.',
       type: ItemType.MISC,
-      max: 1,
+      max: 99,
       value: 15000,
       metadata: { icon: 'craft', crafting: { kind: 'tool' } },
     },
@@ -11018,7 +11017,7 @@ async function main() {
       name: 'Steel Hammer',
       description: 'A steel forge hammer. Everything the iron one does, and harder.',
       type: ItemType.MISC,
-      max: 1,
+      max: 99,
       value: 50000,
       metadata: { icon: 'craft', crafting: { kind: 'tool' } },
     },
@@ -11028,7 +11027,7 @@ async function main() {
       name: 'Mithril Hammer',
       description: 'A mithril forge hammer, light enough to swing all day and hard enough not to care.',
       type: ItemType.MISC,
-      max: 1,
+      max: 99,
       value: 250000,
       metadata: { icon: 'craft', crafting: { kind: 'tool' } },
     },
@@ -11267,7 +11266,7 @@ async function main() {
       name: 'Grotto Gloves',
       description: 'Pale blue gloves left in a dwarven statue’s open hands as an offering, long enough ago that nobody minds.',
       type: ItemType.EQUIPMENT,
-      max: 1,
+      max: 999,
       value: 2000,
       equipSlot: EquipSlot.HANDS,
       metadata: { statMods: { mag: 5 } },
@@ -12953,7 +12952,7 @@ async function main() {
       name: 'Mithril Hatchet',
       description: 'The Dark Elf\'s freshly crafted hatchet. Six wood a swing, in any wood.',
       type: ItemType.MISC,
-      max: 1,
+      max: 99,
       value: 2000,
       metadata: { icon: 'axelog', crafting: { kind: 'tool' } },
     },
@@ -12968,43 +12967,8 @@ async function main() {
     })
   }
 
-  // Seed room items from the shared declarative config (config/room-loot.ts),
-  // the same source of truth used by runtime auto-respawn. Idempotent: every
-  // room referenced in the config is cleared and rebuilt from ROOM_LOOT, so
-  // removing a line here also removes the item on the next seed.
-  const slugToTemplateId = new Map(itemTemplates.map((t) => [t.slug, t.id]))
-
-  // Rooms to clear: every room referenced in the config, plus any room that
-  // still holds auto-respawn items but has since been removed from the config
-  // (so de-listing a room actually empties it on reseed).
-  const lootRoomIds = new Set(ROOM_LOOT.map((entry) => entry.roomId))
-  const managedRooms = await prisma.roomItem.findMany({
-    where: { autoRespawn: true },
-    select: { roomId: true },
-    distinct: ['roomId'],
-  })
-  for (const { roomId } of managedRooms) lootRoomIds.add(roomId)
-
-  await prisma.roomItem.deleteMany({
-    where: { roomId: { in: [...lootRoomIds] } },
-  })
-
-  for (const entry of ROOM_LOOT) {
-    const templateId = slugToTemplateId.get(entry.slug)
-    if (!templateId) {
-      console.warn(`⚠️  [room-loot] No item template found for slug "${entry.slug}" (room ${entry.roomId}) — skipping`)
-      continue
-    }
-
-    await prisma.roomItem.create({
-      data: {
-        roomId: entry.roomId,
-        templateId,
-        quantity: entry.quantity ?? 1,
-        autoRespawn: entry.autoRespawn ?? true,
-      },
-    })
-  }
+  // Room items are only what players drop; nothing is seeded on the ground.
+  // What a room provides for free is per player, in config/room-supplies.js.
 
   // Create a test user
   const hashedPassword = await bcrypt.hash('password123', 12)

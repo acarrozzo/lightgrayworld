@@ -12,8 +12,8 @@ const noCacheHeaders = {
 
 /**
  * Returns the rolling gather cooldown status for a room (sand / dirt / stone /
- * berries). A room can host more than one gather action, so this is an array:
- *   { gatherCooldowns: Array<{ action, cooldownSeconds, secondsRemaining, quantity }> }
+ * berries), plus the per-player supply shelf:
+ *   { gatherCooldowns: Array<{ action, cooldownSeconds, secondsRemaining, quantity }>, supplies: Array<...> }
  * Used to seed the in-room countdowns on room entry. Lightweight by design.
  */
 export async function GET(request: NextRequest) {
@@ -36,7 +36,12 @@ export async function GET(request: NextRequest) {
       : user.currentRoom || '001'
 
     const { buildGatherCooldowns } = require('@/lib/game-engine/services/gather-status')
-    const payload = { gatherCooldowns: await buildGatherCooldowns(user.id, roomId) }
+    const { buildSupplyStatus } = require('@/lib/game-engine/services/room-supply-service')
+    const [gatherCooldowns, supplies] = await Promise.all([
+      buildGatherCooldowns(user.id, roomId),
+      buildSupplyStatus(user.id, roomId),
+    ])
+    const payload = { gatherCooldowns, supplies }
 
     return NextResponse.json(payload, { headers: noCacheHeaders })
   } catch (error) {

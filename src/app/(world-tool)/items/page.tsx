@@ -9,8 +9,8 @@ import { resolveItemIcon } from '@/lib/item-actions'
 // Source data — where equipable items come from in the world. Required live so
 // the column tracks any change to room loot or enemy drop tables.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { ROOM_LOOT } = require('@/lib/game-engine/config/room-loot') as {
-  ROOM_LOOT: { roomId: string; slug: string; quantity?: number }[]
+const { ROOM_SUPPLIES } = require('@/lib/game-engine/config/room-supplies') as {
+  ROOM_SUPPLIES: { roomId: string; slug: string; mode: 'take' | 'topUp'; cap?: number }[]
 }
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: EnemySource[] }
@@ -128,7 +128,8 @@ type SearchTable = { entries: { effect?: SearchEffect }[] }
 // handler function. Only the structured form (a cooldown + grantItem effect) is
 // a gatherable resource; the rest are narrowed out at runtime.
 type GatherEffect = { type: string; itemSlug?: string; quantity?: number }
-type GatherActionDef = { isGather?: boolean; cooldownMs?: number; maxHeld?: number; toolRequired?: string; toolRequiredAny?: string[]; effects?: GatherEffect[] }
+type GatherTier = { slug: string; quantity: number; label: string }
+type GatherActionDef = { isGather?: boolean; cooldownMs?: number; toolRequired?: string; toolRequiredAny?: string[]; toolTiers?: GatherTier[]; effects?: GatherEffect[] }
 type RoomActionEntry = string | GatherActionDef | ((...args: never[]) => unknown)
 
 // Render a cooldown interval as a compact label ("5m", "30m", "1h", "1h30m").
@@ -181,17 +182,12 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
     return s
   }
 
-  // Rooms — consolidate duplicate roomId/slug entries by summing quantity.
-  const roomQty = new Map<string, { roomId: string; quantity: number }>()
-  for (const entry of ROOM_LOOT) {
-    const key = `${entry.slug}|${entry.roomId}`
-    const prev = roomQty.get(key)
-    roomQty.set(key, { roomId: entry.roomId, quantity: (prev?.quantity ?? 0) + (entry.quantity ?? 1) })
-  }
-  for (const [key, { roomId, quantity }] of roomQty) {
-    const slug = key.split('|')[0]
-    const name = roomNames.get(roomId) ?? `Room ${roomId}`
-    ensure(slug).rooms.push({ roomId, label: quantity > 1 ? `${name} ×${quantity}` : name })
+  // Rooms — what a room hands out for free, per player, with its line:
+  // "The Ledge · up to 50", "Jack Lumber's Cabin · one each".
+  for (const entry of ROOM_SUPPLIES) {
+    const name = roomNames.get(entry.roomId) ?? `Room ${entry.roomId}`
+    const rule = entry.mode === 'take' ? 'one each' : `up to ${entry.cap ?? 1}`
+    ensure(entry.slug).rooms.push({ roomId: entry.roomId, label: `${name} · ${rule}` })
   }
 
   // Enemies — firstKill, always, then weighted main rolls (as a percentage).
@@ -277,16 +273,19 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
       if (!def.isGather && !def.cooldownMs) continue
       const grant = def.effects?.find((e) => e.type === 'grantItem' && e.itemSlug)
       if (!grant?.itemSlug) continue
-      // A gate is either one named tool or a set of interchangeable tiers
-      // (plain / iron hatchet); list every tool that opens it.
-      const tools = def.toolRequired ? [def.toolRequired] : (def.toolRequiredAny ?? [])
-      const tool = tools.length > 0 ? ` · ${tools.join(' or ')}` : ''
-      const limit = def.cooldownMs
-        ? ` · ${formatCooldown(def.cooldownMs)}`
-        : def.maxHeld != null
-          ? ` · max ${def.maxHeld} held`
+      // A gate is either one named tool or a set of tiers whose yield climbs
+      // with the tool (hatchet 1 / iron 2 / mithril 6); say each tool's take.
+      const tiers = def.toolTiers ?? []
+      const yieldLabel = tiers.length > 0
+        ? ` ×${[...tiers].reverse().map((t) => t.quantity).join('/')}`
+        : fixedQty(grant.quantity)
+      const tool = tiers.length > 0
+        ? ` · ${[...tiers].reverse().map((t) => t.label).join(' / ')}`
+        : def.toolRequired
+          ? ` · ${def.toolRequired}`
           : ''
-      const suffix = `${fixedQty(grant.quantity)}${limit}${tool}`
+      const limit = def.cooldownMs ? ` · ${formatCooldown(def.cooldownMs)}` : ''
+      const suffix = `${yieldLabel}${limit}${tool}`
       const key = `${grant.itemSlug}|${suffix}`
       const existing = nodes.get(key)
       if (existing) existing.count += 1

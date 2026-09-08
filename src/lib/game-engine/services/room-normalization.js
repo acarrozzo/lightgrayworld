@@ -2,20 +2,10 @@
  * Shared room query fragments and normalization helpers.
  * Use ROOM_ITEMS_SELECT inside a Prisma `select` block.
  * Use ROOM_ITEMS_INCLUDE at the root `include` level if select is not used.
+ *
+ * Room items are what players have left on the ground. What a room provides
+ * for free is per player and comes from config/room-supplies.js instead.
  */
-
-const { ROOM_LOOT } = require('../config/room-loot')
-
-// Canonical room-item display order: the position each (roomId, slug) holds in
-// the ROOM_LOOT seed config. Prisma can't order by a config array, so room
-// queries fetch unordered and normalizeRoomItems() sorts here — keeping the
-// in-game room, the loot panel, and the World Atlas tool all in seed order.
-const ROOM_LOOT_ORDER = new Map(ROOM_LOOT.map((l, i) => [`${l.roomId}::${l.slug}`, i]))
-
-function lootOrderIndex(item) {
-  const idx = ROOM_LOOT_ORDER.get(`${item?.roomId}::${item?.ItemTemplate?.slug}`)
-  return idx ?? Infinity
-}
 
 const ROOM_ITEMS_SELECT = {
   items: {
@@ -24,6 +14,9 @@ const ROOM_ITEMS_SELECT = {
       quantity: true,
       templateId: true,
       roomId: true,
+      droppedByName: true,
+      createdAt: true,
+      updatedAt: true,
       // Must stay identical to the field list in room-normalization.ts —
       // validate-world fails the build if they diverge. They already had:
       // the engine's socket path used this copy and silently dropped `value`,
@@ -75,18 +68,29 @@ const ROOM_ITEMS_INCLUDE = {
   },
 }
 
+function toIso(value) {
+  if (!value) return null
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value === 'string') return value
+  return null
+}
+
 /**
- * Normalize raw room items to UI-friendly shape.
+ * Normalize raw room items to UI-friendly shape. Freshest pile first, so the
+ * thing just dropped is at the top of the strip.
  */
 function normalizeRoomItems(rawItems) {
   if (!Array.isArray(rawItems)) return []
 
-  // Order by ROOM_LOOT seed position; config items first (in config order),
-  // then anything else (e.g. player-dropped) alphabetically by name.
+  const stamp = (item) => {
+    const raw = item?.updatedAt ?? item?.createdAt
+    const t = raw instanceof Date ? raw.getTime() : typeof raw === 'string' ? Date.parse(raw) : NaN
+    return Number.isFinite(t) ? t : 0
+  }
+
   const ordered = [...rawItems].sort((a, b) => {
-    const ia = lootOrderIndex(a)
-    const ib = lootOrderIndex(b)
-    if (ia !== ib) return ia - ib
+    const diff = stamp(b) - stamp(a)
+    if (diff !== 0) return diff
     return (a?.ItemTemplate?.name ?? '').localeCompare(b?.ItemTemplate?.name ?? '')
   })
 
@@ -104,6 +108,8 @@ function normalizeRoomItems(rawItems) {
     normalized.push({
       id: item.id,
       quantity: item.quantity,
+      droppedBy: item.droppedByName ?? null,
+      droppedAt: toIso(item.updatedAt ?? item.createdAt),
       template: {
         id: item.ItemTemplate.id,
         slug: item.ItemTemplate.slug,
@@ -140,4 +146,3 @@ module.exports = {
   normalizeRoomItems,
   normalizeRoomData,
 }
-

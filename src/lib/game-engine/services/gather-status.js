@@ -1,6 +1,6 @@
 /**
- * Rolling gather-cooldown status for a room (sand / dirt / stone / berries),
- * shaped for the in-room countdown.
+ * Rolling gather-cooldown status for a room (sand / dirt / stone / berries /
+ * trees), shaped for the in-room countdown.
  *
  * One definition for every surface that hands a room to the client: the socket
  * move payload, the HTTP room load, and the standalone gather route. The three
@@ -12,6 +12,9 @@
  * Always resolves to an array. An empty one is a real answer ("this room has no
  * gather action") and lets the client skip its fallback fetch.
  *
+ * Per-player supplies (the spare hatchet, the arrow crate) are a separate list,
+ * built by room-supply-service.buildSupplyStatus, and ride alongside this one.
+ *
  * @param {string} playerId
  * @param {string} roomId
  * @returns {Promise<Array<{
@@ -21,8 +24,9 @@
  *   quantity: number | null,
  *   itemSlug: string | null,
  *   itemNamePlural: string | null,
- *   maxHeld: number | null,
  *   readyLabel: string | null,
+ *   toolRequired: string | null,
+ *   toolTiers: Array<{ slug: string, quantity: number, label: string }> | null,
  * }>>}
  */
 async function buildGatherCooldowns(playerId, roomId) {
@@ -39,8 +43,6 @@ async function buildGatherCooldowns(playerId, roomId) {
   return Promise.all(
     gathers.map(async (gather) => ({
       action: gather.action,
-      // A capped node can have no timer at all (Jack's tree): report it as
-      // always-ready rather than asking the cooldown service about it.
       cooldownSeconds: gather.cooldownMs ? Math.ceil(gather.cooldownMs / 1000) : 0,
       secondsRemaining: gather.cooldownMs
         ? await getCooldownRemaining(playerId, roomId, gather.action, gather.cooldownMs)
@@ -48,8 +50,11 @@ async function buildGatherCooldowns(playerId, roomId) {
       quantity: gather.quantity ?? null,
       itemSlug: gather.itemSlug ?? null,
       itemNamePlural: gather.itemNamePlural ?? null,
-      maxHeld: gather.maxHeld ?? null,
       readyLabel: gather.readyLabel ?? null,
+      // The client holds the live inventory, so it can pick the tier the
+      // player will actually swing and label the button with it.
+      toolRequired: gather.toolRequired ?? null,
+      toolTiers: gather.toolTiers ?? null,
     }))
   )
 }

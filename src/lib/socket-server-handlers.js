@@ -25,8 +25,8 @@ const {
 const { getEnemy } = require('./game-data/enemies.js')
 const { loadPresentEnemy } = require('./game-engine/services/present-enemy-service.js')
 const { listTravelersInRoom } = require('./game-engine/traveler-state.js')
-const { ensureAutoRespawnItems } = require('./game-engine/services/room-item-service.js')
 const { buildGatherCooldowns } = require('./game-engine/services/gather-status.js')
+const { buildSupplyStatus } = require('./game-engine/services/room-supply-service.js')
 const { SPELL_SELECT, projectSpellState, unlockSpellTeacher } = require('./game-engine/services/spell-service.js')
 const { SKILL_SELECT, projectSkillState, unlockSkillTeacher } = require('./game-engine/services/skill-service.js')
 const {
@@ -821,7 +821,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
    * builder for both ways of arriving, so a teleport into a lever room shows
    * the same exits a walk in would.
    */
-  const buildDestinationRoomData = ({ destinationRoom, toRoom, player, gatherCooldowns }) => {
+  const buildDestinationRoomData = ({ destinationRoom, toRoom, player, gatherCooldowns, supplies }) => {
     // Probabilistic rooms start with no enemy — the spawn roll happens in
     // maybeStartAutoBattle after the move succeeds, and the client is told via
     // an enemy_spawn action:feedback. A static room's enemy is always there.
@@ -854,6 +854,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       // Always an array: an empty one tells the client the room has no gather
       // action, so it need not ask over HTTP.
       gatherCooldowns: Array.isArray(gatherCooldowns) ? gatherCooldowns : [],
+      // Likewise per player: what this room hands out for free, and how much of
+      // it this player can still take.
+      supplies: Array.isArray(supplies) ? supplies : [],
     }
   }
 
@@ -863,11 +866,12 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
    * countdowns depend on neither and go out alongside.
    */
   const loadDestination = async (player, toRoom) => {
-    const [destinationRoom, gatherCooldowns] = await Promise.all([
-      ensureAutoRespawnItems(toRoom).then(() => fetchRoomWithColors(prisma, toRoom)),
+    const [destinationRoom, gatherCooldowns, supplies] = await Promise.all([
+      fetchRoomWithColors(prisma, toRoom),
       buildGatherCooldowns(player.id, toRoom),
+      buildSupplyStatus(player.id, toRoom),
     ])
-    return { destinationRoom, gatherCooldowns }
+    return { destinationRoom, gatherCooldowns, supplies }
   }
 
   // True if any same-room member of this leader's party is locked in battle.
@@ -1278,8 +1282,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // Refuse a destination this room has no exit to, before anything writes.
         // The engine re-derives and re-validates this itself — that check is the
         // authority — but rejecting here keeps an arbitrary destination from
-        // reaching ensureAutoRespawnItems, which creates item rows in whatever
-        // room it is handed.
+        // being read or reported before the engine has ruled on it.
         const direction = findDirectionKey(sourceExits, toRoom)
 
         // The client sends teleports through this same event, so a destination
@@ -1337,7 +1340,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
         }
 
-        const { destinationRoom, gatherCooldowns } = await loadDestination(player, toRoom)
+        const { destinationRoom, gatherCooldowns, supplies } = await loadDestination(player, toRoom)
         if (!destinationRoom) {
           console.log(`[Socket] player-move - Destination room ${toRoom} not found`)
           emitActionFeedback(socket, {
@@ -1353,6 +1356,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           toRoom,
           player,
           gatherCooldowns,
+          supplies,
         })
         const toRoomName = destinationRoom.name
 
@@ -1690,7 +1694,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             })
             return
           }
-          const { destinationRoom, gatherCooldowns } = await loadDestination(player, toRoomId)
+          const { destinationRoom, gatherCooldowns, supplies } = await loadDestination(player, toRoomId)
           if (!destinationRoom) {
             emitActionFeedback(socket, { action: 'teleport', message: 'Destination not found', outcome: 'failure' })
             return
@@ -1701,6 +1705,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             toRoom: toRoomId,
             player,
             gatherCooldowns,
+            supplies,
           })
 
           const result = await gameEngine.processUserAction({

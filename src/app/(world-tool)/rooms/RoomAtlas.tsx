@@ -71,7 +71,8 @@ export type RoomNode = {
   nameColor?: string | null
   exits: ExitInfo[]
   enemies: { mode: 'static' | 'probabilistic'; spawnChancePct?: number; enemies: EnemySpawn[] } | null
-  items: { slug: string; name: string; icon: string; quantity: number; autoRespawn: boolean }[]
+  /** What the room hands out for free, per player: "one each" or "up to N". */
+  items: { slug: string; name: string; icon: string; rule: string }[]
   npcs: { name: string; icon?: string; type?: string; questCount?: number; giverId?: string }[]
   actions: RoomActionInfo[]
   secrets: SecretInfo[]
@@ -1038,10 +1039,10 @@ function RoomDetail({
         )}
       </Section>
 
-      {/* Loot */}
-      <Section icon={Coins} title={`Loot (${room.items.length})`}>
+      {/* Supplies */}
+      <Section icon={Coins} title={`Supplies (${room.items.length})`}>
         {room.items.length === 0 ? (
-          <Empty>No ground items.</Empty>
+          <Empty>Nothing free to take here.</Empty>
         ) : (
           <ul className="space-y-1">
             {room.items.map((it) => (
@@ -1050,8 +1051,7 @@ function RoomDetail({
                 <EntityLink href={itemHref(it.slug)} title={`${it.name} in the Item Compendium`}>
                   {it.name}
                 </EntityLink>
-                {it.quantity > 1 && <span className="text-xs text-fg-muted">×{it.quantity}</span>}
-                {it.autoRespawn && <span className="ml-auto text-[10px] font-semibold uppercase text-status-success">respawns</span>}
+                <span className="ml-auto text-[10px] font-semibold uppercase text-status-success">{it.rule}</span>
               </li>
             ))}
           </ul>

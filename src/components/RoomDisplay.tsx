@@ -6,7 +6,8 @@ import { useGameStore } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
 import { goldChestFlagForRoom } from '@/lib/game-data/gold-chests'
 import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
-import ItemDropdownButton from './ItemDropdownButton'
+import SupplyShelf from './SupplyShelf'
+import type { GatherCooldownView, SupplyView } from '@/lib/types/room'
 import Icon from './Icon'
 import NpcQuestCard from './NpcQuestCard'
 import { getFaction } from '@/lib/game-data/factions'
@@ -23,16 +24,9 @@ interface RoomDisplayProps {
   currentPlayerId?: string
   onAction?: (action: string | { type: string; data?: any }) => void | Promise<void>
   onOpenPlayerProfile?: (player: Player) => void
-  gatherCooldowns?: Array<{
-    action: string
-    cooldownSeconds: number
-    secondsRemaining: number
-    quantity?: number | null
-    itemSlug?: string | null
-    itemNamePlural?: string | null
-    maxHeld?: number | null
-    readyLabel?: string | null
-  }>
+  gatherCooldowns?: GatherCooldownView[]
+  /** The room's supply shelf for this player (config/room-supplies.js). */
+  supplies?: SupplyView[]
   showHeader?: boolean
   className?: string
   showPlayers?: boolean
@@ -51,6 +45,7 @@ export default function RoomDisplay({
   onAction,
   onOpenPlayerProfile,
   gatherCooldowns = [],
+  supplies = [],
   roomPlayers = [],
   currentPlayerId,
   showHeader = true,
@@ -73,6 +68,7 @@ export default function RoomDisplay({
   // store means the button flips the instant the cap is hit or spent back down,
   // with no refetch.
   const inventory = useGameStore((state) => state.inventory)
+  const currentUsername = useGameStore((state) => state.player?.username ?? null)
 
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null)
   const [loadingQuestId, setLoadingQuestId] = useState<string | null>(null)
@@ -88,7 +84,7 @@ export default function RoomDisplay({
   // D-pad), so we skip them here to avoid showing two flyouts for the same result.
   const { activeFlyoutAction, flyoutRootRef, dismissFlyout } = useActionFlyout(actionResult)
   const BASIC_FLYOUT_ACTIONS = BASIC_ACTION_NAMES
-  const ITEM_FLYOUT_ACTIONS = ['pickup_item', 'examine_item']
+  const ITEM_FLYOUT_ACTIONS = ['pickup_item', 'examine_item', 'take_supply']
   const flyoutActionForButton = (action: string) =>
     activeFlyoutAction === action && !BASIC_FLYOUT_ACTIONS.includes(action)
 
@@ -273,6 +269,21 @@ export default function RoomDisplay({
     }
   }
 
+  const handleTakeSupply = async (supply: SupplyView) => {
+    if (!onAction || isPerformingAction) return
+
+    captureItemRect(supply.id)
+
+    setIsPerformingAction(`supply:${supply.id}`)
+    try {
+      await onAction({ type: 'take_supply', data: { slug: supply.slug } })
+    } catch (error) {
+      console.error('Take supply error:', error)
+    } finally {
+      setIsPerformingAction(null)
+    }
+  }
+
   const handleExamineItem = async (item: any) => {
     if (!onAction || isPerformingAction) return
 
@@ -346,39 +357,39 @@ export default function RoomDisplay({
           const isGather = Boolean(gatherInfo)
           const gatherSecondsLeft = gatherRemaining[actionItem.action] ?? 0
           const gatherQuantity = gatherInfo?.quantity ?? null
-          // A node that names itself ("Tree") shows just that name; anything else
-          // reports that it's ready, and how much a click is worth.
-          const gatherReadyLabel =
-            gatherInfo?.readyLabel ??
-            `Ready${gatherQuantity != null ? ` (${gatherQuantity})` : ''}`
-          // Capped node: the player already holds all this node will give, so
-          // say so up front instead of letting them click into a rejection.
-          // Held count for a capped node, summed across rows to match the
-          // server's getHeldQuantity so the two can never disagree.
-          const gatherCap = gatherInfo?.maxHeld ?? null
-          const gatherHeld =
-            gatherCap != null && gatherInfo?.itemSlug
-              ? inventory.reduce(
-                  (total, i) => (i.template.slug === gatherInfo.itemSlug ? total + i.quantity : total),
-                  0
-                )
-              : 0
-          const gatherAtMax = gatherCap != null && gatherHeld >= gatherCap
-          // A capped node reports its own fill instead of its ready badge: how
-          // many more it will give ("3 wood left"), or that it's full ("5/5 wood").
-          const gatherCapLabel =
-            gatherCap != null
-              ? gatherAtMax
-                ? `${Math.min(gatherHeld, gatherCap)}/${gatherCap} ${gatherInfo?.itemNamePlural ?? ''}`.trim()
-                : `${gatherCap - gatherHeld} ${gatherInfo?.itemNamePlural ?? ''} left`.replace('  ', ' ')
-              : null
-          // Both states disable the button; they differ only in what they say.
-          const isGatherLocked = isGather && (gatherSecondsLeft > 0 || gatherAtMax)
+          const gatherPlural = gatherInfo?.itemNamePlural ?? ''
+          // The tool the player will actually swing: the best tier held, or the
+          // one named tool. Read from the live inventory so the badge flips the
+          // moment a better hatchet lands in the bag.
+          const heldSlugs = new Set(inventory.map((i) => i.template.slug))
+          const gatherTier = gatherInfo?.toolTiers?.find((t) => heldSlugs.has(t.slug)) ?? null
+          const gatherToolName =
+            gatherInfo?.toolRequired ?? gatherInfo?.toolTiers?.[gatherInfo.toolTiers.length - 1]?.label ?? null
+          const gatherHasTool = gatherInfo?.toolTiers
+            ? gatherTier !== null
+            : gatherInfo?.toolRequired
+              ? heldSlugs.has(gatherInfo.toolRequired)
+              : true
+          // What a click is worth with what you are holding: "Tree · iron hatchet · 2 wood".
+          const gatherYield = gatherTier?.quantity ?? gatherQuantity
+          const gatherReadyLabel = [
+            gatherInfo?.readyLabel ?? 'Ready',
+            gatherTier?.label ?? null,
+            gatherYield != null ? `${gatherYield} ${gatherPlural}`.trim() : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')
+          const gatherCooldownTotal = gatherInfo?.cooldownSeconds ?? 0
+          const gatherFraction =
+            gatherCooldownTotal > 0 ? Math.min(1, Math.max(0, gatherSecondsLeft / gatherCooldownTotal)) : 0
+          // Amber while regrowing or without the tool. The button itself stays
+          // clickable without a tool so the server can say where to find one.
+          const isGatherLocked = isGather && (gatherSecondsLeft > 0 || !gatherHasTool)
           const gatherButton = (
             <button
               data-action-button
               onClick={() => handleAction(actionItem.action)}
-              disabled={isPerformingAction === actionItem.action || isGatherLocked}
+              disabled={isPerformingAction === actionItem.action || (isGather && gatherSecondsLeft > 0)}
               className={`${
                 isViewShop
                   ? 'px-4 py-3 rounded-lg text-base font-semibold transition-all flex items-center gap-2 border-2 border-resource-gold/40 shadow-lg shadow-resource-gold/20 hover:shadow-xl hover:border-resource-gold/60'
@@ -423,15 +434,20 @@ export default function RoomDisplay({
                 >
                   {gatherButton}
                   <span
-                    className={`text-xs whitespace-nowrap pr-1 ${
+                    className={`flex items-center gap-1.5 text-xs whitespace-nowrap pr-1 ${
                       isGatherLocked ? 'text-resource-gold' : 'text-status-success'
                     }`}
                   >
-                    {gatherAtMax
-                      ? gatherCapLabel
-                      : isGatherLocked
-                        ? formatTimeRemaining(gatherSecondsLeft)
-                        : gatherCapLabel ?? gatherReadyLabel}
+                    {gatherSecondsLeft > 0 ? (
+                      <>
+                        <CooldownRing fraction={gatherFraction} />
+                        <span className="tabular-nums">{formatTimeRemaining(gatherSecondsLeft)}</span>
+                      </>
+                    ) : !gatherHasTool ? (
+                      `needs a ${gatherToolName ?? 'tool'}`
+                    ) : (
+                      gatherReadyLabel
+                    )}
                   </span>
                 </div>
               ) : (
@@ -465,32 +481,19 @@ export default function RoomDisplay({
         )
       })()}
 
-      {room.items && room.items.length > 0 && (
-        <div className="mt-4">
-          <div className="text-sm text-fg-primary mb-2">Items here:</div>
-          <div className="flex flex-wrap gap-2">
-            {room.items.map((item: any) => (
-              <div
-                key={item.id}
-                ref={(el) => {
-                  if (el) itemButtonRefs.current.set(item.id, el)
-                  else itemButtonRefs.current.delete(item.id)
-                }}
-              >
-                <ItemDropdownButton
-                  item={item}
-                  onPickup={(quantity) => handlePickupItem(item, quantity)}
-                  onExamine={() => handleExamineItem(item)}
-                  disabled={
-                    isPerformingAction === `pickup-${item.id}` ||
-                    isPerformingAction === `examine-${item.id}`
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <SupplyShelf
+        supplies={supplies}
+        items={room.items ?? []}
+        currentUsername={currentUsername}
+        busyKey={isPerformingAction}
+        onTake={handleTakeSupply}
+        onPickup={handlePickupItem}
+        onExamine={handleExamineItem}
+        registerRow={(key, el) => {
+          if (el) itemButtonRefs.current.set(key, el)
+          else itemButtonRefs.current.delete(key)
+        }}
+      />
 
       {/* Item-action flyout: pinned to the clicked button's last screen position
           (the button may be gone after a pickup). */}
@@ -524,6 +527,27 @@ export default function RoomDisplay({
         </div>
       )}
     </div>
+  )
+}
+
+/** A ring that drains as a harvest node regrows; the exact time sits beside it. */
+function CooldownRing({ fraction }: { fraction: number }) {
+  const r = 6
+  const c = 2 * Math.PI * r
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="-rotate-90">
+      <circle cx="8" cy="8" r={r} fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="3" />
+      <circle
+        cx="8"
+        cy="8"
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeDasharray={c}
+        strokeDashoffset={c * (1 - fraction)}
+      />
+    </svg>
   )
 }
 

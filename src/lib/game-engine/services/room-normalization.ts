@@ -1,13 +1,7 @@
-import type { ItemTemplate, Prisma, EquipSlot } from '@prisma/client'
-import { ROOM_LOOT } from '../config/room-loot'
+import type { ItemTemplate, Prisma } from '@prisma/client'
 
-// Canonical room-item display order: the position each (roomId, slug) holds in
-// the ROOM_LOOT seed config. Prisma can't order by a config array, so room
-// queries fetch unordered and normalizeRoomItems() sorts here — keeping the
-// in-game room, the loot panel, and the World Atlas tool all in seed order.
-const ROOM_LOOT_ORDER = new Map<string, number>(
-  ROOM_LOOT.map((l, i) => [`${l.roomId}::${l.slug}`, i] as const),
-)
+// Room items are what players have left on the ground. What a room provides
+// for free is per player and comes from config/room-supplies.js instead.
 
 export const ROOM_ITEMS_SELECT = {
   items: {
@@ -16,6 +10,9 @@ export const ROOM_ITEMS_SELECT = {
       quantity: true,
       templateId: true,
       roomId: true,
+      droppedByName: true,
+      createdAt: true,
+      updatedAt: true,
       ItemTemplate: {
         select: {
           id: true,
@@ -62,6 +59,9 @@ type RoomItemWithTemplate = {
   quantity: number
   templateId?: string
   roomId?: string
+  droppedByName?: string | null
+  createdAt?: Date | string | null
+  updatedAt?: Date | string | null
   ItemTemplate?: ItemTemplateSelected | null
 } & Record<string, unknown>
 
@@ -72,6 +72,10 @@ type RoomLike = {
 export interface NormalizedRoomItem {
   id: string
   quantity: number
+  /** Who left the pile (the latest dropper), for the "left by" rail. */
+  droppedBy: string | null
+  /** When the pile was last added to, ISO. */
+  droppedAt: string | null
   template: ItemTemplateSelected
 }
 
@@ -79,19 +83,29 @@ export type NormalizedRoomData<T extends RoomLike> = Omit<T, 'items'> & {
   items: NormalizedRoomItem[]
 }
 
+function toIso(value: Date | string | null | undefined): string | null {
+  if (!value) return null
+  if (value instanceof Date) return value.toISOString()
+  return typeof value === 'string' ? value : null
+}
+
+function stamp(item: RoomItemWithTemplate | null): number {
+  const raw = item?.updatedAt ?? item?.createdAt
+  const t = raw instanceof Date ? raw.getTime() : typeof raw === 'string' ? Date.parse(raw) : NaN
+  return Number.isFinite(t) ? t : 0
+}
+
 /**
- * Normalize raw room items to UI-friendly shape.
+ * Normalize raw room items to UI-friendly shape. Freshest pile first, so the
+ * thing just dropped is at the top of the strip.
  * Skips malformed records missing ItemTemplate to avoid runtime errors.
  */
 export function normalizeRoomItems(rawItems: RoomLike['items']): NormalizedRoomItem[] {
   if (!Array.isArray(rawItems)) return []
 
-  // Order by ROOM_LOOT seed position; config items first (in config order),
-  // then anything else (e.g. player-dropped) alphabetically by name.
   const ordered = [...rawItems].sort((a, b) => {
-    const ia = ROOM_LOOT_ORDER.get(`${a?.roomId}::${a?.ItemTemplate?.slug}`) ?? Infinity
-    const ib = ROOM_LOOT_ORDER.get(`${b?.roomId}::${b?.ItemTemplate?.slug}`) ?? Infinity
-    if (ia !== ib) return ia - ib
+    const diff = stamp(b) - stamp(a)
+    if (diff !== 0) return diff
     return (a?.ItemTemplate?.name ?? '').localeCompare(b?.ItemTemplate?.name ?? '')
   })
 
@@ -109,6 +123,8 @@ export function normalizeRoomItems(rawItems: RoomLike['items']): NormalizedRoomI
     normalized.push({
       id: item.id,
       quantity: item.quantity,
+      droppedBy: item.droppedByName ?? null,
+      droppedAt: toIso(item.updatedAt ?? item.createdAt),
       template: {
         id: item.ItemTemplate.id,
         slug: item.ItemTemplate.slug,
@@ -142,4 +158,3 @@ export function normalizeRoomData(room: RoomLike | null | undefined) {
     items: normalizeRoomItems(items ?? []),
   }
 }
-

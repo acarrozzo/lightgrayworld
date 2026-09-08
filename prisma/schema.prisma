@@ -277,9 +277,9 @@ model RoomItem {
   id             String       @id @default(cuid())
   roomId         String
   quantity       Int          @default(1)
-  maxQuantity    Int?
-  respawnSeconds Int?
-  autoRespawn    Boolean      @default(false)
+  // A pile players left on the ground. What a room *provides* is per player
+  // and lives in config/room-supplies.js, never in a row here.
+  droppedByName  String?
   templateId     String
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @default(now())
