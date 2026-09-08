@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { LogOut } from 'lucide-react'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { effectiveMag, getCastableSpells, spellTone } from '@/lib/spellbook'
-import { ConsumableRow, SpellRow, useConsumableDeck } from '@/components/game-interface/AbilityRows'
+import { ABILITY_GRID, ConsumableRow, SpellRow, useConsumableDeck } from '@/components/game-interface/AbilityRows'
 import { gearContextFromInventory, getStrikeSkills, previewSkillBonus, skillTone, weaponFits, type SkillbookEntry } from '@/lib/skillbook'
 import { effectiveStats } from '@/lib/effective-stats'
 
@@ -1164,14 +1164,14 @@ export default function BattlePanel({
               <p className="text-xs text-fg-disabled italic py-2 px-1">No items to use.</p>
             ) : (
               <>
-                {/* Two ladders, HP then MP, strongest first. Side by side when
-                    the list is wide enough for two tiles with their verb pills;
-                    stacked in a narrow panel. */}
+                {/* Two ladders, HP then MP, strongest first. Side by side only
+                    once the deck is wide enough for two full rows; a thin panel
+                    stacks them into one column. */}
                 {(hpItems.length > 0 || mpItems.length > 0) && (
-                  <div className="grid grid-cols-1 @min-[380px]:grid-cols-2 gap-1.5">
+                  <div className={ABILITY_GRID}>
                     {([
-                      { key: 'hp', heading: 'HP', items: hpItems, full: hpFull, reason: 'Full HP', text: 'text-resource-hp', rail: 'border-l-resource-hp', fill: 'fill-resource-hp' },
-                      { key: 'mp', heading: 'MP', items: mpItems, full: mpFull, reason: 'Full MP', text: 'text-resource-mp', rail: 'border-l-resource-mp', fill: 'fill-resource-mp' },
+                      { key: 'hp', heading: 'HP', items: hpItems, full: hpFull, reason: 'Full HP', text: 'text-resource-hp' },
+                      { key: 'mp', heading: 'MP', items: mpItems, full: mpFull, reason: 'Full MP', text: 'text-resource-mp' },
                     ] as const).map((column) => (
                       <div key={column.key} className="flex flex-col gap-1 min-w-0">
                         <span className={`text-[9px] font-bold uppercase tracking-wider px-1 ${column.text}`}>{column.heading}</span>
@@ -1181,9 +1181,6 @@ export default function BattlePanel({
                           <ConsumableRow
                             key={entry.item.id}
                             entry={entry}
-                            iconClass={`${column.text} opacity-90`}
-                            railClass={column.rail}
-                            fillClass={column.fill}
                             reason={column.full ? column.reason : null}
                             disabled={isActing}
                             onUse={spendItem}
@@ -1197,44 +1194,48 @@ export default function BattlePanel({
 
                 {/* Restores both: full rows under the ladders, the two numbers in their own colours. */}
                 {bothItems.length > 0 && <span className="text-[9px] font-bold uppercase tracking-wider px-1 text-hue-purple">HP & MP</span>}
-                {bothItems.map((entry) => {
-                  const reason = hpFull && mpFull ? 'Full HP & MP' : null
-                  return (
-                    <ConsumableRow
-                      key={entry.item.id}
-                      entry={entry}
-                      iconClass="text-hue-purple opacity-90"
-                      fillClass="fill-hue-purple"
-                      reason={reason}
-                      disabled={isActing}
-                      onUse={spendItem}
-                      onHoverChange={reason ? undefined : previewOnHover({ hp: entry.summary.hp, mp: entry.summary.mp })}
-                    />
-                  )
-                })}
+                {bothItems.length > 0 && (
+                  <div className={ABILITY_GRID}>
+                    {bothItems.map((entry) => {
+                      const reason = hpFull && mpFull ? 'Full HP & MP' : null
+                      return (
+                        <ConsumableRow
+                          key={entry.item.id}
+                          entry={entry}
+                          reason={reason}
+                          disabled={isActing}
+                          onUse={spendItem}
+                          onHoverChange={reason ? undefined : previewOnHover({ hp: entry.summary.hp, mp: entry.summary.mp })}
+                        />
+                      )
+                    })}
+                  </div>
+                )}
 
                 {/* Buffs and the rest. What the buff does ("+20 STR") and how
                     long it lasts sit beside the verb, as on every other row. */}
                 {buffItems.length > 0 && (
                   <>
                     <span className="text-[9px] font-bold uppercase tracking-wider px-1 text-fg-muted">Buffs</span>
-                    {buffItems.map((entry) => {
-                      const bonus: NonNullable<ItemPreview['stats']> = {}
-                      for (const buff of entry.summary.buffs) {
-                        for (const [stat, amount] of Object.entries(buff.bonus) as [keyof typeof bonus, number][]) {
-                          bonus[stat] = (bonus[stat] ?? 0) + amount
+                    <div className={ABILITY_GRID}>
+                      {buffItems.map((entry) => {
+                        const bonus: NonNullable<ItemPreview['stats']> = {}
+                        for (const buff of entry.summary.buffs) {
+                          for (const [stat, amount] of Object.entries(buff.bonus) as [keyof typeof bonus, number][]) {
+                            bonus[stat] = (bonus[stat] ?? 0) + amount
+                          }
                         }
-                      }
-                      return (
-                        <ConsumableRow
-                          key={entry.item.id}
-                          entry={entry}
-                          disabled={isActing}
-                          onUse={spendItem}
-                          onHoverChange={Object.keys(bonus).length > 0 ? previewOnHover({ hp: 0, mp: 0, stats: bonus }) : undefined}
-                        />
-                      )
-                    })}
+                        return (
+                          <ConsumableRow
+                            key={entry.item.id}
+                            entry={entry}
+                            disabled={isActing}
+                            onUse={spendItem}
+                            onHoverChange={Object.keys(bonus).length > 0 ? previewOnHover({ hp: 0, mp: 0, stats: bonus }) : undefined}
+                          />
+                        )
+                      })}
+                    </div>
                   </>
                 )}
               </>
@@ -1247,22 +1248,24 @@ export default function BattlePanel({
             ) : (
               // No `onOpen`: in a fight the row body is inert, so the only
               // thing on it that can spend MP is the Cast button itself.
-              castableSpells.map((entry) => (
-                <SpellRow
-                  key={entry.def.id}
-                  entry={entry}
-                  situation={{
-                    inBattle: true,
-                    hasTarget: true,
-                    mp: playerMp,
-                    hp: battle.playerHp,
-                    hpMax: battle.playerHpMax,
-                    buffs: player?.buffs,
-                  }}
-                  disabled={isActing}
-                  onCast={onCastSpell}
-                />
-              ))
+              <div className={ABILITY_GRID}>
+                {castableSpells.map((entry) => (
+                  <SpellRow
+                    key={entry.def.id}
+                    entry={entry}
+                    situation={{
+                      inBattle: true,
+                      hasTarget: true,
+                      mp: playerMp,
+                      hp: battle.playerHp,
+                      hpMax: battle.playerHpMax,
+                      buffs: player?.buffs,
+                    }}
+                    disabled={isActing}
+                    onCast={onCastSpell}
+                  />
+                ))}
+              </div>
             )
           )}
         </div>

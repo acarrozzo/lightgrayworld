@@ -147,8 +147,10 @@ export default function EntryRow({
       )}
 
       <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* A refusal is information, not an alarm: the row is already dimmed
+            and the verb already dead, so this only has to say which. */}
         {reason ? (
-          <span className="text-[10px] font-bold text-status-error whitespace-nowrap">{reason}</span>
+          <span className="text-[10px] font-normal text-fg-muted whitespace-nowrap">{reason}</span>
         ) : meta}
         {action}
       </div>

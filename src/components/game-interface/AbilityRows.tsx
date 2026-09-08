@@ -21,8 +21,62 @@ import { skillTone, strikeBlockedReason, type GearContext, type PassiveBonuses, 
  */
 
 /** The frame every ability row wears, so all three lists read as one. */
-const ROW_FRAME = 'rounded-lg border-line-strong/70 bg-surface-raised/45 hover:bg-surface-raised/60'
-const ROW_FRAME_MUTED = 'rounded-lg border-line-subtle/50 bg-surface-raised/25'
+const ROW_FRAME = 'rounded-lg border-l-[3px] border-line-strong/70 bg-surface-raised/45 hover:bg-surface-raised/60'
+const ROW_FRAME_MUTED = 'rounded-lg border-l-[3px] border-line-subtle/50 bg-surface-raised/25'
+
+/**
+ * How every list of these rows lays out: one column in a narrow container,
+ * two once there is room for both without squeezing the names. A container
+ * query, not a viewport one — the same list sits in a resizable side panel and
+ * in the battle area, and only its own width decides.
+ */
+export const ABILITY_GRID = 'grid grid-cols-1 @min-[600px]:grid-cols-2 gap-1.5'
+
+/**
+ * A row's colour, as the semantic roles the theme already defines: what the
+ * thing touches. The icon, the left rail and the verb all wear it, so a
+ * Strength Potion reads as STR at a glance and its button matches.
+ */
+const TONES = {
+  hp: { text: 'text-resource-hp', fill: 'fill-resource-hp', rail: 'border-l-resource-hp' },
+  mp: { text: 'text-resource-mp', fill: 'fill-resource-mp', rail: 'border-l-resource-mp' },
+  both: { text: 'text-hue-purple', fill: 'fill-hue-purple', rail: 'border-l-hue-purple' },
+  str: { text: 'text-stat-str', fill: 'fill-stat-str', rail: 'border-l-stat-str' },
+  dex: { text: 'text-stat-dex', fill: 'fill-stat-dex', rail: 'border-l-stat-dex' },
+  mag: { text: 'text-stat-mag', fill: 'fill-stat-mag', rail: 'border-l-stat-mag' },
+  def: { text: 'text-stat-def', fill: 'fill-stat-def', rail: 'border-l-stat-def' },
+  all: { text: 'text-resource-gold', fill: 'fill-resource-gold', rail: 'border-l-resource-gold' },
+  ability: { text: 'text-hue-sky', fill: 'fill-hue-sky', rail: 'border-l-hue-sky' },
+  ward: { text: 'text-hue-green', fill: 'fill-hue-green', rail: 'border-l-hue-green' },
+  neutral: { text: 'text-fg-bright', fill: 'fill-accent', rail: 'border-l-line-strong' },
+} as const
+
+/** Which of those a buff countdown belongs to, by the column it ticks down. */
+const BUFF_TONE: Record<string, keyof typeof TONES> = {
+  buffStrClicks: 'str',
+  buffDexClicks: 'dex',
+  buffMagClicks: 'mag',
+  buffDefClicks: 'def',
+  buffCoffeeClicks: 'all',
+  buffGloryClicks: 'all',
+  buffTeaClicks: 'hp',
+  regenerateClicks: 'hp',
+  ironSkinClicks: 'def',
+  poisonImmuneClicks: 'ward',
+  wings: 'ability',
+  gills: 'ability',
+}
+
+/** What this consumable is coloured by: what it restores, or the buff it grants. */
+function consumableTone(summary: ConsumableSummary) {
+  if (summary.group === 'hp') return TONES.hp
+  if (summary.group === 'mp') return TONES.mp
+  if (summary.group === 'both') return TONES.both
+  const buff = summary.buffs[0]
+  // Coffee and Glory lift everything; they read as an aura, not as one stat.
+  if (buff && Object.keys(buff.bonus).length >= 3) return TONES.all
+  return TONES[BUFF_TONE[buff?.field ?? ''] ?? 'neutral']
+}
 
 /** `lvl 3/5`, the level tag every learned skill and spell carries. */
 function LevelTag({ level, maxLevel }: { level: number; maxLevel: number }) {
@@ -102,7 +156,7 @@ export function SkillRow({ entry, gear, passives, situation, disabled = false, o
       ) : undefined}
       onOpen={onOpen ? () => onOpen(def.id) : undefined}
       bodyAriaLabel={onOpen ? `${def.name} — read it in the skill book` : undefined}
-      className={usable ? ROW_FRAME : ROW_FRAME_MUTED}
+      className={`${usable ? ROW_FRAME : ROW_FRAME_MUTED} ${usable ? tone.rail : ""}`}
     />
   )
 }
@@ -155,7 +209,7 @@ export function SpellRow({ entry, situation, disabled = false, onCast, onOpen }:
       ) : undefined}
       onOpen={onOpen ? () => onOpen(def.id) : undefined}
       bodyAriaLabel={onOpen ? `${def.name} — read it in the spell book` : undefined}
-      className={castable ? ROW_FRAME : ROW_FRAME_MUTED}
+      className={`${castable ? ROW_FRAME : ROW_FRAME_MUTED} ${castable ? tone.rail : ""}`}
     />
   )
 }
@@ -210,14 +264,14 @@ export function useConsumableDeck(inventory: InventoryItem[]) {
  * answer to a spell's "Hits 22–34". It sits on the second line because the
  * verb ("Drink") is already on the button, and saying it twice reads badly.
  */
-function ConsumableEffect({ summary }: { summary: ConsumableSummary }) {
+function ConsumableEffect({ summary, toneClass }: { summary: ConsumableSummary; toneClass: string }) {
   const clicks = summary.buffs.find((buff) => buff.clicks > 0)?.clicks ?? 0
   return (
     <span className="text-[11px] font-semibold tabular-nums flex flex-wrap items-center gap-x-1.5">
       {summary.hp > 0 && <span className="text-resource-hp">+{summary.hp} HP</span>}
       {summary.mp > 0 && <span className="text-resource-mp">+{summary.mp} MP</span>}
       {summary.buffs.map((buff) => (
-        <span key={buff.short} className="text-combat-heal">{buff.short}</span>
+        <span key={buff.short} className={toneClass}>{buff.short}</span>
       ))}
       {clicks > 0 && <span className="text-[10px] font-normal text-fg-muted">{clicks} clicks</span>}
       {summary.hp <= 0 && summary.mp <= 0 && summary.buffs.length === 0 && (
@@ -236,14 +290,13 @@ export interface ConsumableRowProps {
   /** Tap the name to open it in the bag. Omit in a fight. */
   onOpen?: (playerItemId: string) => void
   onHoverChange?: (hovering: boolean) => void
-  /** The coloured left edge the HP and MP ladders wear. */
-  railClass?: string
-  /** The filled role the verb wears; defaults to the neutral accent. */
-  fillClass?: string
-  iconClass?: string
 }
 
-/** One consumable, with its verb as the only live control. */
+/**
+ * One consumable, with its verb as the only live control. Its colour comes
+ * from what it does — no caller has to say; a Strength Potion is STR-coloured
+ * in the bag, in the deck and in the character panel alike.
+ */
 export function ConsumableRow({
   entry,
   reason = null,
@@ -251,31 +304,29 @@ export function ConsumableRow({
   onUse,
   onOpen,
   onHoverChange,
-  railClass,
-  fillClass = 'fill-accent',
-  iconClass = 'text-fg-bright opacity-80',
 }: ConsumableRowProps) {
   const { item, summary, action } = entry
+  const tone = consumableTone(summary)
   const blocked = Boolean(reason) || disabled
 
   return (
     <EntryRow
       density="deck"
       icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
-      iconClass={iconClass}
+      iconClass={`${tone.text} opacity-90`}
       name={item.template.name}
       nameTags={
         <span className="text-[10px] font-bold leading-[15px] px-1.5 rounded-md text-resource-gold bg-resource-gold/15 border border-resource-gold/40 tabular-nums flex-shrink-0">
           {item.quantity > 1 ? `×${item.quantity}` : 'last'}
         </span>
       }
-      subline={<ConsumableEffect summary={summary} />}
+      subline={<ConsumableEffect summary={summary} toneClass={tone.text} />}
       reason={reason}
       action={
         <EntryVerb
           onClick={() => onUse(item.id, action)}
           disabled={blocked}
-          fillClass={fillClass}
+          fillClass={tone.fill}
           title={reason ?? `${summary.label} the ${item.template.name} · ${summary.effect}`}
           ariaLabel={`${summary.label} ${item.template.name}, ${summary.effect}${reason ? `. ${reason}` : ''}`}
         >
@@ -285,7 +336,7 @@ export function ConsumableRow({
       onOpen={onOpen ? () => onOpen(item.id) : undefined}
       bodyAriaLabel={onOpen ? `${item.template.name} — open it in the bag` : undefined}
       onHoverChange={onHoverChange}
-      className={`${railClass ? `border-l-[3px] ${railClass} ` : ''}${ROW_FRAME}`}
+      className={`${ROW_FRAME} ${tone.rail}`}
     />
   )
 }

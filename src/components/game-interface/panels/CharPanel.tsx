@@ -12,7 +12,7 @@ import { resolveItemIcon } from '@/lib/item-actions'
 import { ChevronDown } from 'lucide-react'
 import { buildSpellbook, hasLearnableSpell } from '@/lib/spellbook'
 import { buildSkillbook, gearContextFromInventory, hasLearnableSkill, passiveSkillBonuses } from '@/lib/skillbook'
-import { ConsumableRow, SkillRow, SpellRow, useConsumableDeck } from '@/components/game-interface/AbilityRows'
+import { ABILITY_GRID, ConsumableRow, SkillRow, SpellRow, useConsumableDeck } from '@/components/game-interface/AbilityRows'
 import { useItemsCollapsed, useSkillsCollapsed, useSpellsCollapsed } from '@/lib/use-char-sections'
 import type { ConsumableSummary } from '@/lib/item-actions'
 import AutoEquipRow from '@/components/game-interface/AutoEquipRow'
@@ -261,7 +261,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
             </svg>
           </button>
         )}
-        <div className="flex-1 overflow-y-auto min-h-0 p-4">
+        <div className="@container flex-1 overflow-y-auto min-h-0 p-4">
           <div className="space-y-4">
             <div className="">
               <div className="relative flex flex-row items-start gap-6">
@@ -670,7 +670,7 @@ function AbilitySection({
       {!collapsed && (
         count === 0
           ? <p className="text-xs text-fg-muted italic px-1">{empty}</p>
-          : <div className="flex flex-col gap-1.5">{children}</div>
+          : <div className={ABILITY_GRID}>{children}</div>
       )}
     </div>
   )
