@@ -2,7 +2,6 @@
 
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import type { ItemPreview } from '@/lib/game-state'
-import type { StatusChip, StatusTone } from '@/lib/status-effects'
 
 interface GameHeaderProps {
   playerName?: string
@@ -28,43 +27,23 @@ interface GameHeaderProps {
   onRefresh?: () => void
   /** What the consumable under the pointer in the battle deck would do; ghosted onto the bars and stats. */
   itemPreview?: ItemPreview | null
-  /** Everything running on the player — regen, poison, buffs — as chips under the bars. */
-  status?: StatusChip[]
+  /** What the last click's regen restored; floats "+3" over the HP and MP bars the way XP does. */
+  regenGain?: { hp: number; mp: number } | null
+  regenGainKey?: number
 }
 
-/** Chip colours by role: what hurts, what wards, what heals, what boosts. */
-const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
-  hp: 'text-resource-hp border-resource-hp/40 bg-resource-hp/10',
-  mp: 'text-resource-mp border-resource-mp/40 bg-resource-mp/10',
-  stat: 'text-combat-heal border-combat-heal/40 bg-combat-heal/10',
-  ability: 'text-hue-sky border-hue-sky/40 bg-hue-sky/10',
-  poison: 'text-hue-green border-hue-green/50 bg-hue-green/10',
-  ward: 'text-stat-def border-stat-def/40 bg-stat-def/10',
-  aura: 'text-resource-gold border-resource-gold/40 bg-resource-gold/10',
-}
-
-/**
- * The original's row of buffBox tags: `regen +3`, `tea / 87`, `ironskin +12`,
- * `[ poison ]`. One small chip per running effect, the countdown at its end.
- */
-function StatusStrip({ chips, className }: { chips: StatusChip[]; className?: string }) {
-  if (chips.length === 0) return null
+/** The "+3" that floats up off a bar when regen lands, in the bar's own colour. */
+function BarFloat({ amount, colorClass, gainKey }: { amount?: number; colorClass: string; gainKey?: number }) {
+  if (!amount || amount <= 0) return null
   return (
-    <div className={`flex flex-wrap items-center gap-1 ${className ?? ''}`} aria-label="Active effects">
-      {chips.map((chip) => (
-        <span
-          key={chip.id}
-          title={chip.title}
-          className={`inline-flex items-center gap-1 rounded border px-1.5 py-px text-[10px] leading-4 font-semibold whitespace-nowrap cursor-help ${STATUS_TONE_CLASSES[chip.tone]}`}
-        >
-          <span>{chip.label}</span>
-          {chip.detail && <span className="font-normal opacity-90 tabular-nums">{chip.detail}</span>}
-          {typeof chip.clicks === 'number' && (
-            <span className="font-normal text-fg-muted tabular-nums">/ {chip.clicks}</span>
-          )}
-        </span>
-      ))}
-    </div>
+    <span
+      key={gainKey}
+      className={`absolute -top-3 right-0 text-[10px] font-bold leading-none pointer-events-none tabular-nums ${colorClass}`}
+      style={{ animation: 'xpFloat 2.5s forwards' }}
+      aria-hidden="true"
+    >
+      +{amount}
+    </span>
   )
 }
 
@@ -129,7 +108,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh, itemPreview, status = [] }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh, itemPreview, regenGain, regenGainKey }: GameHeaderProps) {
   let xpInLevel = 0
   let xpNeeded = 1
   let xpPct = 0
@@ -163,28 +142,34 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
               >
                 <span className="text-fg-primary truncate">{playerName}</span>
                 {hp !== undefined && hpMax !== undefined && (
-                  <StatBar
-                    className="w-12 shrink-0"
-                    pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
-                    fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp"
-                    ghostClass="bg-resource-hp"
-                    previewPct={previewPct(hp, hpMax, itemPreview?.hp ?? 0)}
-                    label="HP"
-                    value={`${hp}/${hpMax}`}
-                    over={hp > hpMax}
-                  />
+                  <span className="relative shrink-0">
+                    <StatBar
+                      className="w-12"
+                      pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
+                      fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp"
+                      ghostClass="bg-resource-hp"
+                      previewPct={previewPct(hp, hpMax, itemPreview?.hp ?? 0)}
+                      label="HP"
+                      value={`${hp}/${hpMax}`}
+                      over={hp > hpMax}
+                    />
+                    <BarFloat amount={regenGain?.hp} colorClass="text-resource-hp" gainKey={regenGainKey} />
+                  </span>
                 )}
                 {mp !== undefined && mpMax !== undefined && (
-                  <StatBar
-                    className="w-12 shrink-0"
-                    pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
-                    fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp"
-                    ghostClass="bg-resource-mp"
-                    previewPct={previewPct(mp, mpMax, itemPreview?.mp ?? 0)}
-                    label="MP"
-                    value={`${mp}/${mpMax}`}
-                    over={mp > mpMax}
-                  />
+                  <span className="relative shrink-0">
+                    <StatBar
+                      className="w-12"
+                      pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
+                      fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp"
+                      ghostClass="bg-resource-mp"
+                      previewPct={previewPct(mp, mpMax, itemPreview?.mp ?? 0)}
+                      label="MP"
+                      value={`${mp}/${mpMax}`}
+                      over={mp > mpMax}
+                    />
+                    <BarFloat amount={regenGain?.mp} colorClass="text-resource-mp" gainKey={regenGainKey} />
+                  </span>
                 )}
                 {level !== undefined && (
                   <span className="text-stat-def shrink-0">Lv. {level}</span>
@@ -242,28 +227,34 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                 {/* HP / MP / Level / XP */}
                 <div className="flex items-center gap-2">
                   {hp !== undefined && hpMax !== undefined && (
-                    <StatBar
-                      className="w-16"
-                      pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
-                      fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp"
-                    ghostClass="bg-resource-hp"
-                    previewPct={previewPct(hp, hpMax, itemPreview?.hp ?? 0)}
-                      label="HP"
-                      value={`${hp}/${hpMax}`}
-                      over={hp > hpMax}
-                    />
+                    <span className="relative">
+                      <StatBar
+                        className="w-16"
+                        pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
+                        fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp"
+                        ghostClass="bg-resource-hp"
+                        previewPct={previewPct(hp, hpMax, itemPreview?.hp ?? 0)}
+                        label="HP"
+                        value={`${hp}/${hpMax}`}
+                        over={hp > hpMax}
+                      />
+                      <BarFloat amount={regenGain?.hp} colorClass="text-resource-hp" gainKey={regenGainKey} />
+                    </span>
                   )}
                   {mp !== undefined && mpMax !== undefined && (
-                    <StatBar
-                      className="w-16"
-                      pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
-                      fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp"
-                    ghostClass="bg-resource-mp"
-                    previewPct={previewPct(mp, mpMax, itemPreview?.mp ?? 0)}
-                      label="MP"
-                      value={`${mp}/${mpMax}`}
-                      over={mp > mpMax}
-                    />
+                    <span className="relative">
+                      <StatBar
+                        className="w-16"
+                        pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
+                        fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp"
+                        ghostClass="bg-resource-mp"
+                        previewPct={previewPct(mp, mpMax, itemPreview?.mp ?? 0)}
+                        label="MP"
+                        value={`${mp}/${mpMax}`}
+                        over={mp > mpMax}
+                      />
+                      <BarFloat amount={regenGain?.mp} colorClass="text-resource-mp" gainKey={regenGainKey} />
+                    </span>
                   )}
                   {level !== undefined && (
                     <span className="text-stat-def">Lv. {level}</span>
@@ -354,9 +345,6 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
           </div>
 
         </div>
-
-        {/* Running effects, under the bars on both layouts. Absent when nothing runs. */}
-        <StatusStrip chips={status} className="mt-1.5" />
       </header>
     </>
   )

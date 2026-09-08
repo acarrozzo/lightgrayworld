@@ -14,7 +14,8 @@ import { buildSkillbook, gearContextFromInventory, hasLearnableSkill, passiveSki
 import AutoEquipRow from '@/components/game-interface/AutoEquipRow'
 import { describeStat, effectiveStats, type StatBreakdown } from '@/lib/effective-stats'
 import { renderRegen } from '@/lib/inventory-categories'
-import { describeRegen, playerRegen } from '@/lib/status-effects'
+import { describeRegen, playerRegen, statusChips } from '@/lib/status-effects'
+import StatusStrip from '@/components/StatusStrip'
 
 import type { FilterTab } from '@/lib/inventory-categories'
 
@@ -107,6 +108,8 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
   const stats = useMemo(() => effectiveStats(player, inventory), [player, inventory])
   // Everything regenerating per click, from the equipped set and running effects.
   const regen = useMemo(() => playerRegen(player, inventory), [player, inventory])
+  // Every running effect as a chip: regen, poison, buffs, wings — the original's buffBox row.
+  const chips = useMemo(() => statusChips(player, inventory), [player, inventory])
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
@@ -282,6 +285,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                         {regen.regenerateAmount > 0 && <span className="text-fg-muted"> · Regenerate</span>}
                       </p>
                     )}
+                    <StatusStrip chips={chips} />
                     <StatBar
                       label="XP"
                       value={<><span className="text-resource-xp">{xpPct}%</span> <span className="text-fg-secondary">need {xpRemaining}</span></>}

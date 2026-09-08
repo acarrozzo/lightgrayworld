@@ -23,7 +23,6 @@ import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { describeStat, effectiveStats } from '@/lib/effective-stats'
-import { statusChips } from '@/lib/status-effects'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
@@ -144,8 +143,6 @@ export default function GameInterface() {
   const weaponName = equippedWeapon?.template.name ?? null
   // The four stats as combat rolls them: core + gear + buffs + skill passives.
   const stats = useMemo(() => effectiveStats(player, inventory), [player, inventory])
-  // Everything running on the player, for the strip under the header bars.
-  const status = useMemo(() => statusChips(player, inventory), [player, inventory])
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [levelUpData, setLevelUpData] = useState<LevelUpPayload | null>(null)
@@ -153,6 +150,10 @@ export default function GameInterface() {
   const [isStatModalOpen, setStatModalOpen] = useState(false)
   const [xpGain, setXpGain] = useState<number | null>(null)
   const [xpGainKey, setXpGainKey] = useState(0)
+  // The last click's regen, floated "+3" over the header bars the way XP is.
+  const [regenGain, setRegenGain] = useState<{ hp: number; mp: number } | null>(null)
+  const [regenGainKey, setRegenGainKey] = useState(0)
+  const regenGainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const xpGainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -392,6 +393,12 @@ export default function GameInterface() {
     setXpGain(amount)
     setXpGainKey(k => k + 1)
     xpGainTimerRef.current = setTimeout(() => setXpGain(null), 2500)
+  }, [])
+  const triggerRegenGain = useCallback((gain: { hp: number; mp: number }) => {
+    if (regenGainTimerRef.current) clearTimeout(regenGainTimerRef.current)
+    setRegenGain(gain)
+    setRegenGainKey(k => k + 1)
+    regenGainTimerRef.current = setTimeout(() => setRegenGain(null), 2500)
   }, [])
   
   // Clear new items on mount - after refresh, nothing should be "new"
@@ -2579,6 +2586,8 @@ export default function GameInterface() {
       // Mid-fight, the battle card keeps its own HP; a poison tick between
       // turns has to reach it too, or the card lags the header by a click.
       if (typeof payload.hp === 'number') syncBattleVitals({ hp: payload.hp })
+      // What regen actually restored this click, floated off the bars.
+      if (payload.regen && (payload.regen.hp > 0 || payload.regen.mp > 0)) triggerRegenGain(payload.regen)
     })
 
     return () => {
@@ -2597,7 +2606,7 @@ export default function GameInterface() {
     // re-rendered — which, subscribing to player, room, battle and party state,
     // is constantly. The two call sites above dispatch through handleActionRef
     // instead, the pattern the rest of the long-lived subscriptions already use.
-  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, setBattleResult, clearBattleResult, appendWorldFeed, scheduleBattleTimer, clearBattleTimers])
+  }, [socket, socketHandlers, setBattleStarted, updateBattleTurn, clearBattle, setBattleResult, clearBattleResult, appendWorldFeed, scheduleBattleTimer, clearBattleTimers, triggerRegenGain])
 
   useEffect(() => {
     if (!socket) {
@@ -3513,7 +3522,8 @@ export default function GameInterface() {
         mp={player?.mp}
         mpMax={player?.mpMax}
         itemPreview={itemPreview}
-        status={status}
+        regenGain={regenGain}
+        regenGainKey={regenGainKey}
         xp={player?.xp}
         xpGain={xpGain}
         xpGainKey={xpGainKey}
