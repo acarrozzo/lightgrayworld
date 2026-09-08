@@ -520,8 +520,8 @@ function SpellCard({ entry, sp, busy, anyBusy, castDisabledReason, onLearn, onCa
 
         {!locked && preview && (
           <p className="text-[11px] text-fg-muted mt-1 tabular-nums">
-            {def.kind === 'heal' ? 'Heals' : 'Hits'} {preview.min}–{preview.max}
-            <span className="text-fg-disabled"> · {preview.text}</span>
+            {preview.label ?? (def.kind === 'heal' ? 'Heals' : 'Hits')} {preview.min === preview.max ? preview.min : `${preview.min}–${preview.max}`}
+            <span className="text-fg-disabled"> {def.kind === 'buff' ? '' : '· '}{preview.text}</span>
             {level === 0 && <span className="text-fg-disabled"> at level 1</span>}
           </p>
         )}

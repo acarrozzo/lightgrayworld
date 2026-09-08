@@ -80,6 +80,7 @@ const SHOPS = {
       'purple-balm',
       'wings-potion',
       'gills-potion',
+      'antidote-potion',
     ],
   },
 

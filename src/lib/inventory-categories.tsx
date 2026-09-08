@@ -334,10 +334,33 @@ export function isTwoHanded(item: Pick<InventoryItem, 'template'>): boolean {
   return (item.template.metadata as any)?.isTwoHanded === true
 }
 
+const { readItemRegen } = require('@/lib/game-data/regen') as {
+  readItemRegen: (metadata: unknown) => { hp: number; mp: number }
+}
+
+/** The regen an item template declares ("+3 HP / click"), or zeros. */
+export function getItemRegen(metadata: any): { hp: number; mp: number } {
+  return readItemRegen(metadata)
+}
+
 /**
- * Format stat modifiers from item metadata as colored spans.
+ * Format an item's regen as colored spans — "+3 HP / click", "+5 MP / click" —
+ * or null with none. The per-click line the original's Equipped box wore
+ * beside a regen ring ("( +1 hp / click )").
+ */
+export function renderRegen(metadata: any): React.ReactNode[] {
+  const regen = readItemRegen(metadata)
+  const parts: React.ReactNode[] = []
+  if (regen.hp > 0) parts.push(<span key="regen-hp" className="text-resource-hp">+{regen.hp} HP / click</span>)
+  if (regen.mp > 0) parts.push(<span key="regen-mp" className="text-resource-mp">+{regen.mp} MP / click</span>)
+  return parts
+}
+
+/**
+ * Format stat modifiers from item metadata as colored spans, with any regen
+ * the item carries after them.
  * Returns null if no mods or invalid metadata.
- * Example: "+5 STR, +2 MAG" or "+1 STR, -5 MAG"
+ * Example: "+5 STR, +2 MAG" or "+1 STR, -5 MAG" or "+3 HP / click"
  */
 export function renderStatMods(metadata: any): React.ReactNode {
   const mods = getStatMods({ template: { metadata } } as any)
@@ -349,6 +372,10 @@ export function renderStatMods(metadata: any): React.ReactNode {
     const color = value > 0 ? STAT_MOD_COLORS[stat] : 'text-status-error'
     if (parts.length > 0) parts.push(<span key={`${stat}-sep`} className="text-fg-muted">, </span>)
     parts.push(<span key={stat} className={color}>{sign}{value} {STAT_LABELS[stat]}</span>)
+  }
+  for (const part of renderRegen(metadata)) {
+    if (parts.length > 0) parts.push(<span key={`${(part as any).key}-sep`} className="text-fg-muted">, </span>)
+    parts.push(part)
   }
   return parts.length > 0 ? <>{parts}</> : null
 }

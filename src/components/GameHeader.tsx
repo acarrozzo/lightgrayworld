@@ -2,6 +2,7 @@
 
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import type { ItemPreview } from '@/lib/game-state'
+import type { StatusChip, StatusTone } from '@/lib/status-effects'
 
 interface GameHeaderProps {
   playerName?: string
@@ -27,6 +28,44 @@ interface GameHeaderProps {
   onRefresh?: () => void
   /** What the consumable under the pointer in the battle deck would do; ghosted onto the bars and stats. */
   itemPreview?: ItemPreview | null
+  /** Everything running on the player — regen, poison, buffs — as chips under the bars. */
+  status?: StatusChip[]
+}
+
+/** Chip colours by role: what hurts, what wards, what heals, what boosts. */
+const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
+  hp: 'text-resource-hp border-resource-hp/40 bg-resource-hp/10',
+  mp: 'text-resource-mp border-resource-mp/40 bg-resource-mp/10',
+  stat: 'text-combat-heal border-combat-heal/40 bg-combat-heal/10',
+  ability: 'text-hue-sky border-hue-sky/40 bg-hue-sky/10',
+  poison: 'text-hue-green border-hue-green/50 bg-hue-green/10',
+  ward: 'text-stat-def border-stat-def/40 bg-stat-def/10',
+  aura: 'text-resource-gold border-resource-gold/40 bg-resource-gold/10',
+}
+
+/**
+ * The original's row of buffBox tags: `regen +3`, `tea / 87`, `ironskin +12`,
+ * `[ poison ]`. One small chip per running effect, the countdown at its end.
+ */
+function StatusStrip({ chips, className }: { chips: StatusChip[]; className?: string }) {
+  if (chips.length === 0) return null
+  return (
+    <div className={`flex flex-wrap items-center gap-1 ${className ?? ''}`} aria-label="Active effects">
+      {chips.map((chip) => (
+        <span
+          key={chip.id}
+          title={chip.title}
+          className={`inline-flex items-center gap-1 rounded border px-1.5 py-px text-[10px] leading-4 font-semibold whitespace-nowrap cursor-help ${STATUS_TONE_CLASSES[chip.tone]}`}
+        >
+          <span>{chip.label}</span>
+          {chip.detail && <span className="font-normal opacity-90 tabular-nums">{chip.detail}</span>}
+          {typeof chip.clicks === 'number' && (
+            <span className="font-normal text-fg-muted tabular-nums">/ {chip.clicks}</span>
+          )}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 /** How far a bar would fill if `amount` landed now, as a share of the bar past the current fill. */
@@ -90,7 +129,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh, itemPreview }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh, itemPreview, status = [] }: GameHeaderProps) {
   let xpInLevel = 0
   let xpNeeded = 1
   let xpPct = 0
@@ -315,6 +354,9 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
           </div>
 
         </div>
+
+        {/* Running effects, under the bars on both layouts. Absent when nothing runs. */}
+        <StatusStrip chips={status} className="mt-1.5" />
       </header>
     </>
   )

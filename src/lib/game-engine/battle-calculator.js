@@ -248,7 +248,9 @@ function resolveEnemyAttack(battleState, otherCombatants) {
   // At most one special resolves per attack. A special replaces how the enemy's
   // raw damage is rolled; everything downstream — the single defense roll, the
   // zero floor, damageType — is unchanged, so perks never fork the pipeline.
-  const special = selectEnemySpecial(enemy, rand)
+  // A poison special is only on offer while poison could take hold.
+  const canPoison = !battleState.poisoned && !battleState.poisonImmune
+  const special = selectEnemySpecial(enemy, rand, { canPoison })
 
   let enemyRaw
   let enemyAction = null
@@ -273,7 +275,21 @@ function resolveEnemyAttack(battleState, otherCombatants) {
   // no block rolled, no damage taken — exactly the original's "You DODGE".
   const dodgeChance = battleState.dodgeChance || 0
   const dodged = dodgeChance > 0 && rand(1, 100) <= dodgeChance
-  const playerBlock = dodged || special?.bypassesDefense ? 0 : rand(0, effectiveDef)
+  const bypass = Boolean(special?.bypassesDefense)
+  const baseBlock = dodged || bypass ? 0 : rand(0, effectiveDef)
+  // Iron Skin: the block gains rand(1, amount) on top of the DEF roll — the
+  // original's `$eblock = rand(0, $defmod) + $blockAmt + $ironskin_rand`.
+  // Pure damage ignores the whole block, Iron Skin included.
+  const ironSkin = Math.max(0, battleState.ironSkin || 0)
+  const ironSkinBlock = !dodged && !bypass && ironSkin > 0 ? rand(1, ironSkin) : 0
+  const playerBlock = baseBlock + ironSkinBlock
+  // A poison special is an ordinary hit that also leaves poison behind. The
+  // original set it whether or not the blow got through the block, as long as
+  // the swing was not dodged; the poison itself scales with the PLAYER's level.
+  const poisonApplied =
+    special?.applies === 'poison' && !dodged
+      ? { clicks: special.rollPoison(battleState.level || 1, rand), name: special.name }
+      : null
   return {
     enemyRaw,
     playerBlock,
@@ -282,6 +298,8 @@ function resolveEnemyAttack(battleState, otherCombatants) {
     enemyDamageType: enemyDmgType,
     enemyAction,
     dodged,
+    ironSkinBlock,
+    poisonApplied,
   }
 }
 
@@ -320,6 +338,10 @@ function resolveTurn(battleState, otherCombatants, { spell = null, skill = null 
     immuneToWeapon: player.immuneToWeapon,
     // True when Dodge turned the enemy's swing into nothing.
     playerDodged: enemyAtk.dodged,
+    // Iron Skin's share of the block this turn (0 without it).
+    ironSkinBlock: enemyAtk.ironSkinBlock,
+    // { clicks, name } when the enemy's hit left poison; null otherwise.
+    poisonApplied: enemyAtk.poisonApplied,
   }
 }
 

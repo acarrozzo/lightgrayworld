@@ -1186,6 +1186,19 @@ export default function BattlePanel({
               >
                 {battle.lastEnemyDamage ?? 0}
               </p>
+              {/* What the hit did besides damage: the Iron Skin share of the
+                  block, what Magic Armor ate, whether poison took hold. */}
+              {battle.ironSkinBlock > 0 && (
+                <p className="text-[10px] text-stat-def text-right tabular-nums">Iron Skin turned {battle.ironSkinBlock}</p>
+              )}
+              {battle.absorbed > 0 && (
+                <p className="text-[10px] text-stat-def text-right tabular-nums">
+                  Magic Armor absorbs {battle.absorbed}{battle.magicArmorLeft > 0 ? ` · ${battle.magicArmorLeft} left` : ' · shattered'}
+                </p>
+              )}
+              {battle.poisonApplied && (
+                <p className="text-[11px] font-black tracking-[0.15em] uppercase text-right text-hue-green">Poisoned {battle.poisonApplied.clicks}</p>
+              )}
             </>
           ) : (
             <p className="text-xs text-fg-disabled italic text-right">…</p>

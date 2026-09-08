@@ -24,6 +24,8 @@ export interface SpellPreview {
   min: number
   max: number
   text: string
+  /** Lead word for the range ("Restores", "Absorbs"); attack and heal spells have a fixed one. */
+  label?: string
 }
 
 export interface SpellDef {
@@ -41,7 +43,7 @@ export interface SpellDef {
   teachers: SpellTeacherTier[]
   learnCost: (level: number) => number
   castCost: (level: number, mag: number) => number
-  preview?: (level: number, mag: number) => SpellPreview
+  preview?: (level: number, mag: number, magCore?: number) => SpellPreview
 }
 
 export interface SpellSchoolDef {
@@ -58,7 +60,7 @@ const registry = require('@/lib/game-data/spells') as {
   getSpellMaxLevel: (spell: SpellDef, flags: Record<string, boolean> | undefined) => number
   getNextLearnCost: (spell: SpellDef, level: number, maxLevel: number) => number | null
   isCastable: (spell: SpellDef) => boolean
-  previewSpell: (spell: SpellDef, level: number, mag: number) => SpellPreview | null
+  previewSpell: (spell: SpellDef, level: number, mag: number, magCore?: number) => SpellPreview | null
 }
 
 export const SPELLS = registry.SPELLS
@@ -127,7 +129,8 @@ export function buildSpellbook(player: Player | null | undefined): SpellbookEntr
       maxLevel,
       nextLearnCost: registry.getNextLearnCost(def, level, maxLevel),
       castCost: def.castCost(displayLevel, mag),
-      preview: registry.previewSpell(def, displayLevel, mag),
+      // Buff durations roll rand(mag core, mag with gear), so the preview needs both.
+      preview: registry.previewSpell(def, displayLevel, mag, player?.mag ?? mag),
       castable: level >= 1 && registry.isCastable(def),
       teachers: def.teachers.map((tier) => ({
         flag: tier.flag,

@@ -123,7 +123,11 @@ test('every spell names its User column and a teacher ladder in ascending order'
       assert.ok(tier.max > last, `${spell.id}: ladder must ascend`)
       last = tier.max
     }
-    if (spells.isCastable(spell)) assert.equal(typeof spell.roll, 'function', `${spell.id} needs a roll`)
+    // A castable spell either rolls (attack, heal) or sets a buff up (cast).
+    if (spells.isCastable(spell)) {
+      const fn = spell.kind === 'buff' ? spell.cast : spell.roll
+      assert.equal(typeof fn, 'function', `${spell.id} needs a ${spell.kind === 'buff' ? 'cast' : 'roll'}`)
+    }
   }
 })
 

@@ -13,6 +13,8 @@ import { buildSpellbook, hasLearnableSpell, spellTone } from '@/lib/spellbook'
 import { buildSkillbook, gearContextFromInventory, hasLearnableSkill, passiveSkillBonuses, skillTone } from '@/lib/skillbook'
 import AutoEquipRow from '@/components/game-interface/AutoEquipRow'
 import { describeStat, effectiveStats, type StatBreakdown } from '@/lib/effective-stats'
+import { renderRegen } from '@/lib/inventory-categories'
+import { describeRegen, playerRegen } from '@/lib/status-effects'
 
 import type { FilterTab } from '@/lib/inventory-categories'
 
@@ -37,8 +39,7 @@ const STAT_MOD_COLORS: Record<string, string> = {
 
 function renderStatMods(metadata: any): React.ReactNode {
   if (!metadata || typeof metadata !== 'object') return null
-  const statMods = metadata.statMods
-  if (!statMods || typeof statMods !== 'object') return null
+  const statMods = metadata.statMods ?? {}
 
   const statOrder = ['str', 'dex', 'mag', 'def'] as const
   const statLabels: Record<string, string> = { str: 'STR', dex: 'DEX', mag: 'MAG', def: 'DEF' }
@@ -52,6 +53,11 @@ function renderStatMods(metadata: any): React.ReactNode {
       if (parts.length > 0) parts.push(<span key={`${stat}-sep`} className="text-fg-muted">, </span>)
       parts.push(<span key={stat} className={color}>{sign}{value} {statLabels[stat]}</span>)
     }
+  }
+  // A regen ring has no stat line; its "+3 HP / click" is the whole point.
+  for (const part of renderRegen(metadata)) {
+    if (parts.length > 0) parts.push(<span key={`${(part as any).key}-sep`} className="text-fg-muted">, </span>)
+    parts.push(part)
   }
   return parts.length > 0 ? <>{parts}</> : null
 }
@@ -99,6 +105,8 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
   const passives = useMemo(() => passiveSkillBonuses(player, gear), [player, gear])
   // The four stats as combat rolls them — the same numbers the header shows.
   const stats = useMemo(() => effectiveStats(player, inventory), [player, inventory])
+  // Everything regenerating per click, from the equipped set and running effects.
+  const regen = useMemo(() => playerRegen(player, inventory), [player, inventory])
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
@@ -263,6 +271,17 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                       percentage={mpPercent}
                       gradient="from-fill-resource-mp via-resource-mp to-resource-mp"
                     />
+                    {/* What every click restores: gear, tea and Regenerate summed —
+                        the same formula the server ticks with. */}
+                    {regen.any && (
+                      <p className="text-xs text-fg-secondary" title="Every counted action restores this much, up to your max. MP regen skips the click you cast a spell on.">
+                        <span className="uppercase tracking-wide text-fg-muted">Regen</span>{' '}
+                        <span className="text-fg-bright font-semibold">{describeRegen(regen)}</span>
+                        {regen.gear.hp + regen.gear.mp > 0 && <span className="text-fg-muted"> · gear {describeRegen(regen.gear).replace(' / click', '')}</span>}
+                        {regen.tea && <span className="text-fg-muted"> · tea</span>}
+                        {regen.regenerateLevel > 0 && <span className="text-fg-muted"> · Regenerate</span>}
+                      </p>
+                    )}
                     <StatBar
                       label="XP"
                       value={<><span className="text-resource-xp">{xpPct}%</span> <span className="text-fg-secondary">need {xpRemaining}</span></>}

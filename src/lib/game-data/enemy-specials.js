@@ -12,15 +12,18 @@
 // meant threading a new branch through the whole enemy-attack block and the
 // ordering between perks was implicit in the source order.
 //
-// To add a special later (heal, poison, steal, multi-hit…): add an entry here
-// and slot its id into SPECIAL_PRIORITY. Damage-shaped specials implement
-// `rollDamage`; specials that do something other than raw damage will need a
+// To add a special later (heal, steal, multi-hit…): add an entry here and
+// slot its id into SPECIAL_PRIORITY. Damage-shaped specials implement
+// `rollDamage`; specials that do something other than raw damage need a
 // resolution hook in battle-calculator, but the selection step stays the same.
 //
-// `bypassesDefense: true` marks the one such hook that exists today: the
-// original's "pure" damage, where the number the enemy rolls is the number you
-// take and your DEF never enters the arithmetic. battle-calculator reports the
-// block as 0 on those turns so the formula the player reads stays honest.
+// Two such hooks exist. `bypassesDefense: true` is the original's "pure"
+// damage, where the number the enemy rolls is the number you take and your DEF
+// never enters the arithmetic; battle-calculator reports the block as 0 on
+// those turns so the formula the player reads stays honest. `applies:
+// 'poison'` is an ordinary hit that also leaves poison behind (`rollPoison`);
+// it is only offered while the player can actually be poisoned, which is what
+// made it fire on every hit in the original rather than at random.
 
 const ENEMY_SPECIALS = {
   power: {
@@ -82,6 +85,37 @@ const ENEMY_SPECIALS = {
     bypassesDefense: true,
     rollDamage: (enemy) => ({ rolls: [enemy.att, enemy.att], raw: enemy.att * 2 }),
   },
+  poison: {
+    id: 'poison',
+    name: 'Poison Attack',
+    label: 'Poison',
+    rule: 'Poison: while you are not already poisoned, every hit leaves rand(1, your level ÷ 2) poison. Each click it burns for one less until it is gone.',
+    // Not a proc: the original's `ePoison` branch ran on every attack while
+    // `poisonyou < 1` — declared at chance 1 and filtered by `canPoison`.
+    chance: 1,
+    applies: 'poison',
+    // The hit itself is an ordinary rand(0, ATT), blocked as usual.
+    rollDamage: (enemy, rand) => {
+      const r = rand(0, enemy.att)
+      return { rolls: [r], raw: r }
+    },
+    // ePoison 1: rand(1, lvl / 2), lvl being the PLAYER's level.
+    rollPoison: (level, rand) => rand(1, Math.max(1, Math.floor((Number(level) || 1) / 2))),
+  },
+  venom: {
+    id: 'venom',
+    name: 'Venom Attack',
+    label: 'Venom',
+    rule: 'Venom: while you are not already poisoned, every hit leaves rand(1, your level) poison. Each click it burns for one less until it is gone.',
+    chance: 1,
+    applies: 'poison',
+    rollDamage: (enemy, rand) => {
+      const r = rand(0, enemy.att)
+      return { rolls: [r], raw: r }
+    },
+    // ePoison 2: rand(1, lvl).
+    rollPoison: (level, rand) => rand(1, Math.max(1, Math.floor(Number(level) || 1))),
+  },
   pure: {
     id: 'pure',
     name: 'Pure Attack',
@@ -102,7 +136,7 @@ const ENEMY_SPECIALS = {
 // This is the original's own if/else order in battle.php: crit, then rage, then
 // power, then bite, with the standing pure modifier last so a Cyclops that also
 // rolled something rarer still shows the rarer thing.
-const SPECIAL_PRIORITY = ['crit', 'rage', 'power', 'bite', 'pure']
+const SPECIAL_PRIORITY = ['crit', 'rage', 'power', 'bite', 'poison', 'venom', 'pure']
 
 /**
  * The special ids an enemy definition declares, filtered to ones that exist.
@@ -120,14 +154,18 @@ function hasSpecial(enemy, id) {
 /**
  * Pick the one special this enemy attack uses, or null for a normal attack.
  * `rand` is injected so combat owns the RNG (and tests can make it deterministic).
+ * `canPoison` is whether poison could take hold right now (not already
+ * poisoned, not immune); a poison special is never offered otherwise, so a
+ * poisoned player sees ordinary hits until the poison runs out.
  */
-function selectEnemySpecial(enemy, rand) {
+function selectEnemySpecial(enemy, rand, { canPoison = true } = {}) {
   const owned = getEnemySpecialIds(enemy)
   if (owned.length === 0) return null
 
   for (const id of SPECIAL_PRIORITY) {
     if (!owned.includes(id)) continue
     const special = ENEMY_SPECIALS[id]
+    if (special.applies === 'poison' && !canPoison) continue
     // rand(1, N) === 1 for a 1/N chance — same shape as the original's rolls.
     if (rand(1, Math.round(1 / special.chance)) === 1) return special
   }

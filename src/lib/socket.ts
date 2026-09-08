@@ -37,7 +37,7 @@ export interface EnemyTrait {
   id: string
   label: string
   title: string
-  tone: 'crit' | 'sky' | 'str' | 'dex' | 'mag'
+  tone: 'crit' | 'poison' | 'sky' | 'str' | 'dex' | 'mag'
 }
 
 export interface BattleStartedPayload extends BattleSnapshot {
@@ -156,6 +156,13 @@ export interface BattleTurnPayload extends BattleSnapshot {
   companion?: BattleCompanionStrike | null
   /** True when the Dodge skill turned the enemy's swing into nothing. */
   playerDodged?: boolean
+  /** Iron Skin's share of the block this turn (0 without it). */
+  ironSkinBlock?: number
+  /** What Magic Armor absorbed of this hit, and what it has left. */
+  absorbed?: number
+  magicArmorLeft?: number
+  /** Set when this hit left poison on the player. */
+  poisonApplied?: { clicks: number } | null
   message: string
 }
 

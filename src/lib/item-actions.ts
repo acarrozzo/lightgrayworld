@@ -57,6 +57,8 @@ interface ConsumableMeta {
   stats?: { stat?: string; amount?: number }[]
   buff?: { field?: string; clicks?: number }
   buffs?: { field?: string; clicks?: number }[]
+  /** What it cures — only 'poison' exists. */
+  cure?: string
   verb?: string
 }
 
@@ -108,6 +110,11 @@ const BUFF_PRESENTATION: Record<string, { label: string; short: string; bonus: P
   buffDefClicks: { label: 'Defense', short: '+20 DEF', bonus: { def: 20 } },
   buffCoffeeClicks: { label: 'Coffee', short: '+10 all stats', bonus: ALL_STATS(10) },
   buffGloryClicks: { label: 'Glory', short: '+30 all stats', bonus: ALL_STATS(30) },
+  buffTeaClicks: { label: 'Tea', short: '+5 HP/MP regen', bonus: {} },
+  regenerateClicks: { label: 'Regenerate', short: 'Regenerate', bonus: {} },
+  ironSkinClicks: { label: 'Iron Skin', short: 'Iron Skin', bonus: {} },
+  poisonImmuneClicks: { label: 'Poison immunity', short: 'Poison immune', bonus: {} },
+  poisonClicks: { label: 'Poison', short: 'Poison', bonus: {} },
 }
 
 function signed(amount: number, stat: string): string {
@@ -153,17 +160,19 @@ export function summarizeConsumable(metadata?: { consumable?: ConsumableMeta } |
     buffs.push({ field, clicks: Number(entry?.clicks) || 0, ...shown })
   }
 
+  const cures = consumable.cure === 'poison'
   const group: ConsumableGroup =
     hp < 0 || mp < 0 ? 'harm'
     : hp > 0 && mp > 0 ? 'both'
     : hp > 0 ? 'hp'
     : mp > 0 ? 'mp'
-    : buffs.length > 0 ? 'buff'
+    : buffs.length > 0 || cures ? 'buff'
     : 'other'
 
   const parts: string[] = []
   if (hp !== 0) parts.push(signed(hp, 'HP'))
   if (mp !== 0) parts.push(signed(mp, 'MP'))
+  if (cures) parts.push('cures poison')
   for (const buff of buffs) parts.push(buff.clicks > 0 ? `${buff.short} · ${buff.clicks} clicks` : buff.short)
 
   return { verb, label, hp, mp, buffs, group, effect: parts.join(' · ') }

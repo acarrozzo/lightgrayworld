@@ -21,8 +21,9 @@ const {
   getSpellMaxLevel,
   getNextLearnCost,
   rollSpell,
+  castBuff,
 } = require('../../game-data/spells')
-const { BUFF_SELECT, getStatBuffBonuses } = require('./buff-service')
+const { BUFF_SELECT, getStatBuffBonuses, projectBuffState } = require('./buff-service')
 
 /**
  * Prisma `select` covering every spell level and teacher flag.
@@ -115,9 +116,11 @@ async function getSpellState(playerId) {
     hpMax: row.hpMax,
     mp: row.mp,
     mpMax: row.mpMax,
+    magCore: row.mag || 0,
     effectiveMag: getEffectiveMag(row),
     spells,
     spellTeachers,
+    buffs: projectBuffState(row).buffs,
   }
 }
 
@@ -340,6 +343,88 @@ async function castHealSpell(playerId, spell, rand) {
   }
 }
 
+/**
+ * Cast a buff spell against the live row: Regenerate, Iron Skin, Magic Armor,
+ * Antidote. Each is one guarded UPDATE that only lands while the player still
+ * has the MP (and, for the two the original refused to stack, while nothing
+ * of it is already running), so a double click cannot spend twice or refresh
+ * for free.
+ *
+ * What a cast sets up is rolled by the registry (`castBuff`); this is only
+ * where the columns are written:
+ *   - Regenerate: refreshes its countdown to the longer of the two;
+ *   - Iron Skin:  sets the block amount and its countdown; refused while active;
+ *   - Magic Armor: sets the absorb pool; refused while any remains;
+ *   - Antidote:   clears poison and extends immunity to the longer of the two.
+ *
+ * @param {string} playerId
+ * @param {import('../../game-data/spells').SpellDef} spell
+ * @param {(a: number, b: number) => number} rand
+ * @returns {Promise<{ success: true, level: number, cost: number, effect: import('../../game-data/spells').BuffCast, mp: number, mpChange: number, buffs: Record<string, number> } | { success: false, message: string }>}
+ */
+async function castBuffSpell(playerId, spell, rand) {
+  const state = await getSpellState(playerId)
+  if (!state) return { success: false, message: 'Player not found.' }
+
+  const level = state.spells[spell.column] || 0
+  if (level < 1) return { success: false, message: `You don't know the ${spell.name} spell.` }
+
+  const cost = spell.castCost(level, state.effectiveMag)
+  if (state.mp < cost) {
+    return { success: false, message: `You don't have enough MP to cast ${spell.name}. It costs ${cost} MP and you have ${state.mp}.` }
+  }
+  if (spell.id === 'iron-skin' && (state.buffs.ironSkinAmount || 0) > 0) {
+    return { success: false, message: 'You already have Iron Skin cast!' }
+  }
+  if (spell.id === 'magic-armor' && (state.buffs.magicArmorAmount || 0) > 0) {
+    return { success: false, message: 'You already have Magic Armor cast!' }
+  }
+
+  const effect = castBuff(spell, level, { mag: state.effectiveMag, magCore: state.magCore }, rand)
+
+  // Column names are fixed per spell below, never taken from input.
+  let sql
+  let params
+  switch (spell.id) {
+    case 'regenerate':
+      sql = `UPDATE "User" SET mp = mp - $2, "regenerateClicks" = GREATEST("regenerateClicks", $3) WHERE id = $1 AND mp >= $2`
+      params = [playerId, cost, Math.max(0, effect.clicks || 0)]
+      break
+    case 'iron-skin':
+      sql = `UPDATE "User" SET mp = mp - $2, "ironSkinClicks" = $3, "ironSkinAmount" = $4 WHERE id = $1 AND mp >= $2 AND "ironSkinAmount" = 0`
+      params = [playerId, cost, Math.max(0, effect.clicks || 0), Math.max(0, effect.amount || 0)]
+      break
+    case 'magic-armor':
+      sql = `UPDATE "User" SET mp = mp - $2, "magicArmorAmount" = $3 WHERE id = $1 AND mp >= $2 AND "magicArmorAmount" = 0`
+      params = [playerId, cost, Math.max(0, effect.amount || 0)]
+      break
+    case 'antidote':
+      sql = `UPDATE "User" SET mp = mp - $2, "poisonClicks" = 0, "poisonImmuneClicks" = GREATEST("poisonImmuneClicks", $3) WHERE id = $1 AND mp >= $2`
+      params = [playerId, cost, Math.max(0, effect.clicks || 0)]
+      break
+    default:
+      return { success: false, message: `${spell.name} cannot be cast yet.` }
+  }
+
+  const rows = await prisma.$queryRawUnsafe(`${sql} RETURNING mp`, ...params)
+  const row = rows[0]
+  if (!row) {
+    return { success: false, message: `You couldn't cast ${spell.name} just now. Try again.` }
+  }
+
+  const after = await prisma.user.findUnique({ where: { id: playerId }, select: BUFF_SELECT })
+  const mp = Number(row.mp)
+  return {
+    success: true,
+    level,
+    cost,
+    effect,
+    mp,
+    mpChange: mp - state.mp,
+    buffs: projectBuffState(after).buffs,
+  }
+}
+
 module.exports = {
   SPELL_SELECT,
   SPELLS,
@@ -351,4 +436,5 @@ module.exports = {
   unlockSpellTeacher,
   unlockSpellTeachersForQuest,
   castHealSpell,
+  castBuffSpell,
 }

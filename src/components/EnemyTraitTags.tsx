@@ -19,6 +19,7 @@ import type { EnemyTrait } from '@/lib/socket'
 
 const TONE_CLASSES: Record<EnemyTrait['tone'], string> = {
   crit: 'text-combat-crit border-combat-crit/50 bg-combat-crit/10',
+  poison: 'text-hue-green border-hue-green/50 bg-hue-green/10',
   sky: 'text-hue-sky border-hue-sky/50 bg-hue-sky/10',
   str: 'text-stat-str border-stat-str/50 bg-stat-str/10',
   dex: 'text-stat-dex border-stat-dex/50 bg-stat-dex/10',
@@ -27,6 +28,7 @@ const TONE_CLASSES: Record<EnemyTrait['tone'], string> = {
 
 const TONE_TEXT: Record<EnemyTrait['tone'], string> = {
   crit: 'text-combat-crit',
+  poison: 'text-hue-green',
   sky: 'text-hue-sky',
   str: 'text-stat-str',
   dex: 'text-stat-dex',

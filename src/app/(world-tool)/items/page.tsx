@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { cachedWorldToolData } from '@/lib/world-tool/cached'
 import ItemsTable, { type ItemRow } from './ItemsTable'
 import { resolveItemIcon } from '@/lib/item-actions'
+const { describeRegen } = require('@/lib/game-data/regen') as { describeRegen: (regen: { hp?: number; mp?: number } | null) => string }
 
 // Source data — where equipable items come from in the world. Required live so
 // the column tracks any change to room loot or enemy drop tables.
@@ -93,6 +94,7 @@ type ItemMetadata = {
   icon?: string
   isTwoHanded?: boolean
   statMods?: { str?: number; dex?: number; mag?: number; def?: number }
+  regen?: { hp?: number; mp?: number }
   crafting?: { kind?: 'tool' | 'material' }
 }
 
@@ -356,6 +358,7 @@ export default async function ItemsPage() {
       dex: stats.dex ?? 0,
       mag: stats.mag ?? 0,
       def: stats.def ?? 0,
+      regen: describeRegen(meta.regen ?? null) || null,
       max: item.max,
       canSell: item.canSell,
       canDrop: item.canDrop,

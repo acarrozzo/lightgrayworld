@@ -75,6 +75,19 @@ model User {
   buffGloryClicks           Int             @default(0)
   /// The Silver Shaman's aura, learned in a full Silver set: a standing +20 to every core stat.
   silverAura                Boolean         @default(false)
+  /// A cup of tea: +5 HP and +5 MP regen per click while it counts down.
+  buffTeaClicks             Int             @default(0)
+  /// The Regenerate spell: rand(lvl, 2×lvl) HP per click while it counts down.
+  regenerateClicks          Int             @default(0)
+  /// Iron Skin: the enemy's block roll gains rand(1, ironSkinAmount) while ironSkinClicks counts down.
+  ironSkinClicks            Int             @default(0)
+  ironSkinAmount            Int             @default(0)
+  /// Magic Armor: damage still to absorb before HP is touched. No countdown; it wears off as it is hit.
+  magicArmorAmount          Int             @default(0)
+  /// Poison: drops by one each click and deals what is left. 0 = not poisoned.
+  poisonClicks              Int             @default(0)
+  /// Poison immunity (Antidote): clicks left during which poison cannot take hold.
+  poisonImmuneClicks        Int             @default(0)
   hp                        Int             @default(10)
   hpMax                     Int             @default(10)
   mp                        Int             @default(2)

@@ -160,8 +160,70 @@ const { weaponImmunity } = require('./battle-calculator')
 async function fetchPlayerStats(playerId) {
   return prisma.user.findUnique({
     where: { id: playerId },
-    select: { str: true, dex: true, mag: true, def: true, strMod: true, dexMod: true, magMod: true, defMod: true, hp: true, hpMax: true, ...BUFF_SELECT, ...SKILL_SELECT },
+    select: { level: true, str: true, dex: true, mag: true, def: true, strMod: true, dexMod: true, magMod: true, defMod: true, hp: true, hpMax: true, ...BUFF_SELECT, ...SKILL_SELECT },
   })
+}
+
+/**
+ * Land an enemy's hit on the live row, in one statement: Magic Armor absorbs
+ * first (the original's "remove from magic armor first"), the remainder comes
+ * off HP, and a poisoning hit leaves its poison behind — but only where
+ * none is running and the player is not immune, so a second poisoner cannot
+ * refresh a poison that is burning down. Every SET reads the row as it was,
+ * so the HP line sees the armor before this hit ate it.
+ *
+ * @param {string} playerId
+ * @param {{ damage: number, poisonApplied?: { clicks: number } | null }} hit
+ * @returns {Promise<{ hp: number, hpMax: number, absorbed: number, magicArmorLeft: number, poisoned: number }>}
+ *   `poisoned` is the poison that took hold on this hit (0 if none did).
+ */
+async function applyEnemyHit(playerId, { damage, poisonApplied = null }) {
+  const dmg = Math.max(0, Math.floor(Number(damage) || 0))
+  const poisonClicks = poisonApplied ? Math.max(0, Math.floor(Number(poisonApplied.clicks) || 0)) : 0
+  const rows = await prisma.$queryRawUnsafe(
+    `WITH prev AS (SELECT "magicArmorAmount" AS prev_armor, "poisonClicks" AS prev_poison FROM "User" WHERE id = $1)
+     UPDATE "User"
+     SET "magicArmorAmount" = GREATEST(0, "magicArmorAmount" - $2::int),
+         hp = hp - GREATEST(0, $2::int - "magicArmorAmount"),
+         "poisonClicks" = CASE WHEN $3::int > 0 AND "poisonClicks" = 0 AND "poisonImmuneClicks" = 0 THEN $3::int ELSE "poisonClicks" END
+     WHERE id = $1
+     RETURNING hp, "hpMax", "magicArmorAmount", "poisonClicks",
+       (SELECT prev_armor FROM prev) AS "prevArmor", (SELECT prev_poison FROM prev) AS "prevPoison"`,
+    playerId,
+    dmg,
+    poisonClicks
+  )
+  const row = rows[0]
+  if (!row) throw new Error(`applyEnemyHit: player ${playerId} not found`)
+  const magicArmorLeft = Number(row.magicArmorAmount)
+  const nowPoisoned = Number(row.poisonClicks)
+  return {
+    hp: Number(row.hp),
+    hpMax: Number(row.hpMax),
+    absorbed: Number(row.prevArmor) - magicArmorLeft,
+    magicArmorLeft,
+    poisoned: Number(row.prevPoison) === 0 && nowPoisoned > 0 ? nowPoisoned : 0,
+  }
+}
+
+/**
+ * What else the hit did, after the damage line: the Iron Skin share of the
+ * block, what Magic Armor absorbed, and whether poison took hold.
+ * @param {{ absorbed: number, magicArmorLeft: number, poisoned: number }} hit
+ * @param {{ ironSkinBlock?: number, dodged?: boolean, playerDodged?: boolean }} turn
+ */
+function describeHitExtras(hit, turn) {
+  const bits = []
+  if ((turn.ironSkinBlock || 0) > 0) bits.push(`Your Iron Skin turns ${turn.ironSkinBlock} of it.`)
+  if (hit.absorbed > 0) {
+    bits.push(
+      hit.magicArmorLeft > 0
+        ? `Your Magic Armor absorbs ${hit.absorbed} (${hit.magicArmorLeft} left).`
+        : `Your Magic Armor absorbs ${hit.absorbed} and shatters.`
+    )
+  }
+  if (hit.poisoned > 0) bits.push(`You are POISONED! (${hit.poisoned})`)
+  return bits.length ? ` ${bits.join(' ')}` : ''
 }
 
 // Fetch what is in the player's hands, as combat and the skills read it.
@@ -459,6 +521,8 @@ async function executeStartBattle(action, playerId, roomState) {
       immuneToWeapon: null,
       companion: null,
       playerDodged: enemyAtk.dodged,
+      ironSkinBlock: enemyAtk.ironSkinBlock,
+      poisonApplied: enemyAtk.poisonApplied,
     }
     battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, firstTurn)
   } else {
@@ -479,12 +543,8 @@ async function executeStartBattle(action, playerId, roomState) {
     ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo))
   }
 
-  // Apply enemy damage to player HP
-  const updatedPlayer = await prisma.user.update({
-    where: { id: playerId },
-    data: { hp: { decrement: firstTurn.enemyDealtDamage } },
-    select: { hp: true, hpMax: true },
-  })
+  // Land the enemy's hit: Magic Armor first, then HP, plus any poison it left.
+  const updatedPlayer = await applyEnemyHit(playerId, { damage: firstTurn.enemyDealtDamage, poisonApplied: firstTurn.poisonApplied })
   const newPlayerHp = Math.max(0, updatedPlayer.hp)
   // Mirror the new HP into the in-memory room state so non-battle reads (e.g. rest)
   // don't operate on a stale, pre-damage value.
@@ -525,7 +585,9 @@ async function executeStartBattle(action, playerId, roomState) {
   } else {
     attackDesc = describeWeaponStrike(enemy.name, firstTurn) + describeCompanionStrike(enemy.name, firstTurn.companion)
   }
-  const defenseDesc = describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction, '', firstTurn.playerDodged)
+  const defenseDesc =
+    describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction, '', firstTurn.playerDodged) +
+    describeHitExtras(updatedPlayer, firstTurn)
 
   const turnPayload = {
     ...snapshot,
@@ -552,6 +614,10 @@ async function executeStartBattle(action, playerId, roomState) {
     immuneToWeapon: firstTurn.immuneToWeapon ?? null,
     companion: firstTurn.companion ?? null,
     playerDodged: firstTurn.playerDodged ?? false,
+    ironSkinBlock: firstTurn.ironSkinBlock ?? 0,
+    absorbed: updatedPlayer.absorbed,
+    magicArmorLeft: updatedPlayer.magicArmorLeft,
+    poisonApplied: updatedPlayer.poisoned > 0 ? { clicks: updatedPlayer.poisoned } : null,
     ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
     ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
@@ -797,12 +863,9 @@ async function executePlayerAttack(action, playerId, roomState) {
     }
   }
 
-  // Bug fix #3: atomic HP decrement — avoids read-modify-write race with concurrent updates
-  const updatedPlayer = await prisma.user.update({
-    where: { id: playerId },
-    data: { hp: { decrement: turnResult.enemyDealtDamage } },
-    select: { hp: true, hpMax: true },
-  })
+  // One atomic statement for the hit — Magic Armor first, then HP, plus any
+  // poison it left — so concurrent updates never read-modify-write.
+  const updatedPlayer = await applyEnemyHit(playerId, { damage: turnResult.enemyDealtDamage, poisonApplied: turnResult.poisonApplied })
   const newHp = Math.max(0, updatedPlayer.hp)
   // Mirror the new HP into the in-memory room state so non-battle reads (e.g. rest)
   // don't operate on a stale, pre-damage value.
@@ -856,7 +919,7 @@ async function executePlayerAttack(action, playerId, roomState) {
       turnResult.enemyAction,
       ` (HP: ${newHp}/${updatedPlayer.hpMax})`,
       turnResult.playerDodged
-    )
+    ) + describeHitExtras(updatedPlayer, turnResult)
   )
 
   return {
@@ -890,6 +953,10 @@ async function executePlayerAttack(action, playerId, roomState) {
           immuneToWeapon: turnResult.immuneToWeapon ?? null,
           companion: turnResult.companion ?? null,
           playerDodged: turnResult.playerDodged ?? false,
+          ironSkinBlock: turnResult.ironSkinBlock ?? 0,
+          absorbed: updatedPlayer.absorbed,
+          magicArmorLeft: updatedPlayer.magicArmorLeft,
+          poisonApplied: updatedPlayer.poisoned > 0 ? { clicks: updatedPlayer.poisoned } : null,
           ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
           ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
@@ -953,14 +1020,12 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     immuneToWeapon: null,
     companion: null,
     playerDodged: enemyAtk.dodged,
+    ironSkinBlock: enemyAtk.ironSkinBlock,
+    poisonApplied: enemyAtk.poisonApplied,
   }
   battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, turnRecord)
 
-  const updatedPlayer = await prisma.user.update({
-    where: { id: playerId },
-    data: { hp: { decrement: enemyAtk.enemyFinal } },
-    select: { hp: true, hpMax: true },
-  })
+  const updatedPlayer = await applyEnemyHit(playerId, { damage: enemyAtk.enemyFinal, poisonApplied: enemyAtk.poisonApplied })
   const newHp = Math.max(0, updatedPlayer.hp)
   // Mirror the new HP into the in-memory room state so non-battle reads (e.g. rest)
   // don't operate on a stale, pre-damage value.
@@ -968,7 +1033,9 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
 
   // Build the action description string for the battle:turn message.
   const actionDesc = describeSupportAction(actionMeta)
-  const defenseDesc = describeEnemyAttack(battleState.enemyName, enemyAtk.enemyFinal, enemyAtk.enemyAction, '', enemyAtk.dodged)
+  const defenseDesc =
+    describeEnemyAttack(battleState.enemyName, enemyAtk.enemyFinal, enemyAtk.enemyAction, '', enemyAtk.dodged) +
+    describeHitExtras(updatedPlayer, enemyAtk)
 
   // Defeat path: enemy counterattack killed the player
   if (newHp <= 0) {
@@ -1018,6 +1085,10 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
           enemyAction: enemyAtk.enemyAction ?? null,
           skill: null,
           playerDodged: enemyAtk.dodged ?? false,
+          ironSkinBlock: enemyAtk.ironSkinBlock ?? 0,
+          absorbed: updatedPlayer.absorbed,
+          magicArmorLeft: updatedPlayer.magicArmorLeft,
+          poisonApplied: updatedPlayer.poisoned > 0 ? { clicks: updatedPlayer.poisoned } : null,
           actionMeta,
           message: [actionDesc, defenseDesc].join(' '),
         },
@@ -1096,4 +1167,5 @@ module.exports = {
   // fixes (an enemy left behind, blocking the respawn move) is invisible from
   // the outside until a player is already stuck.
   resolveBattleDefeat,
+  applyEnemyHit,
 }

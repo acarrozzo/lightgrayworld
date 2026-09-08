@@ -40,7 +40,7 @@ interface RecipeUnlock {
 interface Recipe {
   id: string
   label: string
-  family: 'cook' | 'potions' | 'wood' | 'leather' | 'iron' | 'tools'
+  family: 'cook' | 'potions' | 'wood' | 'leather' | 'iron' | 'tools' | 'rings'
   batch: 'all' | 'one'
   station: 'fire' | 'crafting-table' | 'forge'
   effect?: string

@@ -44,6 +44,7 @@
  * @property {number} min
  * @property {number} max
  * @property {string} text  Readable formula with the player's numbers filled in.
+ * @property {string} [label]  Lead word for the range ("Restores", "Absorbs"); attack and heal spells have a fixed one.
  *
  * @typedef {Object} SpellDef
  * @property {string} id            Stable slug (`magic-missile`).
@@ -61,7 +62,19 @@
  * @property {(level: number) => number} learnCost  SP to go from level-1 to level.
  * @property {(level: number, mag: number) => number} castCost  MP to cast at a level.
  * @property {(level: number, mag: number, rand: (a: number, b: number) => number) => SpellRoll} [roll]
- * @property {(level: number, mag: number) => SpellPreview} [preview]
+ * @property {(level: number, mag: number, magCore?: number) => SpellPreview} [preview]
+ * @property {(level: number, ctx: BuffCastContext, rand: (a: number, b: number) => number) => BuffCast} [cast]
+ *   Buff spells only: what one cast sets up, rolled from the player's numbers.
+ *
+ * @typedef {Object} BuffCastContext
+ * @property {number} mag      Effective MAG (core + gear + buffs), the original's `magmod`.
+ * @property {number} magCore  The core MAG stat alone. Durations roll rand(magCore, mag).
+ *
+ * @typedef {Object} BuffCast
+ * @property {number} [clicks]  How long it runs, in clicks.
+ * @property {number} [amount]  Its magnitude (Iron Skin's block bonus, Magic Armor's absorb).
+ * @property {number[]} [rolls] The individual rolls behind `amount`, where there were several.
+ * @property {string} text      Readable breakdown for the feed.
  */
 
 /** Teacher flags, in the order the original checked them (best first). */
@@ -102,6 +115,22 @@ const SPELL_TEACHER_ROOMS = {
 
 const nextLevelCost = (level) => level
 const proLevelCost = (level) => level * 5
+
+/**
+ * How long a buff spell runs: rand(mag core, mag with gear), the original's
+ * `rand($row['mag'], $row['magmod'])`. Gear that raises MAG lengthens the
+ * roll's ceiling; the core stat is its floor.
+ */
+function buffDuration(ctx, rand) {
+  const lo = Math.max(1, Number(ctx?.magCore) || 0)
+  const hi = Math.max(lo, Number(ctx?.mag) || 0)
+  return rand(lo, hi)
+}
+function buffDurationText(ctx) {
+  const lo = Math.max(1, Number(ctx?.magCore) || 0)
+  const hi = Math.max(lo, Number(ctx?.mag) || 0)
+  return lo === hi ? `${lo} clicks` : `rand(${lo}, ${hi}) clicks`
+}
 
 /**
  * The original's "lvl + (rand(1,mag) × (1 + 5% × lvl))" family (Fireball,
@@ -275,10 +304,12 @@ const SPELLS = [
     name: 'Regenerate',
     school: 'restoration',
     kind: 'buff',
-    implemented: false,
+    implemented: true,
     icon: 'regenerate',
     hue: 'green',
     description: 'Regenerate health over time.',
+    // The original's cast message promised rand(lvl, lvl × 2) a click; its
+    // code only ever ticked a flat lvl. The promise is what is kept.
     formula: 'rand(lvl, lvl × 2) HP per click for rand(mag core, mag) clicks',
     teachers: [
       { flag: 'wizardSkillFlag', max: 10 },
@@ -286,6 +317,13 @@ const SPELLS = [
     ],
     learnCost: nextLevelCost,
     castCost: (level) => 20 * level,
+    cast(level, ctx, rand) {
+      const clicks = buffDuration(ctx, rand)
+      return { clicks, text: `rand(${level}, ${level * 2}) HP a click for ${clicks} clicks` }
+    },
+    preview(level, mag, magCore = mag) {
+      return { label: 'Restores', min: level, max: level * 2, text: `HP a click for ${buffDurationText({ mag, magCore })}` }
+    },
   },
   {
     id: 'antidote',
@@ -293,17 +331,27 @@ const SPELLS = [
     name: 'Antidote',
     school: 'restoration',
     kind: 'buff',
-    implemented: false,
+    implemented: true,
     icon: 'antidote',
     hue: 'green',
-    description: 'Cure yourself of poison and become immune for a short time.',
-    formula: 'cures poison; immune for a short time',
+    description: 'Cure yourself of poison and become immune for a while.',
+    // The original could teach Antidote but never cast it (no handler). The
+    // antidote potion cured and gave 20 clicks of immunity; the spell scales
+    // that by level, and can be cast ahead of a poisonous fight.
+    formula: 'cures poison; immune for lvl × 20 clicks',
     teachers: [
       { flag: 'wizardSkillFlag', max: 10 },
       { flag: 'starCitySpellsFlag', max: 15 },
     ],
     learnCost: nextLevelCost,
     castCost: (level) => level * 2,
+    cast(level) {
+      const clicks = level * 20
+      return { clicks, text: `immune to poison for ${clicks} clicks` }
+    },
+    preview(level) {
+      return { label: 'Immune', min: level * 20, max: level * 20, text: 'clicks, and any poison on you is cured' }
+    },
   },
 
   // ==================== ALTERATION ====================
@@ -313,17 +361,34 @@ const SPELLS = [
     name: 'Magic Armor',
     school: 'alteration',
     kind: 'buff',
-    implemented: false,
+    implemented: true,
     icon: 'magicarmor',
     hue: 'blue',
-    description: 'Magic Armor protects you by absorbing damage.',
-    formula: 'absorbs lvl rolls of rand(1, mag) damage',
+    description: 'Magic Armor protects you by absorbing damage before it reaches your health.',
+    // No countdown: it wears off as it is hit. The original also added the
+    // amount to HP on cast — a copy of Heal's write that never made sense
+    // beside an absorb pool — and that is not kept.
+    formula: 'absorbs lvl rolls of rand(1, mag) damage; lasts until spent',
     teachers: [
       { flag: 'wizardSkillFlag', max: 10 },
       { flag: 'starCitySpellsFlag', max: 15 },
     ],
     learnCost: nextLevelCost,
     castCost: (level) => 10 * level,
+    cast(level, ctx, rand) {
+      const mag = Math.max(1, Number(ctx?.mag) || 0)
+      const rolls = []
+      let amount = 0
+      for (let i = 0; i < level; i += 1) {
+        const r = rand(1, mag)
+        rolls.push(r)
+        amount += r
+      }
+      return { amount, rolls, text: `${rolls.join(' + ')} = ${amount}` }
+    },
+    preview(level, mag) {
+      return { label: 'Absorbs', min: level, max: level * Math.max(1, mag), text: `${level} × rand(1, ${mag}) damage, until spent` }
+    },
   },
   {
     id: 'iron-skin',
@@ -331,17 +396,27 @@ const SPELLS = [
     name: 'Iron Skin',
     school: 'alteration',
     kind: 'buff',
-    implemented: false,
+    implemented: true,
     icon: 'ironskin',
     hue: 'gold',
-    description: 'Increase defense with Iron Skin.',
-    formula: '+rand(lvl × 2, lvl × 4) DEF for rand(mag core, mag) clicks',
+    description: 'Harden your skin: every enemy hit is blocked a little more.',
+    // In battle the block roll gains rand(1, amount) on top of rand(0, DEF),
+    // exactly the original's `$eblock = rand(0, $defmod) + ... + $ironskin_rand`.
+    formula: '+rand(lvl × 2, lvl × 4) block for rand(mag core, mag) clicks',
     teachers: [
       { flag: 'wizardSkillFlag', max: 10 },
       { flag: 'starCitySpellsFlag', max: 15 },
     ],
     learnCost: nextLevelCost,
     castCost: (level) => 10 * level,
+    cast(level, ctx, rand) {
+      const amount = rand(level * 2, level * 4)
+      const clicks = buffDuration(ctx, rand)
+      return { amount, clicks, text: `+${amount} block for ${clicks} clicks` }
+    },
+    preview(level, mag, magCore = mag) {
+      return { label: 'Block +', min: level * 2, max: level * 4, text: `for ${buffDurationText({ mag, magCore })}` }
+    },
   },
   {
     id: 'wings',
@@ -452,7 +527,24 @@ function getNextLearnCost(spell, level, maxLevel) {
  * @param {SpellDef} spell
  */
 function isCastable(spell) {
-  return Boolean(spell.implemented && (spell.kind === 'attack' || spell.kind === 'heal'))
+  if (!spell.implemented) return false
+  if (spell.kind === 'attack' || spell.kind === 'heal') return true
+  return spell.kind === 'buff' && typeof spell.cast === 'function'
+}
+
+/**
+ * What one cast of a buff spell sets up, rolled from the player's numbers.
+ * @param {SpellDef} spell
+ * @param {number} level
+ * @param {BuffCastContext} ctx
+ * @param {(a: number, b: number) => number} rand
+ * @returns {BuffCast}
+ */
+function castBuff(spell, level, ctx, rand) {
+  if (typeof spell.cast !== 'function') {
+    throw new Error(`castBuff: ${spell.id} has no cast`)
+  }
+  return spell.cast(level, ctx, rand)
 }
 
 /**
@@ -477,9 +569,9 @@ function rollSpell(spell, level, mag, rand) {
  * @param {number} mag
  * @returns {SpellPreview|null}
  */
-function previewSpell(spell, level, mag) {
+function previewSpell(spell, level, mag, magCore = mag) {
   if (typeof spell.preview !== 'function') return null
-  return spell.preview(level, mag)
+  return spell.preview(level, mag, magCore)
 }
 
 /**
@@ -507,6 +599,7 @@ module.exports = {
   getNextLearnCost,
   isCastable,
   rollSpell,
+  castBuff,
   previewSpell,
   describeTeachers,
 }

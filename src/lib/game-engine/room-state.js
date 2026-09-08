@@ -18,7 +18,7 @@ const { autoEquip, isAutoEquipMode } = require('./services/auto-equip-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
 const { getSpell, findSpellByCommand, isCastable } = require('../game-data/spells')
-const { getSpellState, castHealSpell } = require('./services/spell-service')
+const { getSpellState, castHealSpell, castBuffSpell } = require('./services/spell-service')
 const { getSkill, findSkillByCommand, isStrikeSkill, weaponFits, weaponFitReason } = require('../game-data/skills')
 const { getSkillState } = require('./services/skill-service')
 const { rand } = require('./battle-calculator')
@@ -536,6 +536,21 @@ const TURN_ACTIONS = new Set([
   'drop_item',
   'take_supply',
 ])
+
+/**
+ * The feed's account of what a buff cast set up: "+12 block for 9 clicks",
+ * "absorbs 36 damage", "rand(3, 6) HP a click for 12 clicks".
+ * @param {import('../game-data/spells').SpellDef} spell
+ * @param {import('../game-data/spells').BuffCast} effect
+ */
+function describeBuffCast(spell, effect) {
+  switch (spell.id) {
+    case 'magic-armor':
+      return `absorbs the next ${effect.amount} damage [ ${effect.text} ]`
+    default:
+      return effect.text
+  }
+}
 
 class RoomState {
   constructor(roomId) {
@@ -1360,8 +1375,9 @@ class RoomState {
    * Attack spells are strikes: in a fight they are the turn's attack, and out
    * of one they open the fight the way "attack" does — the original let you
    * lead with a Fireball. Healing works anywhere; inside a fight it is a support
-   * turn, so the enemy still swings. Buffs (wings, iron skin, ...) have no
-   * handler yet and are refused before anything is spent.
+   * turn, so the enemy still swings. Buffs (Regenerate, Iron Skin, Magic Armor,
+   * Antidote) work the same way; Wings and Gills have no handler yet and are
+   * refused before anything is spent.
    */
   async executeCastSpell(action, playerId) {
     const player = this.players.get(playerId)
@@ -1397,6 +1413,61 @@ class RoomState {
         return this.createErrorResult('cast_spell', `You don't have enough MP to cast ${spell.name}! It costs ${cost} MP and you have ${state.mp}.`)
       }
       return await this.executeAttack(playerId, { spell: { def: spell, level, cost } })
+    }
+
+    if (spell.kind === 'buff') {
+      const cast = await castBuffSpell(playerId, spell, rand)
+      if (cast.success === false) {
+        return this.createErrorResult('cast_spell', cast.message)
+      }
+      this.updatePlayer(playerId, (s) => ({ ...s, mp: cast.mp }))
+
+      const effectText = describeBuffCast(spell, cast.effect)
+      const message = `You cast ${spell.name} for ${cast.cost} MP: ${effectText}.`
+      let result = {
+        success: true,
+        action: 'cast_spell',
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload('cast_spell', 'success', message, {
+              roomId: this.roomId,
+              mp: cast.mp,
+              mpChange: cast.mpChange,
+              // The buff view the header and character panel read, so the chip
+              // appears on this click rather than the next tick.
+              player: { buffs: cast.buffs },
+              spell: {
+                id: spell.id,
+                name: spell.name,
+                level: cast.level,
+                cost: cast.cost,
+                icon: spell.icon,
+                hue: spell.hue,
+                amount: cast.effect.amount ?? 0,
+                clicks: cast.effect.clicks ?? 0,
+                rolls: cast.effect.rolls ?? [],
+                text: cast.effect.text,
+              },
+            }),
+          },
+        ],
+      }
+
+      // Buffing mid-fight spends the turn like a potion: the enemy answers.
+      if (this.activeBattles.get(playerId)?.isActive) {
+        const supportTurn = await resolveSupportTurn(playerId, this, {
+          kind: 'cast_spell',
+          itemSlug: spell.id,
+          itemName: spell.name,
+          itemMetadata: { icon: spell.icon },
+          actionVerb: 'cast',
+          effectText,
+        })
+        return mergeSupportTurnIntoResult(result, supportTurn)
+      }
+
+      return await this.appendSpawnEvents(result, playerId)
     }
 
     // kind === 'heal'

@@ -1949,7 +1949,6 @@ const ENEMIES = [
       ],
     },
   },
-  // Legacy ePoison 2 (poisons you for level-scaled damage over time) has no modern status effect yet.
   {
     slug: 'mongolian-death-worm',
     zone: 'Rocky Flats',
@@ -1964,6 +1963,8 @@ const ENEMIES = [
     isFriendly: false,
     isFlying: false,
     damageType: 'MELEE',
+    // The original's ePoison 2: every hit while you are clean leaves rand(1, your level) poison.
+    specials: ['venom'],
     xpReward: 300,
     goldMin: 1,
     goldMax: 300,
@@ -2244,7 +2245,6 @@ const ENEMIES = [
       always: [{ itemSlug: 'iron-pickaxe', qty: 1 }],
     },
   },
-  // Legacy ePoison 2 has no modern status effect yet.
   {
     slug: 'iron-cobra',
     zone: 'Neverending Mine',
@@ -2259,6 +2259,8 @@ const ENEMIES = [
     isFriendly: false,
     isFlying: false,
     damageType: 'RANGED',
+    // The original's ePoison 2: every hit while you are clean leaves rand(1, your level) poison.
+    specials: ['venom'],
     xpReward: 400,
     goldMin: 1000,
     goldMax: 2000,
@@ -3729,7 +3731,9 @@ const ENEMIES = [
     isFriendly: false,
     isFlying: false,
     damageType: 'MAGIC',
-    // Unported perks: ePoison, eMulti 4 (a 40% chance to cast again).
+    // The original's ePoison 1: every hit while you are clean leaves rand(1, your level ÷ 2) poison.
+    specials: ['poison'],
+    // Unported perk: eMulti 4 (a 40% chance to cast again).
     xpReward: 300,
     goldMin: 20,
     goldMax: 200,
@@ -3848,7 +3852,8 @@ const ENEMIES = [
     isFriendly: false,
     isFlying: false,
     damageType: 'MELEE',
-    // Unported perk: ePoison.
+    // The original's ePoison 1: every hit while you are clean leaves rand(1, your level ÷ 2) poison.
+    specials: ['poison'],
     xpReward: 500,
     goldMin: 100,
     goldMax: 300,

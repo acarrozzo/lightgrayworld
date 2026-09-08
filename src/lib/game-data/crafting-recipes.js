@@ -38,7 +38,7 @@
  *                            not enough — it must be turned in.
  * @property {string} hint     One line telling the player where to unlock it.
  *
- * @typedef {'cook' | 'potions' | 'wood' | 'leather' | 'iron' | 'tools'} CraftingFamilyId
+ * @typedef {'cook' | 'potions' | 'wood' | 'leather' | 'iron' | 'tools' | 'rings'} CraftingFamilyId
  *
  * @typedef {Object} Recipe
  * @property {string} id          Stable recipe id (sent from client → server).
@@ -92,10 +92,10 @@
 const CRAFTING_STATIONS = {
   '003': { label: 'Cooking Fire', button: 'Cook', icon: 'fire', where: "the Old Man's cabin", made: 'cooked', stations: ['fire'], families: ['cook'] },
   '021': { label: 'Potion Table', button: 'Mix Potions', icon: 'red-potion', where: "the Pajama Shaman's tent", made: 'mixed', stations: ['crafting-table'], families: ['potions'] },
-  '024': { label: 'Wood Workshop', button: 'Woodwork', icon: 'axelog', where: "Jack Lumber's workshop", made: 'made', stations: ['crafting-table'], families: ['wood', 'tools'] },
+  '024': { label: 'Wood Workshop', button: 'Woodwork', icon: 'axelog', where: "Jack Lumber's workshop", made: 'made', stations: ['crafting-table'], families: ['wood', 'tools', 'rings'] },
   '103': { label: 'Leather Bench', button: 'Work Leather', icon: 'craft', where: "Freddie's Cow Farm", made: 'worked', stations: ['crafting-table'], families: ['leather'] },
-  '308': { label: 'Forge', button: 'Forge', icon: 'craft', where: 'the Mining Guild forge', made: 'forged', stations: ['forge', 'crafting-table'], families: ['iron', 'tools'] },
-  '210': { label: 'Crafting Table', button: 'Open Crafting', icon: 'craft', where: "Red Town's Grand Square", made: 'made', stations: ['fire', 'crafting-table'], families: ['cook', 'potions', 'wood', 'leather', 'tools'] },
+  '308': { label: 'Forge', button: 'Forge', icon: 'craft', where: 'the Mining Guild forge', made: 'forged', stations: ['forge', 'crafting-table'], families: ['iron', 'tools', 'rings'] },
+  '210': { label: 'Crafting Table', button: 'Open Crafting', icon: 'craft', where: "Red Town's Grand Square", made: 'made', stations: ['fire', 'crafting-table'], families: ['cook', 'potions', 'wood', 'leather', 'tools', 'rings'] },
   // The Ranger's Guild lobby fire: the original's "cook all meat" button.
   '515a': { label: "Ranger's Fire", button: 'Cook', icon: 'fire', where: "the Ranger's Guild lobby", made: 'cooked', stations: ['fire'], families: ['cook'] },
 }
@@ -120,6 +120,9 @@ const CRAFTING_FAMILIES = [
   { id: 'leather', label: 'Leather' },
   { id: 'iron', label: 'Iron' },
   { id: 'tools', label: 'Tools' },
+  // The original's "auto combine": two regen rings of a tier hammered into
+  // one of the next, at any crafting table, once Jack has shown you the ropes.
+  { id: 'rings', label: 'Rings' },
 ]
 
 /**
@@ -136,6 +139,12 @@ const JACK_UNLOCK = {
 
 /** Shared by every leather recipe — one tool, one unlock, declared once. */
 const LEATHER_TOOL = { slug: 'hammer', name: 'Hammer' }
+
+/**
+ * Ring combining wants a hammer, any hammer: the original checked the plain
+ * one, and a smith's better hammer should not fail to do a jeweller's job.
+ */
+const RING_HAMMER = { slug: 'hammer', name: 'Hammer', anyOf: ['iron-hammer', 'steel-hammer', 'mithril-hammer'] }
 const LEATHER_UNLOCK = {
   questId: 'quest_freddie_intro',
   hint: "To craft with leather, find Freddie's Cow Farm on the Forest Path.",
@@ -691,6 +700,226 @@ const CRAFTING_RECIPES = [
     unlock: IRON_UNLOCK,
     inputs: [IRON(3), WOOD(1)],
     output: { slug: 'iron-hammer', qty: 1, name: 'Iron Hammer' },
+  },
+
+  // ==================== RINGS ====================
+  // Two regen rings of a tier make one of the next, I through X. Both ladders,
+  // health and mana, the way function-craft.php's "rings of regen" block ran.
+  {
+    id: 'combine-ring-of-health-regen-ii',
+    label: 'Ring of Health Regen II',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Health Regen I bands into one that restores 2 HP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-health-regen', qty: 2, name: 'Ring of Health Regen I' }],
+    output: { slug: 'ring-of-health-regen-ii', qty: 1, name: 'Ring of Health Regen II' },
+  },
+  {
+    id: 'combine-ring-of-health-regen-iii',
+    label: 'Ring of Health Regen III',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Health Regen II bands into one that restores 3 HP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-health-regen-ii', qty: 2, name: 'Ring of Health Regen II' }],
+    output: { slug: 'ring-of-health-regen-iii', qty: 1, name: 'Ring of Health Regen III' },
+  },
+  {
+    id: 'combine-ring-of-health-regen-iv',
+    label: 'Ring of Health Regen IV',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Health Regen III bands into one that restores 4 HP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-health-regen-iii', qty: 2, name: 'Ring of Health Regen III' }],
+    output: { slug: 'ring-of-health-regen-iv', qty: 1, name: 'Ring of Health Regen IV' },
+  },
+  {
+    id: 'combine-ring-of-health-regen-v',
+    label: 'Ring of Health Regen V',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Health Regen IV bands into one that restores 5 HP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-health-regen-iv', qty: 2, name: 'Ring of Health Regen IV' }],
+    output: { slug: 'ring-of-health-regen-v', qty: 1, name: 'Ring of Health Regen V' },
+  },
+  {
+    id: 'combine-ring-of-health-regen-vi',
+    label: 'Ring of Health Regen VI',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Health Regen V bands into one that restores 6 HP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-health-regen-v', qty: 2, name: 'Ring of Health Regen V' }],
+    output: { slug: 'ring-of-health-regen-vi', qty: 1, name: 'Ring of Health Regen VI' },
+  },
+  {
+    id: 'combine-ring-of-health-regen-vii',
+    label: 'Ring of Health Regen VII',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Health Regen VI bands into one that restores 7 HP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-health-regen-vi', qty: 2, name: 'Ring of Health Regen VI' }],
+    output: { slug: 'ring-of-health-regen-vii', qty: 1, name: 'Ring of Health Regen VII' },
+  },
+  {
+    id: 'combine-ring-of-health-regen-viii',
+    label: 'Ring of Health Regen VIII',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Health Regen VII bands into one that restores 8 HP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-health-regen-vii', qty: 2, name: 'Ring of Health Regen VII' }],
+    output: { slug: 'ring-of-health-regen-viii', qty: 1, name: 'Ring of Health Regen VIII' },
+  },
+  {
+    id: 'combine-ring-of-health-regen-ix',
+    label: 'Ring of Health Regen IX',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Health Regen VIII bands into one that restores 9 HP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-health-regen-viii', qty: 2, name: 'Ring of Health Regen VIII' }],
+    output: { slug: 'ring-of-health-regen-ix', qty: 1, name: 'Ring of Health Regen IX' },
+  },
+  {
+    id: 'combine-ring-of-health-regen-x',
+    label: 'Ring of Health Regen X',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Health Regen IX bands into one that restores 10 HP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-health-regen-ix', qty: 2, name: 'Ring of Health Regen IX' }],
+    output: { slug: 'ring-of-health-regen-x', qty: 1, name: 'Ring of Health Regen X' },
+  },
+  {
+    id: 'combine-ring-of-mana-regen-ii',
+    label: 'Ring of Mana Regen II',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Mana Regen I bands into one that restores 2 MP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-mana-regen', qty: 2, name: 'Ring of Mana Regen I' }],
+    output: { slug: 'ring-of-mana-regen-ii', qty: 1, name: 'Ring of Mana Regen II' },
+  },
+  {
+    id: 'combine-ring-of-mana-regen-iii',
+    label: 'Ring of Mana Regen III',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Mana Regen II bands into one that restores 3 MP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-mana-regen-ii', qty: 2, name: 'Ring of Mana Regen II' }],
+    output: { slug: 'ring-of-mana-regen-iii', qty: 1, name: 'Ring of Mana Regen III' },
+  },
+  {
+    id: 'combine-ring-of-mana-regen-iv',
+    label: 'Ring of Mana Regen IV',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Mana Regen III bands into one that restores 4 MP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-mana-regen-iii', qty: 2, name: 'Ring of Mana Regen III' }],
+    output: { slug: 'ring-of-mana-regen-iv', qty: 1, name: 'Ring of Mana Regen IV' },
+  },
+  {
+    id: 'combine-ring-of-mana-regen-v',
+    label: 'Ring of Mana Regen V',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Mana Regen IV bands into one that restores 5 MP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-mana-regen-iv', qty: 2, name: 'Ring of Mana Regen IV' }],
+    output: { slug: 'ring-of-mana-regen-v', qty: 1, name: 'Ring of Mana Regen V' },
+  },
+  {
+    id: 'combine-ring-of-mana-regen-vi',
+    label: 'Ring of Mana Regen VI',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Mana Regen V bands into one that restores 6 MP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-mana-regen-v', qty: 2, name: 'Ring of Mana Regen V' }],
+    output: { slug: 'ring-of-mana-regen-vi', qty: 1, name: 'Ring of Mana Regen VI' },
+  },
+  {
+    id: 'combine-ring-of-mana-regen-vii',
+    label: 'Ring of Mana Regen VII',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Mana Regen VI bands into one that restores 7 MP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-mana-regen-vi', qty: 2, name: 'Ring of Mana Regen VI' }],
+    output: { slug: 'ring-of-mana-regen-vii', qty: 1, name: 'Ring of Mana Regen VII' },
+  },
+  {
+    id: 'combine-ring-of-mana-regen-viii',
+    label: 'Ring of Mana Regen VIII',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Mana Regen VII bands into one that restores 8 MP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-mana-regen-vii', qty: 2, name: 'Ring of Mana Regen VII' }],
+    output: { slug: 'ring-of-mana-regen-viii', qty: 1, name: 'Ring of Mana Regen VIII' },
+  },
+  {
+    id: 'combine-ring-of-mana-regen-ix',
+    label: 'Ring of Mana Regen IX',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Mana Regen VIII bands into one that restores 9 MP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-mana-regen-viii', qty: 2, name: 'Ring of Mana Regen VIII' }],
+    output: { slug: 'ring-of-mana-regen-ix', qty: 1, name: 'Ring of Mana Regen IX' },
+  },
+  {
+    id: 'combine-ring-of-mana-regen-x',
+    label: 'Ring of Mana Regen X',
+    family: 'rings',
+    batch: 'one',
+    station: 'crafting-table',
+    blurb: 'Hammer two Ring of Mana Regen IX bands into one that restores 10 MP a click.',
+    tool: RING_HAMMER,
+    unlock: JACK_UNLOCK,
+    inputs: [{ slug: 'ring-of-mana-regen-ix', qty: 2, name: 'Ring of Mana Regen IX' }],
+    output: { slug: 'ring-of-mana-regen-x', qty: 1, name: 'Ring of Mana Regen X' },
   },
 ]
 

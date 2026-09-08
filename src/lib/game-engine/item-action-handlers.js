@@ -69,6 +69,14 @@ function readConsumableBuffs(consumable) {
     .map((entry) => ({ field: entry.field, clicks: Math.max(0, Number(entry.clicks) || 0) }))
 }
 
+/**
+ * What a consumable cures, if anything. Only poison exists to cure today
+ * (`cure: 'poison'` on the antidote potion); anything else is ignored.
+ */
+function readConsumableCure(consumable) {
+  return consumable.cure === 'poison' ? 'poison' : null
+}
+
 async function handleConsume(playerId, roomState, playerItemId, item, consumable) {
   const verb = consumable.verb || 'use'
 
@@ -83,6 +91,7 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
 
   const statEffects = readConsumableStats(consumable)
   const buffEffects = readConsumableBuffs(consumable)
+  const cure = readConsumableCure(consumable)
   const displayName = (item.template.name || consumable.displayName || 'item').toLowerCase()
 
   roomState.touchActivity()
@@ -114,6 +123,7 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
   try {
     const changes = {} // stat -> { prev, next }
     const buffResults = [] // { field, clicks }
+    let cured = false
 
     await prisma.$transaction(async (tx) => {
       // Remove 1 of the item from inventory.
@@ -148,6 +158,19 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
         const remaining = await applyBuff(tx, playerId, field, clicks)
         buffResults.push({ field, clicks: remaining })
       }
+
+      // A cure zeroes the poison outright; the immunity that rides with it is
+      // an ordinary buff above. Reported only if there was poison to cure.
+      if (cure === 'poison') {
+        const rows = await tx.$queryRawUnsafe(
+          `WITH prev AS (SELECT "poisonClicks" AS v FROM "User" WHERE id = $1)
+           UPDATE "User" SET "poisonClicks" = 0 WHERE id = $1
+           RETURNING (SELECT v FROM prev) AS "prevVal"`,
+          playerId
+        )
+        cured = Number(rows[0]?.prevVal ?? 0) > 0
+        buffResults.push({ field: 'poisonClicks', clicks: 0 })
+      }
     })
 
     // Mirror the new values into in-memory room state.
@@ -168,8 +191,10 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
       else if (delta < 0) parts.push(`lose ${-delta} ${STAT_LABELS[stat]}`)
     }
     for (const { field, clicks } of buffResults) {
+      if (field === 'poisonClicks') continue
       parts.push(`${BUFF_LABELS[field] || field} for ${clicks} clicks`)
     }
+    if (cure === 'poison') parts.push(cured ? 'are cured of your poison' : "weren't poisoned, but it can't hurt")
 
     const message = parts.length
       ? `You ${verb} the ${displayName}. You ${parts.join(', ')}.`

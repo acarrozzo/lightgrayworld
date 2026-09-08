@@ -20,6 +20,8 @@ export type ItemRow = {
   dex: number
   mag: number
   def: number
+  /** "+3 HP / click" for regen gear, else null. */
+  regen: string | null
   max: number
   canSell: boolean
   canDrop: boolean
@@ -321,6 +323,7 @@ function ItemTr({ r }: { r: ItemRow }) {
           <ItemIcon icon={r.icon} />
           <span className="font-medium text-fg-bright">{r.name}</span>
           {r.weaponType && <Tag>{r.weaponType}</Tag>}
+          {r.regen && <span className="text-xs text-resource-hp whitespace-nowrap">{r.regen}</span>}
         </div>
       </td>
       <td className="px-3 py-2 text-right">{statCell(r.str, 'str')}</td>

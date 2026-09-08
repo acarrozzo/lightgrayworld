@@ -114,6 +114,7 @@ function consumableMeta(item: InventoryItem): string | null {
   } else if (summary.hp > 0 || summary.mp > 0) {
     what.push(`restores ${[summary.hp > 0 && 'HP', summary.mp > 0 && 'MP'].filter(Boolean).join(' and ')}`)
   }
+  if (summary.effect.includes('cures poison')) what.push('cures poison')
   for (const buff of summary.buffs) {
     what.push(buff.clicks > 0 ? `${buff.short} for ${buff.clicks} clicks` : buff.short)
   }

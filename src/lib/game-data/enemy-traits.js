@@ -12,13 +12,14 @@
 //
 // `tone` is a semantic colour role, not a colour: the UI maps it to theme
 // classes. 'crit' for perks (matching the crit tone the damage number already
-// uses when one fires), 'sky' for Flying, and the stat the tag concerns for
-// attack type and immunities (DEX for ranged, MAG for magic, STR for melee).
+// uses when one fires), 'poison' for the poison perks, 'sky' for Flying, and
+// the stat the tag concerns for attack type and immunities (DEX for ranged,
+// MAG for magic, STR for melee).
 
 const { ENEMY_SPECIALS, SPECIAL_PRIORITY, getEnemySpecialIds } = require('./enemy-specials')
 
 /**
- * @typedef {'crit' | 'sky' | 'str' | 'dex' | 'mag'} EnemyTraitTone
+ * @typedef {'crit' | 'poison' | 'sky' | 'str' | 'dex' | 'mag'} EnemyTraitTone
  * @typedef {{ id: string, label: string, title: string, tone: EnemyTraitTone }} EnemyTrait
  */
 
@@ -37,7 +38,12 @@ function getEnemyTraits(enemy) {
   for (const id of SPECIAL_PRIORITY) {
     if (!owned.includes(id)) continue
     const special = ENEMY_SPECIALS[id]
-    traits.push({ id, label: special.label ?? special.name, title: special.rule ?? special.name, tone: 'crit' })
+    traits.push({
+      id,
+      label: special.label ?? special.name,
+      title: special.rule ?? special.name,
+      tone: special.applies === 'poison' ? 'poison' : 'crit',
+    })
   }
 
   if (enemy.isFlying) {

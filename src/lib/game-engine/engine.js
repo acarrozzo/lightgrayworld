@@ -14,6 +14,19 @@ const { debugLog, quietActionLogger } = require('../debug-log')
  */
 const METRICS_INTERVAL_MS = 60_000
 
+/**
+ * Whether an action's result was a spell cast — a standalone cast (heal, a
+ * buff) or a strike thrown as a spell inside a fight. The original skipped
+ * MP regen on that click (`noMPregen`) so a cast could not part-refund itself.
+ * @param {Object|null} result
+ * @returns {boolean}
+ */
+function resultCastSpell(result) {
+  if (!result || result.success === false) return false
+  if (result.action === 'cast_spell') return true
+  return Array.isArray(result.playerEvents) && result.playerEvents.some((e) => Boolean(e?.payload?.spell))
+}
+
 class GameEngine {
   constructor(io, tickMs = WORLD_TICK_MS) {
     this.io = io
@@ -225,7 +238,7 @@ class GameEngine {
           // its regen broadcast and roster patch went to the room just left,
           // where nobody could see them any more.
           const tickRoomId = result?.transfer?.toRoomId || roomId
-          this.applyClickTick(playerId, tickRoomId).catch((err) => {
+          this.applyClickTick(playerId, tickRoomId, { result }).catch((err) => {
             console.error('[GameEngine] Failed to apply click tick for player', playerId, err)
           })
         }
@@ -245,18 +258,34 @@ class GameEngine {
    *
    * The original game measured temporary effects in clicks rather than seconds
    * ("fly for 100 clicks", "+5 hp / click"), so the click counter is also the
-   * clock for buff countdowns and gear regen. Chat is excluded upstream, the
+   * clock for buff countdowns, regen and poison. Chat is excluded upstream, the
    * same exclusion the click counter has always used.
+   *
+   * Order is the original's status-effects pass: countdowns drop, regen from
+   * gear, tea and Regenerate lands, then poison takes what is left. MP regen
+   * skips the click a spell was cast on (`noMPregen`). In a fight poison can
+   * finish the player, and that death goes through the same defeat flow an
+   * enemy's hit does; out of one it stops at 1 HP.
    *
    * Runs off the action's critical path (fire-and-forget from
    * processUserAction) — a slow regen write must never delay the action
    * result the player is waiting on.
+   *
+   * @param {string} playerId
+   * @param {string} roomId
+   * @param {{ result?: Object }} [context]  The action's result, for the spell-cast check.
    */
-  async applyClickTick(playerId, roomId) {
-    const { tickBuffs, BUFF_LABELS } = require('./services/buff-service')
-    const { getEquippedRegen, applyRegenTick } = require('./services/regen-service')
+  async applyClickTick(playerId, roomId, { result = null } = {}) {
+    const { tickBuffs, expiryMessage } = require('./services/buff-service')
+    const { getEquippedRegen, applyStatusTick } = require('./services/regen-service')
+    const { regenSummary, rollRegen } = require('../game-data/regen')
+    const { rand } = require('./battle-calculator')
 
-    const [{ clicks }, { buffs, expired }, regen] = await Promise.all([
+    const room = this.rooms.get(roomId)
+    const battle = room?.activeBattles?.get(playerId)
+    const inBattle = Boolean(battle?.isActive)
+
+    const [{ clicks }, { buffs, expired, before }, gear, spellRow] = await Promise.all([
       prisma.user.update({
         where: { id: playerId },
         data: { clicks: { increment: 1 } },
@@ -264,27 +293,61 @@ class GameEngine {
       }),
       tickBuffs(prisma, playerId),
       getEquippedRegen(playerId),
+      prisma.user.findUnique({ where: { id: playerId }, select: { regenerate: true } }),
     ])
 
-    const vitals = await applyRegenTick(playerId, regen)
+    // Tea and Regenerate still count on the click that takes them to zero (the
+    // original checked before it decremented); poison deals what is left after
+    // the drop, so a poison of 3 burns for 2, then 1, then is gone.
+    const summary = regenSummary({ gear, buffs: before, spells: spellRow })
+    const regen = rollRegen(summary, rand)
+    const poisonDamage = buffs.poisonClicks > 0 ? buffs.poisonClicks : 0
+
+    const vitals = await applyStatusTick(playerId, {
+      regen,
+      poisonDamage,
+      allowMpRegen: !resultCastSpell(result),
+      canDie: inBattle,
+    })
+    // What actually landed: regen first (clamped to the max, never lowering an
+    // overcharge), then poison off that. Both are reported as taken, not rolled.
+    const afterRegen = vitals ? Math.max(vitals.prevHp, Math.min(vitals.hpMax, vitals.prevHp + vitals.regenHp)) : 0
+    const regenTaken = vitals ? { hp: afterRegen - vitals.prevHp, mp: vitals.mp - vitals.prevMp } : { hp: 0, mp: 0 }
+    const poisonTaken = vitals ? Math.max(0, afterRegen - vitals.hp) : 0
+    const moved = Boolean(vitals && (vitals.hp !== vitals.prevHp || vitals.mp !== vitals.prevMp))
 
     // One event carries the whole tick to the acting player: the click count,
-    // the buff countdowns, and the regenerated vitals when gear moved them.
+    // the buff countdowns, the vitals when something moved them, and what did.
     this.emitToPlayer(playerId, 'player:clicks-update', {
       clicks,
       buffs,
-      ...(vitals || {}),
+      ...(moved ? { hp: vitals.hp, mp: vitals.mp } : {}),
+      ...(regenTaken.hp > 0 || regenTaken.mp > 0 ? { regen: regenTaken } : {}),
+      ...(poisonTaken > 0 ? { poison: { damage: poisonTaken, remaining: buffs.poisonClicks } } : {}),
     })
 
-    if (vitals) {
+    if (moved) {
       // Keep the room panel and the global roster's HP/MP bars live for everyone
       // else too — same path a battle turn's vitals take.
-      const room = this.rooms.get(roomId)
       room?.updatePlayer?.(playerId, (state) => ({ ...state, hp: vitals.hp, mp: vitals.mp }))
       if (this.io) {
-        this.io.to(`room-${roomId}`).emit('player-vitals', { id: playerId, roomId, ...vitals })
+        this.io.to(`room-${roomId}`).emit('player-vitals', { id: playerId, roomId, hp: vitals.hp, mp: vitals.mp })
         updatePresence(this.io, playerId, { hp: vitals.hp, mp: vitals.mp })
       }
+    }
+
+    if (poisonTaken > 0) {
+      this.emitToPlayer(playerId, 'action:feedback', {
+        action: 'poison',
+        message: inBattle && vitals.hp <= 0
+          ? `The poison burns you for ${poisonTaken} HP and finishes you off...`
+          : `The poison burns you for ${poisonTaken} HP.`,
+        outcome: 'danger',
+        ts: Date.now(),
+        timestamp: new Date().toISOString(),
+        success: true,
+        data: { hp: vitals.hp, hpMax: vitals.hpMax, poisonRemaining: buffs.poisonClicks },
+      })
     }
 
     // Tell the player the moment an effect runs out — a wings potion lapsing
@@ -292,12 +355,46 @@ class GameEngine {
     for (const field of expired) {
       this.emitToPlayer(playerId, 'action:feedback', {
         action: 'buff expired',
-        message: `Your ${BUFF_LABELS[field] || field} effect has worn off.`,
+        message: expiryMessage(field),
         outcome: 'info',
         ts: Date.now(),
         timestamp: new Date().toISOString(),
         success: true,
         data: { buffs },
+      })
+    }
+
+    // Poison that finished the player mid-fight is a defeat like any other:
+    // the same card, the same respawn, the same buff wipe. `hp > 0` in the
+    // tick's WHERE means only the statement that took HP to 0 gets here.
+    if (inBattle && vitals && vitals.hp <= 0 && vitals.prevHp > 0 && battle?.isActive) {
+      const { resolveBattleDefeat } = require('./battle-action-handlers')
+      const defeat = await resolveBattleDefeat(playerId, room, battle, battle.enemyName, battle.enemySlug)
+      const username = room?.players?.get(playerId)?.username || 'A player'
+      const ts = Date.now()
+      this.handleActionResult({
+        roomId,
+        playerId,
+        result: {
+          success: true,
+          action: 'poison',
+          playerEvents: [defeat],
+          broadcastEvents: [
+            {
+              event: 'action:feedback',
+              targetRoomId: roomId,
+              payload: {
+                action: 'poison',
+                message: `${username} succumbed to the ${battle.enemyName}'s poison...`,
+                outcome: 'info',
+                ts,
+                timestamp: new Date(ts).toISOString(),
+                success: false,
+                data: {},
+              },
+            },
+          ],
+        },
       })
     }
   }

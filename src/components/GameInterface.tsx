@@ -23,6 +23,7 @@ import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { describeStat, effectiveStats } from '@/lib/effective-stats'
+import { statusChips } from '@/lib/status-effects'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
@@ -143,6 +144,8 @@ export default function GameInterface() {
   const weaponName = equippedWeapon?.template.name ?? null
   // The four stats as combat rolls them: core + gear + buffs + skill passives.
   const stats = useMemo(() => effectiveStats(player, inventory), [player, inventory])
+  // Everything running on the player, for the strip under the header bars.
+  const status = useMemo(() => statusChips(player, inventory), [player, inventory])
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [levelUpData, setLevelUpData] = useState<LevelUpPayload | null>(null)
@@ -2555,15 +2558,17 @@ export default function GameInterface() {
     })
 
     // One per counted action. Carries the click count plus everything else that
-    // advances on a click: buff countdowns, and regenerated vitals when equipped
-    // gear moved them (see GameEngine.applyClickTick).
+    // advances on a click: buff countdowns, and the vitals when regen or poison
+    // moved them (see GameEngine.applyClickTick).
     const cleanupClicksUpdate = socketHandlers.on<{
       clicks: number
       buffs?: Record<string, number>
       hp?: number
       mp?: number
+      regen?: { hp: number; mp: number }
+      poison?: { damage: number; remaining: number }
     }>('player:clicks-update', (payload) => {
-      const { player: currentPlayer, setPlayer: sp } = useGameStore.getState()
+      const { player: currentPlayer, setPlayer: sp, syncBattleVitals } = useGameStore.getState()
       if (!currentPlayer) return
       const next = { ...currentPlayer, clicks: payload.clicks }
       // Merge: a tick reports the countdowns; standing bonuses ride along untouched.
@@ -2571,6 +2576,9 @@ export default function GameInterface() {
       if (typeof payload.hp === 'number') next.hp = payload.hp
       if (typeof payload.mp === 'number') next.mp = payload.mp
       sp(next)
+      // Mid-fight, the battle card keeps its own HP; a poison tick between
+      // turns has to reach it too, or the card lags the header by a click.
+      if (typeof payload.hp === 'number') syncBattleVitals({ hp: payload.hp })
     })
 
     return () => {
@@ -3505,6 +3513,7 @@ export default function GameInterface() {
         mp={player?.mp}
         mpMax={player?.mpMax}
         itemPreview={itemPreview}
+        status={status}
         xp={player?.xp}
         xpGain={xpGain}
         xpGainKey={xpGainKey}
