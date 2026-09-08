@@ -68,7 +68,7 @@ export const everforestDark = makeTheme({
       // the theme's soft red and yellow produced something too close to hp.
       action: { attack: '#e69875', craft: '#e69875', search: '#83c092', rest: '#7fbbb3', travel: '#a7c080' },
       resource: { hp: '#e67e80', mp: '#7fbbb3', xp: '#a7c080', gold: '#dbbc7f' },
-      stat: { str: '#e69875', dex: '#a7c080', mag: '#d699b6', def: '#7fbbb3' },
+      stat: { str: '#e99292', dex: '#a7c080', mag: '#8cb0e2', def: '#c0ab80' },
       status: { success: '#a7c080', error: '#e67e80', warning: '#dbbc7f', info: '#7fbbb3' },
       loot: { common: '#9da9a0', uncommon: '#a7c080', rare: '#7fbbb3', epic: '#d699b6', legendary: '#dbbc7f' },
       enemy: { hostile: '#e67e80', neutral: '#dbbc7f', boss: '#d699b6' },

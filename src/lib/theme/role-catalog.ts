@@ -119,12 +119,12 @@ export const ROLE_CATALOG: RoleGroup[] = [
     id: 'stats',
     title: 'Core stats',
     blurb:
-      'The four stats keep fixed identities so a number means the same thing everywhere it appears — the header, the character panel, the battle frame and the allocation modals.',
+      'The four stats keep fixed identities so a number means the same thing everywhere it appears — the header, the character panel, the battle frame and the allocation modals. Their hues are fixed across every theme: STR red, DEX green, MAG blue, DEF gold. A theme picks the shade — how light, how saturated, which of its own reds — but not the hue, and the factory rotates any stat that drifts back into its band.',
     roles: [
-      role('stat.str', '--stat-str', 'Strength. Drives melee attack.', 'STR readouts and allocation controls.'),
-      role('stat.dex', '--stat-dex', 'Dexterity. Drives ranged attack and ranged defence.', 'DEX readouts and allocation controls.'),
-      role('stat.mag', '--stat-mag', 'Magic. Drives spells and magic defence.', 'MAG readouts and allocation controls.'),
-      role('stat.def', '--stat-def', 'Defence. Reduces incoming melee.', 'DEF readouts and allocation controls.'),
+      role('stat.str', '--stat-str', 'Strength. Drives melee attack. Always red.', 'STR readouts and allocation controls.'),
+      role('stat.dex', '--stat-dex', 'Dexterity. Drives ranged attack and ranged defence. Always green.', 'DEX readouts and allocation controls.'),
+      role('stat.mag', '--stat-mag', 'Magic. Drives spells and magic defence. Always blue.', 'MAG readouts and allocation controls.'),
+      role('stat.def', '--stat-def', 'Defence. Reduces incoming melee. Always gold.', 'DEF readouts and allocation controls.'),
     ],
   },
   {

@@ -68,7 +68,7 @@ export const catppuccinMocha = makeTheme({
     game: {
       action: { attack: '#fab387', search: '#94e2d5', rest: '#89b4fa', talk: '#f9e2af', craft: '#eba0ac', gather: '#a6e3a1', use: '#cba6f7' },
       resource: { hp: '#f38ba8', mp: '#89b4fa', xp: '#a6e3a1', gold: '#f9e2af' },
-      stat: { str: '#fab387', dex: '#a6e3a1', mag: '#cba6f7', def: '#89b4fa' },
+      stat: { str: '#ffabaa', dex: '#a6e3a1', mag: '#86bcff', def: '#d4ad5a' },
       status: { success: '#a6e3a1', error: '#f38ba8', warning: '#fab387', info: '#89dceb' },
       loot: { common: '#9399b2', uncommon: '#a6e3a1', rare: '#89b4fa', epic: '#cba6f7', legendary: '#f9e2af' },
       enemy: { hostile: '#eba0ac', neutral: '#f9e2af', boss: '#cba6f7' },

@@ -73,7 +73,7 @@ export const solarizedDark = makeTheme({
     game: {
       action: { attack: '#cb4b16', search: '#2aa198', rest: '#268bd2', look: '#839496', talk: '#b58900', travel: '#859900', craft: '#cb4b16', gather: '#9aa300', use: '#6c71c4' },
       resource: { hp: '#dc322f', mp: '#268bd2', xp: '#859900', gold: '#b58900' },
-      stat: { str: '#cb4b16', dex: '#859900', mag: '#6c71c4', def: '#268bd2' },
+      stat: { str: '#cb4b16', dex: '#859900', mag: '#457cc4', def: '#ab7c00' },
       status: { success: '#859900', error: '#dc322f', warning: '#b58900', info: '#2aa198' },
       loot: { common: '#839496', uncommon: '#859900', rare: '#268bd2', epic: '#6c71c4', legendary: '#b58900' },
       enemy: { hostile: '#dc322f', neutral: '#b58900', boss: '#d33682' },

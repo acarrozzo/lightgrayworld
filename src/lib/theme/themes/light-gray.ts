@@ -112,7 +112,7 @@ export const lightGray = makeTheme({
       },
       // `hud.php`: HP redBG, MP blueBG, XP greenBG.
       resource: { hp: '#d66976', mp: '#569acf', xp: '#6ebc75', gold: '#efb045' },
-      stat: { str: '#d66976', dex: '#6ebc75', mag: '#9287d0', def: '#569acf' },
+      stat: { str: '#d66976', dex: '#6ebc75', mag: '#6695d4', def: '#b18e40' },
       status: { success: '#6ebc75', error: '#ea4659', warning: '#efb045', info: '#569acf' },
       // `.rare` was gold on slate; enchanted items were pink.
       loot: {

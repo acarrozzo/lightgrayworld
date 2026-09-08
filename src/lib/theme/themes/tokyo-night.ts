@@ -64,7 +64,7 @@ export const tokyoNight = makeTheme({
     game: {
       action: { attack: '#ff9e64', craft: '#ff9e64', search: '#7dcfff' },
       resource: { hp: '#f7768e', mp: '#7aa2f7', xp: '#9ece6a', gold: '#e0af68' },
-      stat: { str: '#ff9e64', dex: '#9ece6a', mag: '#bb9af7', def: '#7aa2f7' },
+      stat: { str: '#ff9495', dex: '#9ece6a', mag: '#73b1ff', def: '#ca9d2f' },
       status: { warning: '#e0af68', info: '#7dcfff' },
       combat: { defeat: '#8c3a52', damage: '#ff9e64', heal: '#73daca', crit: '#e0af68' },
       terrain: { dirt: '#a1743f', wood: '#9a6247', sand: '#dcc79a', stone: '#787c99', ash: '#565f89', bone: '#d6cfae' },

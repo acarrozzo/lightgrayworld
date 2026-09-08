@@ -33,8 +33,12 @@ export interface RegenSummary {
   any: boolean
 }
 
-/** A semantic role for the chip's colour; the strip maps it to theme classes. */
-export type StatusTone = 'hp' | 'mp' | 'stat' | 'ability' | 'poison' | 'ward' | 'aura'
+/**
+ * A semantic role for the chip's colour; the strip maps it to theme classes.
+ * `vitals` is for anything that moves HP *and* MP together — tea, a regen that
+ * covers both — which gets its own colour rather than borrowing one vital's.
+ */
+export type StatusTone = 'hp' | 'mp' | 'vitals' | 'stat' | 'ability' | 'poison' | 'ward' | 'aura'
 
 export interface StatusChip {
   id: string
@@ -115,12 +119,12 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
       id: 'regen',
       label: 'Regen',
       detail: text.replace(' / click', ''),
-      tone: summary.hpMax > 0 ? 'hp' : 'mp',
+      tone: summary.hpMax > 0 && summary.mp > 0 ? 'vitals' : summary.hpMax > 0 ? 'hp' : 'mp',
       title: `Every click restores ${text.replace(' / click', '')}, up to your max (${parts.join(', ')}). MP regen skips the click you cast a spell on.`,
     })
   }
   const tea = clicksOf('buffTeaClicks')
-  if (tea > 0) chips.push({ id: 'tea', label: 'Tea', clicks: tea, tone: 'hp', title: `Tea: +5 HP and +5 MP regen a click for ${tea} more clicks.` })
+  if (tea > 0) chips.push({ id: 'tea', label: 'Tea', clicks: tea, tone: 'vitals', title: `Tea: +5 HP and +5 MP regen a click for ${tea} more clicks.` })
   const regenerate = clicksOf('regenerateClicks')
   if (regenerate > 0) chips.push({ id: 'regenerate', label: 'Regenerate', detail: `+${summary.regenerateAmount} HP`, clicks: regenerate, tone: 'hp', title: `Regenerate: +${summary.regenerateAmount} HP every click for ${regenerate} more clicks.` })
 

@@ -59,7 +59,9 @@ const BUFF_TONE: Record<string, keyof typeof TONES> = {
   buffDefClicks: 'def',
   buffCoffeeClicks: 'all',
   buffGloryClicks: 'all',
-  buffTeaClicks: 'hp',
+  // Tea restores HP *and* MP a click, so it belongs to the dual family with
+  // the potions that fill both — purple, not one vital's colour.
+  buffTeaClicks: 'both',
   regenerateClicks: 'hp',
   ironSkinClicks: 'def',
   poisonImmuneClicks: 'ward',

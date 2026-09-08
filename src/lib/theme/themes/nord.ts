@@ -68,7 +68,7 @@ export const nord = makeTheme({
       // aurora red (hp/error) and Red Town's brick.
       action: { attack: '#d08770', craft: '#d08770', rest: '#81a1c1', search: '#88c0d0' },
       resource: { hp: '#bf616a', mp: '#81a1c1', xp: '#a3be8c', gold: '#ebcb8b' },
-      stat: { str: '#d08770', dex: '#a3be8c', mag: '#b48ead', def: '#81a1c1' },
+      stat: { str: '#d08770', dex: '#a3be8c', mag: '#839ec3', def: '#ae9b73' },
       status: { success: '#a3be8c', error: '#bf616a', warning: '#ebcb8b', info: '#88c0d0' },
       loot: { common: '#94a1b5', uncommon: '#a3be8c', rare: '#81a1c1', epic: '#b48ead', legendary: '#ebcb8b' },
       combat: { victory: '#a3be8c', defeat: '#8a4a52', damage: '#d08770', heal: '#8fbcbb', crit: '#ebcb8b' },

@@ -28,7 +28,7 @@ import type {
   TerminalPalette,
   Theme,
 } from './types'
-import { adjustChroma, adjustLightness, alpha, contrast, deltaE, ensureContrast, luminance, mix, toOklab } from './color'
+import { adjustChroma, adjustLightness, alpha, contrast, deltaE, ensureContrast, hueAngle, luminance, mix, setHue, toOklab } from './color'
 
 type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K]
@@ -149,11 +149,13 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
       xp: t.brightGreen,
       gold: t.brightYellow,
     },
+    // Red, green, blue, gold — see STAT_HUES. Starting from the palette's own
+    // four means most themes land in band without needing a correction.
     stat: {
       str: t.brightRed,
       dex: t.brightGreen,
-      mag: t.brightMagenta,
-      def: t.brightBlue,
+      mag: t.brightBlue,
+      def: t.brightYellow,
     },
     status: {
       success: t.green,
@@ -282,6 +284,7 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
   // a check, so a theme that was already correct is returned untouched.
   const separateReds = recipe.separateReds ?? true
   enforceLegibility(merged.ui, merged.game)
+  enforceStatHues(merged.ui, merged.game)
   if (separateReds) separateRedFamily(merged.ui, merged.game, merged.regions, t)
   separateRegions(merged.ui, merged.regions)
 
@@ -295,6 +298,78 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     terminal: t,
     ...merged,
     swatch: recipe.swatch ?? merged.ui.accent,
+  }
+}
+
+/**
+ * The one fixed thing about the four core stats: their hue.
+ *
+ * STR is red, DEX is green, MAG is blue, DEF is gold, in every theme — so a
+ * number, a bar, a buff pill or an allocation button means the same stat on
+ * sight before anyone reads the label. A theme still chooses the *shade*: how
+ * light, how saturated, which of its own reds. Only the hue is fixed.
+ *
+ * Each band is the widest range still unmistakably that colour, with real gaps
+ * between them — orange (40–62°), lime (100–115°), teal (180–232°) and violet
+ * (278–340°) all fall outside every band on purpose, because those are exactly
+ * the shades that stop a stat reading as its own colour at a glance.
+ */
+export const STAT_HUES = {
+  str: { from: 340, to: 40, centre: 20, name: 'red' },
+  def: { from: 62, to: 100, centre: 85, name: 'gold' },
+  dex: { from: 115, to: 180, centre: 148, name: 'green' },
+  mag: { from: 232, to: 278, centre: 256, name: 'blue' },
+} as const
+
+export type StatHueKey = keyof typeof STAT_HUES
+
+/** Whether a hue angle falls inside a band, which may wrap past 360°. */
+export function inHueBand(hue: number, band: { from: number; to: number }): boolean {
+  return band.from <= band.to
+    ? hue >= band.from && hue <= band.to
+    : hue >= band.from || hue <= band.to
+}
+
+/**
+ * Hold every stat colour to its hue.
+ *
+ * A stat that has drifted — an imported palette whose blue is really teal, an
+ * author reaching for purple — is rotated to the centre of its band, keeping
+ * the lightness and chroma it was given. The correction is therefore still that
+ * theme's colour: Dracula's blue stays Dracula-bright, it just becomes blue.
+ * A stat already in band is returned untouched.
+ *
+ * Runs *after* the contrast lift, not before. `ensureContrast` brightens by
+ * mixing toward the theme's lightest text, which drags hue along with it —
+ * enough to carry Solarized's orange-red a degree past the edge of the band.
+ * Correcting last means nothing can push a stat back out afterwards. The lift's
+ * work survives because rotation holds OKLab lightness exactly, and legibility
+ * is almost entirely a matter of lightness; where a rotation does cost a little
+ * contrast, it is repaid along lightness, which leaves the hue alone.
+ */
+function enforceStatHues(ui: Theme['ui'], game: Theme['game']): void {
+  const panel = ui.surfacePanel
+  // Away from the panel: brighter on a dark theme, darker on a light one.
+  const step = luminance(panel) > 0.5 ? -0.02 : 0.02
+
+  for (const key of Object.keys(STAT_HUES) as StatHueKey[]) {
+    const band = STAT_HUES[key]
+    let value = game.stat[key]
+    if (!inHueBand(hueAngle(value), band)) {
+      value = setHue(value, band.centre)
+      // A pale, saturated colour can fall outside sRGB once it is rotated, and
+      // `fromOklab` clips per channel, which drags the hue back out of the band
+      // it was just moved into. Easing the chroma brings it inside the gamut,
+      // where the hue it was given survives. Dracula's near-white lime yellow
+      // is the case that needs it.
+      for (let scale = 0.85; scale > 0.2 && !inHueBand(hueAngle(value), band); scale *= 0.85) {
+        value = setHue(adjustChroma(game.stat[key], scale), band.centre)
+      }
+    }
+    for (let i = 0; i < 25 && contrast(value, panel) < MIN_ROLE_CONTRAST; i++) {
+      value = adjustLightness(value, step)
+    }
+    game.stat[key] = value
   }
 }
 

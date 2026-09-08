@@ -138,7 +138,12 @@ export interface ResourceRoles {
   gold: Color
 }
 
-/** The four core stats. */
+/**
+ * The four core stats. Their hues are fixed in every theme — STR red, DEX
+ * green, MAG blue, DEF gold — so a number reads as its stat before the label
+ * does. A theme chooses the shade, not the hue; see `STAT_HUES` in factory.ts,
+ * which holds any drift back into band.
+ */
 export interface StatRoles {
   str: Color
   dex: Color

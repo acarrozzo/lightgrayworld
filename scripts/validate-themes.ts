@@ -19,17 +19,23 @@
  *    error and every red-aligned region identity — must differ by a visible
  *    margin, and interaction states (hover, selected, focus, disabled) must be
  *    visibly different from their resting surface.
+ *
+ *  - **Stat hues.** STR is red, DEX is green, MAG is blue and DEF is gold in
+ *    every theme. The factory corrects a stat that drifts, so a failure here
+ *    means the correction itself could not land — worth knowing about rather
+ *    than shipping a theme where DEF is not gold.
  */
 
 import { THEMES } from '../src/lib/theme/themes'
 import { isFillableVar, isFillCompanion, resolveRegions, themeToCssVars } from '../src/lib/theme/tokens'
 import { REGIONS } from '../src/lib/theme/regions'
-import { contrast, deltaE, parseHex } from '../src/lib/theme/color'
+import { contrast, deltaE, hueAngle, parseHex } from '../src/lib/theme/color'
+import { STAT_HUES, inHueBand, type StatHueKey } from '../src/lib/theme/factory'
 import type { Theme } from '../src/lib/theme/types'
 
 interface Problem {
   theme: string
-  kind: 'malformed' | 'contrast' | 'distinctness'
+  kind: 'malformed' | 'contrast' | 'distinctness' | 'stat-hue'
   detail: string
 }
 
@@ -242,6 +248,28 @@ function checkDistinctness(theme: Theme) {
  * where the failure was: 525 of 536 role colours fail 4.5:1 against white, so
  * any hard-coded light label on a role fill was broken in almost every case.
  */
+/**
+ * The four core stats wear their fixed hues.
+ *
+ * Checked on the built theme rather than the recipe, so it covers hand-authored
+ * overrides, imported palettes and the factory's own corrections alike.
+ */
+function checkStatHues(theme: Theme) {
+  for (const key of Object.keys(STAT_HUES) as StatHueKey[]) {
+    const band = STAT_HUES[key]
+    const value = theme.game.stat[key]
+    const hue = hueAngle(value)
+    if (!inHueBand(hue, band)) {
+      add(
+        theme.id,
+        'stat-hue',
+        `stat.${key} (${value}) sits at ${hue.toFixed(0)}°, outside the ${band.name} band ` +
+          `${band.from}–${band.to}° — ${key.toUpperCase()} must read as ${band.name}`
+      )
+    }
+  }
+}
+
 function checkFillPairs(theme: Theme) {
   const vars = themeToCssVars(theme)
 
@@ -305,6 +333,7 @@ for (const theme of THEMES) {
   checkWellFormed(theme)
   checkContrast(theme)
   checkDistinctness(theme)
+  checkStatHues(theme)
   checkFillPairs(theme)
 }
 

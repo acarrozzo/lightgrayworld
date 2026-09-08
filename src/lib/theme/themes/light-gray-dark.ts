@@ -91,7 +91,7 @@ export const lightGrayDark = makeTheme({
         use: '#9b8fb5',
       },
       resource: { hp: '#cc4a63', mp: '#5f8fd4', xp: '#8fc46a', gold: '#e8bf72' },
-      stat: { str: '#d97a5a', dex: '#8fbf7a', mag: '#9b8fd4', def: '#7fa3c9' },
+      stat: { str: '#d97a5a', dex: '#8fbf7a', mag: '#709dd8', def: '#b39c6e' },
       status: { success: '#84b869', error: '#e2564e', warning: '#dba03f', info: '#7ba3c9' },
       loot: {
         common: '#a3a3a3',

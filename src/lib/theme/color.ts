@@ -185,6 +185,27 @@ export function fromOklab({ L, a, b }: Oklab): string {
   return toHex({ r: gamma(R), g: gamma(G), b: gamma(B) })
 }
 
+/** OKLab hue angle in degrees, 0–360. Meaningless for a grey, whose chroma is ~0. */
+export function hueAngle(hex: string): number {
+  const { a, b } = toOklab(hex)
+  const deg = (Math.atan2(b, a) * 180) / Math.PI
+  return deg < 0 ? deg + 360 : deg
+}
+
+/**
+ * Rotate a colour to a hue, keeping its perceptual lightness and chroma exactly.
+ *
+ * The hue axis. What makes "this theme's own shade of blue" expressible: a
+ * palette's purple, turned blue, keeps the lightness and saturation its author
+ * chose, so it still belongs to that theme rather than arriving from outside it.
+ */
+export function setHue(hex: string, degrees: number): string {
+  const { L, a, b } = toOklab(hex)
+  const c = Math.sqrt(a * a + b * b)
+  const rad = (degrees * Math.PI) / 180
+  return fromOklab({ L, a: Math.cos(rad) * c, b: Math.sin(rad) * c })
+}
+
 /**
  * Move a colour up or down in perceptual lightness, keeping its hue and chroma.
  *

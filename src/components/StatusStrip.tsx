@@ -2,10 +2,17 @@
 
 import type { StatusChip, StatusTone } from '@/lib/status-effects'
 
-/** Chip colours by role: what hurts, what wards, what heals, what boosts. */
+/**
+ * Chip colours by role: what hurts, what wards, what heals, what boosts.
+ *
+ * `vitals` is purple because it is neither HP nor MP alone: anything that moves
+ * both — tea, a regen covering both bars — wears the same colour as the potions
+ * that fill both, rather than picking a side.
+ */
 const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
   hp: 'text-resource-hp border-resource-hp/40 bg-resource-hp/10',
   mp: 'text-resource-mp border-resource-mp/40 bg-resource-mp/10',
+  vitals: 'text-hue-purple border-hue-purple/40 bg-hue-purple/10',
   stat: 'text-combat-heal border-combat-heal/40 bg-combat-heal/10',
   ability: 'text-hue-sky border-hue-sky/40 bg-hue-sky/10',
   poison: 'text-hue-green border-hue-green/50 bg-hue-green/10',
