@@ -308,9 +308,9 @@ const SPELLS = [
     icon: 'regenerate',
     hue: 'green',
     description: 'Regenerate health over time.',
-    // The original's cast message promised rand(lvl, lvl × 2) a click; its
-    // code only ever ticked a flat lvl. The promise is what is kept.
-    formula: 'rand(lvl, lvl × 2) HP per click for rand(mag core, mag) clicks',
+    // The amount is rolled once at cast and locked: that many HP land every
+    // click for the duration, as the original's cast line promised.
+    formula: 'rand(lvl, lvl × 2) HP per click, rolled once, for rand(mag core, mag) clicks',
     teachers: [
       { flag: 'wizardSkillFlag', max: 10 },
       { flag: 'starCitySpellsFlag', max: 15 },
@@ -318,11 +318,12 @@ const SPELLS = [
     learnCost: nextLevelCost,
     castCost: (level) => 20 * level,
     cast(level, ctx, rand) {
+      const amount = rand(level, level * 2)
       const clicks = buffDuration(ctx, rand)
-      return { clicks, text: `rand(${level}, ${level * 2}) HP a click for ${clicks} clicks` }
+      return { amount, clicks, text: `+${amount} HP a click for ${clicks} clicks` }
     },
     preview(level, mag, magCore = mag) {
-      return { label: 'Restores', min: level, max: level * 2, text: `HP a click for ${buffDurationText({ mag, magCore })}` }
+      return { label: 'Restores', min: level, max: level * 2, text: `HP a click, locked at cast, for ${buffDurationText({ mag, magCore })}` }
     },
   },
   {
@@ -399,10 +400,11 @@ const SPELLS = [
     implemented: true,
     icon: 'ironskin',
     hue: 'gold',
-    description: 'Harden your skin: every enemy hit is blocked a little more.',
-    // In battle the block roll gains rand(1, amount) on top of rand(0, DEF),
-    // exactly the original's `$eblock = rand(0, $defmod) + ... + $ironskin_rand`.
-    formula: '+rand(lvl × 2, lvl × 4) block for rand(mag core, mag) clicks',
+    description: 'Harden your skin: a flat boost to DEF for a while.',
+    // The amount is rolled once at cast and stands as DEF for the duration
+    // (buff-service getStatBuffBonuses), so it lifts the block roll's ceiling
+    // like any other DEF.
+    formula: '+rand(lvl × 2, lvl × 4) DEF, rolled once, for rand(mag core, mag) clicks',
     teachers: [
       { flag: 'wizardSkillFlag', max: 10 },
       { flag: 'starCitySpellsFlag', max: 15 },
@@ -412,10 +414,10 @@ const SPELLS = [
     cast(level, ctx, rand) {
       const amount = rand(level * 2, level * 4)
       const clicks = buffDuration(ctx, rand)
-      return { amount, clicks, text: `+${amount} block for ${clicks} clicks` }
+      return { amount, clicks, text: `+${amount} DEF for ${clicks} clicks` }
     },
     preview(level, mag, magCore = mag) {
-      return { label: 'Block +', min: level * 2, max: level * 4, text: `for ${buffDurationText({ mag, magCore })}` }
+      return { label: 'DEF +', min: level * 2, max: level * 4, text: `locked at cast, for ${buffDurationText({ mag, magCore })}` }
     },
   },
   {

@@ -214,8 +214,6 @@ export interface BattleState {
   skill: BattleSkillUse | null
   /** True when the Dodge skill turned the enemy's last swing into nothing. */
   playerDodged: boolean
-  /** Iron Skin's share of the last block (0 without it). */
-  ironSkinBlock: number
   /** What Magic Armor absorbed of the last hit, and what it has left. */
   absorbed: number
   magicArmorLeft: number
@@ -270,7 +268,6 @@ const INITIAL_BATTLE_STATE: BattleState = {
   companion: null,
   skill: null,
   playerDodged: false,
-  ironSkinBlock: 0,
   absorbed: 0,
   magicArmorLeft: 0,
   poisonApplied: null,
@@ -411,7 +408,7 @@ export interface GameState {
   getCachedRoom: (roomId: string) => Room | null
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
   setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyTraits?: EnemyTrait[]; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
-  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; companion?: BattleCompanionStrike | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number; ironSkinBlock?: number; absorbed?: number; magicArmorLeft?: number; poisonApplied?: { clicks: number } | null }) => void
+  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; companion?: BattleCompanionStrike | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number; absorbed?: number; magicArmorLeft?: number; poisonApplied?: { clicks: number } | null }) => void
   /** A click tick moved the vitals mid-fight (regen, poison): keep the battle card's bars honest. */
   syncBattleVitals: (vitals: { hp?: number }) => void
   clearBattle: () => void
@@ -590,7 +587,6 @@ export const useGameStore = create<GameState>()(
             companion: payload.companion ?? null,
             skill: payload.skill ?? null,
             playerDodged: payload.playerDodged ?? false,
-            ironSkinBlock: payload.ironSkinBlock ?? 0,
             absorbed: payload.absorbed ?? 0,
             magicArmorLeft: payload.magicArmorLeft ?? 0,
             poisonApplied: payload.poisonApplied ?? null,

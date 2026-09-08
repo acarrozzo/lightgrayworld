@@ -279,13 +279,12 @@ class GameEngine {
     const { tickBuffs, expiryMessage } = require('./services/buff-service')
     const { getEquippedRegen, applyStatusTick } = require('./services/regen-service')
     const { regenSummary, rollRegen } = require('../game-data/regen')
-    const { rand } = require('./battle-calculator')
 
     const room = this.rooms.get(roomId)
     const battle = room?.activeBattles?.get(playerId)
     const inBattle = Boolean(battle?.isActive)
 
-    const [{ clicks }, { buffs, expired, before }, gear, spellRow] = await Promise.all([
+    const [{ clicks }, { buffs, expired, before }, gear] = await Promise.all([
       prisma.user.update({
         where: { id: playerId },
         data: { clicks: { increment: 1 } },
@@ -293,14 +292,14 @@ class GameEngine {
       }),
       tickBuffs(prisma, playerId),
       getEquippedRegen(playerId),
-      prisma.user.findUnique({ where: { id: playerId }, select: { regenerate: true } }),
     ])
 
     // Tea and Regenerate still count on the click that takes them to zero (the
-    // original checked before it decremented); poison deals what is left after
-    // the drop, so a poison of 3 burns for 2, then 1, then is gone.
-    const summary = regenSummary({ gear, buffs: before, spells: spellRow })
-    const regen = rollRegen(summary, rand)
+    // original checked before it decremented), so both read the row as it
+    // stood; poison deals what is left after the drop, so a poison of 3 burns
+    // for 2, then 1, then is gone.
+    const summary = regenSummary({ gear, buffs: before })
+    const regen = rollRegen(summary)
     const poisonDamage = buffs.poisonClicks > 0 ? buffs.poisonClicks : 0
 
     const vitals = await applyStatusTick(playerId, {

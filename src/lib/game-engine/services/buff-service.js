@@ -39,28 +39,29 @@ const STAT_BUFF_FIELDS = {
 }
 
 /**
- * Status countdowns that are neither an ability nor a flat stat bonus. Each
+ * Status countdowns that are neither an ability nor a fixed stat bonus. Each
  * ticks down once per click like the rest; what it does while it runs lives
  * where it is consumed:
  *   - buffTeaClicks:      +5 HP / +5 MP regen a click (game-data/regen.js);
- *   - regenerateClicks:   the Regenerate spell's HP trickle (regen.js);
- *   - ironSkinClicks:     the enemy's block roll gains rand(1, ironSkinAmount)
- *                         (battle-calculator); the amount is zeroed when the
- *                         countdown ends, as the original did each click;
+ *   - regenerateClicks:   +regenerateAmount HP a click (regen.js), the amount
+ *                         rolled once at cast and locked for the duration;
+ *   - ironSkinClicks:     +ironSkinAmount DEF, likewise rolled once and locked
+ *                         (getStatBuffBonuses below);
  *   - poisonClicks:       poison: drops by one, then deals what is left
  *                         (regen-service.applyStatusTick). 0 = not poisoned;
  *   - poisonImmuneClicks: poison cannot take hold while this runs.
+ * A locked amount is zeroed in the same statement that ends its countdown.
  */
 const STATUS_FIELDS = ['buffTeaClicks', 'regenerateClicks', 'ironSkinClicks', 'poisonClicks', 'poisonImmuneClicks']
 
 /**
  * Magnitudes that ride beside a countdown rather than counting down
- * themselves: Iron Skin's block bonus, and Magic Armor's remaining absorb
- * (which has no countdown at all — it wears off as it is hit). Read with the
- * countdowns, projected to the client with them, and zeroed by death with
- * them; never decremented by tickBuffs.
+ * themselves: Regenerate's per-click HP, Iron Skin's DEF, and Magic Armor's
+ * remaining absorb (which has no countdown at all — it wears off as it is
+ * hit). Read with the countdowns, projected to the client with them, and
+ * zeroed by death with them; never decremented by tickBuffs.
  */
-const AMOUNT_FIELDS = ['ironSkinAmount', 'magicArmorAmount']
+const AMOUNT_FIELDS = ['regenerateAmount', 'ironSkinAmount', 'magicArmorAmount']
 
 /** Every countdown field, ability, stat and status alike. Order is not significant. */
 const BUFF_FIELDS = ['wings', 'gills', ...Object.keys(STAT_BUFF_FIELDS), ...STATUS_FIELDS]
@@ -100,6 +101,9 @@ function getStatBuffBonuses(row) {
     if ((row[field] || 0) <= 0) continue
     for (const stat of stats) bonuses[stat] += amount
   }
+  // Iron Skin: its amount is rolled once at cast and stands as DEF until the
+  // countdown ends — a stat buff whose magnitude lives on the row.
+  if ((row.ironSkinClicks || 0) > 0) bonuses.def += Math.max(0, row.ironSkinAmount || 0)
   for (const [field, { stats, amount }] of Object.entries(STANDING_BONUS_FIELDS)) {
     if (!row[field]) continue
     for (const stat of stats) bonuses[stat] += amount
@@ -134,8 +138,9 @@ function projectBuffState(row) {
  * the click that takes them to zero (the original checked, then decremented),
  * while poison deals what is left after the drop.
  *
- * Iron Skin's amount goes with its countdown: the click that ends the clicks
- * zeroes the amount in the same statement.
+ * A locked amount goes with its countdown: the click that ends Regenerate's
+ * or Iron Skin's clicks zeroes the amount in the same statement, and the
+ * amounts as they stood are reported in `before` beside the countdowns.
  *
  * @param {import('@prisma/client').PrismaClient} prisma
  * @param {string} playerId
@@ -144,9 +149,10 @@ function projectBuffState(row) {
 async function tickBuffs(prisma, playerId) {
   const setClause = [
     ...BUFF_FIELDS.map((f) => `"${f}" = GREATEST(0, "${f}" - 1)`),
+    `"regenerateAmount" = CASE WHEN "regenerateClicks" <= 1 THEN 0 ELSE "regenerateAmount" END`,
     `"ironSkinAmount" = CASE WHEN "ironSkinClicks" <= 1 THEN 0 ELSE "ironSkinAmount" END`,
   ].join(', ')
-  const prevClause = BUFF_FIELDS.map((f) => `"${f}" AS "prev_${f}"`).join(', ')
+  const prevClause = [...BUFF_FIELDS, ...AMOUNT_FIELDS].map((f) => `"${f}" AS "prev_${f}"`).join(', ')
   const returnClause = [...BUFF_FIELDS, ...AMOUNT_FIELDS, ...STANDING_FIELDS].map((f) => `"${f}"`).join(', ')
 
   // Field names come from the module-level BUFF_FIELDS allow-list, never input.
@@ -172,7 +178,10 @@ async function tickBuffs(prisma, playerId) {
     before[field] = was
     if (value === 0 && was > 0) expired.push(field)
   }
-  for (const field of AMOUNT_FIELDS) buffs[field] = Number(row[field] ?? 0)
+  for (const field of AMOUNT_FIELDS) {
+    buffs[field] = Number(row[field] ?? 0)
+    before[field] = Number(prev[`prev_${field}`] ?? 0)
+  }
   for (const field of STANDING_FIELDS) buffs[field] = row[field] ? 1 : 0
 
   return { buffs, expired, before }

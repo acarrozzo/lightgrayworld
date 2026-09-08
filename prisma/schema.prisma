@@ -77,9 +77,10 @@ model User {
   silverAura                Boolean         @default(false)
   /// A cup of tea: +5 HP and +5 MP regen per click while it counts down.
   buffTeaClicks             Int             @default(0)
-  /// The Regenerate spell: rand(lvl, 2×lvl) HP per click while it counts down.
+  /// The Regenerate spell: regenerateAmount HP per click (rolled once at cast) while regenerateClicks counts down.
   regenerateClicks          Int             @default(0)
-  /// Iron Skin: the enemy's block roll gains rand(1, ironSkinAmount) while ironSkinClicks counts down.
+  regenerateAmount          Int             @default(0)
+  /// Iron Skin: +ironSkinAmount DEF (rolled once at cast) while ironSkinClicks counts down.
   ironSkinClicks            Int             @default(0)
   ironSkinAmount            Int             @default(0)
   /// Magic Armor: damage still to absorb before HP is touched. No countdown; it wears off as it is hit.

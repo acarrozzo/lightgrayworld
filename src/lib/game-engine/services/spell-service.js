@@ -352,8 +352,9 @@ async function castHealSpell(playerId, spell, rand) {
  *
  * What a cast sets up is rolled by the registry (`castBuff`); this is only
  * where the columns are written:
- *   - Regenerate: refreshes its countdown to the longer of the two;
- *   - Iron Skin:  sets the block amount and its countdown; refused while active;
+ *   - Regenerate: locks a fresh amount and duration (a recast overwrites, as
+ *                 the original did);
+ *   - Iron Skin:  sets the DEF amount and its countdown; refused while active;
  *   - Magic Armor: sets the absorb pool; refused while any remains;
  *   - Antidote:   clears poison and extends immunity to the longer of the two.
  *
@@ -387,8 +388,8 @@ async function castBuffSpell(playerId, spell, rand) {
   let params
   switch (spell.id) {
     case 'regenerate':
-      sql = `UPDATE "User" SET mp = mp - $2, "regenerateClicks" = GREATEST("regenerateClicks", $3) WHERE id = $1 AND mp >= $2`
-      params = [playerId, cost, Math.max(0, effect.clicks || 0)]
+      sql = `UPDATE "User" SET mp = mp - $2, "regenerateClicks" = $3, "regenerateAmount" = $4 WHERE id = $1 AND mp >= $2`
+      params = [playerId, cost, Math.max(0, effect.clicks || 0), Math.max(0, effect.amount || 0)]
       break
     case 'iron-skin':
       sql = `UPDATE "User" SET mp = mp - $2, "ironSkinClicks" = $3, "ironSkinAmount" = $4 WHERE id = $1 AND mp >= $2 AND "ironSkinAmount" = 0`

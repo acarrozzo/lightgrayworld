@@ -279,7 +279,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                         <span className="text-fg-bright font-semibold">{describeRegen(regen)}</span>
                         {regen.gear.hp + regen.gear.mp > 0 && <span className="text-fg-muted"> · gear {describeRegen(regen.gear).replace(' / click', '')}</span>}
                         {regen.tea && <span className="text-fg-muted"> · tea</span>}
-                        {regen.regenerateLevel > 0 && <span className="text-fg-muted"> · Regenerate</span>}
+                        {regen.regenerateAmount > 0 && <span className="text-fg-muted"> · Regenerate</span>}
                       </p>
                     )}
                     <StatBar

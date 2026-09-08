@@ -15,7 +15,7 @@ import type { InventoryItem, Player } from '@/lib/game-state'
 
 const regen = require('@/lib/game-data/regen') as {
   sumGearRegen: (metadatas: unknown[]) => { hp: number; mp: number }
-  regenSummary: (sources: { gear?: { hp: number; mp: number } | null; buffs?: Record<string, number> | null; spells?: Record<string, number> | null }) => RegenSummary
+  regenSummary: (sources: { gear?: { hp: number; mp: number } | null; buffs?: Record<string, number> | null }) => RegenSummary
   describeRegen: (regen: { hpMin?: number; hpMax?: number; hp?: number; mp?: number }) => string
 }
 const { STAT_BUFF_FIELDS, BUFF_LABELS } = require('@/lib/game-engine/services/buff-service') as {
@@ -26,7 +26,7 @@ const { STAT_BUFF_FIELDS, BUFF_LABELS } = require('@/lib/game-engine/services/bu
 export interface RegenSummary {
   gear: { hp: number; mp: number }
   tea: boolean
-  regenerateLevel: number
+  regenerateAmount: number
   hpMin: number
   hpMax: number
   mp: number
@@ -56,7 +56,7 @@ export function equippedRegen(inventory: InventoryItem[]): { hp: number; mp: num
 
 /** Everything regenerating on the player right now, per click. */
 export function playerRegen(player: Player | null | undefined, inventory: InventoryItem[]): RegenSummary {
-  return regen.regenSummary({ gear: equippedRegen(inventory), buffs: player?.buffs ?? null, spells: player?.spells ?? null })
+  return regen.regenSummary({ gear: equippedRegen(inventory), buffs: player?.buffs ?? null })
 }
 
 /** "+3 HP · +5 MP / click" for a regen summary or an item's regen block; '' with none. */
@@ -101,7 +101,7 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
   const ironSkinClicks = clicksOf('ironSkinClicks')
   const ironSkin = Math.max(0, Number(buffs.ironSkinAmount ?? 0))
   if (ironSkinClicks > 0 && ironSkin > 0) {
-    chips.push({ id: 'iron-skin', label: 'Iron Skin', detail: `+1–${ironSkin} block`, clicks: ironSkinClicks, tone: 'ward', title: `Iron Skin: every enemy hit is blocked by an extra rand(1, ${ironSkin}) for ${ironSkinClicks} more clicks.` })
+    chips.push({ id: 'iron-skin', label: 'Iron Skin', detail: `+${ironSkin} DEF`, clicks: ironSkinClicks, tone: 'ward', title: `Iron Skin: +${ironSkin} DEF for ${ironSkinClicks} more clicks.` })
   }
 
   const summary = playerRegen(player, inventory)
@@ -110,7 +110,7 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
     const parts: string[] = []
     if (summary.gear.hp > 0 || summary.gear.mp > 0) parts.push(`gear ${describeRegen(summary.gear).replace(' / click', '')}`)
     if (summary.tea) parts.push('tea +5 HP +5 MP')
-    if (summary.regenerateLevel > 0) parts.push(`Regenerate +${summary.regenerateLevel}–${summary.regenerateLevel * 2} HP`)
+    if (summary.regenerateAmount > 0) parts.push(`Regenerate +${summary.regenerateAmount} HP`)
     chips.push({
       id: 'regen',
       label: 'Regen',
@@ -122,7 +122,7 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
   const tea = clicksOf('buffTeaClicks')
   if (tea > 0) chips.push({ id: 'tea', label: 'Tea', clicks: tea, tone: 'hp', title: `Tea: +5 HP and +5 MP regen a click for ${tea} more clicks.` })
   const regenerate = clicksOf('regenerateClicks')
-  if (regenerate > 0) chips.push({ id: 'regenerate', label: 'Regenerate', clicks: regenerate, tone: 'hp', title: `Regenerate: extra HP every click for ${regenerate} more clicks.` })
+  if (regenerate > 0) chips.push({ id: 'regenerate', label: 'Regenerate', detail: `+${summary.regenerateAmount} HP`, clicks: regenerate, tone: 'hp', title: `Regenerate: +${summary.regenerateAmount} HP every click for ${regenerate} more clicks.` })
 
   for (const [field, { stats, amount }] of Object.entries(STAT_BUFF_FIELDS)) {
     const clicks = clicksOf(field)

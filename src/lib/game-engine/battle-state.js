@@ -70,10 +70,9 @@ class BattleState {
     this.baseDex = (playerStats.dex || 0) + (playerStats.dexMod || 0) + buff.dex + skill.dex
     this.baseMag = (playerStats.mag || 0) + (playerStats.magMod || 0) + buff.mag
     this.baseDef = (playerStats.def || 0) + (playerStats.defMod || 0) + buff.def + skill.def
-    // The status effects combat reads (see buff-service STATUS_FIELDS): Iron
-    // Skin's block bonus while it runs, and whether poison could take hold.
-    // The player's level is what an enemy's poison scales with.
-    this.ironSkin = (playerStats.ironSkinClicks || 0) > 0 ? Math.max(0, playerStats.ironSkinAmount || 0) : 0
+    // The status effects combat reads (see buff-service STATUS_FIELDS):
+    // whether poison could take hold. (Iron Skin is DEF, folded in above by
+    // getStatBuffBonuses.) The player's level is what an enemy's poison scales with.
     this.poisoned = (playerStats.poisonClicks || 0) > 0
     this.poisonImmune = (playerStats.poisonImmuneClicks || 0) > 0
     this.level = playerStats.level || this.level || 1

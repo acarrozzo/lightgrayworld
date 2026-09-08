@@ -207,14 +207,12 @@ async function applyEnemyHit(playerId, { damage, poisonApplied = null }) {
 }
 
 /**
- * What else the hit did, after the damage line: the Iron Skin share of the
- * block, what Magic Armor absorbed, and whether poison took hold.
+ * What else the hit did, after the damage line: what Magic Armor absorbed,
+ * and whether poison took hold.
  * @param {{ absorbed: number, magicArmorLeft: number, poisoned: number }} hit
- * @param {{ ironSkinBlock?: number, dodged?: boolean, playerDodged?: boolean }} turn
  */
-function describeHitExtras(hit, turn) {
+function describeHitExtras(hit) {
   const bits = []
-  if ((turn.ironSkinBlock || 0) > 0) bits.push(`Your Iron Skin turns ${turn.ironSkinBlock} of it.`)
   if (hit.absorbed > 0) {
     bits.push(
       hit.magicArmorLeft > 0
@@ -521,7 +519,6 @@ async function executeStartBattle(action, playerId, roomState) {
       immuneToWeapon: null,
       companion: null,
       playerDodged: enemyAtk.dodged,
-      ironSkinBlock: enemyAtk.ironSkinBlock,
       poisonApplied: enemyAtk.poisonApplied,
     }
     battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, firstTurn)
@@ -587,7 +584,7 @@ async function executeStartBattle(action, playerId, roomState) {
   }
   const defenseDesc =
     describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction, '', firstTurn.playerDodged) +
-    describeHitExtras(updatedPlayer, firstTurn)
+    describeHitExtras(updatedPlayer)
 
   const turnPayload = {
     ...snapshot,
@@ -614,7 +611,6 @@ async function executeStartBattle(action, playerId, roomState) {
     immuneToWeapon: firstTurn.immuneToWeapon ?? null,
     companion: firstTurn.companion ?? null,
     playerDodged: firstTurn.playerDodged ?? false,
-    ironSkinBlock: firstTurn.ironSkinBlock ?? 0,
     absorbed: updatedPlayer.absorbed,
     magicArmorLeft: updatedPlayer.magicArmorLeft,
     poisonApplied: updatedPlayer.poisoned > 0 ? { clicks: updatedPlayer.poisoned } : null,
@@ -919,7 +915,7 @@ async function executePlayerAttack(action, playerId, roomState) {
       turnResult.enemyAction,
       ` (HP: ${newHp}/${updatedPlayer.hpMax})`,
       turnResult.playerDodged
-    ) + describeHitExtras(updatedPlayer, turnResult)
+    ) + describeHitExtras(updatedPlayer)
   )
 
   return {
@@ -953,7 +949,6 @@ async function executePlayerAttack(action, playerId, roomState) {
           immuneToWeapon: turnResult.immuneToWeapon ?? null,
           companion: turnResult.companion ?? null,
           playerDodged: turnResult.playerDodged ?? false,
-          ironSkinBlock: turnResult.ironSkinBlock ?? 0,
           absorbed: updatedPlayer.absorbed,
           magicArmorLeft: updatedPlayer.magicArmorLeft,
           poisonApplied: updatedPlayer.poisoned > 0 ? { clicks: updatedPlayer.poisoned } : null,
@@ -1020,7 +1015,6 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     immuneToWeapon: null,
     companion: null,
     playerDodged: enemyAtk.dodged,
-    ironSkinBlock: enemyAtk.ironSkinBlock,
     poisonApplied: enemyAtk.poisonApplied,
   }
   battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, turnRecord)
@@ -1035,7 +1029,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
   const actionDesc = describeSupportAction(actionMeta)
   const defenseDesc =
     describeEnemyAttack(battleState.enemyName, enemyAtk.enemyFinal, enemyAtk.enemyAction, '', enemyAtk.dodged) +
-    describeHitExtras(updatedPlayer, enemyAtk)
+    describeHitExtras(updatedPlayer)
 
   // Defeat path: enemy counterattack killed the player
   if (newHp <= 0) {
@@ -1085,7 +1079,6 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
           enemyAction: enemyAtk.enemyAction ?? null,
           skill: null,
           playerDodged: enemyAtk.dodged ?? false,
-          ironSkinBlock: enemyAtk.ironSkinBlock ?? 0,
           absorbed: updatedPlayer.absorbed,
           magicArmorLeft: updatedPlayer.magicArmorLeft,
           poisonApplied: updatedPlayer.poisoned > 0 ? { clicks: updatedPlayer.poisoned } : null,

@@ -276,13 +276,7 @@ function resolveEnemyAttack(battleState, otherCombatants) {
   const dodgeChance = battleState.dodgeChance || 0
   const dodged = dodgeChance > 0 && rand(1, 100) <= dodgeChance
   const bypass = Boolean(special?.bypassesDefense)
-  const baseBlock = dodged || bypass ? 0 : rand(0, effectiveDef)
-  // Iron Skin: the block gains rand(1, amount) on top of the DEF roll — the
-  // original's `$eblock = rand(0, $defmod) + $blockAmt + $ironskin_rand`.
-  // Pure damage ignores the whole block, Iron Skin included.
-  const ironSkin = Math.max(0, battleState.ironSkin || 0)
-  const ironSkinBlock = !dodged && !bypass && ironSkin > 0 ? rand(1, ironSkin) : 0
-  const playerBlock = baseBlock + ironSkinBlock
+  const playerBlock = dodged || bypass ? 0 : rand(0, effectiveDef)
   // A poison special is an ordinary hit that also leaves poison behind. The
   // original set it whether or not the blow got through the block, as long as
   // the swing was not dodged; the poison itself scales with the PLAYER's level.
@@ -298,7 +292,6 @@ function resolveEnemyAttack(battleState, otherCombatants) {
     enemyDamageType: enemyDmgType,
     enemyAction,
     dodged,
-    ironSkinBlock,
     poisonApplied,
   }
 }
@@ -338,8 +331,6 @@ function resolveTurn(battleState, otherCombatants, { spell = null, skill = null 
     immuneToWeapon: player.immuneToWeapon,
     // True when Dodge turned the enemy's swing into nothing.
     playerDodged: enemyAtk.dodged,
-    // Iron Skin's share of the block this turn (0 without it).
-    ironSkinBlock: enemyAtk.ironSkinBlock,
     // { clicks, name } when the enemy's hit left poison; null otherwise.
     poisonApplied: enemyAtk.poisonApplied,
   }

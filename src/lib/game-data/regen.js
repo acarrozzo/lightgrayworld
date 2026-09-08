@@ -7,7 +7,8 @@
  *   - gear:   every equipped item's `metadata.regen: { hp?, mp? }` — the ring
  *             of health/mana regen ladder, the Shaman Necklace, the Sky Hawk;
  *   - tea:    +5 HP and +5 MP while a cup of tea counts down;
- *   - spell:  Regenerate, rand(lvl, 2×lvl) HP a click while it counts down.
+ *   - spell:  Regenerate, a flat HP amount a click while it counts down —
+ *             rolled rand(lvl, 2×lvl) once at cast and locked for the duration.
  *
  * Regen only fills toward the max and never lowers an overcharge, and MP regen
  * skips the click a spell was cast on (the original's `noMPregen`). The server
@@ -52,7 +53,7 @@ function sumGearRegen(metadatas) {
 }
 
 /**
- * What Regenerate restores a click at a level: rand(lvl, 2×lvl).
+ * What Regenerate can lock in at a level: rand(lvl, 2×lvl), rolled once at cast.
  * @param {number} level
  * @returns {{ min: number, max: number }}
  */
@@ -65,46 +66,40 @@ function regenerateRange(level) {
  * @typedef {Object} RegenSummary
  * @property {{ hp: number, mp: number }} gear  From equipped items.
  * @property {boolean} tea                      A cup of tea is running.
- * @property {number} regenerateLevel           Regenerate's level while it runs, else 0.
- * @property {number} hpMin                     Least HP a click restores.
- * @property {number} hpMax                     Most HP a click restores (differs from hpMin only under Regenerate).
+ * @property {number} regenerateAmount          Regenerate's locked HP a click while it runs, else 0.
+ * @property {number} hpMin                     HP a click restores.
+ * @property {number} hpMax                     The same; kept so callers can describe a range if one ever returns.
  * @property {number} mp                        MP a click restores (before the spell-cast skip).
  * @property {boolean} any                      Whether anything at all is regenerating.
  */
 
 /**
- * Everything regenerating right now, from the equipped set's regen, the buff
- * countdowns and the spell levels. The same reading on both sides: the tick
- * rolls from it, the chip describes it.
+ * Everything regenerating right now, from the equipped set's regen and the
+ * buff countdowns with their locked amounts. The same reading on both sides:
+ * the tick applies it, the chip describes it. Nothing here is random — the
+ * only roll (Regenerate's amount) happened at cast.
  *
- * @param {{ gear?: { hp?: number, mp?: number } | null, buffs?: Record<string, number> | null, spells?: Record<string, number> | null }} sources
+ * @param {{ gear?: { hp?: number, mp?: number } | null, buffs?: Record<string, number> | null }} sources
  * @returns {RegenSummary}
  */
-function regenSummary({ gear, buffs, spells } = {}) {
+function regenSummary({ gear, buffs } = {}) {
   const gearRegen = { hp: Number(gear?.hp) || 0, mp: Number(gear?.mp) || 0 }
   const tea = (Number(buffs?.buffTeaClicks) || 0) > 0
-  const regenerateLevel = (Number(buffs?.regenerateClicks) || 0) > 0 ? Math.max(0, Number(spells?.regenerate) || 0) : 0
-  const range = regenerateRange(regenerateLevel)
-  const base = gearRegen.hp + (tea ? TEA_REGEN.hp : 0)
+  const regenerateAmount =
+    (Number(buffs?.regenerateClicks) || 0) > 0 ? Math.max(0, Number(buffs?.regenerateAmount) || 0) : 0
+  const hp = gearRegen.hp + (tea ? TEA_REGEN.hp : 0) + regenerateAmount
   const mp = gearRegen.mp + (tea ? TEA_REGEN.mp : 0)
-  const hpMin = base + range.min
-  const hpMax = base + range.max
-  return { gear: gearRegen, tea, regenerateLevel, hpMin, hpMax, mp, any: hpMax > 0 || mp > 0 }
+  return { gear: gearRegen, tea, regenerateAmount, hpMin: hp, hpMax: hp, mp, any: hp > 0 || mp > 0 }
 }
 
 /**
- * Roll one click's regen from a summary. Only Regenerate is random; the rest
- * is flat, so with no spell running this is deterministic.
+ * One click's regen from a summary. Flat: the amounts are what they are.
  * @param {RegenSummary} summary
- * @param {(a: number, b: number) => number} rand
  * @returns {{ hp: number, mp: number }}
  */
-function rollRegen(summary, rand) {
+function rollRegen(summary) {
   if (!summary || !summary.any) return { hp: 0, mp: 0 }
-  const range = regenerateRange(summary.regenerateLevel)
-  const spell = summary.regenerateLevel > 0 ? rand(range.min, range.max) : 0
-  const flat = summary.gear.hp + (summary.tea ? TEA_REGEN.hp : 0)
-  return { hp: flat + spell, mp: summary.mp }
+  return { hp: summary.hpMin, mp: summary.mp }
 }
 
 /**

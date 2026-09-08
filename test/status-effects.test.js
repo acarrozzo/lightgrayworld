@@ -38,24 +38,23 @@ test('gear regen sums every equipped item that declares metadata.regen', () => {
   assert.deepEqual(total, { hp: 3, mp: 5 })
 })
 
-test('tea adds +5/+5 while it runs and Regenerate adds rand(lvl, 2×lvl) HP', () => {
+test('tea adds +5/+5 while it runs and Regenerate adds its locked amount, flat', () => {
   const gear = { hp: 1, mp: 2 }
-  const quiet = regen.regenSummary({ gear, buffs: {}, spells: { regenerate: 4 } })
+  const quiet = regen.regenSummary({ gear, buffs: {} })
   assert.deepEqual([quiet.hpMin, quiet.hpMax, quiet.mp], [1, 1, 2])
 
-  const tea = regen.regenSummary({ gear, buffs: { buffTeaClicks: 1 }, spells: {} })
+  const tea = regen.regenSummary({ gear, buffs: { buffTeaClicks: 1 } })
   assert.deepEqual([tea.hpMin, tea.hpMax, tea.mp], [6, 6, 7])
 
-  const spell = regen.regenSummary({ gear, buffs: { buffTeaClicks: 1, regenerateClicks: 3 }, spells: { regenerate: 4 } })
-  assert.deepEqual([spell.hpMin, spell.hpMax, spell.mp], [10, 14, 7])
-  assert.deepEqual(regen.rollRegen(spell, minRand), { hp: 10, mp: 7 })
-  assert.deepEqual(regen.rollRegen(spell, maxRand), { hp: 14, mp: 7 })
+  const spell = regen.regenSummary({ gear, buffs: { buffTeaClicks: 1, regenerateClicks: 3, regenerateAmount: 7 } })
+  assert.deepEqual([spell.hpMin, spell.hpMax, spell.mp], [13, 13, 7])
+  assert.deepEqual(regen.rollRegen(spell), { hp: 13, mp: 7 })
 })
 
-test('a Regenerate countdown with no spell level restores nothing extra', () => {
-  const s = regen.regenSummary({ gear: { hp: 0, mp: 0 }, buffs: { regenerateClicks: 5 }, spells: { regenerate: 0 } })
+test('a Regenerate amount only counts while its countdown runs', () => {
+  const s = regen.regenSummary({ gear: { hp: 0, mp: 0 }, buffs: { regenerateClicks: 0, regenerateAmount: 9 } })
   assert.equal(s.any, false)
-  assert.deepEqual(regen.rollRegen(s, maxRand), { hp: 0, mp: 0 })
+  assert.deepEqual(regen.rollRegen(s), { hp: 0, mp: 0 })
 })
 
 test('describeRegen reads as the original\'s "+N hp / click"', () => {
@@ -72,7 +71,7 @@ test('the status countdowns tick with the rest and the amounts ride beside them'
     assert.ok(buffs.BUFF_FIELDS.includes(field), `${field} ticks`)
     assert.ok(buffs.BUFF_SELECT[field], `${field} selected`)
   }
-  for (const field of ['ironSkinAmount', 'magicArmorAmount']) {
+  for (const field of ['regenerateAmount', 'ironSkinAmount', 'magicArmorAmount']) {
     assert.ok(!buffs.BUFF_FIELDS.includes(field), `${field} never decrements`)
     assert.ok(buffs.BUFF_SELECT[field], `${field} selected`)
   }
@@ -83,9 +82,11 @@ test('the status countdowns tick with the rest and the amounts ride beside them'
   assert.equal(view.buffs.silverAura, 1)
 })
 
-test('the status effects are not flat stat bonuses', () => {
-  const b = buffs.getStatBuffBonuses({ buffTeaClicks: 50, ironSkinClicks: 5, ironSkinAmount: 20, poisonClicks: 4 })
-  assert.deepEqual(b, { str: 0, dex: 0, mag: 0, def: 0 })
+test('Iron Skin is a locked DEF bonus while its countdown runs; the other status effects are not stats', () => {
+  const running = buffs.getStatBuffBonuses({ buffTeaClicks: 50, ironSkinClicks: 5, ironSkinAmount: 20, poisonClicks: 4 })
+  assert.deepEqual(running, { str: 0, dex: 0, mag: 0, def: 20 })
+  const ended = buffs.getStatBuffBonuses({ ironSkinClicks: 0, ironSkinAmount: 20 })
+  assert.deepEqual(ended, { str: 0, dex: 0, mag: 0, def: 0 })
 })
 
 // ─── buff spells ─────────────────────────────────────────────────────────────
@@ -95,11 +96,11 @@ test('the four buff spells are castable and roll the original\'s numbers', () =>
   for (const id of ['regenerate', 'antidote', 'magic-armor', 'iron-skin']) {
     assert.ok(spells.isCastable(spells.getSpell(id)), `${id} castable`)
   }
-  // Regenerate: rand(mag core, mag) clicks, 20 × lvl MP.
+  // Regenerate: rand(lvl, 2lvl) HP locked at cast, for rand(mag core, mag) clicks, 20 × lvl MP.
   const rg = spells.getSpell('regenerate')
   assert.equal(rg.castCost(3), 60)
-  assert.equal(spells.castBuff(rg, 3, ctx, minRand).clicks, 5)
-  assert.equal(spells.castBuff(rg, 3, ctx, maxRand).clicks, 12)
+  assert.deepEqual([spells.castBuff(rg, 3, ctx, minRand).amount, spells.castBuff(rg, 3, ctx, minRand).clicks], [3, 5])
+  assert.deepEqual([spells.castBuff(rg, 3, ctx, maxRand).amount, spells.castBuff(rg, 3, ctx, maxRand).clicks], [6, 12])
   // Iron Skin: rand(2lvl, 4lvl) block for rand(mag core, mag) clicks, 10 × lvl MP.
   const is = spells.getSpell('iron-skin')
   assert.equal(is.castCost(3), 30)
@@ -171,25 +172,19 @@ test('poison enemies wear a poison-toned tag', () => {
 
 // ─── iron skin ───────────────────────────────────────────────────────────────
 
-test('Iron Skin adds rand(1, amount) to the block while it runs, and nothing against pure damage', () => {
+test('Iron Skin stands as DEF for the fight while it runs, like any other DEF', () => {
   const mk = (over, enemyOver = {}) =>
     new BattleState({
       playerId: 'p', roomId: 'r',
       enemy: { slug: 'e', name: 'E', hp: 10, att: 10, def: 0, damageType: 'MELEE', ...enemyOver },
-      playerStats: { level: 1, str: 0, dex: 0, mag: 0, def: 0, ...over },
+      playerStats: { level: 1, str: 0, dex: 0, mag: 0, def: 3, ...over },
     })
-  // DEF 0 pins the base block at 0, so the whole block is Iron Skin's.
-  for (let i = 0; i < 25; i++) {
-    const turn = resolveEnemyAttack(mk({ ironSkinClicks: 5, ironSkinAmount: 4 }), 0)
-    assert.ok(turn.ironSkinBlock >= 1 && turn.ironSkinBlock <= 4, `iron skin ${turn.ironSkinBlock}`)
-    assert.equal(turn.playerBlock, turn.ironSkinBlock)
-    assert.equal(turn.enemyFinal, Math.max(0, turn.enemyRaw - turn.playerBlock))
-  }
+  assert.equal(mk({ ironSkinClicks: 5, ironSkinAmount: 4 }).baseDef, 7)
+  assert.equal(resolveEnemyAttack(mk({ ironSkinClicks: 5, ironSkinAmount: 4 }), 0).effectiveDef, 7)
   // Expired (clicks 0) means no bonus, whatever the stale amount says.
-  assert.equal(resolveEnemyAttack(mk({ ironSkinClicks: 0, ironSkinAmount: 4 }), 0).ironSkinBlock, 0)
-  // Pure damage ignores the whole block.
+  assert.equal(mk({ ironSkinClicks: 0, ironSkinAmount: 4 }).baseDef, 3)
+  // Pure damage ignores the whole block, Iron Skin included.
   const pure = resolveEnemyAttack(mk({ ironSkinClicks: 5, ironSkinAmount: 4 }, { specials: ['pure'] }), 0)
-  assert.equal(pure.ironSkinBlock, 0)
   assert.equal(pure.playerBlock, 0)
 })
 
