@@ -30,7 +30,14 @@ function feedTally(collected, total, plural, singular = null) {
 }
 
 function pluralFor(entry, template) {
-  return entry.plural ?? pluralizeItemName(template.name)
+  if (entry.plural) return entry.plural
+  // The feed says "[ +50 arrows ]", not "[ +50 Arrows ]": a plain one- or
+  // two-word name drops its Title Case. A name with a numeral or a longer
+  // title ("Ring of Dexterity III") keeps its casing, and a one-each take
+  // shows the singular anyway.
+  const name = template.name
+  const plain = /^[A-Z][a-z]+( [A-Z][a-z]+)?$/.test(name)
+  return pluralizeItemName(plain ? name.toLowerCase() : name)
 }
 
 /**

@@ -79,6 +79,11 @@ function ruleLabel(supply: SupplyView): string {
 }
 
 function SupplyRow({ supply, busy, onTake }: { supply: SupplyView; busy: boolean; onTake: () => void }) {
+  // Tapping the name opens the item's description under it — the examine the
+  // old item button offered, without a round trip: the shelf already knows.
+  const [examined, setExamined] = useState(false)
+  const description = supply.description?.trim() || null
+
   const atLine = supply.held >= supply.cap
   // The bag, not the room, is what stops the take: below the line but nothing
   // would fit. After the cap pass this only happens for training gear.
@@ -88,7 +93,9 @@ function SupplyRow({ supply, busy, onTake }: { supply: SupplyView; busy: boolean
   const count = bagFull
     ? `bag holds ${supply.bagMax}`
     : supply.mode === 'take'
-      ? `you ${Math.min(supply.held, supply.cap)} / ${supply.cap}`
+      ? supply.held === 0
+        ? 'none yet'
+        : `you ${Math.min(supply.held, supply.cap)} / ${supply.cap}`
       : `you ${supply.held} / ${supply.cap}`
 
   const label = bagFull
@@ -99,14 +106,32 @@ function SupplyRow({ supply, busy, onTake }: { supply: SupplyView; busy: boolean
         : 'Full'
       : supply.mode === 'take' && supply.cap === 1
         ? supply.takeLabel
-        : `${supply.takeLabel} ${supply.available}`
+        : supply.takeLabel === 'Take'
+          ? `Take ${supply.available}`
+          // A verb of its own ("Fish") reads wrong with a number after it.
+          : supply.takeLabel
 
   return (
     <div className={ROW_CLASS}>
       <Icon name={resolveItemIcon(supply.metadata as { icon?: string } | null, supply.slug)} size={18} color="current" />
       <div className="min-w-0">
-        <div className="truncate text-sm text-fg-bright">{supply.name}</div>
+        {description ? (
+          <button
+            type="button"
+            onClick={() => setExamined((v) => !v)}
+            aria-expanded={examined}
+            title={examined ? 'Hide description' : 'Examine'}
+            className="block max-w-full truncate text-left text-sm text-fg-bright underline decoration-dotted decoration-line-strong underline-offset-2 hover:decoration-fg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-line-focus rounded-sm"
+          >
+            {supply.name}
+          </button>
+        ) : (
+          <div className="truncate text-sm text-fg-bright">{supply.name}</div>
+        )}
         <div className="text-[11px] text-fg-muted">{ruleLabel(supply)}</div>
+        {examined && description && (
+          <div className="mt-1 whitespace-normal text-xs italic text-fg-secondary">{description}</div>
+        )}
       </div>
       <span className={`text-[11px] tabular-nums font-mono whitespace-nowrap ${atLine || bagFull ? 'text-status-success' : 'text-fg-secondary'}`}>
         {count}

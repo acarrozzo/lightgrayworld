@@ -663,7 +663,7 @@ function makeRedberryAction(quantity = 5) {
     cooldownMs: 15 * 60 * 1000,
     quantity,
     emptyVerb: 'grow',
-    collectMessage: (n) => `You pick ${n} redberries.`,
+    collectMessage: () => `You pick a handful of redberries.`,
   })
 }
 
@@ -674,7 +674,7 @@ function makeBlueberryAction(quantity = 5) {
     cooldownMs: 30 * 60 * 1000,
     quantity,
     emptyVerb: 'grow',
-    collectMessage: (n) => `You pick ${n} blueberries.`,
+    collectMessage: () => `You pick a handful of blueberries.`,
   })
 }
 
@@ -716,7 +716,7 @@ function makeSandAction() {
     toolRequired: 'shovel',
     emptyVerb: 'settle',
     missingToolMessage: 'You need a shovel to dig for sand here.',
-    collectMessage: (n) => `You shovel up ${n} sand.`,
+    collectMessage: () => `You shovel up some sand.`,
   })
 }
 
@@ -732,7 +732,7 @@ function makeDirtAction() {
     toolRequired: 'shovel',
     emptyVerb: 'settle',
     missingToolMessage: 'You need a shovel to dig for dirt here.',
-    collectMessage: (n) => `You shovel up ${n} dirt.`,
+    collectMessage: () => `You shovel up some dirt.`,
   })
 }
 
@@ -748,7 +748,7 @@ function makeStoneAction() {
     toolRequired: 'pickaxe',
     emptyVerb: 'settle',
     missingToolMessage: 'You need a pickaxe to mine stone here.',
-    collectMessage: (n) => `You mine ${n} stone.`,
+    collectMessage: () => `You mine some stone.`,
   })
 }
 
@@ -762,7 +762,7 @@ function makeWheatAction() {
     cooldownMs: 60 * 60 * 1000,
     quantity: 5,
     emptyVerb: 'grow',
-    collectMessage: (n) => `You pick ${n} wheat.`,
+    collectMessage: () => `You pick some wheat.`,
   })
 }
 
