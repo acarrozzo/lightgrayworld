@@ -2,7 +2,7 @@
 
 import React, { type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
-import Icon from './Icon'
+import EntryRow from './EntryRow'
 import type { InventoryItem } from '@/lib/game-state'
 import { resolveItemIcon, summarizeConsumable } from '@/lib/item-actions'
 import {
@@ -212,59 +212,48 @@ export default function ItemRow({
   const surface = open ? 'bg-surface-raised/35' : isNew ? 'bg-status-error/5' : 'bg-surface-raised/20'
 
   return (
-    <div
-      className={`flex items-center gap-1.5 min-h-[48px] pl-2 pr-1.5 py-1 border transition-colors duration-150 ${frame} ${surface} ${
-        open ? 'rounded-t-md border-b-transparent' : 'rounded-md hover:bg-surface-raised/35'
-      } ${muted ? 'opacity-70' : ''}`}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="flex items-center gap-2.5 min-w-0 flex-1 text-left py-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-      >
-        <span className="relative w-[34px] h-[34px] flex items-center justify-center flex-shrink-0 text-fg-primary">
-          {isNew && (
-            <span className="absolute -left-0.5 -top-0.5 w-2 h-2 rounded-full bg-status-error border border-status-error/50 shadow-lg shadow-status-error/50 z-10" />
-          )}
-          <Icon name={icon} size={30} color="current" />
-        </span>
-        <span className="min-w-0 flex flex-col gap-px">
-          <span className="flex items-baseline gap-1.5 min-w-0">
-            <span className="text-[13px] font-semibold text-fg-bright truncate">{item.template.name}</span>
-            {item.quantity > 1 && (
-              <span className="text-[11px] font-bold leading-[16px] px-1.5 rounded-md text-resource-gold bg-resource-gold/15 border border-resource-gold/40 tabular-nums flex-shrink-0">
-                ×{item.quantity}
-              </span>
-            )}
-            {equipped && (
-              <span className="text-[9px] font-semibold uppercase tracking-[0.08em] leading-[14px] px-1 rounded-sm border border-status-success/50 text-status-success flex-shrink-0">
-                {equippedTag}
-              </span>
-            )}
-            {nameTag}
-          </span>
-          {second && (
-            <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-tight">
-              {second}
+    <EntryRow
+      icon={icon}
+      iconBadge={isNew ? (
+        <span className="absolute -left-0.5 -top-0.5 w-2 h-2 rounded-full bg-status-error border border-status-error/50 shadow-lg shadow-status-error/50 z-10" />
+      ) : undefined}
+      name={item.template.name}
+      nameTags={
+        <>
+          {item.quantity > 1 && (
+            <span className="text-[11px] font-bold leading-[16px] px-1.5 rounded-md text-resource-gold bg-resource-gold/15 border border-resource-gold/40 tabular-nums flex-shrink-0">
+              ×{item.quantity}
             </span>
           )}
-          {compare && <CompareLine compare={compare} />}
-        </span>
-      </button>
-
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        {action}
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={open ? 'Hide details' : 'Show details'}
-          className="w-5 h-8 flex items-center justify-center text-fg-muted hover:text-fg-primary rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-        >
-          <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
-    </div>
+          {equipped && (
+            <span className="text-[9px] font-semibold uppercase tracking-[0.08em] leading-[14px] px-1 rounded-sm border border-status-success/50 text-status-success flex-shrink-0">
+              {equippedTag}
+            </span>
+          )}
+          {nameTag}
+        </>
+      }
+      subline={second}
+      extra={compare ? <CompareLine compare={compare} /> : undefined}
+      onOpen={onToggle}
+      ariaExpanded={open}
+      action={
+        <>
+          {action}
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={open ? 'Hide details' : 'Show details'}
+            className="w-5 h-8 flex items-center justify-center text-fg-muted hover:text-fg-primary rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+          >
+            <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        </>
+      }
+      className={`${frame} ${surface} ${
+        open ? 'rounded-t-md border-b-transparent' : 'rounded-md hover:bg-surface-raised/35'
+      } ${muted ? 'opacity-70' : ''}`}
+    />
   )
 }
 

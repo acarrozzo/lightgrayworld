@@ -10,6 +10,8 @@ interface InventoryPanelProps {
   inventory: InventoryItem[]
   onAction: (action: string | { type: string; data?: any }) => void
   initialFilter?: FilterTab
+  /** One item to open and scroll to on arrival. */
+  initialOpenId?: string | null
   newItemIds: Set<string>
   onClearNewItem: (itemId: string) => void
   onClose: () => void
@@ -21,6 +23,7 @@ export default function InventoryPanel({
   inventory,
   onAction,
   initialFilter,
+  initialOpenId,
   newItemIds,
   onClearNewItem,
   onClose,
@@ -40,6 +43,7 @@ export default function InventoryPanel({
         inventory={inventory}
         onAction={onAction}
         initialFilter={initialFilter}
+        initialOpenId={initialOpenId}
         newItemIds={newItemIds}
         onClearNewItem={onClearNewItem}
         onOpenCrafting={onOpenCrafting}

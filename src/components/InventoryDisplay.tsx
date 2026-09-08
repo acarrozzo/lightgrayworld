@@ -34,6 +34,8 @@ interface InventoryDisplayProps {
   showNewItems?: boolean
   showHeading?: boolean
   initialFilter?: FilterTab
+  /** One item to open and scroll to on arrival — the character panel's rows deep-link here. */
+  initialOpenId?: string | null
   /**
    * Supplied only while the player stands at a crafting table: the Crafting
    * group grows an "Open Crafting" button, as the original bag had.
@@ -88,6 +90,7 @@ export default function InventoryDisplay({
   showNewItems = true,
   showHeading = true,
   initialFilter,
+  initialOpenId = null,
   onOpenCrafting,
 }: InventoryDisplayProps) {
   const [view, setView] = useState<ItemFilterView>(() => filterTabToView(initialFilter))
@@ -103,6 +106,19 @@ export default function InventoryDisplay({
   useEffect(() => {
     if (initialFilter !== undefined) setView(filterTabToView(initialFilter))
   }, [initialFilter])
+
+  // Its item rows deep-link one step further: open that item and bring it into
+  // view. One frame late, so the list it belongs to has rendered.
+  useEffect(() => {
+    if (!initialOpenId) return
+    setOpenId(initialOpenId)
+    const frame = requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-bag-item="${CSS.escape(initialOpenId)}"]`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [initialOpenId])
 
   useEffect(() => {
     setDropOpen(false)
@@ -245,7 +261,7 @@ export default function InventoryDisplay({
     const droppable = canDrop && !item.isEquipped
 
     return (
-      <div key={item.id} className="flex flex-col">
+      <div key={item.id} data-bag-item={item.id} className="flex flex-col">
         <ItemRow
           item={item}
           open={open}

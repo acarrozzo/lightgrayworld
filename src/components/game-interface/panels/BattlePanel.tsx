@@ -3,10 +3,11 @@
 import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player, useGameStore, type ItemPreview } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { LogOut } from 'lucide-react'
-import { getItemActions, resolveItemIcon, summarizeConsumable, type ConsumableSummary } from '@/lib/item-actions'
+import { resolveItemIcon } from '@/lib/item-actions'
 import { effectiveMag, getCastableSpells, spellTone } from '@/lib/spellbook'
+import { ConsumableRow, SpellRow, useConsumableDeck } from '@/components/game-interface/AbilityRows'
 import { gearContextFromInventory, getStrikeSkills, previewSkillBonus, skillTone, weaponFits, type SkillbookEntry } from '@/lib/skillbook'
 import { effectiveStats } from '@/lib/effective-stats'
 
@@ -509,136 +510,6 @@ function ammoFor(weapon: InventoryItem | null | undefined, inventory: InventoryI
   }
 }
 
-function DeckRow({
-  icon,
-  iconClass,
-  name,
-  detail,
-  right,
-  reason,
-  verb,
-  verbClass,
-  disabled,
-  onClick,
-  onHoverChange,
-}: {
-  icon: string
-  iconClass: string
-  name: string
-  detail?: ReactNode
-  /** Cost or effect, right-aligned. Replaced by `reason` when the row is refused. */
-  right?: ReactNode
-  reason?: string | null
-  verb: string
-  verbClass: string
-  disabled: boolean
-  onClick: () => void
-  /** Pointer or focus arriving on (true) or leaving (false) the row. */
-  onHoverChange?: (hovering: boolean) => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      onMouseEnter={onHoverChange ? () => onHoverChange(true) : undefined}
-      onMouseLeave={onHoverChange ? () => onHoverChange(false) : undefined}
-      onFocus={onHoverChange ? () => onHoverChange(true) : undefined}
-      onBlur={onHoverChange ? () => onHoverChange(false) : undefined}
-      title={reason ?? undefined}
-      className="w-full min-h-[52px] flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg border border-line-strong/70 bg-surface-raised/45 text-left transition-all duration-150 hover:bg-surface-raised/70 active:scale-[0.99] disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:bg-surface-raised/45 disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-    >
-      <Icon name={icon} size={26} className={`${iconClass} flex-shrink-0`} />
-      <span className="flex-1 min-w-0 flex flex-col gap-0.5 leading-tight">
-        <span className="text-[13px] font-bold text-fg-primary truncate">{name}</span>
-        {detail && <span className="text-[10px] text-fg-muted tabular-nums truncate">{detail}</span>}
-      </span>
-      {reason ? (
-        <span className="text-[10px] font-bold text-status-error whitespace-nowrap">{reason}</span>
-      ) : right}
-      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1.5 rounded-md flex-shrink-0 ${disabled ? 'bg-surface-raised text-fg-muted' : verbClass}`}>
-        {verb}
-      </span>
-    </button>
-  )
-}
-
-/** One consumable the deck can offer, read once. */
-interface DeckItem {
-  item: InventoryItem
-  summary: ConsumableSummary
-  /** The verb the server expects: "drink", "eat". */
-  action: string
-}
-
-/**
- * A DeckRow cut down for the HP and MP ladders: smaller icon, the verb and
- * count on the second line, and the effect ("+100 HP") as the button itself,
- * the way the bag labels it. A coloured rail says which ladder it belongs to
- * at a glance; the verb gives way to the reason when the item has nothing to
- * restore.
- */
-function DeckTile({
-  icon,
-  iconClass,
-  railClass,
-  name,
-  quantity,
-  effect,
-  reason,
-  verb,
-  verbClass,
-  disabled,
-  onClick,
-  onHoverChange,
-}: {
-  icon: string
-  iconClass: string
-  railClass: string
-  name: string
-  quantity: number
-  effect: string
-  reason: string | null
-  verb: string
-  verbClass: string
-  disabled: boolean
-  onClick: () => void
-  /** Pointer or focus arriving on (true) or leaving (false) the tile. */
-  onHoverChange?: (hovering: boolean) => void
-}) {
-  const count = quantity > 1 ? `×${quantity}` : 'Last one'
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      onMouseEnter={onHoverChange ? () => onHoverChange(true) : undefined}
-      onMouseLeave={onHoverChange ? () => onHoverChange(false) : undefined}
-      onFocus={onHoverChange ? () => onHoverChange(true) : undefined}
-      onBlur={onHoverChange ? () => onHoverChange(false) : undefined}
-      title={reason ?? `${verb} · ${effect}`}
-      aria-label={`${verb} ${name}, ${effect}, ${count}${reason ? `. ${reason}` : ''}`}
-      className={`w-full min-h-[48px] flex items-center gap-2 pl-2 pr-1.5 py-1.5 rounded-lg border border-line-strong/70 border-l-[3px] ${railClass} bg-surface-raised/45 text-left transition-all duration-150 hover:bg-surface-raised/70 active:scale-[0.99] disabled:opacity-55 disabled:cursor-not-allowed disabled:hover:bg-surface-raised/45 disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus`}
-    >
-      <Icon name={icon} size={22} className={`${iconClass} flex-shrink-0`} />
-      <span className="flex-1 min-w-0 flex flex-col gap-0.5 leading-tight">
-        <span className="text-xs font-bold text-fg-primary truncate">{name}</span>
-        <span className="text-[10px] tabular-nums truncate">
-          {reason ? (
-            <span className="font-bold text-status-error">{reason}</span>
-          ) : (
-            <span className="text-fg-muted">{verb}</span>
-          )}
-          <span className="text-fg-muted"> · {count}</span>
-        </span>
-      </span>
-      <span className={`text-[10px] font-bold tabular-nums whitespace-nowrap px-1.5 py-1 rounded-md flex-shrink-0 ${disabled ? 'bg-surface-raised text-fg-muted' : verbClass}`}>
-        {effect}
-      </span>
-    </button>
-  )
-}
-
 /** A damage range as the deck prints it: the raw roll, before the enemy blocks. */
 function rangeText(lo: number, hi: number): string {
   return `${Math.max(0, lo)}–${Math.max(0, hi)}`
@@ -737,6 +608,9 @@ export default function BattlePanel({
     setItemPreview(null)
     onUseItem(playerItemId, action)
   }, [onUseItem, setItemPreview])
+  // The bag read into what each item does, shared with the character panel.
+  // A hook, so it sits above the early returns below.
+  const consumables = useConsumableDeck(inventory)
 
   const disarmRetreat = useCallback(() => {
     if (retreatTimer.current) clearTimeout(retreatTimer.current)
@@ -780,26 +654,10 @@ export default function BattlePanel({
   const enemyIsDead = battle.enemyCurrentHp <= 0
 
   // ── The bag, sorted for a fight ──
-  // Every consumable that can help, read into what it does. HP and MP
-  // restorers stand in two ladders, strongest first; an item that fills both
-  // gets a full-width row under them; buffs (and anything else) sit last.
-  // The Flower, which costs HP, stays in the bag: nothing in this list hurts.
-  const deckItems: DeckItem[] = inventory
-    .filter((item) => item.template.type === 'CONSUMABLE')
-    .map((item) => {
-      const summary = summarizeConsumable(item.template.metadata as any)
-      const action = getItemActions(item.template.slug, item.template.metadata as any)[0] ?? null
-      return summary && action && summary.group !== 'harm' ? { item, summary, action: action.action } : null
-    })
-    .filter((entry): entry is DeckItem => entry !== null)
-  const byAmount = (pick: (summary: ConsumableSummary) => number) => (a: DeckItem, b: DeckItem) => pick(b.summary) - pick(a.summary)
-  const hpItems = deckItems.filter((entry) => entry.summary.group === 'hp').sort(byAmount((summary) => summary.hp))
-  const mpItems = deckItems.filter((entry) => entry.summary.group === 'mp').sort(byAmount((summary) => summary.mp))
-  const bothItems = deckItems.filter((entry) => entry.summary.group === 'both').sort(byAmount((summary) => summary.hp + summary.mp))
-  // Stat buffs before abilities (wings, gills), which do nothing for a fight.
-  const buffItems = deckItems
-    .filter((entry) => entry.summary.group === 'buff' || entry.summary.group === 'other')
-    .sort((a, b) => Number(b.summary.buffs.some((buff) => buff.short.startsWith('+'))) - Number(a.summary.buffs.some((buff) => buff.short.startsWith('+'))))
+  // Shared with the character panel so the same item reads the same way in
+  // both: HP and MP restorers in two ladders strongest first, an item that
+  // fills both under them, buffs last.
+  const { all: deckItems, hp: hpItems, mp: mpItems, both: bothItems, buffs: buffItems } = consumables
   const hpFull = battle.playerHp >= battle.playerHpMax
   const mpFull = playerMp >= playerMpMax
   // The number beside the vitals is the item's full amount, the same "+100"
@@ -1319,21 +1177,17 @@ export default function BattlePanel({
                         <span className={`text-[9px] font-bold uppercase tracking-wider px-1 ${column.text}`}>{column.heading}</span>
                         {column.items.length === 0 ? (
                           <span className="text-[10px] text-fg-disabled italic px-1 py-1.5">None</span>
-                        ) : column.items.map(({ item, summary, action }) => (
-                          <DeckTile
-                            key={item.id}
-                            icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
+                        ) : column.items.map((entry) => (
+                          <ConsumableRow
+                            key={entry.item.id}
+                            entry={entry}
                             iconClass={`${column.text} opacity-90`}
                             railClass={column.rail}
-                            name={item.template.name}
-                            quantity={item.quantity}
-                            effect={summary.effect}
+                            fillClass={column.fill}
                             reason={column.full ? column.reason : null}
-                            verb={summary.label}
-                            verbClass={column.fill}
-                            disabled={isActing || column.full}
-                            onClick={() => spendItem(item.id, action)}
-                            onHoverChange={column.full ? undefined : previewOnHover({ hp: summary.hp, mp: summary.mp })}
+                            disabled={isActing}
+                            onUse={spendItem}
+                            onHoverChange={column.full ? undefined : previewOnHover({ hp: entry.summary.hp, mp: entry.summary.mp })}
                           />
                         ))}
                       </div>
@@ -1343,61 +1197,40 @@ export default function BattlePanel({
 
                 {/* Restores both: full rows under the ladders, the two numbers in their own colours. */}
                 {bothItems.length > 0 && <span className="text-[9px] font-bold uppercase tracking-wider px-1 text-hue-purple">HP & MP</span>}
-                {bothItems.map(({ item, summary, action }) => {
+                {bothItems.map((entry) => {
                   const reason = hpFull && mpFull ? 'Full HP & MP' : null
                   return (
-                    <DeckRow
-                      key={item.id}
-                      icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
+                    <ConsumableRow
+                      key={entry.item.id}
+                      entry={entry}
                       iconClass="text-hue-purple opacity-90"
-                      name={item.template.name}
-                      detail={item.quantity > 1 ? `×${item.quantity}` : 'Last one'}
-                      right={
-                        <span className="text-xs font-bold tabular-nums whitespace-nowrap flex items-center gap-1.5">
-                          <span className="text-resource-hp">+{summary.hp} HP</span>
-                          <span className="text-resource-mp">+{summary.mp} MP</span>
-                        </span>
-                      }
+                      fillClass="fill-hue-purple"
                       reason={reason}
-                      verb={summary.label}
-                      verbClass="fill-hue-purple"
-                      disabled={isActing || Boolean(reason)}
-                      onClick={() => spendItem(item.id, action)}
-                      onHoverChange={reason ? undefined : previewOnHover({ hp: summary.hp, mp: summary.mp })}
+                      disabled={isActing}
+                      onUse={spendItem}
+                      onHoverChange={reason ? undefined : previewOnHover({ hp: entry.summary.hp, mp: entry.summary.mp })}
                     />
                   )
                 })}
 
-                {/* Buffs and the rest: full rows. The button is what the buff
-                    does ("+20 STR", "Wings"), the way the tiles wear "+100 HP";
-                    how long it lasts sits beside it, the verb under the name. */}
+                {/* Buffs and the rest. What the buff does ("+20 STR") and how
+                    long it lasts sit beside the verb, as on every other row. */}
                 {buffItems.length > 0 && (
                   <>
                     <span className="text-[9px] font-bold uppercase tracking-wider px-1 text-fg-muted">Buffs</span>
-                    {buffItems.map(({ item, summary, action }) => {
-                      const shorts = summary.buffs.map((buff) => buff.short)
-                      const clicks = summary.buffs.find((buff) => buff.clicks > 0)?.clicks ?? 0
+                    {buffItems.map((entry) => {
                       const bonus: NonNullable<ItemPreview['stats']> = {}
-                      for (const buff of summary.buffs) {
+                      for (const buff of entry.summary.buffs) {
                         for (const [stat, amount] of Object.entries(buff.bonus) as [keyof typeof bonus, number][]) {
                           bonus[stat] = (bonus[stat] ?? 0) + amount
                         }
                       }
-                      const count = item.quantity > 1 ? `×${item.quantity}` : 'Last one'
                       return (
-                        <DeckRow
-                          key={item.id}
-                          icon={resolveItemIcon(item.template.metadata ?? null, item.template.slug)}
-                          iconClass="text-fg-bright opacity-80"
-                          name={item.template.name}
-                          detail={`${summary.label} · ${count}`}
-                          right={clicks > 0 ? (
-                            <span className="text-[10px] font-semibold tabular-nums whitespace-nowrap text-fg-muted">{clicks} clicks</span>
-                          ) : undefined}
-                          verb={shorts.length > 0 ? shorts.join(' · ') : summary.label}
-                          verbClass="fill-accent"
+                        <ConsumableRow
+                          key={entry.item.id}
+                          entry={entry}
                           disabled={isActing}
-                          onClick={() => spendItem(item.id, action)}
+                          onUse={spendItem}
                           onHoverChange={Object.keys(bonus).length > 0 ? previewOnHover({ hp: 0, mp: 0, stats: bonus }) : undefined}
                         />
                       )
@@ -1412,31 +1245,24 @@ export default function BattlePanel({
             castableSpells.length === 0 ? (
               <p className="text-xs text-fg-disabled italic py-2 px-1">No spells learned yet.</p>
             ) : (
-              castableSpells.map((entry) => {
-                const tone = spellTone(entry.def.hue)
-                const reason =
-                  entry.def.kind === 'heal' && battle.playerHp >= battle.playerHpMax ? 'Full HP'
-                  : playerMp < entry.castCost ? 'Not enough MP'
-                  : null
-                const range = entry.preview
-                  ? `${entry.preview.min}–${entry.preview.max} ${entry.def.kind === 'heal' ? 'HP' : 'dmg'}`
-                  : null
-                return (
-                  <DeckRow
-                    key={entry.def.id}
-                    icon={entry.def.icon}
-                    iconClass={`${tone.text} opacity-90`}
-                    name={entry.def.name}
-                    detail={`lvl ${entry.level}${range ? ` · ${range}` : ''}`}
-                    right={<span className="text-xs font-bold text-resource-mp tabular-nums whitespace-nowrap">{entry.castCost} MP</span>}
-                    reason={reason}
-                    verb="Cast"
-                    verbClass={tone.fill}
-                    disabled={isActing || Boolean(reason)}
-                    onClick={() => onCastSpell(entry.def.id)}
-                  />
-                )
-              })
+              // No `onOpen`: in a fight the row body is inert, so the only
+              // thing on it that can spend MP is the Cast button itself.
+              castableSpells.map((entry) => (
+                <SpellRow
+                  key={entry.def.id}
+                  entry={entry}
+                  situation={{
+                    inBattle: true,
+                    hasTarget: true,
+                    mp: playerMp,
+                    hp: battle.playerHp,
+                    hpMax: battle.playerHpMax,
+                    buffs: player?.buffs,
+                  }}
+                  disabled={isActing}
+                  onCast={onCastSpell}
+                />
+              ))
             )
           )}
         </div>

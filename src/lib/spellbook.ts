@@ -152,3 +152,39 @@ export function hasLearnableSpell(player: Player | null | undefined): boolean {
   const sp = player?.sp ?? 0
   return buildSpellbook(player).some((entry) => entry.nextLearnCost !== null && entry.nextLearnCost <= sp)
 }
+
+/**
+ * Where the player is standing when they reach for a spell.
+ *
+ * `hasTarget` is an enemy in the room, not a fight already running: the engine
+ * lets an attack spell open one (room-state.executeAttack), so leading with a
+ * Fireball is a cast, not a refusal.
+ */
+export interface CastSituation {
+  inBattle: boolean
+  hasTarget: boolean
+  mp: number
+  hp: number
+  hpMax: number
+  buffs?: Record<string, number> | null
+}
+
+/**
+ * Why this spell cannot be cast right now, or null when it can — the same
+ * refusals the server makes, short enough to sit on a button or in a tooltip.
+ * Every surface that offers a cast reads this one function so the book, the
+ * battle deck and the character panel agree about what is greyed out.
+ */
+export function castBlockedReason(entry: SpellbookEntry, at: CastSituation): string | null {
+  if (!entry.castable) return null
+  const { def } = entry
+  if (def.kind === 'attack' && !at.inBattle && !at.hasTarget) return 'Nothing to hit'
+  if (def.kind === 'heal' && at.hp >= at.hpMax) return 'Full HP'
+  // Iron Skin and Magic Armor lock an amount at cast; the server refuses a
+  // second one while the first still stands.
+  const buffs = at.buffs ?? {}
+  if (def.id === 'iron-skin' && (buffs.ironSkinAmount ?? 0) > 0) return 'Already up'
+  if (def.id === 'magic-armor' && (buffs.magicArmorAmount ?? 0) > 0) return 'Already up'
+  if (at.mp < entry.castCost) return 'Not enough MP'
+  return null
+}

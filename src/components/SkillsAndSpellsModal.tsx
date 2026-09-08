@@ -6,6 +6,7 @@ import { Player, useGameStore } from '@/lib/game-state'
 import Icon from './Icon'
 import {
   buildSpellbook,
+  castBlockedReason,
   effectiveMag,
   spellTone,
   SPELL_SCHOOLS,
@@ -16,7 +17,7 @@ import {
   gearContextFromInventory,
   passiveSkillBonuses,
   skillTone,
-  weaponFitReason,
+  strikeBlockedReason,
   SKILL_GROUPS,
   type GearContext,
   type SkillbookEntry,
@@ -27,9 +28,16 @@ export type BookTab = 'skills' | 'spells'
 interface SkillsAndSpellsModalProps {
   isOpen: boolean
   player: Player | null
-  /** Using from the book: heals work anywhere, attack spells and strikes need a fight. */
+  /** Using from the book: heals and buffs work anywhere, attack spells and strikes need something to hit. */
   inBattle: boolean
+  /** An enemy stands in the room, so an attack spell or strike can open the fight. */
+  hasTarget: boolean
   tab: BookTab
+  /**
+   * One entry to scroll to and ring on open — the character panel's rows and
+   * the battle deck send the player here to read what they just tapped.
+   */
+  highlightId?: string | null
   onTabChange: (tab: BookTab) => void
   onClose: () => void
   onLearned: (updatedPlayer: Player) => void
@@ -49,7 +57,9 @@ export default function SkillsAndSpellsModal({
   isOpen,
   player,
   inBattle,
+  hasTarget,
   tab,
+  highlightId = null,
   onTabChange,
   onClose,
   onLearned,
@@ -77,6 +87,18 @@ export default function SkillsAndSpellsModal({
   useEffect(() => {
     setNotice(null)
   }, [tab])
+
+  // Bring the entry the player tapped into view. One frame late, so the list
+  // it belongs to has rendered; a stale id simply matches nothing.
+  useEffect(() => {
+    if (!isOpen || !highlightId) return
+    const frame = requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-book-entry="${CSS.escape(highlightId)}"]`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [isOpen, highlightId, tab])
 
   if (!mounted || !isOpen || !player) return null
 
@@ -114,22 +136,15 @@ export default function SkillsAndSpellsModal({
     }
   }
 
-  const castDisabledReason = (entry: SpellbookEntry): string | null => {
-    if (!entry.castable) return null
-    if (entry.def.kind === 'attack' && !inBattle) return 'Needs a target — cast it in a fight'
-    if (entry.def.kind === 'heal' && hp >= hpMax) return 'Already at full health'
-    if (mp < entry.castCost) return `Not enough MP (${entry.castCost} needed)`
-    return null
-  }
+  // The same refusals the server makes, shared with the battle deck and the
+  // character panel. An attack spell or strike only needs something to hit —
+  // out of a fight the engine opens one, as the original let you do.
+  const situation = { inBattle, hasTarget, mp }
+  const castDisabledReason = (entry: SpellbookEntry): string | null =>
+    castBlockedReason(entry, { ...situation, hp, hpMax, buffs: player.buffs })
 
-  const skillUseDisabledReason = (entry: SkillbookEntry): string | null => {
-    if (!entry.usable) return null
-    if (!inBattle) return 'Needs a target — use it in a fight'
-    const fit = weaponFitReason(entry.def, gear)
-    if (fit) return fit
-    if (entry.castCost !== null && mp < entry.castCost) return `Not enough MP (${entry.castCost} needed)`
-    return null
-  }
+  const skillUseDisabledReason = (entry: SkillbookEntry): string | null =>
+    strikeBlockedReason(entry, { ...situation, gear })
 
   const passiveSummary = [
     passives.str > 0 ? `+${passives.str} STR` : null,
@@ -233,6 +248,7 @@ export default function SkillsAndSpellsModal({
                         <SkillCard
                           key={entry.def.id}
                           entry={entry}
+                          highlighted={entry.def.id === highlightId}
                           sp={sp}
                           gear={gear}
                           busy={busy === entry.def.id}
@@ -260,6 +276,7 @@ export default function SkillsAndSpellsModal({
                         <SpellCard
                           key={entry.def.id}
                           entry={entry}
+                          highlighted={entry.def.id === highlightId}
                           sp={sp}
                           busy={busy === entry.def.id}
                           anyBusy={Boolean(busy)}
@@ -343,6 +360,8 @@ function LearnControls({
 
 interface SkillCardProps {
   entry: SkillbookEntry
+  /** Tapped from somewhere else and ringed here. */
+  highlighted?: boolean
   sp: number
   gear: GearContext
   busy: boolean
@@ -378,7 +397,7 @@ function passiveStatus(entry: SkillbookEntry, gear: GearContext): string {
   }
 }
 
-function SkillCard({ entry, sp, gear, busy, anyBusy, skillUseDisabledReason, onLearn, onUse }: SkillCardProps) {
+function SkillCard({ entry, highlighted = false, sp, gear, busy, anyBusy, skillUseDisabledReason, onLearn, onUse }: SkillCardProps) {
   const { def, level, maxLevel, nextLearnCost, castCost, preview, usable, teachers } = entry
   const tone = skillTone(def.hue)
   const locked = maxLevel <= 0
@@ -390,9 +409,10 @@ function SkillCard({ entry, sp, gear, busy, anyBusy, skillUseDisabledReason, onL
 
   return (
     <div
-      className={`rounded-xl border px-4 py-3 flex gap-3 ${
+      data-book-entry={def.id}
+      className={`rounded-xl border px-4 py-3 flex gap-3 transition-shadow ${
         locked ? 'border-line-subtle/60 bg-surface-panel/40 opacity-70' : `${tone.border}/40 bg-surface-panel/80`
-      }`}
+      } ${highlighted ? 'ring-2 ring-line-focus' : ''}`}
     >
       <div className="flex-shrink-0 flex flex-col items-center gap-1 pt-0.5">
         <Icon name={def.icon} size={40} className={locked ? 'text-fg-disabled' : tone.text} />
@@ -476,6 +496,8 @@ function SkillCard({ entry, sp, gear, busy, anyBusy, skillUseDisabledReason, onL
 
 interface SpellCardProps {
   entry: SpellbookEntry
+  /** Tapped from somewhere else and ringed here. */
+  highlighted?: boolean
   sp: number
   busy: boolean
   anyBusy: boolean
@@ -484,7 +506,7 @@ interface SpellCardProps {
   onCast: () => void
 }
 
-function SpellCard({ entry, sp, busy, anyBusy, castDisabledReason, onLearn, onCast }: SpellCardProps) {
+function SpellCard({ entry, highlighted = false, sp, busy, anyBusy, castDisabledReason, onLearn, onCast }: SpellCardProps) {
   const { def, level, maxLevel, nextLearnCost, castCost, preview, castable, teachers } = entry
   const tone = spellTone(def.hue)
   const locked = maxLevel <= 0
@@ -495,9 +517,10 @@ function SpellCard({ entry, sp, busy, anyBusy, castDisabledReason, onLearn, onCa
 
   return (
     <div
-      className={`rounded-xl border px-4 py-3 flex gap-3 ${
+      data-book-entry={def.id}
+      className={`rounded-xl border px-4 py-3 flex gap-3 transition-shadow ${
         locked ? 'border-line-subtle/60 bg-surface-panel/40 opacity-70' : `${tone.border}/40 bg-surface-panel/80`
-      }`}
+      } ${highlighted ? 'ring-2 ring-line-focus' : ''}`}
     >
       <div className="flex-shrink-0 flex flex-col items-center gap-1 pt-0.5">
         <Icon name={def.icon} size={40} className={locked ? 'text-fg-disabled' : tone.text} />

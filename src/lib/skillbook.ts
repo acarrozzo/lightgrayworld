@@ -165,3 +165,30 @@ export function hasLearnableSkill(player: Player | null | undefined): boolean {
 export function passiveSkillBonuses(player: Player | null | undefined, gear: GearContext): PassiveBonuses {
   return registry.getPassiveSkillBonuses(player?.skills, gear)
 }
+
+/**
+ * Where the player is standing when they reach for a strike. `hasTarget` is an
+ * enemy in the room rather than a fight already running: a strike opens one the
+ * same way a plain attack does.
+ */
+export interface StrikeSituation {
+  inBattle: boolean
+  hasTarget: boolean
+  mp: number
+  gear: GearContext
+}
+
+/**
+ * Why this strike cannot be used right now, or null when it can — the server's
+ * own refusals from room-state.executeUseSkill, short enough for a button or a
+ * tooltip. Battle-only reasons (a flyer out of reach, a weapon immunity) stay
+ * with the battle deck, which is the only place that knows the enemy's traits.
+ */
+export function strikeBlockedReason(entry: SkillbookEntry, at: StrikeSituation): string | null {
+  if (!entry.usable) return null
+  if (!at.inBattle && !at.hasTarget) return 'Nothing to hit'
+  const fit = weaponFitReason(entry.def, at.gear)
+  if (fit) return fit
+  if (entry.castCost !== null && at.mp < entry.castCost) return 'Not enough MP'
+  return null
+}

@@ -23,6 +23,7 @@ import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { describeStat, effectiveStats } from '@/lib/effective-stats'
+import { getSpell } from '@/lib/spellbook'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
@@ -209,6 +210,16 @@ export default function GameInterface() {
   const [isSpellbookOpen, setSpellbookOpen] = useState(false)
   // Which tab the Skills & Spells book opens on; remembered across opens.
   const [bookTab, setBookTab] = useState<BookTab>('skills')
+  // One entry the book should ring, set by a character-panel row.
+  const [bookHighlight, setBookHighlight] = useState<string | null>(null)
+
+  /** Open the book on a tab, optionally ringing one skill or spell. */
+  const handleOpenBook = useCallback((tab: BookTab, highlightId?: string) => {
+    setBookTab(tab)
+    setBookHighlight(highlightId ?? null)
+    setSpellbookOpen(true)
+  }, [])
+
   const [shopModalData, setShopModalData] = useState<{
     shopName?: string
     /** Set when the shop is a traveler's cart; the modal closes when they leave. */
@@ -272,6 +283,9 @@ export default function GameInterface() {
     player: null,
   })
   const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
+  // One item the bag should open on arrival, set by a character-panel row and
+  // cleared when the player leaves the tab so the same row can send them back.
+  const [inventoryOpenId, setInventoryOpenId] = useState<string | null>(null)
   const [newItemIds, setNewItemIds] = useState<Set<string>>(new Set())
   const [hasQuestUpdate, setHasQuestUpdate] = useState(false)
   // Quests ready to turn in, for the tab badge. The same evaluation the
@@ -1037,10 +1051,18 @@ export default function GameInterface() {
       }
     }
 
-    // While in battle, any dispatched action returns the player to the explore
-    // tab so the BattlePanel (which only renders on explore) is visible for the
-    // resulting turn animation.
-    if (battle.isInBattle && centerActiveTab !== 'explore') {
+    // Anything that produces a battle turn returns the player to the explore
+    // tab so the BattlePanel is visible for the resulting animation: a turn in
+    // a running fight, or a strike / attack spell cast from the character panel
+    // that is about to open one. Heals and buffs cast out of a fight are left
+    // alone — casting them without losing your place is the point of the
+    // buttons there. Only the narrow layout needs the switch at all: past `lg`
+    // the battle column stays on screen beside the open panel.
+    const opensAFight =
+      actionType === 'use_skill' ||
+      (actionType === 'cast_spell' && getSpell(actionData?.spellId)?.kind === 'attack')
+    const roomIsHidden = typeof window === 'undefined' || !window.matchMedia('(min-width: 1024px)').matches
+    if ((battle.isInBattle || opensAFight) && centerActiveTab !== 'explore' && roomIsHidden) {
       setCenterActiveTab('explore')
     }
 
@@ -1080,8 +1102,7 @@ export default function GameInterface() {
     // book itself lives in the store, learning goes over HTTP, casting is a
     // normal game action dispatched from inside it.
     if (normalizedAction === 'open spellbook' || normalizedAction === 'open skills' || normalizedAction === 'open skillbook') {
-      setBookTab(normalizedAction === 'open spellbook' ? 'spells' : 'skills')
-      setSpellbookOpen(true)
+      handleOpenBook(normalizedAction === 'open spellbook' ? 'spells' : 'skills')
       return
     }
 
@@ -3097,9 +3118,10 @@ export default function GameInterface() {
     }
   }, [battle.isInBattle])
 
-  const handleSwitchToInventory = useCallback((filter?: FilterTab) => {
+  const handleSwitchToInventory = useCallback((filter?: FilterTab, openItemId?: string) => {
     setCenterActiveTab('inventory')
     setInventoryFilter(filter)
+    setInventoryOpenId(openItemId ?? null)
   }, [])
 
   const handleOpenPlayerProfile = useCallback(
@@ -3142,10 +3164,9 @@ export default function GameInterface() {
             player={player}
             onAction={handleAction}
             onSwitchToInventory={handleSwitchToInventory}
-            onOpenBook={(tab) => {
-              setBookTab(tab)
-              setSpellbookOpen(true)
-            }}
+            inBattle={battle.isInBattle}
+            hasTarget={roomEnemy !== null}
+            onOpenBook={handleOpenBook}
             onOpenStatAllocation={() => setStatModalOpen(true)}
             onOpenTraining={() => setTrainingModalOpen(true)}
             onClose={goToExplore}
@@ -3162,6 +3183,7 @@ export default function GameInterface() {
                 : undefined
             }
             initialFilter={inventoryFilter}
+            initialOpenId={inventoryOpenId}
             newItemIds={newItemIds}
             onClearNewItem={(itemId) => {
               setNewItemIds(prev => {
@@ -3234,7 +3256,7 @@ export default function GameInterface() {
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle])
+  }, [goToExplore, centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId])
 
   const handleCenterTabChange = useCallback((tabId: string | null) => {
     if (!tabId || tabId === 'explore') {
@@ -3250,6 +3272,9 @@ export default function GameInterface() {
 
     if (tabId !== 'inventory') {
       setInventoryFilter(undefined)
+      // Forget which item the bag was told to open, so the row that sent the
+      // player there can send them back to the same one.
+      setInventoryOpenId(null)
       // The badge is deliberately NOT cleared here. Clearing on a switch to any
       // non-inventory tab meant opening Char or Quests destroyed the "new items"
       // count before the player had ever opened the inventory to see what was
@@ -3351,9 +3376,19 @@ export default function GameInterface() {
         isOpen={isSpellbookOpen}
         player={player}
         inBattle={battle.isInBattle}
+        hasTarget={roomEnemy !== null}
         tab={bookTab}
-        onTabChange={setBookTab}
-        onClose={() => setSpellbookOpen(false)}
+        highlightId={bookHighlight}
+        onTabChange={(nextTab) => {
+          // Switching tabs by hand leaves the ring behind: it belonged to the
+          // row that sent the player here, not to wherever they wandered.
+          setBookHighlight(null)
+          setBookTab(nextTab)
+        }}
+        onClose={() => {
+          setBookHighlight(null)
+          setSpellbookOpen(false)
+        }}
         onLearned={(updatedPlayer) => {
           // Merge: the server's row wins, client-only fields (buffs, presence) survive.
           const current = useGameStore.getState().player
@@ -3584,10 +3619,7 @@ export default function GameInterface() {
                 inventory={inventory}
                 onOpenTraining={() => setTrainingModalOpen(true)}
                 onOpenStats={() => setStatModalOpen(true)}
-                onOpenBook={(tab) => {
-                  setBookTab(tab)
-                  setSpellbookOpen(true)
-                }}
+                onOpenBook={handleOpenBook}
                 onOpenInventory={handleSwitchToInventory}
                 isPartyMember={isPartyMember}
                 teleportBlockedReason={teleportBlockedReason}
@@ -3757,10 +3789,7 @@ export default function GameInterface() {
                   inventory={inventory}
                   onOpenTraining={() => setTrainingModalOpen(true)}
                   onOpenStats={() => setStatModalOpen(true)}
-                  onOpenBook={(tab) => {
-                    setBookTab(tab)
-                    setSpellbookOpen(true)
-                  }}
+                  onOpenBook={handleOpenBook}
                   onOpenInventory={handleSwitchToInventory}
                   isPartyMember={isPartyMember}
                   teleportBlockedReason={teleportBlockedReason}
