@@ -101,6 +101,7 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1, tx = null) {
     return {
       granted: false,
       reason: 'Max quantity reached for this item',
+      quantity: 0,
       // Skip the inventory refetch when running inside a caller's transaction;
       // the caller refetches once the transaction commits.
       inventory: tx ? null : await getPlayerInventory(playerId),
@@ -135,6 +136,8 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1, tx = null) {
   return {
     granted: true,
     reason: 'Item granted',
+    // What the bag actually took: less than asked when the stack was nearly full.
+    quantity: grantQty,
     inventory: tx ? null : await getPlayerInventory(playerId),
   }
 }

@@ -472,6 +472,7 @@ export default function GameInterface() {
     if (gatherHydratedRoomIdRef.current === roomId) return
     // Clear stale values from the previous room before fresh status arrives.
     setGatherCooldowns([])
+    setSupplies([])
     // An optimistic swap lands here before the server has answered; the
     // answer brings the countdowns, so there is nothing to fetch yet.
     if (pendingMoveRef.current?.toRoomId === roomId) return

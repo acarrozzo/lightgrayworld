@@ -22,10 +22,11 @@ const { pluralizeItemName } = require('./item-names')
  * The feed's tally, in the original's bracket shape: "[ +38 arrows = 50 ]" for
  * a stack, "[ +1 polearm ]" for a single thing you now hold one of.
  */
-function feedTally(collected, total, plural) {
+function feedTally(collected, total, plural, singular = null) {
+  const noun = collected === 1 && singular ? singular : plural
   return total > 1 || collected !== total
-    ? `[ +${collected} ${plural} = ${total} ]`
-    : `[ +${collected} ${plural} ]`
+    ? `[ +${collected} ${noun} = ${total} ]`
+    : `[ +${collected} ${noun} ]`
 }
 
 function pluralFor(entry, template) {
@@ -154,16 +155,19 @@ async function takeSupply(playerId, roomId, slug) {
   }
 
   const granted = await grantItemOnce(playerId, slug, quantity)
-  if (!granted.granted) {
+  if (!granted.granted || !(granted.quantity > 0)) {
     return { success: false, outcome: 'info', message: `You cannot carry another ${template.name} right now.`, held }
   }
 
-  const total = held + quantity
+  // The bag has the last word on the count; a stack that was nearly full
+  // takes less than the room offered.
+  const taken = granted.quantity ?? quantity
+  const total = held + taken
   const prose = entry.message
-    ? entry.message(quantity, total)
+    ? entry.message(taken, total)
     : entry.mode === 'take'
-      ? `You take ${cap === 1 ? 'a' : quantity} ${cap === 1 ? template.name : plural}.`
-      : `You take ${quantity} ${plural}.`
+      ? `You take ${taken === 1 ? 'a' : taken} ${taken === 1 ? template.name : plural}.`
+      : `You take ${taken} ${plural}.`
 
   const [inventory, supplies] = await Promise.all([
     getPlayerInventory(playerId),
@@ -173,8 +177,8 @@ async function takeSupply(playerId, roomId, slug) {
   return {
     success: true,
     outcome: 'success',
-    message: `${prose} ${feedTally(quantity, total, plural)}`,
-    quantity,
+    message: `${prose} ${feedTally(taken, total, plural, template.name)}`,
+    quantity: taken,
     total,
     inventory,
     supplies,

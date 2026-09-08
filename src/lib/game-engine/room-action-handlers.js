@@ -3,7 +3,7 @@
  * Handles execution of actions that are unique to specific rooms
  */
 const { grantPersonalItemOnce } = require('./effects')
-const { grantItemOnce, playerHasItem, removeItemBySlug, getPlayerInventory } = require('./services/inventory-service')
+const { grantItemOnce, playerHasItem, getHeldQuantity, getItemBySlug, removeItemBySlug, getPlayerInventory } = require('./services/inventory-service')
 const { checkAndConsumeCooldown } = require('./services/action-cap-service')
 const { feedTally } = require('./services/room-supply-service')
 const { grantTeleport } = require('./teleport-grants')
@@ -590,6 +590,15 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
     // themselves show that name; the rest fall back to a plain "Ready" plus the
     // batch size on the client.
     ...(readyLabel ? { readyLabel } : {}),
+    // A full bag refuses up front, before the timer is consumed, so a player
+    // at the template's max does not burn a regrow on nothing.
+    precondition: async (playerId) => {
+      const template = await getItemBySlug(itemSlug)
+      const bagMax = template?.max ?? Infinity
+      if (!Number.isFinite(bagMax)) return { allowed: true }
+      const held = await getHeldQuantity(playerId, itemSlug)
+      return held >= bagMax ? { allowed: false, capInfo: { bagFull: true, bagMax } } : { allowed: true }
+    },
     effects: [{ type: 'grantItem', itemSlug, quantity: baseQuantity }],
     ...(tiers
       ? {
@@ -612,6 +621,9 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
       if (capInfo?.missingTool) {
         return missingToolMessage || `You need a ${capInfo.missingTool} to do that.`
       }
+      if (capInfo?.bagFull) {
+        return `Your bag cannot hold any more ${itemNamePlural} (it holds ${capInfo.bagMax}).`
+      }
       if (!effects?.[0]?.success) {
         // The bag, not the node: the grant refused because the stack is at
         // the template's max. Say so rather than blaming the timer.
@@ -627,7 +639,7 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
       const entry = Array.isArray(inventory)
         ? inventory.find((i) => i?.template?.slug === itemSlug)
         : null
-      const collected = effects?.[0]?.quantity ?? baseQuantity
+      const collected = effects?.[0]?.granted ?? effects?.[0]?.quantity ?? baseQuantity
       const total = typeof entry?.quantity === 'number' ? entry.quantity : collected
       const tier = context?.tier ?? null
       const prose = typeof collectMessage === 'function'
@@ -2204,7 +2216,6 @@ const ROOM_ACTIONS = {
     },
   },
 
-
   // --- Forest Gate directory (104) ---
   '104': {
     'read sign': {
@@ -2255,9 +2266,6 @@ const ROOM_ACTIONS = {
       },
     },
   },
-
-
-
 
   // ==================== FOREST UNDERGROUND ====================
   // The two lair entrances warn you what is below and what it drops. Both signs
@@ -2803,7 +2811,6 @@ const ROOM_ACTIONS = {
     }),
   },
 
-
   // ==================== ROCKY FLATS ====================
 
   // --- The Crossroads: the Dwarf Captain, and the map directory beside him ---
@@ -2954,7 +2961,6 @@ const ROOM_ACTIONS = {
 
   // --- The Silver Shop ---
   '310': { 'view shop': makeShopHandler('310', { icon: 'shop', iconColor: 'blue-300' }) },
-
 
   // --- The Abandoned Mine's sign ---
   '315': {
@@ -3372,7 +3378,6 @@ const ROOM_ACTIONS = {
         overchargeBonus: 75,
         overchargeMessage: 'You rest at the Tree Hut fireplace and super charge your health and mana. (+75 HP, +75 MP)',
       }),
-    // The original set your tea to five if you had fewer: a top-up, not a farm.
   },
 
   // --- The Dark Forest Teleport: the directory, and a spare axe ---
@@ -4079,9 +4084,10 @@ async function executeEffects(effects, playerId) {
       results.push({
         success: result.granted,
         message: result.reason,
-        // Echo the requested amount so message builders can report what was
-        // actually granted rather than assuming the definition's default.
+        // The requested amount, and what the bag actually took (a nearly full
+        // stack takes less), so message builders report the real number.
         quantity: effect.quantity || 1,
+        granted: result.quantity ?? (result.granted ? effect.quantity || 1 : 0),
         inventory: result.inventory,
       })
       if (result.inventory) {

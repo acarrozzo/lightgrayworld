@@ -85,7 +85,8 @@ test('harvests expose their tool tiers for the room badge', () => {
 
 test('the feed tally keeps the original bracket shape', () => {
   assert.equal(feedTally(38, 50, 'arrows'), '[ +38 arrows = 50 ]')
-  assert.equal(feedTally(1, 1, 'polearms'), '[ +1 polearms ]')
+  assert.equal(feedTally(1, 1, 'polearms', 'polearm'), '[ +1 polearm ]')
+  assert.equal(feedTally(1, 5, 'cups of tea', 'Tea'), '[ +1 Tea = 5 ]')
   assert.equal(feedTally(2, 14, 'wood'), '[ +2 wood = 14 ]')
 })
 

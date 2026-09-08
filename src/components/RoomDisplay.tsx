@@ -482,7 +482,9 @@ export default function RoomDisplay({
       })()}
 
       <SupplyShelf
-        supplies={supplies}
+        // Belt and braces against a shelf that has not caught up with a room
+        // change yet: only this room's rows are ever shown.
+        supplies={supplies.filter((s) => s.roomId === room.roomId)}
         items={room.items ?? []}
         currentUsername={currentUsername}
         busyKey={isPerformingAction}
