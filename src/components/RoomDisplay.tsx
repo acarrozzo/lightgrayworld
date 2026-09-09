@@ -321,6 +321,28 @@ export default function RoomDisplay({
     }
   }
 
+  // Last in the room's action stack: what the room hands you comes after what
+  // the room lets you do, so the buttons and the harvest nodes keep the top of
+  // the column and the strip closes it.
+  const supplyShelf = (
+    <SupplyShelf
+      // Belt and braces against a shelf that has not caught up with a room
+      // change yet: only this room's pills are ever shown.
+      supplies={supplies.filter((s) => s.roomId === room.roomId)}
+      items={room.items ?? []}
+      roomId={room.roomId}
+      currentUsername={currentUsername}
+      busyKey={isPerformingAction}
+      onTake={handleTakeSupply}
+      onPickup={handlePickupItem}
+      onExamine={handleExamineItem}
+      registerRow={(key, el) => {
+        if (el) itemButtonRefs.current.set(key, el)
+        else itemButtonRefs.current.delete(key)
+      }}
+    />
+  )
+
   return (
     <div className={`roomboxActions ${className || ''}`}>
       {showHeader && (
@@ -477,25 +499,10 @@ export default function RoomDisplay({
                 {regularActions.map(renderButton)}
               </div>
             )}
+            {supplyShelf}
           </div>
         )
       })()}
-
-      <SupplyShelf
-        // Belt and braces against a shelf that has not caught up with a room
-        // change yet: only this room's rows are ever shown.
-        supplies={supplies.filter((s) => s.roomId === room.roomId)}
-        items={room.items ?? []}
-        currentUsername={currentUsername}
-        busyKey={isPerformingAction}
-        onTake={handleTakeSupply}
-        onPickup={handlePickupItem}
-        onExamine={handleExamineItem}
-        registerRow={(key, el) => {
-          if (el) itemButtonRefs.current.set(key, el)
-          else itemButtonRefs.current.delete(key)
-        }}
-      />
 
       {/* Item-action flyout: pinned to the clicked button's last screen position
           (the button may be gone after a pickup). */}
