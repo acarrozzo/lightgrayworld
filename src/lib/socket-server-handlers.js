@@ -2020,14 +2020,33 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         return
       }
 
-      const res = partyStore.follow(toPartyInfo(player), toPartyInfo(target))
+      // An ask, not a join: the answer comes back on party:follow-answer.
+      const res = partyStore.requestFollow(toPartyInfo(player), toPartyInfo(target))
+      if (!res.ok) emitPartyError(res.error)
+    })
+
+    // The leader answers an ask to follow them.
+    socket.on(SOCKET_EVENTS.PARTY_FOLLOW_ANSWER, (data = {}) => {
+      const player = activePlayers.get(socket.id)
+      if (!player) return
+      touchPlayerActivity(player)
+
+      const requesterId = data?.requesterId
+      if (!requesterId) return
+
+      const res = partyStore.answerFollow(player.id, requesterId, data?.accept === true)
       if (!res.ok) {
         emitPartyError(res.error)
         return
       }
+      if (!res.accepted || !res.partyId) return
+
       broadcastRoomPartyState(player.currentRoom)
       // What the party has been saying, for someone who has just walked into it.
-      sendPartyChatHistory(socket, res.partyId)
+      for (const sid of getSocketIdsForUser(requesterId)) {
+        const requesterSocket = io.sockets.sockets.get(sid)
+        if (requesterSocket) sendPartyChatHistory(requesterSocket, res.partyId)
+      }
     })
 
     // Leader opens or closes the party to new followers.
@@ -2036,6 +2055,16 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       if (!player) return
       touchPlayerActivity(player)
       const res = partyStore.setClosed(player.id, data?.closed === true)
+      if (!res.ok) emitPartyError(res.error)
+    })
+
+    // Leader names the party. Cosmetic, so it is validated for printability
+    // rather than for uniqueness — two parties may share a name.
+    socket.on(SOCKET_EVENTS.PARTY_SET_NAME, (data = {}) => {
+      const player = activePlayers.get(socket.id)
+      if (!player) return
+      touchPlayerActivity(player)
+      const res = partyStore.setName(player.id, data?.name)
       if (!res.ok) emitPartyError(res.error)
     })
 

@@ -18,7 +18,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { Player } from '../src/lib/game-state'
 import type { PartySnapshot, PresencePlayer } from '../src/lib/socket'
-import { buildSquad, followableHere, groupBonusPercent, LOW_HP_FRACTION } from '../src/lib/party/squad'
+import {
+  buildOutsiders,
+  buildSquad,
+  followableHere,
+  groupBonusPercent,
+  LOW_HP_FRACTION,
+} from '../src/lib/party/squad'
 
 const NOW = Date.now()
 
@@ -59,6 +65,7 @@ const PARTY: PartySnapshot = {
   size: 3,
   maxSize: 6,
   closed: false,
+  name: null,
 }
 
 const PRESENCE: Record<string, PresencePlayer> = {
@@ -141,6 +148,59 @@ test('knowing nothing about a member is not the same as them being dead', () => 
   assert.equal(squad[2].statusLabel, 'Offline')
 })
 
+test('a safe room reads green, and reads per member rather than per room', () => {
+  // A danger-5 room: a stroll for Kaz at 16, even odds for a level-5 follower.
+  const party: PartySnapshot = {
+    ...PARTY,
+    members: [{ id: 'green', username: 'Bo', level: 5, uIcon: null, uIconColor: null }],
+  }
+  const presence = {
+    lead: presenceOf({ id: 'lead', username: 'Kaz', level: 16, hp: 60, hpMax: 60 }),
+    green: presenceOf({ id: 'green', username: 'Bo', level: 5, hp: 30, hpMax: 30 }),
+  }
+  const squad = buildSquad({
+    party, roomDanger: { dangerLevel: 5, isSafe: false }, roomPlayers: [],
+    presenceById: presence, currentPlayerId: 'lead', self: null,
+  })
+  assert.equal(squad[0].state, 'safe', 'danger 5 is EASY at level 16')
+  assert.equal(squad[1].state, 'ready', 'the same room is EVEN at level 5 — not green')
+})
+
+test('a flagged safe room is safe for everyone in it', () => {
+  const squad = buildSquad({
+    party: PARTY, roomDanger: { dangerLevel: 40, isSafe: true }, roomPlayers: ROOM,
+    presenceById: { me: presenceOf({ id: 'me', username: 'Vex', level: 14, hp: 52, hpMax: 52 }) },
+    currentPlayerId: 'me', self: null,
+  })
+  assert.equal(squad[1].state, 'safe', 'the flag beats the number')
+})
+
+test('a fight outranks a safe room and outranks being offline', () => {
+  const squad = buildSquad({
+    party: PARTY, roomDanger: { dangerLevel: 0, isSafe: true }, roomPlayers: ROOM,
+    presenceById: PRESENCE, currentPlayerId: 'me', self: null,
+  })
+  // Kaz is fighting a Scorpion in a room flagged safe: the fight is the reading.
+  assert.equal(squad[0].state, 'fighting')
+})
+
+test('the viewer in a fight reads as fighting, same as anybody else', () => {
+  const presence = {
+    ...PRESENCE,
+    me: presenceOf({
+      id: 'me', username: 'Vex', level: 14, hp: 42, hpMax: 52,
+      inBattle: true, battleEnemyName: 'Giant Rat',
+    }),
+  }
+  const squad = buildSquad({
+    party: PARTY, roomDanger: { dangerLevel: 0, isSafe: true }, roomPlayers: ROOM,
+    presenceById: presence, currentPlayerId: 'me', self: null,
+  })
+  assert.equal(squad[1].isSelf, true)
+  assert.equal(squad[1].state, 'fighting', 'your own tile is not exempt from the red')
+  assert.equal(squad[1].statusLabel, 'Giant Rat')
+})
+
 test('the group bonus matches what the battle calculator counts', () => {
   // getOtherCombatantCount: every other player in the room with a battle of
   // their own (Tam), plus every party member standing here (Kaz, Mira). Three
@@ -150,6 +210,39 @@ test('the group bonus matches what the battle calculator counts', () => {
 
 test('a solo player in an empty room fights at no bonus', () => {
   assert.equal(groupBonusPercent([ROOM[1]], null, 'me'), 0)
+})
+
+test('the people standing here are described the same way the party is', () => {
+  const outsiders = buildOutsiders({
+    party: PARTY,
+    roomDanger: { dangerLevel: 30, isSafe: false },
+    roomPlayers: ROOM,
+    presenceById: PRESENCE,
+    currentPlayerId: 'me',
+  })
+
+  assert.deepEqual(outsiders.map((m) => m.id), ['stranger'], 'only the followable ones')
+  const tam = outsiders[0]
+  // The whole point: you can read their state without joining them first.
+  assert.equal(tam.inParty, false)
+  assert.equal(tam.level, 7)
+  assert.equal(tam.hpPct, 100)
+  assert.equal(tam.state, 'fighting', 'Tam is mid-fight and the tile says so')
+  assert.equal(tam.isLeader, false, '"Leader" means the leader of *your* party')
+})
+
+test('someone who leads a party of their own is flagged before you follow them', () => {
+  const room = [
+    ...ROOM,
+    roomOf({ id: 'boss', username: 'Rell', level: 20, partyLeaderId: 'boss' }),
+  ]
+  const outsiders = buildOutsiders({
+    party: null, roomPlayers: room, presenceById: PRESENCE, currentPlayerId: 'me',
+  })
+  const rell = outsiders.find((m) => m.id === 'boss')
+  assert.ok(rell)
+  assert.equal(rell.leadsOwnParty, true, 'following them joins their group, not yours')
+  assert.equal(outsiders.find((m) => m.id === 'stranger')?.leadsOwnParty, false)
 })
 
 test('you can only follow a leader, and never someone already with you', () => {

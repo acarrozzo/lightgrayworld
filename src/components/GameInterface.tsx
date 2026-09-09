@@ -28,6 +28,7 @@ import { describeStat, effectiveStats } from '@/lib/effective-stats'
 import { getSpell } from '@/lib/spellbook'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
+import type { PartyFollowRequestPayload } from '@/lib/socket'
 import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
 import { useTickerStore } from '@/store/tickerStore'
 import ActivityTicker from './ActivityTicker'
@@ -187,6 +188,10 @@ export default function GameInterface() {
   // Escaping a fight takes you out of your party (see partyStore.departAlone),
   // which is not something to discover afterwards — so the two ways of doing it
   // stop and say so first. Holds the escape to run if the player goes ahead.
+  // People asking to travel behind us, oldest first. A queue rather than a
+  // single slot: two players can ask at once, and silently dropping one of them
+  // would leave them waiting on an answer that is never coming.
+  const [followRequests, setFollowRequests] = useState<PartyFollowRequestPayload[]>([])
   const [partyDepartureConfirm, setPartyDepartureConfirm] = useState<
     { title: string; message: string; confirmLabel: string; run: () => void } | null
   >(null)
@@ -329,6 +334,16 @@ export default function GameInterface() {
   const handleSetPartyClosed = useCallback((closed: boolean) => {
     socketHandlers.setPartyClosed(closed)
   }, [socketHandlers])
+  const handleSetPartyName = useCallback((name: string) => {
+    socketHandlers.setPartyName(name)
+  }, [socketHandlers])
+  const handleAnswerFollow = useCallback(
+    (requesterId: string, accept: boolean) => {
+      socketHandlers.answerFollowRequest(requesterId, accept)
+      setFollowRequests((queue) => queue.filter((r) => r.requesterId !== requesterId))
+    },
+    [socketHandlers]
+  )
   const lastLoginSocketId = useRef<string | null>(null)
   const playerRef = useRef(player)
   const currentRoomRef = useRef(currentRoom)
@@ -2933,6 +2948,12 @@ export default function GameInterface() {
       })
     })
 
+    const cleanupFollowRequest = socketHandlers.onPartyFollowRequest((payload) => {
+      setFollowRequests((queue) =>
+        queue.some((r) => r.requesterId === payload.requesterId) ? queue : [...queue, payload]
+      )
+    })
+
     const cleanupPartyChat = socketHandlers.onPartyChatMessage((payload) => {
       const isSelf = payload.userId === playerRef.current?.id
       appendWorldFeed({
@@ -2976,6 +2997,7 @@ export default function GameInterface() {
       cleanupError()
       cleanupPulled()
       cleanupNotice()
+      cleanupFollowRequest()
       cleanupPartyChat()
       cleanupPartyChatHistory()
       cleanupRoomPartyState()
@@ -3486,6 +3508,34 @@ export default function GameInterface() {
           />
         </div>
       )}
+      {/* Somebody wants to follow us. Leading is a job — your travel drags them
+          through gates, your fight holds them in place — so it is asked for,
+          not assumed. Oldest ask first; the rest queue behind it. */}
+      <ConfirmDialog
+        isOpen={followRequests.length > 0}
+        title={
+          followRequests[0]?.wouldBecomeLeader
+            ? `Lead ${followRequests[0]?.requesterName}?`
+            : `Let ${followRequests[0]?.requesterName} join?`
+        }
+        message={
+          followRequests[0]
+            ? followRequests[0].wouldBecomeLeader
+              ? `${followRequests[0].requesterName} (Lv ${followRequests[0].requesterLevel}) wants to follow you. Say yes and you lead a party: they travel where you travel, and cannot move on their own.`
+              : `${followRequests[0].requesterName} (Lv ${followRequests[0].requesterLevel}) wants to join your party.`
+            : ''
+        }
+        confirmLabel={followRequests[0]?.wouldBecomeLeader ? 'Lead them' : 'Let them in'}
+        cancelLabel="No thanks"
+        onConfirm={() => {
+          const request = followRequests[0]
+          if (request) handleAnswerFollow(request.requesterId, true)
+        }}
+        onCancel={() => {
+          const request = followRequests[0]
+          if (request) handleAnswerFollow(request.requesterId, false)
+        }}
+      />
       <ConfirmDialog
         isOpen={partyDepartureConfirm !== null}
         title={partyDepartureConfirm?.title ?? ''}
@@ -3821,28 +3871,29 @@ export default function GameInterface() {
           </button>
           {currentRoom && (
             <div className="bg-surface-panel/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
-              {/* The party sits outside the scroll container on purpose: who is
-                  still standing is not something you should have to scroll back
-                  up for. It costs the same height at six members as at two. */}
-              <PartySquadBar
-                party={party}
-                roomPlayers={roomPlayers}
-                currentPlayerId={player.id}
-                self={player}
-                onLowHp={handlePartyLowHp}
-                onFollow={handleFollowPlayer}
-                onLeave={handleLeaveParty}
-                onRemove={handleRemovePartyMember}
-                onSetClosed={handleSetPartyClosed}
-                onManage={handleOpenPartyTab}
-                onMessage={handleProfileMessage}
-                onInspect={handleOpenPlayerProfile}
-              />
               {/* The room column is a container: with two resizable side
                   panels it can be far narrower than the viewport, so what
                   renders inside sizes against it, not the window. */}
               <div className="@container flex-1 min-h-0 overflow-y-auto h-full">
                 <div className="max-w-4xl mx-auto w-full">
+                  {/* Who you are travelling with, and who else is standing here,
+                      at the top of the room and scrolling away with it. */}
+                  <PartySquadBar
+                    party={party}
+                    roomDanger={currentRoom}
+                    roomPlayers={roomPlayers}
+                    currentPlayerId={player.id}
+                    self={player}
+                    onLowHp={handlePartyLowHp}
+                    onFollow={handleFollowPlayer}
+                    onLeave={handleLeaveParty}
+                    onRemove={handleRemovePartyMember}
+                    onSetClosed={handleSetPartyClosed}
+                    onSetName={handleSetPartyName}
+                    onManage={handleOpenPartyTab}
+                    onMessage={handleProfileMessage}
+                    onInspect={handleOpenPlayerProfile}
+                  />
                   {!socket?.connected && (
                     <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-line-subtle/30 bg-surface-panel/60">
                       <div className="flex items-center gap-2 text-xs text-fg-secondary">

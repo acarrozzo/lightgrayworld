@@ -20,6 +20,7 @@ import {
   PartyErrorPayload,
   PartyPulledPayload,
   PartyNoticePayload,
+  PartyFollowRequestPayload,
   PartyChatMessagePayload,
   PartyChatHistoryPayload,
   RoomPartyStatePayload,
@@ -240,6 +241,14 @@ export class SocketEventHandlers {
     return this.emit(SOCKET_EVENTS.PARTY_SET_CLOSED, { closed })
   }
 
+  setPartyName(name: string): boolean {
+    return this.emit(SOCKET_EVENTS.PARTY_SET_NAME, { name })
+  }
+
+  answerFollowRequest(requesterId: string, accept: boolean): boolean {
+    return this.emit(SOCKET_EVENTS.PARTY_FOLLOW_ANSWER, { requesterId, accept })
+  }
+
   sendPartyChatMessage(message: string): boolean {
     return this.emit(SOCKET_EVENTS.SEND_PARTY_CHAT_MESSAGE, { message })
   }
@@ -270,6 +279,10 @@ export class SocketEventHandlers {
 
   onPartyNotice(handler: (payload: PartyNoticePayload) => void): () => void {
     return this.on(SOCKET_EVENTS.PARTY_NOTICE, handler)
+  }
+
+  onPartyFollowRequest(handler: (payload: PartyFollowRequestPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_FOLLOW_REQUEST, handler)
   }
 
   onPartyChatMessage(handler: (payload: PartyChatMessagePayload) => void): () => void {

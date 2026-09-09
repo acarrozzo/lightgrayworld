@@ -12,18 +12,25 @@
 const { getSocketIO, getSocketIdsForUser, SOCKET_EVENTS } = require('../socket-utils.js')
 const { getPresence } = require('./presence-store.js')
 const { randomUUID } = require('crypto')
-
-const MAX_PARTY_SIZE = 6 // leader + 5
+const { MAX_PARTY_SIZE, MAX_PARTY_NAME } = require('../party/party-limits.js')
 
 // Global singleton survives Next.js hot-module reloads in dev
 if (!global.__partyStore) {
   global.__partyStore = {
     parties: new Map(), // leaderId -> { leaderId, leaderInfo, members: Map<memberId, info> }
     memberToLeader: new Map(), // memberId -> leaderId
+    // targetId -> Map<requesterId, { requesterInfo, targetInfo, timer }>. Asking
+    // to follow someone is a request now, not a fait accompli, so it has to be
+    // remembered between the ask and the answer.
+    requests: new Map(),
   }
 }
 
 const store = global.__partyStore
+if (!store.requests) store.requests = new Map()
+
+/** How long a follow request waits before it is dropped as unanswered. */
+const FOLLOW_REQUEST_TTL_MS = 60_000
 
 function normInfo(p) {
   return {
@@ -74,7 +81,24 @@ function buildSnapshot(party) {
     // A closed party refuses new followers. Open by default: walking up to
     // someone and falling in behind them is the fast path this game had first.
     closed: party.closed === true,
+    // What the leader has chosen to call this lot, or null for plain "Party".
+    name: party.name ?? null,
   }
+}
+
+/** Party names are for fun, so the only rules are the ones that keep them printable. */
+function sanitizePartyName(raw) {
+  if (raw == null) return null
+  const cleaned = String(raw)
+    // Keep only printable characters — letters, digits, punctuation, symbols and
+    // spaces. Anything else (control codes, format joiners) would break the one
+    // line the pill has to draw, and stated as a keep-list this needs no
+    // exception for whatever arrives next.
+    .replace(/[^\p{L}\p{N}\p{P}\p{S}\p{Zs}]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_PARTY_NAME)
+  return cleaned || null
 }
 
 /**
@@ -254,11 +278,14 @@ function leaveBehind(playerId, { destinationName = null } = {}) {
   return true
 }
 
-// followerInfo / targetInfo: { id, username, level, uIcon, uIconColor }
-function follow(followerInfo, targetInfo) {
-  const followerId = followerInfo.id
-  const targetId = targetInfo.id
-
+/**
+ * Whether `followerInfo` may join whatever party `targetInfo` is in, right now.
+ *
+ * Checked twice on purpose: once when the request is made, so a hopeless ask is
+ * refused immediately, and again when it is answered, because a minute can pass
+ * in between and the party can fill up or close in that time.
+ */
+function checkFollowEligible(followerId, targetId) {
   if (followerId === targetId) return { ok: false, error: 'You cannot follow yourself.' }
 
   const targetLeaderId = getLeaderId(targetId) ?? targetId
@@ -281,6 +308,109 @@ function follow(followerInfo, targetInfo) {
     return { ok: false, error: `${destParty.leaderInfo?.username ?? 'That party'} has closed their party.` }
   }
 
+  // A member cannot answer for the party they merely belong to, so the ask
+  // always goes to whoever leads it.
+  return { ok: true, targetLeaderId }
+}
+
+/**
+ * Ask to follow someone. Nobody joins anything until they say yes.
+ *
+ * Leading a party is a job — your travel drags other people through gates and
+ * your fights hold them in place — so it is not something a stranger can hand
+ * you by clicking. The request stands for a minute and then lapses.
+ */
+function requestFollow(followerInfo, targetInfo) {
+  const followerId = followerInfo.id
+  const eligible = checkFollowEligible(followerId, targetInfo.id)
+  if (!eligible.ok) return eligible
+
+  const { targetLeaderId } = eligible
+  const leaderInfo = store.parties.get(targetLeaderId)?.leaderInfo ?? normInfo(targetInfo)
+
+  let pending = store.requests.get(targetLeaderId)
+  if (!pending) {
+    pending = new Map()
+    store.requests.set(targetLeaderId, pending)
+  }
+  if (pending.has(followerId)) {
+    return { ok: false, error: `${leaderInfo.username} has not answered yet.` }
+  }
+
+  const timer = setTimeout(() => {
+    if (cancelRequest(targetLeaderId, followerId)) {
+      notify([followerId], 'declined', `${leaderInfo.username} did not answer.`)
+    }
+  }, FOLLOW_REQUEST_TTL_MS)
+  // A pending ask must never hold the process open on its own.
+  if (typeof timer.unref === 'function') timer.unref()
+
+  pending.set(followerId, { requesterInfo: normInfo(followerInfo), leaderInfo, timer })
+
+  emitTo([targetLeaderId], SOCKET_EVENTS.PARTY_FOLLOW_REQUEST, {
+    requesterId: followerId,
+    requesterName: followerInfo.username,
+    requesterLevel: followerInfo.level ?? 1,
+    // Whether saying yes makes them a leader for the first time, which is the
+    // part worth being asked about.
+    wouldBecomeLeader: !store.parties.has(targetLeaderId),
+    expiresAt: Date.now() + FOLLOW_REQUEST_TTL_MS,
+  })
+  notify([followerId], 'asked', `You asked to follow ${leaderInfo.username}.`)
+  return { ok: true, pending: true }
+}
+
+/** Forget one pending request. Returns true if there was one to forget. */
+function cancelRequest(leaderId, requesterId) {
+  const pending = store.requests.get(leaderId)
+  const entry = pending?.get(requesterId)
+  if (!entry) return false
+  clearTimeout(entry.timer)
+  pending.delete(requesterId)
+  if (pending.size === 0) store.requests.delete(leaderId)
+  return true
+}
+
+/** Drop every request this player has made or been asked to answer. */
+function clearRequestsFor(playerId) {
+  for (const entry of store.requests.get(playerId)?.values() ?? []) clearTimeout(entry.timer)
+  store.requests.delete(playerId)
+  for (const [leaderId, pending] of store.requests) {
+    if (pending.has(playerId)) cancelRequest(leaderId, playerId)
+  }
+}
+
+/** The leader's answer. `accept` false simply tells the asker no. */
+function answerFollow(leaderId, requesterId, accept) {
+  const entry = store.requests.get(leaderId)?.get(requesterId)
+  if (!entry) return { ok: false, error: 'That request is no longer waiting.' }
+  cancelRequest(leaderId, requesterId)
+
+  const leaderName = nameOf(leaderId, entry.leaderInfo.username)
+  if (!accept) {
+    notify([requesterId], 'declined', `${leaderName} declined to lead you.`)
+    return { ok: true, accepted: false }
+  }
+
+  // A minute may have passed: re-check before letting anybody in.
+  const eligible = checkFollowEligible(requesterId, leaderId)
+  if (!eligible.ok) {
+    notify([requesterId], 'declined', eligible.error)
+    return { ok: false, error: eligible.error }
+  }
+
+  return { ...follow(entry.requesterInfo, entry.leaderInfo), accepted: true }
+}
+
+// followerInfo / targetInfo: { id, username, level, uIcon, uIconColor }
+// The join itself, once it has been agreed to. Not reachable from the socket
+// layer directly — everything goes through requestFollow/answerFollow.
+function follow(followerInfo, targetInfo) {
+  const followerId = followerInfo.id
+  const eligible = checkFollowEligible(followerId, targetInfo.id)
+  if (!eligible.ok) return eligible
+  const { targetLeaderId } = eligible
+
   // Leave any current party first (disbands it if the follower was leading one).
   detach(followerId, { notifySelf: false, reason: 'switch' })
 
@@ -293,6 +423,7 @@ function follow(followerInfo, targetInfo) {
       leaderInfo: normInfo(targetInfo),
       members: new Map(),
       closed: false,
+      name: null,
     }
     store.parties.set(targetLeaderId, party)
   }
@@ -319,6 +450,25 @@ function follow(followerInfo, targetInfo) {
 }
 
 /**
+ * Name the party. Leader only, and purely cosmetic — nothing keys off it, so an
+ * empty name simply returns the party to being called "Party".
+ */
+function setName(leaderId, name) {
+  const party = store.parties.get(leaderId)
+  if (!party) return { ok: false, error: 'You are not leading a party.' }
+  const next = sanitizePartyName(name)
+  if (party.name === next) return { ok: true, name: next }
+  party.name = next
+  broadcastUpdate(party)
+  notify(
+    [leaderId, ...party.members.keys()],
+    'named',
+    next ? `The party is now called "${next}".` : 'The party name was cleared.'
+  )
+  return { ok: true, name: next }
+}
+
+/**
  * Open or close a party to new followers. Leader only — a member closing the
  * party they merely belong to would be deciding for someone else.
  */
@@ -328,6 +478,12 @@ function setClosed(leaderId, closed) {
   const next = closed === true
   if (party.closed === next) return { ok: true, closed: next }
   party.closed = next
+  if (next) {
+    for (const requesterId of store.requests.get(leaderId)?.keys() ?? []) {
+      notify([requesterId], 'declined', `${party.leaderInfo?.username ?? 'They'} closed their party.`)
+    }
+    clearRequestsFor(leaderId)
+  }
   broadcastUpdate(party)
   notify(
     [leaderId, ...party.members.keys()],
@@ -362,6 +518,9 @@ function remove(leaderId, memberId) {
 
 // Voluntary leave (member) or disband (leader).
 function leave(playerId) {
+  // Someone who has just walked out of a party should not be answering asks to
+  // join it a moment later.
+  clearRequestsFor(playerId)
   detach(playerId, { notifySelf: true, reason: 'leave' })
 }
 
@@ -404,12 +563,14 @@ function departAlone(playerId) {
 
   const promoted = {
     // The same party under new management: keeping the id keeps the party's
-    // chat history reachable by the people who are still in it.
+    // chat history reachable by the people who are still in it, and the name
+    // they have been travelling under.
     id: party.id,
     leaderId: successorId,
     leaderInfo: successorInfo,
     members: followers,
     closed: party.closed === true,
+    name: party.name ?? null,
   }
   store.parties.set(successorId, promoted)
   for (const memberId of followers.keys()) store.memberToLeader.set(memberId, successorId)
@@ -429,18 +590,26 @@ function departAlone(playerId) {
 
 // Connection lost — drop silently from the player's own side, still notify the rest.
 function onDisconnect(playerId) {
+  clearRequestsFor(playerId)
   detach(playerId, { notifySelf: false, reason: 'disconnect' })
 }
 
 // Player died and is being respawned elsewhere — they can't stay pinned, so drop them.
 function onDeath(playerId) {
+  clearRequestsFor(playerId)
   detach(playerId, { notifySelf: true, reason: 'death' })
 }
 
 module.exports = {
   MAX_PARTY_SIZE,
+  requestFollow,
+  answerFollow,
+  cancelRequest,
+  clearRequestsFor,
   follow,
   setClosed,
+  setName,
+  MAX_PARTY_NAME,
   remove,
   leave,
   leaveBehind,

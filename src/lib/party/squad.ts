@@ -1,6 +1,7 @@
 import type { Player } from '@/lib/game-state'
 import type { PartySnapshot, PresencePlayer } from '@/lib/socket'
 import type { PlayerPresenceStatus, PlayerRowStats } from '@/components/player/PlayerRow'
+import { dangerVerdict } from '@/lib/danger-verdict'
 
 /**
  * One party member as every party surface needs them.
@@ -21,7 +22,13 @@ import type { PlayerPresenceStatus, PlayerRowStats } from '@/components/player/P
 /** Below this fraction of max HP a member is in trouble and the UI says so. */
 export const LOW_HP_FRACTION = 0.25
 
-export type SquadState = 'down' | 'fighting' | 'hurt' | 'idle' | 'offline' | 'ready'
+export type SquadState = 'down' | 'fighting' | 'hurt' | 'idle' | 'offline' | 'safe' | 'ready'
+
+/** The room read against one member's level — the same ladder the compass uses. */
+export interface RoomDanger {
+  dangerLevel?: number | null
+  isSafe?: boolean | null
+}
 
 export interface SquadMember {
   id: string
@@ -42,6 +49,10 @@ export interface SquadMember {
   lastSeen?: number | null
   isLeader: boolean
   isSelf: boolean
+  /** In the viewer's own party. False for the people merely standing here. */
+  inParty: boolean
+  /** Leads a party of their own — only ever set on someone outside yours. */
+  leadsOwnParty: boolean
   state: SquadState
   /** The one line under the name: what they are fighting, or their HP, or why they are quiet. */
   statusLabel: string
@@ -66,12 +77,22 @@ function deriveState(m: {
   hpPct: number | null
   inBattle: boolean
   presence: PlayerPresenceStatus
+  level: number
+  roomDanger?: RoomDanger | null
 }): SquadState {
   if (typeof m.hp === 'number' && m.hp <= 0) return 'down'
-  if (m.presence === 'disconnected') return 'offline'
+  // A fight outranks being disconnected: the enemy is still swinging.
   if (m.inBattle) return 'fighting'
+  if (m.presence === 'disconnected') return 'offline'
   if (m.hpPct !== null && m.hpPct <= LOW_HP_FRACTION * 100) return 'hurt'
   if (m.presence === 'idle') return 'idle'
+  // Nothing wrong, and nothing here can hurt them — read against *their* level,
+  // so a room that is a stroll for the leader can still be even odds for the
+  // level-3 who followed them in.
+  if (m.roomDanger) {
+    const tone = dangerVerdict(m.roomDanger.dangerLevel, m.roomDanger.isSafe, m.level).tone
+    if (tone === 'safe' || tone === 'easy') return 'safe'
+  }
   return 'ready'
 }
 
@@ -98,6 +119,8 @@ function deriveLabel(m: SquadMember): string {
       const ago = shortAgo(m.lastSeen)
       return ago ? `Idle ${ago}` : 'Idle'
     }
+    case 'safe':
+      return typeof m.hp === 'number' && typeof m.hpMax === 'number' ? `${m.hp}/${m.hpMax}` : 'Safe'
     default:
       return typeof m.hp === 'number' && typeof m.hpMax === 'number' ? `${m.hp}/${m.hpMax}` : '—'
   }
@@ -105,6 +128,8 @@ function deriveLabel(m: SquadMember): string {
 
 interface BuildSquadInput {
   party: PartySnapshot | null
+  /** The room everyone is standing in, for the per-member safety reading. */
+  roomDanger?: RoomDanger | null
   /** Everyone the room snapshot knows about, self included. */
   roomPlayers: Player[]
   /** The global presence roster, keyed by user id. */
@@ -115,6 +140,99 @@ interface BuildSquadInput {
 }
 
 /**
+ * One person, merged from every feed that knows something about them.
+ *
+ * Shared by the party tiles and the tiles for people merely standing here, so
+ * "who is in this room" and "who am I travelling with" are described in exactly
+ * the same terms — which is the point: you should be able to read someone's HP
+ * and whether they are mid-fight *before* deciding to follow them.
+ */
+function mergeMember({
+  info,
+  live,
+  room,
+  isSelf,
+  self,
+  isLeader,
+  inParty,
+  leadsOwnParty,
+  partyLeaderId,
+  roomDanger,
+}: {
+  info: { id: string; username: string; level: number; uIcon?: string | null; uIconColor?: string | null }
+  live?: PresencePlayer
+  room?: Player
+  isSelf: boolean
+  self?: Player | null
+  isLeader: boolean
+  inParty: boolean
+  leadsOwnParty: boolean
+  partyLeaderId: string | null
+  roomDanger?: RoomDanger | null
+}): SquadMember {
+  const own = isSelf ? self ?? room : null
+
+  const hp = own?.hp ?? live?.hp ?? room?.hp
+  const hpMax = own?.hpMax ?? live?.hpMax ?? room?.hpMax
+  const mp = own?.mp ?? live?.mp ?? room?.mp
+  const mpMax = own?.mpMax ?? live?.mpMax ?? room?.mpMax
+
+  // Presence never carries 'disconnected' — a player without a socket is
+  // simply absent from it — so an entry missing there while the room still
+  // remembers them is exactly the ghost case.
+  const presence: PlayerPresenceStatus = live ? live.status : room?.presenceStatus ?? 'disconnected'
+
+  const inBattle = Boolean(live?.inBattle ?? room?.inBattle ?? false)
+  const battleEnemyName = inBattle ? live?.battleEnemyName ?? room?.battleEnemyName ?? null : null
+
+  const hpPct = pct(hp, hpMax)
+  const level = own?.level ?? live?.level ?? room?.level ?? info.level
+  const member: SquadMember = {
+    id: info.id,
+    username: info.username,
+    level,
+    uIcon: info.uIcon ?? room?.uIcon ?? live?.uIcon ?? null,
+    uIconColor: info.uIconColor ?? room?.uIconColor ?? live?.uIconColor ?? null,
+    hp,
+    hpMax,
+    mp,
+    mpMax,
+    hpPct,
+    mpPct: pct(mp, mpMax),
+    inBattle,
+    battleEnemyName,
+    presence,
+    lastSeen: live?.lastSeen ?? room?.lastSeen ?? null,
+    isLeader,
+    isSelf,
+    inParty,
+    leadsOwnParty,
+    state: deriveState({ hp, hpPct, inBattle, presence, level, roomDanger }),
+    statusLabel: '',
+    stats: {
+      hp,
+      hpMax,
+      mp,
+      mpMax,
+      str: room?.str ?? null,
+      dex: room?.dex ?? null,
+      mag: room?.mag ?? null,
+      def: room?.def ?? null,
+      strMod: room?.strMod ?? null,
+      dexMod: room?.dexMod ?? null,
+      magMod: room?.magMod ?? null,
+      defMod: room?.defMod ?? null,
+      presenceStatus: presence,
+      inBattle,
+      battleEnemyName,
+      partyLeaderId,
+    },
+  }
+  member.statusLabel = deriveLabel(member)
+  return member
+}
+
+/**
  * The party as a list, leader first, then members in join order.
  *
  * Returns [] when the viewer is not in a party — a party of one is not a party
@@ -122,6 +240,7 @@ interface BuildSquadInput {
  */
 export function buildSquad({
   party,
+  roomDanger,
   roomPlayers,
   presenceById,
   currentPlayerId,
@@ -131,72 +250,54 @@ export function buildSquad({
 
   const roomById = new Map(roomPlayers.map((p) => [p.id, p]))
 
-  return [party.leader, ...party.members].map((info) => {
-    const live = presenceById[info.id]
-    const room = roomById.get(info.id)
-    const isSelf = info.id === currentPlayerId
-    const own = isSelf ? self ?? room : null
-
-    const hp = own?.hp ?? live?.hp ?? room?.hp
-    const hpMax = own?.hpMax ?? live?.hpMax ?? room?.hpMax
-    const mp = own?.mp ?? live?.mp ?? room?.mp
-    const mpMax = own?.mpMax ?? live?.mpMax ?? room?.mpMax
-
-    // Presence never carries 'disconnected' — a player without a socket is
-    // simply absent from it — so an entry missing there while the room still
-    // remembers them is exactly the ghost case.
-    const presence: PlayerPresenceStatus = live
-      ? live.status
-      : room?.presenceStatus ?? 'disconnected'
-
-    const inBattle = Boolean(live?.inBattle ?? room?.inBattle ?? false)
-    const battleEnemyName = inBattle
-      ? live?.battleEnemyName ?? room?.battleEnemyName ?? null
-      : null
-
-    const hpPct = pct(hp, hpMax)
-    const member: SquadMember = {
-      id: info.id,
-      username: info.username,
-      level: own?.level ?? live?.level ?? room?.level ?? info.level,
-      uIcon: info.uIcon ?? room?.uIcon ?? live?.uIcon ?? null,
-      uIconColor: info.uIconColor ?? room?.uIconColor ?? live?.uIconColor ?? null,
-      hp,
-      hpMax,
-      mp,
-      mpMax,
-      hpPct,
-      mpPct: pct(mp, mpMax),
-      inBattle,
-      battleEnemyName,
-      presence,
-      lastSeen: live?.lastSeen ?? room?.lastSeen ?? null,
+  return [party.leader, ...party.members].map((info) =>
+    mergeMember({
+      info,
+      live: presenceById[info.id],
+      room: roomById.get(info.id),
+      isSelf: info.id === currentPlayerId,
+      self,
       isLeader: info.id === party.leaderId,
-      isSelf,
-      state: deriveState({ hp, hpPct, inBattle, presence }),
-      statusLabel: '',
-      stats: {
-        hp,
-        hpMax,
-        mp,
-        mpMax,
-        str: room?.str ?? null,
-        dex: room?.dex ?? null,
-        mag: room?.mag ?? null,
-        def: room?.def ?? null,
-        strMod: room?.strMod ?? null,
-        dexMod: room?.dexMod ?? null,
-        magMod: room?.magMod ?? null,
-        defMod: room?.defMod ?? null,
-        presenceStatus: presence,
-        inBattle,
-        battleEnemyName,
-        partyLeaderId: party.leaderId,
-      },
-    }
-    member.statusLabel = deriveLabel(member)
-    return member
-  })
+      inParty: true,
+      leadsOwnParty: false,
+      partyLeaderId: party.leaderId,
+      roomDanger,
+    })
+  )
+}
+
+/**
+ * The people standing here who are not in your party, described the same way
+ * your party is.
+ *
+ * The bar used to show these as bare "+ follow Tam" chips, which asked the
+ * player to commit to travelling with someone before it would tell them
+ * anything about them. A tile carries their level, their HP, and whether they
+ * are mid-fight, so following is a decision rather than a guess.
+ */
+export function buildOutsiders({
+  party,
+  roomDanger,
+  roomPlayers,
+  presenceById,
+  currentPlayerId,
+}: BuildSquadInput): SquadMember[] {
+  return followableHere(roomPlayers, party, currentPlayerId).map((p) =>
+    mergeMember({
+      info: p,
+      live: presenceById[p.id],
+      room: p,
+      isSelf: false,
+      self: null,
+      // Never "Leader" — that badge means the leader of *your* party. Somebody
+      // heading a group of their own is called out separately.
+      isLeader: false,
+      inParty: false,
+      leadsOwnParty: p.partyLeaderId === p.id,
+      partyLeaderId: p.partyLeaderId ?? null,
+      roomDanger,
+    })
+  )
 }
 
 /**

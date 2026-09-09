@@ -325,6 +325,8 @@ export interface PartySnapshot {
   maxSize: number
   /** A closed party refuses new followers. Only the leader can set it. */
   closed: boolean
+  /** What the leader calls this lot; null means plain "Party". */
+  name: string | null
 }
 
 /**
@@ -341,6 +343,20 @@ export type PartyNoticeKind =
   | 'kill'
   | 'level'
   | 'closed'
+  | 'named'
+  | 'asked'
+  | 'declined'
+
+/** Somebody wants to travel behind you, and is waiting on your answer. */
+export interface PartyFollowRequestPayload {
+  requesterId: string
+  requesterName: string
+  requesterLevel: number
+  /** True when saying yes makes the viewer a party leader for the first time. */
+  wouldBecomeLeader: boolean
+  /** Epoch ms; the ask lapses on its own after this. */
+  expiresAt: number
+}
 
 export interface PartyNoticePayload {
   id: string
@@ -390,6 +406,8 @@ export interface SocketEvents {
   'party:leave': () => void
   'party:remove': (data: { memberId: string }) => void
   'party:set-closed': (data: { closed: boolean }) => void
+  'party:set-name': (data: { name: string }) => void
+  'party:follow-answer': (data: { requesterId: string; accept: boolean }) => void
   'send-party-chat-message': (data: { message: string }) => void
 
   // Server to client events
@@ -416,6 +434,7 @@ export interface SocketEvents {
   'party:error': (payload: PartyErrorPayload) => void
   'party:pulled': (payload: PartyPulledPayload) => void
   'party:notice': (payload: PartyNoticePayload) => void
+  'party:follow-request': (payload: PartyFollowRequestPayload) => void
   'party-chat-message': (payload: PartyChatMessagePayload) => void
   'party:chat-history': (payload: PartyChatHistoryPayload) => void
   'room:party-state': (payload: RoomPartyStatePayload) => void

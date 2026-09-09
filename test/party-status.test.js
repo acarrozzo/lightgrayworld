@@ -64,8 +64,112 @@ const noticesFor = (id) =>
 test.beforeEach(() => {
   global.__partyStore.parties.clear()
   global.__partyStore.memberToLeader.clear()
+  for (const pending of global.__partyStore.requests.values()) {
+    for (const entry of pending.values()) clearTimeout(entry.timer)
+  }
+  global.__partyStore.requests.clear()
   presence.clear()
   emitted.length = 0
+})
+
+const requestsTo = (id) =>
+  emitted
+    .filter((e) => e.event === SOCKET_EVENTS.PARTY_FOLLOW_REQUEST && e.sid === `sock:${id}`)
+    .map((e) => e.payload)
+
+// ─── Asking to follow, and being asked ──────────────────────────────────────
+
+test('asking to follow joins nothing until the leader answers', () => {
+  const res = partyStore.requestFollow(who('m1'), who('lead'))
+
+  assert.equal(res.ok, true)
+  assert.equal(res.pending, true)
+  assert.equal(partyStore.getLeaderId('m1'), null, 'nobody is in a party yet')
+  assert.equal(partyStore.getLeaderId('lead'), null, 'and nobody has been made a leader')
+
+  const asks = requestsTo('lead')
+  assert.equal(asks.length, 1)
+  assert.equal(asks[0].requesterId, 'm1')
+  assert.equal(asks[0].wouldBecomeLeader, true, 'this is the ask that makes them a leader')
+})
+
+test('saying yes is what forms the party', () => {
+  partyStore.requestFollow(who('m1'), who('lead'))
+  const res = partyStore.answerFollow('lead', 'm1', true)
+
+  assert.equal(res.accepted, true)
+  assert.equal(partyStore.getLeaderId('m1'), 'lead')
+  assert.ok(res.partyId)
+})
+
+test('saying no leaves everyone where they were, and says so', () => {
+  partyStore.requestFollow(who('m1'), who('lead'))
+  emitted.length = 0
+
+  const res = partyStore.answerFollow('lead', 'm1', false)
+
+  assert.equal(res.ok, true)
+  assert.equal(res.accepted, false)
+  assert.equal(partyStore.getLeaderId('m1'), null)
+  assert.equal(partyStore.getLeaderId('lead'), null)
+  assert.match(noticesFor('m1')[0].message, /declined to lead you/)
+})
+
+test('a second ask to the same person is refused rather than queued twice', () => {
+  partyStore.requestFollow(who('m1'), who('lead'))
+  const again = partyStore.requestFollow(who('m1'), who('lead'))
+
+  assert.equal(again.ok, false)
+  assert.match(again.error, /has not answered yet/)
+  assert.equal(requestsTo('lead').length, 1)
+})
+
+test('an ask to someone who already leads does not offer to make them a leader', () => {
+  buildParty('lead', ['m1'])
+  emitted.length = 0
+
+  partyStore.requestFollow(who('m2'), who('lead'))
+  assert.equal(requestsTo('lead')[0].wouldBecomeLeader, false)
+})
+
+test('answering an ask that is no longer waiting is refused, not silently applied', () => {
+  const res = partyStore.answerFollow('lead', 'ghost', true)
+  assert.equal(res.ok, false)
+  assert.match(res.error, /no longer waiting/)
+})
+
+test('a member cannot answer for the party they merely belong to', () => {
+  buildParty('lead', ['m1'])
+  partyStore.requestFollow(who('m2'), who('m1'))
+
+  // The ask goes to whoever leads, not to whoever was clicked.
+  assert.equal(requestsTo('m1').length, 0)
+  assert.equal(requestsTo('lead').length, 1)
+})
+
+test('closing the party turns away whoever was still waiting', () => {
+  buildParty('lead', ['m1'])
+  partyStore.requestFollow(who('m2'), who('lead'))
+  emitted.length = 0
+
+  partyStore.setClosed('lead', true)
+
+  assert.match(noticesFor('m2')[0].message, /closed their party/)
+  assert.equal(partyStore.answerFollow('lead', 'm2', true).ok, false, 'the ask is gone')
+})
+
+test('a party that filled up while the ask waited refuses it on the answer', () => {
+  buildParty('lead', ['m1'])
+  partyStore.requestFollow(who('late'), who('lead'))
+  buildParty('lead', ['m2', 'm3', 'm4', 'm5'])
+  emitted.length = 0
+
+  const res = partyStore.answerFollow('lead', 'late', true)
+
+  assert.equal(res.ok, false)
+  assert.match(res.error, /full/)
+  assert.equal(partyStore.getLeaderId('late'), null)
+  assert.match(noticesFor('late')[0].message, /full/)
 })
 
 // ─── Server: the party's own state ──────────────────────────────────────────
@@ -134,6 +238,35 @@ test('a death tells the survivors who fell', () => {
   assert.equal(noticesFor('lead')[0].kind, 'fallen')
   assert.match(noticesFor('lead')[0].message, /M1 has fallen/)
   assert.equal(partyStore.getLeaderId('m1'), null)
+})
+
+test('the leader can name the party, and the name survives a succession', () => {
+  buildParty('lead', ['m1', 'm2'])
+
+  assert.equal(partyStore.setName('lead', '  The   Unwashed  ').name, 'The Unwashed')
+  assert.equal(partyStore.getPartySnapshot('m1').name, 'The Unwashed')
+
+  partyStore.departAlone('lead')
+  assert.equal(partyStore.getPartySnapshot('m2').name, 'The Unwashed', 'the name travels with the party')
+})
+
+test('a party name is trimmed to something printable, and can be cleared', () => {
+  buildParty('lead', ['m1'])
+
+  partyStore.setName('lead', `x${'y'.repeat(60)}`)
+  assert.equal(partyStore.getPartySnapshot('lead').name.length, 24, 'capped, not rejected')
+
+  partyStore.setName('lead', 'a\u0000b')
+  assert.equal(partyStore.getPartySnapshot('lead').name, 'a b', 'control characters cannot break the pill')
+
+  partyStore.setName('lead', '   ')
+  assert.equal(partyStore.getPartySnapshot('lead').name, null, 'an empty name is just "Party" again')
+})
+
+test('only the leader can name the party', () => {
+  buildParty('lead', ['m1'])
+  assert.equal(partyStore.setName('m1', 'Mine Now').ok, false)
+  assert.equal(partyStore.getPartySnapshot('lead').name, null)
 })
 
 test('following someone tells them they are leading a party now', () => {

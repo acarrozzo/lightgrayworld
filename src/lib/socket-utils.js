@@ -40,6 +40,8 @@ const SOCKET_EVENTS = {
   PARTY_LEAVE: 'party:leave',
   PARTY_REMOVE: 'party:remove',
   PARTY_SET_CLOSED: 'party:set-closed',
+  PARTY_SET_NAME: 'party:set-name',
+  PARTY_FOLLOW_ANSWER: 'party:follow-answer',
   SEND_PARTY_CHAT_MESSAGE: 'send-party-chat-message',
 
   // ── Server to client: session ─────────────────────────────────────────────
@@ -92,6 +94,8 @@ const SOCKET_EVENTS = {
   // joined, fell, was left behind, levelled, killed something. The client files
   // these into the feed's party channel.
   PARTY_NOTICE: 'party:notice',
+  // Somebody wants to travel behind you. Nobody joins anything until you answer.
+  PARTY_FOLLOW_REQUEST: 'party:follow-request',
   PARTY_CHAT_MESSAGE: 'party-chat-message',
   PARTY_CHAT_HISTORY: 'party:chat-history',
 }
