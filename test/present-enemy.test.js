@@ -4,8 +4,9 @@
  * The original only ever had one enemy in front of you. RoomState keeps that as
  * a single per-player slot: a probabilistic room rolls for one enemy when the
  * slot is empty and never rolls again while something is there; a hostile one
- * blocks leaving, a neutral one does not; a win, flee or death empties the slot
- * and the persisted row with it.
+ * blocks walking out, a neutral one does not; a win or a death empties the slot
+ * and the persisted row with it. Retreating does not — the enemy stays standing
+ * where it was, and the return trip is a fresh full-HP fight.
  *
  * Run: npm test
  */

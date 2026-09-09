@@ -18,6 +18,12 @@ interface BattlePanelProps {
   battleResult: BattleResult | null
   onAttack: () => void
   onFlee: () => void
+  /**
+   * True when Retreat opens its own confirmation — leaving a fight also leaves
+   * the player's party behind, and that gets a dialog. The pill then fires on
+   * the first tap rather than arming, so the player is not asked twice.
+   */
+  fleeNeedsConfirm?: boolean
   onUseItem: (itemId: string, action: string) => void
   onCastSpell: (spellId: string) => void
   /** Strike with a skill — Slice, Smash, Aim, Magic Strike — on this turn's swing. */
@@ -566,6 +572,7 @@ export default function BattlePanel({
   battleResult,
   onAttack,
   onFlee,
+  fleeNeedsConfirm = false,
   onUseItem,
   onCastSpell,
   onUseSkill,
@@ -633,7 +640,7 @@ export default function BattlePanel({
   const skillUseTone = skillUse ? skillTone(skillUse.hue) : null
   const castableSpells = getCastableSpells(player)
   const supportIconName = supportAction
-    ? resolveItemIcon(supportAction.itemMetadata ?? null, supportAction.itemSlug)
+    ? resolveItemIcon(supportAction.itemMetadata ?? null, supportAction.itemSlug ?? '')
     : null
 
   if (!battle.isInBattle && battleResult) {
@@ -642,7 +649,6 @@ export default function BattlePanel({
 
   if (!battle.isInBattle) return null
 
-  const turnsUntilFlee = Math.max(0, 3 - battle.turnCount)
   const hasEnemyFormula = battle.enemyRaw !== null
   // The server tells us outright when the enemy used a special — we never infer
   // one from the size of the damage. `rolls` is the real breakdown behind the
@@ -717,8 +723,8 @@ export default function BattlePanel({
   const outOfAmmo = ammo !== null && ammo.remaining <= 0
 
   const handleRetreat = () => {
-    if (!battle.canFlee || isActing) return
-    if (retreatArmed) {
+    if (isActing) return
+    if (fleeNeedsConfirm || retreatArmed) {
       disarmRetreat()
       onFlee()
       return
@@ -745,14 +751,15 @@ export default function BattlePanel({
           In Battle
         </p>
         {/* Two taps: the first arms "Leave the fight?" for a moment, the second
-            retreats. The server still refuses a retreat before turn three. */}
+            retreats. Open from the first turn — the enemy stays in the room at
+            full HP, so there is nothing to farm by running. */}
         <button
           type="button"
           onClick={handleRetreat}
-          disabled={isActing || !battle.canFlee}
+          disabled={isActing}
           aria-live="polite"
-          aria-label={battle.canFlee ? (retreatArmed ? 'Tap again to leave the fight' : 'Retreat from battle') : `Retreat available in ${turnsUntilFlee} turn${turnsUntilFlee !== 1 ? 's' : ''}`}
-          title={battle.canFlee ? 'Retreat to the room you came from' : `Retreat available in ${turnsUntilFlee} turn${turnsUntilFlee !== 1 ? 's' : ''}`}
+          aria-label={retreatArmed ? 'Tap again to leave the fight' : 'Retreat from battle'}
+          title="Retreat to the room you came from"
           className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-7 px-2 rounded-md border text-[10px] font-semibold tracking-wide normal-case inline-flex items-center gap-1 transition-colors duration-150 disabled:opacity-45 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
             retreatArmed
               ? 'fill-status-error border-status-error'
@@ -761,7 +768,7 @@ export default function BattlePanel({
           style={{ textShadow: 'none' }}
         >
           <LogOut size={11} aria-hidden="true" />
-          {!battle.canFlee ? `Retreat in ${turnsUntilFlee}` : retreatArmed ? 'Leave the fight?' : 'Retreat'}
+          {retreatArmed ? 'Leave the fight?' : 'Retreat'}
         </button>
       </div>
 
@@ -868,15 +875,24 @@ export default function BattlePanel({
           {supportAction ? (
             <>
               <p className="text-[10px] text-fg-disabled uppercase tracking-widest">
-                {supportAction.kind === 'equip_item' ? 'Equipped'
+                {supportAction.label
+                  ? supportAction.label
+                  : supportAction.kind === 'equip_item' ? 'Equipped'
                   : supportAction.kind === 'unequip_item' ? 'Unequipped'
                   : supportAction.kind === 'auto_equip' ? 'Auto-equipped'
                   : supportAction.kind === 'cast_spell' ? 'Cast'
                   : 'Used'}
               </p>
+              {/* A turn spent on something that isn't an item — a search, a
+                  swing of a pickaxe — brings its own line; the item paths
+                  build theirs from the item's name. */}
               <p className="text-xs text-fg-secondary">
-                {supportAction.kind === 'cast_spell' ? 'You cast ' : `You ${supportAction.actionVerb} your `}
-                <span className="text-accent-hover font-semibold">{supportAction.itemName}</span>
+                {supportAction.text ? supportAction.text : (
+                  <>
+                    {supportAction.kind === 'cast_spell' ? 'You cast ' : `You ${supportAction.actionVerb} your `}
+                    <span className="text-accent-hover font-semibold">{supportAction.itemName}</span>
+                  </>
+                )}
               </p>
               <div className="flex items-center gap-2 mt-0.5">
                 {supportIconName && (

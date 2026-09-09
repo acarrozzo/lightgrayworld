@@ -1,4 +1,4 @@
-const { executeRoomAction } = require('./room-action-handlers')
+const { executeRoomAction, isTurnCostingRoomAction } = require('./room-action-handlers')
 const { executeItemAction } = require('./item-action-handlers')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 
@@ -522,9 +522,11 @@ const ROOM_HAZARDS = {
   },
 }
 
-// Actions that consume a "turn" and may trigger a spawn check in probabilistic rooms.
-// Free actions (chat, look, examine_*, accept_quest, complete_quest) do not.
-// attack and move are handled separately (attack triggers battle directly; move triggers on entry).
+// The standard (non-room-specific) actions that cost a turn — see resolveTurn.
+// Free ones (chat, look, examine_*, accept_quest, complete_quest) do not; room
+// actions are classified by isTurnCostingRoomAction in room-action-handlers.
+// attack and move are their own thing: an attack is the turn, and a move's
+// danger is rolled by the arrival, not by leaving.
 const TURN_ACTIONS = new Set([
   'rest',
   'search',
@@ -536,6 +538,65 @@ const TURN_ACTIONS = new Set([
   'drop_item',
   'take_supply',
 ])
+
+/**
+ * The first thing an action told the player, which is the best one-line account
+ * of what the turn was spent on: "You mine some Coal.", "You search the room
+ * and find nothing." The battle panel shows it beside the enemy's answer.
+ */
+function extractFeedbackMessage(result) {
+  const message = result?.playerEvents?.[0]?.payload?.message
+  return typeof message === 'string' && message ? message : null
+}
+
+/** The eyebrow the battle panel puts over a turn that was not about an item. */
+const TURN_LABELS = {
+  search: 'Searched',
+  pickup_item: 'Picked up',
+  drop_item: 'Dropped',
+  take_supply: 'Took',
+  rest: 'Rested',
+}
+
+/** And the icon beside it. */
+const TURN_ICONS = {
+  search: 'search',
+  pickup_item: 'inv',
+  drop_item: 'inv',
+  take_supply: 'inv',
+  rest: 'tent',
+}
+
+/** "mine here" → "Mine here", for a room action's own eyebrow. */
+function titleCase(text) {
+  return typeof text === 'string' && text ? text.charAt(0).toUpperCase() + text.slice(1) : null
+}
+
+/**
+ * What the battle panel says a support turn was spent on.
+ *
+ * The item paths (use / equip / unequip / MAX / cast) build their own, richer
+ * meta — they know the item's name, slug, icon and effect. This covers the
+ * turns that are not about an item: searching, picking something off the floor,
+ * and every room action, where the action's own feedback line is already the
+ * clearest description there is.
+ *
+ * @param {string} kind
+ * @param {object} result
+ * @param {string|null} [label] - overrides the eyebrow; a room action uses its own name
+ */
+function buildTurnMeta(kind, result, label = null) {
+  return {
+    kind,
+    itemSlug: null,
+    itemName: null,
+    itemMetadata: { icon: TURN_ICONS[kind] ?? 'hand' },
+    actionVerb: null,
+    effectText: extractEffectText(result),
+    label: label ?? TURN_LABELS[kind] ?? null,
+    text: extractFeedbackMessage(result),
+  }
+}
 
 /**
  * The feed's account of what a buff cast set up: "+12 block for 9 clicks",
@@ -592,7 +653,14 @@ class RoomState {
   // --- Per-player present enemy (probabilistic rooms) ---
   //
   // One enemy at a time. Out of battle the player may attack it; a hostile one
-  // blocks leaving and a neutral one waits. There is no post-battle grace.
+  // blocks leaving and a neutral one waits.
+  //
+  // `grace` is the original's `endfight` column: the turn after a win, the room
+  // is safe and rolls nothing, and the first turn action spends it. It is what
+  // let you bank a swing, re-gear or step out after a kill instead of walking
+  // straight into the next thing. Ephemeral and room-scoped — `removePlayer`
+  // drops it with the rest of this map, so it never travels with the player,
+  // exactly as travelling cleared `endfight` in the original.
 
   // Fire-and-forget: mirror this player's present enemy to the DB so it survives a
   // page refresh / reconnect. Nothing present deletes the persisted row.
@@ -611,9 +679,24 @@ class RoomState {
   // Places the one enemy present for this player (null removes it). Used on room
   // entry, to restore an enemy persisted across a move or a refresh, and by the
   // hand-authored "challenge" buttons that call a named enemy out.
-  setPresentEnemy(playerId, slug) {
-    this.playerEnemyState.set(playerId, { present: slug || null })
+  //
+  // `grace` is passed by the battle-win teardown, which clears the slot: it buys
+  // the player one safe turn action in this room before anything rolls again.
+  setPresentEnemy(playerId, slug, { grace = false } = {}) {
+    this.playerEnemyState.set(playerId, { present: slug || null, grace })
     this.syncPresentEnemyToDb(playerId)
+  }
+
+  /**
+   * Make this room safe for the player's next turn action without touching what
+   * is standing in it — the far end of a retreat, and the original's `endfight`
+   * arriving with the player rather than being set by a win. Ephemeral like the
+   * rest of this map, so nothing is written.
+   */
+  grantGraceTurn(playerId) {
+    const state = this.playerEnemyState.get(playerId)
+    if (state) state.grace = true
+    else this.playerEnemyState.set(playerId, { present: null, grace: true })
   }
 
   clearPlayerEnemyState(playerId) {
@@ -642,7 +725,7 @@ class RoomState {
     if (this.playerEnemyState.get(playerId)?.present) return null
 
     const slug = rollRoomEnemy(this.roomId)
-    this.playerEnemyState.set(playerId, { present: slug })
+    this.playerEnemyState.set(playerId, { present: slug, grace: false })
     // Persist only when something actually spawned; a miss leaves the (empty)
     // state unchanged, so there's nothing new to write.
     if (slug) this.syncPresentEnemyToDb(playerId)
@@ -707,9 +790,16 @@ class RoomState {
       actionData
     )
 
-    // If room-specific handler returned a result, use it
+    // If room-specific handler returned a result, use it. A room action that
+    // changes the world — a swing of a pickaxe, a chest, a lever, a craft —
+    // costs a turn like any other; reading, talking and looking do not.
     if (roomSpecificResult !== null) {
-      return roomSpecificResult
+      if (!isTurnCostingRoomAction(this.roomId, actionName)) return roomSpecificResult
+      return await this.resolveTurn(
+        roomSpecificResult,
+        playerId,
+        buildTurnMeta('room_action', roomSpecificResult, titleCase(actionName))
+      )
     }
 
     // A traveler's action ("talk to sherman") belongs to whoever is standing
@@ -796,15 +886,49 @@ class RoomState {
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
     }
 
-    // After a TURN_ACTION completes, the room's hazard (if it has one) bites,
-    // then check for enemy spawn in probabilistic rooms.
-    // A turn action that turned out to be a no-op (`noTurn`) rolls nothing.
-    if (result?.success && !result.noTurn && TURN_ACTIONS.has(action.type)) {
-      result = await this.appendHazardEvents(result, playerId)
-      result = await this.appendSpawnEvents(result, playerId)
+    if (TURN_ACTIONS.has(action.type)) {
+      result = await this.resolveTurn(result, playerId, buildTurnMeta(action.type, result))
     }
 
     return result
+  }
+
+  /**
+   * Spend the player's turn on `result`.
+   *
+   * One place decides what a turn costs, because the three things it can cost
+   * used to be decided in three places that disagreed: a room action (mining,
+   * chopping, opening a chest) cost nothing at all, an item or a spell cost
+   * the enemy's counterattack but never rolled the room's hazard, and only the
+   * handful of actions in TURN_ACTIONS rolled for something to come out of the
+   * dark. The original had no such split — its room script rolled its encounter
+   * table on every page load, before it had even looked at the input — so
+   * standing in a mine swinging a pickaxe was exactly as dangerous as standing
+   * there doing nothing, which is the point of a mine.
+   *
+   * In a fight the enemy answers, through the same `resolveSupportTurn` a
+   * potion goes through. Out of one the room's hazard bites and then rolls.
+   * A failed action costs nothing, and neither does one that turned out to be
+   * a no-op (`noTurn`) — the MAX button with nothing to change, a supply
+   * already at its line. `turnResolved` keeps the call idempotent, so a handler
+   * that has already spent the turn is not charged again by the tail above.
+   *
+   * @param {object|null} result - the action's own result
+   * @param {string} playerId
+   * @param {object} meta - what the battle panel says the turn was spent on
+   */
+  async resolveTurn(result, playerId, meta) {
+    if (!result || result.turnResolved) return result
+    if (!result.success || result.noTurn) return result
+
+    if (this.activeBattles.get(playerId)?.isActive) {
+      const supportTurn = await resolveSupportTurn(playerId, this, meta)
+      return { ...mergeSupportTurnIntoResult(result, supportTurn), turnResolved: true }
+    }
+
+    let spent = await this.appendHazardEvents(result, playerId)
+    spent = await this.appendSpawnEvents(spent, playerId)
+    return { ...spent, turnResolved: true }
   }
 
   // The room's environmental hazard, rolled once per turn action. Damage is
@@ -841,12 +965,19 @@ class RoomState {
 
   // After a turn action: resolve enemy presence and append notification / auto-battle
   // events. Announces a freshly-rolled enemy, then — if it is hostile — it attacks
-  // the player. No post-battle grace.
+  // the player.
   async appendSpawnEvents(result, playerId) {
     if (!isProbabilistic(this.roomId)) return result
 
     const battle = this.activeBattles.get(playerId)
     if (battle?.isActive) return result
+
+    // The turn after a win the room is safe, and this action spends that.
+    const enemyState = this.playerEnemyState.get(playerId)
+    if (enemyState?.grace) {
+      enemyState.grace = false
+      return result
+    }
 
     const spawnedSlug = this.maybeSpawnEnemy(playerId)
 
@@ -1044,14 +1175,27 @@ class RoomState {
       return this.createErrorResult('move', 'Player not found in this room')
     }
 
+    // Only server code paths set `authorizedMove`, and only after deciding the
+    // destination themselves: a fixed teleport-network room, a grant the server
+    // just issued (guild lair, respawn, flee retreat), or a party member being
+    // pulled behind a leader who already teleported. It sits on the action
+    // rather than in `action.data`, which is the half built from client input.
+    //
+    // It is also what makes a teleport the fight's escape hatch, as it was in
+    // the original: `function-teleport.php` set `infight = 0` unconditionally,
+    // and the Spider Cave's own sign tells you to use it when you are in
+    // trouble. A *step* is still refused — you cannot simply walk away from
+    // something that is swinging at you.
+    const authorizedMove = action.authorizedMove === true
+
     const activeBattle = this.activeBattles.get(playerId)
-    if (activeBattle && activeBattle.isActive) {
-      return this.createErrorResult('move', 'You cannot leave while in combat. Fight or flee.')
+    if (!authorizedMove && activeBattle && activeBattle.isActive) {
+      return this.createErrorResult('move', 'You cannot walk away from a fight. Retreat or teleport.')
     }
 
-    // Cannot leave while a hostile (aggressive) enemy is present. A neutral enemy
-    // does not block movement and waits here for the player to return.
-    if (this.hasHostileEnemy(playerId)) {
+    // Cannot walk out while a hostile (aggressive) enemy is present. A neutral
+    // enemy does not block movement and waits here for the player to return.
+    if (!authorizedMove && this.hasHostileEnemy(playerId)) {
       const hostile = getEnemy(this.getPresentEnemy(playerId))
       return this.createErrorResult('move', `You cannot leave while the ${hostile?.name ?? 'enemy'} is here. Defeat it first.`)
     }
@@ -1066,13 +1210,6 @@ class RoomState {
       console.log(`[RoomState:${this.roomId}] executeMove - No destination room provided`)
       return this.createErrorResult('move', 'No destination room provided')
     }
-
-    // Only server code paths set `authorizedMove`, and only after deciding the
-    // destination themselves: a fixed teleport-network room, a grant the server
-    // just issued (guild lair, respawn, flee retreat), or a party member being
-    // pulled behind a leader who already teleported. It sits on the action
-    // rather than in `action.data`, which is the half built from client input.
-    const authorizedMove = action.authorizedMove === true
 
     // 1. REACHABILITY VALIDATION (primary constraint)
     // The direction is derived from the source room's own exits rather than
@@ -1172,27 +1309,58 @@ class RoomState {
     console.log(`[RoomState:${this.roomId}] executeMove - ${player.username} moving from ${fromRoom} to ${toRoom}`)
 
     this.touchActivity()
-    // Carry the present enemy (a neutral one — a hostile blocks the move above) so
-    // the same enemy is waiting if the player returns to this room.
+    // Carry the present enemy — hostile or not — so the same one is waiting if
+    // the player comes back. A teleport out of a fight leaves the enemy standing
+    // here; the fight itself is ended by `removePlayer` below, and a return
+    // builds a new BattleState from the enemy definition, so it is waiting at
+    // full HP rather than at whatever was left of it.
     const departingEnemy = this.getPresentEnemy(playerId)
+    // A teleport is allowed to leave mid-fight, so the battle can still be live
+    // here. Tell the player's own client to close the fight — nothing else on
+    // the move path does, and the battle deck would otherwise stay on screen
+    // showing an enemy in a room they are no longer standing in.
+    const abandonedBattle = this.activeBattles.get(playerId)
+    const abandonedEnemyName = abandonedBattle?.isActive ? abandonedBattle.enemyName : null
     this.removePlayer(playerId)
 
     const toRoomName = action.data?.toRoomName || toRoom
     const roomData = action.data?.roomData
-    const message = direction ? `You travel ${direction}` : `You teleport to ${toRoomName}`
+    // An authorized move skipped the reachability lookup, so `direction` is
+    // null even when the destination is next door — which a retreat's fallback
+    // room almost always is. Read the direction back out of the exits the
+    // caller already sent, purely to word the line: "You travel west" rather
+    // than "You teleport to Mine Level 6". It is deliberately not assigned to
+    // `direction`, which gates the gate check a step above.
+    const walkedDirection =
+      direction ??
+      (action.sourceExits?.roomId === fromRoom ? findExitDirection(action.sourceExits, toRoom) : null)
+    const message = walkedDirection ? `You travel ${walkedDirection}` : `You teleport to ${toRoomName}`
 
     return {
       success: true,
       action: 'move',
       data: { fromRoom, toRoom, toRoomName, roomData },
       playerEvents: [
+        ...(abandonedEnemyName
+          ? [
+              {
+                event: 'battle:fled',
+                // No returnRoomId: this move *is* the escape, and the client
+                // would otherwise try to travel a second time.
+                payload: {
+                  message: `You slip away from the ${abandonedEnemyName}. It is still there, and it will be waiting.`,
+                  returnRoomId: null,
+                },
+              },
+            ]
+          : []),
         {
           event: 'action:feedback',
           payload: this.createFeedbackPayload('move', 'success', message, {
             toRoom,
             toRoomName,
             roomData,
-            direction,
+            direction: walkedDirection,
             ...(gatePassInventory ? { inventory: gatePassInventory } : {}),
           }),
         },
@@ -1454,20 +1622,16 @@ class RoomState {
         ],
       }
 
-      // Buffing mid-fight spends the turn like a potion: the enemy answers.
-      if (this.activeBattles.get(playerId)?.isActive) {
-        const supportTurn = await resolveSupportTurn(playerId, this, {
-          kind: 'cast_spell',
-          itemSlug: spell.id,
-          itemName: spell.name,
-          itemMetadata: { icon: spell.icon },
-          actionVerb: 'cast',
-          effectText,
-        })
-        return mergeSupportTurnIntoResult(result, supportTurn)
-      }
-
-      return await this.appendSpawnEvents(result, playerId)
+      // Buffing spends the turn like a potion: mid-fight the enemy answers,
+      // out of one the room rolls.
+      return await this.resolveTurn(result, playerId, {
+        kind: 'cast_spell',
+        itemSlug: spell.id,
+        itemName: spell.name,
+        itemMetadata: { icon: spell.icon },
+        actionVerb: 'cast',
+        effectText,
+      })
     }
 
     // kind === 'heal'
@@ -1508,21 +1672,16 @@ class RoomState {
     }
 
     // Healing mid-fight spends the turn: the enemy answers, exactly as it does
-    // for a potion.
-    if (this.activeBattles.get(playerId)?.isActive) {
-      const supportTurn = await resolveSupportTurn(playerId, this, {
-        kind: 'cast_spell',
-        itemSlug: spell.id,
-        itemName: spell.name,
-        itemMetadata: { icon: spell.icon },
-        actionVerb: 'cast',
-        effectText: `+${heal.hpChange} HP`,
-      })
-      return mergeSupportTurnIntoResult(result, supportTurn)
-    }
-
-    // Out of a fight it is a turn action like rest: something may notice.
-    return await this.appendSpawnEvents(result, playerId)
+    // for a potion. Out of a fight it is a turn action like rest: something may
+    // notice.
+    return await this.resolveTurn(result, playerId, {
+      kind: 'cast_spell',
+      itemSlug: spell.id,
+      itemName: spell.name,
+      itemMetadata: { icon: spell.icon },
+      actionVerb: 'cast',
+      effectText: `+${heal.hpChange} HP`,
+    })
   }
 
   async executeSearch(playerId) {
@@ -1944,21 +2103,17 @@ class RoomState {
       return this.createErrorResult('use_item', `Action "${itemAction}" is not available for this item`)
     }
 
-    // If the player is in battle, the item use also costs a turn — the enemy strikes.
-    if (itemActionResult.success && this.activeBattles.get(playerId)?.isActive) {
-      const effectText = extractEffectText(itemActionResult)
-      const supportTurn = await resolveSupportTurn(playerId, this, {
-        kind: 'use_item',
-        itemSlug,
-        itemName,
-        itemMetadata,
-        actionVerb: itemAction,
-        effectText,
-      })
-      return mergeSupportTurnIntoResult(itemActionResult, supportTurn)
-    }
-
-    return itemActionResult
+    // Using an item is a turn: in a fight the enemy strikes back, out of one
+    // the room rolls. Resolved here rather than by the dispatcher's tail so the
+    // meta carries the item the panel should draw.
+    return await this.resolveTurn(itemActionResult, playerId, {
+      kind: 'use_item',
+      itemSlug,
+      itemName,
+      itemMetadata,
+      actionVerb: itemAction,
+      effectText: extractEffectText(itemActionResult),
+    })
   }
 
   async executeEquipItem(action, playerId) {
@@ -1994,19 +2149,14 @@ class RoomState {
       ],
     }
 
-    if (this.activeBattles.get(playerId)?.isActive) {
-      const supportTurn = await resolveSupportTurn(playerId, this, {
-        kind: 'equip_item',
-        itemSlug: result.item?.slug,
-        itemName: result.item?.name,
-        itemMetadata: result.item?.metadata ?? null,
-        actionVerb: 'equip',
-        effectText: null,
-      })
-      return mergeSupportTurnIntoResult(baseResult, supportTurn)
-    }
-
-    return baseResult
+    return await this.resolveTurn(baseResult, playerId, {
+      kind: 'equip_item',
+      itemSlug: result.item?.slug,
+      itemName: result.item?.name,
+      itemMetadata: result.item?.metadata ?? null,
+      actionVerb: 'equip',
+      effectText: null,
+    })
   }
 
   // The original's MAX buttons: dress for one stat in a single action. It
@@ -2069,19 +2219,14 @@ class RoomState {
       ],
     }
 
-    if (this.activeBattles.get(playerId)?.isActive) {
-      const supportTurn = await resolveSupportTurn(playerId, this, {
-        kind: 'auto_equip',
-        itemSlug: 'auto-equip',
-        itemName: `${result.label} gear`,
-        itemMetadata: { icon: 'magicarmor' },
-        actionVerb: 'auto-equip',
-        effectText: `${result.stat.toUpperCase()} ${result.before} → ${result.after}`,
-      })
-      return mergeSupportTurnIntoResult(baseResult, supportTurn)
-    }
-
-    return baseResult
+    return await this.resolveTurn(baseResult, playerId, {
+      kind: 'auto_equip',
+      itemSlug: 'auto-equip',
+      itemName: `${result.label} gear`,
+      itemMetadata: { icon: 'magicarmor' },
+      actionVerb: 'auto-equip',
+      effectText: `${result.stat.toUpperCase()} ${result.before} → ${result.after}`,
+    })
   }
 
   async executeUnequipItem(action, playerId) {
@@ -2117,19 +2262,14 @@ class RoomState {
       ],
     }
 
-    if (this.activeBattles.get(playerId)?.isActive) {
-      const supportTurn = await resolveSupportTurn(playerId, this, {
-        kind: 'unequip_item',
-        itemSlug: result.item?.slug,
-        itemName: result.item?.name,
-        itemMetadata: result.item?.metadata ?? null,
-        actionVerb: 'unequip',
-        effectText: null,
-      })
-      return mergeSupportTurnIntoResult(baseResult, supportTurn)
-    }
-
-    return baseResult
+    return await this.resolveTurn(baseResult, playerId, {
+      kind: 'unequip_item',
+      itemSlug: result.item?.slug,
+      itemName: result.item?.name,
+      itemMetadata: result.item?.metadata ?? null,
+      actionVerb: 'unequip',
+      effectText: null,
+    })
   }
 
   async executeAcceptQuest(action, playerId) {

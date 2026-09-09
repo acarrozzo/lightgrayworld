@@ -31,30 +31,40 @@ function store() {
 /**
  * Record that `playerId` may teleport to `roomId` once, within `ttlMs`.
  * A player holds at most one grant; issuing a new one replaces any pending grant.
+ *
+ * `safeArrival` marks the one grant that also says something about the far end:
+ * a retreat. The room you fall back into does not roll for you as you arrive,
+ * and is safe for one more action after that — the original set `endfight = 1`
+ * on retreat and the destination printed "This room is safe." Without it a
+ * retreat can land in a second ambush, which makes retreating pointless.
  */
-function grantTeleport(playerId, roomId, ttlMs = DEFAULT_TTL_MS) {
+function grantTeleport(playerId, roomId, { ttlMs = DEFAULT_TTL_MS, safeArrival = false } = {}) {
   if (!playerId || !roomId) return
-  store().set(playerId, { roomId, expiresAt: Date.now() + ttlMs })
+  store().set(playerId, { roomId, safeArrival, expiresAt: Date.now() + ttlMs })
 }
 
 /**
- * Consume a grant for exactly this room. Returns true only when a live,
- * matching grant existed; the grant is removed either way if it had expired.
+ * Consume a grant for exactly this room. Returns the grant when a live, matching
+ * one existed and `null` otherwise; the grant is removed either way if it had
+ * expired. Callers that only care whether the move is allowed can read it as a
+ * boolean; the retreat reads `safeArrival` off it.
+ *
+ * @returns {{ roomId: string, safeArrival: boolean } | null}
  */
 function consumeTeleportGrant(playerId, roomId) {
   const grants = store()
   const grant = grants.get(playerId)
-  if (!grant) return false
+  if (!grant) return null
 
   if (grant.expiresAt <= Date.now()) {
     grants.delete(playerId)
-    return false
+    return null
   }
 
-  if (grant.roomId !== roomId) return false
+  if (grant.roomId !== roomId) return null
 
   grants.delete(playerId)
-  return true
+  return { roomId: grant.roomId, safeArrival: grant.safeArrival === true }
 }
 
 /** Drop any pending grant — used when a player disconnects. */

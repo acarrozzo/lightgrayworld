@@ -16,6 +16,11 @@ model User {
   characterClass            String          @default("Scout")
   characterRace             String          @default("Human")
   currentRoom               String          @default("001")
+  // The room a retreat falls back to. Ephemeral until now — it lived only on
+  // the in-memory socket record, so logging out lost it and the first fight
+  // after a login had nowhere to retreat to. Null only for a character who has
+  // never moved.
+  previousRoom              String?
   recallRoom                String          @default("001")
   lastActive                DateTime        @default(now())
   isActive                  Boolean         @default(true)

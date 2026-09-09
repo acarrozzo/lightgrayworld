@@ -31,7 +31,13 @@ class BattleState {
     this.companion = companion || null
 
     this.turnCount = 0
-    this.canFlee = false
+    // Retreat is open from the first moment of the fight. It used to unlock
+    // after three turns, which meant walking into something far above your
+    // level was a death sentence rather than a mistake you could back out of —
+    // and the original had no such lock: `retreat` worked on the turn you typed
+    // it. Breaking off leaves the enemy standing in the room at full HP, so
+    // there is nothing to farm by fleeing.
+    this.canFlee = true
     this.isActive = true
     this.startedAt = Date.now()
 
@@ -98,7 +104,6 @@ class BattleState {
 
   incrementTurn() {
     this.turnCount++
-    if (this.turnCount >= 3) this.canFlee = true
   }
 
   recordTurn(playerDealt, enemyDealt, hadMultiplayerBonus, fullTurnResult = null) {

@@ -338,7 +338,9 @@ function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlaye
     return prisma.user
       .update({
         where: { id: player.id },
-        data: { currentRoom: toRoom },
+        // previousRoom rides along with currentRoom so a retreat still has
+        // somewhere to fall back to after a logout or a server restart.
+        data: { currentRoom: toRoom, previousRoom: fromRoom },
       })
       .then(() => undefined)
       .catch((error) => {
@@ -874,6 +876,32 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     return { destinationRoom, gatherCooldowns, supplies }
   }
 
+  // True if this player is locked in a battle of their own right now.
+  const isInBattle = (roomId, playerId) => {
+    const battle = gameEngine.rooms?.get(roomId)?.activeBattles?.get(playerId)
+    return Boolean(battle && battle.isActive)
+  }
+
+  /**
+   * A move that is an escape from a fight takes the player out of their party.
+   * Escaping is personal — nobody is dragged along behind it — and it is also
+   * what lets the move land at all, since a party member may not travel alone.
+   * A leader hands the party on; see partyStore.departAlone.
+   */
+  const settleEscapeFromParty = (socket, playerId) => {
+    const wasLeader = partyStore.isLeader(playerId)
+    const wasMember = partyStore.isMember(playerId)
+    if (!wasLeader && !wasMember) return
+
+    const { promotedName } = partyStore.departAlone(playerId)
+    const message = promotedName
+      ? `You escape alone. ${promotedName} is leading your party now.`
+      : wasLeader
+        ? 'You escape alone. Your party is disbanded.'
+        : 'You escape alone, leaving your party behind.'
+    emitActionFeedback(socket, { action: 'move', message, outcome: 'info' })
+  }
+
   // True if any same-room member of this leader's party is locked in battle.
   const partyMemberInBattle = (leaderId, roomId) => {
     const memberIds = partyStore.getLeaderMemberIds(leaderId)
@@ -985,6 +1013,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             mp: true,
             mpMax: true,
             currentRoom: true,
+            previousRoom: true,
             isActive: true,
             uIcon: true,
             uIconColor: true,
@@ -1031,6 +1060,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           mp: dbPlayer.mp,
           mpMax: dbPlayer.mpMax,
           currentRoom: dbPlayer.currentRoom,
+          // Where a retreat falls back to, restored from the row rather than
+          // starting empty every session.
+          previousRoom: dbPlayer.previousRoom ?? null,
           isActive: dbPlayer.isActive,
           uIcon: dbPlayer.uIcon ?? null,
           uIconColor: dbPlayer.uIconColor ?? null,
@@ -1229,8 +1261,14 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
       touchPlayerActivity(player)
 
+      // Escaping a fight is the one move that is nobody else's business: it is
+      // allowed to a member as well as a leader, and it takes whoever makes it
+      // out of the party rather than dragging everyone along. Read before the
+      // move, because the move ends the battle on its way out.
+      const escapingBattle = isInBattle(player.currentRoom, player.id)
+
       // Party members are pinned to their leader — they can't travel on their own.
-      if (partyStore.isMember(player.id)) {
+      if (partyStore.isMember(player.id) && !escapingBattle) {
         emitActionFeedback(socket, {
           action: 'move',
           message: 'You are following your party. Leave the party to move freely.',
@@ -1257,8 +1295,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         return
       }
 
-      // A leader can't travel while any same-room party member is still in battle.
-      if (partyStore.isLeader(player.id) && partyMemberInBattle(player.id, fromRoom)) {
+      // A leader can't take the party anywhere while any same-room member is
+      // still in battle. A leader escaping a fight of their own is not taking
+      // the party anywhere — they are leaving it behind — so that is allowed.
+      if (!escapingBattle && partyStore.isLeader(player.id) && partyMemberInBattle(player.id, fromRoom)) {
         emitActionFeedback(socket, {
           action: 'move',
           message: 'You cannot travel while a party member is in battle.',
@@ -1290,14 +1330,14 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // exactly when it is a teleport the server authorizes: a room in the
         // fixed network, or one the server itself just named for this player
         // (guild lair, defeat respawn, flee retreat) and has not yet spent.
-        const isTeleportMove = !direction
+        const hasExit = Boolean(direction)
         // A network fast travel must have been discovered and is paid for in MP
         // once it lands; a destination the server itself granted (guild lair,
         // respawn, flee retreat) is its own doing and stays free.
         let teleportCharge = null
         // Rising from death is a teleport to the respawn room too, but a free
         // one: no MP, no grant to expire, for as long as the player stays dead.
-        const isRising = isTeleportMove && toRoom === RESPAWN_ROOM_ID && (await isPlayerDead(prisma, player.id))
+        const isRising = !hasExit && toRoom === RESPAWN_ROOM_ID && (await isPlayerDead(prisma, player.id))
         // The dead go nowhere else. The engine refuses this too; catching it here,
         // from the live room record, keeps a dead player's step from touching the
         // destination at all (item respawns, gate checks) — and costs no query.
@@ -1305,14 +1345,30 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           emitActionFeedback(socket, { action: 'move', message: "You're dead. Rise again first.", outcome: 'failure' })
           return
         }
-        if (isTeleportMove && !isRising) {
+
+        // A destination the server itself named for this player and has not yet
+        // spent — the room a retreat falls back to, a guild lair. Claimed
+        // BEFORE adjacency gets a say, because a retreat falls back to the room
+        // you walked in from, which is next door: letting adjacency decide made
+        // the walk-back an ordinary step, and an ordinary step is refused by the
+        // very enemy the player is retreating from. That is why a retreat left
+        // you standing in the room you were trying to leave.
+        const grant = isRising ? null : consumeTeleportGrant(player.id, toRoom)
+        const grantedMove = grant !== null
+        // Only a retreat's grant says anything about the far end: the room you
+        // fall back into does not roll as you arrive.
+        const safeArrival = grant?.safeArrival === true
+
+        // With no exit and no grant, the only remaining way this is legal is the
+        // fixed teleport network.
+        if (!hasExit && !isRising && !grantedMove) {
           const network = await authorizeNetworkTeleport(prisma, player, toRoom)
           if (network.ok) {
             teleportCharge = network.charge
           } else if (network.reason) {
             emitActionFeedback(socket, { action: 'move', message: network.reason, outcome: 'failure' })
             return
-          } else if (!consumeTeleportGrant(player.id, toRoom)) {
+          } else {
             console.warn(
               `[Socket] player-move - ${player.username} requested unreachable/unauthorized ${toRoom} from ${fromRoom}`
             )
@@ -1324,6 +1380,16 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             return
           }
         }
+
+        // What the engine is allowed to skip: the adjacency requirement, the
+        // gate, and the refusals that hold a player in a fight. All three are
+        // exactly what a teleport is for.
+        const authorizedMove = !hasExit || grantedMove
+        // Kept separate from the authorization, as the party helper's own note
+        // says it must be: this only shapes the room enter/leave lines. A
+        // retreat is authorized like a teleport but walked like a step, and the
+        // rooms should say someone left to the west, not vanished.
+        const isTeleportMove = !hasExit
 
         // A leader can't travel through a gate a party member can't pass — keep
         // the party together. Needs only the direction, so it is settled before
@@ -1371,9 +1437,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           roomId: fromRoom,
           action: {
             type: 'move',
-            // Authorized above for a teleport; left unset for a directional move
-            // so the engine derives the direction itself and enforces the gate.
-            authorizedMove: isTeleportMove,
+            // Authorized above for a teleport, or for a destination the server
+            // itself named (a retreat's fallback room). Left unset for an
+            // ordinary step so the engine derives the direction itself and
+            // enforces the gate.
+            authorizedMove,
             // The exits just read, so the engine's own derivation does not read
             // them again. Server-authored: it sits beside `authorizedMove`,
             // outside the half of the action built from client input.
@@ -1413,8 +1481,21 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // room, and the durable writes — current room, map unlocks — run
           // beside it instead of ahead of it. They used to
           // run first, in sequence, with two room-chat rows nothing ever read.
+          // Falling back from a fight arrives quietly: no roll on the way in,
+          // and the room stays safe for one action after that. Everything else
+          // that happens on arrival still happens — the map unlocks, the
+          // teachers, the durable writes.
+          if (safeArrival) {
+            gameEngine.getOrCreateRoom(toRoom).grantGraceTurn(player.id)
+            emitActionFeedback(socket, {
+              action: 'move',
+              message: 'You catch your breath. This room is safe for a moment.',
+              outcome: 'info',
+            })
+          }
+
           await Promise.all([
-            maybeStartAutoBattle({ socket, player, toRoom, gameEngine }),
+            safeArrival ? Promise.resolve() : maybeStartAutoBattle({ socket, player, toRoom, gameEngine }),
             wakeIfDead({ prisma, io, socket, gameEngine, player, toRoom }),
             persisted,
             chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom, charge: teleportCharge }),
@@ -1423,8 +1504,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             announceSkillTeacher(prisma, socket, player, toRoom),
           ])
 
-          // Pull any party members along with the leader.
-          if (partyStore.isLeader(player.id)) {
+          if (escapingBattle) {
+            // Broke off and went alone; nobody is pulled along behind it.
+            settleEscapeFromParty(socket, player.id)
+          } else if (partyStore.isLeader(player.id)) {
             await pullPartyMembers({
               leaderId: player.id,
               fromRoom,
@@ -1438,7 +1521,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               // directional move this stays false on purpose, so the engine
               // re-runs each member's own gate rather than inheriting the
               // leader's right of way.
-              authorizedMove: isTeleportMove,
+              authorizedMove,
               sourceExits,
             })
           }
@@ -1637,7 +1720,17 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
       try {
         if (actionType === 'teleport') {
-          if (partyStore.isMember(player.id)) {
+          // A teleport out of a fight is an escape, and an escape is personal:
+          // it is allowed to anyone, member or leader, and it takes them out of
+          // the party rather than dragging everyone else along behind them.
+          // Outside a fight the party rules are unchanged — the leader travels
+          // and the party travels with them; a member does not wander off.
+          //
+          // Read before the move: `processUserAction` ends the battle on the
+          // way out, so afterwards there would be nothing left to detect.
+          const escapingBattle = isInBattle(player.currentRoom, player.id)
+
+          if (partyStore.isMember(player.id) && !escapingBattle) {
             emitActionFeedback(socket, {
               action: 'teleport',
               message: 'You are following your party. Leave the party to move freely.',
@@ -1686,7 +1779,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
           const fromRoom = player.currentRoom
 
-          if (partyStore.isLeader(player.id) && partyMemberInBattle(player.id, fromRoom)) {
+          // A leader still cannot march the party off while a member is mid-fight
+          // — but a leader escaping a fight of their own is leaving the party
+          // behind entirely, so there is nobody being dragged and nothing to
+          // refuse. The member can escape the same way.
+          if (!escapingBattle && partyStore.isLeader(player.id) && partyMemberInBattle(player.id, fromRoom)) {
             emitActionFeedback(socket, {
               action: 'teleport',
               message: 'You cannot travel while a party member is in battle.',
@@ -1748,7 +1845,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               announceSkillTeacher(prisma, socket, player, toRoomId),
             ])
 
-            if (partyStore.isLeader(player.id)) {
+            if (escapingBattle) {
+              settleEscapeFromParty(socket, player.id)
+            } else if (partyStore.isLeader(player.id)) {
               await pullPartyMembers({
                 leaderId: player.id,
                 fromRoom,

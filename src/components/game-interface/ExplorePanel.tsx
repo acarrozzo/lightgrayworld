@@ -39,7 +39,13 @@ interface ExplorePanelProps extends LedgerActions {
   availableMaps: MapConfigEntry[]
   onMapChange: (mapId: string) => void
   isMoveInProgress?: boolean
-  /** Dim the compass (battle / crafting). */
+  /**
+   * Put the compass out of reach — dead, or the crafting sheet is over it.
+   * A fight does not: teleport is the way out of one and Retreat is open from
+   * the first turn, so the D-pad and its Map / Teleport controls stay live
+   * while a battle is on. `showBattleBadge` gives them a light dim instead, so
+   * the battle deck still reads as the thing with the attention.
+   */
   isDimmed?: boolean
   showBattleBadge?: boolean
   /** Following a party leader: the D-pad greys out, the server refuses moves anyway. */
@@ -107,7 +113,7 @@ export default function ExplorePanel({
     )
   }
 
-  const dimmedClasses = isDimmed ? 'opacity-20 pointer-events-none' : ''
+  const dimmedClasses = isDimmed ? 'opacity-20 pointer-events-none' : showBattleBadge ? 'opacity-70' : ''
   const ledger = { room, player, inventory, onOpenTraining, onOpenStats, onOpenBook, onOpenInventory }
 
   return (
@@ -156,8 +162,12 @@ export default function ExplorePanel({
       {isSidebar && isPartyMember && !isDimmed && (
         <p className="text-[11px] text-status-info/70">Following your party — leave to move freely.</p>
       )}
+      {/* The badge used to sit dead centre, over a compass nothing could click
+          anyway. The compass is live in a fight now, and the centre of the ring
+          is the mini-map button, so it sits under the ring instead of on top of
+          a control. */}
       {showBattleBadge && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center z-10">
+        <div className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 z-10">
           <span className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-status-error/90 bg-surface-canvas/70 border border-status-error/25 rounded-lg backdrop-blur-sm">
             In Battle
           </span>

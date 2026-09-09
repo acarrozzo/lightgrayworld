@@ -69,12 +69,28 @@ export interface BattleEnemyAction {
 }
 
 export interface BattleSupportActionMeta {
-  kind: 'use_item' | 'equip_item' | 'unequip_item' | 'cast_spell' | 'auto_equip'
-  itemSlug: string
-  itemName: string
+  kind:
+    | 'use_item'
+    | 'equip_item'
+    | 'unequip_item'
+    | 'cast_spell'
+    | 'auto_equip'
+    | 'search'
+    | 'pickup_item'
+    | 'drop_item'
+    | 'take_supply'
+    | 'rest'
+    | 'room_action'
+  /** Null on a turn that was not about an item (a search, a swing of a pickaxe). */
+  itemSlug: string | null
+  itemName: string | null
   itemMetadata: { icon?: string } | null
-  actionVerb: string
+  actionVerb: string | null
   effectText: string | null
+  /** Eyebrow for a non-item turn ("Searched", "Mine here"); the kind names it otherwise. */
+  label?: string | null
+  /** The whole line for a non-item turn — the action's own feed message. */
+  text?: string | null
 }
 
 /**

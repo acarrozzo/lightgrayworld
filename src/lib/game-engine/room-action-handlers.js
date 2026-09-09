@@ -13,6 +13,52 @@ const { goldChestFlagForRoom } = require('../game-data/gold-chests')
 const { isMember } = require('./services/faction-service')
 
 /**
+ * Mark a room-action handler as free — it costs the player no turn.
+ *
+ * The original spent a turn on literally every input, because a turn *was* a
+ * page load: the room script rolled its encounter table before it looked at
+ * what you had typed. That is too coarse to port literally (a refresh could
+ * get you killed), so a room action costs a turn by default and the things
+ * that are only ever information — reading a sign, talking to an NPC,
+ * examining a thing, opening a shop's window — opt out here, along with the
+ * two actions that are really something else wearing a room action's clothes:
+ * a button that starts a fight (which pays for itself the moment the battle
+ * begins) and a guild's teleport (a step, whose arrival does the rolling).
+ *
+ * @template {Function} T
+ * @param {T} handler
+ * @returns {T}
+ */
+function free(handler) {
+  handler.costsTurn = false
+  return handler
+}
+
+/**
+ * Does this room action cost the player a turn?
+ *
+ * Asked by RoomState.executeAction, which owns what a turn costs; this owns
+ * which actions are one. A function handler is a turn unless `free()` said
+ * otherwise. A string handler is a line of description and never is. A
+ * structured definition is a turn when it actually does something — grants an
+ * item, runs a cooldown — and not when it only opens a modal (the Evolve
+ * altar, the ledge over the Despair).
+ *
+ * @param {string} roomId
+ * @param {string} actionName - raw or normalized; normalized the same way
+ *   executeRoomAction does before the lookup.
+ */
+function isTurnCostingRoomAction(roomId, actionName) {
+  if (typeof actionName !== 'string') return false
+  const handler = ROOM_ACTIONS[roomId]?.[actionName.toLowerCase().trim()]
+  if (!handler) return false
+  if (typeof handler === 'string') return false
+  if (typeof handler === 'function') return handler.costsTurn !== false
+  if (handler.costsTurn !== undefined) return handler.costsTurn !== false
+  return Boolean(handler.effects?.length || handler.cooldownMs)
+}
+
+/**
  * Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
  */
 function formatTimeRemaining(seconds) {
@@ -86,7 +132,7 @@ function resolveIdleDialog(idleDialogs, progressById) {
  * the giver's `idleDialogs`.
  */
 function createNpcTalkHandler({ giverId, action }) {
-  return async (playerId, roomState, actionData = {}) => {
+  return free(async (playerId, roomState, actionData = {}) => {
     const qs = require('./services/quest-service')
     const giver = qs.getGiver(giverId)
     if (!giver) {
@@ -202,7 +248,7 @@ function createNpcTalkHandler({ giverId, action }) {
     const idle =
       resolveIdleDialog(giver.idleDialogs, progressById) || `${giver.name} has nothing more for you right now.`
     return result(feedback(`You talk to ${spoken}.`, { modalContent: npcModal({ message: idle }) }))
-  }
+  })
 }
 
 /** A room table entry for a giver's talk action, keyed by the giver's `action`. */
@@ -225,7 +271,7 @@ function npcTalk(giverId) {
  * async (playerId) => boolean layered on top of it.
  */
 function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'basicshop', iconColor = 'amber-500' } = {}) {
-  return async (playerId, roomState) => {
+  return free(async (playerId, roomState) => {
     const shop = getShop(roomId)
     if (!shop) {
       return createErrorResult('view shop', 'There is no shop here.')
@@ -259,7 +305,7 @@ function makeShopHandler(roomId, { gate = null, lockedMessage = null, icon = 'ba
     }
 
     return buildShopModalResult({ shop, playerId, roomState })
-  }
+  })
 }
 
 /**
@@ -336,7 +382,7 @@ async function buildShopModalResult({ shop, playerId, roomState, action = 'view 
  * timer. Relative times only: the server does not know the reader's clock.
  */
 function withMerchantNotice(roomId, handler) {
-  return async (playerId, roomState) => {
+  return free(async (playerId, roomState) => {
     const { getTraveler, routeNextArrivalAt } = require('../game-data/travelers')
     const merchant = getTraveler('merchant')
     const due = merchant ? routeNextArrivalAt(merchant, roomId) : null
@@ -354,7 +400,7 @@ function withMerchantNotice(roomId, handler) {
       ? { ...handler, modalContent: { ...handler.modalContent, notice } }
       : handler
     return executeBasicDisplay('read sign', handler.message, playerId, roomState, true, withNotice)
-  }
+  })
 }
 
 /**
@@ -1031,6 +1077,7 @@ function makeGoldChestHandler({ roomId, goldMin, goldMax, lockedMessage }) {
     if (flagRow?.[flagField]) {
       return {
         success: true,
+        noTurn: true,
         action: 'open gold chest',
         playerEvents: [
           {
@@ -1249,6 +1296,7 @@ function makeRepeatableChestHandler({
       const message = `The ${label.toLowerCase()} will not budge. Someone has picked it clean for now — try again in ${wait}.`
       return {
         success: true,
+        noTurn: true,
         action,
         playerEvents: [
           {
@@ -1393,6 +1441,7 @@ function makeGuildPackHandler({ factionId, label, icon, iconColor, joinMessage, 
     if (!member) {
       return {
         success: true,
+        noTurn: true,
         action: 'grab pack',
         playerEvents: [
           {
@@ -1432,6 +1481,8 @@ function makeGuildPackHandler({ factionId, label, icon, iconColor, joinMessage, 
 
     return {
       success: true,
+      // Already full: nothing was handed over, so nothing is spent.
+      noTurn: granted.length === 0,
       action: 'grab pack',
       playerEvents: [
         {
@@ -1511,7 +1562,7 @@ const makeMiningPackHandler = () =>
   })
 
 function makeGuildTeleportHandler({ action, factionId, toRoomId, label, icon, iconColor, joinMessage, message }) {
-  return async (playerId, roomState) => {
+  return free(async (playerId, roomState) => {
     roomState.touchActivity()
 
     const respond = (outcome, text, extra = {}) => ({
@@ -1545,7 +1596,7 @@ function makeGuildTeleportHandler({ action, factionId, toRoomId, label, icon, ic
     // `teleportRoomId` back would be indistinguishable from asking for any room.
     grantTeleport(playerId, toRoomId)
     return respond('success', message, { teleportRoomId: toRoomId })
-  }
+  })
 }
 
 /**
@@ -1628,6 +1679,8 @@ function makeTopUpPackHandler({ action, label, icon, iconColor, pack, fullMessag
     const inventory = await getPlayerInventory(playerId)
     return {
       success: true,
+      // Already stocked to the floor: nothing was handed over, so nothing is spent.
+      noTurn: !grantedAny,
       action,
       playerEvents: [
         {
@@ -1789,6 +1842,7 @@ function makeLeverHandler({ roomId, leverName, alreadyMessage, flipMessage, moda
     if (leverState.isLeverPulled(playerId, leverId)) {
       return {
         success: true,
+        noTurn: true,
         action: 'flip lever',
         playerEvents: [
           { event: 'action:feedback', payload: createActionFeedbackPayload('flip lever', 'info', alreadyMessage, extra()) },
@@ -1824,7 +1878,7 @@ function makeLeverHandler({ roomId, leverName, alreadyMessage, flipMessage, moda
  * for the crown.
  */
 function makeSummonHandler({ action, enemySlug, message, ambush = false }) {
-  return async (playerId, roomState) => {
+  return free(async (playerId, roomState) => {
     const { executeStartBattle } = require('./battle-action-handlers')
     const { isProbabilistic } = require('../game-data/room-enemies')
     roomState.touchActivity()
@@ -1851,7 +1905,7 @@ function makeSummonHandler({ action, enemySlug, message, ambush = false }) {
         ...(battle.playerEvents ?? []),
       ],
     }
-  }
+  })
 }
 
 /**
@@ -3020,6 +3074,7 @@ const ROOM_ACTIONS = {
       if (isLeverPulled(playerId, GROTTO_SWITCH)) {
         return {
           success: true,
+          noTurn: true,
           action: 'flip switch',
           playerEvents: [
             {
@@ -4175,6 +4230,7 @@ function getGatherActionsForRoom(roomId) {
 
 module.exports = {
   executeRoomAction,
+  isTurnCostingRoomAction,
   ROOM_ACTIONS,
   CHEST_LOOT,
   REPEATABLE_CHEST_LOOT,

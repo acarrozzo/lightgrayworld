@@ -1,0 +1,12 @@
+-- Retreat needs somewhere to fall back to.
+--
+-- The room a player came from was tracked only on the in-memory socket record
+-- (`player.previousRoom`), so it did not survive a logout or a server restart:
+-- the first fight after a login had no retreat destination at all. It is a
+-- durable fact about the character, so it belongs on the row beside
+-- currentRoom and recallRoom.
+--
+-- Nullable with no backfill: existing characters simply have no recorded
+-- previous room until their next step, and a retreat with nowhere to go breaks
+-- off in place instead.
+ALTER TABLE "User" ADD COLUMN "previousRoom" TEXT;

@@ -10,6 +10,7 @@ const travelerState = require('./traveler-state')
 const { getRoomEnemies } = require('../game-data/room-enemies')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 const { grantTeleport } = require('./teleport-grants')
+const partyStore = require('../services/party-store')
 
 function makeFeedback(action, outcome, message, data = {}) {
   const ts = Date.now()
@@ -633,10 +634,11 @@ async function executeStartBattle(action, playerId, roomState) {
   if (!isAdvantageTurn && battleState.isEnemyDead()) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
-    // The defeated enemy is gone; the room is empty again for this player (no
-    // grace — the next turn action can immediately provoke another).
+    // The defeated enemy is gone; the room is empty again for this player, and
+    // safe for exactly one more turn action — the original's `endfight`, which
+    // bought you a swing, a re-gear or a step out before the room rolled again.
     if (isProbabilistic(roomState.roomId)) {
-      roomState.setPresentEnemy(playerId, null)
+      roomState.setPresentEnemy(playerId, null, { grace: true })
     }
     // A shared traveler dies for everyone: it leaves the field until it
     // respawns. A no-op if another player's kill already took it.
@@ -787,10 +789,11 @@ async function executePlayerAttack(action, playerId, roomState) {
   if (battleState.isEnemyDead()) {
     battleState.end()
     roomState.activeBattles.delete(playerId)
-    // The defeated enemy is gone; the room is empty again for this player (no
-    // grace — the next turn action can immediately provoke another).
+    // The defeated enemy is gone; the room is empty again for this player, and
+    // safe for exactly one more turn action — the original's `endfight`, which
+    // bought you a swing, a re-gear or a step out before the room rolled again.
     if (isProbabilistic(roomState.roomId)) {
-      roomState.setPresentEnemy(playerId, null)
+      roomState.setPresentEnemy(playerId, null, { grace: true })
     }
     const slainTraveler = getTravelerByEnemySlug(battleState.enemySlug)
     if (slainTraveler) travelerState.onTravelerKilled(slainTraveler.id, roomState.roomId)
@@ -1092,6 +1095,10 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
 
 function describeSupportAction(meta) {
   if (!meta) return 'You take a moment.'
+  // A turn that was not about an item — a search, a pickup, a swing of a
+  // pickaxe — carries the line the action already wrote for the feed, which
+  // says what happened better than anything assembled from a verb and a noun.
+  if (meta.text) return meta.text
   const name = meta.itemName || 'item'
   const effect = meta.effectText ? ` (${meta.effectText})` : ''
   if (meta.kind === 'equip_item') return `You equip the ${name}.`
@@ -1111,17 +1118,14 @@ async function executePlayerFlee(action, playerId, roomState) {
     return errorResult('player_flee', 'You are not in a battle.')
   }
 
-  if (!battleState.canFlee) {
-    const turnsLeft = 3 - battleState.turnCount
-    return errorResult('player_flee', `You cannot retreat yet. Fight for ${turnsLeft} more turn${turnsLeft !== 1 ? 's' : ''}.`)
-  }
-
   battleState.end()
   roomState.activeBattles.delete(playerId)
-  // Fleeing abandons the room's enemy entirely: clear the slot so the retreat
-  // move isn't blocked by the "can't leave while a hostile is here" rule, and so a
-  // fresh roll happens if the player ever returns.
-  roomState.clearPlayerEnemyState(playerId)
+  // The enemy is not killed by being run from: it stays in the room's slot,
+  // still standing where you left it. The retreat itself is a teleport, and a
+  // teleport is never held back by a hostile, so nothing has to be cleared to
+  // let the player out. Coming back finds the same enemy at full HP — a fresh
+  // BattleState is built from the enemy definition every time — so retreating
+  // is a way out of a fight, never a way to whittle something down for free.
   await prisma.user.update({ where: { id: playerId }, data: { inFight: false } })
 
   // The player retreats to the room they came from. The socket layer tracks each
@@ -1129,12 +1133,27 @@ async function executePlayerFlee(action, playerId, roomState) {
   // client then simply stays put after escaping).
   const returnRoomId = action?.data?.returnRoomId ?? null
 
-  // The retreat itself is performed by the client teleporting to this room, so
+  // The retreat itself is performed by the client moving to this room, so
   // authorize that one destination. `returnRoomId` comes from the socket layer's
-  // record of the player's previous room, not from the client.
+  // record of the player's previous room, not from the client. `safeArrival`
+  // carries the original's `endfight = 1` to the far end: the room you fall
+  // back into does not roll as you arrive, and is safe for one action after.
   if (returnRoomId) {
-    grantTeleport(playerId, returnRoomId)
+    grantTeleport(playerId, returnRoomId, { safeArrival: true })
+  } else {
+    // Nowhere to fall back to — a character who has not moved since the world
+    // was made. The fight still ends and the room still goes quiet for a beat,
+    // which is enough to drink, re-gear or walk out; the original's retreat set
+    // the same flag whether or not the room actually changed.
+    roomState.grantGraceTurn(playerId)
   }
+
+  // Breaking off is personal: you go, the party does not. A member simply
+  // leaves it — which is also what lets the retreat land, since a party member
+  // may not travel on their own — and a leader hands it on, or it dissolves
+  // with them. Same rule as teleporting out of a fight, because the retreat is
+  // a teleport.
+  const { promotedName } = partyStore.departAlone(playerId)
 
   return {
     success: true,
@@ -1142,8 +1161,21 @@ async function executePlayerFlee(action, playerId, roomState) {
     playerEvents: [
       {
         event: 'battle:fled',
-        payload: { message: 'You managed to escape!', returnRoomId },
+        payload: {
+          message: returnRoomId
+            ? `You break off and retreat. The ${battleState.enemyName} is still there, and it will be waiting.`
+            : `You break off. There is nowhere to fall back to, but the ${battleState.enemyName} lets you be for a moment.`,
+          returnRoomId,
+        },
       },
+      ...(promotedName
+        ? [
+            {
+              event: 'action:feedback',
+              payload: makeFeedback('player_flee', 'info', `You retreat alone. ${promotedName} is leading your party now.`),
+            },
+          ]
+        : []),
     ],
   }
 }

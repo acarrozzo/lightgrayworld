@@ -200,6 +200,54 @@ function leave(playerId) {
   detach(playerId, { notifySelf: true })
 }
 
+/**
+ * A player breaks away from the party on their own — teleporting out of a fight,
+ * which is an escape and not a march order, so nobody is dragged along with them.
+ *
+ * A member simply detaches. A leader hands the party on rather than collapsing
+ * it: whoever has been in it longest takes over, since `members` is a Map and
+ * therefore in join order. The handover needs somebody left to follow the new
+ * leader — a leader plus one member who is now alone is not a party, and the
+ * rest of this store already treats that as dissolved — so with fewer than two
+ * members behind them the party goes with the leader who left.
+ *
+ * @returns {{ promotedId: string|null, promotedName: string|null }} who is
+ *   leading now, so the caller can say so.
+ */
+function departAlone(playerId) {
+  const party = store.parties.get(playerId)
+  if (!party) {
+    // An ordinary member walking out.
+    detach(playerId, { notifySelf: true })
+    return { promotedId: null, promotedName: null }
+  }
+
+  const memberIds = [...party.members.keys()]
+  if (memberIds.length < 2) {
+    // Nobody to hand it to, or only one person to hand it to and no one to lead.
+    detach(playerId, { notifySelf: true })
+    return { promotedId: null, promotedName: null }
+  }
+
+  const successorId = memberIds[0]
+  const successorInfo = party.members.get(successorId)
+  const followers = new Map(party.members)
+  followers.delete(successorId)
+
+  store.parties.delete(playerId)
+  store.memberToLeader.delete(successorId)
+
+  const promoted = { leaderId: successorId, leaderInfo: successorInfo, members: followers }
+  store.parties.set(successorId, promoted)
+  for (const memberId of followers.keys()) store.memberToLeader.set(memberId, successorId)
+
+  // The one who left is on their own; everyone else sees the new leader.
+  broadcastDisband([playerId])
+  broadcastUpdate(promoted)
+
+  return { promotedId: successorId, promotedName: successorInfo?.username ?? null }
+}
+
 // Connection lost — drop silently from the player's own side, still notify the rest.
 function onDisconnect(playerId) {
   detach(playerId, { notifySelf: false })
@@ -215,6 +263,7 @@ module.exports = {
   follow,
   remove,
   leave,
+  departAlone,
   onDisconnect,
   onDeath,
   isMember,

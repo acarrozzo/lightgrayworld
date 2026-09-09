@@ -14,9 +14,11 @@ import TabContainer, { type TabConfig } from './TabContainer'
 import MobileBottomNav from './MobileBottomNav'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
-import { Settings as SettingsIcon, MessageSquare, MessageSquareText } from 'lucide-react'
+import { Settings as SettingsIcon, MessageSquare, MessageSquareText, ChevronUp, ChevronDown } from 'lucide-react'
 import ExplorePanel, { type ExploreSubView } from './game-interface/ExplorePanel'
 import ActionModal from './ActionModal'
+import ConfirmDialog from './ConfirmDialog'
+import { describePartyDeparture, partyDepartureWarning } from '@/lib/party-succession'
 import ShopModal from './ShopModal'
 import SkillsAndSpellsModal, { type BookTab } from './SkillsAndSpellsModal'
 import Icon from './Icon'
@@ -176,6 +178,17 @@ export default function GameInterface() {
   // in the Explore sidebar (exploreSubView === 'world') or open as the
   // full-screen overlay, never both.
   const [isWorldOverlayOpen, setIsWorldOverlayOpen] = useState(false)
+  // Phones only, and only in a fight: the D-pad at the bottom folds down to its
+  // own title bar so the battle deck gets the height, and one tap brings it
+  // back when the fight turns and the way out is wanted. Out of battle the
+  // strip is simply always there and this is not consulted.
+  const [isBattleDpadOpen, setIsBattleDpadOpen] = useState(false)
+  // Escaping a fight takes you out of your party (see partyStore.departAlone),
+  // which is not something to discover afterwards — so the two ways of doing it
+  // stop and say so first. Holds the escape to run if the player goes ahead.
+  const [partyDepartureConfirm, setPartyDepartureConfirm] = useState<
+    { title: string; message: string; confirmLabel: string; run: () => void } | null
+  >(null)
   const [worldTab, setWorldTab] = useState<WorldTab>('map')
   // Desktop world feed starts open; the toggle only affects this session.
   const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(true)
@@ -3088,34 +3101,72 @@ export default function GameInterface() {
     setCenterActiveTab('players')
   }, [])
 
-  const handleTeleport = useCallback((roomId: string) => {
-    handleAction({ type: 'teleport', data: { toRoomId: roomId } })
-  }, [handleAction])
+  /**
+   * What leaving a fight would do to the player's party right now, as a
+   * sentence — null when they are not in one, or are not in a fight, in which
+   * case travelling costs them nothing and needs no confirmation.
+   */
+  const escapeWarning = useMemo(() => {
+    if (!battle.isInBattle) return null
+    return partyDepartureWarning(describePartyDeparture(party, player?.id))
+  }, [battle.isInBattle, party, player?.id])
 
-  // All of these are refused server-side anyway — party followers and the MP
-  // cost in socket-server-handlers.js, movement in combat in room-state.js. The
-  // grid states the reason and disables the destinations.
-  const teleportBlockedReason = isPartyMember
+  const handleTeleport = useCallback(
+    (roomId: string) => {
+      const go = () => handleAction({ type: 'teleport', data: { toRoomId: roomId } })
+      if (escapeWarning) {
+        setPartyDepartureConfirm({
+          title: 'Teleport away from your party?',
+          message: `${escapeWarning}\n\nThe enemy stays where it is, at full health.`,
+          confirmLabel: 'Teleport',
+          run: go,
+        })
+        return
+      }
+      go()
+    },
+    [handleAction, escapeWarning]
+  )
+
+  const handleFlee = useCallback(() => {
+    const go = () => socketHandlers.sendGameAction({ type: 'player_flee' })
+    if (escapeWarning) {
+      setPartyDepartureConfirm({
+        title: 'Retreat and leave your party?',
+        message: `${escapeWarning}\n\nYou fall back to the room you came from. The enemy stays where it is, at full health.`,
+        confirmLabel: 'Retreat',
+        run: go,
+      })
+      return
+    }
+    go()
+  }, [socketHandlers, escapeWarning])
+
+  // Both are refused server-side anyway — party followers and the MP cost in
+  // socket-server-handlers.js. The grid states the reason and disables the
+  // destinations. Being in a fight is deliberately not on this list: a teleport
+  // is how you get out of one, as it was in the original — and that holds for a
+  // party member too, who escapes alone and leaves the party by doing it.
+  const teleportBlockedReason = isPartyMember && !battle.isInBattle
     ? 'You are following your party. Leave the party to move freely.'
-    : battle.isInBattle
-    ? 'You cannot leave while in combat. Fight or flee.'
     : (player?.mp ?? 0) < TELEPORT_MP_COST
     ? `You need ${TELEPORT_MP_COST} MP to teleport. Rest first.`
     : null
 
   // The world layer closes itself once you have actually travelled — walked,
-  // fast-travelled or been pulled by a party leader — and never survives into
-  // a battle (movement is refused mid-combat regardless).
+  // fast-travelled or been pulled by a party leader. A fight no longer closes
+  // it: the map and the teleport grid are exactly what you want open when
+  // something is beating you, and both still work.
   useEffect(() => {
     setExploreSubView('compass')
     setIsWorldOverlayOpen(false)
   }, [currentRoom?.roomId])
 
+  // Every fight starts with the phone's D-pad folded away — the deck is what
+  // you came to look at — and every fight ends with it unfolded again, so the
+  // next room is not one tap further away than it was before.
   useEffect(() => {
-    if (battle.isInBattle) {
-      setExploreSubView('compass')
-      setIsWorldOverlayOpen(false)
-    }
+    setIsBattleDpadOpen(false)
   }, [battle.isInBattle])
 
   const handleSwitchToInventory = useCallback((filter?: FilterTab, openItemId?: string) => {
@@ -3345,6 +3396,19 @@ export default function GameInterface() {
           />
         </div>
       )}
+      <ConfirmDialog
+        isOpen={partyDepartureConfirm !== null}
+        title={partyDepartureConfirm?.title ?? ''}
+        message={partyDepartureConfirm?.message ?? ''}
+        confirmLabel={partyDepartureConfirm?.confirmLabel ?? 'Go'}
+        cancelLabel="Stay"
+        tone="danger"
+        onConfirm={() => {
+          partyDepartureConfirm?.run()
+          setPartyDepartureConfirm(null)
+        }}
+        onCancel={() => setPartyDepartureConfirm(null)}
+      />
       <ActionModal
         isOpen={actionModal.isOpen}
         onClose={() => setActionModal({ isOpen: false, title: '', content: '' })}
@@ -3631,7 +3695,7 @@ export default function GameInterface() {
                 availableMaps={availableMaps}
                 onMapChange={handleMapChange}
                 isMoveInProgress={isMoveInProgress}
-                isDimmed={battle.isInBattle || player.hp <= 0}
+                isDimmed={player.hp <= 0}
                 showBattleBadge={battle.isInBattle}
                 isLoadingRoom={isLoadingRoom}
               />
@@ -3717,7 +3781,8 @@ export default function GameInterface() {
                         battle={battle}
                         battleResult={battleResult}
                         onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
-                        onFlee={() => socketHandlers.sendGameAction({ type: 'player_flee' })}
+                        onFlee={handleFlee}
+                        fleeNeedsConfirm={escapeWarning !== null}
                         onUseItem={(itemId, action) => socketHandlers.sendGameAction({ type: 'use_item', data: { playerItemId: itemId, action } })}
                         onCastSpell={(spellId) => socketHandlers.sendGameAction({ type: 'cast_spell', data: { spellId } })}
                         onUseSkill={(skillId) => socketHandlers.sendGameAction({ type: 'use_skill', data: { skillId } })}
@@ -3775,8 +3840,27 @@ export default function GameInterface() {
                 </div>
               </div>
 
-              {/* D-pad — mobile/tablet only (< lg), hidden during battle/crafting */}
-              <div className={`lg:hidden flex-shrink-0 flex flex-col border-t border-line-subtle/30 ${battle.isInBattle || isCraftingOpen ? 'hidden' : ''}`}>
+              {/* D-pad — mobile/tablet only (< lg). Crafting is a sheet over the
+                  whole screen, so it hides this; a battle no longer does. The
+                  strip carries the Teleport control, which is how a fight is
+                  escaped, and hiding it left phones with no way out but the
+                  Retreat pill. */}
+              <div className={`lg:hidden flex-shrink-0 flex flex-col border-t border-line-subtle/30 ${isCraftingOpen ? 'hidden' : ''}`}>
+                {/* In a fight the D-pad collapses to this bar. It names what is
+                    behind it rather than saying "expand", because the reason to
+                    open it mid-fight is almost always the Teleport button. */}
+                {battle.isInBattle && (
+                  <button
+                    type="button"
+                    onClick={() => setIsBattleDpadOpen((open) => !open)}
+                    aria-expanded={isBattleDpadOpen}
+                    className="flex items-center justify-center gap-1.5 w-full py-2 text-[11px] font-semibold uppercase tracking-widest text-fg-muted bg-surface-canvas/60 hover:text-fg-primary transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+                  >
+                    {isBattleDpadOpen ? <ChevronDown size={13} aria-hidden="true" /> : <ChevronUp size={13} aria-hidden="true" />}
+                    {isBattleDpadOpen ? 'Hide compass' : 'Compass & teleport'}
+                  </button>
+                )}
+                {(!battle.isInBattle || isBattleDpadOpen) && (
                 <ExplorePanel
                   variant="strip"
                   room={currentRoom}
@@ -3803,6 +3887,7 @@ export default function GameInterface() {
                   isMoveInProgress={isMoveInProgress}
                   isLoadingRoom={isLoadingRoom}
                 />
+                )}
               </div>
             </div>
           )}
