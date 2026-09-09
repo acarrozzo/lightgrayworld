@@ -7,7 +7,7 @@ export type WorldFeedEntry = {
   id: string
   ts: number
   message: string
-  type: 'room' | 'world' | 'action' | 'dm'
+  type: 'room' | 'world' | 'action' | 'dm' | 'party'
   level?: 'info' | 'error'
   outcome?: ActionFeedbackOutcome
   actor?: string
@@ -95,6 +95,23 @@ const trimEntries = (entries: WorldFeedEntry[]) => {
   return entries.slice(entries.length - MAX_HISTORY_ENTRIES)
 }
 
+/**
+ * True when this entry is already in the feed.
+ *
+ * Only entries the caller gave an explicit id can repeat — a generated id is
+ * unique by construction — and those ids are database row ids. Replayed history
+ * (party chat is re-sent on every login and on joining a party) would otherwise
+ * pile up a second copy of the conversation on each reconnect, permanently,
+ * because the feed persists to local storage.
+ */
+const alreadyPresent = (entries: WorldFeedEntry[], id?: string) => {
+  if (!id) return false
+  for (let i = entries.length - 1; i >= 0; i -= 1) {
+    if (entries[i].id === id) return true
+  }
+  return false
+}
+
 export const useWorldFeedStore = create<WorldFeedState>((set, get) => ({
   userId: null,
   entries: [],
@@ -107,6 +124,7 @@ export const useWorldFeedStore = create<WorldFeedState>((set, get) => ({
   append: (entry) => {
     const { userId, entries } = get()
     if (!userId) return null
+    if (alreadyPresent(entries, entry.id)) return null
 
     const normalized = ensureEntry(entry)
     const nextEntries = trimEntries([...entries, normalized])
@@ -121,7 +139,10 @@ export const useWorldFeedStore = create<WorldFeedState>((set, get) => ({
     const { userId, entries } = get()
     if (!userId) return
 
-    const normalized = entriesToAdd.map(ensureEntry)
+    const normalized = entriesToAdd
+      .filter((entry) => !alreadyPresent(entries, entry.id))
+      .map(ensureEntry)
+    if (!normalized.length) return
     const nextEntries = trimEntries([...entries, ...normalized])
 
     set({ entries: nextEntries })

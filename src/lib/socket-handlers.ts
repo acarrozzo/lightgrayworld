@@ -19,6 +19,9 @@ import {
   PartySnapshot,
   PartyErrorPayload,
   PartyPulledPayload,
+  PartyNoticePayload,
+  PartyChatMessagePayload,
+  PartyChatHistoryPayload,
   RoomPartyStatePayload,
   WorldPresenceSyncPayload,
   WorldPresenceUpdatePayload,
@@ -202,7 +205,7 @@ export class SocketEventHandlers {
   }
 
   onPlayerBattleStatus(
-    handler: (payload: { id: string; roomId: string; inBattle: boolean }) => void
+    handler: (payload: { id: string; roomId: string; inBattle: boolean; enemyName?: string | null }) => void
   ): () => void {
     return this.on(SOCKET_EVENTS.PLAYER_BATTLE_STATUS, handler)
   }
@@ -233,6 +236,14 @@ export class SocketEventHandlers {
     return this.emit(SOCKET_EVENTS.PARTY_REMOVE, { memberId })
   }
 
+  setPartyClosed(closed: boolean): boolean {
+    return this.emit(SOCKET_EVENTS.PARTY_SET_CLOSED, { closed })
+  }
+
+  sendPartyChatMessage(message: string): boolean {
+    return this.emit(SOCKET_EVENTS.SEND_PARTY_CHAT_MESSAGE, { message })
+  }
+
   onPartyUpdated(handler: (payload: PartySnapshot) => void): () => void {
     return this.on(SOCKET_EVENTS.PARTY_UPDATED, handler)
   }
@@ -255,6 +266,18 @@ export class SocketEventHandlers {
 
   onRoomPartyState(handler: (payload: RoomPartyStatePayload) => void): () => void {
     return this.on(SOCKET_EVENTS.ROOM_PARTY_STATE, handler)
+  }
+
+  onPartyNotice(handler: (payload: PartyNoticePayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_NOTICE, handler)
+  }
+
+  onPartyChatMessage(handler: (payload: PartyChatMessagePayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_CHAT_MESSAGE, handler)
+  }
+
+  onPartyChatHistory(handler: (payload: PartyChatHistoryPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_CHAT_HISTORY, handler)
   }
 
   // ─── Global presence (Players tab roster) ────────────────────────────────

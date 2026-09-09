@@ -309,13 +309,16 @@ test('a role stays bright as text even though its fill is deepened', () => {
 
 test('no component pairs a role fill with a hard-coded light text colour', async () => {
   // The defect this system exists to prevent, asserted against the source.
-  const { readFileSync } = await import('node:fs')
+  const { readFileSync, existsSync } = await import('node:fs')
   const { execSync } = await import('node:child_process')
 
   const files = execSync("git ls-files 'src/**/*.tsx' 'src/**/*.ts'", { encoding: 'utf8' })
     .split('\n')
     .filter(Boolean)
     .filter((f) => !f.startsWith('src/lib/theme/'))
+    // git still lists a file that has been deleted but not staged, which is an
+    // ordinary state for a working tree mid-change. Scan what is actually there.
+    .filter((f) => existsSync(f))
 
   const roleFill = /(?<![\w-:])bg-(action|resource|stat|status|loot|enemy|channel|combat|terrain|mood|hue|accent)[a-z-]*/
   const fixedText = /(?<![\w-])text-fg-(bright|primary)(?![\w-])/
@@ -382,13 +385,16 @@ test('no gradient runs from a colour to itself', async () => {
   // behind. It also hides a fill from the paired-fill checks, which is how the
   // four D-pad action buttons kept a hard-coded white label at 1.55:1 long
   // after every `bg-<role>` had been converted.
-  const { readFileSync } = await import('node:fs')
+  const { readFileSync, existsSync } = await import('node:fs')
   const { execSync } = await import('node:child_process')
 
   const files = execSync("git ls-files 'src/**/*.tsx' 'src/**/*.ts'", { encoding: 'utf8' })
     .split('\n')
     .filter(Boolean)
     .filter((f) => !f.startsWith('src/lib/theme/'))
+    // git still lists a file that has been deleted but not staged, which is an
+    // ordinary state for a working tree mid-change. Scan what is actually there.
+    .filter((f) => existsSync(f))
 
   const offenders: string[] = []
   for (const file of files) {

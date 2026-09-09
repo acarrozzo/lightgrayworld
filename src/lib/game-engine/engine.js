@@ -2,7 +2,8 @@ const { TickClock, WORLD_TICK_MS } = require('./tick-clock')
 const { RoomState } = require('./room-state')
 const { PlayerActionQueue } = require('./player-action-queue')
 const { prisma } = require('../db-client')
-const { updatePresence } = require('../services/presence-store')
+const { updatePresence, getPresence } = require('../services/presence-store')
+const partyStore = require('../services/party-store')
 const travelerState = require('./traveler-state')
 const { debugLog, quietActionLogger } = require('../debug-log')
 
@@ -422,12 +423,37 @@ class GameEngine {
         events.includes('battle:fled')
       if (enteredBattle || leftBattle) {
         const inBattle = enteredBattle && !leftBattle
+        // What they are fighting, not just that they are. Both battle:started and
+        // the terminal events carry the name, so the badge can say "Scorpion"
+        // rather than "In Battle" and a travel refusal can name the fight.
+        const battleEnemyName = inBattle
+          ? result.playerEvents.find((e) => e.event === 'battle:started')?.payload?.enemyName ?? null
+          : null
         this.io
           .to(`room-${roomId}`)
-          .emit('player-battle-status', { id: playerId, roomId, inBattle })
+          .emit('player-battle-status', { id: playerId, roomId, inBattle, enemyName: battleEnemyName })
         // Same fact, global audience: the Players tab shows an "In Battle" tag for
         // anyone in the world, not just people standing in the same room.
-        updatePresence(this.io, playerId, { inBattle })
+        updatePresence(this.io, playerId, { inBattle, battleEnemyName })
+      }
+
+      // The party watches each other's fights. These are the two moments worth a
+      // line — a kill and a level — and they are read off the same events the
+      // player's own client gets, so the party never learns something the owner
+      // has not been told first.
+      const victory = result.playerEvents.find((e) => e.event === 'battle:victory')?.payload
+      if (victory?.enemyName) {
+        const name = partyStore.otherMemberIds(playerId).length ? getPresence(playerId)?.username : null
+        if (name) {
+          partyStore.notifyOthers(playerId, 'kill', `${name} defeated a ${victory.enemyName}.`, { actor: name })
+        }
+      }
+      const levelUp = result.playerEvents.find((e) => e.event === 'player:level-up')?.payload
+      if (levelUp?.newLevel) {
+        const name = partyStore.otherMemberIds(playerId).length ? getPresence(playerId)?.username : null
+        if (name) {
+          partyStore.notifyOthers(playerId, 'level', `${name} reached level ${levelUp.newLevel}.`, { actor: name })
+        }
       }
 
       // Mirror the player's vitals to the room so other players' HP/MP bars stay live

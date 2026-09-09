@@ -316,11 +316,56 @@ export interface PartyMemberInfo {
 }
 
 export interface PartySnapshot {
+  /** Stable for the life of the party, including across a change of leader. */
+  id: string
   leaderId: string
   leader: PartyMemberInfo
   members: PartyMemberInfo[]
   size: number
   maxSize: number
+  /** A closed party refuses new followers. Only the leader can set it. */
+  closed: boolean
+}
+
+/**
+ * One line about the party, addressed to the people still in it.
+ *
+ * `kind` says what happened, not how to draw it — the feed picks its wording and
+ * colour from it. Sent by the server only; there is no client-authored notice.
+ */
+export type PartyNoticeKind =
+  | 'join'
+  | 'leave'
+  | 'fallen'
+  | 'left-behind'
+  | 'kill'
+  | 'level'
+  | 'closed'
+
+export interface PartyNoticePayload {
+  id: string
+  ts: number
+  kind: PartyNoticeKind
+  message: string
+  /** Who the line is about, when it is about somebody. */
+  actor?: string
+}
+
+/** One party chat message. Persisted under the party's id, so it survives a refresh. */
+export interface PartyChatMessagePayload {
+  id: string
+  partyId: string
+  userId: string
+  username: string
+  level: number
+  message: string
+  timestamp: Date
+}
+
+/** The tail of the party's conversation, sent on login and on joining a party. */
+export interface PartyChatHistoryPayload {
+  partyId: string
+  messages: PartyChatMessagePayload[]
 }
 
 export interface PartyErrorPayload {
@@ -344,6 +389,8 @@ export interface SocketEvents {
   'party:follow': (data: { targetId: string }) => void
   'party:leave': () => void
   'party:remove': (data: { memberId: string }) => void
+  'party:set-closed': (data: { closed: boolean }) => void
+  'send-party-chat-message': (data: { message: string }) => void
 
   // Server to client events
   'player-joined': (player: PlayerInfo) => void
@@ -351,7 +398,6 @@ export interface SocketEvents {
   'chat-message': (message: ChatMessage) => void
   'room-chat-message': (message: ChatMessage) => void
   'action-completed': (actionData: ActionData) => void
-  'player-action': (actionData: PlayerAction) => void
   'action:confirmed': (payload: ActionConfirmation) => void
   'action:feedback': (payload: ActionFeedbackPayload) => void
   'world:tick': (payload: WorldTickPayload) => void
@@ -369,6 +415,9 @@ export interface SocketEvents {
   'party:removed': (payload: Record<string, never>) => void
   'party:error': (payload: PartyErrorPayload) => void
   'party:pulled': (payload: PartyPulledPayload) => void
+  'party:notice': (payload: PartyNoticePayload) => void
+  'party-chat-message': (payload: PartyChatMessagePayload) => void
+  'party:chat-history': (payload: PartyChatHistoryPayload) => void
   'room:party-state': (payload: RoomPartyStatePayload) => void
   'world:presence-sync': (payload: WorldPresenceSyncPayload) => void
   'world:presence-update': (payload: WorldPresenceUpdatePayload) => void
@@ -394,6 +443,8 @@ export interface PlayerInfo {
   dexMod?: number | null
   magMod?: number | null
   defMod?: number | null
+  inBattle?: boolean
+  battleEnemyName?: string | null
   partyLeaderId?: string | null
   entryDirection?: string | null
   isTeleport?: boolean
@@ -421,6 +472,8 @@ export interface PresencePlayer {
   /** 'idle' mirrors the room-scoped idle detection; 'disconnected' never appears here. */
   status: 'active' | 'idle'
   inBattle: boolean
+  /** What they are fighting, while they are fighting. Null otherwise. */
+  battleEnemyName?: string | null
   partyLeaderId?: string | null
   lastSeen: number
 }
@@ -460,13 +513,6 @@ export interface ActionData {
   metadata?: string
   playerId: string
   playerName: string
-}
-
-export interface PlayerAction {
-  playerId: string
-  username: string
-  action: string
-  timestamp: Date
 }
 
 export interface ActionConfirmation {

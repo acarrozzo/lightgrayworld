@@ -34,6 +34,8 @@ export interface Player {
   presenceStatus?: 'active' | 'idle' | 'disconnected'
   /** True while this player is in an active battle (mirrors the server `inFight` flag). */
   inBattle?: boolean
+  /** What they are fighting, while `inBattle`. Null/absent otherwise. */
+  battleEnemyName?: string | null
   /** Leader id of the party this player belongs to (self if they lead); null/undefined = solo. */
   partyLeaderId?: string | null
   lastSeen?: number

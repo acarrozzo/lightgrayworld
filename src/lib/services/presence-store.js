@@ -26,8 +26,8 @@ const store = global.__presenceStore
 
 /**
  * Upsert a player as online. Called on login. Fields the caller does not know about
- * (inBattle, partyLeaderId) are preserved from any existing entry so a second socket
- * for the same account does not blank them.
+ * (inBattle, battleEnemyName, partyLeaderId) are preserved from any existing entry so
+ * a second socket for the same account does not blank them.
  */
 function setPresence(playerData, overrides = {}) {
   if (!playerData || !playerData.id) return null
@@ -46,6 +46,7 @@ function setPresence(playerData, overrides = {}) {
     uIconColor: playerData.uIconColor ?? null,
     status: 'active',
     inBattle: existing?.inBattle ?? false,
+    battleEnemyName: existing?.battleEnemyName ?? null,
     partyLeaderId: playerData.partyLeaderId ?? existing?.partyLeaderId ?? null,
     lastSeen: Date.now(),
     ...overrides,

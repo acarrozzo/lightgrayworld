@@ -10,6 +10,8 @@
 // engine (e.g. on death) can mutate parties without re-implementing emit logic.
 
 const { getSocketIO, getSocketIdsForUser, SOCKET_EVENTS } = require('../socket-utils.js')
+const { getPresence } = require('./presence-store.js')
+const { randomUUID } = require('crypto')
 
 const MAX_PARTY_SIZE = 6 // leader + 5
 
@@ -33,6 +35,22 @@ function normInfo(p) {
   }
 }
 
+/**
+ * The level stored on a party row is the level the player had when the party
+ * formed. Presence knows the current one and is patched on every level-up, so
+ * read through to it and let the stored value be the fallback for a member who
+ * has somehow left the roster.
+ */
+function withLiveLevel(info) {
+  const live = getPresence(info.id)
+  if (!live || typeof live.level !== 'number' || live.level === info.level) return info
+  return { ...info, level: live.level }
+}
+
+function nameOf(playerId, fallback = 'Someone') {
+  return getPresence(playerId)?.username || fallback
+}
+
 function emitTo(playerIds, event, payload) {
   const io = getSocketIO()
   if (!io) return
@@ -45,12 +63,48 @@ function emitTo(playerIds, event, payload) {
 
 function buildSnapshot(party) {
   return {
+    // Stable for the life of the party, including across a succession — it is
+    // what party chat is filed under, so it cannot be the leader's id.
+    id: party.id,
     leaderId: party.leaderId,
-    leader: party.leaderInfo,
-    members: Array.from(party.members.values()),
+    leader: withLiveLevel(party.leaderInfo),
+    members: Array.from(party.members.values(), withLiveLevel),
     size: 1 + party.members.size,
     maxSize: MAX_PARTY_SIZE,
+    // A closed party refuses new followers. Open by default: walking up to
+    // someone and falling in behind them is the fast path this game had first.
+    closed: party.closed === true,
   }
+}
+
+/**
+ * One line about the party, sent to whoever is still in it.
+ *
+ * `kind` is what happened, not how to draw it — the client picks the wording's
+ * colour from it. Every notice carries a timestamp because the feed orders by
+ * server time, never by arrival.
+ */
+function notify(playerIds, kind, message, extra = {}) {
+  if (!playerIds.length || !message) return
+  emitTo(playerIds, SOCKET_EVENTS.PARTY_NOTICE, {
+    id: randomUUID(),
+    ts: Date.now(),
+    kind,
+    message,
+    ...extra,
+  })
+}
+
+/** Everyone in the player's party except the player, or [] when solo. */
+function otherMemberIds(playerId) {
+  const party = getParty(playerId)
+  if (!party) return []
+  return party.memberIds.filter((id) => id !== playerId)
+}
+
+/** Tell the rest of the party something about this player. */
+function notifyOthers(playerId, kind, message, extra = {}) {
+  notify(otherMemberIds(playerId), kind, message, extra)
 }
 
 function broadcastUpdate(party) {
@@ -83,6 +137,14 @@ function getLeaderMemberIds(playerId) {
   return [...party.members.keys()]
 }
 
+// The stable id of the party this player is in, or null when solo. Party chat
+// is filed under it.
+function getPartyId(playerId) {
+  const leaderId = getLeaderId(playerId)
+  if (leaderId == null) return null
+  return store.parties.get(leaderId)?.id ?? null
+}
+
 // All ids in the player's party (leader + members), or null if not in a party.
 // Used by combat to count co-located party members.
 /**
@@ -108,16 +170,41 @@ function getParty(playerId) {
   return { leaderId, memberIds: [leaderId, ...party.members.keys()] }
 }
 
+/**
+ * How the party is told that somebody is no longer in it. The party list simply
+ * getting shorter is not an event a player can notice, and one of these — a
+ * death — is the most dramatic thing that can happen to a group.
+ *
+ * `null` means the caller narrates it itself (a switch of parties is the
+ * follower's business, and a left-behind member needs the room's name).
+ */
+const DEPARTURE_NOTICE = {
+  leave: (name) => `${name} left the party.`,
+  disband: (name) => `${name} disbanded the party.`,
+  disconnect: (name) => `${name} disconnected and left the party.`,
+  death: (name) => `${name} has fallen.`,
+  depart: (name) => `${name} escaped alone and left the party.`,
+  switch: () => null,
+  silent: () => null,
+}
+
 // Remove a player from whatever party they're in, broadcasting side-effects.
 // notifySelf controls whether the departing player gets a "you're partyless now" notice.
-function detach(playerId, { notifySelf = true } = {}) {
+// reason picks the line the people left behind read; 'silent' sends none.
+function detach(playerId, { notifySelf = true, reason = 'leave' } = {}) {
+  const name = nameOf(playerId)
+  const line = (DEPARTURE_NOTICE[reason] ?? DEPARTURE_NOTICE.leave)(name)
+
   // Leader leaving -> disband the whole party
   if (store.parties.has(playerId)) {
     const party = store.parties.get(playerId)
     const memberIds = [...party.members.keys()]
     for (const mid of memberIds) store.memberToLeader.delete(mid)
     store.parties.delete(playerId)
+    // Disband first: the notice explains a party list that has already gone.
     broadcastDisband(notifySelf ? [playerId, ...memberIds] : memberIds)
+    const disbandLine = reason === 'leave' ? DEPARTURE_NOTICE.disband(name) : line
+    if (disbandLine) notify(memberIds, reason === 'death' ? 'fallen' : 'leave', disbandLine, { actor: name })
     return
   }
 
@@ -128,6 +215,7 @@ function detach(playerId, { notifySelf = true } = {}) {
     const party = store.parties.get(leaderId)
     if (party) {
       party.members.delete(playerId)
+      const remaining = [leaderId, ...party.members.keys()]
       if (party.members.size === 0) {
         // Only the leader left -> dissolve; tell the former leader their party is gone
         store.parties.delete(leaderId)
@@ -135,9 +223,35 @@ function detach(playerId, { notifySelf = true } = {}) {
       } else {
         broadcastUpdate(party)
       }
+      if (line) notify(remaining, reason === 'death' ? 'fallen' : 'leave', line, { actor: name })
     }
     if (notifySelf) broadcastDisband([playerId])
   }
+}
+
+/**
+ * Drop a member who could not follow their leader out of the room.
+ *
+ * Membership means "pinned to the leader's room and unable to walk", so a member
+ * who is still in the old room is in a state the rest of the store does not
+ * admit: stranded and unable to move. Returning them to travelling alone is the
+ * only resolution that keeps that invariant true, and both sides are told why.
+ */
+function leaveBehind(playerId, { destinationName = null } = {}) {
+  const leaderId = getLeaderId(playerId)
+  if (leaderId == null || leaderId === playerId) return false
+  const name = nameOf(playerId)
+  const where = destinationName ? ` to ${destinationName}` : ''
+  notifyOthers(playerId, 'left-behind', `${name} could not follow the party${where} and was left behind.`, {
+    actor: name,
+  })
+  notify(
+    [playerId],
+    'left-behind',
+    `You could not follow your party${where}. You are travelling alone again.`
+  )
+  detach(playerId, { notifySelf: true, reason: 'silent' })
+  return true
 }
 
 // followerInfo / targetInfo: { id, username, level, uIcon, uIconColor }
@@ -161,19 +275,66 @@ function follow(followerInfo, targetInfo) {
   const destParty = store.parties.get(targetLeaderId)
   const destSize = destParty ? 1 + destParty.members.size : 1
   if (destSize >= MAX_PARTY_SIZE) return { ok: false, error: 'That party is full.' }
+  // A closed party is the leader's own decision, so it is refused by name
+  // rather than by rule — the follower should know who to ask.
+  if (destParty && destParty.closed === true) {
+    return { ok: false, error: `${destParty.leaderInfo?.username ?? 'That party'} has closed their party.` }
+  }
 
   // Leave any current party first (disbands it if the follower was leading one).
-  detach(followerId, { notifySelf: false })
+  detach(followerId, { notifySelf: false, reason: 'switch' })
 
   let party = store.parties.get(targetLeaderId)
+  const formed = !party
   if (!party) {
-    party = { leaderId: targetLeaderId, leaderInfo: normInfo(targetInfo), members: new Map() }
+    party = {
+      id: randomUUID(),
+      leaderId: targetLeaderId,
+      leaderInfo: normInfo(targetInfo),
+      members: new Map(),
+      closed: false,
+    }
     store.parties.set(targetLeaderId, party)
   }
   party.members.set(followerId, normInfo(followerInfo))
   store.memberToLeader.set(followerId, targetLeaderId)
   broadcastUpdate(party)
-  return { ok: true }
+
+  // Following is unilateral, so the person being followed learns about their
+  // new party from this line rather than from a snapshot appearing.
+  const followerName = followerInfo.username || 'Someone'
+  notify(
+    [targetLeaderId],
+    'join',
+    formed
+      ? `${followerName} is following you. You are leading a party.`
+      : `${followerName} joined your party.`,
+    { actor: followerName }
+  )
+  const others = [...party.members.keys()].filter((id) => id !== followerId)
+  notify(others, 'join', `${followerName} joined the party.`, { actor: followerName })
+  const leaderName = targetInfo.username || 'them'
+  notify([followerId], 'join', `You are following ${leaderName}. They lead where the party goes.`)
+  return { ok: true, partyId: party.id }
+}
+
+/**
+ * Open or close a party to new followers. Leader only — a member closing the
+ * party they merely belong to would be deciding for someone else.
+ */
+function setClosed(leaderId, closed) {
+  const party = store.parties.get(leaderId)
+  if (!party) return { ok: false, error: 'You are not leading a party.' }
+  const next = closed === true
+  if (party.closed === next) return { ok: true, closed: next }
+  party.closed = next
+  broadcastUpdate(party)
+  notify(
+    [leaderId, ...party.members.keys()],
+    'closed',
+    next ? 'The party is closed to new followers.' : 'The party is open to new followers.'
+  )
+  return { ok: true, closed: next }
 }
 
 // Leader kicks a member.
@@ -182,9 +343,13 @@ function remove(leaderId, memberId) {
   if (!party) return { ok: false, error: 'You are not leading a party.' }
   if (!party.members.has(memberId)) return { ok: false, error: 'That player is not in your party.' }
 
+  const removedName = party.members.get(memberId)?.username ?? nameOf(memberId)
   party.members.delete(memberId)
   store.memberToLeader.delete(memberId)
   emitTo([memberId], SOCKET_EVENTS.PARTY_REMOVED, {})
+  notify([leaderId, ...party.members.keys()], 'leave', `${removedName} was removed from the party.`, {
+    actor: removedName,
+  })
 
   if (party.members.size === 0) {
     store.parties.delete(leaderId)
@@ -197,7 +362,7 @@ function remove(leaderId, memberId) {
 
 // Voluntary leave (member) or disband (leader).
 function leave(playerId) {
-  detach(playerId, { notifySelf: true })
+  detach(playerId, { notifySelf: true, reason: 'leave' })
 }
 
 /**
@@ -218,14 +383,14 @@ function departAlone(playerId) {
   const party = store.parties.get(playerId)
   if (!party) {
     // An ordinary member walking out.
-    detach(playerId, { notifySelf: true })
+    detach(playerId, { notifySelf: true, reason: 'depart' })
     return { promotedId: null, promotedName: null }
   }
 
   const memberIds = [...party.members.keys()]
   if (memberIds.length < 2) {
     // Nobody to hand it to, or only one person to hand it to and no one to lead.
-    detach(playerId, { notifySelf: true })
+    detach(playerId, { notifySelf: true, reason: 'depart' })
     return { promotedId: null, promotedName: null }
   }
 
@@ -237,32 +402,48 @@ function departAlone(playerId) {
   store.parties.delete(playerId)
   store.memberToLeader.delete(successorId)
 
-  const promoted = { leaderId: successorId, leaderInfo: successorInfo, members: followers }
+  const promoted = {
+    // The same party under new management: keeping the id keeps the party's
+    // chat history reachable by the people who are still in it.
+    id: party.id,
+    leaderId: successorId,
+    leaderInfo: successorInfo,
+    members: followers,
+    closed: party.closed === true,
+  }
   store.parties.set(successorId, promoted)
   for (const memberId of followers.keys()) store.memberToLeader.set(memberId, successorId)
 
   // The one who left is on their own; everyone else sees the new leader.
   broadcastDisband([playerId])
   broadcastUpdate(promoted)
+  notify(
+    [successorId, ...followers.keys()],
+    'leave',
+    `${nameOf(playerId)} escaped alone. ${successorInfo?.username ?? 'Someone'} is leading the party now.`,
+    { actor: nameOf(playerId) }
+  )
 
   return { promotedId: successorId, promotedName: successorInfo?.username ?? null }
 }
 
 // Connection lost — drop silently from the player's own side, still notify the rest.
 function onDisconnect(playerId) {
-  detach(playerId, { notifySelf: false })
+  detach(playerId, { notifySelf: false, reason: 'disconnect' })
 }
 
 // Player died and is being respawned elsewhere — they can't stay pinned, so drop them.
 function onDeath(playerId) {
-  detach(playerId, { notifySelf: true })
+  detach(playerId, { notifySelf: true, reason: 'death' })
 }
 
 module.exports = {
   MAX_PARTY_SIZE,
   follow,
+  setClosed,
   remove,
   leave,
+  leaveBehind,
   departAlone,
   onDisconnect,
   onDeath,
@@ -271,5 +452,9 @@ module.exports = {
   getLeaderId,
   getLeaderMemberIds,
   getParty,
+  getPartyId,
   getPartySnapshot,
+  notify,
+  notifyOthers,
+  otherMemberIds,
 }

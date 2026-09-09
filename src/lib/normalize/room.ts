@@ -65,9 +65,14 @@ export function normalizeRoom(room: RawRoom | null | undefined): RoomView | null
     ...room,
     // Surface the server `inFight` flag as `inBattle` so room snapshots show the
     // battle tag for players already fighting when you arrive. Live changes after
-    // that arrive via the player-battle-status socket event.
+    // that arrive via the player-battle-status socket event, which carries the
+    // enemy's name the same way this does.
     players: Array.isArray(room.players)
-      ? room.players.map((p: any) => ({ ...p, inBattle: p?.inBattle ?? p?.inFight ?? false }))
+      ? room.players.map((p: any) => ({
+          ...p,
+          inBattle: p?.inBattle ?? p?.inFight ?? false,
+          battleEnemyName: p?.battleEnemyName ?? null,
+        }))
       : [],
     items: normalizeRoomItems(room.items),
     npcs: Array.isArray(room.npcs) ? room.npcs : [],

@@ -33,6 +33,8 @@ export interface PlayerRowStats {
   defMod?: number | null
   presenceStatus?: PlayerPresenceStatus
   inBattle?: boolean
+  /** What they are fighting, while `inBattle`. The badge names it when known. */
+  battleEnemyName?: string | null
   partyLeaderId?: string | null
 }
 
@@ -216,9 +218,9 @@ export function PlayerBadges({ row }: { row: PlayerRowData }) {
       {row.stats?.inBattle && (
         <span
           className="rounded-sm border border-status-error/60 bg-status-error/25 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-status-error"
-          title="Currently in battle"
+          title={row.stats.battleEnemyName ? `Fighting a ${row.stats.battleEnemyName}` : 'Currently in battle'}
         >
-          In Battle
+          {row.stats.battleEnemyName ? `\u2694 ${row.stats.battleEnemyName}` : 'In Battle'}
         </span>
       )}
       {presence === 'idle' && <span className="text-[9px] text-status-warning/80">idle</span>}

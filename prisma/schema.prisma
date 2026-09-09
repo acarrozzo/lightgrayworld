@@ -161,6 +161,7 @@ model User {
   battleLogs                BattleLog[]
   chatMessages              ChatMessage[]
   roomChatMessages          RoomChatMessage[]
+  partyChatMessages         PartyChatMessage[]
   sentDMs                   DirectMessage[] @relation("SentDMs")
   receivedDMs               DirectMessage[] @relation("ReceivedDMs")
   threadsAsA                DirectThread[]  @relation("ThreadsAsA")
@@ -335,6 +336,21 @@ model RoomChatMessage {
   room      Room     @relation(fields: [roomId], references: [roomId], onDelete: Cascade)
 
   @@index([roomId, timestamp])
+}
+
+/// Party chat. Parties themselves are ephemeral in-memory state, so `partyId` is
+/// not a foreign key — it is the id the party store mints when a party forms and
+/// carries through a change of leader. Rows outlive the party that wrote them,
+/// which is what lets a member who reconnects read back what was said.
+model PartyChatMessage {
+  id        String   @id @default(cuid())
+  partyId   String
+  userId    String
+  message   String
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([partyId, timestamp])
 }
 
 model DirectMessage {

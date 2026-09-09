@@ -1,16 +1,16 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 
 type FilterType = 'all' | 'chat' | 'events' | 'actions'
-type ChatSubFilter = 'room-chat' | 'world-chat' | 'all-chat'
+type ChatSubFilter = 'room-chat' | 'world-chat' | 'party-chat' | 'all-chat'
 type EventsSubFilter = 'world-activity' | 'all-events'
 type ActionsSubFilter = 'action-feedback' | 'movement' | 'all-actions'
 
-export type InputMode = 'action' | 'room' | 'world'
+export type InputMode = 'action' | 'room' | 'world' | 'party'
 
 interface FeedPanelProps {
   currentRoomId?: string
@@ -53,7 +53,7 @@ const WORLD_FEED_TOGGLES: { key: keyof WorldFeedSettings; label: string }[] = [
   { key: 'groupRepeats', label: 'Group repeats' },
 ]
 
-const CATEGORY_STYLES: Record<'room' | 'world' | 'action' | 'dm', CategoryStyle> = {
+const CATEGORY_STYLES: Record<'room' | 'world' | 'action' | 'dm' | 'party', CategoryStyle> = {
   room: {
     label: 'ROOM',
     icon: MessageSquare,
@@ -77,6 +77,14 @@ const CATEGORY_STYLES: Record<'room' | 'world' | 'action' | 'dm', CategoryStyle>
     icon: Mail,
     barClass: 'bg-stat-mag',
     iconClass: 'text-channel-dm',
+  },
+  // The party's own channel: chat and the lines about each other (a kill, a
+  // level, a fall) share it, because they are the same conversation.
+  party: {
+    label: 'PARTY',
+    icon: Users,
+    barClass: 'bg-resource-mp',
+    iconClass: 'text-resource-mp',
   },
 }
 
@@ -230,6 +238,10 @@ const canGroupEntries = (a: WorldFeedEntry, b: WorldFeedEntry) => {
 }
 
 const getEntryStyle = (entry: WorldFeedEntry): CategoryStyle => {
+  // A party line keeps its PARTY chip whatever it says. Losing the channel to
+  // an error style would make "Mira has fallen" read as a system failure rather
+  // than as the party talking.
+  if (entry.type === 'party') return CATEGORY_STYLES.party
   if (entry.eventType) {
     const activityStyle = ACTIVITY_STYLES[entry.eventType]
     if (activityStyle) {
@@ -258,6 +270,11 @@ const getEntryStyle = (entry: WorldFeedEntry): CategoryStyle => {
 }
 
 const getMessageColorClass = (entry: WorldFeedEntry) => {
+  // Severity still shows in the words: a fall or a member left behind is red,
+  // ordinary party talk is not.
+  if (entry.type === 'party') {
+    return entry.level === 'error' ? 'text-status-error' : 'text-fg-bright'
+  }
   if (entry.eventType) {
     return ACTIVITY_TEXT_CLASSES[entry.eventType] ?? 'text-fg-bright'
   }
@@ -279,6 +296,7 @@ const getMessageColorClass = (entry: WorldFeedEntry) => {
 }
 
 const getEntryCategory = (entry: WorldFeedEntry): 'chat' | 'event' | 'action' => {
+  if (entry.type === 'party') return 'chat'
   const isRoomTravel = entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel'
   const isActivity = Boolean(entry.eventType) && !isRoomTravel
   const isChat = !isActivity && !isRoomTravel && (entry.type === 'room' || entry.type === 'world')
@@ -421,7 +439,7 @@ export default function FeedPanel({
       const stored = localStorage.getItem(inputModeKey)
       if (stored !== null) {
         const parsed = stored as InputMode
-        if (parsed === 'action' || parsed === 'room' || parsed === 'world') {
+        if (parsed === 'action' || parsed === 'room' || parsed === 'world' || parsed === 'party') {
           setInputMode(parsed)
           setInputModeHydrated(true)
           return
@@ -442,7 +460,13 @@ export default function FeedPanel({
 
   // Handle forceInputMode prop - override stored value when provided
   useEffect(() => {
-    if (forceInputMode && (forceInputMode === 'action' || forceInputMode === 'room' || forceInputMode === 'world')) {
+    if (
+      forceInputMode &&
+      (forceInputMode === 'action' ||
+        forceInputMode === 'room' ||
+        forceInputMode === 'world' ||
+        forceInputMode === 'party')
+    ) {
       setInputMode(forceInputMode)
       if (inputModeKey) {
         localStorage.setItem(inputModeKey, forceInputMode)
@@ -472,8 +496,11 @@ export default function FeedPanel({
       if (filter === 'all') return true
       
       if (filter === 'chat') {
-        // Chat messages: type === 'room'|'world' AND no eventType
-        const isChat = !entry.eventType && (entry.type === 'room' || entry.type === 'world')
+        // Chat messages: type === 'room'|'world' AND no eventType, plus the
+        // party channel, whose notices carry an eventType but are still the
+        // party talking rather than world activity.
+        const isChat =
+          entry.type === 'party' || (!entry.eventType && (entry.type === 'room' || entry.type === 'world'))
         if (!isChat) return false
         
         if (chatSubFilter === 'all-chat') return true
@@ -483,6 +510,9 @@ export default function FeedPanel({
         }
         if (chatSubFilter === 'world-chat') {
           return entry.type === 'world'
+        }
+        if (chatSubFilter === 'party-chat') {
+          return entry.type === 'party'
         }
         return false
       }
@@ -554,7 +584,7 @@ export default function FeedPanel({
   const showUnreadNotice = !isNearBottom && unreadCount > 0 && isScrollable
   
   // Character count validation for chat modes
-  const isChatMode = inputMode === 'world' || inputMode === 'room'
+  const isChatMode = inputMode === 'world' || inputMode === 'room' || inputMode === 'party'
   const charCount = customAction.length
   const isOverLimit = isChatMode && charCount > MESSAGE_MAX_LENGTH
   const isSubmitDisabled = Boolean(isLoadingRoom) || trimmedCustomAction.length === 0 || isOverLimit
@@ -628,7 +658,7 @@ export default function FeedPanel({
         const newEntries = entries.slice(prevLength)
         // Filter to only chat messages (world/room without eventType)
         const chatMessages = newEntries.filter(
-          (entry) => (entry.type === 'world' || entry.type === 'room') && !entry.eventType
+          (entry) => entry.type === 'party' || ((entry.type === 'world' || entry.type === 'room') && !entry.eventType)
         )
         // Only increment badge for chat messages
         setUnreadCount((count) => count + chatMessages.length)
@@ -748,12 +778,13 @@ export default function FeedPanel({
         {/* Sub-filters */}
         {filter === 'chat' && (
           <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-accent/25">
-            {(['all-chat', 'world-chat', 'room-chat'] as ChatSubFilter[]).map((subKey) => {
+            {(['all-chat', 'world-chat', 'room-chat', 'party-chat'] as ChatSubFilter[]).map((subKey) => {
               const isActive = chatSubFilter === subKey
               const labelMap: Record<ChatSubFilter, string> = {
                 'all-chat': 'All Chat',
                 'room-chat': 'Room',
                 'world-chat': 'World',
+                'party-chat': 'Party',
               }
               return (
                 <button
@@ -1065,20 +1096,22 @@ export default function FeedPanel({
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          {(['world', 'room', 'action'] as InputMode[]).map((mode) => {
+          {(['world', 'room', 'party', 'action'] as InputMode[]).map((mode) => {
             const isActive = inputMode === mode
             // Highlight input mode when corresponding filter is active
-            const isFilterActive = (filter === 'chat' && (mode === 'room' || mode === 'world')) || 
+            const isFilterActive = (filter === 'chat' && (mode === 'room' || mode === 'world' || mode === 'party')) ||
                                   (filter === 'actions' && mode === 'action')
             const labelMap: Record<InputMode, string> = {
               action: 'Action',
               room: 'Room Chat',
               world: 'World Chat',
+              party: 'Party',
             }
             const iconMap: Record<InputMode, LucideIcon> = {
               action: Sparkles,
               room: MessageSquare,
               world: Globe,
+              party: Users,
             }
             const IconComponent = iconMap[mode]
             const colorMap: Record<InputMode, { active: string; inactive: string }> = {
@@ -1092,6 +1125,10 @@ export default function FeedPanel({
               },
               world: {
                 active: 'border-status-success/80 hover:border-status-success bg-channel-room/10 hover:bg-channel-room/20 text-channel-room',
+                inactive: 'border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary',
+              },
+              party: {
+                active: 'border-resource-mp/80 hover:border-resource-mp bg-resource-mp/10 hover:bg-resource-mp/20 text-resource-mp',
                 inactive: 'border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary',
               },
             }
@@ -1124,10 +1161,12 @@ export default function FeedPanel({
               value={customAction}
               onChange={(e) => onCustomActionChange(e.target.value)}
               placeholder={
-                inputMode === 'action' 
-                  ? 'Enter action...' 
-                  : inputMode === 'room' 
-                  ? 'Say something...' 
+                inputMode === 'action'
+                  ? 'Enter action...'
+                  : inputMode === 'room'
+                  ? 'Say something...'
+                  : inputMode === 'party'
+                  ? 'Tell the party...'
                   : 'Shout something...'
               }
               disabled={Boolean(isLoadingRoom)}

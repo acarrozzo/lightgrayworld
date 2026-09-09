@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Swords } from 'lucide-react'
 import type { Player } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
@@ -602,6 +603,15 @@ function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
       <div className="leading-tight min-w-0">
         <div className="text-xs font-semibold text-fg-bright/90 truncate max-w-[110px]">{player.username}</div>
         <div className="text-[10px] uppercase tracking-[0.15em] text-stat-mag/80">Lvl {player.level}</div>
+        {/* Who is fighting, and what. The room payload has always carried this
+            flag; the card used to throw it away, so a battle happening beside
+            you was invisible — and the group bonus it grants unexplained. */}
+        {player.inBattle && (
+          <div className="mt-0.5 flex items-center gap-1 text-[9px] text-status-error">
+            <Swords size={9} aria-hidden="true" />
+            <span className="truncate max-w-[100px]">{player.battleEnemyName ?? 'In battle'}</span>
+          </div>
+        )}
         {isIdle && player.lastSeen && (
           <div className="text-[9px] text-resource-gold/80 mt-0.5">Idle {formatTimeAgo(player.lastSeen)}</div>
         )}

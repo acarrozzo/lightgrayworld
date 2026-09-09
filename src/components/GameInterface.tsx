@@ -80,7 +80,8 @@ const CENTER_MIN = 480
 import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
 import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/PlayersPanel'
-import PartyStrip from './game-interface/PartyStrip'
+import PartySquadBar from './game-interface/PartySquadBar'
+import type { SquadMember } from '@/lib/party/squad'
 import CraftingSheet, { type RecipeTemplates } from './CraftingSheet'
 import { isCraftingRoom, formatRecipeList } from '@/lib/game-data/crafting-recipes'
 const { RESPAWN_ROOM_ID } = require('@/lib/game-data/constants') as { RESPAWN_ROOM_ID: string }
@@ -325,6 +326,9 @@ export default function GameInterface() {
   const handleRemovePartyMember = useCallback((memberId: string) => {
     socketHandlers.removePartyMember(memberId)
   }, [socketHandlers])
+  const handleSetPartyClosed = useCallback((closed: boolean) => {
+    socketHandlers.setPartyClosed(closed)
+  }, [socketHandlers])
   const lastLoginSocketId = useRef<string | null>(null)
   const playerRef = useRef(player)
   const currentRoomRef = useRef(currentRoom)
@@ -360,6 +364,21 @@ export default function GameInterface() {
     const { append } = useWorldFeedStore.getState()
     return append(entry)
   }, [])
+
+  // A teammate dropping into trouble is worth saying out loud once. The watch
+  // itself lives in the squad bar, which is where the live party state is.
+  const handlePartyLowHp = useCallback(
+    (member: SquadMember) => {
+      appendWorldFeed({
+        type: 'party',
+        level: 'error',
+        actor: member.username,
+        message: `${member.username} is badly hurt (${member.hp}/${member.hpMax}).`,
+        ts: Date.now(),
+      })
+    },
+    [appendWorldFeed]
+  )
 
   // Both point-spending modals (Core Points, Training Points) land here. The
   // server's row wins but it is only a projection, so client-only fields —
@@ -1511,29 +1530,36 @@ export default function GameInterface() {
     const singleQuoteMatch = actionToSend.startsWith("'")
     const doubleQuoteMatch = actionToSend.startsWith('"')
     const exclamationMatch = actionToSend.startsWith('!')
+    // Party chat needs a prefix nobody types by accident: a bare "p" is a word.
+    const slashPartyMatch = lowerInput.startsWith('/p ')
+    const partyWordMatch = lowerInput.startsWith('/party ')
 
     // Prefix detection as fallback/override
     const prefixIsRoomChat = sayMatch || singleQuoteMatch || doubleQuoteMatch
     const prefixIsWorldChat = shoutMatch || exclamationMatch
+    const prefixIsPartyChat = slashPartyMatch || partyWordMatch
 
     // Determine chat type: prefix overrides mode, otherwise use mode
     let isRoomChat = false
     let isWorldChat = false
+    let isPartyChat = false
 
-    if (prefixIsRoomChat || prefixIsWorldChat) {
+    if (prefixIsRoomChat || prefixIsWorldChat || prefixIsPartyChat) {
       // Prefix detection takes precedence
       isRoomChat = prefixIsRoomChat
       isWorldChat = prefixIsWorldChat
+      isPartyChat = prefixIsPartyChat
     } else {
       // Use selected mode
       isRoomChat = mode === 'room'
       isWorldChat = mode === 'world'
+      isPartyChat = mode === 'party'
     }
 
-    if (isRoomChat || isWorldChat) {
+    if (isRoomChat || isWorldChat || isPartyChat) {
       let message = ''
 
-      if (sayMatch || shoutMatch) {
+      if (sayMatch || shoutMatch || slashPartyMatch || partyWordMatch) {
         const firstSpace = actionToSend.indexOf(' ')
         message = firstSpace >= 0 ? actionToSend.slice(firstSpace + 1).trim() : ''
       } else if (singleQuoteMatch || doubleQuoteMatch || exclamationMatch) {
@@ -1547,7 +1573,7 @@ export default function GameInterface() {
         appendWorldFeed({
           type: 'action',
           level: 'error',
-          message: "To chat: say hello | 'hello | \"hello | shout hello | !hello",
+          message: "To chat: say hello | 'hello | \"hello | shout hello | !hello | /p hello",
         })
         return
       }
@@ -1590,6 +1616,27 @@ export default function GameInterface() {
             type: 'action',
             level: 'error',
             message: 'Failed to send world chat. Please try again.',
+          })
+        }
+        return
+      }
+      if (isPartyChat) {
+        // Refused client-side only to save the round trip; the server checks
+        // party membership itself and is the one that decides.
+        if (!useGameStore.getState().party) {
+          appendWorldFeed({
+            type: 'action',
+            level: 'error',
+            message: 'You are not in a party. Follow someone here to start one.',
+          })
+          return
+        }
+        const sent = socketHandlers.sendPartyChatMessage(message)
+        if (!sent) {
+          appendWorldFeed({
+            type: 'action',
+            level: 'error',
+            message: 'Failed to send party chat. Please try again.',
           })
         }
         return
@@ -2771,7 +2818,9 @@ export default function GameInterface() {
       const currentRoomPlayers = useGameStore.getState().roomPlayers
       setRoomPlayers(
         currentRoomPlayers.map((p) =>
-          p.id === data.id ? { ...p, inBattle: data.inBattle } : p
+          p.id === data.id
+            ? { ...p, inBattle: data.inBattle, battleEnemyName: data.inBattle ? data.enemyName ?? null : null }
+            : p
         )
       )
     })
@@ -2822,10 +2871,8 @@ export default function GameInterface() {
     const cleanupRemoved = socketHandlers.onPartyRemoved(() => {
       clearParty()
       appendWorldFeed({
-        type: 'room',
+        type: 'party',
         isSelf: true,
-        eventType: 'party',
-        outcome: 'info',
         message: 'You were removed from the party.',
         ts: Date.now(),
       })
@@ -2833,10 +2880,9 @@ export default function GameInterface() {
 
     const cleanupError = socketHandlers.onPartyError((payload) => {
       appendWorldFeed({
-        type: 'room',
+        type: 'party',
         isSelf: true,
-        eventType: 'party',
-        outcome: 'failure',
+        level: 'error',
         message: payload.message,
         ts: Date.now(),
       })
@@ -2866,13 +2912,54 @@ export default function GameInterface() {
       })
 
       appendWorldFeed({
-        type: 'room',
+        type: 'party',
         isSelf: true,
-        eventType: 'party',
-        outcome: 'info',
         message: payload.toRoomName ? `Your party travels to ${payload.toRoomName}.` : 'Your party travels together.',
         ts: Date.now(),
       })
+    })
+
+    // One line about the party: someone joined, fell, was left behind, levelled,
+    // killed something. The server decides what is worth saying; the kind only
+    // picks how loudly the feed says it.
+    const cleanupNotice = socketHandlers.onPartyNotice((payload) => {
+      appendWorldFeed({
+        id: payload.id,
+        type: 'party',
+        level: payload.kind === 'fallen' || payload.kind === 'left-behind' ? 'error' : undefined,
+        actor: payload.actor,
+        message: payload.message,
+        ts: payload.ts,
+      })
+    })
+
+    const cleanupPartyChat = socketHandlers.onPartyChatMessage((payload) => {
+      const isSelf = payload.userId === playerRef.current?.id
+      appendWorldFeed({
+        id: payload.id,
+        type: 'party',
+        actor: payload.username,
+        isSelf,
+        message: `${payload.username}: ${payload.message}`,
+        ts: new Date(payload.timestamp).getTime(),
+      })
+    })
+
+    // Everything said before we arrived (or before we refreshed). Ids are the
+    // database rows', so the feed store's own de-duplication keeps a reconnect
+    // from printing the conversation twice.
+    const cleanupPartyChatHistory = socketHandlers.onPartyChatHistory((payload) => {
+      const selfId = playerRef.current?.id
+      for (const message of payload.messages ?? []) {
+        appendWorldFeed({
+          id: message.id,
+          type: 'party',
+          actor: message.username,
+          isSelf: message.userId === selfId,
+          message: `${message.username}: ${message.message}`,
+          ts: new Date(message.timestamp).getTime(),
+        })
+      }
     })
 
     // Live party groupings for everyone in the room (including parties we're not in).
@@ -2888,6 +2975,9 @@ export default function GameInterface() {
       cleanupRemoved()
       cleanupError()
       cleanupPulled()
+      cleanupNotice()
+      cleanupPartyChat()
+      cleanupPartyChatHistory()
       cleanupRoomPartyState()
     }
   }, [socket, socketHandlers, setParty, clearParty, appendWorldFeed, setPlayer, applyRoomPartyState])
@@ -3731,6 +3821,23 @@ export default function GameInterface() {
           </button>
           {currentRoom && (
             <div className="bg-surface-panel/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
+              {/* The party sits outside the scroll container on purpose: who is
+                  still standing is not something you should have to scroll back
+                  up for. It costs the same height at six members as at two. */}
+              <PartySquadBar
+                party={party}
+                roomPlayers={roomPlayers}
+                currentPlayerId={player.id}
+                self={player}
+                onLowHp={handlePartyLowHp}
+                onFollow={handleFollowPlayer}
+                onLeave={handleLeaveParty}
+                onRemove={handleRemovePartyMember}
+                onSetClosed={handleSetPartyClosed}
+                onManage={handleOpenPartyTab}
+                onMessage={handleProfileMessage}
+                onInspect={handleOpenPlayerProfile}
+              />
               {/* The room column is a container: with two resizable side
                   panels it can be far narrower than the viewport, so what
                   renders inside sizes against it, not the window. */}
@@ -3811,14 +3918,6 @@ export default function GameInterface() {
                       </div>
                     </div>
                   )}
-                  <PartyStrip
-                    party={party}
-                    roomPlayers={roomPlayers}
-                    currentPlayerId={player.id}
-                    onFollow={handleFollowPlayer}
-                    onLeave={handleLeaveParty}
-                    onManage={handleOpenPartyTab}
-                  />
                   <RoomBox
                     room={currentRoom}
                     roomPlayers={roomPlayers}

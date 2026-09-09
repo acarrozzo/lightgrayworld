@@ -39,6 +39,8 @@ const SOCKET_EVENTS = {
   PARTY_FOLLOW: 'party:follow',
   PARTY_LEAVE: 'party:leave',
   PARTY_REMOVE: 'party:remove',
+  PARTY_SET_CLOSED: 'party:set-closed',
+  SEND_PARTY_CHAT_MESSAGE: 'send-party-chat-message',
 
   // ── Server to client: session ─────────────────────────────────────────────
   LOGIN_SUCCESS: 'login:success',
@@ -86,6 +88,12 @@ const SOCKET_EVENTS = {
   PARTY_REMOVED: 'party:removed',
   PARTY_ERROR: 'party:error',
   PARTY_PULLED: 'party:pulled',
+  // One line about the party, addressed to the people still in it: someone
+  // joined, fell, was left behind, levelled, killed something. The client files
+  // these into the feed's party channel.
+  PARTY_NOTICE: 'party:notice',
+  PARTY_CHAT_MESSAGE: 'party-chat-message',
+  PARTY_CHAT_HISTORY: 'party:chat-history',
 }
 
 function setSocketIO(ioInstance) {

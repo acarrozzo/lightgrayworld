@@ -110,6 +110,7 @@ export function mergeRoster({
         // A stale `inFight` row would tag an offline player as fighting forever, so
         // only trust the battle flag while they are actually connected.
         inBattle: live ? live.inBattle : false,
+        battleEnemyName: live?.inBattle ? live.battleEnemyName ?? null : null,
         partyLeaderId: live?.partyLeaderId ?? null,
       },
     })
@@ -139,6 +140,7 @@ export function mergeRoster({
         mpMax: live.mpMax,
         presenceStatus: live.status,
         inBattle: live.inBattle,
+        battleEnemyName: live.inBattle ? live.battleEnemyName ?? null : null,
         partyLeaderId: live.partyLeaderId ?? null,
       },
     })

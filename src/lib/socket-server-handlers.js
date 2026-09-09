@@ -668,6 +668,42 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     }
   }
 
+  /**
+   * The tail of a party's chat, sent to one socket.
+   *
+   * Party chat is the one party surface with a past: the party itself is
+   * process-local and vanishes on restart, but what was said is a row, so a
+   * member who refreshes or joins late gets the conversation rather than an
+   * empty channel.
+   */
+  const PARTY_CHAT_HISTORY_LIMIT = 50
+  const sendPartyChatHistory = async (socket, partyId) => {
+    if (!socket || !partyId) return
+    try {
+      const rows = await prisma.partyChatMessage.findMany({
+        where: { partyId },
+        orderBy: { timestamp: 'desc' },
+        take: PARTY_CHAT_HISTORY_LIMIT,
+        include: { user: { select: { username: true, level: true } } },
+      })
+      if (!rows.length) return
+      socket.emit(SOCKET_EVENTS.PARTY_CHAT_HISTORY, {
+        partyId,
+        messages: rows.reverse().map((row) => ({
+          id: row.id,
+          partyId,
+          userId: row.userId,
+          username: row.user.username,
+          level: row.user.level,
+          message: row.message,
+          timestamp: row.timestamp,
+        })),
+      })
+    } catch (error) {
+      console.error('[Socket] Failed to load party chat history:', error)
+    }
+  }
+
   const toPartyInfo = (p) => ({
     id: p.id,
     username: p.username,
@@ -702,8 +738,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     for (const memberId of memberIds) {
       const memberPlayer = findActivePlayerById(memberId)
       if (!memberPlayer) continue // offline (should already be detached)
-      if (memberPlayer.currentRoom !== fromRoom) continue // not co-located
-      if ((memberPlayer.hp ?? 0) <= 0) continue // dead — being respawned/dropped
+      if ((memberPlayer.hp ?? 0) <= 0) continue // dead — onDeath drops them from the party
+      if (memberPlayer.currentRoom !== fromRoom) {
+        // Standing somewhere other than the room the party just left: pinned to a
+        // leader they are not with, and unable to walk. Cut them loose.
+        partyStore.leaveBehind(memberId)
+        continue
+      }
 
       try {
         const result = await gameEngine.processUserAction({
@@ -721,7 +762,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             data: { toRoom, toRoomName, roomData: normalizedRoomData },
           },
         })
-        if (!result || result.success !== true) continue
+        if (!result || result.success !== true) {
+          // The engine refused this member's move — their own gate, a hostile
+          // enemy still in the room, anything the leader's pre-checks did not
+          // catch. Leaving them a member would strand them: members cannot walk.
+          partyStore.leaveBehind(memberId, { destinationName: toRoomName ?? null })
+          continue
+        }
 
         for (const sid of getSocketIdsForUser(memberId)) {
           const memberSocket = io.sockets.sockets.get(sid)
@@ -799,6 +846,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         magMod: p.magMod ?? null,
         defMod: p.defMod ?? null,
         inBattle: Boolean(battle && battle.isActive),
+        battleEnemyName: battle && battle.isActive ? battle.enemyName ?? null : null,
         partyLeaderId: partyStore.getLeaderId(p.id),
         presenceStatus: isIdle ? 'idle' : 'active',
         ...(isIdle ? { lastSeen: idleGhost.lastSeen } : {}),
@@ -902,17 +950,31 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     emitActionFeedback(socket, { action: 'move', message, outcome: 'info' })
   }
 
-  // True if any same-room member of this leader's party is locked in battle.
+  // The same-room member of this leader's party who is locked in battle, and what
+  // they are fighting — the refusal names them, because "a party member" is not
+  // something the leader can act on.
   const partyMemberInBattle = (leaderId, roomId) => {
     const memberIds = partyStore.getLeaderMemberIds(leaderId)
-    if (!memberIds.length) return false
+    if (!memberIds.length) return null
     const roomState = gameEngine.getOrCreateRoom(roomId)
     for (const memberId of memberIds) {
       const battle = roomState.activeBattles.get(memberId)
-      if (battle && battle.isActive) return true
+      if (battle && battle.isActive) {
+        const memberPlayer = findActivePlayerById(memberId)
+        return {
+          memberName: memberPlayer?.username ?? 'A party member',
+          enemyName: battle.enemyName ?? null,
+        }
+      }
     }
-    return false
+    return null
   }
+
+  // "You cannot travel while Rell is fighting a Scorpion."
+  const describeBattleBlock = (block) =>
+    block.enemyName
+      ? `You cannot travel while ${block.memberName} is fighting a ${block.enemyName}.`
+      : `You cannot travel while ${block.memberName} is in battle.`
 
   // If a same-room member can't pass the gate the leader is using, return who/why.
   // Gates are per-player (weapon/quest/level/wings/lever/reveal), so a member may fail
@@ -1204,6 +1266,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // follow on the same socket, so ordering guarantees no gap between the two.
         socket.emit(SOCKET_EVENTS.WORLD_PRESENCE_SYNC, buildPresenceSync())
 
+        // A player rejoining a party that outlived their connection gets the
+        // conversation back with it.
+        await sendPartyChatHistory(socket, partyStore.getPartyId(playerData.id))
+
         // Restore the persisted enemy for the current room so a refresh resumes
         // the same enemy that was there (full-HP battle) — this closes the "refresh
         // to reset the room" exploit. If nothing is persisted (the room was empty or
@@ -1298,10 +1364,12 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       // A leader can't take the party anywhere while any same-room member is
       // still in battle. A leader escaping a fight of their own is not taking
       // the party anywhere — they are leaving it behind — so that is allowed.
-      if (!escapingBattle && partyStore.isLeader(player.id) && partyMemberInBattle(player.id, fromRoom)) {
+      const battleBlock =
+        !escapingBattle && partyStore.isLeader(player.id) ? partyMemberInBattle(player.id, fromRoom) : null
+      if (battleBlock) {
         emitActionFeedback(socket, {
           action: 'move',
-          message: 'You cannot travel while a party member is in battle.',
+          message: describeBattleBlock(battleBlock),
           outcome: 'failure',
         })
         return
@@ -1783,10 +1851,12 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // — but a leader escaping a fight of their own is leaving the party
           // behind entirely, so there is nobody being dragged and nothing to
           // refuse. The member can escape the same way.
-          if (!escapingBattle && partyStore.isLeader(player.id) && partyMemberInBattle(player.id, fromRoom)) {
+          const teleportBattleBlock =
+            !escapingBattle && partyStore.isLeader(player.id) ? partyMemberInBattle(player.id, fromRoom) : null
+          if (teleportBattleBlock) {
             emitActionFeedback(socket, {
               action: 'teleport',
-              message: 'You cannot travel while a party member is in battle.',
+              message: describeBattleBlock(teleportBattleBlock),
               outcome: 'failure',
             })
             return
@@ -1951,8 +2021,88 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       }
 
       const res = partyStore.follow(toPartyInfo(player), toPartyInfo(target))
+      if (!res.ok) {
+        emitPartyError(res.error)
+        return
+      }
+      broadcastRoomPartyState(player.currentRoom)
+      // What the party has been saying, for someone who has just walked into it.
+      sendPartyChatHistory(socket, res.partyId)
+    })
+
+    // Leader opens or closes the party to new followers.
+    socket.on(SOCKET_EVENTS.PARTY_SET_CLOSED, (data = {}) => {
+      const player = activePlayers.get(socket.id)
+      if (!player) return
+      touchPlayerActivity(player)
+      const res = partyStore.setClosed(player.id, data?.closed === true)
       if (!res.ok) emitPartyError(res.error)
-      else broadcastRoomPartyState(player.currentRoom)
+    })
+
+    // Party chat. Scoped to whoever is in the party right now, and persisted
+    // under the party's own id so it survives a refresh and a change of leader.
+    socket.on(SOCKET_EVENTS.SEND_PARTY_CHAT_MESSAGE, async (data = {}) => {
+      const player = activePlayers.get(socket.id)
+      if (!player) return
+
+      const sanitizedMessage = data.message ? data.message.toString().trim().substring(0, 500) : ''
+      if (!sanitizedMessage) {
+        emitActionFeedback(socket, {
+          action: 'party-chat',
+          message: 'Message cannot be empty',
+          outcome: 'failure',
+        })
+        return
+      }
+
+      const party = partyStore.getParty(player.id)
+      const partyId = partyStore.getPartyId(player.id)
+      if (!party || !partyId) {
+        emitActionFeedback(socket, {
+          action: 'party-chat',
+          message: 'You are not in a party. Follow someone to start one.',
+          outcome: 'failure',
+        })
+        return
+      }
+
+      touchPlayerActivity(player)
+
+      try {
+        const saved = await prisma.partyChatMessage.create({
+          data: { partyId, userId: player.id, message: sanitizedMessage },
+          include: { user: { select: { username: true, level: true } } },
+        })
+
+        const payload = {
+          id: saved.id,
+          partyId,
+          userId: player.id,
+          username: saved.user.username,
+          level: saved.user.level,
+          message: sanitizedMessage,
+          timestamp: saved.timestamp,
+        }
+
+        // Party membership is not a socket room — it changes without anyone
+        // moving — so the fan-out is by member id, the way every other party
+        // broadcast works.
+        for (const memberId of party.memberIds) {
+          for (const sid of getSocketIdsForUser(memberId)) {
+            io.to(sid).emit(SOCKET_EVENTS.PARTY_CHAT_MESSAGE, payload)
+          }
+        }
+
+        socket.emit('action:confirmed', { action: 'party-chat', success: true })
+      } catch (error) {
+        console.error('[Socket] Error handling party chat message:', error)
+        emitQueueAwareError({
+          actionName: 'party-chat',
+          player,
+          error,
+          fallbackMessage: 'Failed to send party chat message',
+        })
+      }
     })
 
     // Leave your current party (or disband it if you're the leader).
