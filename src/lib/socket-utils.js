@@ -96,6 +96,12 @@ const SOCKET_EVENTS = {
   PARTY_NOTICE: 'party:notice',
   // Somebody wants to travel behind you. Nobody joins anything until you answer.
   PARTY_FOLLOW_REQUEST: 'party:follow-request',
+  // Your own ask is on the table — the Follow button reads Pending until it is
+  // resolved, one way or the other.
+  PARTY_FOLLOW_PENDING: 'party:follow-pending',
+  // The ask is over: accepted, declined, withdrawn or lapsed. Sent to both ends,
+  // so the leader's prompt closes and the asker's button comes back.
+  PARTY_FOLLOW_RESOLVED: 'party:follow-resolved',
   PARTY_CHAT_MESSAGE: 'party-chat-message',
   PARTY_CHAT_HISTORY: 'party:chat-history',
 }

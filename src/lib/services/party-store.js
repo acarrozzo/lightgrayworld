@@ -337,8 +337,9 @@ function requestFollow(followerInfo, targetInfo) {
     return { ok: false, error: `${leaderInfo.username} has not answered yet.` }
   }
 
+  const expiresAt = Date.now() + FOLLOW_REQUEST_TTL_MS
   const timer = setTimeout(() => {
-    if (cancelRequest(targetLeaderId, followerId)) {
+    if (resolveRequest(targetLeaderId, followerId, 'expired')) {
       notify([followerId], 'declined', `${leaderInfo.username} did not answer.`)
     }
   }, FOLLOW_REQUEST_TTL_MS)
@@ -354,10 +355,15 @@ function requestFollow(followerInfo, targetInfo) {
     // Whether saying yes makes them a leader for the first time, which is the
     // part worth being asked about.
     wouldBecomeLeader: !store.parties.has(targetLeaderId),
-    expiresAt: Date.now() + FOLLOW_REQUEST_TTL_MS,
+    expiresAt,
+  })
+  emitTo([followerId], SOCKET_EVENTS.PARTY_FOLLOW_PENDING, {
+    targetId: targetLeaderId,
+    targetName: leaderInfo.username,
+    expiresAt,
   })
   notify([followerId], 'asked', `You asked to follow ${leaderInfo.username}.`)
-  return { ok: true, pending: true }
+  return { ok: true, pending: true, targetId: targetLeaderId }
 }
 
 /** Forget one pending request. Returns true if there was one to forget. */
@@ -371,34 +377,77 @@ function cancelRequest(leaderId, requesterId) {
   return true
 }
 
-/** Drop every request this player has made or been asked to answer. */
-function clearRequestsFor(playerId) {
-  for (const entry of store.requests.get(playerId)?.values() ?? []) clearTimeout(entry.timer)
-  store.requests.delete(playerId)
-  for (const [leaderId, pending] of store.requests) {
-    if (pending.has(playerId)) cancelRequest(leaderId, playerId)
+/**
+ * End a request and tell both ends.
+ *
+ * Both ends matter equally: the leader has a prompt open that has to close, and
+ * the asker has a button reading "Pending" that has to come back. An ask that
+ * dies quietly leaves one of those two lying about the state of the world.
+ */
+function resolveRequest(leaderId, requesterId, outcome, reason = null) {
+  if (!cancelRequest(leaderId, requesterId)) return false
+  emitTo([leaderId, requesterId], SOCKET_EVENTS.PARTY_FOLLOW_RESOLVED, {
+    requesterId,
+    targetId: leaderId,
+    outcome,
+    reason,
+  })
+  return true
+}
+
+/**
+ * End every request this player is either half of, because they have just done
+ * something that makes the ask meaningless — walked out of the room, died, or
+ * dropped their connection.
+ *
+ * Both directions, because both sides of a follow have to be standing in the
+ * same room: whichever of them left, the ask is over.
+ */
+function cancelRequestsInvolving(playerId, outcome = 'cancelled', reason = null) {
+  for (const requesterId of [...(store.requests.get(playerId)?.keys() ?? [])]) {
+    resolveRequest(playerId, requesterId, outcome, reason)
+  }
+  for (const [leaderId, pending] of [...store.requests]) {
+    if (pending.has(playerId)) resolveRequest(leaderId, playerId, outcome, reason)
   }
 }
 
-/** The leader's answer. `accept` false simply tells the asker no. */
-function answerFollow(leaderId, requesterId, accept) {
+/** Silent teardown, for a player whose sockets are already gone. */
+function clearRequestsFor(playerId) {
+  cancelRequestsInvolving(playerId, 'cancelled', 'They are no longer available.')
+}
+
+/**
+ * The leader's answer. `accept` false simply tells the asker no.
+ *
+ * `verify` is how the caller checks what this store cannot see. Rooms are the
+ * case that matters: a follow is only legal between two people standing in the
+ * same room, and a minute is long enough for the asker to have walked away.
+ * Moving cancels a request outright, so this is the backstop rather than the
+ * main defence — but a party is a thing you can be stranded in, and being
+ * stranded is not a state worth trusting one mechanism to prevent.
+ */
+function answerFollow(leaderId, requesterId, accept, verify = null) {
   const entry = store.requests.get(leaderId)?.get(requesterId)
   if (!entry) return { ok: false, error: 'That request is no longer waiting.' }
-  cancelRequest(leaderId, requesterId)
 
   const leaderName = nameOf(leaderId, entry.leaderInfo.username)
   if (!accept) {
+    resolveRequest(leaderId, requesterId, 'declined')
     notify([requesterId], 'declined', `${leaderName} declined to lead you.`)
     return { ok: true, accepted: false }
   }
 
-  // A minute may have passed: re-check before letting anybody in.
+  // A minute may have passed: re-check everything before letting anybody in.
   const eligible = checkFollowEligible(requesterId, leaderId)
-  if (!eligible.ok) {
-    notify([requesterId], 'declined', eligible.error)
-    return { ok: false, error: eligible.error }
+  const blocked = eligible.ok ? verify?.(requesterId, leaderId) ?? null : eligible.error
+  if (blocked) {
+    resolveRequest(leaderId, requesterId, 'cancelled', blocked)
+    notify([requesterId], 'declined', blocked)
+    return { ok: false, error: blocked }
   }
 
+  resolveRequest(leaderId, requesterId, 'accepted')
   return { ...follow(entry.requesterInfo, entry.leaderInfo), accepted: true }
 }
 
@@ -479,10 +528,11 @@ function setClosed(leaderId, closed) {
   if (party.closed === next) return { ok: true, closed: next }
   party.closed = next
   if (next) {
-    for (const requesterId of store.requests.get(leaderId)?.keys() ?? []) {
-      notify([requesterId], 'declined', `${party.leaderInfo?.username ?? 'They'} closed their party.`)
+    const why = `${party.leaderInfo?.username ?? 'They'} closed their party.`
+    for (const requesterId of [...(store.requests.get(leaderId)?.keys() ?? [])]) {
+      notify([requesterId], 'declined', why)
+      resolveRequest(leaderId, requesterId, 'cancelled', why)
     }
-    clearRequestsFor(leaderId)
   }
   broadcastUpdate(party)
   notify(
@@ -605,6 +655,7 @@ module.exports = {
   requestFollow,
   answerFollow,
   cancelRequest,
+  cancelRequestsInvolving,
   clearRequestsFor,
   follow,
   setClosed,

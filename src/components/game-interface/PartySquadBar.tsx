@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { UserPlus, Users, Lock, LockOpen, X } from 'lucide-react'
+import { Hourglass, UserPlus, Users, Lock, LockOpen, X } from 'lucide-react'
 import type { Player } from '@/lib/game-state'
 import type { PartySnapshot } from '@/lib/socket'
 import {
@@ -47,6 +47,8 @@ interface PartySquadBarProps {
   self?: Player | null
   /** A teammate has just dropped into trouble — worth one line in the feed. */
   onLowHp?: (member: SquadMember) => void
+  /** People we have asked to lead us and not yet heard back from. */
+  pendingFollowIds?: Set<string>
   onFollow: (targetId: string) => void
   onLeave: () => void
   onRemove: (memberId: string) => void
@@ -124,11 +126,13 @@ function VitalBars({ member }: { member: SquadMember }) {
 function MemberTile({
   member,
   alert,
+  pending,
   onOpen,
   onFollow,
 }: {
   member: SquadMember
   alert: boolean
+  pending?: boolean
   onOpen: () => void
   /** Present only for someone outside the party: the one-tap way to ask to join. */
   onFollow?: () => void
@@ -177,12 +181,25 @@ function MemberTile({
         <button
           type="button"
           onClick={onFollow}
-          title={`Ask ${member.username} to lead you`}
-          aria-label={`Ask ${member.username} to lead you`}
-          className="mt-1 flex w-full items-center justify-center gap-1 rounded-md border border-resource-mp/45 py-1 text-[9px] font-semibold uppercase tracking-wide text-resource-mp/90 transition-colors hover:bg-resource-mp/20 hover:text-resource-mp focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+          disabled={pending}
+          title={
+            pending
+              ? `Waiting for ${member.username} to answer`
+              : `Ask ${member.username} to lead you`
+          }
+          aria-label={
+            pending
+              ? `Waiting for ${member.username} to answer your request to follow them`
+              : `Ask ${member.username} to lead you`
+          }
+          className={`mt-1 flex w-full items-center justify-center gap-1 rounded-md border py-1 text-[9px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+            pending
+              ? 'cursor-not-allowed border-line-subtle/50 text-fg-muted'
+              : 'border-resource-mp/45 text-resource-mp/90 hover:bg-resource-mp/20 hover:text-resource-mp'
+          }`}
         >
-          <UserPlus size={10} aria-hidden="true" />
-          Follow
+          {pending ? <Hourglass size={10} aria-hidden="true" /> : <UserPlus size={10} aria-hidden="true" />}
+          {pending ? 'Pending' : 'Follow'}
         </button>
       )}
     </div>
@@ -407,6 +424,7 @@ function PartyPill({
 function MemberSheet({
   member,
   isLeader,
+  pending,
   onClose,
   onRemove,
   onFollow,
@@ -415,6 +433,7 @@ function MemberSheet({
 }: {
   member: SquadMember
   isLeader: boolean
+  pending?: boolean
   onClose: () => void
   onRemove: (memberId: string) => void
   onFollow: (targetId: string) => void
@@ -448,8 +467,10 @@ function MemberSheet({
   }
   if (!member.inParty) {
     actions.push({
-      label: 'Follow',
+      label: pending ? 'Pending' : 'Follow',
       variant: 'follow',
+      disabled: pending,
+      title: pending ? `Waiting for ${member.username} to answer` : undefined,
       onClick: () => {
         onFollow(member.id)
         onClose()
@@ -516,9 +537,11 @@ function MemberSheet({
       )}
       {!member.inParty && (
         <p className="border-t border-line-subtle/60 px-3 py-2 text-[11px] text-fg-muted">
-          {member.leadsOwnParty
-            ? `${member.username} already leads a party. Following joins it.`
-            : `Following ${member.username} travels wherever they go.`}
+          {pending
+            ? `Waiting for ${member.username} to answer. Walking away withdraws the request.`
+            : member.leadsOwnParty
+              ? `${member.username} already leads a party. Following asks to join it.`
+              : `${member.username} has to agree to lead you. Following asks them.`}
         </p>
       )}
     </SheetShell>
@@ -532,6 +555,7 @@ export default function PartySquadBar({
   currentPlayerId,
   self,
   onLowHp,
+  pendingFollowIds,
   onFollow,
   onLeave,
   onRemove,
@@ -606,6 +630,7 @@ export default function PartySquadBar({
             key={member.id}
             member={member}
             alert={false}
+            pending={pendingFollowIds?.has(member.id)}
             onOpen={() => setOpenMemberId(member.id)}
             onFollow={() => onFollow(member.id)}
           />
@@ -616,6 +641,7 @@ export default function PartySquadBar({
         <MemberSheet
           member={openMember}
           isLeader={isLeader}
+          pending={pendingFollowIds?.has(openMember.id)}
           onClose={() => setOpenMemberId(null)}
           onRemove={onRemove}
           onFollow={onFollow}

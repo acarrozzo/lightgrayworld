@@ -192,6 +192,9 @@ export default function GameInterface() {
   // single slot: two players can ask at once, and silently dropping one of them
   // would leave them waiting on an answer that is never coming.
   const [followRequests, setFollowRequests] = useState<PartyFollowRequestPayload[]>([])
+  // Asks we have made and not yet had answered, so the Follow control can read
+  // Pending instead of letting the player ask the same person twice.
+  const [pendingFollowIds, setPendingFollowIds] = useState<Set<string>>(() => new Set())
   const [partyDepartureConfirm, setPartyDepartureConfirm] = useState<
     { title: string; message: string; confirmLabel: string; run: () => void } | null
   >(null)
@@ -322,8 +325,28 @@ export default function GameInterface() {
   const { socket } = useSocket()
   const socketHandlers = useSocketHandlers(socket)
   const isPartyMember = !!party && !!player && party.leaderId !== player.id
+  // The one ask we have sent but not yet seen confirmed. At most one can be in
+  // that state — the server refuses a second ask to the same person — so a
+  // refusal knows exactly which pending mark to take back.
+  const unconfirmedFollowRef = useRef<string | null>(null)
+  const clearPendingFollow = useCallback((targetId: string | null) => {
+    if (!targetId) return
+    if (unconfirmedFollowRef.current === targetId) unconfirmedFollowRef.current = null
+    setPendingFollowIds((prev) => {
+      if (!prev.has(targetId)) return prev
+      const next = new Set(prev)
+      next.delete(targetId)
+      return next
+    })
+  }, [])
   const handleFollowPlayer = useCallback((targetId: string) => {
-    socketHandlers.followPlayer(targetId)
+    // Marked pending before the server has confirmed it: the round trip is short
+    // but a second click inside it would only earn a "they have not answered
+    // yet" error. A refusal takes the mark back.
+    if (socketHandlers.followPlayer(targetId)) {
+      unconfirmedFollowRef.current = targetId
+      setPendingFollowIds((prev) => new Set(prev).add(targetId))
+    }
   }, [socketHandlers])
   const handleLeaveParty = useCallback(() => {
     socketHandlers.leaveParty()
@@ -2894,6 +2917,8 @@ export default function GameInterface() {
     })
 
     const cleanupError = socketHandlers.onPartyError((payload) => {
+      // A party error can be the refusal of the ask we have just marked pending.
+      clearPendingFollow(unconfirmedFollowRef.current)
       appendWorldFeed({
         type: 'party',
         isSelf: true,
@@ -2954,6 +2979,19 @@ export default function GameInterface() {
       )
     })
 
+    const cleanupFollowPending = socketHandlers.onPartyFollowPending((payload) => {
+      if (unconfirmedFollowRef.current === payload.targetId) unconfirmedFollowRef.current = null
+      setPendingFollowIds((prev) => (prev.has(payload.targetId) ? prev : new Set(prev).add(payload.targetId)))
+    })
+
+    // Accepted, declined, withdrawn or lapsed — whichever end we are, this is
+    // what puts the UI back: the leader's prompt closes, the asker's button
+    // comes back.
+    const cleanupFollowResolved = socketHandlers.onPartyFollowResolved((payload) => {
+      clearPendingFollow(payload.targetId)
+      setFollowRequests((queue) => queue.filter((r) => r.requesterId !== payload.requesterId))
+    })
+
     const cleanupPartyChat = socketHandlers.onPartyChatMessage((payload) => {
       const isSelf = payload.userId === playerRef.current?.id
       appendWorldFeed({
@@ -2998,6 +3036,8 @@ export default function GameInterface() {
       cleanupPulled()
       cleanupNotice()
       cleanupFollowRequest()
+      cleanupFollowPending()
+      cleanupFollowResolved()
       cleanupPartyChat()
       cleanupPartyChatHistory()
       cleanupRoomPartyState()
@@ -3885,6 +3925,7 @@ export default function GameInterface() {
                     currentPlayerId={player.id}
                     self={player}
                     onLowHp={handlePartyLowHp}
+                    pendingFollowIds={pendingFollowIds}
                     onFollow={handleFollowPlayer}
                     onLeave={handleLeaveParty}
                     onRemove={handleRemovePartyMember}

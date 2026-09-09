@@ -279,6 +279,12 @@ function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlaye
       return Promise.resolve()
     }
 
+    // Following someone requires standing with them. Whichever half of a pending
+    // ask has just walked out of the room, the ask is over — otherwise the other
+    // half could still say yes and pin somebody to a leader a room away, which
+    // is a party a member cannot walk out of.
+    partyStore.cancelRequestsInvolving(player.id, 'cancelled', 'They left the room.')
+
     socket.leave(`room-${fromRoom}`)
     if (roomPlayers.has(fromRoom)) {
       roomPlayers.get(fromRoom).delete(socket.id)
@@ -2034,7 +2040,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       const requesterId = data?.requesterId
       if (!requesterId) return
 
-      const res = partyStore.answerFollow(player.id, requesterId, data?.accept === true)
+      const res = partyStore.answerFollow(player.id, requesterId, data?.accept === true, (askerId) => {
+        const asker = findActivePlayerById(askerId)
+        if (!asker) return 'They are no longer here.'
+        if (asker.currentRoom !== player.currentRoom) return `${asker.username} is no longer in this room.`
+        if ((asker.hp ?? 0) <= 0) return `${asker.username} has fallen.`
+        return null
+      })
       if (!res.ok) {
         emitPartyError(res.error)
         return

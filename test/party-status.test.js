@@ -77,6 +77,16 @@ const requestsTo = (id) =>
     .filter((e) => e.event === SOCKET_EVENTS.PARTY_FOLLOW_REQUEST && e.sid === `sock:${id}`)
     .map((e) => e.payload)
 
+const resolvedFor = (id) =>
+  emitted
+    .filter((e) => e.event === SOCKET_EVENTS.PARTY_FOLLOW_RESOLVED && e.sid === `sock:${id}`)
+    .map((e) => e.payload)
+
+const pendingFor = (id) =>
+  emitted
+    .filter((e) => e.event === SOCKET_EVENTS.PARTY_FOLLOW_PENDING && e.sid === `sock:${id}`)
+    .map((e) => e.payload)
+
 // ─── Asking to follow, and being asked ──────────────────────────────────────
 
 test('asking to follow joins nothing until the leader answers', () => {
@@ -122,6 +132,68 @@ test('a second ask to the same person is refused rather than queued twice', () =
   assert.equal(again.ok, false)
   assert.match(again.error, /has not answered yet/)
   assert.equal(requestsTo('lead').length, 1)
+})
+
+test('the asker is told their ask is pending, so the button can say so', () => {
+  partyStore.requestFollow(who('m1'), who('lead'))
+
+  const pending = pendingFor('m1')
+  assert.equal(pending.length, 1)
+  assert.equal(pending[0].targetId, 'lead')
+  assert.ok(pending[0].expiresAt > Date.now(), 'and when it lapses on its own')
+})
+
+test('every ending tells both ends, so neither is left showing a stale state', () => {
+  partyStore.requestFollow(who('m1'), who('lead'))
+  emitted.length = 0
+
+  partyStore.answerFollow('lead', 'm1', false)
+
+  assert.equal(resolvedFor('lead')[0]?.outcome, 'declined', "the leader's prompt closes")
+  assert.equal(resolvedFor('m1')[0]?.outcome, 'declined', "the asker's button comes back")
+})
+
+test('an asker who is no longer eligible cannot be accepted into the party', () => {
+  partyStore.requestFollow(who('m1'), who('lead'))
+  emitted.length = 0
+
+  // The caller supplies what the store cannot see for itself — here, that the
+  // asker has walked out of the room since.
+  const res = partyStore.answerFollow('lead', 'm1', true, () => 'M1 is no longer in this room.')
+
+  assert.equal(res.ok, false)
+  assert.equal(partyStore.getLeaderId('m1'), null, 'never pinned to a leader they are not with')
+  assert.equal(partyStore.getLeaderId('lead'), null, 'and nobody was made a leader of nobody')
+  assert.equal(resolvedFor('lead')[0]?.outcome, 'cancelled')
+  assert.match(noticesFor('m1')[0].message, /no longer in this room/)
+})
+
+test('a verify that passes lets the join through', () => {
+  partyStore.requestFollow(who('m1'), who('lead'))
+  const res = partyStore.answerFollow('lead', 'm1', true, () => null)
+
+  assert.equal(res.accepted, true)
+  assert.equal(partyStore.getLeaderId('m1'), 'lead')
+})
+
+test('walking out of the room ends the ask from either end', () => {
+  partyStore.requestFollow(who('m1'), who('lead'))
+  emitted.length = 0
+
+  // The asker leaves.
+  partyStore.cancelRequestsInvolving('m1', 'cancelled', 'They left the room.')
+
+  assert.equal(resolvedFor('lead')[0]?.outcome, 'cancelled')
+  assert.equal(resolvedFor('lead')[0]?.reason, 'They left the room.')
+  assert.equal(partyStore.answerFollow('lead', 'm1', true).ok, false, 'accepting later does nothing')
+
+  // And the same when the person being asked is the one who walks.
+  emitted.length = 0
+  partyStore.requestFollow(who('m2'), who('lead'))
+  emitted.length = 0
+  partyStore.cancelRequestsInvolving('lead', 'cancelled', 'They left the room.')
+  assert.equal(resolvedFor('m2')[0]?.outcome, 'cancelled')
+  assert.equal(partyStore.getLeaderId('m2'), null)
 })
 
 test('an ask to someone who already leads does not offer to make them a leader', () => {

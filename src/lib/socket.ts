@@ -358,6 +358,22 @@ export interface PartyFollowRequestPayload {
   expiresAt: number
 }
 
+/** Your own ask is on the table; the Follow control reads Pending until it resolves. */
+export interface PartyFollowPendingPayload {
+  targetId: string
+  targetName: string
+  expiresAt: number
+}
+
+/** The ask is over. Sent to both ends so neither is left showing a stale state. */
+export interface PartyFollowResolvedPayload {
+  requesterId: string
+  targetId: string
+  outcome: 'accepted' | 'declined' | 'cancelled' | 'expired'
+  /** Why, when there is a why worth showing. */
+  reason?: string | null
+}
+
 export interface PartyNoticePayload {
   id: string
   ts: number
@@ -435,6 +451,8 @@ export interface SocketEvents {
   'party:pulled': (payload: PartyPulledPayload) => void
   'party:notice': (payload: PartyNoticePayload) => void
   'party:follow-request': (payload: PartyFollowRequestPayload) => void
+  'party:follow-pending': (payload: PartyFollowPendingPayload) => void
+  'party:follow-resolved': (payload: PartyFollowResolvedPayload) => void
   'party-chat-message': (payload: PartyChatMessagePayload) => void
   'party:chat-history': (payload: PartyChatHistoryPayload) => void
   'room:party-state': (payload: RoomPartyStatePayload) => void

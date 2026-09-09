@@ -21,6 +21,8 @@ import {
   PartyPulledPayload,
   PartyNoticePayload,
   PartyFollowRequestPayload,
+  PartyFollowPendingPayload,
+  PartyFollowResolvedPayload,
   PartyChatMessagePayload,
   PartyChatHistoryPayload,
   RoomPartyStatePayload,
@@ -283,6 +285,14 @@ export class SocketEventHandlers {
 
   onPartyFollowRequest(handler: (payload: PartyFollowRequestPayload) => void): () => void {
     return this.on(SOCKET_EVENTS.PARTY_FOLLOW_REQUEST, handler)
+  }
+
+  onPartyFollowPending(handler: (payload: PartyFollowPendingPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_FOLLOW_PENDING, handler)
+  }
+
+  onPartyFollowResolved(handler: (payload: PartyFollowResolvedPayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_FOLLOW_RESOLVED, handler)
   }
 
   onPartyChatMessage(handler: (payload: PartyChatMessagePayload) => void): () => void {
