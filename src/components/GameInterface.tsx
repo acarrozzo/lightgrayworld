@@ -3442,6 +3442,7 @@ export default function GameInterface() {
             roomPlayers={roomPlayers}
             currentPlayerId={player.id}
             currentPlayer={player}
+            roomDanger={currentRoom}
             pendingFollowIds={pendingFollowIds}
             onOpenProfile={handleOpenPlayerProfile}
             onMessagePlayer={handleProfileMessage}

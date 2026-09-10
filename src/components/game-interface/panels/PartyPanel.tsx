@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import type { Player } from '@/lib/game-state'
 import type { PartySnapshot } from '@/lib/socket'
-import { buildOutsiders, buildSquad, groupBonusPercent, type SquadMember } from '@/lib/party/squad'
+import { buildOutsiders, buildSquad, groupBonusPercent, type RoomDanger, type SquadMember } from '@/lib/party/squad'
 import { usePresenceStore } from '@/store/presenceStore'
 import { usePartyBattleStore } from '@/store/partyBattleStore'
 import { MemberCard, MemberRow, type MemberAction } from '../party/MemberCard'
@@ -15,6 +15,8 @@ interface PartyPanelProps {
   roomPlayers: Player[]
   currentPlayerId: string
   currentPlayer?: Player
+  /** The room everyone is standing in, read against each member's own level. */
+  roomDanger?: RoomDanger | null
   /** People we have asked to lead us and not yet heard back from. */
   pendingFollowIds?: Set<string>
   onFollow: (targetId: string) => void
@@ -37,6 +39,7 @@ export default function PartyPanel({
   roomPlayers,
   currentPlayerId,
   currentPlayer,
+  roomDanger,
   pendingFollowIds,
   onFollow,
   onLeave,
@@ -52,17 +55,18 @@ export default function PartyPanel({
     () =>
       buildSquad({
         party,
+        roomDanger,
         roomPlayers,
         presenceById,
         currentPlayerId,
         self: currentPlayer ?? null,
         glanceById,
       }),
-    [party, roomPlayers, presenceById, currentPlayerId, currentPlayer, glanceById]
+    [party, roomDanger, roomPlayers, presenceById, currentPlayerId, currentPlayer, glanceById]
   )
   const outsiders = useMemo(
-    () => buildOutsiders({ party, roomPlayers, presenceById, currentPlayerId }),
-    [party, roomPlayers, presenceById, currentPlayerId]
+    () => buildOutsiders({ party, roomDanger, roomPlayers, presenceById, currentPlayerId }),
+    [party, roomDanger, roomPlayers, presenceById, currentPlayerId]
   )
   const groupBonus = useMemo(
     () => groupBonusPercent(roomPlayers, party, currentPlayerId),

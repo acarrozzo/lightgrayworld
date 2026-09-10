@@ -31,6 +31,7 @@ test('a turn becomes enemy HP, the last exchange and the turn', () => {
   assert.deepEqual(glance, {
     id: 'p1',
     enemyName: 'Scorpion',
+    enemyLevel: null,
     enemyHp: 7,
     enemyHpMax: 20,
     enemyHpPct: 35,
@@ -69,4 +70,28 @@ test('a live battle can be read for someone who missed the events', () => {
   assert.equal(glance.lastHit, null)
   assert.equal(glanceFromBattle('p2', { ...battle, isActive: false }), null)
   assert.equal(glanceFromBattle('p2', null), null)
+})
+
+
+test('the enemy level comes from the fight once the opening event is behind us', () => {
+  // battle:started names the level; battle:turn spreads the battle snapshot,
+  // which does not carry it, so from turn two the live fight is the source.
+  const started = {
+    event: 'battle:started',
+    payload: { enemyName: 'Scorpion', enemyLevel: 8, enemyCurrentHp: 20, enemyMaxHp: 20, turnCount: 0 },
+  }
+  assert.equal(glanceFromEvents('p1', [started], 1).enemyLevel, 8)
+
+  // A later turn on its own knows nothing about the level...
+  assert.equal(glanceFromEvents('p1', [turn()], 1).enemyLevel, null)
+  // ...until the fight is handed in beside it.
+  const battle = { isActive: true, enemyName: 'Scorpion', enemy: { level: 8 } }
+  assert.equal(glanceFromEvents('p1', [turn()], 1, battle).enemyLevel, 8)
+})
+
+test('a live battle carries the enemy level for someone who missed the events', () => {
+  const battle = { isActive: true, enemyName: 'Bat', enemyCurrentHp: 3, enemyMaxHp: 12, turnCount: 6, enemy: { level: 6 } }
+  assert.equal(glanceFromBattle('p2', battle, 9).enemyLevel, 6)
+  // An enemy with no level on it is honestly null, never zero.
+  assert.equal(glanceFromBattle('p2', { ...battle, enemy: {} }, 9).enemyLevel, null)
 })

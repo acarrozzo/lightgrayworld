@@ -409,6 +409,7 @@ export type PartyMemberBattlePayload =
   | {
       id: string
       enemyName: string | null
+      enemyLevel: number | null
       enemyHp: number | null
       enemyHpMax: number | null
       enemyHpPct: number | null

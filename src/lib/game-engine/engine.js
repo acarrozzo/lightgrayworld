@@ -442,7 +442,12 @@ class GameEngine {
       // The party sees each other's fights in more detail than the world does:
       // enemy HP, the last exchange, the turn. Read off the same events, so a
       // teammate never learns something the owner has not been told first.
-      const glance = glanceFromEvents(playerId, result.playerEvents)
+      const glance = glanceFromEvents(
+        playerId,
+        result.playerEvents,
+        Date.now(),
+        this.rooms.get(roomId)?.activeBattles?.get(playerId) ?? null
+      )
       if (glance) {
         partyStore.emitToOthers(playerId, SOCKET_EVENTS.PARTY_MEMBER_BATTLE, glance)
       }

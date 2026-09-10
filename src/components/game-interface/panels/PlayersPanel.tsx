@@ -32,6 +32,8 @@ interface PlayersPanelProps {
   roomPlayers: Player[]
   currentPlayerId: string
   currentPlayer?: Player
+  /** The room everyone is standing in, for the per-member safety reading. */
+  roomDanger?: { dangerLevel?: number | null; isSafe?: boolean | null } | null
   pendingFollowIds?: Set<string>
   onOpenProfile: (player: ProfileTarget) => void
   onMessagePlayer: (player: Pick<Player, 'id' | 'username'>) => void
@@ -58,6 +60,7 @@ export default function PlayersPanel({
   roomPlayers,
   currentPlayerId,
   currentPlayer,
+  roomDanger,
   pendingFollowIds,
   onOpenProfile,
   onMessagePlayer,
@@ -121,6 +124,7 @@ export default function PlayersPanel({
               roomPlayers={roomPlayers}
               currentPlayerId={currentPlayerId}
               currentPlayer={currentPlayer}
+              roomDanger={roomDanger}
               pendingFollowIds={pendingFollowIds}
               onFollow={onFollowPlayer}
               onLeave={onLeaveParty}

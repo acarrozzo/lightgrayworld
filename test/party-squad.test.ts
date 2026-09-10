@@ -260,7 +260,7 @@ test('you can only follow a leader, and never someone already with you', () => {
 
 test('the party sees how a fight is going, not only that there is one', () => {
   const glance = {
-    id: 'lead', enemyName: 'Scorpion', enemyHp: 7, enemyHpMax: 20, enemyHpPct: 35,
+    id: 'lead', enemyName: 'Scorpion', enemyLevel: 8, enemyHp: 7, enemyHpMax: 20, enemyHpPct: 35,
     lastHit: 5, lastTook: 2, turn: 3, ts: NOW,
   }
   const [lead] = buildSquad({
@@ -269,15 +269,44 @@ test('the party sees how a fight is going, not only that there is one', () => {
   })
   assert.equal(lead.state, 'fighting')
   assert.equal(lead.battle?.enemyHpPct, 35)
+  assert.equal(lead.battle?.enemyLevel, 8, 'the chip draws the enemy like a player, so it needs their level')
   assert.equal(lead.statusLabel, 'Scorpion 35%')
 })
 
 test('a glance that outlived its fight is dropped: presence decides whether there is a fight', () => {
-  const stale = { id: 'me', enemyName: 'Bat', enemyHp: 1, enemyHpMax: 5, enemyHpPct: 20, lastHit: 1, lastTook: 0, turn: 9, ts: NOW }
+  const stale = { id: 'me', enemyName: 'Bat', enemyLevel: 3, enemyHp: 1, enemyHpMax: 5, enemyHpPct: 20, lastHit: 1, lastTook: 0, turn: 9, ts: NOW }
   const me = buildSquad({
     party: PARTY, roomPlayers: ROOM, presenceById: PRESENCE, currentPlayerId: 'me',
     glanceById: { me: stale },
   }).find((m) => m.isSelf)!
   assert.equal(me.state, 'ready')
   assert.equal(me.battle, null)
+})
+
+test("a healthy member's label is a word, not the HP the bars already carry", () => {
+  const squad = buildSquad({ party: PARTY, roomPlayers: ROOM, presenceById: PRESENCE, currentPlayerId: 'me' })
+  const me = squad.find((m) => m.isSelf)!
+  assert.equal(me.state, 'ready')
+  assert.equal(me.statusLabel, 'Ready')
+  // The hover line is the vitals plus this label. While the label *was* the HP,
+  // that line read "42/52 HP, 15/25 MP, 42/52" — the numbers, then the numbers.
+  assert.ok(!me.statusLabel.includes('/'), 'the label must not repeat a vital')
+})
+
+test('hurt and safe name themselves too', () => {
+  const squad = buildSquad({ party: PARTY, roomPlayers: ROOM, presenceById: PRESENCE, currentPlayerId: 'me' })
+  assert.equal(squad[2].state, 'hurt')
+  assert.equal(squad[2].statusLabel, 'Hurt')
+
+  const inASafeRoom = buildSquad({
+    party: PARTY,
+    roomPlayers: ROOM,
+    presenceById: PRESENCE,
+    currentPlayerId: 'me',
+    roomDanger: { dangerLevel: 1, isSafe: true },
+  })
+  const me = inASafeRoom.find((m) => m.isSelf)!
+  assert.equal(me.state, 'safe')
+  assert.equal(me.statusLabel, 'Safe')
+  assert.ok(!me.statusLabel.includes('/'))
 })

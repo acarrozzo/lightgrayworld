@@ -126,10 +126,16 @@ function deriveLabel(m: SquadMember): string {
       const ago = shortAgo(m.lastSeen)
       return ago ? `Idle ${ago}` : 'Idle'
     }
+    case 'hurt':
+      return 'Hurt'
     case 'safe':
-      return typeof m.hp === 'number' && typeof m.hpMax === 'number' ? `${m.hp}/${m.hpMax}` : 'Safe'
+      return 'Safe'
     default:
-      return typeof m.hp === 'number' && typeof m.hpMax === 'number' ? `${m.hp}/${m.hpMax}` : '—'
+      // Every other state names itself, so this one does too. It used to be the
+      // HP numbers, which the bars beside it already carry — that is what made
+      // the hover read "394/483 HP, 6/127 MP, 394/483". An em dash still means
+      // we have no reading at all, which is not the same as being fine.
+      return typeof m.hp === 'number' ? 'Ready' : '—'
   }
 }
 

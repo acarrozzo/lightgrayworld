@@ -11,6 +11,7 @@
  * @typedef {object} BattleGlance
  * @property {string} id            the fighting player
  * @property {string|null} enemyName
+ * @property {number|null} enemyLevel
  * @property {number|null} enemyHp
  * @property {number|null} enemyHpMax
  * @property {number|null} enemyHpPct  0–100
@@ -34,11 +35,16 @@ function num(v) {
 /**
  * Read one action's player events for what they say about the fight.
  *
+ * `battle` is the live fight, and is only read for what the events leave out:
+ * `battle:started` names the enemy's level but `battle:turn` spreads the
+ * battle snapshot, which does not carry it, so from turn two onwards the level
+ * has to come from the fight itself.
+ *
  * @returns {BattleGlance | { id: string, ended: true, ts: number } | null}
  *   a glance when the fight moved, an `ended` marker when it is over, null
  *   when the action had nothing to do with a battle.
  */
-function glanceFromEvents(playerId, playerEvents, now = Date.now()) {
+function glanceFromEvents(playerId, playerEvents, now = Date.now(), battle = null) {
   if (!Array.isArray(playerEvents) || !playerEvents.length) return null
   if (playerEvents.some((e) => TERMINAL.has(e?.event))) return { id: playerId, ended: true, ts: now }
 
@@ -52,6 +58,7 @@ function glanceFromEvents(playerId, playerEvents, now = Date.now()) {
   return {
     id: playerId,
     enemyName: latest.enemyName ?? null,
+    enemyLevel: num(latest.enemyLevel) ?? num(battle?.enemy?.level),
     enemyHp: num(latest.enemyCurrentHp),
     enemyHpMax: num(latest.enemyMaxHp),
     enemyHpPct: pct(latest.enemyCurrentHp, latest.enemyMaxHp),
@@ -72,6 +79,7 @@ function glanceFromBattle(playerId, battle, now = Date.now()) {
   return {
     id: playerId,
     enemyName: battle.enemyName ?? null,
+    enemyLevel: num(battle.enemy?.level),
     enemyHp: num(battle.enemyCurrentHp),
     enemyHpMax: num(battle.enemyMaxHp),
     enemyHpPct: pct(battle.enemyCurrentHp, battle.enemyMaxHp),

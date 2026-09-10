@@ -10,18 +10,18 @@ import { usePresenceStore } from '@/store/presenceStore'
 import { usePartyBattleStore } from '@/store/partyBattleStore'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { useLowHpAlerts } from '@/hooks/useLowHpAlerts'
-import { HairBar, MemberCard, StateRing, type MemberAction } from './MemberCard'
+import { EnemyMini, HairBar, MemberAvatar, MemberCard, StateBadge, type MemberAction } from './MemberCard'
 
 /**
  * The party, as a rail under the header.
  *
- * Forty pixels, always on screen, any party size: every member is a chip —
- * avatar in a ring the colour of the worst true thing about them, name with
- * the level after it, HP over MP, and a third enemy-coloured hairline while
- * they fight. The viewer is drawn the same as everyone else, so the rail reads
- * as one row of one object. The leader wears a small crown; no edge or border
- * means anything. The rail ends in the party's chat, with a count of what has
- * been said since they last looked. Detail is one tap away in a sheet.
+ * Sixty-four pixels, always on screen, any party size: every member is a chip
+ * of four rows — name with the level after it, HP with its number, MP with
+ * its number, then a badge naming the state. The viewer is drawn the same as
+ * everyone else, so the rail reads as one row of one object. The leader wears
+ * a small crown; no ring, edge or border means anything. The rail ends in the
+ * party's chat, with a count of what has been said since they last looked.
+ * Detail is one tap away in a sheet.
  *
  * What is deliberately *not* here: the people standing in the room who are not
  * in the party. They belong to the room, and the room's "Others here" draws
@@ -289,7 +289,7 @@ function MemberSheet({
     <Sheet label={`${member.username}, party member`} onClose={onClose}>
       <SheetHeader title={member.isSelf ? 'You' : member.username} onClose={onClose} />
       <div className="p-2">
-        <MemberCard member={member} actions={actions} className="border-transparent bg-transparent" />
+        <MemberCard member={member} actions={actions} bare />
       </div>
     </Sheet>
   )
@@ -476,9 +476,12 @@ function FollowAsk({
   )
 }
 
+/** How wide the hover card is, in the placement maths and on the element. */
+const PEEK_WIDTH = 248
+
 /* ───────────────────────── chips ───────────────────────── */
 
-/** HP fill by state, the same reading the ring gives. */
+/** HP fill by state, the same reading the badge gives in words. */
 const CHIP_HP_FILL: Record<SquadMember['state'], string> = {
   down: 'bg-status-error',
   fighting: 'bg-status-error',
@@ -489,16 +492,50 @@ const CHIP_HP_FILL: Record<SquadMember['state'], string> = {
   ready: 'bg-resource-hp',
 }
 
+/** A vital as a number, or an em dash when we have no reading for them at all. */
+function vitalText(cur?: number, max?: number): string {
+  return typeof cur === 'number' && typeof max === 'number' ? `${cur}/${max}` : '—'
+}
+
 /**
- * One member. Name with the level after it, then HP over MP for everyone — the
- * viewer included, so the rail reads as one row of the same object. The leader
- * wears a small crown after their name; nothing about the chip's edge means
- * anything. A fight adds a third, enemy-coloured hairline underneath.
+ * One member: who they are, HP, MP, and then what they are doing.
+ *
+ * Both vitals carry their number, because a bar alone cannot tell 394 of 483
+ * from 39 of 48. The state is a badge rather than a ring around the sprite —
+ * the sprite is a portrait drawn at twenty by twenty-eight and an outline on it
+ * was both easy to miss and, for ready and offline, never drawn at all.
+ *
+ * A member in a fight trades that badge for the enemy itself, drawn the same
+ * way they are: name, level, health. The two extra rows fit because everything
+ * above them is set on tight leading.
  */
-function Chip({ member, pulse, onOpen }: { member: SquadMember; pulse: boolean; onOpen: () => void }) {
+function Chip({
+  member,
+  pulse,
+  onOpen,
+  onPeek,
+  onPeekEnd,
+}: {
+  member: SquadMember
+  pulse: boolean
+  onOpen: () => void
+  /** Hovering or focusing the chip shows the read-only card under it. */
+  onPeek: (id: string, el: HTMLElement) => void
+  onPeekEnd: () => void
+}) {
   const vitals =
     typeof member.hp === 'number' ? `${member.hp}/${member.hpMax} HP, ${member.mp}/${member.mpMax} MP` : 'no vitals'
-  const label = `${member.isSelf ? 'You' : member.username}, level ${member.level}, ${vitals}, ${member.statusLabel}${
+  const doing =
+    member.state === 'fighting'
+      ? `fighting ${member.battleEnemyName ?? member.battle?.enemyName ?? 'something'}${
+          member.battle?.enemyLevel != null ? ` level ${member.battle.enemyLevel}` : ''
+        }${
+          member.battle?.enemyHp != null && member.battle?.enemyHpMax != null
+            ? ` at ${member.battle.enemyHp}/${member.battle.enemyHpMax}`
+            : ''
+        }`
+      : member.statusLabel
+  const label = `${member.isSelf ? 'You' : member.username}, level ${member.level}, ${vitals}, ${doing}${
     member.isLeader ? ', party leader' : ''
   }`
   const nameTone =
@@ -507,29 +544,48 @@ function Chip({ member, pulse, onOpen }: { member: SquadMember; pulse: boolean; 
       : member.isSelf
         ? 'text-fg-bright'
         : 'text-fg-secondary'
-  const fighting = member.state === 'fighting' && member.battle?.enemyHpPct != null
   return (
     <button
       type="button"
       onClick={onOpen}
-      title={label}
       aria-label={label}
+      // Mouse only: on a phone there is no hover, and a tap opens the sheet.
+      onPointerEnter={(event) => {
+        if (event.pointerType === 'mouse') onPeek(member.id, event.currentTarget)
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === 'mouse') onPeekEnd()
+      }}
+      onFocus={(event) => onPeek(member.id, event.currentTarget)}
+      onBlur={onPeekEnd}
       className={`flex shrink-0 items-center gap-1.5 rounded-md py-0.5 pl-1 pr-1.5 transition-colors hover:bg-surface-hover/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
         member.state === 'offline' ? 'opacity-50' : ''
       }`}
     >
-      <StateRing member={member} pulse={pulse} />
-      <span className="flex w-14 flex-col gap-[3px]">
+      <MemberAvatar member={member} />
+      <span className="flex w-[104px] flex-col gap-[2px]">
         <span className={`flex min-w-0 items-center gap-0.5 text-[10px] leading-none ${nameTone}`}>
           <span className="truncate">{member.isSelf ? 'You' : member.username}</span>
-          {member.isLeader && (
-            <Crown size={8} className="shrink-0 text-status-warning" aria-hidden="true" />
-          )}
+          {member.isLeader && <Crown size={8} className="shrink-0 text-status-warning" aria-hidden="true" />}
           <span className="shrink-0 tabular-nums text-fg-muted">Lv{member.level}</span>
         </span>
-        <HairBar pct={member.hpPct} fill={CHIP_HP_FILL[member.state]} />
-        <HairBar pct={member.mpPct} fill="bg-resource-mp" />
-        {fighting && <HairBar pct={member.battle!.enemyHpPct} fill="bg-enemy-hostile" height="h-[2px]" />}
+        <span className="flex items-center gap-1">
+          <HairBar pct={member.hpPct} fill={CHIP_HP_FILL[member.state]} height="h-[4px]" />
+          <span className="shrink-0 text-[8px] leading-none tabular-nums text-fg-secondary">
+            {vitalText(member.hp, member.hpMax)}
+          </span>
+        </span>
+        <span className="flex items-center gap-1">
+          <HairBar pct={member.mpPct} fill="bg-resource-mp" />
+          <span className="shrink-0 text-[8px] leading-none tabular-nums text-fg-secondary">
+            {vitalText(member.mp, member.mpMax)}
+          </span>
+        </span>
+        {member.state === 'fighting' ? (
+          <EnemyMini member={member} />
+        ) : (
+          <StateBadge member={member} pulse={pulse} className="mt-[1px] self-start" />
+        )}
       </span>
     </button>
   )
@@ -591,6 +647,62 @@ export default function PartyRail({
     [partyEntries, lastReadTs]
   )
 
+  // Who is holding the party up. A fight is the only thing that pins a party
+  // in place, so the line names the fight rather than the waiting: the leader
+  // finding out by having their move refused is the thing this replaces.
+  const inBattleLine = useMemo(() => {
+    const fighting = members.filter((m) => m.state === 'fighting')
+    if (fighting.length === 0) return null
+    if (fighting.length > 1) return `${fighting.length} in battle`
+    return fighting[0].isSelf ? 'You in battle' : `${fighting[0].username} in battle`
+  }, [members])
+
+  // ── the peek card ──
+  // Hovering a chip opens the member card under it, read-only. It replaces the
+  // browser's `title`, which took a second to appear, could not be themed, and
+  // said the HP twice. Pointer-events are off, so it can never eat a click.
+  const [peek, setPeek] = useState<{ id: string; left: number; top: number } | null>(null)
+  const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const peekShown = useRef(false)
+  const stopPeekTimer = () => {
+    if (peekTimer.current) clearTimeout(peekTimer.current)
+    peekTimer.current = null
+  }
+  const hidePeekNow = useCallback(() => {
+    stopPeekTimer()
+    peekShown.current = false
+    setPeek(null)
+  }, [])
+  const showPeek = useCallback((id: string, el: HTMLElement) => {
+    stopPeekTimer()
+    const place = () => {
+      const rect = el.getBoundingClientRect()
+      // Keep the card on screen: it hangs from the chip's left edge until that
+      // would push it past the right of the window.
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - PEEK_WIDTH - 8))
+      setPeek({ id, left, top: rect.bottom + 6 })
+      peekShown.current = true
+    }
+    // Sliding along the rail switches cards at once; arriving waits a beat, so
+    // a pointer crossing the party does not strobe.
+    if (peekShown.current) place()
+    else peekTimer.current = setTimeout(place, 120)
+  }, [])
+  const endPeek = useCallback(() => {
+    stopPeekTimer()
+    peekTimer.current = setTimeout(() => {
+      peekShown.current = false
+      setPeek(null)
+    }, 80)
+  }, [])
+  useEffect(() => stopPeekTimer, [])
+  // A sheet, or scrolling the rail, makes the anchor meaningless.
+  useEffect(() => {
+    if (open) hidePeekNow()
+  }, [open, hidePeekNow])
+  // Read the member fresh every render so the card follows the fight it shows.
+  const peekMember = peek ? members.find((m) => m.id === peek.id) ?? null : null
+
   const close = useCallback(() => setOpen(null), [])
   const openMember = open?.kind === 'member' ? members.find((m) => m.id === open.id) ?? null : null
 
@@ -603,9 +715,10 @@ export default function PartyRail({
       <div className="shrink-0 border-b border-line-subtle/60 bg-surface-panel/95 shadow-[0_6px_14px_-12px_var(--shadow)]">
         {party && (
           <div
-            className="flex h-10 items-center gap-1 overflow-x-auto px-2 lg:pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex h-16 items-center gap-1 overflow-x-auto px-2 lg:pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="group"
             aria-label="Party"
+            onScroll={hidePeekNow}
           >
             <button
               type="button"
@@ -613,7 +726,7 @@ export default function PartyRail({
               aria-haspopup="dialog"
               aria-label={`${party.name ?? 'Party'} options`}
               title={party.name ?? 'Party'}
-              className="mr-1.5 flex h-8 shrink-0 flex-col justify-center gap-[3px] rounded-md px-1.5 text-left transition-colors hover:bg-surface-hover/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+              className="mr-1.5 flex shrink-0 flex-col justify-center gap-[3px] rounded-md px-1.5 py-1 text-left transition-colors hover:bg-surface-hover/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
             >
               <span className="flex max-w-[92px] items-center gap-1">
                 <Users size={10} className="shrink-0 text-resource-mp" aria-hidden="true" />
@@ -630,6 +743,11 @@ export default function PartyRail({
                 )}
                 {party.closed && <Lock size={8} className="text-status-warning" aria-label="Closed to new followers" />}
               </span>
+              {inBattleLine && (
+                <span className="max-w-[92px] truncate text-[9px] font-semibold leading-none text-status-error">
+                  {inBattleLine}
+                </span>
+              )}
             </button>
 
             {members.map((member) => (
@@ -638,6 +756,8 @@ export default function PartyRail({
                 member={member}
                 pulse={pulsing.has(member.id)}
                 onOpen={() => setOpen({ kind: 'member', id: member.id })}
+                onPeek={showPeek}
+                onPeekEnd={endPeek}
               />
             ))}
 
@@ -651,7 +771,7 @@ export default function PartyRail({
             >
               <MessageSquare size={13} aria-hidden="true" />
               {unread > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-status-error px-1 text-[8px] font-bold text-fg-bright">
+                <span className="absolute -right-1.5 -top-1.5 flex h-[14px] min-w-[14px] items-center justify-center rounded-full fill-status-error px-1 text-[8px] font-bold">
                   {unread > 99 ? '99+' : unread}
                 </span>
               )}
@@ -667,6 +787,19 @@ export default function PartyRail({
           </div>
         )}
       </div>
+
+      {peekMember && peek && (
+        <div
+          role="tooltip"
+          style={{ left: peek.left, top: peek.top, width: PEEK_WIDTH }}
+          className="pointer-events-none fixed z-40 rounded-lg border border-line-strong bg-surface-panel shadow-2xl shadow-shadow"
+        >
+          <MemberCard member={peekMember} bare className="p-2.5" />
+          <p className="border-t border-line-subtle/50 px-2.5 py-1.5 text-[9px] text-fg-disabled">
+            Click for messaging and profile
+          </p>
+        </div>
+      )}
 
       {openMember && (
         <MemberSheet
