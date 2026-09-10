@@ -700,6 +700,99 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     if (own) partyStore.emitToOthers(playerId, SOCKET_EVENTS.PARTY_MEMBER_BATTLE, own)
   }
 
+  /**
+   * A dropped connection is usually a refresh, not a departure.
+   *
+   * The browser tears the page down and builds it again, and for a second or
+   * two the account holds no socket at all. Tearing the session down on that
+   * gap cost the player their party, their active fight, their search reveals,
+   * their levers and teleport grants, and posted a disconnect and a login to
+   * the world feed for what the player experienced as one keypress.
+   *
+   * So the last socket closing only *schedules* the teardown. Logging back in
+   * within the window cancels it and the session simply carries on; nobody in
+   * the room is told anything, because nothing happened. Two tabs are handled
+   * separately and earlier: with another socket live there is no gap to cover.
+   */
+  const RECONNECT_GRACE_MS = 15_000
+  /** userId -> the teardown waiting on them. */
+  const pendingTeardowns = new Map()
+
+  const runSessionTeardown = (player) => {
+    if (gameEngine.playerQueue && gameEngine.playerQueue.clearPlayer) {
+      gameEngine.playerQueue.clearPlayer(player.id, { rejectPending: true })
+      console.log(`[Socket] Cleared action queue for player ${player.username}`)
+    }
+    gameEngine.unregisterPlayer(player.id, player.currentRoom)
+
+    // Drop from any party (disbands it if they were leading).
+    partyStore.onDisconnect(player.id)
+
+    addGhost(player.currentRoom, player, 'disconnected')
+
+    io.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_LEFT, {
+      id: player.id,
+      username: player.username,
+      exitDirection: null,
+      isTeleport: false,
+      reason: 'disconnect',
+      lastSeen: Date.now(),
+      ghostData: {
+        id: player.id,
+        username: player.username,
+        level: player.level,
+        hp: player.hp,
+        hpMax: player.hpMax,
+        mp: player.mp,
+        mpMax: player.mpMax,
+        currentRoom: player.currentRoom,
+        uIcon: player.uIcon ?? null,
+        uIconColor: player.uIconColor ?? null,
+        isActive: false,
+        status: 'disconnected',
+        lastSeen: Date.now(),
+      },
+    })
+
+    // If they led a party, surviving members' grouping changed — refresh the room.
+    broadcastRoomPartyState(player.currentRoom)
+    // This was the account's last connection, so it leaves the global roster.
+    departPresence(io, player.id)
+    lastActivityPersistedAt.delete(player.id)
+    clearPlayerLevers(player.id)
+    clearPlayerReveals(player.id)
+    clearTeleportGrants(player.id)
+
+    console.log(`Player ${player.username} disconnected (grace window elapsed)`)
+
+    recordWorldFeedEventSafe({
+      userId: player.id,
+      username: player.username,
+      eventType: 'disconnect',
+    })
+  }
+
+  const scheduleSessionTeardown = (player) => {
+    const existing = pendingTeardowns.get(player.id)
+    if (existing) clearTimeout(existing)
+    const timer = setTimeout(() => {
+      pendingTeardowns.delete(player.id)
+      runSessionTeardown(player)
+    }, RECONNECT_GRACE_MS)
+    // A session waiting to be cleaned up must never hold the process open.
+    if (typeof timer.unref === 'function') timer.unref()
+    pendingTeardowns.set(player.id, timer)
+  }
+
+  /** @returns true when this login was a reconnect that beat the teardown. */
+  const cancelSessionTeardown = (userId) => {
+    const timer = pendingTeardowns.get(userId)
+    if (!timer) return false
+    clearTimeout(timer)
+    pendingTeardowns.delete(userId)
+    return true
+  }
+
   const PARTY_CHAT_HISTORY_LIMIT = 50
   const sendPartyChatHistory = async (socket, partyId) => {
     if (!socket || !partyId) return
@@ -761,7 +854,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
     for (const memberId of memberIds) {
       const memberPlayer = findActivePlayerById(memberId)
-      if (!memberPlayer) continue // offline (should already be detached)
+      if (!memberPlayer) {
+        // No live connection: mid-reconnect inside the grace window, or gone for
+        // good. Either way they cannot be moved, and leaving them a member would
+        // strand them — pinned to a leader they are not with, unable to walk.
+        partyStore.leaveBehind(memberId, { destinationName: toRoomName ?? null })
+        continue
+      }
       if ((memberPlayer.hp ?? 0) <= 0) continue // dead — onDeath drops them from the party
       if (memberPlayer.currentRoom !== fromRoom) {
         // Standing somewhere other than the room the party just left: pinned to a
@@ -1075,6 +1174,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         return
       }
 
+      // Beat the teardown and this is the same session resuming, not a new
+      // arrival: the party, the fight and the reveals were never let go of.
+      const wasReconnect = cancelSessionTeardown(authUser.userId)
+
       try {
         const previousState = activePlayers.get(socket.id)
         if (previousState?.id && previousState.id !== authUser.userId) {
@@ -1324,11 +1427,17 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           announceSkillTeacher(prisma, socket, playerData, playerData.currentRoom),
         ])
 
-        recordWorldFeedEventSafe({
-          userId: playerData.id,
-          username: playerData.username,
-          eventType: 'login',
-        })
+        // A refresh is not an arrival. Announcing one would put a login in the
+        // world feed for every page reload, which is the churn this avoids.
+        if (!wasReconnect) {
+          recordWorldFeedEventSafe({
+            userId: playerData.id,
+            username: playerData.username,
+            eventType: 'login',
+          })
+        } else {
+          console.log(`[Socket] ${playerData.username} reconnected within the grace window`)
+        }
       } catch (error) {
         console.error('Error handling player login:', error)
         socket.emit('auth:error', { message: 'Failed to process login' })
@@ -2266,57 +2375,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           return
         }
 
-        if (gameEngine.playerQueue && gameEngine.playerQueue.clearPlayer) {
-          gameEngine.playerQueue.clearPlayer(player.id, { rejectPending: true })
-          console.log(`[Socket] Cleared action queue for player ${player.username}`)
-        }
-        gameEngine.unregisterPlayer(player.id, player.currentRoom)
-
-        // Drop from any party (disbands it if they were leading).
-        partyStore.onDisconnect(player.id)
-
-        addGhost(player.currentRoom, player, 'disconnected')
-
-        socket.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_LEFT, {
-          id: player.id,
-          username: player.username,
-          exitDirection: null,
-          isTeleport: false,
-          reason: 'disconnect',
-          lastSeen: Date.now(),
-          ghostData: {
-            id: player.id,
-            username: player.username,
-            level: player.level,
-            hp: player.hp,
-            hpMax: player.hpMax,
-            mp: player.mp,
-            mpMax: player.mpMax,
-            currentRoom: player.currentRoom,
-            uIcon: player.uIcon ?? null,
-            uIconColor: player.uIconColor ?? null,
-            isActive: false,
-            status: 'disconnected',
-            lastSeen: Date.now(),
-          },
-        })
-
-        // If they led a party, surviving members' grouping changed — refresh the room.
-        broadcastRoomPartyState(player.currentRoom)
-        // This was the account's last connection, so it leaves the global roster.
-        departPresence(io, player.id)
-        lastActivityPersistedAt.delete(player.id)
-        clearPlayerLevers(player.id)
-        clearPlayerReveals(player.id)
-        clearTeleportGrants(player.id)
-
-        console.log(`Player ${player.username} disconnected`)
-
-        recordWorldFeedEventSafe({
-          userId: player.id,
-          username: player.username,
-          eventType: 'disconnect',
-        })
+        // Usually a refresh. Hold the session open briefly instead of tearing
+        // it down, and let a reconnect cancel it.
+        gameEngine.unregisterSocket(player.id, socket.id)
+        scheduleSessionTeardown(player)
       }
     })
   })
