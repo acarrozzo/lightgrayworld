@@ -682,6 +682,24 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
    * member who refreshes or joins late gets the conversation rather than an
    * empty channel.
    */
+  /**
+   * Everyone's fight at a glance, for a player who was not there for the
+   * events — they have just joined the party, or just reconnected. Their own
+   * fight, if any, goes the other way to the rest of the party.
+   */
+  const syncPartyBattleGlances = (playerId) => {
+    const others = partyStore.otherMemberIds(playerId)
+    if (!others.length) return
+    const sids = getSocketIdsForUser(playerId)
+    for (const memberId of others) {
+      const glance = gameEngine.getBattleGlance(memberId)
+      if (!glance) continue
+      for (const sid of sids) io.to(sid).emit(SOCKET_EVENTS.PARTY_MEMBER_BATTLE, glance)
+    }
+    const own = gameEngine.getBattleGlance(playerId)
+    if (own) partyStore.emitToOthers(playerId, SOCKET_EVENTS.PARTY_MEMBER_BATTLE, own)
+  }
+
   const PARTY_CHAT_HISTORY_LIMIT = 50
   const sendPartyChatHistory = async (socket, partyId) => {
     if (!socket || !partyId) return
@@ -1275,6 +1293,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // A player rejoining a party that outlived their connection gets the
         // conversation back with it.
         await sendPartyChatHistory(socket, partyStore.getPartyId(playerData.id))
+        syncPartyBattleGlances(playerData.id)
 
         // Restore the persisted enemy for the current room so a refresh resumes
         // the same enemy that was there (full-HP battle) — this closes the "refresh
@@ -2059,6 +2078,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         const requesterSocket = io.sockets.sockets.get(sid)
         if (requesterSocket) sendPartyChatHistory(requesterSocket, res.partyId)
       }
+      // And what they are in the middle of.
+      syncPartyBattleGlances(requesterId)
     })
 
     // Leader opens or closes the party to new followers.

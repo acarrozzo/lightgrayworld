@@ -400,6 +400,25 @@ export interface PartyChatHistoryPayload {
   messages: PartyChatMessagePayload[]
 }
 
+/**
+ * A teammate's fight at a glance. Party-scoped: the world only ever learns
+ * that somebody is fighting and what; the party also sees whether they are
+ * winning. `ended` clears it. Shape owned by src/lib/party/battle-glance.js.
+ */
+export type PartyMemberBattlePayload =
+  | {
+      id: string
+      enemyName: string | null
+      enemyHp: number | null
+      enemyHpMax: number | null
+      enemyHpPct: number | null
+      lastHit: number | null
+      lastTook: number | null
+      turn: number | null
+      ts: number
+    }
+  | { id: string; ended: true; ts: number }
+
 export interface PartyErrorPayload {
   message: string
 }
@@ -455,6 +474,7 @@ export interface SocketEvents {
   'party:follow-resolved': (payload: PartyFollowResolvedPayload) => void
   'party-chat-message': (payload: PartyChatMessagePayload) => void
   'party:chat-history': (payload: PartyChatHistoryPayload) => void
+  'party:member-battle': (payload: PartyMemberBattlePayload) => void
   'room:party-state': (payload: RoomPartyStatePayload) => void
   'world:presence-sync': (payload: WorldPresenceSyncPayload) => void
   'world:presence-update': (payload: WorldPresenceUpdatePayload) => void

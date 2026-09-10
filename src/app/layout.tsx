@@ -52,7 +52,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme={DEFAULT_THEME_ID}>
+    // The bootstrap above rewrites data-theme before hydration, so the server's
+    // default and the client's stored theme differ on purpose — tell React so.
+    <html lang="en" data-theme={DEFAULT_THEME_ID} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>

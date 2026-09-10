@@ -3,6 +3,8 @@ const { RoomState } = require('./room-state')
 const { PlayerActionQueue } = require('./player-action-queue')
 const { prisma } = require('../db-client')
 const { updatePresence, getPresence } = require('../services/presence-store')
+const { glanceFromEvents, glanceFromBattle } = require('../party/battle-glance')
+const { SOCKET_EVENTS } = require('../socket-utils')
 const partyStore = require('../services/party-store')
 const travelerState = require('./traveler-state')
 const { debugLog, quietActionLogger } = require('../debug-log')
@@ -437,6 +439,14 @@ class GameEngine {
         updatePresence(this.io, playerId, { inBattle, battleEnemyName })
       }
 
+      // The party sees each other's fights in more detail than the world does:
+      // enemy HP, the last exchange, the turn. Read off the same events, so a
+      // teammate never learns something the owner has not been told first.
+      const glance = glanceFromEvents(playerId, result.playerEvents)
+      if (glance) {
+        partyStore.emitToOthers(playerId, SOCKET_EVENTS.PARTY_MEMBER_BATTLE, glance)
+      }
+
       // The party watches each other's fights. These are the two moments worth a
       // line — a kill and a level — and they are read off the same events the
       // player's own client gets, so the party never learns something the owner
@@ -534,6 +544,19 @@ class GameEngine {
         fromRoomEnemy: result.transfer.fromRoomEnemy,
       })
     }
+  }
+
+  /**
+   * A player's current fight at a glance, for a teammate who was not there for
+   * the events: someone who just joined the party, or a client reconnecting.
+   * Null when they are not fighting.
+   */
+  getBattleGlance(playerId) {
+    for (const room of this.rooms.values()) {
+      const battle = room.activeBattles?.get(playerId)
+      if (battle && battle.isActive) return glanceFromBattle(playerId, battle)
+    }
+    return null
   }
 
   emitToPlayer(playerId, event, payload) {

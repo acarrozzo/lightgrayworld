@@ -1,8 +1,12 @@
 'use client'
 
-import { Player } from '@/lib/game-state'
-import { PartySnapshot } from '@/lib/socket'
-import PlayerRow, { type PlayerRowAction, type PlayerRowData } from '@/components/player/PlayerRow'
+import { useMemo } from 'react'
+import type { Player } from '@/lib/game-state'
+import type { PartySnapshot } from '@/lib/socket'
+import { buildOutsiders, buildSquad, groupBonusPercent, type SquadMember } from '@/lib/party/squad'
+import { usePresenceStore } from '@/store/presenceStore'
+import { usePartyBattleStore } from '@/store/partyBattleStore'
+import { MemberCard, MemberRow, type MemberAction } from '../party/MemberCard'
 
 type InspectTarget = Pick<Player, 'id' | 'username' | 'level' | 'uIcon' | 'uIconColor'>
 
@@ -11,6 +15,8 @@ interface PartyPanelProps {
   roomPlayers: Player[]
   currentPlayerId: string
   currentPlayer?: Player
+  /** People we have asked to lead us and not yet heard back from. */
+  pendingFollowIds?: Set<string>
   onFollow: (targetId: string) => void
   onLeave: () => void
   onRemove: (memberId: string) => void
@@ -18,237 +24,135 @@ interface PartyPanelProps {
   onMessage?: (targetPlayer: Pick<Player, 'id' | 'username'>) => void
 }
 
-// Identity + role merged with live stats looked up from roomPlayers. The row shape
-// itself lives in components/player/PlayerRow so the roster renders players the same way.
-type RowData = PlayerRowData & { role: 'leader' | 'member' | 'here' }
-
-// Builds this surface's action set and hands it to the shared row. Party rows can
-// remove members and follow co-located players; the roster offers a different set.
-function PlayerStatRow({
-  row,
-  onFollow,
-  onRemove,
-  onInspect,
-  onMessage,
-}: {
-  row: RowData
-  onFollow?: (id: string) => void
-  onRemove?: (id: string) => void
-  onInspect?: (targetPlayer: InspectTarget) => void
-  onMessage?: (targetPlayer: Pick<Player, 'id' | 'username'>) => void
-}) {
-  // A player who belongs to a party but doesn't lead it: you can only follow the
-  // leader, so suppress the Follow button on non-leader members.
-  const isPartyMemberNotLeader =
-    !!row.stats?.partyLeaderId && row.stats.partyLeaderId !== row.id
-
-  const actions: PlayerRowAction[] = []
-  if (onInspect) {
-    actions.push({
-      label: 'View',
-      onClick: () =>
-        onInspect({
-          id: row.id,
-          username: row.username,
-          level: row.level,
-          uIcon: row.uIcon ?? undefined,
-          uIconColor: row.uIconColor ?? undefined,
-        }),
-    })
-  }
-  if (!row.isSelf && onMessage) {
-    actions.push({ label: 'Msg', onClick: () => onMessage({ id: row.id, username: row.username }) })
-  }
-  if (!row.isSelf && row.role === 'here' && onFollow && !isPartyMemberNotLeader) {
-    actions.push({ label: 'Follow', variant: 'follow', onClick: () => onFollow(row.id) })
-  }
-  if (row.role === 'member' && onRemove) {
-    actions.push({ label: 'Remove', variant: 'danger', onClick: () => onRemove(row.id) })
-  }
-
-  return <PlayerRow row={row} actions={actions} />
-}
-
+/**
+ * The party in full, under Players ▸ Party.
+ *
+ * The same `SquadMember` the rail draws as a chip is drawn here as a card, so
+ * the two cannot disagree about what a teammate is doing. Below the party,
+ * the people standing here that you could follow, as rows — the room's own
+ * "Others here" is where following usually starts; this is the long-form view.
+ */
 export default function PartyPanel({
   party,
   roomPlayers,
   currentPlayerId,
   currentPlayer,
+  pendingFollowIds,
   onFollow,
   onLeave,
   onRemove,
   onInspect,
   onMessage,
 }: PartyPanelProps) {
-  const inParty = !!party
+  const presenceById = usePresenceStore((s) => s.byUserId)
+  const glanceById = usePartyBattleStore((s) => s.byUserId)
   const isLeader = !!party && party.leaderId === currentPlayerId
 
-  // O(1) lookup of live stats (hp/mp, presence, avatar) for anyone in this room.
-  const statsById = new Map<string, Player>(roomPlayers.map((p) => [p.id, p]))
+  const members = useMemo(
+    () =>
+      buildSquad({
+        party,
+        roomPlayers,
+        presenceById,
+        currentPlayerId,
+        self: currentPlayer ?? null,
+        glanceById,
+      }),
+    [party, roomPlayers, presenceById, currentPlayerId, currentPlayer, glanceById]
+  )
+  const outsiders = useMemo(
+    () => buildOutsiders({ party, roomPlayers, presenceById, currentPlayerId }),
+    [party, roomPlayers, presenceById, currentPlayerId]
+  )
+  const groupBonus = useMemo(
+    () => groupBonusPercent(roomPlayers, party, currentPlayerId),
+    [roomPlayers, party, currentPlayerId]
+  )
 
-  // Build party rows (leader first), merging identity/role with live room stats.
-  const partyRows: RowData[] = []
-  if (party) {
-    partyRows.push({
-      id: party.leader.id,
-      username: party.leader.username,
-      level: party.leader.level,
-      uIcon: party.leader.uIcon,
-      uIconColor: party.leader.uIconColor,
-      stats: statsById.get(party.leader.id),
-      role: 'leader',
-      isSelf: party.leader.id === currentPlayerId,
-    })
-    for (const m of party.members) {
-      partyRows.push({
-        id: m.id,
-        username: m.username,
-        level: m.level,
-        uIcon: m.uIcon,
-        uIconColor: m.uIconColor,
-        stats: statsById.get(m.id),
-        role: 'member',
-        isSelf: m.id === currentPlayerId,
+  const memberActions = (member: SquadMember): MemberAction[] => {
+    const actions: MemberAction[] = []
+    if (!member.isSelf && onMessage) {
+      actions.push({ label: 'Message', variant: 'primary', onClick: () => onMessage({ id: member.id, username: member.username }) })
+    }
+    if (onInspect) {
+      actions.push({
+        label: 'View',
+        onClick: () =>
+          onInspect({
+            id: member.id,
+            username: member.username,
+            level: member.level,
+            uIcon: member.uIcon ?? undefined,
+            uIconColor: member.uIconColor ?? undefined,
+          }),
       })
     }
-  }
-
-  // Players in this room you could follow (online, not yourself, not already partied).
-  const partyIds = new Set<string>(party ? [party.leaderId, ...party.members.map((m) => m.id)] : [])
-  const hereRows: RowData[] = roomPlayers
-    .filter(
-      (p) =>
-        p.id !== currentPlayerId &&
-        p.presenceStatus !== 'disconnected' &&
-        !partyIds.has(p.id)
-    )
-    .map((p) => ({
-      id: p.id,
-      username: p.username,
-      level: p.level,
-      uIcon: p.uIcon,
-      uIconColor: p.uIconColor,
-      stats: p,
-      role: 'here' as const,
-    }))
-
-  // Group co-located non-party players by the foreign party they belong to. A foreign
-  // party only renders as a group when 2+ of its members are actually here together;
-  // anyone else (solo, or a lone party member whose group isn't co-located) is flat.
-  const byLeader = new Map<string, RowData[]>()
-  for (const row of hereRows) {
-    const leaderId = row.stats?.partyLeaderId
-    const key = leaderId ? `party:${leaderId}` : `solo:${row.id}`
-    if (!byLeader.has(key)) byLeader.set(key, [])
-    byLeader.get(key)!.push(row)
-  }
-  const foreignParties: { leaderId: string; rows: RowData[] }[] = []
-  const soloRows: RowData[] = []
-  for (const [key, rows] of byLeader) {
-    if (key.startsWith('party:') && rows.length >= 2) {
-      const leaderId = key.slice('party:'.length)
-      // Always render the leader first within a foreign party group.
-      const ordered = [...rows].sort((a, b) =>
-        a.id === leaderId ? -1 : b.id === leaderId ? 1 : 0
-      )
-      foreignParties.push({ leaderId, rows: ordered })
-    } else {
-      soloRows.push(...rows)
+    if (isLeader && !member.isSelf && !member.isLeader) {
+      actions.push({ label: 'Remove', variant: 'danger', onClick: () => onRemove(member.id) })
     }
+    return actions
   }
 
-  if (!inParty && hereRows.length === 0) return null
-
-  // Always show yourself when the list is present. In a party you already appear in the
-  // party box; otherwise prepend your own row to the flat list.
-  if (!inParty) {
-    const selfStats = currentPlayer ?? statsById.get(currentPlayerId)
-    if (selfStats) {
-      soloRows.unshift({
-        id: selfStats.id,
-        username: selfStats.username,
-        level: selfStats.level,
-        uIcon: selfStats.uIcon,
-        uIconColor: selfStats.uIconColor,
-        stats: selfStats,
-        role: 'here',
-        isSelf: true,
-      })
-    }
+  const outsiderActions = (member: SquadMember): MemberAction[] => {
+    const pending = pendingFollowIds?.has(member.id) ?? false
+    return [
+      {
+        label: pending ? 'Asked…' : 'Follow',
+        variant: 'primary',
+        disabled: pending,
+        title: pending ? `Waiting for ${member.username} to answer` : `Ask ${member.username} to lead you`,
+        onClick: () => onFollow(member.id),
+      },
+    ]
   }
+
+  if (!party && outsiders.length === 0) return null
 
   return (
-    <div className="rounded-lg border border-resource-mp/40 bg-resource-mp/10 p-3 space-y-2">
-      {inParty && party && (
-        <div className="rounded-md border border-resource-mp/50 bg-resource-mp/15 p-2 space-y-1.5 ring-1 ring-resource-mp/20">
+    <div className="space-y-4">
+      {party && (
+        <section className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-resource-mp">
-              Party <span className="text-[10px] text-fg-muted">({party.size}/{party.maxSize})</span>
+              {party.name ?? 'Party'}{' '}
+              <span className="text-[10px] font-normal text-fg-muted">
+                {party.size}/{party.maxSize}
+              </span>
+              {groupBonus > 0 && (
+                <span className="ml-1.5 text-[10px] font-semibold text-status-success" title="Attack and defence bonus while you fight together here">
+                  +{groupBonus}%
+                </span>
+              )}
+              {party.closed && <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide text-status-warning">Closed</span>}
             </h4>
             <button
+              type="button"
               onClick={onLeave}
-              className="text-[10px] text-status-error/80 hover:text-status-error underline underline-offset-2"
+              className="text-[10px] text-status-error/80 underline underline-offset-2 hover:text-status-error"
             >
               {isLeader ? 'Disband' : 'Leave'}
             </button>
           </div>
-
-          <div className="divide-y divide-resource-mp/20">
-            {partyRows.map((row) => (
-              <PlayerStatRow
-                key={row.id}
-                row={row}
-                onRemove={isLeader ? onRemove : undefined}
-                onInspect={onInspect}
-                onMessage={onMessage}
-              />
+          <div className="grid gap-2 sm:grid-cols-2">
+            {members.map((member) => (
+              <MemberCard key={member.id} member={member} actions={memberActions(member)} />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {hereRows.length > 0 && (
-        <div className="space-y-1.5">
+      {outsiders.length > 0 && (
+        <section className="space-y-1">
           <h4 className="text-xs font-bold text-resource-mp">Also here</h4>
-
-          {/* Other parties sharing this room, each in its own subtle container. */}
-          {foreignParties.map((grp) => (
-            <div
-              key={grp.leaderId}
-              className="rounded-md border border-resource-mp/30 bg-resource-mp/10 p-2 space-y-1"
-            >
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-resource-mp/60">
-                Party
-              </div>
-              <div className="divide-y divide-resource-mp/20">
-                {grp.rows.map((row) => (
-                  <PlayerStatRow
-                    key={row.id}
-                    row={{ ...row, isLeader: row.id === grp.leaderId }}
-                    onFollow={onFollow}
-                    onInspect={onInspect}
-                    onMessage={onMessage}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {/* Unpartied players (and lone members). */}
-          {soloRows.length > 0 && (
-            <div className="divide-y divide-line-subtle/40">
-              {soloRows.map((row) => (
-                <PlayerStatRow
-                  key={row.id}
-                  row={row}
-                  onFollow={onFollow}
-                  onInspect={onInspect}
-                  onMessage={onMessage}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+          <p className="text-[10px] text-fg-muted">
+            {party ? 'Following someone else switches you to their party.' : 'Follow someone to travel together. They have to agree to lead you.'}
+          </p>
+          <div className="divide-y divide-line-subtle/40">
+            {outsiders.map((member) => (
+              <MemberRow key={member.id} member={member} actions={outsiderActions(member)} />
+            ))}
+          </div>
+        </section>
       )}
     </div>
   )

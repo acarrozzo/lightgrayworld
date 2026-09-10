@@ -25,6 +25,7 @@ import {
   PartyFollowResolvedPayload,
   PartyChatMessagePayload,
   PartyChatHistoryPayload,
+  PartyMemberBattlePayload,
   RoomPartyStatePayload,
   WorldPresenceSyncPayload,
   WorldPresenceUpdatePayload,
@@ -301,6 +302,10 @@ export class SocketEventHandlers {
 
   onPartyChatHistory(handler: (payload: PartyChatHistoryPayload) => void): () => void {
     return this.on(SOCKET_EVENTS.PARTY_CHAT_HISTORY, handler)
+  }
+
+  onPartyMemberBattle(handler: (payload: PartyMemberBattlePayload) => void): () => void {
+    return this.on(SOCKET_EVENTS.PARTY_MEMBER_BATTLE, handler)
   }
 
   // ─── Global presence (Players tab roster) ────────────────────────────────

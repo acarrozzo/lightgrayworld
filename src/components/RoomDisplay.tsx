@@ -7,6 +7,9 @@ import { useGameStore } from '@/lib/game-state'
 import { getRoomActions } from '@/lib/room-actions'
 import { goldChestFlagForRoom } from '@/lib/game-data/gold-chests'
 import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
+import type { PartySnapshot } from '@/lib/socket'
+import { followableHere } from '@/lib/party/squad'
+import { Hourglass, UserPlus } from 'lucide-react'
 import SupplyShelf from './SupplyShelf'
 import type { GatherCooldownView, SupplyView } from '@/lib/types/room'
 import Icon from './Icon'
@@ -25,6 +28,11 @@ interface RoomDisplayProps {
   currentPlayerId?: string
   onAction?: (action: string | { type: string; data?: any }) => void | Promise<void>
   onOpenPlayerProfile?: (player: Player) => void
+  /** The viewer's party, so the room knows who can be followed from here. */
+  party?: PartySnapshot | null
+  /** People we have asked to lead us and not yet heard back from. */
+  pendingFollowIds?: Set<string>
+  onFollow?: (targetId: string) => void
   gatherCooldowns?: GatherCooldownView[]
   /** The room's supply shelf for this player (config/room-supplies.js). */
   supplies?: SupplyView[]
@@ -45,6 +53,9 @@ export default function RoomDisplay({
   room,
   onAction,
   onOpenPlayerProfile,
+  party = null,
+  pendingFollowIds,
+  onFollow,
   gatherCooldowns = [],
   supplies = [],
   roomPlayers = [],
@@ -113,6 +124,12 @@ export default function RoomDisplay({
       })
     },
     [roomPlayers, currentPlayerId]
+  )
+  // Who among them you could follow: online, not with you already, and either
+  // solo or leading — following joins the party somebody leads.
+  const followableIds = useMemo(
+    () => new Set(currentPlayerId && onFollow ? followableHere(roomPlayers, party, currentPlayerId).map((p) => p.id) : []),
+    [roomPlayers, party, currentPlayerId, onFollow]
   )
 
   // Format time remaining: hours+minutes if >= 60min, minutes+seconds if < 60min
@@ -531,6 +548,9 @@ export default function RoomDisplay({
                   handleInspectPlayer(player)
                 }}
                 disabled={isPerformingAction === `look at ${player.username}`}
+                onFollow={followableIds.has(player.id) && onFollow ? () => onFollow(player.id) : undefined}
+                followPending={pendingFollowIds?.has(player.id) ?? false}
+                inParty={Boolean(party && (party.leaderId === player.id || party.members.some((m) => m.id === player.id)))}
               />
             ))}
           </div>
@@ -565,9 +585,14 @@ interface PlayerCardProps {
   player: Player
   onInspect: () => void
   disabled?: boolean
+  /** Present when this person can be followed from here: the one-tap way to ask. */
+  onFollow?: () => void
+  followPending?: boolean
+  /** Already travelling with the viewer — the rail is their card; this is a face. */
+  inParty?: boolean
 }
 
-function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
+function PlayerCard({ player, onInspect, disabled, onFollow, followPending = false, inParty = false }: PlayerCardProps) {
   const presence = player.presenceStatus ?? 'active'
   const isIdle = presence === 'idle'
   const isDisconnected = presence === 'disconnected'
@@ -582,7 +607,11 @@ function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
     disabled ? 'cursor-not-allowed opacity-50' : '',
   ].filter(Boolean).join(' ')
 
+  const leadsParty = Boolean(player.partyLeaderId && player.partyLeaderId === player.id)
+  const inOtherParty = Boolean(player.partyLeaderId && player.partyLeaderId !== player.id && !inParty)
+
   return (
+    <div className="flex flex-col gap-1">
     <button
       type="button"
       onClick={onInspect}
@@ -618,7 +647,32 @@ function PlayerCard({ player, onInspect, disabled }: PlayerCardProps) {
         {isDisconnected && player.lastSeen && (
           <div className="text-[9px] text-fg-secondary/80 mt-0.5">Offline {formatTimeAgo(player.lastSeen)}</div>
         )}
+        {/* Whose company they are in. A party member is followed through their
+            leader, so the card says so instead of offering a Follow that fails. */}
+        {inParty && <div className="mt-0.5 text-[9px] text-resource-mp/80">In your party</div>}
+        {!inParty && leadsParty && <div className="mt-0.5 text-[9px] text-fg-muted">Leads a party</div>}
+        {inOtherParty && <div className="mt-0.5 text-[9px] text-fg-muted">In another party</div>}
       </div>
     </button>
+    {/* A separate control, not nested in the card's own button: the card tells
+        you who they are, this asks them to take you along. */}
+    {onFollow && (
+      <button
+        type="button"
+        onClick={onFollow}
+        disabled={followPending}
+        title={followPending ? `Waiting for ${player.username} to answer` : `Ask ${player.username} to lead you`}
+        aria-label={followPending ? `Waiting for ${player.username} to answer your request to follow them` : `Ask ${player.username} to lead you`}
+        className={`flex w-full items-center justify-center gap-1 rounded-md border py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+          followPending
+            ? 'cursor-not-allowed border-line-subtle/50 text-fg-muted'
+            : 'border-resource-mp/45 text-resource-mp/90 hover:bg-resource-mp/20 hover:text-resource-mp'
+        }`}
+      >
+        {followPending ? <Hourglass size={10} aria-hidden="true" /> : <UserPlus size={10} aria-hidden="true" />}
+        {followPending ? 'Asked…' : 'Follow'}
+      </button>
+    )}
+    </div>
   )
 }

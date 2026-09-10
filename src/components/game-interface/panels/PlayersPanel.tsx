@@ -32,6 +32,7 @@ interface PlayersPanelProps {
   roomPlayers: Player[]
   currentPlayerId: string
   currentPlayer?: Player
+  pendingFollowIds?: Set<string>
   onOpenProfile: (player: ProfileTarget) => void
   onMessagePlayer: (player: Pick<Player, 'id' | 'username'>) => void
   onFollowPlayer: (targetId: string) => void
@@ -57,6 +58,7 @@ export default function PlayersPanel({
   roomPlayers,
   currentPlayerId,
   currentPlayer,
+  pendingFollowIds,
   onOpenProfile,
   onMessagePlayer,
   onFollowPlayer,
@@ -119,6 +121,7 @@ export default function PlayersPanel({
               roomPlayers={roomPlayers}
               currentPlayerId={currentPlayerId}
               currentPlayer={currentPlayer}
+              pendingFollowIds={pendingFollowIds}
               onFollow={onFollowPlayer}
               onLeave={onLeaveParty}
               onRemove={onRemovePartyMember}

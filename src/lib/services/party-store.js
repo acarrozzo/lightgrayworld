@@ -131,6 +131,16 @@ function notifyOthers(playerId, kind, message, extra = {}) {
   notify(otherMemberIds(playerId), kind, message, extra)
 }
 
+/**
+ * Send a structured event to everyone else in this player's party. Notices
+ * are lines people read; this is for state the party UI draws (a teammate's
+ * fight at a glance). No-op when the player is solo.
+ */
+function emitToOthers(playerId, event, payload) {
+  const others = otherMemberIds(playerId)
+  if (others.length) emitTo(others, event, payload)
+}
+
 function broadcastUpdate(party) {
   emitTo([party.leaderId, ...party.members.keys()], SOCKET_EVENTS.PARTY_UPDATED, buildSnapshot(party))
 }
@@ -676,5 +686,6 @@ module.exports = {
   getPartySnapshot,
   notify,
   notifyOthers,
+  emitToOthers,
   otherMemberIds,
 }

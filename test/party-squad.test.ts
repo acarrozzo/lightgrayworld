@@ -257,3 +257,27 @@ test('you can only follow a leader, and never someone already with you', () => {
     'not yourself, not your own party, not a rank-and-file member, not a ghost'
   )
 })
+
+test('the party sees how a fight is going, not only that there is one', () => {
+  const glance = {
+    id: 'lead', enemyName: 'Scorpion', enemyHp: 7, enemyHpMax: 20, enemyHpPct: 35,
+    lastHit: 5, lastTook: 2, turn: 3, ts: NOW,
+  }
+  const [lead] = buildSquad({
+    party: PARTY, roomPlayers: ROOM, presenceById: PRESENCE, currentPlayerId: 'me',
+    glanceById: { lead: glance },
+  })
+  assert.equal(lead.state, 'fighting')
+  assert.equal(lead.battle?.enemyHpPct, 35)
+  assert.equal(lead.statusLabel, 'Scorpion 35%')
+})
+
+test('a glance that outlived its fight is dropped: presence decides whether there is a fight', () => {
+  const stale = { id: 'me', enemyName: 'Bat', enemyHp: 1, enemyHpMax: 5, enemyHpPct: 20, lastHit: 1, lastTook: 0, turn: 9, ts: NOW }
+  const me = buildSquad({
+    party: PARTY, roomPlayers: ROOM, presenceById: PRESENCE, currentPlayerId: 'me',
+    glanceById: { me: stale },
+  }).find((m) => m.isSelf)!
+  assert.equal(me.state, 'ready')
+  assert.equal(me.battle, null)
+})

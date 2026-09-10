@@ -348,3 +348,15 @@ test('following someone tells them they are leading a party now', () => {
   assert.equal(notices.length, 1)
   assert.match(notices[0].message, /M1 is following you/)
 })
+
+test('a structured event reaches the rest of the party and nobody else', () => {
+  buildParty('lead', ['a', 'b'])
+  emitted.length = 0
+  partyStore.emitToOthers('a', 'party:member-battle', { id: 'a', enemyHpPct: 50 })
+  const got = emitted.filter((e) => e.event === 'party:member-battle').map((e) => e.sid).sort()
+  assert.deepEqual(got, ['sock:b', 'sock:lead'])
+  // Solo: nothing goes anywhere.
+  emitted.length = 0
+  partyStore.emitToOthers('nobody', 'party:member-battle', {})
+  assert.equal(emitted.length, 0)
+})

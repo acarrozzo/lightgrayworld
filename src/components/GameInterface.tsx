@@ -81,7 +81,8 @@ const CENTER_MIN = 480
 import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
 import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/PlayersPanel'
-import PartySquadBar from './game-interface/PartySquadBar'
+import PartyRail from './game-interface/party/PartyRail'
+import { usePartyBattleStore } from '@/store/partyBattleStore'
 import type { SquadMember } from '@/lib/party/squad'
 import CraftingSheet, { type RecipeTemplates } from './CraftingSheet'
 import { isCraftingRoom, formatRecipeList } from '@/lib/game-data/crafting-recipes'
@@ -139,6 +140,10 @@ export default function GameInterface() {
   const clearBattleResult = useGameStore((s) => s.clearBattleResult)
   const setParty = useGameStore((s) => s.setParty)
   const clearParty = useGameStore((s) => s.clearParty)
+  // What each teammate is fighting and how it is going. Party-scoped and as
+  // ephemeral as the party: emptied whenever the party ends for us.
+  const applyPartyGlance = usePartyBattleStore((s) => s.apply)
+  const clearPartyGlances = usePartyBattleStore((s) => s.clearAll)
   const hydrateSession = useGameStore((s) => s.hydrateSession)
   const updateRoomItems = useGameStore((s) => s.updateRoomItems)
   const equippedWeapon = inventory.find(item => item.isEquipped && item.slot === 'MAIN_HAND')
@@ -2904,10 +2909,12 @@ export default function GameInterface() {
 
     const cleanupDisbanded = socketHandlers.onPartyDisbanded(() => {
       clearParty()
+      clearPartyGlances()
     })
 
     const cleanupRemoved = socketHandlers.onPartyRemoved(() => {
       clearParty()
+      clearPartyGlances()
       appendWorldFeed({
         type: 'party',
         isSelf: true,
@@ -2997,6 +3004,9 @@ export default function GameInterface() {
       appendWorldFeed({
         id: payload.id,
         type: 'party',
+        // Marks a line somebody typed, as opposed to a notice about the party:
+        // the rail's unread count only counts these.
+        eventType: 'party-chat',
         actor: payload.username,
         isSelf,
         message: `${payload.username}: ${payload.message}`,
@@ -3013,12 +3023,19 @@ export default function GameInterface() {
         appendWorldFeed({
           id: message.id,
           type: 'party',
+          eventType: 'party-chat',
           actor: message.username,
           isSelf: message.userId === selfId,
           message: `${message.username}: ${message.message}`,
           ts: new Date(message.timestamp).getTime(),
         })
       }
+    })
+
+    // A teammate's fight at a glance — enemy HP, last exchange, turn. Only the
+    // party receives these; the rail and the Party tab draw them.
+    const cleanupMemberBattle = socketHandlers.onPartyMemberBattle((payload) => {
+      applyPartyGlance(payload)
     })
 
     // Live party groupings for everyone in the room (including parties we're not in).
@@ -3040,9 +3057,10 @@ export default function GameInterface() {
       cleanupFollowResolved()
       cleanupPartyChat()
       cleanupPartyChatHistory()
+      cleanupMemberBattle()
       cleanupRoomPartyState()
     }
-  }, [socket, socketHandlers, setParty, clearParty, appendWorldFeed, setPlayer, applyRoomPartyState])
+  }, [socket, socketHandlers, setParty, clearParty, clearPartyGlances, applyPartyGlance, appendWorldFeed, setPlayer, applyRoomPartyState])
 
   // Global presence feed — the Players tab roster. Room-scoped presence above keeps
   // "Others here" live; this keeps the world-wide list live. Server-owned and
@@ -3424,6 +3442,7 @@ export default function GameInterface() {
             roomPlayers={roomPlayers}
             currentPlayerId={player.id}
             currentPlayer={player}
+            pendingFollowIds={pendingFollowIds}
             onOpenProfile={handleOpenPlayerProfile}
             onMessagePlayer={handleProfileMessage}
             onFollowPlayer={handleFollowPlayer}
@@ -3459,7 +3478,7 @@ export default function GameInterface() {
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId])
+  }, [goToExplore, centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
 
   const handleCenterTabChange = useCallback((tabId: string | null) => {
     if (!tabId || tabId === 'explore') {
@@ -3548,34 +3567,6 @@ export default function GameInterface() {
           />
         </div>
       )}
-      {/* Somebody wants to follow us. Leading is a job — your travel drags them
-          through gates, your fight holds them in place — so it is asked for,
-          not assumed. Oldest ask first; the rest queue behind it. */}
-      <ConfirmDialog
-        isOpen={followRequests.length > 0}
-        title={
-          followRequests[0]?.wouldBecomeLeader
-            ? `Lead ${followRequests[0]?.requesterName}?`
-            : `Let ${followRequests[0]?.requesterName} join?`
-        }
-        message={
-          followRequests[0]
-            ? followRequests[0].wouldBecomeLeader
-              ? `${followRequests[0].requesterName} (Lv ${followRequests[0].requesterLevel}) wants to follow you. Say yes and you lead a party: they travel where you travel, and cannot move on their own.`
-              : `${followRequests[0].requesterName} (Lv ${followRequests[0].requesterLevel}) wants to join your party.`
-            : ''
-        }
-        confirmLabel={followRequests[0]?.wouldBecomeLeader ? 'Lead them' : 'Let them in'}
-        cancelLabel="No thanks"
-        onConfirm={() => {
-          const request = followRequests[0]
-          if (request) handleAnswerFollow(request.requesterId, true)
-        }}
-        onCancel={() => {
-          const request = followRequests[0]
-          if (request) handleAnswerFollow(request.requesterId, false)
-        }}
-      />
       <ConfirmDialog
         isOpen={partyDepartureConfirm !== null}
         title={partyDepartureConfirm?.title ?? ''}
@@ -3911,30 +3902,32 @@ export default function GameInterface() {
           </button>
           {currentRoom && (
             <div className="bg-surface-panel/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
+              {/* Who you are travelling with, above the room rather than in it,
+                  so it stays put while the room and a fight scroll beneath.
+                  Somebody asking to follow us lands here too. */}
+              <PartyRail
+                party={party}
+                roomDanger={currentRoom}
+                roomPlayers={roomPlayers}
+                currentPlayerId={player.id}
+                self={player}
+                onLowHp={handlePartyLowHp}
+                followRequests={followRequests}
+                onAnswerFollow={handleAnswerFollow}
+                onLeave={handleLeaveParty}
+                onRemove={handleRemovePartyMember}
+                onSetClosed={handleSetPartyClosed}
+                onSetName={handleSetPartyName}
+                onManage={handleOpenPartyTab}
+                onSendChat={(message) => socketHandlers.sendPartyChatMessage(message)}
+                onMessage={handleProfileMessage}
+                onInspect={handleOpenPlayerProfile}
+              />
               {/* The room column is a container: with two resizable side
                   panels it can be far narrower than the viewport, so what
                   renders inside sizes against it, not the window. */}
               <div className="@container flex-1 min-h-0 overflow-y-auto h-full">
                 <div className="max-w-4xl mx-auto w-full">
-                  {/* Who you are travelling with, and who else is standing here,
-                      at the top of the room and scrolling away with it. */}
-                  <PartySquadBar
-                    party={party}
-                    roomDanger={currentRoom}
-                    roomPlayers={roomPlayers}
-                    currentPlayerId={player.id}
-                    self={player}
-                    onLowHp={handlePartyLowHp}
-                    pendingFollowIds={pendingFollowIds}
-                    onFollow={handleFollowPlayer}
-                    onLeave={handleLeaveParty}
-                    onRemove={handleRemovePartyMember}
-                    onSetClosed={handleSetPartyClosed}
-                    onSetName={handleSetPartyName}
-                    onManage={handleOpenPartyTab}
-                    onMessage={handleProfileMessage}
-                    onInspect={handleOpenPlayerProfile}
-                  />
                   {!socket?.connected && (
                     <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-line-subtle/30 bg-surface-panel/60">
                       <div className="flex items-center gap-2 text-xs text-fg-secondary">
@@ -4017,6 +4010,9 @@ export default function GameInterface() {
                     onAction={handleAction}
                     isPartyMember={isPartyMember}
                     onOpenPlayerProfile={handleOpenPlayerProfile}
+                    party={party}
+                    pendingFollowIds={pendingFollowIds}
+                    onFollow={handleFollowPlayer}
                     gatherCooldowns={gatherCooldowns}
                     supplies={supplies}
                     worldTick={worldTick}

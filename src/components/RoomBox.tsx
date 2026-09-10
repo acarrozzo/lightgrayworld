@@ -4,6 +4,7 @@ import RoomDisplay from './RoomDisplay'
 import TravelerCard from './TravelerCard'
 import BasicActionButtons from './BasicActionButtons'
 import type { Room, Player } from '@/lib/game-state'
+import type { PartySnapshot } from '@/lib/socket'
 import type { GatherCooldownView, SupplyView } from '@/lib/types/room'
 import Icon from './Icon'
 import { useEffect, useMemo, useState } from 'react'
@@ -52,6 +53,9 @@ interface RoomBoxProps {
   currentPlayerId?: string
   onAction: (action: string | { type: string; data?: any }) => void | Promise<void>
   onOpenPlayerProfile?: (player: Player) => void
+  party?: PartySnapshot | null
+  pendingFollowIds?: Set<string>
+  onFollow?: (targetId: string) => void
   gatherCooldowns?: GatherCooldownView[]
   supplies?: SupplyView[]
   worldTick?: {
@@ -76,6 +80,9 @@ export default function RoomBox({
   currentPlayerId,
   onAction,
   onOpenPlayerProfile,
+  party = null,
+  pendingFollowIds,
+  onFollow,
   gatherCooldowns,
   supplies,
   worldTick,
@@ -268,6 +275,9 @@ export default function RoomBox({
         currentPlayerId={currentPlayerId}
         onAction={onAction}
         onOpenPlayerProfile={onOpenPlayerProfile}
+        party={party}
+        pendingFollowIds={pendingFollowIds}
+        onFollow={onFollow}
         gatherCooldowns={gatherCooldowns}
         supplies={supplies}
         showHeader={false}

@@ -1,5 +1,5 @@
 import type { Player } from '@/lib/game-state'
-import type { PartySnapshot, PresencePlayer } from '@/lib/socket'
+import type { PartyMemberBattlePayload, PartySnapshot, PresencePlayer } from '@/lib/socket'
 import type { PlayerPresenceStatus, PlayerRowStats } from '@/components/player/PlayerRow'
 import { dangerVerdict } from '@/lib/danger-verdict'
 
@@ -24,6 +24,9 @@ export const LOW_HP_FRACTION = 0.25
 
 export type SquadState = 'down' | 'fighting' | 'hurt' | 'idle' | 'offline' | 'safe' | 'ready'
 
+/** A teammate's fight as the party sees it: the live half of the party:member-battle payload. */
+export type BattleGlance = Extract<PartyMemberBattlePayload, { enemyName: string | null }>
+
 /** The room read against one member's level — the same ladder the compass uses. */
 export interface RoomDanger {
   dangerLevel?: number | null
@@ -45,6 +48,8 @@ export interface SquadMember {
   mpPct: number | null
   inBattle: boolean
   battleEnemyName: string | null
+  /** How the fight is going, when this is a teammate and the server has said. */
+  battle: BattleGlance | null
   presence: PlayerPresenceStatus
   lastSeen?: number | null
   isLeader: boolean
@@ -113,8 +118,10 @@ function deriveLabel(m: SquadMember): string {
       return 'Fallen'
     case 'offline':
       return 'Offline'
-    case 'fighting':
-      return m.battleEnemyName ?? 'Fighting'
+    case 'fighting': {
+      const name = m.battleEnemyName ?? m.battle?.enemyName ?? 'Fighting'
+      return m.battle?.enemyHpPct != null ? `${name} ${m.battle.enemyHpPct}%` : name
+    }
     case 'idle': {
       const ago = shortAgo(m.lastSeen)
       return ago ? `Idle ${ago}` : 'Idle'
@@ -137,6 +144,8 @@ interface BuildSquadInput {
   currentPlayerId: string
   /** The viewer's own live player, which beats every feed for their own row. */
   self?: Player | null
+  /** Each teammate's fight at a glance, keyed by user id. Party members only. */
+  glanceById?: Record<string, BattleGlance>
 }
 
 /**
@@ -158,6 +167,7 @@ function mergeMember({
   leadsOwnParty,
   partyLeaderId,
   roomDanger,
+  glance,
 }: {
   info: { id: string; username: string; level: number; uIcon?: string | null; uIconColor?: string | null }
   live?: PresencePlayer
@@ -169,6 +179,7 @@ function mergeMember({
   leadsOwnParty: boolean
   partyLeaderId: string | null
   roomDanger?: RoomDanger | null
+  glance?: BattleGlance | null
 }): SquadMember {
   const own = isSelf ? self ?? room : null
 
@@ -201,6 +212,9 @@ function mergeMember({
     mpPct: pct(mp, mpMax),
     inBattle,
     battleEnemyName,
+    // A glance outlives its fight by at most one packet; the presence flag is
+    // the authority on whether there is a fight at all.
+    battle: inBattle ? glance ?? null : null,
     presence,
     lastSeen: live?.lastSeen ?? room?.lastSeen ?? null,
     isLeader,
@@ -245,6 +259,7 @@ export function buildSquad({
   presenceById,
   currentPlayerId,
   self,
+  glanceById,
 }: BuildSquadInput): SquadMember[] {
   if (!party) return []
 
@@ -262,6 +277,7 @@ export function buildSquad({
       leadsOwnParty: false,
       partyLeaderId: party.leaderId,
       roomDanger,
+      glance: glanceById?.[info.id] ?? null,
     })
   )
 }

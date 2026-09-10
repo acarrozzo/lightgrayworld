@@ -104,6 +104,9 @@ const SOCKET_EVENTS = {
   PARTY_FOLLOW_RESOLVED: 'party:follow-resolved',
   PARTY_CHAT_MESSAGE: 'party-chat-message',
   PARTY_CHAT_HISTORY: 'party:chat-history',
+  // A teammate's fight at a glance: enemy HP, last exchange, turn. Sent only
+  // to the rest of their party, on every battle action and when someone joins.
+  PARTY_MEMBER_BATTLE: 'party:member-battle',
 }
 
 function setSocketIO(ioInstance) {
