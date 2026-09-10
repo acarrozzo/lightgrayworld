@@ -569,7 +569,10 @@ function Chip({
           {member.isLeader && <Crown size={8} className="shrink-0 text-status-warning" aria-hidden="true" />}
           <span className="shrink-0 tabular-nums text-fg-muted">Lv{member.level}</span>
         </span>
-        <span className="flex items-center gap-1">
+        {/* The low-HP alert rides the HP row, not the badge: a member in a
+            fight draws the enemy where the badge would go, and that is exactly
+            when a teammate crossing into trouble most needs to be noticed. */}
+        <span className={`flex items-center gap-1 ${pulse ? 'motion-safe:animate-pulse' : ''}`}>
           <HairBar pct={member.hpPct} fill={CHIP_HP_FILL[member.state]} height="h-[4px]" />
           <span className="shrink-0 text-[8px] leading-none tabular-nums text-fg-secondary">
             {vitalText(member.hp, member.hpMax)}
@@ -584,7 +587,7 @@ function Chip({
         {member.state === 'fighting' ? (
           <EnemyMini member={member} />
         ) : (
-          <StateBadge member={member} pulse={pulse} className="mt-[1px] self-start" />
+          <StateBadge member={member} showTitle={false} className="mt-[1px] self-start" />
         )}
       </span>
     </button>
@@ -664,37 +667,52 @@ export default function PartyRail({
   const [peek, setPeek] = useState<{ id: string; left: number; top: number } | null>(null)
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const peekShown = useRef(false)
+  // The chip the card is hanging from, so a rail that scrolls can take the card
+  // with it. Tabbing to a chip that is off the end scrolls the rail to reach
+  // it, and a scroll handler that simply closed the card would shut the one
+  // focus had just opened.
+  const peekAnchor = useRef<{ id: string; el: HTMLElement } | null>(null)
   const stopPeekTimer = () => {
     if (peekTimer.current) clearTimeout(peekTimer.current)
     peekTimer.current = null
   }
+  const placePeek = useCallback((id: string, el: HTMLElement) => {
+    const rect = el.getBoundingClientRect()
+    // Keep the card on screen: it hangs from the chip's left edge until that
+    // would push it past the right of the window.
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - PEEK_WIDTH - 8))
+    setPeek({ id, left, top: rect.bottom + 6 })
+    peekShown.current = true
+  }, [])
   const hidePeekNow = useCallback(() => {
     stopPeekTimer()
     peekShown.current = false
+    peekAnchor.current = null
     setPeek(null)
   }, [])
-  const showPeek = useCallback((id: string, el: HTMLElement) => {
-    stopPeekTimer()
-    const place = () => {
-      const rect = el.getBoundingClientRect()
-      // Keep the card on screen: it hangs from the chip's left edge until that
-      // would push it past the right of the window.
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - PEEK_WIDTH - 8))
-      setPeek({ id, left, top: rect.bottom + 6 })
-      peekShown.current = true
-    }
-    // Sliding along the rail switches cards at once; arriving waits a beat, so
-    // a pointer crossing the party does not strobe.
-    if (peekShown.current) place()
-    else peekTimer.current = setTimeout(place, 120)
-  }, [])
+  const showPeek = useCallback(
+    (id: string, el: HTMLElement) => {
+      stopPeekTimer()
+      peekAnchor.current = { id, el }
+      // Sliding along the rail switches cards at once; arriving waits a beat, so
+      // a pointer crossing the party does not strobe.
+      if (peekShown.current) placePeek(id, el)
+      else peekTimer.current = setTimeout(() => placePeek(id, el), 120)
+    },
+    [placePeek]
+  )
   const endPeek = useCallback(() => {
     stopPeekTimer()
     peekTimer.current = setTimeout(() => {
       peekShown.current = false
+      peekAnchor.current = null
       setPeek(null)
     }, 80)
   }, [])
+  const followPeek = useCallback(() => {
+    const anchor = peekAnchor.current
+    if (peekShown.current && anchor) placePeek(anchor.id, anchor.el)
+  }, [placePeek])
   useEffect(() => stopPeekTimer, [])
   // A sheet, or scrolling the rail, makes the anchor meaningless.
   useEffect(() => {
@@ -715,10 +733,10 @@ export default function PartyRail({
       <div className="shrink-0 border-b border-line-subtle/60 bg-surface-panel/95 shadow-[0_6px_14px_-12px_var(--shadow)]">
         {party && (
           <div
-            className="flex h-16 items-center gap-1 overflow-x-auto px-2 lg:pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex h-16 items-center gap-1 overflow-x-auto overflow-y-hidden px-2 lg:pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="group"
             aria-label="Party"
-            onScroll={hidePeekNow}
+            onScroll={followPeek}
           >
             <button
               type="button"

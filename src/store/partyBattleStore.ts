@@ -27,7 +27,11 @@ export const usePartyBattleStore = create<PartyBattleState>((set) => ({
   apply: (payload) =>
     set((state) => {
       if ('ended' in payload) {
-        if (!state.byUserId[payload.id]) return state
+        const current = state.byUserId[payload.id]
+        if (!current) return state
+        // A fight that ended before the one we are showing started is stale
+        // news, and clearing on it would blank a live fight.
+        if (current.ts > payload.ts) return state
         const next = { ...state.byUserId }
         delete next[payload.id]
         return { byUserId: next }

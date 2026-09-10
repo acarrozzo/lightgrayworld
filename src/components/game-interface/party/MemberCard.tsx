@@ -112,18 +112,23 @@ export function MemberAvatar({
 export function StateBadge({
   member,
   className = '',
-  pulse = false,
+  showTitle = true,
 }: {
   member: SquadMember
   className?: string
-  pulse?: boolean
+  /**
+   * The badge truncates, so in a list its own tooltip is the only way to read a
+   * long state. In the rail it is off: hovering there opens the peek card, and
+   * a browser tooltip firing over the top of it is the thing the card replaced.
+   */
+  showTitle?: boolean
 }) {
   return (
     <span
-      title={member.statusLabel}
+      title={showTitle ? member.statusLabel : undefined}
       className={`inline-block max-w-full truncate rounded-sm border px-1 py-px text-[8px] font-bold uppercase leading-[1.5] tracking-wide ${
         BADGE_TONE[member.state]
-      } ${pulse ? 'animate-pulse' : ''} ${className}`}
+      } ${className}`}
     >
       {member.statusLabel}
     </span>

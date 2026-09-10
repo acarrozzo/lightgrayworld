@@ -310,3 +310,37 @@ test('hurt and safe name themselves too', () => {
   assert.equal(me.statusLabel, 'Safe')
   assert.ok(!me.statusLabel.includes('/'))
 })
+
+test('no state labels itself with the numbers the bars already draw', () => {
+  // One member per state the ladder can reach without a room reading. `ready`
+  // and `safe` are covered above; between them that is all seven.
+  const party: PartySnapshot = {
+    ...PARTY,
+    leaderId: 'a',
+    leader: { id: 'a', username: 'A', level: 10, uIcon: null, uIconColor: null },
+    members: ['b', 'c', 'd', 'e'].map((id) => ({
+      id, username: id.toUpperCase(), level: 10, uIcon: null, uIconColor: null,
+    })),
+    size: 5,
+  }
+  const presence: Record<string, PresencePlayer> = {
+    a: presenceOf({ id: 'a', username: 'A', hp: 0, hpMax: 40 }),
+    b: presenceOf({ id: 'b', username: 'B', inBattle: true, battleEnemyName: 'Rat' }),
+    c: presenceOf({ id: 'c', username: 'C', hp: 2, hpMax: 40 }),
+    d: presenceOf({ id: 'd', username: 'D', status: 'idle' }),
+    // 'e' is in no feed at all, which is what being offline looks like here.
+  }
+  const squad = buildSquad({ party, roomPlayers: [], presenceById: presence, currentPlayerId: 'nobody' })
+
+  assert.deepEqual(
+    squad.map((m) => m.state),
+    ['down', 'fighting', 'hurt', 'idle', 'offline'],
+    'the fixture must actually reach every state it claims to'
+  )
+  for (const member of squad) {
+    assert.ok(
+      !member.statusLabel.includes('/'),
+      `${member.state} labels itself "${member.statusLabel}", which repeats a vital`
+    )
+  }
+})
