@@ -1401,6 +1401,11 @@ class RoomState {
     // showing an enemy in a room they are no longer standing in.
     const abandonedBattle = this.activeBattles.get(playerId)
     const abandonedEnemyName = abandonedBattle?.isActive ? abandonedBattle.enemyName : null
+    // Read the live record back rather than reusing the one captured at the top
+    // of this method: a slip has just written HP through `updatePlayer`, which
+    // replaces the stored object, and the old one would carry pre-fall HP into
+    // the destination room's player list.
+    const departingState = this.players.get(playerId) ?? player
     this.removePlayer(playerId)
 
     // A slip lands somewhere the client did not ask for; its cached room data
@@ -1488,7 +1493,7 @@ class RoomState {
         fromRoomId: this.roomId,
         fromRoomEnemy: departingEnemy,
         playerState: {
-          ...player,
+          ...departingState,
           roomId: destination,
         },
       },

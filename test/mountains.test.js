@@ -15,6 +15,42 @@ const assert = require('node:assert/strict')
 const path = require('node:path')
 
 const ROOT = path.join(__dirname, '..')
+
+// Stub the database and the present-enemy writer before anything requires
+// them, so the slip can be driven end to end without touching Postgres. The
+// HP write is the one thing the slip does outside memory, and it is exactly
+// what the regression below is about.
+const fakeDb = { hp: 900, mp: 50 }
+const dbPath = require.resolve(path.join(ROOT, 'src/lib/db-client.js'))
+require.cache[dbPath] = {
+  id: dbPath,
+  filename: dbPath,
+  loaded: true,
+  exports: {
+    prisma: {
+      user: { findUnique: async () => null, update: async () => ({}) },
+      questProgress: { findUnique: async () => null },
+      killList: { findMany: async () => [] },
+      room: {
+        findUnique: async ({ where }) =>
+          where.roomId === '614'
+            ? { roomId: '614', north: null, northeast: null, east: null, southeast: '613', south: null, southwest: null, west: '617', northwest: null, up: null, down: null }
+            : null,
+      },
+      $queryRawUnsafe: async (_sql, _id, damage) => {
+        fakeDb.hp = Math.max(1, fakeDb.hp - damage)
+        return [{ hp: fakeDb.hp, mp: fakeDb.mp }]
+      },
+    },
+  },
+}
+const presentPath = require.resolve(path.join(ROOT, 'src/lib/game-engine/services/present-enemy-service.js'))
+require.cache[presentPath] = {
+  id: presentPath,
+  filename: presentPath,
+  loaded: true,
+  exports: { savePresentEnemy: async () => {}, loadPresentEnemy: async () => null },
+}
 const roomEnemies = require(path.join(ROOT, 'src/lib/game-data/room-enemies.js'))
 const { ENEMY_SPECIALS, SPECIAL_PRIORITY, selectEnemySpecial } = require(path.join(ROOT, 'src/lib/game-data/enemy-specials.js'))
 const { getEnemy } = require(path.join(ROOT, 'src/lib/game-data/enemies.js'))
@@ -179,4 +215,63 @@ test('the Icy Mountain Path slips one time in three into the pit below, floored 
   assert.ok(Math.abs(slip.chance - 1 / 3) < 1e-9)
   assert.deepEqual([slip.min, slip.max], [100, 1000])
   assert.match(slip.message('west', 250), /slip on the ice.*250 damage/)
+})
+
+/**
+ * `executeMove` awaits a room read, so a synchronous Math.random stub would be
+ * restored before the slip is ever rolled.
+ */
+const withRandomAsync = async (values, fn) => {
+  const original = Math.random
+  let i = 0
+  Math.random = () => (i < values.length ? values[i++] : values[values.length - 1])
+  try {
+    return await fn()
+  } finally {
+    Math.random = original
+  }
+}
+
+const icyRoom = () => {
+  const { RoomState } = require(path.join(ROOT, 'src/lib/game-engine/room-state.js'))
+  const room = new RoomState('614')
+  room.addPlayer({ id: 'p1', username: 'Tester', hp: fakeDb.hp, mp: fakeDb.mp, roomId: '614' })
+  return room
+}
+
+test('a slip redirects the move into the pit, flags it, and carries the fall damage with the player', async () => {
+  fakeDb.hp = 900
+  const room = icyRoom()
+  const result = await withRandomAsync([0.1, 0.5], () =>
+    room.executeMove({ type: 'move', data: { toRoom: '617', toRoomName: 'Stone Mountain Peak' } }, 'p1')
+  )
+
+  assert.equal(result.success, true)
+  assert.equal(result.data.toRoom, '615', 'the step west ends at the bottom of the ledge')
+  assert.equal(result.transfer.toRoomId, '615')
+
+  const feedback = result.playerEvents.find((e) => e.event === 'action:feedback').payload
+  // Without this flag the client discards the feedback as a destination
+  // mismatch and stays optimistically standing in the room it never reached.
+  assert.equal(feedback.data.redirected, true)
+  assert.match(feedback.message, /slip on the ice/)
+  assert.equal(feedback.outcome, 'danger')
+
+  assert.ok(fakeDb.hp < 900 && fakeDb.hp >= 1, 'the fall is written, floored at 1 HP')
+  assert.equal(feedback.data.hp, fakeDb.hp)
+  // The record handed to the destination room used to be the one captured
+  // before the HP write, so the new room listed pre-fall health.
+  assert.equal(result.transfer.playerState.hp, fakeDb.hp)
+})
+
+test('a step that does not slip is an ordinary move, with no damage and no redirect', async () => {
+  fakeDb.hp = 900
+  const room = icyRoom()
+  const result = await withRandomAsync([0.9], () =>
+    room.executeMove({ type: 'move', data: { toRoom: '617', toRoomName: 'Stone Mountain Peak' } }, 'p1')
+  )
+
+  assert.equal(result.data.toRoom, '617')
+  assert.equal(result.playerEvents[0].payload.data.redirected, undefined)
+  assert.equal(fakeDb.hp, 900)
 })

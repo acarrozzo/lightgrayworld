@@ -1677,9 +1677,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           let landedRoomName = toRoomName
           let landedRoomData = normalizedRoomData
           let landedEntryDirection = entryDirection
+          let wasRedirected = false
           if (result.data?.toRoom && result.data.toRoom !== toRoom) {
             const fallen = await loadDestination(player, result.data.toRoom)
             if (fallen.destinationRoom) {
+              wasRedirected = true
               landedRoom = result.data.toRoom
               landedRoomName = fallen.destinationRoom.name
               landedRoomData = buildDestinationRoomData({
@@ -1747,15 +1749,22 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               fromRoom,
               toRoom: landedRoom,
               toRoomName: landedRoomName,
-              normalizedRoomData,
+              normalizedRoomData: landedRoomData,
               exitDirection,
-              entryDirection,
+              entryDirection: landedEntryDirection,
               isTeleport,
               // Members skip adjacency exactly when the leader did. On a
               // directional move this stays false on purpose, so the engine
               // re-runs each member's own gate rather than inheriting the
               // leader's right of way.
-              authorizedMove,
+              //
+              // A redirect is the exception: the leader did not walk anywhere,
+              // they fell, and the room they fell into is not an exit of the
+              // room the party is standing in. Without this the whole party is
+              // refused ("you don't see an exit in that direction") and left
+              // behind while their leader is at the bottom of a pit. Members
+              // follow the fall; only the leader takes the damage for it.
+              authorizedMove: authorizedMove || wasRedirected,
               sourceExits,
             })
           }

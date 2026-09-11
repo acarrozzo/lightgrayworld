@@ -322,6 +322,22 @@ export default async function RoomsPage() {
             },
           ]
         })
+        // A slug can hold more than one slot of a table — the Mountain Alcove
+        // rolls its rare trio before the ordinary set, so the Yeti is in both.
+        // Sum them into one row rather than listing the same enemy twice at
+        // two different odds.
+        const merged = new Map<string, EnemySpawn>()
+        for (const spawn of spawns) {
+          const key = spawn.note ? `${spawn.slug}|${spawn.note}` : spawn.slug
+          const seen = merged.get(key)
+          if (!seen) merged.set(key, spawn)
+          else {
+            seen.weight = (seen.weight ?? 0) + (spawn.weight ?? 0)
+            seen.chancePct = pct(seen.weight ?? 0)
+          }
+        }
+        spawns.length = 0
+        spawns.push(...merged.values())
         enemyInfo = {
           mode: 'probabilistic',
           spawnChancePct: Math.round((cfg.spawnChance ?? 0) * 100),
