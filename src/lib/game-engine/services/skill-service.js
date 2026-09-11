@@ -35,6 +35,9 @@ const SKILL_SELECT = /** @type {const} */ ({
   twoHanded: true,
   ranged: true,
   warcraft: true,
+  oneHandedPro: true,
+  twoHandedPro: true,
+  rangedPro: true,
   slice: true,
   smash: true,
   aim: true,
@@ -136,14 +139,18 @@ async function learnSkill(playerId, skillId, { mode = 'one' } = {}) {
     return { success: false, message: 'Player not found.', skillId, levelsGained: 0, newLevel: 0, spSpent: 0, maxLevel: 0 }
   }
 
-  const maxLevel = getSkillMaxLevel(skill, state.skillTeachers)
+  const maxLevel = getSkillMaxLevel(skill, state.skillTeachers, state.skills)
   let level = state.skills[skill.column] || 0
   let sp = state.sp
 
   if (maxLevel <= 0) {
+    const { prerequisiteReason } = require('../../game-data/skills')
+    const needs = prerequisiteReason(skill, state.skills)
     return {
       success: false,
-      message: `You have not found anyone who can teach ${skill.name} yet.`,
+      message: needs
+        ? `${skill.name} is a mastery: ${needs.toLowerCase()} first.`
+        : `You have not found anyone who can teach ${skill.name} yet.`,
       skillId, levelsGained: 0, newLevel: level, spSpent: 0, maxLevel,
     }
   }

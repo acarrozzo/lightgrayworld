@@ -46,6 +46,10 @@ model User {
   twoHanded                 Int             @default(0)
   ranged                    Int             @default(0)
   warcraft                  Int             @default(0)
+  /// The Master Trainer's "Pro" proficiencies: each level is +5% to the gear-side STR (DEX for Ranged Pro) while that kind of weapon is in hand.
+  oneHandedPro              Int             @default(0)
+  twoHandedPro              Int             @default(0)
+  rangedPro                 Int             @default(0)
   toughness                 Int             @default(0)
   block                     Int             @default(0)
   dodge                     Int             @default(0)
@@ -130,6 +134,7 @@ model User {
   oceanUnderwaterMap        Boolean         @default(false)
   darkForestMap             Boolean         @default(false)
   darkForestUpperMap        Boolean         @default(false)
+  mountainsMap              Boolean         @default(false)
   worldMapV1                Boolean         @default(false)
   worldMapV2                Boolean         @default(false)
   worldMapV3                Boolean         @default(false)

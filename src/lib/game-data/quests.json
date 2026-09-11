@@ -2577,8 +2577,8 @@
     "title": "Gargoyle Hunter",
     "summary": "Gargoyles are so cool, and evil! Go defeat a white and grey one in the Cathedral.",
     "objective": "Defeat a Grey Gargoyle and a White Gargoyle.",
-    "nextStep": "Both roost in the Cathedral in the Stone Mountains, beyond the Highway Toll west of the Outpost. The mountain road is snowed in for now.",
-    "reminderDialog": "\"{progress} of {count}. Find both of them in the Cathedral in the Stone Mountain Map — once the pass is open.\"",
+    "nextStep": "Both roost in the Cathedral Courtyard in the Stone Mountains: west through the Highway Toll, up to the Snowy Clearing, northwest past Chilly Pete's cabin and northeast along the ridge.",
+    "reminderDialog": "\"{progress} of {count}. Find both of them in the Cathedral Courtyard in the Stone Mountains — past the Highway Toll, then up the ridge from Chilly Pete's cabin.\"",
     "completionDialog": "\"You have indeed defeated a white and grey gargoyle!\" Lego hands you a perfectly balanced Ranger Shield.",
     "requirements": [
       {
@@ -2643,6 +2643,489 @@
         "type": "item",
         "itemSlug": "green-griffin",
         "quantity": 1
+      }
+    ]
+  },
+  "quest_basecamp_001": {
+    "giverId": "base_camp",
+    "questType": "side",
+    "level": 35,
+    "title": "Frozen Fourth Flower",
+    "summary": "An elderly woman at the camp is looking for flowers. One for each of her children she lost. You can find a fourth flower on Dragon's Ledge across the Mountain Bridge.",
+    "objective": "Bring the elderly woman 4 flowers.",
+    "nextStep": "The first is in the Grassy Field flower patch, the second in Red Town's Babylon Gardens, the third under the Ocean, and the fourth on Dragon's Ledge — west over the Mountain Bridge, past the Gatekeeper. Each patch only lets you pick once you carry the ones before it.",
+    "reminderDialog": "\"{progress} of {count}, dear.\" The elderly woman counts them twice. \"Start with the one in the Grassy Field, then Red Town, then the ocean, and then the one here in the mountains over the stone bridge.\"",
+    "completionDialog": "You hand her four flowers and she holds them a long time. Then she presses a pair of Glowing Gloves into your hands, pulsing with magical energy. \"One for each of them. Thank you.\"",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "flower",
+        "quantity": 4,
+        "displayName": "Flower"
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "glowing-gloves",
+        "quantity": 1
+      }
+    ]
+  },
+  "quest_basecamp_002": {
+    "giverId": "base_camp",
+    "questType": "side",
+    "level": 35,
+    "title": "Balm Mixer",
+    "summary": "A snow covered shaman sits near the edge of camp mixing potions with mud. He will teach you how to make potent balms if you bring the correct ingredients. Bring the snowy shaman 5 red potions, 5 blue potions, and 10 mud.",
+    "objective": "Bring the snowy shaman 5 Red Potions, 5 Blue Potions and 10 Mud.",
+    "nextStep": "Potions are crushed berries at any crafting table. Mud comes up with everything else in the Neverending Mine.",
+    "reminderDialog": "\"Five red, five blue, ten mud.\" The shaman does not look up from his mortar. \"Then I show you.\"",
+    "completionDialog": "You hand the shaman the ingredients and he shows you how to make healing balms — five potions and a handful of mud to a balm, and a red and a blue together make a purple. He gives you ten of each to start.",
+    "requirements": [
+      {
+        "type": "hasItem",
+        "itemSlug": "red-potion",
+        "quantity": 5,
+        "displayName": "Red Potion"
+      },
+      {
+        "type": "hasItem",
+        "itemSlug": "blue-potion",
+        "quantity": 5,
+        "displayName": "Blue Potion"
+      },
+      {
+        "type": "hasItem",
+        "itemSlug": "mud",
+        "quantity": 10,
+        "displayName": "Mud"
+      }
+    ],
+    "consumeRequirementsOnComplete": true,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "red-balm",
+        "quantity": 10
+      },
+      {
+        "type": "item",
+        "itemSlug": "blue-balm",
+        "quantity": 10
+      }
+    ]
+  },
+  "quest_basecamp_003": {
+    "giverId": "base_camp",
+    "questType": "side",
+    "level": 35,
+    "title": "Ulfberht the Viking",
+    "summary": "Ulfberht the undead viking warrior has been a menace for centuries. The Base Camp leader has a bounty out for his defeat. Find him in the Neverending Mine, but be wary of his powerful ancient sword.",
+    "objective": "Defeat Ulfberht.",
+    "nextStep": "Ulfberht stands at Mine Level 15 of the Neverending Mine, under the Rocky Flats. He winds up for the big swing; bring defence.",
+    "reminderDialog": "\"Ulfberht still walks Mine Level 15.\" The camp leader taps the bounty. \"Loyal company for whoever puts him down.\"",
+    "completionDialog": "The entire camp applauds. The leader gives a quick whistle and an Ogre Shieldmate comes running up to your side. \"He's yours. Try to keep up with him.\"",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "ulfberht",
+        "count": 1,
+        "displayName": "Ulfberht"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 3000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "ogre-shieldmate",
+        "quantity": 1
+      }
+    ]
+  },
+  "quest_hector_001": {
+    "giverId": "hector",
+    "questType": "side",
+    "level": 35,
+    "title": "Steel Warrior",
+    "summary": "Impress Hector by collecting a full set of Steel Armor. Collect, buy or craft the armor and return here.",
+    "objective": "Carry a steel weapon, a steel helmet or hood, steel armor or cape, steel gloves or gauntlets, and steel boots.",
+    "nextStep": "The Stone Dwarves on the mountain drop the plate; Mountain Giants drop helmets; the road's highwaymen and the mine drop the rest. Any steel weapon counts.",
+    "reminderDialog": "\"Steel, head to toe.\" Hector looks you over. \"Not yet. Dwarves for the plate, giants for the helm.\"",
+    "completionDialog": "Hector is impressed. \"That's some nice looking steel armor you got yourself.\" He hands you a Master Helm to show the world you are a true steel warrior.",
+    "requirements": [
+      {
+        "type": "hasAnyItem",
+        "items": [
+          {
+            "itemSlug": "steel-dagger",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-sword",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-staff",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-2h-sword",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-battle-staff",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-nunchaku",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-boomerang",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-chakram",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-bow",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-crossbow",
+            "quantity": 1
+          }
+        ],
+        "displayName": "A steel weapon"
+      },
+      {
+        "type": "hasAnyItem",
+        "items": [
+          {
+            "itemSlug": "steel-helmet",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-hood",
+            "quantity": 1
+          }
+        ],
+        "displayName": "A steel helmet or hood"
+      },
+      {
+        "type": "hasAnyItem",
+        "items": [
+          {
+            "itemSlug": "steel-armor",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-cape",
+            "quantity": 1
+          }
+        ],
+        "displayName": "Steel armor or cape"
+      },
+      {
+        "type": "hasAnyItem",
+        "items": [
+          {
+            "itemSlug": "steel-gloves",
+            "quantity": 1
+          },
+          {
+            "itemSlug": "steel-gauntlets",
+            "quantity": 1
+          }
+        ],
+        "displayName": "Steel gloves or gauntlets"
+      },
+      {
+        "type": "hasAnyItem",
+        "items": [
+          {
+            "itemSlug": "steel-boots",
+            "quantity": 1
+          }
+        ],
+        "displayName": "Steel boots"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 5000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "steel-master-helm",
+        "quantity": 1
+      }
+    ]
+  },
+  "quest_hector_002": {
+    "giverId": "hector",
+    "questType": "side",
+    "level": 45,
+    "title": "Yeti Hunter",
+    "summary": "The illusive Yeti has been terrorizing the mountain side. Hector wants you to find and defeat this beast.",
+    "objective": "Find and slay a Yeti.",
+    "nextStep": "The Yeti roams the whole mountain and is rarest where the road is busiest. The Mountain Alcove, south of the wooded path, is where the rare things gather.",
+    "reminderDialog": "\"No Yeti yet? It's out there. Walk the mountain and keep your eyes open.\"",
+    "completionDialog": "\"You have indeed found and defeated the illusive Yeti!\" Hector takes the cloak off his back — made from a Yeti he hunted down long ago — and hands it to you.",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "yeti",
+        "count": 1,
+        "displayName": "Yeti"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 5000
+      },
+      {
+        "type": "currency",
+        "amount": 5000
+      },
+      {
+        "type": "item",
+        "itemSlug": "yeti-cloak",
+        "quantity": 1
+      }
+    ]
+  },
+  "quest_hector_003": {
+    "giverId": "hector",
+    "questType": "side",
+    "level": 60,
+    "title": "Dragon Slayer",
+    "summary": "Ferocious dragons have been spotted soaring among the mountains. There is a big reward for taking one down. Find and slay a Dragon.",
+    "objective": "Slay a Dragon.",
+    "nextStep": "Dragons can turn up anywhere on the mountain but haunt Dragon's Ledge, west over the Mountain Bridge. They fly — bring a bow or magic — and their firebreath ignores armour. The Gold Key opens the chest in the Cathedral Courtyard, and that chest opens the door to the Master Trainer.",
+    "reminderDialog": "\"Still no Dragon? They fly, so a sword is no use. Dragon's Ledge, past the Gatekeeper, is where they roost.\"",
+    "completionDialog": "\"You have indeed slain a Dragon!\" Hector, most impressed, hands you a Dragon Orb pulsing with raw power — and a Gold Key. \"The chest in the Cathedral Courtyard. Open it and the Blue Guard will let you through to the Master Trainer.\"",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "dragon",
+        "count": 1,
+        "displayName": "Dragon"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 10000
+      },
+      {
+        "type": "currency",
+        "amount": 50000
+      },
+      {
+        "type": "item",
+        "itemSlug": "dragon-orb",
+        "quantity": 1
+      },
+      {
+        "type": "item",
+        "itemSlug": "gold-key",
+        "quantity": 1
+      }
+    ]
+  },
+  "quest_chillypete_001": {
+    "giverId": "chilly_pete",
+    "questType": "side",
+    "level": 45,
+    "title": "Vampire Hunter",
+    "summary": "Chilly Pete has a bloody good reward for anyone who can slay 3 Vampires. You can find vampires in the Mountain Cathedral.",
+    "objective": "Slay 3 Vampires.",
+    "nextStep": "The Cathedral is northeast of Pete's cabin, past the deserted campsite. The Nave is where the vampires are.",
+    "reminderDialog": "\"{progress} of {count} vampires.\" Pete sips his tea. \"The Nave. They don't come to you.\"",
+    "completionDialog": "\"Three undead vampires. Bloody good.\" Chilly Pete hands you a life-stealing Vampiric Dagger gleaming with energy.",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "vampire",
+        "count": 3,
+        "displayName": "Vampire"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 10000
+      },
+      {
+        "type": "currency",
+        "amount": 20000
+      },
+      {
+        "type": "item",
+        "itemSlug": "vampiric-dagger",
+        "quantity": 1
+      }
+    ]
+  },
+  "quest_chillypete_002": {
+    "giverId": "chilly_pete",
+    "questType": "side",
+    "level": 55,
+    "title": "Dark Paladin Cleanse",
+    "summary": "Chilly Pete wants you to remove some evil from this world. Visit the Dark Keep and defeat 3 Dark Paladins.",
+    "objective": "Defeat 3 Dark Paladins.",
+    "nextStep": "The Dark Paladins patrol the top of the Dark Keep, in the Dark Forest — up the Dark Stairwell past the Stone Sphinx.",
+    "reminderDialog": "\"{progress} of {count}. The top of the Dark Keep, where the paladins patrol. Go on.\"",
+    "completionDialog": "\"Three Dark Paladins.\" Chilly Pete fishes around his weapons cache and hands you a spear blessed by the gods.",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "dark-paladin",
+        "count": 3,
+        "displayName": "Dark Paladin"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 10000
+      },
+      {
+        "type": "currency",
+        "amount": 20000
+      },
+      {
+        "type": "item",
+        "itemSlug": "blessed-spear",
+        "quantity": 1
+      }
+    ]
+  },
+  "quest_chillypete_003": {
+    "giverId": "chilly_pete",
+    "questType": "side",
+    "level": 50,
+    "title": "The Super Rare Snowy Trio",
+    "summary": "Chilly Pete has a most difficult quest for you. You must find the super rare snowy trio in the mountains: a Snow Ogre, a Snow Ninja and a Snow Owl.",
+    "objective": "Defeat a Snow Ogre, a Snow Ninja and a Snow Owl.",
+    "nextStep": "All three are rare on the open mountain and far less rare in the Mountain Alcove, south of the wooded path. The Owl flies and fights with magic.",
+    "reminderDialog": "\"{progress} of {count} of the trio. The alcove, if you want to see them more than once a season.\"",
+    "completionDialog": "\"You did it! You somehow found the super rare trio!\" Chilly Pete, most impressed, calls out quickly and a Snow Berserker bounds out of nowhere, ready to fight at your side.",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "snow-ogre",
+        "count": 1,
+        "displayName": "Snow Ogre"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "snow-ninja",
+        "count": 1,
+        "displayName": "Snow Ninja"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "snow-owl",
+        "count": 1,
+        "displayName": "Snow Owl"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 20000
+      },
+      {
+        "type": "currency",
+        "amount": 100000
+      },
+      {
+        "type": "item",
+        "itemSlug": "snow-berserker",
+        "quantity": 1
+      }
+    ]
+  },
+  "quest_rigel_001": {
+    "giverId": "rigel",
+    "questType": "main",
+    "level": 50,
+    "title": "Open the Gate",
+    "summary": "To complete this quest and open the city gates you must collect the 3 required keys. Read the sign at the gate for clues where to look.",
+    "objective": "Collect the Key of Greed, the Key of Wrath and the Key of Pride.",
+    "nextStep": "A king holds each key: the Kraken under the Ocean (Greed), the Troll King in the Dark Forest (Wrath), and the Giant Mountain Giant on the Stone Mountain Peak (Pride). Defeat each one.",
+    "reminderDialog": "\"{progress} of {count} keys.\" Rigel does not look away from the gate. \"Greed, Wrath, Pride. A king holds each.\"",
+    "completionDialog": "You hand Rigel the Keys of Greed, Wrath and Pride. He lifts them up to the sky and the gate's magic pulls them right from his hand. The three keys click in unison and the gate opens. \"Welcome to Star City.\" Beyond it the city glitters — for another time.",
+    "requirements": [
+      {
+        "type": "killCount",
+        "enemySlug": "kraken",
+        "count": 1,
+        "displayName": "Key of Greed — the Kraken"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "troll-king",
+        "count": 1,
+        "displayName": "Key of Wrath — the Troll King"
+      },
+      {
+        "type": "killCount",
+        "enemySlug": "giant-mountain-giant",
+        "count": 1,
+        "displayName": "Key of Pride — the Giant Mountain Giant"
+      }
+    ],
+    "consumeRequirementsOnComplete": false,
+    "rewards": [
+      {
+        "type": "xp",
+        "amount": 10000
+      },
+      {
+        "type": "currency",
+        "amount": 50000
       }
     ]
   },

@@ -328,6 +328,20 @@ const ROOM_GATES = {
         message: "The path ahead is too treacherous. You need the ability to fly to traverse this route.",
       },
     },
+    // Up the waterfall to the Master Trainer's courtyard in the Mountains. The
+    // original put this on `northwest`, which here leads to Room Zero, so the
+    // flight goes `up` — which is what it is.
+    'up': {
+      check: (playerId) => playerCanFly(playerId),
+      message: 'You will not be able to fly up the waterfall unless you are flying. Find or buy a Wings Potion, or cast the Wings spell.',
+      modalContent: {
+        title: 'The waterfall',
+        type: 'icon',
+        icon: 'wings',
+        iconColor: 'blue-300',
+        message: 'The water comes down out of the mountains from somewhere very high up, and there are no stairs. You will not be able to go up unless you are flying — find or buy a Wings Potion, or cast the Wings spell.',
+      },
+    },
   },
   '028h': {
     'north': {
@@ -1060,6 +1074,84 @@ for (const door of DARK_KEEP_DOORS) {
     },
   }
 }
+
+// ==================== MOUNTAINS ====================
+// The Highway Toll onto the mountain road. The original opened `west` on
+// `$endfight >= 1` — the turn after you beat the Highwayman here — or on the
+// thousand-gold toll, and both are one ephemeral pass here (lever-state's
+// HIGHWAY_TOLL), set by the win hook or by 'pay toll' and spent on the
+// crossing, so every trip up costs a fight or a purse.
+ROOM_GATES['504'] = {
+  west: {
+    check: (playerId) => {
+      const { isLeverPulled, HIGHWAY_TOLL } = require('./lever-state')
+      return isLeverPulled(playerId, HIGHWAY_TOLL)
+    },
+    lever: true,
+    message: 'The Highwayman blocks the mountain road. Pay the toll (1000 gold) or fight him to pass.',
+    modalContent: {
+      title: 'The Highwayman blocks the road',
+      type: 'icon',
+      icon: 'enemy-Highwayman',
+      iconColor: 'red-400',
+      message: '"Pay up or go back to where you came from!" The Highwayman does not move. A thousand gold buys the road west up the mountain — or put him down and walk over him.',
+    },
+    onPass: async (playerId) => {
+      const { resetLever, HIGHWAY_TOLL } = require('./lever-state')
+      resetLever(playerId, HIGHWAY_TOLL)
+    },
+  },
+}
+// The door between the Blue Guard Outpost and the Master Trainer opens for
+// whoever has cracked the Cathedral Courtyard's gold chest — from both sides,
+// as the original checked `chest7` at 608 west and again at 610 east. The
+// key is Hector's Dragon Slayer reward (the original's own messages blamed
+// Chilly Pete; its code paid it out for the Dragon).
+const CATHEDRAL_CHEST_DOOR = {
+  check: (playerId) => hasOpenedChest(playerId, 'chest7'),
+  message: 'You cannot pass yet. Open the Gold Chest in the Cathedral Courtyard, north of the outpost, to unlock this door. Complete Hector\'s Dragon Slayer quest for a Gold Key.',
+  modalContent: {
+    title: 'A locked door',
+    type: 'icon',
+    icon: 'chest',
+    iconColor: 'amber-500',
+    message: 'A heavy door, and the Blue Guard on it will not open it for you. "The Courtyard chest first. Whoever opens that, we let through." Hector hands out the key — bring him a Dragon.',
+  },
+}
+ROOM_GATES['608'] = { west: CATHEDRAL_CHEST_DOOR }
+ROOM_GATES['610'] = { east: CATHEDRAL_CHEST_DOOR }
+// The two secret ways into the Cathedral Graveyard, and Dragon's Ledge's jump
+// to the Silver Temple — hidden until searched (search-reveal-state.js).
+for (const [roomId, direction, hint] of [
+  ['615', 'northwest', "You don't see an exit to the northwest. You should try searching."],
+  ['623', 'southwest', "You don't see an exit to the southwest. You should try searching."],
+  ['620', 'northwest', "You don't see an exit to the northwest. You should try searching."],
+]) {
+  ROOM_GATES[roomId] = ROOM_GATES[roomId] || {}
+  ROOM_GATES[roomId][direction] = {
+    check: async (playerId) => {
+      const { isPassageRevealed } = require('./search-reveal-state')
+      return isPassageRevealed(playerId, roomId, direction)
+    },
+    message: hint,
+    silent: true,
+  }
+}
+// The Cathedral Graveyard: "You are lost in a gloomy graveyard. You might find
+// your way out, but probably not." Every direction is an exit and every one
+// of them leads straight back in — "you attempt to go north but somehow get
+// even more lost." Seeded as exits to 616 itself, gated shut, as Lost in the
+// Trees is. The way out is fast travel, or the Risen Skeletons.
+ROOM_GATES['616'] = Object.fromEntries(
+  ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'up', 'down'].map((direction) => [
+    direction,
+    {
+      check: async () => false,
+      message: `You attempt to go ${direction} but somehow get even more lost.`,
+      silent: true,
+    },
+  ])
+)
 
 /**
  * Every shaft in the Neverending Mine, built rather than written out thirty-one

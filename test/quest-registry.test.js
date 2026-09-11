@@ -57,8 +57,12 @@ test('standing is quests done out of quests the faction has, with the title only
   assert.equal(townAfterGuild.done, 0)
 
   // A placeholder faction has nothing to count and is never complete.
+  const starCity = registry.factionStanding('star-city', [])
+  assert.deepEqual([starCity.total, starCity.complete], [0, false])
+
+  // The Mountains are live now: ten quests across four givers.
   const mountains = registry.factionStanding('mountains', [])
-  assert.deepEqual([mountains.total, mountains.complete], [0, false])
+  assert.deepEqual([mountains.total, mountains.complete], [10, false])
 })
 
 test('titles are earned one per completed faction, in world order', () => {

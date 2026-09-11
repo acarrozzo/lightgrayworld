@@ -75,6 +75,7 @@ export interface Player {
   chest4?: boolean
   chest5?: boolean
   chest6?: boolean
+  chest7?: boolean
   grassyFieldMap?: boolean
   grassyFieldUndergroundMap?: boolean
   forestUndergroundMap?: boolean
@@ -87,6 +88,7 @@ export interface Player {
   oceanUnderwaterMap?: boolean
   darkForestMap?: boolean
   darkForestUpperMap?: boolean
+  mountainsMap?: boolean
   roomZeroMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean

@@ -166,6 +166,17 @@ const IRON_UNLOCK = {
   hint: 'To craft with iron, defeat the Phoenix at Mine Level 10 for the Mining Guild.',
 }
 
+/**
+ * The snowy shaman at the Stone Mountain Base Camp: "he will teach you how to
+ * make potent balms if you bring the correct ingredients". The lesson is his
+ * quest turned in, and it holds at every crafting table after that.
+ */
+const BALM_UNLOCK = {
+  questId: 'quest_basecamp_002',
+  requireCompleted: true,
+  hint: 'To make balms, bring the snowy shaman at the Stone Mountain Base Camp 5 red potions, 5 blue potions and 10 mud.',
+}
+
 const WOOD = (qty) => ({ slug: 'wood', qty, name: 'Wood' })
 const STONE = (qty) => ({ slug: 'stone', qty, name: 'Stone' })
 const IRON = (qty) => ({ slug: 'iron', qty, name: 'Iron' })
@@ -218,8 +229,10 @@ const CRAFTING_RECIPES = [
   },
 
   // ==================== POTIONS ====================
-  // Purple potions and the three balms wait for their teachers (the Traveling
-  // Wizard and the Stone Mountain shaman), neither of whom is ported yet.
+  // Purple potions wait for their teacher (the Traveling Wizard). The three
+  // balms are the Stone Mountain shaman's lesson — the Base Camp's "Balm
+  // Mixer" quest — exactly the original's recipes: five potions and a mud to
+  // a balm, a red and a blue to a purple.
   {
     id: 'red-potion',
     label: 'Red Potion',
@@ -239,6 +252,39 @@ const CRAFTING_RECIPES = [
     blurb: 'Crush blueberries into a mana potion.',
     inputs: [{ slug: 'blueberry', qty: 5, name: 'Blueberry' }],
     output: { slug: 'blue-potion', qty: 1, name: 'Blue Potion' },
+  },
+  {
+    id: 'red-balm',
+    label: 'Red Balm',
+    family: 'potions',
+    batch: 'all',
+    station: 'crafting-table',
+    blurb: 'Five red potions and a handful of mud, worked into a thick healing salve. The snowy shaman\'s recipe.',
+    unlock: BALM_UNLOCK,
+    inputs: [{ slug: 'red-potion', qty: 5, name: 'Red Potion' }, { slug: 'mud', qty: 1, name: 'Mud' }],
+    output: { slug: 'red-balm', qty: 1, name: 'Red Balm' },
+  },
+  {
+    id: 'blue-balm',
+    label: 'Blue Balm',
+    family: 'potions',
+    batch: 'all',
+    station: 'crafting-table',
+    blurb: 'Five blue potions and a handful of mud, worked into a mana salve.',
+    unlock: BALM_UNLOCK,
+    inputs: [{ slug: 'blue-potion', qty: 5, name: 'Blue Potion' }, { slug: 'mud', qty: 1, name: 'Mud' }],
+    output: { slug: 'blue-balm', qty: 1, name: 'Blue Balm' },
+  },
+  {
+    id: 'purple-balm',
+    label: 'Purple Balm',
+    family: 'potions',
+    batch: 'all',
+    station: 'crafting-table',
+    blurb: 'A red balm and a blue balm, folded together. The finest salve there is.',
+    unlock: BALM_UNLOCK,
+    inputs: [{ slug: 'red-balm', qty: 1, name: 'Red Balm' }, { slug: 'blue-balm', qty: 1, name: 'Blue Balm' }],
+    output: { slug: 'purple-balm', qty: 1, name: 'Purple Balm' },
   },
 
   // ==================== WOOD ====================

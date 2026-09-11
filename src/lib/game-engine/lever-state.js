@@ -61,6 +61,15 @@ const DARK_FOREST_SILVER_SWITCH = '511-silverswitch'
  * Altar's would open both doors at once — a quirk of shared variables, not a
  * puzzle, and not kept.)
  */
+/**
+ * The Highway Toll (504) onto the mountain road. Not a lever but the same
+ * thing mechanically, like Freddie's cow toll: an ephemeral per-player pass
+ * that opens the way west and is spent on the crossing. The original opened
+ * the road on `$endfight >= 1` — "You travel west over the body of the
+ * Highwayman you just defeated" — or on a thousand gold; both set this.
+ */
+const HIGHWAY_TOLL = '504-highwaytoll'
+
 const DARK_KEEP_STOREROOM_LEVER = '516b-lever'
 const DARK_KEEP_BURIAL_LEVER = '516c-lever'
 const DARK_KEEP_BARRACKS_LEVER = '516f-lever'
@@ -170,6 +179,11 @@ function getRoomStateNote(playerId, roomId) {
     if (thrown === 1) return 'One of the two levers has been thrown. The ornate door to the northeast has not moved yet.'
     return 'A massive ornate door seals the way northeast.'
   }
+  if (roomId === '504') {
+    return isLeverPulled(playerId, HIGHWAY_TOLL)
+      ? 'The way west up the mountain road is open. The Highwayman is not arguing.'
+      : 'The Highwayman stands across the mountain road to the west. "Pay up or go back to where you came from!"'
+  }
   return null
 }
 
@@ -260,6 +274,7 @@ module.exports = {
   getExitOverlay,
   KOBOLD_SWITCH,
   COW_TOLL,
+  HIGHWAY_TOLL,
   GROTTO_SWITCH,
   UNDERWATER_SWITCH,
   DARK_FOREST_SILVER_SWITCH,

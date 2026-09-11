@@ -141,6 +141,7 @@ const mapOf = (roomId: string): MapId => {
   if (roomId.startsWith('4')) return 'blue_ocean'
   if (DARK_FOREST_UPPER.includes(roomId)) return 'dark_forest_upper'
   if (roomId.startsWith('5')) return 'dark_forest'
+  if (roomId.startsWith('6')) return 'mountains'
   if (roomId.startsWith('2')) return 'red_town'
   if (roomId.startsWith('1')) return 'forest'
   return 'overworld'
@@ -272,20 +273,53 @@ export default async function RoomsPage() {
     let enemyInfo: RoomNode['enemies'] = null
     if (cfg) {
       if (cfg.probabilistic) {
-        const total = (cfg.enemies as { slug: string; weight: number }[]).reduce(
-          (s, e) => s + e.weight,
-          0
-        )
-        const spawns: EnemySpawn[] = (cfg.enemies as { slug: string; weight: number }[]).map((e) => {
-          const def = enemyBySlug.get(e.slug)
-          return {
-            slug: e.slug,
-            name: def?.name ?? prettifySlug(e.slug),
-            level: def?.level,
-            icon: def?.icon ?? null,
-            weight: e.weight,
-            chancePct: total > 0 ? Math.round((e.weight / total) * 100) : undefined,
+        type PoolEntry = { slug: string; weight: number }
+        type Rung = { killed?: string[]; anyKilled?: string[]; notKilled?: string[]; enemies: PoolEntry[] }
+        type TableEntry = PoolEntry | { weight: number; ladder: Rung[] }
+        const entries = cfg.enemies as TableEntry[]
+        const total = entries.reduce((s, e) => s + e.weight, 0)
+        const pct = (weight: number) => (total > 0 ? Math.round((weight / total) * 100) : undefined)
+        const describeRung = (rung: Rung): string => {
+          const parts: string[] = []
+          if (rung.killed) parts.push(`after ${rung.killed.map(prettifySlug).join(' and ')}`)
+          if (rung.anyKilled) parts.push(`after ${rung.anyKilled.map(prettifySlug).join(' or ')}`)
+          if (rung.notKilled) parts.push(`until ${rung.notKilled.map(prettifySlug).join(' or ')}`)
+          return parts.length ? parts.join(', ') : 'until any of the above'
+        }
+        const spawns: EnemySpawn[] = entries.flatMap((e): EnemySpawn[] => {
+          // A kill-gated slot: every enemy any rung can produce, each tagged
+          // with what has to be dead for its rung to be the live one. The
+          // slot's share is the whole ladder's, not each rung's.
+          if ('ladder' in e) {
+            const seen = new Set<string>()
+            return e.ladder.flatMap((rung) =>
+              rung.enemies
+                .filter((pool) => !seen.has(pool.slug) && seen.add(pool.slug))
+                .map((pool) => {
+                  const def = enemyBySlug.get(pool.slug)
+                  return {
+                    slug: pool.slug,
+                    name: def?.name ?? prettifySlug(pool.slug),
+                    level: def?.level,
+                    icon: def?.icon ?? null,
+                    weight: e.weight,
+                    chancePct: pct(e.weight),
+                    note: describeRung(rung),
+                  }
+                })
+            )
           }
+          const def = enemyBySlug.get(e.slug)
+          return [
+            {
+              slug: e.slug,
+              name: def?.name ?? prettifySlug(e.slug),
+              level: def?.level,
+              icon: def?.icon ?? null,
+              weight: e.weight,
+              chancePct: pct(e.weight),
+            },
+          ]
         })
         enemyInfo = {
           mode: 'probabilistic',

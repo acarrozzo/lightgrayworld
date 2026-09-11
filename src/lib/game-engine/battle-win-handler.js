@@ -5,6 +5,24 @@ const { grantItemOnce, getPlayerInventory } = require('./services/inventory-serv
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 const { grantTeleport } = require('./teleport-grants')
 const partyStore = require('../services/party-store')
+const { noteKill } = require('./services/kill-list-service')
+
+/**
+ * What a room does when one of its enemies dies in it — the few places the
+ * original's room file read `$endfight` after a win. The Highway Toll (504)
+ * is the one: "You travel west over the body of the Highwayman you just
+ * defeated" — beating him there opens the mountain road for the session,
+ * exactly as paying him would. Keyed by room, called after the win commits.
+ *
+ * @type {Record<string, (playerId: string, enemySlug: string) => void>}
+ */
+const ROOM_WIN_HOOKS = {
+  '504': (playerId, enemySlug) => {
+    if (enemySlug !== 'highwayman') return
+    const { pullLever, HIGHWAY_TOLL } = require('./lever-state')
+    pullLever(playerId, HIGHWAY_TOLL)
+  },
+}
 
 // Of this enemy's firstKill slugs, return the set the player already owns (equipped copies
 // included). firstKill items only drop for slugs NOT in this set, so a player who lost a piece
@@ -200,6 +218,11 @@ async function persistBattleWin(playerId, battleState, rewards) {
       ),
     'persistBattleWin'
   )
+
+  // The kill is committed: the spawn tables' kill set and the room's own
+  // after-win rule (the toll) see it from the next roll onward.
+  noteKill(playerId, enemy.slug)
+  ROOM_WIN_HOOKS[battleState.roomId]?.(playerId, enemy.slug)
 
   // Read back outside the transaction: this is only needed to push to the client
   // and would otherwise hold the transaction open for an extra round-trip.

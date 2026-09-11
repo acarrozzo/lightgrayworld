@@ -15,8 +15,8 @@
  *    and the NPCs who only talk to members ask `isMember`, never a quest id.
  *
  * Regions and guilds are separate: a guild quest does not raise its town.
- * Mountains and Star City are declared so the Pillar's capstones can name
- * them; they have no givers until their maps are ported.
+ * Star City is declared so the Pillar's capstone can name it; it has no
+ * givers until its map is ported.
  *
  * `colorToken` is the room-colour token (theme/room-colors.ts) the faction's
  * standing bar is painted with: a region takes its world colour, a guild
@@ -38,7 +38,7 @@ const FACTIONS = [
   { id: 'ocean', name: 'Blue Ocean', kind: 'region', colorToken: 'world.ocean', hubRoomId: '413', title: 'Blue Ocean Savior' },
   { id: 'dark-forest', name: 'Dark Forest', kind: 'region', colorToken: 'world.darkForest', hubRoomId: '507', title: 'Dark Forest Savior' },
   { id: 'rangers-guild', name: "Ranger's Guild", kind: 'guild', colorToken: 'world.rangersGuild', hubRoomId: '515', membershipQuest: 'quest_rangersguild_000', memberTitle: 'Ranger', title: 'Elite Ranger' },
-  { id: 'mountains', name: 'Mountains', kind: 'region', colorToken: null, placeholder: true, title: 'Mountain Savior' },
+  { id: 'mountains', name: 'Mountains', kind: 'region', colorToken: 'world.mountains', hubRoomId: '605', title: 'Mountain Savior' },
   { id: 'star-city', name: 'Star City', kind: 'region', colorToken: null, placeholder: true, title: 'Eternal Mage' },
 ]
 

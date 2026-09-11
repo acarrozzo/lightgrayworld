@@ -267,6 +267,10 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     // toward daylight — brighter than the forest floor, but never the
     // Grassy Field's grass.
     rangersGuild: { base: mix(t.green, t.brightGreen, 0.35) },
+    // The Stone Mountains: snow over stone. The theme's white pulled toward
+    // its blue and dimmed a stop, so it reads as ice — paler than the caves'
+    // grey-blue, colder than the Rocky Flats' warm stone, never the Lobby's sky.
+    mountains: { base: dim(mix(t.white, t.blue, 0.3), 0.12) },
     solarOffice: { base: t.brightYellow },
     lobby: { base: mix(t.blue, t.white, 0.3) },
   }
@@ -638,7 +642,9 @@ function separateRegions(ui: Theme['ui'], regions: Record<RegionId, RegionPalett
 
   const movable: RegionId[] = (Object.keys(regions) as RegionId[]).filter((id) => id !== 'redTown')
 
-  for (let pass = 0; pass < 80; pass++) {
+  // Enough passes for twenty-one regions: the loop breaks the moment every
+  // pair is far enough apart, so a theme that is already separated pays nothing.
+  for (let pass = 0; pass < 160; pass++) {
     const ids = Object.keys(regions) as RegionId[]
     let worst = { d: Infinity, a: '' as RegionId, b: '' as RegionId }
     for (let i = 0; i < ids.length; i++) {

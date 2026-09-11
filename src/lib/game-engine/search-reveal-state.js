@@ -193,6 +193,35 @@ const REVEAL_DEFINITIONS = {
     failMessage: 'You search and find nothing, you should try searching again.',
     stateNote: 'A secret way leads south through the trees.',
   },
+
+  // ==================== MOUNTAINS ====================
+  // The two secret ways into the Cathedral Graveyard. The original answered a
+  // typed `nw` at the Bottom of a Ledge and a typed `sw` at the Altar with
+  // "You find a secret path to the Cathedral Graveyard" and no button for
+  // either; with a compass instead of a prompt they are found by searching,
+  // every time. Neither path runs back — the graveyard has no exits at all.
+  '615': {
+    direction: 'northwest',
+    toRoom: '616',
+    successMessage: 'You search the pit and find a crawlway under the ledge, running northwest. It smells of turned earth and old stone — a graveyard, somewhere ahead.',
+    stateNote: 'A crawlway runs northwest out of the pit.',
+  },
+  '623': {
+    direction: 'southwest',
+    toRoom: '616',
+    successMessage: 'You search behind the altar and find a door in the panelling, and steps beyond it going down to the southwest. Cold air comes up them. It smells of graves.',
+    stateNote: 'A door behind the altar stands open on steps going southwest.',
+  },
+  // Dragon's Ledge: "You search Dragon's Ledge and spot a shiny platform off in
+  // the distance to the northwest!" One time in two, and then you jump.
+  '620': {
+    direction: 'northwest',
+    toRoom: '625',
+    chance: 0.5,
+    successMessage: "You search Dragon's Ledge and spot a shiny platform off in the distance to the northwest! It is a long way down. You could jump.",
+    failMessage: "You search Dragon's Ledge and don't find anything of interest.",
+    stateNote: 'A shiny platform glints far below to the northwest. You could jump off the ledge.',
+  },
 }
 
 function getRevealDefinition(roomId) {

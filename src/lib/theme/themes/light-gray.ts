@@ -197,6 +197,8 @@ export const lightGray = makeTheme({
       darkForest: { base: '#2f7d32' },
       darkKeep: { base: '#7d8288' },
       rangersGuild: { base: '#5fb36a' },
+      // The original's mountain rooms were `lgray` on snow: pale ice-blue.
+      mountains: { base: '#b7c6d6' },
       solarOffice: { base: '#efb045' },
       lobby: { base: '#0eb3f5' },
     },

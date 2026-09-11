@@ -256,6 +256,20 @@ const ROOM_SUPPLIES = [
 
 const SUPPLY_MODES = new Set(['take', 'topUp'])
 
+// ==================== MOUNTAINS ====================
+// Chilly Pete's cabin: "There is some tea available for adventurers passing
+// through." Five cups, topped up, exactly the Dark Elf's rule — and, Pete
+// insists, way better than the Dark Elf's.
+ROOM_SUPPLIES.push({
+  roomId: '609',
+  slug: 'tea',
+  mode: 'topUp',
+  cap: 5,
+  plural: 'cups of tea',
+  message: (n) => `You pick up ${n} cup${n === 1 ? '' : 's'} o' tea from Chilly Pete's table!`,
+  full: () => 'You already have tea! Come back if you run out.',
+})
+
 /** Every supply a room provides, in authored order. */
 function getRoomSupplies(roomId) {
   return ROOM_SUPPLIES.filter((entry) => entry.roomId === roomId)

@@ -33,7 +33,7 @@ export type EffectiveStats = Record<StatKey, StatBreakdown>
  */
 export function effectiveStats(player: Player | null | undefined, inventory: InventoryItem[]): EffectiveStats {
   const buff = getStatBuffBonuses(player?.buffs ?? null)
-  const skill = passiveSkillBonuses(player, gearContextFromInventory(inventory))
+  const skill = passiveSkillBonuses(player, gearContextFromInventory(inventory), { str: player?.strMod ?? 0, dex: player?.dexMod ?? 0 })
   const build = (key: StatKey): StatBreakdown => {
     const core = player?.[key] ?? 0
     const gear = player?.[`${key}Mod` as `${StatKey}Mod`] ?? 0

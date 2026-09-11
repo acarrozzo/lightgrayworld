@@ -116,6 +116,36 @@ const ENEMY_SPECIALS = {
     // ePoison 2: rand(1, lvl).
     rollPoison: (level, rand) => rand(1, Math.max(1, Math.floor(Number(level) || 1))),
   },
+  whirlwind: {
+    id: 'whirlwind',
+    name: 'Whirlwind Attack',
+    label: 'Whirlwind',
+    rule: 'Whirlwind: 1 in 4 attacks rolls ATT six times and sums them.',
+    // 1/4 — `$enemywhirlwindattack = rand(1, 4); ... == 1`. King Blade and the
+    // Silver Titan: six ATT rolls, blocked once, like a crit with fewer swings.
+    chance: 1 / 4,
+    rollDamage: (enemy, rand) => {
+      const rolls = Array.from({ length: 6 }, () => rand(0, enemy.att))
+      return { rolls, raw: rolls.reduce((sum, r) => sum + r, 0) }
+    },
+  },
+  dragonfire: {
+    id: 'dragonfire',
+    name: 'Firebreath',
+    label: 'Firebreath',
+    rule: 'Firebreath: 1 in 4 attacks is 3 to 5 gouts of flame at full ATT. Your DEF does not block them.',
+    // 1/4 — `$enemydragonfire = rand(1, 4); ... == 1`. The Dragon's whole
+    // reputation: `$edamagetotal = $enemyatt * rand(3, 5)`, pure. The original
+    // comment also promised "catch on fire, burn forever, cure with water" and
+    // never wrote it; the breath is what shipped.
+    chance: 1 / 4,
+    bypassesDefense: true,
+    rollDamage: (enemy, rand) => {
+      const gouts = rand(3, 5)
+      const rolls = Array.from({ length: gouts }, () => enemy.att)
+      return { rolls, raw: enemy.att * gouts }
+    },
+  },
   pure: {
     id: 'pure',
     name: 'Pure Attack',
@@ -133,10 +163,11 @@ const ENEMY_SPECIALS = {
 // Order specials are considered in when an enemy carries more than one.
 // Earlier entries win the attack. Later perks slot in here rather than into
 // combat's control flow.
-// This is the original's own if/else order in battle.php: crit, then rage, then
-// power, then bite, with the standing pure modifier last so a Cyclops that also
-// rolled something rarer still shows the rarer thing.
-const SPECIAL_PRIORITY = ['crit', 'rage', 'power', 'bite', 'poison', 'venom', 'pure']
+// This is the original's own if/else order in battle.php: whirlwind, then
+// firebreath, then crit, then rage, then power, then bite, with the standing
+// pure modifier last so a Cyclops that also rolled something rarer still shows
+// the rarer thing.
+const SPECIAL_PRIORITY = ['whirlwind', 'dragonfire', 'crit', 'rage', 'power', 'bite', 'poison', 'venom', 'pure']
 
 /**
  * The special ids an enemy definition declares, filtered to ones that exist.

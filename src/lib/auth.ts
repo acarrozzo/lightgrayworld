@@ -41,6 +41,7 @@ export interface AuthUser {
   chest4?: boolean
   chest5?: boolean
   chest6?: boolean
+  chest7?: boolean
   /** Spell levels keyed by User column (`magicMissile`, `fireball`, ...). */
   spells?: Record<string, number>
   /** Spell teachers met, keyed by User flag column (`pajamaShamanFlag`, ...). */
@@ -56,6 +57,7 @@ export interface AuthUser {
   rockyFlatsMap?: boolean
   rockyFlatsUndergroundMap?: boolean
   neverEndingMineMap?: boolean
+  mountainsMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean
   /** Fast-travel hubs stood in, by world region id (game-data/world-map.js). */

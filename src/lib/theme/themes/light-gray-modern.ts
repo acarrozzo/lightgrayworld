@@ -199,6 +199,7 @@ export const lightGrayModern = makeTheme({
       darkForest: { base: '#15803d' }, // green-700
       darkKeep: { base: '#64748b' }, // slate-500
       rangersGuild: { base: '#4ade80' }, // green-400
+      mountains: { base: '#bae6fd' }, // sky-200
       solarOffice: { base: '#facc15' }, // yellow-400
       lobby: { base: '#7dd3fc' }, // sky-300
     },

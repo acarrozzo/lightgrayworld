@@ -58,6 +58,7 @@ export type MapFlag = keyof Pick<
   | 'oceanUnderwaterMap'
   | 'darkForestMap'
   | 'darkForestUpperMap'
+  | 'mountainsMap'
   | 'lobbyMap'
   | 'solarOfficeMap'
 >

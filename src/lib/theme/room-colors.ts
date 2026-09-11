@@ -76,6 +76,7 @@ export const ROOM_COLOR_TOKENS: Record<string, string> = {
   'world.darkForest': '--world-dark-forest',
   'world.darkKeep': '--world-dark-keep',
   'world.rangersGuild': '--world-rangers-guild',
+  'world.mountains': '--world-mountains',
   'world.solarOffice': '--world-solar-office',
   'world.lobby': '--world-lobby',
 }

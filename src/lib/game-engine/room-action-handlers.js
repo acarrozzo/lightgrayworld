@@ -563,6 +563,43 @@ const CHEST_LOOT = {
       ],
     },
   },
+  // The Cathedral Courtyard's Gold Chest (621), the Stone Mountain chest,
+  // behind Hector's key. The original's haul: XP, a flat 20000 gold, fifteen
+  // of each balm, a Ring of X XIII, one of the twelve silver pieces (its roll
+  // was 1-in-13 with nothing on the thirteenth — dropped), and the Snow Bow.
+  '621': {
+    'open gold chest': {
+      label: 'Stone Mountain Gold Chest',
+      xp: 2000,
+      items: [
+        { itemSlug: 'red-balm', quantity: 15 },
+        { itemSlug: 'blue-balm', quantity: 15 },
+        { itemSlug: 'snow-bow', quantity: 1, highlighted: true },
+      ],
+      randomItems: [
+        [
+          { itemSlug: 'ring-of-strength-xiii', quantity: 1 },
+          { itemSlug: 'ring-of-dexterity-xiii', quantity: 1 },
+          { itemSlug: 'ring-of-magic-xiii', quantity: 1 },
+          { itemSlug: 'ring-of-defense-xiii', quantity: 1 },
+        ],
+        [
+          { itemSlug: 'silver-sword', quantity: 1 },
+          { itemSlug: 'silver-2h-sword', quantity: 1 },
+          { itemSlug: 'silver-boomerang', quantity: 1 },
+          { itemSlug: 'silver-bow', quantity: 1 },
+          { itemSlug: 'silver-crossbow', quantity: 1 },
+          { itemSlug: 'silver-shield', quantity: 1 },
+          { itemSlug: 'silver-helmet', quantity: 1 },
+          { itemSlug: 'silver-breastplate', quantity: 1 },
+          { itemSlug: 'silver-gauntlets', quantity: 1 },
+          { itemSlug: 'silver-boots', quantity: 1 },
+          { itemSlug: 'silver-ring', quantity: 1 },
+          { itemSlug: 'silver-necklace', quantity: 1 },
+        ],
+      ],
+    },
+  },
   '309': {
     'open gold chest': {
       label: 'Rocky Flats Gold Chest',
@@ -1877,6 +1914,110 @@ function makeLeverHandler({ roomId, leverName, alreadyMessage, flipMessage, moda
  * it the enemy's turn first — the Dark Prince swooping in on whoever reaches
  * for the crown.
  */
+/**
+ * A purse-charged pass or ride: the Highway Toll's thousand gold for the road
+ * west, the mountain lift's five hundred each way. One conditional write
+ * charges the fare — `currency >= fare` in the WHERE — so two clicks in flight
+ * cannot both pass the balance check, and P2025 (nothing matched) is the
+ * honest "you can't afford it". `onPaid` does whatever the fare bought: a
+ * session pass, or a one-shot teleport grant the client then carries out.
+ *
+ * @param {Object} opts
+ * @param {string} opts.action
+ * @param {number} opts.fare
+ * @param {string} opts.brokeMessage
+ * @param {(playerId: string) => ({ message: string, extra?: object })} opts.onPaid
+ * @param {{ icon: string, iconColor: string, title: string }} opts.modal
+ */
+function makeFareHandler({ action, fare, brokeMessage, onPaid, modal }) {
+  return free(async (playerId, roomState) => {
+    const { prisma } = require('../db-client')
+    roomState.touchActivity()
+
+    const say = (outcome, message, extra = {}) => ({
+      success: outcome === 'success',
+      action,
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload(action, outcome, message, {
+            roomId: roomState.roomId,
+            showModal: true,
+            modalContent: { type: 'icon', ...modal, message },
+            ...extra,
+          }),
+        },
+      ],
+    })
+
+    if (roomState.activeBattles.get(playerId)?.isActive) {
+      return say('failure', 'You cannot do that in the middle of battle!')
+    }
+
+    let updated
+    try {
+      updated = await prisma.user.update({
+        where: { id: playerId, currency: { gte: fare } },
+        data: { currency: { decrement: fare } },
+        select: { id: true, currency: true },
+      })
+    } catch (error) {
+      if (error?.code === 'P2025') return say('info', brokeMessage)
+      console.error(`[${action}] Failed to charge fare:`, error)
+      return createErrorResult(action, 'Something went wrong paying. Please try again.')
+    }
+
+    const paid = onPaid(playerId)
+    return say('success', paid.message, { player: updated, ...(paid.extra || {}) })
+  })
+}
+
+/**
+ * The fourth flower, on Dragon's Ledge. The original's rule: you can only
+ * pick it if you are already carrying the first three, and never past four.
+ * The elderly woman at the Base Camp is who they are for.
+ */
+async function pickMountainFlower(playerId, roomState) {
+  const { getHeldQuantity, grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
+
+  roomState.touchActivity()
+
+  const held = await getHeldQuantity(playerId, 'flower')
+  const respond = (outcome, message, extra = {}) => ({
+    success: outcome === 'success',
+    action: 'pick flower',
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload('pick flower', outcome, message, {
+          roomId: roomState.roomId,
+          showModal: true,
+          modalContent: { type: 'icon', icon: 'flower', iconColor: 'yellow-400', title: "Dragon's Ledge", message },
+          ...extra,
+        }),
+      },
+    ],
+  })
+
+  if (held <= 2) {
+    return respond(
+      'info',
+      'You can only pick a flower here if you already have three in your inventory. Return to the Grassy Field, then the Red Town Babylon Gardens, and then under the Ocean to get the first three.'
+    )
+  }
+  if (held >= 4) {
+    return respond('info', 'You cannot pick up another flower here. You already have four.')
+  }
+
+  const granted = await grantItemOnce(playerId, 'flower', 1)
+  if (!granted.granted) {
+    return createErrorResult('pick flower', 'You could not pick the flower.')
+  }
+
+  const inventory = await getPlayerInventory(playerId)
+  return respond('success', 'You pick a frozen flower from the edge of the ledge. You now have four!', { inventory })
+}
+
 function makeSummonHandler({ action, enemySlug, message, ambush = false }) {
   return free(async (playerId, roomState) => {
     const { executeStartBattle } = require('./battle-action-handlers')
@@ -3383,9 +3524,9 @@ const ROOM_ACTIONS = {
   },
 
   // --- The Highway Toll: the sign, the toll, and the man collecting it ---
-  // The Stone Mountains beyond the gate are not ported yet, so there is no
-  // exit west to pay for. The toll's sign and its collector are here as they
-  // were; paying is deferred with the road (see the memory notes).
+  // The road west into the Stone Mountains. A thousand gold buys one crossing
+  // (a session pass spent on the way through — ROOM_GATES['504']), and so does
+  // beating the Highwayman here (the win hook in battle-win-handler).
   '504': {
     'read sign': {
       showModal: true,
@@ -3398,25 +3539,24 @@ const ROOM_ACTIONS = {
           description: 'It costs 1000 gold to pass.',
         },
         locations: [
-          { name: 'Stone Mountains', direction: 'west', description: 'The mountain road, behind the Highwayman. Closed for now — the pass is snowed in.' },
+          { name: 'Stone Mountains', direction: 'west', description: 'The mountain road, behind the Highwayman. Pay him or beat him, every time.' },
           { name: 'Ranger Outpost', direction: 'east', description: 'Back along the stone path.' },
         ],
         questMessage: 'Or you can just attack the Highwayman and be on your way.',
         questMessageDescription: 'Be careful though, they are a difficult Level 25 — and every hit they land is a pure 60.',
       },
     },
-    'pay toll': {
-      showModal: true,
-      message: 'The Highwayman waves your coin away. "Pass is closed. Keep it — for now."',
-      modalContent: {
-        type: 'icon',
-        icon: 'enemy-Highwayman',
-        iconColor: 'gray-400',
-        title: 'The Highway Toll',
-        message:
-          'You reach for your purse and the Highwayman glances over his shoulder at the mountain road, buried in snow to the height of a man. "Pass is closed. Keep your coin — for now." He grins. "Or fight me anyway, if you\'re bored."',
+    'pay toll': makeFareHandler({
+      action: 'pay toll',
+      fare: 1000,
+      brokeMessage: "You don't have 1000 gold to pay the toll. \"Then go back to where you came from!\"",
+      modal: { icon: 'enemy-Highwayman', iconColor: 'amber-400', title: 'The Highway Toll' },
+      onPaid: (playerId) => {
+        const { pullLever, HIGHWAY_TOLL } = require('./lever-state')
+        pullLever(playerId, HIGHWAY_TOLL)
+        return { message: 'You hand the Highwayman 1000 gold. He steps aside with a bow that is mostly a sneer. The road west up the mountain is yours — this once.' }
       },
-    },
+    }),
     'fight highwayman': makeSummonHandler({
       action: 'fight highwayman',
       enemySlug: 'highwayman',
@@ -3723,6 +3863,125 @@ const ROOM_ACTIONS = {
     }),
   },
 
+  // ==================== MOUNTAINS ====================
+  // --- The Abandoned Campsite & Lift: Merl and his one-way ticket ---
+  '606': {
+    'take lift north': makeFareHandler({
+      action: 'take lift north',
+      fare: 500,
+      brokeMessage: "You don't have enough coin to take the lift. Go get rich, fool.",
+      modal: { icon: 'tent', iconColor: 'blue-300', title: 'Merl the lift operator' },
+      onPaid: (playerId) => {
+        grantTeleport(playerId, '607')
+        return { message: 'You pay Merl 500 coin and take the lift north!', extra: { teleportRoomId: '607' } }
+      },
+    }),
+  },
+
+  // --- Stone Mountain Base Camp: the chatty bunch, and Raul's lift down ---
+  '607': {
+    'talk to the base camp': npcTalk('base_camp'),
+    'take lift south': makeFareHandler({
+      action: 'take lift south',
+      fare: 500,
+      brokeMessage: "You don't have enough coin to take the lift. Stop being so poor.",
+      modal: { icon: 'tent', iconColor: 'blue-300', title: 'Raul the lift operator' },
+      onPaid: (playerId) => {
+        grantTeleport(playerId, '606')
+        return { message: 'You pay Raul 500 coin and take the lift south!', extra: { teleportRoomId: '606' } }
+      },
+    }),
+  },
+
+  // --- Blue Guard Mountain Outpost: Captain Hector ---
+  '608': {
+    'talk to hector': npcTalk('hector'),
+  },
+
+  // --- Chilly Pete's Mountain Cabin: quests, and the tea (a room supply) ---
+  '609': {
+    'talk to chilly pete': npcTalk('chilly_pete'),
+  },
+
+  // --- The Master Trainer: he says nothing; the courtyard does the teaching ---
+  // (the skills flag is the teacher-room table's, set on arrival).
+  '610': {
+    'ask the master trainer': {
+      showModal: true,
+      message: 'The hooded man does not answer. Skills settle into you all the same.',
+      modalContent: {
+        type: 'icon',
+        icon: 'pillar2',
+        iconColor: 'blue-300',
+        title: 'The Master Trainer',
+        message:
+          'The hooded man floats between the marble pillars and does not look at you, or speak, or land. You understand things anyway.\n\nWarcraft, to twenty. And the Pro proficiencies — One Handed Pro, Two Handed Pro, Ranged Pro — for anyone whose base skill has reached twenty: each level is another five percent on top of what your gear already gives that stat. Open your skill book.',
+      },
+    },
+  },
+
+  // --- Star City Blue Gate: Rigel the Brave, the sign, and the gate itself ---
+  '611': {
+    'read sign': {
+      showModal: true,
+      message: 'You read the Blue Gate sign.',
+      modalContent: {
+        title: 'You read the Blue Gate sign',
+        heading: {
+          text: 'Star City Blue Gate',
+          parts: ['Star City', 'Blue Gate'],
+          description: 'Find the 3 keys to open the Gate!',
+        },
+        locations: [
+          { name: 'KEY OF GREED', direction: '', description: 'Dropped by the King under the Ocean.' },
+          { name: 'KEY OF WRATH', direction: '', description: 'Dropped by the King of the Dark Forest.' },
+          { name: 'KEY OF PRIDE', direction: '', description: 'Dropped by the King of the Mountains.' },
+        ],
+        questMessage: 'Rigel the Brave stands by the gate. Talk to him.',
+        questMessageDescription: 'A king is a king: the Kraken, the Troll King, the Giant Mountain Giant.',
+      },
+    },
+    'talk to rigel': npcTalk('rigel'),
+    'approach the gate': free(async (playerId, roomState) => {
+      const { prisma } = require('../db-client')
+      roomState.touchActivity()
+      const opened = await prisma.questProgress.findUnique({
+        where: { userId_questId: { userId: playerId, questId: 'quest_rigel_001' } },
+        select: { completed: true },
+      })
+      const message = opened?.completed
+        ? 'The three keys clicked in unison and the gate opened for you. Beyond it the city glitters, every moving piece of the gate turning in time with something inside — and the far side of the gate is not ready for you yet. Star City is for another time.'
+        : 'The gate is an elaborate shiny structure, many moving pieces all clicking and popping in complex synchronization, and none of them moves for you. Three keys, the sign says. Rigel is watching.'
+      return executeBasicDisplay('approach the gate', message, playerId, roomState, true, {
+        modalContent: { type: 'icon', icon: 'gate', iconColor: 'blue-300', title: 'The Blue Gate', message },
+      })
+    }),
+  },
+
+  // --- Dragon's Ledge: the fourth flower ---
+  '620': {
+    'pick flower': pickMountainFlower,
+  },
+
+  // --- The Cathedral Courtyard: the Stone Mountain Gold Chest ---
+  '621': {
+    'open gold chest': makeGoldChestHandler({
+      roomId: '621',
+      goldMin: 20000,
+      goldMax: 20000,
+      lockedMessage: 'You need a Gold Key to open this chest. Hector at the Blue Guard Outpost hands one out to whoever slays a Dragon.',
+    }),
+  },
+
+  // --- The Silver Temple: the champions are ready when you are ---
+  '625': {
+    'challenge silver titan': makeSummonHandler({
+      action: 'challenge silver titan',
+      enemySlug: 'silver-titan',
+      message: 'You step into the arena. A Silver Titan steps in after you, and the champions around the edge go quiet.',
+    }),
+  },
+
   '999': {
     'rest in lobby': async (playerId, roomState) => roomState.executeLobbyRest(playerId),
   },
@@ -3808,6 +4067,21 @@ for (const roomId of DARK_FOREST_CHOP_WOOD_ROOMS) {
   ROOM_ACTIONS[roomId] = {
     ...(ROOM_ACTIONS[roomId] || {}),
     'chop wood': makeChopWoodAction({ missingToolMessage: DARK_FOREST_CHOP_WOOD_MISSING_TOOL }),
+  }
+}
+
+/**
+ * The Mountains' spruce: the four rooms that included `function-choptree.php`
+ * — the wooded path, the alcove, the clearing and "a lumberjack's dream".
+ */
+const MOUNTAIN_CHOP_WOOD_ROOMS = ['603', '604', '605', '612']
+const MOUNTAIN_CHOP_WOOD_MISSING_TOOL =
+  'You need a hatchet to chop these spruce. The nearest spare leans on the sign at the Dark Forest Teleport, back down the road.'
+
+for (const roomId of MOUNTAIN_CHOP_WOOD_ROOMS) {
+  ROOM_ACTIONS[roomId] = {
+    ...(ROOM_ACTIONS[roomId] || {}),
+    'chop wood': makeChopWoodAction({ missingToolMessage: MOUNTAIN_CHOP_WOOD_MISSING_TOOL }),
   }
 }
 

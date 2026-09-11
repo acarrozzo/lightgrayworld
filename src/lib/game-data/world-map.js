@@ -45,6 +45,9 @@ const MAP_SHEETS = [
   // sits ABOVE its surface rather than below it. The grid still files it with
   // the other non-surface sheets, labelled by its own level.
   { id: 'dark-forest-upper', title: 'Dark Forest Upper Level', src: '/img/lightgray_map_dark_forest_upperlevel.jpg', flag: 'darkForestUpperMap', region: 'dark-forest', level: 'Upper Level' },
+  // The Stone Mountains: one sheet for the whole region. The Cathedral, the
+  // bridge and the Silver Temple are all drawn on it — there is no "below".
+  { id: 'mountains', title: 'Mountains', src: '/img/lightgray_map_mountains.jpg', flag: 'mountainsMap', region: 'mountains', level: 'Surface' },
   { id: 'room-zero', title: 'Room Zero', src: '/img/lightgray_map_roomzero.jpg', flag: 'roomZeroMap', region: 'room-zero', level: 'Surface' },
   { id: 'lobby', title: 'Plane of Rebirth', src: '/img/lightgray_map_the_lobby.jpg', flag: 'lobbyMap', region: 'lobby', level: 'Surface' },
   { id: 'solar-office', title: 'Solar Office', src: '/img/lightgray_map_solar_office.jpg', flag: 'solarOfficeMap', region: 'solar-office', level: 'Surface' },
@@ -80,7 +83,13 @@ const SHEETS_BY_ID = new Map(MAP_SHEETS.map((sheet) => [sheet.id, sheet]))
  */
 const WORLD_REGIONS = [
   { id: 'star-city', name: 'Star City' },
-  { id: 'mountains', name: 'Mountains' },
+  {
+    id: 'mountains',
+    name: 'Mountains',
+    color: 'mountains',
+    // The original's `teleport9`, set on the first visit to the clearing.
+    hub: { roomId: '605', name: 'Snowy Mountain Clearing' },
+  },
   {
     id: 'dark-forest',
     name: 'Dark Forest',
@@ -207,6 +216,7 @@ function getMapIdForRoom(roomId) {
   if (roomId === '088') return 'solar-office'
   if (DARK_FOREST_UPPER.has(roomId)) return 'dark-forest-upper'
   if (roomId.startsWith('5')) return 'dark-forest'
+  if (roomId.startsWith('6')) return 'mountains'
   if (OCEAN_UNDERWATER.has(roomId)) return 'ocean-underwater'
   if (roomId.startsWith('4')) return 'ocean'
   if (roomId.startsWith('003b') || (roomId.startsWith('028') && roomId !== '028') || SCORPION_DUNGEON.has(roomId)) {

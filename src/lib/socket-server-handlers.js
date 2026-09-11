@@ -15,6 +15,7 @@ const {
   isTeleportDestinationOpen,
 } = require('./game-data/teleport-destinations.js')
 const { getMapSheetForRoom, getTeleportHubByRoom } = require('./game-data/world-map.js')
+const { ensureKillSet, clearKillSet } = require('./game-engine/services/kill-list-service.js')
 const { MAP_STATE_SELECT, projectMapState } = require('./game-engine/services/map-state.js')
 const { GOLD_CHEST_SELECT, projectGoldChestState } = require('./game-data/gold-chests.js')
 const { debugLog } = require('./debug-log.js')
@@ -114,7 +115,9 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
     // otherwise roll for one now.
     let slug = destRoomState.getPresentEnemy(player.id)
     if (!slug) {
-      slug = rollRoomEnemy(toRoom)
+      // The Mountains' boss slot climbs with the kill list; load it before the roll.
+      const kills = await ensureKillSet(player.id).catch(() => null)
+      slug = rollRoomEnemy(toRoom, { kills })
       destRoomState.setPresentEnemy(player.id, slug)
     }
 
@@ -762,6 +765,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     clearPlayerLevers(player.id)
     clearPlayerReveals(player.id)
     clearTeleportGrants(player.id)
+    clearKillSet(player.id)
 
     console.log(`Player ${player.username} disconnected (grace window elapsed)`)
 
@@ -1228,6 +1232,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           socket.disconnect(true)
           return
         }
+        // The spawn tables' kill set, primed off the login path so the first
+        // roll in a boss room does not wait on it.
+        ensureKillSet(dbPlayer.id).catch(() => null)
 
         // A player who died and left before rising wakes here, in the Plane of
         // Rebirth at 1 HP — the same place and state the Rise button gives.
@@ -1662,19 +1669,44 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // The engine result is authoritative - do not transition unless result.success === true
         if (result && result.success === true) {
           console.log(`[Socket] Movement succeeded, transitioning player room`)
+          // The engine may land the player somewhere other than where they
+          // stepped — the Icy Mountain Path's slip drops you into the pit
+          // below. Its destination is authoritative from here on: the room
+          // data loaded above is for the wrong room, so it is loaded again.
+          let landedRoom = toRoom
+          let landedRoomName = toRoomName
+          let landedRoomData = normalizedRoomData
+          let landedEntryDirection = entryDirection
+          if (result.data?.toRoom && result.data.toRoom !== toRoom) {
+            const fallen = await loadDestination(player, result.data.toRoom)
+            if (fallen.destinationRoom) {
+              landedRoom = result.data.toRoom
+              landedRoomName = fallen.destinationRoom.name
+              landedRoomData = buildDestinationRoomData({
+                destinationRoom: fallen.destinationRoom,
+                toRoom: landedRoom,
+                player,
+                gatherCooldowns: fallen.gatherCooldowns,
+                supplies: fallen.supplies,
+              })
+              landedEntryDirection = null
+            }
+          }
           // Derived from whether an exit actually led here, never from the client
           // payload — which used to let a caller relabel an ordinary step for the
           // room enter/leave messaging.
           const isTeleport = isTeleportMove
           // Socket rooms, presence and the live player record are moved before
           // this returns; only the database write is still in flight.
-          const persisted = transitionPlayerRoom({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
+          const persisted = transitionPlayerRoom({ player, fromRoom, toRoom: landedRoom, exitDirection, entryDirection: landedEntryDirection, isTeleport })
 
           console.log(`[Socket] Emitting action:confirmed to player`)
           socket.emit('action:confirmed', {
             action: 'move',
             success: true,
-            data: result?.data || { fromRoom, toRoom, toRoomName, roomData: normalizedRoomData },
+            data: result?.data
+              ? { ...result.data, toRoomName: landedRoomName, roomData: result.data.roomData || landedRoomData }
+              : { fromRoom, toRoom: landedRoom, toRoomName: landedRoomName, roomData: landedRoomData },
           })
 
           // The room is already on the player's screen (the engine's feedback
@@ -1688,7 +1720,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // that happens on arrival still happens — the map unlocks, the
           // teachers, the durable writes.
           if (safeArrival) {
-            gameEngine.getOrCreateRoom(toRoom).grantGraceTurn(player.id)
+            gameEngine.getOrCreateRoom(landedRoom).grantGraceTurn(player.id)
             emitActionFeedback(socket, {
               action: 'move',
               message: 'You catch your breath. This room is safe for a moment.',
@@ -1697,13 +1729,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
 
           await Promise.all([
-            safeArrival ? Promise.resolve() : maybeStartAutoBattle({ socket, player, toRoom, gameEngine }),
-            wakeIfDead({ prisma, io, socket, gameEngine, player, toRoom }),
+            safeArrival ? Promise.resolve() : maybeStartAutoBattle({ socket, player, toRoom: landedRoom, gameEngine }),
+            wakeIfDead({ prisma, io, socket, gameEngine, player, toRoom: landedRoom }),
             persisted,
-            chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom, charge: teleportCharge }),
-            applyArrivalDiscoveries(prisma, socket, player, toRoom),
-            announceSpellTeacher(prisma, socket, player, toRoom),
-            announceSkillTeacher(prisma, socket, player, toRoom),
+            chargeTeleport({ prisma, io, socket, gameEngine, player, toRoom: landedRoom, charge: teleportCharge }),
+            applyArrivalDiscoveries(prisma, socket, player, landedRoom),
+            announceSpellTeacher(prisma, socket, player, landedRoom),
+            announceSkillTeacher(prisma, socket, player, landedRoom),
           ])
 
           if (escapingBattle) {
@@ -1713,8 +1745,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             await pullPartyMembers({
               leaderId: player.id,
               fromRoom,
-              toRoom,
-              toRoomName,
+              toRoom: landedRoom,
+              toRoomName: landedRoomName,
               normalizedRoomData,
               exitDirection,
               entryDirection,

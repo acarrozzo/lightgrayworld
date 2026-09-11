@@ -40,6 +40,7 @@ export const REGIONS: RegionMeta[] = [
   { id: 'darkForest', name: 'Dark Forest' },
   { id: 'darkKeep', name: 'Dark Keep' },
   { id: 'rangersGuild', name: "Ranger's Guild" },
+  { id: 'mountains', name: 'Mountains' },
   { id: 'solarOffice', name: 'Solar Office' },
   { id: 'lobby', name: 'Plane of Rebirth' },
 ]
@@ -143,6 +144,7 @@ export function getRegionForRoom(roomId: string | null | undefined): RegionId {
   if (roomId === '215') return 'forest'
 
   if (roomId.startsWith('5')) return 'darkForest'
+  if (roomId.startsWith('6')) return 'mountains'
   if (roomId.startsWith('4')) return 'ocean'
   if (roomId.startsWith('3')) return 'rockyFlats'
   if (roomId.startsWith('2')) return 'redTown'

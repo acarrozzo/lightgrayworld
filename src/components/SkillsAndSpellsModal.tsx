@@ -310,6 +310,7 @@ export default function SkillsAndSpellsModal({
 /** Shared learn controls: +1, Max, or the reason there is nothing to buy. */
 function LearnControls({
   locked,
+  lockedReason,
   atMax,
   level,
   maxLevel,
@@ -321,6 +322,7 @@ function LearnControls({
   onLearn,
 }: {
   locked: boolean
+  lockedReason?: string | null
   atMax: boolean
   level: number
   maxLevel: number
@@ -331,7 +333,7 @@ function LearnControls({
   fill: string
   onLearn: (mode: 'one' | 'max') => void
 }) {
-  if (locked) return <span className="text-[11px] italic text-fg-disabled">Find a teacher to unlock</span>
+  if (locked) return <span className="text-[11px] italic text-fg-disabled">{lockedReason ?? 'Find a teacher to unlock'}</span>
   if (atMax) return <span className="text-[11px] italic text-resource-gold/80">Search for more advanced teachers</span>
   return (
     <>
@@ -392,6 +394,12 @@ function passiveStatus(entry: SkillbookEntry, gear: GearContext): string {
       return gear.hasShield ? `${now}: +${lvl * 3} DEF behind your shield` : 'Counts while a shield is equipped'
     case 'dodge':
       return `${now}: ${lvl}% chance to dodge an attack`
+    case 'one-handed-pro':
+      return holding === 'ONE_HANDED' ? `${now}: +${lvl * 5}% of your gear-side STR` : 'Counts while a one-handed weapon is in hand'
+    case 'two-handed-pro':
+      return holding === 'TWO_HANDED' ? `${now}: +${lvl * 5}% of your gear-side STR` : 'Counts while a two-handed weapon is in hand'
+    case 'ranged-pro':
+      return holding === 'RANGED' ? `${now}: +${lvl * 5}% of your gear-side DEX` : 'Counts while a ranged weapon is in hand'
     default:
       return def.formula
   }
@@ -463,6 +471,7 @@ function SkillCard({ entry, highlighted = false, sp, gear, busy, anyBusy, skillU
         <div className="flex flex-wrap items-center gap-2 mt-2">
           <LearnControls
             locked={locked}
+            lockedReason={entry.lockedReason}
             atMax={atMax}
             level={level}
             maxLevel={maxLevel}

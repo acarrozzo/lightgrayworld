@@ -86,6 +86,17 @@ const ACCEPTED = {
     '511:southwest',
     '512:north',
     '521:southwest', // out of the Troll Nest onto the twisted path, which only runs east and northwest
+    // The Mountains: the two secret ways into the Cathedral Graveyard, which
+    // has no exits at all (every direction loops back into it — you leave by
+    // fast travel or by dying, as in the original).
+    '615:northwest',
+    '623:southwest',
+    // The Bottom of a Ledge is only ever fallen into (the Icy Mountain Path's
+    // slip); crawling up its south ledge onto the Foggy Path is a climb nobody
+    // makes in reverse. And the Peak's southwest is a long way down onto the
+    // clearing, which does not climb back.
+    '615:south',
+    '617:southwest',
   ]),
 
   // Cardinal exits whose destination is not where the compass says. Lost in
@@ -98,7 +109,17 @@ const ACCEPTED = {
   // 031 ("Stairway to Heaven") is endgame content with no entrance yet, and no
   // counterpart in the original at all — it is new to this version. It stays
   // seeded so the room id is reserved and its description is not lost.
-  detachedRooms: new Set(['031']),
+  //
+  // 606 (the Abandoned Campsite & Lift at the bottom of the Chasm) is reached
+  // only by Raul's lift from the Base Camp and left only by Merl's lift back
+  // up — a fare, not an exit. The original's on-foot approach (029 → 030, the
+  // Friendly Giant's shortcut) was disabled in its own code and is not on the
+  // modern Grassy Field map.
+  //
+  // 615 (the Bottom of a Ledge) has no exit leading in: you fall into it from
+  // the Icy Mountain Path (a travel hazard, room-state.js), as in the original,
+  // and climb out south.
+  detachedRooms: new Set(['031', '606', '615']),
 
   // Rooms with no map cell. 031 has no entrance, so it has nowhere to be drawn;
   // 029 now has one, since it is reachable (see below).
@@ -114,13 +135,7 @@ const ACCEPTED = {
 
   // Enemies authored ahead of the map that will hold them. They are named by
   // acceptable quests, so they must exist — they simply have no spawn yet.
-  unspawnedEnemies: new Set([
-    'gatekeeper',
-    // Ranger Lego's "Gargoyle Hunter" wants both; they roost in the Cathedral
-    // in the Stone Mountains, which is not ported yet.
-    'grey-gargoyle',
-    'white-gargoyle',
-  ]),
+  unspawnedEnemies: new Set([]),
 }
 
 /**
@@ -241,7 +256,7 @@ const itemSlugs = loadItemSlugs()
 const { coords: mapCoords, centered: centeredRooms } = loadMapCoords()
 
 const { ENEMIES } = load('src/lib/game-data/enemies.js')
-const { ROOM_ENEMIES } = load('src/lib/game-data/room-enemies.js')
+const { ROOM_ENEMIES, listRoomEnemySlugs } = load('src/lib/game-data/room-enemies.js')
 const { ROOM_GATES } = load('src/lib/game-engine/room-gates.js')
 const { REVEAL_DEFINITIONS } = load('src/lib/game-engine/search-reveal-state.js')
 const { ROOM_SUPPLIES, SUPPLY_MODES } = load('src/lib/game-engine/config/room-supplies.js')
@@ -307,19 +322,24 @@ for (const { roomId, exits } of rooms.values()) {
 
 // ─── 2. Encounters ────────────────────────────────────────────────────────────
 
+// A table's slugs, ladders (the Mountains' kill-gated boss slots) expanded.
 for (const [roomId, config] of Object.entries(ROOM_ENEMIES)) {
   if (!isRoom(roomId)) err('room-enemies', `spawn table for "${roomId}", which is not a seeded room`)
-  for (const entry of config.enemies ?? []) {
-    const slug = typeof entry === 'string' ? entry : entry.slug
+  for (const slug of listRoomEnemySlugs(config)) {
     if (!enemySlugs.has(slug)) err('room-enemies', `${roomId} spawns unknown enemy "${slug}"`)
+  }
+  for (const entry of config.enemies ?? []) {
+    if (typeof entry === 'string' || !Array.isArray(entry.ladder)) continue
+    const last = entry.ladder[entry.ladder.length - 1]
+    if (last.killed || last.anyKilled || last.notKilled) {
+      err('room-enemies', `${roomId} has a ladder slot whose last rung is conditional — add an unconditional default rung`)
+    }
   }
 }
 
 const spawnedEnemies = new Set()
 for (const config of Object.values(ROOM_ENEMIES)) {
-  for (const entry of config.enemies ?? []) {
-    spawnedEnemies.add(typeof entry === 'string' ? entry : entry.slug)
-  }
+  for (const slug of listRoomEnemySlugs(config)) spawnedEnemies.add(slug)
 }
 // A traveler that can be fought (the field's bunny) is placed by its own
 // movement, not by a room table; it counts as spawned, and must exist.

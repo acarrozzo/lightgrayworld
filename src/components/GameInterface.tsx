@@ -1813,8 +1813,11 @@ export default function GameInterface() {
         
         // Validate: Check if feedback destination matches pending move destination
         // This is a sanity check to ensure feedback matches our request
+        // A `redirected` move is the server landing us somewhere we did not
+        // step (the Icy Mountain Path's slip into the pit below); its room is
+        // authoritative and the optimistic one is simply wrong.
         const feedbackToRoom = payload?.data?.toRoom
-        if (success && feedbackToRoom && feedbackToRoom !== pendingMove.toRoomId) {
+        if (success && feedbackToRoom && feedbackToRoom !== pendingMove.toRoomId && !payload?.data?.redirected) {
           console.warn(`[GameInterface] Move feedback destination mismatch - pending: ${pendingMove.toRoomId}, feedback: ${feedbackToRoom}, ignoring`)
           return
         }

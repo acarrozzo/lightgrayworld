@@ -19,6 +19,16 @@
 //   spawnChance    — 0..1 chance an enemy appears on a turn action when none is present
 //   enemies        — weighted pool the one enemy is picked from
 //   challenge      — optional gate a static enemy hides behind (see battle-action-handlers)
+//
+// A pool entry is `{ slug, weight }`, or a **ladder**: `{ weight, ladder: [...] }`
+// whose rungs are `{ killed?: string[], anyKilled?: string[], notKilled?: string[],
+// enemies: [{ slug, weight }] }`, read top to bottom against the player's kill
+// list — the first rung whose conditions hold is the pool that slot rolls from
+// (an empty `enemies` means the slot yields nothing). It is the original's
+// "boss slot": the Mountains' 1-in-50 that gave a Flying Dung Beetle until you
+// had killed the Giant Mountain Giant or the Gatekeeper, then Jikay or Jiemji,
+// then King Blade. `rollRoomEnemy(roomId, { kills })` takes the kill set; with
+// none, only a rung with no conditions can match.
 // Room 009: Spider Cave #009 — 60% spawn, spider 50% / scorpion 50%
 // Room 010: Spider Cave #010 — Giant Spider 60% spawn chance
 // Room 011: Spider Cave #011 — 60% spawn, scorpion 70% / spider 30%
@@ -38,6 +48,81 @@
 // Room 028g: Goblin Tracks — 50% spawn, goblin 80% / goblin-bandit 20%
 // Room 028h: Goblin Dead End — 50% spawn, goblin-bandit 80% / goblin 20%
 // Room 028i: Goblin Hideout — 100% spawn, goblin-chief 100%
+/**
+ * The Mountains' ordinary set, in units of 1/1050 (see the MOUNTAINS block):
+ * seven slots of 70. Two of the slots are sub-rolls of seven.
+ */
+const MOUNTAIN_SET = [
+  // The road's rarities, one slot shared seven ways.
+  { slug: 'bowman', weight: 10 },
+  { slug: 'highwayman', weight: 10 },
+  { slug: 'imp', weight: 10 },
+  { slug: 'wisp', weight: 10 },
+  { slug: 'falcon', weight: 10 },
+  { slug: 'dark-ranger', weight: 10 },
+  { slug: 'ent', weight: 10 },
+  { slug: 'mountain-giant', weight: 70 },
+  { slug: 'ice-troll', weight: 70 },
+  { slug: 'giant-brute', weight: 70 },
+  { slug: 'wyvern', weight: 70 },
+  { slug: 'stone-dwarf', weight: 70 },
+  // The snow rarities, one slot shared seven ways — the Yeti three of them.
+  { slug: 'yeti', weight: 30 },
+  { slug: 'snow-ogre', weight: 10 },
+  { slug: 'snow-ninja', weight: 10 },
+  { slug: 'snow-owl', weight: 10 },
+  { slug: 'dragon', weight: 10 },
+]
+
+/** The same set at a fraction of its weight, for rooms that roll something rarer first. */
+const MOUNTAIN_SET_SCALED = (factor) => MOUNTAIN_SET.map((entry) => ({ ...entry, weight: entry.weight * factor }))
+
+/**
+ * The Mountains' boss slot, exactly the original's chain of ifs: once every
+ * king is dead the three share it; with both lieutenants dead King Blade takes
+ * three fifths of it; a dead Jikay summons Jiemji and vice versa; the first
+ * fall of the Giant Mountain Giant or the Gatekeeper opens it to both; and
+ * until then it is a Flying Dung Beetle, which is the original's joke.
+ */
+const MOUNTAIN_BOSS_SLOT = (weight) => ({
+  weight,
+  ladder: [
+    { killed: ['jikay', 'jiemji', 'king-blade'], enemies: [{ slug: 'jikay', weight: 1 }, { slug: 'jiemji', weight: 1 }, { slug: 'king-blade', weight: 1 }] },
+    { killed: ['jikay', 'jiemji'], enemies: [{ slug: 'jikay', weight: 1 }, { slug: 'jiemji', weight: 1 }, { slug: 'king-blade', weight: 3 }] },
+    { killed: ['jikay'], enemies: [{ slug: 'jiemji', weight: 1 }] },
+    { killed: ['jiemji'], enemies: [{ slug: 'jikay', weight: 1 }] },
+    { anyKilled: ['giant-mountain-giant', 'gatekeeper'], enemies: [{ slug: 'jikay', weight: 1 }, { slug: 'jiemji', weight: 1 }] },
+    { enemies: [{ slug: 'flying-dung-beetle', weight: 1 }] },
+  ],
+})
+
+/**
+ * The Cathedral's two 1-in-50 slots (the Nave and the Altar), as the original
+ * wrote them: the first hands out a Rat until one of the mountain's guardians
+ * is down, then whichever lieutenant that guardian unlocks, then King Blade
+ * once both guardians are dead — and nothing at all once he is; the second is
+ * a Giant Rat "for funsies" until the Gatekeeper falls, after which it is Jikay.
+ */
+const CATHEDRAL_BOSS_SLOTS = [
+  {
+    weight: 21,
+    ladder: [
+      { killed: ['giant-mountain-giant', 'gatekeeper'], notKilled: ['king-blade'], enemies: [{ slug: 'king-blade', weight: 1 }] },
+      { killed: ['giant-mountain-giant', 'gatekeeper'], enemies: [] },
+      { killed: ['giant-mountain-giant'], enemies: [{ slug: 'jikay', weight: 1 }] },
+      { killed: ['gatekeeper'], enemies: [{ slug: 'jiemji', weight: 1 }] },
+      { enemies: [{ slug: 'rat', weight: 1 }] },
+    ],
+  },
+  {
+    weight: 21,
+    ladder: [
+      { killed: ['gatekeeper'], enemies: [{ slug: 'jikay', weight: 1 }] },
+      { enemies: [{ slug: 'giant-rat', weight: 1 }] },
+    ],
+  },
+]
+
 const ROOM_ENEMIES = {
   '013': {
     probabilistic: true,
@@ -2552,8 +2637,8 @@ const ROOM_ENEMIES = {
   // him to pass, or you pay. A spawn table that never rolls, so he is placed
   // only when the "fight highwayman" button calls him out (room-action-handlers)
   // — a static roster would have him ambush every arrival, which he never did.
-  // Until the Stone Mountains exist there is nothing to pass into, so he is
-  // here to be fought for the Ranger Guard's count.
+  // Beating him here opens the mountain road west for this session, as paying
+  // the toll does (see ROOM_GATES['504']).
   '504': {
     probabilistic: true,
     spawnChance: 0,
@@ -2708,6 +2793,104 @@ const ROOM_ENEMIES = {
     spawnChance: 0.1,
     enemies: [{ slug: 'dark-prince', weight: 100 }],
   },
+
+  // ==================== MOUNTAINS ====================
+  // The original's `battle-sets/mountains.php`, a 7-in-15 roll plus a 1-in-50
+  // boss slot. Written in units of 1/1050 so every slot is a whole number:
+  // each of the seven 1-in-15 slots is 70, the boss slot is 21. The road's
+  // rarities (bowman, highwayman, imp, wisp, falcon, dark ranger, ent) share
+  // one slot, as do the snow rarities (the Yeti three times, the trio and the
+  // Dragon once each). The boss slot is the ladder described at the top of
+  // this file — a Flying Dung Beetle until the mountain's kings start falling.
+  ...Object.fromEntries(
+    ['601', '602', '603', '605', '606', '612', '613', '614', '615', '618'].map((roomId) => [
+      roomId,
+      {
+        probabilistic: true,
+        spawnChance: 511 / 1050,
+        enemies: [...MOUNTAIN_SET, MOUNTAIN_BOSS_SLOT(21)],
+      },
+    ])
+  ),
+  // The Mountain Alcove: "EXTRA RARES FOR ALCOVE!!!!" — two 1-in-4 rolls over
+  // the snow trio before the ordinary set even runs, one of them with the
+  // Dragon at the end and the other with the Yeti. P(anything) ≈ 0.74.
+  '604': {
+    probabilistic: true,
+    spawnChance: 780.5 / 1050,
+    enemies: [
+      { slug: 'snow-ogre', weight: 150 },
+      { slug: 'snow-ninja', weight: 150 },
+      { slug: 'snow-owl', weight: 150 },
+      { slug: 'dragon', weight: 37.5 },
+      { slug: 'yeti', weight: 37.5 },
+      ...MOUNTAIN_SET_SCALED(0.5),
+      MOUNTAIN_BOSS_SLOT(10.5),
+    ],
+  },
+  // The Peak: the Giant Mountain Giant one time in two, and nothing else
+  // wanders this high.
+  '617': {
+    probabilistic: true,
+    spawnChance: 0.5,
+    enemies: [{ slug: 'giant-mountain-giant', weight: 100 }],
+  },
+  // The Mountain Bridge: the Gatekeeper, always — `rand(1, 1)` in the original.
+  '619': { enemies: ['gatekeeper'] },
+  // Dragon's Ledge: a Dragon one time in four before the ordinary set.
+  '620': {
+    probabilistic: true,
+    spawnChance: 645.75 / 1050,
+    enemies: [{ slug: 'dragon', weight: 262.5 }, ...MOUNTAIN_SET_SCALED(0.75), MOUNTAIN_BOSS_SLOT(15.75)],
+  },
+  // The Cathedral Courtyard: "most of them are not statues" — a Grey
+  // Gargoyle one time in four and a White one time in four, then the set.
+  '621': {
+    probabilistic: true,
+    spawnChance: 780.5 / 1050,
+    enemies: [
+      { slug: 'grey-gargoyle', weight: 262.5 },
+      { slug: 'white-gargoyle', weight: 262.5 },
+      ...MOUNTAIN_SET_SCALED(0.5),
+      MOUNTAIN_BOSS_SLOT(10.5),
+    ],
+  },
+  // The Nave: vampires five slots in fifteen, the Fallen Priest two, a 1-in-7
+  // sub-roll of gargoyles and the snow trio one — and the Cathedral's own two
+  // 1-in-50 boss slots (see CATHEDRAL_BOSS_SLOTS).
+  '622': {
+    probabilistic: true,
+    spawnChance: 602 / 1050,
+    enemies: [
+      { slug: 'vampire', weight: 350 },
+      { slug: 'fallen-priest', weight: 140 },
+      { slug: 'grey-gargoyle', weight: 20 },
+      { slug: 'white-gargoyle', weight: 20 },
+      { slug: 'snow-ogre', weight: 10 },
+      { slug: 'snow-ninja', weight: 10 },
+      { slug: 'snow-owl', weight: 10 },
+      ...CATHEDRAL_BOSS_SLOTS,
+    ],
+  },
+  // The Altar: the Fallen Angel seven slots in fifteen, the Priest three.
+  '623': {
+    probabilistic: true,
+    spawnChance: 742 / 1050,
+    enemies: [{ slug: 'fallen-angel', weight: 490 }, { slug: 'fallen-priest', weight: 210 }, ...CATHEDRAL_BOSS_SLOTS],
+  },
+  // The Graveyard: a Risen Skeleton one time in four. Nothing else finds it.
+  '616': {
+    probabilistic: true,
+    spawnChance: 0.25,
+    enemies: [{ slug: 'risen-skeleton', weight: 100 }],
+  },
+  // The Silver Temple: a Silver Titan steps into the arena one time in four,
+  // or the moment you challenge one (room-action-handlers).
+  '625': {
+    probabilistic: true,
+    spawnChance: 0.25,
+    enemies: [{ slug: 'silver-titan', weight: 100 }],
+  },
 }
 
 function getRoomEnemies(roomId) {
@@ -2718,27 +2901,83 @@ function isProbabilistic(roomId) {
   return ROOM_ENEMIES[roomId]?.probabilistic === true
 }
 
-// Picks a single enemy slug from a probabilistic room's weighted pool.
-// Assumes the caller has already decided a spawn should happen.
-function pickWeightedEnemy(config) {
-  const totalWeight = config.enemies.reduce((sum, e) => sum + e.weight, 0)
+/** Whether a ladder rung's conditions hold against the player's kill set. */
+function rungMatches(rung, kills) {
+  const has = (slug) => Boolean(kills && kills.has(slug))
+  if (rung.killed && !rung.killed.every(has)) return false
+  if (rung.anyKilled && !rung.anyKilled.some(has)) return false
+  if (rung.notKilled && rung.notKilled.some(has)) return false
+  return true
+}
+
+/**
+ * The pool a ladder slot rolls from for this player: the first rung whose
+ * conditions hold. A ladder whose rungs all fail yields nothing, as does a
+ * matching rung with an empty pool.
+ */
+function resolveLadder(ladder, kills) {
+  const rung = ladder.find((candidate) => rungMatches(candidate, kills))
+  return rung ? rung.enemies : []
+}
+
+/** One weighted pick, or null from an empty pool. */
+function pickFromPool(pool) {
+  const totalWeight = pool.reduce((sum, e) => sum + e.weight, 0)
+  if (totalWeight <= 0) return null
   let roll = Math.random() * totalWeight
-  for (const entry of config.enemies) {
+  for (const entry of pool) {
     roll -= entry.weight
     if (roll <= 0) return entry.slug
   }
-  return config.enemies[config.enemies.length - 1].slug
+  return pool[pool.length - 1].slug
+}
+
+// Picks a single enemy slug from a probabilistic room's weighted pool.
+// Assumes the caller has already decided a spawn should happen. A ladder
+// entry is resolved against `kills` (the player's kill set) and then rolled
+// as its own small pool; a ladder that resolves to nothing spends the slot.
+function pickWeightedEnemy(config, kills) {
+  const totalWeight = config.enemies.reduce((sum, e) => sum + e.weight, 0)
+  let roll = Math.random() * totalWeight
+  let entry = config.enemies[config.enemies.length - 1]
+  for (const candidate of config.enemies) {
+    roll -= candidate.weight
+    if (roll <= 0) {
+      entry = candidate
+      break
+    }
+  }
+  if (Array.isArray(entry.ladder)) return pickFromPool(resolveLadder(entry.ladder, kills))
+  return entry.slug
+}
+
+/**
+ * Every slug a room's table can produce, ladders included — for the World
+ * Tool and the validator, which want to know what can be met here at all.
+ */
+function listRoomEnemySlugs(config) {
+  const slugs = new Set()
+  if (!config) return []
+  for (const entry of config.enemies) {
+    if (typeof entry === 'string') slugs.add(entry)
+    else if (Array.isArray(entry.ladder)) {
+      for (const rung of entry.ladder) for (const e of rung.enemies) slugs.add(e.slug)
+    } else slugs.add(entry.slug)
+  }
+  return [...slugs]
 }
 
 // Returns a slug (string) or null. Rolls spawnChance first, then picks
 // an enemy by weight. Safe to call for any room — returns null for static rooms.
-function rollRoomEnemy(roomId) {
+// `context.kills` is the player's kill set (services/kill-list-service); a
+// ladder slot reads it, and with none only an unconditional rung can match.
+function rollRoomEnemy(roomId, context = {}) {
   const config = ROOM_ENEMIES[roomId]
   if (!config?.probabilistic) return null
 
   if (Math.random() > config.spawnChance) return null
 
-  return pickWeightedEnemy(config)
+  return pickWeightedEnemy(config, context.kills)
 }
 
-module.exports = { ROOM_ENEMIES, getRoomEnemies, isProbabilistic, rollRoomEnemy }
+module.exports = { ROOM_ENEMIES, getRoomEnemies, isProbabilistic, rollRoomEnemy, listRoomEnemySlugs, resolveLadder }

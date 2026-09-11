@@ -24,6 +24,7 @@ const { getSkillState } = require('./services/skill-service')
 const { rand } = require('./battle-calculator')
 const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn, fetchEquippedWeapon } = require('./battle-action-handlers')
 const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('../game-data/room-enemies')
+const { getKillSet, ensureKillSet } = require('./services/kill-list-service')
 const { getEnemy } = require('../game-data/enemies')
 const { getRevealDefinition, getNextRevealStage, markRevealed, clearRevealed } = require('./search-reveal-state')
 const { savePresentEnemy } = require('./services/present-enemy-service')
@@ -59,6 +60,43 @@ function findExitDirection(room, toRoomId) {
 }
 
 const SEARCH_LOOT_TABLES = {
+  // ==================== MOUNTAINS ====================
+  // The Abandoned Campsite & Lift: a coin flip, then one of ten things left
+  // behind by whoever abandoned it — the original's spread, potions included.
+  '606': {
+    chance: 0.5,
+    failMessage: 'You search the Abandoned Mountain Lift and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the Abandoned Mountain Lift and find a Bluefish!', effect: { type: 'grantItem', itemSlug: 'bluefish', quantity: 1 } },
+      { message: (amount) => `You search the Abandoned Mountain Lift and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 100, max: 300 } },
+      { message: 'You search the Abandoned Mountain Lift and find a Gills Potion!', effect: { type: 'grantItem', itemSlug: 'gills-potion', quantity: 1 } },
+      { message: 'You search the Abandoned Mountain Lift and find a Red Balm!', effect: { type: 'grantItem', itemSlug: 'red-balm', quantity: 1 } },
+      { message: 'You search the Abandoned Mountain Lift and find a Wings Potion!', effect: { type: 'grantItem', itemSlug: 'wings-potion', quantity: 1 } },
+      { message: 'You search the Abandoned Mountain Lift and find a Purple Balm!', effect: { type: 'grantItem', itemSlug: 'purple-balm', quantity: 1 } },
+      { message: 'You search the Abandoned Mountain Lift and find some Blues!', effect: { type: 'grantItem', itemSlug: 'blues', quantity: 1 } },
+      { message: 'You search the Abandoned Mountain Lift and find some Reds!', effect: { type: 'grantItem', itemSlug: 'reds', quantity: 1 } },
+      { message: 'You search the Abandoned Mountain Lift and find some Greens!', effect: { type: 'grantItem', itemSlug: 'greens', quantity: 1 } },
+      { message: 'You search the Abandoned Mountain Lift and find some Yellows!', effect: { type: 'grantItem', itemSlug: 'yellows', quantity: 1 } },
+    ],
+  },
+  // The Cathedral Graveyard: the dead were buried with things. A coin flip,
+  // then one of ten.
+  '616': {
+    chance: 0.5,
+    failMessage: 'You search the cathedral graveyard and find nothing, you should search again.',
+    entries: [
+      { message: 'You search the cathedral graveyard and find an Off Hand Sword!', effect: { type: 'grantItem', itemSlug: 'off-hand-sword', quantity: 1 } },
+      { message: 'You search the cathedral graveyard and find an Iron Sword!', effect: { type: 'grantItem', itemSlug: 'iron-sword', quantity: 1 } },
+      { message: (amount) => `You search the cathedral graveyard and find ${amount} gold!`, effect: { type: 'grantCurrency', min: 300, max: 700 } },
+      { message: 'You search the cathedral graveyard and find a Glowing Orb!', effect: { type: 'grantItem', itemSlug: 'glowing-orb', quantity: 1 } },
+      { message: 'You search the cathedral graveyard and find a pair of Iron Boots!', effect: { type: 'grantItem', itemSlug: 'iron-boots', quantity: 1 } },
+      { message: 'You search the cathedral graveyard and find a Red Balm!', effect: { type: 'grantItem', itemSlug: 'red-balm', quantity: 1 } },
+      { message: 'You search the cathedral graveyard and find a Blue Balm!', effect: { type: 'grantItem', itemSlug: 'blue-balm', quantity: 1 } },
+      { message: 'You search the cathedral graveyard and find some Reds!', effect: { type: 'grantItem', itemSlug: 'reds', quantity: 1 } },
+      { message: 'You search the cathedral graveyard and find some Greens!', effect: { type: 'grantItem', itemSlug: 'greens', quantity: 1 } },
+      { message: 'You search the cathedral graveyard and find some Blues!', effect: { type: 'grantItem', itemSlug: 'blues', quantity: 1 } },
+    ],
+  },
   // The Spider Cave Entrance. The original's search here: a coin flip, and a
   // Wooden Necklace in the rocks for whoever does not already have one — "you
   // leave it for the next adventurer" once you do.
@@ -522,6 +560,27 @@ const ROOM_HAZARDS = {
   },
 }
 
+/**
+ * Rooms where leaving is the hazard. The Icy Mountain Path (614) rolled a
+ * 1-in-3 on every travel input — "you attempt to travel west and slip on the
+ * ice. You tumble down the mountain and take N damage!" — and dropped the
+ * player into the Bottom of a Ledge (615) for 100 to 1000 HP. Rolled here on
+ * every real step out of the room; like the thorn bush it is floored at 1 HP,
+ * so the fall never kills, though what is waiting at the bottom might.
+ *
+ * @type {Record<string, { chance: number, toRoom: string, min: number, max: number, message: (direction: string, damage: number) => string }>}
+ */
+const ROOM_TRAVEL_HAZARDS = {
+  '614': {
+    chance: 1 / 3,
+    toRoom: '615',
+    min: 100,
+    max: 1000,
+    message: (direction, damage) =>
+      `You attempt to travel ${direction} and slip on the ice. You tumble down the mountain and take ${damage} damage!`,
+  },
+}
+
 // The standard (non-room-specific) actions that cost a turn — see resolveTurn.
 // Free ones (chat, look, examine_*, accept_quest, complete_quest) do not; room
 // actions are classified by isTurnCostingRoomAction in room-action-handlers.
@@ -724,7 +783,7 @@ class RoomState {
     // Something is already here — no new roll (engagement handled by caller).
     if (this.playerEnemyState.get(playerId)?.present) return null
 
-    const slug = rollRoomEnemy(this.roomId)
+    const slug = rollRoomEnemy(this.roomId, { kills: getKillSet(playerId) })
     this.playerEnemyState.set(playerId, { present: slug, grace: false })
     // Persist only when something actually spawned; a miss leaves the (empty)
     // state unchanged, so there's nothing new to write.
@@ -979,6 +1038,9 @@ class RoomState {
       return result
     }
 
+    // The Mountains' boss slot reads the kill list; make sure it is loaded
+    // before the synchronous roll. A no-op once cached.
+    await ensureKillSet(playerId).catch(() => null)
     const spawnedSlug = this.maybeSpawnEnemy(playerId)
 
     const slug = this.getPresentEnemy(playerId)
@@ -1305,8 +1367,26 @@ class RoomState {
       }
     }
 
+    // 2b. THE SLIP. A room whose exits are the hazard rolls once the step is
+    // otherwise legal: on a slip the destination is the drop below rather than
+    // where the player was going, and the damage is written before the move.
+    let slipped = null
+    const travelHazard = direction ? ROOM_TRAVEL_HAZARDS[fromRoom] : null
+    if (travelHazard && Math.random() < travelHazard.chance) {
+      const damage = travelHazard.min + Math.floor(Math.random() * (travelHazard.max - travelHazard.min + 1))
+      const rows = await prisma.$queryRawUnsafe(
+        `UPDATE "User" SET hp = GREATEST(1, hp - $2) WHERE id = $1 AND hp > 0 RETURNING hp, mp`,
+        playerId,
+        damage
+      )
+      const row = rows[0]
+      if (row) this.updatePlayer(playerId, (state) => ({ ...state, hp: Number(row.hp) }))
+      slipped = { damage, message: travelHazard.message(direction, damage), hp: row ? Number(row.hp) : null, mp: row ? Number(row.mp) : null }
+    }
+    const destination = slipped ? travelHazard.toRoom : toRoom
+
     // 3. MOVEMENT EXECUTION (both validations passed)
-    console.log(`[RoomState:${this.roomId}] executeMove - ${player.username} moving from ${fromRoom} to ${toRoom}`)
+    console.log(`[RoomState:${this.roomId}] executeMove - ${player.username} moving from ${fromRoom} to ${destination}`)
 
     this.touchActivity()
     // Carry the present enemy — hostile or not — so the same one is waiting if
@@ -1323,8 +1403,10 @@ class RoomState {
     const abandonedEnemyName = abandonedBattle?.isActive ? abandonedBattle.enemyName : null
     this.removePlayer(playerId)
 
-    const toRoomName = action.data?.toRoomName || toRoom
-    const roomData = action.data?.roomData
+    // A slip lands somewhere the client did not ask for; its cached room data
+    // is for the wrong room, so none is passed and the socket layer loads it.
+    const toRoomName = slipped ? travelHazard.toRoom : action.data?.toRoomName || toRoom
+    const roomData = slipped ? undefined : action.data?.roomData
     // An authorized move skipped the reachability lookup, so `direction` is
     // null even when the destination is next door — which a retreat's fallback
     // room almost always is. Read the direction back out of the exits the
@@ -1334,12 +1416,16 @@ class RoomState {
     const walkedDirection =
       direction ??
       (action.sourceExits?.roomId === fromRoom ? findExitDirection(action.sourceExits, toRoom) : null)
-    const message = walkedDirection ? `You travel ${walkedDirection}` : `You teleport to ${toRoomName}`
+    const message = slipped
+      ? slipped.message
+      : walkedDirection
+        ? `You travel ${walkedDirection}`
+        : `You teleport to ${toRoomName}`
 
     return {
       success: true,
       action: 'move',
-      data: { fromRoom, toRoom, toRoomName, roomData },
+      data: { fromRoom, toRoom: destination, toRoomName, roomData },
       playerEvents: [
         ...(abandonedEnemyName
           ? [
@@ -1356,12 +1442,14 @@ class RoomState {
           : []),
         {
           event: 'action:feedback',
-          payload: this.createFeedbackPayload('move', 'success', message, {
-            toRoom,
+          payload: this.createFeedbackPayload('move', slipped ? 'danger' : 'success', message, {
+            toRoom: destination,
             toRoomName,
             roomData,
             direction: walkedDirection,
             ...(gatePassInventory ? { inventory: gatePassInventory } : {}),
+            ...(slipped ? { redirected: true } : {}),
+            ...(slipped && slipped.hp !== null ? { hp: slipped.hp, mp: slipped.mp } : {}),
           }),
         },
         ...(gatePassMessage
@@ -1380,7 +1468,7 @@ class RoomState {
             playerId,
             username: player.username,
             fromRoom,
-            toRoom,
+            toRoom: destination,
           },
           targetRoomId: fromRoom,
         },
@@ -1390,18 +1478,18 @@ class RoomState {
             playerId,
             username: player.username,
             fromRoom,
-            toRoom,
+            toRoom: destination,
           },
-          targetRoomId: toRoom,
+          targetRoomId: destination,
         },
       ],
       transfer: {
-        toRoomId: toRoom,
+        toRoomId: destination,
         fromRoomId: this.roomId,
         fromRoomEnemy: departingEnemy,
         playerState: {
           ...player,
-          roomId: toRoom,
+          roomId: destination,
         },
       },
     }
@@ -2571,6 +2659,7 @@ module.exports = {
   SEARCH_LOOT_TABLES,
   ROOM_FLAVOR,
   ROOM_HAZARDS,
+  ROOM_TRAVEL_HAZARDS,
   // Exported for tests: this is the plumbing that decides which of an action
   // result's five channels survive a merge, and losing one is silent at runtime.
   mergeActionResults,

@@ -345,6 +345,32 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '516f': { x: 140, y: 350 },  // Dark Keep Barracks
   '516g': { x: 35, y: 245 },  // Paladin Altar
   '516h': { x: 140, y: 245 },  // Dark Throne
+  // Mountains (lightgray_map_mountains.jpg): one sheet, the Cathedral along
+  // the top edge, the Silver Temple off on its own in the bottom-left corner.
+  '601': { x: 665, y: 560 },  // Mountain Path by the Dark Forest
+  '602': { x: 560, y: 560 },  // Mountain Path
+  '603': { x: 455, y: 455 },  // Wooded Mountain Path
+  '604': { x: 350, y: 560 },  // Mountain Alcove
+  '605': { x: 350, y: 350 },  // Snowy Mountain Clearing (hub)
+  '606': { x: 245, y: 665 },  // Abandoned Campsite & Lift
+  '607': { x: 245, y: 455 },  // Stone Mountain Base Camp
+  '608': { x: 245, y: 350 },  // Blue Guard Mountain Outpost
+  '609': { x: 245, y: 245 },  // Chilly Pete's Mountain Cabin
+  '610': { x: 140, y: 350 },  // Master Trainer
+  '611': { x: 35, y: 350 },  // Star City Blue Gate
+  '612': { x: 560, y: 455 },  // In the Mountains Surrounded by Trees
+  '613': { x: 665, y: 350 },  // Foggy Mountain Path
+  '614': { x: 560, y: 245 },  // Icy Mountain Path
+  '615': { x: 665, y: 245 },  // Bottom of a Ledge
+  '616': { x: 560, y: 140 },  // Cathedral Graveyard
+  '617': { x: 455, y: 245 },  // Stone Mountain Peak
+  '618': { x: 350, y: 140 },  // Deserted Mountain Campsite
+  '619': { x: 245, y: 140 },  // Mountain Bridge
+  '620': { x: 140, y: 140 },  // Dragon's Ledge
+  '621': { x: 455, y: 35 },  // Cathedral Courtyard
+  '622': { x: 560, y: 35 },  // Cathedral Nave
+  '623': { x: 665, y: 35 },  // Cathedral Altar
+  '625': { x: 88, y: 560 },  // Silver Temple (drawn off the grid, bottom-left)
 }
 
 /** CSS `background-position` for the compass mini-map window. */

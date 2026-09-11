@@ -69,7 +69,7 @@ class BattleState {
     const buff = getStatBuffBonuses(playerStats)
     // The skill levels ride on the same row (SKILL_SELECT); a row without them
     // simply has no passives.
-    const skill = getPassiveSkillBonuses(playerStats, this.gear)
+    const skill = getPassiveSkillBonuses(playerStats, this.gear, { str: playerStats.strMod || 0, dex: playerStats.dexMod || 0 })
     this.skillBonuses = skill
     this.dodgeChance = skill.dodgeChance
     this.baseStr = (playerStats.str || 0) + (playerStats.strMod || 0) + buff.str + skill.str

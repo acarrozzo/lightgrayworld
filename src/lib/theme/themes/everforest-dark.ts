@@ -92,6 +92,8 @@ export const everforestDark = makeTheme({
       solarOffice: { base: '#e5c67f' },
       lobby: { base: '#8fb5c4' },
       roomZero: { base: '#c49ac4' },
+      // Snow on green mountains: paler and colder than the lobby's sky.
+      mountains: { base: '#c9d6d9' },
     },
   },
 })

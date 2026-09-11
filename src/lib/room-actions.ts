@@ -450,6 +450,38 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '311-00': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
   ],
+
+  // ==================== MOUNTAINS ====================
+  '606': [
+    { action: 'take lift north', label: 'Take Lift North (500 gold)', icon: 'tent', className: 'fill-hue-blue' },
+  ],
+  '607': [
+    { action: 'talk to the base camp', label: 'Base Camp', icon: 'npc-basecamp', className: 'fill-hue-gold', questIds: questIdsForNpc('base_camp') },
+    { action: 'take lift south', label: 'Take Lift South (500 gold)', icon: 'tent', className: 'fill-hue-blue' },
+  ],
+  '608': [
+    { action: 'talk to hector', label: 'Captain Hector', icon: 'npc-hector', className: 'fill-hue-blue', questIds: questIdsForNpc('hector') },
+  ],
+  '609': [
+    { action: 'talk to chilly pete', label: 'Chilly Pete', icon: 'npc-chillypete', className: 'fill-hue-purple', questIds: questIdsForNpc('chilly_pete') },
+  ],
+  '610': [
+    { action: 'ask the master trainer', label: 'The Master Trainer', icon: 'pillar2', className: 'fill-hue-blue' },
+  ],
+  '611': [
+    { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
+    { action: 'talk to rigel', label: 'Rigel the Brave', icon: 'npc-rigel', className: 'fill-hue-blue', questIds: questIdsForNpc('rigel') },
+    { action: 'approach the gate', label: 'Approach the Gate', icon: 'gate', className: 'fill-hue-sky' },
+  ],
+  '620': [
+    { action: 'pick flower', label: 'Pick Flower', icon: 'flower', className: 'fill-mood-treasure' },
+  ],
+  '621': [
+    { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'fill-mood-treasure' },
+  ],
+  '625': [
+    { action: 'challenge silver titan', label: 'Challenge a Silver Titan', icon: 'sword1', className: 'fill-action-attack' },
+  ],
 }
 
 // Working the level you are standing on. Digging DOWN is the compass, not a
@@ -492,6 +524,12 @@ const DARK_FOREST_CHOP_WOOD_ROOMS = [
   '517', '518', '519', '520', '521', '523', '524', '525',
 ]
 for (const roomId of DARK_FOREST_CHOP_WOOD_ROOMS) {
+  ROOM_ACTIONS[roomId] = [...(ROOM_ACTIONS[roomId] ?? []), { action: 'chop wood', ...CHOP_WOOD_BUTTON }]
+}
+
+/** Mountain rooms with spruce to chop. Mirrors MOUNTAIN_CHOP_WOOD_ROOMS in room-action-handlers.js. */
+const MOUNTAIN_CHOP_WOOD_ROOMS = ['603', '604', '605', '612']
+for (const roomId of MOUNTAIN_CHOP_WOOD_ROOMS) {
   ROOM_ACTIONS[roomId] = [...(ROOM_ACTIONS[roomId] ?? []), { action: 'chop wood', ...CHOP_WOOD_BUTTON }]
 }
 

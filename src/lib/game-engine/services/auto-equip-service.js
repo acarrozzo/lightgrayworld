@@ -143,6 +143,9 @@ function statPower(row) {
   return STAT_KEYS.reduce((total, key) => total + statValue(row, key), 0)
 }
 
+// Flat passives only: the Pro multiplier scales with the whole gear-side
+// total, which every candidate for one slot shares apart from itself, so it
+// cannot reorder them for a fixed weapon kind and is left out of the score.
 function passiveFor(stat, skillLevels, gear) {
   if (!skillLevels) return 0
   const bonuses = getPassiveSkillBonuses(skillLevels, gear)

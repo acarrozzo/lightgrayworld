@@ -758,6 +758,132 @@
       "quest_rangerlego_003"
     ]
   },
+  "base_camp": {
+    "name": "Base Camp",
+    "spokenName": "the Base Camp",
+    "roomId": "607",
+    "action": "talk to the base camp",
+    "icon": "npc-basecamp",
+    "iconColor": "amber-400",
+    "colorToken": "mood.treasure",
+    "faction": "mountains",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "mountains"
+    },
+    "hint": "The Stone Mountain Base Camp (Room 607) is southwest of the Snowy Mountain Clearing, up the road from the Highway Toll.",
+    "metLine": "You find the Stone Mountain Base Camp.",
+    "greeting": "The base camp has all sorts of adventurers resting, eating and staying warm by the fire, and they are quite the chatty bunch. \"Like, one day, we'll totally make it to the peak!\" An elderly woman, a snow-covered shaman and the camp leader each have something for you.",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_basecamp_003",
+        "message": "The camp cheers when you walk in now. The elderly woman waves her gloves, the shaman is elbow-deep in mud, and the leader is telling everyone about the viking. Nothing more they need from you."
+      },
+      {
+        "ifCompleted": null,
+        "message": "The camp is as chatty as ever. Flowers, balms and a viking — take them in any order."
+      }
+    ],
+    "quests": [
+      "quest_basecamp_001",
+      "quest_basecamp_002",
+      "quest_basecamp_003"
+    ]
+  },
+  "hector": {
+    "name": "Captain Hector",
+    "spokenName": "Hector",
+    "roomId": "608",
+    "action": "talk to hector",
+    "icon": "npc-hector",
+    "iconColor": "blue-400",
+    "colorToken": "mood.calm",
+    "faction": "mountains",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "mountains"
+    },
+    "hint": "Hector holds the Blue Guard Mountain Outpost (Room 608), west of the Snowy Mountain Clearing.",
+    "metLine": "You meet Hector, the Blue Guard Captain.",
+    "greeting": "\"The mountains are a most dangerous place. Be alert!\" The Captain of the Blue Guard looks you up and down. \"Steel, a Yeti, a Dragon. Show me you can handle all three.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_hector_003",
+        "message": "\"Steel Warrior, Yeti Hunter, Dragon Slayer.\" Hector salutes. \"The Guard has nothing left to ask of you. The door west is open — the Master Trainer is waiting.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"Be alert.\" Hector goes back to his watch. \"Steel first, if you want my advice. The Yeti does not care what you are wearing, but you will.\""
+      }
+    ],
+    "quests": [
+      "quest_hector_001",
+      "quest_hector_002",
+      "quest_hector_003"
+    ]
+  },
+  "chilly_pete": {
+    "name": "Chilly Pete",
+    "spokenName": "Chilly Pete",
+    "roomId": "609",
+    "action": "talk to chilly pete",
+    "icon": "npc-chillypete",
+    "iconColor": "purple-400",
+    "colorToken": "mood.arcane",
+    "faction": "mountains",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "mountains"
+    },
+    "hint": "Chilly Pete's Mountain Cabin (Room 609) is northwest of the Snowy Mountain Clearing, north of the outpost.",
+    "metLine": "You find Chilly Pete at his Mountain Cabin.",
+    "greeting": "\"My tea is way better than the Dark Elf's.\" Chilly Pete pours you a cup without asking. \"Vampires, paladins and the trio. Three things I'd pay dearly to see dead.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_chillypete_003",
+        "message": "\"Vampires, paladins, the trio.\" Pete raises his cup to you. \"Chillest adventurer I know. Grab some tea whenever you're passing.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "\"Tea's on the table.\" Pete rocks by the fire. \"The Cathedral's up the ridge past the old campsite, if you're looking for vampires.\""
+      }
+    ],
+    "quests": [
+      "quest_chillypete_001",
+      "quest_chillypete_002",
+      "quest_chillypete_003"
+    ]
+  },
+  "rigel": {
+    "name": "Rigel the Brave",
+    "spokenName": "Rigel",
+    "roomId": "611",
+    "action": "talk to rigel",
+    "icon": "npc-rigel",
+    "iconColor": "blue-300",
+    "colorToken": "mood.calm",
+    "faction": "mountains",
+    "revealedBy": {
+      "type": "regionDiscovered",
+      "regionId": "mountains"
+    },
+    "hint": "Rigel stands at the Star City Blue Gate (Room 611), west of the Master Trainer — through the Blue Guard's locked door, or up the Grassy Field waterfall on wings.",
+    "metLine": "You meet Rigel the Brave at the Blue Gate.",
+    "greeting": "\"This is your greatest quest! Retrieve the three keys and unlock the Blue Gate!\" Rigel the Knight stands tall by the gate. \"Greed, Wrath, Pride. A king holds each.\"",
+    "idleDialogs": [
+      {
+        "ifCompleted": "quest_rigel_001",
+        "message": "\"The gate is open.\" Rigel looks through it, and back at you. \"The city is not ready to receive you yet. Soon.\""
+      },
+      {
+        "ifCompleted": null,
+        "message": "Rigel stands tall in front of the exquisite Blue Gate. \"Three keys. Read the sign.\""
+      }
+    ],
+    "quests": [
+      "quest_rigel_001"
+    ]
+  },
   "grand_quest_pillar": {
     "name": "Grand Quest Pillar",
     "spokenName": "the Grand Quest Pillar",

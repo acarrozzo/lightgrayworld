@@ -72,14 +72,15 @@ const registry = require('@/lib/game-data/skills') as {
   SKILL_GROUPS: SkillGroupDef[]
   SKILL_TEACHERS: Record<string, { name: string; roomId: string }>
   getSkill: (id: string) => SkillDef | null
-  getSkillMaxLevel: (skill: SkillDef, flags: Record<string, boolean> | undefined) => number
+  getSkillMaxLevel: (skill: SkillDef, flags: Record<string, boolean> | undefined, levels?: Record<string, number>) => number
+  prerequisiteReason: (skill: SkillDef, levels: Record<string, number> | undefined) => string | null
   getNextLearnCost: (skill: SkillDef, level: number, maxLevel: number) => number | null
   isStrikeSkill: (skill: SkillDef) => boolean
   isShieldItem: (template: { slug?: string; equipSlot?: string | null } | null | undefined) => boolean
   weaponKind: (gear: GearContext) => 'ONE_HANDED' | 'TWO_HANDED' | 'RANGED' | null
   weaponFits: (skill: SkillDef, gear: GearContext) => boolean
   weaponFitReason: (skill: SkillDef, gear: GearContext) => string | null
-  getPassiveSkillBonuses: (levels: Record<string, number> | undefined, gear: GearContext) => PassiveBonuses
+  getPassiveSkillBonuses: (levels: Record<string, number> | undefined, gear: GearContext, mods?: { str?: number; dex?: number }) => PassiveBonuses
   previewSkillBonus: (skill: SkillDef, level: number, mag: number) => SkillBonusPreview | null
 }
 
@@ -119,6 +120,8 @@ export interface SkillbookEntry {
   preview: SkillBonusPreview | null
   /** Learned, a strike, and the engine can fire it. */
   usable: boolean
+  /** Why the cap is 0 when it is not a missing teacher: a Pro skill's base skill is not at 20 yet. */
+  lockedReason: string | null
   teachers: { flag: string; name: string; max: number; met: boolean }[]
 }
 
@@ -130,12 +133,13 @@ export function buildSkillbook(player: Player | null | undefined): SkillbookEntr
 
   return SKILLS.map((def) => {
     const level = levels[def.column] ?? 0
-    const maxLevel = registry.getSkillMaxLevel(def, flags)
+    const maxLevel = registry.getSkillMaxLevel(def, flags, levels)
     const displayLevel = Math.max(1, level)
     return {
       def,
       level,
       maxLevel,
+      lockedReason: registry.prerequisiteReason(def, levels),
       nextLearnCost: registry.getNextLearnCost(def, level, maxLevel),
       castCost: def.castCost ? def.castCost(displayLevel) : null,
       preview: registry.previewSkillBonus(def, displayLevel, mag),
@@ -161,9 +165,12 @@ export function hasLearnableSkill(player: Player | null | undefined): boolean {
   return buildSkillbook(player).some((entry) => entry.nextLearnCost !== null && entry.nextLearnCost <= sp)
 }
 
-/** The passive bonuses in force for what the player is holding. */
-export function passiveSkillBonuses(player: Player | null | undefined, gear: GearContext): PassiveBonuses {
-  return registry.getPassiveSkillBonuses(player?.skills, gear)
+/**
+ * The passive bonuses in force for what the player is holding. `mods` is the
+ * gear-side STR/DEX the Pro proficiencies multiply; without it they add nothing.
+ */
+export function passiveSkillBonuses(player: Player | null | undefined, gear: GearContext, mods?: { str?: number; dex?: number }): PassiveBonuses {
+  return registry.getPassiveSkillBonuses(player?.skills, gear, mods)
 }
 
 /**

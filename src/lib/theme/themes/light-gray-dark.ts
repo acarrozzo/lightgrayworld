@@ -162,6 +162,7 @@ export const lightGrayDark = makeTheme({
       darkForest: { base: '#4f8a55' },
       darkKeep: { base: '#7c848c' },
       rangersGuild: { base: '#7fbf86' },
+      mountains: { base: '#9fb0c2' },
       solarOffice: { base: '#d9b84a' },
       lobby: { base: '#7a8fa3' },
     },

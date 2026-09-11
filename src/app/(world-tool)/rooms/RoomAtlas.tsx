@@ -27,6 +27,7 @@ export type MapId =
   | 'under_the_ocean'
   | 'dark_forest'
   | 'dark_forest_upper'
+  | 'mountains'
 export type ExitInfo = {
   direction: string
   to: string
@@ -44,6 +45,8 @@ export type EnemySpawn = {
   icon?: string | null
   weight?: number
   chancePct?: number
+  /** A kill-gated slot (the Mountains' boss ladder): what has to be dead first. */
+  note?: string
 }
 export type RoomActionInfo = {
   name: string
@@ -264,6 +267,7 @@ const MAP_LABEL: Record<MapId, string> = {
   under_the_ocean: 'Under the Ocean',
   dark_forest: 'Dark Forest',
   dark_forest_upper: 'Dark Forest Upper Level',
+  mountains: 'Mountains',
 }
 
 // The sheets, grouped the way the world is actually built: a surface region
@@ -281,6 +285,7 @@ const MAP_GROUPS: { surface: MapId; below: MapId[] }[] = [
   { surface: 'rocky_flats', below: ['rocky_flats_underground', 'neverending_mine'] },
   { surface: 'blue_ocean', below: ['under_the_ocean'] },
   { surface: 'dark_forest', below: ['dark_forest_upper'] },
+  { surface: 'mountains', below: [] },
 ]
 
 // Flattened, still in meet-the-region order. Layouts are computed per sheet, so
@@ -997,6 +1002,7 @@ function RoomDetail({
                     {en.name}
                   </EntityLink>
                   {en.level != null && <span className="text-xs text-fg-muted">Lv {en.level}</span>}
+                  {en.note && <span className="text-[10px] italic text-fg-muted">{en.note}</span>}
                   {en.chancePct != null && <span className="ml-auto text-xs font-semibold text-resource-gold">{en.chancePct}%</span>}
                 </li>
               ))}

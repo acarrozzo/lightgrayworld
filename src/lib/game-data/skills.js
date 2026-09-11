@@ -25,9 +25,12 @@
  *     adds rand(0, ceil(mag × lvl / 20) + 1) magic to any swing for 2·lvl MP,
  *     reaches flying enemies (projectile magic) and fizzles on magic-immune
  *     ones — the swing still lands, the magic and its MP do not.
- *   - The "Pro" proficiencies (One Handed Pro, ...) have no User columns and
- *     their only teacher (the Master Trainer) is not ported; they are left out
- *     until both exist. Multi Arrow and Bolt Upgrade are listed as not ported.
+ *   - The "Pro" proficiencies (One Handed Pro, Two Handed Pro, Ranged Pro) are
+ *     the Master Trainer's: each level is +5% on the gear-side stat for that
+ *     weapon kind (the original's stats.php took `round(strmod × 0.05 × lvl)`
+ *     where strmod was equipment plus the flat proficiencies already folded
+ *     in), for 5 SP a level, and only once the base skill is at 20. Multi
+ *     Arrow and Bolt Upgrade are listed as not ported.
  *
  * @typedef {'offense'|'attack'|'defense'|'upgrade'} SkillGroup
  * @typedef {'passive'|'strike'|'upgrade'} SkillKind
@@ -67,6 +70,7 @@
  * @property {string} formula       What it does, in the original's notation.
  * @property {SkillTeacherTier[]} teachers  Lowest tier first.
  * @property {(level: number) => number} learnCost  SP to go from level-1 to level.
+ * @property {{ skillId: string, level: number }} [prerequisite]  A base skill that must be at this level before a point can be spent.
  * @property {SkillWeapon} [weapon]  Strikes: the weapon kind they need.
  * @property {boolean} [magic]       Strikes: the bonus is magic (immunity, flying).
  * @property {(level: number) => number} [castCost]  Strikes: MP per use.
@@ -95,9 +99,9 @@ const SKILL_TEACHERS = {
  * the moment the quest completes, since the turn-in happens inside the guild
  * and no arrival follows it. The Ranger Skills room sits behind the guild's
  * rope ladder (a Dark Ranger kill), so like the original it teaches on entry
- * with no further check. The Master Trainer and Star City rooms are not
- * ported yet, so their flags stay false and their tiers show as "find a
- * teacher".
+ * with no further check. The Master Trainer's courtyard (610) teaches on
+ * entry too — the original set `mastertrainerFlag` on the way in from either
+ * neighbour. Star City is not ported yet, so its flag stays false.
  *
  * @type {Record<string, { flag: string, message: string, requiresMembership?: string }>}
  */
@@ -127,6 +131,10 @@ const SKILL_TEACHER_ROOMS = {
     flag: 'rangerSkillFlag',
     message: "You can now learn new skills from the Ranger's Guild!",
   },
+  '610': {
+    flag: 'masterTrainerFlag',
+    message: 'The Master Trainer teaches without a word. You can now learn Warcraft, and the Pro proficiencies once your base skills reach 20!',
+  },
 }
 
 const SKILL_GROUPS = [
@@ -137,6 +145,8 @@ const SKILL_GROUPS = [
 ]
 
 const nextLevelCost = (level) => level
+/** The Pro proficiencies: `(level) × 5` — the original's `$costmultiplier = 5`. */
+const proLevelCost = (level) => level * 5
 
 /** rand(1, lvl) — Slice, Smash and Aim. */
 function flatBonusRoll(level, _mag, rand) {
@@ -228,6 +238,62 @@ const SKILLS = [
       { flag: 'starCitySkillsFlag', max: 25 },
     ],
     learnCost: nextLevelCost,
+  },
+  // The Master Trainer's Pro proficiencies: a multiplier on what your gear
+  // already gives, 5 SP a level, only once the base skill is at 20.
+  {
+    id: 'one-handed-pro',
+    column: 'oneHandedPro',
+    name: 'One Handed Pro',
+    group: 'offense',
+    kind: 'passive',
+    implemented: true,
+    icon: 'sword1',
+    hue: 'red',
+    description: 'Mastery with one handed weapons. Each level multiplies the STR your gear and proficiencies give you by another 5%.',
+    formula: '+5%·lvl of gear-side STR while a one-handed weapon is equipped',
+    teachers: [
+      { flag: 'masterTrainerFlag', max: 5 },
+      { flag: 'starCitySkillsFlag', max: 10 },
+    ],
+    prerequisite: { skillId: 'one-handed', level: 20 },
+    learnCost: proLevelCost,
+  },
+  {
+    id: 'two-handed-pro',
+    column: 'twoHandedPro',
+    name: 'Two Handed Pro',
+    group: 'offense',
+    kind: 'passive',
+    implemented: true,
+    icon: 'axe1',
+    hue: 'red',
+    description: 'Mastery with two handed weapons. Each level multiplies the STR your gear and proficiencies give you by another 5%.',
+    formula: '+5%·lvl of gear-side STR while a two-handed weapon is equipped',
+    teachers: [
+      { flag: 'masterTrainerFlag', max: 5 },
+      { flag: 'starCitySkillsFlag', max: 10 },
+    ],
+    prerequisite: { skillId: 'two-handed', level: 20 },
+    learnCost: proLevelCost,
+  },
+  {
+    id: 'ranged-pro',
+    column: 'rangedPro',
+    name: 'Ranged Pro',
+    group: 'offense',
+    kind: 'passive',
+    implemented: true,
+    icon: 'bowarrow',
+    hue: 'green',
+    description: 'Mastery with ranged weapons. Each level multiplies the DEX your gear and proficiencies give you by another 5%.',
+    formula: '+5%·lvl of gear-side DEX while a ranged weapon is equipped',
+    teachers: [
+      { flag: 'masterTrainerFlag', max: 5 },
+      { flag: 'starCitySkillsFlag', max: 10 },
+    ],
+    prerequisite: { skillId: 'ranged', level: 20 },
+    learnCost: proLevelCost,
   },
 
   // ==================== SPECIAL ATTACKS (strikes) ====================
@@ -470,12 +536,35 @@ function findSkillByCommand(input) {
  * @param {SkillDef} skill
  * @param {Record<string, boolean>} flags
  */
-function getSkillMaxLevel(skill, flags) {
+function getSkillMaxLevel(skill, flags, levels) {
+  if (levels && !prerequisiteMet(skill, levels)) return 0
   let max = 0
   for (const tier of skill.teachers) {
     if (flags && flags[tier.flag] && tier.max > max) max = tier.max
   }
   return max
+}
+
+/**
+ * Whether a skill's base-skill prerequisite is satisfied. The Pro
+ * proficiencies want their base skill at 20 — the original's
+ * `mastertrainerFlag >= 1 && onehanded >= 20`. Skills with no prerequisite
+ * are always eligible.
+ * @param {SkillDef} skill
+ * @param {Record<string, number>} levels  Skill levels keyed by User column.
+ */
+function prerequisiteMet(skill, levels) {
+  if (!skill.prerequisite) return true
+  const base = getSkill(skill.prerequisite.skillId)
+  if (!base) return true
+  return Math.max(0, Number(levels?.[base.column] || 0)) >= skill.prerequisite.level
+}
+
+/** "Needs One Handed 20", or null when the skill has no prerequisite or it is met. @param {SkillDef} skill */
+function prerequisiteReason(skill, levels) {
+  if (!skill.prerequisite || prerequisiteMet(skill, levels)) return null
+  const base = getSkill(skill.prerequisite.skillId)
+  return `Needs ${base ? base.name : skill.prerequisite.skillId} ${skill.prerequisite.level}`
 }
 
 /**
@@ -539,13 +628,21 @@ function weaponFitReason(skill, gear) {
  * original's stats.php folding, computed live instead of written into the
  * strMod/dexMod/defMod columns, so learning a level counts on the next swing.
  *
+ * `mods` is the gear-side stat the Pro proficiencies multiply — the `strMod`
+ * and `dexMod` columns — as the original's `round($strmod × 0.05 × lvl)` ran
+ * after the flat proficiencies had been added to the same total. Omit it and
+ * the Pro skills add nothing, which is what a caller with no gear in view
+ * (the book's "what would this do" line) wants.
+ *
  * @param {Record<string, number>} levels  Skill levels keyed by User column.
  * @param {GearContext} gear
+ * @param {{ str?: number, dex?: number }} [mods]  The derived equipment mods.
  * @returns {{ str: number, dex: number, def: number, dodgeChance: number, parts: { skillId: string, stat: 'str'|'dex'|'def'|'dodge', amount: number }[] }}
  */
-function getPassiveSkillBonuses(levels, gear) {
+function getPassiveSkillBonuses(levels, gear, mods) {
   const lv = (column) => Math.max(0, Number(levels?.[column] || 0))
   const kind = weaponKind(gear)
+  /** @type {{ skillId: string, stat: 'str'|'dex'|'def'|'dodge', amount: number }[]} */
   const parts = []
   let str = 0
   let dex = 0
@@ -570,6 +667,25 @@ function getPassiveSkillBonuses(levels, gear) {
     } else if (kind) {
       str += lv('warcraft')
       parts.push({ skillId: 'warcraft', stat: 'str', amount: lv('warcraft') })
+    }
+  }
+  // The Pro multiplier, last among the offence passives: 5% a level of the
+  // gear-side stat plus the flat proficiencies just added to it.
+  if (mods) {
+    /** @type {{ column: string, skillId: string, stat: 'str'|'dex' }|null} */
+    const pro =
+      kind === 'ONE_HANDED' ? { column: 'oneHandedPro', skillId: 'one-handed-pro', stat: 'str' }
+      : kind === 'TWO_HANDED' ? { column: 'twoHandedPro', skillId: 'two-handed-pro', stat: 'str' }
+      : kind === 'RANGED' ? { column: 'rangedPro', skillId: 'ranged-pro', stat: 'dex' }
+      : null
+    if (pro && lv(pro.column) > 0) {
+      const gearSide = (Number(mods[pro.stat]) || 0) + (pro.stat === 'str' ? str : dex)
+      const amount = Math.round(gearSide * 0.05 * lv(pro.column))
+      if (amount !== 0) {
+        if (pro.stat === 'str') str += amount
+        else dex += amount
+        parts.push({ skillId: pro.skillId, stat: pro.stat, amount })
+      }
     }
   }
   if (lv('toughness') > 0) {
@@ -632,6 +748,8 @@ module.exports = {
   getSkillByColumn,
   findSkillByCommand,
   getSkillMaxLevel,
+  prerequisiteMet,
+  prerequisiteReason,
   getNextLearnCost,
   isStrikeSkill,
   isShieldItem,

@@ -13,7 +13,7 @@
  * (game-engine/room-action-handlers.js); this is only the open-state mapping.
  */
 
-/** @typedef {'chest1' | 'chest2' | 'chest3' | 'chest4' | 'chest5' | 'chest6'} GoldChestFlag */
+/** @typedef {'chest1' | 'chest2' | 'chest3' | 'chest4' | 'chest5' | 'chest6' | 'chest7'} GoldChestFlag */
 
 /** Room id → the User boolean column set when that room's gold chest is opened. */
 const GOLD_CHEST_FLAG_BY_ROOM = /** @type {Record<string, GoldChestFlag>} */ ({
@@ -23,6 +23,7 @@ const GOLD_CHEST_FLAG_BY_ROOM = /** @type {Record<string, GoldChestFlag>} */ ({
   '309': 'chest4', // Dwarf Treasury, Rocky Flats
   '485': 'chest5', // Underwater Gold Shrine, Blue Ocean
   '513': 'chest6', // Dark Forest
+  '621': 'chest7', // Cathedral Courtyard, Stone Mountains
 })
 
 /** Every chest flag column, in room order. */
