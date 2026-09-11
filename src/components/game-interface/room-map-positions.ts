@@ -371,6 +371,8 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '622': { x: 560, y: 35 },  // Cathedral Nave
   '623': { x: 665, y: 35 },  // Cathedral Altar
   '625': { x: 88, y: 560 },  // Silver Temple (drawn off the grid, bottom-left)
+  // Star City (lightgray_map_starcity.jpg): Camp Hero, outside the east wall.
+  '701': { x: 665, y: 350 },  // Camp Hero
 }
 
 /** CSS `background-position` for the compass mini-map window. */

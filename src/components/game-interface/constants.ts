@@ -59,6 +59,7 @@ export type MapFlag = keyof Pick<
   | 'darkForestMap'
   | 'darkForestUpperMap'
   | 'mountainsMap'
+  | 'starCityMap'
   | 'lobbyMap'
   | 'solarOfficeMap'
 >

@@ -9,8 +9,12 @@
 --    each level multiplied the gear-side STR (or DEX) by +5%, for 5 SP a level.
 --    They had no columns here because their only teacher was not ported.
 --
+-- 3. `starCityMap`: the found flag for lightgray_map_starcity.jpg. Only Camp
+--    Hero (701) stands on it for now — the one room the original built there.
+--
 -- Purely additive: every column has a default, so nothing needs a backfill.
 ALTER TABLE "User" ADD COLUMN "mountainsMap" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "User" ADD COLUMN "starCityMap" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "User" ADD COLUMN "oneHandedPro" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "User" ADD COLUMN "twoHandedPro" INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE "User" ADD COLUMN "rangedPro" INTEGER NOT NULL DEFAULT 0;

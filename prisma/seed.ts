@@ -8722,7 +8722,7 @@ async function main() {
       north: null,
       south: null,
       east: '610',
-      west: null,
+      west: '701',
       up: null,
       down: null,
       northeast: null,
@@ -8731,7 +8731,37 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      directionColors: { east: 'mood.arcane' }
+      directionColors: { east: 'mood.arcane', west: 'world.starCity' }
+    },
+    // ==================== STAR CITY ====================
+    // Legacy r700/: the one room the original built of its capital, on
+    // lightgray_map_starcity.jpg. Through the Blue Gate once Rigel has the
+    // three keys. The rest of the city is the map's plan, not rooms.
+    {
+      roomId: '701',
+      region: 'starCity',
+      name: 'Camp Hero',
+      subtitle: 'Star City',
+      subtitlePosition: 'below',
+      nameColor: 'text.bright',
+      subtitleColor: 'world.starCity',
+      icon: 'fire',
+      iconColor: 'world.starCity',
+      description: 'Now this is a proper camp for a proper hero. There is a breathtaking view of Star City to the west. There are many areas to sit and mingle here and some food and supplies to grab. Rest at the fountain and feel fantastic. The Blue Gate is back east.',
+      dangerLevel: 0,
+      north: null,
+      south: null,
+      east: '611',
+      west: null,
+      up: null,
+      down: null,
+      northeast: null,
+      northwest: null,
+      southeast: null,
+      southwest: null,
+      hasFire: true,
+      hasCraftingTable: false,
+      directionColors: { east: 'mood.calm' }
     },
     {
       roomId: '612',
@@ -14204,6 +14234,21 @@ async function main() {
       value: 50000,
       equipSlot: EquipSlot.ARTIFACT,
       metadata: { icon: 'skull', statMods: { str: 10, dex: 10, mag: 10, def: 10 } },
+    },
+    // ==================== STAR CITY ====================
+    // The thirteenth roll of Camp Hero's silver chest, the one silver piece
+    // no other chest holds. No stats in the original; a silver sword's, quick.
+    {
+      id: 'silver-whip_001',
+      slug: 'silver-whip',
+      name: 'Silver Whip',
+      description: 'A whip of braided silver wire, out of Camp Hero\'s chest and nowhere else. +20 STR, +15 DEX.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 60000,
+      equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.MELEE,
+      metadata: { statMods: { str: 20, dex: 15 } },
     },
     {
       id: 'bone_001',

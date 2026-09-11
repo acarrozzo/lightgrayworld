@@ -3950,7 +3950,7 @@ const ROOM_ACTIONS = {
         select: { completed: true },
       })
       const message = opened?.completed
-        ? 'The three keys clicked in unison and the gate opened for you. Beyond it the city glitters, every moving piece of the gate turning in time with something inside — and the far side of the gate is not ready for you yet. Star City is for another time.'
+        ? 'The three keys clicked in unison and the gate stands open for you. Beyond it, west, is Camp Hero — a proper camp for a proper hero, with the whole capital glittering past it.'
         : 'The gate is an elaborate shiny structure, many moving pieces all clicking and popping in complex synchronization, and none of them moves for you. Three keys, the sign says. Rigel is watching.'
       return executeBasicDisplay('approach the gate', message, playerId, roomState, true, {
         modalContent: { type: 'icon', icon: 'gate', iconColor: 'blue-300', title: 'The Blue Gate', message },
@@ -3979,6 +3979,54 @@ const ROOM_ACTIONS = {
       action: 'challenge silver titan',
       enemySlug: 'silver-titan',
       message: 'You step into the arena. A Silver Titan steps in after you, and the champions around the edge go quiet.',
+    }),
+  },
+
+  // ==================== STAR CITY ====================
+  // --- Camp Hero: the fountain, the silver chest, and the teachers (the two
+  // Star City flags are the teacher-room tables', set on arrival) ---
+  '701': {
+    'rest at the fountain': async (playerId, roomState) =>
+      roomState.applyRest(playerId, {
+        action: 'rest at the fountain',
+        overchargeBonus: 250,
+        overchargeMessage: 'You rest at the fountain and feel rejuvenated! (+250 HP, +250 MP)',
+      }),
+    // The original's function-silverchest.php: a Silver Key and a hundred
+    // clicks between opens; here the same rolling cooldown as every other
+    // silver chest. Its thirteenth roll — the Silver Whip — only ever came
+    // out of this one.
+    'open silver chest': makeRepeatableChestHandler({
+      roomId: '701',
+      action: 'open silver chest',
+      label: 'Silver Chest',
+      cooldownMs: 4 * 60 * 60 * 1000,
+      goldMin: 500,
+      goldMax: 1000,
+      xp: 75,
+      icon: 'chest2',
+      iconColor: 'blue-300',
+      openMessage: 'You open the silver chest by the fountain. Camp Hero keeps it stocked for heroes.',
+      pools: [
+        [
+          { itemSlug: 'silver-sword', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-2h-sword', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-boomerang', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-bow', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-crossbow', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-shield', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-helmet', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-breastplate', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-gauntlets', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-boots', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-ring', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-necklace', quantity: 1, highlighted: true },
+          { itemSlug: 'silver-whip', quantity: 1, highlighted: true },
+        ],
+      ],
+    }),
+    'chop wood': makeChopWoodAction({
+      missingToolMessage: 'You need a hatchet to chop the trees around Camp Hero. The nearest spare leans on the sign at the Dark Forest Teleport.',
     }),
   },
 

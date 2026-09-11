@@ -58,6 +58,7 @@ export interface AuthUser {
   rockyFlatsUndergroundMap?: boolean
   neverEndingMineMap?: boolean
   mountainsMap?: boolean
+  starCityMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean
   /** Fast-travel hubs stood in, by world region id (game-data/world-map.js). */

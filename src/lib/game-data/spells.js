@@ -111,6 +111,11 @@ const SPELL_TEACHER_ROOMS = {
     requiresMembership: 'wizards-guild',
     message: "You can now learn new spells from the Wizard's Guild!",
   },
+  // Camp Hero: the original set both Star City flags the moment you arrived.
+  '701': {
+    flag: 'starCitySpellsFlag',
+    message: 'Welcome to Camp Hero. You can now learn many spells — the highest tier of every one.',
+  },
 }
 
 const nextLevelCost = (level) => level

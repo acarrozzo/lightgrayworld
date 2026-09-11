@@ -1120,6 +1120,28 @@ const CATHEDRAL_CHEST_DOOR = {
 }
 ROOM_GATES['608'] = { west: CATHEDRAL_CHEST_DOOR }
 ROOM_GATES['610'] = { east: CATHEDRAL_CHEST_DOOR }
+// The Star City Blue Gate. "You can't enter Star City until you complete
+// quest 70": the three keys, handed to Rigel. Beyond it is Camp Hero, the one
+// room of the capital the original built.
+ROOM_GATES['611'] = {
+  west: {
+    check: async (playerId) => {
+      const quest = await prisma.questProgress.findUnique({
+        where: { userId_questId: { userId: playerId, questId: 'quest_rigel_001' } },
+        select: { completed: true },
+      })
+      return !!quest?.completed
+    },
+    message: "You can't enter Star City until the Blue Gate is opened. Bring Rigel the Keys of Greed, Wrath and Pride.",
+    modalContent: {
+      title: 'The Blue Gate does not open',
+      type: 'icon',
+      icon: 'gate',
+      iconColor: 'blue-300',
+      message: 'The gate is an elaborate shiny structure, many moving pieces all clicking and popping in complex synchronization, and none of them moves for you. Three keys, the sign says: the Kraken\'s, the Troll King\'s and the Giant Mountain Giant\'s. Rigel is watching.',
+    },
+  },
+}
 // The two secret ways into the Cathedral Graveyard, and Dragon's Ledge's jump
 // to the Silver Temple — hidden until searched (search-reveal-state.js).
 for (const [roomId, direction, hint] of [

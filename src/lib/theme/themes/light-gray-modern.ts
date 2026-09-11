@@ -200,6 +200,7 @@ export const lightGrayModern = makeTheme({
       darkKeep: { base: '#64748b' }, // slate-500
       rangersGuild: { base: '#4ade80' }, // green-400
       mountains: { base: '#bae6fd' }, // sky-200
+      starCity: { base: '#2563eb' }, // blue-600
       solarOffice: { base: '#facc15' }, // yellow-400
       lobby: { base: '#7dd3fc' }, // sky-300
     },

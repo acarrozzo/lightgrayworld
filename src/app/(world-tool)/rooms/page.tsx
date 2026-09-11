@@ -142,6 +142,7 @@ const mapOf = (roomId: string): MapId => {
   if (DARK_FOREST_UPPER.includes(roomId)) return 'dark_forest_upper'
   if (roomId.startsWith('5')) return 'dark_forest'
   if (roomId.startsWith('6')) return 'mountains'
+  if (roomId.startsWith('7')) return 'star_city'
   if (roomId.startsWith('2')) return 'red_town'
   if (roomId.startsWith('1')) return 'forest'
   return 'overworld'

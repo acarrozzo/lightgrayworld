@@ -199,6 +199,8 @@ export const lightGray = makeTheme({
       rangersGuild: { base: '#5fb36a' },
       // The original's mountain rooms were `lgray` on snow: pale ice-blue.
       mountains: { base: '#b7c6d6' },
+      // The map's own capital blue.
+      starCity: { base: '#3d6fc4' },
       solarOffice: { base: '#efb045' },
       lobby: { base: '#0eb3f5' },
     },

@@ -28,6 +28,7 @@ export type MapId =
   | 'dark_forest'
   | 'dark_forest_upper'
   | 'mountains'
+  | 'star_city'
 export type ExitInfo = {
   direction: string
   to: string
@@ -268,6 +269,7 @@ const MAP_LABEL: Record<MapId, string> = {
   dark_forest: 'Dark Forest',
   dark_forest_upper: 'Dark Forest Upper Level',
   mountains: 'Mountains',
+  star_city: 'Star City',
 }
 
 // The sheets, grouped the way the world is actually built: a surface region
@@ -286,6 +288,7 @@ const MAP_GROUPS: { surface: MapId; below: MapId[] }[] = [
   { surface: 'blue_ocean', below: ['under_the_ocean'] },
   { surface: 'dark_forest', below: ['dark_forest_upper'] },
   { surface: 'mountains', below: [] },
+  { surface: 'star_city', below: [] },
 ]
 
 // Flattened, still in meet-the-region order. Layouts are computed per sheet, so

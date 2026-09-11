@@ -271,6 +271,9 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     // its blue and dimmed a stop, so it reads as ice — paler than the caves'
     // grey-blue, colder than the Rocky Flats' warm stone, never the Lobby's sky.
     mountains: { base: dim(mix(t.white, t.blue, 0.3), 0.12) },
+    // Star City: the capital's royal blue — the theme's blue pushed toward
+    // its bright blue, deeper than the ocean and further from the sky.
+    starCity: { base: mix(t.blue, t.brightBlue, 0.5) },
     solarOffice: { base: t.brightYellow },
     lobby: { base: mix(t.blue, t.white, 0.3) },
   }

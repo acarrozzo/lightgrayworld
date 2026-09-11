@@ -482,6 +482,13 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '625': [
     { action: 'challenge silver titan', label: 'Challenge a Silver Titan', icon: 'sword1', className: 'fill-action-attack' },
   ],
+
+  // ==================== STAR CITY ====================
+  '701': [
+    { action: 'rest at the fountain', label: 'Rest at the Fountain', icon: 'heal', className: 'fill-hue-green' },
+    { action: 'open silver chest', label: 'Open Silver Chest', icon: 'chest2', className: 'fill-hue-sky' },
+    { action: 'chop wood', label: 'Chop Wood', icon: 'wood', className: 'fill-mood-treasure' },
+  ],
 }
 
 // Working the level you are standing on. Digging DOWN is the compass, not a

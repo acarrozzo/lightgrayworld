@@ -48,6 +48,9 @@ const MAP_SHEETS = [
   // The Stone Mountains: one sheet for the whole region. The Cathedral, the
   // bridge and the Silver Temple are all drawn on it — there is no "below".
   { id: 'mountains', title: 'Mountains', src: '/img/lightgray_map_mountains.jpg', flag: 'mountainsMap', region: 'mountains', level: 'Surface' },
+  // Star City, the capital of Vega. The original built one room of it — Camp
+  // Hero, outside the walls — and drew the rest as a plan; the sheet is that plan.
+  { id: 'star-city', title: 'Star City', src: '/img/lightgray_map_starcity.jpg', flag: 'starCityMap', region: 'star-city', level: 'Surface' },
   { id: 'room-zero', title: 'Room Zero', src: '/img/lightgray_map_roomzero.jpg', flag: 'roomZeroMap', region: 'room-zero', level: 'Surface' },
   { id: 'lobby', title: 'Plane of Rebirth', src: '/img/lightgray_map_the_lobby.jpg', flag: 'lobbyMap', region: 'lobby', level: 'Surface' },
   { id: 'solar-office', title: 'Solar Office', src: '/img/lightgray_map_solar_office.jpg', flag: 'solarOfficeMap', region: 'solar-office', level: 'Surface' },
@@ -82,7 +85,14 @@ const SHEETS_BY_ID = new Map(MAP_SHEETS.map((sheet) => [sheet.id, sheet]))
  * can hold them beside the region ids.
  */
 const WORLD_REGIONS = [
-  { id: 'star-city', name: 'Star City' },
+  {
+    id: 'star-city',
+    name: 'Star City',
+    color: 'star-city',
+    // The original's "Camp Hero" teleport cube, open once the Blue Gate quest
+    // was done — which is the only way to have stood here.
+    hub: { roomId: '701', name: 'Camp Hero' },
+  },
   {
     id: 'mountains',
     name: 'Mountains',
@@ -217,6 +227,7 @@ function getMapIdForRoom(roomId) {
   if (DARK_FOREST_UPPER.has(roomId)) return 'dark-forest-upper'
   if (roomId.startsWith('5')) return 'dark-forest'
   if (roomId.startsWith('6')) return 'mountains'
+  if (roomId.startsWith('7')) return 'star-city'
   if (OCEAN_UNDERWATER.has(roomId)) return 'ocean-underwater'
   if (roomId.startsWith('4')) return 'ocean'
   if (roomId.startsWith('003b') || (roomId.startsWith('028') && roomId !== '028') || SCORPION_DUNGEON.has(roomId)) {

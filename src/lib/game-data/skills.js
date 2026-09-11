@@ -135,6 +135,10 @@ const SKILL_TEACHER_ROOMS = {
     flag: 'masterTrainerFlag',
     message: 'The Master Trainer teaches without a word. You can now learn Warcraft, and the Pro proficiencies once your base skills reach 20!',
   },
+  '701': {
+    flag: 'starCitySkillsFlag',
+    message: 'Welcome to Camp Hero. You can now learn many skills — every proficiency to 25, and the Pro masteries to 10.',
+  },
 }
 
 const SKILL_GROUPS = [

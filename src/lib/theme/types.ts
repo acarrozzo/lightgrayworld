@@ -294,6 +294,7 @@ export type RegionId =
   | 'darkKeep'
   | 'rangersGuild'
   | 'mountains'
+  | 'starCity'
   | 'solarOffice'
   | 'lobby'
 

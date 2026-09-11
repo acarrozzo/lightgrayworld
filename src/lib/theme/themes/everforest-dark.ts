@@ -94,6 +94,7 @@ export const everforestDark = makeTheme({
       roomZero: { base: '#c49ac4' },
       // Snow on green mountains: paler and colder than the lobby's sky.
       mountains: { base: '#c9d6d9' },
+      starCity: { base: '#6f9fd8' },
     },
   },
 })

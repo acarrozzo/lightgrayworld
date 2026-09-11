@@ -3096,7 +3096,7 @@
     "objective": "Collect the Key of Greed, the Key of Wrath and the Key of Pride.",
     "nextStep": "A king holds each key: the Kraken under the Ocean (Greed), the Troll King in the Dark Forest (Wrath), and the Giant Mountain Giant on the Stone Mountain Peak (Pride). Defeat each one.",
     "reminderDialog": "\"{progress} of {count} keys.\" Rigel does not look away from the gate. \"Greed, Wrath, Pride. A king holds each.\"",
-    "completionDialog": "You hand Rigel the Keys of Greed, Wrath and Pride. He lifts them up to the sky and the gate's magic pulls them right from his hand. The three keys click in unison and the gate opens. \"Welcome to Star City.\" Beyond it the city glitters — for another time.",
+    "completionDialog": "You hand Rigel the Keys of Greed, Wrath and Pride. He lifts them up to the sky and the gate's magic pulls them right from his hand. The three keys click in unison and the gate opens. \"Welcome to Star City.\" Camp Hero waits just west of the gate.",
     "requirements": [
       {
         "type": "killCount",

@@ -89,6 +89,7 @@ export interface Player {
   darkForestMap?: boolean
   darkForestUpperMap?: boolean
   mountainsMap?: boolean
+  starCityMap?: boolean
   roomZeroMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean

@@ -873,7 +873,7 @@
     "idleDialogs": [
       {
         "ifCompleted": "quest_rigel_001",
-        "message": "\"The gate is open.\" Rigel looks through it, and back at you. \"The city is not ready to receive you yet. Soon.\""
+        "message": "\"The gate is open.\" Rigel steps aside. \"Camp Hero is west of here — rest at the fountain, and the camp will teach you what the guilds could not.\""
       },
       {
         "ifCompleted": null,
