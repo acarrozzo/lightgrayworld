@@ -25,7 +25,8 @@ import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { describeStat, effectiveStats } from '@/lib/effective-stats'
-import { getSpell } from '@/lib/spellbook'
+import { getSpell, hasLearnableSpell } from '@/lib/spellbook'
+import { hasLearnableSkill } from '@/lib/skillbook'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 import type { PartyFollowRequestPayload } from '@/lib/socket'
@@ -3531,6 +3532,22 @@ export default function GameInterface() {
   // a spell is actually learnable.
   const unspentPoints = (player?.cp ?? 0) + (player?.tp ?? 0)
 
+  // Which tab the level-up card's Spend SP button should open, or null when the
+  // card should not offer one. CP and TP always buy something; SP buys nothing
+  // until a teacher has been met, and the early levels belong to the Grassy
+  // Field rather than to a trainer — so the button waits for level 5 and for
+  // the book to hold a row this SP can actually pay for.
+  // Only asked while the card is actually up, so the two books are not rebuilt
+  // on every unrelated render.
+  const levelUpBookTab: BookTab | null =
+    !levelUpData || !player || player.level < 5
+      ? null
+      : hasLearnableSkill(player)
+        ? 'skills'
+        : hasLearnableSpell(player)
+          ? 'spells'
+          : null
+
   const panelTabs: TabConfig[] = [
     { id: 'explore', label: 'Explore', icon: 'world', color: 'blue' },
     { id: 'char', label: 'Char', icon: 'character', color: 'violet', badge: unspentPoints > 0 ? unspentPoints : undefined },
@@ -3953,9 +3970,12 @@ export default function GameInterface() {
                       data={levelUpData}
                       tpAvailable={player?.tp ?? 0}
                       cpAvailable={player?.cp ?? 0}
+                      spAvailable={player?.sp ?? 0}
+                      canSpendSp={levelUpBookTab !== null}
                       onClose={() => setLevelUpData(null)}
                       onTrainNow={() => setTrainingModalOpen(true)}
                       onSpendCorePoints={() => setStatModalOpen(true)}
+                      onSpendSkillPoints={() => handleOpenBook(levelUpBookTab ?? 'skills')}
                     />
                   )}
                   {(battle.isInBattle || battleResult) && (

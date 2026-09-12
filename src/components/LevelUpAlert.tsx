@@ -7,13 +7,23 @@ interface LevelUpAlertProps {
   onClose: () => void
   onTrainNow: () => void
   onSpendCorePoints: () => void
+  /** Opens the Skills & Spells book. Only reachable while `canSpendSp` is true. */
+  onSpendSkillPoints: () => void
   /** Total Training Points available to spend */
   tpAvailable: number
   /** Total Core Points available to spend */
   cpAvailable: number
+  /** Total Skill Points available to spend */
+  spAvailable: number
+  /**
+   * Whether to offer the SP button at all. SP buys nothing until a teacher has
+   * been met, so the caller only turns this on from level 5 and only when the
+   * book actually has a row this SP can pay for.
+   */
+  canSpendSp: boolean
 }
 
-export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoints, tpAvailable, cpAvailable }: LevelUpAlertProps) {
+export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoints, onSpendSkillPoints, tpAvailable, cpAvailable, spAvailable, canSpendSp }: LevelUpAlertProps) {
   // Every level grants at least one TP, so zero means it has been spent —
   // from this card or from the Character panel. That is the moment the card
   // has done its job: Train Now dims to a receipt and a big Close appears
@@ -80,16 +90,18 @@ export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoi
           <StatGrant label="Max MP" value={`+${data.mpGained}`} unit="MP" color="var(--resource-mp)" glow="var(--resource-mp)" />
         </div>
 
-        <div className="mt-4 w-full flex gap-2">
+        {/* Training is the level's primary act, so it takes a row of its own;
+            the two point pools that can wait share the row beneath it. */}
+        <div className="mt-4 w-full flex flex-col gap-2">
           {trained ? (
-            <span className={`flex-[2] text-sm ${spentButton}`}>
+            <span className={`w-full text-sm ${spentButton}`}>
               Trained ✓
             </span>
           ) : (
             <button
               type="button"
               onClick={onTrainNow}
-              className="flex-[2] rounded-lg py-3 px-4 font-black tracking-widest uppercase text-sm transition-all"
+              className="w-full rounded-lg py-3 px-4 font-black tracking-widest uppercase text-sm transition-all"
               style={{
                 background: 'linear-gradient(135deg, var(--resource-gold), var(--resource-gold), var(--resource-gold))',
                 color: 'color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas))',
@@ -99,24 +111,40 @@ export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoi
               Train Now ({tpAvailable})
             </button>
           )}
-          {coreSpent ? (
-            <span className={`flex-1 text-xs ${spentButton}`}>
-              CP Spent ✓
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={onSpendCorePoints}
-              className="flex-1 rounded-lg py-3 px-3 font-black tracking-widest uppercase text-xs transition-all"
-              style={{
-                background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 45%, var(--surface-canvas)), var(--hue-blue), color-mix(in srgb, var(--accent) 45%, var(--surface-canvas)))',
-                color: 'var(--surface-canvas)',
-                boxShadow: '0 0 20px color-mix(in srgb, var(--hue-blue) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--hue-blue) 50%, transparent)',
-              }}
-            >
-              Spend Core Points ({cpAvailable})
-            </button>
-          )}
+          <div className="flex gap-2">
+            {coreSpent ? (
+              <span className={`flex-1 text-xs ${spentButton}`}>
+                CP Spent ✓
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={onSpendCorePoints}
+                className="flex-1 rounded-lg py-3 px-3 font-black tracking-widest uppercase text-xs transition-all"
+                style={{
+                  background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 45%, var(--surface-canvas)), var(--hue-blue), color-mix(in srgb, var(--accent) 45%, var(--surface-canvas)))',
+                  color: 'var(--surface-canvas)',
+                  boxShadow: '0 0 20px color-mix(in srgb, var(--hue-blue) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--hue-blue) 50%, transparent)',
+                }}
+              >
+                Spend CP ({cpAvailable})
+              </button>
+            )}
+            {canSpendSp && (
+              <button
+                type="button"
+                onClick={onSpendSkillPoints}
+                className="flex-1 rounded-lg py-3 px-3 font-black tracking-widest uppercase text-xs transition-all"
+                style={{
+                  background: 'linear-gradient(135deg, color-mix(in srgb, var(--hue-green) 45%, var(--surface-canvas)), var(--hue-green), color-mix(in srgb, var(--hue-green) 45%, var(--surface-canvas)))',
+                  color: 'var(--surface-canvas)',
+                  boxShadow: '0 0 20px color-mix(in srgb, var(--hue-green) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--hue-green) 50%, transparent)',
+                }}
+              >
+                Spend SP ({spAvailable})
+              </button>
+            )}
+          </div>
         </div>
 
         {trained && (
