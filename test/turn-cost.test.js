@@ -20,6 +20,28 @@ const path = require('node:path')
 
 const ROOT = path.join(__dirname, '..')
 
+// Stub the database before RoomState loads it — no Postgres is touched. Leaving
+// a room mid-fight clears the player's `inFight` flag through Prisma, and the
+// proxy in db-client throws on first property access when DATABASE_URL is unset
+// (as it is in CI), so this has to be in place before the require below.
+const userUpdates = []
+const dbPath = require.resolve(path.join(ROOT, 'src/lib/db-client.js'))
+require.cache[dbPath] = {
+  id: dbPath,
+  filename: dbPath,
+  loaded: true,
+  exports: {
+    prisma: {
+      user: {
+        update: async (args) => {
+          userUpdates.push(args)
+          return {}
+        },
+      },
+    },
+  },
+}
+
 // Stub persistence before RoomState loads it — no database is touched.
 const servicePath = require.resolve(path.join(ROOT, 'src/lib/game-engine/services/present-enemy-service.js'))
 require.cache[servicePath] = {
@@ -267,8 +289,11 @@ test('teleporting out of a fight carries the enemy back to the room, and closes 
   assert.ok(fled, 'a teleport out of a fight emits battle:fled')
   // No return trip: this move *is* the escape.
   assert.equal(fled.payload.returnRoomId, null)
-  // The fight itself is over.
+  // The fight itself is over — in memory and on the player's row, so a refresh
+  // does not come back still flagged as fighting.
   assert.equal(room.activeBattles.has('p1'), false)
+  const cleared = userUpdates.find((u) => u.where?.id === 'p1' && u.data?.inFight === false)
+  assert.ok(cleared, 'leaving a fight clears inFight')
 })
 
 test('an ordinary teleport out of an empty room says nothing about a fight', async () => {
