@@ -317,7 +317,14 @@ async function consumeAmmo(playerId, ammo) {
 // Pay for a spell before it is rolled. One guarded UPDATE: it lands only while
 // the player still has the MP, so two casts in flight cannot both spend the
 // same points. Returns the new vitals, or null when the MP was not there.
+//
+// The cost is built server-side from the spell registry, so it is always a
+// whole number of zero or more. Anything else is refused here regardless: the
+// statement subtracts whatever it is handed, and a negative cost is a grant.
 async function chargeSpellMp(playerId, spell) {
+  if (!Number.isInteger(spell?.cost) || spell.cost < 0) {
+    throw new Error(`chargeSpellMp: invalid MP cost ${JSON.stringify(spell?.cost)}`)
+  }
   const rows = await prisma.$queryRawUnsafe(
     `UPDATE "User" SET mp = mp - $2 WHERE id = $1 AND mp >= $2 RETURNING mp, "mpMax"`,
     playerId,
@@ -403,7 +410,16 @@ async function executeStartBattle(action, playerId, roomState) {
   // cast_spell — opens the fight with a spell instead of a weapon strike.
   // `skill` — the same shape from use_skill — opens it with a Slice, Smash,
   // Aim or Magic Strike: a weapon swing with the skill's bonus on it.
-  const { enemySlug, isAutoInitiated = false, spell = null, skill = null } = action.data || {}
+  //
+  // All three sit on the action itself, beside `type`, the way a move's
+  // `authorizedMove` does — never in `action.data`, which is the half the
+  // socket layer fills from the client. They used to be read from `data`, so a
+  // client could send its own `spell`: the MP charge ran on whatever `cost` it
+  // named (a negative one paid out) before the roll threw on the missing formula.
+  const { enemySlug } = action.data || {}
+  const isAutoInitiated = action.isAutoInitiated === true
+  const spell = action.spell ?? null
+  const skill = action.skill ?? null
   if (!enemySlug) return errorResult('start_battle', 'No enemy specified.')
 
   // A traveler (the field's bunny) is fought wherever it happens to be
@@ -723,9 +739,10 @@ async function executePlayerAttack(action, playerId, roomState) {
   // `spell` — { def, level, cost }, built server-side by room-state's
   // cast_spell — makes this turn a spell strike instead of a weapon swing.
   // `skill` — the same shape from use_skill — puts a Slice, Smash, Aim or
-  // Magic Strike bonus on this turn's swing.
-  const spell = action?.data?.spell ?? null
-  const skill = action?.data?.skill ?? null
+  // Magic Strike bonus on this turn's swing. Read off the action, not
+  // `action.data`, which is client-filled — see executeStartBattle.
+  const spell = action?.spell ?? null
+  const skill = action?.skill ?? null
 
   const [liveStats, liveWeapon, liveCompanion] = await Promise.all([
     fetchPlayerStats(playerId),

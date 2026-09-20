@@ -16,7 +16,7 @@ Reference `env.local.template` for sample values.
 | --- | --- | --- |
 | `NEXT_PUBLIC_SOCKET_URL` | Local | Base URL of the Socket.IO server. Use `http://localhost:3000` locally. In production, this should match your Fly.io domain (e.g. `https://your-app.fly.dev`). |
 | `NEXT_PUBLIC_SOCKET_PATH` | Local | Socket.IO path (defaults to `/socket.io`). Only set if you change it on the server. |
-| `JWT_SECRET` | Fly.io | Secret key for signing and verifying JWT tokens used by socket authentication and API routes. Generate a secure random string (e.g. `openssl rand -base64 32`). If you want continuity across redeployments/environments (existing auth tokens remain valid), reuse the same JWT_SECRET from your local `.env.local` or prior deployment. Generating a new JWT_SECRET invalidates existing tokens. |
+| `JWT_SECRET` | Fly.io | Secret key for signing and verifying JWT tokens used by socket authentication and API routes. Generate a secure random string (e.g. `openssl rand -base64 32`). Production gets its own value — never the one from a local `.env`. Setting a new JWT_SECRET signs every player out once. |
 | `ALLOWED_ORIGINS` | Fly.io | Comma-separated list of frontend origins allowed to connect. Can include your Fly.io domain and any other domains that need access. |
 | `DATABASE_URL` | Fly.io | Supabase PgBouncer connection string used at runtime (`6543` with `?pgbouncer=true`). |
 | `DIRECT_URL` | Fly.io (migrations only) | Supabase direct connection string used exclusively by Prisma migrations (`5432`, no PgBouncer). |
@@ -39,7 +39,7 @@ Reference `env.local.template` for sample values.
    
    **JWT_SECRET notes:**
    - Generate a new secret: `openssl rand -base64 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
-   - If you want continuity across redeployments/environments (existing auth tokens remain valid), reuse the same JWT_SECRET from your local `.env.local` or prior deployment. Generating a new JWT_SECRET invalidates existing tokens.
+   - Production gets its own secret: long, random, and used nowhere else. Do not reuse the one in your local `.env` — anyone who can guess or obtain that value can sign a login token for any account. Keep the same production secret across redeployments so players stay logged in; setting a new one signs everyone out once, which is the only cost of rotating it.
 5. Deploy: `fly deploy`.
 6. After the deployment finishes, note the generated domain (e.g. `https://your-app.fly.dev`). This is your application URL.
 

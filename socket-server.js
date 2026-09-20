@@ -7,6 +7,9 @@ const { setupSocketHandlers } = require('./src/lib/socket-server-handlers.js')
 const { verifySocketToken } = require('./src/lib/token-verification.js')
 
 const { prisma } = require('./src/lib/db-client.js')
+const { installProcessSafetyNet } = require('./src/lib/process-safety-net.js')
+
+installProcessSafetyNet()
 
 const PORT = process.env.PORT || 3000
 const HOST = process.env.HOST || '0.0.0.0'

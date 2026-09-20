@@ -2,8 +2,17 @@
  * Per-player, session-only lever state.
  * Resets on disconnect or server restart.
  * Map<playerId, Set<leverIds>>
+ *
+ * Held on `globalThis`, the same pattern the presence, ghost and teleport-grant
+ * stores use. The engine loads this file through Node; the room-load HTTP route
+ * loads the copy Next bundled for it. With the map at module level those were
+ * two maps, and the route's was always empty — so a refresh drew a pulled lever
+ * as up and an opened wall as sealed, while the engine went on allowing the move.
  */
-const activatedLevers = new Map()
+if (!globalThis.__activatedLevers) {
+  globalThis.__activatedLevers = new Map()
+}
+const activatedLevers = globalThis.__activatedLevers
 
 /**
  * The Kobold Lair's Control Room switch (115h), which grinds open the false west

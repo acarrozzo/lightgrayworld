@@ -61,7 +61,8 @@ require.cache[battlePath] = {
   loaded: true,
   exports: {
     executeStartBattle: async (action, playerId) => {
-      battleCalls.startBattle.push({ playerId, data: action.data })
+      // `isAutoInitiated` rides on the action itself, not in its client-fillable `data`.
+      battleCalls.startBattle.push({ playerId, data: action.data, isAutoInitiated: action.isAutoInitiated })
       return { success: true, action: 'start_battle', playerEvents: [{ event: 'battle:start', payload: {} }] }
     },
     resolveSupportTurn: async (playerId, roomState, meta) => {
@@ -146,7 +147,7 @@ test('a turn action in a probabilistic room rolls, and a hostile roll engages', 
   assert.equal(result.turnResolved, true)
   assert.equal(battleCalls.startBattle.length, 1)
   // Caught mid-swing: a freshly rolled enemy gets the ambush hit.
-  assert.equal(battleCalls.startBattle[0].data.isAutoInitiated, true)
+  assert.equal(battleCalls.startBattle[0].isAutoInitiated, true)
   assert.ok(room.getPresentEnemy('p1'))
 })
 
@@ -346,7 +347,7 @@ test('a grace turn can be granted on arrival without disturbing what is standing
   assert.equal(battleCalls.startBattle.length, 1)
   assert.equal(battleCalls.startBattle[0].data.enemySlug, 'iron-rat')
   // Not an ambush: it was already there in plain sight, not sprung on arrival.
-  assert.equal(battleCalls.startBattle[0].data.isAutoInitiated, false)
+  assert.equal(battleCalls.startBattle[0].isAutoInitiated, false)
 })
 
 test('grace can be granted to a player the room has never rolled for', async () => {

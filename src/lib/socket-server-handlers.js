@@ -1,6 +1,7 @@
 // Shared socket handling logic for server.js and socket-server.js
 const { SOCKET_EVENTS, getSocketIdsForUser } = require('./socket-utils.js')
 const { RESPAWN_ROOM_ID } = require('./game-data/constants.js')
+const { guardListener, readChatText } = require('./socket-guards.js')
 const partyStore = require('./services/party-store.js')
 const { checkRoomGate, getGatedDirections } = require('./game-engine/room-gates.js')
 const { getPlayerInventory } = require('./game-engine/services/inventory-service.js')
@@ -143,7 +144,7 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
       await gameEngine.processUserAction({
         playerId: player.id,
         roomId: toRoom,
-        action: { type: 'start_battle', data: { enemySlug: targetSlug, isAutoInitiated: true } },
+        action: { type: 'start_battle', isAutoInitiated: true, data: { enemySlug: targetSlug } },
       })
       console.log(`[Socket] Auto-battle started: ${player.username} vs ${targetSlug} in room ${toRoom}`)
     } catch (err) {
@@ -176,7 +177,7 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
     await gameEngine.processUserAction({
       playerId: player.id,
       roomId: toRoom,
-      action: { type: 'start_battle', data: { enemySlug: aggressiveSlug, isAutoInitiated: true } },
+      action: { type: 'start_battle', isAutoInitiated: true, data: { enemySlug: aggressiveSlug } },
     })
     console.log(`[Socket] Auto-battle started: ${player.username} vs ${aggressiveSlug} in room ${toRoom}`)
   } catch (err) {
@@ -1127,6 +1128,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     console.log('[Server] Listening for player login event:', SOCKET_EVENTS.PLAYER_LOGIN)
 
     const emitQueueAwareError = createEmitQueueAwareError(socket)
+    // Every listener on this connection is registered through here; see guardListener.
+    const listen = (event, handler) => socket.on(event, guardListener(event, handler))
     const transitionPlayerRoom = createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlayers, broadcastRoomPartyState)
     const touchPlayerActivity = (player) => {
       if (!player || !player.id) {
@@ -1168,7 +1171,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     }
 
     // Handle player login (server-authoritative; ignores client payload)
-    socket.on(SOCKET_EVENTS.PLAYER_LOGIN, async () => {
+    listen(SOCKET_EVENTS.PLAYER_LOGIN, async () => {
       const authUser = socket.data?.user
       console.log(`[Server] PLAYER_LOGIN received for socket ${socket.id}, auth user:`, authUser?.username)
 
@@ -1453,7 +1456,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // Handle player movement
-    socket.on('player-move', async (data) => {
+    listen('player-move', async (data) => {
       console.log(`[Socket] player-move event received from ${socket.id}:`, data)
       const player = activePlayers.get(socket.id)
       if (!player) {
@@ -1785,14 +1788,14 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // Handle chat messages
-    socket.on(SOCKET_EVENTS.SEND_CHAT_MESSAGE, async (data) => {
+    listen(SOCKET_EVENTS.SEND_CHAT_MESSAGE, async (data) => {
       const player = activePlayers.get(socket.id)
       if (!player) {
         console.log(`[Socket] SEND_CHAT_MESSAGE - Player not found for socket ${socket.id}`)
         return
       }
 
-      const sanitizedMessage = data.message ? data.message.toString().trim().substring(0, 500) : ''
+      const sanitizedMessage = readChatText(data)
 
       console.log(`[Socket] SEND_CHAT_MESSAGE from ${player.username}: "${sanitizedMessage}"`)
 
@@ -1834,15 +1837,15 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // Handle room chat messages
-    socket.on(SOCKET_EVENTS.SEND_ROOM_CHAT_MESSAGE, async (data) => {
+    listen(SOCKET_EVENTS.SEND_ROOM_CHAT_MESSAGE, async (data) => {
       const player = activePlayers.get(socket.id)
       if (!player) {
         console.log(`[Socket] SEND_ROOM_CHAT_MESSAGE - Player not found for socket ${socket.id}`)
         return
       }
 
-      const sanitizedMessage = data.message ? data.message.toString().trim().substring(0, 500) : ''
-      const roomId = data.roomId ? data.roomId.toString() : ''
+      const sanitizedMessage = readChatText(data)
+      const roomId = typeof data?.roomId === 'string' ? data.roomId : ''
 
       console.log(`[Socket] SEND_ROOM_CHAT_MESSAGE from ${player.username} in room ${roomId}: "${sanitizedMessage}"`)
 
@@ -1936,7 +1939,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // Handle game actions
-    socket.on(SOCKET_EVENTS.GAME_ACTION, async (data) => {
+    listen(SOCKET_EVENTS.GAME_ACTION, async (data) => {
       const player = activePlayers.get(socket.id)
       if (!player) return
 
@@ -2174,7 +2177,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     }
 
     // Follow another player in the same room (joins their party as a member).
-    socket.on(SOCKET_EVENTS.PARTY_FOLLOW, (data = {}) => {
+    listen(SOCKET_EVENTS.PARTY_FOLLOW, (data = {}) => {
       const player = activePlayers.get(socket.id)
       if (!player) return
       touchPlayerActivity(player)
@@ -2201,7 +2204,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // The leader answers an ask to follow them.
-    socket.on(SOCKET_EVENTS.PARTY_FOLLOW_ANSWER, (data = {}) => {
+    listen(SOCKET_EVENTS.PARTY_FOLLOW_ANSWER, (data = {}) => {
       const player = activePlayers.get(socket.id)
       if (!player) return
       touchPlayerActivity(player)
@@ -2233,7 +2236,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // Leader opens or closes the party to new followers.
-    socket.on(SOCKET_EVENTS.PARTY_SET_CLOSED, (data = {}) => {
+    listen(SOCKET_EVENTS.PARTY_SET_CLOSED, (data = {}) => {
       const player = activePlayers.get(socket.id)
       if (!player) return
       touchPlayerActivity(player)
@@ -2243,7 +2246,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
     // Leader names the party. Cosmetic, so it is validated for printability
     // rather than for uniqueness — two parties may share a name.
-    socket.on(SOCKET_EVENTS.PARTY_SET_NAME, (data = {}) => {
+    listen(SOCKET_EVENTS.PARTY_SET_NAME, (data = {}) => {
       const player = activePlayers.get(socket.id)
       if (!player) return
       touchPlayerActivity(player)
@@ -2253,11 +2256,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
     // Party chat. Scoped to whoever is in the party right now, and persisted
     // under the party's own id so it survives a refresh and a change of leader.
-    socket.on(SOCKET_EVENTS.SEND_PARTY_CHAT_MESSAGE, async (data = {}) => {
+    listen(SOCKET_EVENTS.SEND_PARTY_CHAT_MESSAGE, async (data = {}) => {
       const player = activePlayers.get(socket.id)
       if (!player) return
 
-      const sanitizedMessage = data.message ? data.message.toString().trim().substring(0, 500) : ''
+      const sanitizedMessage = readChatText(data)
       if (!sanitizedMessage) {
         emitActionFeedback(socket, {
           action: 'party-chat',
@@ -2318,7 +2321,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // Leave your current party (or disband it if you're the leader).
-    socket.on(SOCKET_EVENTS.PARTY_LEAVE, () => {
+    listen(SOCKET_EVENTS.PARTY_LEAVE, () => {
       const player = activePlayers.get(socket.id)
       if (!player) return
       touchPlayerActivity(player)
@@ -2327,7 +2330,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // Leader removes a member.
-    socket.on(SOCKET_EVENTS.PARTY_REMOVE, (data = {}) => {
+    listen(SOCKET_EVENTS.PARTY_REMOVE, (data = {}) => {
       const player = activePlayers.get(socket.id)
       if (!player) return
       touchPlayerActivity(player)
@@ -2339,7 +2342,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // Handle explicit logout
-    socket.on(SOCKET_EVENTS.USER_LOGOUT, async () => {
+    listen(SOCKET_EVENTS.USER_LOGOUT, async () => {
       const player = activePlayers.get(socket.id)
       if (!player) {
         socket.emit('auth:error', { message: 'Player not found' })
@@ -2380,7 +2383,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // Handle disconnect
-    socket.on('disconnect', () => {
+    listen('disconnect', () => {
       const player = activePlayers.get(socket.id)
       if (player) {
         // Retire this connection first, so the teardown below knows whether the

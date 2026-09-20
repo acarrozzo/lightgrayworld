@@ -37,16 +37,23 @@ const { getEnemy } = require('../game-data/enemies')
 const ROOM_TRAVELERS_EVENT = 'room:travelers'
 const DEFAULT_TICK_MS = 1000
 
-const state = {
-  io: null,
-  timer: null,
-  /** Map<travelerId, { roomId, nextMoveAt, goneUntil }> */
-  wanderers: new Map(),
-  /** Map<travelerId, { roomId }> — the stop last announced for a route traveler. */
-  route: new Map(),
-  /** Overrides Math.random in tests. */
-  random: Math.random,
+// Held on `globalThis` (see lever-state.js): the room-load HTTP route reads
+// who is standing in a room through Next's bundled copy of this file, which is
+// never `start()`ed. At module level its wanderers map stayed empty, so the
+// bunny and Sherman vanished from a room on refresh until they next moved.
+if (!globalThis.__travelerState) {
+  globalThis.__travelerState = {
+    io: null,
+    timer: null,
+    /** Map<travelerId, { roomId, nextMoveAt, goneUntil }> */
+    wanderers: new Map(),
+    /** Map<travelerId, { roomId }> — the stop last announced for a route traveler. */
+    route: new Map(),
+    /** Overrides Math.random in tests. */
+    random: Math.random,
+  }
 }
+const state = globalThis.__travelerState
 
 function randomBetween([min, max]) {
   return min + Math.floor(state.random() * (max - min + 1))

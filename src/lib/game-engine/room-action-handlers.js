@@ -2032,7 +2032,7 @@ function makeSummonHandler({ action, enemySlug, message, ambush = false }) {
     }
 
     const battle = await executeStartBattle(
-      { type: 'start_battle', data: { enemySlug, isAutoInitiated: ambush } },
+      { type: 'start_battle', isAutoInitiated: ambush, data: { enemySlug } },
       playerId,
       roomState
     )

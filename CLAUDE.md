@@ -70,7 +70,7 @@ React UI
 - The server validates identity, location, ownership, gates, costs, cooldowns, and legal transitions.
 - The client may predict presentation, especially movement, but it does not decide the result.
 - Failed server confirmation must reconcile optimistic UI back to authoritative state.
-- `src/app/api/game/action/route.ts` and `src/app/api/game/navigate/route.ts` are deprecated. Do not revive a second HTTP gameplay engine.
+- `src/app/api/game/action/route.ts`, `src/app/api/game/navigate/route.ts`, and `src/app/api/game/quests/accept|complete/route.ts` are deprecated 410 stubs. Do not revive a second HTTP gameplay engine.
 - HTTP routes remain useful for authentication, initial/read hydration, quests, profiles, world-tool data, shops, DMs, and other request/response features. Mutations still need server-side authorization and invariant checks.
 
 ### State ownership

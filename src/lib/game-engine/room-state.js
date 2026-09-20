@@ -1,6 +1,6 @@
 const { executeRoomAction, isTurnCostingRoomAction } = require('./room-action-handlers')
 const { executeItemAction } = require('./item-action-handlers')
-const { RESPAWN_ROOM_ID } = require('../game-data/constants')
+const { RESPAWN_ROOM_ID, CHAT_MESSAGE_MAX_LENGTH } = require('../game-data/constants')
 
 /**
  * The few things a dead player (HP 0) may still do: rise — the one authorized
@@ -832,6 +832,17 @@ class RoomState {
     const actionName = action.type || action
     const actionData = typeof action === 'object' ? (action.data ?? {}) : {}
 
+    // Nothing happens in a room to someone who is not standing in it. Every
+    // standard action below already refuses on its own, but the room's
+    // hand-authored handlers (a chest, a lever, a workbench) are plain functions
+    // that never looked — and the room id an action arrives with is each
+    // connection's own idea of where the player is, which a second tab left
+    // behind in another room gets wrong. Checked once, here, against the engine's
+    // live record, so a handler written tomorrow is covered too.
+    if (!this.players.has(playerId)) {
+      return this.createErrorResult(actionName, 'Player not found in this room')
+    }
+
     // HP 0 is dead. The player lies where they fell, the death card open, and
     // nothing they try goes through — not a step, a search, a potion or a
     // fight — except rising, looking around, and talking.
@@ -1073,7 +1084,7 @@ class RoomState {
     if (enemy.isAggressive) {
       const isAmbush = Boolean(spawnedSlug)
       const battleResult = await executeStartBattle(
-        { type: 'start_battle', data: { enemySlug: slug, isAutoInitiated: isAmbush } },
+        { type: 'start_battle', isAutoInitiated: isAmbush, data: { enemySlug: slug } },
         playerId,
         this
       )
@@ -1506,7 +1517,11 @@ class RoomState {
       return this.createErrorResult('chat', 'Player not found in this room')
     }
 
-    const message = action.data?.message?.toString().trim()
+    // Capped here as well as in the socket layer's chat event. This action is
+    // also reachable as a plain game action, which carries whatever the client
+    // sent — and the result is broadcast to every connected player.
+    const raw = action.data?.message
+    const message = typeof raw === 'string' ? raw.trim().substring(0, CHAT_MESSAGE_MAX_LENGTH) : ''
     if (!message) {
       return this.createErrorResult('chat', 'Message cannot be empty')
     }
@@ -1548,7 +1563,7 @@ class RoomState {
 
     const activeBattle = this.activeBattles.get(playerId)
     if (activeBattle && activeBattle.isActive) {
-      return await executePlayerAttack({ type: 'player_attack', data: { spell, skill } }, playerId, this)
+      return await executePlayerAttack({ type: 'player_attack', spell, skill }, playerId, this)
     }
 
     let target = null
@@ -1582,7 +1597,7 @@ class RoomState {
       }
     }
 
-    return await executeStartBattle({ type: 'start_battle', data: { enemySlug: target.slug, spell, skill } }, playerId, this)
+    return await executeStartBattle({ type: 'start_battle', spell, skill, data: { enemySlug: target.slug } }, playerId, this)
   }
 
   /**

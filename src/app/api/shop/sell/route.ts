@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma'
 import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { getPlayerInventory } from '@/lib/game-engine/services/inventory-service'
 import { getSellValue } from '@/lib/shop-pricing'
+const { getShopsAt } = require('@/lib/game-data/shops')
+const { isMember } = require('@/lib/game-engine/services/faction-service')
 
 // Raised inside the sell transaction when the guarded decrement matches no row,
 // i.e. the stack was spent by a concurrent request. Distinguishes "someone beat
@@ -26,6 +28,45 @@ async function handleSell(request: AuthenticatedRequest) {
       return NextResponse.json(
         { success: false, message: 'Quantity must be a whole number of at least 1' },
         { status: 400 }
+      )
+    }
+
+    // Selling takes a shop, the same as buying does. `currentRoom` is the
+    // server's own record of where the player stands. Without this the route sold
+    // from anywhere — a bag emptied for gold at the bottom of a mine, no walk
+    // back to town — and the shop window was the only thing implying otherwise.
+    const seller = await prisma.user.findUnique({
+      where: { id: request.user.id },
+      select: { currentRoom: true },
+    })
+    if (!seller) {
+      return NextResponse.json(
+        { success: false, message: 'Player not found' },
+        { status: 404 }
+      )
+    }
+
+    const shops: Array<{ name: string; requiresMembership?: string }> = getShopsAt(seller.currentRoom)
+    if (shops.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'There is no shop here.' },
+        { status: 400 }
+      )
+    }
+
+    // Any shop that will trade with this player buys anything sellable. A guild
+    // stall trades only with members, selling included.
+    let buyer = null
+    for (const shop of shops) {
+      if (!shop.requiresMembership || (await isMember(request.user.id, shop.requiresMembership))) {
+        buyer = shop
+        break
+      }
+    }
+    if (!buyer) {
+      return NextResponse.json(
+        { success: false, message: `${shops[0].name} only trades with guild members.` },
+        { status: 403 }
       )
     }
 

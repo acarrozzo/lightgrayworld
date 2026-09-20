@@ -46,5 +46,11 @@ next-env.d.ts
 
 /src/generated/prisma
 
+# Leftover SQLite databases from before the move to Postgres. One of them held
+# real account rows (password hashes, emails) and sat in this public repository
+# from the first commit; nothing reads them. Never track a database file.
+*.db
+*.db-journal
+
 # Original reference game - do not commit
 lg-DO NOT EDIT - ORIGINAL LG RPG GAME - FOR REFERENCE ONLY/

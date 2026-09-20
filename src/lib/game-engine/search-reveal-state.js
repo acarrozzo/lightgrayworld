@@ -4,8 +4,15 @@
  * Cleared on re-entry to the same room and on disconnect.
  *
  * Used by rooms where searching unmasks a hidden exit (e.g. 003 -> 003c).
+ *
+ * Held on `globalThis` for the reason lever-state.js gives: the room-load HTTP
+ * route runs Next's bundled copy of this file, and a module-level map there was
+ * never the one the engine writes to — a refresh hid every passage again.
  */
-const revealedRooms = new Map() // Map<playerId, Set<roomId | `${roomId}:${direction}`>>
+if (!globalThis.__searchRevealedRooms) {
+  globalThis.__searchRevealedRooms = new Map() // Map<playerId, Set<roomId | `${roomId}:${direction}`>>
+}
+const revealedRooms = globalThis.__searchRevealedRooms
 
 /**
  * A room with one hidden exit is tracked by its room id. A room with several
