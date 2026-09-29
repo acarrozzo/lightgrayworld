@@ -24,7 +24,7 @@ export interface LedgerActions {
   onOpenTraining?: () => void
   onOpenStats?: () => void
   onOpenBook?: (tab: 'skills' | 'spells') => void
-  onOpenInventory?: (filter?: FilterTab) => void
+  onOpenInventory?: (filter?: FilterTab, openItemId?: string) => void
 }
 
 interface LedgerRoom {
@@ -89,16 +89,16 @@ export function DangerLine({ room, player }: { room: LedgerRoom | null; player: 
   )
 }
 
-/** Top-right of the D-pad: danger and room. */
+/** Top-right of the D-pad: the room id, then the danger line under it. */
 export function DangerCorner({ room, player, align = 'right' }: { room: LedgerRoom | null; player: Player | null; align?: 'left' | 'right' }) {
   if (!room) return null
   return (
     <div className={`text-[11px] leading-[15px] ${align === 'right' ? 'text-right' : 'text-left'}`}>
-      <div>
-        <DangerLine room={room} player={player} />
-      </div>
       <div className="text-fg-muted">
         room <span className="text-fg-secondary">{room.roomId}</span>
+      </div>
+      <div>
+        <DangerLine room={room} player={player} />
       </div>
     </div>
   )

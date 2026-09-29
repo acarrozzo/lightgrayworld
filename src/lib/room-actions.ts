@@ -18,6 +18,40 @@ export interface RoomAction {
    * recruiter until you have actually joined.
    */
   requiresMembership?: string
+  /**
+   * Whether this action also appears as a shortcut chip beside the D-pad.
+   *
+   * Left unset, `classifyRoomAction` decides from what the entry is: NPCs with
+   * quests, shops, harvests, chests, the crafting station and the special
+   * rests are in; signs, directories, examines, levers and lifts are out. Set
+   * it to pull a one-off in ("Use Boat") or push a derived one out.
+   */
+  shortcut?: boolean
+}
+
+/** What a room action is, for the shortcut rail and anything else that groups by kind. */
+export type RoomActionKind = 'npc' | 'shop' | 'harvest' | 'chest' | 'craft' | 'rest' | 'other'
+
+/**
+ * Classify one room action by what it already is. `gatherActions` is the set
+ * of action strings the room's gather cooldown table names, which is how a
+ * harvest is known: the entry itself is an ordinary button.
+ */
+export function classifyRoomAction(action: RoomAction, gatherActions: ReadonlySet<string>): RoomActionKind {
+  if (action.questIds?.length) return 'npc'
+  const key = action.action.toLowerCase()
+  if (gatherActions.has(key) || gatherActions.has(action.action)) return 'harvest'
+  if (key === 'open crafting') return 'craft'
+  if (/^view (shop|stables)\b/.test(key) || /\bshop$/.test(key)) return 'shop'
+  if (/^open .*chest/.test(key)) return 'chest'
+  if (/^rest (at|on|in|by) /.test(key)) return 'rest'
+  return 'other'
+}
+
+/** Whether an action earns a shortcut chip: its own flag first, then its kind. */
+export function isShortcutAction(action: RoomAction, kind: RoomActionKind): boolean {
+  if (typeof action.shortcut === 'boolean') return action.shortcut
+  return kind !== 'other'
 }
 
 /**
@@ -60,7 +94,8 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '003': [
     { action: 'talk to old man', label: 'Old Man', icon: 'npc-oldman', className: 'fill-hue-gold', questIds: questIdsForNpc('old_man') },
     { action: 'ex cabin', label: 'Examine Cabin', icon: 'cabin2', className: 'fill-surface-selected' },
-    { action: 'attack dummy', label: 'Attack Dummy', icon: 'sword1', className: 'fill-action-attack' },
+    // The tutorial fight is the room's point; the rail would otherwise read it as an oddity.
+    { action: 'attack dummy', label: 'Attack Dummy', icon: 'sword1', className: 'fill-action-attack', shortcut: true },
     craftingAction('003'),
   ],
   '003b': [],

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Swords } from 'lucide-react'
 import type { Player } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
@@ -18,6 +18,7 @@ import { getFaction } from '@/lib/game-data/factions'
 import ActionFlyout from './ActionFlyout'
 import { useActionFlyout } from '@/hooks/useActionFlyout'
 import { BASIC_ACTION_NAMES } from './BasicActionButtons'
+import { useGatherRemaining } from '@/hooks/useGatherRemaining'
 
 type QuestProgress = { id: string; questId: string; progress: number; completed: boolean; data?: { accepted?: boolean } | null }
 
@@ -84,11 +85,9 @@ export default function RoomDisplay({
 
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null)
   const [loadingQuestId, setLoadingQuestId] = useState<string | null>(null)
-  const [isMounted, setIsMounted] = useState(false)
-  // Live seconds remaining per rolling gather action (sand / dirt / stone / berries),
-  // keyed by action name. A room can host several gather actions at once; an entry
-  // of 0 (or absent) means that action is ready.
-  const [gatherRemaining, setGatherRemaining] = useState<Record<string, number>>({})
+  // Live seconds remaining per rolling gather action, keyed by action name,
+  // shared with the shortcut rail beside the D-pad so both flip together.
+  const { gatherByAction, gatherRemaining } = useGatherRemaining(gatherCooldowns, room?.roomId, actionResult)
 
   // Action result flyout: shows the latest action's result text anchored to the
   // button that triggered it (mirrors the world feed / ActivityTicker). The four
@@ -157,57 +156,6 @@ export default function RoomDisplay({
     
     return `${remainingSeconds}s`
   }
-
-  // Track mount state to prevent hydration mismatches
-  // Use useLayoutEffect for faster initialization on client
-  useLayoutEffect(() => {
-    setIsMounted(true)
-  }, [])
-
-  // Per-action gather metadata (cooldown window, quantity), keyed by action name.
-  const gatherByAction = useMemo(() => {
-    // Element type is derived from the prop so the map never drifts from it.
-    const map = new Map<string, NonNullable<RoomDisplayProps['gatherCooldowns']>[number]>()
-    for (const g of gatherCooldowns) map.set(g.action, g)
-    return map
-  }, [gatherCooldowns])
-
-  // Seed the live countdowns from the room's gather cooldowns on room/data change.
-  useEffect(() => {
-    const next: Record<string, number> = {}
-    for (const g of gatherCooldowns) next[g.action] = g.secondsRemaining
-    setGatherRemaining(next)
-  }, [gatherCooldowns, room?.roomId])
-
-  // Refresh a countdown from action feedback: a successful collect returns the
-  // full window (secondsUntilReset); a too-early attempt returns what's left.
-  useEffect(() => {
-    const action = actionResult?.action
-    if (!action || !gatherByAction.has(action)) return
-    const secondsUntilReset = actionResult?.data?.secondsUntilReset
-    if (typeof secondsUntilReset === 'number') {
-      setGatherRemaining((prev) => ({ ...prev, [action]: secondsUntilReset }))
-    }
-  }, [actionResult, gatherByAction])
-
-  // Tick every active gather countdown down to zero once per second.
-  useEffect(() => {
-    if (!isMounted) return
-    if (!Object.values(gatherRemaining).some((v) => v > 0)) return
-    const interval = setInterval(() => {
-      setGatherRemaining((prev) => {
-        let changed = false
-        const next: Record<string, number> = {}
-        for (const [action, secs] of Object.entries(prev)) {
-          const decremented = secs <= 1 ? 0 : secs - 1
-          if (decremented !== secs) changed = true
-          next[action] = decremented
-        }
-        return changed ? next : prev
-      })
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [isMounted, gatherRemaining])
 
 
   if (!room) {

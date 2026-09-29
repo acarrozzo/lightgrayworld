@@ -1,14 +1,11 @@
 'use client'
 
-import { Player, useGameStore, InventoryItem } from '@/lib/game-state'
+import { Player, useGameStore } from '@/lib/game-state'
 import { earnedTitles } from '@/lib/game-data/quest-registry'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import AvatarSelectionModal from '@/components/AvatarSelectionModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
-import { EquipSlot } from '@prisma/client'
-import Icon from '@/components/Icon'
-import { resolveItemIcon } from '@/lib/item-actions'
 import { ChevronDown } from 'lucide-react'
 import { buildSpellbook, hasLearnableSpell } from '@/lib/spellbook'
 import { buildSkillbook, gearContextFromInventory, hasLearnableSkill, passiveSkillBonuses } from '@/lib/skillbook'
@@ -16,8 +13,9 @@ import { ABILITY_GRID, ConsumableRow, SkillRow, SpellRow, useConsumableDeck } fr
 import { useItemsCollapsed, useSkillsCollapsed, useSpellsCollapsed } from '@/lib/use-char-sections'
 import type { ConsumableSummary } from '@/lib/item-actions'
 import AutoEquipRow from '@/components/game-interface/AutoEquipRow'
-import { describeStat, effectiveStats, type StatBreakdown } from '@/lib/effective-stats'
-import { renderRegen } from '@/lib/inventory-categories'
+import EquipmentGrid from '@/components/game-interface/EquipmentGrid'
+import CoreStatsGrid from '@/components/game-interface/CoreStatsGrid'
+import { effectiveStats } from '@/lib/effective-stats'
 import { describeRegen, playerRegen, statusChips } from '@/lib/status-effects'
 import StatusStrip from '@/components/StatusStrip'
 
@@ -40,37 +38,6 @@ interface CharPanelProps {
   onClose?: () => void
 }
 
-const STAT_MOD_COLORS: Record<string, string> = {
-  str: 'text-stat-str',
-  dex: 'text-stat-dex',
-  mag: 'text-stat-mag',
-  def: 'text-stat-def',
-}
-
-function renderStatMods(metadata: any): React.ReactNode {
-  if (!metadata || typeof metadata !== 'object') return null
-  const statMods = metadata.statMods ?? {}
-
-  const statOrder = ['str', 'dex', 'mag', 'def'] as const
-  const statLabels: Record<string, string> = { str: 'STR', dex: 'DEX', mag: 'MAG', def: 'DEF' }
-
-  const parts: React.ReactNode[] = []
-  for (const stat of statOrder) {
-    const value = statMods[stat]
-    if (typeof value === 'number' && value !== 0) {
-      const sign = value > 0 ? '+' : ''
-      const color = value > 0 ? STAT_MOD_COLORS[stat] : 'text-fg-disabled'
-      if (parts.length > 0) parts.push(<span key={`${stat}-sep`} className="text-fg-muted">, </span>)
-      parts.push(<span key={stat} className={color}>{sign}{value} {statLabels[stat]}</span>)
-    }
-  }
-  // A regen ring has no stat line; its "+3 HP / click" is the whole point.
-  for (const part of renderRegen(metadata)) {
-    if (parts.length > 0) parts.push(<span key={`${(part as any).key}-sep`} className="text-fg-muted">, </span>)
-    parts.push(part)
-  }
-  return parts.length > 0 ? <>{parts}</> : null
-}
 
 export default function CharPanel({ player, onAction, onSwitchToInventory, onOpenBook, inBattle = false, hasTarget = false, onOpenStatAllocation, onOpenTraining, onClose }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
@@ -149,66 +116,6 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
 
-  // Group equipped items by slot
-  const equippedBySlot = useMemo(() => {
-    const map = new Map<EquipSlot | null, typeof inventory[0]>()
-    inventory
-      .filter((item) => item.isEquipped === true)
-      .forEach((item) => {
-        if (item.slot) {
-          map.set(item.slot as EquipSlot, item)
-        }
-      })
-    return map
-  }, [inventory])
-
-  // Slots whose item just changed — a manual equip, an auto-equip loadout —
-  // flash for a moment so the eye finds what moved.
-  const prevSlotItemsRef = useRef<Map<string, string | null> | null>(null)
-  const [flashSlots, setFlashSlots] = useState<Set<string>>(() => new Set())
-  useEffect(() => {
-    const now = new Map<string, string | null>()
-    for (const slot of Object.values(EquipSlot)) now.set(slot, equippedBySlot.get(slot)?.id ?? null)
-    const prev = prevSlotItemsRef.current
-    prevSlotItemsRef.current = now
-    if (!prev) return
-    const changed = new Set<string>()
-    for (const [slot, id] of now) if (prev.get(slot) !== id) changed.add(slot)
-    if (changed.size === 0) return
-    setFlashSlots(changed)
-    const timer = setTimeout(() => setFlashSlots(new Set()), 1500)
-    return () => clearTimeout(timer)
-  }, [equippedBySlot])
-
-  // Map EquipSlot to FilterTab
-  const getFilterForSlot = (slot: EquipSlot): FilterTab => {
-    switch (slot) {
-      case EquipSlot.MAIN_HAND:
-        return 'main'
-      case EquipSlot.OFF_HAND:
-        return 'off'
-      case EquipSlot.HEAD:
-        return 'head'
-      case EquipSlot.BODY:
-        return 'body'
-      case EquipSlot.HANDS:
-        return 'hands'
-      case EquipSlot.FEET:
-        return 'feet'
-      case EquipSlot.RING:
-        return 'ring'
-      case EquipSlot.NECK:
-        return 'neck'
-      case EquipSlot.MOUNT:
-        return 'mount'
-      case EquipSlot.ARTIFACT:
-        return 'artifact'
-      case EquipSlot.COMPANION:
-        return 'companion'
-      default:
-        return 'all'
-    }
-  }
 
   const handleAvatarUpdate = async (avatar: PlayerAvatar, color: string) => {
     if (!isLoggedIn || !player.id) {
@@ -365,162 +272,14 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                <StatDisplay label="STR" stat={stats.str} compact color="text-stat-str" />
-                <StatDisplay label="DEX" stat={stats.dex} compact color="text-stat-dex" />
-                <StatDisplay label="MAG" stat={stats.mag} compact color="text-stat-mag" />
-                <StatDisplay label="DEF" stat={stats.def} compact color="text-stat-def" />
-              </div>
+              <CoreStatsGrid stats={stats} />
               <AutoEquipRow disabled={!isLoggedIn || !onAction} onAction={onAction} />
             </div>
 
-            {/* Equipment Display */}
+            {/* Equipment Display — the same grid the Gear layer draws beside the D-pad. */}
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-fg-primary uppercase tracking-wide">Equipment</h4>
-              <div className="grid grid-cols-2 gap-2">
-                {/* Row 1: MAIN_HAND, OFF_HAND */}
-                <EquipmentSlot
-                  slot={EquipSlot.MAIN_HAND}
-                  flash={flashSlots.has(EquipSlot.MAIN_HAND)}
-                  item={equippedBySlot.get(EquipSlot.MAIN_HAND)}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.MAIN_HAND))}
-                />
-                <EquipmentSlot
-                  slot={EquipSlot.OFF_HAND}
-                  flash={flashSlots.has(EquipSlot.OFF_HAND)}
-                  item={equippedBySlot.get(EquipSlot.OFF_HAND)}
-                  ghostItem={(() => {
-                    const main = equippedBySlot.get(EquipSlot.MAIN_HAND)
-                    return main && (main.template.metadata as any)?.isTwoHanded ? main : undefined
-                  })()}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.OFF_HAND))}
-                />
-                {/* Row 2: HEAD, BODY */}
-                <EquipmentSlot
-                  slot={EquipSlot.HEAD}
-                  flash={flashSlots.has(EquipSlot.HEAD)}
-                  item={equippedBySlot.get(EquipSlot.HEAD)}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.HEAD))}
-                />
-                <EquipmentSlot
-                  slot={EquipSlot.BODY}
-                  flash={flashSlots.has(EquipSlot.BODY)}
-                  item={equippedBySlot.get(EquipSlot.BODY)}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.BODY))}
-                />
-                {/* Row 3: HANDS, FEET */}
-                <EquipmentSlot
-                  slot={EquipSlot.HANDS}
-                  flash={flashSlots.has(EquipSlot.HANDS)}
-                  item={equippedBySlot.get(EquipSlot.HANDS)}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.HANDS))}
-                />
-                <EquipmentSlot
-                  slot={EquipSlot.FEET}
-                  flash={flashSlots.has(EquipSlot.FEET)}
-                  item={equippedBySlot.get(EquipSlot.FEET)}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.FEET))}
-                />
-                {/* Row 4: RING */}
-                <EquipmentSlot
-                  slot={EquipSlot.RING}
-                  flash={flashSlots.has(EquipSlot.RING)}
-                  item={equippedBySlot.get(EquipSlot.RING)}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.RING))}
-                />
-                <EquipmentSlot
-                  slot={EquipSlot.NECK}
-                  flash={flashSlots.has(EquipSlot.NECK)}
-                  item={equippedBySlot.get(EquipSlot.NECK)}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.NECK))}
-                />
-                {/* Row 5: MOUNT, ARTIFACT */}
-                <EquipmentSlot
-                  slot={EquipSlot.MOUNT}
-                  flash={flashSlots.has(EquipSlot.MOUNT)}
-                  item={equippedBySlot.get(EquipSlot.MOUNT)}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.MOUNT))}
-                />
-                <EquipmentSlot
-                  slot={EquipSlot.ARTIFACT}
-                  flash={flashSlots.has(EquipSlot.ARTIFACT)}
-                  item={equippedBySlot.get(EquipSlot.ARTIFACT)}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.ARTIFACT))}
-                />
-                {/* Row 6: COMPANION — swings beside you on every attack turn */}
-                <EquipmentSlot
-                  slot={EquipSlot.COMPANION}
-                  flash={flashSlots.has(EquipSlot.COMPANION)}
-                  item={equippedBySlot.get(EquipSlot.COMPANION)}
-                  onUnequip={(playerItemId) =>
-                    onAction?.({
-                      type: 'unequip_item',
-                      data: { playerItemId },
-                    })
-                  }
-                  onSwitchToInventory={() => onSwitchToInventory?.(getFilterForSlot(EquipSlot.COMPANION))}
-                />
-              </div>
+              <EquipmentGrid inventory={inventory} onSwitchToInventory={(filter) => onSwitchToInventory?.(filter)} />
             </div>
 
             {/* What the character can reach for: the strikes and spells they
@@ -745,93 +504,3 @@ function StatBox({ label, value, subtle = false, compact = false }: StatBoxProps
   )
 }
 
-interface StatDisplayProps {
-  label: string
-  /** The stat as combat rolls it: core, gear, running buffs, and the passive skills for what is in hand. */
-  stat: StatBreakdown
-}
-
-function StatDisplay({ label, stat, compact = false, color }: StatDisplayProps & { compact?: boolean; color?: string }) {
-  return (
-    <div
-      className={`rounded-xl border border-line-subtle/40 bg-surface-panel/60 text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'}`}
-      title={describeStat(label, stat)}
-    >
-      <p className={`text-xs uppercase tracking-wide leading-none ${color ?? 'text-fg-secondary'}`}>{label}</p>
-      <p className={`font-bold ${color ?? 'text-fg-bright'} ${compact ? 'text-lg mt-0.5' : 'text-2xl mt-1'}`}>{stat.total}</p>
-      <p className="text-xs text-fg-muted leading-none tabular-nums">
-        {stat.core}
-        {stat.buff > 0 && <span className="text-fg-disabled"> · +{stat.buff} buff</span>}
-        {stat.skill > 0 && <span className="text-fg-disabled"> · +{stat.skill} skill</span>}
-      </p>
-    </div>
-  )
-}
-
-interface EquipmentSlotProps {
-  slot: EquipSlot
-  item?: InventoryItem
-  ghostItem?: InventoryItem
-  /** The item here just changed: a short ring so the change is seen. */
-  flash?: boolean
-  onUnequip: (playerItemId: string) => void
-  onSwitchToInventory?: () => void
-}
-
-const FLASH = 'ring-2 ring-accent/70'
-
-function EquipmentSlot({ slot, item, ghostItem, flash = false, onUnequip, onSwitchToInventory }: EquipmentSlotProps) {
-  const slotName = slot.replace(/_/g, ' ')
-  const flashClass = flash ? FLASH : ''
-
-  if (item) {
-    const mods = renderStatMods(item.template.metadata)
-    const icon = resolveItemIcon(item.template.metadata as { icon?: string } | null, item.template.slug ?? '')
-
-    return (
-      <button
-        onClick={() => onSwitchToInventory?.()}
-        className={`rounded-lg border border-line-subtle/80 bg-surface-panel/80 px-3 py-2 text-left hover:bg-surface-raised/80 transition-all duration-500 flex items-center gap-2 ${flashClass}`}
-      >
-        <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-surface-hover/40 border border-line-strong/30">
-          <Icon name={icon} size={22} className="text-fg-primary" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs uppercase tracking-wide text-fg-secondary">{slotName}</p>
-          <p className="text-sm font-medium text-fg-bright truncate">{item.template.name}</p>
-          {mods && <p className="text-xs">{mods}</p>}
-        </div>
-      </button>
-    )
-  }
-
-  if (ghostItem) {
-    const ghostMods = renderStatMods(ghostItem.template.metadata)
-    const ghostIcon = resolveItemIcon(ghostItem.template.metadata as { icon?: string } | null, ghostItem.template.slug ?? '')
-
-    return (
-      <div className={`rounded-lg border border-line-subtle/80 bg-surface-panel/80 px-3 py-2 cursor-default select-none transition-all duration-500 ${flashClass}`}>
-        <div className="flex items-center gap-2 opacity-35">
-          <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md bg-surface-hover/40 border border-line-strong/30">
-            <Icon name={ghostIcon} size={22} className="text-fg-primary" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wide text-fg-secondary">{slotName}</p>
-            <p className="text-sm font-medium text-fg-bright truncate">{ghostItem.template.name}</p>
-            {ghostMods && <p className="text-xs">{ghostMods}</p>}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <button
-      onClick={() => onSwitchToInventory?.()}
-      className={`rounded-lg border border-line-subtle/70 bg-surface-panel/60 px-3 py-2 text-left hover:bg-surface-raised/60 hover:border-line-subtle transition-all duration-500 cursor-pointer ${flashClass}`}
-    >
-      <p className="text-xs uppercase tracking-wide text-fg-secondary">{slotName}</p>
-      <p className="text-sm text-fg-muted mt-0.5">- - -</p>
-    </button>
-  )
-}

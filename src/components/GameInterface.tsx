@@ -16,6 +16,9 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import { Settings as SettingsIcon, MessageSquare, MessageSquareText, ChevronUp, ChevronDown } from 'lucide-react'
 import ExplorePanel, { type ExploreSubView } from './game-interface/ExplorePanel'
+import BagLayer from './game-interface/BagLayer'
+import GearLayer from './game-interface/GearLayer'
+import type { DockLayer } from './game-interface/Dock'
 import ActionModal from './ActionModal'
 import ConfirmDialog from './ConfirmDialog'
 import { describePartyDeparture, partyDepartureWarning } from '@/lib/party-succession'
@@ -186,6 +189,9 @@ export default function GameInterface() {
   // in the Explore sidebar (exploreSubView === 'world') or open as the
   // full-screen overlay, never both.
   const [isWorldOverlayOpen, setIsWorldOverlayOpen] = useState(false)
+  // Phones only: the Gear or Bag layer open as a bottom sheet over the room.
+  // The sidebar docks the same layers through exploreSubView instead.
+  const [mobileLayer, setMobileLayer] = useState<'bag' | 'gear' | null>(null)
   // Phones only, and only in a fight: the D-pad at the bottom folds down to its
   // own title bar so the battle deck gets the height, and one tap brings it
   // back when the fight turns and the way out is wanted. Out of battle the
@@ -646,6 +652,10 @@ export default function GameInterface() {
         setActionModal({ isOpen: false, title: '', content: '' })
         return true
       }
+      if (mobileLayer) {
+        setMobileLayer(null)
+        return true
+      }
       if (isWorldOverlayOpen) {
         setIsWorldOverlayOpen(false)
         return true
@@ -688,6 +698,7 @@ export default function GameInterface() {
     playerProfileModal.isOpen,
     actionModal.isOpen,
     isWorldOverlayOpen,
+    mobileLayer,
     isCraftingOpen,
     levelUpData,
   ])
@@ -3270,6 +3281,32 @@ export default function GameInterface() {
     setExploreSubView('compass')
   }, [])
 
+  // Gear and Bag share the World layer's slot over the compass: one layer at a
+  // time, the dock tile that opened it reads pressed, and tapping it again
+  // closes it. The sidebar docks them; the strip opens a bottom sheet.
+  const openLayerDocked = useCallback((layer: 'bag' | 'gear') => {
+    setIsWorldOverlayOpen(false)
+    setMobileLayer(null)
+    setCenterActiveTab('explore')
+    setExploreSubView((prev) => (prev === layer ? 'compass' : layer))
+  }, [])
+
+  const openLayerSheet = useCallback((layer: 'bag' | 'gear') => {
+    setExploreSubView('compass')
+    setMobileLayer((prev) => (prev === layer ? null : layer))
+  }, [])
+
+  const closeLayer = useCallback(() => {
+    setExploreSubView('compass')
+    setMobileLayer(null)
+  }, [])
+
+  // A use from the Bag layer is the same use_item the Inv row and the deck
+  // send; the server decides its turn cost and whether it provokes.
+  const handleUseItemFromBag = useCallback((playerItemId: string, action: string) => {
+    handleActionRef.current({ type: 'use_item', data: { playerItemId, action } })
+  }, [])
+
   const handleOpenPartyTab = useCallback(() => {
     setPlayersSubTab('party')
     setCenterActiveTab('players')
@@ -3334,7 +3371,17 @@ export default function GameInterface() {
   useEffect(() => {
     setExploreSubView('compass')
     setIsWorldOverlayOpen(false)
+    setMobileLayer(null)
   }, [currentRoom?.roomId])
+
+  // Dying closes whatever layer was over the compass: the death card is what
+  // the player should see, and the panel is inert until they rise.
+  const isDead = !!player && player.hp <= 0
+  useEffect(() => {
+    if (!isDead) return
+    setExploreSubView('compass')
+    setMobileLayer(null)
+  }, [isDead])
 
   // Every fight starts with the phone's D-pad folded away — the deck is what
   // you came to look at — and every fight ends with it unfolded again, so the
@@ -3563,6 +3610,12 @@ export default function GameInterface() {
     { id: 'feed', label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'blue', badge: unreadCount > 0 ? unreadCount : undefined },
   ]
 
+  // Which dock tile reads pressed, per home: the sidebar's docked layer, the
+  // strip's sheet or the full-screen World overlay.
+  const sidebarActiveLayer: DockLayer | null =
+    exploreSubView === 'world' ? worldTab : exploreSubView === 'bag' || exploreSubView === 'gear' ? exploreSubView : null
+  const stripActiveLayer: DockLayer | null = mobileLayer ?? (isWorldOverlayOpen ? worldTab : null)
+
   return (
     <div className="h-dvh fill-surface-canvas flex flex-col overflow-hidden">
       {isWorldOverlayOpen && (
@@ -3586,6 +3639,45 @@ export default function GameInterface() {
             onClose={closeWorld}
             onDock={dockWorld}
           />
+        </div>
+      )}
+      {mobileLayer && player && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label={mobileLayer === 'bag' ? 'Bag' : 'Gear'}
+        >
+          <button type="button" aria-label="Close" onClick={closeLayer} className="absolute inset-0 bg-surface-canvas/60 backdrop-blur-[2px]" />
+          <div className="relative flex min-h-0 flex-col rounded-t-2xl border-t border-line-strong bg-surface-overlay shadow-2xl shadow-black/50 pb-[env(safe-area-inset-bottom)]">
+            {mobileLayer === 'bag' ? (
+              <BagLayer
+                variant="sheet"
+                inventory={inventory}
+                player={player}
+                disabled={isLoadingRoom}
+                onUse={handleUseItemFromBag}
+                onOpenInventory={(filter, openItemId) => {
+                  setMobileLayer(null)
+                  handleSwitchToInventory(filter, openItemId)
+                }}
+                onClose={closeLayer}
+              />
+            ) : (
+              <GearLayer
+                variant="sheet"
+                inventory={inventory}
+                player={player}
+                disabled={isLoadingRoom || !isLoggedIn}
+                onAction={handleAction}
+                onOpenInventory={(filter, openItemId) => {
+                  setMobileLayer(null)
+                  handleSwitchToInventory(filter, openItemId)
+                }}
+                onClose={closeLayer}
+              />
+            )}
+          </div>
         </div>
       )}
       <ConfirmDialog
@@ -3883,6 +3975,16 @@ export default function GameInterface() {
                 onOpenWorldOverlay={openWorldOverlay}
                 onCloseWorld={closeWorld}
                 onExpandWorld={expandWorld}
+                onOpenGear={() => openLayerDocked('gear')}
+                onOpenBag={() => openLayerDocked('bag')}
+                onCloseLayer={closeLayer}
+                activeLayer={sidebarActiveLayer}
+                onUseItem={handleUseItemFromBag}
+                currentAction={action}
+                roomEnemy={roomEnemy}
+                isInBattle={battle.isInBattle}
+                gatherCooldowns={gatherCooldowns}
+                actionResult={actionResult}
                 currentMapId={currentMapId}
                 availableMaps={availableMaps}
                 onMapChange={handleMapChange}
@@ -4092,6 +4194,11 @@ export default function GameInterface() {
                   onOpenWorldOverlay={openWorldOverlay}
                   onCloseWorld={closeWorld}
                   onExpandWorld={expandWorld}
+                  onOpenGear={() => openLayerSheet('gear')}
+                  onOpenBag={() => openLayerSheet('bag')}
+                  onCloseLayer={closeLayer}
+                  activeLayer={stripActiveLayer}
+                  onUseItem={handleUseItemFromBag}
                   currentMapId={currentMapId}
                   availableMaps={availableMaps}
                   onMapChange={handleMapChange}

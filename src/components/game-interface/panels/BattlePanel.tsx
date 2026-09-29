@@ -1,13 +1,14 @@
 'use client'
 
-import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player, useGameStore, type ItemPreview } from '@/lib/game-state'
+import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player, useGameStore } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LogOut } from 'lucide-react'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { effectiveMag, getCastableSpells, spellTone } from '@/lib/spellbook'
-import { ABILITY_GRID, ConsumableRow, SpellRow, useConsumableDeck } from '@/components/game-interface/AbilityRows'
+import { ABILITY_GRID, SpellRow, useConsumableDeck } from '@/components/game-interface/AbilityRows'
+import ConsumableDeck from '@/components/game-interface/ConsumableDeck'
 import { gearContextFromInventory, getStrikeSkills, previewSkillBonus, skillTone, weaponFits, type SkillbookEntry } from '@/lib/skillbook'
 import { effectiveStats } from '@/lib/effective-stats'
 import { playerCanFly } from '@/lib/status-effects'
@@ -606,18 +607,11 @@ export default function BattlePanel({
   // and in the header, a buff puts its "+20" beside the stat it lifts.
   // Cleared when the pointer leaves, when the item is used (the tile may
   // vanish without a leave event), and when the deck unmounts.
+  // The deck itself (ConsumableDeck) sets and clears the preview; the bars
+  // here only read it.
   const itemPreview = useGameStore((s) => s.itemPreview)
-  const setItemPreview = useGameStore((s) => s.setItemPreview)
-  const previewOnHover = useCallback((preview: ItemPreview | null) => (hovering: boolean) => {
-    setItemPreview(hovering ? preview : null)
-  }, [setItemPreview])
-  useEffect(() => () => setItemPreview(null), [setItemPreview])
-  const spendItem = useCallback((playerItemId: string, action: string) => {
-    setItemPreview(null)
-    onUseItem(playerItemId, action)
-  }, [onUseItem, setItemPreview])
-  // The bag read into what each item does, shared with the character panel.
-  // A hook, so it sits above the early returns below.
+  // The bag read into what each item does, shared with the character panel
+  // and the Bag layer. A hook, so it sits above the early returns below.
   const consumables = useConsumableDeck(inventory)
 
   const disarmRetreat = useCallback(() => {
@@ -664,7 +658,7 @@ export default function BattlePanel({
   // Shared with the character panel so the same item reads the same way in
   // both: HP and MP restorers in two ladders strongest first, an item that
   // fills both under them, buffs last.
-  const { all: deckItems, hp: hpItems, mp: mpItems, both: bothItems, buffs: buffItems } = consumables
+  const deckItems = consumables.all
   const hpFull = battle.playerHp >= battle.playerHpMax
   const mpFull = playerMp >= playerMpMax
   // The number beside the vitals is the item's full amount, the same "+100"
@@ -1180,86 +1174,13 @@ export default function BattlePanel({
           className="@container flex flex-col gap-1.5 max-h-60 overflow-y-auto overscroll-contain"
         >
           {activeTab === 'items' && (
-            deckItems.length === 0 ? (
-              <p className="text-xs text-fg-disabled italic py-2 px-1">No items to use.</p>
-            ) : (
-              <>
-                {/* Two ladders, HP then MP, strongest first. Side by side only
-                    once the deck is wide enough for two full rows; a thin panel
-                    stacks them into one column. */}
-                {(hpItems.length > 0 || mpItems.length > 0) && (
-                  <div className={ABILITY_GRID}>
-                    {([
-                      { key: 'hp', heading: 'HP', items: hpItems, full: hpFull, reason: 'Full HP', text: 'text-resource-hp' },
-                      { key: 'mp', heading: 'MP', items: mpItems, full: mpFull, reason: 'Full MP', text: 'text-resource-mp' },
-                    ] as const).map((column) => (
-                      <div key={column.key} className="flex flex-col gap-1 min-w-0">
-                        <span className={`text-[9px] font-bold uppercase tracking-wider px-1 ${column.text}`}>{column.heading}</span>
-                        {column.items.length === 0 ? (
-                          <span className="text-[10px] text-fg-disabled italic px-1 py-1.5">None</span>
-                        ) : column.items.map((entry) => (
-                          <ConsumableRow
-                            key={entry.item.id}
-                            entry={entry}
-                            reason={column.full ? column.reason : null}
-                            disabled={isActing}
-                            onUse={spendItem}
-                            onHoverChange={column.full ? undefined : previewOnHover({ hp: entry.summary.hp, mp: entry.summary.mp })}
-                          />
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Restores both: full rows under the ladders, the two numbers in their own colours. */}
-                {bothItems.length > 0 && <span className="text-[9px] font-bold uppercase tracking-wider px-1 text-hue-purple">HP & MP</span>}
-                {bothItems.length > 0 && (
-                  <div className={ABILITY_GRID}>
-                    {bothItems.map((entry) => {
-                      const reason = hpFull && mpFull ? 'Full HP & MP' : null
-                      return (
-                        <ConsumableRow
-                          key={entry.item.id}
-                          entry={entry}
-                          reason={reason}
-                          disabled={isActing}
-                          onUse={spendItem}
-                          onHoverChange={reason ? undefined : previewOnHover({ hp: entry.summary.hp, mp: entry.summary.mp })}
-                        />
-                      )
-                    })}
-                  </div>
-                )}
-
-                {/* Buffs and the rest. What the buff does ("+20 STR") and how
-                    long it lasts sit beside the verb, as on every other row. */}
-                {buffItems.length > 0 && (
-                  <>
-                    <span className="text-[9px] font-bold uppercase tracking-wider px-1 text-fg-muted">Buffs</span>
-                    <div className={ABILITY_GRID}>
-                      {buffItems.map((entry) => {
-                        const bonus: NonNullable<ItemPreview['stats']> = {}
-                        for (const buff of entry.summary.buffs) {
-                          for (const [stat, amount] of Object.entries(buff.bonus) as [keyof typeof bonus, number][]) {
-                            bonus[stat] = (bonus[stat] ?? 0) + amount
-                          }
-                        }
-                        return (
-                          <ConsumableRow
-                            key={entry.item.id}
-                            entry={entry}
-                            disabled={isActing}
-                            onUse={spendItem}
-                            onHoverChange={Object.keys(bonus).length > 0 ? previewOnHover({ hp: 0, mp: 0, stats: bonus }) : undefined}
-                          />
-                        )
-                      })}
-                    </div>
-                  </>
-                )}
-              </>
-            )
+            <ConsumableDeck
+              inventory={inventory}
+              hpFull={hpFull}
+              mpFull={mpFull}
+              disabled={isActing}
+              onUse={onUseItem}
+            />
           )}
 
           {activeTab === 'spells' && (

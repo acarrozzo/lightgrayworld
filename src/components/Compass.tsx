@@ -1,24 +1,22 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
-import { ArrowBigUp, ArrowBigUpDash, Map as MapIcon, Sparkles } from 'lucide-react'
+import { ArrowBigUp, ArrowBigUpDash } from 'lucide-react'
 import { getRoomMapPosition } from './game-interface/room-map-positions'
 import { getRoomMapView } from './game-interface/utils'
 import { roomColor } from '@/lib/theme/room-colors'
-
-const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
 
 interface CompassProps {
   room: any
   onAction?: (action: string) => void
   onNavigateToMap?: () => void
   /**
-   * Map and Teleport sit to the right of the ring as two filled circles, the
-   * matched pair to the up/down column on the left. They open a view rather
-   * than move the player, so the fill colour, not the shape, says which.
+   * What sits to the right of the ring, in the column that mirrors Up and
+   * Down on the left: the phone strip puts the dock there. Desktop leaves it
+   * empty and draws the dock under the ring instead; the ring wrapper keeps
+   * the same margin on both sides either way, so it stays centred.
    */
-  onOpenTeleport?: () => void
-  isTeleportDisabled?: boolean
+  aside?: React.ReactNode
   isMoveInProgress?: boolean
   /**
    * Party followers travel with their leader and cannot move on their own; the
@@ -101,8 +99,7 @@ export default function Compass({
   room,
   onAction,
   onNavigateToMap,
-  onOpenTeleport,
-  isTeleportDisabled = false,
+  aside,
   isMoveInProgress = false,
   isLocked = false,
   lockedHint = 'Following your party — leave to move freely',
@@ -212,8 +209,8 @@ export default function Compass({
       {/* Main D-pad */}
       <div className="relative w-56 @sm:w-64 mx-[calc(2.5rem+var(--compass-side-gap))]">
         <div className="relative w-56 @sm:w-64 h-56 @sm:h-64">
-          {/* Map circle in center. Also opens the map; the Map button in the
-              corner of the Explore panel is the labelled way in. */}
+          {/* Map circle in center. Also opens the map; the dock's Map tile is
+              the labelled way in. */}
           <div className="absolute inset-0 flex items-center justify-center">
             <button
               type="button"
@@ -307,35 +304,13 @@ export default function Compass({
           })}
         </div>
 
-        {/* Map and Teleport: the right-hand column, mirroring up/down. Same
-            40px circles as the exits, filled in the colour of what they open. */}
-        <div className="absolute left-full ml-[var(--compass-side-gap)] top-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
-          <div className="flex flex-col items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => onNavigateToMap?.()}
-              aria-label="Open the map"
-              title={`Map — ${mapTitle}`}
-              className="w-10 h-10 rounded-full border border-fg-bright/10 fill-hue-sky shadow-sm shadow-shadow flex items-center justify-center transition-all duration-200 hover:brightness-110 hover:border-fg-bright/20 active:scale-[0.95] focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-            >
-              <MapIcon className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden="true" />
-            </button>
-            <span className="text-[9px] uppercase tracking-widest text-fg-muted leading-none" aria-hidden="true">Map</span>
+        {/* The right-hand column, mirroring up/down: the dock on the phone
+            strip, nothing on desktop. */}
+        {aside && (
+          <div className="absolute left-full ml-[var(--compass-side-gap)] top-1/2 -translate-y-1/2 flex flex-col items-center">
+            {aside}
           </div>
-          <div className="flex flex-col items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => onOpenTeleport?.()}
-              disabled={isTeleportDisabled || !onOpenTeleport}
-              aria-label="Open fast travel"
-              title={`Teleport — ${TELEPORT_MP_COST} MP`}
-              className="w-10 h-10 rounded-full border border-fg-bright/10 fill-resource-mp shadow-sm shadow-shadow flex items-center justify-center transition-all duration-200 hover:brightness-110 hover:border-fg-bright/20 active:scale-[0.95] disabled:opacity-40 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-            >
-              <Sparkles className="h-[18px] w-[18px]" strokeWidth={2.2} aria-hidden="true" />
-            </button>
-            <span className="text-[9px] uppercase tracking-widest text-fg-muted leading-none" aria-hidden="true">Tele</span>
-          </div>
-        </div>
+        )}
 
         {/* No spinner over the map while it pans: the exit buttons already show
             one while the server is confirming a move, and a second spinner
