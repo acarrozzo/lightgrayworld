@@ -41,17 +41,37 @@ function pickPlayerDefensiveStat(battleState, enemy) {
 }
 
 /**
+ * Can this weapon swing reach an airborne enemy? A ranged weapon always can;
+ * a melee swing only when the player is airborne too (wings, or a flying
+ * mount). A skill strike rides the swing, so it reaches exactly what the
+ * weapon reaches — Magic Strike is a sword with magic on it, not a spell, and
+ * is melee for this purpose (design decision, 2026-09-28). Spells never come
+ * through here: they are projectile magic and always reach. The original's
+ * rule: `eFly && !flying && weapontype != ranged && !magiccast` was the miss.
+ * Shared by the calculator and the handlers' skill check so the MP refusal
+ * and the roll agree.
+ * @param {'MELEE'|'RANGED'|null|undefined} weaponCategory
+ * @param {boolean} playerFlying
+ */
+function reachesFlyingEnemy(weaponCategory, playerFlying) {
+  const cat = weaponCategory || 'MELEE'
+  return cat !== 'MELEE' || Boolean(playerFlying)
+}
+
+/**
  * The player's strike for one turn.
  *
  * Three shapes share the pipeline. A weapon strike rolls the weapon's stat
- * (STR melee, DEX ranged) and cannot reach a flying enemy. A spell — passed as
+ * (STR melee, DEX ranged) and cannot reach a flying enemy unless the player
+ * is flying too (see `reachesFlyingEnemy`). A spell — passed as
  * `{ def, level, cost }` — rolls the spell's own formula off effective MAG,
  * reaches flying enemies (the original's "ranged weapon or projectile magic"),
  * and does nothing at all to a magic-immune one. A skill strike — `skill` as
  * `{ def, level, cost }` — is the weapon swing plus the skill's bonus roll:
- * Slice, Smash and Aim add rand(1, lvl); Magic Strike adds a magic roll, so
- * it reaches a flying enemy like a spell and, against a magic-immune one, the
- * swing lands but the magic does not. Either way the enemy answers with a
+ * Slice, Smash and Aim add rand(1, lvl); Magic Strike adds a magic roll and,
+ * against a magic-immune one, the swing lands but the magic does not. A
+ * strike reaches only what its weapon reaches: a Magic Strike behind a sword
+ * misses a flyer like the sword would. Either way the enemy answers with a
  * single rand(0, DEF) block and the result floors at zero.
  */
 function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill = null } = {}) {
@@ -93,10 +113,7 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
   // True effective stat — may be negative when mods outweigh the base stat
   const effectiveOff = Math.floor(offStat * bonus)
 
-  // A Magic Strike is projectile magic on top of the swing, so it reaches what
-  // a bare melee swing cannot. A Slice is still a sword.
-  const reachesFlying = weaponCat !== 'MELEE' || Boolean(skill && skill.def.magic)
-  if (enemy.isFlying && !reachesFlying) {
+  if (enemy.isFlying && !reachesFlyingEnemy(weaponCat, battleState.isFlying)) {
     return {
       playerRaw: 0,
       enemyBlock: 0,
@@ -349,6 +366,7 @@ module.exports = {
   resolveCompanionAttack,
   totalDamageToEnemy,
   weaponImmunity,
+  reachesFlyingEnemy,
   resolvePlayerAttack,
   resolveEnemyAttack,
   pickPlayerOffensiveStat,

@@ -139,7 +139,7 @@ Before changing a system, name its authoritative owner and decide what reconnect
 ### Combat
 
 - Combat is server-authoritative and intentionally legible. Preserve the recognizable random-roll shape unless a balance task explicitly changes it: an offensive roll opposed by a defensive roll, floored at zero, with weapon/enemy type determining the relevant stat.
-- Current melee uses STR, ranged uses DEX, and incoming melee/ranged/magic attacks defend with DEF/DEX/MAG respectively. Flying enemies reject melee attacks.
+- Current melee uses STR, ranged uses DEX, and incoming melee/ranged/magic attacks defend with DEF/DEX/MAG respectively. Flying enemies reject melee attacks unless the player is also flying (wings buff or a flying mount), as in the original.
 - Refresh/equipment/use-item behavior during battle must not grant free turns, reset enemy state, duplicate drops, or bypass damage.
 - Rewards, kill counts, quest progress, first-kill drops, currency, XP, and inventory changes must be idempotent or transactionally protected.
 - Defeat, flee, disconnect, reconnect, and movement must clean up or restore battle flags consistently.

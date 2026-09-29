@@ -50,7 +50,7 @@ function getEnemyTraits(enemy) {
     traits.push({
       id: 'flying',
       label: 'Flying',
-      title: 'Flying: melee weapons cannot reach it. Use a ranged weapon, a spell, or a magic strike.',
+      title: 'Flying: melee weapons and their strikes cannot reach it unless you are flying too (wings or a flying mount). Otherwise use a ranged weapon or a spell.',
       tone: 'sky',
     })
   }

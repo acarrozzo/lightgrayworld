@@ -4,9 +4,22 @@ const { getEnemyTraits } = require('../game-data/enemy-traits')
 
 /**
  * What the player is holding, as the skills read it: the weapon's category,
- * whether it takes both hands, and whether the off hand carries a shield.
- * @typedef {{ weaponCategory: 'MELEE'|'RANGED'|null, isTwoHanded: boolean, hasShield: boolean }} GearContext
+ * whether it takes both hands, whether the off hand carries a shield, and
+ * whether the mount under them flies (`metadata.grantsFlight`).
+ * @typedef {{ weaponCategory: 'MELEE'|'RANGED'|null, isTwoHanded: boolean, hasShield: boolean, flyingMount?: boolean }} GearContext
  */
+
+/**
+ * Is the player airborne right now? The same two ways room gates read
+ * (`playerCanFly` in room-gates.js): the click-counted `wings` buff, or a
+ * flying mount. The original's battle.php exempted `$_SESSION['flying']` from
+ * the flying-enemy check — a player on wings or a Sky Hawk could melee a bat.
+ * @param {{ wings?: number }|null|undefined} playerStats  A User row carrying `wings`.
+ * @param {GearContext|null|undefined} gear
+ */
+function playerIsFlying(playerStats, gear) {
+  return (playerStats?.wings || 0) >= 1 || Boolean(gear && gear.flyingMount)
+}
 
 class BattleState {
   constructor({ playerId, roomId, enemy, playerStats, equippedWeaponCategory = null, companion = null, gear = null }) {
@@ -61,8 +74,14 @@ class BattleState {
       weaponCategory: category || null,
       isTwoHanded: Boolean(gear && gear.isTwoHanded),
       hasShield: Boolean(gear && gear.hasShield),
+      flyingMount: Boolean(gear && gear.flyingMount),
     }
     this.equippedWeaponCategory = this.gear.weaponCategory || 'MELEE'
+  }
+
+  /** Airborne this turn: wings still ticking, or a flying mount. Melee reaches a flying enemy. */
+  get isFlying() {
+    return playerIsFlying({ wings: this.wingsClicks }, this.gear)
   }
 
   applyStats(playerStats) {
@@ -81,6 +100,8 @@ class BattleState {
     // getStatBuffBonuses.) The player's level is what an enemy's poison scales with.
     this.poisoned = (playerStats.poisonClicks || 0) > 0
     this.poisonImmune = (playerStats.poisonImmuneClicks || 0) > 0
+    // Wings ride on the same row (BUFF_SELECT); ≥ 1 means the player flies.
+    this.wingsClicks = playerStats.wings || 0
     this.level = playerStats.level || this.level || 1
   }
 
@@ -164,4 +185,4 @@ class BattleState {
   }
 }
 
-module.exports = { BattleState }
+module.exports = { BattleState, playerIsFlying }

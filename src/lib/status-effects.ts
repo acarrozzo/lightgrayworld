@@ -58,6 +58,17 @@ export function equippedRegen(inventory: InventoryItem[]): { hp: number; mp: num
   return regen.sumGearRegen(inventory.filter((item) => item.isEquipped).map((item) => item.template.metadata))
 }
 
+/**
+ * Is the player airborne? Mirrors the server's `playerIsFlying` (battle-state.js)
+ * and `playerCanFly` (room-gates.js): the wings countdown, or an equipped mount
+ * whose template `grantsFlight`. A flying player's melee reaches a flying enemy,
+ * so the battle deck reads this before it says "Can't reach".
+ */
+export function playerCanFly(player: Player | null | undefined, inventory: InventoryItem[]): boolean {
+  if (Number(player?.buffs?.wings ?? 0) >= 1) return true
+  return inventory.some((item) => item.isEquipped && item.slot === 'MOUNT' && item.template.metadata?.grantsFlight === true)
+}
+
 /** Everything regenerating on the player right now, per click. */
 export function playerRegen(player: Player | null | undefined, inventory: InventoryItem[]): RegenSummary {
   return regen.regenSummary({ gear: equippedRegen(inventory), buffs: player?.buffs ?? null })

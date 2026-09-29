@@ -23,8 +23,10 @@
  *   - Strikes are a normal weapon swing plus a bonus roll, for MP: Slice (1h),
  *     Smash (2h) and Aim (ranged) add rand(1, lvl) for lvl MP; Magic Strike
  *     adds rand(0, ceil(mag × lvl / 20) + 1) magic to any swing for 2·lvl MP,
- *     reaches flying enemies (projectile magic) and fizzles on magic-immune
- *     ones — the swing still lands, the magic and its MP do not.
+ *     and fizzles on magic-immune ones — the swing still lands, the magic and
+ *     its MP do not. It is still a weapon swing for reach: like every strike it
+ *     misses a flying enemy unless the weapon (ranged) or the player (flying)
+ *     can get there.
  *   - The "Pro" proficiencies (One Handed Pro, Two Handed Pro, Ranged Pro) are
  *     the Master Trainer's: each level is +5% on the gear-side stat for that
  *     weapon kind (the original's stats.php took `round(strmod × 0.05 × lvl)`
@@ -72,7 +74,7 @@
  * @property {(level: number) => number} learnCost  SP to go from level-1 to level.
  * @property {{ skillId: string, level: number }} [prerequisite]  A base skill that must be at this level before a point can be spent.
  * @property {SkillWeapon} [weapon]  Strikes: the weapon kind they need.
- * @property {boolean} [magic]       Strikes: the bonus is magic (immunity, flying).
+ * @property {boolean} [magic]       Strikes: the bonus is magic (fizzles on magic immunity; reach is still the weapon's).
  * @property {(level: number) => number} [castCost]  Strikes: MP per use.
  * @property {(level: number, mag: number, rand: (a: number, b: number) => number) => SkillBonusRoll} [bonus]
  * @property {(level: number, mag: number) => SkillBonusPreview} [preview]

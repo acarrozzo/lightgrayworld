@@ -5,8 +5,9 @@
  * bonuses as the original's stats.php folded them (proficiencies only with
  * the matching weapon, Toughness ×2, Block ×3 behind a shield, Dodge as a
  * percent), and the calculator rules for strikes: a Slice is a swing plus
- * rand(1, lvl), Magic Strike reaches a flying enemy and fizzles on an immune
- * one while the swing still lands, and Dodge turns an enemy hit into nothing.
+ * rand(1, lvl), no strike reaches a flying enemy from the ground (Magic
+ * Strike is melee for reach), Magic Strike fizzles on an immune one while the
+ * swing still lands, and Dodge turns an enemy hit into nothing.
  * Pure functions, no database.
  *
  * Run: npm test
@@ -207,13 +208,26 @@ test('a Slice is the swing plus its bonus, and the turn carries the record', () 
   assert.equal(resolveTurn(battleState(), 0).skill, null)
 })
 
-test('Magic Strike reaches a flying enemy that a plain melee swing cannot; Slice does not', () => {
+test('no melee strike reaches a flying enemy from the ground — Magic Strike is melee for reach; a flying player lands them all', () => {
   const flying = battleState({ enemy: { att: 0, def: 0, damageType: 'MELEE', isFlying: true } })
   assert.equal(resolvePlayerAttack(flying, 0).missedFlyingMelee, true)
   assert.equal(resolvePlayerAttack(flying, 0, { skill: strike('slice') }).missedFlyingMelee, true)
   const ms = resolvePlayerAttack(flying, 0, { skill: strike('magic-strike', 2) })
-  assert.equal(ms.missedFlyingMelee, false)
-  assert.equal(ms.skill.id, 'magic-strike')
+  assert.equal(ms.missedFlyingMelee, true)
+  assert.equal(ms.skill, null, 'nothing rolled, nothing to report')
+  // A flying player (wings, flying mount) brings the sword within reach: Slice
+  // and Magic Strike both land.
+  const airborne = { ...flying, isFlying: true }
+  const sliced = resolvePlayerAttack(airborne, 0, { skill: strike('slice') })
+  assert.equal(sliced.missedFlyingMelee, false)
+  assert.equal(sliced.skill.id, 'slice')
+  assert.ok(sliced.skill.bonus >= 1)
+  const struck = resolvePlayerAttack(airborne, 0, { skill: strike('magic-strike', 2) })
+  assert.equal(struck.missedFlyingMelee, false)
+  assert.equal(struck.skill.id, 'magic-strike')
+  // A ranged weapon reaches on its own, so Aim lands from the ground.
+  const bow = { ...flying, equippedWeaponCategory: 'RANGED' }
+  assert.equal(resolvePlayerAttack(bow, 0, { skill: strike('aim') }).missedFlyingMelee, false)
 })
 
 test('a magic-immune enemy takes the swing but not the magic, and the use is reported as fizzled', () => {

@@ -19,8 +19,10 @@ const {
   resolveEnemyAttack,
   pickPlayerOffensiveStat,
   pickPlayerDefensiveStat,
+  reachesFlyingEnemy,
   rand,
 } = require(path.join(ROOT, 'src/lib/game-engine/battle-calculator.js'))
+const { BattleState, playerIsFlying } = require(path.join(ROOT, 'src/lib/game-engine/battle-state.js'))
 const { getNextLevelXP, getPrevLevelXP } = require(path.join(
   ROOT,
   'src/lib/game-engine/services/leveling-service.js'
@@ -74,6 +76,44 @@ test('a flying enemy cannot be hit with melee, but still counterattacks', () => 
   // Ranged is unaffected.
   const ranged = resolvePlayerAttack({ ...flying, equippedWeaponCategory: 'RANGED' }, 0)
   assert.equal(ranged.missedFlyingMelee, false)
+})
+
+test('a flying player can melee a flying enemy — the original exempted $_SESSION[flying]', () => {
+  const flying = battleState({
+    baseStr: 0, // pins the swing to exactly 0 so the roll shape, not luck, is under test
+    enemy: { att: 10, def: 0, damageType: 'MELEE', isFlying: true },
+  })
+  // On wings or a flying mount the melee swing is a normal, rolled attack.
+  const airborne = resolvePlayerAttack({ ...flying, isFlying: true }, 0)
+  assert.equal(airborne.missedFlyingMelee, false)
+  assert.equal(airborne.playerRaw, 0)
+  // Grounded again (wings ran out mid-fight), the same swing misses.
+  const grounded = resolvePlayerAttack({ ...flying, isFlying: false }, 0)
+  assert.equal(grounded.missedFlyingMelee, true)
+})
+
+test('reachesFlyingEnemy: a ranged weapon, or an airborne player', () => {
+  assert.equal(reachesFlyingEnemy('MELEE', false), false)
+  assert.equal(reachesFlyingEnemy('MELEE', true), true)
+  assert.equal(reachesFlyingEnemy('RANGED', false), true)
+  assert.equal(reachesFlyingEnemy(null, false), false) // bare hands are melee
+  assert.equal(reachesFlyingEnemy(undefined, true), true)
+})
+
+test('BattleState.isFlying reads wings off the row or a flying mount off the gear', () => {
+  const stats = { level: 1, str: 1, dex: 1, mag: 1, def: 1, hp: 10, hpMax: 10 }
+  const enemy = { slug: 'bat', name: 'Bat', hp: 5, att: 1, def: 0, damageType: 'MELEE', isFlying: true }
+  const walking = new BattleState({ playerId: 'p', roomId: '001', enemy, playerStats: stats, gear: { weaponCategory: 'MELEE' } })
+  assert.equal(walking.isFlying, false)
+  const winged = new BattleState({ playerId: 'p', roomId: '001', enemy, playerStats: { ...stats, wings: 3 }, gear: { weaponCategory: 'MELEE' } })
+  assert.equal(winged.isFlying, true)
+  const mounted = new BattleState({ playerId: 'p', roomId: '001', enemy, playerStats: stats, gear: { weaponCategory: 'MELEE', flyingMount: true } })
+  assert.equal(mounted.isFlying, true)
+  // Wings lapsing mid-fight is picked up by the next re-read of the row.
+  winged.updateStats({ ...stats, wings: 0 })
+  assert.equal(winged.isFlying, false)
+  assert.equal(playerIsFlying({ wings: 1 }, null), true)
+  assert.equal(playerIsFlying({ wings: 0 }, { flyingMount: false }), false)
 })
 
 test('damage floors at zero — a strong block never heals', () => {

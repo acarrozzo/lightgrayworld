@@ -10,6 +10,7 @@ import { effectiveMag, getCastableSpells, spellTone } from '@/lib/spellbook'
 import { ABILITY_GRID, ConsumableRow, SpellRow, useConsumableDeck } from '@/components/game-interface/AbilityRows'
 import { gearContextFromInventory, getStrikeSkills, previewSkillBonus, skillTone, weaponFits, type SkillbookEntry } from '@/lib/skillbook'
 import { effectiveStats } from '@/lib/effective-stats'
+import { playerCanFly } from '@/lib/status-effects'
 
 type BattleTab = 'spells' | 'items'
 
@@ -685,10 +686,12 @@ export default function BattlePanel({
   const enemyFlies = battle.enemyTraits.some((trait) => trait.id === 'flying')
   const enemyImmuneToWeapon = battle.enemyTraits.some((trait) => trait.id === (isRanged ? 'immune-ranged' : 'immune-melee'))
   const enemyImmuneToMagic = battle.enemyTraits.some((trait) => trait.id === 'immune-magic')
-  // A bare melee swing cannot reach something airborne, and nothing rolls
-  // against a weapon immunity. Attack still sends (the server explains), but
-  // the range gives way to the reason.
-  const attackBlockedBy = enemyImmuneToWeapon ? "Can't hurt it" : enemyFlies && !isRanged ? "Can't reach" : null
+  // A bare melee swing cannot reach something airborne — unless the player is
+  // airborne too (wings, or a flying mount), the original's rule — and nothing
+  // rolls against a weapon immunity. Attack still sends (the server explains),
+  // but the range gives way to the reason.
+  const meleeOutOfReach = enemyFlies && !isRanged && !playerCanFly(player, inventory)
+  const attackBlockedBy = enemyImmuneToWeapon ? "Can't hurt it" : meleeOutOfReach ? "Can't reach" : null
 
   // Strikes the weapon in hand can carry — Slice wants one hand, Smash two,
   // Aim a ranged weapon, Magic Strike anything. The rest stay in the book.
@@ -702,15 +705,16 @@ export default function BattlePanel({
         : entry.preview
       const cost = entry.castCost ?? 0
       // The server drops a strike whose bonus cannot land before charging MP:
-      // a Slice at a flyer is a plain missed swing, a Magic Strike on a
-      // magic-immune enemy fizzles but the sword still bites.
+      // any strike at a flyer from the ground is a plain missed swing (Magic
+      // Strike is melee for reach), a Magic Strike on a magic-immune enemy
+      // fizzles but the sword still bites.
       const reason =
         enemyImmuneToWeapon ? "Can't hurt it"
-        : enemyFlies && !isRanged && !entry.def.magic ? "Can't reach"
+        : meleeOutOfReach ? "Can't reach"
         : entry.def.magic && enemyImmuneToMagic ? 'Magic fizzles'
         : playerMp < cost ? 'Not enough MP'
         : null
-      const range = bonus && !enemyImmuneToWeapon && !(enemyFlies && !isRanged && !entry.def.magic)
+      const range = bonus && !enemyImmuneToWeapon && !meleeOutOfReach
         ? { lo: bonus.min, hi: Math.max(0, swingMax) + bonus.max }
         : null
       return { entry, range, reason, cost }

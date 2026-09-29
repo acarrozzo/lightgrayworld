@@ -1,5 +1,5 @@
 const { prisma } = require('../db-client')
-const { BattleState } = require('./battle-state')
+const { BattleState, playerIsFlying } = require('./battle-state')
 const { resolveTurn, resolveEnemyAttack, getOtherCombatantCount, totalDamageToEnemy, pickPlayerOffensiveStat } = require('./battle-calculator')
 const { calcBattleWinRewards, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
@@ -154,7 +154,7 @@ function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodg
 const { BUFF_SELECT } = require('./services/buff-service')
 const { SKILL_SELECT } = require('./services/skill-service')
 const { isShieldItem } = require('../game-data/skills')
-const { weaponImmunity } = require('./battle-calculator')
+const { weaponImmunity, reachesFlyingEnemy } = require('./battle-calculator')
 
 // Fetch the stats needed for BattleState from DB. The skill levels ride along
 // so the passives (One Handed, Toughness, Dodge, ...) fold in with the buffs.
@@ -236,11 +236,12 @@ function describeHitExtras(hit) {
 // Slice/Smash/Aim weapon fit key on.
 async function fetchEquippedWeapon(playerId) {
   const hands = await prisma.playerItem.findMany({
-    where: { playerId, isEquipped: true, slot: { in: ['MAIN_HAND', 'OFF_HAND'] } },
+    where: { playerId, isEquipped: true, slot: { in: ['MAIN_HAND', 'OFF_HAND', 'MOUNT'] } },
     select: { slot: true, ItemTemplate: { select: { slug: true, equipSlot: true, weaponCategory: true, metadata: true } } },
   })
   const main = hands.find((row) => row.slot === 'MAIN_HAND')
   const off = hands.find((row) => row.slot === 'OFF_HAND')
+  const mount = hands.find((row) => row.slot === 'MOUNT')
   const template = main?.ItemTemplate
   const metadata = (template?.metadata && typeof template.metadata === 'object') ? template.metadata : null
   return {
@@ -248,17 +249,21 @@ async function fetchEquippedWeapon(playerId) {
     ammoSlug: typeof metadata?.ammo === 'string' ? metadata.ammo : null,
     isTwoHanded: metadata?.isTwoHanded === true,
     hasShield: isShieldItem(off?.ItemTemplate),
+    // The mount rides along in the same query: a flying one (Sky Hawk, Green
+    // Griffin, Unicorn) lets a melee swing reach an airborne enemy.
+    flyingMount: mount?.ItemTemplate?.metadata?.grantsFlight === true,
   }
 }
 
-// Whether a skill strike's bonus can land at all. A bare melee swing cannot
-// reach a flying enemy (a Magic Strike can — it is projectile magic), and a
-// weapon the enemy shrugs off carries no bonus with it. When it cannot land
-// the strike is dropped before anything is charged and the swing goes in as a
-// plain attack, the way the original's flying check ran before the MP was spent.
-function skillCanLand(skill, enemy, weaponCategory) {
+// Whether a skill strike's bonus can land at all. A melee swing cannot reach a
+// flying enemy unless the player flies too — and that goes for every strike on
+// it, Magic Strike included — and a weapon the enemy shrugs off carries no
+// bonus with it. When it cannot land the strike is dropped before anything is
+// charged and the swing goes in as a plain attack, the way the original's
+// flying check ran before the MP was spent.
+function skillCanLand(skill, enemy, weaponCategory, playerFlying) {
   const cat = weaponCategory || 'MELEE'
-  if (enemy.isFlying && cat === 'MELEE' && !skill.def.magic) return false
+  if (enemy.isFlying && !reachesFlyingEnemy(cat, playerFlying)) return false
   if (weaponImmunity(enemy, cat)) return false
   return true
 }
@@ -485,11 +490,11 @@ async function executeStartBattle(action, playerId, roomState) {
   }
 
   // A skill strike is paid for the same way. The MP buys the bonus, so when the
-  // bonus cannot land the strike is dropped and nothing is charged: a Slice at
-  // something airborne is a plain missed swing, and a Magic Strike on a
+  // bonus cannot land the strike is dropped and nothing is charged: a Slice or
+  // Magic Strike at something airborne is a plain missed swing, and a Magic Strike on a
   // magic-immune enemy keeps its record (the panel says it fizzled) but costs
   // nothing, like a spell.
-  let strike = skill && !isAdvantageTurn && skillCanLand(skill, enemy, equippedWeaponCategory) ? skill : null
+  let strike = skill && !isAdvantageTurn && skillCanLand(skill, enemy, equippedWeaponCategory, playerIsFlying(playerStats, equippedWeapon)) ? skill : null
   let skillMp = null
   if (strike && !(strike.def.magic && enemy.isMagicImmune)) {
     skillMp = await chargeSpellMp(playerId, strike)
@@ -780,7 +785,7 @@ async function executePlayerAttack(action, playerId, roomState) {
   // A skill strike pays the same way, and only when its bonus can land (see
   // skillCanLand). A Magic Strike on a magic-immune enemy keeps its record but
   // is never charged.
-  const strike = skill && skillCanLand(skill, battleState.enemy, liveWeapon.weaponCategory) ? skill : null
+  const strike = skill && skillCanLand(skill, battleState.enemy, liveWeapon.weaponCategory, battleState.isFlying) ? skill : null
   let skillMp = null
   if (strike && !(strike.def.magic && battleState.enemy.isMagicImmune)) {
     skillMp = await chargeSpellMp(playerId, strike)

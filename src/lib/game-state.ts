@@ -117,7 +117,7 @@ export interface InventoryItem {
     canDrop?: boolean
     equipSlot?: EquipSlot | null
     weaponCategory?: WeaponCategory | null
-    metadata?: { icon?: string; statMods?: { str?: number; dex?: number; mag?: number; def?: number } } | null
+    metadata?: { icon?: string; grantsFlight?: boolean; statMods?: { str?: number; dex?: number; mag?: number; def?: number } } | null
   }
 }
 
