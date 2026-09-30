@@ -6,12 +6,8 @@ import React, { useMemo, useState } from 'react'
 import AvatarSelectionModal from '@/components/AvatarSelectionModal'
 import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
-import { ChevronDown } from 'lucide-react'
-import { buildSpellbook, hasLearnableSpell } from '@/lib/spellbook'
-import { buildSkillbook, gearContextFromInventory, hasLearnableSkill, passiveSkillBonuses } from '@/lib/skillbook'
-import { ABILITY_GRID, ConsumableRow, SkillRow, SpellRow, useConsumableDeck } from '@/components/game-interface/AbilityRows'
-import { useItemsCollapsed, useSkillsCollapsed, useSpellsCollapsed } from '@/lib/use-char-sections'
-import type { ConsumableSummary } from '@/lib/item-actions'
+import { hasLearnableSpell } from '@/lib/spellbook'
+import { hasLearnableSkill } from '@/lib/skillbook'
 import AutoEquipRow from '@/components/game-interface/AutoEquipRow'
 import EquipmentGrid from '@/components/game-interface/EquipmentGrid'
 import CoreStatsGrid from '@/components/game-interface/CoreStatsGrid'
@@ -29,9 +25,7 @@ interface CharPanelProps {
   /** Opens the Skills & Spells book on the given tab, ringing one entry. */
   onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
   /** A fight is running, so a strike or attack spell is this turn's attack. */
-  inBattle?: boolean
   /** An enemy stands in the room: out of a fight, a strike or attack spell opens one. */
-  hasTarget?: boolean
   /** Opens the single Core Points modal owned by GameInterface (so Escape and the level-up alert share it). */
   onOpenStatAllocation?: () => void
   onOpenTraining?: () => void
@@ -39,7 +33,7 @@ interface CharPanelProps {
 }
 
 
-export default function CharPanel({ player, onAction, onSwitchToInventory, onOpenBook, inBattle = false, hasTarget = false, onOpenStatAllocation, onOpenTraining, onClose }: CharPanelProps) {
+export default function CharPanel({ player, onAction, onSwitchToInventory, onOpenBook, onOpenStatAllocation, onOpenTraining, onClose }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
   const questRows = useGameStore((state) => state.quests)
   const titles = earnedTitles(questRows)
@@ -69,49 +63,15 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
     const xpRemaining = Math.max(0, xpRange - xpInLevel)
     return { xpInLevel, xpRange, xpPct, xpRemaining }
   }, [player.level, player.xp])
-  const spellbook = useMemo(() => buildSpellbook(player), [player])
-  const learnedSpells = spellbook.filter((entry) => entry.level >= 1)
-  const hasAnyTeacher = spellbook.some((entry) => entry.maxLevel > 0)
   const canLearnSpell = hasLearnableSpell(player)
-  const skillbook = useMemo(() => buildSkillbook(player), [player])
-  const learnedSkills = skillbook.filter((entry) => entry.level >= 1)
-  const hasAnySkillTeacher = skillbook.some((entry) => entry.maxLevel > 0)
   const canLearnSkill = hasLearnableSkill(player)
   // What the passives add for what is in hand right now — shown on the stats.
-  const gear = useMemo(() => gearContextFromInventory(inventory), [inventory])
-  const passives = useMemo(() => passiveSkillBonuses(player, gear), [player, gear])
   // The four stats as combat rolls them — the same numbers the header shows.
   const stats = useMemo(() => effectiveStats(player, inventory), [player, inventory])
   // Everything regenerating per click, from the equipped set and running effects.
   const regen = useMemo(() => playerRegen(player, inventory), [player, inventory])
   // Every running effect as a chip: regen, poison, buffs, wings — the original's buffBox row.
   const chips = useMemo(() => statusChips(player, inventory), [player, inventory])
-  // What the Use/Cast buttons below are allowed to do right now. The rules are
-  // the server's, shared with the book and the battle deck: heals and buffs
-  // work anywhere, while a strike or attack spell needs something to hit —
-  // out of a fight the engine opens one, as the original let you do.
-  const situation = {
-    inBattle,
-    hasTarget,
-    mp: player.mp ?? 0,
-    hp: player.hp ?? 0,
-    hpMax: player.hpMax ?? 0,
-    buffs: player.buffs,
-  }
-  // The bag read into what each item does, sorted the way the battle deck
-  // sorts it, and why a restorer would be wasted right now.
-  const consumables = useConsumableDeck(inventory)
-  const hpFull = (player.hp ?? 0) >= (player.hpMax ?? 0)
-  const mpFull = (player.mp ?? 0) >= (player.mpMax ?? 0)
-  const consumableReason = (summary: ConsumableSummary): string | null => {
-    if (summary.group === 'hp') return hpFull ? 'Full HP' : null
-    if (summary.group === 'mp') return mpFull ? 'Full MP' : null
-    if (summary.group === 'both') return hpFull && mpFull ? 'Full HP & MP' : null
-    return null
-  }
-  const [skillsFolded, setSkillsFolded] = useSkillsCollapsed()
-  const [spellsFolded, setSpellsFolded] = useSpellsCollapsed()
-  const [itemsFolded, setItemsFolded] = useItemsCollapsed()
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
@@ -282,86 +242,15 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
               <EquipmentGrid inventory={inventory} onSwitchToInventory={(filter) => onSwitchToInventory?.(filter)} />
             </div>
 
-            {/* What the character can reach for: the strikes and spells they
-                know, and the consumables in the bag. Same row everywhere —
-                the name opens the book or the bag, the verb is the only thing
-                that spends anything. Each list folds; the fold is remembered
-                on this device. */}
-            <AbilitySection
-              label="Skills"
-              count={learnedSkills.length}
-              collapsed={skillsFolded}
-              onToggle={() => setSkillsFolded(!skillsFolded)}
-              link={onOpenBook && (
-                <BookLink sp={player.sp ?? 0} nudge={canLearnSkill} disabled={!isLoggedIn} onClick={() => onOpenBook('skills')} />
-              )}
-              empty={hasAnySkillTeacher
-                ? 'No skills learned yet. Open the book to spend SP.'
-                : 'No skills yet. Find a teacher — the Young Soldier trains recruits east of the Grassy Field.'}
-            >
-              {learnedSkills.map((entry) => (
-                <SkillRow
-                  key={entry.def.id}
-                  entry={entry}
-                  gear={gear}
-                  passives={passives}
-                  situation={situation}
-                  disabled={!onAction}
-                  onUse={(skillId) => onAction?.({ type: 'use_skill', data: { skillId } })}
-                  onOpen={onOpenBook ? (skillId) => onOpenBook('skills', skillId) : undefined}
-                />
-              ))}
-            </AbilitySection>
-
-            <AbilitySection
-              label="Spells"
-              count={learnedSpells.length}
-              collapsed={spellsFolded}
-              onToggle={() => setSpellsFolded(!spellsFolded)}
-              link={onOpenBook && (
-                <BookLink sp={player.sp ?? 0} nudge={canLearnSpell} disabled={!isLoggedIn} onClick={() => onOpenBook('spells')} />
-              )}
-              empty={hasAnyTeacher
-                ? 'No spells learned yet. Open the book to spend SP.'
-                : 'No spells yet. Find a teacher — the Pajama Shaman camps north-east of the Grassy Field.'}
-            >
-              {learnedSpells.map((entry) => (
-                <SpellRow
-                  key={entry.def.id}
-                  entry={entry}
-                  situation={situation}
-                  disabled={!onAction}
-                  onCast={(spellId) => onAction?.({ type: 'cast_spell', data: { spellId } })}
-                  onOpen={onOpenBook ? (spellId) => onOpenBook('spells', spellId) : undefined}
-                />
-              ))}
-            </AbilitySection>
-
-            <AbilitySection
-              label="Items"
-              count={consumables.all.length}
-              collapsed={itemsFolded}
-              onToggle={() => setItemsFolded(!itemsFolded)}
-              link={onSwitchToInventory && (
-                <SectionLink onClick={() => onSwitchToInventory('consumables')}>Open bag</SectionLink>
-              )}
-              empty="Nothing to drink or eat. Potions come from shops and chests."
-            >
-              {consumables.all.map((entry) => (
-                <ConsumableRow
-                  key={entry.item.id}
-                  entry={entry}
-                  reason={consumableReason(entry.summary)}
-                  disabled={!onAction}
-                  onUse={(playerItemId, action) => onAction?.({ type: 'use_item', data: { playerItemId, action } })}
-                  onOpen={onSwitchToInventory ? (playerItemId) => onSwitchToInventory('consumables', playerItemId) : undefined}
-                />
-              ))}
-            </AbilitySection>
-
             {/* Core Points Group */}
             <div className="space-y-1.5">
-              <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Points</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Points</h4>
+                {/* SP is spent in the book; its button sits with TP's and CP's. */}
+                {onOpenBook && (
+                  <BookLink sp={player.sp ?? 0} nudge={canLearnSkill || canLearnSpell} disabled={!isLoggedIn} onClick={() => onOpenBook('skills')} />
+                )}
+              </div>
               <div className="grid grid-cols-3 gap-1.5">
                 <StatBox label="Core" value={player.cp ?? 0} compact />
                 <StatBox label="Training" value={player.tp ?? 0} compact />
@@ -389,52 +278,6 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
   )
 }
 
-/**
- * One foldable list in the character panel: a header that counts what is in
- * it and a link to the surface that owns it, then the rows. The fold is a
- * device setting, so it survives a reload without the server hearing about it.
- */
-function AbilitySection({
-  label,
-  count,
-  collapsed,
-  onToggle,
-  link,
-  empty,
-  children,
-}: {
-  label: string
-  count: number
-  collapsed: boolean
-  onToggle: () => void
-  link?: React.ReactNode
-  empty: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={!collapsed}
-          className="flex items-center gap-1.5 min-w-0 py-0.5 text-xs font-semibold text-fg-secondary uppercase tracking-wide hover:text-fg-bright rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-        >
-          <ChevronDown size={12} className={`transition-transform flex-shrink-0 ${collapsed ? '-rotate-90' : ''}`} />
-          <span>{label}</span>
-          <span className="text-[10px] font-bold tabular-nums px-1.5 rounded-full bg-surface-raised text-fg-muted normal-case">{count}</span>
-        </button>
-        {link}
-      </div>
-      {!collapsed && (
-        count === 0
-          ? <p className="text-xs text-fg-muted italic px-1">{empty}</p>
-          : <div className={ABILITY_GRID}>{children}</div>
-      )}
-    </div>
-  )
-}
-
 /** The door to the book, wearing the SP there is to spend. Pings when some of it can be spent. */
 function BookLink({ sp, nudge, disabled, onClick }: { sp: number; nudge: boolean; disabled: boolean; onClick: () => void }) {
   return (
@@ -449,19 +292,6 @@ function BookLink({ sp, nudge, disabled, onClick }: { sp: number; nudge: boolean
         Book · {sp} SP
       </button>
     </span>
-  )
-}
-
-/** A quiet link to the surface a section belongs to. */
-function SectionLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex-shrink-0 px-2 py-1 text-[11px] font-semibold text-fg-secondary hover:text-fg-bright hover:bg-surface-raised rounded-md transition-colors"
-    >
-      {children}
-    </button>
   )
 }
 

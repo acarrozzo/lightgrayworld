@@ -5,6 +5,8 @@ import { ChevronDown } from 'lucide-react'
 import EntryRow from './EntryRow'
 import type { InventoryItem } from '@/lib/game-state'
 import { resolveItemIcon, summarizeConsumable } from '@/lib/item-actions'
+import { consumableTone, type ConsumableTone } from '@/lib/consumable-tone'
+import { ConsumableEffect } from '@/components/game-interface/AbilityRows'
 import {
   getCraftingKind,
   getStatMods,
@@ -105,6 +107,13 @@ function weaponMeta(item: InventoryItem): string | null {
   return `${kind} · ${isTwoHanded(item) ? '2H' : '1H'}`
 }
 
+/** The tone a consumable row wears, or null for anything else (and for the Flower, which hurts). */
+function consumableToneFor(item: InventoryItem): { tone: ConsumableTone; summary: ReturnType<typeof summarizeConsumable> } | null {
+  const summary = summarizeConsumable(item.template.metadata as any)
+  if (!summary || summary.group === 'harm') return null
+  return { tone: consumableTone(summary), summary }
+}
+
 function consumableMeta(item: InventoryItem): string | null {
   const summary = summarizeConsumable(item.template.metadata as any)
   if (!summary) return null
@@ -133,6 +142,10 @@ function defaultSubline(item: InventoryItem, hasCompareLine: boolean): ReactNode
       </>
     )
   }
+  // A consumable's second line is what it does, in the colour of what it
+  // touches — the deck's line, so a Red Potion reads the same in both.
+  const toned = consumableToneFor(item)
+  if (toned && toned.summary) return <ConsumableEffect summary={toned.summary} toneClass={toned.tone.text} />
   const consumable = consumableMeta(item)
   if (consumable) return <span className={META}>{consumable}</span>
   const crafting = getCraftingKind(item)
@@ -206,14 +219,18 @@ export default function ItemRow({
   const hasCompareLine = Boolean(compare && compare.replaces.length > 0)
   const second = subline === undefined ? defaultSubline(item, hasCompareLine) : subline
 
+  const toned = consumableToneFor(item)
   const frame = equipped
     ? 'border-status-success/50 border-l-[3px] border-l-status-success'
-    : 'border-line-subtle/40'
+    : toned
+      ? `border-line-subtle/40 border-l-[3px] ${toned.tone.rail}`
+      : 'border-line-subtle/40'
   const surface = open ? 'bg-surface-raised/35' : isNew ? 'bg-status-error/5' : 'bg-surface-raised/20'
 
   return (
     <EntryRow
       icon={icon}
+      iconClass={toned ? `${toned.tone.text} opacity-90` : undefined}
       iconBadge={isNew ? (
         <span className="absolute -left-0.5 -top-0.5 w-2 h-2 rounded-full bg-status-error border border-status-error/50 shadow-lg shadow-status-error/50 z-10" />
       ) : undefined}
@@ -350,9 +367,12 @@ export function ItemDrawer({
     : null
   const ammo = (item.template.metadata as any)?.ammo
   const worth = item.template.value ?? 0
+  const toned = consumableToneFor(item)
   const frame = equipped
     ? 'border-status-success/50 border-l-[3px] border-l-status-success'
-    : 'border-line-subtle/40'
+    : toned
+      ? `border-line-subtle/40 border-l-[3px] ${toned.tone.rail}`
+      : 'border-line-subtle/40'
   const freed = compare?.freesOffHand ? compare.replaces[compare.replaces.length - 1] : null
 
   return (

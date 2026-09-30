@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import Compass from '@/components/Compass'
 import WorldLayer, { type WorldTab } from './WorldLayer'
-import BagLayer from './BagLayer'
+import ActionLayer from './ActionLayer'
 import GearLayer from './GearLayer'
 import Dock, { type DockLayer } from './Dock'
 import RoomShortcuts from './RoomShortcuts'
@@ -11,8 +11,9 @@ import { DangerCorner, LedgerFlyout, QuickLinksCorner, type LedgerActions } from
 import type { MapConfigEntry } from './constants'
 import { getRoomMapView } from './utils'
 import { useGatherRemaining } from '@/hooks/useGatherRemaining'
-import { buildRoomShortcuts, type RoomShortcutEnemy } from '@/lib/room-shortcuts'
-import { useGameStore, type InventoryItem, type Player } from '@/lib/game-state'
+import { buildRoomShortcuts } from '@/lib/room-shortcuts'
+import type { RoomEnemy } from '@/components/RoomBox'
+import { useGameStore, type BattleState, type InventoryItem, type Player } from '@/lib/game-state'
 import type { GatherCooldownView } from '@/lib/types/room'
 
 const { goldChestFlagForRoom } = require('@/lib/game-data/gold-chests')
@@ -20,13 +21,14 @@ const { goldChestFlagForRoom } = require('@/lib/game-data/gold-chests')
 /**
  * What the Explore panel is showing. `compass` is the panel itself — the
  * D-pad, the corners, the dock — and the rest are the layers docked over it:
- * `world` (Map / Teleport), `bag` (quick-use consumables) and `gear` (what you
- * are wearing), each opened from the dock under the ring. A layer closes from
+ * `world` (Map / Teleport), `action` (attack, strikes, spells, items: the
+ * battle deck's command block) and `gear` (what you are wearing), each opened
+ * from the dock under the ring. A layer closes from
  * the X in its own header; Escape, travelling, or dying also return to the
  * compass. The mobile strip has no height for a layer, so there the dock sits
  * beside the ring and opens the full-screen World overlay or a bottom sheet.
  */
-export type ExploreSubView = 'compass' | 'world' | 'bag' | 'gear'
+export type ExploreSubView = 'compass' | 'world' | 'action' | 'gear'
 
 interface ExplorePanelProps extends LedgerActions {
   room: any
@@ -43,12 +45,17 @@ interface ExplorePanelProps extends LedgerActions {
   onCloseWorld: () => void
   /** Docked layer's full-screen control. */
   onExpandWorld: () => void
-  /** Gear and Bag: docked in the sidebar, a bottom sheet from the strip. GameInterface passes the right one per variant. */
+  /** Gear and Action: docked in the sidebar, a bottom sheet from the strip. GameInterface passes the right one per variant. */
   onOpenGear: () => void
-  onOpenBag: () => void
+  onOpenAction: () => void
   onCloseLayer: () => void
   /** Which dock tile reads pressed: the layer open in this variant's home. */
   activeLayer?: DockLayer | null
+  /* The Action layer's controls. Each is the same action the deck or the room card sends. */
+  battle: BattleState
+  onAttack: () => void
+  onUseSkill: (skillId: string) => void
+  onCastSpell: (spellId: string) => void
   onUseItem: (playerItemId: string, action: string) => void
   onAction: (action: string | { type: string; data?: any }) => void
   onTeleport: (roomId: string) => void
@@ -76,8 +83,8 @@ interface ExplorePanelProps extends LedgerActions {
   isLoadingRoom?: boolean
   /** The action in flight, so a shortcut chip can show it is working. */
   currentAction?: string
-  /* The room's primary actions, for the shortcut rail (sidebar only). */
-  roomEnemy?: RoomShortcutEnemy | null
+  /* The room's present enemy: the shortcut rail's Attack chip and the Action layer's target. */
+  roomEnemy?: RoomEnemy | null
   isInBattle?: boolean
   gatherCooldowns?: GatherCooldownView[]
   actionResult?: any
@@ -107,9 +114,13 @@ export default function ExplorePanel({
   onCloseWorld,
   onExpandWorld,
   onOpenGear,
-  onOpenBag,
+  onOpenAction,
   onCloseLayer,
   activeLayer = null,
+  battle,
+  onAttack,
+  onUseSkill,
+  onCastSpell,
   onUseItem,
   onAction,
   onTeleport,
@@ -131,12 +142,12 @@ export default function ExplorePanel({
 }: ExplorePanelProps) {
   const isSidebar = variant === 'sidebar'
   // Only the sidebar is tall enough to hold a layer; the mobile strip sends
-  // Map and Teleport to the full-screen overlay and Gear and Bag to a sheet.
+  // Map and Teleport to the full-screen overlay and Gear and Action to a sheet.
   const openWorld = isSidebar ? onOpenWorldDocked : onOpenWorldOverlay
   const openDock = (layer: DockLayer) => {
     if (layer === 'map' || layer === 'teleport') openWorld(layer)
     else if (layer === 'gear') onOpenGear()
-    else onOpenBag()
+    else onOpenAction()
   }
 
   // The shortcut rail reads the same store the room card reads, so a quest
@@ -185,15 +196,21 @@ export default function ExplorePanel({
     )
   }
 
-  if (isSidebar && subView === 'bag' && player) {
+  if (isSidebar && subView === 'action' && player) {
     return (
       <div className="flex-1 min-h-0 flex flex-col">
-        <BagLayer
+        <ActionLayer
           variant="docked"
-          inventory={inventory}
           player={player}
-          disabled={isLoadingRoom}
-          onUse={onUseItem}
+          inventory={inventory}
+          battle={battle}
+          roomEnemy={roomEnemy}
+          isActing={isLoadingRoom}
+          onAttack={onAttack}
+          onUseSkill={onUseSkill}
+          onCastSpell={onCastSpell}
+          onUseItem={onUseItem}
+          onOpenBook={onOpenBook}
           onOpenInventory={(filter, openItemId) => onOpenInventory?.(filter, openItemId)}
           onClose={onCloseLayer}
         />

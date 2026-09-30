@@ -23,7 +23,7 @@ import { DANGER_TONE_CLASS, dangerVerdict, formatGold, type DangerTone } from '@
 export interface LedgerActions {
   onOpenTraining?: () => void
   onOpenStats?: () => void
-  onOpenBook?: (tab: 'skills' | 'spells') => void
+  onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
   onOpenInventory?: (filter?: FilterTab, openItemId?: string) => void
 }
 

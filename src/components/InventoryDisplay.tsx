@@ -234,7 +234,7 @@ export default function InventoryDisplay({
             type="button"
             onClick={() => act(item, { type: 'use_item', data: { playerItemId: item.id, action: primary.action } })}
             title={primary.title}
-            className={`${PRIMARY} text-fg-bright ${primary.className || 'fill-accent'}`}
+            className={`${PRIMARY} ${primary.className || 'fill-accent'}`}
           >
             {primary.icon && <Icon name={primary.icon} size={12} color="current" />}
             <span>{primary.label}</span>

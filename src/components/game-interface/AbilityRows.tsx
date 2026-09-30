@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import EntryRow, { EntryVerb } from '@/components/EntryRow'
 import type { InventoryItem } from '@/lib/game-state'
 import { getItemActions, resolveItemIcon, summarizeConsumable, type ConsumableSummary } from '@/lib/item-actions'
+import { consumableTone } from '@/lib/consumable-tone'
 import { castBlockedReason, spellTone, type CastSituation, type SpellbookEntry } from '@/lib/spellbook'
 import { skillTone, strikeBlockedReason, type GearContext, type PassiveBonuses, type SkillbookEntry } from '@/lib/skillbook'
 
@@ -31,54 +32,6 @@ const ROW_FRAME_MUTED = 'rounded-lg border-l-[3px] border-line-subtle/50 bg-surf
  * in the battle area, and only its own width decides.
  */
 export const ABILITY_GRID = 'grid grid-cols-1 @min-[600px]:grid-cols-2 gap-1.5'
-
-/**
- * A row's colour, as the semantic roles the theme already defines: what the
- * thing touches. The icon, the left rail and the verb all wear it, so a
- * Strength Potion reads as STR at a glance and its button matches.
- */
-const TONES = {
-  hp: { text: 'text-resource-hp', fill: 'fill-resource-hp', rail: 'border-l-resource-hp' },
-  mp: { text: 'text-resource-mp', fill: 'fill-resource-mp', rail: 'border-l-resource-mp' },
-  both: { text: 'text-hue-purple', fill: 'fill-hue-purple', rail: 'border-l-hue-purple' },
-  str: { text: 'text-stat-str', fill: 'fill-stat-str', rail: 'border-l-stat-str' },
-  dex: { text: 'text-stat-dex', fill: 'fill-stat-dex', rail: 'border-l-stat-dex' },
-  mag: { text: 'text-stat-mag', fill: 'fill-stat-mag', rail: 'border-l-stat-mag' },
-  def: { text: 'text-stat-def', fill: 'fill-stat-def', rail: 'border-l-stat-def' },
-  all: { text: 'text-resource-gold', fill: 'fill-resource-gold', rail: 'border-l-resource-gold' },
-  ability: { text: 'text-hue-sky', fill: 'fill-hue-sky', rail: 'border-l-hue-sky' },
-  ward: { text: 'text-hue-green', fill: 'fill-hue-green', rail: 'border-l-hue-green' },
-  neutral: { text: 'text-fg-bright', fill: 'fill-accent', rail: 'border-l-line-strong' },
-} as const
-
-/** Which of those a buff countdown belongs to, by the column it ticks down. */
-const BUFF_TONE: Record<string, keyof typeof TONES> = {
-  buffStrClicks: 'str',
-  buffDexClicks: 'dex',
-  buffMagClicks: 'mag',
-  buffDefClicks: 'def',
-  buffCoffeeClicks: 'all',
-  buffGloryClicks: 'all',
-  // Tea restores HP *and* MP a click, so it belongs to the dual family with
-  // the potions that fill both — purple, not one vital's colour.
-  buffTeaClicks: 'both',
-  regenerateClicks: 'hp',
-  ironSkinClicks: 'def',
-  poisonImmuneClicks: 'ward',
-  wings: 'ability',
-  gills: 'ability',
-}
-
-/** What this consumable is coloured by: what it restores, or the buff it grants. */
-function consumableTone(summary: ConsumableSummary) {
-  if (summary.group === 'hp') return TONES.hp
-  if (summary.group === 'mp') return TONES.mp
-  if (summary.group === 'both') return TONES.both
-  const buff = summary.buffs[0]
-  // Coffee and Glory lift everything; they read as an aura, not as one stat.
-  if (buff && Object.keys(buff.bonus).length >= 3) return TONES.all
-  return TONES[BUFF_TONE[buff?.field ?? ''] ?? 'neutral']
-}
 
 /** `lvl 3/5`, the level tag every learned skill and spell carries. */
 function LevelTag({ level, maxLevel }: { level: number; maxLevel: number }) {
@@ -266,7 +219,7 @@ export function useConsumableDeck(inventory: InventoryItem[]) {
  * answer to a spell's "Hits 22–34". It sits on the second line because the
  * verb ("Drink") is already on the button, and saying it twice reads badly.
  */
-function ConsumableEffect({ summary, toneClass }: { summary: ConsumableSummary; toneClass: string }) {
+export function ConsumableEffect({ summary, toneClass }: { summary: ConsumableSummary; toneClass: string }) {
   const clicks = summary.buffs.find((buff) => buff.clicks > 0)?.clicks ?? 0
   return (
     <span className="text-[11px] font-semibold tabular-nums flex flex-wrap items-center gap-x-1.5">

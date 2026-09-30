@@ -1,5 +1,6 @@
 import type { InventoryItem } from '@/lib/game-state'
-import { getItemActions } from '@/lib/item-actions'
+import { getItemActions, summarizeConsumable } from '@/lib/item-actions'
+import { consumableTone } from '@/lib/consumable-tone'
 import type { EquipCompare } from '@/lib/inventory-categories'
 
 /**
@@ -41,12 +42,17 @@ export function getPrimaryItemAction(
   const first = actions[0]
   if (!first) return null
 
+  // The verb wears the colour of what the item touches — the same fill the
+  // deck's row uses — so the bag and the deck agree; a book or a key keeps
+  // its own class.
+  const summary = summarizeConsumable(item.template.metadata as never)
+  const toneClass = summary && summary.group !== 'harm' ? consumableTone(summary).fill : undefined
   return {
     kind: 'use',
     label: first.effect ?? first.label,
     action: first.action,
     title: first.effect ? `${first.label} · ${first.effect}` : first.label,
-    className: first.className,
+    className: toneClass ?? first.className,
     icon: first.icon,
   }
 }

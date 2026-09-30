@@ -1,11 +1,11 @@
 'use client'
 
-import { FlaskConical, Map as MapIcon, Shield, Sparkles, type LucideIcon } from 'lucide-react'
+import { Map as MapIcon, Shield, Sparkles, Swords, type LucideIcon } from 'lucide-react'
 
 const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
 
-/** What a dock tile opens: the two World tabs, the Gear layer, the Bag layer. */
-export type DockLayer = 'map' | 'teleport' | 'gear' | 'bag'
+/** What a dock tile opens: the two World tabs, the Gear layer, the Action layer. */
+export type DockLayer = 'map' | 'teleport' | 'gear' | 'action'
 
 interface DockProps {
   /** A row under the D-pad (desktop) or a column beside it (the phone strip). */
@@ -22,11 +22,11 @@ const TILES: Array<{ id: DockLayer; label: string; icon: LucideIcon; fill: strin
   { id: 'map', label: 'Map', icon: MapIcon, fill: 'fill-hue-sky' },
   { id: 'teleport', label: 'Tele', icon: Sparkles, fill: 'fill-resource-mp' },
   { id: 'gear', label: 'Gear', icon: Shield, fill: 'fill-hue-green' },
-  { id: 'bag', label: 'Bag', icon: FlaskConical, fill: 'fill-resource-gold' },
+  { id: 'action', label: 'Action', icon: Swords, fill: 'fill-action-attack' },
 ]
 
 /**
- * The dock: Map, Teleport, Gear and Bag as four labelled tiles, each filled in
+ * The dock: Map, Teleport, Gear and Action as four labelled tiles, each filled in
  * the colour of what it opens so the tile and its layer agree without the
  * label doing the work. Every tile opens a view; none of them moves the
  * player, which is what keeps them apart from the D-pad's exits.
@@ -38,11 +38,11 @@ export default function Dock({ variant, active = null, onOpen, teleportDisabled 
       case 'map': return mapTitle ? `Map — ${mapTitle}` : 'Map'
       case 'teleport': return `Teleport — ${TELEPORT_MP_COST} MP`
       case 'gear': return 'Gear — what you are wearing'
-      case 'bag': return 'Bag — potions, food and buffs'
+      case 'action': return 'Action — attack, strikes, spells and items'
     }
   }
   return (
-    <div className={`${isRow ? 'flex items-center justify-center gap-2' : 'flex flex-col items-center gap-1.5'} ${className}`} role="toolbar" aria-label="Map, Teleport, Gear and Bag">
+    <div className={`${isRow ? 'flex items-center justify-center gap-2' : 'flex flex-col items-center gap-1.5'} ${className}`} role="toolbar" aria-label="Map, Teleport, Gear and Action">
       {TILES.map(({ id, label, icon: TileIcon, fill }) => {
         const isActive = active === id
         const disabled = id === 'teleport' && teleportDisabled
