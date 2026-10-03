@@ -191,6 +191,10 @@ export interface BattleTurnPayload extends BattleSnapshot {
   melted?: boolean
   /** HP the enemy took back this turn (HP Absorb). */
   enemyHealed?: number
+  /** Heal, theft, drains, Resurrect and Block, when any happened. */
+  enemyEffects?: BattleEnemyEffects
+  /** The player's gold after a theft; only sent when gold or MP was taken. */
+  playerCurrency?: number
   message: string
 }
 
@@ -200,6 +204,29 @@ export interface BattleExtraHit {
   block: number
   damage: number
   dodged: boolean
+  /** The special that fired on this hit, if one did. */
+  action?: BattleEnemyAction | null
+  /** True for the Pack hit: another of the pack, rolled at twice the ATT. */
+  pack?: boolean
+}
+
+/**
+ * What the enemy's standing behaviours did this turn beyond its hits. Every
+ * field is absent on an ordinary turn.
+ */
+export interface BattleEnemyEffects {
+  /** HP it recovered by casting Heal instead of attacking (0 = already full). */
+  healCast?: number
+  /** Gold it pickpocketed on top of its attack. */
+  stolen?: number
+  /** HP it drained, unblockable, and took for itself. */
+  hpDrained?: number
+  /** MP it drained. */
+  mpDrained?: number
+  /** It died this turn and stood back up at full HP. */
+  resurrected?: boolean
+  /** It blocked the player's whole attack; nothing was spent. */
+  blocked?: boolean
 }
 
 /** The equipped companion's own roll, reported beside the player's hit. */
@@ -238,6 +265,7 @@ export interface BattleLastTurn {
   petrified?: boolean
   melted?: boolean
   enemyHealed?: number
+  enemyEffects?: BattleEnemyEffects
 }
 
 export interface BattleSummary {

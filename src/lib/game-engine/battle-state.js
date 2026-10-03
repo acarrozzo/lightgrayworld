@@ -154,6 +154,11 @@ class BattleState {
     return healed
   }
 
+  /** Resurrect: a dead enemy stands back up at full HP. */
+  reviveEnemy() {
+    this.enemyCurrentHp = this.enemyMaxHp
+  }
+
   /** Stone for this many turns, from the next one. */
   petrify(turns) {
     this.petrifiedTurns = Math.max(this.petrifiedTurns, Math.floor(turns) || 0)

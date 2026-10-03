@@ -6,7 +6,15 @@ function rand(a, b) {
 }
 
 const partyStore = require('../services/party-store')
-const { selectEnemySpecial, getEnemyBehaviours, MAX_EXTRA_HITS } = require('../game-data/enemy-specials')
+const {
+  selectEnemySpecial,
+  hasSpecial,
+  getEnemyBehaviours,
+  rollDrain,
+  MAX_EXTRA_HITS,
+  HEAL_CHANCE_DENOMINATOR,
+  STEAL_CHANCE_DENOMINATOR,
+} = require('../game-data/enemy-specials')
 const { rollSpell } = require('../game-data/spells')
 const { rollSkillBonus } = require('../game-data/skills')
 
@@ -70,6 +78,7 @@ const NOTHING_LANDED = Object.freeze({
   skill: null,
   melted: false,
   enemyDodged: false,
+  enemyBlockedAttack: false,
   petrified: false,
 })
 
@@ -78,10 +87,25 @@ const NOTHING_LANDED = Object.freeze({
  * charged, so a dodged spell or strike costs nothing — the original rolled
  * `eDodge` ahead of the whole attack block. Never while the player is stone
  * (there is nothing to dodge) and never on an ambush turn.
+ *
+ * Block is the same shape — the whole attack comes to nothing and nothing is
+ * spent — so it is rolled here too. Returns 'dodge', 'block' or false; the
+ * handlers only care that it is truthy, the turn record says which.
+ * @returns {'dodge' | 'block' | false}
  */
 function rollEnemyDodge(enemy) {
-  const chance = getEnemyBehaviours(enemy).dodgeChance
-  return chance > 0 && rand(1, 100) <= Math.round(chance * 100)
+  const { dodgeChance, blockChance } = getEnemyBehaviours(enemy)
+  if (dodgeChance > 0 && rand(1, 100) <= Math.round(dodgeChance * 100)) return 'dodge'
+  if (blockChance > 0 && rand(1, 100) <= Math.round(blockChance * 100)) return 'block'
+  return false
+}
+
+/**
+ * The enemy's block against one player attack: rand(0, DEF), or the whole DEF
+ * every time for a Pure Defense enemy (the original's ePureD).
+ */
+function rollEnemyBlock(enemy) {
+  return getEnemyBehaviours(enemy).pureDefense ? enemy.def : rand(0, enemy.def)
 }
 
 /**
@@ -125,6 +149,7 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
       effectiveOff: spell ? Math.floor(battleState.baseMag * bonus) : Math.floor(pickPlayerOffensiveStat(battleState) * bonus),
       weaponCategory: weaponCat,
       enemyDodged: true,
+      enemyBlockedAttack: enemyDodged === 'block',
       spell: spell ? describeSpellCast(spell, null) : null,
     }
   }
@@ -145,7 +170,7 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
       }
     }
     const roll = rollSpell(spell.def, spell.level, effectiveMag, rand)
-    const enemyBlock = rand(0, enemy.def)
+    const enemyBlock = rollEnemyBlock(enemy)
     return {
       playerRaw: roll.amount,
       enemyBlock,
@@ -214,7 +239,7 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
       skillUse = describeSkillUse(skill, roll, weaponRaw)
     }
   }
-  const enemyBlock = rand(0, enemy.def)
+  const enemyBlock = rollEnemyBlock(enemy)
   let playerFinal = Math.max(0, playerRaw - enemyBlock)
   // Melt: the magma takes a melee blow — and the blade — for half. The strike
   // riding the swing is halved with it; a shot or a spell is not.
@@ -282,7 +307,9 @@ function resolveCompanionAttack(battleState) {
   const companion = battleState.companion
   if (!companion) return null
   const roll = rand(companion.damageMin, companion.damageMax)
-  const block = rand(0, Math.floor(battleState.enemy.def / 10))
+  const tenth = Math.floor(battleState.enemy.def / 10)
+  // Pure Defense holds against the companion too: the original's `enemydef/10`.
+  const block = getEnemyBehaviours(battleState.enemy).pureDefense ? tenth : rand(0, tenth)
   return {
     name: companion.name,
     roll,
@@ -311,66 +338,120 @@ function describeSpellCast(spell, roll) {
   }
 }
 
-function resolveEnemyAttack(battleState, otherCombatants) {
+/**
+ * @param {{ pendingDamage?: number }} [opts] `pendingDamage` is what the
+ *   player's side dealt this turn and has not yet been taken off the enemy —
+ *   so "is it hurt?" (Heal) reads the HP it will have when its turn comes.
+ */
+function resolveEnemyAttack(battleState, otherCombatants, { pendingDamage = 0 } = {}) {
   const bonus = 1 + otherCombatants * 0.1
   const enemy = battleState.enemy
   const enemyDmgType = enemy.damageType || 'MELEE'
   const defStat = pickPlayerDefensiveStat(battleState, enemy)
   // True effective stat — may be negative when mods outweigh the base stat
   const effectiveDef = Math.floor(defStat * bonus)
+  const behaviours = getEnemyBehaviours(enemy)
 
-  // At most one special resolves per attack. A special replaces how the enemy's
-  // raw damage is rolled; everything downstream — the single defense roll, the
-  // zero floor, damageType — is unchanged, so perks never fork the pipeline.
-  // A poison special is only on offer while poison could take hold.
-  const canPoison = !battleState.poisoned && !battleState.poisonImmune
-  const canPetrify = (battleState.petrifiedTurns || 0) === 0
-  const special = selectEnemySpecial(enemy, rand, { canPoison, canPetrify })
-
-  let enemyRaw
-  let enemyAction = null
-  if (special) {
-    const rolled = special.rollDamage(enemy, rand)
-    enemyRaw = rolled.raw
-    enemyAction = { id: special.id, name: special.name, rolls: rolled.rolls }
-  } else {
-    enemyRaw = rand(0, enemy.att)
+  // Heal comes first, as it did in the original's chain: a hurt healer spends
+  // 1 turn in 4 mending rand(1, ATT) instead of attacking. Nothing else it
+  // carries fires on that turn.
+  const hpAtItsTurn = battleState.enemyCurrentHp - Math.max(0, pendingDamage)
+  if (
+    behaviours.heals &&
+    hpAtItsTurn > 0 &&
+    hpAtItsTurn < battleState.enemyMaxHp &&
+    rand(1, HEAL_CHANCE_DENOMINATOR) === 1
+  ) {
+    return {
+      enemyRaw: 0,
+      playerBlock: 0,
+      enemyFinal: 0,
+      effectiveDef,
+      enemyDamageType: enemyDmgType,
+      enemyAction: null,
+      dodged: false,
+      poisonApplied: null,
+      petrifyApplied: 0,
+      extraHits: [],
+      effects: { healCast: rand(1, Math.max(1, enemy.att)) },
+    }
   }
 
-  // Defense is rolled ONCE against whatever raw damage the attack produced —
-  // a Power Attack does not get blocked three times.
-  // Negative DEF rolls negative, so enemyRaw - playerBlock grows — you take extra damage
+  // Every hit the enemy lands this turn — the first and each one after it —
+  // is rolled the same way, as the original's attack loop did: it re-ran the
+  // whole perk chain per hit, so a Troll King's second swing can crit too.
   //
-  // A `bypassesDefense` special (bite, rage, the Cyclops' standing pure attack)
-  // is the original's "pure" damage: the roll IS the damage. Report the block as
-  // 0 rather than rolling and discarding it, so the `( rolls ) − block = total`
-  // line the battle panel prints still adds up.
+  // At most one special resolves per hit. A special replaces how the raw
+  // damage is rolled; the single defense roll, the zero floor and damageType
+  // are unchanged. Defense is rolled ONCE against whatever the hit produced —
+  // a Power Attack does not get blocked three times. Negative DEF rolls
+  // negative, so raw − block grows.
   //
-  // Dodge (the skill) is a flat lvl% chance the whole swing does nothing —
-  // no block rolled, no damage taken — exactly the original's "You DODGE".
+  // A `bypassesDefense` special (bite, rage, firebreath, the standing pure
+  // attack) is the original's "pure" damage: the roll IS the damage, and the
+  // block is reported as 0 so `( rolls ) − block = total` still adds up.
+  //
+  // On an enemy that carries Pure Attack, everything is pure: a Power Attack,
+  // Critical or Whirlwind lands every one of its rolls at full ATT, unblocked
+  // (`$edamagetotal = $enemyatt * 3`, `* 10`, `* 6`), and so does each
+  // extra hit.
+  //
+  // Dodge (the skill) is a flat lvl% chance a swing does nothing — no block
+  // rolled, no damage taken — rolled per hit.
   const dodgeChance = battleState.dodgeChance || 0
-  const dodged = dodgeChance > 0 && rand(1, 100) <= dodgeChance
-  const bypass = Boolean(special?.bypassesDefense)
-  const playerBlock = dodged || bypass ? 0 : rand(0, effectiveDef)
-  // A poison special is an ordinary hit that also leaves poison behind. The
-  // original set it whether or not the blow got through the block, as long as
-  // the swing was not dodged; the poison itself scales with the PLAYER's level.
-  const poisonApplied =
-    special?.applies === 'poison' && !dodged
-      ? { clicks: special.rollPoison(battleState.level || 1, rand), name: special.name }
-      : null
-  // Stone takes hold the same way: a dodged gaze is a gaze that missed.
-  const petrifyApplied = special?.applies === 'petrify' && !dodged ? special.rollPetrify(rand) : 0
-  const mainFinal = dodged ? 0 : Math.max(0, enemyRaw - playerBlock)
+  const enemyIsPure = hasSpecial(enemy, 'pure')
+  let poisonApplied = null
+  let petrifyApplied = 0
+  const rollHit = () => {
+    // Poison and stone are only on offer while they could take hold, which
+    // includes not having been left already by an earlier hit this turn.
+    const canPoison = !battleState.poisoned && !battleState.poisonImmune && !poisonApplied
+    const canPetrify = (battleState.petrifiedTurns || 0) === 0 && petrifyApplied === 0
+    const special = selectEnemySpecial(enemy, rand, { canPoison, canPetrify })
+
+    let raw
+    let action = null
+    let bypass = false
+    if (special) {
+      const rolled = special.rollDamage(enemy, rand)
+      const rolls = enemyIsPure ? rolled.rolls.map(() => enemy.att) : rolled.rolls
+      raw = enemyIsPure ? rolls.reduce((sum, r) => sum + r, 0) : rolled.raw
+      bypass = enemyIsPure || Boolean(special.bypassesDefense)
+      action = { id: special.id, name: special.name, rolls }
+    } else {
+      raw = rand(0, enemy.att)
+    }
+    const hitDodged = dodgeChance > 0 && rand(1, 100) <= dodgeChance
+    const block = hitDodged || bypass ? 0 : rand(0, effectiveDef)
+    // A poison special is an ordinary hit that also leaves poison behind. The
+    // original set it whether or not the blow got through the block, as long
+    // as the swing was not dodged; it scales with the PLAYER's level. Stone
+    // takes hold the same way: a dodged gaze is a gaze that missed.
+    if (special?.applies === 'poison' && !hitDodged) {
+      poisonApplied = { clicks: special.rollPoison(battleState.level || 1, rand), name: special.name }
+    }
+    if (special?.applies === 'petrify' && !hitDodged) petrifyApplied = special.rollPetrify(rand)
+    return { raw, block, damage: hitDodged ? 0 : Math.max(0, raw - block), dodged: hitDodged, action }
+  }
+
+  const main = rollHit()
+  const enemyRaw = main.raw
+  const enemyAction = main.action
+  const dodged = main.dodged
+  const playerBlock = main.block
+  const mainFinal = main.damage
 
   // The hits that follow the first: the guaranteed ones (Double / Triple Hit),
-  // then a multi-hit roll after every hit that lands, chained until it fails
-  // or the cap is reached. Each is a plain rand(0, ATT) with its own block
-  // and its own Dodge roll — no special rides along a second time.
-  const behaviours = getEnemyBehaviours(enemy)
+  // then a multi-hit roll after every hit, chained until it fails or the cap
+  // is reached.
   const extraHits = []
   const rollExtraHit = () => {
-    const raw = rand(0, enemy.att)
+    const hit = rollHit()
+    return { raw: hit.raw, block: hit.block, damage: hit.damage, dodged: hit.dodged, ...(hit.action ? { action: hit.action } : {}) }
+  }
+  // The pack's hit is another animal, not this one's perk: a plain roll.
+  const rollPlainHit = (att) => {
+    const raw = rand(0, att)
     const hitDodged = dodgeChance > 0 && rand(1, 100) <= dodgeChance
     const block = hitDodged ? 0 : rand(0, effectiveDef)
     return { raw, block, damage: hitDodged ? 0 : Math.max(0, raw - block), dodged: hitDodged }
@@ -382,8 +463,23 @@ function resolveEnemyAttack(battleState, otherCombatants) {
       extraHits.push(rollExtraHit())
     }
   }
+  // Pack: once a turn, another of the pack may join in — one more hit, rolled
+  // at twice the ATT.
+  if (behaviours.packChance > 0 && rand(1, 100) <= Math.round(behaviours.packChance * 100)) {
+    extraHits.push({ ...rollPlainHit(enemy.att * 2), pack: true })
+  }
+
+  // What rides on top of the attack. A theft is only a roll here — the
+  // handlers take what the player actually has. The drains are unblockable
+  // and undodgeable: the HP one is added to the damage, and the handlers give
+  // it back to the enemy.
+  const effects = {}
+  if (behaviours.steals && rand(1, STEAL_CHANCE_DENOMINATOR) === 1) effects.stealRoll = rand(1, Math.max(1, enemy.att))
+  if (behaviours.hpDrain > 0) effects.hpDrained = rollDrain(enemy, behaviours.hpDrain, rand)
+  if (behaviours.mpDrain > 0) effects.mpDrainRoll = rollDrain(enemy, behaviours.mpDrain, rand)
 
   return {
+    effects,
     enemyRaw,
     playerBlock,
     enemyFinal: mainFinal + extraHits.reduce((sum, hit) => sum + hit.damage, 0),
@@ -403,9 +499,14 @@ function resolveTurn(battleState, otherCombatants, { spell = null, skill = null,
   // The companion waits when there is nothing to swing at: its owner is stone,
   // or the enemy is already out of the way.
   const companion = player.petrified || player.enemyDodged ? null : resolveCompanionAttack(battleState)
-  const enemyAtk = resolveEnemyAttack(battleState, otherCombatants)
+  const enemyAtk = resolveEnemyAttack(battleState, otherCombatants, {
+    pendingDamage: player.playerFinal + (companion?.damage || 0),
+  })
 
   return {
+    // What the enemy's standing behaviours did this turn (see the handlers'
+    // settleEnemyAftermath, which fills in what actually took hold).
+    enemyEffects: { ...enemyAtk.effects, ...(player.enemyBlockedAttack ? { blocked: true } : {}) },
     // The player's own hit. The companion's is reported beside it, never
     // folded in, so the `raw − block = total` line the panel prints stays true.
     playerDealtDamage: player.playerFinal,

@@ -204,8 +204,37 @@ const SPECIAL_PRIORITY = ['whirlwind', 'dragonfire', 'crit', 'rage', 'power', 'b
 //   meltsMelee      bool  A melee swing (and the strike riding it) does half
 //                         damage: the magma takes the blow and the blade.
 //
+//   packChance      0–1   Pack animal (wolf, coyote): this chance, once a turn,
+//                         that another of the pack joins in with one extra hit
+//                         rolled at twice the ATT.
+//   heals           bool  The original's eHeal: while hurt, 1 turn in 4 it
+//                         heals rand(1, ATT) instead of attacking.
+//   steals          bool  eSteal: 1 turn in 5 it lifts rand(1, ATT) gold. The
+//                         theft rides on top of the attack (2026-10-03,
+//                         Anthony's call); the original stole instead of hitting.
+//   pureDefense     bool  ePureD: it blocks with its full DEF every time
+//                         instead of rolling rand(0, DEF).
+//   blockChance     0–1   eBlock ("block all damage, 1/5 chance", declared in
+//                         the original and never written): the attack lands on
+//                         its guard and does nothing. Rolled with Dodge, before
+//                         anything is charged.
+//   hpDrain         1|2   eDrainHP: every turn it drains rand(1, its level ÷ 2)
+//                         (1) or rand(1, its level) (2) HP, unblockable, and
+//                         heals itself by as much.
+//   mpDrain         1|2   eDrainMP: the same roll, taken from the player's MP.
+//   resurrectChance 0–1   eResurrect: when it dies, this chance it stands
+//                         back up at full HP. Rolled on every death.
+//
 // Chains of extra hits are capped so a lucky run cannot loop forever.
 const MAX_EXTRA_HITS = 6
+const HEAL_CHANCE_DENOMINATOR = 4
+const STEAL_CHANCE_DENOMINATOR = 5
+
+/** rand(1, level ÷ 2) for tier 1, rand(1, level) for tier 2 — the ENEMY's level. */
+function rollDrain(enemy, tier, rand) {
+  const level = Math.max(1, Math.floor(Number(enemy?.level) || 1))
+  return rand(1, tier >= 2 ? level : Math.max(1, Math.floor(level / 2)))
+}
 
 /** The standing behaviours an enemy definition declares, with safe defaults. */
 function getEnemyBehaviours(enemy) {
@@ -216,6 +245,14 @@ function getEnemyBehaviours(enemy) {
     dodgeChance: Math.min(1, Math.max(0, n(enemy?.dodgeChance))),
     absorbsHp: enemy?.absorbsHp === true,
     meltsMelee: enemy?.meltsMelee === true,
+    packChance: Math.min(1, Math.max(0, n(enemy?.packChance))),
+    heals: enemy?.heals === true,
+    steals: enemy?.steals === true,
+    pureDefense: enemy?.pureDefense === true,
+    blockChance: Math.min(1, Math.max(0, n(enemy?.blockChance))),
+    hpDrain: Math.min(2, Math.max(0, Math.floor(n(enemy?.hpDrain)))),
+    mpDrain: Math.min(2, Math.max(0, Math.floor(n(enemy?.mpDrain)))),
+    resurrectChance: Math.min(1, Math.max(0, n(enemy?.resurrectChance))),
   }
 }
 
@@ -259,6 +296,9 @@ module.exports = {
   ENEMY_SPECIALS,
   SPECIAL_PRIORITY,
   MAX_EXTRA_HITS,
+  HEAL_CHANCE_DENOMINATOR,
+  STEAL_CHANCE_DENOMINATOR,
+  rollDrain,
   getEnemyBehaviours,
   getEnemySpecialIds,
   hasSpecial,

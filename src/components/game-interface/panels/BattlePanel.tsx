@@ -122,17 +122,20 @@ function Swoosh() {
  */
 function EnemyHitExtras({ battle }: { battle: BattleState }) {
   const extras = battle.extraHits ?? []
-  if (extras.length === 0 && !battle.petrifyApplied && !battle.enemyHealed) return null
+  const fx = battle.enemyEffects ?? {}
+  const hasEffects =
+    fx.healCast !== undefined || !!fx.stolen || !!fx.hpDrained || !!fx.mpDrained || !!fx.resurrected
+  if (extras.length === 0 && !battle.petrifyApplied && !battle.enemyHealed && !hasEffects) return null
   const extraTotal = extras.reduce((sum, hit) => sum + hit.damage, 0)
   return (
     <>
       {extras.map((hit, i) => (
         <p key={i} className="text-[10px] text-fg-disabled text-right tabular-nums">
-          <span className="mr-1 text-combat-crit font-semibold">again</span>
+          <span className="mr-1 text-combat-crit font-semibold">{hit.pack ? 'pack ×2' : hit.action ? hit.action.name : 'again'}</span>
           {hit.dodged ? (
             <span className="text-hue-purple">dodged</span>
           ) : (
-            <>{hit.raw} &minus; {hit.block} = <span className={hit.damage > 0 ? 'text-stat-def font-semibold' : ''}>{hit.damage}</span></>
+            <>{hit.action && hit.action.rolls.length > 1 ? `( ${hit.action.rolls.join(' + ')} )` : hit.raw} &minus; {hit.block} = <span className={hit.damage > 0 ? 'text-stat-def font-semibold' : ''}>{hit.damage}</span></>
           )}
         </p>
       ))}
@@ -148,6 +151,21 @@ function EnemyHitExtras({ battle }: { battle: BattleState }) {
       )}
       {battle.enemyHealed > 0 && (
         <p className="text-[10px] text-hue-green text-right tabular-nums">absorbs {battle.enemyHealed} HP</p>
+      )}
+      {fx.resurrected && (
+        <p className="text-[11px] font-black tracking-[0.15em] uppercase text-right text-fg-bright">Rises again</p>
+      )}
+      {fx.healCast !== undefined && (
+        <p className="text-[10px] text-hue-green text-right tabular-nums">casts Heal +{fx.healCast} HP instead of attacking</p>
+      )}
+      {!!fx.hpDrained && (
+        <p className="text-[10px] text-resource-hp text-right tabular-nums">drains {fx.hpDrained} HP</p>
+      )}
+      {!!fx.mpDrained && (
+        <p className="text-[10px] text-resource-mp text-right tabular-nums">drains {fx.mpDrained} MP</p>
+      )}
+      {!!fx.stolen && (
+        <p className="text-[10px] text-resource-gold text-right tabular-nums">pickpockets {fx.stolen} gold</p>
       )}
     </>
   )
@@ -815,14 +833,14 @@ export default function BattlePanel({
           ) : battle.enemyDodged ? (
             // The enemy's own Dodge: nothing was rolled and nothing was spent.
             <>
-              <p className="text-[10px] text-fg-disabled italic">Dodged</p>
+              <p className="text-[10px] text-fg-disabled italic">{battle.enemyEffects?.blocked ? 'Blocked' : 'Dodged'}</p>
               <p className="text-xs text-fg-secondary">
-                The {battle.enemyName} steps out of your{' '}
+                The {battle.enemyName} {battle.enemyEffects?.blocked ? 'blocks your' : 'steps out of your'}{' '}
                 <span className={`font-semibold ${spellCast && spellCastTone ? spellCastTone.text : isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{spellCast ? spellCast.name : (weaponName ?? 'fists')}</span>
                 {spellCast ? ' — no MP spent' : ''}
               </p>
               <p className="text-2xl font-black text-hue-purple leading-none tabular-nums italic">
-                MISS
+                {battle.enemyEffects?.blocked ? 'BLOCKED' : 'MISS'}
               </p>
             </>
           ) : skillUse && skillUseTone ? (

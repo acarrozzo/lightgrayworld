@@ -83,6 +83,55 @@ function getEnemyTraits(enemy) {
       tone: 'poison',
     })
   }
+  if (b.packChance > 0) {
+    traits.push({
+      id: 'pack',
+      label: 'Pack',
+      title: `Pack: a ${pct(b.packChance)} chance each turn that another of the pack joins in — one extra hit rolled at twice its ATT.`,
+      tone: 'crit',
+    })
+  }
+  if (b.heals) {
+    traits.push({ id: 'heal', label: 'Heal', title: 'Heal: while hurt, 1 turn in 4 it heals rand(1, ATT) instead of attacking.', tone: 'poison' })
+  }
+  if (b.steals) {
+    traits.push({ id: 'steal', label: 'Steal', title: 'Steal: 1 turn in 5 it pickpockets rand(1, ATT) gold on top of its attack.', tone: 'dex' })
+  }
+  if (b.hpDrain > 0) {
+    traits.push({
+      id: 'hp-drain',
+      label: 'HP Drain',
+      title: `HP Drain: every turn it drains up to ${b.hpDrain >= 2 ? 'its level' : 'half its level'} in HP. Nothing blocks it, and it heals by as much.`,
+      tone: 'poison',
+    })
+  }
+  if (b.mpDrain > 0) {
+    traits.push({
+      id: 'mp-drain',
+      label: 'MP Drain',
+      title: `MP Drain: every turn it drains up to ${b.mpDrain >= 2 ? 'its level' : 'half its level'} in MP.`,
+      tone: 'mag',
+    })
+  }
+  if (b.pureDefense) {
+    traits.push({ id: 'pure-defense', label: 'Pure Def', title: 'Pure Defense: it blocks with its full DEF every time. An attack that rolls under its DEF does nothing.', tone: 'str' })
+  }
+  if (b.blockChance > 0) {
+    traits.push({
+      id: 'enemy-block',
+      label: `Block ${pct(b.blockChance)}`,
+      title: `Block: a ${pct(b.blockChance)} chance it blocks your whole attack. A spell or strike it blocks costs no MP.`,
+      tone: 'str',
+    })
+  }
+  if (b.resurrectChance > 0) {
+    traits.push({
+      id: 'resurrect',
+      label: `Resurrect ${pct(b.resurrectChance)}`,
+      title: `Resurrect: a ${pct(b.resurrectChance)} chance, every time it dies, that it stands back up at full HP.`,
+      tone: 'poison',
+    })
+  }
   if (b.meltsMelee) {
     traits.push({
       id: 'melt',

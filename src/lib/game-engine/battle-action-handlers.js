@@ -146,7 +146,12 @@ function errorResult(action, message) {
 // so the feed states what happened instead of leaving the player to infer it from
 // a suspiciously large number.
 function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodged = false, extras = {}) {
-  const { extraHits = [], petrifyApplied = 0, enemyHealed = 0 } = extras
+  const { extraHits = [], petrifyApplied = 0, enemyHealed = 0, enemyEffects = {} } = extras
+  // A healer's turn: it mends instead of attacking, and nothing else happens.
+  if (enemyEffects.healCast !== undefined) {
+    const rose = enemyEffects.resurrected ? `The ${enemyName} RISES AGAIN! ` : ''
+    return `${rose}The ${enemyName} casts HEAL and recovers ${enemyEffects.healCast} HP.${hpSuffix}`
+  }
   // With more than one hit the headline number is the sum; the hits after the
   // first are listed so the feed adds up the way the panel does.
   const mainDamage = damage - extraHits.reduce((sum, hit) => sum + hit.damage, 0)
@@ -166,15 +171,21 @@ function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodg
       : `The ${enemyName} hits you for ${mainDamage} damage.`
   }
   for (const hit of extraHits) {
+    // A special can fire on any hit of the turn, and names itself when it does.
+    const again = hit.action ? `follows with a ${hit.action.name.toUpperCase()}` : 'strikes again'
     line += hit.dodged
-      ? ' You DODGE as it strikes again!'
+      ? ` You DODGE as it ${again}!`
       : hit.damage === 0
-        ? ' It strikes again but you block it!'
-        : ` It strikes again for ${hit.damage}!`
+        ? ` It ${again} but you block it!`
+        : ` It ${again} for ${hit.damage}!`
   }
   if (extraHits.length > 0 && damage > 0) line += ` (${damage} total)`
   if (petrifyApplied > 0) line += ` Its gaze turns you to STONE for ${petrifyApplied} turn${petrifyApplied === 1 ? '' : 's'}!`
   if (enemyHealed > 0) line += ` The ${enemyName} absorbs ${enemyHealed} HP.`
+  if (enemyEffects.hpDrained > 0) line += ` It DRAINS ${enemyEffects.hpDrained} HP from you.`
+  if (enemyEffects.mpDrained > 0) line += ` It DRAINS ${enemyEffects.mpDrained} MP from you.`
+  if (enemyEffects.stolen > 0) line += ` It PICKPOCKETS ${enemyEffects.stolen} gold!`
+  if (enemyEffects.resurrected) line = `The ${enemyName} RISES AGAIN! ` + line
   return line + hpSuffix
 }
 
@@ -386,6 +397,11 @@ function describeNoAttack(enemyName, turn) {
   if (turn.petrified) {
     return `You are STONE. You cannot move; the ${enemyName} circles.`
   }
+  if (turn.enemyDodged && turn.enemyEffects?.blocked) {
+    return turn.spell
+      ? `The ${enemyName} BLOCKS your ${turn.spell.name}! No MP spent.`
+      : `The ${enemyName} BLOCKS your attack!`
+  }
   if (turn.enemyDodged) {
     return turn.spell
       ? `The ${enemyName} DODGES your ${turn.spell.name}! No MP spent.`
@@ -439,8 +455,22 @@ function describeSpellStrike(enemyName, turn) {
  */
 function settleEnemyAftermath(battleState, turn) {
   const behaviours = getEnemyBehaviours(battleState.enemy)
-  turn.enemyHealed =
-    behaviours.absorbsHp && !battleState.isEnemyDead() ? battleState.healEnemy(turn.enemyDealtDamage || 0) : 0
+  const effects = turn.enemyEffects || (turn.enemyEffects = {})
+  // Resurrect: the killing blow landed, and it stands back up at full HP. The
+  // fight simply goes on — rewards are for the death that sticks.
+  if (
+    battleState.isEnemyDead() &&
+    behaviours.resurrectChance > 0 &&
+    Math.random() < behaviours.resurrectChance
+  ) {
+    battleState.reviveEnemy()
+    effects.resurrected = true
+  }
+  const alive = !battleState.isEnemyDead()
+  turn.enemyHealed = behaviours.absorbsHp && alive ? battleState.healEnemy(turn.enemyDealtDamage || 0) : 0
+  // Heal and HP Drain mend it too; what it could not hold (already full) is lost.
+  if (effects.healCast !== undefined) effects.healCast = alive ? battleState.healEnemy(effects.healCast) : 0
+  if (effects.hpDrained > 0 && alive) battleState.healEnemy(effects.hpDrained)
   battleState.tickPetrify()
   if (turn.petrifyApplied > 0) battleState.petrify(turn.petrifyApplied)
 }
@@ -454,7 +484,45 @@ function behaviourTurnFields(turn) {
     petrified: turn.petrified ?? false,
     melted: turn.melted ?? false,
     enemyHealed: turn.enemyHealed ?? 0,
+    enemyEffects: turn.enemyEffects ?? {},
   }
+}
+
+/**
+ * Take what the enemy's turn lifted off the player besides HP: the gold a
+ * thief pickpocketed and the MP a drain pulled, in one statement, each capped
+ * at what the player has. Writes the amounts that actually moved back onto
+ * `effects` (`stolen`, `mpDrained`) so the feed and the payload say what
+ * happened rather than what was rolled. Returns the new balances, or null
+ * when the turn took nothing.
+ * @returns {Promise<{ currency: number, mp: number, mpMax: number } | null>}
+ */
+async function applyEnemyTheft(playerId, effects) {
+  const gold = Math.max(0, Math.floor(Number(effects?.stealRoll) || 0))
+  const mp = Math.max(0, Math.floor(Number(effects?.mpDrainRoll) || 0))
+  if (gold === 0 && mp === 0) return null
+  const rows = await prisma.$queryRawUnsafe(
+    `WITH prev AS (SELECT currency AS prev_currency, mp AS prev_mp FROM "User" WHERE id = $1)
+     UPDATE "User"
+     SET currency = GREATEST(0, currency - $2::int), mp = GREATEST(0, mp - $3::int)
+     WHERE id = $1
+     RETURNING currency, mp, "mpMax",
+       (SELECT prev_currency FROM prev) AS "prevCurrency", (SELECT prev_mp FROM prev) AS "prevMp"`,
+    playerId,
+    gold,
+    mp
+  )
+  const row = rows[0]
+  if (!row) return null
+  effects.stolen = Number(row.prevCurrency) - Number(row.currency)
+  effects.mpDrained = Number(row.prevMp) - Number(row.mp)
+  return { currency: Number(row.currency), mp: Number(row.mp), mpMax: Number(row.mpMax) }
+}
+
+/** The payload fields a theft changes: the live MP and gold after it. */
+function theftFields(theft) {
+  if (!theft) return {}
+  return { playerMp: theft.mp, playerMpMax: theft.mpMax, playerCurrency: theft.currency }
 }
 
 // ─── start_battle ───────────────────────────────────────────────────────────
@@ -616,6 +684,7 @@ async function executeStartBattle(action, playerId, roomState) {
       immuneToWeapon: null,
       companion: null,
       playerDodged: enemyAtk.dodged,
+      enemyEffects: enemyAtk.effects,
       poisonApplied: enemyAtk.poisonApplied,
       petrifyApplied: enemyAtk.petrifyApplied,
       extraHits: enemyAtk.extraHits,
@@ -645,7 +714,12 @@ async function executeStartBattle(action, playerId, roomState) {
   }
 
   // Land the enemy's hit: Magic Armor first, then HP, plus any poison it left.
-  const updatedPlayer = await applyEnemyHit(playerId, { damage: firstTurn.enemyDealtDamage, poisonApplied: firstTurn.poisonApplied })
+  const updatedPlayer = await applyEnemyHit(playerId, {
+    damage: firstTurn.enemyDealtDamage + (firstTurn.enemyEffects?.hpDrained || 0),
+    poisonApplied: firstTurn.poisonApplied,
+  })
+  const theft = await applyEnemyTheft(playerId, firstTurn.enemyEffects)
+  if (theft) roomState.updatePlayer(playerId, (state) => ({ ...state, mp: theft.mp }))
   const newPlayerHp = Math.max(0, updatedPlayer.hp)
   // Mirror the new HP into the in-memory room state so non-battle reads (e.g. rest)
   // don't operate on a stale, pre-damage value.
@@ -723,6 +797,7 @@ async function executeStartBattle(action, playerId, roomState) {
     ...behaviourTurnFields(firstTurn),
     ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
+    ...theftFields(theft),
     ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
     message: [attackDesc, defenseDesc].join(' '),
   }
@@ -980,7 +1055,12 @@ async function executePlayerAttack(action, playerId, roomState) {
 
   // One atomic statement for the hit — Magic Armor first, then HP, plus any
   // poison it left — so concurrent updates never read-modify-write.
-  const updatedPlayer = await applyEnemyHit(playerId, { damage: turnResult.enemyDealtDamage, poisonApplied: turnResult.poisonApplied })
+  const updatedPlayer = await applyEnemyHit(playerId, {
+    damage: turnResult.enemyDealtDamage + (turnResult.enemyEffects?.hpDrained || 0),
+    poisonApplied: turnResult.poisonApplied,
+  })
+  const theft = await applyEnemyTheft(playerId, turnResult.enemyEffects)
+  if (theft) roomState.updatePlayer(playerId, (state) => ({ ...state, mp: theft.mp }))
   const newHp = Math.max(0, updatedPlayer.hp)
   // Mirror the new HP into the in-memory room state so non-battle reads (e.g. rest)
   // don't operate on a stale, pre-damage value.
@@ -1077,6 +1157,7 @@ async function executePlayerAttack(action, playerId, roomState) {
           ...behaviourTurnFields(turnResult),
           ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
+          ...theftFields(theft),
           ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
           message: parts.join(' '),
         },
@@ -1138,6 +1219,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     immuneToWeapon: null,
     companion: null,
     playerDodged: enemyAtk.dodged,
+    enemyEffects: enemyAtk.effects,
     poisonApplied: enemyAtk.poisonApplied,
     petrifyApplied: enemyAtk.petrifyApplied,
     extraHits: enemyAtk.extraHits,
@@ -1148,7 +1230,12 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
   battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, turnRecord)
   settleEnemyAftermath(battleState, turnRecord)
 
-  const updatedPlayer = await applyEnemyHit(playerId, { damage: enemyAtk.enemyFinal, poisonApplied: enemyAtk.poisonApplied })
+  const updatedPlayer = await applyEnemyHit(playerId, {
+    damage: enemyAtk.enemyFinal + (turnRecord.enemyEffects?.hpDrained || 0),
+    poisonApplied: enemyAtk.poisonApplied,
+  })
+  const theft = await applyEnemyTheft(playerId, turnRecord.enemyEffects)
+  if (theft) roomState.updatePlayer(playerId, (state) => ({ ...state, mp: theft.mp }))
   const newHp = Math.max(0, updatedPlayer.hp)
   // Mirror the new HP into the in-memory room state so non-battle reads (e.g. rest)
   // don't operate on a stale, pre-damage value.
@@ -1212,6 +1299,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
           magicArmorLeft: updatedPlayer.magicArmorLeft,
           poisonApplied: updatedPlayer.poisoned > 0 ? { clicks: updatedPlayer.poisoned } : null,
           ...behaviourTurnFields(turnRecord),
+          ...theftFields(theft),
           actionMeta,
           message: [actionDesc, defenseDesc].join(' '),
         },

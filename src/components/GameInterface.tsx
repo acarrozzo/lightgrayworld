@@ -2533,14 +2533,22 @@ export default function GameInterface() {
           petrified: payload.petrified ?? false,
           melted: payload.melted ?? false,
           enemyHealed: payload.enemyHealed ?? 0,
+          enemyEffects: payload.enemyEffects ?? {},
           playerMp: payload.playerMp,
           playerMpMax: payload.playerMpMax,
+          playerCurrency: payload.playerCurrency,
         })
       } else if (typeof payload.playerMp === 'number') {
         // A one-turn kill or a fatal counter after a cast: the terminal handler
         // owns the battle state, but the MP the spell spent is still real.
         const { player: currentPlayer, setPlayer: sp } = useGameStore.getState()
-        if (currentPlayer) sp({ ...currentPlayer, mp: payload.playerMp })
+        if (currentPlayer) {
+          sp({
+            ...currentPlayer,
+            mp: payload.playerMp,
+            ...(typeof payload.playerCurrency === 'number' ? { currency: payload.playerCurrency } : {}),
+          })
+        }
       }
       appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-turn' })
     })
@@ -2609,6 +2617,7 @@ export default function GameInterface() {
           petrified: lt?.petrified ?? false,
           melted: lt?.melted ?? false,
           enemyHealed: lt?.enemyHealed ?? 0,
+          enemyEffects: lt?.enemyEffects ?? {},
         })
         updateBattleTurn(buildUpdate(0))
       }, 0)
@@ -2674,6 +2683,7 @@ export default function GameInterface() {
           petrified: lt?.petrified ?? false,
           melted: lt?.melted ?? false,
           enemyHealed: lt?.enemyHealed ?? 0,
+          enemyEffects: lt?.enemyEffects ?? {},
         })
       }, 0)
       scheduleBattleTimer(applyDefeat, 900)
