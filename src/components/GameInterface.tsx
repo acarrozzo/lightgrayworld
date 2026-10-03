@@ -71,13 +71,12 @@ const writePrefersWorldFullscreen = (value: boolean) => {
 }
 
 // Desktop side-panel widths. They reset to the default on every page load.
-// The left panel's floor is what the compact compass ring, its two side
-// columns, and the panel padding need (224 + 2 × 52 + 32); the feed's floor is
-// where its icon-less chip rows and input still read. The ceiling leaves the
+// The left panel cannot be dragged narrower than its default, only wider; the
+// feed's floor is where its icon-less chip rows and input still read. The ceiling leaves the
 // explore column room for the room card no matter how wide either panel is
 // dragged.
 const LEFT_PANEL_DEFAULT = 420
-const LEFT_PANEL_MIN = 360
+const LEFT_PANEL_MIN = LEFT_PANEL_DEFAULT
 const FEED_PANEL_DEFAULT = 360
 const FEED_PANEL_MIN = 300
 const PANEL_MAX = 720

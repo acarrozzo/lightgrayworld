@@ -27,6 +27,12 @@ interface CompassProps {
   isLocked?: boolean
   lockedHint?: string
   /**
+   * Always draw the large ring instead of stepping up at 24rem. The desktop
+   * sidebar's box sits just under that threshold at its minimum width, yet
+   * has the room, so it asks for the large ring outright.
+   */
+  large?: boolean
+  /**
    * Classes for the outer box. The D-pad centres itself inside it, and the
    * ring wrapper's own margins reserve room for the two side columns, so the
    * box needs no inset of its own; give it a width and the rest follows.
@@ -103,6 +109,7 @@ export default function Compass({
   isMoveInProgress = false,
   isLocked = false,
   lockedHint = 'Following your party — leave to move freely',
+  large = false,
   className = 'w-full',
 }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
@@ -187,6 +194,13 @@ export default function Compass({
     { key: 'down', label: 'DOWN', rotation: 180 },
   ]
 
+  // Written out literally so Tailwind generates them.
+  const ringWidth = large ? 'w-64' : 'w-56 @sm:w-64'
+  const ringHeight = large ? 'h-64' : 'h-56 @sm:h-64'
+  const mapSize = large
+    ? 'w-[150px] h-[150px] border-[25px]'
+    : 'w-[120px] @sm:w-[150px] h-[120px] @sm:h-[150px] border-[10px] @sm:border-[25px]'
+
   const isDisabled = isNavigating || isMoveInProgress || isLocked
   const directionTitle = (label: string, isAvailable: boolean) => {
     if (isLocked) return lockedHint
@@ -207,15 +221,15 @@ export default function Compass({
       style={{ '--compass-side-gap': 'clamp(0.75rem, 4cqw, 1.5rem)' } as React.CSSProperties}
     >
       {/* Main D-pad */}
-      <div className="relative w-56 @sm:w-64 mx-[calc(2.5rem+var(--compass-side-gap))]">
-        <div className="relative w-56 @sm:w-64 h-56 @sm:h-64">
+      <div className={`relative ${ringWidth} mx-[calc(2.5rem+var(--compass-side-gap))]`}>
+        <div className={`relative ${ringWidth} ${ringHeight}`}>
           {/* Map circle in center. Also opens the map; the dock's Map tile is
               the labelled way in. */}
           <div className="absolute inset-0 flex items-center justify-center">
             <button
               type="button"
               onClick={() => onNavigateToMap?.()}
-              className="w-[120px] @sm:w-[150px] h-[120px] @sm:h-[150px] cursor-pointer rounded-full bg-no-repeat transition-[background-position] duration-[350ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-[10px] @sm:border-[25px] border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl"
+              className={`${mapSize} cursor-pointer rounded-full bg-no-repeat transition-[background-position] duration-[350ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl`}
               style={{
                 backgroundImage: `url('${mapBackground}')`,
                 backgroundPosition: mapPosition

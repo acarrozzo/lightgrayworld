@@ -295,6 +295,7 @@ export default function ExplorePanel({
           aside={isSidebar ? undefined : dock}
           isMoveInProgress={isMoveInProgress}
           isLocked={isPartyMember}
+          large={isSidebar}
           className="w-full"
         />
         {isSidebar && dock}
