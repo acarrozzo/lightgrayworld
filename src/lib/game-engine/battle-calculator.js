@@ -6,7 +6,7 @@ function rand(a, b) {
 }
 
 const partyStore = require('../services/party-store')
-const { selectEnemySpecial } = require('../game-data/enemy-specials')
+const { selectEnemySpecial, getEnemyBehaviours, MAX_EXTRA_HITS } = require('../game-data/enemy-specials')
 const { rollSpell } = require('../game-data/spells')
 const { rollSkillBonus } = require('../game-data/skills')
 
@@ -58,6 +58,32 @@ function reachesFlyingEnemy(weaponCategory, playerFlying) {
   return cat !== 'MELEE' || Boolean(playerFlying)
 }
 
+/** The player-side record of a turn on which nothing was rolled. */
+const NOTHING_LANDED = Object.freeze({
+  playerRaw: 0,
+  enemyBlock: 0,
+  playerFinal: 0,
+  missedFlyingMelee: false,
+  immuneToMagic: false,
+  immuneToWeapon: null,
+  spell: null,
+  skill: null,
+  melted: false,
+  enemyDodged: false,
+  petrified: false,
+})
+
+/**
+ * Does the enemy slip this attack? Rolled by the handlers before any MP is
+ * charged, so a dodged spell or strike costs nothing — the original rolled
+ * `eDodge` ahead of the whole attack block. Never while the player is stone
+ * (there is nothing to dodge) and never on an ambush turn.
+ */
+function rollEnemyDodge(enemy) {
+  const chance = getEnemyBehaviours(enemy).dodgeChance
+  return chance > 0 && rand(1, 100) <= Math.round(chance * 100)
+}
+
 /**
  * The player's strike for one turn.
  *
@@ -74,10 +100,34 @@ function reachesFlyingEnemy(weaponCategory, playerFlying) {
  * misses a flyer like the sword would. Either way the enemy answers with a
  * single rand(0, DEF) block and the result floors at zero.
  */
-function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill = null } = {}) {
+function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill = null, enemyDodged = false } = {}) {
   const bonus = 1 + otherCombatants * 0.1
   const enemy = battleState.enemy
   const weaponCat = battleState.equippedWeaponCategory || 'MELEE'
+
+  // Stone swings at nothing. The turn still passes and the enemy still
+  // answers; the handlers charge no MP and spend no ammo for it.
+  if ((battleState.petrifiedTurns || 0) > 0) {
+    return {
+      ...NOTHING_LANDED,
+      effectiveOff: Math.floor(pickPlayerOffensiveStat(battleState) * bonus),
+      weaponCategory: weaponCat,
+      petrified: true,
+    }
+  }
+
+  // The enemy stepped out of it — spell, strike or swing alike. The handlers
+  // roll this BEFORE charging MP (`rollEnemyDodge`), so a dodged cast is a
+  // free one, as in the original.
+  if (enemyDodged) {
+    return {
+      ...NOTHING_LANDED,
+      effectiveOff: spell ? Math.floor(battleState.baseMag * bonus) : Math.floor(pickPlayerOffensiveStat(battleState) * bonus),
+      weaponCategory: weaponCat,
+      enemyDodged: true,
+      spell: spell ? describeSpellCast(spell, null) : null,
+    }
+  }
 
   if (spell) {
     const effectiveMag = Math.floor(battleState.baseMag * bonus)
@@ -165,10 +215,15 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
     }
   }
   const enemyBlock = rand(0, enemy.def)
+  let playerFinal = Math.max(0, playerRaw - enemyBlock)
+  // Melt: the magma takes a melee blow — and the blade — for half. The strike
+  // riding the swing is halved with it; a shot or a spell is not.
+  const melted = weaponCat !== 'RANGED' && getEnemyBehaviours(enemy).meltsMelee && playerFinal > 0
+  if (melted) playerFinal = Math.floor(playerFinal / 2)
   return {
     playerRaw,
     enemyBlock,
-    playerFinal: Math.max(0, playerRaw - enemyBlock),
+    playerFinal,
     effectiveOff,
     weaponCategory: weaponCat,
     missedFlyingMelee: false,
@@ -176,8 +231,10 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
     immuneToWeapon: null,
     spell: null,
     skill: skillUse,
+    melted,
   }
 }
+
 
 /**
  * The client-facing record of a skill strike: what was used, at what level
@@ -267,7 +324,8 @@ function resolveEnemyAttack(battleState, otherCombatants) {
   // zero floor, damageType — is unchanged, so perks never fork the pipeline.
   // A poison special is only on offer while poison could take hold.
   const canPoison = !battleState.poisoned && !battleState.poisonImmune
-  const special = selectEnemySpecial(enemy, rand, { canPoison })
+  const canPetrify = (battleState.petrifiedTurns || 0) === 0
+  const special = selectEnemySpecial(enemy, rand, { canPoison, canPetrify })
 
   let enemyRaw
   let enemyAction = null
@@ -301,21 +359,50 @@ function resolveEnemyAttack(battleState, otherCombatants) {
     special?.applies === 'poison' && !dodged
       ? { clicks: special.rollPoison(battleState.level || 1, rand), name: special.name }
       : null
+  // Stone takes hold the same way: a dodged gaze is a gaze that missed.
+  const petrifyApplied = special?.applies === 'petrify' && !dodged ? special.rollPetrify(rand) : 0
+  const mainFinal = dodged ? 0 : Math.max(0, enemyRaw - playerBlock)
+
+  // The hits that follow the first: the guaranteed ones (Double / Triple Hit),
+  // then a multi-hit roll after every hit that lands, chained until it fails
+  // or the cap is reached. Each is a plain rand(0, ATT) with its own block
+  // and its own Dodge roll — no special rides along a second time.
+  const behaviours = getEnemyBehaviours(enemy)
+  const extraHits = []
+  const rollExtraHit = () => {
+    const raw = rand(0, enemy.att)
+    const hitDodged = dodgeChance > 0 && rand(1, 100) <= dodgeChance
+    const block = hitDodged ? 0 : rand(0, effectiveDef)
+    return { raw, block, damage: hitDodged ? 0 : Math.max(0, raw - block), dodged: hitDodged }
+  }
+  for (let i = 0; i < behaviours.extraHits; i += 1) extraHits.push(rollExtraHit())
+  if (behaviours.multiHitChance > 0) {
+    const threshold = Math.round(behaviours.multiHitChance * 100)
+    while (extraHits.length < MAX_EXTRA_HITS && rand(1, 100) <= threshold) {
+      extraHits.push(rollExtraHit())
+    }
+  }
+
   return {
     enemyRaw,
     playerBlock,
-    enemyFinal: dodged ? 0 : Math.max(0, enemyRaw - playerBlock),
+    enemyFinal: mainFinal + extraHits.reduce((sum, hit) => sum + hit.damage, 0),
     effectiveDef,
     enemyDamageType: enemyDmgType,
     enemyAction,
     dodged,
     poisonApplied,
+    petrifyApplied,
+    extraHits,
   }
 }
 
-function resolveTurn(battleState, otherCombatants, { spell = null, skill = null } = {}) {
-  const player = resolvePlayerAttack(battleState, otherCombatants, { spell, skill })
-  const companion = resolveCompanionAttack(battleState)
+
+function resolveTurn(battleState, otherCombatants, { spell = null, skill = null, enemyDodged = false } = {}) {
+  const player = resolvePlayerAttack(battleState, otherCombatants, { spell, skill, enemyDodged })
+  // The companion waits when there is nothing to swing at: its owner is stone,
+  // or the enemy is already out of the way.
+  const companion = player.petrified || player.enemyDodged ? null : resolveCompanionAttack(battleState)
   const enemyAtk = resolveEnemyAttack(battleState, otherCombatants)
 
   return {
@@ -350,6 +437,16 @@ function resolveTurn(battleState, otherCombatants, { spell = null, skill = null 
     playerDodged: enemyAtk.dodged,
     // { clicks, name } when the enemy's hit left poison; null otherwise.
     poisonApplied: enemyAtk.poisonApplied,
+    // Turns of stone the enemy's gaze just put on the player; 0 otherwise.
+    petrifyApplied: enemyAtk.petrifyApplied,
+    // The enemy's hits after the first this turn: [{ raw, block, damage, dodged }].
+    extraHits: enemyAtk.extraHits,
+    // True when the enemy stepped out of the player's attack.
+    enemyDodged: player.enemyDodged,
+    // True when the player was stone this turn and could not act.
+    petrified: player.petrified,
+    // True when a melee blow was halved by the magma.
+    melted: player.melted,
   }
 }
 
@@ -360,6 +457,7 @@ function totalDamageToEnemy(turn) {
 
 module.exports = {
   rand,
+  rollEnemyDodge,
   describeSpellCast,
   describeSkillUse,
   resolveTurn,

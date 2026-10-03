@@ -195,3 +195,94 @@ test('drops: a main table that cannot fill its range sometimes yields nothing', 
   assert.ok(empty > 0, 'a 0.1-chance table never missed across 500 rolls')
   assert.ok(empty < 500, 'a 0.1-chance table never hit across 500 rolls')
 })
+
+// ─── Standing enemy behaviours (the Despair port, 2026-10-02) ────────────────
+
+const { getEnemyBehaviours, selectEnemySpecial, ENEMY_SPECIALS } = require(path.join(ROOT, 'src/lib/game-data/enemy-specials.js'))
+const { getEnemyTraits } = require(path.join(ROOT, 'src/lib/game-data/enemy-traits.js'))
+const { rollEnemyDodge, resolveTurn } = require(path.join(ROOT, 'src/lib/game-engine/battle-calculator.js'))
+
+test('getEnemyBehaviours clamps and defaults', () => {
+  assert.deepEqual(getEnemyBehaviours({}), { multiHitChance: 0, extraHits: 0, dodgeChance: 0, absorbsHp: false, meltsMelee: false })
+  assert.deepEqual(getEnemyBehaviours({ multiHitChance: 7, extraHits: 99, dodgeChance: -1, absorbsHp: 'yes', meltsMelee: true }), {
+    multiHitChance: 1, extraHits: 6, dodgeChance: 0, absorbsHp: false, meltsMelee: true,
+  })
+})
+
+test('Double / Triple Hit always follow the first hit, each blocked on its own', () => {
+  // ATT 10, DEF 0: every roll lands as rolled.
+  const s = battleState({ baseDef: 0, enemy: { att: 10, def: 0, damageType: 'MELEE', extraHits: 2 } })
+  const atk = resolveEnemyAttack(s, 0)
+  assert.equal(atk.extraHits.length, 2)
+  const extra = atk.extraHits.reduce((sum, h) => sum + h.damage, 0)
+  assert.equal(atk.enemyFinal, Math.max(0, atk.enemyRaw - atk.playerBlock) + extra)
+})
+
+test('multi-hit chains while the roll keeps hitting and is capped', () => {
+  const always = battleState({ baseDef: 0, enemy: { att: 10, def: 0, damageType: 'MELEE', multiHitChance: 1 } })
+  assert.equal(resolveEnemyAttack(always, 0).extraHits.length, 6)
+  const never = battleState({ baseDef: 0, enemy: { att: 10, def: 0, damageType: 'MELEE', multiHitChance: 0 } })
+  assert.equal(resolveEnemyAttack(never, 0).extraHits.length, 0)
+})
+
+test('an enemy dodge makes the attack nothing and still leaves the enemy its swing', () => {
+  const enemy = { att: 10, def: 0, damageType: 'MELEE', dodgeChance: 1 }
+  assert.equal(rollEnemyDodge(enemy), true)
+  assert.equal(rollEnemyDodge({ ...enemy, dodgeChance: 0 }), false)
+  const s = battleState({ enemy, baseStr: 50 })
+  const turn = resolveTurn(s, 0, { enemyDodged: true })
+  assert.equal(turn.enemyDodged, true)
+  assert.equal(turn.playerDealtDamage, 0)
+  assert.equal(turn.playerRaw, 0)
+  // The companion waits too.
+  assert.equal(turn.companion, null)
+  // The spell record survives so the panel can name what was dodged.
+  const cast = resolveTurn(s, 0, { enemyDodged: true, spell: { def: { id: 'fireball', name: 'Fireball', icon: 'f', hue: 'red' }, level: 1, cost: 7 } })
+  assert.equal(cast.spell.name, 'Fireball')
+  assert.equal(cast.spell.amount, 0)
+})
+
+test('Melt halves a melee blow and its strike, never a shot or a spell', () => {
+  // STR 10 vs DEF 0: raw is rand(0,10); force it with a huge STR so final > 1.
+  const enemy = { att: 0, def: 0, damageType: 'MELEE', meltsMelee: true }
+  const melee = resolvePlayerAttack(battleState({ enemy, baseStr: 1000 }), 0)
+  assert.equal(melee.melted, melee.playerFinal > 0 || melee.playerRaw > 0 ? true : false)
+  assert.equal(melee.playerFinal, Math.floor(Math.max(0, melee.playerRaw - melee.enemyBlock) / 2))
+  const ranged = resolvePlayerAttack(battleState({ enemy, baseDex: 1000, equippedWeaponCategory: 'RANGED' }), 0)
+  assert.equal(ranged.melted, false)
+  assert.equal(ranged.playerFinal, Math.max(0, ranged.playerRaw - ranged.enemyBlock))
+})
+
+test('stone: the player swings at nothing, and the gaze is only offered while they can be turned', () => {
+  const enemy = { att: 10, def: 0, damageType: 'MELEE', specials: ['petrify'] }
+  const stone = resolveTurn(battleState({ enemy, baseStr: 50, petrifiedTurns: 1 }), 0)
+  assert.equal(stone.petrified, true)
+  assert.equal(stone.playerDealtDamage, 0)
+  assert.equal(stone.companion, null)
+  // rand(1, 5) === 1 procs it; already stone, it is never offered.
+  const always = () => 1
+  assert.equal(selectEnemySpecial(enemy, always, { canPetrify: true })?.id, 'petrify')
+  assert.equal(selectEnemySpecial(enemy, always, { canPetrify: false }), null)
+  assert.ok(ENEMY_SPECIALS.petrify.rollPetrify(rand) >= 1 && ENEMY_SPECIALS.petrify.rollPetrify(rand) <= 2)
+})
+
+test('BattleState: stone ticks down, HP Absorb heals only a living enemy and only to full', () => {
+  const enemy = { slug: 'succubus', name: 'Succubus', hp: 100, att: 10, def: 0, damageType: 'MELEE', absorbsHp: true }
+  const stats = { str: 1, dex: 1, mag: 1, def: 1, level: 1 }
+  const b = new BattleState({ playerId: 'p', roomId: '906', enemy, playerStats: stats, gear: { weaponCategory: 'MELEE' } })
+  b.petrify(2)
+  assert.equal(b.isPetrified, true)
+  b.tickPetrify(); b.tickPetrify()
+  assert.equal(b.isPetrified, false)
+  b.applyDamageToEnemy(30)
+  assert.equal(b.healEnemy(50), 30)
+  assert.equal(b.enemyCurrentHp, 100)
+  b.applyDamageToEnemy(100)
+  assert.equal(b.healEnemy(50), 0)
+  assert.equal(b.getSnapshot().petrifiedTurns, 0)
+})
+
+test('the HUD tags name the standing behaviours', () => {
+  const labels = getEnemyTraits({ extraHits: 1, multiHitChance: 0.3, dodgeChance: 0.2, absorbsHp: true, meltsMelee: true }).map((t) => t.id)
+  assert.deepEqual(labels, ['extra-hits', 'multi-hit', 'enemy-dodge', 'absorb', 'melt'])
+})

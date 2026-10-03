@@ -177,7 +177,29 @@ export interface BattleTurnPayload extends BattleSnapshot {
   magicArmorLeft?: number
   /** Set when this hit left poison on the player. */
   poisonApplied?: { clicks: number } | null
+  /** Turns of stone the enemy's gaze put on the player this turn; 0 otherwise. */
+  petrifyApplied?: number
+  /** Turns of stone still to pass after this one. */
+  petrifiedTurns?: number
+  /** The enemy's hits after the first this turn (Double/Triple Hit, Multi-hit). */
+  extraHits?: BattleExtraHit[]
+  /** True when the enemy stepped out of the player's attack entirely. */
+  enemyDodged?: boolean
+  /** True when the player was stone this turn and could not act. */
+  petrified?: boolean
+  /** True when a melee blow was halved by the magma (Melt). */
+  melted?: boolean
+  /** HP the enemy took back this turn (HP Absorb). */
+  enemyHealed?: number
   message: string
+}
+
+/** One of the enemy's hits after the first: its own roll, block and Dodge. */
+export interface BattleExtraHit {
+  raw: number
+  block: number
+  damage: number
+  dodged: boolean
 }
 
 /** The equipped companion's own roll, reported beside the player's hit. */
@@ -210,6 +232,12 @@ export interface BattleLastTurn {
   immuneToWeapon?: 'MELEE' | 'RANGED' | null
   companion?: BattleCompanionStrike | null
   playerDodged?: boolean
+  petrifyApplied?: number
+  extraHits?: BattleExtraHit[]
+  enemyDodged?: boolean
+  petrified?: boolean
+  melted?: boolean
+  enemyHealed?: number
 }
 
 export interface BattleSummary {

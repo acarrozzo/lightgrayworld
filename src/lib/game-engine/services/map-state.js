@@ -6,7 +6,9 @@
  */
 const { MAP_FLAG_FIELDS } = require('../../game-data/world-map')
 
-const MAP_STATE_FIELDS = [...MAP_FLAG_FIELDS, 'discoveredTeleports']
+// `forestPrincessFlag` rides with the discoveries: it is set by standing in a
+// room (525) and read by a gate (524 down), exactly like a found sheet.
+const MAP_STATE_FIELDS = [...MAP_FLAG_FIELDS, 'discoveredTeleports', 'forestPrincessFlag']
 
 /** Prisma `select` fragment for every discovery column. */
 const MAP_STATE_SELECT = Object.fromEntries(MAP_STATE_FIELDS.map((field) => [field, true]))

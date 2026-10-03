@@ -6,6 +6,7 @@ const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 const { grantTeleport } = require('./teleport-grants')
 const partyStore = require('../services/party-store')
 const { noteKill } = require('./services/kill-list-service')
+const { getTeleportHubByKill } = require('../game-data/world-map')
 
 /**
  * What a room does when one of its enemies dies in it — the few places the
@@ -22,6 +23,25 @@ const ROOM_WIN_HOOKS = {
     const { pullLever, HIGHWAY_TOLL } = require('./lever-state')
     pullLever(playerId, HIGHWAY_TOLL)
   },
+}
+
+/**
+ * A fast-travel landing that a kill opens rather than a visit — the original's
+ * Hydra Pit cube, which read `KLhydra >= 1`. One guarded push, so a second
+ * kill (or a second socket) never records it twice. Returns what the player
+ * should hear and the list to merge into their store, or null.
+ */
+async function discoverTeleportByKill(playerId, enemySlug) {
+  const hub = getTeleportHubByKill(enemySlug)
+  if (!hub) return null
+  const applied = await prisma.user.updateMany({
+    where: { id: playerId, NOT: { discoveredTeleports: { has: hub.discoveryId } } },
+    data: { discoveredTeleports: { push: hub.discoveryId } },
+  })
+  if (applied.count === 0) return null
+  const row = await prisma.user.findUnique({ where: { id: playerId }, select: { discoveredTeleports: true } })
+  const label = hub.isSubHub ? `${hub.regionName}, ${hub.name}` : hub.regionName
+  return { message: `Fast travel to ${label} is now open.`, discoveredTeleports: row?.discoveredTeleports ?? [hub.discoveryId] }
 }
 
 // Of this enemy's firstKill slugs, return the set the player already owns (equipped copies
@@ -224,6 +244,15 @@ async function persistBattleWin(playerId, battleState, rewards) {
   noteKill(playerId, enemy.slug)
   ROOM_WIN_HOOKS[battleState.roomId]?.(playerId, enemy.slug)
 
+  // A landing this kill opens. Non-fatal like the read-back below: the win is
+  // committed, and the next kill opens it if this write did not.
+  let teleportDiscovery = null
+  try {
+    teleportDiscovery = await discoverTeleportByKill(playerId, enemy.slug)
+  } catch (error) {
+    console.error('persistBattleWin: teleport discovery failed after commit:', error)
+  }
+
   // Read back outside the transaction: this is only needed to push to the client
   // and would otherwise hold the transaction open for an extra round-trip.
   // Non-fatal on purpose — the rewards are committed by this point, so a failed
@@ -238,7 +267,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
     }
   }
 
-  return { droppedItems, levelUp, inventory }
+  return { droppedItems, levelUp, inventory, teleportDiscovery }
 }
 
 async function handleBattleWin(playerId, battleState) {

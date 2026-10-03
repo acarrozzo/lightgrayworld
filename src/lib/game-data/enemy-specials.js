@@ -146,6 +146,22 @@ const ENEMY_SPECIALS = {
       return { rolls, raw: enemy.att * gouts }
     },
   },
+  petrify: {
+    id: 'petrify',
+    name: 'Petrifying Gaze',
+    label: 'Petrify',
+    rule: 'Petrify: 1 in 5 attacks turns you to stone for 1 to 2 turns. Stone cannot swing, cast, drink or run; it keeps attacking you.',
+    // The Despair's Gorgon and Medusa (2026-10-02, Anthony's call: 1–2 turns).
+    // The hit itself is an ordinary rand(0, ATT); it is what follows that
+    // hurts. Only offered while the player is not already stone.
+    chance: 1 / 5,
+    applies: 'petrify',
+    rollDamage: (enemy, rand) => {
+      const r = rand(0, enemy.att)
+      return { rolls: [r], raw: r }
+    },
+    rollPetrify: (rand) => rand(1, 2),
+  },
   pure: {
     id: 'pure',
     name: 'Pure Attack',
@@ -167,7 +183,41 @@ const ENEMY_SPECIALS = {
 // firebreath, then crit, then rage, then power, then bite, with the standing
 // pure modifier last so a Cyclops that also rolled something rarer still shows
 // the rarer thing.
-const SPECIAL_PRIORITY = ['whirlwind', 'dragonfire', 'crit', 'rage', 'power', 'bite', 'poison', 'venom', 'pure']
+const SPECIAL_PRIORITY = ['whirlwind', 'dragonfire', 'crit', 'rage', 'power', 'bite', 'poison', 'venom', 'petrify', 'pure']
+
+// --- Standing behaviours ------------------------------------------------------
+//
+// Not procs: properties an enemy has on every turn, read straight off its
+// definition. They were the original's `eMulti`, `eDoubleHit`/`eTripleHit`
+// and `eDodge` session flags (battle.php), plus three the Despair added.
+//
+//   multiHitChance  0–1   After each hit lands, this chance of another full
+//                         hit, rolled again after every extra one (the
+//                         original's `while` loop: eMulti N = N×10%).
+//   extraHits       1|2   Hits that always follow the first — eDoubleHit is
+//                         one extra, eTripleHit two.
+//   dodgeChance     0–1   The enemy steps out of the player's attack entirely:
+//                         nothing lands, and a spell or strike that would have
+//                         cost MP costs nothing (eDodge N = N×10%).
+//   absorbsHp       bool  Every point of damage it deals heals it, up to its
+//                         own full HP.
+//   meltsMelee      bool  A melee swing (and the strike riding it) does half
+//                         damage: the magma takes the blow and the blade.
+//
+// Chains of extra hits are capped so a lucky run cannot loop forever.
+const MAX_EXTRA_HITS = 6
+
+/** The standing behaviours an enemy definition declares, with safe defaults. */
+function getEnemyBehaviours(enemy) {
+  const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+  return {
+    multiHitChance: Math.min(1, Math.max(0, n(enemy?.multiHitChance))),
+    extraHits: Math.min(MAX_EXTRA_HITS, Math.max(0, Math.floor(n(enemy?.extraHits)))),
+    dodgeChance: Math.min(1, Math.max(0, n(enemy?.dodgeChance))),
+    absorbsHp: enemy?.absorbsHp === true,
+    meltsMelee: enemy?.meltsMelee === true,
+  }
+}
 
 /**
  * The special ids an enemy definition declares, filtered to ones that exist.
@@ -187,9 +237,10 @@ function hasSpecial(enemy, id) {
  * `rand` is injected so combat owns the RNG (and tests can make it deterministic).
  * `canPoison` is whether poison could take hold right now (not already
  * poisoned, not immune); a poison special is never offered otherwise, so a
- * poisoned player sees ordinary hits until the poison runs out.
+ * poisoned player sees ordinary hits until the poison runs out. `canPetrify`
+ * is the same for stone: not offered while the player is already stone.
  */
-function selectEnemySpecial(enemy, rand, { canPoison = true } = {}) {
+function selectEnemySpecial(enemy, rand, { canPoison = true, canPetrify = true } = {}) {
   const owned = getEnemySpecialIds(enemy)
   if (owned.length === 0) return null
 
@@ -197,6 +248,7 @@ function selectEnemySpecial(enemy, rand, { canPoison = true } = {}) {
     if (!owned.includes(id)) continue
     const special = ENEMY_SPECIALS[id]
     if (special.applies === 'poison' && !canPoison) continue
+    if (special.applies === 'petrify' && !canPetrify) continue
     // rand(1, N) === 1 for a 1/N chance — same shape as the original's rolls.
     if (rand(1, Math.round(1 / special.chance)) === 1) return special
   }
@@ -206,6 +258,8 @@ function selectEnemySpecial(enemy, rand, { canPoison = true } = {}) {
 module.exports = {
   ENEMY_SPECIALS,
   SPECIAL_PRIORITY,
+  MAX_EXTRA_HITS,
+  getEnemyBehaviours,
   getEnemySpecialIds,
   hasSpecial,
   selectEnemySpecial,

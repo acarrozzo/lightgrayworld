@@ -464,8 +464,16 @@ async function applyArrivalDiscoveries(prisma, socket, player, toRoom) {
     messages.push(`You found the ${sheet.title} map.`)
   }
 
+  // The Forest Princess: standing before her once is what opens the way down
+  // into the Despair (room-gates 524). The original's per-login flag, kept.
+  if (toRoom === '525' && !player.forestPrincessFlag) {
+    unlocks.forestPrincessFlag = true
+    messages.push('The Forest Princess looks at you for a long moment. Something below the Top of the Despair, to the east, has noticed you too.')
+  }
+
+  // A landing a kill opens (the Hydra Pit) is not found by standing in it.
   const hub = getTeleportHubByRoom(toRoom)
-  if (hub && !hub.alwaysOpen) {
+  if (hub && !hub.alwaysOpen && !hub.unlockedByKill) {
     const discovered = Array.isArray(player.discoveredTeleports) ? player.discoveredTeleports : []
     if (!discovered.includes(hub.discoveryId)) {
       unlocks.discoveredTeleports = [...discovered, hub.discoveryId]

@@ -2527,6 +2527,13 @@ export default function GameInterface() {
           skill: payload.skill ?? null,
           immuneToMagic: payload.immuneToMagic ?? false,
           playerDodged: payload.playerDodged ?? false,
+          petrifyApplied: payload.petrifyApplied ?? 0,
+          petrifiedTurns: payload.petrifiedTurns ?? 0,
+          extraHits: payload.extraHits ?? [],
+          enemyDodged: payload.enemyDodged ?? false,
+          petrified: payload.petrified ?? false,
+          melted: payload.melted ?? false,
+          enemyHealed: payload.enemyHealed ?? 0,
           playerMp: payload.playerMp,
           playerMpMax: payload.playerMpMax,
         })
@@ -2597,6 +2604,12 @@ export default function GameInterface() {
           skill: lt?.skill ?? null,
           immuneToMagic: lt?.immuneToMagic ?? false,
           playerDodged: lt?.playerDodged ?? false,
+          petrifyApplied: lt?.petrifyApplied ?? 0,
+          extraHits: lt?.extraHits ?? [],
+          enemyDodged: lt?.enemyDodged ?? false,
+          petrified: lt?.petrified ?? false,
+          melted: lt?.melted ?? false,
+          enemyHealed: lt?.enemyHealed ?? 0,
         })
         updateBattleTurn(buildUpdate(0))
       }, 0)
@@ -2656,6 +2669,12 @@ export default function GameInterface() {
           skill: lt?.skill ?? null,
           immuneToMagic: lt?.immuneToMagic ?? false,
           playerDodged: lt?.playerDodged ?? false,
+          petrifyApplied: lt?.petrifyApplied ?? 0,
+          extraHits: lt?.extraHits ?? [],
+          enemyDodged: lt?.enemyDodged ?? false,
+          petrified: lt?.petrified ?? false,
+          melted: lt?.melted ?? false,
+          enemyHealed: lt?.enemyHealed ?? 0,
         })
       }, 0)
       scheduleBattleTimer(applyDefeat, 900)

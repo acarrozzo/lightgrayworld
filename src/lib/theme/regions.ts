@@ -42,6 +42,7 @@ export const REGIONS: RegionMeta[] = [
   { id: 'rangersGuild', name: "Ranger's Guild" },
   { id: 'mountains', name: 'Mountains' },
   { id: 'starCity', name: 'Star City' },
+  { id: 'despair', name: 'The Despair' },
   { id: 'solarOffice', name: 'Solar Office' },
   { id: 'lobby', name: 'Plane of Rebirth' },
 ]
@@ -147,6 +148,8 @@ export function getRegionForRoom(roomId: string | null | undefined): RegionId {
   if (roomId.startsWith('5')) return 'darkForest'
   if (roomId.startsWith('6')) return 'mountains'
   if (roomId.startsWith('7')) return 'starCity'
+  // The Despair, the pit below the Dark Forest's Top of the Despair (524).
+  if (roomId.startsWith('9') && roomId !== '999') return 'despair'
   if (roomId.startsWith('4')) return 'ocean'
   if (roomId.startsWith('3')) return 'rockyFlats'
   if (roomId.startsWith('2')) return 'redTown'

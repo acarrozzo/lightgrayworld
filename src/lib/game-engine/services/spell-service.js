@@ -45,8 +45,8 @@ const SPELL_SELECT = /** @type {const} */ ({
   antidote: true,
   magicArmor: true,
   ironSkin: true,
-  wings: true,
-  gills: true,
+  wingsSpell: true,
+  gillsSpell: true,
   pajamaShamanFlag: true,
   travelingWizardFlag: true,
   wizardSkillFlag: true,
@@ -153,6 +153,15 @@ async function learnSpell(playerId, spellId, { mode = 'one' } = {}) {
   let level = state.spells[spell.column] || 0
   let sp = state.sp
 
+  // A spell the engine cannot cast yet takes no SP: the book shows it as not
+  // ported, and a level bought here would be a level that does nothing.
+  if (!spell.implemented) {
+    return {
+      success: false,
+      message: `${spell.name} cannot be learned yet — it is not in the game.`,
+      spellId, levelsGained: 0, newLevel: level, spSpent: 0, maxLevel,
+    }
+  }
   if (maxLevel <= 0) {
     return {
       success: false,

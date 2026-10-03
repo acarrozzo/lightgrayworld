@@ -41,7 +41,6 @@ const ACCEPTED = {
     '232b:east', // sewer pipe, noted in the Red Town port
     '118:west', // legacy asymmetry, faithful to the original
     '135:west', // legacy asymmetry, faithful to the original
-    '020:northwest', // Room Zero is left by its own teleport button
     '028e:east',
     '111:northeast',
     '111:southeast',
@@ -97,6 +96,10 @@ const ACCEPTED = {
     // clearing, which does not climb back.
     '615:south',
     '617:southwest',
+    // The Despair: the drop from the end of the shelf into the Hydra Pit.
+    // "Jump down" — and there is no climbing back; the way out is the pit's
+    // own fast travel, or death.
+    '904:down',
   ]),
 
   // Cardinal exits whose destination is not where the compass says. Lost in

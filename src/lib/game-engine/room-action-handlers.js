@@ -3832,22 +3832,6 @@ const ROOM_ACTIONS = {
     }),
   },
 
-  // --- Top of the Despair: the way down is not open yet ---
-  '524': {
-    'peer into the despair': {
-      showModal: true,
-      message: 'You lean into the darkness below and get an uneasy feeling.',
-      modalContent: {
-        type: 'icon',
-        icon: 'cave1',
-        iconColor: 'gray-500',
-        title: 'Top of the Despair',
-        message:
-          'You lean out over the edge. The dark goes down further than dark should, and something a very long way below it is breathing. Nothing you have will get you down there safely — not yet. The Despair is for another time.',
-      },
-    },
-  },
-
   // --- The Test of Light: the Forest Princess ---
   '525': {
     'rest by the princess': async (playerId, roomState) =>

@@ -51,6 +51,9 @@ const MAP_SHEETS = [
   // Star City, the capital of Vega. The original built one room of it — Camp
   // Hero, outside the walls — and drew the rest as a plan; the sheet is that plan.
   { id: 'star-city', title: 'Star City', src: '/img/lightgray_map_starcity.jpg', flag: 'starCityMap', region: 'star-city', level: 'Surface' },
+  // The Despair: the pit below the Dark Forest's Top of the Despair (524),
+  // filed under the Dark Forest like its tree tops are.
+  { id: 'the-despair', title: 'The Despair', src: '/img/lightgray_map_the_despair.jpg', flag: 'despairMap', region: 'dark-forest', level: 'The Despair' },
   { id: 'room-zero', title: 'Room Zero', src: '/img/lightgray_map_roomzero.jpg', flag: 'roomZeroMap', region: 'room-zero', level: 'Surface' },
   { id: 'lobby', title: 'Plane of Rebirth', src: '/img/lightgray_map_the_lobby.jpg', flag: 'lobbyMap', region: 'lobby', level: 'Surface' },
   { id: 'solar-office', title: 'Solar Office', src: '/img/lightgray_map_solar_office.jpg', flag: 'solarOfficeMap', region: 'solar-office', level: 'Surface' },
@@ -108,7 +111,14 @@ const WORLD_REGIONS = [
     // The original's teleport page gave the Ranger's Guild its own cube, open
     // to members. It is a sub-hub here: found by standing in the guild lobby,
     // which only a member can do, so membership is the discovery.
-    subHubs: [{ id: 'rangers-guild', roomId: '515a', name: "Ranger's Guild" }],
+    subHubs: [
+      { id: 'rangers-guild', roomId: '515a', name: "Ranger's Guild" },
+      // The original's "Hydra Pit" cube opened on the first Hydra kill
+      // (`KLhydra >= 1`), not on standing in the pit — you land in it by
+      // jumping, before the Hydra has been dealt with. `unlockedByKill` keeps
+      // that: arrival does not discover it, the win does (battle-win-handler).
+      { id: 'hydra-pit', roomId: '905', name: 'Hydra Pit', unlockedByKill: 'hydra' },
+    ],
   },
   {
     id: 'ocean',
@@ -168,10 +178,13 @@ const TELEPORT_HUBS = ALL_REGIONS.flatMap((region) => {
     name: sub.name,
     isSubHub: true,
     alwaysOpen: false,
+    // The enemy whose first kill opens this landing, when standing in it does not.
+    unlockedByKill: sub.unlockedByKill || null,
   }))
   return [main, ...subs]
 })
 const HUBS_BY_ROOM = new Map(TELEPORT_HUBS.map((hub) => [hub.roomId, hub]))
+const HUBS_BY_KILL = new Map(TELEPORT_HUBS.filter((hub) => hub.unlockedByKill).map((hub) => [hub.unlockedByKill, hub]))
 
 // --- Room → sheet -------------------------------------------------------------
 
@@ -228,6 +241,7 @@ function getMapIdForRoom(roomId) {
   if (roomId.startsWith('5')) return 'dark-forest'
   if (roomId.startsWith('6')) return 'mountains'
   if (roomId.startsWith('7')) return 'star-city'
+  if (roomId.startsWith('9')) return 'the-despair'
   if (OCEAN_UNDERWATER.has(roomId)) return 'ocean-underwater'
   if (roomId.startsWith('4')) return 'ocean'
   if (roomId.startsWith('003b') || (roomId.startsWith('028') && roomId !== '028') || SCORPION_DUNGEON.has(roomId)) {
@@ -276,6 +290,11 @@ function getTeleportHubByRoom(roomId) {
   return HUBS_BY_ROOM.get(roomId) || null
 }
 
+/** The landing a kill of this enemy opens, or null. */
+function getTeleportHubByKill(enemySlug) {
+  return HUBS_BY_KILL.get(enemySlug) || null
+}
+
 /** A region's sub-hubs as landings, in the order they are declared. */
 function getSubHubsForRegion(regionId) {
   return TELEPORT_HUBS.filter((hub) => hub.isSubHub && hub.regionId === regionId)
@@ -299,6 +318,7 @@ module.exports = {
   getWorldRegionForRoom,
   getWorldRegionByHubRoom,
   getTeleportHubByRoom,
+  getTeleportHubByKill,
   getSubHubsForRegion,
   getSheetsForRegion,
   TELEPORT_HUBS,

@@ -16,7 +16,9 @@
 // the stat the tag concerns for attack type and immunities (DEX for ranged,
 // MAG for magic, STR for melee).
 
-const { ENEMY_SPECIALS, SPECIAL_PRIORITY, getEnemySpecialIds } = require('./enemy-specials')
+const { ENEMY_SPECIALS, SPECIAL_PRIORITY, getEnemySpecialIds, getEnemyBehaviours } = require('./enemy-specials')
+
+const pct = (chance) => `${Math.round(chance * 100)}%`
 
 /**
  * @typedef {'crit' | 'poison' | 'sky' | 'str' | 'dex' | 'mag'} EnemyTraitTone
@@ -43,6 +45,50 @@ function getEnemyTraits(enemy) {
       label: special.label ?? special.name,
       title: special.rule ?? special.name,
       tone: special.applies === 'poison' ? 'poison' : 'crit',
+    })
+  }
+
+  // The standing behaviours, after the procs: how often it swings again, how
+  // it slips your attacks, what it does with the damage it deals.
+  const b = getEnemyBehaviours(enemy)
+  if (b.extraHits > 0) {
+    traits.push({
+      id: 'extra-hits',
+      label: b.extraHits >= 2 ? 'Triple Hit' : 'Double Hit',
+      title: `${b.extraHits >= 2 ? 'Triple' : 'Double'} Hit: every attack is ${b.extraHits + 1} hits, each blocked on its own.`,
+      tone: 'crit',
+    })
+  }
+  if (b.multiHitChance > 0) {
+    traits.push({
+      id: 'multi-hit',
+      label: `Multi ${pct(b.multiHitChance)}`,
+      title: `Multi-hit: after each hit lands, a ${pct(b.multiHitChance)} chance it hits again — and again after that.`,
+      tone: 'crit',
+    })
+  }
+  if (b.dodgeChance > 0) {
+    traits.push({
+      id: 'enemy-dodge',
+      label: `Dodge ${pct(b.dodgeChance)}`,
+      title: `Dodge: a ${pct(b.dodgeChance)} chance your attack misses it entirely. A spell or strike it dodges costs no MP.`,
+      tone: 'dex',
+    })
+  }
+  if (b.absorbsHp) {
+    traits.push({
+      id: 'absorb',
+      label: 'Absorb',
+      title: 'HP Absorb: every point of damage it deals heals it, up to full.',
+      tone: 'poison',
+    })
+  }
+  if (b.meltsMelee) {
+    traits.push({
+      id: 'melt',
+      label: 'Melt',
+      title: 'Melt: a melee swing does half damage — the magma takes the blow and the blade with it. Ranged and magic are unaffected.',
+      tone: 'str',
     })
   }
 

@@ -52,6 +52,12 @@
  * The Mountains' ordinary set, in units of 1/1050 (see the MOUNTAINS block):
  * seven slots of 70. Two of the slots are sub-rolls of seven.
  */
+/** The Despair's one set: eleven, one slot each, as the original rolled it. */
+const DESPAIR_SET = [
+  'hydra', 'brownie', 'harpy', 'gorgon', 'banshee', 'succubus',
+  'magma-goblin', 'magma-kobold', 'magma-orc', 'magma-ogre', 'magma-troll',
+].map((slug) => ({ slug, weight: 1 }))
+
 const MOUNTAIN_SET = [
   // The road's rarities, one slot shared seven ways.
   { slug: 'bowman', weight: 10 },
@@ -2891,6 +2897,26 @@ const ROOM_ENEMIES = {
     spawnChance: 0.25,
     enemies: [{ slug: 'silver-titan', weight: 100 }],
   },
+
+  // ==================== THE DESPAIR ====================
+  // The original's the-despair-1.php: rand(1, 11), one of eleven, every
+  // turn — nothing down here is ever empty. The pit itself is the Hydra's
+  // and nothing else's; each den holds its boss, there the moment you step
+  // in and again the turn after it dies; the way-down shelf (901–904) is
+  // the one quiet stretch.
+  ...Object.fromEntries(
+    ['906', '907', '908', '909', '910', '912', '913', '915', '916', '917', '919', '920', '921', '923', '924', '926'].map((roomId) => [
+      roomId,
+      { probabilistic: true, spawnChance: 1, enemies: DESPAIR_SET },
+    ])
+  ),
+  '905': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'hydra', weight: 1 }] },
+  '911': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'chimera', weight: 1 }] },
+  '914': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'basilisk', weight: 1 }] },
+  '918': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'cerberus', weight: 1 }] },
+  '922': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'manticore', weight: 1 }] },
+  '927': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'medusa', weight: 1 }] },
+  '925': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'skeleton-king', weight: 1 }] },
 }
 
 function getRoomEnemies(roomId) {

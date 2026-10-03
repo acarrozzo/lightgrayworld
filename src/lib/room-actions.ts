@@ -470,9 +470,6 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '523': [
     { action: 'challenge the troll king', label: 'Challenge the Troll King', icon: 'attack', className: 'fill-action-attack' },
   ],
-  '524': [
-    { action: 'peer into the despair', label: 'Peer into the Despair', icon: 'cave1', className: 'fill-surface-selected' },
-  ],
   '525': [
     { action: 'rest by the princess', label: 'Rest', icon: 'heal', className: 'fill-hue-green' },
     { action: 'battle forest princess', label: 'Battle the Forest Princess', icon: 'attack', className: 'fill-action-attack' },

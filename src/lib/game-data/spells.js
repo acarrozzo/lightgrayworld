@@ -90,9 +90,8 @@ const SPELL_TEACHERS = {
  * The original set `travelingwizardFlag` on any arrival in 105, and
  * `wizardskillFlag` on entering the guild interior (225b), which only members
  * could reach — here the guild is one room, so the flag waits on the
- * initiation quest (the Kobold Master) being turned in. Star City (701) is
- * not ported yet, so its flag stays false and its tier shows as
- * "find a teacher".
+ * initiation quest (the Kobold Master) being turned in. Camp Hero (701) sets
+ * the Star City flag on arrival, as the original did.
  *
  * @type {Record<string, { flag: string, message: string, requiresMembership?: string }>}
  */
@@ -427,7 +426,8 @@ const SPELLS = [
   },
   {
     id: 'wings',
-    column: 'wings',
+    // The LEVEL. `User.wings` is the running click countdown the gates read.
+    column: 'wingsSpell',
     name: 'Wings',
     school: 'alteration',
     kind: 'buff',
@@ -442,7 +442,8 @@ const SPELLS = [
   },
   {
     id: 'gills',
-    column: 'gills',
+    // The LEVEL. `User.gills` is the running click countdown the gates read.
+    column: 'gillsSpell',
     name: 'Gills',
     school: 'alteration',
     kind: 'buff',
@@ -528,9 +529,9 @@ function getNextLearnCost(spell, level, maxLevel) {
 
 /**
  * Whether the engine can cast this spell at all today — its kind has a handler.
- * Learnable-but-unimplemented spells cannot occur yet (their teachers are not
- * wired), but the check keeps a future data change from reaching a handler
- * that does not exist.
+ * An unimplemented spell is listed in the book as "not ported" and the learn
+ * path refuses SP on it (spell-service), so nothing reaches a handler that
+ * does not exist.
  * @param {SpellDef} spell
  */
 function isCastable(spell) {

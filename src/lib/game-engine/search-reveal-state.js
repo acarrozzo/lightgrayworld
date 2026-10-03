@@ -229,6 +229,20 @@ const REVEAL_DEFINITIONS = {
     failMessage: "You search Dragon's Ledge and don't find anything of interest.",
     stateNote: 'A shiny platform glints far below to the northwest. You could jump off the ledge.',
   },
+  // The Despair's two hidden dens (Anthony's plan, 2026-10-02): searching the
+  // bottom of the pit finds the way down to them, every time. Both run back.
+  '915': {
+    direction: 'southwest',
+    toRoom: '926',
+    successMessage: 'You search the rock and find a crack running southwest, wide enough to squeeze through. Something below it is breathing slowly.',
+    stateNote: 'A crack in the rock runs southwest, wide enough to squeeze through.',
+  },
+  '916': {
+    direction: 'southeast',
+    toRoom: '927',
+    successMessage: 'You search the rock and find a crack running southeast, wide enough to squeeze through. Nothing moves beyond it. Nothing at all.',
+    stateNote: 'A crack in the rock runs southeast. Nothing beyond it moves.',
+  },
 }
 
 function getRevealDefinition(roomId) {

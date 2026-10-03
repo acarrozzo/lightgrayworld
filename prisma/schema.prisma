@@ -73,6 +73,10 @@ model User {
   unlock                    Int             @default(0)
   ironSkin                  Int             @default(0)
   magicArmor                Int             @default(0)
+  /// Spell LEVELS for Wings and Gills. `wings` / `gills` below are the running
+  /// click countdowns (potion or cast) that the gates and combat read as the ability.
+  wingsSpell                Int             @default(0)
+  gillsSpell                Int             @default(0)
   wings                     Int             @default(0)
   gills                     Int             @default(0)
   buffStrClicks             Int             @default(0)
@@ -136,6 +140,7 @@ model User {
   darkForestUpperMap        Boolean         @default(false)
   mountainsMap              Boolean         @default(false)
   starCityMap               Boolean         @default(false)
+  despairMap                Boolean         @default(false)
   worldMapV1                Boolean         @default(false)
   worldMapV2                Boolean         @default(false)
   worldMapV3                Boolean         @default(false)
@@ -159,6 +164,9 @@ model User {
   masterTrainerFlag         Boolean         @default(false)
   starCitySkillsFlag        Boolean         @default(false)
   starCitySpellsFlag        Boolean         @default(false)
+  /// Stood before the Forest Princess (525) at least once: the way down into
+  /// the Despair from 524 is open. The original's `enterdespair`, made durable.
+  forestPrincessFlag        Boolean         @default(false)
   dailyChestLast            Int             @default(0)
   dailyChestNextAvailable   Int             @default(0)
   dailyChestCount           Int             @default(0)

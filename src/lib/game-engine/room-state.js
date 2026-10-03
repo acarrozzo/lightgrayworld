@@ -6,6 +6,10 @@ const { RESPAWN_ROOM_ID, CHAT_MESSAGE_MAX_LENGTH } = require('../game-data/const
  * The few things a dead player (HP 0) may still do: rise — the one authorized
  * move, to the Plane of Rebirth — look around, and talk.
  */
+function isAllowedWhileStone(action) {
+  const type = typeof action === 'object' ? action.type : action
+  return type === 'chat' || type === 'look' || type === 'attack' || type === 'player_attack' || type === 'examine_item' || type === 'examine_player_item'
+}
 function isAllowedWhileDead(action) {
   const type = typeof action === 'object' ? action.type : action
   if (type === 'chat' || type === 'look') return true
@@ -849,6 +853,15 @@ class RoomState {
     const live = this.players.get(playerId)
     if (live && (live.hp ?? 1) <= 0 && !isAllowedWhileDead(action)) {
       return this.createErrorResult(actionName, "You're dead. Rise in the Plane of Rebirth first.")
+    }
+
+    // Stone. A Gorgon's or Medusa's gaze holds the player for a turn or two:
+    // the only thing they can do is let the turn pass (attack), and look and
+    // talk while it does. A potion, a swap, a cast, a retreat — refused, the
+    // way the stone would refuse them.
+    const stoneBattle = this.activeBattles.get(playerId)
+    if (stoneBattle?.isActive && stoneBattle.isPetrified && !isAllowedWhileStone(action)) {
+      return this.createErrorResult(actionName, 'You are STONE. You cannot move until it wears off — pass the turn.')
     }
     const roomSpecificResult = await executeRoomAction(
       this.roomId,

@@ -371,6 +371,37 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '622': { x: 560, y: 35 },  // Cathedral Nave
   '623': { x: 665, y: 35 },  // Cathedral Altar
   '625': { x: 88, y: 560 },  // Silver Temple (drawn off the grid, bottom-left)
+
+  // The Despair (lightgray_map_the_despair.jpg). The way-down shelf is drawn
+  // as cells in the top-right; the pit below is a graph of nodes on the same
+  // 105px grid, each given here by the cell that centres on its node.
+  '901': { x: 455, y: 35 },  // The Way Down
+  '902': { x: 560, y: 35 },
+  '903': { x: 665, y: 35 },
+  '904': { x: 665, y: 140 },  // The Drop
+  '925': { x: 350, y: 140 },  // Skeleton King
+  '923': { x: 245, y: 245 },
+  '924': { x: 350, y: 245 },
+  '907': { x: 455, y: 245 },
+  '921': { x: 35, y: 350 },
+  '920': { x: 140, y: 350 },
+  '905': { x: 350, y: 350 },  // Hydra Pit
+  '908': { x: 560, y: 350 },
+  '911': { x: 665, y: 350 },  // Chimera
+  '922': { x: 35, y: 455 },  // Manticore
+  '919': { x: 140, y: 455 },
+  '906': { x: 350, y: 455 },
+  '909': { x: 560, y: 455 },
+  '910': { x: 665, y: 455 },
+  '918': { x: 35, y: 560 },  // Cerberus
+  '916': { x: 245, y: 560 },
+  '915': { x: 350, y: 560 },
+  '912': { x: 455, y: 560 },
+  '917': { x: 140, y: 665 },
+  '926': { x: 245, y: 665 },
+  '927': { x: 350, y: 665 },  // Medusa
+  '913': { x: 560, y: 665 },
+  '914': { x: 665, y: 665 },  // Basilisk
   // Star City (lightgray_map_starcity.jpg): Camp Hero, outside the east wall.
   '701': { x: 665, y: 350 },  // Camp Hero
 }

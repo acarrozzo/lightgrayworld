@@ -317,29 +317,19 @@ const ROOM_GATES = {
     },
   },
   '020': {
+    // Northwest, up the waterfall, to the Master Trainer's courtyard in the
+    // Mountains — the original's direction and its refusal. (A pre-Mountains
+    // placeholder once pointed this exit at Room Zero, and the port briefly
+    // moved the flight to `up`; both are gone.)
     'northwest': {
       check: (playerId) => playerCanFly(playerId),
-      message: "The path ahead is too treacherous. You need the ability to fly to traverse this route.",
-      modalContent: {
-        title: 'The path is blocked',
-        type: 'icon',
-        icon: 'mountain',
-        iconColor: 'gray-600',
-        message: "The path ahead is too treacherous. You need the ability to fly to traverse this route.",
-      },
-    },
-    // Up the waterfall to the Master Trainer's courtyard in the Mountains. The
-    // original put this on `northwest`, which here leads to Room Zero, so the
-    // flight goes `up` — which is what it is.
-    'up': {
-      check: (playerId) => playerCanFly(playerId),
-      message: 'You will not be able to fly up the waterfall unless you are flying. Find or buy a Wings Potion, or cast the Wings spell.',
+      message: 'You will not be able to go northwest unless you are flying. Find or buy a Wings Potion, or cast the Wings spell.',
       modalContent: {
         title: 'The waterfall',
         type: 'icon',
         icon: 'wings',
         iconColor: 'blue-300',
-        message: 'The water comes down out of the mountains from somewhere very high up, and there are no stairs. You will not be able to go up unless you are flying — find or buy a Wings Potion, or cast the Wings spell.',
+        message: 'The water comes down out of the mountains from somewhere very high up, and there are no stairs. You will not be able to go northwest unless you are flying — find or buy a Wings Potion, or cast the Wings spell.',
       },
     },
   },
@@ -1148,6 +1138,9 @@ for (const [roomId, direction, hint] of [
   ['615', 'northwest', "You don't see an exit to the northwest. You should try searching."],
   ['623', 'southwest', "You don't see an exit to the southwest. You should try searching."],
   ['620', 'northwest', "You don't see an exit to the northwest. You should try searching."],
+  // The Despair's two hidden dens.
+  ['915', 'southwest', "You don't see a way southwest. You should try searching."],
+  ['916', 'southeast', "You don't see a way southeast. You should try searching."],
 ]) {
   ROOM_GATES[roomId] = ROOM_GATES[roomId] || {}
   ROOM_GATES[roomId][direction] = {
@@ -1158,6 +1151,46 @@ for (const [roomId, direction, hint] of [
     message: hint,
     silent: true,
   }
+}
+// ==================== THE DESPAIR ====================
+// The way down from the Top of the Despair. The original let you down only if
+// you had walked into the Forest Princess's room that same login
+// (`$_SESSION['enterdespair']`); here it is a flag set the first time you
+// stand before her (forestPrincessFlag, socket-server-handlers), for good.
+ROOM_GATES['524'] = {
+  down: {
+    check: async (playerId) => {
+      const user = await prisma.user.findUnique({ where: { id: playerId }, select: { forestPrincessFlag: true } })
+      return user?.forestPrincessFlag === true
+    },
+    message: 'You attempt to go down into the Despair but are prevented from doing so. The pale light to the west may know the way.',
+    modalContent: {
+      title: 'The Despair does not open',
+      type: 'icon',
+      icon: 'cave1',
+      iconColor: 'gray-500',
+      message: 'You lean out over the edge. The dark goes down further than dark should, and something a very long way below it is breathing. Whatever holds the way shut, it is not stone. The pale light to the west may know the way.',
+    },
+  },
+}
+// The Skeleton King's gate at the top of the pit: it opens for whoever has put
+// down all five of the level-80 bosses in their dens.
+const DESPAIR_GATE_KEEPERS = ['chimera', 'basilisk', 'cerberus', 'manticore', 'medusa']
+ROOM_GATES['924'] = {
+  north: {
+    check: async (playerId) => {
+      const kills = await Promise.all(DESPAIR_GATE_KEEPERS.map((slug) => hasKilled(playerId, slug)))
+      return kills.every(Boolean)
+    },
+    message: 'A gate of bone bars the way north. Five seals on it, one for each of the things that guard the pit: the Chimera, the Basilisk, the Cerberus, the Manticore and Medusa. Kill all five and it opens.',
+    modalContent: {
+      title: 'The gate of bone',
+      type: 'icon',
+      icon: 'skull',
+      iconColor: 'red-400',
+      message: 'A gate of bone, and five seals on it. Each is a face: the Chimera, the Basilisk, the Cerberus, the Manticore, Medusa. A seal cracks when its face dies. All five, and the King will see you.',
+    },
+  },
 }
 // The Cathedral Graveyard: "You are lost in a gloomy graveyard. You might find
 // your way out, but probably not." Every direction is an exit and every one

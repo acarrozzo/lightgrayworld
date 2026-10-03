@@ -232,6 +232,13 @@
   --color-world-star-city-direction: var(--world-star-city-direction);
   --color-world-star-city-accent: var(--world-star-city-accent);
   --color-world-star-city-tint: var(--world-star-city-tint);
+  --color-world-despair: var(--world-despair);
+  --color-world-despair-title: var(--world-despair-title);
+  --color-world-despair-subtitle: var(--world-despair-subtitle);
+  --color-world-despair-icon: var(--world-despair-icon);
+  --color-world-despair-direction: var(--world-despair-direction);
+  --color-world-despair-accent: var(--world-despair-accent);
+  --color-world-despair-tint: var(--world-despair-tint);
   --color-world-solar-office: var(--world-solar-office);
   --color-world-solar-office-title: var(--world-solar-office-title);
   --color-world-solar-office-subtitle: var(--world-solar-office-subtitle);
@@ -855,6 +862,24 @@
   --color-fill-world-star-city-accent: var(--fill-world-star-city-accent);
   --color-hover-world-star-city-accent: var(--hover-world-star-city-accent);
   --color-on-world-star-city-accent: var(--on-world-star-city-accent);
+  --color-fill-world-despair: var(--fill-world-despair);
+  --color-hover-world-despair: var(--hover-world-despair);
+  --color-on-world-despair: var(--on-world-despair);
+  --color-fill-world-despair-title: var(--fill-world-despair-title);
+  --color-hover-world-despair-title: var(--hover-world-despair-title);
+  --color-on-world-despair-title: var(--on-world-despair-title);
+  --color-fill-world-despair-subtitle: var(--fill-world-despair-subtitle);
+  --color-hover-world-despair-subtitle: var(--hover-world-despair-subtitle);
+  --color-on-world-despair-subtitle: var(--on-world-despair-subtitle);
+  --color-fill-world-despair-icon: var(--fill-world-despair-icon);
+  --color-hover-world-despair-icon: var(--hover-world-despair-icon);
+  --color-on-world-despair-icon: var(--on-world-despair-icon);
+  --color-fill-world-despair-direction: var(--fill-world-despair-direction);
+  --color-hover-world-despair-direction: var(--hover-world-despair-direction);
+  --color-on-world-despair-direction: var(--on-world-despair-direction);
+  --color-fill-world-despair-accent: var(--fill-world-despair-accent);
+  --color-hover-world-despair-accent: var(--hover-world-despair-accent);
+  --color-on-world-despair-accent: var(--on-world-despair-accent);
   --color-fill-world-solar-office: var(--fill-world-solar-office);
   --color-hover-world-solar-office: var(--hover-world-solar-office);
   --color-on-world-solar-office: var(--on-world-solar-office);
@@ -1123,6 +1148,13 @@
   --world-star-city-direction: #3d6fc4;
   --world-star-city-accent: #6b91d1;
   --world-star-city-tint: #3d6fc41a;
+  --world-despair: #604553;
+  --world-despair-title: #a4959e;
+  --world-despair-subtitle: #9996a4;
+  --world-despair-icon: #86727d;
+  --world-despair-direction: #684e5b;
+  --world-despair-accent: #86727d;
+  --world-despair-tint: #6045531a;
   --world-solar-office: #efb450;
   --world-solar-office-title: #efb450;
   --world-solar-office-subtitle: #c2a779;
@@ -1746,6 +1778,24 @@
   --fill-world-star-city-accent: #6b91d1;
   --hover-world-star-city-accent: #7ba2e3;
   --on-world-star-city-accent: #f6f7f9;
+  --fill-world-despair: #604553;
+  --hover-world-despair: #705462;
+  --on-world-despair: #f6f7f9;
+  --fill-world-despair-title: #a4959e;
+  --hover-world-despair-title: #b5a6af;
+  --on-world-despair-title: #f6f7f9;
+  --fill-world-despair-subtitle: #9996a4;
+  --hover-world-despair-subtitle: #aaa7b5;
+  --on-world-despair-subtitle: #f6f7f9;
+  --fill-world-despair-icon: #86727d;
+  --hover-world-despair-icon: #97828d;
+  --on-world-despair-icon: #f6f7f9;
+  --fill-world-despair-direction: #684e5b;
+  --hover-world-despair-direction: #785d6b;
+  --on-world-despair-direction: #f6f7f9;
+  --fill-world-despair-accent: #86727d;
+  --hover-world-despair-accent: #97828d;
+  --on-world-despair-accent: #f6f7f9;
   --fill-world-solar-office: #efb450;
   --hover-world-solar-office: #ffc663;
   --on-world-solar-office: #f6f7f9;
@@ -2015,6 +2065,13 @@
   --world-star-city-direction: #3d6fc4;
   --world-star-city-accent: #6b91d1;
   --world-star-city-tint: #3d6fc41a;
+  --world-despair: #604553;
+  --world-despair-title: #a4959e;
+  --world-despair-subtitle: #9996a4;
+  --world-despair-icon: #86727d;
+  --world-despair-direction: #684e5b;
+  --world-despair-accent: #86727d;
+  --world-despair-tint: #6045531a;
   --world-solar-office: #efb450;
   --world-solar-office-title: #efb450;
   --world-solar-office-subtitle: #c2a779;
@@ -2638,6 +2695,24 @@
   --fill-world-star-city-accent: #6b91d1;
   --hover-world-star-city-accent: #7ba2e3;
   --on-world-star-city-accent: #f6f7f9;
+  --fill-world-despair: #604553;
+  --hover-world-despair: #705462;
+  --on-world-despair: #f6f7f9;
+  --fill-world-despair-title: #a4959e;
+  --hover-world-despair-title: #b5a6af;
+  --on-world-despair-title: #f6f7f9;
+  --fill-world-despair-subtitle: #9996a4;
+  --hover-world-despair-subtitle: #aaa7b5;
+  --on-world-despair-subtitle: #f6f7f9;
+  --fill-world-despair-icon: #86727d;
+  --hover-world-despair-icon: #97828d;
+  --on-world-despair-icon: #f6f7f9;
+  --fill-world-despair-direction: #684e5b;
+  --hover-world-despair-direction: #785d6b;
+  --on-world-despair-direction: #f6f7f9;
+  --fill-world-despair-accent: #86727d;
+  --hover-world-despair-accent: #97828d;
+  --on-world-despair-accent: #f6f7f9;
   --fill-world-solar-office: #efb450;
   --hover-world-solar-office: #ffc663;
   --on-world-solar-office: #f6f7f9;
@@ -2907,6 +2982,13 @@
   --world-star-city-direction: #2563eb;
   --world-star-city-accent: #5c8af0;
   --world-star-city-tint: #2563eb1a;
+  --world-despair: #643038;
+  --world-despair-title: #9a787e;
+  --world-despair-subtitle: #887882;
+  --world-despair-icon: #835960;
+  --world-despair-direction: #74454c;
+  --world-despair-accent: #8b646a;
+  --world-despair-tint: #6430381a;
   --world-solar-office: #facc15;
   --world-solar-office-title: #facc15;
   --world-solar-office-subtitle: #bda748;
@@ -3530,6 +3612,24 @@
   --fill-world-star-city-accent: #3962c6;
   --hover-world-star-city-accent: #456ed5;
   --on-world-star-city-accent: #ffffff;
+  --fill-world-despair: #643038;
+  --hover-world-despair: #845058;
+  --on-world-despair: #ffffff;
+  --fill-world-despair-title: #826369;
+  --hover-world-despair-title: #8a6b71;
+  --on-world-despair-title: #ffffff;
+  --fill-world-despair-subtitle: #73636d;
+  --hover-world-despair-subtitle: #7f6f79;
+  --on-world-despair-subtitle: #ffffff;
+  --fill-world-despair-icon: #835960;
+  --hover-world-despair-icon: #936970;
+  --on-world-despair-icon: #ffffff;
+  --fill-world-despair-direction: #74454c;
+  --hover-world-despair-direction: #94656c;
+  --on-world-despair-direction: #ffffff;
+  --fill-world-despair-accent: #835d63;
+  --hover-world-despair-accent: #8f696f;
+  --on-world-despair-accent: #ffffff;
   --fill-world-solar-office: #8a5f00;
   --hover-world-solar-office: #9a6f1e;
   --on-world-solar-office: #ffffff;
@@ -3799,6 +3899,13 @@
   --world-star-city-direction: #5c7fb8;
   --world-star-city-accent: #829dc7;
   --world-star-city-tint: #5c7fb81a;
+  --world-despair: #52322f;
+  --world-despair-title: #93807e;
+  --world-despair-subtitle: #887d7c;
+  --world-despair-icon: #7b6361;
+  --world-despair-direction: #6a4f4d;
+  --world-despair-accent: #7b6361;
+  --world-despair-tint: #52322f1a;
   --world-solar-office: #d9b84a;
   --world-solar-office-title: #d9b84a;
   --world-solar-office-subtitle: #ae9c60;
@@ -4422,6 +4529,24 @@
   --fill-world-star-city-accent: #4a6287;
   --hover-world-star-city-accent: #566e93;
   --on-world-star-city-accent: #f5f5f5;
+  --fill-world-despair: #52322f;
+  --hover-world-despair: #72524e;
+  --on-world-despair: #f5f5f5;
+  --fill-world-despair-title: #6e5d5b;
+  --hover-world-despair-title: #7a6967;
+  --on-world-despair-title: #f5f5f5;
+  --fill-world-despair-subtitle: #6c6160;
+  --hover-world-despair-subtitle: #786d6c;
+  --on-world-despair-subtitle: #f5f5f5;
+  --fill-world-despair-icon: #745c5a;
+  --hover-world-despair-icon: #806866;
+  --on-world-despair-icon: #f5f5f5;
+  --fill-world-despair-direction: #6a4f4d;
+  --hover-world-despair-direction: #826765;
+  --on-world-despair-direction: #f5f5f5;
+  --fill-world-despair-accent: #745c5a;
+  --hover-world-despair-accent: #806866;
+  --on-world-despair-accent: #f5f5f5;
   --fill-world-solar-office: #7a5c00;
   --hover-world-solar-office: #8a6c1d;
   --on-world-solar-office: #f5f5f5;
@@ -4691,6 +4816,13 @@
   --world-star-city-direction: #6c9992;
   --world-star-city-accent: #8caa9a;
   --world-star-city-tint: #6c99921a;
+  --world-despair: #7b3f39;
+  --world-despair-title: #b9957c;
+  --world-despair-subtitle: #b19780;
+  --world-despair-icon: #9d6e5d;
+  --world-despair-direction: #915e51;
+  --world-despair-accent: #976657;
+  --world-despair-tint: #7b3f391a;
   --world-solar-office: #fabd2f;
   --world-solar-office-title: #fabd2f;
   --world-solar-office-subtitle: #d5ad55;
@@ -5314,6 +5446,24 @@
   --fill-world-star-city-accent: #3e594b;
   --hover-world-star-city-accent: #4a6557;
   --on-world-star-city-accent: #ebdbb2;
+  --fill-world-despair: #7b3f39;
+  --hover-world-despair: #8b4f49;
+  --on-world-despair: #ebdbb2;
+  --fill-world-despair-title: #6c4d36;
+  --hover-world-despair-title: #785942;
+  --on-world-despair-title: #ebdbb2;
+  --fill-world-despair-subtitle: #654f3a;
+  --hover-world-despair-subtitle: #715b46;
+  --on-world-despair-subtitle: #ebdbb2;
+  --fill-world-despair-icon: #754b3a;
+  --hover-world-despair-icon: #815746;
+  --on-world-despair-icon: #ebdbb2;
+  --fill-world-despair-direction: #79493c;
+  --hover-world-despair-direction: #855548;
+  --on-world-despair-direction: #ebdbb2;
+  --fill-world-despair-accent: #774a3b;
+  --hover-world-despair-accent: #835647;
+  --on-world-despair-accent: #ebdbb2;
   --fill-world-solar-office: #7a4300;
   --hover-world-solar-office: #8a5319;
   --on-world-solar-office: #ebdbb2;
@@ -5583,6 +5733,13 @@
   --world-star-city-direction: #7c9ab9;
   --world-star-city-accent: #98afc8;
   --world-star-city-tint: #7c9ab91a;
+  --world-despair: #664c59;
+  --world-despair-title: #b0a6ae;
+  --world-despair-subtitle: #a3a4b1;
+  --world-despair-icon: #95858f;
+  --world-despair-direction: #816d78;
+  --world-despair-accent: #887580;
+  --world-despair-tint: #664c591a;
   --world-solar-office: #d5b983;
   --world-solar-office-title: #d5b983;
   --world-solar-office-subtitle: #b8ae9a;
@@ -6206,6 +6363,24 @@
   --fill-world-star-city-accent: #495d73;
   --hover-world-star-city-accent: #596d83;
   --on-world-star-city-accent: #eceff4;
+  --fill-world-despair: #664c59;
+  --hover-world-despair: #7e6471;
+  --on-world-despair: #eceff4;
+  --fill-world-despair-title: #655c63;
+  --hover-world-despair-title: #71686f;
+  --on-world-despair-title: #eceff4;
+  --fill-world-despair-subtitle: #5a5b66;
+  --hover-world-despair-subtitle: #6a6b76;
+  --on-world-despair-subtitle: #eceff4;
+  --fill-world-despair-icon: #695b64;
+  --hover-world-despair-icon: #756770;
+  --on-world-despair-icon: #eceff4;
+  --fill-world-despair-direction: #6c5863;
+  --hover-world-despair-direction: #78646f;
+  --on-world-despair-direction: #eceff4;
+  --fill-world-despair-accent: #6c5964;
+  --hover-world-despair-accent: #786570;
+  --on-world-despair-accent: #eceff4;
   --fill-world-solar-office: #775e2b;
   --hover-world-solar-office: #7f6633;
   --on-world-solar-office: #eceff4;
@@ -6475,6 +6650,13 @@
   --world-star-city-direction: #6f9fd8;
   --world-star-city-accent: #8dafd5;
   --world-star-city-tint: #6f9fd81a;
+  --world-despair: #8c4a52;
+  --world-despair-title: #c3a49b;
+  --world-despair-subtitle: #b2a69d;
+  --world-despair-icon: #ac7f7d;
+  --world-despair-direction: #9a6164;
+  --world-despair-accent: #a37071;
+  --world-despair-tint: #8c4a521a;
   --world-solar-office: #e5c884;
   --world-solar-office-title: #e5c884;
   --world-solar-office-subtitle: #c5ba91;
@@ -7098,6 +7280,24 @@
   --fill-world-star-city-accent: #375676;
   --hover-world-star-city-accent: #476686;
   --on-world-star-city-accent: #e8e0cc;
+  --fill-world-despair: #84434b;
+  --hover-world-despair: #904f57;
+  --on-world-despair: #e8e0cc;
+  --fill-world-despair-title: #6e534c;
+  --hover-world-despair-title: #765b54;
+  --on-world-despair-title: #e8e0cc;
+  --fill-world-despair-subtitle: #60554d;
+  --hover-world-despair-subtitle: #6c6159;
+  --on-world-despair-subtitle: #e8e0cc;
+  --fill-world-despair-icon: #754e4c;
+  --hover-world-despair-icon: #815a58;
+  --on-world-despair-icon: #e8e0cc;
+  --fill-world-despair-direction: #7a4548;
+  --hover-world-despair-direction: #8a5558;
+  --on-world-despair-direction: #e8e0cc;
+  --fill-world-despair-accent: #734647;
+  --hover-world-despair-accent: #835657;
+  --on-world-despair-accent: #e8e0cc;
   --fill-world-solar-office: #694f00;
   --hover-world-solar-office: #795f19;
   --on-world-solar-office: #e8e0cc;
@@ -7367,6 +7567,13 @@
   --world-star-city-direction: #caa0fc;
   --world-star-city-accent: #d7b8fd;
   --world-star-city-tint: #caa0fc1a;
+  --world-despair: #7e4c5e;
+  --world-despair-title: #b2949e;
+  --world-despair-subtitle: #a294a3;
+  --world-despair-icon: #98707e;
+  --world-despair-direction: #8b5e6e;
+  --world-despair-accent: #9e7986;
+  --world-despair-tint: #7e4c5e1a;
   --world-solar-office: #ffffaa;
   --world-solar-office-title: #ffffaa;
   --world-solar-office-subtitle: #cdcea9;
@@ -7990,6 +8197,24 @@
   --fill-world-star-city-accent: #7a5c9d;
   --hover-world-star-city-accent: #8668a9;
   --on-world-star-city-accent: #ffffff;
+  --fill-world-despair: #7e4c5e;
+  --hover-world-despair: #9a687a;
+  --on-world-despair: #ffffff;
+  --fill-world-despair-title: #7b616a;
+  --hover-world-despair-title: #876d76;
+  --on-world-despair-title: #ffffff;
+  --fill-world-despair-subtitle: #6e626f;
+  --hover-world-despair-subtitle: #7e727f;
+  --on-world-despair-subtitle: #ffffff;
+  --fill-world-despair-icon: #805b69;
+  --hover-world-despair-icon: #906b79;
+  --on-world-despair-icon: #ffffff;
+  --fill-world-despair-direction: #8b5e6e;
+  --hover-world-despair-direction: #976a7a;
+  --on-world-despair-direction: #ffffff;
+  --fill-world-despair-accent: #7e5d6a;
+  --hover-world-despair-accent: #8e6d7a;
+  --on-world-despair-accent: #ffffff;
   --fill-world-solar-office: #6c6a08;
   --hover-world-solar-office: #7c7a22;
   --on-world-solar-office: #ffffff;
@@ -8259,6 +8484,13 @@
   --world-star-city-direction: #5d90ab;
   --world-star-city-accent: #85aab9;
   --world-star-city-tint: #5d90ab1a;
+  --world-despair: #492d34;
+  --world-despair-title: #ac9c94;
+  --world-despair-subtitle: #9a9895;
+  --world-despair-icon: #917d7a;
+  --world-despair-direction: #765f60;
+  --world-despair-accent: #765f60;
+  --world-despair-tint: #492d341a;
   --world-solar-office: #d5b117;
   --world-solar-office-title: #d5b117;
   --world-solar-office-subtitle: #b0a450;
@@ -8882,6 +9114,24 @@
   --fill-world-star-city-accent: #456774;
   --hover-world-star-city-accent: #517380;
   --on-world-star-city-accent: #fdf6e3;
+  --fill-world-despair: #492d34;
+  --hover-world-despair: #694c54;
+  --on-world-despair: #fdf6e3;
+  --fill-world-despair-title: #6f625b;
+  --hover-world-despair-title: #7b6e67;
+  --on-world-despair-title: #fdf6e3;
+  --fill-world-despair-subtitle: #676563;
+  --hover-world-despair-subtitle: #73716f;
+  --on-world-despair-subtitle: #fdf6e3;
+  --fill-world-despair-icon: #74615e;
+  --hover-world-despair-icon: #806d6a;
+  --on-world-despair-icon: #fdf6e3;
+  --fill-world-despair-direction: #765f60;
+  --hover-world-despair-direction: #826b6c;
+  --on-world-despair-direction: #fdf6e3;
+  --fill-world-despair-accent: #765f60;
+  --hover-world-despair-accent: #826b6c;
+  --on-world-despair-accent: #fdf6e3;
   --fill-world-solar-office: #7e5d00;
   --hover-world-solar-office: #8a6917;
   --on-world-solar-office: #fdf6e3;
@@ -9151,6 +9401,13 @@
   --world-star-city-direction: #7ca4fb;
   --world-star-city-accent: #92b2fc;
   --world-star-city-tint: #7ca4fb1a;
+  --world-despair: #6d455a;
+  --world-despair-title: #9c89a4;
+  --world-despair-subtitle: #8c839f;
+  --world-despair-icon: #876b83;
+  --world-despair-direction: #77546b;
+  --world-despair-accent: #876b83;
+  --world-despair-tint: #6d455a1a;
   --world-solar-office: #ffc777;
   --world-solar-office-title: #ffc777;
   --world-solar-office-subtitle: #c2a586;
@@ -9774,6 +10031,24 @@
   --fill-world-star-city-accent: #354f93;
   --hover-world-star-city-accent: #455fa3;
   --on-world-star-city-accent: #d5dcff;
+  --fill-world-despair: #6d455a;
+  --hover-world-despair: #7d556a;
+  --on-world-despair: #d5dcff;
+  --fill-world-despair-title: #625168;
+  --hover-world-despair-title: #6a5970;
+  --on-world-despair-title: #d5dcff;
+  --fill-world-despair-subtitle: #5b526b;
+  --hover-world-despair-subtitle: #675e77;
+  --on-world-despair-subtitle: #d5dcff;
+  --fill-world-despair-icon: #644860;
+  --hover-world-despair-icon: #745870;
+  --on-world-despair-icon: #d5dcff;
+  --fill-world-despair-direction: #69465d;
+  --hover-world-despair-direction: #79566d;
+  --on-world-despair-direction: #d5dcff;
+  --fill-world-despair-accent: #644860;
+  --hover-world-despair-accent: #745870;
+  --on-world-despair-accent: #d5dcff;
   --fill-world-solar-office: #774600;
   --hover-world-solar-office: #875619;
   --on-world-solar-office: #d5dcff;
@@ -10043,6 +10318,13 @@
   --world-star-city-direction: #89b4fa;
   --world-star-city-accent: #a4c4fa;
   --world-star-city-tint: #89b4fa1a;
+  --world-despair: #745268;
+  --world-despair-title: #a18b9b;
+  --world-despair-subtitle: #9b91a5;
+  --world-despair-icon: #876a7e;
+  --world-despair-direction: #7a5a6f;
+  --world-despair-accent: #947b8d;
+  --world-despair-tint: #7452681a;
   --world-solar-office: #f9e4b8;
   --world-solar-office-title: #f9e4b8;
   --world-solar-office-subtitle: #cbc2b5;
@@ -10666,6 +10948,24 @@
   --fill-world-star-city-accent: #456092;
   --hover-world-star-city-accent: #5570a2;
   --on-world-star-city-accent: #f5f5fa;
+  --fill-world-despair: #745268;
+  --hover-world-despair: #88667c;
+  --on-world-despair: #f5f5fa;
+  --fill-world-despair-title: #6d5a68;
+  --hover-world-despair-title: #7d6a78;
+  --on-world-despair-title: #f5f5fa;
+  --fill-world-despair-subtitle: #685f70;
+  --hover-world-despair-subtitle: #746b7c;
+  --on-world-despair-subtitle: #f5f5fa;
+  --fill-world-despair-icon: #785c70;
+  --hover-world-despair-icon: #84687c;
+  --on-world-despair-icon: #f5f5fa;
+  --fill-world-despair-direction: #7a5a6f;
+  --hover-world-despair-direction: #86667b;
+  --on-world-despair-direction: #f5f5fa;
+  --fill-world-despair-accent: #765f70;
+  --hover-world-despair-accent: #7e6778;
+  --on-world-despair-accent: #f5f5fa;
   --fill-world-solar-office: #746139;
   --hover-world-solar-office: #806d45;
   --on-world-solar-office: #f5f5fa;
@@ -12282,6 +12582,54 @@
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-world-star-city-accent:hover {
   background-color: var(--hover-world-star-city-accent);
+}
+.fill-world-despair {
+  background-color: var(--fill-world-despair);
+  color: var(--on-world-despair);
+  text-shadow: var(--fill-label-shadow);
+}
+:where(button, a, [role='button'], summary, label, [tabindex]).fill-world-despair:hover {
+  background-color: var(--hover-world-despair);
+}
+.fill-world-despair-title {
+  background-color: var(--fill-world-despair-title);
+  color: var(--on-world-despair-title);
+  text-shadow: var(--fill-label-shadow);
+}
+:where(button, a, [role='button'], summary, label, [tabindex]).fill-world-despair-title:hover {
+  background-color: var(--hover-world-despair-title);
+}
+.fill-world-despair-subtitle {
+  background-color: var(--fill-world-despair-subtitle);
+  color: var(--on-world-despair-subtitle);
+  text-shadow: var(--fill-label-shadow);
+}
+:where(button, a, [role='button'], summary, label, [tabindex]).fill-world-despair-subtitle:hover {
+  background-color: var(--hover-world-despair-subtitle);
+}
+.fill-world-despair-icon {
+  background-color: var(--fill-world-despair-icon);
+  color: var(--on-world-despair-icon);
+  text-shadow: var(--fill-label-shadow);
+}
+:where(button, a, [role='button'], summary, label, [tabindex]).fill-world-despair-icon:hover {
+  background-color: var(--hover-world-despair-icon);
+}
+.fill-world-despair-direction {
+  background-color: var(--fill-world-despair-direction);
+  color: var(--on-world-despair-direction);
+  text-shadow: var(--fill-label-shadow);
+}
+:where(button, a, [role='button'], summary, label, [tabindex]).fill-world-despair-direction:hover {
+  background-color: var(--hover-world-despair-direction);
+}
+.fill-world-despair-accent {
+  background-color: var(--fill-world-despair-accent);
+  color: var(--on-world-despair-accent);
+  text-shadow: var(--fill-label-shadow);
+}
+:where(button, a, [role='button'], summary, label, [tabindex]).fill-world-despair-accent:hover {
+  background-color: var(--hover-world-despair-accent);
 }
 .fill-world-solar-office {
   background-color: var(--fill-world-solar-office);

@@ -295,6 +295,7 @@ export type RegionId =
   | 'rangersGuild'
   | 'mountains'
   | 'starCity'
+  | 'despair'
   | 'solarOffice'
   | 'lobby'
 

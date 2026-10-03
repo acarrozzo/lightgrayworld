@@ -114,6 +114,45 @@ function Swoosh() {
 }
 
 // Compact label/value pair for the victory stats card (turns, dealt, took, best).
+/**
+ * What the enemy's standing behaviours did on the last turn, under its hit:
+ * each hit after the first with its own roll and block (so the total adds up
+ * the way the main formula does), the stone its gaze left, and the HP it
+ * took back. Nothing is drawn on an ordinary turn.
+ */
+function EnemyHitExtras({ battle }: { battle: BattleState }) {
+  const extras = battle.extraHits ?? []
+  if (extras.length === 0 && !battle.petrifyApplied && !battle.enemyHealed) return null
+  const extraTotal = extras.reduce((sum, hit) => sum + hit.damage, 0)
+  return (
+    <>
+      {extras.map((hit, i) => (
+        <p key={i} className="text-[10px] text-fg-disabled text-right tabular-nums">
+          <span className="mr-1 text-combat-crit font-semibold">again</span>
+          {hit.dodged ? (
+            <span className="text-hue-purple">dodged</span>
+          ) : (
+            <>{hit.raw} &minus; {hit.block} = <span className={hit.damage > 0 ? 'text-stat-def font-semibold' : ''}>{hit.damage}</span></>
+          )}
+        </p>
+      ))}
+      {extras.length > 0 && (
+        <p className="text-[10px] text-fg-muted text-right tabular-nums">
+          {extras.length + 1} hits · {(battle.lastEnemyDamage ?? 0) - extraTotal} + {extraTotal} = <span className="font-semibold">{battle.lastEnemyDamage ?? 0}</span>
+        </p>
+      )}
+      {battle.petrifyApplied > 0 && (
+        <p className="text-[11px] font-black tracking-[0.15em] uppercase text-right text-fg-bright">
+          Stone {battle.petrifyApplied} turn{battle.petrifyApplied === 1 ? '' : 's'}
+        </p>
+      )}
+      {battle.enemyHealed > 0 && (
+        <p className="text-[10px] text-hue-green text-right tabular-nums">absorbs {battle.enemyHealed} HP</p>
+      )}
+    </>
+  )
+}
+
 function StatChip({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-baseline gap-1.5">
@@ -761,10 +800,35 @@ export default function BattlePanel({
                 )}
               </div>
             </>
+          ) : battle.petrified ? (
+            // A Gorgon's or Medusa's gaze: the turn passed and nothing was swung.
+            <>
+              <p className="text-[10px] text-fg-disabled italic">Petrified</p>
+              <p className="text-xs text-fg-secondary">
+                You are <span className="font-semibold text-fg-bright">STONE</span>
+                {battle.petrifiedTurns > 0 ? ` — ${battle.petrifiedTurns} more turn${battle.petrifiedTurns === 1 ? '' : 's'}` : ' — it is wearing off'}
+              </p>
+              <p className="text-2xl font-black text-fg-muted leading-none tabular-nums italic">
+                STONE
+              </p>
+            </>
+          ) : battle.enemyDodged ? (
+            // The enemy's own Dodge: nothing was rolled and nothing was spent.
+            <>
+              <p className="text-[10px] text-fg-disabled italic">Dodged</p>
+              <p className="text-xs text-fg-secondary">
+                The {battle.enemyName} steps out of your{' '}
+                <span className={`font-semibold ${spellCast && spellCastTone ? spellCastTone.text : isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{spellCast ? spellCast.name : (weaponName ?? 'fists')}</span>
+                {spellCast ? ' — no MP spent' : ''}
+              </p>
+              <p className="text-2xl font-black text-hue-purple leading-none tabular-nums italic">
+                MISS
+              </p>
+            </>
           ) : skillUse && skillUseTone ? (
             <>
               <p className="text-[10px] text-fg-disabled tabular-nums">
-                ( {skillUse.weaponRaw} + {skillUse.bonus} ) &minus; {battle.enemyBlocked} = {battle.lastPlayerDamage ?? 0}
+                ( {skillUse.weaponRaw} + {skillUse.bonus} ) &minus; {battle.enemyBlocked}{battle.melted ? ' ÷ 2' : ''} = {battle.lastPlayerDamage ?? 0}
                 <span className="ml-1">(max {battle.playerStrMax}{skillUse.bonusMax > 0 ? ` + ${skillUse.bonusMax}` : ''})</span>
               </p>
               <p className="text-xs text-fg-secondary">
@@ -840,11 +904,12 @@ export default function BattlePanel({
           ) : hasPlayerFormula ? (
             <>
               <p className="text-[10px] text-fg-disabled tabular-nums">
-                {battle.playerRaw} &minus; {battle.enemyBlocked} = {battle.lastPlayerDamage ?? 0}
+                {battle.playerRaw} &minus; {battle.enemyBlocked}{battle.melted ? ' ÷ 2' : ''} = {battle.lastPlayerDamage ?? 0}
                 <span className="ml-1">(max {battle.playerStrMax})</span>
               </p>
               <p className="text-xs text-fg-secondary">
                 You attack with your <span className={`font-semibold ${isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{weaponName ?? 'fists'}</span>
+                {battle.melted && <span className="ml-1 text-fg-muted italic">— the magma takes half</span>}
               </p>
               <p
                 className={`text-4xl font-black leading-none tabular-nums ${isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}
@@ -888,6 +953,7 @@ export default function BattlePanel({
               <p className="text-2xl font-black text-hue-purple leading-none tabular-nums italic text-right">
                 DODGE
               </p>
+              <EnemyHitExtras battle={battle} />
             </>
           ) : hasEnemyFormula ? (
             <>
@@ -923,6 +989,7 @@ export default function BattlePanel({
               {battle.poisonApplied && (
                 <p className="text-[11px] font-black tracking-[0.15em] uppercase text-right text-hue-green">Poisoned {battle.poisonApplied.clicks}</p>
               )}
+              <EnemyHitExtras battle={battle} />
             </>
           ) : (
             <p className="text-xs text-fg-disabled italic text-right">…</p>

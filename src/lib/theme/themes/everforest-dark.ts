@@ -95,6 +95,10 @@ export const everforestDark = makeTheme({
       // Snow on green mountains: paler and colder than the lobby's sky.
       mountains: { base: '#c9d6d9' },
       starCity: { base: '#6f9fd8' },
+      // The Despair: dried blood on black. Far enough from Red Town's coral
+      // and the Keep's grey that the derivation does not have to push the
+      // crowded earth tones around to make room for it.
+      despair: { base: '#8c4a52' },
     },
   },
 })

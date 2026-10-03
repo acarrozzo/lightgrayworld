@@ -44,6 +44,10 @@ class BattleState {
     this.companion = companion || null
 
     this.turnCount = 0
+    // Turns the player is stone for (a Gorgon's or Medusa's gaze). While it
+    // is above zero they cannot swing, cast, drink or retreat; the enemy keeps
+    // attacking. Ticks down once per turn (`tickPetrify`).
+    this.petrifiedTurns = 0
     // Retreat is open from the first moment of the fight. It used to unlock
     // after three turns, which meant walking into something far above your
     // level was a death sentence rather than a mistake you could back out of —
@@ -139,6 +143,31 @@ class BattleState {
     this.enemyCurrentHp = Math.max(0, this.enemyCurrentHp - amount)
   }
 
+  /**
+   * HP Absorb: the enemy takes back what it dealt, up to full. Returns what
+   * it actually recovered so the turn can say so. Nothing for a dead enemy.
+   */
+  healEnemy(amount) {
+    if (this.enemyCurrentHp <= 0) return 0
+    const healed = Math.max(0, Math.min(Math.floor(amount) || 0, this.enemyMaxHp - this.enemyCurrentHp))
+    this.enemyCurrentHp += healed
+    return healed
+  }
+
+  /** Stone for this many turns, from the next one. */
+  petrify(turns) {
+    this.petrifiedTurns = Math.max(this.petrifiedTurns, Math.floor(turns) || 0)
+  }
+
+  /** One turn of stone has passed. */
+  tickPetrify() {
+    if (this.petrifiedTurns > 0) this.petrifiedTurns -= 1
+  }
+
+  get isPetrified() {
+    return this.petrifiedTurns > 0
+  }
+
   isEnemyDead() {
     return this.enemyCurrentHp <= 0
   }
@@ -155,6 +184,7 @@ class BattleState {
       enemyMaxHp: this.enemyMaxHp,
       turnCount: this.turnCount,
       canFlee: this.canFlee,
+      petrifiedTurns: this.petrifiedTurns,
     }
   }
 

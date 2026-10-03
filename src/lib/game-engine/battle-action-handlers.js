@@ -1,6 +1,7 @@
 const { prisma } = require('../db-client')
 const { BattleState, playerIsFlying } = require('./battle-state')
-const { resolveTurn, resolveEnemyAttack, getOtherCombatantCount, totalDamageToEnemy, pickPlayerOffensiveStat } = require('./battle-calculator')
+const { resolveTurn, resolveEnemyAttack, rollEnemyDodge, getOtherCombatantCount, totalDamageToEnemy, pickPlayerOffensiveStat } = require('./battle-calculator')
+const { getEnemyBehaviours } = require('../game-data/enemy-specials')
 const { calcBattleWinRewards, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
 const { getEnemyTraits } = require('../game-data/enemy-traits')
@@ -36,12 +37,22 @@ function makeFeedback(action, outcome, message, data = {}) {
  */
 function settleBattleWinPersistence(playerId, battleState, rewards) {
   return persistBattleWin(playerId, battleState, rewards)
-    .then(({ levelUp, inventory }) => {
+    .then(({ levelUp, inventory, teleportDiscovery }) => {
       const events = []
       // Drops are persisted after battle:victory is emitted, so push the refreshed
       // inventory once the grants commit — otherwise the client never sees the items.
       if (inventory) events.push({ event: 'inventory:update', payload: { inventory } })
       if (levelUp?.leveled) events.push({ event: 'player:level-up', payload: levelUp })
+      // A landing this kill opened (the Hydra Pit): the same feedback shape an
+      // arrival discovery uses, whose `data.player` the client merges.
+      if (teleportDiscovery) {
+        events.push({
+          event: 'action:feedback',
+          payload: makeFeedback('discovery', 'success', teleportDiscovery.message, {
+            player: { discoveredTeleports: teleportDiscovery.discoveredTeleports },
+          }),
+        })
+      }
       return events
     })
     .catch((err) => {
@@ -134,21 +145,37 @@ function errorResult(action, message) {
 // Enemy-side line of a battle:turn message. When a special fired it names itself,
 // so the feed states what happened instead of leaving the player to infer it from
 // a suspiciously large number.
-function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodged = false) {
+function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodged = false, extras = {}) {
+  const { extraHits = [], petrifyApplied = 0, enemyHealed = 0 } = extras
+  // With more than one hit the headline number is the sum; the hits after the
+  // first are listed so the feed adds up the way the panel does.
+  const mainDamage = damage - extraHits.reduce((sum, hit) => sum + hit.damage, 0)
+  let line
   // The Dodge skill: the whole swing, special or not, came to nothing.
   if (dodged) {
     const what = enemyAction ? enemyAction.name.toUpperCase() : 'attack'
-    return `You DODGE the ${enemyName}'s ${what}!${hpSuffix}`
-  }
-  if (enemyAction) {
+    line = `You DODGE the ${enemyName}'s ${what}!`
+  } else if (enemyAction) {
     const label = enemyAction.name.toUpperCase()
-    return damage === 0
+    line = mainDamage === 0
       ? `The ${enemyName} unleashes a ${label} but you block it!`
-      : `The ${enemyName} unleashes a ${label} for ${damage} damage!${hpSuffix}`
+      : `The ${enemyName} unleashes a ${label} for ${mainDamage} damage!`
+  } else {
+    line = mainDamage === 0
+      ? `The ${enemyName} attacks but you block it!`
+      : `The ${enemyName} hits you for ${mainDamage} damage.`
   }
-  return damage === 0
-    ? `The ${enemyName} attacks but you block it!`
-    : `The ${enemyName} hits you for ${damage} damage.${hpSuffix}`
+  for (const hit of extraHits) {
+    line += hit.dodged
+      ? ' You DODGE as it strikes again!'
+      : hit.damage === 0
+        ? ' It strikes again but you block it!'
+        : ` It strikes again for ${hit.damage}!`
+  }
+  if (extraHits.length > 0 && damage > 0) line += ` (${damage} total)`
+  if (petrifyApplied > 0) line += ` Its gaze turns you to STONE for ${petrifyApplied} turn${petrifyApplied === 1 ? '' : 's'}!`
+  if (enemyHealed > 0) line += ` The ${enemyName} absorbs ${enemyHealed} HP.`
+  return line + hpSuffix
 }
 
 const { BUFF_SELECT } = require('./services/buff-service')
@@ -350,7 +377,25 @@ function describeSkillStrike(enemyName, turn, extra = '') {
   const use = turn.skill
   const cost = turn.immuneToMagic ? 'no MP spent' : `${use.cost} MP`
   const note = turn.immuneToMagic ? ` The ${enemyName} is immune to magic — the strike's magic fizzles.` : ''
-  return `You ${use.name} the ${enemyName} for ${turn.playerDealtDamage} damage (${cost}).${extra}${note}`
+  return `You ${use.name} the ${enemyName} for ${turn.playerDealtDamage} damage (${cost}).${extra}${note}${describeMelt(turn)}`
+}
+
+// The two ways a turn produces no attack at all, before the weapon is even
+// looked at: the player is stone, or the enemy was not where the blow went.
+function describeNoAttack(enemyName, turn) {
+  if (turn.petrified) {
+    return `You are STONE. You cannot move; the ${enemyName} circles.`
+  }
+  if (turn.enemyDodged) {
+    return turn.spell
+      ? `The ${enemyName} DODGES your ${turn.spell.name}! No MP spent.`
+      : `The ${enemyName} DODGES your attack!`
+  }
+  return null
+}
+
+function describeMelt(turn) {
+  return turn.melted ? ' The magma takes the blow — and half of it with your blade.' : ''
 }
 
 // Player-side line of a battle:turn message for a weapon strike, covering the
@@ -367,7 +412,7 @@ function describeWeaponStrike(enemyName, turn, extra = '') {
   if (turn.immuneToWeapon === 'MELEE') {
     return `Your blade bounces off the ${enemyName} — it cannot be cut!`
   }
-  return `You strike the ${enemyName} for ${turn.playerDealtDamage} damage.${extra}`
+  return `You strike the ${enemyName} for ${turn.playerDealtDamage} damage.${extra}${describeMelt(turn)}`
 }
 
 function describeCompanionStrike(enemyName, companion) {
@@ -384,6 +429,32 @@ function describeSpellStrike(enemyName, turn) {
     return `The ${enemyName} is immune to magic! Your ${cast.name} fizzles.`
   }
   return `You cast ${cast.name} for ${cast.cost} MP and hit the ${enemyName} for ${turn.playerDealtDamage} damage.`
+}
+
+/**
+ * What the enemy's standing behaviours do once a turn has resolved: HP Absorb
+ * takes back what it dealt (only while it still stands — a kill is a kill),
+ * one turn of stone passes, and a fresh gaze sets the next ones. Writes
+ * `enemyHealed` onto the turn so the payload and the feed can say so.
+ */
+function settleEnemyAftermath(battleState, turn) {
+  const behaviours = getEnemyBehaviours(battleState.enemy)
+  turn.enemyHealed =
+    behaviours.absorbsHp && !battleState.isEnemyDead() ? battleState.healEnemy(turn.enemyDealtDamage || 0) : 0
+  battleState.tickPetrify()
+  if (turn.petrifyApplied > 0) battleState.petrify(turn.petrifyApplied)
+}
+
+/** The behaviour fields every battle:turn payload carries, with their defaults. */
+function behaviourTurnFields(turn) {
+  return {
+    petrifyApplied: turn.petrifyApplied ?? 0,
+    extraHits: turn.extraHits ?? [],
+    enemyDodged: turn.enemyDodged ?? false,
+    petrified: turn.petrified ?? false,
+    melted: turn.melted ?? false,
+    enemyHealed: turn.enemyHealed ?? 0,
+  }
 }
 
 // ─── start_battle ───────────────────────────────────────────────────────────
@@ -478,12 +549,16 @@ async function executeStartBattle(action, playerId, roomState) {
     }
   }
 
+  // The enemy may step out of the opening blow entirely. Rolled here, before
+  // anything is charged or spent, so a dodged cast or strike is a free one.
+  const enemyDodged = !isAdvantageTurn && rollEnemyDodge(enemy)
+
   // A spell is paid for before the fight exists, so a cast the player cannot
   // afford is refused outright rather than opening a battle they never struck
   // in. A magic-immune enemy is never charged — the cast does nothing, and the
   // original spent no MP on it either.
   let spellMp = null
-  if (spell && !isAdvantageTurn && !enemy.isMagicImmune) {
+  if (spell && !isAdvantageTurn && !enemy.isMagicImmune && !enemyDodged) {
     spellMp = await chargeSpellMp(playerId, spell)
     if (!spellMp) return errorResult('start_battle', notEnoughMpMessage(spell))
     roomState.updatePlayer(playerId, (state) => ({ ...state, mp: spellMp.mp }))
@@ -494,7 +569,7 @@ async function executeStartBattle(action, playerId, roomState) {
   // Magic Strike at something airborne is a plain missed swing, and a Magic Strike on a
   // magic-immune enemy keeps its record (the panel says it fizzled) but costs
   // nothing, like a spell.
-  let strike = skill && !isAdvantageTurn && skillCanLand(skill, enemy, equippedWeaponCategory, playerIsFlying(playerStats, equippedWeapon)) ? skill : null
+  let strike = skill && !isAdvantageTurn && !enemyDodged && skillCanLand(skill, enemy, equippedWeaponCategory, playerIsFlying(playerStats, equippedWeapon)) ? skill : null
   let skillMp = null
   if (strike && !(strike.def.magic && enemy.isMagicImmune)) {
     skillMp = await chargeSpellMp(playerId, strike)
@@ -542,23 +617,30 @@ async function executeStartBattle(action, playerId, roomState) {
       companion: null,
       playerDodged: enemyAtk.dodged,
       poisonApplied: enemyAtk.poisonApplied,
+      petrifyApplied: enemyAtk.petrifyApplied,
+      extraHits: enemyAtk.extraHits,
+      enemyDodged: false,
+      petrified: false,
+      melted: false,
     }
     battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, firstTurn)
   } else {
     // Player-initiated — normal full turn, or the spell or skill that opened
     // the fight. The companion's swing lands beside the player's own.
-    firstTurn = resolveTurn(battleState, otherCombatants, { spell, skill: strike })
+    firstTurn = resolveTurn(battleState, otherCombatants, { spell, skill: strike, enemyDodged })
     battleState.applyDamageToEnemy(totalDamageToEnemy(firstTurn))
     battleState.recordTurn(totalDamageToEnemy(firstTurn), firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
   }
+  settleEnemyAftermath(battleState, firstTurn)
 
   battleState.incrementTurn()
 
   // The opening shot spends a round. Only a player-initiated turn fires — an
-  // advantage turn is the enemy's swing, not yours.
+  // advantage turn is the enemy's swing, not yours, and a dodged shot never
+  // left the string.
   let ammoRemaining = null
   let ammoInventory = null
-  if (ammo) {
+  if (ammo && !enemyDodged) {
     ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo))
   }
 
@@ -597,6 +679,8 @@ async function executeStartBattle(action, playerId, roomState) {
   let attackDesc
   if (isAdvantageTurn) {
     attackDesc = `You enter the area and the ${enemy.name} immediately attacks!`
+  } else if (describeNoAttack(enemy.name, firstTurn)) {
+    attackDesc = describeNoAttack(enemy.name, firstTurn)
   } else if (firstTurn.spell) {
     attackDesc = describeSpellStrike(enemy.name, firstTurn) + describeCompanionStrike(enemy.name, firstTurn.companion)
   } else if (firstTurn.skill) {
@@ -605,7 +689,7 @@ async function executeStartBattle(action, playerId, roomState) {
     attackDesc = describeWeaponStrike(enemy.name, firstTurn) + describeCompanionStrike(enemy.name, firstTurn.companion)
   }
   const defenseDesc =
-    describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction, '', firstTurn.playerDodged) +
+    describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction, '', firstTurn.playerDodged, firstTurn) +
     describeHitExtras(updatedPlayer)
 
   const turnPayload = {
@@ -636,6 +720,7 @@ async function executeStartBattle(action, playerId, roomState) {
     absorbed: updatedPlayer.absorbed,
     magicArmorLeft: updatedPlayer.magicArmorLeft,
     poisonApplied: updatedPlayer.poisoned > 0 ? { clicks: updatedPlayer.poisoned } : null,
+    ...behaviourTurnFields(firstTurn),
     ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
     ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
@@ -761,9 +846,13 @@ async function executePlayerAttack(action, playerId, roomState) {
   // NOT get a free counterattack — matching the original, and leaving the player
   // their turn to equip something else (which does cost a turn) instead of being
   // beaten to death unable to act. A spell fires no shot, so it never runs dry.
+  // Stone takes no action of its own: the turn passes, the enemy swings, and
+  // nothing below is charged or spent for it.
+  const petrified = battleState.isPetrified
+
   const { ammoSlug } = liveWeapon
   let ammo = null
-  if (ammoSlug && !spell) {
+  if (ammoSlug && !spell && !petrified) {
     ammo = await readAmmo(playerId, ammoSlug)
     if (!ammo || ammo.remaining <= 0) {
       const name = ammo?.name || (await ammoDisplayName(ammoSlug))
@@ -771,12 +860,16 @@ async function executePlayerAttack(action, playerId, roomState) {
     }
   }
 
+  // The enemy may step out of the whole attack. Rolled before anything is
+  // charged or spent, so a dodged cast, strike or shot costs nothing.
+  const enemyDodged = !petrified && rollEnemyDodge(battleState.enemy)
+
   // Not enough MP is treated like an empty quiver: the cast is refused and the
   // battle does not advance. (The original let the enemy swing anyway — a
   // mis-click cost you a turn — which is treated here as a defect, not canon.)
   // A magic-immune enemy is never charged: nothing is rolled, nothing is spent.
   let spellMp = null
-  if (spell && !battleState.enemy.isMagicImmune) {
+  if (spell && !petrified && !enemyDodged && !battleState.enemy.isMagicImmune) {
     spellMp = await chargeSpellMp(playerId, spell)
     if (!spellMp) return errorResult('player_attack', notEnoughMpMessage(spell))
     roomState.updatePlayer(playerId, (state) => ({ ...state, mp: spellMp.mp }))
@@ -785,7 +878,7 @@ async function executePlayerAttack(action, playerId, roomState) {
   // A skill strike pays the same way, and only when its bonus can land (see
   // skillCanLand). A Magic Strike on a magic-immune enemy keeps its record but
   // is never charged.
-  const strike = skill && skillCanLand(skill, battleState.enemy, liveWeapon.weaponCategory, battleState.isFlying) ? skill : null
+  const strike = skill && !petrified && !enemyDodged && skillCanLand(skill, battleState.enemy, liveWeapon.weaponCategory, battleState.isFlying) ? skill : null
   let skillMp = null
   if (strike && !(strike.def.magic && battleState.enemy.isMagicImmune)) {
     skillMp = await chargeSpellMp(playerId, strike)
@@ -794,16 +887,17 @@ async function executePlayerAttack(action, playerId, roomState) {
   }
 
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
-  const turnResult = resolveTurn(battleState, otherCombatants, { spell, skill: strike })
+  const turnResult = resolveTurn(battleState, otherCombatants, { spell: petrified ? null : spell, skill: strike, enemyDodged })
 
-  // The shot resolved — spend the round.
+  // The shot resolved — spend the round. A dodged shot never left the string.
   let ammoRemaining = null
   let ammoInventory = null
-  if (ammo) {
+  if (ammo && !enemyDodged) {
     ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo))
   }
 
   battleState.applyDamageToEnemy(totalDamageToEnemy(turnResult))
+  settleEnemyAftermath(battleState, turnResult)
   battleState.incrementTurn()
   battleState.recordTurn(totalDamageToEnemy(turnResult), turnResult.enemyDealtDamage, turnResult.multiplayerBonus, turnResult)
 
@@ -920,7 +1014,9 @@ async function executePlayerAttack(action, playerId, roomState) {
   // Fight continues
   const snapshot = battleState.getSnapshot()
   const parts = []
-  if (turnResult.spell) {
+  if (describeNoAttack(battleState.enemyName, turnResult)) {
+    parts.push(describeNoAttack(battleState.enemyName, turnResult))
+  } else if (turnResult.spell) {
     parts.push(describeSpellStrike(battleState.enemyName, turnResult))
   } else {
     let extra = ''
@@ -939,7 +1035,8 @@ async function executePlayerAttack(action, playerId, roomState) {
       turnResult.enemyDealtDamage,
       turnResult.enemyAction,
       ` (HP: ${newHp}/${updatedPlayer.hpMax})`,
-      turnResult.playerDodged
+      turnResult.playerDodged,
+      turnResult
     ) + describeHitExtras(updatedPlayer)
   )
 
@@ -977,6 +1074,7 @@ async function executePlayerAttack(action, playerId, roomState) {
           absorbed: updatedPlayer.absorbed,
           magicArmorLeft: updatedPlayer.magicArmorLeft,
           poisonApplied: updatedPlayer.poisoned > 0 ? { clicks: updatedPlayer.poisoned } : null,
+          ...behaviourTurnFields(turnResult),
           ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
           ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
@@ -1041,8 +1139,14 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     companion: null,
     playerDodged: enemyAtk.dodged,
     poisonApplied: enemyAtk.poisonApplied,
+    petrifyApplied: enemyAtk.petrifyApplied,
+    extraHits: enemyAtk.extraHits,
+    enemyDodged: false,
+    petrified: false,
+    melted: false,
   }
   battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, turnRecord)
+  settleEnemyAftermath(battleState, turnRecord)
 
   const updatedPlayer = await applyEnemyHit(playerId, { damage: enemyAtk.enemyFinal, poisonApplied: enemyAtk.poisonApplied })
   const newHp = Math.max(0, updatedPlayer.hp)
@@ -1053,7 +1157,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
   // Build the action description string for the battle:turn message.
   const actionDesc = describeSupportAction(actionMeta)
   const defenseDesc =
-    describeEnemyAttack(battleState.enemyName, enemyAtk.enemyFinal, enemyAtk.enemyAction, '', enemyAtk.dodged) +
+    describeEnemyAttack(battleState.enemyName, enemyAtk.enemyFinal, enemyAtk.enemyAction, '', enemyAtk.dodged, turnRecord) +
     describeHitExtras(updatedPlayer)
 
   // Defeat path: enemy counterattack killed the player
@@ -1107,6 +1211,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
           absorbed: updatedPlayer.absorbed,
           magicArmorLeft: updatedPlayer.magicArmorLeft,
           poisonApplied: updatedPlayer.poisoned > 0 ? { clicks: updatedPlayer.poisoned } : null,
+          ...behaviourTurnFields(turnRecord),
           actionMeta,
           message: [actionDesc, defenseDesc].join(' '),
         },
@@ -1138,6 +1243,9 @@ async function executePlayerFlee(action, playerId, roomState) {
   const battleState = roomState.activeBattles.get(playerId)
   if (!battleState || !battleState.isActive) {
     return errorResult('player_flee', 'You are not in a battle.')
+  }
+  if (battleState.isPetrified) {
+    return errorResult('player_flee', 'You are stone. You cannot run until it wears off.')
   }
 
   battleState.end()

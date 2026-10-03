@@ -274,6 +274,10 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     // Star City: the capital's royal blue — the theme's blue pushed toward
     // its bright blue, deeper than the ocean and further from the sky.
     starCity: { base: mix(t.blue, t.brightBlue, 0.5) },
+    // The Despair: the pit under the Dark Forest. Ember over black — the
+    // theme's red with most of its light taken out, pulled toward the dark
+    // grey so it is neither Red Town's brick nor the scorpion pit's blood.
+    despair: { base: dim(mix(t.red, t.brightBlack, 0.45), 0.4) },
     solarOffice: { base: t.brightYellow },
     lobby: { base: mix(t.blue, t.white, 0.3) },
   }
@@ -645,9 +649,9 @@ function separateRegions(ui: Theme['ui'], regions: Record<RegionId, RegionPalett
 
   const movable: RegionId[] = (Object.keys(regions) as RegionId[]).filter((id) => id !== 'redTown')
 
-  // Enough passes for twenty-one regions: the loop breaks the moment every
+  // Enough passes for twenty-two regions: the loop breaks the moment every
   // pair is far enough apart, so a theme that is already separated pays nothing.
-  for (let pass = 0; pass < 160; pass++) {
+  for (let pass = 0; pass < 240; pass++) {
     const ids = Object.keys(regions) as RegionId[]
     let worst = { d: Infinity, a: '' as RegionId, b: '' as RegionId }
     for (let i = 0; i < ids.length; i++) {
