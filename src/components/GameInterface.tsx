@@ -10,15 +10,14 @@ import GameHeader from './GameHeader'
 import { type InputMode } from './game-interface/panels/FeedPanel'
 import RoomBox, { type RoomEnemy } from './RoomBox'
 import BattlePanel from './game-interface/panels/BattlePanel'
-import TabContainer, { type TabConfig } from './TabContainer'
-import MobileBottomNav from './MobileBottomNav'
+import TabBar, { tabDef, type TabBadges, type TabId } from './game-interface/TabBar'
+import LayerShell, { DeckProvider, HeaderTabs, type DeckPresentation } from './game-interface/LayerShell'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
-import { Settings as SettingsIcon, MessageSquare, MessageSquareText, ChevronUp, ChevronDown } from 'lucide-react'
-import ExplorePanel, { type ExploreSubView } from './game-interface/ExplorePanel'
-import ActionLayer from './game-interface/ActionLayer'
-import GearLayer from './game-interface/GearLayer'
-import type { DockLayer } from './game-interface/Dock'
+import { MessageSquareText, ChevronUp, ChevronDown } from 'lucide-react'
+import ExplorePanel from './game-interface/ExplorePanel'
+import Deck, { DOCK_BAR, type DeckContentProps } from './game-interface/Deck'
+import { readDeckFullscreen, writeDeckFullscreen, type DeckTab } from './game-interface/deck-tabs'
 import ActionModal from './ActionModal'
 import ConfirmDialog from './ConfirmDialog'
 import { describePartyDeparture, partyDepartureWarning } from '@/lib/party-succession'
@@ -40,35 +39,16 @@ import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import { TELEPORT_MP_COST } from './game-interface/constants'
-import type { FilterTab } from '@/lib/inventory-categories'
+import { filterTabToView, type FilterTab, type ItemFilterView } from '@/lib/inventory-categories'
 import { findTravelDirection, checkIfExitHasGate, normalizeCommand, getMapIdForRoom, getUnlockedMaps, formatDirectionPhrase } from './game-interface/utils'
 import { useGameSocketBindings } from './game-interface/useGameSocketBindings'
 import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
-import InventoryPanel from './game-interface/panels/InventoryPanel'
 import QuestsPanel from './game-interface/panels/QuestsPanel'
 import { countReadyQuests } from '@/lib/quest-journal'
-import WorldLayer, { type WorldTab } from './game-interface/WorldLayer'
+import type { WorldTab } from './game-interface/WorldLayer'
 import PanelResizeHandle from './game-interface/PanelResizeHandle'
 import { useResizablePanel, useViewportWidth } from './game-interface/useResizablePanel'
-
-// Whether the world layer last opened full screen on this device. A browser
-// convenience only, never authoritative for anything.
-const WORLD_FULLSCREEN_KEY = 'lg-world-layer-fullscreen'
-const readPrefersWorldFullscreen = (): boolean => {
-  try {
-    return window.localStorage.getItem(WORLD_FULLSCREEN_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-const writePrefersWorldFullscreen = (value: boolean) => {
-  try {
-    window.localStorage.setItem(WORLD_FULLSCREEN_KEY, value ? '1' : '0')
-  } catch {
-    // Storage can be unavailable (private mode, blocked); the layer still works.
-  }
-}
 
 // Desktop side-panel widths. They reset to the default on every page load.
 // The left panel cannot be dragged narrower than its default, only wider; the
@@ -183,14 +163,15 @@ export default function GameInterface() {
   const respawnRoomRef = useRef<string | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const totalDmUnread = useDMStore((state) => state.getTotalUnreadCount())
-  const [exploreSubView, setExploreSubView] = useState<ExploreSubView>('compass')
-  // The world layer — Map and Fast travel under one header — is either docked
-  // in the Explore sidebar (exploreSubView === 'world') or open as the
-  // full-screen overlay, never both.
-  const [isWorldOverlayOpen, setIsWorldOverlayOpen] = useState(false)
-  // Phones only: the Gear or Action layer open as a bottom sheet over the room.
-  // The sidebar docks the same layers through exploreSubView instead.
-  const [mobileLayer, setMobileLayer] = useState<'action' | 'gear' | null>(null)
+  // The deck: World, Inv and Action, the three tabs behind the dock's tiles.
+  // One tab at a time or none (the compass). On a wide screen it is docked in
+  // the Explore sidebar, or full screen if that is how the tabs were last left
+  // on this device (one switch for all of them); on a phone it is a sheet over the room.
+  const [deckTab, setDeckTab] = useState<DeckTab | null>(null)
+  const [deckFullscreen, setDeckFullscreen] = useState(false)
+  useEffect(() => {
+    setDeckFullscreen(readDeckFullscreen())
+  }, [])
   // Phones only, and only in a fight: the D-pad at the bottom folds down to its
   // own title bar so the battle deck gets the height, and one tap brings it
   // back when the fight turns and the way out is wanted. Out of battle the
@@ -209,7 +190,7 @@ export default function GameInterface() {
   const [partyDepartureConfirm, setPartyDepartureConfirm] = useState<
     { title: string; message: string; confirmLabel: string; run: () => void } | null
   >(null)
-  const [worldTab, setWorldTab] = useState<WorldTab>('map')
+  const [worldTab, setWorldTab] = useState<WorldTab>('teleport')
   // Desktop world feed starts open; the toggle only affects this session.
   const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(true)
 
@@ -238,19 +219,21 @@ export default function GameInterface() {
     setFeedWidthForBounds(feedPanel.width)
   }, [feedPanel.width])
   const [isShopModalOpen, setIsShopModalOpen] = useState(false)
-  // The spellbook: global (learning never needed a teacher present in the
-  // original either), opened from the Character panel or the shaman's tent.
-  const [isSpellbookOpen, setSpellbookOpen] = useState(false)
-  // Which tab the Skills & Spells book opens on; remembered across opens.
-  const [bookTab, setBookTab] = useState<BookTab>('skills')
   // One entry the book should ring, set by a character-panel row.
   const [bookHighlight, setBookHighlight] = useState<string | null>(null)
 
-  /** Open the book on a tab, optionally ringing one skill or spell. */
+  // The Char tab's pages: the character sheet, and the two books.
+  const [charTab, setCharTab] = useState<'char' | BookTab>('char')
+
+  /**
+   * Open the Skill book or the Spell book, optionally ringing one skill or
+   * spell. They are pages of the Char tab, so this goes there.
+   */
   const handleOpenBook = useCallback((tab: BookTab, highlightId?: string) => {
-    setBookTab(tab)
     setBookHighlight(highlightId ?? null)
-    setSpellbookOpen(true)
+    setCharTab(tab)
+    setDeckTab(null)
+    setCenterActiveTab('char')
   }, [])
 
   const [shopModalData, setShopModalData] = useState<{
@@ -288,7 +271,7 @@ export default function GameInterface() {
   // before switching tabs never greets you on the way back.
   const goToExplore = useCallback(() => {
     setCenterActiveTab('explore')
-    setExploreSubView('compass')
+    setDeckTab(null)
   }, [])
   const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('roster')
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
@@ -315,7 +298,9 @@ export default function GameInterface() {
     isOpen: false,
     player: null,
   })
-  const [inventoryFilter, setInventoryFilter] = useState<FilterTab | undefined>(undefined)
+  // What the Inv tab's bag is filtered to. Held here so a link can open the
+  // tab on a group or slot and so it survives docking and full screen.
+  const [inventoryView, setInventoryView] = useState<ItemFilterView>(() => filterTabToView())
   // One item the bag should open on arrival, set by a character-panel row and
   // cleared when the player leaves the tab so the same row can send them back.
   const [inventoryOpenId, setInventoryOpenId] = useState<string | null>(null)
@@ -639,10 +624,6 @@ export default function GameInterface() {
         setStatModalOpen(false)
         return true
       }
-      if (isSpellbookOpen) {
-        setSpellbookOpen(false)
-        return true
-      }
       if (playerProfileModal.isOpen) {
         setPlayerProfileModal({ isOpen: false, player: null })
         return true
@@ -651,12 +632,8 @@ export default function GameInterface() {
         setActionModal({ isOpen: false, title: '', content: '' })
         return true
       }
-      if (mobileLayer) {
-        setMobileLayer(null)
-        return true
-      }
-      if (isWorldOverlayOpen) {
-        setIsWorldOverlayOpen(false)
+      if (deckTab) {
+        setDeckTab(null)
         return true
       }
       if (isCraftingOpen) {
@@ -665,10 +642,6 @@ export default function GameInterface() {
       }
       if (centerActiveTab !== 'explore') {
         goToExplore()
-        return true
-      }
-      if (exploreSubView !== 'compass') {
-        setExploreSubView('compass')
         return true
       }
       if (levelUpData) {
@@ -688,22 +661,19 @@ export default function GameInterface() {
     return () => window.removeEventListener('keydown', handleEsc)
   }, [
     centerActiveTab,
-    exploreSubView,
+    deckTab,
     goToExplore,
     isShopModalOpen,
     isTrainingModalOpen,
     isStatModalOpen,
-    isSpellbookOpen,
     playerProfileModal.isOpen,
     actionModal.isOpen,
-    isWorldOverlayOpen,
-    mobileLayer,
     isCraftingOpen,
     levelUpData,
   ])
 
   // Tab order for swipe navigation (matches the order in the tabs array)
-  const tabOrder = ['explore', 'char', 'inventory', 'quests', 'players', 'feed', 'settings']
+  const tabOrder = ['explore', 'char', 'quests', 'players', 'feed', 'settings']
 
   // Helper function to get next/previous tab with wrapping
   const getAdjacentTab = useCallback((currentTab: string | null, direction: 'next' | 'prev'): string => {
@@ -2327,19 +2297,22 @@ export default function GameInterface() {
     previousInventoryRef.current = inventory
   }, [inventory])
 
-  // Clear "new item" markers when the player LEAVES the inventory tab.
-  // The dots must remain visible the entire time the inventory tab is open
-  // (including items picked up while viewing) so the player can see exactly
-  // which items are new; they only clear once the player navigates away.
-  const previousCenterTabRef = useRef(centerActiveTab)
+  // Clear "new item" markers when the player LEAVES the Inv tab.
+  // The dots must remain visible the entire time the tab is open (including
+  // items picked up while viewing) so the player can see exactly which items
+  // are new; they only clear once the player closes it or switches tab. The
+  // filter and the item it was told to open are forgotten at the same moment,
+  // so the link that sent the player there can send them back to the same one.
+  const previousDeckTabRef = useRef(deckTab)
   useEffect(() => {
-    const leftInventoryTab =
-      previousCenterTabRef.current === 'inventory' && centerActiveTab !== 'inventory'
-    previousCenterTabRef.current = centerActiveTab
-    if (leftInventoryTab) {
+    const leftInventory = previousDeckTabRef.current === 'inv' && deckTab !== 'inv'
+    previousDeckTabRef.current = deckTab
+    if (leftInventory) {
       setNewItemIds(prev => (prev.size > 0 ? new Set() : prev))
+      setInventoryView(filterTabToView())
+      setInventoryOpenId(null)
     }
-  }, [centerActiveTab])
+  }, [deckTab])
 
   // Clear forceWorldChatMode after it's been applied
   useEffect(() => {
@@ -3266,68 +3239,37 @@ export default function GameInterface() {
     }
   }, [])
 
-  // The world layer opens on the sheet under your feet. Full screen from the
-  // strip and the mini-map on phones; from the sidebar, wherever you last left
-  // it. The party and combat guards are surfaced inside the layer
+  // Opening a deck tab. World opens on the sheet under your feet and on
+  // Teleport unless asked for the Map (the centre of the compass ring asks).
+  // The party and combat guards are surfaced inside the layer
   // (teleportBlockedReason) instead of refusing to open, so the controls never
-  // look dead.
-  const openWorldOverlay = useCallback((tab: WorldTab) => {
-    syncMapToCurrentRoom()
-    setWorldTab(tab)
-    setExploreSubView('compass')
-    setIsWorldOverlayOpen(true)
+  // look dead. Full screen is one switch for every tab, so it is not touched
+  // here: a tab opens the way the last one was left.
+  const isWide = viewportWidth >= 1024
+  const openDeck = useCallback((tab: DeckTab, world: WorldTab = 'teleport') => {
+    if (tab === 'world') {
+      syncMapToCurrentRoom()
+      setWorldTab(world)
+    }
+    setCenterActiveTab('explore')
+    setDeckTab(tab)
   }, [syncMapToCurrentRoom])
 
-  const openWorldDocked = useCallback((tab: WorldTab) => {
-    if (readPrefersWorldFullscreen()) {
-      openWorldOverlay(tab)
-      return
-    }
-    syncMapToCurrentRoom()
-    setWorldTab(tab)
-    setCenterActiveTab('explore')
-    setExploreSubView('world')
-  }, [openWorldOverlay, syncMapToCurrentRoom])
+  const closeDeck = useCallback(() => setDeckTab(null), [])
 
-  // Expanding and docking keep the sheet you were looking at, and remember the
-  // choice for next time.
-  const expandWorld = useCallback(() => {
-    writePrefersWorldFullscreen(true)
-    setExploreSubView('compass')
-    setIsWorldOverlayOpen(true)
-  }, [])
+  // The dock's tiles are the deck's tabs: the tile of the open tab closes it.
+  const handleDockSelect = useCallback((tab: DeckTab) => {
+    if (deckTab === tab) closeDeck()
+    else openDeck(tab)
+  }, [deckTab, closeDeck, openDeck])
 
-  const dockWorld = useCallback(() => {
-    writePrefersWorldFullscreen(false)
-    setIsWorldOverlayOpen(false)
-    setCenterActiveTab('explore')
-    setExploreSubView('world')
-  }, [])
+  const openMap = useCallback(() => openDeck('world', 'map'), [openDeck])
 
-  const closeWorld = useCallback(() => {
-    setIsWorldOverlayOpen(false)
-    setExploreSubView('compass')
-  }, [])
-
-  // Gear and Action share the World layer's slot over the compass: one layer
-  // at a time, the dock tile that opened it reads pressed, and tapping it
-  // again closes it. The sidebar docks them; the strip opens a bottom sheet.
-  const openLayerDocked = useCallback((layer: 'action' | 'gear') => {
-    setIsWorldOverlayOpen(false)
-    setMobileLayer(null)
-    setCenterActiveTab('explore')
-    setExploreSubView((prev) => (prev === layer ? 'compass' : layer))
-  }, [])
-
-  const openLayerSheet = useCallback((layer: 'action' | 'gear') => {
-    setExploreSubView('compass')
-    setMobileLayer((prev) => (prev === layer ? null : layer))
-  }, [])
-
-  const closeLayer = useCallback(() => {
-    setExploreSubView('compass')
-    setMobileLayer(null)
-  }, [])
+  // Full screen and back: for the whole set of tabs, remembered on this device.
+  const toggleDeckFullscreen = useCallback(() => {
+    writeDeckFullscreen(!deckFullscreen)
+    setDeckFullscreen(!deckFullscreen)
+  }, [deckFullscreen])
 
   // The Action layer's controls send the same actions the deck and the room
   // card send, through handleAction so the phone's snap-to-Explore rule for
@@ -3413,30 +3355,28 @@ export default function GameInterface() {
     ? `You need ${TELEPORT_MP_COST} MP to teleport. Rest first.`
     : null
 
-  // The world layer closes itself once you have actually travelled — walked,
-  // fast-travelled or been pulled by a party leader. A fight no longer closes
-  // it: the map and the teleport grid are exactly what you want open when
-  // something is beating you, and both still work.
+  // The deck closes itself once you have actually travelled — walked,
+  // fast-travelled or been pulled by a party leader.
   useEffect(() => {
-    setExploreSubView('compass')
-    setIsWorldOverlayOpen(false)
-    setMobileLayer(null)
+    setDeckTab(null)
   }, [currentRoom?.roomId])
 
-  // A fight starting folds the phone sheet away: the deck is the same block
-  // and is what the phone should be looking at. The desktop layer stays open
-  // beside the deck, by choice.
+  // A fight starting folds the phone sheet away: the battle deck is the same
+  // block and is what the phone should be looking at. World is left open: the
+  // map and the teleport grid are exactly what you want when something is
+  // beating you, and both still work. The desktop layer stays open beside the
+  // battle deck, by choice.
   useEffect(() => {
-    if (battle.isInBattle) setMobileLayer(null)
+    if (!battle.isInBattle) return
+    if (window.matchMedia('(min-width: 1024px)').matches) return
+    setDeckTab((tab) => (tab === 'world' ? tab : null))
   }, [battle.isInBattle])
 
-  // Dying closes whatever layer was over the compass: the death card is what
+  // Dying closes whatever tab was over the compass: the death card is what
   // the player should see, and the panel is inert until they rise.
   const isDead = !!player && player.hp <= 0
   useEffect(() => {
-    if (!isDead) return
-    setExploreSubView('compass')
-    setMobileLayer(null)
+    if (isDead) setDeckTab(null)
   }, [isDead])
 
   // Every fight starts with the phone's D-pad folded away — the deck is what
@@ -3446,11 +3386,13 @@ export default function GameInterface() {
     setIsBattleDpadOpen(false)
   }, [battle.isInBattle])
 
+  // Every "open the inventory" link in the game lands here: the Inv tab of
+  // the deck, optionally filtered and with one item's drawer open.
   const handleSwitchToInventory = useCallback((filter?: FilterTab, openItemId?: string) => {
-    setCenterActiveTab('inventory')
-    setInventoryFilter(filter)
+    if (filter !== undefined) setInventoryView(filterTabToView(filter))
     setInventoryOpenId(openItemId ?? null)
-  }, [])
+    openDeck('inv')
+  }, [openDeck])
 
   const handleOpenPlayerProfile = useCallback(
     (targetPlayer: {
@@ -3487,38 +3429,35 @@ export default function GameInterface() {
 
     switch (centerActiveTab) {
       case 'char':
+        if (charTab !== 'char') {
+          return (
+            <SkillsAndSpellsModal
+              embedded
+              isOpen
+              player={player}
+              inBattle={battle.isInBattle}
+              hasTarget={roomEnemy !== null}
+              tab={charTab}
+              highlightId={bookHighlight}
+              onTabChange={setCharTab}
+              onClose={() => setCharTab('char')}
+              onLearned={(updatedPlayer) => {
+                // Merge: the server's row wins, client-only fields (buffs, presence) survive.
+                const current = useGameStore.getState().player
+                setPlayer(current ? { ...current, ...updatedPlayer } : updatedPlayer)
+              }}
+              onCast={(spellId) => handleAction({ type: 'cast_spell', data: { spellId } })}
+              onUseSkill={(skillId) => handleAction({ type: 'use_skill', data: { skillId } })}
+            />
+          )
+        }
         return (
           <CharPanel
             player={player}
-            onAction={handleAction}
             onSwitchToInventory={handleSwitchToInventory}
             onOpenBook={handleOpenBook}
             onOpenStatAllocation={() => setStatModalOpen(true)}
             onOpenTraining={() => setTrainingModalOpen(true)}
-            onClose={goToExplore}
-          />
-        )
-      case 'inventory':
-        return (
-          <InventoryPanel
-            inventory={inventory}
-            onAction={handleAction}
-            onOpenCrafting={
-              currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle
-                ? () => setIsCraftingOpen(true)
-                : undefined
-            }
-            initialFilter={inventoryFilter}
-            initialOpenId={inventoryOpenId}
-            newItemIds={newItemIds}
-            onClearNewItem={(itemId) => {
-              setNewItemIds(prev => {
-                const updated = new Set(prev)
-                updated.delete(itemId)
-                return updated
-              })
-            }}
-            onClose={goToExplore}
           />
         )
       case 'quests':
@@ -3529,7 +3468,6 @@ export default function GameInterface() {
             isLoggedIn={isLoggedIn}
             onResetQuests={handleResetQuests}
             onSkipToChest={handleSkipToChest}
-            onClose={goToExplore}
           />
         )
       case 'players':
@@ -3578,36 +3516,27 @@ export default function GameInterface() {
         return (
           <SettingsPanel
             onLogout={handleLogoutFlow}
-            onClose={goToExplore}
           />
         )
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, player, handleAction, handleSwitchToInventory, inventory, inventoryFilter, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
+  }, [goToExplore, centerActiveTab, charTab, bookHighlight, battle.isInBattle, roomEnemy, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
 
   const handleCenterTabChange = useCallback((tabId: string | null) => {
     if (!tabId || tabId === 'explore') {
       goToExplore()
     } else {
       setCenterActiveTab(tabId)
+      // A panel takes the column the deck was docked in.
+      setDeckTab(null)
+      // The Char tab opens on the character; the books are a tap further.
+      if (tabId === 'char') setCharTab('char')
     }
 
     if (tabId === 'players') {
       const unread = useDMStore.getState().getTotalUnreadCount()
       setPlayersSubTab(unread > 0 ? 'dm' : 'roster')
-    }
-
-    if (tabId !== 'inventory') {
-      setInventoryFilter(undefined)
-      // Forget which item the bag was told to open, so the row that sent the
-      // player there can send them back to the same one.
-      setInventoryOpenId(null)
-      // The badge is deliberately NOT cleared here. Clearing on a switch to any
-      // non-inventory tab meant opening Char or Quests destroyed the "new items"
-      // count before the player had ever opened the inventory to see what was
-      // new. The single rule lives in the effect that clears it on *leaving*
-      // the inventory tab — i.e. once the items have actually been seen.
     }
   }, [goToExplore])
 
@@ -3649,99 +3578,129 @@ export default function GameInterface() {
           ? 'spells'
           : null
 
-  const panelTabs: TabConfig[] = [
-    { id: 'explore', label: 'Explore', icon: 'world', color: 'blue' },
-    { id: 'char', label: 'Char', icon: 'character', color: 'violet', badge: unspentPoints > 0 ? unspentPoints : undefined },
-    { id: 'inventory', label: 'Inv', icon: 'inv', color: 'green', badge: newItemIds.size > 0 ? newItemIds.size : undefined },
-    { id: 'quests', label: 'Quests', icon: 'trophy', color: 'gold', badge: readyQuestCount > 0 ? readyQuestCount : hasQuestUpdate ? true : undefined },
-    { id: 'players', label: 'Players', icon: <MessageSquare size={14} />, color: 'pink', badge: totalDmUnread > 0 ? totalDmUnread : undefined },
-    { id: 'settings', label: '', icon: <SettingsIcon size={14} />, color: 'gray' },
-  ]
+  // The one tab bar. Explore is home; World and Inv open as deck layers over
+  // the compass, the rest as panels in the column (a page on a phone). Action
+  // is not a tab, so with it open the bar still reads Explore.
+  const activeTab: TabId = deckTab === 'world' || deckTab === 'inv' ? deckTab : (centerActiveTab as TabId)
+  const selectTab = (tab: TabId) => {
+    if (tab === 'explore') goToExplore()
+    else if (tab === 'world' || tab === 'inv') handleDockSelect(tab)
+    else handleCenterTabChange(centerActiveTab === tab ? null : tab)
+  }
+  const tabBadges: TabBadges = {
+    char: unspentPoints > 0 ? unspentPoints : undefined,
+    inv: newItemIds.size > 0 ? newItemIds.size : undefined,
+    quests: readyQuestCount > 0 ? readyQuestCount : hasQuestUpdate ? true : undefined,
+    players: totalDmUnread > 0 ? totalDmUnread : undefined,
+    feed: unreadCount > 0 ? unreadCount : undefined,
+  }
 
-  // Mobile includes feed tab in bottom nav
-  const mobileTabs: TabConfig[] = [
-    ...panelTabs,
-    { id: 'feed', label: 'World Feed', icon: <MessageSquareText size={14} />, color: 'blue', badge: unreadCount > 0 ? unreadCount : undefined },
-  ]
+  // The deck floats over the page as a phone sheet or the full-screen layer;
+  // otherwise it is docked in the Explore sidebar.
+  // Action is Explore's own utility, not a tab: it always stays in the panel.
+  const deckIsFullscreen = deckFullscreen && deckTab !== 'action'
+  const deckFloats = !isWide || deckIsFullscreen
+  const enemyHere = !battle.isInBattle && !!roomEnemy
 
-  // Which dock tile reads pressed, per home: the sidebar's docked layer, the
-  // strip's sheet or the full-screen World overlay.
-  const sidebarActiveLayer: DockLayer | null =
-    exploreSubView === 'world' ? worldTab : exploreSubView === 'action' || exploreSubView === 'gear' ? exploreSubView : null
-  const stripActiveLayer: DockLayer | null = mobileLayer ?? (isWorldOverlayOpen ? worldTab : null)
+  // Char, Quests, Players, Feed and Settings in the frame the deck layers use,
+  // so every tab has the same header: its name, full screen and close.
+  const panelIsFullscreen = centerActiveTab !== 'explore' && isWide && deckFullscreen
+  const renderPanelLayer = (presentation: DeckPresentation) => {
+    const def = tabDef(centerActiveTab)
+    return (
+      <DeckProvider value={{ presentation, onClose: goToExplore, onToggleFullscreen: isWide ? toggleDeckFullscreen : undefined }}>
+        <LayerShell
+          title={def?.id === 'feed' ? 'World Feed' : def?.label ?? ''}
+          icon={def?.icon(15)}
+          toneClass={def?.tone ?? 'text-fg-primary'}
+          lead={
+            centerActiveTab === 'char' ? (
+              <HeaderTabs
+                label="Character, Skill book or Spell book"
+                active={charTab}
+                home="char"
+                onChange={(next) => {
+                  // Switching pages by hand leaves the ring behind: it belonged
+                  // to the row that sent the player here.
+                  setBookHighlight(null)
+                  setCharTab(next)
+                }}
+                color="violet"
+                tabs={[
+                  { id: 'char', label: 'Char' },
+                  { id: 'skills', label: 'Skill book' },
+                  { id: 'spells', label: 'Spell book' },
+                ]}
+              />
+            ) : undefined
+          }
+          flush
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className={presentation === 'overlay' ? 'mx-auto h-full w-full max-w-[860px]' : 'h-full'}>{renderActivePanel()}</div>
+          </div>
+        </LayerShell>
+      </DeckProvider>
+    )
+  }
+  const deckContent: DeckContentProps = {
+    player,
+    inventory,
+    currentRoomId: currentRoom?.roomId,
+    worldTab,
+    onWorldTabChange: setWorldTab,
+    currentMapId,
+    availableMaps,
+    onMapChange: handleMapChange,
+    onTeleport: handleTeleport,
+    teleportBlockedReason,
+    invView: inventoryView,
+    onInvViewChange: setInventoryView,
+    invOpenId: inventoryOpenId,
+    newItemIds,
+    onClearNewItem: (itemId) => {
+      setNewItemIds(prev => {
+        const updated = new Set(prev)
+        updated.delete(itemId)
+        return updated
+      })
+    },
+    // The crafting sheet and the book open over the page, so a floating deck
+    // gets out of their way; a docked one stays where it is.
+    onOpenCrafting:
+      currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle
+        ? () => {
+            if (deckFloats) closeDeck()
+            setIsCraftingOpen(true)
+          }
+        : undefined,
+    onAction: handleAction,
+    isLoggedIn,
+    battle,
+    roomEnemy,
+    isActing: isLoadingRoom,
+    onAttack: handleAttackFromLayer,
+    onUseSkill: handleSkillFromLayer,
+    onCastSpell: handleCastFromLayer,
+    onUseItem: handleUseItemFromLayer,
+    onOpenBook: (tab, highlightId) => {
+      if (deckFloats) closeDeck()
+      handleOpenBook(tab, highlightId)
+    },
+    onOpenInventory: handleSwitchToInventory,
+  }
 
   return (
     <div className="h-dvh fill-surface-canvas flex flex-col overflow-hidden">
-      {isWorldOverlayOpen && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col bg-surface-canvas/95 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-label={worldTab === 'map' ? 'Map' : 'Fast travel'}
-        >
-          <WorldLayer
-            variant="overlay"
-            tab={worldTab}
-            onTabChange={setWorldTab}
-            player={player}
-            currentRoomId={currentRoom?.roomId}
-            currentMapId={currentMapId}
-            foundMaps={availableMaps}
-            onMapChange={handleMapChange}
-            onTeleport={handleTeleport}
-            teleportBlockedReason={teleportBlockedReason}
-            onClose={closeWorld}
-            onDock={dockWorld}
-          />
-        </div>
-      )}
-      {mobileLayer && player && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label={mobileLayer === 'action' ? 'Action' : 'Gear'}
-        >
-          <button type="button" aria-label="Close" onClick={closeLayer} className="absolute inset-0 bg-surface-canvas/60 backdrop-blur-[2px]" />
-          <div className="relative flex min-h-0 flex-col rounded-t-2xl border-t border-line-strong bg-surface-overlay shadow-2xl shadow-black/50 pb-[env(safe-area-inset-bottom)]">
-            {mobileLayer === 'action' ? (
-              <ActionLayer
-                variant="sheet"
-                player={player}
-                inventory={inventory}
-                battle={battle}
-                roomEnemy={roomEnemy}
-                isActing={isLoadingRoom}
-                onAttack={handleAttackFromLayer}
-                onUseSkill={handleSkillFromLayer}
-                onCastSpell={handleCastFromLayer}
-                onUseItem={handleUseItemFromLayer}
-                onOpenBook={(tab, highlightId) => {
-                  setMobileLayer(null)
-                  handleOpenBook(tab, highlightId)
-                }}
-                onOpenInventory={(filter, openItemId) => {
-                  setMobileLayer(null)
-                  handleSwitchToInventory(filter, openItemId)
-                }}
-                onClose={closeLayer}
-              />
-            ) : (
-              <GearLayer
-                variant="sheet"
-                inventory={inventory}
-                player={player}
-                disabled={isLoadingRoom || !isLoggedIn}
-                onAction={handleAction}
-                onOpenInventory={(filter, openItemId) => {
-                  setMobileLayer(null)
-                  handleSwitchToInventory(filter, openItemId)
-                }}
-                onClose={closeLayer}
-              />
-            )}
-          </div>
-        </div>
+      {deckTab && isWide && deckIsFullscreen && (
+        <Deck
+          presentation="overlay"
+          tab={deckTab}
+          onClose={closeDeck}
+          onToggleFullscreen={toggleDeckFullscreen}
+          bar={<TabBar variant="row" active={activeTab} onSelect={selectTab} badges={tabBadges} className="mx-auto w-full max-w-[520px] px-2" />}
+          content={deckContent}
+        />
       )}
       <ConfirmDialog
         isOpen={partyDepartureConfirm !== null}
@@ -3782,37 +3741,6 @@ export default function GameInterface() {
         player={player}
         onClose={() => setStatModalOpen(false)}
         onStatAllocated={handlePointsSpent}
-      />
-      <SkillsAndSpellsModal
-        isOpen={isSpellbookOpen}
-        player={player}
-        inBattle={battle.isInBattle}
-        hasTarget={roomEnemy !== null}
-        tab={bookTab}
-        highlightId={bookHighlight}
-        onTabChange={(nextTab) => {
-          // Switching tabs by hand leaves the ring behind: it belonged to the
-          // row that sent the player here, not to wherever they wandered.
-          setBookHighlight(null)
-          setBookTab(nextTab)
-        }}
-        onClose={() => {
-          setBookHighlight(null)
-          setSpellbookOpen(false)
-        }}
-        onLearned={(updatedPlayer) => {
-          // Merge: the server's row wins, client-only fields (buffs, presence) survive.
-          const current = useGameStore.getState().player
-          setPlayer(current ? { ...current, ...updatedPlayer } : updatedPlayer)
-        }}
-        onCast={(spellId) => {
-          setSpellbookOpen(false)
-          handleAction({ type: 'cast_spell', data: { spellId } })
-        }}
-        onUseSkill={(skillId) => {
-          setSpellbookOpen(false)
-          handleAction({ type: 'use_skill', data: { skillId } })
-        }}
       />
       <CraftingSheet
         isOpen={isCraftingOpen && !!currentRoom && isCraftingRoom(currentRoom.roomId) && !battle.isInBattle}
@@ -3995,37 +3923,34 @@ export default function GameInterface() {
       />
       <ActivityTicker />
 
-      <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Left: on desktop (lg+), tab bar at top; D-pad default, panel content when tab active */}
+      {panelIsFullscreen && (
+        <div className="fixed inset-0 z-40 flex flex-col bg-surface-canvas/95 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={tabDef(centerActiveTab)?.title}>
+          <div className={DOCK_BAR}>
+            <TabBar variant="row" active={activeTab} onSelect={selectTab} badges={tabBadges} className="mx-auto w-full max-w-[520px] px-2" />
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col">{renderPanelLayer('overlay')}</div>
+        </div>
+      )}
+      <div className="relative flex flex-1 overflow-hidden min-h-0">
+        {/* Phone: a deck layer is a sheet over the page, above the bottom bar so the bar stays in reach. */}
+        {deckTab && !isWide && <Deck presentation="sheet" tab={deckTab} onClose={closeDeck} content={deckContent} />}
+        {/* Left: on desktop (lg+), the D-pad by default, a panel or deck layer when a tab is open; the tab bar pinned above it */}
         <div
           className="relative hidden lg:flex flex-col flex-shrink-0 border-r border-line-subtle/30 bg-surface-panel/95 min-h-0 overflow-hidden"
           style={{ width: leftPanel.width }}
         >
           <PanelResizeHandle edge="right" isDragging={leftPanel.isDragging} handleProps={leftPanel.handleProps} />
-          <TabContainer
-            tabs={panelTabs}
-            defaultTab="explore"
-            activeTab={centerActiveTab}
-            onTabChange={handleCenterTabChange}
-            containerClassName="!flex-none"
-            headerClassName="px-3 pt-2 pb-1"
-            buttonPadding="px-2 py-1"
-            wrap
-          />
-          {centerActiveTab !== 'explore' ? (
-            <div className="flex-1 overflow-y-auto min-h-0">
-              {renderActivePanel()}
-            </div>
+          <div className={`${DOCK_BAR} px-2`}>
+            <TabBar variant="row" active={activeTab} onSelect={selectTab} badges={tabBadges} />
+          </div>
+          {centerActiveTab !== 'explore' && !panelIsFullscreen ? (
+            <div className="flex min-h-0 flex-1 flex-col">{renderPanelLayer('docked')}</div>
           ) : (
             <div className="flex-1 flex flex-col min-h-0">
               <ExplorePanel
                 variant="sidebar"
                 room={currentRoom}
-                subView={exploreSubView}
-                worldTab={worldTab}
-                onWorldTabChange={setWorldTab}
                 onAction={handleAction}
-                onTeleport={handleTeleport}
                 player={player}
                 inventory={inventory}
                 onOpenTraining={() => setTrainingModalOpen(true)}
@@ -4033,28 +3958,19 @@ export default function GameInterface() {
                 onOpenBook={handleOpenBook}
                 onOpenInventory={handleSwitchToInventory}
                 isPartyMember={isPartyMember}
-                teleportBlockedReason={teleportBlockedReason}
-                onOpenWorldDocked={openWorldDocked}
-                onOpenWorldOverlay={openWorldOverlay}
-                onCloseWorld={closeWorld}
-                onExpandWorld={expandWorld}
-                onOpenGear={() => openLayerDocked('gear')}
-                onOpenAction={() => openLayerDocked('action')}
-                onCloseLayer={closeLayer}
-                activeLayer={sidebarActiveLayer}
-                battle={battle}
-                onAttack={handleAttackFromLayer}
-                onUseSkill={handleSkillFromLayer}
-                onCastSpell={handleCastFromLayer}
-                onUseItem={handleUseItemFromLayer}
+                deckTab={deckFloats ? null : deckTab}
+                deck={deckContent}
+                actionOpen={deckTab === 'action'}
+                enemyHere={enemyHere}
+                onToggleAction={() => handleDockSelect('action')}
+                onOpenMap={openMap}
+                onCloseDeck={closeDeck}
+                onToggleDeckFullscreen={deckTab === 'action' ? undefined : toggleDeckFullscreen}
                 currentAction={action}
                 roomEnemy={roomEnemy}
                 isInBattle={battle.isInBattle}
                 gatherCooldowns={gatherCooldowns}
                 actionResult={actionResult}
-                currentMapId={currentMapId}
-                availableMaps={availableMaps}
-                onMapChange={handleMapChange}
                 isMoveInProgress={isMoveInProgress}
                 isDimmed={player.hp <= 0}
                 showBattleBadge={battle.isInBattle}
@@ -4067,9 +3983,7 @@ export default function GameInterface() {
         {/* Mobile panel: full-width when a panel tab is active (< lg only) */}
         {centerActiveTab !== 'explore' && (
           <div className="flex flex-col flex-1 min-h-0 bg-surface-panel/95 overflow-hidden lg:hidden">
-            <div className="flex-1 overflow-y-auto min-h-0">
-              {renderActivePanel()}
-            </div>
+            {!isWide && renderPanelLayer('sheet')}
           </div>
         )}
 
@@ -4243,11 +4157,7 @@ export default function GameInterface() {
                 <ExplorePanel
                   variant="strip"
                   room={currentRoom}
-                  subView={exploreSubView}
-                  worldTab={worldTab}
-                  onWorldTabChange={setWorldTab}
                   onAction={handleAction}
-                  onTeleport={handleTeleport}
                   player={player}
                   inventory={inventory}
                   onOpenTraining={() => setTrainingModalOpen(true)}
@@ -4255,23 +4165,10 @@ export default function GameInterface() {
                   onOpenBook={handleOpenBook}
                   onOpenInventory={handleSwitchToInventory}
                   isPartyMember={isPartyMember}
-                  teleportBlockedReason={teleportBlockedReason}
-                  onOpenWorldDocked={openWorldDocked}
-                  onOpenWorldOverlay={openWorldOverlay}
-                  onCloseWorld={closeWorld}
-                  onExpandWorld={expandWorld}
-                  onOpenGear={() => openLayerSheet('gear')}
-                  onOpenAction={() => openLayerSheet('action')}
-                  onCloseLayer={closeLayer}
-                  activeLayer={stripActiveLayer}
-                  battle={battle}
-                  onAttack={handleAttackFromLayer}
-                  onUseSkill={handleSkillFromLayer}
-                  onCastSpell={handleCastFromLayer}
-                  onUseItem={handleUseItemFromLayer}
-                  currentMapId={currentMapId}
-                  availableMaps={availableMaps}
-                  onMapChange={handleMapChange}
+                  actionOpen={deckTab === 'action'}
+                  enemyHere={enemyHere}
+                  onToggleAction={() => handleDockSelect('action')}
+                  onOpenMap={openMap}
                   isMoveInProgress={isMoveInProgress}
                   isLoadingRoom={isLoadingRoom}
                 />
@@ -4321,15 +4218,9 @@ export default function GameInterface() {
         )}
       </div>
 
-      {/* Mobile bottom nav — includes explore tab + overflow */}
-      <div className="lg:hidden">
-        <MobileBottomNav
-          tabs={mobileTabs}
-          activeTab={centerActiveTab}
-          onTabChange={handleCenterTabChange}
-          fallbackLabels={{ players: 'Players', feed: 'World Feed', settings: 'Settings' }}
-          overflowAfter={5}
-        />
+      {/* Phone: the tab bar across the bottom — five tabs and More. */}
+      <div className="lg:hidden flex-shrink-0 border-t border-line-subtle/40 bg-surface-panel/95 px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+        <TabBar variant="phone" active={activeTab} onSelect={selectTab} badges={tabBadges} />
       </div>
     </div>
   )

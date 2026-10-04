@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { LocateFixed, Map as MapIcon, Maximize2, PictureInPicture2, Sparkles, X, type LucideIcon } from 'lucide-react'
+import { Globe, LocateFixed, Map as MapIcon, Sparkles, X, type LucideIcon } from 'lucide-react'
 import MapContent from '@/components/MapContent'
 import type { Player } from '@/lib/game-state'
+import LayerShell, { ICON_BUTTON, useDeck } from './LayerShell'
 import SubTabButton from './SubTabButton'
 import SheetFilmstrip from './SheetFilmstrip'
 import WorldGrid, { foundMapIdsFor, type WorldLevel } from './WorldGrid'
@@ -25,12 +26,6 @@ interface TeleportHub {
 }
 
 interface WorldLayerProps {
-  /**
-   * `docked` fills the Explore sidebar. `overlay` is the full-screen layer;
-   * on a wide screen it docks the World grid beside the sheet instead of
-   * hiding it behind the World chip.
-   */
-  variant: 'docked' | 'overlay'
   tab: WorldTab
   onTabChange: (tab: WorldTab) => void
   player: Player | null
@@ -42,11 +37,6 @@ interface WorldLayerProps {
   onMapChange: (mapId: string) => void
   onTeleport: (roomId: string) => void
   teleportBlockedReason?: string | null
-  onClose: () => void
-  /** docked: expand to the overlay. */
-  onFullscreen?: () => void
-  /** overlay: return to the sidebar. Hidden where there is no sidebar. */
-  onDock?: () => void
 }
 
 /** True while the viewport is at least Tailwind's `lg` breakpoint. */
@@ -93,18 +83,17 @@ function TabButton({
   )
 }
 
-const ICON_BUTTON = 'flex-shrink-0 rounded p-1 text-fg-secondary transition-colors hover:bg-surface-raised/50 hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus'
-
 /**
- * The world layer: Map and Fast travel as two tabs under one header, docked in
- * the Explore sidebar or full screen. The Map tab shows one sheet with every
+ * The world layer: Fast travel and Map as two tabs under one header, docked in
+ * the Explore sidebar or full screen (a phone's sheet is the whole screen, so
+ * it lays out as the full-screen form). The dock's World tile opens it on
+ * Teleport; the centre of the compass ring opens it on the Map. The Map tab shows one sheet with every
  * found sheet in a filmstrip beneath it, a World grid of the regions (a rail
  * beside the sheet when the screen is wide), a Here chip back to your own
  * sheet, and a footer that fast-travels to the hub of the sheet you are
  * looking at. The Teleport tab is the fast-travel grid.
  */
 export default function WorldLayer({
-  variant,
   tab,
   onTabChange,
   player,
@@ -114,10 +103,9 @@ export default function WorldLayer({
   onMapChange,
   onTeleport,
   teleportBlockedReason = null,
-  onClose,
-  onFullscreen,
-  onDock,
 }: WorldLayerProps) {
+  const { presentation, onClose } = useDeck()
+  const variant = presentation === 'docked' ? 'docked' : 'overlay'
   const [showWorld, setShowWorld] = useState(false)
   const [worldLevel, setWorldLevel] = useState<WorldLevel>('surface')
   const isWide = useIsWide()
@@ -305,38 +293,25 @@ export default function WorldLayer({
     </>
   )
 
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      {/* Row 1: the two tabs, the sheet's name, full screen or dock, close. */}
-      <div className="flex flex-shrink-0 items-center gap-2 border-b border-line-subtle/50 py-2 pl-3 pr-2">
-        <div role="tablist" aria-label="Map or Teleport" className="flex flex-shrink-0 overflow-hidden rounded-lg border border-line-strong/80 shadow-sm">
-          <TabButton active={tab === 'map'} icon={MapIcon} label="Map" activeClasses="bg-hue-sky/15 text-hue-sky" onClick={() => onTabChange('map')} />
-          <TabButton
-            active={tab === 'teleport'}
-            icon={Sparkles}
-            label="Teleport"
-            activeClasses="bg-resource-mp/15 text-resource-mp"
-            onClick={() => onTabChange('teleport')}
-            divided
-          />
-        </div>
-        <span className="ml-auto min-w-0 truncate text-[11px] text-fg-muted">{headerTitle}</span>
-        {tab === 'map' && !hasRail && hereButton}
-        {variant === 'docked' && onFullscreen && (
-          <button type="button" onClick={onFullscreen} aria-label="Open full screen" title="Full screen" className={ICON_BUTTON}>
-            <Maximize2 size={14} aria-hidden="true" />
-          </button>
-        )}
-        {variant === 'overlay' && onDock && (
-          <button type="button" onClick={onDock} aria-label="Back to the sidebar" title="Back to the sidebar" className={`hidden lg:flex ${ICON_BUTTON}`}>
-            <PictureInPicture2 size={16} aria-hidden="true" />
-          </button>
-        )}
-        <button type="button" onClick={onClose} aria-label="Close" title="Close (Esc)" className={ICON_BUTTON}>
-          <X size={variant === 'overlay' ? 20 : 16} aria-hidden="true" />
-        </button>
+  const lead = (
+    <>
+      <div role="tablist" aria-label="Teleport or Map" className="flex flex-shrink-0 overflow-hidden rounded-lg border border-line-strong/80 shadow-sm">
+        <TabButton
+          active={tab === 'teleport'}
+          icon={Sparkles}
+          label="Teleport"
+          activeClasses="bg-resource-mp/15 text-resource-mp"
+          onClick={() => onTabChange('teleport')}
+        />
+        <TabButton active={tab === 'map'} icon={MapIcon} label="Map" activeClasses="bg-hue-sky/15 text-hue-sky" onClick={() => onTabChange('map')} divided />
       </div>
+      <span className="ml-auto min-w-0 truncate text-[11px] text-fg-muted">{headerTitle}</span>
+      {tab === 'map' && !hasRail && hereButton}
+    </>
+  )
 
+  return (
+    <LayerShell title="World" icon={<Globe size={15} aria-hidden="true" />} toneClass="text-hue-sky" lead={lead} flush>
       {tab === 'map' ? (
         hasRail ? (
           <div className="flex min-h-0 flex-1">
@@ -400,6 +375,6 @@ export default function WorldLayer({
           </div>
         </>
       )}
-    </div>
+    </LayerShell>
   )
 }

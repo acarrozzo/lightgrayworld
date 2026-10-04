@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Player, useGameStore } from '@/lib/game-state'
 import Icon from './Icon'
+import { ScrollEnd } from './game-interface/LayerShell'
 import {
   buildSpellbook,
   castBlockedReason,
@@ -27,6 +28,8 @@ export type BookTab = 'skills' | 'spells'
 
 interface SkillsAndSpellsModalProps {
   isOpen: boolean
+  /** Draw the pages in place, with no dialog around them: the Char tab's Skill book and Spell book. */
+  embedded?: boolean
   player: Player | null
   /** Using from the book: heals and buffs work anywhere, attack spells and strikes need something to hit. */
   inBattle: boolean
@@ -55,6 +58,7 @@ interface SkillsAndSpellsModalProps {
  */
 export default function SkillsAndSpellsModal({
   isOpen,
+  embedded = false,
   player,
   inBattle,
   hasTarget,
@@ -168,34 +172,15 @@ export default function SkillsAndSpellsModal({
     </button>
   )
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 p-4 sm:p-6 lg:p-10">
-      <div className="absolute inset-0 bg-surface-sunken/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 h-full w-full bg-surface-panel/95 border border-line-subtle/50 rounded-lg shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line-subtle/50">
-          <div className="min-w-0">
-            <h3 className="text-lg font-semibold text-fg-bright">Skills &amp; Spells</h3>
-            <p className="text-xs text-fg-secondary mt-0.5">
-              {tab === 'skills'
-                ? 'Spend SP on skills. Proficiencies and defenses work on their own; special attacks cost MP in a fight. Find better teachers to raise the caps.'
-                : 'Spend SP to learn and upgrade spells. Spells consume MP to cast. Find better teachers to raise the caps.'}
-            </p>
-          </div>
-          <div role="tablist" aria-label="Book" className="flex gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle flex-shrink-0">
-            {tabButton('skills', 'Skills')}
-            {tabButton('spells', 'Spells')}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-fg-secondary hover:text-fg-bright transition-colors p-1.5 rounded hover:bg-surface-raised flex-shrink-0"
-            disabled={Boolean(busy)}
-          >
-            <span className="sr-only">Close</span>
-            <Icon name="x" size={16} />
-          </button>
-        </div>
+  // In the Char tab the cards follow the panel's width, not the window's.
+  const cardGrid = embedded ? 'grid grid-cols-1 @min-[640px]:grid-cols-2 gap-3' : 'grid grid-cols-1 lg:grid-cols-2 gap-3'
+  const blurb =
+    tab === 'skills'
+      ? 'Spend SP on skills. Proficiencies and defenses work on their own; special attacks cost MP in a fight. Find better teachers to raise the caps.'
+      : 'Spend SP to learn and upgrade spells. Spells consume MP to cast. Find better teachers to raise the caps.'
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+  const pages = (
+    <>
           <div className="bg-surface-panel/70 border border-line-subtle rounded-2xl px-6 py-4 flex flex-wrap items-center gap-x-8 gap-y-2">
             <div>
               <p className={`text-xs uppercase tracking-[0.4em] mb-1 ${tab === 'skills' ? 'text-stat-str/80' : 'text-mood-arcane/80'}`}>Skill Points</p>
@@ -243,7 +228,7 @@ export default function SkillsAndSpellsModal({
                       <h4 className="text-base font-semibold text-fg-bright">{group.name}</h4>
                       <p className="text-xs text-fg-secondary">{group.blurb}</p>
                     </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div className={cardGrid}>
                       {rows.map((entry) => (
                         <SkillCard
                           key={entry.def.id}
@@ -271,7 +256,7 @@ export default function SkillsAndSpellsModal({
                       <h4 className="text-base font-semibold text-fg-bright">{school.name}</h4>
                       <p className="text-xs text-fg-secondary">{school.blurb}</p>
                     </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div className={cardGrid}>
                       {rows.map((entry) => (
                         <SpellCard
                           key={entry.def.id}
@@ -289,6 +274,46 @@ export default function SkillsAndSpellsModal({
                   </section>
                 )
               })}
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <div className="@container space-y-4 p-4">
+        <p className="text-xs text-fg-secondary">{blurb}</p>
+        {pages}
+        <ScrollEnd />
+      </div>
+    )
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 p-4 sm:p-6 lg:p-10">
+      <div className="absolute inset-0 bg-surface-sunken/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 h-full w-full bg-surface-panel/95 border border-line-subtle/50 rounded-lg shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line-subtle/50">
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold text-fg-bright">Skills &amp; Spells</h3>
+            <p className="text-xs text-fg-secondary mt-0.5">
+              {blurb}
+            </p>
+          </div>
+          <div role="tablist" aria-label="Book" className="flex gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle flex-shrink-0">
+            {tabButton('skills', 'Skills')}
+            {tabButton('spells', 'Spells')}
+          </div>
+          <button
+            onClick={onClose}
+            className="text-fg-secondary hover:text-fg-bright transition-colors p-1.5 rounded hover:bg-surface-raised flex-shrink-0"
+            disabled={Boolean(busy)}
+          >
+            <span className="sr-only">Close</span>
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          {pages}
         </div>
 
         <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-line-subtle/50">

@@ -318,10 +318,16 @@ export default function Compass({
           })}
         </div>
 
-        {/* The right-hand column, mirroring up/down: the dock on the phone
-            strip, nothing on desktop. */}
+        {/* The right-hand column, mirroring up/down: the Action button on the
+            phone strip, nothing on desktop. */}
         {aside && (
-          <div className="absolute left-full ml-[var(--compass-side-gap)] top-1/2 -translate-y-1/2 flex flex-col items-center">
+          <div
+            className="absolute left-full top-1/2 -translate-y-1/2 flex flex-col items-center justify-center"
+            // As wide as the space from the ring to the compass's right edge
+            // (the compass's width less the ring's, halved), so what sits here
+            // is centred in that space at any width.
+            style={{ width: 'calc((100cqw - 100%) / 2)' }}
+          >
             {aside}
           </div>
         )}

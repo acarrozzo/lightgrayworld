@@ -1,6 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Search, X } from 'lucide-react'
 import type { InventoryItem } from '@/lib/game-state'
 import { WeaponCategory } from '@prisma/client'
 import { getItemDisplayOrder } from '@/lib/inventory-utils'
@@ -14,6 +15,7 @@ import {
   type SortStat,
   FILTER_GROUPS,
   buildSections,
+  CATEGORY_LABELS,
   compareToEquipped,
   countForGroup,
   filterTabToView,
@@ -23,6 +25,7 @@ import {
   sortItems,
 } from '@/lib/inventory-categories'
 import ItemFilterBar from './ItemFilterBar'
+import StatSortControl from './StatSortControl'
 import ItemRow, { EquippedDivider, GhostButton, ItemDrawer } from './ItemRow'
 import Icon from './Icon'
 
@@ -34,6 +37,18 @@ interface InventoryDisplayProps {
   showNewItems?: boolean
   showHeading?: boolean
   initialFilter?: FilterTab
+  /**
+   * The filter, owned by the caller: the Inv tab drives it from its equipment
+   * slots. Left out, the bag keeps its own, seeded by `initialFilter`.
+   */
+  view?: ItemFilterView
+  onViewChange?: (view: ItemFilterView) => void
+  /** The caller draws the group filter itself (the Inv tab's header). */
+  hideGroups?: boolean
+  /** The caller draws the slot filter itself. */
+  hideSlots?: boolean
+  /** The root's padding; the Inv tab's layer supplies its own. */
+  className?: string
   /** One item to open and scroll to on arrival — the character panel's rows deep-link here. */
   initialOpenId?: string | null
   /**
@@ -49,9 +64,22 @@ type HandednessFilter = 'all' | '1h' | '2h'
 const PRIMARY =
   'px-2.5 min-h-[30px] rounded-md text-xs font-semibold flex items-center gap-1 whitespace-nowrap transition-all duration-200 shadow-sm hover:shadow-md'
 const SECTION_TITLE = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-fg-muted px-0.5 mt-1'
-const SUB_CHIP = 'px-2.5 py-1 text-[11px] font-medium rounded border transition-all duration-200'
-const SUB_CHIP_IDLE =
-  'bg-surface-raised/50 hover:bg-surface-raised/70 text-fg-secondary border-line-subtle/50 hover:border-line-strong/50'
+const STAT_WORDS = ['str', 'dex', 'mag', 'def'] as const
+
+/**
+ * Whether an item answers one search word: part of its name, the name of its
+ * slot or group ("ring", "crafting"), or a stat it raises ("dex").
+ */
+function matchesWord(item: InventoryItem, word: string): boolean {
+  if (item.template.name.toLowerCase().includes(word)) return true
+  const category = getItemCategory(item)
+  if (CATEGORY_LABELS[category]?.toLowerCase().includes(word)) return true
+  const statMods = (item.template.metadata as any)?.statMods
+  return STAT_WORDS.some((stat) => stat === word && typeof statMods?.[stat] === 'number' && statMods[stat] > 0)
+}
+
+const SEGMENT = 'px-2.5 py-1 text-[11px] font-medium transition-colors duration-150'
+const SEGMENT_IDLE = 'text-fg-secondary hover:bg-surface-raised/60 hover:text-fg-primary'
 
 /** Inline quantity strip that replaces the one-tap Drop: 1 / half / all, or cancel. */
 function DropStrip({
@@ -90,21 +118,36 @@ export default function InventoryDisplay({
   showNewItems = true,
   showHeading = true,
   initialFilter,
+  view: controlledView,
+  onViewChange,
+  hideGroups = false,
+  hideSlots = false,
+  className = 'p-4 sm:p-5',
   initialOpenId = null,
   onOpenCrafting,
 }: InventoryDisplayProps) {
-  const [view, setView] = useState<ItemFilterView>(() => filterTabToView(initialFilter))
+  const [ownView, setOwnView] = useState<ItemFilterView>(() => filterTabToView(initialFilter))
+  const view = controlledView ?? ownView
+  const setView = onViewChange ?? setOwnView
   const [weaponTypeFilter, setWeaponTypeFilter] = useState<WeaponTypeFilter>('all')
   const [handednessFilter, setHandednessFilter] = useState<HandednessFilter>('all')
   const [sortStat, setSortStat] = useState<SortStat>('none')
   // One drawer open at a time. A stale id (item dropped or sold) simply matches nothing.
   const [openId, setOpenId] = useState<string | null>(null)
+  // Search looks through the whole bag, whatever the chips are set to.
+  const [query, setQuery] = useState('')
+  const words = useMemo(() => query.toLowerCase().split(/\s+/).filter(Boolean), [query])
+  const searching = words.length > 0
+  const searchCount = useMemo(
+    () => (words.length === 0 ? 0 : inventory.filter((item) => words.every((word) => matchesWord(item, word))).length),
+    [inventory, words]
+  )
   const [dropOpen, setDropOpen] = useState(false)
   const [compareEnabled, setCompareEnabled] = useGearCompareSetting()
 
   // The character panel's slot buttons deep-link into Equipment › slot.
   useEffect(() => {
-    if (initialFilter !== undefined) setView(filterTabToView(initialFilter))
+    if (initialFilter !== undefined) setOwnView(filterTabToView(initialFilter))
   }, [initialFilter])
 
   // Its item rows deep-link one step further: open that item and bring it into
@@ -303,11 +346,22 @@ export default function InventoryDisplay({
     if (inventory.length === 0) {
       return <p className="text-sm text-fg-secondary">Your inventory is empty.</p>
     }
-    const sections = buildSections(groupsForView, effectiveView)
-    if (sections.length === 0) {
-      return <p className="text-sm text-fg-secondary">Nothing here yet.</p>
+    let sections
+    if (searching) {
+      const found = new Map<ItemCategory, InventoryItem[]>()
+      for (const [category, list] of byCategory) {
+        found.set(category, list.filter((item) => words.every((word) => matchesWord(item, word))))
+      }
+      sections = FILTER_GROUPS.flatMap((group) =>
+        buildSections(found, { group: group.id, slot: 'all' }).map((section) => ({ ...section, title: section.title ?? group.label }))
+      )
+    } else {
+      sections = buildSections(groupsForView, effectiveView)
     }
-    const craftingHere = effectiveView.group === 'crafting' && onOpenCrafting
+    if (sections.length === 0) {
+      return <p className="text-sm text-fg-secondary">{searching ? `Nothing in your bag matches “${query.trim()}”.` : 'Nothing here yet.'}</p>
+    }
+    const craftingHere = !searching && effectiveView.group === 'crafting' && onOpenCrafting
     return sections.map((section, sectionIndex) => (
       <div key={section.key} className="flex flex-col gap-1.5">
         {section.title && (
@@ -333,50 +387,90 @@ export default function InventoryDisplay({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-4 sm:p-5">
+    <div className={`flex flex-col gap-3 ${className}`}>
       {showHeading && <h3 className="text-lg font-semibold text-fg-bright">Inventory</h3>}
 
-      <ItemFilterBar
-        counts={counts}
-        newCounts={newCounts}
-        view={effectiveView}
-        onChange={setView}
-        sort={effectiveView.group === 'crafting' ? undefined : sortStat}
-        onSortChange={effectiveView.group === 'crafting' ? undefined : setSortStat}
-        compareEnabled={compareEnabled}
-        onCompareChange={setCompareEnabled}
-      >
-        {showMainHandFilters && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <div className="flex gap-1.5">
-              {(['all', 'melee', 'ranged'] as WeaponTypeFilter[]).map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  aria-pressed={weaponTypeFilter === filter}
-                  onClick={() => setWeaponTypeFilter(filter)}
-                  className={`${SUB_CHIP} ${weaponTypeFilter === filter ? 'fill-stat-mag border-stat-mag/50' : SUB_CHIP_IDLE}`}
-                >
-                  {filter === 'all' ? 'All types' : filter.charAt(0).toUpperCase() + filter.slice(1)}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-1.5">
-              {(['all', '1h', '2h'] as HandednessFilter[]).map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  aria-pressed={handednessFilter === filter}
-                  onClick={() => setHandednessFilter(filter)}
-                  className={`${SUB_CHIP} ${handednessFilter === filter ? 'fill-resource-gold border-resource-gold/50' : SUB_CHIP_IDLE}`}
-                >
-                  {filter === 'all' ? 'All hands' : filter.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* One line: search, which reaches every group at once by name, slot or
+          stat, with Sort beside it. */}
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
+          <input
+            id="bag-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              // Escape clears the search before it closes the layer.
+              if (event.key === 'Escape' && query) {
+                event.stopPropagation()
+                event.nativeEvent.stopImmediatePropagation()
+                setQuery('')
+              }
+            }}
+            placeholder="Search: name, slot or stat"
+            aria-label="Search your bag"
+            autoComplete="off"
+            className="h-9 w-full rounded-lg border border-line-subtle/60 bg-surface-sunken pl-8 pr-8 text-xs text-fg-primary placeholder:text-fg-muted focus:border-line-focus focus:outline-none focus-visible:ring-1 focus-visible:ring-line-focus [&::-webkit-search-cancel-button]:hidden"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              title="Clear search"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-fg-secondary hover:bg-surface-raised/60 hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+            >
+              <X size={14} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        {effectiveView.group !== 'crafting' && (
+          <StatSortControl value={sortStat} onChange={setSortStat} compareEnabled={compareEnabled} onCompareChange={setCompareEnabled} className="flex-shrink-0" />
         )}
-      </ItemFilterBar>
+      </div>
+
+      {searching ? (
+        <p className="text-[11px] text-fg-muted">
+          Looking through everything you carry · <span className="tabular-nums text-fg-secondary">{searchCount}</span> found
+        </p>
+      ) : (
+        <ItemFilterBar counts={counts} newCounts={newCounts} view={effectiveView} onChange={setView} hideGroups={hideGroups} hideSlots={hideSlots}>
+          {showMainHandFilters && (
+            // Two narrowing switches for weapons. Each is off until pressed,
+            // and pressing the lit half turns it off again.
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted">Narrow</span>
+              <div className="flex overflow-hidden rounded-md border border-line-subtle/60">
+                {(['melee', 'ranged'] as const).map((filter, index) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    aria-pressed={weaponTypeFilter === filter}
+                    onClick={() => setWeaponTypeFilter(weaponTypeFilter === filter ? 'all' : filter)}
+                    className={`${SEGMENT} ${index > 0 ? 'border-l border-line-subtle/60' : ''} ${weaponTypeFilter === filter ? 'fill-stat-mag' : SEGMENT_IDLE}`}
+                  >
+                    {filter === 'melee' ? 'Melee' : 'Ranged'}
+                  </button>
+                ))}
+              </div>
+              <div className="flex overflow-hidden rounded-md border border-line-subtle/60">
+                {(['1h', '2h'] as const).map((filter, index) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    aria-pressed={handednessFilter === filter}
+                    onClick={() => setHandednessFilter(handednessFilter === filter ? 'all' : filter)}
+                    className={`${SEGMENT} ${index > 0 ? 'border-l border-line-subtle/60' : ''} ${handednessFilter === filter ? 'fill-resource-gold' : SEGMENT_IDLE}`}
+                  >
+                    {filter.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </ItemFilterBar>
+      )}
 
       {renderContent()}
     </div>

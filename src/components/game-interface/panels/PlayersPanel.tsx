@@ -8,7 +8,6 @@ import RanksPanel from './RanksPanel'
 import DMPanel from './DMPanel'
 import NotificationBadge from '@/components/NotificationBadge'
 import SubTabButton from '../SubTabButton'
-import { X } from 'lucide-react'
 
 export type PlayersSubTab = 'roster' | 'party' | 'ranks' | 'dm'
 
@@ -94,14 +93,6 @@ export default function PlayersPanel({
             )
           })}
         </div>
-        <button
-          onClick={onClose}
-          className="hidden rounded-lg p-1.5 text-fg-secondary transition-colors hover:bg-surface-raised/50 hover:text-fg-bright md:block"
-          title="Close"
-          aria-label="Close"
-        >
-          <X size={16} />
-        </button>
       </div>
 
       {/* Every sub-tab owns its own scrolling. The old panel clipped its content

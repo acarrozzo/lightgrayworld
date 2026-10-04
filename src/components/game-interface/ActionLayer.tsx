@@ -1,17 +1,16 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Swords } from 'lucide-react'
+import Icon from '@/components/Icon'
 import type { BattleState, InventoryItem, Player } from '@/lib/game-state'
 import type { FilterTab } from '@/lib/inventory-categories'
 import { deckContextFromBattle, deckContextFromRoom, type targetFromRoomEnemy } from '@/lib/action-deck'
 import ActionDeck from './ActionDeck'
-import LayerShell, { LayerLink } from './LayerShell'
+import LayerShell, { LayerLink, useDeck } from './LayerShell'
 
 type RoomEnemyLike = Parameters<typeof targetFromRoomEnemy>[0]
 
 interface ActionLayerProps {
-  variant: 'docked' | 'sheet'
   player: Player
   inventory: InventoryItem[]
   /** A running fight makes this the deck's twin; otherwise the room's enemy is the target. */
@@ -24,8 +23,8 @@ interface ActionLayerProps {
   onCastSpell: (spellId: string) => void
   onUseItem: (playerItemId: string, action: string) => void
   onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
+  /** Switches to the Inv tab. */
   onOpenInventory: (filter?: FilterTab, openItemId?: string) => void
-  onClose: () => void
 }
 
 /**
@@ -33,10 +32,10 @@ interface ActionLayerProps {
  * compass, drawn as the battle deck's command block. With an enemy in the
  * room, Attack and the strikes open the fight; heals and buffs cast in place;
  * with nothing to hit the attack controls say so and the rest still works.
- * During a fight on desktop it is the deck's twin beside it.
+ * During a fight on desktop it is the deck's twin beside it. The bag link
+ * switches to the Inv tab, so nothing here leaves the deck.
  */
 export default function ActionLayer({
-  variant,
   player,
   inventory,
   battle,
@@ -48,8 +47,8 @@ export default function ActionLayer({
   onUseItem,
   onOpenBook,
   onOpenInventory,
-  onClose,
 }: ActionLayerProps) {
+  const { presentation } = useDeck()
   const context = useMemo(
     () => (battle.isInBattle ? deckContextFromBattle(battle, player, inventory) : deckContextFromRoom(roomEnemy, player, inventory)),
     [battle, player, inventory, roomEnemy]
@@ -57,14 +56,19 @@ export default function ActionLayer({
   return (
     <LayerShell
       title="Action"
-      icon={Swords}
+      icon={<Icon name="hand" size={15} color="current" />}
       toneClass="text-action-attack"
-      variant={variant}
-      onClose={onClose}
       footer={
         <>
-          {onOpenBook ? <LayerLink onClick={() => onOpenBook('spells')}>Open the book</LayerLink> : <span />}
-          <LayerLink onClick={() => onOpenInventory('consumables')}>Open full bag</LayerLink>
+          {onOpenBook ? (
+            <span className="flex min-w-0 items-center gap-3">
+              <LayerLink onClick={() => onOpenBook('skills')}>Open skill book</LayerLink>
+              <LayerLink onClick={() => onOpenBook('spells')}>Open spell book</LayerLink>
+            </span>
+          ) : (
+            <span />
+          )}
+          <LayerLink onClick={() => onOpenInventory('consumables')}>Open inventory</LayerLink>
         </>
       }
     >
@@ -80,8 +84,8 @@ export default function ActionLayer({
         onUseItem={onUseItem}
         onOpenBook={battle.isInBattle ? undefined : onOpenBook}
         onOpenItem={battle.isInBattle ? undefined : (playerItemId) => onOpenInventory('consumables', playerItemId)}
-        listClassName={variant === 'sheet' ? 'max-h-[42dvh]' : ''}
-        idPrefix={variant === 'sheet' ? 'sheet' : 'layer'}
+        listClassName={presentation === 'sheet' ? 'max-h-[42dvh]' : ''}
+        idPrefix={presentation}
       />
     </LayerShell>
   )

@@ -8,19 +8,18 @@ import { DEFAULT_PLAYER_AVATAR, PlayerAvatar, DEFAULT_AVATAR_COLOR } from '@/lib
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { hasLearnableSpell } from '@/lib/spellbook'
 import { hasLearnableSkill } from '@/lib/skillbook'
-import AutoEquipRow from '@/components/game-interface/AutoEquipRow'
-import EquipmentGrid from '@/components/game-interface/EquipmentGrid'
 import CoreStatsGrid from '@/components/game-interface/CoreStatsGrid'
 import { effectiveStats } from '@/lib/effective-stats'
 import { describeRegen, playerRegen, statusChips } from '@/lib/status-effects'
 import StatusStrip from '@/components/StatusStrip'
+import { ScrollEnd } from '@/components/game-interface/LayerShell'
 
 import type { FilterTab } from '@/lib/inventory-categories'
 
 interface CharPanelProps {
   player: Player
   onAction?: (action: string | { type: string; data?: any }) => void
-  /** Switches to the bag, optionally filtered and with one item's drawer open. */
+  /** Opens the Inv tab beside the compass: the bag, what is worn and the MAX row live there. */
   onSwitchToInventory?: (filter?: FilterTab, openItemId?: string) => void
   /** Opens the Skills & Spells book on the given tab, ringing one entry. */
   onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
@@ -33,7 +32,7 @@ interface CharPanelProps {
 }
 
 
-export default function CharPanel({ player, onAction, onSwitchToInventory, onOpenBook, onOpenStatAllocation, onOpenTraining, onClose }: CharPanelProps) {
+export default function CharPanel({ player, onSwitchToInventory, onOpenBook, onOpenStatAllocation, onOpenTraining, onClose }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
   const questRows = useGameStore((state) => state.quests)
   const titles = earnedTitles(questRows)
@@ -233,13 +232,16 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 </div>
               </div>
               <CoreStatsGrid stats={stats} />
-              <AutoEquipRow disabled={!isLoggedIn || !onAction} onAction={onAction} />
-            </div>
-
-            {/* Equipment Display — the same grid the Gear layer draws beside the D-pad. */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-fg-primary uppercase tracking-wide">Equipment</h4>
-              <EquipmentGrid inventory={inventory} onSwitchToInventory={(filter) => onSwitchToInventory?.(filter)} />
+              {/* What is worn, the MAX row and the bag are the Inv tab's; this is the way there. */}
+              {onSwitchToInventory && (
+                <button
+                  type="button"
+                  onClick={() => onSwitchToInventory()}
+                  className="text-xs text-fg-secondary hover:text-fg-bright hover:underline underline-offset-2 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-line-focus rounded-sm"
+                >
+                  Equipment and inventory<span className="text-fg-muted"> ›</span>
+                </button>
+              )}
             </div>
 
             {/* Core Points Group */}
@@ -262,6 +264,7 @@ export default function CharPanel({ player, onAction, onSwitchToInventory, onOpe
                 <StatBox label="Deaths" value={(player.deaths ?? 0).toLocaleString()} compact subtle />
               </div>
             </div>
+            <ScrollEnd />
           </div>
         </div>
       </div>

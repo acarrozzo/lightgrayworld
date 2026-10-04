@@ -5,7 +5,7 @@ import { describeStat, type StatBreakdown } from '@/lib/effective-stats'
 /**
  * STR · DEX · MAG · DEF as four small tiles, each with its total over its
  * core value and any buff or skill on top. The character panel's Core Stats
- * row and the Gear layer both draw this, so the numbers a player dresses
+ * row and the Inv tab both draw this, so the numbers a player dresses
  * against are the same numbers wherever they look.
  */
 
@@ -36,6 +36,26 @@ export function StatDisplay({ label, stat, compact = false, color }: StatDisplay
         {stat.buff > 0 && <span className="text-fg-disabled"> · +{stat.buff} buff</span>}
         {stat.skill > 0 && <span className="text-fg-disabled"> · +{stat.skill} skill</span>}
       </p>
+    </div>
+  )
+}
+
+/** The same four numbers on one line, for the Inv tab's column and sheet where the list needs the height. */
+export function CoreStatsLine({ stats, className = '' }: { stats: CoreStats; className?: string }) {
+  const cells: Array<[string, StatBreakdown, string]> = [
+    ['STR', stats.str, 'text-stat-str'],
+    ['DEX', stats.dex, 'text-stat-dex'],
+    ['MAG', stats.mag, 'text-stat-mag'],
+    ['DEF', stats.def, 'text-stat-def'],
+  ]
+  return (
+    <div className={`flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 tabular-nums ${className}`}>
+      {cells.map(([label, stat, color]) => (
+        <span key={label} className="flex items-baseline gap-1" title={describeStat(label, stat)}>
+          <span className={`text-[10px] font-semibold uppercase tracking-wide ${color}`}>{label}</span>
+          <span className="text-sm font-bold text-fg-bright">{stat.total}</span>
+        </span>
+      ))}
     </div>
   )
 }

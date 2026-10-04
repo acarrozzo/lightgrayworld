@@ -2,88 +2,71 @@
 
 import { useMemo } from 'react'
 import Compass from '@/components/Compass'
-import WorldLayer, { type WorldTab } from './WorldLayer'
-import ActionLayer from './ActionLayer'
-import GearLayer from './GearLayer'
-import Dock, { type DockLayer } from './Dock'
+import Icon from '@/components/Icon'
+import NotificationBadge from '@/components/NotificationBadge'
+import { DeckContent, type DeckContentProps } from './Deck'
+import { DeckProvider, type DeckContextValue } from './LayerShell'
+import type { DeckTab } from './deck-tabs'
 import RoomShortcuts from './RoomShortcuts'
 import { DangerCorner, LedgerFlyout, QuickLinksCorner, type LedgerActions } from './CompassLedger'
-import type { MapConfigEntry } from './constants'
-import { getRoomMapView } from './utils'
 import { useGatherRemaining } from '@/hooks/useGatherRemaining'
 import { buildRoomShortcuts } from '@/lib/room-shortcuts'
 import type { RoomEnemy } from '@/components/RoomBox'
-import { useGameStore, type BattleState, type InventoryItem, type Player } from '@/lib/game-state'
+import { useGameStore, type InventoryItem, type Player } from '@/lib/game-state'
 import type { GatherCooldownView } from '@/lib/types/room'
 
 const { goldChestFlagForRoom } = require('@/lib/game-data/gold-chests')
 
 /**
- * What the Explore panel is showing. `compass` is the panel itself — the
- * D-pad, the corners, the dock — and the rest are the layers docked over it:
- * `world` (Map / Teleport), `action` (attack, strikes, spells, items: the
- * battle deck's command block) and `gear` (what you are wearing), each opened
- * from the dock under the ring. A layer closes from
- * the X in its own header; Escape, travelling, or dying also return to the
- * compass. The mobile strip has no height for a layer, so there the dock sits
- * beside the ring and opens the full-screen World overlay or a bottom sheet.
+ * The Explore panel: the D-pad and its corners, with the Action button under
+ * the ring (beside it on the phone strip). Action is Explore's own utility,
+ * not a tab: it opens the attack, strike, spell and item block over the
+ * compass. The World and Inv tabs of the tab bar open over the compass the
+ * same way. A layer closes from the X in its header, Escape, travelling or
+ * dying. The mobile strip has no height for a layer, so there it opens as a
+ * sheet that GameInterface draws.
  */
-export type ExploreSubView = 'compass' | 'world' | 'action' | 'gear'
-
 interface ExplorePanelProps extends LedgerActions {
   room: any
   player: Player | null
-  /** For the corner ledger and the Gear and Bag layers. */
+  /** For the corner ledger and the shortcut rail. */
   inventory?: InventoryItem[]
-  subView: ExploreSubView
-  worldTab: WorldTab
-  onWorldTabChange: (tab: WorldTab) => void
-  /** Sidebar: open the layer docked (or full screen, if that is how it was last used). */
-  onOpenWorldDocked: (tab: WorldTab) => void
-  /** Strip: open the full-screen overlay. */
-  onOpenWorldOverlay: (tab: WorldTab) => void
-  onCloseWorld: () => void
-  /** Docked layer's full-screen control. */
-  onExpandWorld: () => void
-  /** Gear and Action: docked in the sidebar, a bottom sheet from the strip. GameInterface passes the right one per variant. */
-  onOpenGear: () => void
-  onOpenAction: () => void
-  onCloseLayer: () => void
-  /** Which dock tile reads pressed: the layer open in this variant's home. */
-  activeLayer?: DockLayer | null
-  /* The Action layer's controls. Each is the same action the deck or the room card sends. */
-  battle: BattleState
-  onAttack: () => void
-  onUseSkill: (skillId: string) => void
-  onCastSpell: (spellId: string) => void
-  onUseItem: (playerItemId: string, action: string) => void
+  /** Sidebar: the deck tab docked over the compass, if any. */
+  deckTab?: DeckTab | null
+  /** Sidebar: what the docked tab draws from. */
+  deck?: DeckContentProps
+  /** The Action layer is open, so its button reads pressed. */
+  actionOpen?: boolean
+  /** A dot on the Action button: something in the room can be attacked. */
+  enemyHere?: boolean
+  /** The Action button: open the layer, or close it if it is open. */
+  onToggleAction: () => void
+  /** The centre of the compass ring: the World tab on its Map. */
+  onOpenMap: () => void
+  onCloseDeck?: () => void
+  onToggleDeckFullscreen?: () => void
   onAction: (action: string | { type: string; data?: any }) => void
-  onTeleport: (roomId: string) => void
-  teleportBlockedReason?: string | null
-  currentMapId: string
-  availableMaps: MapConfigEntry[]
-  onMapChange: (mapId: string) => void
   isMoveInProgress?: boolean
   /**
    * Put the compass out of reach — dead, or the crafting sheet is over it.
    * A fight does not: teleport is the way out of one and Retreat is open from
-   * the first turn, so the D-pad and the dock stay live while a battle is on.
-   * `showBattleBadge` gives them a light dim instead, so the battle deck still
-   * reads as the thing with the attention.
+   * the first turn, so the D-pad and Action stay live while a battle is on.
+   * `showBattleBadge` gives the compass a light dim instead, so the battle
+   * deck still reads as the thing with the attention.
    */
   isDimmed?: boolean
   showBattleBadge?: boolean
   /** Following a party leader: the D-pad greys out, the server refuses moves anyway. */
   isPartyMember?: boolean
   /**
-   * 'sidebar' fills the desktop column and can host the layers inline; 'strip'
-   * sits under the room on mobile, where there is no room for them.
+   * 'sidebar' fills the desktop column and can host a deck tab inline; 'strip'
+   * sits under the room on mobile, where there is no room for one.
    */
   variant?: 'sidebar' | 'strip'
   isLoadingRoom?: boolean
   /** The action in flight, so a shortcut chip can show it is working. */
   currentAction?: string
-  /* The room's present enemy: the shortcut rail's Attack chip and the Action layer's target. */
+  /* The room's present enemy: the shortcut rail's Attack chip. */
   roomEnemy?: RoomEnemy | null
   isInBattle?: boolean
   gatherCooldowns?: GatherCooldownView[]
@@ -106,28 +89,15 @@ export default function ExplorePanel({
   onOpenStats,
   onOpenBook,
   onOpenInventory,
-  subView,
-  worldTab,
-  onWorldTabChange,
-  onOpenWorldDocked,
-  onOpenWorldOverlay,
-  onCloseWorld,
-  onExpandWorld,
-  onOpenGear,
-  onOpenAction,
-  onCloseLayer,
-  activeLayer = null,
-  battle,
-  onAttack,
-  onUseSkill,
-  onCastSpell,
-  onUseItem,
+  deckTab = null,
+  deck,
+  actionOpen = false,
+  enemyHere = false,
+  onToggleAction,
+  onOpenMap,
+  onCloseDeck,
+  onToggleDeckFullscreen,
   onAction,
-  onTeleport,
-  teleportBlockedReason = null,
-  currentMapId,
-  availableMaps,
-  onMapChange,
   isMoveInProgress = false,
   isDimmed = false,
   showBattleBadge = false,
@@ -141,14 +111,10 @@ export default function ExplorePanel({
   actionResult,
 }: ExplorePanelProps) {
   const isSidebar = variant === 'sidebar'
-  // Only the sidebar is tall enough to hold a layer; the mobile strip sends
-  // Map and Teleport to the full-screen overlay and Gear and Action to a sheet.
-  const openWorld = isSidebar ? onOpenWorldDocked : onOpenWorldOverlay
-  const openDock = (layer: DockLayer) => {
-    if (layer === 'map' || layer === 'teleport') openWorld(layer)
-    else if (layer === 'gear') onOpenGear()
-    else onOpenAction()
-  }
+  const deckContext = useMemo<DeckContextValue>(
+    () => ({ presentation: 'docked', onClose: onCloseDeck ?? (() => {}), onToggleFullscreen: onToggleDeckFullscreen }),
+    [onCloseDeck, onToggleDeckFullscreen],
+  )
 
   // The shortcut rail reads the same store the room card reads, so a quest
   // turned in from the Quests tab drops the bubble here in the same render.
@@ -175,79 +141,30 @@ export default function ExplorePanel({
     })
   }, [isSidebar, room?.roomId, roomEnemy, isInBattle, gatherCooldowns, gatherRemaining, inventory, quests, killList, player, giversMet, goldChestOpened])
 
-  if (isSidebar && subView === 'world') {
-    return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        <WorldLayer
-          variant="docked"
-          tab={worldTab}
-          onTabChange={onWorldTabChange}
-          player={player}
-          currentRoomId={room?.roomId}
-          currentMapId={currentMapId}
-          foundMaps={availableMaps}
-          onMapChange={onMapChange}
-          onTeleport={onTeleport}
-          teleportBlockedReason={teleportBlockedReason}
-          onClose={onCloseWorld}
-          onFullscreen={onExpandWorld}
-        />
-      </div>
-    )
-  }
-
-  if (isSidebar && subView === 'action' && player) {
-    return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        <ActionLayer
-          variant="docked"
-          player={player}
-          inventory={inventory}
-          battle={battle}
-          roomEnemy={roomEnemy}
-          isActing={isLoadingRoom}
-          onAttack={onAttack}
-          onUseSkill={onUseSkill}
-          onCastSpell={onCastSpell}
-          onUseItem={onUseItem}
-          onOpenBook={onOpenBook}
-          onOpenInventory={(filter, openItemId) => onOpenInventory?.(filter, openItemId)}
-          onClose={onCloseLayer}
-        />
-      </div>
-    )
-  }
-
-  if (isSidebar && subView === 'gear' && player) {
-    return (
-      <div className="flex-1 min-h-0 flex flex-col">
-        <GearLayer
-          variant="docked"
-          inventory={inventory}
-          player={player}
-          disabled={isLoadingRoom}
-          onAction={onAction}
-          onOpenInventory={(filter, openItemId) => onOpenInventory?.(filter, openItemId)}
-          onClose={onCloseLayer}
-        />
-      </div>
-    )
-  }
-
   const dimmedClasses = isDimmed ? 'opacity-20 pointer-events-none' : showBattleBadge ? 'opacity-70' : ''
   const ledger = { room, player, inventory, onOpenTraining, onOpenStats, onOpenBook, onOpenInventory }
-  const mapTitle = room?.roomId ? getRoomMapView(room.roomId).title : null
-  const dock = (
-    <Dock
-      variant={isSidebar ? 'row' : 'column'}
-      active={activeLayer}
-      onOpen={openDock}
-      teleportDisabled={isLoadingRoom}
-      mapTitle={mapTitle}
-    />
+  const actionButton = (
+    <button
+      type="button"
+      onClick={onToggleAction}
+      aria-pressed={actionOpen}
+      aria-label="Action — attack, strikes, spells and items"
+      title="Action — attack, strikes, spells and items"
+      className={`relative flex items-center justify-center font-semibold uppercase tracking-widest border transition-all duration-200 active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+        isSidebar ? 'h-9 w-32 flex-row gap-2 rounded-lg text-[10px]' : 'h-11 w-11 flex-col gap-0.5 rounded-lg text-[7px]'
+      } ${
+        actionOpen
+          ? 'fill-action-attack border-fg-bright/20 ring-2 ring-line-focus'
+          : 'border-action-attack/60 bg-action-attack/15 text-action-attack hover:bg-action-attack/25 hover:border-action-attack'
+      }`}
+    >
+      <NotificationBadge value={enemyHere} className="absolute -right-1 -top-1 z-10" />
+      <Icon name="hand" size={16} color="current" />
+      <span aria-hidden="true">Action</span>
+    </button>
   )
 
-  return (
+  const home = (
     <div
       className={`relative flex flex-col items-center justify-center ${
         isSidebar ? 'flex-1 min-h-0 p-4 gap-3' : 'px-2 py-3'
@@ -280,25 +197,27 @@ export default function ExplorePanel({
         </>
       )}
 
-      {/* Desktop stacks the dock under the D-pad; the short mobile strip puts
-          it in the column beside the ring to save vertical space. The Compass
-          keeps a matching inset on both sides for its two columns. */}
+      {/* Desktop puts Action under the D-pad, centred in whatever height is
+          left below the ring (an equal spacer above keeps the ring itself in
+          the middle of the column). The short mobile strip puts it beside the
+          ring, where the Compass centres it in the space to the ring's right. */}
       <div
         className={`flex transition-opacity duration-300 ${
-          isSidebar ? 'flex-col items-center gap-4' : 'relative w-full items-center justify-center'
+          isSidebar ? 'min-h-0 w-full flex-1 flex-col items-center' : 'relative w-full items-center justify-center'
         } ${dimmedClasses}`}
       >
+        {isSidebar && <div className="min-h-0 flex-1" aria-hidden="true" />}
         <Compass
           room={room}
           onAction={onAction}
-          onNavigateToMap={() => openWorld('map')}
-          aside={isSidebar ? undefined : dock}
+          onNavigateToMap={onOpenMap}
+          aside={isSidebar ? undefined : actionButton}
           isMoveInProgress={isMoveInProgress}
           isLocked={isPartyMember}
           large={isSidebar}
           className="w-full"
         />
-        {isSidebar && dock}
+        {isSidebar && <div className="flex min-h-[3.25rem] w-full flex-1 items-center justify-center">{actionButton}</div>}
       </div>
       {isSidebar && isPartyMember && !isDimmed && (
         <p className="text-[11px] text-status-info/70">Following your party — leave to move freely.</p>
@@ -313,6 +232,22 @@ export default function ExplorePanel({
             In Battle
           </span>
         </div>
+      )}
+    </div>
+  )
+
+  if (!isSidebar) return home
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {deckTab && deck ? (
+        <DeckProvider value={deckContext}>
+          <div className="flex min-h-0 flex-1 flex-col">
+            <DeckContent tab={deckTab} {...deck} />
+          </div>
+        </DeckProvider>
+      ) : (
+        home
       )}
     </div>
   )

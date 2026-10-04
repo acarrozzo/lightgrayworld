@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { SlidersHorizontal } from 'lucide-react'
+import { Info, SlidersHorizontal } from 'lucide-react'
 import { useGameStore } from '@/lib/game-state'
 import { AUTO_EQUIP_MODES, useAutoEquipSkipNegatives, type AutoEquipMode } from '@/lib/auto-equip'
 
@@ -29,6 +29,8 @@ export default function AutoEquipRow({ disabled, onAction }: AutoEquipRowProps) 
   const inventory = useGameStore((state) => state.inventory)
   const [skipNegatives, setSkipNegatives] = useAutoEquipSkipNegatives()
   const [open, setOpen] = useState(false)
+  // The "what does MAX do" note: shown on hover or focus, and on a tap where there is no hover.
+  const [infoOpen, setInfoOpen] = useState(false)
   const [pending, setPending] = useState<AutoEquipMode | null>(null)
   const inventoryAtPressRef = useRef(inventory)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -64,12 +66,37 @@ export default function AutoEquipRow({ disabled, onAction }: AutoEquipRowProps) 
 
   return (
     <div ref={rootRef} className="relative flex flex-wrap items-center gap-1.5">
-      <span
-        className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted"
-        title="Auto-equip: put on your best gear for one stat in a single tap"
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-fg-muted">Max</span>
+      <button
+        type="button"
+        onClick={() => setInfoOpen((prev) => !prev)}
+        onMouseEnter={() => setInfoOpen(true)}
+        onMouseLeave={() => setInfoOpen(false)}
+        onFocus={() => setInfoOpen(true)}
+        onBlur={() => setInfoOpen(false)}
+        aria-label="What the MAX buttons do"
+        aria-expanded={infoOpen}
+        aria-describedby={infoOpen ? 'auto-equip-info' : undefined}
+        className="-ml-1 rounded-full p-0.5 text-fg-muted/70 transition-colors hover:text-fg-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
       >
-        Max
-      </span>
+        <Info size={12} aria-hidden="true" />
+      </button>
+      {infoOpen && (
+        <div
+          id="auto-equip-info"
+          role="tooltip"
+          className="pointer-events-none absolute left-0 top-full z-30 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-md border border-line-subtle bg-surface-raised p-2.5 text-[11px] leading-snug text-fg-secondary shadow-lg"
+        >
+          <p className="text-fg-primary">One tap puts on the best gear you own for that stat.</p>
+          <ul className="mt-1.5 space-y-0.5">
+            {AUTO_EQUIP_MODES.map((mode) => (
+              <li key={mode.id}>
+                <span className="font-semibold text-fg-primary">{mode.label}</span> · {mode.title}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {AUTO_EQUIP_MODES.map((mode) => {
         const inFlight = pending === mode.id
         return (

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { X, Search, ChevronDown, Check, Circle, HelpCircle } from 'lucide-react'
+import { Search, ChevronDown, Check, Circle, HelpCircle } from 'lucide-react'
 import { useGameStore } from '@/lib/game-state'
 import type { RequirementContext } from '@/lib/quest-requirements'
 import {
@@ -33,6 +33,7 @@ import QuestRequirements from '@/components/QuestRequirements'
 import QuestTypeTag from '@/components/QuestTypeTag'
 import Icon from '@/components/Icon'
 import SubTabButton from '../SubTabButton'
+import { ScrollEnd } from '../LayerShell'
 
 interface BattleLogEntry {
   id: string
@@ -64,7 +65,6 @@ interface QuestsPanelProps {
   isLoggedIn: boolean
   onResetQuests: () => void
   onSkipToChest: () => void
-  onClose: () => void
 }
 
 const QUEST_SUB_TABS: { id: Tab; label: string }[] = [
@@ -485,7 +485,6 @@ export default function QuestsPanel({
   isLoggedIn,
   onResetQuests,
   onSkipToChest,
-  onClose,
 }: QuestsPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>('quests')
   const getAuthHeaders = useGameStore((s) => s.getAuthHeaders)
@@ -635,14 +634,6 @@ export default function QuestsPanel({
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0">
-      <button
-        onClick={onClose}
-        className="absolute top-2 right-3 z-30 p-2 text-fg-secondary hover:text-fg-bright transition-colors duration-200 rounded-lg hover:bg-surface-raised/50"
-        title="Close"
-        aria-label="Close"
-      >
-        <X size={20} />
-      </button>
 
       <div className="flex gap-2 border-b border-line-subtle/50 pl-4 pr-12 md:pr-12 py-2 flex-shrink-0">
         <div className="flex-1 flex items-center justify-start gap-2 flex-nowrap overflow-x-auto">
@@ -819,6 +810,7 @@ export default function QuestsPanel({
         {activeTab === 'battle-log' && (
           <BattleLogTab getAuthHeaders={getAuthHeaders} />
         )}
+        <ScrollEnd />
       </div>
     </div>
   )

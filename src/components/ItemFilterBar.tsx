@@ -22,6 +22,10 @@ interface ItemFilterBarProps {
   onChange: (view: ItemFilterView) => void
   /** Shop mode: leave out groups and slots with nothing in them. */
   hideEmpty?: boolean
+  /** Leave out the group row: the Inv tab has the groups in its header. */
+  hideGroups?: boolean
+  /** Leave out the slot row: the Inv tab's equipment slots are that filter there. */
+  hideSlots?: boolean
   sort?: SortStat
   onSortChange?: (sort: SortStat) => void
   /** Gear-compare switch, shown inside the sort flyout when supplied. */
@@ -49,6 +53,8 @@ export default function ItemFilterBar({
   view,
   onChange,
   hideEmpty = false,
+  hideGroups = false,
+  hideSlots = false,
   sort,
   onSortChange,
   compareEnabled,
@@ -62,9 +68,9 @@ export default function ItemFilterBar({
 
   const groups = FILTER_GROUPS.filter((group) => !hideEmpty || countForGroup(counts, group.id) > 0)
   // With a single populated group the row would only restate the list; skip it.
-  const showGroups = groups.length > 1
+  const showGroups = !hideGroups && groups.length > 1
   const slots = SLOT_CATEGORIES.filter((slot) => !hideEmpty || (counts[slot] ?? 0) > 0)
-  const showSlots = view.group === 'gear' && slots.length > 1
+  const showSlots = !hideSlots && view.group === 'gear' && slots.length > 1
   const showSort = sort !== undefined && onSortChange !== undefined
 
   if (!showGroups && !showSlots && !showSort && !children) return null

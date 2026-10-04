@@ -37,8 +37,9 @@ export interface ActionDeckProps {
 }
 
 /**
- * The action deck: Attack and the power attacks beside it, then a filled
- * Spells | Items switch, then the list. The battle deck draws it under its
+ * The action deck: a filled Attack | Spells | Items switch, then that tab's
+ * controls — Attack with the power attacks beside it, the spell rows, or the
+ * item ladders. The battle deck draws it under its
  * header; the Action layer draws it over the compass; the phone sheet draws
  * it over the room. One component, so the same situation always reads the
  * same: the differences between the three are state the server already
@@ -95,73 +96,16 @@ export default function ActionDeck({
       ? 'Nothing here to attack'
       : `Rolls 0–${Math.max(0, swingMax)} ${isRanged ? 'DEX' : 'STR'}${target ? `; the ${target.name} blocks 0–${target.def ?? '?'}` : ''}`
 
-  const tabs: { id: ActionTab; label: string; icon: string; count: number; fill: string }[] = [
+  const tabs: { id: ActionTab; label: string; icon: string; count?: number; fill: string }[] = [
+    { id: 'attack', label: 'Attack', icon: weaponIconName, fill: isRanged ? 'fill-stat-dex' : 'fill-stat-str' },
     { id: 'spells', label: 'Spells', icon: 'magic', count: castableSpells.length, fill: 'fill-stat-mag' },
     { id: 'items', label: 'Items', icon: 'inv', count: consumables.all.length, fill: 'fill-resource-gold' },
   ]
 
   return (
     <div className="@container flex flex-col gap-2 min-h-0">
-      {/* The strike row: Attack, then the power attacks the weapon can carry.
-          In a narrow home (the Explore column, a phone) Attack takes the whole
-          first line and the strikes drop under it, so the range and the
-          weapon's name never fight for the same pixels. */}
-      <div className="flex flex-wrap items-stretch gap-1.5">
-        {/* Attack: ranged strikes are DEX, melee are STR — the same split the
-            combat formulas use, so the control wears the stat it rolls against
-            and prints the roll it can make: 0 to that stat, before the block.
-            Out of a fight it opens one with the enemy in the room. */}
-        <button
-          type="button"
-          onClick={onAttack}
-          disabled={attackDisabled}
-          title={attackTitle}
-          aria-label={blocked ? `Attack with ${weaponName ?? 'fists'}. ${blocked}` : `Attack with ${weaponName ?? 'fists'}, ${rangeText(0, swingMax)} damage`}
-          className={`basis-full @min-[460px]:basis-0 @min-[460px]:flex-[2] min-w-0 h-16 rounded-xl flex items-center gap-2.5 px-3 text-left shadow-md shadow-shadow/40 transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${isRanged ? 'fill-stat-dex' : 'fill-stat-str'}`}
-        >
-          <Icon name={weaponIconName} size={30} className="opacity-90 flex-shrink-0" />
-          <span className="flex-1 min-w-0 flex flex-col gap-1 leading-none">
-            <span className="text-base font-black uppercase tracking-[0.12em]">{isActing ? '…' : 'Attack'}</span>
-            <span className="text-[11px] font-medium opacity-85 truncate">{weaponName ?? 'Fists'}</span>
-          </span>
-          <span className="flex-shrink-0 flex flex-col items-end gap-1 leading-none">
-            {/* The damage range, or why there is none against this enemy. */}
-            {blocked ? (
-              <span className="text-[11px] font-bold leading-none whitespace-nowrap">{blocked}</span>
-            ) : (
-              <span className="text-[15px] font-black tabular-nums leading-none">{rangeText(0, swingMax)}</span>
-            )}
-            {/* Ammo-spending weapons show what's left on the control itself, so
-                running dry is visible before it blocks a shot. */}
-            {ammo ? (
-              <span
-                className={`text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-md whitespace-nowrap ${
-                  ammo.remaining <= 0 ? 'fill-status-error' : ammo.remaining <= 5 ? 'fill-resource-gold' : 'bg-surface-canvas/35'
-                }`}
-                style={{ textShadow: 'none' }}
-              >
-                {ammo.remaining <= 0 ? `No ${ammo.label}` : `${ammo.remaining} ${ammo.label}`}
-              </span>
-            ) : !blocked && (
-              <span className="text-[9px] font-semibold uppercase tracking-wider opacity-85 leading-none">dmg</span>
-            )}
-          </span>
-        </button>
-
-        {strikes.map(({ entry, range, reason }) => (
-          <StrikeButton
-            key={entry.def.id}
-            entry={entry}
-            range={range}
-            reason={reason}
-            disabled={isActing || outOfAmmo || Boolean(reason)}
-            onClick={() => onUseSkill(entry.def.id)}
-          />
-        ))}
-      </div>
-
-      {/* The switch: one filled segment, counts on both. */}
-      <div role="tablist" aria-label="Spells or Items" className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle">
+      {/* The switch: one filled segment of three, counts on the two lists. */}
+      <div role="tablist" aria-label="Attack, Spells or Items" className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle">
         {tabs.map((tab) => {
           const selected = activeTab === tab.id
           return (
@@ -173,15 +117,18 @@ export default function ActionDeck({
               aria-controls={`${idPrefix}-deck-${tab.id}`}
               id={`${idPrefix}-tab-${tab.id}`}
               onClick={() => setStoredTab(tab.id)}
-              className={`h-9 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+              className={`h-12 min-w-0 rounded-lg flex items-center justify-center gap-1.5 px-1 text-xs font-bold uppercase tracking-wider transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
                 selected ? tab.fill : 'text-fg-muted hover:text-fg-primary hover:bg-surface-raised/60'
               }`}
             >
-              <Icon name={tab.icon} size={14} className={selected ? 'opacity-90' : 'opacity-70'} />
+              {/* Three segments in a phone's width: the label and count come first, the icon only where there is room. */}
+              <Icon name={tab.icon} size={18} className={`flex-shrink-0 @max-[420px]:hidden ${selected ? 'opacity-90' : 'opacity-70'}`} />
               <span>{tab.label}</span>
-              <span className={`text-[10px] font-bold px-1.5 py-px rounded-full tabular-nums ${selected ? 'bg-surface-canvas/30' : 'bg-surface-raised text-fg-secondary'}`} style={selected ? { textShadow: 'none' } : undefined}>
-                {tab.count}
-              </span>
+              {tab.count !== undefined && (
+                <span className={`text-[10px] font-bold px-1.5 py-px rounded-full tabular-nums ${selected ? 'bg-surface-canvas/30' : 'bg-surface-raised text-fg-secondary'}`} style={selected ? { textShadow: 'none' } : undefined}>
+                  {tab.count}
+                </span>
+              )}
             </button>
           )
         })}
@@ -195,6 +142,68 @@ export default function ActionDeck({
         aria-labelledby={`${idPrefix}-tab-${activeTab}`}
         className={`@container flex flex-col gap-1.5 min-h-0 ${listClassName ? `overflow-y-auto overscroll-contain ${listClassName}` : ''}`}
       >
+        {activeTab === 'attack' && (
+          <>
+          {/* The strike row: Attack, then the power attacks the weapon can carry.
+              In a narrow home (the Explore column, a phone) Attack takes the whole
+              first line and the strikes drop under it, so the range and the
+              weapon's name never fight for the same pixels. */}
+          <div className="flex flex-wrap items-stretch gap-1.5">
+            {/* Attack: ranged strikes are DEX, melee are STR — the same split the
+                combat formulas use, so the control wears the stat it rolls against
+                and prints the roll it can make: 0 to that stat, before the block.
+                Out of a fight it opens one with the enemy in the room. */}
+            <button
+              type="button"
+              onClick={onAttack}
+              disabled={attackDisabled}
+              title={attackTitle}
+              aria-label={blocked ? `Attack with ${weaponName ?? 'fists'}. ${blocked}` : `Attack with ${weaponName ?? 'fists'}, ${rangeText(0, swingMax)} damage`}
+              className={`basis-full @min-[460px]:basis-0 @min-[460px]:flex-[2] min-w-0 h-16 rounded-xl flex items-center gap-2.5 px-3 text-left shadow-md shadow-shadow/40 transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${isRanged ? 'fill-stat-dex' : 'fill-stat-str'}`}
+            >
+              <Icon name={weaponIconName} size={30} className="opacity-90 flex-shrink-0" />
+              <span className="flex-1 min-w-0 flex flex-col gap-1 leading-none">
+                <span className="text-base font-black uppercase tracking-[0.12em]">{isActing ? '…' : 'Attack'}</span>
+                <span className="text-[11px] font-medium opacity-85 truncate">{weaponName ?? 'Fists'}</span>
+              </span>
+              <span className="flex-shrink-0 flex flex-col items-end gap-1 leading-none">
+                {/* The damage range, or why there is none against this enemy. */}
+                {blocked ? (
+                  <span className="text-[11px] font-bold leading-none whitespace-nowrap">{blocked}</span>
+                ) : (
+                  <span className="text-[15px] font-black tabular-nums leading-none">{rangeText(0, swingMax)}</span>
+                )}
+                {/* Ammo-spending weapons show what's left on the control itself, so
+                    running dry is visible before it blocks a shot. */}
+                {ammo ? (
+                  <span
+                    className={`text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-md whitespace-nowrap ${
+                      ammo.remaining <= 0 ? 'fill-status-error' : ammo.remaining <= 5 ? 'fill-resource-gold' : 'bg-surface-canvas/35'
+                    }`}
+                    style={{ textShadow: 'none' }}
+                  >
+                    {ammo.remaining <= 0 ? `No ${ammo.label}` : `${ammo.remaining} ${ammo.label}`}
+                  </span>
+                ) : !blocked && (
+                  <span className="text-[9px] font-semibold uppercase tracking-wider opacity-85 leading-none">dmg</span>
+                )}
+              </span>
+            </button>
+
+            {strikes.map(({ entry, range, reason }) => (
+              <StrikeButton
+                key={entry.def.id}
+                entry={entry}
+                range={range}
+                reason={reason}
+                disabled={isActing || outOfAmmo || Boolean(reason)}
+                onClick={() => onUseSkill(entry.def.id)}
+              />
+            ))}
+          </div>
+          </>
+        )}
+
         {activeTab === 'items' && (
           <ConsumableDeck
             inventory={inventory}
