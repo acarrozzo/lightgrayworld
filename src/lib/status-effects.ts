@@ -134,17 +134,22 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
       title: `Every click restores ${text.replace(' / click', '')}, up to your max (${parts.join(', ')}). MP regen skips the click you cast a spell on.`,
     })
   }
-  const tea = clicksOf('buffTeaClicks')
-  if (tea > 0) chips.push({ id: 'tea', label: 'Tea', clicks: tea, tone: 'vitals', title: `Tea: +10 HP and +10 MP regen a click for ${tea} more clicks.` })
   const regenerate = clicksOf('regenerateClicks')
   if (regenerate > 0) chips.push({ id: 'regenerate', label: 'Regenerate', detail: `+${summary.regenerateAmount} HP`, clicks: regenerate, tone: 'hp', title: `Regenerate: +${summary.regenerateAmount} HP every click for ${regenerate} more clicks.` })
 
+  // The consumables in the order they are listed everywhere: the capsules,
+  // coffee, then tea; Glory, the temple's blessing, after them.
+  const tea = clicksOf('buffTeaClicks')
   for (const [field, { stats, amount }] of Object.entries(STAT_BUFF_FIELDS)) {
     const clicks = clicksOf(field)
-    if (clicks <= 0) continue
-    const label = BUFF_LABELS[field] ?? field
-    const detail = stats.length === 4 ? `+${amount} all` : `+${amount} ${stats.map((s) => STAT_LABEL[s] ?? s).join(' ')}`
-    chips.push({ id: field, label, detail, clicks, tone: 'stat', title: `${label}: ${detail} stats for ${clicks} more clicks.` })
+    if (clicks > 0) {
+      const label = BUFF_LABELS[field] ?? field
+      const detail = stats.length === 4 ? `+${amount} all` : `+${amount} ${stats.map((s) => STAT_LABEL[s] ?? s).join(' ')}`
+      chips.push({ id: field, label, detail, clicks, tone: 'stat', title: `${label}: ${detail} stats for ${clicks} more clicks.` })
+    }
+    if (field === 'buffCoffeeClicks' && tea > 0) {
+      chips.push({ id: 'tea', label: 'Tea', clicks: tea, tone: 'vitals', title: `Tea: +10 HP and +10 MP regen a click for ${tea} more clicks.` })
+    }
   }
 
   const wings = clicksOf('wings')

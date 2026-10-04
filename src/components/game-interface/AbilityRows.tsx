@@ -181,6 +181,9 @@ export interface ConsumableEntry {
   action: string
 }
 
+/** The order buff items are listed in, by the countdown each one starts. */
+const BUFF_ORDER = ['buffStrClicks', 'buffDexClicks', 'buffMagClicks', 'buffDefClicks', 'buffCoffeeClicks', 'buffTeaClicks', 'wings', 'gills']
+
 /**
  * The bag, sorted the way a fight wants it: HP and MP restorers in two
  * ladders strongest first, anything that fills both under them, buffs last.
@@ -201,13 +204,15 @@ export function useConsumableDeck(inventory: InventoryItem[]) {
     const hp = all.filter((e) => e.summary.group === 'hp').sort(byAmount((s) => s.hp))
     const mp = all.filter((e) => e.summary.group === 'mp').sort(byAmount((s) => s.mp))
     const both = all.filter((e) => e.summary.group === 'both').sort(byAmount((s) => s.hp + s.mp))
-    // Stat buffs before abilities (wings, gills), which do nothing for a fight.
+    // The capsules, then coffee and tea, then the abilities (wings, gills),
+    // which do nothing for a fight; anything else keeps its place after them.
+    const buffRank = (e: ConsumableEntry) => {
+      const rank = BUFF_ORDER.indexOf(e.summary.buffs[0]?.field ?? '')
+      return rank === -1 ? BUFF_ORDER.length : rank
+    }
     const buffs = all
       .filter((e) => e.summary.group === 'buff' || e.summary.group === 'other')
-      .sort((a, b) =>
-        Number(b.summary.buffs.some((buff) => buff.short.startsWith('+'))) -
-        Number(a.summary.buffs.some((buff) => buff.short.startsWith('+')))
-      )
+      .sort((a, b) => buffRank(a) - buffRank(b))
     // `all` is those four in order, so a flat list (the character panel) reads
     // in the same order as the deck's grouped one.
     return { all: [...hp, ...mp, ...both, ...buffs], hp, mp, both, buffs }
@@ -222,7 +227,10 @@ export function useConsumableDeck(inventory: InventoryItem[]) {
 export function ConsumableEffect({ summary, toneClass }: { summary: ConsumableSummary; toneClass: string }) {
   const clicks = summary.buffs.find((buff) => buff.clicks > 0)?.clicks ?? 0
   // Only one consumable buff runs at a time; warn before this one ends another.
-  const replaces = replacedBuff(summary, useGameStore((s) => s.player?.buffs))
+  const running = useGameStore((s) => s.player?.buffs)
+  const replaces = replacedBuff(summary, running)
+  // This item's own buff is the one running: tag it, with the clicks it has left.
+  const activeClicks = Math.max(0, ...summary.buffs.map((buff) => Number(running?.[buff.field] ?? 0)))
   return (
     <span className="text-[11px] font-semibold tabular-nums flex flex-wrap items-center gap-x-1.5">
       {summary.hp > 0 && <span className="text-resource-hp">+{summary.hp} HP</span>}
@@ -231,6 +239,11 @@ export function ConsumableEffect({ summary, toneClass }: { summary: ConsumableSu
         <span key={buff.short} className={toneClass}>{buff.short}</span>
       ))}
       {clicks > 0 && <span className="text-[10px] font-normal text-fg-muted">{clicks} clicks</span>}
+      {activeClicks > 0 && (
+        <span className="text-[10px] font-bold uppercase tracking-wider leading-[15px] px-1.5 rounded-md text-status-success bg-status-success/15 border border-status-success/40">
+          Active · {activeClicks} left
+        </span>
+      )}
       {replaces && (
         <span className="text-[10px] font-normal text-status-warning">replaces {replaces.label} · {replaces.clicks} left</span>
       )}
