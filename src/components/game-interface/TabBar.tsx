@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Compass as CompassIcon, Globe, MessageSquare, MessageSquareText, MoreHorizontal, Settings as SettingsIcon } from 'lucide-react'
 import Icon from '@/components/Icon'
 import NotificationBadge from '@/components/NotificationBadge'
+import { getTabButtonColorClasses, getTabIconColorClass, type TabColor } from '@/lib/tabColors'
 
 /**
  * The game's tabs, in the order they are shown. Explore is home: the room and
@@ -18,7 +19,9 @@ interface TabDef {
   id: TabId
   label: string
   title: string
-  /** The icon's colour: the only colour a tile carries until it is open. */
+  /** The tab's accent: its icon always, its border, fill and text while it is open. The sub-tabs under it use the same one. */
+  color: TabColor
+  /** The same accent as a text class, for the tab's header title. */
   tone: string
   icon: (size: number) => ReactNode
   phoneOnly?: boolean
@@ -29,14 +32,14 @@ interface TabDef {
  * A new tab is one entry here; where it opens is GameInterface's `selectTab`.
  */
 export const TABS: TabDef[] = [
-  { id: 'explore', label: 'Explore', title: 'Explore — the room and the compass', tone: 'text-fg-secondary', icon: (size) => <CompassIcon size={size} aria-hidden="true" /> },
-  { id: 'char', label: 'Char', title: 'Character — who you are and your points', tone: 'text-hue-violet', icon: (size) => <Icon name="character" size={size} color="current" /> },
-  { id: 'inv', label: 'Inv', title: 'Inventory — your stats, what you are wearing and your bag', tone: 'text-hue-green', icon: (size) => <Icon name="inv" size={size} color="current" /> },
-  { id: 'world', label: 'World', title: 'World — teleport and map', tone: 'text-hue-sky', icon: (size) => <Globe size={size} aria-hidden="true" /> },
-  { id: 'quests', label: 'Quests', title: 'Quests', tone: 'text-hue-gold', icon: (size) => <Icon name="trophy" size={size} color="current" /> },
-  { id: 'players', label: 'Players', title: 'Players — who is here, and messages', tone: 'text-hue-pink', icon: (size) => <MessageSquare size={size} aria-hidden="true" /> },
-  { id: 'feed', label: 'Feed', title: 'World Feed', tone: 'text-hue-blue', icon: (size) => <MessageSquareText size={size} aria-hidden="true" />, phoneOnly: true },
-  { id: 'settings', label: 'Settings', title: 'Settings', tone: 'text-fg-secondary', icon: (size) => <SettingsIcon size={size} aria-hidden="true" /> },
+  { id: 'explore', color: 'blue', label: 'Explore', title: 'Explore — the room and the compass', tone: 'text-hue-blue', icon: (size) => <CompassIcon size={size} aria-hidden="true" /> },
+  { id: 'char', color: 'violet', label: 'Char', title: 'Character — who you are and your points', tone: 'text-hue-violet', icon: (size) => <Icon name="character" size={size} color="current" /> },
+  { id: 'inv', color: 'green', label: 'Inv', title: 'Inventory — your stats, what you are wearing and your bag', tone: 'text-hue-green', icon: (size) => <Icon name="inv" size={size} color="current" /> },
+  { id: 'world', color: 'sky', label: 'World', title: 'World — teleport and map', tone: 'text-hue-sky', icon: (size) => <Globe size={size} aria-hidden="true" /> },
+  { id: 'quests', color: 'gold', label: 'Quests', title: 'Quests', tone: 'text-hue-gold', icon: (size) => <Icon name="trophy" size={size} color="current" /> },
+  { id: 'players', color: 'pink', label: 'Players', title: 'Players — who is here, and messages', tone: 'text-hue-pink', icon: (size) => <MessageSquare size={size} aria-hidden="true" /> },
+  { id: 'feed', color: 'blue', label: 'Feed', title: 'World Feed', tone: 'text-hue-blue', icon: (size) => <MessageSquareText size={size} aria-hidden="true" />, phoneOnly: true },
+  { id: 'settings', color: 'gray', label: 'Settings', title: 'Settings', tone: 'text-fg-secondary', icon: (size) => <SettingsIcon size={size} aria-hidden="true" /> },
 ]
 
 export function tabDef(id: string): TabDef | undefined {
@@ -55,14 +58,18 @@ interface TabBarProps {
   className?: string
 }
 
+// The sub-tab button's pattern (SubTabButton), one size up and with the icon
+// over the label: a flat grey outline at rest, the tab's accent as border,
+// tint and text when open.
 const TILE =
-  'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg border font-semibold uppercase tracking-wider transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus'
-const TILE_IDLE = 'border-line-subtle/50 text-fg-secondary hover:border-line-strong/70 hover:bg-surface-raised/40 hover:text-fg-primary'
-const TILE_ON = 'border-line-focus bg-surface-raised/70 text-fg-bright ring-1 ring-line-focus'
+  'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg font-medium shadow-sm hover:shadow transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus'
+const TILE_IDLE =
+  'border-1 border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary'
+const tileClasses = (color: TabColor, isActive: boolean) => (isActive ? getTabButtonColorClasses(color, true) : TILE_IDLE)
 
 /**
- * The tab bar: one outlined tile per tab, colour on the icon only, the open
- * tab ringed. Pressing the open tab's tile goes home to Explore, so the bar is
+ * The tab bar: one outlined tile per tab, drawn in the sub-tabs' pattern with
+ * an icon on top. The open tab wears its accent. Pressing the open tab's tile goes home to Explore, so the bar is
  * both the way in and the way back.
  */
 export default function TabBar({ variant, active, onSelect, badges, className = '' }: TabBarProps) {
@@ -70,7 +77,7 @@ export default function TabBar({ variant, active, onSelect, badges, className = 
   const tabs = TABS.filter((tab) => isPhone || !tab.phoneOnly)
   const shown = isPhone ? tabs.slice(0, PHONE_VISIBLE) : tabs
   const overflow = isPhone ? tabs.slice(PHONE_VISIBLE) : []
-  const size = isPhone ? 'h-12 text-[9px]' : 'h-[3.25rem] gap-1 px-1 text-[9px] tracking-normal'
+  const size = isPhone ? 'h-12 text-[10px]' : 'h-[3.25rem] gap-1 px-1 text-[10px]'
 
   const [moreOpen, setMoreOpen] = useState(false)
   const moreRef = useRef<HTMLDivElement>(null)
@@ -104,10 +111,10 @@ export default function TabBar({ variant, active, onSelect, badges, className = 
             aria-pressed={isActive}
             aria-label={tab.title}
             title={tab.title}
-            className={`${TILE} ${size} ${isActive ? TILE_ON : TILE_IDLE}`}
+            className={`${TILE} ${size} ${tileClasses(tab.color, isActive)}`}
           >
             <NotificationBadge value={badges?.[tab.id]} className="absolute -right-1 -top-1 z-10" />
-            <span className={`flex ${tab.tone}`}>{tab.icon(isPhone ? 18 : 20)}</span>
+            <span className={`flex ${getTabIconColorClass(tab.color, isActive)}`}>{tab.icon(isPhone ? 18 : 20)}</span>
             <span className="max-w-full truncate" aria-hidden="true">{tab.label}</span>
           </button>
         )
@@ -120,7 +127,7 @@ export default function TabBar({ variant, active, onSelect, badges, className = 
             aria-haspopup="menu"
             aria-expanded={moreOpen}
             aria-label="More tabs"
-            className={`${TILE} ${size} ${overflowActive || moreOpen ? TILE_ON : TILE_IDLE}`}
+            className={`${TILE} ${size} ${tileClasses('gray', overflowActive || moreOpen)}`}
           >
             <NotificationBadge value={overflowBadge} className="absolute -right-1 -top-1 z-10" />
             <MoreHorizontal size={18} aria-hidden="true" />
@@ -140,10 +147,10 @@ export default function TabBar({ variant, active, onSelect, badges, className = 
                       onSelect(tab.id)
                     }}
                     className={`relative flex h-11 items-center gap-2.5 rounded-lg border px-3 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-                      isActive ? TILE_ON : TILE_IDLE
+                      tileClasses(tab.color, isActive)
                     }`}
                   >
-                    <span className={`flex ${tab.tone}`}>{tab.icon(18)}</span>
+                    <span className={`flex ${getTabIconColorClass(tab.color, isActive)}`}>{tab.icon(18)}</span>
                     <span>{tab.id === 'feed' ? 'World Feed' : tab.label}</span>
                     <NotificationBadge value={badges?.[tab.id]} className="ml-auto" />
                   </button>

@@ -1,10 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Globe, LocateFixed, Map as MapIcon, Sparkles, X, type LucideIcon } from 'lucide-react'
+import { Globe, LocateFixed, Map as MapIcon, Sparkles, X } from 'lucide-react'
 import MapContent from '@/components/MapContent'
 import type { Player } from '@/lib/game-state'
-import LayerShell, { ICON_BUTTON, useDeck } from './LayerShell'
+import LayerShell, { HeaderTabs, ICON_BUTTON, useDeck } from './LayerShell'
 import SubTabButton from './SubTabButton'
 import SheetFilmstrip from './SheetFilmstrip'
 import WorldGrid, { foundMapIdsFor, type WorldLevel } from './WorldGrid'
@@ -50,37 +50,6 @@ function useIsWide() {
     return () => query.removeEventListener('change', update)
   }, [])
   return isWide
-}
-
-function TabButton({
-  active,
-  icon: Icon,
-  label,
-  activeClasses,
-  onClick,
-  divided = false,
-}: {
-  active: boolean
-  icon: LucideIcon
-  label: string
-  activeClasses: string
-  onClick: () => void
-  divided?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`flex h-7 items-center gap-1.5 px-2.5 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-line-focus ${
-        divided ? 'border-l border-line-strong/80' : ''
-      } ${active ? activeClasses : 'text-fg-secondary hover:bg-surface-raised/30 hover:text-fg-primary'}`}
-    >
-      <Icon size={14} aria-hidden="true" />
-      <span>{label}</span>
-    </button>
-  )
 }
 
 /**
@@ -295,16 +264,17 @@ export default function WorldLayer({
 
   const lead = (
     <>
-      <div role="tablist" aria-label="Teleport or Map" className="flex flex-shrink-0 overflow-hidden rounded-lg border border-line-strong/80 shadow-sm">
-        <TabButton
-          active={tab === 'teleport'}
-          icon={Sparkles}
-          label="Teleport"
-          activeClasses="bg-resource-mp/15 text-resource-mp"
-          onClick={() => onTabChange('teleport')}
-        />
-        <TabButton active={tab === 'map'} icon={MapIcon} label="Map" activeClasses="bg-hue-sky/15 text-hue-sky" onClick={() => onTabChange('map')} divided />
-      </div>
+      <HeaderTabs
+        label="Teleport or Map"
+        color="sky"
+        active={tab}
+        home="teleport"
+        onChange={onTabChange}
+        tabs={[
+          { id: 'teleport', label: 'Teleport', icon: <Sparkles size={14} aria-hidden="true" /> },
+          { id: 'map', label: 'Map', icon: <MapIcon size={14} aria-hidden="true" /> },
+        ]}
+      />
       <span className="ml-auto min-w-0 truncate text-[11px] text-fg-muted">{headerTitle}</span>
       {tab === 'map' && !hasRail && hereButton}
     </>

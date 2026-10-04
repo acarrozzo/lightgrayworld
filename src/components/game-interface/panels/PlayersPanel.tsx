@@ -6,8 +6,6 @@ import RosterPanel from './RosterPanel'
 import PartyPanel from './PartyPanel'
 import RanksPanel from './RanksPanel'
 import DMPanel from './DMPanel'
-import NotificationBadge from '@/components/NotificationBadge'
-import SubTabButton from '../SubTabButton'
 
 export type PlayersSubTab = 'roster' | 'party' | 'ranks' | 'dm'
 
@@ -21,8 +19,6 @@ type ProfileTarget = {
 
 interface PlayersPanelProps {
   activeSubTab: PlayersSubTab
-  onSubTabChange: (tab: PlayersSubTab) => void
-  unreadDmCount: number
   onOpenWorldChat: () => void
   onClose: () => void
   onDMMessageSent: (payload: { message: string; recipientUsername?: string; recipientUserId: string }) => void
@@ -41,7 +37,8 @@ interface PlayersPanelProps {
   onRemovePartyMember: (memberId: string) => void
 }
 
-const SUB_TABS: { id: PlayersSubTab; label: string }[] = [
+/** The Players tab's pages. The sub-tabs themselves are in the tab's header, drawn by GameInterface. */
+export const PLAYER_SUB_TABS: { id: PlayersSubTab; label: string }[] = [
   { id: 'roster', label: 'Players' },
   { id: 'party', label: 'Party' },
   { id: 'ranks', label: 'Ranks' },
@@ -50,8 +47,6 @@ const SUB_TABS: { id: PlayersSubTab; label: string }[] = [
 
 export default function PlayersPanel({
   activeSubTab,
-  onSubTabChange,
-  unreadDmCount,
   onOpenWorldChat,
   onClose,
   onDMMessageSent,
@@ -69,32 +64,6 @@ export default function PlayersPanel({
 }: PlayersPanelProps) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-shrink-0 gap-2 border-b border-line-subtle/50 py-2 pl-4 pr-12 md:pr-4">
-        <div className="flex flex-1 flex-nowrap items-center justify-start gap-2">
-          {SUB_TABS.map((tab) => {
-            const showBadge = tab.id === 'dm' && unreadDmCount > 0
-            const showPartySize = tab.id === 'party' && party
-            return (
-              <SubTabButton
-                key={tab.id}
-                active={activeSubTab === tab.id}
-                color="pink"
-                // Clicking the active sub-tab returns to Players, this panel's core content.
-                onClick={() => onSubTabChange(activeSubTab === tab.id ? 'roster' : tab.id)}
-              >
-                {tab.label}
-                {showPartySize && (
-                  <span className="ml-1 text-[10px] text-fg-muted">
-                    {party.size}/{party.maxSize}
-                  </span>
-                )}
-                {showBadge && <NotificationBadge value={unreadDmCount} className="absolute -top-1 -right-1" />}
-              </SubTabButton>
-            )
-          })}
-        </div>
-      </div>
-
       {/* Every sub-tab owns its own scrolling. The old panel clipped its content
           here with overflow-hidden and no inner scroller, which made the roster
           unreachable past the fold. */}

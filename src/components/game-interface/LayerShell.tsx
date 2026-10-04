@@ -98,12 +98,14 @@ interface HeaderTab<T extends string> {
   id: T
   label: string
   icon?: ReactNode
+  /** After the label: a count, or an absolutely placed badge. */
+  extra?: ReactNode
 }
 
 /**
  * Sub-tabs for a layer's header, passed as its `lead`: the pages inside one
- * tab (Char | Skill book | Spell book). The same buttons the Quests and
- * Players sub-tab rows use, in the tab's own accent.
+ * tab (Char | Skill book | Spell book; Quests | Kill list | Battle log), in
+ * the tab's own accent. Clicking the active one returns to the tab's main page.
  */
 export function HeaderTabs<T extends string>({
   label,
@@ -127,6 +129,7 @@ export function HeaderTabs<T extends string>({
         <SubTabButton key={tab.id} active={active === tab.id} color={color} ariaPressed={active === tab.id} onClick={() => onChange(active === tab.id ? home : tab.id)}>
           {tab.icon}
           {tab.label}
+          {tab.extra}
         </SubTabButton>
       ))}
     </div>

@@ -10,6 +10,7 @@ import GameHeader from './GameHeader'
 import { type InputMode } from './game-interface/panels/FeedPanel'
 import RoomBox, { type RoomEnemy } from './RoomBox'
 import BattlePanel from './game-interface/panels/BattlePanel'
+import NotificationBadge from './NotificationBadge'
 import TabBar, { tabDef, type TabBadges, type TabId } from './game-interface/TabBar'
 import LayerShell, { DeckProvider, HeaderTabs, type DeckPresentation } from './game-interface/LayerShell'
 import { useSocket } from '@/hooks/useSocket'
@@ -44,7 +45,7 @@ import { findTravelDirection, checkIfExitHasGate, normalizeCommand, getMapIdForR
 import { useGameSocketBindings } from './game-interface/useGameSocketBindings'
 import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
-import QuestsPanel from './game-interface/panels/QuestsPanel'
+import QuestsPanel, { QUEST_SUB_TABS, type QuestsTab } from './game-interface/panels/QuestsPanel'
 import { countReadyQuests } from '@/lib/quest-journal'
 import type { WorldTab } from './game-interface/WorldLayer'
 import PanelResizeHandle from './game-interface/PanelResizeHandle'
@@ -63,7 +64,7 @@ const PANEL_MAX = 720
 const CENTER_MIN = 480
 import FeedPanel from './game-interface/panels/FeedPanel'
 import SettingsPanel from './game-interface/panels/SettingsPanel'
-import PlayersPanel, { type PlayersSubTab } from './game-interface/panels/PlayersPanel'
+import PlayersPanel, { PLAYER_SUB_TABS, type PlayersSubTab } from './game-interface/panels/PlayersPanel'
 import PartyRail from './game-interface/party/PartyRail'
 import { usePartyBattleStore } from '@/store/partyBattleStore'
 import type { SquadMember } from '@/lib/party/squad'
@@ -274,6 +275,7 @@ export default function GameInterface() {
     setDeckTab(null)
   }, [])
   const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('roster')
+  const [questsTab, setQuestsTab] = useState<QuestsTab>('quests')
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
   const quests = useGameStore((s) => s.quests)
   const setQuests = useGameStore((s) => s.setQuests)
@@ -3463,6 +3465,7 @@ export default function GameInterface() {
       case 'quests':
         return (
           <QuestsPanel
+            activeTab={questsTab}
             isLoadingQuests={isLoadingQuests}
             isResettingQuests={isResettingQuests}
             isLoggedIn={isLoggedIn}
@@ -3474,8 +3477,6 @@ export default function GameInterface() {
         return (
           <PlayersPanel
             activeSubTab={playersSubTab}
-            onSubTabChange={setPlayersSubTab}
-            unreadDmCount={totalDmUnread}
             onOpenWorldChat={handleOpenWorldChat}
             onClose={goToExplore}
             onDMMessageSent={(payload) => {
@@ -3521,7 +3522,7 @@ export default function GameInterface() {
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, charTab, bookHighlight, battle.isInBattle, roomEnemy, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
+  }, [goToExplore, centerActiveTab, charTab, questsTab, bookHighlight, battle.isInBattle, roomEnemy, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
 
   const handleCenterTabChange = useCallback((tabId: string | null) => {
     if (!tabId || tabId === 'explore') {
@@ -3607,14 +3608,10 @@ export default function GameInterface() {
   const panelIsFullscreen = centerActiveTab !== 'explore' && isWide && deckFullscreen
   const renderPanelLayer = (presentation: DeckPresentation) => {
     const def = tabDef(centerActiveTab)
-    return (
-      <DeckProvider value={{ presentation, onClose: goToExplore, onToggleFullscreen: isWide ? toggleDeckFullscreen : undefined }}>
-        <LayerShell
-          title={def?.id === 'feed' ? 'World Feed' : def?.label ?? ''}
-          icon={def?.icon(15)}
-          toneClass={def?.tone ?? 'text-fg-primary'}
-          lead={
-            centerActiveTab === 'char' ? (
+    // Each tab's pages as sub-tabs in its header, all behaving alike: the
+    // active one, clicked again, returns to the tab's main page.
+    const panelLead =
+      centerActiveTab === 'char' ? (
               <HeaderTabs
                 label="Character, Skill book or Spell book"
                 active={charTab}
@@ -3632,8 +3629,48 @@ export default function GameInterface() {
                   { id: 'spells', label: 'Spell book' },
                 ]}
               />
-            ) : undefined
-          }
+      ) : centerActiveTab === 'quests' ? (
+        <HeaderTabs
+          label="Quests, Kill list or Battle log"
+          color="gold"
+          active={questsTab}
+          home="quests"
+          onChange={setQuestsTab}
+          tabs={QUEST_SUB_TABS.map((tab) => ({
+            ...tab,
+            extra:
+              tab.id === 'quests' && readyQuestCount > 0 ? (
+                <span className="ml-1 text-[10px] font-bold text-status-success tabular-nums">{readyQuestCount}</span>
+              ) : undefined,
+          }))}
+        />
+      ) : centerActiveTab === 'players' ? (
+        <HeaderTabs
+          label="Players, Party, Ranks or Messages"
+          color="pink"
+          active={playersSubTab}
+          home="roster"
+          onChange={setPlayersSubTab}
+          tabs={PLAYER_SUB_TABS.map((tab) => ({
+            ...tab,
+            extra:
+              tab.id === 'party' && party ? (
+                <span className="ml-1 text-[10px] text-fg-muted">
+                  {party.size}/{party.maxSize}
+                </span>
+              ) : tab.id === 'dm' && totalDmUnread > 0 ? (
+                <NotificationBadge value={totalDmUnread} className="absolute -top-1 -right-1" />
+              ) : undefined,
+          }))}
+        />
+      ) : undefined
+    return (
+      <DeckProvider value={{ presentation, onClose: goToExplore, onToggleFullscreen: isWide ? toggleDeckFullscreen : undefined }}>
+        <LayerShell
+          title={def?.id === 'feed' ? 'World Feed' : def?.label ?? ''}
+          icon={def?.icon(15)}
+          toneClass={def?.tone ?? 'text-fg-primary'}
+          lead={panelLead}
           flush
         >
           <div className="min-h-0 flex-1 overflow-y-auto">

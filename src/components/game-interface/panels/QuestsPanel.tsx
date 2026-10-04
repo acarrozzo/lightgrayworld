@@ -32,7 +32,6 @@ import { ROOM_COLOR_TOKENS } from '@/lib/theme/room-colors'
 import QuestRequirements from '@/components/QuestRequirements'
 import QuestTypeTag from '@/components/QuestTypeTag'
 import Icon from '@/components/Icon'
-import SubTabButton from '../SubTabButton'
 import { ScrollEnd } from '../LayerShell'
 
 interface BattleLogEntry {
@@ -57,9 +56,11 @@ interface KillEntry {
   kills: number
 }
 
-type Tab = 'quests' | 'kill-list' | 'battle-log'
+export type QuestsTab = 'quests' | 'kill-list' | 'battle-log'
 
 interface QuestsPanelProps {
+  /** Which page is showing. The sub-tabs themselves are in the tab's header, drawn by GameInterface. */
+  activeTab: QuestsTab
   isLoadingQuests: boolean
   isResettingQuests: boolean
   isLoggedIn: boolean
@@ -67,7 +68,7 @@ interface QuestsPanelProps {
   onSkipToChest: () => void
 }
 
-const QUEST_SUB_TABS: { id: Tab; label: string }[] = [
+export const QUEST_SUB_TABS: { id: QuestsTab; label: string }[] = [
   { id: 'quests', label: 'Quests' },
   { id: 'kill-list', label: 'Kill List' },
   { id: 'battle-log', label: 'Battle Log' },
@@ -480,13 +481,13 @@ function GroupHeader({ group, collapsed, onToggle }: { group: JournalGroup; coll
 }
 
 export default function QuestsPanel({
+  activeTab,
   isLoadingQuests,
   isResettingQuests,
   isLoggedIn,
   onResetQuests,
   onSkipToChest,
 }: QuestsPanelProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('quests')
   const getAuthHeaders = useGameStore((s) => s.getAuthHeaders)
   const killList = useGameStore((s) => s.killList)
   const player = useGameStore((s) => s.player)
@@ -634,25 +635,6 @@ export default function QuestsPanel({
 
   return (
     <div className="relative w-full h-full flex flex-col min-h-0">
-
-      <div className="flex gap-2 border-b border-line-subtle/50 pl-4 pr-12 md:pr-12 py-2 flex-shrink-0">
-        <div className="flex-1 flex items-center justify-start gap-2 flex-nowrap overflow-x-auto">
-          {QUEST_SUB_TABS.map((tab) => (
-            <SubTabButton
-              key={tab.id}
-              active={activeTab === tab.id}
-              color="gold"
-              // Clicking the active sub-tab returns to Quests, this panel's core content.
-              onClick={() => setActiveTab(activeTab === tab.id ? 'quests' : tab.id)}
-            >
-              {tab.label}
-              {tab.id === 'quests' && totals.ready > 0 && (
-                <span className="ml-1 text-[10px] font-bold text-status-success tabular-nums">{totals.ready}</span>
-              )}
-            </SubTabButton>
-          ))}
-        </div>
-      </div>
 
       {activeTab === 'quests' && (
         <div className="flex-shrink-0 border-b border-line-subtle/50 px-4 py-2 space-y-2">

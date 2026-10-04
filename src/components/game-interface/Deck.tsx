@@ -103,8 +103,11 @@ export function DeckContent({ tab, ...props }: DeckContentProps & { tab: DeckTab
   )
 }
 
-/** The bar the tabs sit in, pinned across the top of the column and of a full-screen layer. */
-export const DOCK_BAR = 'flex-shrink-0 border-b border-line-subtle/40 bg-surface-sunken/40 py-2'
+/**
+ * The bar the tabs sit in, pinned across the top of the column and of a
+ * full-screen layer. No fill of its own: it takes the panel's.
+ */
+export const DOCK_BAR = 'flex-shrink-0 border-b border-line-subtle/40 py-2'
 
 // How much of the phone's page each layer takes. World and Inv are tabs, so
 // they fill it like every other tab's page; Action is Explore's own utility
