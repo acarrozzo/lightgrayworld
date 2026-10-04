@@ -40,11 +40,15 @@ export type PerkEnemyRow = {
   perks: { id: string; label: string; name: string }[]
 }
 
-const GRADES: { id: PerkGrade; name: string; enemy: string; you: string; share: string }[] = [
-  { id: 'rolled', name: 'Rolled', enemy: 'rand(0, ATT)', you: 'rand(0, DEF)', share: '17% · 8% · 4%' },
-  { id: 'pure', name: 'Pure', enemy: 'full ATT, no roll', you: 'rand(0, DEF)', share: '50% · 25% · 12.5%' },
-  { id: 'pierce', name: 'Pierce', enemy: 'rand(0, ATT)', you: 'nothing', share: '50% · 50% · 50%' },
-  { id: 'divine', name: 'Divine', enemy: 'full ATT, no roll', you: 'nothing', share: '100% · 100% · 100%' },
+// `hits` is the average hit from an enemy with ATT 100 against DEF 100, 200
+// and 400 — the same formulas combat uses, worked through once so the key
+// reads as damage rather than as a ratio.
+const GRADE_EXAMPLE_DEF = [100, 200, 400] as const
+const GRADES: { id: PerkGrade; name: string; enemy: string; you: string; defHelps: boolean; hits: [number, number, number] }[] = [
+  { id: 'rolled', name: 'Rolled', enemy: 'rand(0, ATT)', you: 'rand(0, DEF)', defHelps: true, hits: [17, 8, 4] },
+  { id: 'pure', name: 'Pure', enemy: 'full ATT, no roll', you: 'rand(0, DEF)', defHelps: true, hits: [50, 25, 13] },
+  { id: 'pierce', name: 'Pierce', enemy: 'rand(0, ATT)', you: 'nothing', defHelps: false, hits: [50, 50, 50] },
+  { id: 'divine', name: 'Divine', enemy: 'full ATT, no roll', you: 'nothing', defHelps: false, hits: [100, 100, 100] },
 ]
 const GRADE_RANK: Record<PerkGrade, number> = { rolled: 1, pure: 2, pierce: 3, divine: 4 }
 const GRADE_TAG: Record<PerkGrade, string> = {
@@ -404,6 +408,9 @@ function GradesTable() {
   return (
     <section className="mb-5 rounded-lg border border-line-subtle bg-surface-panel p-4">
       <h2 className="text-xs font-bold uppercase tracking-wide text-fg-secondary">The four grades of hit</h2>
+      <p className="mt-1 text-xs text-fg-muted">
+        The numbers are the average hit from an enemy with ATT 100, against three values of your DEF.
+      </p>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -411,7 +418,10 @@ function GradesTable() {
               <th className="py-1.5 pr-4 font-medium">Grade</th>
               <th className="py-1.5 pr-4 font-medium">Its side</th>
               <th className="py-1.5 pr-4 font-medium">Your side</th>
-              <th className="py-1.5 font-medium">Damage as a share of ATT, at DEF = ATT · 2× · 4×</th>
+              <th className="py-1.5 pr-4 font-medium">DEF helps?</th>
+              {GRADE_EXAMPLE_DEF.map((def) => (
+                <th key={def} className="py-1.5 pl-4 text-right font-medium">DEF {def}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -420,7 +430,12 @@ function GradesTable() {
                 <td className="py-1.5 pr-4"><Tag className={GRADE_TAG[g.id]}>{g.name}</Tag></td>
                 <td className="py-1.5 pr-4 text-fg-secondary">{g.enemy}</td>
                 <td className="py-1.5 pr-4 text-fg-secondary">{g.you}</td>
-                <td className="py-1.5 tabular-nums text-fg-primary">{g.share}</td>
+                <td className={`py-1.5 pr-4 ${g.defHelps ? 'text-status-success' : 'text-status-error'}`}>
+                  {g.defHelps ? 'Yes' : 'No'}
+                </td>
+                {g.hits.map((hit, i) => (
+                  <td key={i} className="py-1.5 pl-4 text-right tabular-nums text-fg-primary">{hit}</td>
+                ))}
               </tr>
             ))}
           </tbody>
