@@ -124,7 +124,7 @@ function EnemyHitExtras({ battle }: { battle: BattleState }) {
   const extras = battle.extraHits ?? []
   const fx = battle.enemyEffects ?? {}
   const hasEffects =
-    fx.healCast !== undefined || !!fx.stolen || !!fx.hpDrained || !!fx.mpDrained || !!fx.resurrected
+    fx.healCast !== undefined || !!fx.stolen || !!fx.hpDrained || !!fx.mpDrained || !!fx.resurrected || !!fx.windUp
   if (extras.length === 0 && !battle.petrifyApplied && !battle.enemyHealed && !hasEffects) return null
   const extraTotal = extras.reduce((sum, hit) => sum + hit.damage, 0)
   return (
@@ -151,6 +151,11 @@ function EnemyHitExtras({ battle }: { battle: BattleState }) {
       )}
       {battle.enemyHealed > 0 && (
         <p className="text-[10px] text-hue-green text-right tabular-nums">absorbs {battle.enemyHealed} HP</p>
+      )}
+      {fx.windUp && (
+        <p className="text-[11px] font-black tracking-[0.12em] uppercase text-right text-combat-crit">
+          {fx.windUp.name} next turn
+        </p>
       )}
       {fx.resurrected && (
         <p className="text-[11px] font-black tracking-[0.15em] uppercase text-right text-fg-bright">Rises again</p>

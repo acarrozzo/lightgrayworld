@@ -15,6 +15,7 @@ import { SKILLS, SKILL_GROUPS } from '@/lib/skillbook'
 import { SPELLS, SPELL_SCHOOLS } from '@/lib/spellbook'
 import {
   enemyHref,
+  perkHref,
   itemHref,
   questHref,
   questGiverHref,
@@ -30,6 +31,9 @@ import type { SearchEntry } from './search-types'
 
 const { ENEMIES } = require('@/lib/game-data/enemies') as {
   ENEMIES: { slug: string; name: string; zone: string; level: number }[]
+}
+const { getEnemyPerkCatalog } = require('@/lib/game-data/enemy-traits') as {
+  getEnemyPerkCatalog: () => { id: string; name: string; when: string }[]
 }
 const { QUESTS, GIVERS, QUEST_ORDER } = require('@/lib/game-data/quest-registry') as {
   QUESTS: Record<string, { title: string; giverId?: string; questType?: string }>
@@ -75,6 +79,9 @@ export const buildSearchIndex = cachedWorldToolData('search-index', async (): Pr
 
   for (const e of ENEMIES) {
     entries.push({ type: 'enemy', id: e.slug, name: e.name, sub: `${e.zone} · L${e.level}`, href: enemyHref(e.slug) })
+  }
+  for (const p of getEnemyPerkCatalog()) {
+    entries.push({ type: 'perk', id: p.id, name: p.name, sub: p.when, href: perkHref(p.id) })
   }
   for (const t of items) {
     entries.push({ type: 'item', id: t.slug, name: t.name, sub: words(t.equipSlot ?? t.type), href: itemHref(t.slug) })

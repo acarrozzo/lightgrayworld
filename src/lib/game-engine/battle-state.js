@@ -48,6 +48,9 @@ class BattleState {
     // is above zero they cannot swing, cast, drink or retreat; the enemy keeps
     // attacking. Ticks down once per turn (`tickPetrify`).
     this.petrifiedTurns = 0
+    // The id of a special the enemy is winding up (Firebreath's inhale); it
+    // lands on the enemy's next turn. Null on an ordinary turn.
+    this.enemyWindUp = null
     // Retreat is open from the first moment of the fight. It used to unlock
     // after three turns, which meant walking into something far above your
     // level was a death sentence rather than a mistake you could back out of —

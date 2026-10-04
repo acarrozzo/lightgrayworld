@@ -6,7 +6,7 @@ import { cachedWorldToolData } from '@/lib/world-tool/cached'
 import EnemiesTable, { type EnemyRow } from './EnemiesTable'
 
 export const metadata = {
-  title: 'Bestiary — Light Gray RPG',
+  title: 'Enemies — Light Gray RPG',
   description: 'Every enemy in Light Gray RPG, with their stats and drops.',
 }
 
@@ -60,6 +60,9 @@ type Enemy = {
 }
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: Enemy[] }
+const { getEnemyTraits } = require('@/lib/game-data/enemy-traits') as {
+  getEnemyTraits: (enemy: Enemy) => { id: string; label: string }[]
+}
 
 // Display order for zones. Any zone not listed here is appended afterward,
 // and enemies without a zone fall into "Unsorted" — so nothing ever disappears.
@@ -154,7 +157,9 @@ export default async function EnemiesPage() {
       isAggressive: e.isAggressive,
       isFlying: e.isFlying,
       isFriendly: e.isFriendly,
-      specials: e.specials ?? [],
+      // Every perk and standing behaviour, as the battle HUD labels them.
+      // Flying has its own tag on the row.
+      specials: getEnemyTraits(e).filter((t) => t.id !== 'flying').map((t) => t.label),
       drops,
     }
   })
@@ -169,7 +174,7 @@ export default async function EnemiesPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-fg-bright">Bestiary</h1>
+        <h1 className="text-2xl font-bold text-fg-bright">Enemies</h1>
         <p className="mt-1 text-sm text-fg-secondary">
           {rows.length} enemies — pulled live from the game data.
         </p>

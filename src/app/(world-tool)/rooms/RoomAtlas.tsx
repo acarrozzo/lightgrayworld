@@ -1001,7 +1001,7 @@ function RoomDetail({
               {room.enemies.enemies.map((en) => (
                 <li key={en.slug} className="flex items-center gap-2 text-sm">
                   {en.icon && <Icon name={en.icon} size={18} />}
-                  <EntityLink href={enemyHref(en.slug)} title={`${en.name} in the Bestiary`}>
+                  <EntityLink href={enemyHref(en.slug)} title={`${en.name} on the Enemies page`}>
                     {en.name}
                   </EntityLink>
                   {en.level != null && <span className="text-xs text-fg-muted">Lv {en.level}</span>}

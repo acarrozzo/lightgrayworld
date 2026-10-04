@@ -3384,7 +3384,7 @@ const ENEMIES = [
     isFlying: false,
     damageType: 'MELEE',
     pureDefense: true,
-    specials: ['power', 'pure'],
+    specials: ['power', 'divine'],
     xpReward: 2000,
     goldMin: 1000,
     goldMax: 3000,
@@ -3626,6 +3626,7 @@ const ENEMIES = [
     isFriendly: false,
     isFlying: false,
     damageType: 'MELEE',
+    specials: ['pierce'],
     steals: true,
     // The original's ePureA: the roll IS the damage, your DEF never enters it.
     // Unported perk: eSteal (a 20% chance to pocket some of your coin instead).
@@ -3839,7 +3840,7 @@ const ENEMIES = [
     damageType: 'MELEE',
     pureDefense: true,
     // The original's ePureA + eCrit. Unported: ePureD (she always blocks for her full DEF).
-    specials: ['crit', 'pure'],
+    specials: ['crit', 'divine'],
     xpReward: 0,
     goldMin: 0,
     goldMax: 0,

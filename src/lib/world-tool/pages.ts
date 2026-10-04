@@ -17,6 +17,7 @@
 
 import {
   Columns2,
+  Flame,
   Hammer,
   Map,
   Package,
@@ -33,6 +34,7 @@ import {
 
 export type WorldToolPageKey =
   | 'enemies'
+  | 'perks'
   | 'items'
   | 'quests'
   | 'skills'
@@ -78,8 +80,10 @@ export const WORLD_TOOL_GROUPS: WorldToolGroup[] = [
     id: 'compendium',
     label: 'Compendium',
     pages: [
-      { key: 'enemies', href: '/enemies', label: 'Bestiary', unit: 'enemies', icon: Skull,
+      { key: 'enemies', href: '/enemies', label: 'Enemies', unit: 'enemies', icon: Skull,
         description: 'Every enemy, with their stats and drops.' },
+      { key: 'perks', href: '/perks', label: 'Enemy Perks', unit: 'perks', icon: Flame,
+        description: 'Every enemy perk — its rule, how often it fires, how to answer it, and which enemies carry it.' },
       { key: 'items', href: '/items', label: 'Items', unit: 'items', icon: Sword,
         description: 'Every item, with their stats, value, flags, and where in the world it comes from.' },
       { key: 'quests', href: '/quests', label: 'Quests', unit: 'quests', icon: ScrollText,

@@ -286,6 +286,10 @@ export interface BattleEnemyEffects {
   resurrected?: boolean
   /** It blocked the player's whole attack; nothing was spent. */
   blocked?: boolean
+  /** It spent the turn winding up; this special lands on its next turn. */
+  windUp?: { id: string; name: string; line: string }
+  /** The id of the wound-up special that landed this turn. */
+  released?: string
 }
 
 /** Client mirror of the server's companion strike (see lib/socket.ts). */

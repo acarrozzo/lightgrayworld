@@ -7,6 +7,7 @@ function rand(a, b) {
 
 const partyStore = require('../services/party-store')
 const {
+  ENEMY_SPECIALS,
   selectEnemySpecial,
   hasSpecial,
   getEnemyBehaviours,
@@ -351,30 +352,51 @@ function resolveEnemyAttack(battleState, otherCombatants, { pendingDamage = 0 } 
   // True effective stat — may be negative when mods outweigh the base stat
   const effectiveDef = Math.floor(defStat * bonus)
   const behaviours = getEnemyBehaviours(enemy)
+  const hpAtItsTurn = battleState.enemyCurrentHp - Math.max(0, pendingDamage)
+
+  const dodgeChance = battleState.dodgeChance || 0
+  const quietTurn = {
+    enemyRaw: 0,
+    playerBlock: 0,
+    enemyFinal: 0,
+    effectiveDef,
+    enemyDamageType: enemyDmgType,
+    enemyAction: null,
+    dodged: false,
+    poisonApplied: null,
+    petrifyApplied: 0,
+    extraHits: [],
+  }
+
+  // A wind-up from last turn lands now, before anything else is considered:
+  // the Dragon inhaled, and this is the fire. Nothing blocks it; the Dodge
+  // skill can still get you out of the way.
+  const held = battleState.enemyWindUp ? ENEMY_SPECIALS[battleState.enemyWindUp] : null
+  if (held) {
+    const rolled = held.rollDamage(enemy, rand)
+    const dodged = dodgeChance > 0 && rand(1, 100) <= dodgeChance
+    const block = dodged || held.bypassesDefense ? 0 : rand(0, effectiveDef)
+    return {
+      ...quietTurn,
+      enemyRaw: rolled.raw,
+      playerBlock: block,
+      enemyFinal: dodged ? 0 : Math.max(0, rolled.raw - block),
+      enemyAction: { id: held.id, name: held.name, rolls: rolled.rolls },
+      dodged,
+      effects: { released: held.id },
+    }
+  }
 
   // Heal comes first, as it did in the original's chain: a hurt healer spends
   // 1 turn in 4 mending rand(1, ATT) instead of attacking. Nothing else it
   // carries fires on that turn.
-  const hpAtItsTurn = battleState.enemyCurrentHp - Math.max(0, pendingDamage)
   if (
     behaviours.heals &&
     hpAtItsTurn > 0 &&
     hpAtItsTurn < battleState.enemyMaxHp &&
     rand(1, HEAL_CHANCE_DENOMINATOR) === 1
   ) {
-    return {
-      enemyRaw: 0,
-      playerBlock: 0,
-      enemyFinal: 0,
-      effectiveDef,
-      enemyDamageType: enemyDmgType,
-      enemyAction: null,
-      dodged: false,
-      poisonApplied: null,
-      petrifyApplied: 0,
-      extraHits: [],
-      effects: { healCast: rand(1, Math.max(1, enemy.att)) },
-    }
+    return { ...quietTurn, effects: { healCast: rand(1, Math.max(1, enemy.att)) } }
   }
 
   // Every hit the enemy lands this turn — the first and each one after it —
@@ -387,42 +409,65 @@ function resolveEnemyAttack(battleState, otherCombatants, { pendingDamage = 0 } 
   // a Power Attack does not get blocked three times. Negative DEF rolls
   // negative, so raw − block grows.
   //
-  // A `bypassesDefense` special (bite, rage, firebreath, the standing pure
-  // attack) is the original's "pure" damage: the roll IS the damage, and the
-  // block is reported as 0 so `( rolls ) − block = total` still adds up.
+  // The grade of a hit decides what meets it (see enemy-specials.js). A
+  // rolled hit is rand(0, ATT) against rand(0, DEF). A pure hit — Bite, Rage,
+  // the standing Pure Attack — is full ATT against rand(0, DEF). A divine hit
+  // (`bypassesDefense`) is full ATT against nothing, and the block is
+  // reported as 0 so `( rolls ) − block = total` still adds up.
   //
-  // On an enemy that carries Pure Attack, everything is pure: a Power Attack,
-  // Critical or Whirlwind lands every one of its rolls at full ATT, unblocked
-  // (`$edamagetotal = $enemyatt * 3`, `* 10`, `* 6`), and so does each
-  // extra hit.
+  // An enemy that carries Pure or Divine Attack lands EVERY roll of every hit
+  // at full ATT: its Power Attack is 3 × ATT, its Critical 10 ×. On a Pure
+  // enemy your DEF still blocks that once; on a Divine one nothing does
+  // (the original's `$edamagetotal = $enemyatt * 3`).
+  //
+  // `blockPerRoll` (Rage): each hit of the combo meets its own block roll,
+  // and the block reported is what all of them stopped together.
   //
   // Dodge (the skill) is a flat lvl% chance a swing does nothing — no block
   // rolled, no damage taken — rolled per hit.
-  const dodgeChance = battleState.dodgeChance || 0
-  const enemyIsPure = hasSpecial(enemy, 'pure')
+  const enemyIsDivine = hasSpecial(enemy, 'divine')
+  // Pierce: its rolls stay rolls, but nothing of its ever meets a block.
+  const enemyPierces = hasSpecial(enemy, 'pierce')
+  const everyRollFull = enemyIsDivine || hasSpecial(enemy, 'pure')
+  const belowHalfHp = hpAtItsTurn * 2 < battleState.enemyMaxHp
   let poisonApplied = null
   let petrifyApplied = 0
-  const rollHit = () => {
+  const rollHit = (isFirst) => {
     // Poison and stone are only on offer while they could take hold, which
     // includes not having been left already by an earlier hit this turn.
     const canPoison = !battleState.poisoned && !battleState.poisonImmune && !poisonApplied
     const canPetrify = (battleState.petrifiedTurns || 0) === 0 && petrifyApplied === 0
-    const special = selectEnemySpecial(enemy, rand, { canPoison, canPetrify })
+    const special = selectEnemySpecial(enemy, rand, { canPoison, canPetrify, belowHalfHp, allowWindUp: isFirst })
+    // A wind-up is a turn of warning: nothing is rolled, the caller holds it.
+    if (special?.windUp) return { windUp: special }
 
+    let rolls = null
     let raw
     let action = null
     let bypass = false
     if (special) {
       const rolled = special.rollDamage(enemy, rand)
-      const rolls = enemyIsPure ? rolled.rolls.map(() => enemy.att) : rolled.rolls
-      raw = enemyIsPure ? rolls.reduce((sum, r) => sum + r, 0) : rolled.raw
-      bypass = enemyIsPure || Boolean(special.bypassesDefense)
+      rolls = everyRollFull ? rolled.rolls.map(() => enemy.att) : rolled.rolls
+      raw = rolls.reduce((sum, r) => sum + r, 0)
+      bypass = enemyIsDivine || enemyPierces || Boolean(special.bypassesDefense)
       action = { id: special.id, name: special.name, rolls }
     } else {
       raw = rand(0, enemy.att)
     }
     const hitDodged = dodgeChance > 0 && rand(1, 100) <= dodgeChance
-    const block = hitDodged || bypass ? 0 : rand(0, effectiveDef)
+    let block = 0
+    let damage = 0
+    if (!hitDodged) {
+      if (bypass) {
+        damage = Math.max(0, raw)
+      } else if (special?.blockPerRoll) {
+        damage = rolls.reduce((sum, r) => sum + Math.max(0, r - rand(0, effectiveDef)), 0)
+        block = raw - damage
+      } else {
+        block = rand(0, effectiveDef)
+        damage = Math.max(0, raw - block)
+      }
+    }
     // A poison special is an ordinary hit that also leaves poison behind. The
     // original set it whether or not the blow got through the block, as long
     // as the swing was not dodged; it scales with the PLAYER's level. Stone
@@ -431,10 +476,14 @@ function resolveEnemyAttack(battleState, otherCombatants, { pendingDamage = 0 } 
       poisonApplied = { clicks: special.rollPoison(battleState.level || 1, rand), name: special.name }
     }
     if (special?.applies === 'petrify' && !hitDodged) petrifyApplied = special.rollPetrify(rand)
-    return { raw, block, damage: hitDodged ? 0 : Math.max(0, raw - block), dodged: hitDodged, action }
+    return { raw, block, damage, dodged: hitDodged, action }
   }
 
-  const main = rollHit()
+  const main = rollHit(true)
+  if (main.windUp) {
+    const s = main.windUp
+    return { ...quietTurn, effects: { windUp: { id: s.id, name: s.name, line: s.windUpLine || 'gathers itself' } } }
+  }
   const enemyRaw = main.raw
   const enemyAction = main.action
   const dodged = main.dodged
@@ -446,7 +495,7 @@ function resolveEnemyAttack(battleState, otherCombatants, { pendingDamage = 0 } 
   // is reached.
   const extraHits = []
   const rollExtraHit = () => {
-    const hit = rollHit()
+    const hit = rollHit(false)
     return { raw: hit.raw, block: hit.block, damage: hit.damage, dodged: hit.dodged, ...(hit.action ? { action: hit.action } : {}) }
   }
   // The pack's hit is another animal, not this one's perk: a plain roll.

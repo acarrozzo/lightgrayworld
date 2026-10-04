@@ -17,10 +17,21 @@
 // `rollDamage`; specials that do something other than raw damage need a
 // resolution hook in battle-calculator, but the selection step stays the same.
 //
-// Two such hooks exist. `bypassesDefense: true` is the original's "pure"
-// damage, where the number the enemy rolls is the number you take and your DEF
-// never enters the arithmetic; battle-calculator reports the block as 0 on
-// those turns so the formula the player reads stays honest. `applies:
+// Four grades of hit (2026-10-03, Anthony's decisions):
+//   rolled  rand(0, ATT) against rand(0, DEF) — an ordinary attack.
+//   pierce  rand(0, ATT) against nothing: an ordinary roll your DEF never
+//           blocks. A standing trait (the Highwayman).
+//   pure    full ATT with no roll, against rand(0, DEF). Dangerous, and
+//           armour still does its job. Bite, Rage and the standing Pure Attack.
+//   divine  full ATT against nothing (`bypassesDefense: true`). The original
+//           called this "pure"; it is now kept for Firebreath and the standing
+//           Divine Attack of god-tier fights. battle-calculator reports the
+//           block as 0 so the formula the player reads stays honest.
+// `grade` on a special names which it is, for the HUD and the World Tool.
+//
+// Other hooks: `onlyBelowHalfHp` (Rage is an enrage), `blockPerRoll` (each
+// hit of the combo meets its own block), `windUp` (the proc is a turn of
+// warning with no attack; the hit lands on the enemy's next turn). `applies:
 // 'poison'` is an ordinary hit that also leaves poison behind (`rollPoison`);
 // it is only offered while the player can actually be poisoned, which is what
 // made it fire on every hit in the original rather than at random.
@@ -31,6 +42,8 @@ const ENEMY_SPECIALS = {
     name: 'Power Attack',
     label: 'Power',
     rule: 'Power Attack: 1 in 3 attacks rolls ATT three times and sums them.',
+    answer: 'DEF: it is three ordinary rolls against one block, so armour blunts it well.',
+    grade: 'rolled',
     // 1/3 — the original's `$enemypowerattack = rand(1, 3); ... == 1`.
     chance: 1 / 3,
     // Three independent ATT rolls summed. NOT `normal damage x3`: each roll is
@@ -47,6 +60,8 @@ const ENEMY_SPECIALS = {
     name: 'Critical Attack',
     label: 'Crit',
     rule: 'Critical Attack: 1 in 10 attacks rolls ATT ten times and sums them.',
+    answer: 'Keep your HP above five times its ATT; DEF takes only one block off the top.',
+    grade: 'rolled',
     // 1/10 — `$enemycritattack = rand(1, 10); ... == 1`.
     chance: 1 / 10,
     // Ten independent ATT rolls summed, blocked once. Averages 5x ATT, which is
@@ -61,12 +76,14 @@ const ENEMY_SPECIALS = {
     id: 'rage',
     name: 'Rage',
     label: 'Rage',
-    rule: 'Rage: 1 in 5 attacks lands 2 to 4 hits at full ATT. Your DEF does not block them.',
-    // 1/5 — `$enemyrage = rand(1, 5); ... == 1`.
-    chance: 1 / 5,
-    // A 2-to-4 hit combo at FULL attack each, with no roll and no block. The
-    // Minotaur's whole reputation: `$edamagetotal = $enemyatt * $rageCombo`.
-    bypassesDefense: true,
+    rule: 'Rage: once it is below half HP, 1 in 3 attacks lands 2 to 4 hits at full ATT, each blocked on its own.',
+    answer: 'Burn it down fast once it turns, or save strikes and MP for the second half of the fight.',
+    grade: 'pure',
+    // An enrage: nothing until it is hurt, then 1 in 3. The original was 1 in
+    // 5 all fight, at full ATT with no block (`$enemyatt * $rageCombo`).
+    chance: 1 / 3,
+    onlyBelowHalfHp: true,
+    blockPerRoll: true,
     rollDamage: (enemy, rand) => {
       const hits = rand(2, 4)
       const rolls = Array.from({ length: hits }, () => enemy.att)
@@ -77,12 +94,12 @@ const ENEMY_SPECIALS = {
     id: 'bite',
     name: 'Bite',
     label: 'Bite',
-    rule: 'Bite: 1 in 5 attacks hits twice at full ATT. Your DEF does not block it.',
+    rule: 'Bite: 1 in 5 attacks is one bite at twice full ATT. Your DEF blocks it once.',
+    answer: 'Stack DEF: the bite is big, but armour takes its share.',
+    grade: 'pure',
     // 1/5 — `$enemybite = rand(1, 5); ... == 1`.
     chance: 1 / 5,
-    // Two hits at full attack, pure. Rats, skeevers and the War Turtle all carry
-    // it, and it is what makes an ordinary-looking mine rat dangerous.
-    bypassesDefense: true,
+    // Twice full attack, blocked once. (The original's bite was unblockable.)
     rollDamage: (enemy) => ({ rolls: [enemy.att, enemy.att], raw: enemy.att * 2 }),
   },
   poison: {
@@ -90,6 +107,8 @@ const ENEMY_SPECIALS = {
     name: 'Poison Attack',
     label: 'Poison',
     rule: 'Poison: while you are not already poisoned, every hit leaves rand(1, your level ÷ 2) poison. Each click it burns for one less until it is gone.',
+    answer: 'Antidote cures it and grants immunity for a while; the Dodge skill avoids the hit that carries it.',
+    grade: 'rolled',
     // Not a proc: the original's `ePoison` branch ran on every attack while
     // `poisonyou < 1` — declared at chance 1 and filtered by `canPoison`.
     chance: 1,
@@ -107,6 +126,8 @@ const ENEMY_SPECIALS = {
     name: 'Venom Attack',
     label: 'Venom',
     rule: 'Venom: while you are not already poisoned, every hit leaves rand(1, your level) poison. Each click it burns for one less until it is gone.',
+    answer: 'Antidote before the fight makes you immune; otherwise cure it as soon as the fight ends.',
+    grade: 'rolled',
     chance: 1,
     applies: 'poison',
     rollDamage: (enemy, rand) => {
@@ -121,6 +142,8 @@ const ENEMY_SPECIALS = {
     name: 'Whirlwind Attack',
     label: 'Whirlwind',
     rule: 'Whirlwind: 1 in 4 attacks rolls ATT six times and sums them.',
+    answer: 'HP pool: expect three times its ATT one turn in four, less one block.',
+    grade: 'rolled',
     // 1/4 — `$enemywhirlwindattack = rand(1, 4); ... == 1`. King Blade and the
     // Silver Titan: six ATT rolls, blocked once, like a crit with fewer swings.
     chance: 1 / 4,
@@ -133,7 +156,11 @@ const ENEMY_SPECIALS = {
     id: 'dragonfire',
     name: 'Firebreath',
     label: 'Firebreath',
-    rule: 'Firebreath: 1 in 4 attacks is 3 to 5 gouts of flame at full ATT. Your DEF does not block them.',
+    rule: 'Firebreath: 1 turn in 4 it inhales instead of attacking. On its next turn it breathes 3 to 5 gouts of flame at full ATT, and nothing blocks them.',
+    answer: 'The inhale is your warning: heal up, cast Magic Armor, or retreat before the fire lands.',
+    grade: 'divine',
+    windUp: true,
+    windUpLine: 'INHALES deeply',
     // 1/4 — `$enemydragonfire = rand(1, 4); ... == 1`. The Dragon's whole
     // reputation: `$edamagetotal = $enemyatt * rand(3, 5)`, pure. The original
     // comment also promised "catch on fire, burn forever, cure with water" and
@@ -151,6 +178,8 @@ const ENEMY_SPECIALS = {
     name: 'Petrifying Gaze',
     label: 'Petrify',
     rule: 'Petrify: 1 in 5 attacks turns you to stone for 1 to 2 turns. Stone cannot swing, cast, drink or run; it keeps attacking you.',
+    answer: 'Never let your HP sit low: you may lose two turns without warning. Dodge avoids the gaze.',
+    grade: 'rolled',
     // The Despair's Gorgon and Medusa (2026-10-02, Anthony's call: 1–2 turns).
     // The hit itself is an ordinary rand(0, ATT); it is what follows that
     // hurts. Only offered while the player is not already stone.
@@ -166,10 +195,41 @@ const ENEMY_SPECIALS = {
     id: 'pure',
     name: 'Pure Attack',
     label: 'Pure',
-    rule: 'Pure Attack: every attack deals full ATT. Your DEF never blocks it.',
-    // Not a proc: the original's `ePureA` is a standing property that replaced
-    // the damage line on EVERY attack (`$edamagetotal = $enemyatt`). Declared
-    // here at chance 1 so it flows through the same selection step as the rest.
+    rule: 'Pure Attack: every attack lands at full ATT with no roll. Your DEF still blocks it.',
+    answer: 'Armour: a Pure hit is about three ordinary hits, and DEF cuts it the same way.',
+    grade: 'pure',
+    // Not a proc: a standing property of every attack, declared at chance 1 so
+    // it flows through the same selection step as the rest. Any other special
+    // this enemy procs also lands its rolls at full ATT (see battle-calculator).
+    chance: 1,
+    rollDamage: (enemy) => ({ rolls: [enemy.att], raw: enemy.att }),
+  },
+  pierce: {
+    id: 'pierce',
+    name: 'Pierce',
+    label: 'Pierce',
+    rule: 'Pierce: every attack is an ordinary roll of its ATT that nothing blocks. Your DEF never enters it.',
+    answer: 'DEF is no help. Dodge avoids it, Magic Armor absorbs it, and the rest is your HP pool: expect half its ATT a turn.',
+    grade: 'pierce',
+    // A standing property, like Pure and Divine: chance 1, and every other
+    // special this enemy procs goes unblocked too (see battle-calculator).
+    chance: 1,
+    bypassesDefense: true,
+    rollDamage: (enemy, rand) => {
+      const r = rand(0, enemy.att)
+      return { rolls: [r], raw: r }
+    },
+  },
+  divine: {
+    id: 'divine',
+    name: 'Divine Attack',
+    label: 'Divine',
+    rule: 'Divine Attack: every attack deals full ATT. Nothing blocks it.',
+    answer: 'DEF is no help. Dodge avoids it, Magic Armor absorbs it, and the rest is your HP pool.',
+    grade: 'divine',
+    // The original's `ePureA`: it replaced the damage line on EVERY attack
+    // (`$edamagetotal = $enemyatt`), and made Power, Critical and Whirlwind
+    // flat multiples of ATT. Kept for god-tier fights.
     chance: 1,
     bypassesDefense: true,
     rollDamage: (enemy) => ({ rolls: [enemy.att], raw: enemy.att }),
@@ -183,7 +243,7 @@ const ENEMY_SPECIALS = {
 // firebreath, then crit, then rage, then power, then bite, with the standing
 // pure modifier last so a Cyclops that also rolled something rarer still shows
 // the rarer thing.
-const SPECIAL_PRIORITY = ['whirlwind', 'dragonfire', 'crit', 'rage', 'power', 'bite', 'poison', 'venom', 'petrify', 'pure']
+const SPECIAL_PRIORITY = ['whirlwind', 'dragonfire', 'crit', 'rage', 'power', 'bite', 'poison', 'venom', 'petrify', 'pure', 'pierce', 'divine']
 
 // --- Standing behaviours ------------------------------------------------------
 //
@@ -277,7 +337,7 @@ function hasSpecial(enemy, id) {
  * poisoned player sees ordinary hits until the poison runs out. `canPetrify`
  * is the same for stone: not offered while the player is already stone.
  */
-function selectEnemySpecial(enemy, rand, { canPoison = true, canPetrify = true } = {}) {
+function selectEnemySpecial(enemy, rand, { canPoison = true, canPetrify = true, belowHalfHp = false, allowWindUp = true } = {}) {
   const owned = getEnemySpecialIds(enemy)
   if (owned.length === 0) return null
 
@@ -286,6 +346,10 @@ function selectEnemySpecial(enemy, rand, { canPoison = true, canPetrify = true }
     const special = ENEMY_SPECIALS[id]
     if (special.applies === 'poison' && !canPoison) continue
     if (special.applies === 'petrify' && !canPetrify) continue
+    // An enrage only once it is hurt; a wind-up only where the caller can
+    // hold it over to the next turn (the first hit of a turn).
+    if (special.onlyBelowHalfHp && !belowHalfHp) continue
+    if (special.windUp && !allowWindUp) continue
     // rand(1, N) === 1 for a 1/N chance — same shape as the original's rolls.
     if (rand(1, Math.round(1 / special.chance)) === 1) return special
   }

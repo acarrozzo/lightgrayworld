@@ -147,6 +147,10 @@ function errorResult(action, message) {
 // a suspiciously large number.
 function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodged = false, extras = {}) {
   const { extraHits = [], petrifyApplied = 0, enemyHealed = 0, enemyEffects = {} } = extras
+  // A wind-up: no attack this turn, and the warning is the whole line.
+  if (enemyEffects.windUp) {
+    return `The ${enemyName} ${enemyEffects.windUp.line}. ${enemyEffects.windUp.name.toUpperCase()} is coming next turn!${hpSuffix}`
+  }
   // A healer's turn: it mends instead of attacking, and nothing else happens.
   if (enemyEffects.healCast !== undefined) {
     const rose = enemyEffects.resurrected ? `The ${enemyName} RISES AGAIN! ` : ''
@@ -456,6 +460,9 @@ function describeSpellStrike(enemyName, turn) {
 function settleEnemyAftermath(battleState, turn) {
   const behaviours = getEnemyBehaviours(battleState.enemy)
   const effects = turn.enemyEffects || (turn.enemyEffects = {})
+  // A wind-up is held for exactly one enemy turn: set on the turn it starts,
+  // cleared by whatever turn comes next (the release).
+  battleState.enemyWindUp = effects.windUp?.id || null
   // Resurrect: the killing blow landed, and it stands back up at full HP. The
   // fight simply goes on — rewards are for the death that sticks.
   if (

@@ -49,6 +49,10 @@ export function spellHref(spellId: string) {
 export function recipeHref(recipeId: string) {
   return `/crafting#${encodeURIComponent(recipeId)}`
 }
+/** An enemy perk is keyed by its trait id (game-data/enemy-traits.js). */
+export function perkHref(perkId: string) {
+  return `/perks#${encodeURIComponent(perkId)}`
+}
 /** A traveler is keyed by its registry id (game-data/travelers.js). */
 export function travelerHref(travelerId: string) {
   return `/travelers#${encodeURIComponent(travelerId)}`

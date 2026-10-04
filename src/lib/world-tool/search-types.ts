@@ -6,6 +6,7 @@
 
 export type SearchEntityType =
   | 'enemy'
+  | 'perk'
   | 'item'
   | 'quest'
   | 'giver'
@@ -29,6 +30,7 @@ export type SearchEntry = {
 
 export const SEARCH_TYPE_LABEL: Record<SearchEntityType, string> = {
   enemy: 'Enemy',
+  perk: 'Perk',
   item: 'Item',
   quest: 'Quest',
   giver: 'Giver',
@@ -42,5 +44,5 @@ export const SEARCH_TYPE_LABEL: Record<SearchEntityType, string> = {
 
 /** Tie-break order when two hits match equally well. */
 export const SEARCH_TYPE_ORDER: SearchEntityType[] = [
-  'enemy', 'item', 'room', 'quest', 'giver', 'skill', 'spell', 'recipe', 'shop', 'traveler',
+  'enemy', 'perk', 'item', 'room', 'quest', 'giver', 'skill', 'spell', 'recipe', 'shop', 'traveler',
 ]

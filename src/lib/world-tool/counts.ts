@@ -16,6 +16,7 @@ import { ATLAS_EXCLUDED_ROOMS } from './atlas'
 import type { WorldToolPageKey } from './pages'
 
 const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: unknown[] }
+const { getEnemyPerkCatalog } = require('@/lib/game-data/enemy-traits') as { getEnemyPerkCatalog: () => unknown[] }
 const { QUEST_ORDER } = require('@/lib/game-data/quest-registry') as { QUEST_ORDER: string[] }
 const { CRAFTING_RECIPES } = require('@/lib/game-data/crafting-recipes') as { CRAFTING_RECIPES: unknown[] }
 const { SHOPS } = require('@/lib/game-data/shops') as { SHOPS: Record<string, unknown> }
@@ -46,6 +47,7 @@ export const loadWorldToolCounts = cachedWorldToolData('counts', async (): Promi
 
   return {
     enemies: ENEMIES.length,
+    perks: getEnemyPerkCatalog().length,
     items,
     quests: QUEST_ORDER.length,
     skills: SKILLS.length,

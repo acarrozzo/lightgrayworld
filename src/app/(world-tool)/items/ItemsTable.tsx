@@ -449,7 +449,7 @@ function SourceCell({ r }: { r: ItemRow }) {
           </span>
           {enemies.map((e, i) => (
             <span key={i} className="text-fg-primary">
-              <EntityLink href={enemyHref(e.slug)} title={`${e.name} in the Bestiary`}>
+              <EntityLink href={enemyHref(e.slug)} title={`${e.name} on the Enemies page`}>
                 {e.name}
               </EntityLink>{' '}
               <span className="text-fg-muted">{e.label}</span>
