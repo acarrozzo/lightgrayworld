@@ -29,7 +29,7 @@
 //           block as 0 so the formula the player reads stays honest.
 // `grade` on a special names which it is, for the HUD and the World Tool.
 //
-// Other hooks: `onlyBelowHalfHp` (Rage is an enrage), `blockPerRoll` (each
+// Other hooks: `onlyBelowHalfHp` (an enrage; no perk uses it today), `blockPerRoll` (Rage: each
 // hit of the combo meets its own block), `windUp` (the proc is a turn of
 // warning with no attack; the hit lands on the enemy's next turn). `applies:
 // 'poison'` is an ordinary hit that also leaves poison behind (`rollPoison`);
@@ -76,13 +76,14 @@ const ENEMY_SPECIALS = {
     id: 'rage',
     name: 'Rage',
     label: 'Rage',
-    rule: 'Rage: once it is below half HP, 1 in 3 attacks lands 2 to 4 hits at full ATT, each blocked on its own.',
-    answer: 'Burn it down fast once it turns, or save strikes and MP for the second half of the fight.',
+    rule: 'Rage: 1 in 5 attacks lands 2 to 4 hits at full ATT, each blocked on its own.',
+    answer: 'Stack DEF: every hit of the combo meets its own block, so armour takes a share of each.',
     grade: 'pure',
-    // An enrage: nothing until it is hurt, then 1 in 3. The original was 1 in
-    // 5 all fight, at full ATT with no block (`$enemyatt * $rageCombo`).
-    chance: 1 / 3,
-    onlyBelowHalfHp: true,
+    // 1/5 at any HP — `$enemyrage = rand(1, 5); ... == 1`. The original's
+    // combo was unblockable (`$enemyatt * $rageCombo`); here each hit is a
+    // pure one. (An enrage-below-half-HP version was tried and dropped the
+    // same day, 2026-10-03.)
+    chance: 1 / 5,
     blockPerRoll: true,
     rollDamage: (enemy, rand) => {
       const hits = rand(2, 4)
