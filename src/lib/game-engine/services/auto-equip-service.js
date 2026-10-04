@@ -158,6 +158,7 @@ function gearContext(main, off) {
     weaponCategory: main?.template?.weaponCategory || null,
     isTwoHanded: main ? isTwoHanded(main.template) : false,
     hasShield: off ? isShieldItem(off.template) : false,
+    ammo: typeof main?.template?.metadata?.ammo === 'string' ? main.template.metadata.ammo : null,
   }
 }
 

@@ -6,7 +6,7 @@
  *
  *   - gear:   every equipped item's `metadata.regen: { hp?, mp? }` — the ring
  *             of health/mana regen ladder, the Shaman Necklace, the Sky Hawk;
- *   - tea:    +5 HP and +5 MP while a cup of tea counts down;
+ *   - tea:    +10 HP and +10 MP while a cup of tea counts down;
  *   - spell:  Regenerate, a flat HP amount a click while it counts down —
  *             rolled rand(lvl, 2×lvl) once at cast and locked for the duration.
  *
@@ -21,7 +21,7 @@
  */
 
 /** What a cup of tea restores each click while it lasts. */
-const TEA_REGEN = { hp: 5, mp: 5 }
+const TEA_REGEN = { hp: 10, mp: 10 }
 
 /**
  * The regen an item template declares, or zeros. Tolerates any metadata shape.

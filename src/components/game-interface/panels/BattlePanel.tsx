@@ -946,6 +946,13 @@ export default function BattlePanel({
           ) : (
             <p className="text-xs text-fg-disabled italic">Waiting for first strike…</p>
           )}
+          {battle.extraShot && (
+            <p className="text-[10px] text-fg-muted tabular-nums">
+              <span className="font-semibold text-combat-victory">Second arrow</span>
+              {' '}{battle.extraShot.roll} &minus; {battle.extraShot.block} ={' '}
+              <span className={battle.extraShot.damage > 0 ? 'text-combat-victory font-semibold' : 'text-fg-disabled'}>{battle.extraShot.damage}</span>
+            </p>
+          )}
           {battle.companion && (
             <p className="text-[10px] text-fg-muted tabular-nums">
               <span className="font-semibold text-combat-victory">{battle.companion.name}</span>

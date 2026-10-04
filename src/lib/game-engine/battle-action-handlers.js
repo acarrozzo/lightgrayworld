@@ -350,8 +350,8 @@ async function ammoDisplayName(ammoSlug) {
 // can report it, the way the original showed "N arrows left") plus the refreshed
 // inventory, which the caller pushes so the inventory panel doesn't go stale
 // mid-fight.
-async function consumeAmmo(playerId, ammo) {
-  const remaining = Math.max(0, ammo.remaining - 1)
+async function consumeAmmo(playerId, ammo, count = 1) {
+  const remaining = Math.max(0, ammo.remaining - count)
   if (remaining <= 0) {
     await prisma.playerItem.delete({ where: { id: ammo.id } })
   } else {
@@ -433,6 +433,14 @@ function describeWeaponStrike(enemyName, turn, extra = '') {
     return `Your blade bounces off the ${enemyName} — it cannot be cut!`
   }
   return `You strike the ${enemyName} for ${turn.playerDealtDamage} damage.${extra}${describeMelt(turn)}`
+}
+
+// Multi Arrow's second arrow, on the same line as the shot it followed.
+function describeExtraShot(enemyName, extraShot) {
+  if (!extraShot) return ''
+  return extraShot.damage === 0
+    ? ` A second arrow follows and is blocked.`
+    : ` A second arrow hits the ${enemyName} for ${extraShot.damage} damage.`
 }
 
 function describeCompanionStrike(enemyName, companion) {
@@ -703,7 +711,7 @@ async function executeStartBattle(action, playerId, roomState) {
   } else {
     // Player-initiated — normal full turn, or the spell or skill that opened
     // the fight. The companion's swing lands beside the player's own.
-    firstTurn = resolveTurn(battleState, otherCombatants, { spell, skill: strike, enemyDodged })
+    firstTurn = resolveTurn(battleState, otherCombatants, { spell, skill: strike, enemyDodged, canMultiShot: !ammo || ammo.remaining >= 2 })
     battleState.applyDamageToEnemy(totalDamageToEnemy(firstTurn))
     battleState.recordTurn(totalDamageToEnemy(firstTurn), firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
   }
@@ -717,7 +725,7 @@ async function executeStartBattle(action, playerId, roomState) {
   let ammoRemaining = null
   let ammoInventory = null
   if (ammo && !enemyDodged) {
-    ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo))
+    ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo, firstTurn.extraShot ? 2 : 1))
   }
 
   // Land the enemy's hit: Magic Armor first, then HP, plus any poison it left.
@@ -765,9 +773,9 @@ async function executeStartBattle(action, playerId, roomState) {
   } else if (firstTurn.spell) {
     attackDesc = describeSpellStrike(enemy.name, firstTurn) + describeCompanionStrike(enemy.name, firstTurn.companion)
   } else if (firstTurn.skill) {
-    attackDesc = describeSkillStrike(enemy.name, firstTurn) + describeCompanionStrike(enemy.name, firstTurn.companion)
+    attackDesc = describeSkillStrike(enemy.name, firstTurn) + describeExtraShot(enemy.name, firstTurn.extraShot) + describeCompanionStrike(enemy.name, firstTurn.companion)
   } else {
-    attackDesc = describeWeaponStrike(enemy.name, firstTurn) + describeCompanionStrike(enemy.name, firstTurn.companion)
+    attackDesc = describeWeaponStrike(enemy.name, firstTurn) + describeExtraShot(enemy.name, firstTurn.extraShot) + describeCompanionStrike(enemy.name, firstTurn.companion)
   }
   const defenseDesc =
     describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction, '', firstTurn.playerDodged, firstTurn) +
@@ -797,6 +805,7 @@ async function executeStartBattle(action, playerId, roomState) {
     immuneToMagic: firstTurn.immuneToMagic ?? false,
     immuneToWeapon: firstTurn.immuneToWeapon ?? null,
     companion: firstTurn.companion ?? null,
+    extraShot: firstTurn.extraShot ?? null,
     playerDodged: firstTurn.playerDodged ?? false,
     absorbed: updatedPlayer.absorbed,
     magicArmorLeft: updatedPlayer.magicArmorLeft,
@@ -969,13 +978,13 @@ async function executePlayerAttack(action, playerId, roomState) {
   }
 
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
-  const turnResult = resolveTurn(battleState, otherCombatants, { spell: petrified ? null : spell, skill: strike, enemyDodged })
+  const turnResult = resolveTurn(battleState, otherCombatants, { spell: petrified ? null : spell, skill: strike, enemyDodged, canMultiShot: !ammo || ammo.remaining >= 2 })
 
   // The shot resolved — spend the round. A dodged shot never left the string.
   let ammoRemaining = null
   let ammoInventory = null
   if (ammo && !enemyDodged) {
-    ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo))
+    ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo, turnResult.extraShot ? 2 : 1))
   }
 
   battleState.applyDamageToEnemy(totalDamageToEnemy(turnResult))
@@ -1115,6 +1124,7 @@ async function executePlayerAttack(action, playerId, roomState) {
         : describeWeaponStrike(battleState.enemyName, turnResult, extra)
     )
   }
+  if (turnResult.extraShot) parts.push(describeExtraShot(battleState.enemyName, turnResult.extraShot).trim())
   if (turnResult.companion) parts.push(describeCompanionStrike(battleState.enemyName, turnResult.companion).trim())
   parts.push(
     describeEnemyAttack(
@@ -1157,6 +1167,7 @@ async function executePlayerAttack(action, playerId, roomState) {
           immuneToMagic: turnResult.immuneToMagic ?? false,
           immuneToWeapon: turnResult.immuneToWeapon ?? null,
           companion: turnResult.companion ?? null,
+          extraShot: turnResult.extraShot ?? null,
           playerDodged: turnResult.playerDodged ?? false,
           absorbed: updatedPlayer.absorbed,
           magicArmorLeft: updatedPlayer.magicArmorLeft,

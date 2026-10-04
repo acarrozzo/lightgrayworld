@@ -6,7 +6,7 @@ const { getEnemyTraits } = require('../game-data/enemy-traits')
  * What the player is holding, as the skills read it: the weapon's category,
  * whether it takes both hands, whether the off hand carries a shield, and
  * whether the mount under them flies (`metadata.grantsFlight`).
- * @typedef {{ weaponCategory: 'MELEE'|'RANGED'|null, isTwoHanded: boolean, hasShield: boolean, flyingMount?: boolean }} GearContext
+ * @typedef {{ weaponCategory: 'MELEE'|'RANGED'|null, isTwoHanded: boolean, hasShield: boolean, flyingMount?: boolean, ammo?: string|null }} GearContext
  */
 
 /**
@@ -82,6 +82,9 @@ class BattleState {
       isTwoHanded: Boolean(gear && gear.isTwoHanded),
       hasShield: Boolean(gear && gear.hasShield),
       flyingMount: Boolean(gear && gear.flyingMount),
+      // `metadata.ammo` of the weapon in hand — what tells a bow from a
+      // crossbow for Multi Arrow and Bolt Upgrade. Handlers name it `ammoSlug`.
+      ammo: (gear && (gear.ammo || gear.ammoSlug)) || null,
     }
     this.equippedWeaponCategory = this.gear.weaponCategory || 'MELEE'
   }
@@ -98,6 +101,7 @@ class BattleState {
     const skill = getPassiveSkillBonuses(playerStats, this.gear, { str: playerStats.strMod || 0, dex: playerStats.dexMod || 0 })
     this.skillBonuses = skill
     this.dodgeChance = skill.dodgeChance
+    this.multiArrowChance = skill.multiArrowChance || 0
     this.baseStr = (playerStats.str || 0) + (playerStats.strMod || 0) + buff.str + skill.str
     this.baseDex = (playerStats.dex || 0) + (playerStats.dexMod || 0) + buff.dex + skill.dex
     this.baseMag = (playerStats.mag || 0) + (playerStats.magMod || 0) + buff.mag

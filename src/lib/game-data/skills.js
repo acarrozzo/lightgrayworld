@@ -31,8 +31,10 @@
  *     the Master Trainer's: each level is +5% on the gear-side stat for that
  *     weapon kind (the original's stats.php took `round(strmod × 0.05 × lvl)`
  *     where strmod was equipment plus the flat proficiencies already folded
- *     in), for 5 SP a level, and only once the base skill is at 20. Multi
- *     Arrow and Bolt Upgrade are listed as not ported.
+ *     in), for 5 SP a level, and only once the base skill is at 20.
+ *   - The Ranger's Guild upgrades key on the weapon's ammo: Multi Arrow is a
+ *     lvl% chance that a bow looses a second arrow (its own roll, its own
+ *     block, its own arrow), and Bolt Upgrade is +2·lvl DEX with a crossbow.
  *
  * @typedef {'offense'|'attack'|'defense'|'upgrade'} SkillGroup
  * @typedef {'passive'|'strike'|'upgrade'} SkillKind
@@ -46,6 +48,7 @@
  * @property {'MELEE'|'RANGED'|null} weaponCategory  null when unarmed.
  * @property {boolean} isTwoHanded
  * @property {boolean} hasShield
+ * @property {string|null} [ammo]  The weapon's `metadata.ammo` slug: 'arrow' for a bow, 'crossbow-bolt' for a crossbow.
  *
  * @typedef {Object} SkillBonusRoll
  * @property {number} amount   The bonus added to the swing.
@@ -467,11 +470,11 @@ const SKILLS = [
     name: 'Multi Arrow',
     group: 'upgrade',
     kind: 'upgrade',
-    implemented: false,
+    implemented: true,
     icon: 'multiarrow',
     hue: 'green',
     description: 'A chance to loose a second arrow with every bow shot.',
-    formula: 'rand(0, lvl) ≥ rand(1, 100): a second shot',
+    formula: 'lvl% chance of a second arrow with a bow',
     teachers: [
       { flag: 'rangerSkillFlag', max: 20 },
       { flag: 'starCitySkillsFlag', max: 25 },
@@ -484,11 +487,11 @@ const SKILLS = [
     name: 'Bolt Upgrade',
     group: 'upgrade',
     kind: 'upgrade',
-    implemented: false,
+    implemented: true,
     icon: 'boltupgrade',
     hue: 'green',
-    description: 'Adds extra damage to crossbow bolts.',
-    formula: '+rand(1, lvl) with a crossbow',
+    description: 'Heavier bolts. Each point in the skill is another 2 points of DEX while a crossbow is equipped.',
+    formula: '+2·lvl DEX while a crossbow is equipped',
     teachers: [
       { flag: 'rangerSkillFlag', max: 20 },
       { flag: 'starCitySkillsFlag', max: 25 },
@@ -602,6 +605,10 @@ function isShieldItem(template) {
   return /shield/.test(slug) || slug === 'buckler'
 }
 
+/** The `metadata.ammo` slugs that tell a bow from a crossbow (GearContext.ammo). */
+const BOW_AMMO = 'arrow'
+const CROSSBOW_AMMO = 'crossbow-bolt'
+
 /**
  * Which of the three weapon kinds the player is holding, for skill fit and the
  * proficiency bonuses. Fists are none of them, as in the original (weapontype 0).
@@ -643,7 +650,7 @@ function weaponFitReason(skill, gear) {
  * @param {Record<string, number>} levels  Skill levels keyed by User column.
  * @param {GearContext} gear
  * @param {{ str?: number, dex?: number }} [mods]  The derived equipment mods.
- * @returns {{ str: number, dex: number, def: number, dodgeChance: number, parts: { skillId: string, stat: 'str'|'dex'|'def'|'dodge', amount: number }[] }}
+ * @returns {{ str: number, dex: number, def: number, dodgeChance: number, multiArrowChance: number, parts: { skillId: string, stat: 'str'|'dex'|'def'|'dodge', amount: number }[] }}
  */
 function getPassiveSkillBonuses(levels, gear, mods) {
   const lv = (column) => Math.max(0, Number(levels?.[column] || 0))
@@ -665,6 +672,12 @@ function getPassiveSkillBonuses(levels, gear, mods) {
   if (kind === 'RANGED' && lv('ranged') > 0) {
     dex += lv('ranged')
     parts.push({ skillId: 'ranged', stat: 'dex', amount: lv('ranged') })
+  }
+  // Bolt Upgrade: a flat proficiency for crossbows, so the Pro multiplier
+  // below counts it like the others.
+  if (gear?.ammo === CROSSBOW_AMMO && lv('boltUpgrade') > 0) {
+    dex += lv('boltUpgrade') * 2
+    parts.push({ skillId: 'bolt-upgrade', stat: 'dex', amount: lv('boltUpgrade') * 2 })
   }
   if (lv('warcraft') > 0) {
     if (kind === 'RANGED') {
@@ -704,8 +717,10 @@ function getPassiveSkillBonuses(levels, gear, mods) {
   }
   const dodgeChance = Math.min(100, lv('dodge'))
   if (dodgeChance > 0) parts.push({ skillId: 'dodge', stat: 'dodge', amount: dodgeChance })
+  // Multi Arrow: lvl% that a bow looses a second arrow (rolled in battle-calculator).
+  const multiArrowChance = gear?.ammo === BOW_AMMO ? Math.min(100, lv('multiArrow')) : 0
 
-  return { str, dex, def, dodgeChance, parts }
+  return { str, dex, def, dodgeChance, multiArrowChance, parts }
 }
 
 /**

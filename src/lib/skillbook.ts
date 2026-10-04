@@ -20,6 +20,8 @@ export interface GearContext {
   weaponCategory: 'MELEE' | 'RANGED' | null
   isTwoHanded: boolean
   hasShield: boolean
+  /** The weapon's `metadata.ammo` slug: 'arrow' for a bow, 'crossbow-bolt' for a crossbow. */
+  ammo?: string | null
 }
 
 export interface SkillTeacherTier {
@@ -97,6 +99,11 @@ export const previewSkillBonus = registry.previewSkillBonus
 /** Skills paint with the same decorative hue roles spells do. */
 export const skillTone = spellTone
 
+function ammoSlugOf(weapon: InventoryItem | null): string | null {
+  const metadata = weapon?.template.metadata as { ammo?: unknown } | null | undefined
+  return typeof metadata?.ammo === 'string' ? metadata.ammo : null
+}
+
 /** What the player is holding, from the live bag — the context every skill reads. */
 export function gearContextFromInventory(inventory: InventoryItem[]): GearContext {
   const weapon = inventory.find((item) => item.isEquipped && item.slot === 'MAIN_HAND') ?? null
@@ -105,6 +112,7 @@ export function gearContextFromInventory(inventory: InventoryItem[]): GearContex
     weaponCategory: (weapon?.template.weaponCategory as 'MELEE' | 'RANGED' | null | undefined) ?? null,
     isTwoHanded: weapon ? isTwoHanded(weapon) : false,
     hasShield: offHand ? registry.isShieldItem(offHand.template) : false,
+    ammo: ammoSlugOf(weapon),
   }
 }
 

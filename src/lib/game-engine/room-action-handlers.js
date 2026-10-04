@@ -1792,7 +1792,7 @@ async function pickUnderwaterFlower(playerId, roomState) {
 
 /**
  * Bathing in the Master Water Temple's glory: a full rest with +100 over the
- * top, +30 to everything for 100 clicks, and the Master Pack topped up — the
+ * top, +20 to everything for 100 clicks, and the Master Pack topped up — the
  * original did all three on one button and so does this.
  */
 async function batheInGlory(playerId, roomState) {
@@ -1826,7 +1826,7 @@ async function batheInGlory(playerId, roomState) {
     playerEvents: [
       {
         event: 'action:feedback',
-        payload: createActionFeedbackPayload('bathe in glory', 'success', `You bathe in the Master Temple's glory! BUFF: +30 STR, DEX, MAG and DEF for 100 clicks. Your Master Pack is replenished.`, {
+        payload: createActionFeedbackPayload('bathe in glory', 'success', `You bathe in the Master Temple's glory! BUFF: +20 STR, DEX, MAG and DEF for 100 clicks. Your Master Pack is replenished.`, {
           roomId: roomState.roomId,
           inventory: packPayload?.data?.inventory,
           buffs: { buffGloryClicks: glory },
@@ -1836,7 +1836,7 @@ async function batheInGlory(playerId, roomState) {
             icon: 'npc-guardian',
             iconColor: 'blue-300',
             title: "You bathe in the Master Temple's glory",
-            message: `REST: +100 HP, +100 MP\nBUFF: +30 STR, +30 DEX, +30 MAG, +30 DEF for 100 clicks\nREPLENISH: Master Pack\n\n${packLines}`,
+            message: `REST: +100 HP, +100 MP\nBUFF: +20 STR, +20 DEX, +20 MAG, +20 DEF for 100 clicks\nREPLENISH: Master Pack\n\n${packLines}`,
           },
         }),
       },

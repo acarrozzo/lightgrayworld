@@ -21,28 +21,29 @@
  * Buff field -> what it boosts while it runs. Drives BattleState's bonus lookup.
  *
  * A field declares its own stats and its own magnitude because the original's
- * buffs are not uniform: the reds/greens/blues/yellows capsules are +20 to a
- * single stat for 100 clicks, while a cup of coffee is +10 to *all four* for 10.
+ * buffs are not uniform: the reds/greens/blues/yellows capsules are +30 to a
+ * single stat for 100 clicks (the original's +20, raised when they stopped
+ * stacking), while a cup of coffee is +10 to *all four*.
  * Duration still lives in the countdown column; this is the magnitude.
  *
  * @type {Record<string, { stats: string[], amount: number }>}
  */
 const STAT_BUFF_FIELDS = {
-  buffStrClicks: { stats: ['str'], amount: 20 },
-  buffDexClicks: { stats: ['dex'], amount: 20 },
-  buffMagClicks: { stats: ['mag'], amount: 20 },
-  buffDefClicks: { stats: ['def'], amount: 20 },
+  buffStrClicks: { stats: ['str'], amount: 30 },
+  buffDexClicks: { stats: ['dex'], amount: 30 },
+  buffMagClicks: { stats: ['mag'], amount: 30 },
+  buffDefClicks: { stats: ['def'], amount: 30 },
   buffCoffeeClicks: { stats: ['str', 'dex', 'mag', 'def'], amount: 10 },
-  // Bathing in the Master Water Temple's glory: +30 to everything for 100
-  // clicks, the strongest standing buff in the original.
-  buffGloryClicks: { stats: ['str', 'dex', 'mag', 'def'], amount: 30 },
+  // Bathing in the Master Water Temple's glory: +20 to everything for 100
+  // clicks (the original's +30, lowered now that it stacks on one consumable).
+  buffGloryClicks: { stats: ['str', 'dex', 'mag', 'def'], amount: 20 },
 }
 
 /**
  * Status countdowns that are neither an ability nor a fixed stat bonus. Each
  * ticks down once per click like the rest; what it does while it runs lives
  * where it is consumed:
- *   - buffTeaClicks:      +5 HP / +5 MP regen a click (game-data/regen.js);
+ *   - buffTeaClicks:      +10 HP / +10 MP regen a click (game-data/regen.js);
  *   - regenerateClicks:   +regenerateAmount HP a click (regen.js), the amount
  *                         rolled once at cast and locked for the duration;
  *   - ironSkinClicks:     +ironSkinAmount DEF, likewise rolled once and locked
@@ -65,6 +66,18 @@ const AMOUNT_FIELDS = ['regenerateAmount', 'ironSkinAmount', 'magicArmorAmount']
 
 /** Every countdown field, ability, stat and status alike. Order is not significant. */
 const BUFF_FIELDS = ['wings', 'gills', ...Object.keys(STAT_BUFF_FIELDS), ...STATUS_FIELDS]
+
+/**
+ * The consumable slot: the buffs a player drinks or swallows, of which only
+ * one runs at a time. Starting one ends whichever other was running, so a
+ * capsule colour, a coffee or a tea is a choice rather than a checklist. (A
+ * deliberate departure from the original, where they all stacked.)
+ *
+ * Everything else stays outside it and runs alongside: wings and gills open
+ * routes, poison immunity is a ward, the spells cost MP, and Glory is the
+ * temple's blessing rather than something from the bag.
+ */
+const CONSUMABLE_SLOT_FIELDS = ['buffStrClicks', 'buffDexClicks', 'buffMagClicks', 'buffDefClicks', 'buffCoffeeClicks', 'buffTeaClicks']
 
 /**
  * Standing bonuses: learned once and never counted down. The original's auras
@@ -192,24 +205,51 @@ async function tickBuffs(prisma, playerId) {
  * durations rather than stacking, so drinking a second wings potion early can
  * never shorten the one already running.
  *
+ * A buff in the consumable slot ends the others in it, in the same statement
+ * that starts it — two quick clicks can never leave two running. What it
+ * ended is reported in `replaced`, with the clicks each had left.
+ *
  * @param {import('@prisma/client').PrismaClient|Object} db - prisma client or tx
  * @param {string} playerId
  * @param {string} field - one of BUFF_FIELDS
  * @param {number} clicks - duration in clicks
- * @returns {Promise<number>} the buff's remaining clicks after the write
+ * @returns {Promise<{clicks: number, replaced: {field: string, clicks: number}[]}>}
  */
-async function applyBuff(db, playerId, field, clicks) {
+async function startBuff(db, playerId, field, clicks) {
   if (!BUFF_FIELDS.includes(field)) {
-    throw new Error(`applyBuff: unknown buff field "${field}"`)
+    throw new Error(`startBuff: unknown buff field "${field}"`)
   }
   const duration = Math.max(0, Math.floor(Number(clicks) || 0))
+  const others = CONSUMABLE_SLOT_FIELDS.includes(field) ? CONSUMABLE_SLOT_FIELDS.filter((f) => f !== field) : []
 
+  if (others.length === 0) {
+    const rows = await db.$queryRawUnsafe(
+      `UPDATE "User" SET "${field}" = GREATEST("${field}", $2) WHERE id = $1 RETURNING "${field}" AS "value"`,
+      playerId,
+      duration
+    )
+    return { clicks: Number(rows[0]?.value ?? 0), replaced: [] }
+  }
+
+  // Field names come from the module-level allow-lists, never input.
   const rows = await db.$queryRawUnsafe(
-    `UPDATE "User" SET "${field}" = GREATEST("${field}", $2) WHERE id = $1 RETURNING "${field}" AS "value"`,
+    `WITH prev AS (SELECT ${others.map((f) => `"${f}"`).join(', ')} FROM "User" WHERE id = $1)
+     UPDATE "User" SET "${field}" = GREATEST("${field}", $2), ${others.map((f) => `"${f}" = 0`).join(', ')}
+     WHERE id = $1
+     RETURNING "${field}" AS "value", (SELECT row_to_json(prev) FROM prev) AS "prev"`,
     playerId,
     duration
   )
-  return Number(rows[0]?.value ?? 0)
+  const prev = rows[0]?.prev || {}
+  const replaced = others
+    .map((f) => ({ field: f, clicks: Number(prev[f] ?? 0) }))
+    .filter((entry) => entry.clicks > 0)
+  return { clicks: Number(rows[0]?.value ?? 0), replaced }
+}
+
+/** startBuff for callers that only want the clicks left. */
+async function applyBuff(db, playerId, field, clicks) {
+  return (await startBuff(db, playerId, field, clicks)).clicks
 }
 
 /** Human-readable label for a buff field, used in feed messages. */
@@ -281,6 +321,7 @@ module.exports = {
   STANDING_FIELDS,
   STAT_BUFF_FIELDS,
   STATUS_FIELDS,
+  CONSUMABLE_SLOT_FIELDS,
   AMOUNT_FIELDS,
   BUFF_FIELDS,
   BUFF_SELECT,
@@ -289,6 +330,7 @@ module.exports = {
   getStatBuffBonuses,
   projectBuffState,
   tickBuffs,
+  startBuff,
   applyBuff,
   clearBuffs,
 }

@@ -286,3 +286,16 @@ test('the HUD tags name the standing behaviours', () => {
   const labels = getEnemyTraits({ extraHits: 1, multiHitChance: 0.3, dodgeChance: 0.2, absorbsHp: true, meltsMelee: true }).map((t) => t.id)
   assert.deepEqual(labels, ['extra-hits', 'multi-hit', 'enemy-dodge', 'absorb', 'melt'])
 })
+
+test('Multi Arrow looses a second plain shot at 100%, never without the skill, and never from an empty quiver', () => {
+  const { resolveTurn, totalDamageToEnemy } = require(path.join(ROOT, 'src/lib/game-engine/battle-calculator.js'))
+  const bow = (over = {}) => battleState({ equippedWeaponCategory: 'RANGED', baseDex: 50, multiArrowChance: 100, ...over })
+  const shot = resolvePlayerAttack(bow(), 0)
+  assert.ok(shot.extraShot, 'a second arrow flew')
+  assert.equal(shot.extraShot.damage, shot.extraShot.roll - shot.extraShot.block)
+  assert.equal(resolvePlayerAttack(bow({ multiArrowChance: 0 }), 0).extraShot, null)
+  assert.equal(resolvePlayerAttack(bow(), 0, { canMultiShot: false }).extraShot, null)
+  assert.equal(resolvePlayerAttack(bow({ equippedWeaponCategory: 'MELEE' }), 0).extraShot, null)
+  const turn = resolveTurn(bow({ enemyCurrentHp: 100, enemyMaxHp: 100 }), 0)
+  assert.equal(totalDamageToEnemy(turn), turn.playerDealtDamage + turn.extraShot.damage)
+})

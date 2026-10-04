@@ -104,13 +104,13 @@ const ALL_STATS = (amount: number): Partial<Record<CoreStatKey, number>> => ({ s
 const BUFF_PRESENTATION: Record<string, { label: string; short: string; bonus: Partial<Record<CoreStatKey, number>> }> = {
   wings: { label: 'Wings', short: 'Wings', bonus: {} },
   gills: { label: 'Gills', short: 'Gills', bonus: {} },
-  buffStrClicks: { label: 'Strength', short: '+20 STR', bonus: { str: 20 } },
-  buffDexClicks: { label: 'Dexterity', short: '+20 DEX', bonus: { dex: 20 } },
-  buffMagClicks: { label: 'Magic', short: '+20 MAG', bonus: { mag: 20 } },
-  buffDefClicks: { label: 'Defense', short: '+20 DEF', bonus: { def: 20 } },
+  buffStrClicks: { label: 'Strength', short: '+30 STR', bonus: { str: 30 } },
+  buffDexClicks: { label: 'Dexterity', short: '+30 DEX', bonus: { dex: 30 } },
+  buffMagClicks: { label: 'Magic', short: '+30 MAG', bonus: { mag: 30 } },
+  buffDefClicks: { label: 'Defense', short: '+30 DEF', bonus: { def: 30 } },
   buffCoffeeClicks: { label: 'Coffee', short: '+10 all stats', bonus: ALL_STATS(10) },
-  buffGloryClicks: { label: 'Glory', short: '+30 all stats', bonus: ALL_STATS(30) },
-  buffTeaClicks: { label: 'Tea', short: '+5 HP/MP regen', bonus: {} },
+  buffGloryClicks: { label: 'Glory', short: '+20 all stats', bonus: ALL_STATS(20) },
+  buffTeaClicks: { label: 'Tea', short: '+10 HP/MP regen', bonus: {} },
   regenerateClicks: { label: 'Regenerate', short: 'Regenerate', bonus: {} },
   ironSkinClicks: { label: 'Iron Skin', short: 'Iron Skin', bonus: {} },
   poisonImmuneClicks: { label: 'Poison immunity', short: 'Poison immune', bonus: {} },
@@ -176,6 +176,31 @@ export function summarizeConsumable(metadata?: { consumable?: ConsumableMeta } |
   for (const buff of buffs) parts.push(buff.clicks > 0 ? `${buff.short} · ${buff.clicks} clicks` : buff.short)
 
   return { verb, label, hp, mp, buffs, group, effect: parts.join(' · ') }
+}
+
+const { CONSUMABLE_SLOT_FIELDS, BUFF_LABELS } = require('@/lib/game-engine/services/buff-service') as {
+  CONSUMABLE_SLOT_FIELDS: string[]
+  BUFF_LABELS: Record<string, string>
+}
+
+/**
+ * The running buff this consumable would end, if any. Only one buff from the
+ * consumable slot runs at a time (buff-service), so a row can say "replaces
+ * Coffee · 63 left" before the player commits. Display only; the server
+ * decides what a use replaces.
+ */
+export function replacedBuff(
+  summary: ConsumableSummary,
+  running: Record<string, number> | null | undefined
+): { label: string; clicks: number } | null {
+  if (!running) return null
+  const starting = summary.buffs.map((buff) => buff.field).filter((field) => CONSUMABLE_SLOT_FIELDS.includes(field))
+  if (starting.length === 0) return null
+  for (const field of CONSUMABLE_SLOT_FIELDS) {
+    const clicks = Number(running[field] ?? 0)
+    if (clicks > 0 && !starting.includes(field)) return { label: BUFF_LABELS[field] ?? field, clicks }
+  }
+  return null
 }
 
 function buildConsumableAction(itemSlug: string, summary: ConsumableSummary): ItemAction {

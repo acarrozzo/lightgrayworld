@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react'
 import EntryRow, { EntryVerb } from '@/components/EntryRow'
-import type { InventoryItem } from '@/lib/game-state'
-import { getItemActions, resolveItemIcon, summarizeConsumable, type ConsumableSummary } from '@/lib/item-actions'
+import { useGameStore, type InventoryItem } from '@/lib/game-state'
+import { getItemActions, replacedBuff, resolveItemIcon, summarizeConsumable, type ConsumableSummary } from '@/lib/item-actions'
 import { consumableTone } from '@/lib/consumable-tone'
 import { castBlockedReason, spellTone, type CastSituation, type SpellbookEntry } from '@/lib/spellbook'
 import { skillTone, strikeBlockedReason, type GearContext, type PassiveBonuses, type SkillbookEntry } from '@/lib/skillbook'
@@ -221,6 +221,8 @@ export function useConsumableDeck(inventory: InventoryItem[]) {
  */
 export function ConsumableEffect({ summary, toneClass }: { summary: ConsumableSummary; toneClass: string }) {
   const clicks = summary.buffs.find((buff) => buff.clicks > 0)?.clicks ?? 0
+  // Only one consumable buff runs at a time; warn before this one ends another.
+  const replaces = replacedBuff(summary, useGameStore((s) => s.player?.buffs))
   return (
     <span className="text-[11px] font-semibold tabular-nums flex flex-wrap items-center gap-x-1.5">
       {summary.hp > 0 && <span className="text-resource-hp">+{summary.hp} HP</span>}
@@ -229,6 +231,9 @@ export function ConsumableEffect({ summary, toneClass }: { summary: ConsumableSu
         <span key={buff.short} className={toneClass}>{buff.short}</span>
       ))}
       {clicks > 0 && <span className="text-[10px] font-normal text-fg-muted">{clicks} clicks</span>}
+      {replaces && (
+        <span className="text-[10px] font-normal text-status-warning">replaces {replaces.label} · {replaces.clicks} left</span>
+      )}
       {summary.hp <= 0 && summary.mp <= 0 && summary.buffs.length === 0 && (
         <span className="text-fg-muted font-normal">{summary.effect}</span>
       )}

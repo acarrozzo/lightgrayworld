@@ -232,6 +232,8 @@ export interface BattleState {
   immuneToWeapon: 'MELEE' | 'RANGED' | null
   /** The companion's swing on the last turn, or null with nothing in the slot. */
   companion: BattleCompanionStrike | null
+  /** Multi Arrow's second arrow on the last turn, or null when none flew. */
+  extraShot: BattleExtraShot | null
   /** The skill the player struck with on the last turn, or null for a plain swing or a spell. */
   skill: BattleSkillUse | null
   /** True when the Dodge skill turned the enemy's last swing into nothing. */
@@ -292,6 +294,13 @@ export interface BattleEnemyEffects {
   released?: string
 }
 
+/** Client mirror of the server's second-arrow record (see lib/socket.ts). */
+export interface BattleExtraShot {
+  roll: number
+  block: number
+  damage: number
+}
+
 /** Client mirror of the server's companion strike (see lib/socket.ts). */
 export interface BattleCompanionStrike {
   name: string
@@ -337,6 +346,7 @@ const INITIAL_BATTLE_STATE: BattleState = {
   immuneToMagic: false,
   immuneToWeapon: null,
   companion: null,
+  extraShot: null,
   skill: null,
   playerDodged: false,
   absorbed: 0,
@@ -382,6 +392,7 @@ export interface BattleLastTurn {
   immuneToMagic?: boolean
   immuneToWeapon?: 'MELEE' | 'RANGED' | null
   companion?: BattleCompanionStrike | null
+  extraShot?: BattleExtraShot | null
   skill?: BattleSkillUse | null
   playerDodged?: boolean
   petrifyApplied?: number
@@ -494,7 +505,7 @@ export interface GameState {
   getCachedRoom: (roomId: string) => Room | null
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
   setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyTraits?: EnemyTrait[]; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
-  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; companion?: BattleCompanionStrike | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number; absorbed?: number; magicArmorLeft?: number; poisonApplied?: { clicks: number } | null; petrifyApplied?: number; petrifiedTurns?: number; extraHits?: BattleExtraHit[]; enemyDodged?: boolean; petrified?: boolean; melted?: boolean; enemyHealed?: number; enemyEffects?: BattleEnemyEffects; playerCurrency?: number }) => void
+  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; companion?: BattleCompanionStrike | null; extraShot?: BattleExtraShot | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number; absorbed?: number; magicArmorLeft?: number; poisonApplied?: { clicks: number } | null; petrifyApplied?: number; petrifiedTurns?: number; extraHits?: BattleExtraHit[]; enemyDodged?: boolean; petrified?: boolean; melted?: boolean; enemyHealed?: number; enemyEffects?: BattleEnemyEffects; playerCurrency?: number }) => void
   /** A click tick moved the vitals mid-fight (regen, poison): keep the battle card's bars honest. */
   syncBattleVitals: (vitals: { hp?: number }) => void
   clearBattle: () => void
@@ -671,6 +682,7 @@ export const useGameStore = create<GameState>()(
             immuneToMagic: payload.immuneToMagic ?? false,
             immuneToWeapon: payload.immuneToWeapon ?? null,
             companion: payload.companion ?? null,
+            extraShot: payload.extraShot ?? null,
             skill: payload.skill ?? null,
             playerDodged: payload.playerDodged ?? false,
             absorbed: payload.absorbed ?? 0,

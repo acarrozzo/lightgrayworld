@@ -284,3 +284,20 @@ test("the Ranger's Guild raises Ranged and Aim to 25, Dodge to 10, and opens the
   assert.equal(skills.getSkillMaxLevel(skills.getSkill('multi-arrow'), flags), 20)
   assert.equal(skills.getSkillMaxLevel(skills.getSkill('bolt-upgrade'), flags), 20)
 })
+
+test('Bolt Upgrade adds 2 DEX a level with a crossbow only, and the Pro multiplier counts it', () => {
+  const crossbow = { weaponCategory: 'RANGED', isTwoHanded: true, hasShield: false, ammo: 'crossbow-bolt' }
+  const bow = { ...crossbow, ammo: 'arrow' }
+  assert.equal(skills.getPassiveSkillBonuses({ boltUpgrade: 20 }, crossbow).dex, 40)
+  assert.equal(skills.getPassiveSkillBonuses({ boltUpgrade: 20 }, bow).dex, 0)
+  // 100 gear DEX + 40 from the bolts, then Ranged Pro 10 = +50% of that 140.
+  assert.equal(skills.getPassiveSkillBonuses({ boltUpgrade: 20, rangedPro: 10 }, crossbow, { dex: 100 }).dex, 110)
+})
+
+test('Multi Arrow is a lvl% chance with a bow and nothing with a crossbow', () => {
+  const bow = { weaponCategory: 'RANGED', isTwoHanded: true, hasShield: false, ammo: 'arrow' }
+  assert.equal(skills.getPassiveSkillBonuses({ multiArrow: 20 }, bow).multiArrowChance, 20)
+  assert.equal(skills.getPassiveSkillBonuses({ multiArrow: 20 }, { ...bow, ammo: 'crossbow-bolt' }).multiArrowChance, 0)
+  assert.equal(skills.getSkill('multi-arrow').implemented, true)
+  assert.equal(skills.getSkill('bolt-upgrade').implemented, true)
+})

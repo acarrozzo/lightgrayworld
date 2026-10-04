@@ -124,7 +124,7 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
     const text = describeRegen(summary)
     const parts: string[] = []
     if (summary.gear.hp > 0 || summary.gear.mp > 0) parts.push(`gear ${describeRegen(summary.gear).replace(' / click', '')}`)
-    if (summary.tea) parts.push('tea +5 HP +5 MP')
+    if (summary.tea) parts.push('tea +10 HP +10 MP')
     if (summary.regenerateAmount > 0) parts.push(`Regenerate +${summary.regenerateAmount} HP`)
     chips.push({
       id: 'regen',
@@ -135,7 +135,7 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
     })
   }
   const tea = clicksOf('buffTeaClicks')
-  if (tea > 0) chips.push({ id: 'tea', label: 'Tea', clicks: tea, tone: 'vitals', title: `Tea: +5 HP and +5 MP regen a click for ${tea} more clicks.` })
+  if (tea > 0) chips.push({ id: 'tea', label: 'Tea', clicks: tea, tone: 'vitals', title: `Tea: +10 HP and +10 MP regen a click for ${tea} more clicks.` })
   const regenerate = clicksOf('regenerateClicks')
   if (regenerate > 0) chips.push({ id: 'regenerate', label: 'Regenerate', detail: `+${summary.regenerateAmount} HP`, clicks: regenerate, tone: 'hp', title: `Regenerate: +${summary.regenerateAmount} HP every click for ${regenerate} more clicks.` })
 

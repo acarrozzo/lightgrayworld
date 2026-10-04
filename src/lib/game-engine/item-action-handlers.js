@@ -4,7 +4,7 @@
  */
 const { prisma } = require('../db-client')
 const { getPlayerInventory } = require('./services/inventory-service')
-const { applyBuff, BUFF_FIELDS, BUFF_LABELS } = require('./services/buff-service')
+const { startBuff, BUFF_FIELDS, BUFF_LABELS } = require('./services/buff-service')
 
 /**
  * Map of item slugs to item-specific actions for NON-consumable items. Each
@@ -123,6 +123,7 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
   try {
     const changes = {} // stat -> { prev, next }
     const buffResults = [] // { field, clicks }
+    const replacedBuffs = [] // { field, clicks } — what the consumable slot let go of
     let cured = false
 
     await prisma.$transaction(async (tx) => {
@@ -155,8 +156,9 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
       }
 
       for (const { field, clicks } of buffEffects) {
-        const remaining = await applyBuff(tx, playerId, field, clicks)
-        buffResults.push({ field, clicks: remaining })
+        const started = await startBuff(tx, playerId, field, clicks)
+        buffResults.push({ field, clicks: started.clicks })
+        replacedBuffs.push(...started.replaced)
       }
 
       // A cure zeroes the poison outright; the immunity that rides with it is
@@ -196,9 +198,14 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
     }
     if (cure === 'poison') parts.push(cured ? 'are cured of your poison' : "weren't poisoned, but it can't hurt")
 
-    const message = parts.length
+    // Only one consumable buff runs at a time; say which one this ended.
+    const replacedNote = replacedBuffs
+      .map(({ field, clicks }) => ` Your ${BUFF_LABELS[field] || field} effect ends with ${clicks} clicks left.`)
+      .join('')
+
+    const message = (parts.length
       ? `You ${verb} the ${displayName}. You ${parts.join(', ')}.`
-      : `You ${verb} the ${displayName}.`
+      : `You ${verb} the ${displayName}.`) + replacedNote
 
     const data = {
       roomId: roomState.roomId,
@@ -209,7 +216,10 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
       data[`${stat}Change`] = next - prev
     }
     if (buffResults.length > 0) {
-      data.buffs = Object.fromEntries(buffResults.map((b) => [b.field, b.clicks]))
+      data.buffs = Object.fromEntries([
+        ...replacedBuffs.map((b) => [b.field, 0]),
+        ...buffResults.map((b) => [b.field, b.clicks]),
+      ])
     }
 
     if (consumable.modal) {

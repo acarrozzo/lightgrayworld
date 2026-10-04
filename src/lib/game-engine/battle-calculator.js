@@ -125,7 +125,7 @@ function rollEnemyBlock(enemy) {
  * misses a flyer like the sword would. Either way the enemy answers with a
  * single rand(0, DEF) block and the result floors at zero.
  */
-function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill = null, enemyDodged = false } = {}) {
+function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill = null, enemyDodged = false, canMultiShot = true } = {}) {
   const bonus = 1 + otherCombatants * 0.1
   const enemy = battleState.enemy
   const weaponCat = battleState.equippedWeaponCategory || 'MELEE'
@@ -246,7 +246,18 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
   // riding the swing is halved with it; a shot or a spell is not.
   const melted = weaponCat !== 'RANGED' && getEnemyBehaviours(enemy).meltsMelee && playerFinal > 0
   if (melted) playerFinal = Math.floor(playerFinal / 2)
+  // Multi Arrow: lvl% that a bow looses a second arrow behind the first. It is
+  // a plain shot — its own roll against its own block — and never carries the
+  // strike. `canMultiShot` is false when the quiver holds only the one arrow.
+  let extraShot = null
+  const multiArrowChance = battleState.multiArrowChance || 0
+  if (canMultiShot && multiArrowChance > 0 && weaponCat === 'RANGED' && rand(1, 100) <= multiArrowChance) {
+    const roll = rand(0, effectiveOff)
+    const block = rollEnemyBlock(enemy)
+    extraShot = { roll, block, damage: Math.max(0, roll - block) }
+  }
   return {
+    extraShot,
     playerRaw,
     enemyBlock,
     playerFinal,
@@ -543,13 +554,13 @@ function resolveEnemyAttack(battleState, otherCombatants, { pendingDamage = 0 } 
 }
 
 
-function resolveTurn(battleState, otherCombatants, { spell = null, skill = null, enemyDodged = false } = {}) {
-  const player = resolvePlayerAttack(battleState, otherCombatants, { spell, skill, enemyDodged })
+function resolveTurn(battleState, otherCombatants, { spell = null, skill = null, enemyDodged = false, canMultiShot = true } = {}) {
+  const player = resolvePlayerAttack(battleState, otherCombatants, { spell, skill, enemyDodged, canMultiShot })
   // The companion waits when there is nothing to swing at: its owner is stone,
   // or the enemy is already out of the way.
   const companion = player.petrified || player.enemyDodged ? null : resolveCompanionAttack(battleState)
   const enemyAtk = resolveEnemyAttack(battleState, otherCombatants, {
-    pendingDamage: player.playerFinal + (companion?.damage || 0),
+    pendingDamage: player.playerFinal + (player.extraShot?.damage || 0) + (companion?.damage || 0),
   })
 
   return {
@@ -561,6 +572,9 @@ function resolveTurn(battleState, otherCombatants, { spell = null, skill = null,
     playerDealtDamage: player.playerFinal,
     // null with nothing in the slot; { name, roll, block, damage } otherwise.
     companion,
+    // Multi Arrow's second arrow, reported beside the first like the
+    // companion's swing: { roll, block, damage }, or null when none flew.
+    extraShot: player.extraShot || null,
     enemyDealtDamage: enemyAtk.enemyFinal,
     playerRaw: player.playerRaw,
     enemyRaw: enemyAtk.enemyRaw,
@@ -600,9 +614,9 @@ function resolveTurn(battleState, otherCombatants, { spell = null, skill = null,
   }
 }
 
-/** Everything the enemy lost this turn: the player's hit plus the companion's. */
+/** Everything the enemy lost this turn: the player's hit, a second arrow, and the companion's. */
 function totalDamageToEnemy(turn) {
-  return (turn.playerDealtDamage || 0) + (turn.companion?.damage || 0)
+  return (turn.playerDealtDamage || 0) + (turn.extraShot?.damage || 0) + (turn.companion?.damage || 0)
 }
 
 module.exports = {

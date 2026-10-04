@@ -170,6 +170,8 @@ export interface BattleTurnPayload extends BattleSnapshot {
   immuneToWeapon?: 'MELEE' | 'RANGED' | null
   /** The companion's swing this turn, or null with nothing in the slot. */
   companion?: BattleCompanionStrike | null
+  /** Multi Arrow's second arrow this turn, or null when none flew. */
+  extraShot?: BattleExtraShot | null
   /** True when the Dodge skill turned the enemy's swing into nothing. */
   playerDodged?: boolean
   /** What Magic Armor absorbed of this hit, and what it has left. */
@@ -233,6 +235,13 @@ export interface BattleEnemyEffects {
   released?: string
 }
 
+/** Multi Arrow's second arrow, reported beside the first shot. */
+export interface BattleExtraShot {
+  roll: number
+  block: number
+  damage: number
+}
+
 /** The equipped companion's own roll, reported beside the player's hit. */
 export interface BattleCompanionStrike {
   name: string
@@ -262,6 +271,7 @@ export interface BattleLastTurn {
   immuneToMagic?: boolean
   immuneToWeapon?: 'MELEE' | 'RANGED' | null
   companion?: BattleCompanionStrike | null
+  extraShot?: BattleExtraShot | null
   playerDodged?: boolean
   petrifyApplied?: number
   extraHits?: BattleExtraHit[]
