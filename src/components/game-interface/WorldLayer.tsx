@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Globe, LocateFixed, Map as MapIcon, Sparkles, X } from 'lucide-react'
+import { Globe, LocateFixed, Map as MapIcon, Sparkles } from 'lucide-react'
 import MapContent from '@/components/MapContent'
 import type { Player } from '@/lib/game-state'
 import LayerShell, { HeaderTabs, ICON_BUTTON, useDeck } from './LayerShell'
@@ -14,7 +14,7 @@ import { resolveMapView } from './utils'
 const { getMapIdForRoom, TELEPORT_HUBS } = require('@/lib/game-data/world-map')
 const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
 
-export type WorldTab = 'map' | 'teleport'
+export type WorldTab = 'teleport' | 'map' | 'world'
 
 interface TeleportHub {
   regionId: string
@@ -39,28 +39,15 @@ interface WorldLayerProps {
   teleportBlockedReason?: string | null
 }
 
-/** True while the viewport is at least Tailwind's `lg` breakpoint. */
-function useIsWide() {
-  const [isWide, setIsWide] = useState(false)
-  useEffect(() => {
-    const query = window.matchMedia('(min-width: 1024px)')
-    const update = () => setIsWide(query.matches)
-    update()
-    query.addEventListener('change', update)
-    return () => query.removeEventListener('change', update)
-  }, [])
-  return isWide
-}
-
 /**
- * The world layer: Fast travel and Map as two tabs under one header, docked in
- * the Explore sidebar or full screen (a phone's sheet is the whole screen, so
- * it lays out as the full-screen form). The dock's World tile opens it on
- * Teleport; the centre of the compass ring opens it on the Map. The Map tab shows one sheet with every
- * found sheet in a filmstrip beneath it, a World grid of the regions (a rail
- * beside the sheet when the screen is wide), a Here chip back to your own
- * sheet, and a footer that fast-travels to the hub of the sheet you are
- * looking at. The Teleport tab is the fast-travel grid.
+ * The world layer: Teleport and Map as two sub-tabs under one header, in the
+ * left column or as a phone's page. The World tab opens it on Teleport; the
+ * centre of the compass ring opens it on the Map.
+ *
+ * Teleport is the grid of landings. Map is one sheet, with every found sheet
+ * in a filmstrip beneath it and, on the sheet itself, the button that
+ * teleports to its landing. World Map is the nine regions at a glance, with a
+ * switch for what lies under them; picking a region opens its sheet.
  */
 export default function WorldLayer({
   tab,
@@ -73,20 +60,12 @@ export default function WorldLayer({
   onTeleport,
   teleportBlockedReason = null,
 }: WorldLayerProps) {
-  const { presentation, onClose } = useDeck()
+  const { presentation } = useDeck()
   const variant = presentation === 'docked' ? 'docked' : 'overlay'
-  const [showWorld, setShowWorld] = useState(false)
   const [worldLevel, setWorldLevel] = useState<WorldLevel>('surface')
-  const isWide = useIsWide()
-  const hasRail = variant === 'overlay' && isWide
-  // The World grid shows in the sheet's place on narrow screens; a wide overlay
-  // has it in the rail instead, so the column never needs to switch.
-  const worldInColumn = showWorld && !hasRail
 
-  // Walking somewhere while the layer is open snaps the Map back to the sheet
-  // you are on; the World view is for looking around, not a place to be left in.
+  // Walking somewhere puts the World Map back on the surface.
   useEffect(() => {
-    setShowWorld(false)
     setWorldLevel('surface')
   }, [currentRoomId])
 
@@ -100,9 +79,10 @@ export default function WorldLayer({
   const selectSheet = useCallback(
     (mapId: string) => {
       onMapChange(mapId)
-      setShowWorld(false)
+      // From the World Map, picking a region is asking to see its sheet.
+      onTabChange('map')
     },
-    [onMapChange],
+    [onMapChange, onTabChange],
   )
 
   /** Step to the previous or next found sheet, wrapping at the ends. */
@@ -119,7 +99,7 @@ export default function WorldLayer({
   // Left and right arrows step through the sheets while a sheet is on screen.
   // Typing in the command line or chat is left alone.
   useEffect(() => {
-    if (tab !== 'map' || worldInColumn) return
+    if (tab !== 'map') return
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
       if (event.ctrlKey || event.metaKey || event.altKey) return
@@ -130,9 +110,9 @@ export default function WorldLayer({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [tab, worldInColumn, stepSheet])
+  }, [tab, stepSheet])
 
-  // The landing on the sheet you are looking at, if its fast travel is open to
+  // The landing on the sheet you are looking at, if its teleport is open to
   // you: the region's hub, or a sub-hub drawn on this sheet (the ocean's
   // Underwater sits on the underwater sheet, not the surface one).
   const { bridgeHub, sheetHasHub } = useMemo(() => {
@@ -142,13 +122,12 @@ export default function WorldLayer({
   }, [currentMapId, discoveredTeleports])
   const isAtBridgeHub = !!bridgeHub && bridgeHub.roomId === currentRoomId
 
-  const canGoHere = !!hereMapId && (showWorld || currentMapId !== hereMapId)
+  const canGoHere = !!hereMapId && currentMapId !== hereMapId
   const goHere = () => {
     if (hereMapId) selectSheet(hereMapId)
   }
 
-  const headerTitle =
-    tab === 'teleport' ? '' : worldInColumn ? (worldLevel === 'below' ? 'Below the world' : 'Map of the world') : mapView.title
+  const headerTitle = tab === 'teleport' ? '' : tab === 'world' ? (worldLevel === 'below' ? 'Under the world' : 'The world') : mapView.title
 
   const levelChips = (
     <>
@@ -168,7 +147,7 @@ export default function WorldLayer({
         ariaPressed={worldLevel === 'below'}
         title="What lies under each region: undergrounds, sewers, the mine, the sea floor"
       >
-        Below
+        Underground
       </SubTabButton>
     </>
   )
@@ -196,76 +175,51 @@ export default function WorldLayer({
     />
   )
 
-  // The fast-travel line under the sheet keeps its height whatever it says, so
-  // the sheet does not jump between maps you can travel to and maps you cannot.
-  const bridgeState = worldInColumn ? 'world' : bridgeHub ? (isAtBridgeHub ? 'here' : 'open') : sheetHasHub ? 'locked' : 'none'
-  const bridgeFooter = (
-    <div className="flex h-12 flex-shrink-0 items-center justify-center border-t border-line-subtle/40 px-3">
-      {bridgeState === 'open' && bridgeHub ? (
-        <button
-          type="button"
-          disabled={!!teleportBlockedReason}
-          title={teleportBlockedReason ?? undefined}
-          onClick={() => {
-            if (!teleportBlockedReason) onTeleport(bridgeHub.roomId)
-          }}
-          className="flex h-8 items-center gap-2 rounded-lg border border-resource-mp/50 px-3 text-xs font-semibold text-resource-mp transition-colors hover:bg-resource-mp/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-resource-mp disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
-        >
-          <Sparkles size={14} aria-hidden="true" />
-          <span>Fast travel to {bridgeHub.name}</span>
-          <span className="rounded-full bg-resource-mp/20 px-1.5 py-px text-[10px]">{TELEPORT_MP_COST} MP</span>
-        </button>
-      ) : (
-        <span className="flex h-8 items-center gap-2 rounded-lg border border-dashed border-line-strong/60 px-3 text-xs font-medium text-fg-muted">
-          {bridgeState === 'here' ? <LocateFixed size={14} aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" className="opacity-60" />}
-          <span>
-            {bridgeState === 'here'
-              ? 'You are here'
-              : bridgeState === 'locked'
-                ? 'Fast travel here: not found yet'
-                : bridgeState === 'world'
-                  ? 'Pick a map to see its fast travel'
-                  : 'No fast travel on this map'}
-          </span>
-        </span>
-      )}
-    </div>
-  )
+  // The teleport for the sheet on screen, on the map itself: a button in the
+  // sheet's corner when its landing is open to you, a quiet note when you are
+  // standing on it or have not found it, nothing when the sheet has none.
+  const bridgeState = bridgeHub ? (isAtBridgeHub ? 'here' : 'open') : sheetHasHub ? 'locked' : 'none'
+  const mapTeleport =
+    bridgeState === 'open' && bridgeHub ? (
+      <button
+        type="button"
+        disabled={!!teleportBlockedReason}
+        title={teleportBlockedReason ?? `Teleport to ${bridgeHub.name}`}
+        onClick={() => {
+          if (!teleportBlockedReason) onTeleport(bridgeHub.roomId)
+        }}
+        className="absolute bottom-3 right-3 z-10 flex h-9 items-center gap-2 rounded-lg border border-fg-bright/20 fill-resource-mp px-3 text-xs font-semibold shadow-lg shadow-black/40 transition-all hover:brightness-110 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:brightness-100"
+      >
+        <Sparkles size={14} aria-hidden="true" />
+        <span>Teleport to {bridgeHub.name}</span>
+        <span className="rounded-full bg-surface-canvas/30 px-1.5 py-px text-[10px]">{TELEPORT_MP_COST} MP</span>
+      </button>
+    ) : bridgeState !== 'none' ? (
+      <span className="pointer-events-none absolute bottom-3 right-3 z-10 flex h-7 items-center gap-1.5 rounded-lg border border-line-strong/60 bg-surface-canvas/80 px-2.5 text-[11px] font-medium text-fg-secondary backdrop-blur-sm">
+        {bridgeState === 'here' ? <LocateFixed size={13} aria-hidden="true" /> : <Sparkles size={13} aria-hidden="true" className="opacity-60" />}
+        {bridgeState === 'here' ? 'You are here' : 'Teleport not found yet'}
+      </span>
+    ) : null
 
   const sheetColumn = (
     <>
-      {worldInColumn ? (
-        <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          <div className={`flex flex-col gap-3 ${variant === 'overlay' ? 'mx-auto max-w-[520px]' : ''}`}>
-            <div className="flex items-center gap-2">{levelChips}</div>
-            {worldGrid}
-          </div>
-        </div>
-      ) : (
+      <div className="relative flex min-h-0 flex-1 flex-col">
         <MapContent
           mapSrc={mapView.src}
           mapTitle={mapView.title}
           marker={mapView.marker}
           onSwipe={(direction) => stepSheet(direction === 'next' ? 1 : -1)}
         />
-      )}
-      {bridgeFooter}
-      <SheetFilmstrip
-        sheets={foundMaps}
-        currentMapId={currentMapId}
-        currentRoomId={currentRoomId}
-        onSelect={selectSheet}
-        onSelectWorld={hasRail ? undefined : () => setShowWorld(true)}
-        worldSelected={worldInColumn}
-        onClose={onClose}
-      />
+        {mapTeleport}
+      </div>
+      <SheetFilmstrip sheets={foundMaps} currentMapId={currentMapId} currentRoomId={currentRoomId} onSelect={selectSheet} />
     </>
   )
 
   const lead = (
     <>
       <HeaderTabs
-        label="Teleport or Map"
+        label="Teleport, Map or World Map"
         color="sky"
         active={tab}
         home="teleport"
@@ -273,41 +227,27 @@ export default function WorldLayer({
         tabs={[
           { id: 'teleport', label: 'Teleport', icon: <Sparkles size={14} aria-hidden="true" /> },
           { id: 'map', label: 'Map', icon: <MapIcon size={14} aria-hidden="true" /> },
+          { id: 'world', label: 'World Map', icon: <Globe size={14} aria-hidden="true" /> },
         ]}
       />
       <span className="ml-auto min-w-0 truncate text-[11px] text-fg-muted">{headerTitle}</span>
-      {tab === 'map' && !hasRail && hereButton}
+      {tab === 'map' && hereButton}
     </>
   )
 
   return (
     <LayerShell title="World" icon={<Globe size={15} aria-hidden="true" />} toneClass="text-hue-sky" lead={lead} flush>
       {tab === 'map' ? (
-        hasRail ? (
-          <div className="flex min-h-0 flex-1">
-            <div className="flex min-w-0 flex-1 flex-col border-r border-line-subtle/40">{sheetColumn}</div>
-            <aside className="flex w-[400px] flex-shrink-0 flex-col min-h-0" aria-label="Map of the world">
-              <div className="flex flex-shrink-0 items-center gap-2 border-b border-line-subtle/40 py-1.5 pl-3 pr-2">
-                {levelChips}
-                <span className="ml-auto truncate text-[11px] text-fg-muted">{worldLevel === 'below' ? 'Below the world' : 'Map of the world'}</span>
-                {canGoHere && (
-                  <button
-                    type="button"
-                    onClick={goHere}
-                    title="Back to the map you are standing on"
-                    className="flex h-7 flex-shrink-0 items-center gap-1 rounded-lg border border-dashed border-line-strong/80 px-2 text-[11px] font-medium text-fg-muted transition-colors hover:border-line-strong hover:text-fg-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-                  >
-                    <LocateFixed size={13} aria-hidden="true" />
-                    <span>Here</span>
-                  </button>
-                )}
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-3">{worldGrid}</div>
-            </aside>
+        <div className="flex min-h-0 flex-1 flex-col">{sheetColumn}</div>
+      ) : tab === 'world' ? (
+        // The nine regions as their own maps, tight, with the level under them
+        // one switch away. Picking one opens its sheet on the Map tab.
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <div className={`flex flex-col gap-2 ${variant === 'overlay' ? 'mx-auto max-w-[520px]' : ''}`}>
+            <div className="flex items-center gap-2">{levelChips}</div>
+            {worldGrid}
           </div>
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-col">{sheetColumn}</div>
-        )
+        </div>
       ) : (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -327,21 +267,11 @@ export default function WorldLayer({
               />
             </div>
           </div>
-          {/* The same bottom bar shape as the Map tab's strip: the cost on the left, close pinned at the right. */}
-          <div className="flex flex-shrink-0 items-center gap-2 border-t border-line-subtle/40 py-2 pl-3 pr-1.5 text-[11px]">
-            <span className="font-semibold text-resource-mp" title="Each fast travel costs MP">
+          <div className="flex flex-shrink-0 items-center gap-2 border-t border-line-subtle/40 px-3 py-2 text-[11px]">
+            <span className="font-semibold text-resource-mp" title="Each teleport costs MP">
               MP cost: {TELEPORT_MP_COST}
             </span>
             <span className="truncate text-fg-muted">Any hub you have stood in</span>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              title="Close (Esc)"
-              className="ml-auto flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-line-strong/70 text-fg-secondary transition-colors hover:bg-surface-raised/50 hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-            >
-              <X size={18} aria-hidden="true" />
-            </button>
           </div>
         </>
       )}

@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { useTickerStore } from '@/store/tickerStore'
 import { entryAccent, formatRelative } from './feed/activityFormat'
+import FeedLinkButton from './feed/FeedLinkButton'
 
 const IDLE_MS = 6000
 const MAX_HISTORY = 20
@@ -145,6 +146,12 @@ export default function ActivityTicker() {
         )}
       </button>
 
+      {latest?.link && !isIdle && (
+        <div className="absolute right-2 top-0 z-10 flex h-8 items-center">
+          <FeedLinkButton link={latest.link} className="bg-surface-panel" />
+        </div>
+      )}
+
       {expanded && hasHistory && (
         <div className="absolute top-full left-0 right-0 z-40 px-2 pt-1">
           <div className="mx-auto max-w-3xl rounded-b-md border border-t-0 border-line-subtle/60 bg-surface-panel/95 backdrop-blur-sm shadow-lg">
@@ -159,6 +166,7 @@ export default function ActivityTicker() {
                     aria-hidden="true"
                   />
                   <span className="flex-1 min-w-0 whitespace-normal break-words">{renderEntry(entry)}</span>
+                  <FeedLinkButton link={entry.link} />
                   <span className="flex-shrink-0 mt-0.5 text-[10px] text-fg-muted tabular-nums">
                     {formatRelative(entry.ts, now)}
                   </span>

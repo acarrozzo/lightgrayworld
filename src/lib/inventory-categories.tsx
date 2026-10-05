@@ -117,7 +117,7 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   mount: 'Mount',
   artifact: 'Artifact',
   companion: 'Companion',
-  consumables: 'Consumables',
+  consumables: 'Items',
   crafting: 'Crafting',
   misc: 'Misc',
 }
@@ -138,8 +138,8 @@ export const SLOT_CHIP_LABELS: Record<SlotCategory, string> = {
 }
 
 export const FILTER_GROUPS: Array<{ id: FilterGroup; label: string }> = [
-  { id: 'gear', label: 'Equipment' },
-  { id: 'consumables', label: 'Consumables' },
+  { id: 'gear', label: 'Gear' },
+  { id: 'consumables', label: 'Items' },
   { id: 'crafting', label: 'Crafting' },
   { id: 'misc', label: 'Misc' },
 ]

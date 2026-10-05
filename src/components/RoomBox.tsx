@@ -164,6 +164,12 @@ export default function RoomBox({
             style={{ color: roomColor(room.nameColor, room.region, 'title') }}
           >
             {room.name}
+            {/* The room's number, small: the address the map and the feed use. */}
+            {room.roomId && (
+              <span className="ml-2 align-middle text-[10px] font-medium tracking-wide text-fg-muted tabular-nums" title={`Room ${room.roomId}`}>
+                #{room.roomId}
+              </span>
+            )}
           </h3>
           {hasSubtitle && subtitlePlacement === 'below' && (
             <p

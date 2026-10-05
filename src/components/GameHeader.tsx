@@ -1,5 +1,6 @@
 'use client'
 
+import { Settings as SettingsIcon } from 'lucide-react'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import type { ItemPreview } from '@/lib/game-state'
 
@@ -23,6 +24,9 @@ interface GameHeaderProps {
   /** Unspent Core + Training Points. Desktop shows a pill beside the name; on phones the Char tab badge carries it instead, the bar has no room. */
   unspentPoints?: number
   onCharacterClick?: () => void
+  /** The gear: Settings is opened from here, not from the tab bar. */
+  onSettingsClick?: () => void
+  settingsOpen?: boolean
   isConnected?: boolean
   onRefresh?: () => void
   /** What the consumable under the pointer in the battle deck would do; ghosted onto the bars and stats. */
@@ -108,7 +112,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, isConnected, onRefresh, itemPreview, regenGain, regenGainKey }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey }: GameHeaderProps) {
   let xpInLevel = 0
   let xpNeeded = 1
   let xpPct = 0
@@ -204,6 +208,20 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
             {def !== undefined && <><span className="text-stat-def" title={statTitles?.def}>{def}</span><StatBump amount={itemPreview?.stats?.def} /></>}
             {/* The connection indicator is desktop-only, so on mobile this
                 trails the stats — still the last control in the bar. */}
+            {onSettingsClick && (
+              <button
+                type="button"
+                onClick={onSettingsClick}
+                aria-pressed={settingsOpen}
+                aria-label="Settings"
+                title="Settings"
+                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                  settingsOpen ? 'bg-surface-raised text-fg-bright' : 'text-fg-secondary hover:bg-surface-raised/60 hover:text-fg-bright'
+                }`}
+              >
+                <SettingsIcon size={15} aria-hidden="true" />
+              </button>
+            )}
             <ThemeSwitcher className="ml-0.5" />
           </div>
         </div>
@@ -341,6 +359,20 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
             )}
 
             {/* Last in the bar, with the other chrome controls. */}
+            {onSettingsClick && (
+              <button
+                type="button"
+                onClick={onSettingsClick}
+                aria-pressed={settingsOpen}
+                aria-label="Settings"
+                title="Settings"
+                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                  settingsOpen ? 'bg-surface-raised text-fg-bright' : 'text-fg-secondary hover:bg-surface-raised/60 hover:text-fg-bright'
+                }`}
+              >
+                <SettingsIcon size={15} aria-hidden="true" />
+              </button>
+            )}
             <ThemeSwitcher className="ml-1" />
           </div>
 

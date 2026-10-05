@@ -88,7 +88,11 @@ interface EquipmentGridProps {
   density?: 'grid' | 'strip'
   /** The slot the bag is filtered to, if any. */
   selected?: FilterTab | null
-  /** How many items you carry for each slot, shown on the slot: what tapping it will list. */
+  /**
+   * How many items you carry for each slot, shown on the slot: what tapping it
+   * will list. When given, a slot with nothing for it is not drawn at all — a
+   * new character sees one slot, then two, as the first things are found.
+   */
   counts?: Partial<Record<string, number>>
   /** New items per slot, as a dot. */
   newCounts?: Partial<Record<string, number>>
@@ -125,12 +129,15 @@ export default function EquipmentGrid({ inventory, density = 'grid', selected = 
     return () => clearTimeout(timer)
   }, [equippedBySlot])
 
+  const slots = counts ? GRID_SLOTS.filter((slot) => (counts[filterForSlot(slot)] ?? 0) > 0 || equippedBySlot.has(slot)) : GRID_SLOTS
   const mainHand = equippedBySlot.get(EquipSlot.MAIN_HAND)
   const twoHanded = mainHand && (mainHand.template.metadata as any)?.isTwoHanded ? mainHand : undefined
 
+  if (slots.length === 0) return null
+
   return (
     <div className={`grid ${density === 'strip' ? 'grid-cols-6 gap-1' : 'grid-cols-2 gap-2'} ${className}`}>
-      {GRID_SLOTS.map((slot) => {
+      {slots.map((slot) => {
         const Slot = density === 'strip' ? StripSlot : EquipmentSlot
         return (
           <Slot

@@ -3,6 +3,8 @@
  *
  * Thresholds are the decision, not an implementation detail: a level-10 player
  * must see EASY under 5, FAIR up to 9, EVEN at 10, HIGH up to 19, DEADLY at 20.
+ * DEADLY also needs a gap of three levels, so the first few levels are not
+ * told that every room is deadly.
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -26,10 +28,18 @@ test('the five rungs against a level-10 player', () => {
   assert.equal(at(99), 'DEADLY')
 })
 
-test('a level-1 player sees no EASY room: danger 0 is FAIR-adjacent EASY, 1 is EVEN, 2 is DEADLY', () => {
+test('at level 1 double is not enough: DEADLY also needs three levels of gap', () => {
   assert.equal(dangerVerdict(0, false, 1).label, 'EASY')
   assert.equal(dangerVerdict(1, false, 1).label, 'EVEN')
-  assert.equal(dangerVerdict(2, false, 1).label, 'DEADLY')
+  assert.equal(dangerVerdict(2, false, 1).label, 'HIGH')
+  assert.equal(dangerVerdict(3, false, 1).label, 'HIGH')
+  assert.equal(dangerVerdict(4, false, 1).label, 'DEADLY')
+  // Level 2: double is 4, the gap needs 5.
+  assert.equal(dangerVerdict(4, false, 2).label, 'HIGH')
+  assert.equal(dangerVerdict(5, false, 2).label, 'DEADLY')
+  // From level 3 up, double is already at least three above: the old rule.
+  assert.equal(dangerVerdict(5, false, 3).label, 'HIGH')
+  assert.equal(dangerVerdict(6, false, 3).label, 'DEADLY')
 })
 
 test('missing or garbage input degrades to level 0 against level 1', () => {

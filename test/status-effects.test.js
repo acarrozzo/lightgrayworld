@@ -38,17 +38,17 @@ test('gear regen sums every equipped item that declares metadata.regen', () => {
   assert.deepEqual(total, { hp: 3, mp: 5 })
 })
 
-test('tea adds +5/+5 while it runs and Regenerate adds its locked amount, flat', () => {
+test('tea adds +10/+10 while it runs and Regenerate adds its locked amount, flat', () => {
   const gear = { hp: 1, mp: 2 }
   const quiet = regen.regenSummary({ gear, buffs: {} })
   assert.deepEqual([quiet.hpMin, quiet.hpMax, quiet.mp], [1, 1, 2])
 
   const tea = regen.regenSummary({ gear, buffs: { buffTeaClicks: 1 } })
-  assert.deepEqual([tea.hpMin, tea.hpMax, tea.mp], [6, 6, 7])
+  assert.deepEqual([tea.hpMin, tea.hpMax, tea.mp], [11, 11, 12])
 
   const spell = regen.regenSummary({ gear, buffs: { buffTeaClicks: 1, regenerateClicks: 3, regenerateAmount: 7 } })
-  assert.deepEqual([spell.hpMin, spell.hpMax, spell.mp], [13, 13, 7])
-  assert.deepEqual(regen.rollRegen(spell), { hp: 13, mp: 7 })
+  assert.deepEqual([spell.hpMin, spell.hpMax, spell.mp], [18, 18, 12])
+  assert.deepEqual(regen.rollRegen(spell), { hp: 18, mp: 12 })
 })
 
 test('a Regenerate amount only counts while its countdown runs', () => {
@@ -183,9 +183,18 @@ test('Iron Skin stands as DEF for the fight while it runs, like any other DEF', 
   assert.equal(resolveEnemyAttack(mk({ ironSkinClicks: 5, ironSkinAmount: 4 }), 0).effectiveDef, 7)
   // Expired (clicks 0) means no bonus, whatever the stale amount says.
   assert.equal(mk({ ironSkinClicks: 0, ironSkinAmount: 4 }).baseDef, 3)
-  // Pure damage ignores the whole block, Iron Skin included.
-  const pure = resolveEnemyAttack(mk({ ironSkinClicks: 5, ironSkinAmount: 4 }, { specials: ['pure'] }), 0)
-  assert.equal(pure.playerBlock, 0)
+  // A Pure hit is full ATT, and DEF — Iron Skin included — still blocks it
+  // with its ordinary rand(0, DEF) roll (the four grades of hit, 2026-10-03).
+  for (let i = 0; i < 200; i++) {
+    const pure = resolveEnemyAttack(mk({ ironSkinClicks: 5, ironSkinAmount: 4 }, { specials: ['pure'] }), 0)
+    assert.equal(pure.enemyRaw, 10)
+    assert.ok(pure.playerBlock >= 0 && pure.playerBlock <= 7, `block ${pure.playerBlock} outside 0..7`)
+    assert.equal(pure.enemyFinal, 10 - pure.playerBlock)
+  }
+  // Divine damage (what the original called pure) ignores the whole block.
+  const divine = resolveEnemyAttack(mk({ ironSkinClicks: 5, ironSkinAmount: 4 }, { specials: ['divine'] }), 0)
+  assert.equal(divine.playerBlock, 0)
+  assert.equal(divine.enemyFinal, 10)
 })
 
 // ─── expiry copy ─────────────────────────────────────────────────────────────

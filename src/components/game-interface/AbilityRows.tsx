@@ -22,8 +22,8 @@ import { skillTone, strikeBlockedReason, type GearContext, type PassiveBonuses, 
  */
 
 /** The frame every ability row wears, so all three lists read as one. */
-const ROW_FRAME = 'rounded-lg border-l-[3px] border-line-strong/70 bg-surface-raised/45 hover:bg-surface-raised/60'
-const ROW_FRAME_MUTED = 'rounded-lg border-l-[3px] border-line-subtle/50 bg-surface-raised/25'
+export const ROW_FRAME = 'rounded-lg border-l-[3px] border-line-strong/70 bg-surface-raised/45 hover:bg-surface-raised/60'
+export const ROW_FRAME_MUTED = 'rounded-lg border-l-[3px] border-line-subtle/50 bg-surface-raised/25'
 
 /**
  * How every list of these rows lays out: one column in a narrow container,
@@ -34,7 +34,7 @@ const ROW_FRAME_MUTED = 'rounded-lg border-l-[3px] border-line-subtle/50 bg-surf
 export const ABILITY_GRID = 'grid grid-cols-1 @min-[600px]:grid-cols-2 gap-1.5'
 
 /** `lvl 3/5`, the level tag every learned skill and spell carries. */
-function LevelTag({ level, maxLevel }: { level: number; maxLevel: number }) {
+export function LevelTag({ level, maxLevel }: { level: number; maxLevel: number }) {
   const atMax = maxLevel > 0 && level >= maxLevel
   return (
     <span

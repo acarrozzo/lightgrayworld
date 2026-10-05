@@ -41,7 +41,7 @@ async function discoverTeleportByKill(playerId, enemySlug) {
   if (applied.count === 0) return null
   const row = await prisma.user.findUnique({ where: { id: playerId }, select: { discoveredTeleports: true } })
   const label = hub.isSubHub ? `${hub.regionName}, ${hub.name}` : hub.regionName
-  return { message: `Fast travel to ${label} is now open.`, discoveredTeleports: row?.discoveredTeleports ?? [hub.discoveryId] }
+  return { message: `Teleport to ${label} is now open.`, discoveredTeleports: row?.discoveredTeleports ?? [hub.discoveryId] }
 }
 
 // Of this enemy's firstKill slugs, return the set the player already owns (equipped copies

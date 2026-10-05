@@ -113,7 +113,6 @@ function Swoosh() {
   )
 }
 
-// Compact label/value pair for the victory stats card (turns, dealt, took, best).
 /**
  * What the enemy's standing behaviours did on the last turn, under its hit:
  * each hit after the first with its own roll and block (so the total adds up
@@ -176,9 +175,10 @@ function EnemyHitExtras({ battle }: { battle: BattleState }) {
   )
 }
 
-function StatChip({ label, value }: { label: string; value: number }) {
+// Compact label/value pair for the victory stats card (turns, dealt, took, best).
+function StatChip({ label, value, title }: { label: string; value: number; title?: string }) {
   return (
-    <div className="flex items-baseline gap-1.5">
+    <div className="flex items-baseline gap-1.5 whitespace-nowrap" title={title}>
       <span className="text-[9px] uppercase tracking-wide text-fg-disabled">{label}</span>
       <span className="text-xs font-bold text-fg-primary tabular-nums">{value}</span>
     </div>
@@ -277,7 +277,7 @@ function DropsShowcase({ result }: { result: BattleResult }) {
   const drops = [...rawDrops].sort((a, b) => Number(b.firstKill) - Number(a.firstKill))
 
   return (
-    <div className="px-4 pt-3 pb-1 flex flex-col items-center">
+    <div className="px-3 pt-3 pb-1 flex flex-col items-center @min-[560px]:px-4">
       <span className="text-[10px] tracking-[0.2em] uppercase text-loot-epic/70 mb-2">Rewards</span>
       <div className="flex flex-wrap items-stretch justify-center gap-2">
         {drops.map((d, i) => {
@@ -320,7 +320,7 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
 
   if (isWin) {
     return (
-      <div className="rounded-xl overflow-hidden shadow-2xl border border-combat-victory/70"
+      <div className="@container rounded-xl overflow-hidden shadow-2xl border border-combat-victory/70"
         style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--combat-victory) 10%, var(--surface-canvas)) 0%, color-mix(in srgb, var(--combat-victory) 18%, var(--surface-canvas)) 40%, color-mix(in srgb, var(--combat-victory) 10%, var(--surface-canvas)) 100%)' }}
       >
         {/* Header */}
@@ -343,15 +343,19 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
           </button>
         </div>
 
-        {/* Final blow + enemy defeated — two compact cards, each holding its own icon */}
+        {/* Final blow, the fight's numbers, the enemy defeated. Narrow, the
+            two cards sit side by side with the numbers as one strip under
+            them; given room, the numbers move between the cards. The card's
+            own width decides, so it is right in the phone, the docked panel
+            and the wide battle area alike. */}
         {lt && (
-          <div className="flex items-stretch gap-2 px-4 py-2 border-b border-combat-victory/40">
+          <div className="grid grid-cols-2 gap-2 border-b border-combat-victory/40 px-3 py-2 @min-[560px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] @min-[560px]:px-4">
             {/* Final blow card */}
-            <div className="flex-1 min-w-0 rounded-lg border border-combat-victory/40 px-2.5 py-2 flex items-center gap-2.5"
+            <div className="order-1 min-w-0 rounded-lg border border-combat-victory/40 px-2.5 py-2 flex items-center gap-2.5"
               style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-victory) 12%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 7%, var(--surface-canvas)))' }}
             >
               {!wasAdvantageTurn && (
-                <Icon name={lastBlowSpell ? lastBlowSpell.attackIcon : (weaponIconName ?? 'equipment-fists')} size={44} className={`${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : 'text-fg-bright'} opacity-80 flex-shrink-0`} />
+                <Icon name={lastBlowSpell ? lastBlowSpell.attackIcon : (weaponIconName ?? 'equipment-fists')} size={36} className={`${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : 'text-fg-bright'} opacity-80 flex-shrink-0`} />
               )}
               <div className="min-w-0">
                 {wasAdvantageTurn ? (
@@ -371,16 +375,16 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
               </div>
             </div>
             {/* Battle stats card — sits between the two cards */}
-            <div className="flex-shrink-0 rounded-lg border border-combat-victory/50 px-3 py-2 grid grid-cols-2 gap-x-4 gap-y-0.5 content-center"
+            <div className="order-3 col-span-2 rounded-lg border border-combat-victory/50 px-3 py-1.5 grid grid-cols-4 gap-x-3 gap-y-0.5 content-center justify-items-center @min-[560px]:order-2 @min-[560px]:col-span-1 @min-[560px]:grid-cols-2 @min-[560px]:justify-items-start @min-[560px]:py-2"
               style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-victory) 11%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 6%, var(--surface-canvas)))' }}
             >
               <StatChip label="Turns" value={result.turnsCount} />
-              <StatChip label="Damage Took" value={result.totalDamageReceived} />
-              <StatChip label="Best Hit" value={result.maxSingleHit} />
-              <StatChip label="Damage Dealt" value={result.totalDamageDealt} />
+              <StatChip label="Dealt" title="Damage dealt" value={result.totalDamageDealt} />
+              <StatChip label="Took" title="Damage taken" value={result.totalDamageReceived} />
+              <StatChip label="Best" title="Best single hit" value={result.maxSingleHit} />
             </div>
             {/* Enemy defeated card */}
-            <div className="flex-1 min-w-0 rounded-lg border border-combat-defeat/40 px-2.5 py-2 flex items-center justify-end gap-2.5"
+            <div className="order-2 min-w-0 rounded-lg border border-combat-defeat/40 px-2.5 py-2 flex items-center justify-end gap-2.5 @min-[560px]:order-3"
               style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-defeat) 14%, var(--surface-canvas)), color-mix(in srgb, var(--combat-defeat) 8%, var(--surface-canvas)))' }}
             >
               <div className="min-w-0">
@@ -391,10 +395,10 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
                 <img
                   src={`/icons/enemy/${encodeURIComponent(result.enemyIcon)}.svg`}
                   alt={result.enemyName}
-                  width={52}
-                  height={52}
+                  width={44}
+                  height={44}
                   style={{ transform: 'scaleX(-1) scaleY(-1)' }}
-                  className="object-contain brightness-0 invert opacity-50 flex-shrink-0"
+                  className="h-11 w-11 object-contain brightness-0 invert opacity-50 flex-shrink-0"
                 />
               )}
             </div>
@@ -425,7 +429,7 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
 
   // Defeat
   return (
-    <div className="rounded-xl overflow-hidden shadow-2xl border border-combat-defeat/70"
+    <div className="@container rounded-xl overflow-hidden shadow-2xl border border-combat-defeat/70"
       style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--combat-defeat) 10%, var(--surface-canvas)) 0%, color-mix(in srgb, var(--combat-defeat) 18%, var(--surface-canvas)) 40%, color-mix(in srgb, var(--combat-defeat) 10%, var(--surface-canvas)) 100%)' }}
     >
       {/* Header */}
@@ -464,9 +468,9 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
 
       {/* Your strike + stats + enemy hit — three cards, each holding its own icon */}
       {lt && (
-        <div className="flex items-stretch gap-2 px-4 py-2 border-b border-combat-defeat/40">
+        <div className="grid grid-cols-2 gap-2 border-b border-combat-defeat/40 px-3 py-2 @min-[560px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] @min-[560px]:px-4">
           {/* Your strike card */}
-          <div className="flex-1 min-w-0 rounded-lg border border-combat-victory/40 px-2.5 py-2 flex items-center gap-2.5"
+          <div className="order-1 min-w-0 rounded-lg border border-combat-victory/40 px-2.5 py-2 flex items-center gap-2.5"
             style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-victory) 12%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 7%, var(--surface-canvas)))' }}
           >
             {!wasAdvantageTurn && (
@@ -484,7 +488,7 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
             </div>
           </div>
           {/* Battle stats card — sits between the two cards */}
-          <div className="flex-shrink-0 rounded-lg border border-combat-defeat/50 px-3 py-2 grid grid-cols-2 gap-x-4 gap-y-0.5 content-center"
+          <div className="order-3 col-span-2 rounded-lg border border-combat-defeat/50 px-3 py-1.5 grid grid-cols-4 gap-x-3 gap-y-0.5 content-center justify-items-center @min-[560px]:order-2 @min-[560px]:col-span-1 @min-[560px]:grid-cols-2 @min-[560px]:justify-items-start @min-[560px]:py-2"
             style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-defeat) 12%, var(--surface-canvas)), color-mix(in srgb, var(--combat-defeat) 7%, var(--surface-canvas)))' }}
           >
             <StatChip label="Turns" value={result.turnsCount} />
@@ -493,7 +497,7 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
             <StatChip label="Best" value={result.maxSingleHit} />
           </div>
           {/* Enemy hit card */}
-          <div className="flex-1 min-w-0 rounded-lg border border-resource-gold/40 px-2.5 py-2 flex items-center justify-end gap-2.5"
+          <div className="order-2 min-w-0 rounded-lg border border-resource-gold/40 px-2.5 py-2 flex items-center justify-end gap-2.5 @min-[560px]:order-3"
             style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--resource-gold) 12%, var(--surface-canvas)), color-mix(in srgb, var(--resource-gold) 7%, var(--surface-canvas)))' }}
           >
             <div className="min-w-0">
@@ -1045,7 +1049,9 @@ export default function BattlePanel({
           onUseSkill={onUseSkill}
           onCastSpell={onCastSpell}
           onUseItem={onUseItem}
-          listClassName="max-h-60"
+          // A fixed height, not a cap: the box stays the same size whichever tab
+          // is open and however much is in it.
+          listClassName="h-60"
           idPrefix="battle"
         />
       </div>

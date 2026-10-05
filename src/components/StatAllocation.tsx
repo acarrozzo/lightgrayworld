@@ -1,12 +1,10 @@
 'use client'
 
 import { Player, useGameStore } from '@/lib/game-state'
-import PointAllocationModal, { type AllocationRow, type AllocationSummary } from './PointAllocationModal'
+import PointAllocation, { type AllocationRow, type AllocationSummary } from './PointAllocation'
 
-interface StatAllocationModalProps {
-  isOpen: boolean
+interface StatAllocationProps {
   player: Player | null
-  onClose: () => void
   /**
    * Fired once the server has applied the spend. `updatedPlayer` is the
    * server's row projection (merge it over the store player; it carries no
@@ -54,7 +52,7 @@ const CORE_STATS: Array<{
   },
 ]
 
-export default function StatAllocationModal({ isOpen, player, onClose, onStatAllocated }: StatAllocationModalProps) {
+export default function StatAllocation({ player, onStatAllocated }: StatAllocationProps) {
   const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
 
   if (!player) return null
@@ -94,15 +92,13 @@ export default function StatAllocationModal({ isOpen, player, onClose, onStatAll
   }
 
   return (
-    <PointAllocationModal
-      isOpen={isOpen}
+    <PointAllocation
       title="Core Points"
       intro="One point raises a core stat by one. Permanent."
       pointName="Core Point"
       pointCode="CP"
       available={player.cp ?? 0}
       rows={rows}
-      onClose={onClose}
       onSubmit={submit}
     />
   )

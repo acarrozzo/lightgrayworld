@@ -11,19 +11,22 @@ import { DANGER_TONE_CLASS, dangerVerdict, formatGold, type DangerTone } from '@
  *
  * The original printed a block of small lines in the top-left of its nav:
  * danger verdict, points with links to spend them, the equipped weapon with a
- * link to the bag, gold. That block is split across two corners here so the
- * ring stays clear: danger and room top-right, everything you own or can spend
- * bottom-left. On phones the strip has no corners to spare, so the same lines
- * sit behind one small button at its top-left and open as a flyout.
+ * link to the bag, gold. Those links were there because the places were far
+ * away. Every one of them is a badged tab now, so the corner keeps only what
+ * is worth a glance while walking: what is in your hand, what is in your
+ * purse, and a single lit line when there are points waiting to be spent.
+ * Danger and the room sit top-right. On phones the strip has no corners to
+ * spare, so the same lines sit behind one small button and open as a flyout.
  *
- * Every link is navigation only. Nothing here fires a game action; spending
- * points, swapping gear, and learning skills stay where they already live.
+ * Every link is navigation only. Nothing here fires a game action.
  */
 
 export interface LedgerActions {
-  onOpenTraining?: () => void
-  onOpenStats?: () => void
-  onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
+  /** Core or Training points to spend: the Char page, where the controls are. */
+  onOpenPoints?: () => void
+  /** Skill points to spend: whichever book is open to this character. Absent until a teacher is met. */
+  onOpenSp?: () => void
+  /** Absent until the Inv tab has been earned. */
   onOpenInventory?: (filter?: FilterTab, openItemId?: string) => void
 }
 
@@ -55,16 +58,6 @@ function Link({ onClick, children, title }: { onClick?: () => void; children: Re
 /** The item equipped in one slot, if any. `slot` is the durable answer; the template's slot is the fallback for older rows. */
 function equippedIn(inventory: InventoryItem[] | undefined, slot: 'MAIN_HAND'): InventoryItem | undefined {
   return inventory?.find((item) => item.isEquipped && (item.slot ?? item.template.equipSlot) === slot)
-}
-
-/** A point count in its colour, muted at zero. */
-function Points({ label, value, tone }: { label: string; value: number; tone: string }) {
-  return (
-    <span className="inline-flex items-baseline gap-1">
-      <span className="text-fg-muted">{label}</span>
-      <span className={`font-semibold tabular-nums ${value > 0 ? tone : 'text-fg-muted'}`}>{value}</span>
-    </span>
-  )
 }
 
 function ItemName({ item, empty }: { item?: InventoryItem; empty: string }) {
@@ -104,56 +97,52 @@ export function DangerCorner({ room, player, align = 'right' }: { room: LedgerRo
   )
 }
 
-/** Bottom-left of the D-pad: points with where to spend them, the weapon with where to change it, gold. */
-export function QuickLinksCorner({ player, inventory, onOpenTraining, onOpenStats, onOpenBook, onOpenInventory }: LedgerProps) {
+/** Top-left of the D-pad: the weapon in hand, gold, and one lit line when there are points to spend. */
+export function QuickLinksCorner({ player, inventory, onOpenPoints, onOpenSp, onOpenInventory }: LedgerProps) {
   if (!player) return null
   const weapon = equippedIn(inventory, 'MAIN_HAND')
-  // Plain left-aligned lines, one fact each, the link following its fact on
-  // the same line. No columns: the numbers and names are all different
-  // widths and nothing to the right of them needs to line up.
+  const toSpend = (player.cp ?? 0) + (player.tp ?? 0)
+  const sp = player.sp ?? 0
   return (
     <div className="flex flex-col gap-0.5 text-[11px] leading-4 whitespace-nowrap">
-      {/* Unspent training points are the one thing here that should not wait:
-          the row turns into a lit pill with a pulse, and the link lights with it. */}
-      {(player.tp ?? 0) > 0 ? (
-        <div className="flex items-center gap-2">
-          <span className="relative inline-flex items-center gap-1 rounded-full fill-accent px-1.5 py-px font-bold tabular-nums">
-            <span className="absolute inset-0 rounded-full bg-accent/60 animate-ping-slow" aria-hidden="true" />
-            <span className="relative">TP {player.tp}</span>
-          </span>
-          <button
-            type="button"
-            onClick={onOpenTraining}
-            disabled={!onOpenTraining}
-            title="Spend training points"
-            className="font-semibold text-accent hover:text-fg-bright hover:underline underline-offset-2 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-line-focus rounded-sm disabled:text-fg-muted disabled:no-underline"
-          >
-            Train now<span className="text-accent/70"> ›</span>
-          </button>
-        </div>
+      {/* The weapon is its own link: the name is the thing you would tap. */}
+      {onOpenInventory ? (
+        <button
+          type="button"
+          onClick={() => onOpenInventory('main')}
+          title="Your weapons, in the Inv tab"
+          className="text-left rounded-sm hover:underline underline-offset-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-line-focus"
+        >
+          <ItemName item={weapon} empty="Bare hands" />
+          <span className="text-fg-muted"> ›</span>
+        </button>
       ) : (
-        <div className="flex items-baseline gap-2">
-          <Points label="TP" value={0} tone="text-accent" />
-          <Link onClick={onOpenTraining} title="Spend training points">Training</Link>
-        </div>
-      )}
-      <div className="flex items-baseline gap-2">
-        <Points label="CP" value={player.cp ?? 0} tone="text-hue-purple" />
-        <Link onClick={onOpenStats} title="Spend core stat points">Stats</Link>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <Points label="SP" value={player.sp ?? 0} tone="text-stat-mag" />
-        <Link onClick={onOpenBook ? () => onOpenBook('skills') : undefined} title="Open the skills book">Skills</Link>
-        <Link onClick={onOpenBook ? () => onOpenBook('spells') : undefined} title="Open the spells book">Spells</Link>
-      </div>
-      <div className="flex items-baseline gap-2">
         <ItemName item={weapon} empty="Bare hands" />
-        <Link onClick={onOpenInventory ? () => onOpenInventory('main') : undefined} title="Weapons in your bag">Weapons</Link>
-      </div>
+      )}
       <div>
         <span className="text-resource-gold font-semibold tabular-nums">{formatGold(player.currency)}</span>
         <span className="text-fg-muted"> gold</span>
       </div>
+      {/* Unspent points are the one thing here that should not wait. */}
+      {toSpend > 0 && (
+        <button
+          type="button"
+          onClick={onOpenPoints}
+          disabled={!onOpenPoints}
+          title="Spend your Core and Training points on the Char page"
+          className="relative mt-0.5 inline-flex w-fit items-center gap-1 rounded-full fill-accent px-2 py-px font-bold tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+        >
+          <span className="absolute inset-0 rounded-full bg-accent/60 animate-ping-slow" aria-hidden="true" />
+          <span className="relative">
+            {toSpend} {toSpend === 1 ? 'point' : 'points'} to spend ›
+          </span>
+        </button>
+      )}
+      {sp > 0 && onOpenSp && (
+        <Link onClick={onOpenSp} title="Spend skill points in your book">
+          <span className="text-stat-mag font-semibold tabular-nums">{sp} SP</span>
+        </Link>
+      )}
     </div>
   )
 }
@@ -169,7 +158,7 @@ const BUTTON_TONE_CLASS: Record<DangerTone, string> = {
  * whole ledger as a flyout. Closes on a tap outside, Escape, any link, or a
  * room change, so it never lingers over the next room's D-pad.
  */
-export function LedgerFlyout({ room, player, inventory, onOpenTraining, onOpenStats, onOpenBook, onOpenInventory }: LedgerProps) {
+export function LedgerFlyout({ room, player, inventory, onOpenPoints, onOpenSp, onOpenInventory }: LedgerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const roomId = room?.roomId
@@ -230,9 +219,8 @@ export function LedgerFlyout({ room, player, inventory, onOpenTraining, onOpenSt
             room={room}
             player={player}
             inventory={inventory}
-            onOpenTraining={closeThen(onOpenTraining)}
-            onOpenStats={closeThen(onOpenStats)}
-            onOpenBook={closeThen(onOpenBook)}
+            onOpenPoints={closeThen(onOpenPoints)}
+            onOpenSp={closeThen(onOpenSp)}
             onOpenInventory={closeThen(onOpenInventory)}
           />
         </div>

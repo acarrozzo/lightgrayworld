@@ -1,13 +1,14 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Icon from '@/components/Icon'
 import type { InventoryItem, Player } from '@/lib/game-state'
 import { getCastableSpells } from '@/lib/spellbook'
-import { skillTone, type SkillbookEntry } from '@/lib/skillbook'
+import { skillTone } from '@/lib/skillbook'
 import { ammoFor, attackBlockedBy, buildStrikeRow, rangeText, weaponInHand, type DeckContext } from '@/lib/action-deck'
-import { defaultActionTab, useActionTab, type ActionTab } from '@/lib/use-action-tab'
-import { ABILITY_GRID, SpellRow, useConsumableDeck } from './AbilityRows'
+import { startingActionTab, type ActionTab } from '@/lib/use-action-tab'
+import EntryRow, { EntryVerb } from '@/components/EntryRow'
+import { ABILITY_GRID, LevelTag, ROW_FRAME, SpellRow, useConsumableDeck } from './AbilityRows'
 import ConsumableDeck from './ConsumableDeck'
 
 export interface ActionDeckProps {
@@ -38,8 +39,8 @@ export interface ActionDeckProps {
 
 /**
  * The action deck: a filled Attack | Spells | Items switch, then that tab's
- * controls — Attack with the power attacks beside it, the spell rows, or the
- * item ladders. The battle deck draws it under its
+ * rows — Attack and the power attacks, the spells, or the item ladders, all
+ * drawn the same way. The battle deck draws it under its
  * header; the Action layer draws it over the compass; the phone sheet draws
  * it over the room. One component, so the same situation always reads the
  * same: the differences between the three are state the server already
@@ -68,11 +69,17 @@ export default function ActionDeck({
   const { situation, target, isRanged, swingMax, groupScale } = context
   const { weapon, iconName: weaponIconName, name: weaponName } = weaponInHand(inventory)
 
-  // Where the switch was left, on this device, shared with every other deck;
-  // before it has ever been moved, a caster opens on Spells.
-  const [storedTab, setStoredTab] = useActionTab()
-  const [firstDefault] = useState<ActionTab>(() => defaultActionTab(player, inventory))
-  const activeTab: ActionTab = storedTab ?? firstDefault
+  // Where the switch starts is decided fresh each time, never remembered: a
+  // fight opens on Attack (Spells for a caster), and the Action button out of
+  // a fight opens on Items. A fight starting or ending while the deck is on
+  // screen moves it to that side's start.
+  const [activeTab, setActiveTab] = useState<ActionTab>(() => startingActionTab(situation.inBattle, player, inventory))
+  useEffect(() => {
+    setActiveTab(startingActionTab(situation.inBattle, player, inventory))
+    // Only the fight starting or ending resets the tab; the player and bag
+    // changing mid-fight must not yank it back.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [situation.inBattle])
 
   const blocked = attackBlockedBy({ player, inventory, isRanged, target })
   const strikes = useMemo(
@@ -116,8 +123,8 @@ export default function ActionDeck({
               aria-selected={selected}
               aria-controls={`${idPrefix}-deck-${tab.id}`}
               id={`${idPrefix}-tab-${tab.id}`}
-              onClick={() => setStoredTab(tab.id)}
-              className={`h-12 min-w-0 rounded-lg flex items-center justify-center gap-1.5 px-1 text-xs font-bold uppercase tracking-wider transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+              onClick={() => setActiveTab(tab.id)}
+              className={`h-12 min-w-0 rounded-lg flex items-center justify-center gap-1.5 px-1 text-xs font-bold uppercase tracking-wide @max-[420px]:text-[10px] @max-[420px]:tracking-normal transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
                 selected ? tab.fill : 'text-fg-muted hover:text-fg-primary hover:bg-surface-raised/60'
               }`}
             >
@@ -142,66 +149,84 @@ export default function ActionDeck({
         aria-labelledby={`${idPrefix}-tab-${activeTab}`}
         className={`@container flex flex-col gap-1.5 min-h-0 ${listClassName ? `overflow-y-auto overscroll-contain ${listClassName}` : ''}`}
       >
+        {/* Attack and the power attacks, as the same rows the spells and
+            items wear: what it is, the whole swing it can roll before the
+            enemy's block, what it costs, and one verb that spends the turn.
+            Refused rows stay visible with the reason in place of the cost;
+            the server refuses them too, without spending the turn. */}
         {activeTab === 'attack' && (
-          <>
-          {/* The strike row: Attack, then the power attacks the weapon can carry.
-              In a narrow home (the Explore column, a phone) Attack takes the whole
-              first line and the strikes drop under it, so the range and the
-              weapon's name never fight for the same pixels. */}
-          <div className="flex flex-wrap items-stretch gap-1.5">
-            {/* Attack: ranged strikes are DEX, melee are STR — the same split the
-                combat formulas use, so the control wears the stat it rolls against
-                and prints the roll it can make: 0 to that stat, before the block.
-                Out of a fight it opens one with the enemy in the room. */}
-            <button
-              type="button"
-              onClick={onAttack}
-              disabled={attackDisabled}
-              title={attackTitle}
-              aria-label={blocked ? `Attack with ${weaponName ?? 'fists'}. ${blocked}` : `Attack with ${weaponName ?? 'fists'}, ${rangeText(0, swingMax)} damage`}
-              className={`basis-full @min-[460px]:basis-0 @min-[460px]:flex-[2] min-w-0 h-16 rounded-xl flex items-center gap-2.5 px-3 text-left shadow-md shadow-shadow/40 transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${isRanged ? 'fill-stat-dex' : 'fill-stat-str'}`}
-            >
-              <Icon name={weaponIconName} size={30} className="opacity-90 flex-shrink-0" />
-              <span className="flex-1 min-w-0 flex flex-col gap-1 leading-none">
-                <span className="text-base font-black uppercase tracking-[0.12em]">{isActing ? '…' : 'Attack'}</span>
-                <span className="text-[11px] font-medium opacity-85 truncate">{weaponName ?? 'Fists'}</span>
-              </span>
-              <span className="flex-shrink-0 flex flex-col items-end gap-1 leading-none">
-                {/* The damage range, or why there is none against this enemy. */}
-                {blocked ? (
-                  <span className="text-[11px] font-bold leading-none whitespace-nowrap">{blocked}</span>
-                ) : (
-                  <span className="text-[15px] font-black tabular-nums leading-none">{rangeText(0, swingMax)}</span>
-                )}
-                {/* Ammo-spending weapons show what's left on the control itself, so
-                    running dry is visible before it blocks a shot. */}
-                {ammo ? (
+          <div className={ABILITY_GRID}>
+            {/* Attack: ranged strikes are DEX, melee are STR — the same split
+                the combat formulas use, so the verb wears the stat it rolls
+                against. Out of a fight it opens one with the enemy in the room.
+                Ammo-spending weapons show what is left where a cost would be. */}
+            <EntryRow
+              density="deck"
+              icon={weaponIconName}
+              iconClass={`${isRanged ? 'text-stat-dex' : 'text-stat-str'} opacity-90`}
+              name="Attack"
+              nameTags={<span className="truncate text-[10px] font-medium text-fg-muted">{weaponName ?? 'Fists'}</span>}
+              subline={<span className="text-[10px] text-fg-muted tabular-nums truncate">Hits {rangeText(0, swingMax)} dmg</span>}
+              meta={
+                ammo ? (
                   <span
                     className={`text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-md whitespace-nowrap ${
-                      ammo.remaining <= 0 ? 'fill-status-error' : ammo.remaining <= 5 ? 'fill-resource-gold' : 'bg-surface-canvas/35'
+                      ammo.remaining <= 5 ? 'fill-resource-gold' : 'bg-surface-canvas/60 text-fg-secondary'
                     }`}
-                    style={{ textShadow: 'none' }}
                   >
-                    {ammo.remaining <= 0 ? `No ${ammo.label}` : `${ammo.remaining} ${ammo.label}`}
+                    {ammo.remaining} {ammo.label}
                   </span>
-                ) : !blocked && (
-                  <span className="text-[9px] font-semibold uppercase tracking-wider opacity-85 leading-none">dmg</span>
-                )}
-              </span>
-            </button>
+                ) : undefined
+              }
+              reason={outOfAmmo && ammo ? `No ${ammo.label}` : blocked}
+              action={
+                <EntryVerb
+                  onClick={onAttack}
+                  disabled={attackDisabled}
+                  fillClass={isRanged ? 'fill-stat-dex' : 'fill-stat-str'}
+                  title={attackTitle}
+                  ariaLabel={blocked ? `Attack with ${weaponName ?? 'fists'}. ${blocked}` : `Attack with ${weaponName ?? 'fists'}, ${rangeText(0, swingMax)} damage`}
+                >
+                  {isActing ? '…' : 'Attack'}
+                </EntryVerb>
+              }
+              className={`${ROW_FRAME} ${isRanged ? 'border-l-stat-dex' : 'border-l-stat-str'}`}
+            />
 
-            {strikes.map(({ entry, range, reason }) => (
-              <StrikeButton
-                key={entry.def.id}
-                entry={entry}
-                range={range}
-                reason={reason}
-                disabled={isActing || outOfAmmo || Boolean(reason)}
-                onClick={() => onUseSkill(entry.def.id)}
-              />
-            ))}
+            {strikes.map(({ entry, range, reason }) => {
+              const tone = skillTone(entry.def.hue)
+              const cost = entry.castCost ?? 0
+              return (
+                <EntryRow
+                  key={entry.def.id}
+                  density="deck"
+                  icon={entry.def.icon}
+                  iconClass={`${tone.text} opacity-90`}
+                  name={entry.def.name}
+                  nameTags={<LevelTag level={entry.level} maxLevel={entry.maxLevel} />}
+                  subline={
+                    <span className="text-[10px] text-fg-muted tabular-nums truncate">{range ? `Hits ${rangeText(range.lo, range.hi)} dmg` : entry.def.formula}</span>
+                  }
+                  meta={<span className="text-xs font-bold text-resource-mp tabular-nums whitespace-nowrap">{cost} MP</span>}
+                  reason={reason}
+                  action={
+                    <EntryVerb
+                      onClick={() => onUseSkill(entry.def.id)}
+                      disabled={isActing || outOfAmmo || Boolean(reason)}
+                      fillClass={tone.fill}
+                      title={reason ?? `${entry.def.name} lvl ${entry.level} — ${entry.def.formula}`}
+                      ariaLabel={`Use ${entry.def.name}${reason ? `. ${reason}` : range ? `, ${rangeText(range.lo, range.hi)} damage, ${cost} MP` : ''}`}
+                    >
+                      Use
+                    </EntryVerb>
+                  }
+                  onOpen={onOpenBook ? () => onOpenBook('skills', entry.def.id) : undefined}
+                  bodyAriaLabel={onOpenBook ? `${entry.def.name} — read it in the skill book` : undefined}
+                  className={`${ROW_FRAME} ${tone.rail}`}
+                />
+              )
+            })}
           </div>
-          </>
         )}
 
         {activeTab === 'items' && (
@@ -237,50 +262,5 @@ export default function ActionDeck({
         )}
       </div>
     </div>
-  )
-}
-
-/**
- * One strike beside Attack — a power attack. Reads top to bottom: what it
- * is, what it can roll (swing plus bonus), what it costs. Refused strikes stay
- * visible and dimmed with the reason in place of the cost; the server refuses
- * them too, without spending the turn.
- */
-function StrikeButton({
-  entry,
-  range,
-  reason,
-  disabled,
-  onClick,
-}: {
-  entry: SkillbookEntry
-  range: { lo: number; hi: number } | null
-  reason: string | null
-  disabled: boolean
-  onClick: () => void
-}) {
-  const tone = skillTone(entry.def.hue)
-  const cost = entry.castCost ?? 0
-  const label = range ? `${entry.def.name}, ${rangeText(range.lo, range.hi)} damage, ${cost} MP` : `${entry.def.name}, ${cost} MP`
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={reason ?? `${entry.def.name} lvl ${entry.level} — ${entry.def.formula}`}
-      aria-label={reason ? `${label}. ${reason}` : label}
-      className={`flex-1 min-w-[72px] max-w-[116px] h-16 rounded-xl flex flex-col items-center justify-center gap-0.5 px-1.5 shadow-md shadow-shadow/40 transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${tone.fill}`}
-    >
-      <span className="flex items-center gap-1 max-w-full">
-        <Icon name={entry.def.icon} size={14} className="opacity-90 flex-shrink-0" />
-        <span className="text-[10px] font-bold leading-none truncate">{entry.def.name}</span>
-      </span>
-      <span className="text-[15px] font-black tabular-nums leading-none">
-        {range ? rangeText(range.lo, range.hi) : '—'}
-      </span>
-      <span className={`text-[9px] font-semibold tabular-nums leading-none ${reason ? 'underline decoration-dotted' : 'opacity-85'}`}>
-        {reason ?? `${cost} MP`}
-      </span>
-    </button>
   )
 }

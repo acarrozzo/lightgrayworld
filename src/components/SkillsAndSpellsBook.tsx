@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Player, useGameStore } from '@/lib/game-state'
 import Icon from './Icon'
 import { ScrollEnd } from './game-interface/LayerShell'
@@ -26,10 +25,7 @@ import {
 
 export type BookTab = 'skills' | 'spells'
 
-interface SkillsAndSpellsModalProps {
-  isOpen: boolean
-  /** Draw the pages in place, with no dialog around them: the Char tab's Skill book and Spell book. */
-  embedded?: boolean
+interface SkillsAndSpellsBookProps {
   player: Player | null
   /** Using from the book: heals and buffs work anywhere, attack spells and strikes need something to hit. */
   inBattle: boolean
@@ -41,52 +37,33 @@ interface SkillsAndSpellsModalProps {
    * the battle deck send the player here to read what they just tapped.
    */
   highlightId?: string | null
-  onTabChange: (tab: BookTab) => void
-  onClose: () => void
   onLearned: (updatedPlayer: Player) => void
   onCast: (spellId: string) => void
   onUseSkill: (skillId: string) => void
 }
 
 /**
- * The Skills and Spells pages of the original, as one book with two tabs.
- * Both spend the same SP: every skill or spell in its registry, grouped as the
- * original grouped them, with level/cap, the SP to learn the next level, the
- * MP to use, and where to find a better teacher. Learning is a PUT to
- * /api/user/skills or /api/user/spells (the server owns caps and costs);
- * using hands off to the game action pipeline.
+ * The Skills and Spells pages of the original: the Char tab's Skill book and
+ * Spell book. Both spend the same SP: every skill or spell in its registry,
+ * grouped as the original grouped them, with level/cap, the SP to learn the
+ * next level, the MP to use, and where to find a better teacher. Learning is
+ * a PUT to /api/user/skills or /api/user/spells (the server owns caps and
+ * costs); using hands off to the game action pipeline.
  */
-export default function SkillsAndSpellsModal({
-  isOpen,
-  embedded = false,
+export default function SkillsAndSpellsBook({
   player,
   inBattle,
   hasTarget,
   tab,
   highlightId = null,
-  onTabChange,
-  onClose,
   onLearned,
   onCast,
   onUseSkill,
-}: SkillsAndSpellsModalProps) {
+}: SkillsAndSpellsBookProps) {
   const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
   const inventory = useGameStore((state) => state.inventory)
-  const [mounted, setMounted] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
-
-  useEffect(() => {
-    setMounted(true)
-    return () => setMounted(false)
-  }, [])
-
-  useEffect(() => {
-    if (isOpen) {
-      setNotice(null)
-      setBusy(null)
-    }
-  }, [isOpen])
 
   useEffect(() => {
     setNotice(null)
@@ -95,16 +72,16 @@ export default function SkillsAndSpellsModal({
   // Bring the entry the player tapped into view. One frame late, so the list
   // it belongs to has rendered; a stale id simply matches nothing.
   useEffect(() => {
-    if (!isOpen || !highlightId) return
+    if (!highlightId) return
     const frame = requestAnimationFrame(() => {
       document
         .querySelector(`[data-book-entry="${CSS.escape(highlightId)}"]`)
         ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     })
     return () => cancelAnimationFrame(frame)
-  }, [isOpen, highlightId, tab])
+  }, [highlightId, tab])
 
-  if (!mounted || !isOpen || !player) return null
+  if (!player) return null
 
   const sp = player.sp ?? 0
   const mag = effectiveMag(player)
@@ -157,23 +134,8 @@ export default function SkillsAndSpellsModal({
     passives.dodgeChance > 0 ? `${passives.dodgeChance}% dodge` : null,
   ].filter(Boolean)
 
-  const tabButton = (id: BookTab, label: string) => (
-    <button
-      key={id}
-      type="button"
-      role="tab"
-      aria-selected={tab === id}
-      onClick={() => onTabChange(id)}
-      className={`h-9 px-4 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-        tab === id ? (id === 'skills' ? 'fill-stat-str' : 'fill-mood-arcane') : 'text-fg-muted hover:text-fg-primary hover:bg-surface-raised/60'
-      }`}
-    >
-      {label}
-    </button>
-  )
-
   // In the Char tab the cards follow the panel's width, not the window's.
-  const cardGrid = embedded ? 'grid grid-cols-1 @min-[640px]:grid-cols-2 gap-3' : 'grid grid-cols-1 lg:grid-cols-2 gap-3'
+  const cardGrid = 'grid grid-cols-1 @min-[640px]:grid-cols-2 gap-3'
   const blurb =
     tab === 'skills'
       ? 'Spend SP on skills. Proficiencies and defenses work on their own; special attacks cost MP in a fight. Find better teachers to raise the caps.'
@@ -277,60 +239,15 @@ export default function SkillsAndSpellsModal({
     </>
   )
 
-  if (embedded) {
-    return (
-      <div className="@container space-y-4 p-4">
-        <p className="text-xs text-fg-secondary">{blurb}</p>
-        {pages}
-        <ScrollEnd />
-      </div>
-    )
-  }
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 p-4 sm:p-6 lg:p-10">
-      <div className="absolute inset-0 bg-surface-sunken/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 h-full w-full bg-surface-panel/95 border border-line-subtle/50 rounded-lg shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line-subtle/50">
-          <div className="min-w-0">
-            <h3 className="text-lg font-semibold text-fg-bright">Skills &amp; Spells</h3>
-            <p className="text-xs text-fg-secondary mt-0.5">
-              {blurb}
-            </p>
-          </div>
-          <div role="tablist" aria-label="Book" className="flex gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle flex-shrink-0">
-            {tabButton('skills', 'Skills')}
-            {tabButton('spells', 'Spells')}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-fg-secondary hover:text-fg-bright transition-colors p-1.5 rounded hover:bg-surface-raised flex-shrink-0"
-            disabled={Boolean(busy)}
-          >
-            <span className="sr-only">Close</span>
-            <Icon name="x" size={16} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-          {pages}
-        </div>
-
-        <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-line-subtle/50">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded text-sm font-medium text-fg-primary hover:text-fg-bright hover:bg-surface-raised transition-colors"
-            disabled={Boolean(busy)}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
+  return (
+    <div className="@container space-y-4 p-4">
+      <p className="text-xs text-fg-secondary">{blurb}</p>
+      {pages}
+      <ScrollEnd />
+    </div>
   )
 }
+
 
 /** Shared learn controls: +1, Max, or the reason there is nothing to buy. */
 function LearnControls({

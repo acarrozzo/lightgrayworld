@@ -12,8 +12,8 @@ interface CompassProps {
   onNavigateToMap?: () => void
   /**
    * What sits to the right of the ring, in the column that mirrors Up and
-   * Down on the left: the phone strip puts the dock there. Desktop leaves it
-   * empty and draws the dock under the ring instead; the ring wrapper keeps
+   * Down on the left: the phone strip puts the Action button there. Desktop leaves it
+   * empty and draws the button under the ring instead; the ring wrapper keeps
    * the same margin on both sides either way, so it stays centred.
    */
   aside?: React.ReactNode
@@ -223,7 +223,7 @@ export default function Compass({
       {/* Main D-pad */}
       <div className={`relative ${ringWidth} mx-[calc(2.5rem+var(--compass-side-gap))]`}>
         <div className={`relative ${ringWidth} ${ringHeight}`}>
-          {/* Map circle in center. Also opens the map; the dock's Map tile is
+          {/* Map circle in center. Also opens the map; the World tab is
               the labelled way in. */}
           <div className="absolute inset-0 flex items-center justify-center">
             <button

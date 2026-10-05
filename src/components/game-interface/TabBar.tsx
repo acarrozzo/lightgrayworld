@@ -1,18 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Compass as CompassIcon, Globe, MessageSquare, MessageSquareText, MoreHorizontal, Settings as SettingsIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { Compass as CompassIcon, Globe, MessageSquare, MessageSquareText, Settings as SettingsIcon } from 'lucide-react'
 import Icon from '@/components/Icon'
 import NotificationBadge from '@/components/NotificationBadge'
 import { getTabButtonColorClasses, getTabIconColorClass, type TabColor } from '@/lib/tabColors'
 
-/**
- * The game's tabs, in the order they are shown. Explore is home: the room and
- * the compass, lit when nothing else is open. Feed is a tab only on a phone;
- * a wide screen has it as the right-hand panel.
- */
-export type TabId = 'explore' | 'char' | 'inv' | 'world' | 'quests' | 'players' | 'feed' | 'settings'
+import type { TabId } from '@/lib/tab-rules'
 
+export type { TabId }
 export type TabBadges = Partial<Record<TabId, number | boolean | undefined>>
 
 interface TabDef {
@@ -24,12 +20,17 @@ interface TabDef {
   /** The same accent as a text class, for the tab's header title. */
   tone: string
   icon: (size: number) => ReactNode
+  /** A tab only on a phone: a wide screen has the feed as its right-hand panel. */
   phoneOnly?: boolean
+  /** Opened from the header's gear, not from the bar. */
+  offBar?: boolean
 }
 
 /**
- * The one registry the desktop bar, the phone bar and its More menu read.
- * A new tab is one entry here; where it opens is GameInterface's `selectTab`.
+ * The game's tabs, in the order they are shown. Explore is home: the room and
+ * the compass, lit when nothing else is open. One registry for the desktop
+ * bar, the phone bar and every tab's header. The rules for what opens and
+ * closes them are in `lib/tab-rules`.
  */
 export const TABS: TabDef[] = [
   { id: 'explore', color: 'blue', label: 'Explore', title: 'Explore — the room and the compass', tone: 'text-hue-blue', icon: (size) => <CompassIcon size={size} aria-hidden="true" /> },
@@ -39,22 +40,23 @@ export const TABS: TabDef[] = [
   { id: 'quests', color: 'gold', label: 'Quests', title: 'Quests', tone: 'text-hue-gold', icon: (size) => <Icon name="trophy" size={size} color="current" /> },
   { id: 'players', color: 'pink', label: 'Players', title: 'Players — who is here, and messages', tone: 'text-hue-pink', icon: (size) => <MessageSquare size={size} aria-hidden="true" /> },
   { id: 'feed', color: 'blue', label: 'Feed', title: 'World Feed', tone: 'text-hue-blue', icon: (size) => <MessageSquareText size={size} aria-hidden="true" />, phoneOnly: true },
-  { id: 'settings', color: 'gray', label: 'Settings', title: 'Settings', tone: 'text-fg-secondary', icon: (size) => <SettingsIcon size={size} aria-hidden="true" /> },
+  { id: 'settings', color: 'gray', label: 'Settings', title: 'Settings', tone: 'text-fg-secondary', icon: (size) => <SettingsIcon size={size} aria-hidden="true" />, offBar: true },
 ]
 
 export function tabDef(id: string): TabDef | undefined {
   return TABS.find((tab) => tab.id === id)
 }
 
-/** How many tabs a phone shows before the rest fold into More. */
-const PHONE_VISIBLE = 5
-
 interface TabBarProps {
-  /** `row` is every tab, pinned across the top of the desktop column; `phone` is five tabs and More, across the bottom of the screen. */
+  /** `row` is pinned across the top of the desktop column; `phone` runs across the bottom of the screen and adds Feed. */
   variant: 'row' | 'phone'
   active: TabId
   onSelect: (tab: TabId) => void
   badges?: TabBadges
+  /** Tabs the player has not found yet: left out of the bar entirely. */
+  hidden?: ReadonlySet<TabId>
+  /** Tabs that have just arrived: they glow until first opened. */
+  fresh?: ReadonlySet<TabId>
   className?: string
 }
 
@@ -72,94 +74,34 @@ const tileClasses = (color: TabColor, isActive: boolean) => (isActive ? getTabBu
  * an icon on top. The open tab wears its accent. Pressing the open tab's tile goes home to Explore, so the bar is
  * both the way in and the way back.
  */
-export default function TabBar({ variant, active, onSelect, badges, className = '' }: TabBarProps) {
+export default function TabBar({ variant, active, onSelect, badges, hidden, fresh, className = '' }: TabBarProps) {
   const isPhone = variant === 'phone'
-  const tabs = TABS.filter((tab) => isPhone || !tab.phoneOnly)
-  const shown = isPhone ? tabs.slice(0, PHONE_VISIBLE) : tabs
-  const overflow = isPhone ? tabs.slice(PHONE_VISIBLE) : []
+  const shown = TABS.filter((tab) => !tab.offBar && (isPhone || !tab.phoneOnly) && !hidden?.has(tab.id))
   const size = isPhone ? 'h-12 text-[10px]' : 'h-[3.25rem] gap-1 px-1 text-[10px]'
-
-  const [moreOpen, setMoreOpen] = useState(false)
-  const moreRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!moreOpen) return
-    const onPointerDown = (event: MouseEvent | TouchEvent) => {
-      if (moreRef.current && !moreRef.current.contains(event.target as Node)) setMoreOpen(false)
-    }
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('touchstart', onPointerDown)
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('touchstart', onPointerDown)
-    }
-  }, [moreOpen])
-
-  // What More is hiding: a count if any hidden tab has one, else a dot if any has a dot.
-  const overflowCount = overflow.reduce((total, tab) => total + (typeof badges?.[tab.id] === 'number' ? (badges[tab.id] as number) : 0), 0)
-  const overflowBadge = overflowCount > 0 ? overflowCount : overflow.some((tab) => badges?.[tab.id])
-  const overflowActive = overflow.some((tab) => tab.id === active)
 
   return (
     <nav className={`flex items-stretch gap-1 ${className}`} aria-label="Game tabs">
       {shown.map((tab) => {
         const isActive = tab.id === active
+        const isFresh = fresh?.has(tab.id) && !isActive
         return (
           <button
             key={tab.id}
             type="button"
+            data-tab={tab.id}
             onClick={() => onSelect(tab.id)}
             aria-pressed={isActive}
-            aria-label={tab.title}
+            aria-label={isFresh ? `${tab.title} (new)` : tab.title}
             title={tab.title}
-            className={`${TILE} ${size} ${tileClasses(tab.color, isActive)}`}
+            className={`${TILE} ${size} ${tileClasses(tab.color, isActive)} ${isFresh ? 'tab-fresh' : ''}`}
           >
             <NotificationBadge value={badges?.[tab.id]} className="absolute -right-1 -top-1 z-10" />
+            {isFresh && <span className="absolute -left-1 -top-1 z-10 rounded-full fill-accent px-1 text-[8px] font-bold uppercase leading-[14px] tracking-wide">new</span>}
             <span className={`flex ${getTabIconColorClass(tab.color, isActive)}`}>{tab.icon(isPhone ? 18 : 20)}</span>
             <span className="max-w-full truncate" aria-hidden="true">{tab.label}</span>
           </button>
         )
       })}
-      {overflow.length > 0 && (
-        <div ref={moreRef} className="relative flex min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={() => setMoreOpen((open) => !open)}
-            aria-haspopup="menu"
-            aria-expanded={moreOpen}
-            aria-label="More tabs"
-            className={`${TILE} ${size} ${tileClasses('gray', overflowActive || moreOpen)}`}
-          >
-            <NotificationBadge value={overflowBadge} className="absolute -right-1 -top-1 z-10" />
-            <MoreHorizontal size={18} aria-hidden="true" />
-            <span aria-hidden="true">More</span>
-          </button>
-          {moreOpen && (
-            <div role="menu" className="absolute bottom-full right-0 z-50 mb-2 flex w-44 flex-col gap-1 rounded-xl border border-line-strong bg-surface-overlay p-1.5 shadow-2xl shadow-black/50">
-              {overflow.map((tab) => {
-                const isActive = tab.id === active
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setMoreOpen(false)
-                      onSelect(tab.id)
-                    }}
-                    className={`relative flex h-11 items-center gap-2.5 rounded-lg border px-3 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-                      tileClasses(tab.color, isActive)
-                    }`}
-                  >
-                    <span className={`flex ${getTabIconColorClass(tab.color, isActive)}`}>{tab.icon(18)}</span>
-                    <span>{tab.id === 'feed' ? 'World Feed' : tab.label}</span>
-                    <NotificationBadge value={badges?.[tab.id]} className="ml-auto" />
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
     </nav>
   )
 }

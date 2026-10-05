@@ -9833,7 +9833,7 @@ async function main() {
       id: 'flower_001',
       slug: 'flower',
       name: 'Flower',
-      description: 'A beautiful wildflower from the flower patch. Bitter to eat — costs 1 HP.',
+      description: 'A beautiful wildflower from the flower patch. Someone will want this.',
       type: ItemType.MISC,
       // Four: the Plaza gardener's "Twice as Nice" wants a matched pair (the
       // Babylon Gardens will only let you pick a second one), Jungle Jim's
@@ -9845,18 +9845,6 @@ async function main() {
       value: 10,
       metadata: {
         icon: 'flower',
-        consumable: {
-          stat: 'hp',
-          amount: -1,
-          verb: 'eat',
-          modal: {
-            title: 'You eat the flower',
-            type: 'icon',
-            icon: 'flower',
-            iconColor: 'mood.arcane',
-            message: 'You consume the flower. It tastes bitter and you feel weaker. You lose 1 HP.',
-          },
-        },
       },
     },
     {

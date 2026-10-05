@@ -23,172 +23,97 @@ interface LevelUpAlertProps {
   canSpendSp: boolean
 }
 
+const GOLD_TEXT = { color: 'var(--combat-crit)', textShadow: '0 0 14px color-mix(in srgb, var(--combat-crit) 45%, transparent)' }
+
 export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoints, onSpendSkillPoints, tpAvailable, cpAvailable, spAvailable, canSpendSp }: LevelUpAlertProps) {
-  // Every level grants at least one TP, so zero means it has been spent —
-  // from this card or from the Character panel. That is the moment the card
-  // has done its job: Train Now dims to a receipt and a big Close appears
-  // under the row, so the player is not hunting for the corner X.
-  const trained = tpAvailable <= 0
-  const coreSpent = cpAvailable <= 0
-  const spentButton = 'flex rounded-lg py-3 px-3 font-black tracking-widest uppercase items-center justify-center bg-surface-raised text-fg-disabled cursor-default'
+  // Training and Core points are spent on the Char page, so one button leads
+  // there for both. Once both are gone the card has done its job: the button
+  // dims to a receipt and Close takes its place as the thing to press.
+  const toSpend = Math.max(0, tpAvailable) + Math.max(0, cpAvailable)
+  const spent = toSpend <= 0
+  const gains: Array<{ value: number; unit: string; title: string; color: string }> = [
+    { value: data.tpGained, unit: 'TP', title: 'Training Points', color: 'var(--resource-gold)' },
+    { value: data.cpGained, unit: 'CP', title: 'Core Points', color: 'var(--accent)' },
+    { value: data.spGained, unit: 'SP', title: 'Skill Points', color: 'var(--hue-green)' },
+    { value: data.hpGained, unit: 'HP', title: 'Max HP', color: 'var(--resource-hp)' },
+    { value: data.mpGained, unit: 'MP', title: 'Max MP', color: 'var(--resource-mp)' },
+  ].filter((gain) => gain.value > 0)
+  const button = 'h-9 rounded-lg px-3 text-xs font-black uppercase tracking-widest transition-all'
 
   return (
-    <div className="mx-4 mt-4 rounded-xl overflow-hidden shadow-2xl border border-status-warning/80"
-      style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas)) 0%, color-mix(in srgb, var(--resource-gold) 18%, var(--surface-canvas)) 40%, color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas)) 100%)' }}
+    // A small card that still feels like a prize: a gold edge and a glowing
+    // number, with everything it has to say in three short rows.
+    <div
+      className="mx-4 mt-4 overflow-hidden rounded-xl border border-status-warning/80 shadow-xl"
+      style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--resource-gold) 9%, var(--surface-canvas)), color-mix(in srgb, var(--resource-gold) 16%, var(--surface-canvas)) 45%, color-mix(in srgb, var(--resource-gold) 9%, var(--surface-canvas)))' }}
+      role="status"
+      aria-label={`Level up. You have reached level ${data.newLevel}.`}
     >
-      {/* Header */}
-      <div className="relative flex items-center justify-center px-4 py-4 border-b border-status-warning/40"
-        style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--resource-gold) 13%, transparent), color-mix(in srgb, var(--resource-gold) 25%, transparent), color-mix(in srgb, var(--resource-gold) 13%, transparent), transparent)' }}
+      {/* The news, on one line: Level Up, and the level. */}
+      <div
+        className="flex items-center gap-2 border-b border-status-warning/40 py-2 pl-4 pr-2"
+        style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--resource-gold) 22%, transparent), transparent)' }}
       >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl" style={{ filter: 'drop-shadow(0 0 8px var(--combat-crit))' }}>★</span>
-          <p className="text-xl font-black tracking-widest uppercase"
-            style={{ color: 'var(--combat-crit)', textShadow: '0 0 20px color-mix(in srgb, var(--combat-crit) 50%, transparent), 0 0 40px color-mix(in srgb, var(--combat-crit) 25%, transparent)' }}
-          >
-            Level Up!
-          </p>
-          <span className="text-2xl" style={{ filter: 'drop-shadow(0 0 8px var(--combat-crit))' }}>★</span>
-        </div>
-        <button
-          onClick={onClose}
-          className="absolute right-3 top-3 text-fg-muted hover:text-status-warning transition-colors p-1 rounded"
-          aria-label="Dismiss level up alert"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <span className="text-base leading-none" style={{ filter: 'drop-shadow(0 0 6px var(--combat-crit))', color: 'var(--combat-crit)' }} aria-hidden="true">★</span>
+        <p className="text-sm font-black uppercase tracking-widest" style={GOLD_TEXT}>Level Up!</p>
+        <p className="ml-auto flex items-baseline gap-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-status-warning/80">Level</span>
+          <span className="text-2xl font-black leading-none tabular-nums" style={GOLD_TEXT}>{data.newLevel}</span>
+        </p>
+        <button onClick={onClose} className="rounded p-1 text-fg-muted transition-colors hover:text-status-warning" aria-label="Dismiss level up alert">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      {/* Level badge */}
-      <div className="flex flex-col items-center pt-5 pb-3 gap-1">
-        <p className="text-xs font-semibold tracking-[0.25em] uppercase text-status-warning/80">You have reached</p>
-        <div className="flex items-center gap-2">
-          <span className="text-5xl font-black tabular-nums"
-            style={{ color: 'var(--combat-crit)', textShadow: '0 0 30px color-mix(in srgb, var(--combat-crit) 60%, transparent), 0 2px 0 var(--surface-canvas)' }}
-          >
-            {data.newLevel}
+      {/* What the level gave, as one line of small gains. */}
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2.5">
+        {gains.map((gain) => (
+          <span key={gain.unit} className="flex items-baseline gap-1 tabular-nums" title={gain.title}>
+            <span className="text-base font-black" style={{ color: gain.color }}>+{gain.value}</span>
+            <span className="text-[10px] font-bold" style={{ color: gain.color }}>{gain.unit}</span>
           </span>
-        </div>
-        <p className="text-xs font-semibold tracking-[0.25em] uppercase text-status-warning/80">level</p>
+        ))}
       </div>
 
-      {/* Divider */}
-      <div className="mx-6 h-px mb-4"
-        style={{ background: 'linear-gradient(90deg, transparent, var(--resource-gold), var(--combat-crit), var(--resource-gold), transparent)' }}
-      />
-
-      {/* Stat grants */}
-      <div className="px-4 pb-5 flex flex-col items-center gap-2">
-        <div className="grid grid-cols-3 gap-2 w-full">
-          <StatGrant label="Core Points" value={`+${data.cpGained}`} unit="CP" color="var(--hue-blue)" glow="var(--hue-blue)" />
-          <StatGrant label="Training Points" value={`+${data.tpGained}`} unit="TP" color="var(--hue-violet)" glow="var(--hue-violet)" />
-          <StatGrant label="Skill Points" value={`+${data.spGained}`} unit="SP" color="var(--hue-green)" glow="var(--hue-green)" />
-        </div>
-        <div className="grid grid-cols-2 gap-2 w-full">
-          <StatGrant label="Max HP" value={`+${data.hpGained}`} unit="HP" color="var(--resource-hp)" glow="var(--resource-hp)" />
-          <StatGrant label="Max MP" value={`+${data.mpGained}`} unit="MP" color="var(--resource-mp)" glow="var(--resource-mp)" />
-        </div>
-
-        {/* Training is the level's primary act, so it takes a row of its own;
-            the two point pools that can wait share the row beneath it. */}
-        <div className="mt-4 w-full flex flex-col gap-2">
-          {trained ? (
-            <span className={`w-full text-sm ${spentButton}`}>
-              Trained ✓
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={onTrainNow}
-              className="w-full rounded-lg py-3 px-4 font-black tracking-widest uppercase text-sm transition-all"
-              style={{
-                background: 'linear-gradient(135deg, var(--resource-gold), var(--resource-gold), var(--resource-gold))',
-                color: 'color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas))',
-                boxShadow: '0 0 20px color-mix(in srgb, var(--resource-gold) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--combat-crit) 50%, transparent)',
-              }}
-            >
-              Train Now ({tpAvailable})
-            </button>
-          )}
-          <div className="flex gap-2">
-            {coreSpent ? (
-              <span className={`flex-1 text-xs ${spentButton}`}>
-                CP Spent ✓
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={onSpendCorePoints}
-                className="flex-1 rounded-lg py-3 px-3 font-black tracking-widest uppercase text-xs transition-all"
-                style={{
-                  background: 'linear-gradient(135deg, color-mix(in srgb, var(--accent) 45%, var(--surface-canvas)), var(--hue-blue), color-mix(in srgb, var(--accent) 45%, var(--surface-canvas)))',
-                  color: 'var(--surface-canvas)',
-                  boxShadow: '0 0 20px color-mix(in srgb, var(--hue-blue) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--hue-blue) 50%, transparent)',
-                }}
-              >
-                Spend CP ({cpAvailable})
-              </button>
-            )}
-            {canSpendSp && (
-              <button
-                type="button"
-                onClick={onSpendSkillPoints}
-                className="flex-1 rounded-lg py-3 px-3 font-black tracking-widest uppercase text-xs transition-all"
-                style={{
-                  background: 'linear-gradient(135deg, color-mix(in srgb, var(--hue-green) 45%, var(--surface-canvas)), var(--hue-green), color-mix(in srgb, var(--hue-green) 45%, var(--surface-canvas)))',
-                  color: 'var(--surface-canvas)',
-                  boxShadow: '0 0 20px color-mix(in srgb, var(--hue-green) 40%, transparent), inset 0 1px 0 color-mix(in srgb, var(--hue-green) 50%, transparent)',
-                }}
-              >
-                Spend SP ({spAvailable})
-              </button>
-            )}
-          </div>
-        </div>
-
-        {trained && (
+      <div className="flex flex-wrap gap-2 px-3 pb-3">
+        {spent ? (
+          <span className={`${button} flex flex-1 items-center justify-center bg-surface-raised text-fg-disabled`}>Points spent ✓</span>
+        ) : (
+          <button
+            type="button"
+            onClick={tpAvailable > 0 ? onTrainNow : onSpendCorePoints}
+            className={`${button} flex-1 whitespace-nowrap`}
+            style={{
+              background: 'var(--resource-gold)',
+              color: 'color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas))',
+              boxShadow: '0 0 14px color-mix(in srgb, var(--resource-gold) 35%, transparent)',
+            }}
+          >
+            Spend {toSpend} {toSpend === 1 ? 'point' : 'points'}
+          </button>
+        )}
+        {canSpendSp && (
+          <button
+            type="button"
+            onClick={onSpendSkillPoints}
+            className={`${button} flex-1 whitespace-nowrap border border-hue-green/70 text-hue-green hover:bg-hue-green/15`}
+          >
+            Spend SP ({spAvailable})
+          </button>
+        )}
+        {spent && (
           <button
             type="button"
             onClick={onClose}
             aria-label="Close level up alert"
-            className="mt-2 w-full rounded-lg py-3.5 px-4 font-black tracking-[0.2em] uppercase text-sm bg-surface-raised hover:bg-surface-hover text-fg-bright border border-status-warning/70 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-status-warning"
-            style={{
-              boxShadow: '0 0 18px color-mix(in srgb, var(--resource-gold) 20%, transparent), inset 0 1px 0 color-mix(in srgb, var(--resource-gold) 20%, transparent)',
-            }}
+            className={`${button} flex-1 border border-status-warning/70 bg-surface-raised text-fg-bright hover:bg-surface-hover`}
           >
             Close
           </button>
         )}
       </div>
-    </div>
-  )
-}
-
-function StatGrant({ label, value, unit, color, glow }: {
-  label: string
-  value: string
-  unit: string
-  color: string
-  glow: string
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-lg py-3 px-2 border"
-      style={{
-        background: `linear-gradient(135deg, var(--surface-panel), var(--surface-raised))`,
-        borderColor: `${glow}40`,
-        boxShadow: `inset 0 1px 0 ${glow}20`,
-      }}
-    >
-      <div className="flex items-baseline gap-1">
-        <span className="text-lg font-black tabular-nums" style={{ color, textShadow: `0 0 12px ${glow}80` }}>
-          {value}
-        </span>
-        <span className="text-xs font-bold" style={{ color }}>
-          {unit}
-        </span>
-      </div>
-      <span className="text-[10px] text-fg-muted mt-0.5 tracking-wide">{label}</span>
     </div>
   )
 }

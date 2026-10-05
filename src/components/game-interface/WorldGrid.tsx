@@ -231,7 +231,7 @@ export default function WorldGrid({
     const isBlocked = !!blockedReason
     const isDisabled = isHere || isBlocked
     const subtitle = isHere ? 'You are here' : region.hub?.name ?? ''
-    const label = `Fast travel to ${region.name}${region.hub ? `, ${region.hub.name}` : ''}`
+    const label = `Teleport to ${region.name}${region.hub ? `, ${region.hub.name}` : ''}`
     const fill = REGION_FILL[region.id] ?? ''
 
     return (
@@ -275,7 +275,7 @@ export default function WorldGrid({
             const hubHere = hub.roomId === currentRoomId
             const hubDisabled = !hubOpen || hubHere || isBlocked
             const hubLabel = hubOpen
-              ? `Fast travel to ${region.name}, ${hub.name}`
+              ? `Teleport to ${region.name}, ${hub.name}`
               : `${region.name}, ${hub.name}: not found yet`
             return (
               <button
@@ -300,7 +300,7 @@ export default function WorldGrid({
               >
                 <span className="block font-semibold">{hub.name}</span>
                 <span className={`block ${hubOpen ? 'opacity-80' : ''}`}>
-                  {hubHere ? 'You are here' : hubOpen ? 'Fast travel' : 'Not found yet'}
+                  {hubHere ? 'You are here' : hubOpen ? 'Teleport' : 'Not found yet'}
                 </span>
               </button>
             )

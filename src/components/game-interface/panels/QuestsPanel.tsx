@@ -757,7 +757,8 @@ export default function QuestsPanel({
           )
         )}
 
-        {activeTab === 'quests' && !isLoadingQuests && isLoggedIn && (
+        {/* Testing tools, out of the way: only at the bottom of the Done filter. */}
+        {activeTab === 'quests' && prefs.status === 'done' && !isLoadingQuests && isLoggedIn && (
           <div className="mt-8 pt-4 border-t border-line-subtle/50 space-y-3">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-fg-disabled">Testing</p>
             <button

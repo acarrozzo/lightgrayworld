@@ -49,6 +49,8 @@ interface InventoryDisplayProps {
   hideSlots?: boolean
   /** The root's padding; the Inv tab's layer supplies its own. */
   className?: string
+  /** The item whose drawer is open, or null: the Inv tab previews its effect on the stats. */
+  onOpenItemChange?: (item: InventoryItem | null) => void
   /** One item to open and scroll to on arrival — the character panel's rows deep-link here. */
   initialOpenId?: string | null
   /**
@@ -124,6 +126,7 @@ export default function InventoryDisplay({
   hideSlots = false,
   className = 'p-4 sm:p-5',
   initialOpenId = null,
+  onOpenItemChange,
   onOpenCrafting,
 }: InventoryDisplayProps) {
   const [ownView, setOwnView] = useState<ItemFilterView>(() => filterTabToView(initialFilter))
@@ -166,6 +169,14 @@ export default function InventoryDisplay({
   useEffect(() => {
     setDropOpen(false)
   }, [openId])
+
+  // A stale id (the item was dropped or sold) reports as nothing open.
+  const openItem = useMemo(() => (openId ? inventory.find((item) => item.id === openId) ?? null : null), [openId, inventory])
+  useEffect(() => {
+    onOpenItemChange?.(openItem)
+    // The caller's callback identity is not a reason to report again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openItem])
 
   const itemOrderMap = useMemo(() => getItemDisplayOrder(), [])
 

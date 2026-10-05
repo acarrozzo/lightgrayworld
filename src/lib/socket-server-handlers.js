@@ -478,7 +478,7 @@ async function applyArrivalDiscoveries(prisma, socket, player, toRoom) {
     if (!discovered.includes(hub.discoveryId)) {
       unlocks.discoveredTeleports = [...discovered, hub.discoveryId]
       const label = hub.isSubHub ? `${hub.regionName}, ${hub.name}` : hub.regionName
-      messages.push(`Fast travel to ${label} is now open.`)
+      messages.push(`Teleport to ${label} is now open.`)
     }
   }
 

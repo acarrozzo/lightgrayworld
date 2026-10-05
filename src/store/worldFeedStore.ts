@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import type { ActionFeedbackOutcome } from '../lib/socket'
+import type { FeedLink } from '../lib/feed-links'
 
 export type WorldFeedEntry = {
   id: string
@@ -15,6 +16,8 @@ export type WorldFeedEntry = {
   roomId?: string
   eventType?: string
   direction?: string
+  /** Where this line leads, if it is about a place in the interface: shown as a small link on the line. */
+  link?: FeedLink
   /**
    * Deprecated: kept temporarily for compatibility with older persisted entries.
    * Prefer using `message` for all rendering.
@@ -33,6 +36,12 @@ type WorldFeedState = {
   setUser: (userId: string | null) => void
   append: (entry: WorldFeedEntryInput) => WorldFeedEntry | null
   appendMany: (entries: WorldFeedEntryInput[]) => void
+  /**
+   * Point the player's own most recent line at a place, if it was written in
+   * the last moment and leads nowhere yet. For results that arrive a beat
+   * after the line that caused them: the new item an action just produced.
+   */
+  linkLatestOwn: (link: FeedLink, withinMs?: number) => void
   clear: () => void
 }
 
@@ -86,6 +95,7 @@ const ensureEntry = (entry: WorldFeedEntryInput): WorldFeedEntry => {
     roomId: entry.roomId,
     eventType: entry.eventType,
     direction: entry.direction,
+    link: entry.link,
     text: entry.text ?? message,
   }
 }
@@ -119,6 +129,20 @@ export const useWorldFeedStore = create<WorldFeedState>((set, get) => ({
   setUser: (userId) => {
     const hydrated = loadEntries(userId)
     set({ userId, entries: hydrated })
+  },
+
+  linkLatestOwn: (link, withinMs = 2500) => {
+    const { userId, entries } = get()
+    const now = Date.now()
+    for (let i = entries.length - 1; i >= 0 && now - entries[i].ts <= withinMs; i -= 1) {
+      const entry = entries[i]
+      if (entry.type !== 'action' || !entry.isSelf || entry.link || entry.level === 'error') continue
+      const next = [...entries]
+      next[i] = { ...entry, link }
+      persistEntries(userId, next)
+      set({ entries: next })
+      return
+    }
   },
 
   append: (entry) => {

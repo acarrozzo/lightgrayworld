@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEven
 import { AlertTriangle, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
+import FeedLinkButton from '@/components/feed/FeedLinkButton'
 
 type FilterType = 'all' | 'chat' | 'events' | 'actions'
 type ChatSubFilter = 'room-chat' | 'world-chat' | 'party-chat' | 'all-chat'
@@ -167,6 +168,7 @@ const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
 }
 
 const ACTIVITY_LABELS: Record<string, string> = {
+  unlock: 'New',
   login: 'Login',
   logout: 'Logout',
   disconnect: 'Disconnect',
@@ -1048,6 +1050,7 @@ export default function FeedPanel({
                       <span className={`${messageColorClass} font-mono`}>{messageText}</span>
                     )}
                   </div>
+                  <FeedLinkButton link={entry.link} />
                   {count > 1 && (
                     <span className="text-fg-muted/70 font-mono font-semibold whitespace-nowrap text-[10px]">×{count}</span>
                   )}

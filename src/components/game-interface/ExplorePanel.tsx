@@ -6,7 +6,6 @@ import Icon from '@/components/Icon'
 import NotificationBadge from '@/components/NotificationBadge'
 import { DeckContent, type DeckContentProps } from './Deck'
 import { DeckProvider, type DeckContextValue } from './LayerShell'
-import type { DeckTab } from './deck-tabs'
 import RoomShortcuts from './RoomShortcuts'
 import { DangerCorner, LedgerFlyout, QuickLinksCorner, type LedgerActions } from './CompassLedger'
 import { useGatherRemaining } from '@/hooks/useGatherRemaining'
@@ -20,20 +19,17 @@ const { goldChestFlagForRoom } = require('@/lib/game-data/gold-chests')
 /**
  * The Explore panel: the D-pad and its corners, with the Action button under
  * the ring (beside it on the phone strip). Action is Explore's own utility,
- * not a tab: it opens the attack, strike, spell and item block over the
- * compass. The World and Inv tabs of the tab bar open over the compass the
- * same way. A layer closes from the X in its header, Escape, travelling or
- * dying. The mobile strip has no height for a layer, so there it opens as a
- * sheet that GameInterface draws.
+ * not a tab: on a wide screen it opens the attack, strike, spell and
+ * item block over the compass, and closes from the X in its header,
+ * Escape, travelling or dying. The mobile strip has no height for that, so
+ * there it opens as a sheet that GameInterface draws.
  */
 interface ExplorePanelProps extends LedgerActions {
   room: any
   player: Player | null
   /** For the corner ledger and the shortcut rail. */
   inventory?: InventoryItem[]
-  /** Sidebar: the deck tab docked over the compass, if any. */
-  deckTab?: DeckTab | null
-  /** Sidebar: what the docked tab draws from. */
+  /** Sidebar: what the Action layer draws from when it is open over the compass. */
   deck?: DeckContentProps
   /** The Action layer is open, so its button reads pressed. */
   actionOpen?: boolean
@@ -41,10 +37,13 @@ interface ExplorePanelProps extends LedgerActions {
   enemyHere?: boolean
   /** The Action button: open the layer, or close it if it is open. */
   onToggleAction: () => void
-  /** The centre of the compass ring: the World tab on its Map. */
-  onOpenMap: () => void
-  onCloseDeck?: () => void
-  onToggleDeckFullscreen?: () => void
+  /** Action has been earned: there is something to use. Until then the button is not drawn. */
+  actionUnlocked?: boolean
+  /** It has just arrived and not been pressed yet. */
+  actionFresh?: boolean
+  /** The centre of the compass ring: the World tab on its Map. Absent until World has been earned. */
+  onOpenMap?: () => void
+  onCloseAction?: () => void
   onAction: (action: string | { type: string; data?: any }) => void
   isMoveInProgress?: boolean
   /**
@@ -59,7 +58,7 @@ interface ExplorePanelProps extends LedgerActions {
   /** Following a party leader: the D-pad greys out, the server refuses moves anyway. */
   isPartyMember?: boolean
   /**
-   * 'sidebar' fills the desktop column and can host a deck tab inline; 'strip'
+   * 'sidebar' fills the desktop column and can host the Action layer inline; 'strip'
    * sits under the room on mobile, where there is no room for one.
    */
   variant?: 'sidebar' | 'strip'
@@ -85,18 +84,17 @@ export default function ExplorePanel({
   room,
   player,
   inventory = [],
-  onOpenTraining,
-  onOpenStats,
-  onOpenBook,
+  onOpenPoints,
+  onOpenSp,
   onOpenInventory,
-  deckTab = null,
   deck,
   actionOpen = false,
   enemyHere = false,
   onToggleAction,
+  actionUnlocked = true,
+  actionFresh = false,
   onOpenMap,
-  onCloseDeck,
-  onToggleDeckFullscreen,
+  onCloseAction,
   onAction,
   isMoveInProgress = false,
   isDimmed = false,
@@ -112,8 +110,8 @@ export default function ExplorePanel({
 }: ExplorePanelProps) {
   const isSidebar = variant === 'sidebar'
   const deckContext = useMemo<DeckContextValue>(
-    () => ({ presentation: 'docked', onClose: onCloseDeck ?? (() => {}), onToggleFullscreen: onToggleDeckFullscreen }),
-    [onCloseDeck, onToggleDeckFullscreen],
+    () => ({ presentation: 'docked', onClose: onCloseAction ?? (() => {}) }),
+    [onCloseAction],
   )
 
   // The shortcut rail reads the same store the room card reads, so a quest
@@ -142,8 +140,8 @@ export default function ExplorePanel({
   }, [isSidebar, room?.roomId, roomEnemy, isInBattle, gatherCooldowns, gatherRemaining, inventory, quests, killList, player, giversMet, goldChestOpened])
 
   const dimmedClasses = isDimmed ? 'opacity-20 pointer-events-none' : showBattleBadge ? 'opacity-70' : ''
-  const ledger = { room, player, inventory, onOpenTraining, onOpenStats, onOpenBook, onOpenInventory }
-  const actionButton = (
+  const ledger = { room, player, inventory, onOpenPoints, onOpenSp, onOpenInventory }
+  const actionButton = actionUnlocked && (
     <button
       type="button"
       onClick={onToggleAction}
@@ -155,6 +153,8 @@ export default function ExplorePanel({
       } ${
         actionOpen
           ? 'fill-action-attack border-fg-bright/20 ring-2 ring-line-focus'
+          : actionFresh
+          ? 'tab-fresh border-action-attack bg-action-attack/25 text-action-attack'
           : 'border-action-attack/60 bg-action-attack/15 text-action-attack hover:bg-action-attack/25 hover:border-action-attack'
       }`}
     >
@@ -211,7 +211,7 @@ export default function ExplorePanel({
           room={room}
           onAction={onAction}
           onNavigateToMap={onOpenMap}
-          aside={isSidebar ? undefined : actionButton}
+          aside={isSidebar ? undefined : actionButton || undefined}
           isMoveInProgress={isMoveInProgress}
           isLocked={isPartyMember}
           large={isSidebar}
@@ -240,10 +240,10 @@ export default function ExplorePanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {deckTab && deck ? (
+      {actionOpen && deck ? (
         <DeckProvider value={deckContext}>
           <div className="flex min-h-0 flex-1 flex-col">
-            <DeckContent tab={deckTab} {...deck} />
+            <DeckContent tab="action" {...deck} />
           </div>
         </DeckProvider>
       ) : (

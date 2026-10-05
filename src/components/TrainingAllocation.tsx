@@ -1,13 +1,11 @@
 'use client'
 
 import { Player, useGameStore } from '@/lib/game-state'
-import PointAllocationModal, { type AllocationRow, type AllocationSummary } from './PointAllocationModal'
+import PointAllocation, { type AllocationRow, type AllocationSummary } from './PointAllocation'
 
-interface TrainingAllocationModalProps {
-  isOpen: boolean
+interface TrainingAllocationProps {
   player: Player | null
-  onClose: () => void
-  /** See StatAllocationModal: merge `updatedPlayer` over the store player. */
+  /** See StatAllocation: merge `updatedPlayer` over the store player. */
   onTrainingAllocated: (updatedPlayer: Player, summary: AllocationSummary) => void
 }
 
@@ -38,7 +36,7 @@ const TRAINING: Array<{
   },
 ]
 
-export default function TrainingAllocationModal({ isOpen, player, onClose, onTrainingAllocated }: TrainingAllocationModalProps) {
+export default function TrainingAllocation({ player, onTrainingAllocated }: TrainingAllocationProps) {
   const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
 
   if (!player) return null
@@ -78,15 +76,15 @@ export default function TrainingAllocationModal({ isOpen, player, onClose, onTra
   }
 
   return (
-    <PointAllocationModal
-      isOpen={isOpen}
+    <PointAllocation
       title="Training Points"
       intro="One point raises Physical or Mental Training by one. Permanent."
       pointName="Training Point"
       pointCode="TP"
       available={player.tp ?? 0}
       rows={rows}
-      onClose={onClose}
+      frame="gold"
+      fullNames
       onSubmit={submit}
     />
   )

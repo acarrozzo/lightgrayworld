@@ -4,7 +4,7 @@
  * The original nav band printed "danger lvl 9 · HIGH" in its top-left corner,
  * with eleven rungs from SUPER EZ to SUICIDE!!!. This is the deliberate
  * five-rung cut (plus SAFE) chosen in September 2026: the same thresholds at
- * the edges, the two AVG rungs and the sub-half rungs folded together. The
+ * the edges (DEADLY also needs a three-level gap, added October 2026), the two AVG rungs and the sub-half rungs folded together. The
  * number is always shown beside the word, so the ladder is flavour on top of
  * the real value, never a replacement for it.
  *
@@ -39,6 +39,9 @@ export const DANGER_TONE_CLASS: Record<DangerTone, string> = {
   deadly: 'fill-status-error px-1 rounded',
 }
 
+/** How many levels above the player a room must be, as well as double, to read DEADLY. */
+export const DEADLY_MIN_GAP = 3
+
 export function dangerVerdict(
   dangerLevel: number | null | undefined,
   isSafe: boolean | null | undefined,
@@ -51,7 +54,10 @@ export function dangerVerdict(
   if (level < me / 2) return { label: 'EASY', tone: 'easy', level }
   if (level < me) return { label: 'FAIR', tone: 'fair', level }
   if (level === me) return { label: 'EVEN', tone: 'even', level }
-  if (level < me * 2) return { label: 'HIGH', tone: 'high', level }
+  // DEADLY is double your level *and* at least three levels above you. Double
+  // alone called every danger-2 room deadly to a level 1 character, where the
+  // numbers are too small for a ratio to mean anything.
+  if (level < me * 2 || level - me < DEADLY_MIN_GAP) return { label: 'HIGH', tone: 'high', level }
   return { label: 'DEADLY', tone: 'deadly', level }
 }
 

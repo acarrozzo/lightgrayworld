@@ -130,7 +130,10 @@ const WORLD_REGIONS = [
       { id: 'master-temple', roomId: '425', name: 'Master Temple' },
     ],
   },
-  { id: 'grassy-field', name: 'Grassy Field', color: 'grassy-field', hub: { roomId: '001', name: 'Crossroads' } },
+  // Every character wakes at the Crossroads, and a landing is only recorded on
+  // walking *into* its room, so this one was never found by someone who had not
+  // yet left and come back. Standing in it at the start counts: always open.
+  { id: 'grassy-field', name: 'Grassy Field', color: 'grassy-field', hub: { roomId: '001', name: 'Crossroads' }, alwaysOpen: true },
   { id: 'forest', name: 'Forest', color: 'forest', hub: { roomId: '104', name: 'Forest Crossroads' } },
   { id: 'swamp', name: 'Swamp' },
   { id: 'rocky-flats', name: 'Rocky Flats', color: 'rocky-flats', hub: { roomId: '303', name: 'The Crossroads' } },

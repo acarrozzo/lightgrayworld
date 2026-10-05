@@ -12,6 +12,9 @@ import CoreStatsGrid from '@/components/game-interface/CoreStatsGrid'
 import { effectiveStats } from '@/lib/effective-stats'
 import { describeRegen, playerRegen, statusChips } from '@/lib/status-effects'
 import StatusStrip from '@/components/StatusStrip'
+import StatAllocation from '@/components/StatAllocation'
+import TrainingAllocation from '@/components/TrainingAllocation'
+import type { AllocationSummary } from '@/components/PointAllocation'
 import { ScrollEnd } from '@/components/game-interface/LayerShell'
 
 import type { FilterTab } from '@/lib/inventory-categories'
@@ -23,16 +26,14 @@ interface CharPanelProps {
   onSwitchToInventory?: (filter?: FilterTab, openItemId?: string) => void
   /** Opens the Skills & Spells book on the given tab, ringing one entry. */
   onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
-  /** A fight is running, so a strike or attack spell is this turn's attack. */
-  /** An enemy stands in the room: out of a fight, a strike or attack spell opens one. */
-  /** Opens the single Core Points modal owned by GameInterface (so Escape and the level-up alert share it). */
-  onOpenStatAllocation?: () => void
-  onOpenTraining?: () => void
-  onClose?: () => void
+  /** Which book the SP button opens: the Skill book if a skill teacher has been met, else the Spell book, else nothing yet. */
+  bookTab?: 'skills' | 'spells' | null
+  /** The server applied a spend: merge the player and write the feed line. GameInterface owns both. */
+  onPointsSpent: (updatedPlayer: Player, summary: AllocationSummary) => void
 }
 
 
-export default function CharPanel({ player, onSwitchToInventory, onOpenBook, onOpenStatAllocation, onOpenTraining, onClose }: CharPanelProps) {
+export default function CharPanel({ player, onSwitchToInventory, onOpenBook, bookTab = null, onPointsSpent }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
   const questRows = useGameStore((state) => state.quests)
   const titles = earnedTitles(questRows)
@@ -71,6 +72,27 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, onO
   const regen = useMemo(() => playerRegen(player, inventory), [player, inventory])
   // Every running effect as a chip: regen, poison, buffs, wings — the original's buffBox row.
   const chips = useMemo(() => statusChips(player, inventory), [player, inventory])
+  const pt = player.physicalTraining ?? 0
+  const mt = player.mentalTraining ?? 0
+  const sp = player.sp ?? 0
+  const records: Array<{ label: string; note?: string; value: string | number; tone?: string; action?: React.ReactNode }> = []
+  if (sp > 0) {
+    records.push({
+      label: 'Skill Points',
+      note: bookTab ? 'Spent in your book' : 'Waiting for a teacher',
+      value: sp,
+      tone: 'text-stat-mag',
+      action:
+        onOpenBook && bookTab ? (
+          <BookLink nudge={canLearnSkill || canLearnSpell} disabled={!isLoggedIn} onClick={() => onOpenBook(bookTab)} />
+        ) : undefined,
+    })
+  }
+  if (pt > 0) records.push({ label: 'Physical Training', note: `+${pt} HP per rest · +${1 + pt * 2} max HP per level`, value: pt, tone: 'text-resource-hp' })
+  if (mt > 0) records.push({ label: 'Mental Training', note: `+${mt} MP per rest · +${1 + mt * 2} max MP per level`, value: mt, tone: 'text-resource-mp' })
+  if ((player.currency ?? 0) > 0) records.push({ label: 'Gold', value: (player.currency ?? 0).toLocaleString(), tone: 'text-resource-gold' })
+  if ((player.clicks ?? 0) > 0) records.push({ label: 'Clicks', note: 'Actions taken', value: (player.clicks ?? 0).toLocaleString() })
+  if ((player.deaths ?? 0) > 0) records.push({ label: 'Deaths', value: (player.deaths ?? 0).toLocaleString(), tone: 'text-status-error' })
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
@@ -114,19 +136,6 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, onO
   return (
     <>
       <div className="relative w-full h-full">
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 z-10 p-2 text-fg-secondary hover:text-fg-bright transition-colors duration-200 rounded-lg hover:bg-surface-raised/50"
-            title="Close"
-            aria-label="Close"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        )}
         <div className="@container flex-1 overflow-y-auto min-h-0 p-4">
           <div className="space-y-4">
             <div className="">
@@ -198,39 +207,18 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, onO
               </div>
             </div>
 
+            {/* Points to spend, right here: a level-up leads to this page and the
+                controls are waiting on it. Nothing shows when there is nothing to spend. */}
+            {((player.cp ?? 0) > 0 || (player.tp ?? 0) > 0) && isLoggedIn && (
+              <div id="char-points" className="scroll-mt-4 space-y-3">
+                {(player.tp ?? 0) > 0 && <TrainingAllocation player={player} onTrainingAllocated={onPointsSpent} />}
+                {(player.cp ?? 0) > 0 && <StatAllocation player={player} onStatAllocated={onPointsSpent} />}
+              </div>
+            )}
+
             {/* Core Stats */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Core Stats</h4>
-                <div className="flex items-center gap-1.5">
-                  {(player.tp ?? 0) > 0 && (
-                    <span className="relative inline-flex">
-                      <span className="absolute inset-[2px] rounded-lg bg-resource-gold/60 animate-ping-slow" />
-                      <button
-                        type="button"
-                        onClick={onOpenTraining}
-                        disabled={!isLoggedIn || !onOpenTraining}
-                        className="relative px-2.5 py-1 text-xs font-semibold text-fg-disabled bg-resource-gold/90 hover:bg-resource-gold disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
-                      >
-                        Spend TP ({player.tp ?? 0})
-                      </button>
-                    </span>
-                  )}
-                  {(player.cp ?? 0) > 0 && (
-                    <span className="relative inline-flex">
-                      <span className="absolute inset-[2px] rounded-lg bg-accent/60 animate-ping-slow" />
-                      <button
-                        type="button"
-                        onClick={onOpenStatAllocation}
-                        disabled={!isLoggedIn || !onOpenStatAllocation}
-                        className="relative px-2.5 py-1 text-xs font-semibold fill-accent hover:bg-accent-hover disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-lg transition-colors"
-                      >
-                        Spend CP ({player.cp ?? 0})
-                      </button>
-                    </span>
-                  )}
-                </div>
-              </div>
+              <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Core Stats</h4>
               <CoreStatsGrid stats={stats} />
               {/* What is worn, the MAX row and the bag are the Inv tab's; this is the way there. */}
               {onSwitchToInventory && (
@@ -244,26 +232,26 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, onO
               )}
             </div>
 
-            {/* Core Points Group */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Points</h4>
-                {/* SP is spent in the book; its button sits with TP's and CP's. */}
-                {onOpenBook && (
-                  <BookLink sp={player.sp ?? 0} nudge={canLearnSkill || canLearnSpell} disabled={!isLoggedIn} onClick={() => onOpenBook('skills')} />
-                )}
+            {/* The record: what has been trained and what has happened. A line
+                appears only once there is something to say on it, so a new
+                character is not shown a column of zeros. */}
+            {records.length > 0 && (
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Record</h4>
+                <dl className="divide-y divide-line-subtle/40 rounded-xl border border-line-subtle/60 bg-surface-panel/60">
+                  {records.map((record) => (
+                    <div key={record.label} className="flex items-center gap-3 px-3 py-2">
+                      <dt className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium text-fg-primary">{record.label}</span>
+                        {record.note && <span className="block truncate text-[11px] text-fg-muted">{record.note}</span>}
+                      </dt>
+                      <dd className={`flex-shrink-0 text-base font-bold tabular-nums ${record.tone ?? 'text-fg-bright'}`}>{record.value}</dd>
+                      {record.action}
+                    </div>
+                  ))}
+                </dl>
               </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                <StatBox label="Core" value={player.cp ?? 0} compact />
-                <StatBox label="Training" value={player.tp ?? 0} compact />
-                <StatBox label="Skill" value={player.sp ?? 0} compact />
-                <StatBox label="PT" value={player.physicalTraining ?? 0} compact subtle />
-                <StatBox label="MT" value={player.mentalTraining ?? 0} compact subtle />
-                <StatBox label="Gold" value={(player.currency ?? 0).toLocaleString()} compact />
-                <StatBox label="Clicks" value={(player.clicks ?? 0).toLocaleString()} compact subtle />
-                <StatBox label="Deaths" value={(player.deaths ?? 0).toLocaleString()} compact subtle />
-              </div>
-            </div>
+            )}
             <ScrollEnd />
           </div>
         </div>
@@ -281,8 +269,8 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, onO
   )
 }
 
-/** The door to the book, wearing the SP there is to spend. Pings when some of it can be spent. */
-function BookLink({ sp, nudge, disabled, onClick }: { sp: number; nudge: boolean; disabled: boolean; onClick: () => void }) {
+/** The door to the book from the Skill Points line. Pings when some of it can be spent. */
+function BookLink({ nudge, disabled, onClick }: { nudge: boolean; disabled: boolean; onClick: () => void }) {
   return (
     <span className="relative inline-flex flex-shrink-0">
       {nudge && <span className="absolute inset-[2px] rounded-md bg-mood-arcane/60 animate-ping-slow" />}
@@ -290,9 +278,9 @@ function BookLink({ sp, nudge, disabled, onClick }: { sp: number; nudge: boolean
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className="relative px-2 py-1 text-[11px] font-semibold fill-mood-arcane hover:opacity-90 disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-md transition-colors"
+        className="relative px-2 py-1 text-[11px] font-semibold fill-mood-arcane hover:opacity-90 disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 rounded-md transition"
       >
-        Book · {sp} SP
+        Open book
       </button>
     </span>
   )
@@ -322,18 +310,4 @@ function StatBar({ label, value, percentage, gradient }: StatBarProps) {
   )
 }
 
-interface StatBoxProps {
-  label: string
-  value: number | string
-  subtle?: boolean
-}
-
-function StatBox({ label, value, subtle = false, compact = false }: StatBoxProps & { compact?: boolean }) {
-  return (
-    <div className={`rounded-xl border text-center ${compact ? 'px-2 py-1.5' : 'px-4 py-3'} ${subtle ? 'border-line-subtle/70 bg-surface-panel/60' : 'border-line-subtle/80 bg-surface-panel/80'}`}>
-      <p className="text-xs uppercase tracking-wide text-fg-secondary leading-none">{label}</p>
-      <p className={`font-semibold text-fg-bright ${compact ? 'text-base mt-0.5' : 'text-lg mt-1'}`}>{value}</p>
-    </div>
-  )
-}
 

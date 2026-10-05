@@ -124,6 +124,28 @@ body.font-mono {
 }
 
 /* Notification toast animations */
+/* A tab, sub-tab or button that has just been unlocked: a slow breathing glow
+   in the accent until the player opens it. One arrival at a time is the
+   point, so it is deliberately gentle; reduced-motion keeps a steady glow. */
+@keyframes tab-fresh {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 4px 0 color-mix(in srgb, var(--accent) 35%, transparent); }
+  50% { box-shadow: 0 0 0 1px var(--accent), 0 0 14px 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+}
+.tab-fresh {
+  border-color: var(--accent);
+  animation: tab-fresh 2.4s ease-in-out infinite, tab-arrive 0.5s ease-out;
+}
+@keyframes tab-arrive {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-fresh {
+    animation: none;
+    box-shadow: 0 0 0 1px var(--accent), 0 0 8px 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+}
+
 @keyframes slideInRight {
   from {
     opacity: 0;

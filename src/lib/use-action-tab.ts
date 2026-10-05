@@ -1,6 +1,5 @@
 'use client'
 
-import { createChoiceDeviceSetting } from './device-setting'
 import { getCastableSpells } from './spellbook'
 import { effectiveStats } from './effective-stats'
 import type { InventoryItem, Player } from './game-state'
@@ -10,20 +9,23 @@ export type ActionTab = 'attack' | 'spells' | 'items'
 export const ACTION_TABS: readonly ActionTab[] = ['attack', 'spells', 'items']
 
 /**
- * Where the Attack | Spells | Items switch was left, shared by the battle deck, the
- * Action layer and the phone sheet, so a potion drunk from one leaves the
- * other on Items too. A per-device convenience; null until first chosen.
+ * The tab a fight opens on: Attack, unless the player is a caster — MAG
+ * strictly the highest of the four effective stats, with a spell to cast —
+ * who opens on Spells. Nothing is remembered between fights; every one starts
+ * here.
  */
-export const useActionTab = createChoiceDeviceSetting<ActionTab>('lg:action-tab', ACTION_TABS)
-
-/**
- * The first default, before the player has ever moved the switch: Attack,
- * unless they are a caster — MAG strictly the highest of the four effective
- * stats, with a spell to cast — who opens on Spells.
- */
-export function defaultActionTab(player: Player | null | undefined, inventory: InventoryItem[]): ActionTab {
+export function battleStartTab(player: Player | null | undefined, inventory: InventoryItem[]): ActionTab {
   if (!player || getCastableSpells(player).length === 0) return 'attack'
   const stats = effectiveStats(player, inventory)
   const mag = stats.mag.total
   return mag > stats.str.total && mag > stats.dex.total && mag > stats.def.total ? 'spells' : 'attack'
+}
+
+/**
+ * The tab the deck opens on. In a fight, `battleStartTab`. Out of one — the
+ * Action button under the compass — always Items: between fights the deck is
+ * for eating, drinking and patching up, and Attack usually has nothing to hit.
+ */
+export function startingActionTab(inBattle: boolean, player: Player | null | undefined, inventory: InventoryItem[]): ActionTab {
+  return inBattle ? battleStartTab(player, inventory) : 'items'
 }

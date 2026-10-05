@@ -203,10 +203,25 @@ const { getEnemyTraits } = require(path.join(ROOT, 'src/lib/game-data/enemy-trai
 const { rollEnemyDodge, resolveTurn } = require(path.join(ROOT, 'src/lib/game-engine/battle-calculator.js'))
 
 test('getEnemyBehaviours clamps and defaults', () => {
-  assert.deepEqual(getEnemyBehaviours({}), { multiHitChance: 0, extraHits: 0, dodgeChance: 0, absorbsHp: false, meltsMelee: false })
-  assert.deepEqual(getEnemyBehaviours({ multiHitChance: 7, extraHits: 99, dodgeChance: -1, absorbsHp: 'yes', meltsMelee: true }), {
-    multiHitChance: 1, extraHits: 6, dodgeChance: 0, absorbsHp: false, meltsMelee: true,
+  // Every standing behaviour is off unless the definition turns it on. The
+  // second block of fields came with the 2026-10-03 enemy perk port (2dad58e).
+  assert.deepEqual(getEnemyBehaviours({}), {
+    multiHitChance: 0, extraHits: 0, dodgeChance: 0, absorbsHp: false, meltsMelee: false,
+    packChance: 0, heals: false, steals: false, pureDefense: false,
+    blockChance: 0, hpDrain: 0, mpDrain: 0, resurrectChance: 0,
   })
+  assert.deepEqual(
+    getEnemyBehaviours({
+      multiHitChance: 7, extraHits: 99, dodgeChance: -1, absorbsHp: 'yes', meltsMelee: true,
+      packChance: 3, heals: 'yes', steals: true, pureDefense: 1,
+      blockChance: -0.5, hpDrain: 9, mpDrain: 1.9, resurrectChance: 2,
+    }),
+    {
+      multiHitChance: 1, extraHits: 6, dodgeChance: 0, absorbsHp: false, meltsMelee: true,
+      packChance: 1, heals: false, steals: true, pureDefense: false,
+      blockChance: 0, hpDrain: 2, mpDrain: 1, resurrectChance: 1,
+    },
+  )
 })
 
 test('Double / Triple Hit always follow the first hit, each blocked on its own', () => {
@@ -227,8 +242,13 @@ test('multi-hit chains while the roll keeps hitting and is capped', () => {
 
 test('an enemy dodge makes the attack nothing and still leaves the enemy its swing', () => {
   const enemy = { att: 10, def: 0, damageType: 'MELEE', dodgeChance: 1 }
-  assert.equal(rollEnemyDodge(enemy), true)
+  // The roll says which way the attack came to nothing: 'dodge' or 'block'
+  // (2dad58e added Block to the same roll), and false when it lands.
+  assert.equal(rollEnemyDodge(enemy), 'dodge')
   assert.equal(rollEnemyDodge({ ...enemy, dodgeChance: 0 }), false)
+  assert.equal(rollEnemyDodge({ ...enemy, dodgeChance: 0, blockChance: 1 }), 'block')
+  // Dodge is rolled first, so an enemy with both dodges.
+  assert.equal(rollEnemyDodge({ ...enemy, blockChance: 1 }), 'dodge')
   const s = battleState({ enemy, baseStr: 50 })
   const turn = resolveTurn(s, 0, { enemyDodged: true })
   assert.equal(turn.enemyDodged, true)
@@ -236,6 +256,12 @@ test('an enemy dodge makes the attack nothing and still leaves the enemy its swi
   assert.equal(turn.playerRaw, 0)
   // The companion waits too.
   assert.equal(turn.companion, null)
+  assert.equal(turn.enemyEffects.blocked, undefined)
+  // A block is the same nothing, and the turn record says it was a block.
+  const blocked = resolveTurn(s, 0, { enemyDodged: 'block' })
+  assert.equal(blocked.enemyDodged, true)
+  assert.equal(blocked.playerDealtDamage, 0)
+  assert.equal(blocked.enemyEffects.blocked, true)
   // The spell record survives so the panel can name what was dodged.
   const cast = resolveTurn(s, 0, { enemyDodged: true, spell: { def: { id: 'fireball', name: 'Fireball', icon: 'f', hue: 'red' }, level: 1, cost: 7 } })
   assert.equal(cast.spell.name, 'Fireball')
