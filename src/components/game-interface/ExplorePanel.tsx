@@ -7,7 +7,7 @@ import NotificationBadge from '@/components/NotificationBadge'
 import { DeckContent, type DeckContentProps } from './Deck'
 import { DeckProvider, type DeckContextValue } from './LayerShell'
 import RoomShortcuts from './RoomShortcuts'
-import { DangerCorner, LedgerFlyout, QuickLinksCorner, type LedgerActions } from './CompassLedger'
+import { LedgerFlyout, QuickLinksCorner, type LedgerActions } from './CompassLedger'
 import { useGatherRemaining } from '@/hooks/useGatherRemaining'
 import { buildRoomShortcuts } from '@/lib/room-shortcuts'
 import type { RoomEnemy } from '@/components/RoomBox'
@@ -184,7 +184,6 @@ export default function ExplorePanel({
             <QuickLinksCorner {...ledger} />
           </div>
           <div className={`absolute top-2 right-2 z-10 flex flex-col items-end gap-2 transition-opacity duration-300 ${dimmedClasses}`}>
-            <DangerCorner room={room} player={player} />
             <RoomShortcuts
               shortcuts={rail.shortcuts}
               hidden={rail.hidden}

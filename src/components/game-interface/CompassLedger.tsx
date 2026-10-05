@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Info } from 'lucide-react'
 import type { InventoryItem, Player } from '@/lib/game-state'
 import type { FilterTab } from '@/lib/inventory-categories'
-import { DANGER_TONE_CLASS, dangerVerdict, formatGold, type DangerTone } from '@/lib/danger-verdict'
+import { DANGER_TONE_CLASS, dangerVerdict, formatGold } from '@/lib/danger-verdict'
 
 /**
  * The compass corners, brought back from the original nav band.
@@ -15,7 +15,8 @@ import { DANGER_TONE_CLASS, dangerVerdict, formatGold, type DangerTone } from '@
  * away. Every one of them is a badged tab now, so the corner keeps only what
  * is worth a glance while walking: what is in your hand, what is in your
  * purse, and a single lit line when there are points waiting to be spent.
- * Danger and the room sit top-right. On phones the strip has no corners to
+ * The room's number and its danger are in the room card's title, not here.
+ * On phones the strip has no corners to
  * spare, so the same lines sit behind one small button and open as a flyout.
  *
  * Every link is navigation only. Nothing here fires a game action.
@@ -82,21 +83,6 @@ export function DangerLine({ room, player }: { room: LedgerRoom | null; player: 
   )
 }
 
-/** Top-right of the D-pad: the room id, then the danger line under it. */
-export function DangerCorner({ room, player, align = 'right' }: { room: LedgerRoom | null; player: Player | null; align?: 'left' | 'right' }) {
-  if (!room) return null
-  return (
-    <div className={`text-[11px] leading-[15px] ${align === 'right' ? 'text-right' : 'text-left'}`}>
-      <div className="text-fg-muted">
-        room <span className="text-fg-secondary">{room.roomId}</span>
-      </div>
-      <div>
-        <DangerLine room={room} player={player} />
-      </div>
-    </div>
-  )
-}
-
 /** Top-left of the D-pad: the weapon in hand, gold, and one lit line when there are points to spend. */
 export function QuickLinksCorner({ player, inventory, onOpenPoints, onOpenSp, onOpenInventory }: LedgerProps) {
   if (!player) return null
@@ -147,12 +133,6 @@ export function QuickLinksCorner({ player, inventory, onOpenPoints, onOpenSp, on
   )
 }
 
-/** The button's icon takes the rung's colour so danger reads before the flyout opens. DEADLY's fill is for text, so it maps to plain error red here. */
-const BUTTON_TONE_CLASS: Record<DangerTone, string> = {
-  ...DANGER_TONE_CLASS,
-  deadly: 'text-status-error',
-}
-
 /**
  * The phone version: a small button at the strip's top-left that opens the
  * whole ledger as a flyout. Closes on a tap outside, Escape, any link, or a
@@ -185,7 +165,6 @@ export function LedgerFlyout({ room, player, inventory, onOpenPoints, onOpenSp, 
 
   if (!room || !player) return null
 
-  const verdict = dangerVerdict(room.dangerLevel, room.isSafe, player.level)
   // Every link closes the flyout before it navigates.
   const closeThen = <T extends unknown[]>(fn?: (...args: T) => void) =>
     fn
@@ -201,9 +180,9 @@ export function LedgerFlyout({ room, player, inventory, onOpenPoints, onOpenSp, 
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
-        aria-label={`Quick facts — danger ${verdict.level}, ${verdict.label}`}
+        aria-label="Quick facts: your weapon, gold and points"
         title="Quick facts"
-        className={`flex h-8 w-8 items-center justify-center rounded-md border border-line-strong/70 bg-surface-panel/85 shadow-sm backdrop-blur-sm transition-colors hover:bg-surface-raised/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${BUTTON_TONE_CLASS[verdict.tone]}`}
+        className={`flex h-8 w-8 items-center justify-center rounded-md border border-line-strong/70 bg-surface-panel/85 shadow-sm backdrop-blur-sm transition-colors hover:bg-surface-raised/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus text-fg-secondary`}
       >
         <Info size={15} aria-hidden="true" />
       </button>
@@ -213,8 +192,6 @@ export function LedgerFlyout({ room, player, inventory, onOpenPoints, onOpenSp, 
           aria-label="Quick facts"
           className="absolute top-9 left-0 min-w-[11rem] rounded-lg border border-line-strong bg-surface-overlay p-3 shadow-xl shadow-black/40 flex flex-col gap-2"
         >
-          <DangerCorner room={room} player={player} align="left" />
-          <div className="border-t border-line-subtle/40" />
           <QuickLinksCorner
             room={room}
             player={player}

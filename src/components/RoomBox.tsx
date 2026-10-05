@@ -7,6 +7,8 @@ import type { Room, Player } from '@/lib/game-state'
 import type { PartySnapshot } from '@/lib/socket'
 import type { GatherCooldownView, SupplyView } from '@/lib/types/room'
 import Icon from './Icon'
+import { DangerLine } from './game-interface/CompassLedger'
+import { useGameStore } from '@/lib/game-state'
 import { useEffect, useMemo, useState } from 'react'
 import { roomColor } from '@/lib/theme/room-colors'
 import { getEnemyTraits } from '@/lib/game-data/enemy-traits'
@@ -126,6 +128,8 @@ export default function RoomBox({
   }
   const iconClassName = iconSizeClasses[room.iconSize ?? ''] ?? iconSizeClasses.sm
 
+  // For the danger line: the room's level read against yours.
+  const player = useGameStore((state) => state.player)
   const subtitleText = (room.subtitle ?? 'This is it. The world is yours.').trim()
   const hasSubtitle = subtitleText.length > 0
   const subtitlePlacement = room.subtitlePosition?.toLowerCase() === 'above' ? 'above' : 'below'
@@ -164,12 +168,6 @@ export default function RoomBox({
             style={{ color: roomColor(room.nameColor, room.region, 'title') }}
           >
             {room.name}
-            {/* The room's number, small: the address the map and the feed use. */}
-            {room.roomId && (
-              <span className="ml-2 align-middle text-[10px] font-medium tracking-wide text-fg-muted tabular-nums" title={`Room ${room.roomId}`}>
-                #{room.roomId}
-              </span>
-            )}
           </h3>
           {hasSubtitle && subtitlePlacement === 'below' && (
             <p
@@ -179,6 +177,13 @@ export default function RoomBox({
               {subtitleText}
             </p>
           )}
+          {/* Under the title: the room's number (the address the map and the
+              feed use) and how dangerous it is for you, in one quiet line. */}
+          <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 text-[11px] leading-4 text-fg-muted">
+            {room.roomId && <span className="tabular-nums" title={`Room ${room.roomId}`}>#{room.roomId}</span>}
+            {room.roomId && <span aria-hidden="true">·</span>}
+            <DangerLine room={room} player={player} />
+          </p>
         </div>
       </div>
 
