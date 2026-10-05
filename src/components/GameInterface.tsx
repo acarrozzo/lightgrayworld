@@ -3615,6 +3615,7 @@ export default function GameInterface() {
   }
 
   const enemyHere = !battle.isInBattle && !!roomEnemy
+  const levelUpInVictory = !!levelUpData && !battle.isInBattle && battleResult?.outcome === 'WIN'
 
   // Every tab in the one frame: its sub-tabs (or its name) and close. World
   // and Inv bring their own layer; the rest are panels wrapped here.
@@ -3634,8 +3635,8 @@ export default function GameInterface() {
     const freshDot = (id: UnlockId) => (unlocks.fresh.has(id) ? <NotificationBadge value className="absolute -top-1 -right-1" /> : undefined)
     const charTabs: Array<{ id: 'char' | BookTab; label: string; extra?: React.ReactNode }> = [
       { id: 'char', label: 'Char' },
-      ...(unlocks.open.has('char:skills') ? [{ id: 'skills' as const, label: 'Skill book', extra: freshDot('char:skills') }] : []),
-      ...(unlocks.open.has('char:spells') ? [{ id: 'spells' as const, label: 'Spell book', extra: freshDot('char:spells') }] : []),
+      ...(unlocks.open.has('char:skills') ? [{ id: 'skills' as const, label: 'Skills', extra: freshDot('char:skills') }] : []),
+      ...(unlocks.open.has('char:spells') ? [{ id: 'spells' as const, label: 'Spells', extra: freshDot('char:spells') }] : []),
     ]
     const questTabs = QUEST_SUB_TABS.filter(
       (tab) => tab.id === 'quests' || (tab.id === 'kill-list' ? unlocks.open.has('quests:kill-list') : unlocks.open.has('quests:battle-log')),
@@ -3644,7 +3645,7 @@ export default function GameInterface() {
       centerActiveTab === 'char' ? (
         charTabs.length > 1 ? (
           <HeaderTabs
-            label="Character, Skill book or Spell book"
+            label="Character, Skills or Spells"
             active={charTab}
             home="char"
             onChange={(next) => {
@@ -4084,7 +4085,9 @@ export default function GameInterface() {
                       </button>
                     </div>
                   )}
-                  {levelUpData && (
+                  {/* A level gained by a win rides in the victory card as a gold
+                      band; the level-up card is for a level gained any other way. */}
+                  {levelUpData && !levelUpInVictory && (
                     <LevelUpAlert
                       data={levelUpData}
                       tpAvailable={player?.tp ?? 0}
@@ -4122,6 +4125,11 @@ export default function GameInterface() {
                         onCastSpell={(spellId) => socketHandlers.sendGameAction({ type: 'cast_spell', data: { spellId } })}
                         onUseSkill={(skillId) => socketHandlers.sendGameAction({ type: 'use_skill', data: { skillId } })}
                         player={player}
+                        levelUp={
+                          levelUpInVictory && levelUpData
+                            ? { data: levelUpData, toSpend: (player.cp ?? 0) + (player.tp ?? 0), onSpend: openCharPoints }
+                            : null
+                        }
                         onDismissResult={() => {
                           // Death: pressing Rise is the respawn move itself. The
                           // teleport dismisses the card on its way out, and the
@@ -4130,6 +4138,10 @@ export default function GameInterface() {
                             handleAction({ type: 'teleport', data: { toRoomId: respawnRoomRef.current ?? RESPAWN_ROOM_ID } })
                             return
                           }
+                          // The band on the card has said the level. With Training
+                          // Points still unspent the full level-up card takes over
+                          // once this one is gone; otherwise one Continue clears both.
+                          if (levelUpInVictory && (player.tp ?? 0) <= 0) setLevelUpData(null)
                           clearBattleResult()
                         }}
                         isActing={isLoadingRoom}

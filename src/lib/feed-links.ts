@@ -28,8 +28,8 @@ const TAB_NAMES: Record<TabId, string> = {
 }
 
 const SUB_NAMES: Record<string, string> = {
-  skills: 'Skill book',
-  spells: 'Spell book',
+  skills: 'Skills',
+  spells: 'Spells',
   'kill-list': 'Kill List',
   'battle-log': 'Battle Log',
   party: 'Party',
@@ -58,4 +58,38 @@ export function registerFeedLinkHandler(next: ((link: FeedLink) => void) | null)
 
 export function followFeedLink(link: FeedLink) {
   handler?.(link)
+}
+
+/**
+ * The item a result message is talking about, if it names one the player is
+ * carrying: "You pick up a shovel." with a Shovel in the bag. Returns where
+ * the name sits in the message so that word can be the link.
+ *
+ * Whole words only, longest name first, so "Key" is not found inside
+ * "monkey" and "Iron Ring" wins over "Ring". Names under three letters are
+ * skipped: too likely to be an ordinary word.
+ */
+export function findMentionedItem(
+  message: string | null | undefined,
+  items: ReadonlyArray<{ id: string; name: string }>,
+): { itemId: string; start: number; end: number } | null {
+  if (!message) return null
+  const lower = message.toLowerCase()
+  const candidates = items.filter((item) => item.name.trim().length >= 3).sort((a, b) => b.name.length - a.name.length)
+  const isWordChar = (char: string | undefined) => !!char && /[a-z0-9]/i.test(char)
+  for (const item of candidates) {
+    const name = item.name.trim().toLowerCase()
+    let from = 0
+    while (from <= lower.length - name.length) {
+      const start = lower.indexOf(name, from)
+      if (start === -1) break
+      const end = start + name.length
+      // A trailing "s" still counts as the same word: "3 redberries" is too
+      // far, but "shovels" is fine.
+      const after = lower[end] === 's' && !isWordChar(lower[end + 1]) ? end + 1 : end
+      if (!isWordChar(lower[start - 1]) && !isWordChar(lower[after])) return { itemId: item.id, start, end: after }
+      from = start + 1
+    }
+  }
+  return null
 }

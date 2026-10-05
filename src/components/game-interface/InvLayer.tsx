@@ -50,6 +50,9 @@ const STAT_KEYS = ['str', 'dex', 'mag', 'def'] as const
 /** How many equippable items a character must carry before the MAX row is offered. */
 const MAX_ROW_MIN_GEAR = 5
 
+/** Past this many equippable items the bag is long enough to want a search box. */
+const SEARCH_MIN_GEAR = 20
+
 interface InvLayerProps {
   inventory: InventoryItem[]
   /** For the stat line: the numbers the gear adds up to. */
@@ -212,6 +215,7 @@ export default function InvLayer({
       showHeading={false}
       hideGroups
       hideSlots
+      hideSearch={gearCount <= SEARCH_MIN_GEAR}
       view={view}
       onViewChange={setView}
       initialOpenId={initialOpenId}
@@ -222,8 +226,25 @@ export default function InvLayer({
   )
   const previewLine = previewNote && <p className="truncate text-[10px] text-fg-muted">{previewNote}</p>
 
+  // MAX and the slots are about what you wear: they belong to Gear. Items,
+  // Craft and Misc keep the stat line and are otherwise just their list.
+  const onGear = view.group === 'gear'
+
   let body
-  if (twoColumn) {
+  if (!onGear) {
+    body = (
+      <>
+        <div className="flex-shrink-0 border-b border-line-subtle/40 px-3 py-2">
+          <CoreStatsLine stats={stats} preview={preview} />
+          {previewLine}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+          {bag}
+          <ScrollEnd />
+        </div>
+      </>
+    )
+  } else if (twoColumn) {
     body = (
       <div className="flex min-h-0 flex-1">
         <aside className="flex w-[48%] min-w-[340px] max-w-[520px] flex-shrink-0 flex-col gap-3 overflow-y-auto border-r border-line-subtle/40 p-3" aria-label="Stats and equipment">

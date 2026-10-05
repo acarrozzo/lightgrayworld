@@ -115,14 +115,14 @@ export const UNLOCKS: readonly UnlockDef[] = [
     sub: 'skills',
     // A teacher and a point to spend with them — or a page already filled in.
     earned: (f) => f.hasLearnedSkill || (f.hasSkillTeacher && f.sp > 0),
-    announce: 'You have a skill point and someone to teach you. The Skill book is open, under Char.',
+    announce: 'You have a skill point and someone to teach you. Skills is open, under Char.',
   },
   {
     id: 'char:spells',
     tab: 'char',
     sub: 'spells',
     earned: (f) => f.hasLearnedSpell || (f.hasSpellTeacher && f.sp > 0),
-    announce: 'You have a skill point and someone to teach you magic. The Spell book is open, under Char.',
+    announce: 'You have a skill point and someone to teach you magic. Spells is open, under Char.',
   },
   {
     id: 'inv:consumables',

@@ -4,12 +4,24 @@ import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryIt
 import Icon from '@/components/Icon'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { LevelUpPayload } from '@/lib/socket'
 import { LogOut } from 'lucide-react'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { spellTone } from '@/lib/spellbook'
 import ActionDeck from '@/components/game-interface/ActionDeck'
 import { deckContextFromBattle } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
+
+/** What the victory card needs to announce a level gained by the win. */
+export interface VictoryLevelUp {
+  data: LevelUpPayload
+  /** Core + Training points waiting to be spent. */
+  toSpend: number
+  onSpend: () => void
+}
+
+/** How many times an enemy must already have been beaten before a win with nothing new is shown as one line. */
+const ROUTINE_KILLS = 10
 
 interface BattlePanelProps {
   battle: BattleState
@@ -27,6 +39,8 @@ interface BattlePanelProps {
   /** Strike with a skill — Slice, Smash, Aim, Magic Strike — on this turn's swing. */
   onUseSkill: (skillId: string) => void
   onDismissResult: () => void
+  /** A level gained by this win: the victory card carries it as a gold band instead of a second card. */
+  levelUp?: VictoryLevelUp | null
   isActing: boolean
   playerName: string
   playerLevel: number
@@ -175,16 +189,6 @@ function EnemyHitExtras({ battle }: { battle: BattleState }) {
   )
 }
 
-// Compact label/value pair for the victory stats card (turns, dealt, took, best).
-function StatChip({ label, value, title }: { label: string; value: number; title?: string }) {
-  return (
-    <div className="flex items-baseline gap-1.5 whitespace-nowrap" title={title}>
-      <span className="text-[9px] uppercase tracking-wide text-fg-disabled">{label}</span>
-      <span className="text-xs font-bold text-fg-primary tabular-nums">{value}</span>
-    </div>
-  )
-}
-
 function EnemyIcon({ iconName, isDead }: { iconName: string; isDead: boolean }) {
   const size = isDead ? 88 : 76
   return (
@@ -310,22 +314,90 @@ function DropsShowcase({ result }: { result: BattleResult }) {
   )
 }
 
-function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { result: BattleResult; weaponIconName: string | null; weaponName: string | null; onDismiss: () => void }) {
+function BattleResultCard({ result, weaponName, levelUp, onDismiss }: { result: BattleResult; weaponName: string | null; levelUp?: VictoryLevelUp | null; onDismiss: () => void }) {
   const isWin = result.outcome === 'WIN'
   const lt = result.lastTurn
   const wasAdvantageTurn = lt?.playerRaw === null
   const lastBlowRanged = lt?.weaponCategory === 'RANGED'
   const lastBlowSpell = lt?.spell ?? null
   const lastBlowSkill = lt?.skill ?? null
+  const killList = useGameStore((state) => state.killList)
+
+  // Enter continues after a win. Not after a death — Rise again is a move,
+  // and should be pressed on purpose — and not while typing, or with a
+  // control focused that Enter already presses.
+  useEffect(() => {
+    if (!isWin) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' || event.repeat || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
+      const target = event.target as HTMLElement | null
+      if (target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(target.tagName))) return
+      event.preventDefault()
+      onDismiss()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isWin, onDismiss])
 
   if (isWin) {
+    // Two sizes, by how much the win is worth looking at. An enemy beaten
+    // many times, dropping nothing you have not seen and gaining you no
+    // level, is one line; everything else is the full card.
+    const kills = killList.find((entry) => entry.monster === result.enemySlug || entry.monster === result.enemyName)?.kills ?? 0
+    const firstKillDrop = (result.dropDetails ?? []).some((drop) => drop.firstKill)
+    const firstKill = kills <= 1
+    const routine = kills >= ROUTINE_KILLS && !firstKillDrop && !levelUp
+    const drops = result.dropDetails && result.dropDetails.length > 0
+      ? result.dropDetails
+      : result.itemsDropped.map((entry) => {
+          const match = entry.match(/^(.*?)\s*x(\d+)$/)
+          return { slug: match ? match[1] : entry, qty: match ? Number(match[2]) : 1, firstKill: false }
+        })
+    const finalBlowName = lastBlowSpell ? lastBlowSpell.name : lastBlowSkill ? `${lastBlowSkill.name} · ${weaponName ?? 'fists'}` : (weaponName ?? 'fists')
+
+    if (routine) {
+      return (
+        <div
+          className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-combat-victory/60 px-3 py-2 shadow-lg"
+          style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--combat-victory) 16%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 8%, var(--surface-canvas)))' }}
+          role="status"
+        >
+          <p className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--combat-victory)' }}>Victory</p>
+          <p className="text-[11px] text-fg-muted">
+            <span className="font-semibold text-enemy-hostile">{result.enemyName}</span> · {result.turnsCount} {result.turnsCount === 1 ? 'turn' : 'turns'}
+          </p>
+          <p className="flex items-baseline gap-1 text-xs tabular-nums">
+            <span className="font-black" style={{ color: 'var(--combat-victory)' }}>+{result.xpEarned}</span>
+            <span className="text-fg-muted">XP</span>
+          </p>
+          <p className="flex items-baseline gap-1 text-xs tabular-nums">
+            <span className="font-black" style={{ color: 'var(--combat-crit)' }}>+{result.goldEarned}</span>
+            <span className="text-fg-muted">gold</span>
+          </p>
+          {drops.map((drop, index) => (
+            <span key={`${drop.slug}-${index}`} className="flex items-center gap-1 text-xs font-semibold text-loot-epic">
+              <Icon name={resolveItemIcon(null, drop.slug)} size={16} />
+              {prettifyDropName(drop.slug)}{drop.qty > 1 ? ` ×${drop.qty}` : ''}
+            </span>
+          ))}
+          <button
+            onClick={onDismiss}
+            className="ml-auto h-8 flex-shrink-0 rounded-lg px-3 text-[11px] font-black uppercase tracking-widest text-fg-on-accent transition-all duration-150 hover:brightness-110"
+            style={{ background: 'var(--combat-victory)' }}
+          >
+            Continue
+          </button>
+        </div>
+      )
+    }
+
     return (
       <div className="@container rounded-xl overflow-hidden shadow-2xl border border-combat-victory/70"
         style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--combat-victory) 10%, var(--surface-canvas)) 0%, color-mix(in srgb, var(--combat-victory) 18%, var(--surface-canvas)) 40%, color-mix(in srgb, var(--combat-victory) 10%, var(--surface-canvas)) 100%)' }}
       >
         {/* Header */}
         <div className="relative flex items-center justify-center px-4 py-2.5 border-b border-combat-victory/40"
-          style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-victory) 19%, transparent), color-mix(in srgb, var(--combat-victory) 19%, transparent), color-mix(in srgb, var(--combat-victory) 19%, transparent), transparent)' }}
+          style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-victory) 19%, transparent), transparent)' }}
         >
           <div className="flex items-center gap-2">
             <span className="text-base" style={{ filter: 'drop-shadow(0 0 6px var(--combat-victory))' }}>⚔</span>
@@ -343,69 +415,37 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
           </button>
         </div>
 
-        {/* Final blow, the fight's numbers, the enemy defeated. Narrow, the
-            two cards sit side by side with the numbers as one strip under
-            them; given room, the numbers move between the cards. The card's
-            own width decides, so it is right in the phone, the docked panel
-            and the wide battle area alike. */}
-        {lt && (
-          <div className="grid grid-cols-2 gap-2 border-b border-combat-victory/40 px-3 py-2 @min-[560px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] @min-[560px]:px-4">
-            {/* Final blow card */}
-            <div className="order-1 min-w-0 rounded-lg border border-combat-victory/40 px-2.5 py-2 flex items-center gap-2.5"
-              style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-victory) 12%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 7%, var(--surface-canvas)))' }}
-            >
-              {!wasAdvantageTurn && (
-                <Icon name={lastBlowSpell ? lastBlowSpell.attackIcon : (weaponIconName ?? 'equipment-fists')} size={36} className={`${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : 'text-fg-bright'} opacity-80 flex-shrink-0`} />
-              )}
-              <div className="min-w-0">
-                {wasAdvantageTurn ? (
-                  <p className="text-[11px] text-fg-muted italic">Ambush entry</p>
-                ) : (
-                  <>
-                    <p className="text-[10px] text-fg-muted leading-tight truncate">Final blow · <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{lastBlowSpell ? lastBlowSpell.name : lastBlowSkill ? `${lastBlowSkill.name} · ${weaponName ?? 'fists'}` : (weaponName ?? 'fists')}</span></p>
-                    <p
-                      className={`text-xl font-black leading-tight ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-heal' : 'text-combat-damage'}`}
-                      style={{ textShadow: lastBlowSpell ? `0 0 10px color-mix(in srgb, ${spellTone(lastBlowSpell.hue).glow} 38%, transparent)` : lastBlowRanged ? '0 0 10px color-mix(in srgb, var(--combat-victory) 38%, transparent)' : '0 0 10px color-mix(in srgb, var(--combat-damage) 38%, transparent)' }}
-                    >
-                      {lt.playerDealtDamage}
-                    </p>
-                    <p className="text-[9px] text-fg-disabled leading-tight">{lastBlowSpell?.text ? `[ ${lastBlowSpell.text} ]` : lastBlowSkill?.text ? `( ${lastBlowSkill.text} )` : lt.playerRaw} − {lt.enemyBlocked} = {lt.playerDealtDamage}</p>
-                  </>
-                )}
-              </div>
-            </div>
-            {/* Battle stats card — sits between the two cards */}
-            <div className="order-3 col-span-2 rounded-lg border border-combat-victory/50 px-3 py-1.5 grid grid-cols-4 gap-x-3 gap-y-0.5 content-center justify-items-center @min-[560px]:order-2 @min-[560px]:col-span-1 @min-[560px]:grid-cols-2 @min-[560px]:justify-items-start @min-[560px]:py-2"
-              style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-victory) 11%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 6%, var(--surface-canvas)))' }}
-            >
-              <StatChip label="Turns" value={result.turnsCount} />
-              <StatChip label="Dealt" title="Damage dealt" value={result.totalDamageDealt} />
-              <StatChip label="Took" title="Damage taken" value={result.totalDamageReceived} />
-              <StatChip label="Best" title="Best single hit" value={result.maxSingleHit} />
-            </div>
-            {/* Enemy defeated card */}
-            <div className="order-2 min-w-0 rounded-lg border border-combat-defeat/40 px-2.5 py-2 flex items-center justify-end gap-2.5 @min-[560px]:order-3"
-              style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-defeat) 14%, var(--surface-canvas)), color-mix(in srgb, var(--combat-defeat) 8%, var(--surface-canvas)))' }}
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-enemy-hostile text-right leading-tight truncate">{result.enemyName}</p>
-                <p className="text-[10px] text-fg-disabled text-right tracking-wide uppercase">defeated</p>
-              </div>
-              {result.enemyIcon && (
-                <img
-                  src={`/icons/enemy/${encodeURIComponent(result.enemyIcon)}.svg`}
-                  alt={result.enemyName}
-                  width={44}
-                  height={44}
-                  style={{ transform: 'scaleX(-1) scaleY(-1)' }}
-                  className="h-11 w-11 object-contain brightness-0 invert opacity-50 flex-shrink-0"
-                />
-              )}
-            </div>
+        {/* A level gained by this win rides here, in gold, instead of as a
+            second card stacked on top of this one. */}
+        {levelUp && (
+          <div
+            className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-status-warning/50 px-3 py-2 @min-[560px]:px-4"
+            style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--resource-gold) 26%, var(--surface-canvas)), color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas)))' }}
+          >
+            <p className="flex items-baseline gap-1.5">
+              <span style={{ color: 'var(--combat-crit)', filter: 'drop-shadow(0 0 6px var(--combat-crit))' }} aria-hidden="true">★</span>
+              <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--combat-crit)' }}>Level Up</span>
+              <span className="text-xl font-black leading-none tabular-nums" style={{ color: 'var(--combat-crit)', textShadow: '0 0 14px color-mix(in srgb, var(--combat-crit) 50%, transparent)' }}>{levelUp.data.newLevel}</span>
+            </p>
+            <p className="flex flex-wrap items-baseline gap-x-2.5 text-[11px] font-bold tabular-nums">
+              {levelUp.data.tpGained > 0 && <span className="text-resource-gold">+{levelUp.data.tpGained} TP</span>}
+              {levelUp.data.cpGained > 0 && <span className="text-accent">+{levelUp.data.cpGained} CP</span>}
+              {levelUp.data.spGained > 0 && <span className="text-stat-mag">+{levelUp.data.spGained} SP</span>}
+              {levelUp.data.hpGained > 0 && <span className="text-resource-hp">+{levelUp.data.hpGained} HP</span>}
+              {levelUp.data.mpGained > 0 && <span className="text-resource-mp">+{levelUp.data.mpGained} MP</span>}
+            </p>
+            {levelUp.toSpend > 0 && (
+              <button
+                onClick={levelUp.onSpend}
+                className="ml-auto h-8 flex-shrink-0 rounded-lg px-3 text-[11px] font-black uppercase tracking-widest fill-resource-gold transition-all hover:brightness-110"
+              >
+                Spend {levelUp.toSpend} {levelUp.toSpend === 1 ? 'point' : 'points'}
+              </button>
+            )}
           </div>
         )}
 
-        {/* Rewards — loot + XP + Gold, all in one row */}
+        {/* Rewards first: what was won is why the fight was fought. */}
         <div className="pb-2 border-b border-combat-victory/40">
           <DropsShowcase result={result} />
           {result.multiplayerBonus && (
@@ -413,15 +453,58 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
           )}
         </div>
 
+        {/* The fight, in two small lines beside the thing that lost it. */}
+        <div className="flex items-center gap-3 border-b border-combat-victory/40 px-3 py-2 @min-[560px]:px-4">
+          {result.enemyIcon && (
+            <img
+              src={`/icons/enemy/${encodeURIComponent(result.enemyIcon)}.svg`}
+              alt=""
+              width={44}
+              height={44}
+              style={{ transform: 'scaleX(-1) scaleY(-1)' }}
+              className="h-11 w-11 flex-shrink-0 object-contain brightness-0 invert opacity-50"
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="flex flex-wrap items-baseline gap-x-1.5 text-xs">
+              <span className="font-bold text-enemy-hostile">{result.enemyName}</span>
+              <span className="text-fg-muted">defeated in {result.turnsCount} {result.turnsCount === 1 ? 'turn' : 'turns'}</span>
+              {firstKill && (
+                <span className="rounded-sm border border-combat-crit/60 px-1 text-[9px] font-black uppercase tracking-wider text-combat-crit">First kill</span>
+              )}
+            </p>
+            <p className="text-[10px] tabular-nums text-fg-muted">
+              dealt <span className="font-semibold text-fg-secondary">{result.totalDamageDealt}</span> · took{' '}
+              <span className="font-semibold text-fg-secondary">{result.totalDamageReceived}</span> · best hit{' '}
+              <span className="font-semibold text-fg-secondary">{result.maxSingleHit}</span>
+            </p>
+            {lt && (
+              <p className="truncate text-[10px] tabular-nums text-fg-muted">
+                {wasAdvantageTurn ? (
+                  'Ambush entry'
+                ) : (
+                  <>
+                    final blow{' '}
+                    <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{finalBlowName}</span>{' '}
+                    {lastBlowSpell?.text ? `[ ${lastBlowSpell.text} ]` : lastBlowSkill?.text ? `( ${lastBlowSkill.text} )` : lt.playerRaw} − {lt.enemyBlocked} ={' '}
+                    <span className={`font-bold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{lt.playerDealtDamage}</span>
+                  </>
+                )}
+              </p>
+            )}
+          </div>
+        </div>
+
         {/* Close */}
         <div className="px-4 py-2.5">
           <button
             onClick={onDismiss}
             className="w-full py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all duration-150 text-fg-on-accent"
-            style={{ background: 'linear-gradient(90deg, var(--combat-victory), var(--combat-victory), var(--combat-victory))', boxShadow: '0 0 12px color-mix(in srgb, var(--combat-victory) 25%, transparent)' }}
+            style={{ background: 'var(--combat-victory)', boxShadow: '0 0 12px color-mix(in srgb, var(--combat-victory) 25%, transparent)' }}
           >
             Continue
           </button>
+          <p className="mt-1 hidden text-center text-[10px] text-fg-disabled lg:block">or press Enter</p>
         </div>
       </div>
     )
@@ -466,69 +549,60 @@ function BattleResultCard({ result, weaponIconName, weaponName, onDismiss }: { r
         <p className="mt-2 text-sm text-fg-secondary text-center">Godspeed.</p>
       </div>
 
-      {/* Your strike + stats + enemy hit — three cards, each holding its own icon */}
-      {lt && (
-        <div className="grid grid-cols-2 gap-2 border-b border-combat-defeat/40 px-3 py-2 @min-[560px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] @min-[560px]:px-4">
-          {/* Your strike card */}
-          <div className="order-1 min-w-0 rounded-lg border border-combat-victory/40 px-2.5 py-2 flex items-center gap-2.5"
-            style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-victory) 12%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 7%, var(--surface-canvas)))' }}
-          >
-            {!wasAdvantageTurn && (
-              <Icon name={lastBlowSpell ? lastBlowSpell.attackIcon : (weaponIconName ?? 'equipment-fists')} size={44} className={`${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : 'text-fg-bright'} opacity-80 flex-shrink-0`} />
-            )}
-            <div className="min-w-0">
-              {wasAdvantageTurn ? (
-                <p className="text-[11px] text-fg-muted italic">Ambush entry</p>
-              ) : (
-                <>
-                  <p className="text-[10px] text-fg-muted leading-tight truncate">Your strike · <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{lastBlowSpell ? lastBlowSpell.name : lastBlowSkill ? `${lastBlowSkill.name} · ${weaponName ?? 'fists'}` : (weaponName ?? 'fists')}</span></p>
-                  <p className={`text-xl font-black leading-tight ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{lt.playerDealtDamage}</p>
-                </>
-              )}
-            </div>
-          </div>
-          {/* Battle stats card — sits between the two cards */}
-          <div className="order-3 col-span-2 rounded-lg border border-combat-defeat/50 px-3 py-1.5 grid grid-cols-4 gap-x-3 gap-y-0.5 content-center justify-items-center @min-[560px]:order-2 @min-[560px]:col-span-1 @min-[560px]:grid-cols-2 @min-[560px]:justify-items-start @min-[560px]:py-2"
-            style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--combat-defeat) 12%, var(--surface-canvas)), color-mix(in srgb, var(--combat-defeat) 7%, var(--surface-canvas)))' }}
-          >
-            <StatChip label="Turns" value={result.turnsCount} />
-            <StatChip label="Dealt" value={result.totalDamageDealt} />
-            <StatChip label="Took" value={result.totalDamageReceived} />
-            <StatChip label="Best" value={result.maxSingleHit} />
-          </div>
-          {/* Enemy hit card */}
-          <div className="order-2 min-w-0 rounded-lg border border-resource-gold/40 px-2.5 py-2 flex items-center justify-end gap-2.5 @min-[560px]:order-3"
-            style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--resource-gold) 12%, var(--surface-canvas)), color-mix(in srgb, var(--resource-gold) 7%, var(--surface-canvas)))' }}
-          >
-            <div className="min-w-0">
-              <p className="text-[10px] text-fg-secondary text-right leading-tight truncate"><span className="text-resource-gold font-semibold">{result.enemyName}</span> hit</p>
-              {/* Name the special that finished you off — a 45 with no label
-                  looks like the enemy simply rolled high. */}
-              {lt.enemyAction && (
-                <p className="text-[9px] font-black tracking-[0.15em] uppercase text-right leading-tight" style={{ color: 'var(--combat-crit)' }}>
-                  {lt.enemyAction.name}
-                </p>
-              )}
-              <p className={`text-xl font-black leading-tight text-right ${lt.enemyAction ? 'text-combat-crit' : 'text-stat-def'}`}>{lt.enemyDealtDamage}</p>
-              {lt.enemyAction && lt.enemyAction.rolls.length > 1 && (
-                <p className="text-[9px] text-fg-disabled text-right leading-tight tabular-nums">
-                  ( {lt.enemyAction.rolls.join(' + ')} ) &minus; {lt.playerBlocked} = {lt.enemyDealtDamage}
-                </p>
-              )}
-            </div>
-            {result.enemyIcon && (
-              <img
-                src={`/icons/enemy/${encodeURIComponent(result.enemyIcon)}.svg`}
-                alt={result.enemyName}
-                width={52}
-                height={52}
-                style={{ transform: 'scaleX(-1)' }}
-                className="object-contain brightness-0 invert opacity-75 flex-shrink-0"
-              />
+      {/* What killed you, first and largest: who, with what, for how much.
+          Then the fight in one line, and your last strike. */}
+      <div className="border-b border-combat-defeat/40 px-3 py-2.5 @min-[560px]:px-4">
+        <div className="flex items-center gap-3">
+          {result.enemyIcon && (
+            <img
+              src={`/icons/enemy/${encodeURIComponent(result.enemyIcon)}.svg`}
+              alt=""
+              width={52}
+              height={52}
+              style={{ transform: 'scaleX(-1)' }}
+              className="h-[52px] w-[52px] flex-shrink-0 object-contain brightness-0 invert opacity-75"
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] uppercase tracking-wide text-fg-muted">Killed by</p>
+            <p className="truncate text-sm font-bold text-resource-gold">{result.enemyName}</p>
+            {/* Name the special that finished you off — a 45 with no label
+                looks like the enemy simply rolled high. */}
+            {lt?.enemyAction && (
+              <p className="text-[10px] font-black uppercase tracking-[0.15em]" style={{ color: 'var(--combat-crit)' }}>{lt.enemyAction.name}</p>
             )}
           </div>
+          {lt && (
+            <div className="flex-shrink-0 text-right">
+              <p className={`text-2xl font-black leading-none tabular-nums ${lt.enemyAction ? 'text-combat-crit' : 'text-stat-def'}`}>{lt.enemyDealtDamage}</p>
+              <p className="mt-0.5 text-[10px] tabular-nums text-fg-disabled">
+                {lt.enemyAction && lt.enemyAction.rolls.length > 1 ? `( ${lt.enemyAction.rolls.join(' + ')} )` : lt.enemyRaw} − {lt.playerBlocked} = {lt.enemyDealtDamage}
+              </p>
+            </div>
+          )}
         </div>
-      )}
+
+        <dl className="mt-2.5 divide-y divide-line-subtle/30 text-[11px]">
+          <div className="flex items-baseline justify-between gap-3 py-1">
+            <dt className="text-fg-muted">The fight</dt>
+            <dd className="text-right tabular-nums text-fg-secondary">
+              {result.turnsCount} {result.turnsCount === 1 ? 'turn' : 'turns'} · you dealt <span className="font-semibold text-fg-primary">{result.totalDamageDealt}</span> · took{' '}
+              <span className="font-semibold text-fg-primary">{result.totalDamageReceived}</span>
+            </dd>
+          </div>
+          {lt && !wasAdvantageTurn && (
+            <div className="flex items-baseline justify-between gap-3 py-1">
+              <dt className="text-fg-muted">Your last strike</dt>
+              <dd className="min-w-0 truncate text-right tabular-nums text-fg-secondary">
+                <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>
+                  {lastBlowSpell ? lastBlowSpell.name : lastBlowSkill ? `${lastBlowSkill.name} · ${weaponName ?? 'fists'}` : (weaponName ?? 'fists')}
+                </span>{' '}
+                for <span className="font-semibold text-fg-primary">{lt.playerDealtDamage}</span>
+              </dd>
+            </div>
+          )}
+        </dl>
+      </div>
 
       {result.multiplayerBonus && (
         <p className="px-4 py-1.5 text-[10px] text-resource-mp text-center border-b border-combat-defeat/40">Group bonus active</p>
@@ -575,6 +649,7 @@ export default function BattlePanel({
   onCastSpell,
   onUseSkill,
   onDismissResult,
+  levelUp = null,
   isActing,
   playerName,
   playerLevel,
@@ -621,7 +696,7 @@ export default function BattlePanel({
     : null
 
   if (!battle.isInBattle && battleResult) {
-    return <BattleResultCard result={battleResult} weaponIconName={weaponIconName} weaponName={weaponName} onDismiss={onDismissResult} />
+    return <BattleResultCard result={battleResult} weaponName={weaponName} levelUp={levelUp} onDismiss={onDismissResult} />
   }
 
   if (!battle.isInBattle) return null

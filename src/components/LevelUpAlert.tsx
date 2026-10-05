@@ -23,73 +23,99 @@ interface LevelUpAlertProps {
   canSpendSp: boolean
 }
 
-const GOLD_TEXT = { color: 'var(--combat-crit)', textShadow: '0 0 14px color-mix(in srgb, var(--combat-crit) 45%, transparent)' }
+const GOLD = { color: 'var(--combat-crit)' }
 
+/**
+ * The level-up card, centred: a gold medal with the new level in it, then
+ * what the level gave as a row of tiles. One button leads to the Char page,
+ * where Training and Core points are both spent; Skill Points have their own
+ * when there is something to learn. Once the points are gone the card has
+ * done its job, and Close takes the button's place.
+ *
+ * A level gained by winning a fight is not shown here at all: the victory
+ * card carries it as a band (BattlePanel), so there is one card, not two.
+ */
 export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoints, onSpendSkillPoints, tpAvailable, cpAvailable, spAvailable, canSpendSp }: LevelUpAlertProps) {
-  // Training and Core points are spent on the Char page, so one button leads
-  // there for both. Once both are gone the card has done its job: the button
-  // dims to a receipt and Close takes its place as the thing to press.
   const toSpend = Math.max(0, tpAvailable) + Math.max(0, cpAvailable)
   const spent = toSpend <= 0
-  const gains: Array<{ value: number; unit: string; title: string; color: string }> = [
-    { value: data.tpGained, unit: 'TP', title: 'Training Points', color: 'var(--resource-gold)' },
-    { value: data.cpGained, unit: 'CP', title: 'Core Points', color: 'var(--accent)' },
-    { value: data.spGained, unit: 'SP', title: 'Skill Points', color: 'var(--hue-green)' },
-    { value: data.hpGained, unit: 'HP', title: 'Max HP', color: 'var(--resource-hp)' },
-    { value: data.mpGained, unit: 'MP', title: 'Max MP', color: 'var(--resource-mp)' },
-  ].filter((gain) => gain.value > 0)
-  const button = 'h-9 rounded-lg px-3 text-xs font-black uppercase tracking-widest transition-all'
+  const gains: Array<{ label: string; value: string; tone: string }> = [
+    { label: 'Training Points', value: `+${data.tpGained}`, tone: 'text-resource-gold' },
+    { label: 'Core Points', value: `+${data.cpGained}`, tone: 'text-accent' },
+    { label: 'Skill Points', value: `+${data.spGained}`, tone: 'text-stat-mag' },
+    { label: 'Max HP', value: `+${data.hpGained}`, tone: 'text-resource-hp' },
+    { label: 'Max MP', value: `+${data.mpGained}`, tone: 'text-resource-mp' },
+  ].filter((gain) => gain.value !== '+0')
+  const button = 'h-11 rounded-lg px-4 text-sm font-black uppercase tracking-widest transition-all'
 
   return (
-    // A small card that still feels like a prize: a gold edge and a glowing
-    // number, with everything it has to say in three short rows.
     <div
-      className="mx-4 mt-4 overflow-hidden rounded-xl border border-status-warning/80 shadow-xl"
-      style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--resource-gold) 9%, var(--surface-canvas)), color-mix(in srgb, var(--resource-gold) 16%, var(--surface-canvas)) 45%, color-mix(in srgb, var(--resource-gold) 9%, var(--surface-canvas)))' }}
+      className="mx-4 mt-4 overflow-hidden rounded-xl border border-status-warning/80 shadow-2xl"
+      style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas)) 0%, color-mix(in srgb, var(--resource-gold) 18%, var(--surface-canvas)) 40%, color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas)) 100%)' }}
       role="status"
       aria-label={`Level up. You have reached level ${data.newLevel}.`}
     >
-      {/* The news, on one line: Level Up, and the level. */}
+      {/* Banner */}
       <div
-        className="flex items-center gap-2 border-b border-status-warning/40 py-2 pl-4 pr-2"
-        style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--resource-gold) 22%, transparent), transparent)' }}
+        className="relative flex items-center justify-center border-b border-status-warning/40 px-10 py-2.5"
+        style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--resource-gold) 25%, transparent), transparent)' }}
       >
-        <span className="text-base leading-none" style={{ filter: 'drop-shadow(0 0 6px var(--combat-crit))', color: 'var(--combat-crit)' }} aria-hidden="true">★</span>
-        <p className="text-sm font-black uppercase tracking-widest" style={GOLD_TEXT}>Level Up!</p>
-        <p className="ml-auto flex items-baseline gap-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-status-warning/80">Level</span>
-          <span className="text-2xl font-black leading-none tabular-nums" style={GOLD_TEXT}>{data.newLevel}</span>
-        </p>
-        <button onClick={onClose} className="rounded p-1 text-fg-muted transition-colors hover:text-status-warning" aria-label="Dismiss level up alert">
+        <div className="flex items-center gap-2.5">
+          <span className="text-lg leading-none" style={{ ...GOLD, filter: 'drop-shadow(0 0 8px var(--combat-crit))' }} aria-hidden="true">★</span>
+          <p className="text-lg font-black uppercase tracking-widest" style={{ ...GOLD, textShadow: '0 0 20px color-mix(in srgb, var(--combat-crit) 50%, transparent), 0 0 40px color-mix(in srgb, var(--combat-crit) 25%, transparent)' }}>
+            Level Up!
+          </p>
+          <span className="text-lg leading-none" style={{ ...GOLD, filter: 'drop-shadow(0 0 8px var(--combat-crit))' }} aria-hidden="true">★</span>
+        </div>
+        <button onClick={onClose} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-fg-muted transition-colors hover:text-status-warning" aria-label="Dismiss level up alert">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      {/* What the level gave, as one line of small gains. */}
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 py-2.5">
-        {gains.map((gain) => (
-          <span key={gain.unit} className="flex items-baseline gap-1 tabular-nums" title={gain.title}>
-            <span className="text-base font-black" style={{ color: gain.color }}>+{gain.value}</span>
-            <span className="text-[10px] font-bold" style={{ color: gain.color }}>{gain.unit}</span>
+      {/* The medal, centred: the new level in a gold ring. */}
+      <div className="flex flex-col items-center gap-2 px-4 pb-4 pt-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-status-warning/80">You have reached</p>
+        <div
+          className="flex h-32 w-32 flex-col items-center justify-center rounded-full border-[3px]"
+          style={{
+            borderColor: 'var(--combat-crit)',
+            background: 'radial-gradient(circle, color-mix(in srgb, var(--resource-gold) 32%, var(--surface-canvas)) 0%, color-mix(in srgb, var(--resource-gold) 8%, var(--surface-canvas)) 70%)',
+            boxShadow: '0 0 36px color-mix(in srgb, var(--resource-gold) 50%, transparent), inset 0 0 18px color-mix(in srgb, var(--combat-crit) 28%, transparent)',
+          }}
+        >
+          <span className="text-[11px] font-bold uppercase tracking-[0.25em] text-status-warning/80">Level</span>
+          <span className="text-6xl font-black leading-none tabular-nums" style={{ ...GOLD, textShadow: '0 0 30px color-mix(in srgb, var(--combat-crit) 60%, transparent), 0 2px 0 var(--surface-canvas)' }}>
+            {data.newLevel}
           </span>
+        </div>
+      </div>
+
+      <div className="mx-6 h-px" style={{ background: 'linear-gradient(90deg, transparent, var(--resource-gold), var(--combat-crit), var(--resource-gold), transparent)' }} />
+
+      {/* What the level gave, as a centred row of tiles. */}
+      <div className="flex flex-wrap items-stretch justify-center gap-2 px-4 py-4">
+        {gains.map((gain) => (
+          <div
+            key={gain.label}
+            className="flex min-w-[5.25rem] flex-col items-center justify-center rounded-lg border border-status-warning/25 px-2.5 py-2"
+            style={{ background: 'linear-gradient(135deg, var(--surface-panel), var(--surface-raised))' }}
+          >
+            <span className={`text-xl font-black leading-none tabular-nums ${gain.tone}`}>{gain.value}</span>
+            <span className="mt-1 whitespace-nowrap text-[10px] tracking-wide text-fg-muted">{gain.label}</span>
+          </div>
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2 px-3 pb-3">
+      <div className="flex flex-wrap justify-center gap-2 px-4 pb-4">
         {spent ? (
-          <span className={`${button} flex flex-1 items-center justify-center bg-surface-raised text-fg-disabled`}>Points spent ✓</span>
+          <span className={`${button} flex flex-1 items-center justify-center whitespace-nowrap bg-surface-raised text-fg-disabled`}>Points spent ✓</span>
         ) : (
           <button
             type="button"
             onClick={tpAvailable > 0 ? onTrainNow : onSpendCorePoints}
-            className={`${button} flex-1 whitespace-nowrap`}
-            style={{
-              background: 'var(--resource-gold)',
-              color: 'color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas))',
-              boxShadow: '0 0 14px color-mix(in srgb, var(--resource-gold) 35%, transparent)',
-            }}
+            className={`${button} flex-1 whitespace-nowrap fill-resource-gold hover:brightness-110`}
+            style={{ boxShadow: '0 0 14px color-mix(in srgb, var(--resource-gold) 35%, transparent)' }}
           >
             Spend {toSpend} {toSpend === 1 ? 'point' : 'points'}
           </button>
@@ -98,7 +124,7 @@ export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoi
           <button
             type="button"
             onClick={onSpendSkillPoints}
-            className={`${button} flex-1 whitespace-nowrap border border-hue-green/70 text-hue-green hover:bg-hue-green/15`}
+            className={`${button} flex-1 whitespace-nowrap border border-stat-mag/70 text-stat-mag hover:bg-stat-mag/15`}
           >
             Spend SP ({spAvailable})
           </button>

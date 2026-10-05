@@ -45,6 +45,8 @@ interface InventoryDisplayProps {
   onViewChange?: (view: ItemFilterView) => void
   /** The caller draws the group filter itself (the Inv tab's header). */
   hideGroups?: boolean
+  /** Leave out the search box: the Inv tab holds it back until the bag is big enough to need one. */
+  hideSearch?: boolean
   /** The caller draws the slot filter itself. */
   hideSlots?: boolean
   /** The root's padding; the Inv tab's layer supplies its own. */
@@ -124,6 +126,7 @@ export default function InventoryDisplay({
   onViewChange,
   hideGroups = false,
   hideSlots = false,
+  hideSearch = false,
   className = 'p-4 sm:p-5',
   initialOpenId = null,
   onOpenItemChange,
@@ -404,6 +407,9 @@ export default function InventoryDisplay({
       {/* One line: search, which reaches every group at once by name, slot or
           stat, with Sort beside it. */}
       <div className="flex items-center gap-2">
+        {hideSearch ? (
+          <span className="flex-1" />
+        ) : (
         <div className="relative min-w-0 flex-1">
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
           <input
@@ -436,6 +442,7 @@ export default function InventoryDisplay({
             </button>
           )}
         </div>
+        )}
         {effectiveView.group !== 'crafting' && (
           <StatSortControl value={sortStat} onChange={setSortStat} compareEnabled={compareEnabled} onCompareChange={setCompareEnabled} className="flex-shrink-0" />
         )}

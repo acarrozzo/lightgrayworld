@@ -138,36 +138,11 @@ export default function SkillsAndSpellsBook({
   const cardGrid = 'grid grid-cols-1 @min-[640px]:grid-cols-2 gap-3'
   const blurb =
     tab === 'skills'
-      ? 'Spend SP on skills. Proficiencies and defenses work on their own; special attacks cost MP in a fight. Find better teachers to raise the caps.'
-      : 'Spend SP to learn and upgrade spells. Spells consume MP to cast. Find better teachers to raise the caps.'
+      ? 'Proficiencies and defenses work on their own; special attacks cost MP in a fight. Better teachers raise the caps.'
+      : 'Spells cost MP to cast. Better teachers raise the caps.'
 
   const pages = (
     <>
-          <div className="bg-surface-panel/70 border border-line-subtle rounded-2xl px-6 py-4 flex flex-wrap items-center gap-x-8 gap-y-2">
-            <div>
-              <p className={`text-xs uppercase tracking-[0.4em] mb-1 ${tab === 'skills' ? 'text-stat-str/80' : 'text-mood-arcane/80'}`}>Skill Points</p>
-              <h4 className="text-3xl font-semibold text-fg-bright">{sp} SP</h4>
-            </div>
-            {tab === 'skills' ? (
-              <div className="text-sm text-fg-secondary">
-                {passiveSummary.length > 0 ? (
-                  <>
-                    Your skills add <span className="text-fg-bright font-semibold">{passiveSummary.join(' · ')}</span> right now
-                  </>
-                ) : (
-                  'No passive bonus in force yet'
-                )}
-                {' · '}
-                <span className="text-resource-mp font-semibold">{mp}/{player.mpMax ?? 0} MP</span>
-              </div>
-            ) : (
-              <div className="text-sm text-fg-secondary">
-                <span className="text-stat-mag font-semibold">{mag} MAG</span> drives every roll ·{' '}
-                <span className="text-resource-mp font-semibold">{mp}/{player.mpMax ?? 0} MP</span>
-              </div>
-            )}
-          </div>
-
           {notice && (
             <div
               className={`rounded-2xl p-4 border ${
@@ -239,11 +214,49 @@ export default function SkillsAndSpellsBook({
     </>
   )
 
+  const accent = tab === 'skills' ? 'text-stat-str' : 'text-mood-arcane'
+
   return (
-    <div className="@container space-y-4 p-4">
-      <p className="text-xs text-fg-secondary">{blurb}</p>
-      {pages}
-      <ScrollEnd />
+    <div className="@container">
+      {/* What there is to spend, kept in view: scroll as far down the page as
+          you like and the number that decides what you can learn comes with
+          you. Opaque, so the cards pass under it cleanly. */}
+      <div className="sticky top-0 z-10 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-line-subtle/60 bg-surface-panel px-4 py-2 shadow-[0_4px_8px_-6px_var(--shadow)]">
+        <p className="flex items-baseline gap-1.5">
+          <span className={`text-xl font-black leading-none tabular-nums ${sp > 0 ? accent : 'text-fg-muted'}`}>{sp}</span>
+          <span className={`text-[11px] font-bold uppercase tracking-wide ${sp > 0 ? accent : 'text-fg-muted'}`}>
+            {sp === 1 ? 'Skill Point' : 'Skill Points'} to spend
+          </span>
+        </p>
+        <p className="ml-auto flex items-baseline gap-2 text-[11px] tabular-nums text-fg-secondary">
+          {tab === 'spells' && <span className="font-semibold text-stat-mag">{mag} MAG</span>}
+          <span className="font-semibold text-resource-mp">{mp}/{player.mpMax ?? 0} MP</span>
+        </p>
+      </div>
+
+      <div className="space-y-4 p-4">
+        {/* One sentence on how the page works, then what it is doing for you now. */}
+        <div className="space-y-1">
+          <p className="text-xs leading-relaxed text-fg-secondary">{blurb}</p>
+          <p className="text-xs text-fg-secondary">
+            {tab === 'skills' ? (
+              passiveSummary.length > 0 ? (
+                <>
+                  Right now your skills add <span className="font-semibold text-fg-bright">{passiveSummary.join(' · ')}</span>.
+                </>
+              ) : (
+                'No passive bonus is in force yet.'
+              )
+            ) : (
+              <>
+                Every spell rolls on your <span className="font-semibold text-stat-mag">{mag} MAG</span>.
+              </>
+            )}
+          </p>
+        </div>
+        {pages}
+        <ScrollEnd />
+      </div>
     </div>
   )
 }

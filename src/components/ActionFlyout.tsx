@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useState, type RefObject } from 'react'
+import { useLayoutEffect, useMemo, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { entryAccent, formatRelative } from './feed/activityFormat'
+import { X } from 'lucide-react'
+import { useGameStore } from '@/lib/game-state'
+import { findMentionedItem, followFeedLink } from '@/lib/feed-links'
+import { entryAccent } from './feed/activityFormat'
 
 export type ActionFlyoutResult = {
   action?: string
@@ -31,10 +34,17 @@ const FLYOUT_WIDTH = 320 // px (w-80)
  * ActivityTicker. Rendered into a document.body portal with fixed positioning
  * computed from the anchor button's rect, so it can't be clipped by the scroll
  * containers around the room view. The parent controls mount / auto-dismiss.
+ *
+ * It appears the moment something happens and goes away on its own, so it
+ * carries no "now": the feed keeps the time. If the message names an item the
+ * player is carrying, that word is a link to it in the Inv tab.
  */
 export default function ActionFlyout({ result, anchorRef, anchorRect, onDismiss }: ActionFlyoutProps) {
-  const tsMs = result.timestamp ? new Date(result.timestamp).getTime() : Date.now()
-  const [now, setNow] = useState(() => Date.now())
+  const inventory = useGameStore((state) => state.inventory)
+  const mention = useMemo(
+    () => findMentionedItem(result.message, inventory.map((item) => ({ id: item.id, name: item.template.name }))),
+    [result.message, inventory],
+  )
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
 
   // Position above the anchor, left-aligned, clamped to the viewport. A frozen
@@ -74,11 +84,6 @@ export default function ActionFlyout({ result, anchorRef, anchorRect, onDismiss 
     }
   }, [anchorRef, anchorRect])
 
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
   if (pos === null || typeof document === 'undefined') return null
 
   const accent = entryAccent({
@@ -100,22 +105,41 @@ export default function ActionFlyout({ result, anchorRef, anchorRect, onDismiss 
       <div className="relative rounded-lg border border-line-subtle/40 bg-surface-panel/95 backdrop-blur-sm shadow-xl shadow-black/30 px-3 py-2">
         <div className="flex items-start gap-2">
           <span
-            className={`flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full ${accent}`}
+            className={`flex-shrink-0 mt-2 w-1.5 h-1.5 rounded-full ${accent}`}
             aria-hidden="true"
           />
-          <span className="flex-1 min-w-0 whitespace-normal break-words text-xs text-fg-bright">
-            {result.message}
+          <span className="flex-1 min-w-0 whitespace-normal break-words pt-1 text-xs text-fg-bright">
+            {mention && result.message ? (
+              <>
+                {result.message.slice(0, mention.start)}
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    followFeedLink({ tab: 'inv', itemId: mention.itemId })
+                    onDismiss()
+                  }}
+                  title="Show it in your inventory"
+                  className="rounded-sm font-semibold text-hue-green underline decoration-dotted underline-offset-2 hover:decoration-solid focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+                >
+                  {result.message.slice(mention.start, mention.end)}
+                </button>
+                {result.message.slice(mention.end)}
+              </>
+            ) : (
+              result.message
+            )}
           </span>
-          <span className="flex-shrink-0 mt-0.5 text-[10px] text-fg-muted tabular-nums">
-            {formatRelative(tsMs, now)}
-          </span>
+          {/* A full-size target, not a small glyph: this is what a thumb or a
+              keyboard user dismisses with. */}
           <button
             type="button"
             onClick={onDismiss}
             aria-label="Dismiss"
-            className="flex-shrink-0 -mt-0.5 -mr-1 text-fg-muted hover:text-fg-primary text-sm leading-none"
+            title="Dismiss"
+            className="-my-0.5 -mr-1.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-fg-secondary transition-colors hover:bg-surface-raised hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
           >
-            ×
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
         {/* downward caret pointing at the button (near the left edge) */}

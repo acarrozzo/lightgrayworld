@@ -1,5 +1,6 @@
 'use client'
 
+import { ScrollEnd } from './LayerShell'
 import { Sparkles } from 'lucide-react'
 import type { Player } from '@/lib/game-state'
 import { getRoomMapMarker } from './room-map-positions'
@@ -319,6 +320,9 @@ export default function WorldGrid({
       <div className="grid grid-cols-3 gap-2 items-start">{WORLD_REGIONS.map(renderTile)}</div>
       {showVip ? (
         <>
+          {/* The world ends here; the VIP rooms are kept past the end-of-page
+              mark, out of the way of the nine regions, for those who scroll on. */}
+          <ScrollEnd />
           <div className="flex items-center gap-2 mt-1">
             <div className="h-px flex-1 bg-surface-hover/40" />
             <span className="text-[10px] font-semibold uppercase tracking-widest text-resource-gold/70">VIP</span>
