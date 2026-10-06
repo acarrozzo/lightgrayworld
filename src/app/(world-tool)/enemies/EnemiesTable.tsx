@@ -23,6 +23,8 @@ export type EnemyRow = {
   isAggressive: boolean
   isFlying: boolean
   isFriendly: boolean
+  /** A unique, named enemy: a boss with a lair, or a miniboss that rolls in. */
+  rank?: 'boss' | 'miniboss'
   /** Enemy perk ids from game-data/enemy-specials.js, e.g. ['power']. */
   specials: string[]
   drops: { slug: string; name: string; chance: number; tag?: 'always' | 'first-kill' }[]
@@ -226,6 +228,7 @@ function EnemyTr({ r }: { r: EnemyRow }) {
         <div className="flex items-center gap-2">
           <Icon name={r.icon} size={20} />
           <span className="font-medium text-fg-bright">{r.name}</span>
+          {r.rank && <Tag className="border-resource-gold/50 text-resource-gold">{r.rank === 'boss' ? 'boss' : 'mini-boss'}</Tag>}
           {r.isFlying && <Tag>flying</Tag>}
           {r.isFriendly && <Tag>friendly</Tag>}
           {r.specials.map((s) => <Tag key={s}>{s}</Tag>)}
@@ -286,7 +289,8 @@ function EnemyCard({ r }: { r: EnemyRow }) {
       <div className="flex items-center gap-2 mb-2">
         <Icon name={r.icon} size={20} />
         <span className="font-medium text-fg-bright">{r.name}</span>
-        {r.isFlying && <Tag>flying</Tag>}
+        {r.rank && <Tag className="border-resource-gold/50 text-resource-gold">{r.rank === 'boss' ? 'boss' : 'mini-boss'}</Tag>}
+          {r.isFlying && <Tag>flying</Tag>}
         {r.isFriendly && <Tag>friendly</Tag>}
         {r.specials.map((s) => <Tag key={s}>{s}</Tag>)}
       </div>

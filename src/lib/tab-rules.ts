@@ -16,8 +16,8 @@
  * | Toggle Action           | Goes to Explore                        | Toggles |
  * | You change room         | Stay as they are                       | Closes  |
  * | A fight starts, wide    | Stay as they are                       | Stays   |
- * | A fight starts, phone   | Go to Explore — except World, since    | Closes  |
- * |                         | teleport is the way out of a fight     |         |
+ * | A fight starts, phone   | Go to Explore (the battle deck's       | Closes  |
+ * |                         | Travel tab is the way out)             |         |
  * | You die                 | Go to Explore                          | Closes  |
  * | Escape                  | Action closes first, then the tab      |         |
  */
@@ -52,8 +52,7 @@ export function reduceTabs(state: TabState, event: TabEvent): TabState {
     case 'roomChanged':
       return state.actionOpen ? { ...state, actionOpen: false } : state
     case 'fightStarted':
-      if (!event.phone) return state
-      return state.tab === 'world' ? { tab: 'world', actionOpen: false } : HOME
+      return event.phone ? HOME : state
     case 'died':
       return HOME
     case 'escape':

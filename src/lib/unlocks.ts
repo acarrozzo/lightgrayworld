@@ -106,8 +106,9 @@ export const UNLOCKS: readonly UnlockDef[] = [
   {
     id: 'explore:action',
     tab: 'explore',
-    earned: (f) => f.consumableCount > 0 || f.hasAbility,
-    announce: 'The Action button is open under the compass: what you can use, one tap away.',
+    // Something to use, or somewhere to teleport: the deck's Travel tab.
+    earned: (f) => f.consumableCount > 0 || f.hasAbility || f.hasMapOrTeleport || f.deaths > 0,
+    announce: 'The All actions button is open under the compass: what you can use, and where you can go, one tap away.',
   },
   {
     id: 'char:skills',

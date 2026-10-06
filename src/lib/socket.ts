@@ -43,6 +43,8 @@ export interface EnemyTrait {
 export interface BattleStartedPayload extends BattleSnapshot {
   enemyIcon: string
   enemyLevel: number
+  /** 'boss' | 'miniboss' for a unique, named enemy; null for the rest. */
+  enemyRank?: 'boss' | 'miniboss' | null
   enemyAtt: number
   enemyDef: number
   enemyDescription: string

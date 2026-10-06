@@ -6,29 +6,34 @@ import Icon from '@/components/Icon'
 import NotificationBadge from '@/components/NotificationBadge'
 import { DeckContent, type DeckContentProps } from './Deck'
 import { DeckProvider, type DeckContextValue } from './LayerShell'
-import RoomShortcuts from './RoomShortcuts'
-import { LedgerFlyout, QuickLinksCorner, type LedgerActions } from './CompassLedger'
-import { useGatherRemaining } from '@/hooks/useGatherRemaining'
-import { buildRoomShortcuts } from '@/lib/room-shortcuts'
-import type { RoomEnemy } from '@/components/RoomBox'
-import { useGameStore, type InventoryItem, type Player } from '@/lib/game-state'
-import type { GatherCooldownView } from '@/lib/types/room'
+import BasicActionButtons from '@/components/BasicActionButtons'
+import StatusStrip from '@/components/StatusStrip'
+import TrackedQuests, { TrackedQuestsButton } from './TrackedQuestCard'
+import type { TrackedQuestView } from '@/lib/tracked-quest'
+import { statusChips } from '@/lib/status-effects'
+import type { InventoryItem, Player } from '@/lib/game-state'
 
-const { goldChestFlagForRoom } = require('@/lib/game-data/gold-chests')
 
 /**
- * The Explore panel: the D-pad and its corners, with the Action button under
- * the ring (beside it on the phone strip). Action is Explore's own utility,
- * not a tab: on a wide screen it opens the attack, strike, spell and
- * item block over the compass, and closes from the X in its header,
- * Escape, travelling or dying. The mobile strip has no height for that, so
- * there it opens as a sheet that GameInterface draws.
+ * The Explore panel is where you act. The D-pad, with each exit named under
+ * it once you have been through; the four verbs beneath — Attack, Search,
+ * Rest, and All actions, which opens the strike, spell and item block over
+ * the compass; what is running on you as chips; and above it all the quests
+ * you are following, each with its next step. The room card keeps the
+ * room's own hand-authored actions; these are the ones you can always do.
+ *
+ * Action closes from the X in its header, Escape, travelling or dying. The
+ * mobile strip has no height for that layer, so there it opens as a sheet
+ * that GameInterface draws.
  */
-interface ExplorePanelProps extends LedgerActions {
+interface ExplorePanelProps {
   room: any
   player: Player | null
-  /** For the corner ledger and the shortcut rail. */
+  /** For the status chips. */
   inventory?: InventoryItem[]
+  /** The quests being followed, and how to open them. */
+  trackedQuests?: TrackedQuestView[]
+  onOpenTrackedQuest?: () => void
   /** Sidebar: what the Action layer draws from when it is open over the compass. */
   deck?: DeckContentProps
   /** The Action layer is open, so its button reads pressed. */
@@ -63,30 +68,31 @@ interface ExplorePanelProps extends LedgerActions {
    */
   variant?: 'sidebar' | 'strip'
   isLoadingRoom?: boolean
-  /** The action in flight, so a shortcut chip can show it is working. */
+  /** The action in flight, so its verb can show it is working. */
   currentAction?: string
-  /* The room's present enemy: the shortcut rail's Attack chip. */
-  roomEnemy?: RoomEnemy | null
-  isInBattle?: boolean
-  gatherCooldowns?: GatherCooldownView[]
+  /** The last action's result, for the flyout that anchors to the verb that caused it. */
   actionResult?: any
 }
 
-const NO_COOLDOWNS: GatherCooldownView[] = []
+const NO_QUESTS: TrackedQuestView[] = []
 
-/** Bring the room card's own action list into view: the "+N in room" link. */
-function showRoomActions() {
-  if (typeof document === 'undefined') return
-  document.querySelector('.roomboxActions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+/** "In Battle" at the bottom of the panel: the compass is live in a fight, so the badge keeps off the controls. */
+function BattleBadge() {
+  return (
+    <div className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 z-10">
+      <span className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-status-error/90 bg-surface-canvas/70 border border-status-error/25 rounded-lg backdrop-blur-sm">
+        In Battle
+      </span>
+    </div>
+  )
 }
 
 export default function ExplorePanel({
   room,
   player,
   inventory = [],
-  onOpenPoints,
-  onOpenSp,
-  onOpenInventory,
+  trackedQuests = NO_QUESTS,
+  onOpenTrackedQuest,
   deck,
   actionOpen = false,
   enemyHere = false,
@@ -103,9 +109,6 @@ export default function ExplorePanel({
   variant = 'sidebar',
   isLoadingRoom = false,
   currentAction,
-  roomEnemy = null,
-  isInBattle = false,
-  gatherCooldowns = NO_COOLDOWNS,
   actionResult,
 }: ExplorePanelProps) {
   const isSidebar = variant === 'sidebar'
@@ -114,42 +117,19 @@ export default function ExplorePanel({
     [onCloseAction],
   )
 
-  // The shortcut rail reads the same store the room card reads, so a quest
-  // turned in from the Quests tab drops the bubble here in the same render.
-  const quests = useGameStore((s) => s.quests)
-  const killList = useGameStore((s) => s.killList)
-  const giversMet = useGameStore((s) => s.giversMet)
-  const goldChestFlag = goldChestFlagForRoom(room?.roomId) as string | null
-  const goldChestOpened = useGameStore((s) => (goldChestFlag ? Boolean((s.player as any)?.[goldChestFlag]) : false))
-  const { gatherRemaining } = useGatherRemaining(gatherCooldowns, room?.roomId, actionResult)
-  const rail = useMemo(() => {
-    if (!isSidebar || !room?.roomId) return { shortcuts: [], hidden: 0 }
-    return buildRoomShortcuts({
-      roomId: room.roomId,
-      enemy: roomEnemy,
-      isInBattle,
-      gatherCooldowns,
-      gatherRemaining,
-      inventory,
-      quests,
-      killList,
-      player,
-      giversMet,
-      goldChestOpened,
-    })
-  }, [isSidebar, room?.roomId, roomEnemy, isInBattle, gatherCooldowns, gatherRemaining, inventory, quests, killList, player, giversMet, goldChestOpened])
+  // What is running on you, as the Char panel shows it: regen, tea, poison, wings.
+  const chips = useMemo(() => statusChips(player, inventory), [player, inventory])
 
   const dimmedClasses = isDimmed ? 'opacity-20 pointer-events-none' : showBattleBadge ? 'opacity-70' : ''
-  const ledger = { room, player, inventory, onOpenPoints, onOpenSp, onOpenInventory }
   const actionButton = actionUnlocked && (
     <button
       type="button"
       onClick={onToggleAction}
       aria-pressed={actionOpen}
-      aria-label="Action — attack, strikes, spells and items"
-      title="Action — attack, strikes, spells and items"
-      className={`relative flex items-center justify-center font-semibold uppercase tracking-widest border transition-all duration-200 active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-        isSidebar ? 'h-9 w-32 flex-row gap-2 rounded-lg text-[10px]' : 'h-11 w-11 flex-col gap-0.5 rounded-lg text-[7px]'
+      aria-label="All actions — attack, strikes, spells and items"
+      title="All actions — attack, strikes, spells and items"
+      className={`relative flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border font-medium transition-all duration-200 active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+        isSidebar ? 'h-10 px-4 text-sm' : 'h-11 flex-1 px-2 text-sm'
       } ${
         actionOpen
           ? 'fill-action-attack border-fg-bright/20 ring-2 ring-line-focus'
@@ -160,82 +140,64 @@ export default function ExplorePanel({
     >
       <NotificationBadge value={enemyHere} className="absolute -right-1 -top-1 z-10" />
       <Icon name="hand" size={16} color="current" />
-      <span aria-hidden="true">Action</span>
+      <span>All actions</span>
     </button>
   )
 
-  const home = (
-    <div
-      className={`relative flex flex-col items-center justify-center ${
-        isSidebar ? 'flex-1 min-h-0 p-4 gap-3' : 'px-2 py-3'
-      }`}
-    >
-      {/* The corner ledger, from the original nav band: points / weapon / gold
-          with their links top-left, where the original kept its quick links;
-          the room, its danger, and the room's primary actions top-right, where
-          the original kept its badge column. Dims with the compass; the room
-          card carries the same facts in battle. The strip has no corners to
-          spare, so there the ledger sits behind one button at the top-left and
-          the room card keeps the actions. */}
-      {!isSidebar && <LedgerFlyout {...ledger} />}
-      {isSidebar && (
-        <>
-          <div className={`absolute top-2 left-2 z-10 transition-opacity duration-300 ${dimmedClasses}`}>
-            <QuickLinksCorner {...ledger} />
-          </div>
-          <div className={`absolute top-2 right-2 z-10 flex flex-col items-end gap-2 transition-opacity duration-300 ${dimmedClasses}`}>
-            <RoomShortcuts
-              shortcuts={rail.shortcuts}
-              hidden={rail.hidden}
-              onAction={onAction}
-              isLoadingRoom={isLoadingRoom}
-              currentAction={currentAction}
-              onShowAll={showRoomActions}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Desktop puts Action under the D-pad, centred in whatever height is
-          left below the ring (an equal spacer above keeps the ring itself in
-          the middle of the column). The short mobile strip puts it beside the
-          ring, where the Compass centres it in the space to the ring's right. */}
-      <div
-        className={`flex transition-opacity duration-300 ${
-          isSidebar ? 'min-h-0 w-full flex-1 flex-col items-center' : 'relative w-full items-center justify-center'
-        } ${dimmedClasses}`}
-      >
-        {isSidebar && <div className="min-h-0 flex-1" aria-hidden="true" />}
-        <Compass
-          room={room}
-          onAction={onAction}
-          onNavigateToMap={onOpenMap}
-          aside={isSidebar ? undefined : actionButton || undefined}
-          isMoveInProgress={isMoveInProgress}
-          isLocked={isPartyMember}
-          large={isSidebar}
-          className="w-full"
-        />
-        {isSidebar && <div className="flex min-h-[3.25rem] w-full flex-1 items-center justify-center">{actionButton}</div>}
-      </div>
-      {isSidebar && isPartyMember && !isDimmed && (
-        <p className="text-[11px] text-status-info/70">Following your party — leave to move freely.</p>
-      )}
-      {/* The badge used to sit dead centre, over a compass nothing could click
-          anyway. The compass is live in a fight now, and the centre of the ring
-          is the mini-map button, so it sits under the ring instead of on top of
-          a control. */}
-      {showBattleBadge && (
-        <div className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 z-10">
-          <span className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-status-error/90 bg-surface-canvas/70 border border-status-error/25 rounded-lg backdrop-blur-sm">
-            In Battle
-          </span>
-        </div>
-      )}
-    </div>
+  // The four verbs in one row: the three the original always showed, and
+  // Action. BasicActionButtons owns the result flyout, so a Search's answer
+  // appears over the Search button here.
+  const basicVerbs = (
+    <BasicActionButtons
+      onAction={onAction}
+      actionResult={actionResult}
+      isLoadingRoom={isLoadingRoom}
+      currentAction={currentAction}
+      containerClassName={isSidebar ? 'flex items-center justify-center gap-2' : 'flex flex-1 items-center gap-2'}
+      fill={!isSidebar}
+      sizeClassName={isSidebar ? 'h-10 px-4 text-sm' : 'h-11 px-2 text-sm'}
+    />
   )
 
-  if (!isSidebar) return home
+  if (!isSidebar) {
+    // The phone strip: the pin for followed quests at the corner, the ring,
+    // then the four verbs sharing the width as thumb targets.
+    return (
+      <div className="relative flex flex-col items-center gap-2.5 px-2 py-3">
+        {onOpenTrackedQuest && <TrackedQuestsButton quests={trackedQuests} onOpen={onOpenTrackedQuest} roomId={room?.roomId} />}
+        <div className={`flex w-full flex-col items-center gap-2.5 transition-opacity duration-300 ${dimmedClasses}`}>
+          <Compass room={room} onAction={onAction} onNavigateToMap={onOpenMap} isMoveInProgress={isMoveInProgress} isLocked={isPartyMember} className="w-full" />
+          <div className="flex w-full items-center gap-2">
+            {basicVerbs}
+            {actionButton}
+          </div>
+          <StatusStrip chips={chips} className="justify-center" />
+        </div>
+        {showBattleBadge && <BattleBadge />}
+      </div>
+    )
+  }
+
+  // The column: the ring in the middle, the followed quests centred in the
+  // space above it, the verbs (All actions on its own line) and the status
+  // chips centred in the space below.
+  const home = (
+    <div className="relative flex min-h-0 flex-1 flex-col items-center p-4">
+      <div className={`flex min-h-0 w-full flex-1 flex-col items-center justify-center py-2 transition-opacity duration-300 ${dimmedClasses}`}>
+        {onOpenTrackedQuest && <TrackedQuests quests={trackedQuests} onOpen={onOpenTrackedQuest} />}
+      </div>
+      <div className={`w-full transition-opacity duration-300 ${dimmedClasses}`}>
+        <Compass room={room} onAction={onAction} onNavigateToMap={onOpenMap} isMoveInProgress={isMoveInProgress} isLocked={isPartyMember} large className="w-full" />
+      </div>
+      <div className={`flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-3 py-2 transition-opacity duration-300 ${dimmedClasses}`}>
+        {basicVerbs}
+        {actionButton}
+        <StatusStrip chips={chips} className="justify-center" />
+      </div>
+      {isPartyMember && !isDimmed && <p className="text-[11px] text-status-info/70">Following your party — leave to move freely.</p>}
+      {showBattleBadge && <BattleBadge />}
+    </div>
+  )
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

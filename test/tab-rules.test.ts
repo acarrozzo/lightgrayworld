@@ -35,11 +35,8 @@ test('a fight starting changes nothing on a wide screen', () => {
   assert.deepEqual(reduceTabs(on('explore', true), { type: 'fightStarted', phone: false }), on('explore', true))
 })
 
-test('a fight starting on a phone returns to Explore from every tab but World', () => {
-  for (const tab of EVERY_TAB) {
-    const expected = tab === 'world' ? on('world') : HOME
-    assert.deepEqual(reduceTabs(on(tab), { type: 'fightStarted', phone: true }), expected)
-  }
+test('a fight starting on a phone returns to Explore from every tab', () => {
+  for (const tab of EVERY_TAB) assert.deepEqual(reduceTabs(on(tab), { type: 'fightStarted', phone: true }), HOME)
   assert.deepEqual(reduceTabs(on('explore', true), { type: 'fightStarted', phone: true }), HOME)
 })
 

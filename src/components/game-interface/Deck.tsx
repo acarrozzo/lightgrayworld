@@ -107,6 +107,11 @@ export function DeckContent({ tab, ...props }: DeckContentProps & { tab: DeckTab
       onUseItem={props.onUseItem}
       onOpenBook={props.onOpenBook}
       onOpenInventory={props.onOpenInventory}
+      travel={
+        props.openUnlocks.has('tab:world')
+          ? { currentRoomId: props.currentRoomId, onTeleport: props.onTeleport, teleportBlockedReason: props.teleportBlockedReason ?? null }
+          : undefined
+      }
     />
   )
 }

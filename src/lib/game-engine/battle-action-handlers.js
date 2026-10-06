@@ -37,7 +37,7 @@ function makeFeedback(action, outcome, message, data = {}) {
  */
 function settleBattleWinPersistence(playerId, battleState, rewards) {
   return persistBattleWin(playerId, battleState, rewards)
-    .then(({ levelUp, inventory, teleportDiscovery }) => {
+    .then(({ levelUp, inventory, teleportDiscovery, bossTeleport }) => {
       const events = []
       // Drops are persisted after battle:victory is emitted, so push the refreshed
       // inventory once the grants commit — otherwise the client never sees the items.
@@ -52,6 +52,12 @@ function settleBattleWinPersistence(playerId, battleState, rewards) {
             player: { discoveredTeleports: teleportDiscovery.discoveredTeleports },
           }),
         })
+      }
+      // A boss landing this first kill opened. The client's kill list already
+      // counts the win (battle:victory), so the Travel tab's tile needs no data
+      // of its own — only the line.
+      if (bossTeleport) {
+        events.push({ event: 'action:feedback', payload: makeFeedback('discovery', 'success', bossTeleport.message) })
       }
       return events
     })
@@ -750,6 +756,7 @@ async function executeStartBattle(action, playerId, roomState) {
     enemyCurrentHp: snapshot.enemyCurrentHp > 0 ? snapshot.enemyCurrentHp : snapshot.enemyMaxHp,
     enemyIcon: enemy.name,
     enemyLevel: enemy.level,
+    enemyRank: enemy.rank ?? null,
     enemyAtt: enemy.att,
     enemyDef: enemy.def,
     enemyDescription: enemy.description,

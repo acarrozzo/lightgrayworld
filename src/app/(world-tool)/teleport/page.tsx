@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 import { prisma } from '@/lib/prisma'
 import { cachedWorldToolData } from '@/lib/world-tool/cached'
 import { EntityLink } from '@/components/world-tool/EntityLink'
-import { roomHref } from '@/components/world-tool/hrefs'
+import { enemyHref, roomHref } from '@/components/world-tool/hrefs'
 import { Tag } from '@/components/world-tool/ui'
 
 export const metadata = {
@@ -13,9 +13,10 @@ export const metadata = {
     'The fast-travel network of Light Gray RPG — every teleport destination, what unlocks it, what it costs, and the region it belongs to.',
 }
 
-const { TELEPORT_MP_COST, TELEPORT_LOCATIONS } = require('@/lib/game-data/teleport-destinations') as {
+const { TELEPORT_MP_COST, TELEPORT_LOCATIONS, BOSS_TELEPORTS } = require('@/lib/game-data/teleport-destinations') as {
   TELEPORT_MP_COST: number
   TELEPORT_LOCATIONS: TeleportLocation[]
+  BOSS_TELEPORTS: BossTeleport[]
 }
 const { ALL_REGIONS, MAP_SHEETS } = require('@/lib/game-data/world-map') as {
   ALL_REGIONS: { id: string; name: string }[]
@@ -31,10 +32,18 @@ type TeleportLocation = {
   alwaysOpen?: boolean
 }
 
+type BossTeleport = {
+  slug: string
+  roomId: string
+  name: string
+  level: number
+  cost: number
+}
+
 // The room behind each destination, cached in production: see lib/world-tool/cached.ts.
 const loadTeleportRooms = cachedWorldToolData('teleport', () =>
   prisma.room.findMany({
-    where: { roomId: { in: TELEPORT_LOCATIONS.map((l) => l.roomId) } },
+    where: { roomId: { in: [...TELEPORT_LOCATIONS.map((l) => l.roomId), ...BOSS_TELEPORTS.map((b) => b.roomId)] } },
     select: { roomId: true, name: true, region: true },
   })
 )
@@ -67,6 +76,8 @@ export default async function TeleportPage() {
           {TELEPORT_LOCATIONS.length} destinations across {orderedRegions.length} regions, each
           costing {TELEPORT_MP_COST} MP. {openCount} are open from the start; the rest have to be
           discovered by arriving at them, which is what the discovery id records on the player.
+          Below the world, {BOSS_TELEPORTS.length} boss landings open on a boss&apos;s first kill and
+          cost its level in MP.
         </p>
         <p className="mt-2 text-xs text-fg-muted">
           The world is drawn on {Object.keys(MAP_SHEETS).length} map sheets — see the{' '}
@@ -135,6 +146,59 @@ export default async function TeleportPage() {
           </section>
         )
       })}
+
+      <section className="mb-6">
+        <h2 className="mb-2 text-lg font-semibold text-fg-bright">
+          Bosses
+          <span className="ml-2 text-xs font-normal text-fg-muted">{BOSS_TELEPORTS.length}</span>
+        </h2>
+        <p className="mb-2 max-w-4xl text-xs text-fg-muted">
+          The original&apos;s second teleport box: &ldquo;You can fast travel to any boss you have
+          previously defeated.&rdquo; The landing is the boss&apos;s own room, where it may be waiting
+          again. Hydra and the Water Temple Guardian are not listed because their rooms are already
+          landings above.
+        </p>
+        <div className="overflow-x-auto rounded border border-line-subtle/80 bg-surface-panel">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line-subtle text-left text-xs uppercase tracking-wide text-fg-muted">
+                <th scope="col" className="px-3 py-2">Boss</th>
+                <th scope="col" className="px-3 py-2">Room</th>
+                <th scope="col" className="px-3 py-2">Cost</th>
+                <th scope="col" className="px-3 py-2">Unlocked by</th>
+              </tr>
+            </thead>
+            <tbody>
+              {BOSS_TELEPORTS.map((boss) => {
+                const room = roomById.get(boss.roomId)
+                return (
+                  <tr key={boss.slug} className="border-b border-line-subtle/60 last:border-b-0">
+                    <td className="px-3 py-2 font-medium text-fg-bright">
+                      <EntityLink href={enemyHref(boss.slug)}>{boss.name}</EntityLink>
+                      <span className="ml-1.5 text-xs text-fg-muted">L{boss.level}</span>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <EntityLink href={roomHref(boss.roomId)} className="font-mono text-xs">
+                        #{boss.roomId}
+                      </EntityLink>
+                      {room && <span className="ml-1.5 text-fg-secondary">{room.name}</span>}
+                      {!room && (
+                        <span className="ml-1.5 text-status-error" title="No such room in the database">
+                          missing
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-xs text-resource-mp">{boss.cost} MP</td>
+                    <td className="px-3 py-2">
+                      <Tag>first kill</Tag>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   )
 }

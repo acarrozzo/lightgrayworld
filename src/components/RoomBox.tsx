@@ -2,7 +2,6 @@
 
 import RoomDisplay from './RoomDisplay'
 import TravelerCard from './TravelerCard'
-import BasicActionButtons from './BasicActionButtons'
 import type { Room, Player } from '@/lib/game-state'
 import type { PartySnapshot } from '@/lib/socket'
 import type { GatherCooldownView, SupplyView } from '@/lib/types/room'
@@ -40,6 +39,8 @@ export interface RoomEnemy {
   def: number
   isAggressive: boolean
   isFriendly: boolean
+  /** A unique, named enemy: a boss with a lair of its own, or a miniboss that rolls in. */
+  rank?: 'boss' | 'miniboss'
   /** Trait flags from the enemy definition, read by getEnemyTraits for the tag row. */
   specials?: string[]
   isFlying?: boolean
@@ -90,7 +91,7 @@ export default function RoomBox({
   worldTick,
   actionResult,
   isLoadingRoom = false,
-  currentAction = '',
+  currentAction: _currentAction = '',
   roomEnemy = null,
   isInBattle = false,
   isPartyMember = false,
@@ -206,6 +207,11 @@ export default function RoomBox({
               <span className={`text-sm font-semibold truncate ${roomEnemy.isAggressive ? 'text-enemy-hostile' : 'text-fg-bright'}`}>
                 {roomEnemy.name}
               </span>
+              {roomEnemy.rank && (
+                <span className="text-[10px] font-bold text-resource-gold bg-resource-gold/15 border border-resource-gold/40 px-1 rounded shrink-0">
+                  {roomEnemy.rank === 'boss' ? 'BOSS' : 'MINI-BOSS'}
+                </span>
+              )}
               {roomEnemy.isAggressive ? (
                 <span className="text-[10px] font-bold text-enemy-hostile bg-action-attack/30 border border-action-attack/40 px-1 rounded shrink-0">
                   HOSTILE
@@ -299,16 +305,6 @@ export default function RoomBox({
         killList={killList}
       />
 
-      {/* The three persistent actions, last in the room as the original kept
-          them: everything the room offers comes first, then what you can
-          always do. This is their only copy: the result flyout anchors here. */}
-      <BasicActionButtons
-        onAction={onAction}
-        actionResult={actionResult}
-        isLoadingRoom={isLoadingRoom}
-        currentAction={currentAction}
-        containerClassName="flex flex-wrap gap-2 mt-4 pt-4 border-t border-line-subtle/30"
-      />
     </div>
   )
 }

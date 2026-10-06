@@ -32,6 +32,9 @@ import { buildSpellbook, getCastableSpells, getSpell, hasLearnableSpell } from '
 import { buildSkillbook, hasLearnableSkill } from '@/lib/skillbook'
 import { freshTabs, hiddenTabs, unlockDef, type UnlockFacts, type UnlockId } from '@/lib/unlocks'
 import { useUnlocks } from '@/lib/use-unlocks'
+import { useVisitedRooms } from '@/lib/visited-rooms'
+import { trackedQuestView, useTrackedQuests } from '@/lib/tracked-quest'
+import { buildJournal } from '@/lib/quest-journal'
 import { registerFeedLinkHandler, type FeedLink } from '@/lib/feed-links'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
@@ -188,7 +191,7 @@ export default function GameInterface() {
   const [partyDepartureConfirm, setPartyDepartureConfirm] = useState<
     { title: string; message: string; confirmLabel: string; run: () => void } | null
   >(null)
-  const [worldTab, setWorldTab] = useState<WorldTab>('teleport')
+  const [worldTab, setWorldTab] = useState<WorldTab>('map')
   // Desktop world feed starts open; the toggle only affects this session.
   const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(true)
 
@@ -2369,6 +2372,7 @@ export default function GameInterface() {
         enemyName: payload.enemyName,
         enemyIcon: payload.enemyIcon,
         enemyLevel: payload.enemyLevel,
+        enemyRank: payload.enemyRank ?? null,
         enemyAtt: payload.enemyAtt,
         enemyDef: payload.enemyDef,
         enemyTraits: payload.enemyTraits ?? [],
@@ -3174,7 +3178,7 @@ export default function GameInterface() {
   const isWide = viewportWidth >= 1024
 
   // Opening a tab always lands on its main page: Char on the character, Quests
-  // on the journal, World on Teleport and the sheet under your feet. Players
+  // on the journal, World on the Map of the sheet under your feet. Players
   // is the one exception, opening on DM when a message is waiting. Inv's
   // filter is reset when it is left, so a link can set it before opening.
   const openTab = useCallback((tab: TabId) => {
@@ -3182,7 +3186,7 @@ export default function GameInterface() {
     if (tab === 'quests') setQuestsTab('quests')
     if (tab === 'world') {
       syncMapToCurrentRoom()
-      setWorldTab('teleport')
+      setWorldTab('map')
     }
     if (tab === 'players') setPlayersSubTab(useDMStore.getState().getTotalUnreadCount() > 0 ? 'dm' : 'roster')
     setActionOpen(false)
@@ -3352,6 +3356,27 @@ export default function GameInterface() {
     openDMThread(targetPlayer.id, targetPlayer.username)
   }, [openDMThread])
 
+  // Rooms this character has stood in, so the compass can name its exits.
+  const [visitedNames, rememberVisited] = useVisitedRooms(player?.id)
+  useEffect(() => {
+    if (currentRoom?.roomId && currentRoom?.name) rememberVisited(currentRoom.roomId, currentRoom.name)
+  }, [currentRoom?.roomId, currentRoom?.name, rememberVisited])
+
+  // The quests being followed, pinned from the Quests tab and shown beside
+  // the compass. Their rows come from the same journal the Quests tab builds,
+  // so the step and the count never disagree with it. Turning one in unpins it.
+  const trackedQuestStore = useTrackedQuests(player?.id)
+  const trackedRows = useMemo(() => {
+    if (trackedQuestStore.ids.length === 0) return []
+    const rows = buildJournal({ inventory, killList, player, quests, giversMet }).flatMap((group) => group.givers.flatMap((section) => section.rows))
+    return trackedQuestStore.ids.map((id) => rows.find((row) => row.questId === id)).filter((row): row is NonNullable<typeof row> => !!row)
+  }, [trackedQuestStore.ids, inventory, killList, player, quests, giversMet])
+  const removeTracked = trackedQuestStore.remove
+  useEffect(() => {
+    for (const row of trackedRows) if (row.state === 'completed') removeTracked(row.questId)
+  }, [trackedRows, removeTracked])
+  const trackedQuests = useMemo(() => trackedRows.filter((row) => row.state !== 'completed').map((row) => trackedQuestView(row, visitedNames)), [trackedRows, visitedNames])
+
   // Points are spent on the Char page itself; anything that says "spend your
   // points" goes there and brings the controls into view.
   const openCharPoints = useCallback(() => {
@@ -3509,6 +3534,8 @@ export default function GameInterface() {
         return (
           <QuestsPanel
             activeTab={questsTab}
+            trackedQuestIds={trackedQuestStore.ids}
+            onTrackQuest={trackedQuestStore.toggle}
             isLoadingQuests={isLoadingQuests}
             isResettingQuests={isResettingQuests}
             isLoggedIn={isLoggedIn}
@@ -3565,7 +3592,7 @@ export default function GameInterface() {
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, charTab, questsTab, bookHighlight, spBookTab, handlePointsSpent, handleOpenBook, battle.isInBattle, roomEnemy, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
+  }, [goToExplore, centerActiveTab, charTab, questsTab, trackedQuestStore.ids, trackedQuestStore.toggle, bookHighlight, spBookTab, handlePointsSpent, handleOpenBook, battle.isInBattle, roomEnemy, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
 
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
@@ -3991,9 +4018,8 @@ export default function GameInterface() {
                 onAction={handleAction}
                 player={player}
                 inventory={inventory}
-                onOpenPoints={openCharPoints}
-                onOpenSp={spBookTab ? () => handleOpenBook(spBookTab) : undefined}
-                onOpenInventory={unlocks.open.has('tab:inv') ? handleSwitchToInventory : undefined}
+                trackedQuests={trackedQuests}
+                onOpenTrackedQuest={() => openTab('quests')}
                 actionUnlocked={unlocks.open.has('explore:action')}
                 actionFresh={unlocks.fresh.has('explore:action')}
                 isPartyMember={isPartyMember}
@@ -4004,9 +4030,6 @@ export default function GameInterface() {
                 onOpenMap={unlocks.open.has('tab:world') ? openMap : undefined}
                 onCloseAction={closeAction}
                 currentAction={action}
-                roomEnemy={roomEnemy}
-                isInBattle={battle.isInBattle}
-                gatherCooldowns={gatherCooldowns}
                 actionResult={actionResult}
                 isMoveInProgress={isMoveInProgress}
                 isDimmed={player.hp <= 0}
@@ -4125,6 +4148,11 @@ export default function GameInterface() {
                         onCastSpell={(spellId) => socketHandlers.sendGameAction({ type: 'cast_spell', data: { spellId } })}
                         onUseSkill={(skillId) => socketHandlers.sendGameAction({ type: 'use_skill', data: { skillId } })}
                         player={player}
+                        travel={
+                          unlocks.open.has('tab:world')
+                            ? { currentRoomId: currentRoom?.roomId, onTeleport: handleTeleport, teleportBlockedReason: teleportBlockedReason ?? null }
+                            : null
+                        }
                         levelUp={
                           levelUpInVictory && levelUpData
                             ? { data: levelUpData, toSpend: (player.cp ?? 0) + (player.tp ?? 0), onSpend: openCharPoints }
@@ -4208,9 +4236,8 @@ export default function GameInterface() {
                   onAction={handleAction}
                   player={player}
                   inventory={inventory}
-                  onOpenPoints={openCharPoints}
-                  onOpenSp={spBookTab ? () => handleOpenBook(spBookTab) : undefined}
-                  onOpenInventory={unlocks.open.has('tab:inv') ? handleSwitchToInventory : undefined}
+                  trackedQuests={trackedQuests}
+                  onOpenTrackedQuest={() => openTab('quests')}
                   actionUnlocked={unlocks.open.has('explore:action')}
                   actionFresh={unlocks.fresh.has('explore:action')}
                   isPartyMember={isPartyMember}
@@ -4220,6 +4247,8 @@ export default function GameInterface() {
                   onOpenMap={unlocks.open.has('tab:world') ? openMap : undefined}
                   isMoveInProgress={isMoveInProgress}
                   isLoadingRoom={isLoadingRoom}
+                  currentAction={action}
+                  actionResult={actionResult}
                 />
                 )}
               </div>

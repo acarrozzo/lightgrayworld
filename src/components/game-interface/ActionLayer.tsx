@@ -5,7 +5,7 @@ import Icon from '@/components/Icon'
 import type { BattleState, InventoryItem, Player } from '@/lib/game-state'
 import type { FilterTab } from '@/lib/inventory-categories'
 import { deckContextFromBattle, deckContextFromRoom, type targetFromRoomEnemy } from '@/lib/action-deck'
-import ActionDeck from './ActionDeck'
+import ActionDeck, { type TravelDeckProps } from './ActionDeck'
 import LayerShell, { LayerLink, useDeck } from './LayerShell'
 
 type RoomEnemyLike = Parameters<typeof targetFromRoomEnemy>[0]
@@ -25,6 +25,8 @@ interface ActionLayerProps {
   onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
   /** Switches to the Inv tab. */
   onOpenInventory: (filter?: FilterTab, openItemId?: string) => void
+  /** The Travel tab. Absent until the World has been found. */
+  travel?: TravelDeckProps
 }
 
 /**
@@ -47,6 +49,7 @@ export default function ActionLayer({
   onUseItem,
   onOpenBook,
   onOpenInventory,
+  travel,
 }: ActionLayerProps) {
   const { presentation } = useDeck()
   const context = useMemo(
@@ -84,6 +87,7 @@ export default function ActionLayer({
         onUseItem={onUseItem}
         onOpenBook={battle.isInBattle ? undefined : onOpenBook}
         onOpenItem={battle.isInBattle ? undefined : (playerItemId) => onOpenInventory('consumables', playerItemId)}
+        travel={travel}
         listClassName={presentation === 'sheet' ? 'max-h-[42dvh]' : ''}
         idPrefix={presentation}
       />

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, ChevronDown, Check, Circle, HelpCircle } from 'lucide-react'
+import { Search, ChevronDown, Check, Circle, HelpCircle, Pin } from 'lucide-react'
 import { useGameStore } from '@/lib/game-state'
 import type { RequirementContext } from '@/lib/quest-requirements'
 import {
@@ -66,7 +66,12 @@ interface QuestsPanelProps {
   isLoggedIn: boolean
   onResetQuests: () => void
   onSkipToChest: () => void
+  /** The quests being followed beside the compass, and the pin that changes them. */
+  trackedQuestIds?: readonly string[]
+  onTrackQuest?: (questId: string) => void
 }
+
+const NO_IDS: readonly string[] = []
 
 export const QUEST_SUB_TABS: { id: QuestsTab; label: string }[] = [
   { id: 'quests', label: 'Quests' },
@@ -235,10 +240,16 @@ function QuestRow({
   onToggle,
   showGiver = false,
   showFaction = false,
+  tracked = false,
+  onTrack,
 }: {
   row: JournalQuestRow
   open: boolean
   onToggle: () => void
+  /** This is the quest being followed beside the compass. */
+  tracked?: boolean
+  /** Follow this quest, or stop. */
+  onTrack?: (questId: string) => void
   /** Name the giver on the row — their heading is switched off. */
   showGiver?: boolean
   /** Name the faction on the row — its heading is switched off. */
@@ -290,6 +301,20 @@ function QuestRow({
             <span className="text-[9px] font-semibold uppercase tracking-[0.08em] leading-[14px] px-1 rounded-sm border border-status-success/50 text-status-success">
               Ready
             </span>
+          )}
+          {!isDone && onTrack && (
+            <button
+              type="button"
+              onClick={() => onTrack(row.questId)}
+              aria-pressed={tracked}
+              aria-label={tracked ? 'Stop following this quest' : 'Follow this quest beside the compass'}
+              title={tracked ? 'Following — click to stop' : 'Follow beside the compass'}
+              className={`flex h-8 w-6 items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                tracked ? 'text-hue-gold' : 'text-fg-disabled hover:text-fg-primary'
+              }`}
+            >
+              <Pin size={13} className={tracked ? 'fill-current' : ''} aria-hidden="true" />
+            </button>
           )}
           <button
             type="button"
@@ -482,6 +507,8 @@ function GroupHeader({ group, collapsed, onToggle }: { group: JournalGroup; coll
 
 export default function QuestsPanel({
   activeTab,
+  trackedQuestIds = NO_IDS,
+  onTrackQuest,
   isLoadingQuests,
   isResettingQuests,
   isLoggedIn,
@@ -577,7 +604,7 @@ export default function QuestsPanel({
         {!sectionCollapsed && (
           <div className={`space-y-1.5 ml-0 ${indent ? 'sm:ml-5' : ''}`}>
             {section.rows.map((row) => (
-              <QuestRow key={row.key} row={row} open={openRows.has(row.key)} onToggle={() => toggleRow(row.key)} showFaction={showFactionOnRows} />
+              <QuestRow key={row.key} row={row} open={openRows.has(row.key)} onToggle={() => toggleRow(row.key)} tracked={trackedQuestIds.includes(row.questId)} onTrack={onTrackQuest} showFaction={showFactionOnRows} />
             ))}
           </div>
         )}
@@ -593,7 +620,7 @@ export default function QuestsPanel({
   const renderFlatRows = (sections: JournalGiverSection[], indent: boolean) => (
     <div className={`space-y-1.5 ml-0 ${indent ? 'sm:ml-6' : ''}`}>
       {rowsAcrossSections(sections, prefs.sort).map((row) => (
-        <QuestRow key={row.key} row={row} open={openRows.has(row.key)} onToggle={() => toggleRow(row.key)} showGiver={showGiverOnRows} showFaction={showFactionOnRows} />
+        <QuestRow key={row.key} row={row} open={openRows.has(row.key)} onToggle={() => toggleRow(row.key)} tracked={trackedQuestIds.includes(row.questId)} onTrack={onTrackQuest} showGiver={showGiverOnRows} showFaction={showFactionOnRows} />
       ))}
       {unmetAcrossSections(sections).map(renderUnmet)}
     </div>

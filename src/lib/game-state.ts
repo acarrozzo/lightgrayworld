@@ -195,6 +195,8 @@ export interface BattleState {
   enemyName: string | null
   enemyIcon: string | null
   enemyLevel: number | null
+  /** 'boss' | 'miniboss' for a unique, named enemy; null for the rest. */
+  enemyRank: 'boss' | 'miniboss' | null
   enemyAtt: number | null
   enemyDef: number | null
   /** The enemy's standing tag row: perks, Flying, attack type, immunities. */
@@ -316,6 +318,7 @@ const INITIAL_BATTLE_STATE: BattleState = {
   enemyName: null,
   enemyIcon: null,
   enemyLevel: null,
+  enemyRank: null,
   enemyAtt: null,
   enemyDef: null,
   enemyTraits: [],
@@ -504,7 +507,7 @@ export interface GameState {
   cacheRoom: (room: Room) => void
   getCachedRoom: (roomId: string) => Room | null
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
-  setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyAtt: number; enemyDef: number; enemyTraits?: EnemyTrait[]; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
+  setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyRank?: 'boss' | 'miniboss' | null; enemyAtt: number; enemyDef: number; enemyTraits?: EnemyTrait[]; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
   updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; companion?: BattleCompanionStrike | null; extraShot?: BattleExtraShot | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number; absorbed?: number; magicArmorLeft?: number; poisonApplied?: { clicks: number } | null; petrifyApplied?: number; petrifiedTurns?: number; extraHits?: BattleExtraHit[]; enemyDodged?: boolean; petrified?: boolean; melted?: boolean; enemyHealed?: number; enemyEffects?: BattleEnemyEffects; playerCurrency?: number }) => void
   /** A click tick moved the vitals mid-fight (regen, poison): keep the battle card's bars honest. */
   syncBattleVitals: (vitals: { hp?: number }) => void
@@ -636,6 +639,7 @@ export const useGameStore = create<GameState>()(
             enemyName: payload.enemyName,
             enemyIcon: payload.enemyIcon,
             enemyLevel: payload.enemyLevel,
+            enemyRank: payload.enemyRank ?? null,
             enemyAtt: payload.enemyAtt,
             enemyDef: payload.enemyDef,
             enemyTraits: payload.enemyTraits ?? [],

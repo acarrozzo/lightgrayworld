@@ -14,7 +14,7 @@ import { resolveMapView } from './utils'
 const { getMapIdForRoom, TELEPORT_HUBS } = require('@/lib/game-data/world-map')
 const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
 
-export type WorldTab = 'teleport' | 'map' | 'world'
+export type WorldTab = 'map' | 'world'
 
 interface TeleportHub {
   regionId: string
@@ -41,13 +41,13 @@ interface WorldLayerProps {
 
 /**
  * The world layer: Teleport and Map as two sub-tabs under one header, in the
- * left column or as a phone's page. The World tab opens it on Teleport; the
- * centre of the compass ring opens it on the Map.
+ * left column or as a phone's page. Maps are for looking: teleporting as a
+ * verb lives in the action deck's Travel tab. The sheet keeps a button for
+ * its own landing and the World Map tiles carry a ✦ chip for theirs.
  *
- * Teleport is the grid of landings. Map is one sheet, with every found sheet
- * in a filmstrip beneath it and, on the sheet itself, the button that
- * teleports to its landing. World Map is the nine regions at a glance, with a
- * switch for what lies under them; picking a region opens its sheet.
+ * Map is one sheet, with every found sheet in a filmstrip beneath it. World
+ * Map is the nine regions at a glance, with a switch for what lies under
+ * them; picking a region opens its sheet.
  */
 export default function WorldLayer({
   tab,
@@ -127,7 +127,7 @@ export default function WorldLayer({
     if (hereMapId) selectSheet(hereMapId)
   }
 
-  const headerTitle = tab === 'teleport' ? '' : tab === 'world' ? (worldLevel === 'below' ? 'Under the world' : 'The world') : mapView.title
+  const headerTitle = tab === 'world' ? (worldLevel === 'below' ? 'Under the world' : 'The world') : mapView.title
 
   const levelChips = (
     <>
@@ -172,6 +172,9 @@ export default function WorldLayer({
       selectedRegionId={regionId}
       level={worldLevel}
       onSelectSheet={selectSheet}
+      discoveredTeleports={discoveredTeleports}
+      blockedReason={teleportBlockedReason}
+      onTeleport={onTeleport}
     />
   )
 
@@ -219,13 +222,12 @@ export default function WorldLayer({
   const lead = (
     <>
       <HeaderTabs
-        label="Teleport, Map or World Map"
+        label="Map or World Map"
         color="sky"
         active={tab}
-        home="teleport"
+        home="map"
         onChange={onTabChange}
         tabs={[
-          { id: 'teleport', label: 'Teleport', icon: <Sparkles size={14} aria-hidden="true" /> },
           { id: 'map', label: 'Map', icon: <MapIcon size={14} aria-hidden="true" /> },
           { id: 'world', label: 'World Map', icon: <Globe size={14} aria-hidden="true" /> },
         ]}
@@ -239,41 +241,16 @@ export default function WorldLayer({
     <LayerShell title="World" icon={<Globe size={15} aria-hidden="true" />} toneClass="text-hue-sky" lead={lead} flush>
       {tab === 'map' ? (
         <div className="flex min-h-0 flex-1 flex-col">{sheetColumn}</div>
-      ) : tab === 'world' ? (
+      ) : (
         // The nine regions as their own maps, tight, with the level under them
-        // one switch away. Picking one opens its sheet on the Map tab.
+        // one switch away. Picking one opens its sheet on the Map tab; the ✦
+        // chip on a tile teleports to its landing.
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           <div className={`flex flex-col gap-2 ${variant === 'overlay' ? 'mx-auto max-w-[520px]' : ''}`}>
             <div className="flex items-center gap-2">{levelChips}</div>
             {worldGrid}
           </div>
         </div>
-      ) : (
-        <>
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
-            <div className={`flex flex-col gap-2 ${variant === 'overlay' ? 'mx-auto max-w-[520px]' : ''}`}>
-              {teleportBlockedReason && (
-                <p className="rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-[11px] leading-relaxed text-status-error/90">
-                  {teleportBlockedReason}
-                </p>
-              )}
-              <WorldGrid
-                mode="teleport"
-                currentRoomId={currentRoomId}
-                discoveredTeleports={discoveredTeleports}
-                foundMapIds={foundMapIds}
-                blockedReason={teleportBlockedReason}
-                onTeleport={onTeleport}
-              />
-            </div>
-          </div>
-          <div className="flex flex-shrink-0 items-center gap-2 border-t border-line-subtle/40 px-3 py-2 text-[11px]">
-            <span className="font-semibold text-resource-mp" title="Each teleport costs MP">
-              MP cost: {TELEPORT_MP_COST}
-            </span>
-            <span className="truncate text-fg-muted">Any hub you have stood in</span>
-          </div>
-        </>
       )}
     </LayerShell>
   )

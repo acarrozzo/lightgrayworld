@@ -38,6 +38,8 @@ interface BasicActionButtonsProps {
   containerClassName?: string
   /** Padding/typography, so the compact mobile column can shrink the buttons. */
   sizeClassName?: string
+  /** Share the row's width equally: the phone strip, where each button is a thumb target. */
+  fill?: boolean
 }
 
 /**
@@ -51,6 +53,7 @@ export default function BasicActionButtons({
   currentAction = '',
   containerClassName = 'flex flex-wrap gap-2',
   sizeClassName = 'px-4 py-1.5 text-sm',
+  fill = false,
 }: BasicActionButtonsProps) {
   const { activeFlyoutAction, flyoutRootRef, dismissFlyout } = useActionFlyout(actionResult)
 
@@ -59,7 +62,7 @@ export default function BasicActionButtons({
       {BASIC_ACTIONS.map(({ action, label, className }) => {
         const showFlyout = activeFlyoutAction === action
         return (
-          <div key={action} ref={showFlyout ? flyoutRootRef : undefined} className="relative">
+          <div key={action} ref={showFlyout ? flyoutRootRef : undefined} className={fill ? 'relative flex-1' : 'relative'}>
             {showFlyout && actionResult && (
               <ActionFlyout result={actionResult} anchorRef={flyoutRootRef} onDismiss={dismissFlyout} />
             )}
@@ -70,7 +73,7 @@ export default function BasicActionButtons({
                 onAction(action)
               }}
               disabled={isLoadingRoom}
-              className={`${sizeClassName} ${className} disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
+              className={`${sizeClassName} ${className} ${fill ? 'w-full' : ''} disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
             >
               {isLoadingRoom && currentAction === action ? '...' : label}
             </button>

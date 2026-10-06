@@ -36,6 +36,7 @@ const SUB_NAMES: Record<string, string> = {
   dm: 'DM',
   map: 'Map',
   world: 'World Map',
+  travel: 'Travel',
   consumables: 'Items',
   crafting: 'Craft',
   misc: 'Misc',

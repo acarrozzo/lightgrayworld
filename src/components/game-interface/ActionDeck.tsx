@@ -1,8 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Icon from '@/components/Icon'
-import type { InventoryItem, Player } from '@/lib/game-state'
+import { LogOut, Sparkles } from 'lucide-react'
+import type { ReactNode } from 'react'
+import WorldGrid, { foundMapIdsFor, type BossTeleportTile } from './WorldGrid'
+import { useGameStore, type InventoryItem, type Player } from '@/lib/game-state'
+
+const { defeatedBossTeleports } = require('@/lib/game-data/teleport-destinations') as {
+  defeatedBossTeleports: (killedSlugs: string[]) => BossTeleportTile[]
+}
 import { getCastableSpells } from '@/lib/spellbook'
 import { skillTone } from '@/lib/skillbook'
 import { ammoFor, attackBlockedBy, buildStrikeRow, rangeText, weaponInHand, type DeckContext } from '@/lib/action-deck'
@@ -11,7 +18,21 @@ import EntryRow, { EntryVerb } from '@/components/EntryRow'
 import { ABILITY_GRID, LevelTag, ROW_FRAME, SpellRow, useConsumableDeck } from './AbilityRows'
 import ConsumableDeck from './ConsumableDeck'
 
+/** What the Travel tab needs. Absent, the deck has three tabs. */
+export interface TravelDeckProps {
+  currentRoomId?: string
+  onTeleport: (roomId: string) => void
+  /** Why no teleport can go right now (party, MP), or null. */
+  teleportBlockedReason: string | null
+  /** In a fight: leave it where you stand. Two taps, as the header pill asks. */
+  onRetreat?: () => void
+  /** Retreat opens its own dialog, so the row fires on the first tap. */
+  retreatNeedsConfirm?: boolean
+}
+
 export interface ActionDeckProps {
+  /** Teleport, and in a fight Retreat. Left out until the World has been found. */
+  travel?: TravelDeckProps
   player: Player
   inventory: InventoryItem[]
   /** The fight's view of things, or the room's: see action-deck.ts. */
@@ -38,7 +59,7 @@ export interface ActionDeckProps {
 }
 
 /**
- * The action deck: a filled Attack | Spells | Items switch, then that tab's
+ * The action deck: a filled Attack | Spells | Items | Travel switch, then that tab's
  * rows — Attack and the power attacks, the spells, or the item ladders, all
  * drawn the same way. The battle deck draws it under its
  * header; the Action layer draws it over the compass; the phone sheet draws
@@ -63,6 +84,7 @@ export default function ActionDeck({
   onUseItem,
   onOpenBook,
   onOpenItem,
+  travel,
   listClassName = '',
   idPrefix = 'action',
 }: ActionDeckProps) {
@@ -74,6 +96,13 @@ export default function ActionDeck({
   // a fight opens on Items. A fight starting or ending while the deck is on
   // screen moves it to that side's start.
   const [activeTab, setActiveTab] = useState<ActionTab>(() => startingActionTab(situation.inBattle, player, inventory))
+  // The bosses this player has beaten, from the same kill list the Kill List
+  // page reads; battle:victory bumps it, so a boss's tile appears with the win.
+  const killList = useGameStore((s) => s.killList)
+  const defeatedBosses = useMemo(
+    () => defeatedBossTeleports(killList.filter((entry) => entry.kills > 0).map((entry) => entry.monster)),
+    [killList]
+  )
   useEffect(() => {
     setActiveTab(startingActionTab(situation.inBattle, player, inventory))
     // Only the fight starting or ending resets the tab; the player and bag
@@ -103,18 +132,21 @@ export default function ActionDeck({
       ? 'Nothing here to attack'
       : `Rolls 0–${Math.max(0, swingMax)} ${isRanged ? 'DEX' : 'STR'}${target ? `; the ${target.name} blocks 0–${target.def ?? '?'}` : ''}`
 
-  const tabs: { id: ActionTab; label: string; icon: string; count?: number; fill: string }[] = [
-    { id: 'attack', label: 'Attack', icon: weaponIconName, fill: isRanged ? 'fill-stat-dex' : 'fill-stat-str' },
-    { id: 'spells', label: 'Spells', icon: 'magic', count: castableSpells.length, fill: 'fill-stat-mag' },
-    { id: 'items', label: 'Items', icon: 'inv', count: consumables.all.length, fill: 'fill-resource-gold' },
+  const tabs: { id: ActionTab; label: string; icon: ReactNode; count?: number; fill: string }[] = [
+    { id: 'attack', label: 'Attack', icon: <Icon name={weaponIconName} size={18} className="flex-shrink-0 opacity-90" />, fill: isRanged ? 'fill-stat-dex' : 'fill-stat-str' },
+    { id: 'spells', label: 'Spells', icon: <Icon name="magic" size={18} className="flex-shrink-0 opacity-90" />, count: castableSpells.length, fill: 'fill-stat-mag' },
+    { id: 'items', label: 'Items', icon: <Icon name="inv" size={18} className="flex-shrink-0 opacity-90" />, count: consumables.all.length, fill: 'fill-resource-gold' },
+    ...(travel ? [{ id: 'travel' as const, label: 'Travel', icon: <Sparkles size={17} className="flex-shrink-0 opacity-90" aria-hidden="true" />, fill: 'fill-hue-sky' }] : []),
   ]
+  // A tab that has just gone (the World not yet found) falls back to Attack.
+  const shownTab: ActionTab = tabs.some((tab) => tab.id === activeTab) ? activeTab : 'attack'
 
   return (
     <div className="@container flex flex-col gap-2 min-h-0">
       {/* The switch: one filled segment of three, counts on the two lists. */}
-      <div role="tablist" aria-label="Attack, Spells or Items" className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle">
+      <div role="tablist" aria-label={travel ? 'Attack, Spells, Items or Travel' : 'Attack, Spells or Items'} className={`grid gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle ${travel ? 'grid-cols-4' : 'grid-cols-3'}`}>
         {tabs.map((tab) => {
-          const selected = activeTab === tab.id
+          const selected = shownTab === tab.id
           return (
             <button
               key={tab.id}
@@ -124,15 +156,15 @@ export default function ActionDeck({
               aria-controls={`${idPrefix}-deck-${tab.id}`}
               id={`${idPrefix}-tab-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
-              className={`h-12 min-w-0 rounded-lg flex items-center justify-center gap-1.5 px-1 text-xs font-bold uppercase tracking-wide @max-[420px]:text-[10px] @max-[420px]:tracking-normal transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+              className={`h-12 min-w-0 rounded-lg flex items-center justify-center gap-1.5 px-1 text-xs font-bold uppercase tracking-wide transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus @max-[460px]:flex-col @max-[460px]:gap-0.5 @max-[460px]:text-[9px] @max-[460px]:tracking-normal ${
                 selected ? tab.fill : 'text-fg-muted hover:text-fg-primary hover:bg-surface-raised/60'
               }`}
             >
-              {/* Three segments in a phone's width: the label and count come first, the icon only where there is room. */}
-              <Icon name={tab.icon} size={18} className={`flex-shrink-0 @max-[420px]:hidden ${selected ? 'opacity-90' : 'opacity-70'}`} />
-              <span>{tab.label}</span>
+              {/* In a narrow deck the icon sits over the label, as the main tab bar does. */}
+              <span className={selected ? 'opacity-100' : 'opacity-70'}>{tab.icon}</span>
+              <span className="truncate">{tab.label}</span>
               {tab.count !== undefined && (
-                <span className={`text-[10px] font-bold px-1.5 py-px rounded-full tabular-nums ${selected ? 'bg-surface-canvas/30' : 'bg-surface-raised text-fg-secondary'}`} style={selected ? { textShadow: 'none' } : undefined}>
+                <span className={`text-[10px] font-bold px-1.5 py-px rounded-full tabular-nums @max-[460px]:hidden ${selected ? 'bg-surface-canvas/30' : 'bg-surface-raised text-fg-secondary'}`} style={selected ? { textShadow: 'none' } : undefined}>
                   {tab.count}
                 </span>
               )}
@@ -145,8 +177,8 @@ export default function ActionDeck({
           instead of pushing the room off the screen; the layer lets it fill. */}
       <div
         role="tabpanel"
-        id={`${idPrefix}-deck-${activeTab}`}
-        aria-labelledby={`${idPrefix}-tab-${activeTab}`}
+        id={`${idPrefix}-deck-${shownTab}`}
+        aria-labelledby={`${idPrefix}-tab-${shownTab}`}
         className={`@container flex flex-col gap-1.5 min-h-0 ${listClassName ? `overflow-y-auto overscroll-contain ${listClassName}` : ''}`}
       >
         {/* Attack and the power attacks, as the same rows the spells and
@@ -154,7 +186,7 @@ export default function ActionDeck({
             enemy's block, what it costs, and one verb that spends the turn.
             Refused rows stay visible with the reason in place of the cost;
             the server refuses them too, without spending the turn. */}
-        {activeTab === 'attack' && (
+        {shownTab === 'attack' && (
           <div className={ABILITY_GRID}>
             {/* Attack: ranged strikes are DEX, melee are STR — the same split
                 the combat formulas use, so the verb wears the stat it rolls
@@ -229,7 +261,7 @@ export default function ActionDeck({
           </div>
         )}
 
-        {activeTab === 'items' && (
+        {shownTab === 'items' && (
           <ConsumableDeck
             inventory={inventory}
             hpFull={hpFull}
@@ -240,7 +272,7 @@ export default function ActionDeck({
           />
         )}
 
-        {activeTab === 'spells' && (
+        {shownTab === 'spells' && (
           castableSpells.length === 0 ? (
             <p className="text-xs text-fg-disabled italic py-2 px-1">No spells learned yet.</p>
           ) : (
@@ -260,7 +292,78 @@ export default function ActionDeck({
             </div>
           )
         )}
+
+        {shownTab === 'travel' && travel && (
+          <>
+            {travel.onRetreat && (
+              <RetreatRow onRetreat={travel.onRetreat} needsConfirm={travel.retreatNeedsConfirm ?? false} disabled={isActing} />
+            )}
+            {travel.teleportBlockedReason && (
+              <p className="rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-[11px] leading-relaxed text-status-error/90">{travel.teleportBlockedReason}</p>
+            )}
+            {/* The original's teleport grid, the picture players know. The VIP
+                row sits past the end-of-page mark, as it does on every panel. */}
+            <WorldGrid
+              mode="teleport"
+              dense
+              currentRoomId={travel.currentRoomId}
+              discoveredTeleports={player.discoveredTeleports ?? []}
+              foundMapIds={foundMapIdsFor(player, travel.currentRoomId)}
+              blockedReason={travel.teleportBlockedReason}
+              onTeleport={travel.onTeleport}
+              bosses={defeatedBosses}
+              playerMp={player.mp ?? 0}
+            />
+          </>
+        )}
       </div>
     </div>
+  )
+}
+
+/** How long "Leave the fight?" stays armed before the row settles back to Retreat. */
+const RETREAT_CONFIRM_MS = 3000
+
+/**
+ * Retreat as a row of the Travel tab, the fight's other way out beside the
+ * teleports: free, but it leaves you where you stand. Two taps, the first
+ * arming "Leave the fight?", as the pill in the battle header asks — unless
+ * leaving opens its own dialog (a party), when the first tap is enough.
+ */
+function RetreatRow({ onRetreat, needsConfirm, disabled }: { onRetreat: () => void; needsConfirm: boolean; disabled: boolean }) {
+  const [armed, setArmed] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current)
+  }, [])
+  const press = () => {
+    if (disabled) return
+    if (needsConfirm || armed) {
+      if (timer.current) clearTimeout(timer.current)
+      setArmed(false)
+      onRetreat()
+      return
+    }
+    setArmed(true)
+    timer.current = setTimeout(() => setArmed(false), RETREAT_CONFIRM_MS)
+  }
+  return (
+    <EntryRow
+      density="deck"
+      icon="x"
+      iconClass="text-status-error opacity-90"
+      name="Retreat"
+      subline={<span className="text-[10px] text-fg-muted truncate">Leave the fight where you stand. The enemy keeps its HP.</span>}
+      meta={<span className="text-xs font-bold text-fg-muted whitespace-nowrap">free</span>}
+      action={
+        <EntryVerb onClick={press} disabled={disabled} fillClass="fill-status-error" title={armed ? 'Tap again to leave the fight' : 'Retreat from battle'} ariaLabel={armed ? 'Tap again to leave the fight' : 'Retreat from battle'}>
+          <span className="flex items-center gap-1">
+            <LogOut size={12} aria-hidden="true" />
+            {armed ? 'Leave?' : 'Retreat'}
+          </span>
+        </EntryVerb>
+      }
+      className={`${ROW_FRAME} border-l-status-error`}
+    />
   )
 }

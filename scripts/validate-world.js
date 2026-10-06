@@ -344,6 +344,21 @@ const spawnedEnemies = new Set()
 for (const config of Object.values(ROOM_ENEMIES)) {
   for (const slug of listRoomEnemySlugs(config)) spawnedEnemies.add(slug)
 }
+
+// Bosses: `rank` is one of two words, a lair is a seeded room the boss actually
+// spawns in, and only a boss has one (a miniboss rolls in; it has no lair).
+for (const enemy of ENEMIES) {
+  if (enemy.rank === undefined && enemy.lair === undefined) continue
+  if (enemy.rank !== 'boss' && enemy.rank !== 'miniboss') {
+    err('bosses', `${enemy.slug} has rank "${enemy.rank}" — use 'boss' or 'miniboss'`)
+  }
+  if (enemy.lair === undefined) continue
+  if (enemy.rank !== 'boss') err('bosses', `${enemy.slug} has a lair but is not a boss`)
+  if (!isRoom(enemy.lair)) err('bosses', `${enemy.slug}'s lair "${enemy.lair}" is not a seeded room`)
+  else if (!listRoomEnemySlugs(ROOM_ENEMIES[enemy.lair]).includes(enemy.slug)) {
+    err('bosses', `${enemy.slug} never spawns in its lair ${enemy.lair}`)
+  }
+}
 // A traveler that can be fought (the field's bunny) is placed by its own
 // movement, not by a room table; it counts as spawned, and must exist.
 const { TRAVELERS } = load('src/lib/game-data/travelers.js')

@@ -24,8 +24,9 @@ const { CHEST_LOOT, REPEATABLE_CHEST_LOOT } = require('@/lib/game-engine/room-ac
   CHEST_LOOT: Record<string, Record<string, unknown>>
   REPEATABLE_CHEST_LOOT: unknown[]
 }
-const { TELEPORT_LOCATIONS } = require('@/lib/game-data/teleport-destinations') as {
+const { TELEPORT_LOCATIONS, BOSS_TELEPORTS } = require('@/lib/game-data/teleport-destinations') as {
   TELEPORT_LOCATIONS: unknown[]
+  BOSS_TELEPORTS: unknown[]
 }
 
 export type WorldToolCounts = Partial<Record<WorldToolPageKey, number>>
@@ -56,7 +57,7 @@ export const loadWorldToolCounts = cachedWorldToolData('counts', async (): Promi
     shops: Object.keys(SHOPS).length,
     chests: oneTimeChests + REPEATABLE_CHEST_LOOT.length,
     rooms: atlasRooms,
-    teleport: TELEPORT_LOCATIONS.length,
+    teleport: TELEPORT_LOCATIONS.length + BOSS_TELEPORTS.length,
     players,
     'room-desc': compared,
     themes: THEMES.length,

@@ -6,6 +6,7 @@ const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 const { grantTeleport } = require('./teleport-grants')
 const partyStore = require('../services/party-store')
 const { noteKill } = require('./services/kill-list-service')
+const { getBossTeleport } = require('../game-data/teleport-destinations')
 const { getTeleportHubByKill } = require('../game-data/world-map')
 
 /**
@@ -165,7 +166,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
   const { xpAwarded, goldAwarded, drops } = rewards
   const enemy = battleState.enemy
 
-  const { droppedItems, levelUp } = await runWithRetry(
+  const { droppedItems, levelUp, firstKill } = await runWithRetry(
     () =>
       prisma.$transaction(
         async (tx) => {
@@ -178,7 +179,10 @@ async function persistBattleWin(playerId, battleState, rewards) {
             },
           })
 
-          await tx.killList.upsert({
+          // The row comes back with its count, so "first kill" is read off the
+          // write itself rather than off the process-local kill set, which a
+          // second socket or a restart may not have loaded.
+          const killRow = await tx.killList.upsert({
             where: { userId_monster: { userId: playerId, monster: enemy.slug } },
             update: { kills: { increment: 1 } },
             create: { userId: playerId, monster: enemy.slug, kills: 1 },
@@ -230,7 +234,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
           // together — a level-up can never be granted for XP that rolled back.
           const levelUpResult = await checkAndApplyLevelUp(playerId, tx)
 
-          return { droppedItems: granted, levelUp: levelUpResult }
+          return { droppedItems: granted, levelUp: levelUpResult, firstKill: killRow.kills === 1 }
         },
         // Comfortably above the handful of round-trips above, for the case where
         // the database is remote and having a slow minute.
@@ -253,6 +257,12 @@ async function persistBattleWin(playerId, battleState, rewards) {
     console.error('persistBattleWin: teleport discovery failed after commit:', error)
   }
 
+  // The original's boss teleport box: a boss's first kill opens a landing in
+  // its room. Nothing to write — the KillList row just committed is the record
+  // the teleport handler reads — only something to say.
+  const boss = firstKill ? getBossTeleport(enemy.slug) : null
+  const bossTeleport = boss ? { message: `Boss teleport open: ${boss.name}, ${boss.cost} MP.` } : null
+
   // Read back outside the transaction: this is only needed to push to the client
   // and would otherwise hold the transaction open for an extra round-trip.
   // Non-fatal on purpose — the rewards are committed by this point, so a failed
@@ -267,7 +277,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
     }
   }
 
-  return { droppedItems, levelUp, inventory, teleportDiscovery }
+  return { droppedItems, levelUp, inventory, teleportDiscovery, bossTeleport }
 }
 
 async function handleBattleWin(playerId, battleState) {

@@ -520,13 +520,25 @@ async function authorizeNetworkTeleport(prisma, player, toRoomId) {
   })
   if (!row) return { ok: false, reason: 'Player not found' }
 
-  if (!isTeleportDestinationOpen(destination, row.discoveredTeleports)) {
+  // A boss landing opens on the kill, not on a visit: the KillList row is the
+  // record, read here rather than from the process-local kill set so a second
+  // socket's win a moment ago counts.
+  if (destination.bossSlug) {
+    const kill = await prisma.killList.findUnique({
+      where: { userId_monster: { userId: player.id, monster: destination.bossSlug } },
+      select: { kills: true },
+    })
+    if (!kill || kill.kills < 1) {
+      return { ok: false, reason: `You have not defeated ${destination.name} yet.` }
+    }
+  } else if (!isTeleportDestinationOpen(destination, row.discoveredTeleports)) {
     return { ok: false, reason: `You have not found ${destination.name} yet.` }
   }
-  if (row.mp < TELEPORT_MP_COST) {
-    return { ok: false, reason: `You need ${TELEPORT_MP_COST} MP to teleport. Rest first.` }
+  const cost = destination.cost ?? TELEPORT_MP_COST
+  if (row.mp < cost) {
+    return { ok: false, reason: `You need ${cost} MP to teleport${destination.bossSlug ? ` to ${destination.name}` : ''}. Rest first.` }
   }
-  return { ok: true, charge: { cost: TELEPORT_MP_COST, destination } }
+  return { ok: true, charge: { cost, destination } }
 }
 
 /**

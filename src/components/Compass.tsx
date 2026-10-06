@@ -10,13 +10,6 @@ interface CompassProps {
   room: any
   onAction?: (action: string) => void
   onNavigateToMap?: () => void
-  /**
-   * What sits to the right of the ring, in the column that mirrors Up and
-   * Down on the left: the phone strip puts the Action button there. Desktop leaves it
-   * empty and draws the button under the ring instead; the ring wrapper keeps
-   * the same margin on both sides either way, so it stays centred.
-   */
-  aside?: React.ReactNode
   isMoveInProgress?: boolean
   /**
    * Party followers travel with their leader and cannot move on their own; the
@@ -105,7 +98,6 @@ export default function Compass({
   room,
   onAction,
   onNavigateToMap,
-  aside,
   isMoveInProgress = false,
   isLocked = false,
   lockedHint = 'Following your party — leave to move freely',
@@ -202,6 +194,11 @@ export default function Compass({
     : 'w-[120px] @sm:w-[150px] h-[120px] @sm:h-[150px] border-[10px] @sm:border-[25px]'
 
   const isDisabled = isNavigating || isMoveInProgress || isLocked
+  // Open Up and Down exits: rarer, so they sit as labelled pills under the
+  // ring rather than taking a column beside it.
+  const hidden: string[] = HIDDEN_EXITS[room.roomId] ?? []
+  const verticals = verticalDirections.filter((dir) => !!room[dir.key] && !hidden.includes(dir.key))
+
   const directionTitle = (label: string, isAvailable: boolean) => {
     if (isLocked) return lockedHint
     return isAvailable ? `Go ${label}` : `No exit ${label}`
@@ -209,7 +206,7 @@ export default function Compass({
 
   return (
     <div
-      className={`compass @container flex justify-center ${className}`}
+      className={`compass @container flex flex-col items-center gap-2 ${className}`}
       title={isLocked ? lockedHint : undefined}
       // The breathing room between the ring and its two side columns. Scales
       // with the compass's own width (a phone strip or a resizable desktop
@@ -281,62 +278,45 @@ export default function Compass({
               </button>
             )
           })}
+
         </div>
 
         {/* Vertical directions (up/down) */}
-        <div className="absolute right-full mr-[var(--compass-side-gap)] top-1/2 -translate-y-1/2 flex flex-col gap-2">
-          {verticalDirections.map((dir) => {
-            const hiddenForRoom = HIDDEN_EXITS[room.roomId] ?? []
-            const isAvailable = !!room[dir.key] && !hiddenForRoom.includes(dir.key)
-            const directionStyle = getDirectionStyle(dir.key, room.directionColors, room.region, isAvailable)
-
-            const showSpinner = isMoveInProgress && isAvailable
-
-            return (
-              <button
-                key={dir.key}
-                onClick={() => handleNavigate(dir.key)}
-                disabled={isDisabled}
-                className={`w-10 h-10 border rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${directionStyle.className} ${
-                  isLocked ? 'cursor-not-allowed opacity-40' : isDisabled ? 'cursor-wait opacity-60' : ''
-                }`}
-                style={directionStyle.style}
-                title={directionTitle(dir.label, isAvailable)}
-              >
-                {showSpinner ? (
-                  <div className="w-4 h-4 border-2 border-fg-bright/70 border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <ArrowBigUp
-                    className={`h-5 w-5 ${isAvailable ? 'text-fg-bright' : 'text-fg-secondary'}`}
-                    strokeWidth={1.75}
-                    style={dir.rotation !== undefined ? { transform: `rotate(${dir.rotation}deg)` } : undefined}
-                    aria-hidden="true"
-                  />
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* The right-hand column, mirroring up/down: the Action button on the
-            phone strip, nothing on desktop. */}
-        {aside && (
-          <div
-            className="absolute left-full top-1/2 -translate-y-1/2 flex flex-col items-center justify-center"
-            // As wide as the space from the ring to the compass's right edge
-            // (the compass's width less the ring's, halved), so what sits here
-            // is centred in that space at any width.
-            style={{ width: 'calc((100cqw - 100%) / 2)' }}
-          >
-            {aside}
-          </div>
-        )}
-
         {/* No spinner over the map while it pans: the exit buttons already show
             one while the server is confirming a move, and a second spinner
             appearing after the room had changed made arrival read as slower
             than it was. */}
       </div>
+
+      {/* Up and Down, as labelled pills under the ring. Nothing shows for a
+          room without them. */}
+      {verticals.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-2">
+          {verticals.map((dir) => {
+            const directionStyle = getDirectionStyle(dir.key, room.directionColors, room.region, true)
+            return (
+              <button
+                key={dir.key}
+                type="button"
+                onClick={() => handleNavigate(dir.key)}
+                disabled={isDisabled}
+                title={directionTitle(dir.label, true)}
+                className={`flex h-8 items-center gap-1.5 rounded-full border pl-2 pr-3 text-xs font-semibold text-fg-bright transition-all duration-200 ${directionStyle.className} ${
+                  isLocked ? 'cursor-not-allowed opacity-40' : isDisabled ? 'cursor-wait opacity-60' : ''
+                }`}
+                style={directionStyle.style}
+              >
+                {isMoveInProgress ? (
+                  <div className="h-3.5 w-3.5 rounded-full border-2 border-fg-bright/70 border-t-transparent animate-spin" />
+                ) : (
+                  <ArrowBigUp className="h-4 w-4" strokeWidth={1.75} style={{ transform: `rotate(${dir.rotation}deg)` }} aria-hidden="true" />
+                )}
+                <span>{dir.label === 'UP' ? 'Up' : 'Down'}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

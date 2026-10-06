@@ -54,7 +54,8 @@ test('a character who has died always has World: teleport is the only way out of
   assert.ok(earnedUnlocks(facts({ deaths: 1 })).includes('tab:world'))
 })
 
-test('Action waits for something to use: a consumable, a spell or a strike', () => {
+test('Action waits for something to use or somewhere to go', () => {
+  assert.ok(earnedUnlocks(facts({ hasMapOrTeleport: true })).includes('explore:action'))
   assert.ok(!earnedUnlocks(facts({ itemCount: 3 })).includes('explore:action'))
   assert.ok(earnedUnlocks(facts({ consumableCount: 1 })).includes('explore:action'))
   assert.ok(earnedUnlocks(facts({ hasAbility: true })).includes('explore:action'))

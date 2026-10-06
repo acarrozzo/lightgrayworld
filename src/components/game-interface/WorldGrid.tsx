@@ -2,6 +2,11 @@
 
 import { ScrollEnd } from './LayerShell'
 import { Sparkles } from 'lucide-react'
+import Icon from '@/components/Icon'
+import EnemyTraitTags from '@/components/EnemyTraitTags'
+import { getEnemyTraits } from '@/lib/game-data/enemy-traits'
+
+const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
 import type { Player } from '@/lib/game-state'
 import { getRoomMapMarker } from './room-map-positions'
 
@@ -43,6 +48,28 @@ interface MapSheet {
  * maps page had the same two grids behind a "Swap level" button.
  */
 export type WorldLevel = 'surface' | 'below'
+
+/**
+ * A boss landing the player has opened — one entry of `BOSS_TELEPORTS`: the
+ * boss's record from bosses.generated.js (stats and the perk flags
+ * getEnemyTraits reads) plus where it lands and what it costs.
+ */
+export interface BossTeleportTile {
+  slug: string
+  roomId: string
+  name: string
+  level: number
+  icon: string
+  hp: number
+  att: number
+  def: number
+  /** MP, the boss's level. */
+  cost: number
+  specials?: string[]
+  isFlying?: boolean
+  damageType?: 'MELEE' | 'RANGED' | 'MAGIC'
+  [perk: string]: unknown
+}
 
 /**
  * Tile fills for Fast travel, one per region that has artwork. Written out
@@ -102,6 +129,16 @@ interface WorldGridProps {
   onSelectSheet?: (sheetId: string) => void
   /** Smaller type for the mobile strip. */
   dense?: boolean
+  /** The end-of-page spacer before the VIP row. Off inside the fixed-height deck. */
+  endSpacer?: boolean
+  /**
+   * teleport: the bosses the player has beaten, highest level first. Drawn as
+   * their own shelf under the world; nothing is drawn when the list is empty,
+   * so a player who has beaten none never learns the shelf exists.
+   */
+  bosses?: BossTeleportTile[]
+  /** teleport: the player's MP, since a boss landing costs more than a hub. */
+  playerMp?: number
 }
 
 type TileSheet =
@@ -163,6 +200,9 @@ export default function WorldGrid({
   onTeleport,
   onSelectSheet,
   dense = false,
+  endSpacer = true,
+  bosses = [],
+  playerMp = 0,
 }: WorldGridProps) {
   const hereSheetId: string | null = currentRoomId ? getMapIdForRoom(currentRoomId) : null
   const hereMarker = currentRoomId ? getRoomMapMarker(currentRoomId) : null
@@ -263,13 +303,43 @@ export default function WorldGrid({
     // squares the original's teleport page gave them. Only fast travel has
     // them; the map view has nothing to select below a region.
     const subHubs: SubHub[] = mode === 'teleport' ? getSubHubsForRegion(region.id) : []
-    if (subHubs.length === 0) return <div key={region.id}>{tile}</div>
+    // On the map tiles, the way to the region's landing rides on the tile:
+    // a small ✦ chip when that teleport is open and you are not already there.
+    const hubOpen = mode === 'map' && !!region.hub && (region.alwaysOpen === true || discoveredTeleports.includes(region.id))
+    const hubHere = region.hub?.roomId === currentRoomId
+    const teleportChip = hubOpen && !hubHere && onTeleport && region.hub ? (
+      <button
+        type="button"
+        disabled={!!blockedReason}
+        aria-label={`Teleport to ${region.name}, ${region.hub.name}`}
+        title={blockedReason ?? `Teleport to ${region.hub.name} · ${TELEPORT_MP_COST} MP`}
+        onClick={() => {
+          if (!blockedReason && region.hub) onTeleport(region.hub.roomId)
+        }}
+        className={`absolute right-1 top-1 z-10 flex h-6 items-center gap-1 rounded-md border border-fg-bright/20 fill-resource-mp px-1.5 text-[10px] font-bold shadow-sm shadow-black/40 transition-all hover:brightness-110 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+          blockedReason ? 'cursor-not-allowed opacity-50' : ''
+        }`}
+      >
+        <Sparkles size={11} aria-hidden="true" />
+        {TELEPORT_MP_COST} MP
+      </button>
+    ) : null
+    const framedTile = teleportChip ? (
+      <div className="relative">
+        {tile}
+        {teleportChip}
+      </div>
+    ) : (
+      tile
+    )
+
+    if (subHubs.length === 0) return <div key={region.id}>{framedTile}</div>
 
     const isBlocked = !!blockedReason
     const fill = REGION_FILL[region.id] ?? ''
     return (
       <div key={region.id} className="flex flex-col gap-1">
-        {tile}
+        {framedTile}
         <div className="grid grid-cols-2 gap-1">
           {subHubs.map((hub) => {
             const hubOpen = discoveredTeleports.includes(hub.discoveryId)
@@ -311,6 +381,83 @@ export default function WorldGrid({
     )
   }
 
+  // --- Bosses: the trophy shelf, the original's second teleport box -----------
+  // "You can fast travel to any boss you have previously defeated." A card per
+  // beaten boss: portrait, name and level, its HP / ATT / DEF, and the perk
+  // tags the room card and battle header use — the dossier you earned by
+  // beating it. It lands in the boss's lair, where the boss may well be
+  // waiting again, so it is a rematch as much as a ride. Each costs its
+  // boss's level in MP; a hub's single MP is shown once in the Travel header.
+  const renderBossCard = (boss: BossTeleportTile) => {
+    const isHere = boss.roomId === currentRoomId
+    const isBlocked = !!blockedReason
+    const tooPoor = !isBlocked && playerMp < boss.cost
+    const isDisabled = isHere || isBlocked || tooPoor
+    const label = `Teleport to ${boss.name} · ${boss.cost} MP`
+    const title = isHere
+      ? 'You are here'
+      : isBlocked
+        ? blockedReason ?? undefined
+        : tooPoor
+          ? `You need ${boss.cost} MP to teleport to ${boss.name}. Rest first.`
+          : label
+    const traits = getEnemyTraits(boss)
+    return (
+      <div
+        key={boss.slug}
+        className={`relative flex flex-col gap-1.5 rounded-lg border border-hue-purple/40 bg-hue-purple/10 p-2 shadow-sm shadow-shadow ${
+          isHere ? HERE_RING : ''
+        } ${isDisabled && !isHere ? 'opacity-60' : ''}`}
+      >
+        <div className="flex items-start gap-2">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-hue-purple/40 bg-surface-canvas/40 text-hue-purple">
+            <Icon name={boss.icon} size={26} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate text-xs font-bold leading-tight">{boss.name}</span>
+              <span className="shrink-0 rounded border border-resource-gold/40 bg-resource-gold/15 px-1 text-[9px] font-bold uppercase tracking-wider text-resource-gold">
+                L{boss.level}
+              </span>
+            </div>
+            <dl className="mt-0.5 flex items-baseline gap-2 font-mono text-[10px] tabular-nums text-fg-muted">
+              <div><dt className="inline text-[9px] uppercase">hp </dt><dd className="inline text-resource-hp">{boss.hp.toLocaleString()}</dd></div>
+              <div><dt className="inline text-[9px] uppercase">att </dt><dd className="inline text-stat-str">{boss.att}</dd></div>
+              <div><dt className="inline text-[9px] uppercase">def </dt><dd className="inline text-stat-def">{boss.def}</dd></div>
+            </dl>
+          </div>
+        </div>
+        {traits.length > 0 && <EnemyTraitTags traits={traits} />}
+        <button
+          type="button"
+          disabled={isDisabled}
+          aria-label={label}
+          title={title}
+          onClick={() => {
+            if (!isDisabled) onTeleport?.(boss.roomId)
+          }}
+          className={`mt-auto flex h-7 items-center justify-center gap-1 rounded-md text-[10px] font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+            isHere
+              ? 'border border-line-strong/40 text-fg-muted cursor-default'
+              : isDisabled
+                ? 'fill-resource-mp cursor-not-allowed opacity-60'
+                : 'fill-resource-mp hover:brightness-110 active:scale-[0.98]'
+          }`}
+        >
+          {isHere ? (
+            'You are here'
+          ) : (
+            <>
+              <Sparkles size={11} aria-hidden="true" />
+              Teleport · {boss.cost} MP
+            </>
+          )}
+        </button>
+      </div>
+    )
+  }
+  const showBosses = mode === 'teleport' && bosses.length > 0
+
   // The VIP rooms are single sheets with nothing beneath them, so the Below
   // layer has no row to draw for them.
   const showVip = !(mode === 'map' && level === 'below')
@@ -318,11 +465,21 @@ export default function WorldGrid({
   return (
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-3 gap-2 items-start">{WORLD_REGIONS.map(renderTile)}</div>
+      {showBosses && (
+        <>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="h-px flex-1 bg-surface-hover/40" />
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-hue-purple/80">Bosses</span>
+            <div className="h-px flex-1 bg-surface-hover/40" />
+          </div>
+          <div className="grid grid-cols-1 gap-2 @min-[380px]:grid-cols-2">{bosses.map(renderBossCard)}</div>
+        </>
+      )}
       {showVip ? (
         <>
           {/* The world ends here; the VIP rooms are kept past the end-of-page
               mark, out of the way of the nine regions, for those who scroll on. */}
-          <ScrollEnd />
+          {endSpacer && <ScrollEnd />}
           <div className="flex items-center gap-2 mt-1">
             <div className="h-px flex-1 bg-surface-hover/40" />
             <span className="text-[10px] font-semibold uppercase tracking-widest text-resource-gold/70">VIP</span>

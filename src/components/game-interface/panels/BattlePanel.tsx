@@ -8,7 +8,7 @@ import type { LevelUpPayload } from '@/lib/socket'
 import { LogOut } from 'lucide-react'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { spellTone } from '@/lib/spellbook'
-import ActionDeck from '@/components/game-interface/ActionDeck'
+import ActionDeck, { type TravelDeckProps } from '@/components/game-interface/ActionDeck'
 import { deckContextFromBattle } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
 
@@ -41,6 +41,8 @@ interface BattlePanelProps {
   onDismissResult: () => void
   /** A level gained by this win: the victory card carries it as a gold band instead of a second card. */
   levelUp?: VictoryLevelUp | null
+  /** The deck's Travel tab (teleport, Retreat). Absent until the World has been found. */
+  travel?: Omit<TravelDeckProps, 'onRetreat' | 'retreatNeedsConfirm'> | null
   isActing: boolean
   playerName: string
   playerLevel: number
@@ -114,6 +116,15 @@ function LevelBadge({ level }: { level: number }) {
     <span className="inline-flex items-baseline gap-0.5 px-1.5 py-0.5 rounded border border-line-strong/50 bg-surface-raised/60 shrink-0">
       <span className="text-[9px] font-semibold text-fg-muted uppercase tracking-wide leading-none">Lv</span>
       <span className="text-sm font-black text-fg-bright leading-none tabular-nums">{level}</span>
+    </span>
+  )
+}
+
+/** BOSS / MINI-BOSS beside the level: the same gold tag the room card wears. */
+function RankBadge({ rank }: { rank: 'boss' | 'miniboss' }) {
+  return (
+    <span className="shrink-0 rounded border border-resource-gold/40 bg-resource-gold/15 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider leading-none text-resource-gold">
+      {rank === 'boss' ? 'Boss' : 'Mini-boss'}
     </span>
   )
 }
@@ -650,6 +661,7 @@ export default function BattlePanel({
   onUseSkill,
   onDismissResult,
   levelUp = null,
+  travel = null,
   isActing,
   playerName,
   playerLevel,
@@ -836,6 +848,7 @@ export default function BattlePanel({
           <div className="flex items-center gap-2">
             <span className="text-sm font-black text-fg-bright truncate tracking-tight">{battle.enemyName}</span>
             {battle.enemyLevel !== null && <LevelBadge level={battle.enemyLevel} />}
+            {battle.enemyRank && <RankBadge rank={battle.enemyRank} />}
           </div>
           <div className="flex flex-col gap-1 w-full">
             <div className="flex items-baseline justify-end gap-1">
@@ -1124,6 +1137,7 @@ export default function BattlePanel({
           onUseSkill={onUseSkill}
           onCastSpell={onCastSpell}
           onUseItem={onUseItem}
+          travel={travel ? { ...travel, onRetreat: onFlee, retreatNeedsConfirm: fleeNeedsConfirm } : undefined}
           // A fixed height, not a cap: the box stays the same size whichever tab
           // is open and however much is in it.
           listClassName="h-60"
