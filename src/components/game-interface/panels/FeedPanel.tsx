@@ -612,10 +612,14 @@ export default function FeedPanel({
       // Immediately reset unread count when jumping to bottom
       setUnreadCount(0)
       container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
-      // Ensure scroll handler runs after smooth scroll completes
+      // After the smooth scroll: if more lines landed while it ran (a turn is
+      // several entries) it stopped short of them, so snap the rest of the
+      // way, then let the handler read the final position.
       setTimeout(() => {
+        const short = container.scrollHeight - container.scrollTop - container.clientHeight
+        if (short > 4) container.scrollTop = container.scrollHeight
         handleScroll()
-      }, 300)
+      }, 450)
     }
   }, [handleScroll])
 
@@ -653,11 +657,14 @@ export default function FeedPanel({
     if (!container) return
 
     if (entries.length > prevLength) {
-      if (isNearBottom) {
+      const newEntries = entries.slice(prevLength)
+      // Your own action always shows its result: the feed follows it to the
+      // bottom even if you had scrolled up to read. Other people's lines only
+      // pull the feed down when you are already near the bottom.
+      const ownAction = newEntries.some((entry) => entry.type === 'action')
+      if (isNearBottom || ownAction) {
         scrollToBottom()
       } else {
-        // Get new entries
-        const newEntries = entries.slice(prevLength)
         // Filter to only chat messages (world/room without eventType)
         const chatMessages = newEntries.filter(
           (entry) => entry.type === 'party' || ((entry.type === 'world' || entry.type === 'room') && !entry.eventType)

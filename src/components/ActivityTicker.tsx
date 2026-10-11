@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { useTickerStore } from '@/store/tickerStore'
@@ -84,9 +84,18 @@ export default function ActivityTicker() {
   const hasHistory = entries.length > 0
   const isIdle = !latest || now - latestTs > IDLE_MS
 
-  const history = useMemo(() => {
-    return [...entries].slice(-MAX_HISTORY).reverse()
-  }, [entries])
+  // Oldest at the top, newest at the bottom, the feed's order: the bar sits
+  // on the bottom edge and the history rises from it, so the line nearest the
+  // bar is the newest.
+  const history = useMemo(() => entries.slice(-MAX_HISTORY), [entries])
+
+  // The history opens scrolled to its newest line, and keeps up while open.
+  const historyRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (!expanded) return
+    const list = historyRef.current
+    if (list) list.scrollTop = list.scrollHeight
+  }, [expanded, history])
 
   if (!enabled) return null
 
@@ -98,7 +107,7 @@ export default function ActivityTicker() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full flex-shrink-0 z-30"
+      className="relative w-full flex-shrink-0 z-30 border-t border-line-subtle/40 bg-surface-panel/90 pb-[env(safe-area-inset-bottom)]"
       aria-live="polite"
       aria-atomic="false"
     >
@@ -109,7 +118,7 @@ export default function ActivityTicker() {
         className={`
           w-full h-8
           flex items-center justify-center overflow-hidden
-          border-b border-line-subtle/40 bg-surface-panel/90 backdrop-blur-sm
+          backdrop-blur-sm
           px-3
           ${hasHistory ? 'cursor-pointer hover:bg-surface-raised/85' : 'cursor-default'}
           focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-fg-bright/30
@@ -135,7 +144,7 @@ export default function ActivityTicker() {
             </span>
             {hasHistory && (
               <span className="flex-shrink-0 text-fg-muted" aria-hidden="true">
-                {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {expanded ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
               </span>
             )}
           </div>
@@ -153,9 +162,9 @@ export default function ActivityTicker() {
       )}
 
       {expanded && hasHistory && (
-        <div className="absolute top-full left-0 right-0 z-40 px-2 pt-1">
-          <div className="mx-auto max-w-3xl rounded-b-md border border-t-0 border-line-subtle/60 bg-surface-panel/95 backdrop-blur-sm shadow-lg">
-            <div className="max-h-64 overflow-y-auto py-1">
+        <div className="absolute bottom-full left-0 right-0 z-40 px-2 pb-1">
+          <div className="mx-auto max-w-3xl rounded-t-md border border-b-0 border-line-subtle/60 bg-surface-panel/95 backdrop-blur-sm shadow-lg">
+            <div ref={historyRef} className="max-h-64 overflow-y-auto py-1">
               {history.map((entry) => (
                 <div
                   key={entry.id}

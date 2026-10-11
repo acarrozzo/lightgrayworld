@@ -4059,8 +4059,6 @@ export default function GameInterface() {
         isConnected={socket?.connected ?? false}
         onRefresh={() => window.location.reload()}
       />
-      <ActivityTicker />
-
       <div className="relative flex flex-1 overflow-hidden min-h-0">
         {/* Phone: Action is a sheet over the room, above the bottom bar so the bar stays in reach. */}
         {actionOpen && !isWide && <ActionSheet onClose={closeAction} content={deckContent} />}
@@ -4200,14 +4198,19 @@ export default function GameInterface() {
                   {(battle.isInBattle || battleResult) && (
                     // Death takes the whole screen: the card sits on a scrim over
                     // everything — room, compass, tabs — so the only thing left to
-                    // press is Rise again. A victory card stays inline.
+                    // press is Rise again. A victory card stays inline, with the
+                    // room's margins. A fight on a phone has none: the card runs
+                    // edge to edge, every pixel of the screen is HP, readout or
+                    // deck. Desktop keeps the margins; it has the room.
                     <div
                       className={
                         battleResult?.outcome === 'LOSS'
                           ? 'fixed inset-0 z-[60] flex items-center justify-center p-4 bg-surface-canvas/85 backdrop-blur-sm'
                           : fightLocked
-                            ? 'flex min-h-0 flex-1 flex-col px-4 pt-4 pb-3'
-                            : 'px-4 pt-4'
+                            ? 'flex min-h-0 flex-1 flex-col lg:px-4 lg:pt-4 lg:pb-3'
+                            : battle.isInBattle
+                              ? 'lg:px-4 lg:pt-4'
+                              : 'px-4 pt-4'
                       }
                       role={battleResult?.outcome === 'LOSS' ? 'dialog' : undefined}
                       aria-modal={battleResult?.outcome === 'LOSS' ? true : undefined}
@@ -4365,9 +4368,13 @@ export default function GameInterface() {
       </div>
 
       {/* Phone: the tab bar across the bottom — five tabs and More. */}
-      <div className="lg:hidden flex-shrink-0 border-t border-line-subtle/40 bg-surface-panel/95 px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+      <div className="lg:hidden flex-shrink-0 border-t border-line-subtle/40 bg-surface-panel/95 px-2 py-1.5">
         <TabBar variant="phone" active={activeTab} onSelect={selectTab} badges={tabBadges} hidden={hiddenTabSet} fresh={freshTabSet} />
       </div>
+      {/* The last thing that happened, on the screen's bottom edge; its
+          history opens upward over the room. It carries the phone's safe
+          area now that it is the lowest thing drawn. */}
+      <ActivityTicker />
     </div>
   )
 }

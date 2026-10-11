@@ -21,8 +21,6 @@ export type FightFrame = 'fight' | 'fallback'
 const MIN_LIST = 116
 /** It comes back only with room to spare, so a turn that adds a line to the readout cannot make it flicker. */
 const RETURN_LIST = 140
-/** The battle card's top padding inside the area (`pt-4`). */
-const PANEL_TOP = 16
 
 /**
  * Measures, never guesses: the area's height, and the card's height less its
@@ -51,7 +49,10 @@ export function useFightFrame(
       const list = listRef.current
       if (!area || !panel || !list) return
       const fixed = panel.offsetHeight - list.offsetHeight
-      const available = area.clientHeight - PANEL_TOP - fixed
+      // Whatever sits above the card inside the area — the wrapper's padding
+      // on desktop, none on a phone — measured rather than assumed.
+      const top = Math.max(0, panel.getBoundingClientRect().top - area.getBoundingClientRect().top + area.scrollTop)
+      const available = area.clientHeight - top - fixed
       const next: FightFrame =
         current === 'fight' ? (available < MIN_LIST ? 'fallback' : 'fight') : available >= RETURN_LIST ? 'fight' : 'fallback'
       if (next !== current) {

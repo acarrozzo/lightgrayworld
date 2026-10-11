@@ -745,7 +745,7 @@ export default function BattlePanel({
   return (
     <div
       ref={panelRef}
-      className={`@container flex min-h-0 flex-col border border-combat-defeat/60 bg-surface-panel/90 rounded-lg overflow-hidden shadow-lg ${fill ? 'flex-1' : ''}`}
+      className={`@container flex min-h-0 flex-col border-y border-combat-defeat/60 bg-surface-panel/90 overflow-hidden shadow-lg lg:rounded-lg lg:border-x ${fill ? 'flex-1 border-t-0 lg:border-t' : ''}`}
     >
 
       {/* ── In Battle strip, the room in its corner ── */}
