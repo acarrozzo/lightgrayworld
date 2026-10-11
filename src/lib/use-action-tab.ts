@@ -4,9 +4,9 @@ import { getCastableSpells } from './spellbook'
 import { effectiveStats } from './effective-stats'
 import type { InventoryItem, Player } from './game-state'
 
-/** The action deck's three tabs: the attack and its strikes, the spells, the items, and travel (teleport, and Retreat in a fight). */
-export type ActionTab = 'attack' | 'spells' | 'items' | 'travel'
-export const ACTION_TABS: readonly ActionTab[] = ['attack', 'spells', 'items', 'travel']
+/** The action deck's three tabs: the attack and its strikes, the spells, the items. Teleport is the World tab's; Retreat is the battle card's corner. */
+export type ActionTab = 'attack' | 'spells' | 'items'
+export const ACTION_TABS: readonly ActionTab[] = ['attack', 'spells', 'items']
 
 /**
  * The tab a fight opens on: Attack, unless the player is a caster — MAG
@@ -23,7 +23,7 @@ export function battleStartTab(player: Player | null | undefined, inventory: Inv
 
 /**
  * The tab the deck opens on. In a fight, `battleStartTab`. Out of one — the
- * Action button under the compass — always Items: between fights the deck is
+ * Actions tab — always Items: between fights the deck is
  * for eating, drinking and patching up, and Attack usually has nothing to hit.
  */
 export function startingActionTab(inBattle: boolean, player: Player | null | undefined, inventory: InventoryItem[]): ActionTab {

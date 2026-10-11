@@ -26,7 +26,7 @@ const facts = (over: Partial<UnlockFacts>): UnlockFacts => ({ ...NEW_CHARACTER, 
 test('a new character has earned nothing: only Explore and Char show', () => {
   assert.deepEqual(earnedUnlocks(NEW_CHARACTER), [])
   const { open } = resolveUnlocks([], NEW_CHARACTER)
-  assert.deepEqual([...hiddenTabs(open)].sort(), ['inv', 'players', 'quests', 'world'])
+  assert.deepEqual([...hiddenTabs(open)].sort(), ['actions', 'inv', 'players', 'quests', 'world'])
 })
 
 test('each tab arrives with the first thing that gives it a purpose', () => {
@@ -54,11 +54,12 @@ test('a character who has died always has World: teleport is the only way out of
   assert.ok(earnedUnlocks(facts({ deaths: 1 })).includes('tab:world'))
 })
 
-test('Action waits for something to use or somewhere to go', () => {
-  assert.ok(earnedUnlocks(facts({ hasMapOrTeleport: true })).includes('explore:action'))
-  assert.ok(!earnedUnlocks(facts({ itemCount: 3 })).includes('explore:action'))
-  assert.ok(earnedUnlocks(facts({ consumableCount: 1 })).includes('explore:action'))
-  assert.ok(earnedUnlocks(facts({ hasAbility: true })).includes('explore:action'))
+test('Actions waits for something to use; a map alone opens World, not Actions', () => {
+  assert.ok(!earnedUnlocks(facts({ hasMapOrTeleport: true })).includes('tab:actions'))
+  assert.ok(!earnedUnlocks(facts({ deaths: 1 })).includes('tab:actions'))
+  assert.ok(!earnedUnlocks(facts({ itemCount: 3 })).includes('tab:actions'))
+  assert.ok(earnedUnlocks(facts({ consumableCount: 1 })).includes('tab:actions'))
+  assert.ok(earnedUnlocks(facts({ hasAbility: true })).includes('tab:actions'))
 })
 
 test('a solo player is not locked out of Players forever', () => {
@@ -75,12 +76,12 @@ test('what was unlocked stays unlocked when the fact goes away', () => {
 
 test('only what is new is reported as arrived, a tab before its sub-tabs', () => {
   const { arrived } = resolveUnlocks(['tab:inv'], facts({ itemCount: 2, consumableCount: 1, craftingCount: 1 }))
-  assert.deepEqual(arrived, ['explore:action', 'inv:consumables', 'inv:crafting'])
+  assert.deepEqual(arrived, ['tab:actions', 'inv:consumables', 'inv:crafting'])
 })
 
 test('a sub-tab arriving with its own tab does not speak twice', () => {
-  const lines = announcementsFor(['tab:inv', 'inv:consumables', 'explore:action']).map((def) => def.id)
-  assert.deepEqual(lines, ['tab:inv', 'explore:action'])
+  const lines = announcementsFor(['tab:inv', 'inv:consumables', 'tab:actions']).map((def) => def.id)
+  assert.deepEqual(lines, ['tab:inv', 'tab:actions'])
   // On its own, later, it does.
   assert.deepEqual(announcementsFor(['inv:crafting']).map((def) => def.id), ['inv:crafting'])
   // The battle log rides with the kill list and never has a line of its own.

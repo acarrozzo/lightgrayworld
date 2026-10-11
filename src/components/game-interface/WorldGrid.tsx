@@ -387,7 +387,7 @@ export default function WorldGrid({
   // tags the room card and battle header use — the dossier you earned by
   // beating it. It lands in the boss's lair, where the boss may well be
   // waiting again, so it is a rematch as much as a ride. Each costs its
-  // boss's level in MP; a hub's single MP is shown once in the Travel header.
+  // boss's level in MP; a hub's single MP is shown once in the Teleport header.
   const renderBossCard = (boss: BossTeleportTile) => {
     const isHere = boss.roomId === currentRoomId
     const isBlocked = !!blockedReason

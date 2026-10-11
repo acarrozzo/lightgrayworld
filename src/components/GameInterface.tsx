@@ -21,7 +21,7 @@ import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
 import { MessageSquareText, ChevronUp, ChevronDown } from 'lucide-react'
 import ExplorePanel from './game-interface/ExplorePanel'
-import { ActionSheet, DOCK_BAR, DeckContent, type DeckContentProps } from './game-interface/Deck'
+import { DOCK_BAR, DeckContent, type DeckContentProps } from './game-interface/Deck'
 import ActionModal from './ActionModal'
 import ConfirmDialog from './ConfirmDialog'
 import { describePartyDeparture, partyDepartureWarning } from '@/lib/party-succession'
@@ -173,9 +173,6 @@ export default function GameInterface() {
   const respawnRoomRef = useRef<string | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const totalDmUnread = useDMStore((state) => state.getTotalUnreadCount())
-  // Action: Explore's own utility, a layer over the compass (a sheet on a
-  // phone). Not a tab; `lib/tab-rules` says when it opens and closes.
-  const [actionOpen, setActionOpen] = useState(false)
   // Phones only, and only in a fight: the D-pad at the bottom folds down to its
   // own title bar so the battle deck gets the height, and one tap brings it
   // back when the fight turns and the way out is wanted. Out of battle the
@@ -236,7 +233,6 @@ export default function GameInterface() {
   const handleOpenBook = useCallback((tab: BookTab, highlightId?: string) => {
     setBookHighlight(highlightId ?? null)
     setCharTab(tab)
-    setActionOpen(false)
     setCenterActiveTab('char')
   }, [])
 
@@ -274,17 +270,15 @@ export default function GameInterface() {
   // tab is in `lib/tab-rules`; `applyTabEvent` below is the only thing that
   // should change this in response to something happening in the game.
   const [centerActiveTab, setCenterActiveTab] = useState<TabId>('explore')
-  const tabStateRef = useRef({ tab: centerActiveTab, actionOpen })
-  tabStateRef.current = { tab: centerActiveTab, actionOpen }
+  const tabStateRef = useRef({ tab: centerActiveTab })
+  tabStateRef.current = { tab: centerActiveTab }
   const applyTabEvent = useCallback((event: TabEvent) => {
     const next = reduceTabs(tabStateRef.current, event)
     setCenterActiveTab(next.tab)
-    setActionOpen(next.actionOpen)
     return next
   }, [])
   const goToExplore = useCallback(() => {
     setCenterActiveTab('explore')
-    setActionOpen(false)
   }, [])
   const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('roster')
   const [questsTab, setQuestsTab] = useState<QuestsTab>('quests')
@@ -313,7 +307,7 @@ export default function GameInterface() {
     player: null,
   })
   // What the Inv tab's bag is filtered to. Held here so a link can open the
-  // tab on a group or slot (a link from the corner, the Action layer or the feed).
+  // tab on a group or slot (a link from the corner, the Actions tab or the feed).
   const [inventoryView, setInventoryView] = useState<ItemFilterView>(() => filterTabToView())
   // One item the bag should open on arrival, set by a character-panel row and
   // cleared when the player leaves the tab so the same row can send them back.
@@ -664,7 +658,6 @@ export default function GameInterface() {
     return () => window.removeEventListener('keydown', handleEsc)
   }, [
     centerActiveTab,
-    actionOpen,
     applyTabEvent,
     isShopModalOpen,
     playerProfileModal.isOpen,
@@ -3205,7 +3198,6 @@ export default function GameInterface() {
       setWorldTab('map')
     }
     if (tab === 'players') setPlayersSubTab(useDMStore.getState().getTotalUnreadCount() > 0 ? 'dm' : 'roster')
-    setActionOpen(false)
     setCenterActiveTab(tab)
   }, [syncMapToCurrentRoom])
 
@@ -3222,10 +3214,7 @@ export default function GameInterface() {
     setWorldTab('map')
   }, [openTab])
 
-  const toggleAction = useCallback(() => applyTabEvent({ type: 'toggleAction' }), [applyTabEvent])
-  const closeAction = useCallback(() => setActionOpen(false), [])
-
-  // The Action layer's controls send the same actions the deck and the room
+  // The Actions tab's controls send the same actions the deck and the room
   // card send, through handleAction so the phone's snap-to-Explore rule for
   // anything that opens a fight applies. The server decides turn cost and
   // provocation. Attack is the fight's swing in a fight, else the room's
@@ -3254,7 +3243,6 @@ export default function GameInterface() {
 
   const handleOpenPartyTab = useCallback(() => {
     setPlayersSubTab('party')
-    setActionOpen(false)
     setCenterActiveTab('players')
   }, [])
 
@@ -3492,11 +3480,9 @@ export default function GameInterface() {
       markSeen(seen)
     } else if (centerActiveTab === 'world') markSeen(['tab:world'])
     else if (centerActiveTab === 'players') markSeen(['tab:players'])
+    else if (centerActiveTab === 'actions') markSeen(['tab:actions'])
     else if (centerActiveTab === 'char' && charTab !== 'char') markSeen([charTab === 'skills' ? 'char:skills' : 'char:spells'])
   }, [centerActiveTab, charTab, questsTab, markSeen])
-  useEffect(() => {
-    if (actionOpen) markSeen(['explore:action'])
-  }, [actionOpen, markSeen])
 
   // Feed lines that know where they lead (lib/feed-links) are followed here.
   // A place not earned yet is not opened by a link either.
@@ -3524,7 +3510,7 @@ export default function GameInterface() {
         return
       case 'world':
         openTab('world')
-        if (link.sub === 'map') setWorldTab('map')
+        if (link.sub === 'map' || link.sub === 'teleport') setWorldTab(link.sub)
         return
       case 'explore':
         goToExplore()
@@ -3673,7 +3659,10 @@ export default function GameInterface() {
           : null
 
   const activeTab = centerActiveTab
+  // A dot on Actions: something in the room can be attacked.
+  const enemyHere = !battle.isInBattle && !!roomEnemy
   const tabBadges: TabBadges = {
+    actions: enemyHere ? true : undefined,
     char: unspentPoints > 0 ? unspentPoints : undefined,
     inv: newItemIds.size > 0 ? newItemIds.size : undefined,
     quests: readyQuestCount > 0 ? readyQuestCount : hasQuestUpdate ? true : undefined,
@@ -3681,13 +3670,12 @@ export default function GameInterface() {
     feed: unreadCount > 0 ? unreadCount : undefined,
   }
 
-  const enemyHere = !battle.isInBattle && !!roomEnemy
   const levelUpInVictory = !!levelUpData && !battle.isInBattle && battleResult?.outcome === 'WIN'
 
-  // Every tab in the one frame: its sub-tabs (or its name) and close. World
-  // and Inv bring their own layer; the rest are panels wrapped here.
+  // Every tab in the one frame: its sub-tabs (or its name) and close. World,
+  // Inv and Actions bring their own layer; the rest are panels wrapped here.
   const renderPanelLayer = (presentation: DeckPresentation) => {
-    if (centerActiveTab === 'inv' || centerActiveTab === 'world') {
+    if (centerActiveTab === 'inv' || centerActiveTab === 'world' || centerActiveTab === 'actions') {
       return (
         <DeckProvider value={{ presentation, onClose: goToExplore }}>
           <DeckContent tab={centerActiveTab} {...deckContent} />
@@ -4060,8 +4048,6 @@ export default function GameInterface() {
         onRefresh={() => window.location.reload()}
       />
       <div className="relative flex flex-1 overflow-hidden min-h-0">
-        {/* Phone: Action is a sheet over the room, above the bottom bar so the bar stays in reach. */}
-        {actionOpen && !isWide && <ActionSheet onClose={closeAction} content={deckContent} />}
         {/* Left: on desktop (lg+), the D-pad by default, a panel or deck layer when a tab is open; the tab bar pinned above it */}
         <div
           className="relative hidden lg:flex flex-col flex-shrink-0 border-r border-line-subtle/30 bg-surface-panel/95 min-h-0 overflow-hidden"
@@ -4083,15 +4069,8 @@ export default function GameInterface() {
                 inventory={inventory}
                 trackedQuests={trackedQuests}
                 onOpenTrackedQuest={() => openTab('quests')}
-                actionUnlocked={unlocks.open.has('explore:action')}
-                actionFresh={unlocks.fresh.has('explore:action')}
                 isPartyMember={isPartyMember}
-                deck={deckContent}
-                actionOpen={actionOpen}
-                enemyHere={enemyHere}
-                onToggleAction={toggleAction}
                 onOpenMap={unlocks.open.has('tab:world') ? openMap : undefined}
-                onCloseAction={closeAction}
                 currentAction={action}
                 actionResult={actionResult}
                 isMoveInProgress={isMoveInProgress}
@@ -4232,11 +4211,6 @@ export default function GameInterface() {
                         onCastSpell={(spellId) => socketHandlers.sendGameAction({ type: 'cast_spell', data: { spellId } })}
                         onUseSkill={(skillId) => socketHandlers.sendGameAction({ type: 'use_skill', data: { skillId } })}
                         player={player}
-                        travel={
-                          unlocks.open.has('tab:world')
-                            ? { currentRoomId: currentRoom?.roomId, onTeleport: handleTeleport, teleportBlockedReason: teleportBlockedReason ?? null }
-                            : null
-                        }
                         levelUp={
                           levelUpInVictory && levelUpData
                             ? { data: levelUpData, toSpend: (player.cp ?? 0) + (player.tp ?? 0), onSpend: openCharPoints }
@@ -4276,14 +4250,13 @@ export default function GameInterface() {
               </div>
 
               {/* D-pad — mobile/tablet only (< lg). Crafting is a sheet over the
-                  whole screen, so it hides this; a battle no longer does. The
-                  strip carries the Teleport control, which is how a fight is
-                  escaped, and hiding it left phones with no way out but the
-                  Retreat pill. */}
+                  whole screen, so it hides this; a battle folds it instead. The
+                  ring's centre opens the World tab, where Teleport is, so the
+                  strip stays reachable mid-fight as a second way out beside
+                  the card's Retreat pill. */}
               <div className={`lg:hidden flex-shrink-0 flex flex-col border-t border-line-subtle/30 ${isCraftingOpen ? 'hidden' : ''}`}>
                 {/* In a fight the D-pad collapses to this bar. It names what is
-                    behind it rather than saying "expand", because the reason to
-                    open it mid-fight is almost always the Teleport button. */}
+                    behind it rather than saying "expand". */}
                 {battle.isInBattle && (
                   <button
                     type="button"
@@ -4292,7 +4265,7 @@ export default function GameInterface() {
                     className="flex items-center justify-center gap-1.5 w-full py-2 text-[11px] font-semibold uppercase tracking-widest text-fg-muted bg-surface-canvas/60 hover:text-fg-primary transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
                   >
                     {isBattleDpadOpen ? <ChevronDown size={13} aria-hidden="true" /> : <ChevronUp size={13} aria-hidden="true" />}
-                    {isBattleDpadOpen ? 'Hide compass' : 'Compass & teleport'}
+                    {isBattleDpadOpen ? 'Hide compass' : 'Compass'}
                   </button>
                 )}
                 {(!battle.isInBattle || isBattleDpadOpen) && (
@@ -4304,12 +4277,7 @@ export default function GameInterface() {
                   inventory={inventory}
                   trackedQuests={trackedQuests}
                   onOpenTrackedQuest={() => openTab('quests')}
-                  actionUnlocked={unlocks.open.has('explore:action')}
-                  actionFresh={unlocks.fresh.has('explore:action')}
                   isPartyMember={isPartyMember}
-                  actionOpen={actionOpen}
-                  enemyHere={enemyHere}
-                  onToggleAction={toggleAction}
                   onOpenMap={unlocks.open.has('tab:world') ? openMap : undefined}
                   isMoveInProgress={isMoveInProgress}
                   isLoadingRoom={isLoadingRoom}
@@ -4367,7 +4335,7 @@ export default function GameInterface() {
         )}
       </div>
 
-      {/* Phone: the tab bar across the bottom — five tabs and More. */}
+      {/* Phone: the tab bar across the bottom — every tab, eight tiles. */}
       <div className="lg:hidden flex-shrink-0 border-t border-line-subtle/40 bg-surface-panel/95 px-2 py-1.5">
         <TabBar variant="phone" active={activeTab} onSelect={selectTab} badges={tabBadges} hidden={hiddenTabSet} fresh={freshTabSet} />
       </div>

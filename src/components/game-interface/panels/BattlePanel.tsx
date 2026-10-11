@@ -3,14 +3,14 @@
 import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player, useGameStore } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
-import { useEffect, type ReactNode, type Ref } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import type { LevelUpPayload } from '@/lib/socket'
-import { ChevronRight } from 'lucide-react'
+import { ChevronLeft, LogOut } from 'lucide-react'
 import HpBar from '@/components/game-interface/HpBar'
 import type { FightFrame } from '@/components/game-interface/useFightFrame'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { spellTone } from '@/lib/spellbook'
-import ActionDeck, { type TravelDeckProps } from '@/components/game-interface/ActionDeck'
+import ActionDeck from '@/components/game-interface/ActionDeck'
 import { companionInHand, deckContextFromBattle, rangeText } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
 
@@ -32,7 +32,7 @@ interface BattlePanelProps {
   onFlee: () => void
   /**
    * True when Retreat opens its own confirmation — leaving a fight also leaves
-   * the player's party behind, and that gets a dialog. The row then fires on
+   * the player's party behind, and that gets a dialog. The pill then fires on
    * the first tap rather than arming, so the player is not asked twice.
    */
   fleeNeedsConfirm?: boolean
@@ -45,7 +45,7 @@ interface BattlePanelProps {
   /** The card and its list, for the holder to measure. */
   panelRef?: Ref<HTMLDivElement>
   listRef?: Ref<HTMLDivElement>
-  /** The strip's Room chip: the room's number, and what pressing it opens. Neither, no chip. */
+  /** The strip's Room chip, in its left corner: the room's number, and what pressing it opens. Neither, no chip. */
   roomLabel?: string
   onOpenRoom?: () => void
   onUseItem: (itemId: string, action: string) => void
@@ -55,8 +55,6 @@ interface BattlePanelProps {
   onDismissResult: () => void
   /** A level gained by this win: the victory card carries it as a gold band instead of a second card. */
   levelUp?: VictoryLevelUp | null
-  /** The deck's Travel tab (teleport, Retreat). Absent until the World has been found. */
-  travel?: Omit<TravelDeckProps, 'onRetreat' | 'retreatNeedsConfirm'> | null
   isActing: boolean
   playerName: string
   playerLevel: number
@@ -631,14 +629,17 @@ function BattleResultCard({ result, weaponName, levelUp, onDismiss }: { result: 
 // anything) as power-attack buttons. Every one of them wears its damage range
 // — the raw roll before the enemy's block, the original's "(max N)" made
 // honest: a swing rolls 0–STR (or DEX), a strike adds its bonus roll on top.
-// A filled switch under the row picks the list — Spells, Items, Travel — and
-// every row in the list is one tap. Retreat is a row of the Travel tab, which
-// a fight always has, found World or not.
+// A filled switch under the row picks the list — Attack, Spells, Items — and
+// every row in the list is one tap. Retreat is the pill in the In Battle
+// strip's right corner, open from the first turn; Teleport is the World tab's.
 //
 // Two drawings of the vitals, by the card's width: under 600px you are on
 // the left and the enemy on the right with the numbers inside fat bars and
 // the readout at two thirds size, so a phone's pinned fight screen leaves
 // the deck its rows; wider, the full-size overview and readout as before.
+
+/** How long a first Retreat tap stays armed before it quietly disarms. */
+const RETREAT_CONFIRM_MS = 2500
 
 export default function BattlePanel({
   battle,
@@ -656,7 +657,6 @@ export default function BattlePanel({
   onUseSkill,
   onDismissResult,
   levelUp = null,
-  travel = null,
   isActing,
   playerName,
   playerLevel,
@@ -675,6 +675,28 @@ export default function BattlePanel({
   // The deck itself (ConsumableDeck) sets and clears the preview; the bars
   // here only read it.
   const itemPreview = useGameStore((s) => s.itemPreview)
+
+  // Retreat is two taps: the first arms "Leave the fight?" for a moment, the
+  // second goes. A new fight, or the end of one, drops a half-pressed Retreat.
+  const [retreatArmed, setRetreatArmed] = useState(false)
+  const retreatTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const disarmRetreat = useCallback(() => {
+    if (retreatTimer.current) clearTimeout(retreatTimer.current)
+    retreatTimer.current = null
+    setRetreatArmed(false)
+  }, [])
+  useEffect(() => { disarmRetreat() }, [battle.isInBattle, battle.enemySlug, disarmRetreat])
+  useEffect(() => () => { if (retreatTimer.current) clearTimeout(retreatTimer.current) }, [])
+  const handleRetreat = () => {
+    if (isActing) return
+    if (fleeNeedsConfirm || retreatArmed) {
+      disarmRetreat()
+      onFlee()
+      return
+    }
+    setRetreatArmed(true)
+    retreatTimer.current = setTimeout(() => setRetreatArmed(false), RETREAT_CONFIRM_MS)
+  }
 
   const isRanged = weaponCategory === 'RANGED'
   const hasPlayerFormula = battle.playerRaw !== null
@@ -748,7 +770,7 @@ export default function BattlePanel({
       className={`@container flex min-h-0 flex-col border-y border-combat-defeat/60 bg-surface-panel/90 overflow-hidden shadow-lg lg:rounded-lg lg:border-x ${fill ? 'flex-1 border-t-0 lg:border-t' : ''}`}
     >
 
-      {/* ── In Battle strip, the room in its corner ── */}
+      {/* ── In Battle strip: the room in its left corner, Retreat in its right ── */}
       <div className="relative flex items-center justify-center px-4 py-1.5 border-b border-combat-defeat/40"
         style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-defeat) 19%, transparent), color-mix(in srgb, var(--combat-defeat) 19%, transparent), color-mix(in srgb, var(--combat-defeat) 19%, transparent), transparent)' }}
       >
@@ -758,21 +780,40 @@ export default function BattlePanel({
           In Battle
         </p>
         {/* The room, one tap away while the card is pinned over it: its
-            actions, its supplies, who is standing here. Retreat is not here
-            any more; the Travel tab holds it. */}
+            actions, its supplies, who is standing here. */}
         {roomLabel && onOpenRoom && (
           <button
             type="button"
             onClick={onOpenRoom}
             title="The room: its actions, supplies and who is here"
-            className="absolute right-1.5 @min-[600px]:right-12 top-1/2 -translate-y-1/2 h-6 px-2.5 rounded-full border border-hue-blue/50 bg-hue-blue/10 text-hue-blue text-[9px] font-bold tracking-wider inline-flex items-center gap-1 transition-colors duration-150 hover:bg-hue-blue/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+            className="absolute left-1.5 top-1/2 -translate-y-1/2 h-6 px-2.5 rounded-full border border-hue-blue/50 bg-hue-blue/10 text-hue-blue text-[9px] font-bold tracking-wider inline-flex items-center gap-1 transition-colors duration-150 hover:bg-hue-blue/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
             style={{ textShadow: 'none' }}
           >
-            <ChevronRight size={11} aria-hidden="true" />
+            <ChevronLeft size={11} aria-hidden="true" />
             Room
             <span className="font-mono font-medium tracking-normal normal-case text-fg-secondary tabular-nums">{roomLabel}</span>
           </button>
         )}
+        {/* Retreat: free, but it leaves you where you stand and the enemy
+            keeps its HP, so there is nothing to farm by running. Open from
+            the first turn. */}
+        <button
+          type="button"
+          onClick={handleRetreat}
+          disabled={isActing}
+          aria-live="polite"
+          aria-label={retreatArmed ? 'Tap again to leave the fight' : 'Retreat from battle'}
+          title="Retreat: leave the fight where you stand. The enemy keeps its HP."
+          className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-6 px-2.5 rounded-full border text-[9px] font-bold tracking-wider inline-flex items-center gap-1 transition-colors duration-150 disabled:opacity-45 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+            retreatArmed
+              ? 'fill-status-error border-status-error'
+              : 'border-status-error/50 bg-status-error/10 text-status-error hover:bg-status-error/20'
+          }`}
+          style={{ textShadow: 'none' }}
+        >
+          <LogOut size={11} aria-hidden="true" />
+          {retreatArmed ? 'Leave?' : 'Retreat'}
+        </button>
       </div>
 
       {/* ── Overview, compact: a narrow card. You left, the enemy right, the
@@ -1238,14 +1279,6 @@ export default function BattlePanel({
           onUseSkill={onUseSkill}
           onCastSpell={onCastSpell}
           onUseItem={onUseItem}
-          // A fight always has its Travel tab: Retreat lives there, so a
-          // fighter who has not found the World yet gets the tab with Retreat
-          // alone rather than no way out.
-          travel={
-            travel
-              ? { ...travel, onRetreat: onFlee, retreatNeedsConfirm: fleeNeedsConfirm }
-              : { grid: false, teleportBlockedReason: null, onRetreat: onFlee, retreatNeedsConfirm: fleeNeedsConfirm }
-          }
           // Pinned, the list takes whatever height the column leaves. Scrolling,
           // it is a fixed box: the same size whichever tab is open and however
           // much is in it.

@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // A second dev server in the same checkout (another Claude chat's preview)
+  // must not share `.next` with the first: two webpack instances writing one
+  // build directory wedge each other. NEXT_DIST_DIR gives it its own.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+
   // Use webpack instead of turbopack
   experimental: {
     // turbo: false // This option doesn't exist in NextConfig
@@ -15,6 +20,7 @@ const nextConfig: NextConfig = {
         ignored: [
           '**/node_modules/**',
           '**/.next/**',
+          '**/.next-*/**',
           '**/src/lib/icon-mappings.ts',
           '**/scripts/**'
         ]

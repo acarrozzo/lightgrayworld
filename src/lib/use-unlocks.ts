@@ -14,12 +14,19 @@ const SETTLE_MS = 5000
 const latchKey = (userId: string) => `lg:unlocks:${userId}`
 const freshKey = (userId: string) => `lg:unlocks-fresh:${userId}`
 
+/** Ids that have been renamed: a latch written under the old name still counts. */
+const RENAMED: Record<string, UnlockId> = { 'explore:action': 'tab:actions' }
+
 function readIds(key: string): UnlockId[] | null {
   try {
     const raw = window.localStorage.getItem(key)
     if (raw === null) return null
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((id): id is UnlockId => typeof id === 'string' && unlockDef(id as UnlockId) !== undefined) : []
+    return Array.isArray(parsed)
+      ? parsed
+          .map((id) => (typeof id === 'string' ? RENAMED[id] ?? id : id))
+          .filter((id): id is UnlockId => typeof id === 'string' && unlockDef(id as UnlockId) !== undefined)
+      : []
   } catch {
     return null
   }

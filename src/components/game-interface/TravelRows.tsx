@@ -46,16 +46,16 @@ export interface TravelRowsProps {
   bosses: BossTeleportTile[]
   playerMp: number
   onTeleport: (roomId: string) => void
-  /** In a fight: the row at the top. Omit out of one. */
+  /** A row to draw above the ladders, if a holder has one. */
   retreat?: ReactNode
-  /** Off, only Retreat is drawn: the World has not been found yet. */
+  /** Off, only `retreat` is drawn. */
   rows?: boolean
 }
 
 /**
  * The verb: "Teleport to Grassy Field" where the row is wide enough to carry
  * the name, "Teleport" where it is not. Decided by the list's width (the
- * deck's container): a full-width row has the room from 600px; a sub-hub row
+ * holder's container): a full-width row has the room from 600px; a sub-hub row
  * sharing its line with another only from 1000px.
  */
 function TeleportVerb({ name, paired = false }: { name: string; paired?: boolean }) {
@@ -78,9 +78,9 @@ function Ladder({ label, note, tone }: { label: string; note?: string; tone: str
 }
 
 /**
- * The Travel tab as rows: the original's teleport page, drawn the way the
- * deck draws everything else so a Go is the same shape as a Cast. Retreat
- * first in a fight. Then three ladders — Regions, Bosses, VIP — each row an
+ * The World tab's Teleport page as rows: the original's teleport page, drawn
+ * the way the action deck draws everything else so a Go is the same shape as
+ * a Cast. Three ladders — Regions, Bosses, VIP — each row an
  * icon square in its region's map colour, the landing's name, the hub room
  * under it, the MP where a spell shows its cost, and one verb. A row that
  * cannot go keeps its place and says why in the cost's slot: not found yet,

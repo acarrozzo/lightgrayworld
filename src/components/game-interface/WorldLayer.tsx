@@ -3,18 +3,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Globe, LocateFixed, Map as MapIcon, Sparkles } from 'lucide-react'
 import MapContent from '@/components/MapContent'
-import type { Player } from '@/lib/game-state'
+import { useGameStore, type Player } from '@/lib/game-state'
 import LayerShell, { HeaderTabs, ICON_BUTTON, useDeck } from './LayerShell'
 import SubTabButton from './SubTabButton'
 import SheetFilmstrip from './SheetFilmstrip'
-import WorldGrid, { foundMapIdsFor, type WorldLevel } from './WorldGrid'
+import TravelRows from './TravelRows'
+import WorldGrid, { foundMapIdsFor, type BossTeleportTile, type WorldLevel } from './WorldGrid'
 import type { MapConfigEntry } from './constants'
 import { resolveMapView } from './utils'
 
 const { getMapIdForRoom, TELEPORT_HUBS } = require('@/lib/game-data/world-map')
-const { TELEPORT_MP_COST } = require('@/lib/game-data/teleport-destinations')
+const { TELEPORT_MP_COST, defeatedBossTeleports } = require('@/lib/game-data/teleport-destinations') as {
+  TELEPORT_MP_COST: number
+  defeatedBossTeleports: (killedSlugs: string[]) => BossTeleportTile[]
+}
 
-export type WorldTab = 'map' | 'world'
+/** Map: one sheet. World Map: the nine regions. Teleport: the original's teleport page, as rows. */
+export type WorldTab = 'map' | 'world' | 'teleport'
 
 interface TeleportHub {
   regionId: string
@@ -40,10 +45,12 @@ interface WorldLayerProps {
 }
 
 /**
- * The world layer: Teleport and Map as two sub-tabs under one header, in the
- * left column or as a phone's page. Maps are for looking: teleporting as a
- * verb lives in the action deck's Travel tab. The sheet keeps a button for
- * its own landing and the World Map tiles carry a ✦ chip for theirs.
+ * The world layer: Map, World Map and Teleport as three sub-tabs under one
+ * header, in the left column or as a phone's page. Maps are for looking; the
+ * sheet keeps a button for its own landing and the World Map tiles carry a ✦
+ * chip for theirs. Teleport is the whole of fast travel — every teleport in
+ * the game is here and nowhere else: the regions, their sub-hubs, the bosses
+ * beaten, the VIP rooms, each a row with its MP cost and one Go.
  *
  * Map is one sheet, with every found sheet in a filmstrip beneath it. World
  * Map is the nine regions at a glance, with a switch for what lies under
@@ -72,6 +79,13 @@ export default function WorldLayer({
   const foundIds = useMemo(() => foundMaps.map((map) => map.id), [foundMaps])
   const foundMapIds = useMemo(() => foundMapIdsFor(player, currentRoomId), [player, currentRoomId])
   const discoveredTeleports = useMemo(() => player?.discoveredTeleports ?? [], [player?.discoveredTeleports])
+  // The bosses this player has beaten, from the same kill list the Kill List
+  // page reads; battle:victory bumps it, so a boss's row appears with the win.
+  const killList = useGameStore((s) => s.killList)
+  const defeatedBosses = useMemo(
+    () => defeatedBossTeleports(killList.filter((entry) => entry.kills > 0).map((entry) => entry.monster)),
+    [killList],
+  )
   const hereMapId: string | null = currentRoomId ? getMapIdForRoom(currentRoomId) : null
   const mapView = resolveMapView(currentMapId, foundMaps, currentRoomId)
   const regionId: string | null = foundMaps.find((map) => map.id === currentMapId)?.region ?? null
@@ -127,7 +141,8 @@ export default function WorldLayer({
     if (hereMapId) selectSheet(hereMapId)
   }
 
-  const headerTitle = tab === 'world' ? (worldLevel === 'below' ? 'Under the world' : 'The world') : mapView.title
+  const headerTitle =
+    tab === 'teleport' ? `Fast travel · ${TELEPORT_MP_COST} MP` : tab === 'world' ? (worldLevel === 'below' ? 'Under the world' : 'The world') : mapView.title
 
   const levelChips = (
     <>
@@ -222,7 +237,7 @@ export default function WorldLayer({
   const lead = (
     <>
       <HeaderTabs
-        label="Map or World Map"
+        label="Map, World Map or Teleport"
         color="sky"
         active={tab}
         home="map"
@@ -230,6 +245,7 @@ export default function WorldLayer({
         tabs={[
           { id: 'map', label: 'Map', icon: <MapIcon size={14} aria-hidden="true" /> },
           { id: 'world', label: 'World Map', icon: <Globe size={14} aria-hidden="true" /> },
+          { id: 'teleport', label: 'Teleport', icon: <Sparkles size={14} aria-hidden="true" /> },
         ]}
       />
       <span className="ml-auto min-w-0 truncate text-[11px] text-fg-muted">{headerTitle}</span>
@@ -241,6 +257,22 @@ export default function WorldLayer({
     <LayerShell title="World" icon={<Globe size={15} aria-hidden="true" />} toneClass="text-hue-sky" lead={lead} flush>
       {tab === 'map' ? (
         <div className="flex min-h-0 flex-1 flex-col">{sheetColumn}</div>
+      ) : tab === 'teleport' ? (
+        // The original's teleport page as rows: regions with their sub-hubs,
+        // the bosses beaten, the VIP rooms. The list is the layer's own
+        // scroller; `@container` so the rows size their verbs by its width.
+        <div className="@container min-h-0 flex-1 overflow-y-auto p-3">
+          <div className={`flex flex-col gap-1.5 ${variant === 'overlay' ? 'mx-auto max-w-[520px]' : ''}`}>
+            <TravelRows
+              currentRoomId={currentRoomId}
+              discoveredTeleports={discoveredTeleports}
+              blockedReason={teleportBlockedReason}
+              bosses={defeatedBosses}
+              playerMp={player?.mp ?? 0}
+              onTeleport={onTeleport}
+            />
+          </div>
+        </div>
       ) : (
         // The nine regions as their own maps, tight, with the level under them
         // one switch away. Picking one opens its sheet on the Map tab; the ✦

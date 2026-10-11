@@ -4,7 +4,7 @@ import type { ConsumableSummary } from '@/lib/item-actions'
  * A consumable's colour, as the semantic roles the theme already defines:
  * what the thing touches. The icon, the left rail, the effect text and the
  * verb all wear it, so a Strength Potion reads as STR at a glance in the bag,
- * in the shop, in the deck and in the Action layer alike.
+ * in the shop, in the battle deck and in the Actions tab alike.
  */
 export const CONSUMABLE_TONES = {
   hp: { text: 'text-resource-hp', fill: 'fill-resource-hp', rail: 'border-l-resource-hp' },

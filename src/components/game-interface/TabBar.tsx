@@ -20,7 +20,7 @@ interface TabDef {
   /** The same accent as a text class, for the tab's header title. */
   tone: string
   icon: (size: number) => ReactNode
-  /** A tab only on a phone: a wide screen has the feed as its right-hand panel. */
+  /** A tab only on a phone: a wide screen has the feed as its right-hand panel. The phone bar carries every tab, eight tiles. */
   phoneOnly?: boolean
   /** Opened from the header's gear, not from the bar. */
   offBar?: boolean
@@ -28,8 +28,9 @@ interface TabDef {
 
 /**
  * The game's tabs, in the order they are shown. Explore is home: the room and
- * the compass, lit when nothing else is open. One registry for the desktop
- * bar, the phone bar and every tab's header. The rules for what opens and
+ * the compass, lit when nothing else is open; Actions, the last tile, is what
+ * you can do — attack, strikes, spells and items — red, the fight's colour. One
+ * registry for the desktop bar, the phone bar and every tab's header. The rules for what opens and
  * closes them are in `lib/tab-rules`.
  */
 export const TABS: TabDef[] = [
@@ -40,6 +41,7 @@ export const TABS: TabDef[] = [
   { id: 'quests', color: 'gold', label: 'Quests', title: 'Quests', tone: 'text-hue-gold', icon: (size) => <Icon name="trophy" size={size} color="current" /> },
   { id: 'players', color: 'pink', label: 'Players', title: 'Players — who is here, and messages', tone: 'text-hue-pink', icon: (size) => <MessageSquare size={size} aria-hidden="true" /> },
   { id: 'feed', color: 'blue', label: 'Feed', title: 'World Feed', tone: 'text-hue-blue', icon: (size) => <MessageSquareText size={size} aria-hidden="true" />, phoneOnly: true },
+  { id: 'actions', color: 'red', label: 'Actions', title: 'Actions — attack, strikes, spells and items', tone: 'text-hue-red', icon: (size) => <Icon name="hand" size={size} color="current" /> },
   { id: 'settings', color: 'gray', label: 'Settings', title: 'Settings', tone: 'text-fg-secondary', icon: (size) => <SettingsIcon size={size} aria-hidden="true" />, offBar: true },
 ]
 

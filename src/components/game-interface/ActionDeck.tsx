@@ -1,16 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type Ref } from 'react'
+import { useEffect, useMemo, useState, type Ref } from 'react'
 import Icon from '@/components/Icon'
-import { LogOut, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { BossTeleportTile } from './WorldGrid'
-import TravelRows from './TravelRows'
-import { useGameStore, type InventoryItem, type Player } from '@/lib/game-state'
-
-const { defeatedBossTeleports } = require('@/lib/game-data/teleport-destinations') as {
-  defeatedBossTeleports: (killedSlugs: string[]) => BossTeleportTile[]
-}
+import type { InventoryItem, Player } from '@/lib/game-state'
 import { getCastableSpells } from '@/lib/spellbook'
 import { skillTone } from '@/lib/skillbook'
 import { ammoFor, attackBlockedBy, buildStrikeRow, rangeText, weaponInHand, type DeckContext } from '@/lib/action-deck'
@@ -19,26 +12,14 @@ import EntryRow, { EntryVerb } from '@/components/EntryRow'
 import { ABILITY_GRID, LevelTag, ROW_FRAME, SpellRow, useConsumableDeck } from './AbilityRows'
 import ConsumableDeck from './ConsumableDeck'
 
-/** What the Travel tab needs. Absent, the deck has three tabs. */
-export interface TravelDeckProps {
-  currentRoomId?: string
-  onTeleport?: (roomId: string) => void
-  /** Why no teleport can go right now (party, MP), or null. */
-  teleportBlockedReason: string | null
-  /**
-   * Draw the teleport rows. Off for a fighter who has not found the World
-   * yet: the tab then holds Retreat alone, so a fight always has its way out.
-   */
-  grid?: boolean
-  /** In a fight: leave it where you stand. Two taps, as the header pill asks. */
-  onRetreat?: () => void
-  /** Retreat opens its own dialog, so the row fires on the first tap. */
-  retreatNeedsConfirm?: boolean
-}
-
 export interface ActionDeckProps {
-  /** Teleport, and in a fight Retreat. Left out until the World has been found. */
-  travel?: TravelDeckProps
+  /**
+   * The open tab, when the holder owns the switch (the Actions layer draws it
+   * as header sub-tabs). Left out, the deck keeps its own and draws the filled
+   * switch above the list, as the battle card does.
+   */
+  tab?: ActionTab
+  onTabChange?: (tab: ActionTab) => void
   player: Player
   inventory: InventoryItem[]
   /** The fight's view of things, or the room's: see action-deck.ts. */
@@ -69,13 +50,13 @@ export interface ActionDeckProps {
 }
 
 /**
- * The action deck: a filled Attack | Spells | Items | Travel switch, then that tab's
+ * The action deck: a filled Attack | Spells | Items switch, then that tab's
  * rows — Attack and the power attacks, the spells, or the item ladders, all
- * drawn the same way. The battle deck draws it under its
- * header; the Action layer draws it over the compass; the phone sheet draws
- * it over the room. One component, so the same situation always reads the
- * same: the differences between the three are state the server already
- * rules on, never layout.
+ * drawn the same way. The battle card draws it under its header; the Actions
+ * tab draws it as its page. One component, so the same situation always reads
+ * the same: the differences between the two are state the server already
+ * rules on, never layout. Teleport is the World tab's and Retreat the battle
+ * card's corner; neither is a row here.
  *
  * Every attack button prints its raw roll range before the enemy's block, the
  * original's "(max N)" made honest. Refused controls stay visible and dimmed
@@ -83,6 +64,8 @@ export interface ActionDeckProps {
  * spending the turn.
  */
 export default function ActionDeck({
+  tab: controlledTab,
+  onTabChange,
   player,
   inventory,
   context,
@@ -94,7 +77,6 @@ export default function ActionDeck({
   onUseItem,
   onOpenBook,
   onOpenItem,
-  travel,
   listClassName = '',
   listRef,
   className = '',
@@ -104,23 +86,19 @@ export default function ActionDeck({
   const { weapon, iconName: weaponIconName, name: weaponName } = weaponInHand(inventory)
 
   // Where the switch starts is decided fresh each time, never remembered: a
-  // fight opens on Attack (Spells for a caster), and the Action button out of
+  // fight opens on Attack (Spells for a caster), and the Actions tab out of
   // a fight opens on Items. A fight starting or ending while the deck is on
   // screen moves it to that side's start.
-  const [activeTab, setActiveTab] = useState<ActionTab>(() => startingActionTab(situation.inBattle, player, inventory))
-  // The bosses this player has beaten, from the same kill list the Kill List
-  // page reads; battle:victory bumps it, so a boss's tile appears with the win.
-  const killList = useGameStore((s) => s.killList)
-  const defeatedBosses = useMemo(
-    () => defeatedBossTeleports(killList.filter((entry) => entry.kills > 0).map((entry) => entry.monster)),
-    [killList]
-  )
+  const [ownTab, setOwnTab] = useState<ActionTab>(() => startingActionTab(situation.inBattle, player, inventory))
   useEffect(() => {
-    setActiveTab(startingActionTab(situation.inBattle, player, inventory))
+    setOwnTab(startingActionTab(situation.inBattle, player, inventory))
     // Only the fight starting or ending resets the tab; the player and bag
     // changing mid-fight must not yank it back.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [situation.inBattle])
+  const activeTab = controlledTab ?? ownTab
+  const setActiveTab = onTabChange ?? setOwnTab
+  const ownsSwitch = controlledTab === undefined
 
   const blocked = attackBlockedBy({ player, inventory, isRanged, target })
   const strikes = useMemo(
@@ -148,15 +126,13 @@ export default function ActionDeck({
     { id: 'attack', label: 'Attack', icon: <Icon name={weaponIconName} size={18} className="flex-shrink-0 opacity-90" />, fill: isRanged ? 'fill-stat-dex' : 'fill-stat-str' },
     { id: 'spells', label: 'Spells', icon: <Icon name="magic" size={18} className="flex-shrink-0 opacity-90" />, count: castableSpells.length, fill: 'fill-stat-mag' },
     { id: 'items', label: 'Items', icon: <Icon name="inv" size={18} className="flex-shrink-0 opacity-90" />, count: consumables.all.length, fill: 'fill-resource-gold' },
-    ...(travel ? [{ id: 'travel' as const, label: 'Travel', icon: <Sparkles size={17} className="flex-shrink-0 opacity-90" aria-hidden="true" />, fill: 'fill-hue-sky' }] : []),
   ]
-  // A tab that has just gone (the World not yet found) falls back to Attack.
-  const shownTab: ActionTab = tabs.some((tab) => tab.id === activeTab) ? activeTab : 'attack'
+  const shownTab: ActionTab = activeTab
 
   return (
     <div className={`@container flex flex-col gap-2 min-h-0 ${className}`}>
       {/* The switch: one filled segment of three, counts on the two lists. */}
-      <div role="tablist" aria-label={travel ? 'Attack, Spells, Items or Travel' : 'Attack, Spells or Items'} className={`grid gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle ${travel ? 'grid-cols-4' : 'grid-cols-3'}`}>
+      {ownsSwitch && <div role="tablist" aria-label="Attack, Spells or Items" className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle">
         {tabs.map((tab) => {
           const selected = shownTab === tab.id
           return (
@@ -183,15 +159,15 @@ export default function ActionDeck({
             </button>
           )
         })}
-      </div>
+      </div>}
 
       {/* The list. The deck caps it so a deep bag scrolls inside the card
           instead of pushing the room off the screen; the layer lets it fill. */}
       <div
         ref={listRef}
-        role="tabpanel"
+        role={ownsSwitch ? 'tabpanel' : undefined}
         id={`${idPrefix}-deck-${shownTab}`}
-        aria-labelledby={`${idPrefix}-tab-${shownTab}`}
+        aria-labelledby={ownsSwitch ? `${idPrefix}-tab-${shownTab}` : undefined}
         className={`@container flex flex-col gap-1.5 min-h-0 ${listClassName ? `overflow-y-auto overscroll-contain ${listClassName}` : ''}`}
       >
         {/* Attack and the power attacks, as the same rows the spells and
@@ -305,75 +281,7 @@ export default function ActionDeck({
             </div>
           )
         )}
-
-        {shownTab === 'travel' && travel && (
-          // The original's teleport page as rows: Retreat first in a fight,
-          // then the regions, the bosses beaten, and the VIP rooms. A fighter
-          // who has not found the World yet gets Retreat alone.
-          <TravelRows
-            currentRoomId={travel.currentRoomId}
-            discoveredTeleports={player.discoveredTeleports ?? []}
-            blockedReason={travel.teleportBlockedReason}
-            bosses={defeatedBosses}
-            playerMp={player.mp ?? 0}
-            onTeleport={travel.onTeleport ?? (() => {})}
-            rows={travel.grid !== false && !!travel.onTeleport}
-            retreat={
-              travel.onRetreat ? (
-                <RetreatRow onRetreat={travel.onRetreat} needsConfirm={travel.retreatNeedsConfirm ?? false} disabled={isActing} />
-              ) : undefined
-            }
-          />
-        )}
       </div>
     </div>
-  )
-}
-
-/** How long "Leave the fight?" stays armed before the row settles back to Retreat. */
-const RETREAT_CONFIRM_MS = 3000
-
-/**
- * Retreat as a row of the Travel tab, the fight's other way out beside the
- * teleports: free, but it leaves you where you stand. Two taps, the first
- * arming "Leave the fight?", as the pill in the battle header asks — unless
- * leaving opens its own dialog (a party), when the first tap is enough.
- */
-function RetreatRow({ onRetreat, needsConfirm, disabled }: { onRetreat: () => void; needsConfirm: boolean; disabled: boolean }) {
-  const [armed, setArmed] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current)
-  }, [])
-  const press = () => {
-    if (disabled) return
-    if (needsConfirm || armed) {
-      if (timer.current) clearTimeout(timer.current)
-      setArmed(false)
-      onRetreat()
-      return
-    }
-    setArmed(true)
-    timer.current = setTimeout(() => setArmed(false), RETREAT_CONFIRM_MS)
-  }
-  return (
-    <EntryRow
-      density="deck"
-      icon="x"
-      iconSize={16}
-      iconClass="text-status-error opacity-90"
-      name="Retreat"
-      subline={<span className="text-[10px] text-fg-muted truncate">Leave the fight where you stand. The enemy keeps its HP.</span>}
-      meta={<span className="text-xs font-bold text-fg-muted whitespace-nowrap">free</span>}
-      action={
-        <EntryVerb onClick={press} disabled={disabled} fillClass="fill-status-error" title={armed ? 'Tap again to leave the fight' : 'Retreat from battle'} ariaLabel={armed ? 'Tap again to leave the fight' : 'Retreat from battle'}>
-          <span className="flex items-center gap-1">
-            <LogOut size={12} aria-hidden="true" />
-            {armed ? 'Leave?' : 'Retreat'}
-          </span>
-        </EntryVerb>
-      }
-      className={`${ROW_FRAME} border-l-status-error`}
-    />
   )
 }

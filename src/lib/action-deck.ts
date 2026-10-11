@@ -8,9 +8,8 @@ import { resolveItemIcon } from '@/lib/item-actions'
 
 /**
  * The rules behind the action deck's strike row — Attack and the power
- * attacks beside it — in one place, so the battle deck, the Action layer over
- * the compass and the phone sheet print the same range and the same refusal
- * for the same situation. Pure: nothing here decides an outcome, the server
+ * attacks beside it — in one place, so the battle deck and the Actions tab
+ * print the same range and the same refusal for the same situation. Pure: nothing here decides an outcome, the server
  * does; this only says what the server would say, before the tap.
  */
 

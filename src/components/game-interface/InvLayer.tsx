@@ -62,7 +62,7 @@ interface InvLayerProps {
   onAction?: (action: string | { type: string; data?: any }) => void
   /**
    * The bag's filter. Owned by GameInterface so a link can open the tab on a
-   * group or slot (the corner's weapon line, the Action layer's bag link, a
+   * group or slot (the corner's weapon line, the Actions tab's bag link, a
    * feed line about an item).
    */
   view: ItemFilterView

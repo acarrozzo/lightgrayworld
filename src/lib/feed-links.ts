@@ -10,7 +10,7 @@ import type { TabId } from './tab-rules'
 
 export interface FeedLink {
   tab: TabId
-  /** A sub-tab of that tab: 'skills', 'spells', 'kill-list', 'battle-log', 'party', 'dm', 'map', a bag group. */
+  /** A sub-tab of that tab: 'skills', 'spells', 'kill-list', 'battle-log', 'party', 'dm', 'map', 'teleport', a bag group. */
   sub?: string
   /** Inv only: the item to open and ring. */
   itemId?: string
@@ -18,6 +18,7 @@ export interface FeedLink {
 
 const TAB_NAMES: Record<TabId, string> = {
   explore: 'Explore',
+  actions: 'Actions',
   char: 'Char',
   inv: 'Inv',
   world: 'World',
@@ -36,7 +37,7 @@ const SUB_NAMES: Record<string, string> = {
   dm: 'DM',
   map: 'Map',
   world: 'World Map',
-  travel: 'Travel',
+  teleport: 'Teleport',
   consumables: 'Items',
   crafting: 'Craft',
   misc: 'Misc',

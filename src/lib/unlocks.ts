@@ -3,7 +3,8 @@
  *
  * The world starts small and opens outward, and so does the screen: a new
  * character has Explore and Char, and everything else arrives when the game
- * first gives it something to hold — the Inv tab with the first item, Quests
+ * first gives it something to hold — the Inv tab with the first item, Actions
+ * with the first thing to use beyond a plain swing, Quests
  * with the first job, World with the first map or teleport, the books with
  * the first skill point there is a teacher to spend it with. Each arrival is announced once.
  *
@@ -20,7 +21,7 @@ export type UnlockId =
   | 'tab:quests'
   | 'tab:world'
   | 'tab:players'
-  | 'explore:action'
+  | 'tab:actions'
   | 'char:skills'
   | 'char:spells'
   | 'inv:consumables'
@@ -52,7 +53,7 @@ export interface UnlockFacts {
   /** Something in that book has already been learned. */
   hasLearnedSkill: boolean
   hasLearnedSpell: boolean
-  /** A spell or strike that can be used, so Action has more than Attack to offer. */
+  /** A spell or strike that can be used, so Actions has more than Attack to offer. */
   hasAbility: boolean
   kills: number
   deaths: number
@@ -104,11 +105,11 @@ export const UNLOCKS: readonly UnlockDef[] = [
     announce: 'You are not alone out here. The Players tab is open.',
   },
   {
-    id: 'explore:action',
-    tab: 'explore',
-    // Something to use, or somewhere to teleport: the deck's Travel tab.
-    earned: (f) => f.consumableCount > 0 || f.hasAbility || f.hasMapOrTeleport || f.deaths > 0,
-    announce: 'The All actions button is open under the compass: what you can use, and where you can go, one tap away.',
+    id: 'tab:actions',
+    tab: 'actions',
+    // Something to use: a consumable, or a strike or spell beyond the plain swing.
+    earned: (f) => f.consumableCount > 0 || f.hasAbility,
+    announce: 'You have something to use. The Actions tab is open: attack, strikes, spells and items.',
   },
   {
     id: 'char:skills',
@@ -202,7 +203,7 @@ export function announcementsFor(arrived: readonly UnlockId[]): UnlockDef[] {
 /** Which tabs to leave out of the bar. */
 export function hiddenTabs(open: ReadonlySet<UnlockId>): Set<TabId> {
   const hidden = new Set<TabId>()
-  for (const tab of ['inv', 'quests', 'world', 'players'] as const) {
+  for (const tab of ['actions', 'inv', 'quests', 'world', 'players'] as const) {
     if (!open.has(`tab:${tab}`)) hidden.add(tab)
   }
   return hidden

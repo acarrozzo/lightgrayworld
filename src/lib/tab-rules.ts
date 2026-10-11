@@ -3,65 +3,59 @@
  *
  * Explore is home: the room and the compass. Every other tab is a page that
  * takes the left column on a wide screen and the whole page on a phone.
- * Action is not a tab: it is Explore's own utility, a layer over the compass.
+ * Actions — attack, strikes, spells and items, the original's bag box and
+ * spell box — is a tab like the rest, hidden until there is something to use.
  *
- * This module only decides *which* tab is showing and whether Action is open.
- * It is pure so the table below can be tested; GameInterface owns the state
- * and applies each tab's "opens on its main page" reset when a tab opens.
+ * This module only decides *which* tab is showing. It is pure so the table
+ * below can be tested; GameInterface owns the state and applies each tab's
+ * "opens on its main page" reset when a tab opens.
  *
- * | Event                   | Tabs                                   | Action  |
- * |-------------------------|----------------------------------------|---------|
- * | Select a tab            | Opens it; the open tab's own tile goes | Closes  |
- * |                         | home to Explore                        |         |
- * | Toggle Action           | Goes to Explore                        | Toggles |
- * | You change room         | Stay as they are                       | Closes  |
- * | A fight starts, wide    | Stay as they are                       | Stays   |
- * | A fight starts, phone   | Go to Explore (the battle deck's       | Closes  |
- * |                         | Travel tab is the way out)             |         |
- * | You die                 | Go to Explore                          | Closes  |
- * | Escape                  | Action closes first, then the tab      |         |
+ * | Event                   | Tabs                                            |
+ * |-------------------------|-------------------------------------------------|
+ * | Select a tab            | Opens it; the open tab's own tile goes home     |
+ * |                         | to Explore                                      |
+ * | You change room         | Stay as they are                                |
+ * | A fight starts, wide    | Stay as they are                                |
+ * | A fight starts, phone   | Go to Explore (the battle card carries the deck |
+ * |                         | and Retreat; Actions would be its twin)         |
+ * | You die                 | Go to Explore                                   |
+ * | Escape                  | Goes home                                       |
  */
 
 /** Feed is a tab only on a phone; a wide screen has it as the right-hand panel. */
-export type TabId = 'explore' | 'char' | 'inv' | 'world' | 'quests' | 'players' | 'feed' | 'settings'
+export type TabId = 'explore' | 'actions' | 'char' | 'inv' | 'world' | 'quests' | 'players' | 'feed' | 'settings'
 
 export interface TabState {
   tab: TabId
-  /** The Action layer is over the compass. Only ever true on Explore. */
-  actionOpen: boolean
 }
 
 export type TabEvent =
   | { type: 'select'; tab: TabId }
-  | { type: 'toggleAction' }
   | { type: 'roomChanged' }
   | { type: 'fightStarted'; phone: boolean }
   | { type: 'died' }
   | { type: 'escape' }
 
-export const HOME: TabState = { tab: 'explore', actionOpen: false }
+export const HOME: TabState = { tab: 'explore' }
 
 export function reduceTabs(state: TabState, event: TabEvent): TabState {
   switch (event.type) {
     case 'select':
       // The open tab's tile is also its way home; Explore's tile always is.
       if (event.tab === 'explore' || event.tab === state.tab) return HOME
-      return { tab: event.tab, actionOpen: false }
-    case 'toggleAction':
-      return { tab: 'explore', actionOpen: state.tab === 'explore' ? !state.actionOpen : true }
+      return { tab: event.tab }
     case 'roomChanged':
-      return state.actionOpen ? { ...state, actionOpen: false } : state
+      return state
     case 'fightStarted':
       return event.phone ? HOME : state
     case 'died':
       return HOME
     case 'escape':
-      if (state.actionOpen) return { ...state, actionOpen: false }
       return HOME
   }
 }
 
 /** Whether Escape has anything of the tabs' to close. */
 export function escapeCloses(state: TabState): boolean {
-  return state.actionOpen || state.tab !== 'explore'
+  return state.tab !== 'explore'
 }
