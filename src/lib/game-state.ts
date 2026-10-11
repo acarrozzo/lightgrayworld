@@ -481,6 +481,12 @@ export interface GameState {
 
   // Post-battle result (shown after battle ends, null when dismissed)
   battleResult: BattleResult | null
+  /**
+   * The fight's last frame, kept when a result lands: a win leaves the card's
+   * strip, vitals and readout on screen with the victory card where the deck
+   * was, and the battle state itself is reset. Null when dismissed.
+   */
+  battleLastFrame: BattleState | null
 
   /**
    * What the consumable under the pointer would do, so the HP/MP bars and
@@ -545,6 +551,7 @@ export const useGameStore = create<GameState>()(
       battle: { ...INITIAL_BATTLE_STATE },
       party: null,
       battleResult: null,
+      battleLastFrame: null,
       itemPreview: null,
       isLoading: false,
       error: null,
@@ -606,6 +613,7 @@ export const useGameStore = create<GameState>()(
         battle: { ...INITIAL_BATTLE_STATE },
         party: null,
         battleResult: null,
+        battleLastFrame: null,
         error: null
       }),
 
@@ -727,11 +735,12 @@ export const useGameStore = create<GameState>()(
       clearBattle: () =>
         set({ battle: { ...INITIAL_BATTLE_STATE }, itemPreview: null }),
 
-      setBattleResult: (result) => set({ battleResult: result }),
+      setBattleResult: (result) =>
+        set((state) => ({ battleResult: result, battleLastFrame: state.battle.isInBattle ? state.battle : null })),
 
       setItemPreview: (preview) => set({ itemPreview: preview }),
 
-      clearBattleResult: () => set({ battleResult: null }),
+      clearBattleResult: () => set({ battleResult: null, battleLastFrame: null }),
 
       setParty: (party) => set({ party }),
 

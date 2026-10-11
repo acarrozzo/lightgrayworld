@@ -3670,8 +3670,6 @@ export default function GameInterface() {
     feed: unreadCount > 0 ? unreadCount : undefined,
   }
 
-  const levelUpInVictory = !!levelUpData && !battle.isInBattle && battleResult?.outcome === 'WIN'
-
   // Every tab in the one frame: its sub-tabs (or its name) and close. World,
   // Inv and Actions bring their own layer; the rest are panels wrapped here.
   const renderPanelLayer = (presentation: DeckPresentation) => {
@@ -4159,9 +4157,9 @@ export default function GameInterface() {
                       </button>
                     </div>
                   )}
-                  {/* A level gained by a win rides in the victory card as a gold
-                      band; the level-up card is for a level gained any other way. */}
-                  {levelUpData && !levelUpInVictory && (
+                  {/* The level-up card, above the fight's box when a win gave the
+                      level: two cards, each its own. */}
+                  {levelUpData && (
                     <LevelUpAlert
                       data={levelUpData}
                       tpAvailable={player?.tp ?? 0}
@@ -4177,19 +4175,18 @@ export default function GameInterface() {
                   {(battle.isInBattle || battleResult) && (
                     // Death takes the whole screen: the card sits on a scrim over
                     // everything — room, compass, tabs — so the only thing left to
-                    // press is Rise again. A victory card stays inline, with the
-                    // room's margins. A fight on a phone has none: the card runs
-                    // edge to edge, every pixel of the screen is HP, readout or
-                    // deck. Desktop keeps the margins; it has the room.
+                    // press is Rise again. A win keeps the battle box up, with the
+                    // victory card where its deck was, so it keeps the box's
+                    // margins. A fight on a phone has none: the card runs edge to
+                    // edge, every pixel of the screen is HP, readout or deck.
+                    // Desktop keeps the margins; it has the room.
                     <div
                       className={
                         battleResult?.outcome === 'LOSS'
                           ? 'fixed inset-0 z-[60] flex items-center justify-center p-4 bg-surface-canvas/85 backdrop-blur-sm'
                           : fightLocked
                             ? 'flex min-h-0 flex-1 flex-col lg:px-4 lg:pt-4 lg:pb-3'
-                            : battle.isInBattle
-                              ? 'lg:px-4 lg:pt-4'
-                              : 'px-4 pt-4'
+                            : 'lg:px-4 lg:pt-4'
                       }
                       role={battleResult?.outcome === 'LOSS' ? 'dialog' : undefined}
                       aria-modal={battleResult?.outcome === 'LOSS' ? true : undefined}
@@ -4211,11 +4208,6 @@ export default function GameInterface() {
                         onCastSpell={(spellId) => socketHandlers.sendGameAction({ type: 'cast_spell', data: { spellId } })}
                         onUseSkill={(skillId) => socketHandlers.sendGameAction({ type: 'use_skill', data: { skillId } })}
                         player={player}
-                        levelUp={
-                          levelUpInVictory && levelUpData
-                            ? { data: levelUpData, toSpend: (player.cp ?? 0) + (player.tp ?? 0), onSpend: openCharPoints }
-                            : null
-                        }
                         onDismissResult={() => {
                           // Death: pressing Rise is the respawn move itself. The
                           // teleport dismisses the card on its way out, and the
@@ -4224,10 +4216,6 @@ export default function GameInterface() {
                             handleAction({ type: 'teleport', data: { toRoomId: respawnRoomRef.current ?? RESPAWN_ROOM_ID } })
                             return
                           }
-                          // The band on the card has said the level. With Training
-                          // Points still unspent the full level-up card takes over
-                          // once this one is gone; otherwise one Continue clears both.
-                          if (levelUpInVictory && (player.tp ?? 0) <= 0) setLevelUpData(null)
                           clearBattleResult()
                         }}
                         isActing={isLoadingRoom}

@@ -30,10 +30,8 @@ const GOLD = { color: 'var(--combat-crit)' }
  * what the level gave as a row of tiles. One button leads to the Char page,
  * where Training and Core points are both spent; Skill Points have their own
  * when there is something to learn. Once the points are gone the card has
- * done its job, and Close takes the button's place.
- *
- * A level gained by winning a fight is not shown here at all: the victory
- * card carries it as a band (BattlePanel), so there is one card, not two.
+ * done its job, and Close takes the button's place. A level gained by a win
+ * is shown here too, above the fight's box with its victory card.
  */
 export default function LevelUpAlert({ data, onClose, onTrainNow, onSpendCorePoints, onSpendSkillPoints, tpAvailable, cpAvailable, spAvailable, canSpendSp }: LevelUpAlertProps) {
   const toSpend = Math.max(0, tpAvailable) + Math.max(0, cpAvailable)

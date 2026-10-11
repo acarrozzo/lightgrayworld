@@ -4,7 +4,6 @@ import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryIt
 import Icon from '@/components/Icon'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
 import { useCallback, useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
-import type { LevelUpPayload } from '@/lib/socket'
 import { ChevronLeft, LogOut } from 'lucide-react'
 import HpBar from '@/components/game-interface/HpBar'
 import type { FightFrame } from '@/components/game-interface/useFightFrame'
@@ -13,14 +12,6 @@ import { spellTone } from '@/lib/spellbook'
 import ActionDeck from '@/components/game-interface/ActionDeck'
 import { companionInHand, deckContextFromBattle, rangeText } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
-
-/** What the victory card needs to announce a level gained by the win. */
-export interface VictoryLevelUp {
-  data: LevelUpPayload
-  /** Core + Training points waiting to be spent. */
-  toSpend: number
-  onSpend: () => void
-}
 
 /** How many times an enemy must already have been beaten before a win with nothing new is shown as one line. */
 const ROUTINE_KILLS = 10
@@ -53,8 +44,6 @@ interface BattlePanelProps {
   /** Strike with a skill — Slice, Smash, Aim, Magic Strike — on this turn's swing. */
   onUseSkill: (skillId: string) => void
   onDismissResult: () => void
-  /** A level gained by this win: the victory card carries it as a gold band instead of a second card. */
-  levelUp?: VictoryLevelUp | null
   isActing: boolean
   playerName: string
   playerLevel: number
@@ -308,7 +297,13 @@ function DropsShowcase({ result }: { result: BattleResult }) {
   )
 }
 
-function BattleResultCard({ result, weaponName, levelUp, onDismiss }: { result: BattleResult; weaponName: string | null; levelUp?: VictoryLevelUp | null; onDismiss: () => void }) {
+/**
+ * The result card. A win is drawn inside the battle box where the deck was
+ * (`embedded`): the box's strip is its header and its X, so the card brings
+ * no frame or banner of its own. Standalone it is the whole thing, as a
+ * defeat always is.
+ */
+function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: { result: BattleResult; weaponName: string | null; embedded?: boolean; onDismiss: () => void }) {
   const isWin = result.outcome === 'WIN'
   const lt = result.lastTurn
   const wasAdvantageTurn = lt?.playerRaw === null
@@ -335,12 +330,12 @@ function BattleResultCard({ result, weaponName, levelUp, onDismiss }: { result: 
 
   if (isWin) {
     // Two sizes, by how much the win is worth looking at. An enemy beaten
-    // many times, dropping nothing you have not seen and gaining you no
-    // level, is one line; everything else is the full card.
+    // many times, dropping nothing you have not seen, is one line; everything
+    // else is the full card.
     const kills = killList.find((entry) => entry.monster === result.enemySlug || entry.monster === result.enemyName)?.kills ?? 0
     const firstKillDrop = (result.dropDetails ?? []).some((drop) => drop.firstKill)
     const firstKill = kills <= 1
-    const routine = kills >= ROUTINE_KILLS && !firstKillDrop && !levelUp
+    const routine = kills >= ROUTINE_KILLS && !firstKillDrop
     const drops = result.dropDetails && result.dropDetails.length > 0
       ? result.dropDetails
       : result.itemsDropped.map((entry) => {
@@ -352,7 +347,7 @@ function BattleResultCard({ result, weaponName, levelUp, onDismiss }: { result: 
     if (routine) {
       return (
         <div
-          className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border border-combat-victory/60 px-3 py-2 shadow-lg"
+          className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2 ${embedded ? '' : 'rounded-xl border border-combat-victory/60 shadow-lg'}`}
           style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--combat-victory) 16%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 8%, var(--surface-canvas)))' }}
           role="status"
         >
@@ -386,56 +381,28 @@ function BattleResultCard({ result, weaponName, levelUp, onDismiss }: { result: 
     }
 
     return (
-      <div className="@container rounded-xl overflow-hidden shadow-2xl border border-combat-victory/70"
+      <div className={`@container overflow-hidden ${embedded ? '' : 'rounded-xl shadow-2xl border border-combat-victory/70'}`}
         style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--combat-victory) 10%, var(--surface-canvas)) 0%, color-mix(in srgb, var(--combat-victory) 18%, var(--surface-canvas)) 40%, color-mix(in srgb, var(--combat-victory) 10%, var(--surface-canvas)) 100%)' }}
       >
-        {/* Header */}
-        <div className="relative flex items-center justify-center px-4 py-2.5 border-b border-combat-victory/40"
-          style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-victory) 19%, transparent), transparent)' }}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-base" style={{ filter: 'drop-shadow(0 0 6px var(--combat-victory))' }}>⚔</span>
-            <p className="text-base font-black tracking-widest uppercase"
-              style={{ color: 'var(--combat-victory)', textShadow: '0 0 16px color-mix(in srgb, var(--combat-victory) 50%, transparent), 0 0 32px color-mix(in srgb, var(--combat-victory) 25%, transparent)' }}
-            >
-              Victory!
-            </p>
-            <span className="text-base" style={{ filter: 'drop-shadow(0 0 6px var(--combat-victory))' }}>⚔</span>
-          </div>
-          <button onClick={onDismiss} className="absolute right-3 text-fg-disabled hover:text-combat-victory transition-colors p-1 rounded" aria-label="Dismiss">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* A level gained by this win rides here, in gold, instead of as a
-            second card stacked on top of this one. */}
-        {levelUp && (
-          <div
-            className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-status-warning/50 px-3 py-2 @min-[560px]:px-4"
-            style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--resource-gold) 26%, var(--surface-canvas)), color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas)))' }}
+        {/* Header: the battle box's strip when embedded, this banner otherwise. */}
+        {!embedded && (
+          <div className="relative flex items-center justify-center px-4 py-2.5 border-b border-combat-victory/40"
+            style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-victory) 19%, transparent), transparent)' }}
           >
-            <p className="flex items-baseline gap-1.5">
-              <span style={{ color: 'var(--combat-crit)', filter: 'drop-shadow(0 0 6px var(--combat-crit))' }} aria-hidden="true">★</span>
-              <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--combat-crit)' }}>Level Up</span>
-              <span className="text-xl font-black leading-none tabular-nums" style={{ color: 'var(--combat-crit)', textShadow: '0 0 14px color-mix(in srgb, var(--combat-crit) 50%, transparent)' }}>{levelUp.data.newLevel}</span>
-            </p>
-            <p className="flex flex-wrap items-baseline gap-x-2.5 text-[11px] font-bold tabular-nums">
-              {levelUp.data.tpGained > 0 && <span className="text-resource-gold">+{levelUp.data.tpGained} TP</span>}
-              {levelUp.data.cpGained > 0 && <span className="text-accent">+{levelUp.data.cpGained} CP</span>}
-              {levelUp.data.spGained > 0 && <span className="text-stat-mag">+{levelUp.data.spGained} SP</span>}
-              {levelUp.data.hpGained > 0 && <span className="text-resource-hp">+{levelUp.data.hpGained} HP</span>}
-              {levelUp.data.mpGained > 0 && <span className="text-resource-mp">+{levelUp.data.mpGained} MP</span>}
-            </p>
-            {levelUp.toSpend > 0 && (
-              <button
-                onClick={levelUp.onSpend}
-                className="ml-auto h-8 flex-shrink-0 rounded-lg px-3 text-[11px] font-black uppercase tracking-widest fill-resource-gold transition-all hover:brightness-110"
+            <div className="flex items-center gap-2">
+              <span className="text-base" style={{ filter: 'drop-shadow(0 0 6px var(--combat-victory))' }}>⚔</span>
+              <p className="text-base font-black tracking-widest uppercase"
+                style={{ color: 'var(--combat-victory)', textShadow: '0 0 16px color-mix(in srgb, var(--combat-victory) 50%, transparent), 0 0 32px color-mix(in srgb, var(--combat-victory) 25%, transparent)' }}
               >
-                Spend {levelUp.toSpend} {levelUp.toSpend === 1 ? 'point' : 'points'}
-              </button>
-            )}
+                Victory!
+              </p>
+              <span className="text-base" style={{ filter: 'drop-shadow(0 0 6px var(--combat-victory))' }}>⚔</span>
+            </div>
+            <button onClick={onDismiss} className="absolute right-3 text-fg-disabled hover:text-combat-victory transition-colors p-1 rounded" aria-label="Dismiss">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
 
@@ -642,7 +609,7 @@ function BattleResultCard({ result, weaponName, levelUp, onDismiss }: { result: 
 const RETREAT_CONFIRM_MS = 2500
 
 export default function BattlePanel({
-  battle,
+  battle: live,
   battleResult,
   onAttack,
   onFlee,
@@ -656,7 +623,6 @@ export default function BattlePanel({
   onCastSpell,
   onUseSkill,
   onDismissResult,
-  levelUp = null,
   isActing,
   playerName,
   playerLevel,
@@ -675,6 +641,14 @@ export default function BattlePanel({
   // The deck itself (ConsumableDeck) sets and clears the preview; the bars
   // here only read it.
   const itemPreview = useGameStore((s) => s.itemPreview)
+  // The result, once the fight is over. A win keeps the box up as it stood
+  // on the last turn — strip, vitals, the final blow — with the victory card
+  // where the deck was; the live battle state is already reset by then, so
+  // the card draws the frame the store kept. A defeat is its own card.
+  const lastFrame = useGameStore((s) => s.battleLastFrame)
+  const result = !live.isInBattle ? battleResult : null
+  const won = result?.outcome === 'WIN' && lastFrame !== null
+  const battle = won ? lastFrame : live
 
   // Retreat is two taps: the first arms "Leave the fight?" for a moment, the
   // second goes. A new fight, or the end of one, drops a half-pressed Retreat.
@@ -685,7 +659,7 @@ export default function BattlePanel({
     retreatTimer.current = null
     setRetreatArmed(false)
   }, [])
-  useEffect(() => { disarmRetreat() }, [battle.isInBattle, battle.enemySlug, disarmRetreat])
+  useEffect(() => { disarmRetreat() }, [live.isInBattle, live.enemySlug, disarmRetreat])
   useEffect(() => () => { if (retreatTimer.current) clearTimeout(retreatTimer.current) }, [])
   const handleRetreat = () => {
     if (isActing) return
@@ -711,11 +685,12 @@ export default function BattlePanel({
     ? resolveItemIcon(supportAction.itemMetadata ?? null, supportAction.itemSlug ?? '')
     : null
 
-  if (!battle.isInBattle && battleResult) {
-    return <BattleResultCard result={battleResult} weaponName={weaponName} levelUp={levelUp} onDismiss={onDismissResult} />
+  // A defeat, or a win with no frame kept to stand it in: the card alone.
+  if (result && !won) {
+    return <BattleResultCard result={result} weaponName={weaponName} onDismiss={onDismissResult} />
   }
 
-  if (!battle.isInBattle) return null
+  if (!live.isInBattle && !won) return null
 
   const hasEnemyFormula = battle.enemyRaw !== null
   // The server tells us outright when the enemy used a special — we never infer
@@ -741,8 +716,9 @@ export default function BattlePanel({
   // The stat the last strike rolled: MAG for a spell, else the weapon's.
   const offenseLabel = spellCast ? 'MAG' : isRanged ? 'DEX' : 'STR'
   const offenseTone = spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'
-  // Pinned: the card fills its column and the list takes what is left.
-  const fill = frame === 'fight'
+  // Pinned: the card fills its column and the list takes what is left. Won,
+  // there is no list and the area scrolls again, so the box is its own height.
+  const fill = frame === 'fight' && !won
   // The companion at your side, from the bag: named under your vitals with
   // its range, from the first turn, before it has swung.
   const companion = companionInHand(inventory)
@@ -767,21 +743,33 @@ export default function BattlePanel({
   return (
     <div
       ref={panelRef}
-      className={`@container flex min-h-0 flex-col border-y border-combat-defeat/60 bg-surface-panel/90 overflow-hidden shadow-lg lg:rounded-lg lg:border-x ${fill ? 'flex-1 border-t-0 lg:border-t' : ''}`}
+      className={`@container flex min-h-0 flex-col border-y bg-surface-panel/90 overflow-hidden shadow-lg lg:rounded-lg lg:border-x ${won ? 'border-combat-victory/60' : 'border-combat-defeat/60'} ${fill ? 'flex-1 border-t-0 lg:border-t' : ''}`}
     >
 
-      {/* ── In Battle strip: the room in its left corner, Retreat in its right ── */}
-      <div className="relative flex items-center justify-center px-4 py-1.5 border-b border-combat-defeat/40"
-        style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-defeat) 19%, transparent), color-mix(in srgb, var(--combat-defeat) 19%, transparent), color-mix(in srgb, var(--combat-defeat) 19%, transparent), transparent)' }}
+      {/* ── In Battle strip: the room in its left corner, Retreat in its right.
+          Won, it reads Victory and its right corner closes the box. ── */}
+      <div className={`relative flex items-center justify-center px-4 py-1.5 border-b ${won ? 'border-combat-victory/40' : 'border-combat-defeat/40'}`}
+        style={{ background: won
+          ? 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-victory) 19%, transparent), transparent)'
+          : 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-defeat) 19%, transparent), color-mix(in srgb, var(--combat-defeat) 19%, transparent), color-mix(in srgb, var(--combat-defeat) 19%, transparent), transparent)' }}
       >
         <p className="text-xs font-black tracking-widest uppercase"
-          style={{ color: 'var(--combat-damage)', textShadow: '0 0 16px color-mix(in srgb, var(--combat-damage) 50%, transparent)' }}
+          style={won
+            ? { color: 'var(--combat-victory)', textShadow: '0 0 16px color-mix(in srgb, var(--combat-victory) 50%, transparent)' }
+            : { color: 'var(--combat-damage)', textShadow: '0 0 16px color-mix(in srgb, var(--combat-damage) 50%, transparent)' }}
         >
-          In Battle
+          {won ? 'Victory!' : 'In Battle'}
         </p>
+        {won && (
+          <button onClick={onDismissResult} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-fg-disabled transition-colors hover:text-combat-victory" aria-label="Dismiss">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
         {/* The room, one tap away while the card is pinned over it: its
             actions, its supplies, who is standing here. */}
-        {roomLabel && onOpenRoom && (
+        {!won && roomLabel && onOpenRoom && (
           <button
             type="button"
             onClick={onOpenRoom}
@@ -797,7 +785,7 @@ export default function BattlePanel({
         {/* Retreat: free, but it leaves you where you stand and the enemy
             keeps its HP, so there is nothing to farm by running. Open from
             the first turn. */}
-        <button
+        {!won && <button
           type="button"
           onClick={handleRetreat}
           disabled={isActing}
@@ -813,7 +801,7 @@ export default function BattlePanel({
         >
           <LogOut size={11} aria-hidden="true" />
           {retreatArmed ? 'Leave?' : 'Retreat'}
-        </button>
+        </button>}
       </div>
 
       {/* ── Overview, compact: a narrow card. You left, the enemy right, the
@@ -1267,7 +1255,12 @@ export default function BattlePanel({
         </div>
       )}
 
-      {/* ── Command deck ── */}
+      {/* ── Command deck — or, the fight won, the victory card in its place ── */}
+      {won && result ? (
+        <div className="border-t border-combat-victory/40">
+          <BattleResultCard result={result} weaponName={weaponName} embedded onDismiss={onDismissResult} />
+        </div>
+      ) : (
       <div className={`flex min-h-0 flex-col border-t border-line-subtle/50 px-3 pt-3 pb-3 ${fill ? 'flex-1' : ''}`}>
         <ActionDeck
           player={player}
@@ -1288,6 +1281,7 @@ export default function BattlePanel({
           idPrefix="battle"
         />
       </div>
+      )}
     </div>
   )
 }
