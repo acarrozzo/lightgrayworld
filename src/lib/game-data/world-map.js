@@ -86,6 +86,14 @@ const SHEETS_BY_ID = new Map(MAP_SHEETS.map((sheet) => [sheet.id, sheet]))
  * tile on the grid and are discovered by standing in them, like the hub; their
  * discovery id is `<region>/<sub-hub>` so the User row's `discoveredTeleports`
  * can hold them beside the region ids.
+ *
+ * Two kinds of sub-hub open some other way, and are never written to
+ * `discoveredTeleports`: `unlockedByKill` (the Hydra Pit, opened by the win)
+ * and `unlockedByMembership` — the four guild halls. The original's grid had a
+ * square per guild, lit once its initiation quest was turned in: "You can
+ * fast travel to any guild you are a member of." Each sits under the region
+ * that holds it, and is open exactly while `isMember` says so, which is the
+ * membership quest's row — nothing extra is stored.
  */
 const WORLD_REGIONS = [
   {
@@ -108,11 +116,10 @@ const WORLD_REGIONS = [
     name: 'Dark Forest',
     color: 'dark-forest',
     hub: { roomId: '507', name: 'Dark Forest Teleport' },
-    // The original's teleport page gave the Ranger's Guild its own cube, open
-    // to members. It is a sub-hub here: found by standing in the guild lobby,
-    // which only a member can do, so membership is the discovery.
     subHubs: [
-      { id: 'rangers-guild', roomId: '515a', name: "Ranger's Guild" },
+      // The original's Ranger's Guild cube landed in the lobby up the tree
+      // (515a), not at the foot of it.
+      { id: 'rangers-guild', roomId: '515a', name: "Ranger's Guild", unlockedByMembership: 'rangers-guild' },
       // The original's "Hydra Pit" cube opened on the first Hydra kill
       // (`KLhydra >= 1`), not on standing in the pit — you land in it by
       // jumping, before the Hydra has been dealt with. `unlockedByKill` keeps
@@ -136,8 +143,23 @@ const WORLD_REGIONS = [
   { id: 'grassy-field', name: 'Grassy Field', color: 'grassy-field', hub: { roomId: '001', name: 'Crossroads' }, alwaysOpen: true },
   { id: 'forest', name: 'Forest', color: 'forest', hub: { roomId: '104', name: 'Forest Crossroads' } },
   { id: 'swamp', name: 'Swamp' },
-  { id: 'rocky-flats', name: 'Rocky Flats', color: 'rocky-flats', hub: { roomId: '303', name: 'The Crossroads' } },
-  { id: 'red-town', name: 'Red Town', color: 'red-town', hub: { roomId: '210', name: 'Grand Square' } },
+  {
+    id: 'rocky-flats',
+    name: 'Rocky Flats',
+    color: 'rocky-flats',
+    hub: { roomId: '303', name: 'The Crossroads' },
+    subHubs: [{ id: 'mining-guild', roomId: '308', name: 'Mining Guild', unlockedByMembership: 'mining-guild' }],
+  },
+  {
+    id: 'red-town',
+    name: 'Red Town',
+    color: 'red-town',
+    hub: { roomId: '210', name: 'Grand Square' },
+    subHubs: [
+      { id: 'warriors-guild', roomId: '226', name: "Warrior's Guild", unlockedByMembership: 'warriors-guild' },
+      { id: 'wizards-guild', roomId: '225', name: "Wizard's Guild", unlockedByMembership: 'wizards-guild' },
+    ],
+  },
 ]
 
 /**
@@ -183,11 +205,16 @@ const TELEPORT_HUBS = ALL_REGIONS.flatMap((region) => {
     alwaysOpen: false,
     // The enemy whose first kill opens this landing, when standing in it does not.
     unlockedByKill: sub.unlockedByKill || null,
+    // The guild whose members may land here; standing in it discovers nothing.
+    unlockedByMembership: sub.unlockedByMembership || null,
   }))
   return [main, ...subs]
 })
 const HUBS_BY_ROOM = new Map(TELEPORT_HUBS.map((hub) => [hub.roomId, hub]))
 const HUBS_BY_KILL = new Map(TELEPORT_HUBS.filter((hub) => hub.unlockedByKill).map((hub) => [hub.unlockedByKill, hub]))
+const HUBS_BY_MEMBERSHIP = new Map(
+  TELEPORT_HUBS.filter((hub) => hub.unlockedByMembership).map((hub) => [hub.unlockedByMembership, hub])
+)
 
 // --- Room → sheet -------------------------------------------------------------
 
@@ -298,6 +325,19 @@ function getTeleportHubByKill(enemySlug) {
   return HUBS_BY_KILL.get(enemySlug) || null
 }
 
+/** The guild hall a membership opens, by faction id, or null. */
+function getTeleportHubByMembership(factionId) {
+  return HUBS_BY_MEMBERSHIP.get(factionId) || null
+}
+
+/**
+ * The label a landing is announced by — "Red Town, Warrior's Guild" for a
+ * sub-hub, the region's name for a hub — the same words the Teleport rows use.
+ */
+function teleportHubLabel(hub) {
+  return hub.isSubHub ? `${hub.regionName}, ${hub.name}` : hub.regionName
+}
+
 /** A region's sub-hubs as landings, in the order they are declared. */
 function getSubHubsForRegion(regionId) {
   return TELEPORT_HUBS.filter((hub) => hub.isSubHub && hub.regionId === regionId)
@@ -322,6 +362,8 @@ module.exports = {
   getWorldRegionByHubRoom,
   getTeleportHubByRoom,
   getTeleportHubByKill,
+  getTeleportHubByMembership,
+  teleportHubLabel,
   getSubHubsForRegion,
   getSheetsForRegion,
   TELEPORT_HUBS,

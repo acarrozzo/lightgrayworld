@@ -4,7 +4,13 @@
     {
       "name": "lg-dev",
       "runtimeExecutable": "env",
-      "runtimeArgs": ["NEXT_DIST_DIR=.next-preview", "npm", "run", "dev"],
+      "runtimeArgs": [
+        "NEXT_DIST_DIR=.next-preview",
+        "NEXT_PUBLIC_SOCKET_URL=http://localhost:3100",
+        "npm",
+        "run",
+        "dev"
+      ],
       "port": 3100,
       "autoPort": true
     }

@@ -60,4 +60,16 @@ function listLiveFactions() {
   return FACTIONS.filter((f) => !f.placeholder)
 }
 
-module.exports = { FACTIONS, getFaction, factionByMembershipQuest, listLiveFactions }
+/**
+ * The guilds a player belongs to, as faction ids, from their QuestProgress
+ * rows (`{ questId, completed }`): the client's answer to `isMember`, read off
+ * the same rows the journal already holds, so the Teleport page knows which
+ * guild halls are open without a round trip.
+ */
+function memberGuildIds(progressRows) {
+  const done = new Set()
+  for (const row of progressRows ?? []) if (row.completed) done.add(row.questId)
+  return FACTIONS.filter((f) => f.membershipQuest && done.has(f.membershipQuest)).map((f) => f.id)
+}
+
+module.exports = { FACTIONS, getFaction, factionByMembershipQuest, listLiveFactions, memberGuildIds }

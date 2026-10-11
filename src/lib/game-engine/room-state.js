@@ -2529,6 +2529,11 @@ class RoomState {
     const standingLines = []
     if (result.becameMember && standing) {
       standingLines.push(`You are now a member of the ${standing.name}.`)
+      // The guild's square on the teleport page lights with the membership,
+      // as the original's did; say so the way a found landing is announced.
+      const { getTeleportHubByMembership, teleportHubLabel } = require('../game-data/world-map')
+      const hall = getTeleportHubByMembership(standing.factionId)
+      if (hall) standingLines.push(`Teleport to ${teleportHubLabel(hall)} is now open.`)
     }
     if (standing) {
       standingLines.push(

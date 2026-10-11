@@ -17,6 +17,9 @@ const { TELEPORT_MP_COST, defeatedBossTeleports } = require('@/lib/game-data/tel
   TELEPORT_MP_COST: number
   defeatedBossTeleports: (killedSlugs: string[]) => BossTeleportTile[]
 }
+const { memberGuildIds } = require('@/lib/game-data/factions') as {
+  memberGuildIds: (rows: Array<{ questId: string; completed: boolean }>) => string[]
+}
 
 /** Map: one sheet. World Map: the nine regions. Teleport: the original's teleport page, as rows. */
 export type WorldTab = 'map' | 'world' | 'teleport'
@@ -28,6 +31,8 @@ interface TeleportHub {
   name: string
   isSubHub: boolean
   alwaysOpen: boolean
+  /** A guild hall: open to this faction's members, never by discovery. */
+  unlockedByMembership?: string | null
 }
 
 interface WorldLayerProps {
@@ -79,6 +84,10 @@ export default function WorldLayer({
   const foundIds = useMemo(() => foundMaps.map((map) => map.id), [foundMaps])
   const foundMapIds = useMemo(() => foundMapIdsFor(player, currentRoomId), [player, currentRoomId])
   const discoveredTeleports = useMemo(() => player?.discoveredTeleports ?? [], [player?.discoveredTeleports])
+  // The guilds this player belongs to, from the quest rows the journal reads;
+  // a turn-in replaces them, so a guild hall's row opens with the membership.
+  const quests = useGameStore((s) => s.quests)
+  const memberships = useMemo(() => memberGuildIds(quests), [quests])
   // The bosses this player has beaten, from the same kill list the Kill List
   // page reads; battle:victory bumps it, so a boss's row appears with the win.
   const killList = useGameStore((s) => s.killList)
@@ -131,9 +140,12 @@ export default function WorldLayer({
   // Underwater sits on the underwater sheet, not the surface one).
   const { bridgeHub, sheetHasHub } = useMemo(() => {
     const onSheet = (TELEPORT_HUBS as TeleportHub[]).filter((hub) => getMapIdForRoom(hub.roomId) === currentMapId)
-    const open = onSheet.filter((hub) => hub.alwaysOpen || discoveredTeleports.includes(hub.discoveryId))
+    const open = onSheet.filter((hub) =>
+      hub.alwaysOpen ||
+      (hub.unlockedByMembership ? memberships.includes(hub.unlockedByMembership) : discoveredTeleports.includes(hub.discoveryId)),
+    )
     return { bridgeHub: open.find((hub) => !hub.isSubHub) ?? open[0] ?? null, sheetHasHub: onSheet.length > 0 }
-  }, [currentMapId, discoveredTeleports])
+  }, [currentMapId, discoveredTeleports, memberships])
   const isAtBridgeHub = !!bridgeHub && bridgeHub.roomId === currentRoomId
 
   const canGoHere = !!hereMapId && currentMapId !== hereMapId
@@ -188,6 +200,7 @@ export default function WorldLayer({
       level={worldLevel}
       onSelectSheet={selectSheet}
       discoveredTeleports={discoveredTeleports}
+      memberships={memberships}
       blockedReason={teleportBlockedReason}
       onTeleport={onTeleport}
     />
@@ -266,6 +279,7 @@ export default function WorldLayer({
             <TravelRows
               currentRoomId={currentRoomId}
               discoveredTeleports={discoveredTeleports}
+              memberships={memberships}
               blockedReason={teleportBlockedReason}
               bosses={defeatedBosses}
               playerMp={player?.mp ?? 0}

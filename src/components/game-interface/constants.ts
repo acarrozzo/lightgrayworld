@@ -32,6 +32,9 @@ export const COMMAND_SHORTHAND: Record<string, string> = {
 export interface TeleportLocation {
   roomId: string
   regionId: string
+  discoveryId: string
+  /** A guild hall: open to this faction's members instead of by discovery. */
+  membershipFactionId: string | null
   name: string
   description: string
   /** VIP rooms: never need discovery. */

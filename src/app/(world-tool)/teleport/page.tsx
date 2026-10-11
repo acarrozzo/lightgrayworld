@@ -13,20 +13,28 @@ export const metadata = {
     'The fast-travel network of Light Gray RPG — every teleport destination, what unlocks it, what it costs, and the region it belongs to.',
 }
 
-const { TELEPORT_MP_COST, TELEPORT_LOCATIONS, BOSS_TELEPORTS } = require('@/lib/game-data/teleport-destinations') as {
-  TELEPORT_MP_COST: number
-  TELEPORT_LOCATIONS: TeleportLocation[]
-  BOSS_TELEPORTS: BossTeleport[]
-}
+const { TELEPORT_MP_COST, TELEPORT_LOCATIONS, BOSS_TELEPORTS, groupBossTeleportsByRegion, bossSheetLevel } =
+  require('@/lib/game-data/teleport-destinations') as {
+    TELEPORT_MP_COST: number
+    TELEPORT_LOCATIONS: TeleportLocation[]
+    BOSS_TELEPORTS: BossTeleport[]
+    groupBossTeleportsByRegion: (bosses: BossTeleport[]) => Array<{ region: { id: string; name: string }; bosses: BossTeleport[] }>
+    bossSheetLevel: (roomId: string) => string | null
+  }
 const { ALL_REGIONS, MAP_SHEETS } = require('@/lib/game-data/world-map') as {
   ALL_REGIONS: { id: string; name: string }[]
   MAP_SHEETS: Record<string, { label?: string; name?: string; regionId?: string }>
+}
+const { getFaction } = require('@/lib/game-data/factions') as {
+  getFaction: (id: string) => { id: string; name: string; membershipQuest?: string } | null
 }
 
 type TeleportLocation = {
   roomId: string
   regionId: string
   discoveryId: string
+  /** A guild hall: open to this faction's members instead of by discovery. */
+  membershipFactionId?: string | null
   name: string
   description?: string
   alwaysOpen?: boolean
@@ -67,6 +75,7 @@ export default async function TeleportPage() {
   ]
 
   const openCount = TELEPORT_LOCATIONS.filter((l) => l.alwaysOpen).length
+  const memberCount = TELEPORT_LOCATIONS.filter((l) => l.membershipFactionId).length
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -75,9 +84,11 @@ export default async function TeleportPage() {
         <p className="mt-1 max-w-4xl text-sm text-fg-secondary">
           {TELEPORT_LOCATIONS.length} destinations across {orderedRegions.length} regions, each
           costing {TELEPORT_MP_COST} MP. {openCount} are open from the start; the rest have to be
-          discovered by arriving at them, which is what the discovery id records on the player.
-          Below the world, {BOSS_TELEPORTS.length} boss landings open on a boss&apos;s first kill and
-          cost its level in MP.
+          discovered by arriving at them, which is what the discovery id records on the player —
+          except the {memberCount} guild halls, which open to a guild&apos;s members the moment its
+          initiation quest is turned in, as the original&apos;s guild squares did. Below the world,{' '}
+          {BOSS_TELEPORTS.length} boss landings open on a boss&apos;s first kill and cost its level in
+          MP.
         </p>
         <p className="mt-2 text-xs text-fg-muted">
           The world is drawn on {Object.keys(MAP_SHEETS).length} map sheets — see the{' '}
@@ -126,13 +137,17 @@ export default async function TeleportPage() {
                         </td>
                         <td className="px-3 py-2 text-fg-secondary">{loc.description ?? '—'}</td>
                         <td className="px-3 py-2 font-mono text-xs text-fg-muted">
-                          {loc.discoveryId}
+                          {loc.membershipFactionId
+                            ? `member of ${getFaction(loc.membershipFactionId)?.name ?? loc.membershipFactionId} (${getFaction(loc.membershipFactionId)?.membershipQuest ?? '?'})`
+                            : loc.discoveryId}
                         </td>
                         <td className="px-3 py-2">
                           {loc.alwaysOpen ? (
                             <Tag className="border-status-success/50 text-status-success">
                               always open
                             </Tag>
+                          ) : loc.membershipFactionId ? (
+                            <Tag>members</Tag>
                           ) : (
                             <Tag>discover</Tag>
                           )}
@@ -155,48 +170,63 @@ export default async function TeleportPage() {
         <p className="mb-2 max-w-4xl text-xs text-fg-muted">
           The original&apos;s second teleport box: &ldquo;You can fast travel to any boss you have
           previously defeated.&rdquo; The landing is the boss&apos;s own room, where it may be waiting
-          again. Hydra and the Water Temple Guardian are not listed because their rooms are already
-          landings above.
+          again. Grouped by region in the world&apos;s order, as the game&apos;s Teleport page draws
+          them, lowest level first within a region (a tie goes to the sheet nearer the surface); the
+          sheet column is the map the lair is on when it is not the region&apos;s surface. Hydra and the Water Temple Guardian are not listed because their rooms
+          are already landings above.
         </p>
-        <div className="overflow-x-auto rounded border border-line-subtle/80 bg-surface-panel">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line-subtle text-left text-xs uppercase tracking-wide text-fg-muted">
-                <th scope="col" className="px-3 py-2">Boss</th>
-                <th scope="col" className="px-3 py-2">Room</th>
-                <th scope="col" className="px-3 py-2">Cost</th>
-                <th scope="col" className="px-3 py-2">Unlocked by</th>
-              </tr>
-            </thead>
-            <tbody>
-              {BOSS_TELEPORTS.map((boss) => {
-                const room = roomById.get(boss.roomId)
-                return (
-                  <tr key={boss.slug} className="border-b border-line-subtle/60 last:border-b-0">
-                    <td className="px-3 py-2 font-medium text-fg-bright">
-                      <EntityLink href={enemyHref(boss.slug)}>{boss.name}</EntityLink>
-                      <span className="ml-1.5 text-xs text-fg-muted">L{boss.level}</span>
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <EntityLink href={roomHref(boss.roomId)} className="font-mono text-xs">
-                        #{boss.roomId}
-                      </EntityLink>
-                      {room && <span className="ml-1.5 text-fg-secondary">{room.name}</span>}
-                      {!room && (
-                        <span className="ml-1.5 text-status-error" title="No such room in the database">
-                          missing
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs text-resource-mp">{boss.cost} MP</td>
-                    <td className="px-3 py-2">
-                      <Tag>first kill</Tag>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+        <div className="flex flex-col gap-4">
+          {groupBossTeleportsByRegion(BOSS_TELEPORTS).map(({ region, bosses }) => (
+            <div key={region.id}>
+              <h3 className="mb-1.5 text-sm font-semibold text-fg-bright">
+                {region.name}
+                <span className="ml-2 text-xs font-normal text-fg-muted">{bosses.length}</span>
+              </h3>
+              <div className="overflow-x-auto rounded border border-line-subtle/80 bg-surface-panel">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-line-subtle text-left text-xs uppercase tracking-wide text-fg-muted">
+                      <th scope="col" className="px-3 py-2">Boss</th>
+                      <th scope="col" className="px-3 py-2">Room</th>
+                      <th scope="col" className="px-3 py-2">Sheet</th>
+                      <th scope="col" className="px-3 py-2">Cost</th>
+                      <th scope="col" className="px-3 py-2">Unlocked by</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bosses.map((boss) => {
+                      const room = roomById.get(boss.roomId)
+                      const sheet = bossSheetLevel(boss.roomId)
+                      return (
+                        <tr key={boss.slug} className="border-b border-line-subtle/60 last:border-b-0">
+                          <td className="px-3 py-2 font-medium text-fg-bright">
+                            <EntityLink href={enemyHref(boss.slug)}>{boss.name}</EntityLink>
+                            <span className="ml-1.5 text-xs text-fg-muted">L{boss.level}</span>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <EntityLink href={roomHref(boss.roomId)} className="font-mono text-xs">
+                              #{boss.roomId}
+                            </EntityLink>
+                            {room && <span className="ml-1.5 text-fg-secondary">{room.name}</span>}
+                            {!room && (
+                              <span className="ml-1.5 text-status-error" title="No such room in the database">
+                                missing
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-fg-muted">{sheet ?? 'Surface'}</td>
+                          <td className="px-3 py-2 font-mono text-xs text-resource-mp">{boss.cost} MP</td>
+                          <td className="px-3 py-2">
+                            <Tag>first kill</Tag>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>

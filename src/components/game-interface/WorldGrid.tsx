@@ -27,12 +27,13 @@ export interface WorldRegion {
   alwaysOpen?: boolean
 }
 
-/** A region's extra landing — the ocean's Underwater or Master Temple. */
+/** A region's extra landing — the ocean's Underwater or Master Temple, or a guild hall open to members. */
 interface SubHub {
   regionId: string
   discoveryId: string
   roomId: string
   name: string
+  unlockedByMembership?: string | null
 }
 
 interface MapSheet {
@@ -116,6 +117,8 @@ interface WorldGridProps {
   currentRoomId?: string
   /** Landings whose fast travel is open, by discovery id — `Player.discoveredTeleports`. */
   discoveredTeleports?: string[]
+  /** The guilds the player belongs to, by faction id; a guild hall's sub-hub opens on this, not discovery. */
+  memberships?: string[]
   /** Sheet ids the player has found (see foundMapIdsFor). */
   foundMapIds?: string[]
   /** teleport: disables every destination and explains why (party, combat, MP). */
@@ -193,6 +196,7 @@ export default function WorldGrid({
   mode,
   currentRoomId,
   discoveredTeleports = [],
+  memberships = [],
   foundMapIds = [],
   blockedReason = null,
   selectedRegionId = null,
@@ -342,7 +346,9 @@ export default function WorldGrid({
         {framedTile}
         <div className="grid grid-cols-2 gap-1">
           {subHubs.map((hub) => {
-            const hubOpen = discoveredTeleports.includes(hub.discoveryId)
+            const hubOpen = hub.unlockedByMembership
+              ? memberships.includes(hub.unlockedByMembership)
+              : discoveredTeleports.includes(hub.discoveryId)
             const hubHere = hub.roomId === currentRoomId
             const hubDisabled = !hubOpen || hubHere || isBlocked
             const hubLabel = hubOpen

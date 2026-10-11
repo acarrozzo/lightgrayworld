@@ -10,9 +10,12 @@
  * sub-hubs (the Blue Ocean's Underwater and Master Temple landings). World
  * destinations must be discovered: a player opens one by standing in its room
  * once (`discoveredTeleports` on the User row, written by the socket handlers
- * on arrival, keyed by the landing's `discoveryId`). The VIP rooms — the Lobby,
- * Room Zero and the Solar Office — are always open. As in the original, each
- * fast travel costs MP.
+ * on arrival, keyed by the landing's `discoveryId`). The four guild halls are
+ * sub-hubs too, but open by membership (`membershipFactionId`): the original's
+ * guild squares lit when the initiation quest was turned in, and that quest's
+ * row is still what opens them. The VIP rooms — the Lobby, Room Zero and the
+ * Solar Office — are always open. As in the original, each fast travel costs
+ * MP.
  *
  * Below the world sits the original's second teleport box, "You can fast
  * travel to any boss you have previously defeated": one landing per boss
@@ -22,7 +25,7 @@
  * defeat respawn, a flee retreat — are authorized per-use through
  * `game-engine/teleport-grants`, not by adding them to this list.
  */
-const { TELEPORT_HUBS } = require('./world-map')
+const { TELEPORT_HUBS, WORLD_REGIONS, MAP_SHEETS, getWorldRegionForRoom, getMapSheetForRoom, getMapIdForRoom } = require('./world-map')
 const { BOSSES } = require('./bosses.generated')
 
 /** The original charged 1 MP per fast travel. */
@@ -33,6 +36,8 @@ const TELEPORT_LOCATIONS = TELEPORT_HUBS.map((hub) => ({
   regionId: hub.regionId,
   /** What `discoveredTeleports` must hold for this landing to be open. */
   discoveryId: hub.discoveryId,
+  /** A guild hall: open to the faction's members instead of by discovery. */
+  membershipFactionId: hub.unlockedByMembership || null,
   name: hub.isSubHub ? `${hub.regionName}, ${hub.name}` : hub.regionName,
   description: hub.name,
   alwaysOpen: hub.alwaysOpen,
@@ -88,14 +93,19 @@ function getBossTeleport(enemySlug) {
 
 /**
  * Whether a player may fast travel to `destination`, given the discovery ids
- * they have collected and the enemies they have killed (an iterable of slugs,
- * only needed for a boss landing). Costs and combat/party rules are checked by
- * the caller.
+ * they have collected, the enemies they have killed (an iterable of slugs,
+ * only needed for a boss landing) and the guilds they belong to (an iterable
+ * of faction ids, only needed for a guild hall — `memberGuildIds` in
+ * factions.js derives it from quest rows). Costs and combat/party rules are
+ * checked by the caller.
  */
-function isTeleportDestinationOpen(destination, discoveredTeleports, killedSlugs) {
+function isTeleportDestinationOpen(destination, discoveredTeleports, killedSlugs, memberships) {
   if (!destination) return false
   if (destination.bossSlug) {
-    return hasKilled(killedSlugs, destination.bossSlug)
+    return includes(killedSlugs, destination.bossSlug)
+  }
+  if (destination.membershipFactionId) {
+    return includes(memberships, destination.membershipFactionId)
   }
   if (destination.alwaysOpen) return true
   const key = destination.discoveryId ?? destination.regionId
@@ -104,13 +114,56 @@ function isTeleportDestinationOpen(destination, discoveredTeleports, killedSlugs
 
 /** The boss landings a player has opened, in display order (highest level first). */
 function defeatedBossTeleports(killedSlugs) {
-  return BOSS_TELEPORTS.filter((boss) => hasKilled(killedSlugs, boss.slug))
+  return BOSS_TELEPORTS.filter((boss) => includes(killedSlugs, boss.slug))
 }
 
-function hasKilled(killedSlugs, slug) {
-  if (!killedSlugs) return false
-  if (killedSlugs instanceof Set) return killedSlugs.has(slug)
-  for (const killed of killedSlugs) if (killed === slug) return true
+/**
+ * The world's regions in the order the Teleport page lists them: by hub room
+ * number, the Grassy Field first and Star City last.
+ */
+const REGIONS_IN_WORLD_ORDER = WORLD_REGIONS.filter((region) => region.hub).sort(
+  (a, b) => Number(a.hub.roomId) - Number(b.hub.roomId)
+)
+
+/**
+ * Boss landings laid over the world: one group per region that holds any of
+ * `bosses`, in the Regions ladder's own order. Inside a region the bosses
+ * come lowest level first — the Death Worm (23) above the Axeman (25), the
+ * Kraken (25) above the four L35 ocean bosses — and a tie goes to the sheet
+ * nearer the surface in the atlas's order, so Red Beard on the Rocky Flats
+ * surface sits above Phoenix in the Mine though both are L30. The Teleport
+ * page draws its Bosses ladder this way (a heading per region, the region's
+ * colour) and the World Tool's Teleport page the same, so the two cannot
+ * drift. A boss whose lair is on no region's sheet (there is none today) is
+ * left out rather than invented a region.
+ *
+ * @param {Array<{ roomId: string, level: number, name: string }>} bosses
+ * @returns {Array<{ region: object, bosses: typeof bosses }>}
+ */
+function groupBossTeleportsByRegion(bosses) {
+  const sheetIndex = (roomId) => MAP_SHEETS.findIndex((sheet) => sheet.id === getMapIdForRoom(roomId))
+  return REGIONS_IN_WORLD_ORDER.map((region) => ({
+    region,
+    bosses: bosses
+      .filter((boss) => getWorldRegionForRoom(boss.roomId)?.id === region.id)
+      .sort((a, b) => a.level - b.level || sheetIndex(a.roomId) - sheetIndex(b.roomId) || a.name.localeCompare(b.name)),
+  })).filter((group) => group.bosses.length > 0)
+}
+
+/**
+ * The map sheet a boss's lair is drawn on, when it is not the region's
+ * surface: "Underground", "Sewers", "Mine", "Underwater", "Upper Level",
+ * "The Despair". Null on the surface, where the region's heading says it all.
+ */
+function bossSheetLevel(roomId) {
+  const level = getMapSheetForRoom(roomId)?.level
+  return level && level !== 'Surface' ? level : null
+}
+
+function includes(iterable, value) {
+  if (!iterable) return false
+  if (iterable instanceof Set) return iterable.has(value)
+  for (const entry of iterable) if (entry === value) return true
   return false
 }
 
@@ -123,4 +176,6 @@ module.exports = {
   getBossTeleport,
   isTeleportDestinationOpen,
   defeatedBossTeleports,
+  groupBossTeleportsByRegion,
+  bossSheetLevel,
 }

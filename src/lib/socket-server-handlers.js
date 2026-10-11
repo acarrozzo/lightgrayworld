@@ -16,6 +16,8 @@ const {
   isTeleportDestinationOpen,
 } = require('./game-data/teleport-destinations.js')
 const { getMapSheetForRoom, getTeleportHubByRoom } = require('./game-data/world-map.js')
+const { getFaction } = require('./game-data/factions.js')
+const { isMember: isGuildMember } = require('./game-engine/services/faction-service.js')
 const { ensureKillSet, clearKillSet } = require('./game-engine/services/kill-list-service.js')
 const { MAP_STATE_SELECT, projectMapState } = require('./game-engine/services/map-state.js')
 const { GOLD_CHEST_SELECT, projectGoldChestState } = require('./game-data/gold-chests.js')
@@ -471,9 +473,10 @@ async function applyArrivalDiscoveries(prisma, socket, player, toRoom) {
     messages.push('The Forest Princess looks at you for a long moment. Something below the Top of the Despair, to the east, has noticed you too.')
   }
 
-  // A landing a kill opens (the Hydra Pit) is not found by standing in it.
+  // A landing a kill opens (the Hydra Pit) is not found by standing in it,
+  // and neither is a guild hall: its teleport is the membership, not the visit.
   const hub = getTeleportHubByRoom(toRoom)
-  if (hub && !hub.alwaysOpen && !hub.unlockedByKill) {
+  if (hub && !hub.alwaysOpen && !hub.unlockedByKill && !hub.unlockedByMembership) {
     const discovered = Array.isArray(player.discoveredTeleports) ? player.discoveredTeleports : []
     if (!discovered.includes(hub.discoveryId)) {
       unlocks.discoveredTeleports = [...discovered, hub.discoveryId]
@@ -530,6 +533,14 @@ async function authorizeNetworkTeleport(prisma, player, toRoomId) {
     })
     if (!kill || kill.kills < 1) {
       return { ok: false, reason: `You have not defeated ${destination.name} yet.` }
+    }
+  } else if (destination.membershipFactionId) {
+    // A guild hall opens to members: the initiation quest's row, read fresh
+    // for the same reason as the kill — the turn-in may have been a moment
+    // ago on another socket.
+    if (!(await isGuildMember(player.id, destination.membershipFactionId))) {
+      const guild = getFaction(destination.membershipFactionId)
+      return { ok: false, reason: `Only members of the ${guild?.name ?? 'guild'} can teleport there.` }
     }
   } else if (!isTeleportDestinationOpen(destination, row.discoveredTeleports)) {
     return { ok: false, reason: `You have not found ${destination.name} yet.` }
