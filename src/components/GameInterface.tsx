@@ -2441,6 +2441,15 @@ export default function GameInterface() {
           melted: payload.melted ?? false,
           enemyHealed: payload.enemyHealed ?? 0,
           enemyEffects: payload.enemyEffects ?? {},
+          // What swung beside you, what the enemy shrugged off, what Magic
+          // Armor ate and whether poison took: the store has held these
+          // since they were built, but this list never passed them on.
+          companion: payload.companion ?? null,
+          extraShot: payload.extraShot ?? null,
+          immuneToWeapon: payload.immuneToWeapon ?? null,
+          absorbed: payload.absorbed ?? 0,
+          magicArmorLeft: payload.magicArmorLeft ?? 0,
+          poisonApplied: payload.poisonApplied ?? null,
           playerMp: payload.playerMp,
           playerMpMax: payload.playerMpMax,
           playerCurrency: payload.playerCurrency,

@@ -3,7 +3,7 @@
 import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player, useGameStore } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
-import { useEffect, type Ref } from 'react'
+import { useEffect, type ReactNode, type Ref } from 'react'
 import type { LevelUpPayload } from '@/lib/socket'
 import { ChevronRight } from 'lucide-react'
 import HpBar from '@/components/game-interface/HpBar'
@@ -104,29 +104,12 @@ function Swoosh() {
  * took back. Nothing is drawn on an ordinary turn.
  */
 function EnemyHitExtras({ battle }: { battle: BattleState }) {
-  const extras = battle.extraHits ?? []
   const fx = battle.enemyEffects ?? {}
   const hasEffects =
     fx.healCast !== undefined || !!fx.stolen || !!fx.hpDrained || !!fx.mpDrained || !!fx.resurrected || !!fx.windUp
-  if (extras.length === 0 && !battle.petrifyApplied && !battle.enemyHealed && !hasEffects) return null
-  const extraTotal = extras.reduce((sum, hit) => sum + hit.damage, 0)
+  if (!battle.petrifyApplied && !battle.enemyHealed && !hasEffects) return null
   return (
     <>
-      {extras.map((hit, i) => (
-        <p key={i} className="text-[10px] text-fg-disabled text-right tabular-nums">
-          <span className="mr-1 text-combat-crit font-semibold">{hit.pack ? 'pack ×2' : hit.action ? hit.action.name : 'again'}</span>
-          {hit.dodged ? (
-            <span className="text-hue-purple">dodged</span>
-          ) : (
-            <>{hit.action && hit.action.rolls.length > 1 ? `( ${hit.action.rolls.join(' + ')} )` : hit.raw} &minus; {hit.block} = <span className={hit.damage > 0 ? 'text-stat-def font-semibold' : ''}>{hit.damage}</span></>
-          )}
-        </p>
-      ))}
-      {extras.length > 0 && (
-        <p className="text-[10px] text-fg-muted text-right tabular-nums">
-          {extras.length + 1} hits · {(battle.lastEnemyDamage ?? 0) - extraTotal} + {extraTotal} = <span className="font-semibold">{battle.lastEnemyDamage ?? 0}</span>
-        </p>
-      )}
       {battle.petrifyApplied > 0 && (
         <p className="text-[11px] font-black tracking-[0.15em] uppercase text-right text-fg-bright">
           Stone {battle.petrifyApplied} turn{battle.petrifyApplied === 1 ? '' : 's'}
@@ -165,6 +148,43 @@ const BIG_ICON = 'h-10 w-10 @min-[600px]:h-[76px] @min-[600px]:w-[76px]'
 const DEAD_ICON = 'h-12 w-12 @min-[600px]:h-[88px] @min-[600px]:w-[88px]'
 const MID_ICON = 'h-5 w-5 @min-[600px]:h-8 @min-[600px]:w-8'
 const ARROW_ICON = 'h-4 w-4 @min-[600px]:h-7 @min-[600px]:w-7'
+
+/**
+ * A multi-hit turn, hit by hit, under the big number: Hit 1 is the swing the
+ * formula line would have shown alone, the rest are the enemy's extra hits —
+ * each its roll, its block and what landed, a pack's second bite or a named
+ * special where it was one, "dodged" where it came to nothing. They add up to
+ * the big number, which wears the count beside it. Nothing on a one-hit turn.
+ */
+function EnemyHitList({ battle, firstRoll }: { battle: BattleState; firstRoll: string }) {
+  const extras = battle.extraHits ?? []
+  if (extras.length === 0) return null
+  const extraTotal = extras.reduce((sum, hit) => sum + hit.damage, 0)
+  const first = (battle.lastEnemyDamage ?? 0) - extraTotal
+  const line = (index: number, label: string | null, body: ReactNode) => (
+    <p key={index} className="text-[10px] text-fg-disabled text-right tabular-nums">
+      <span className="mr-1 text-fg-muted">Hit {index + 1}</span>
+      {label && <span className="mr-1 text-combat-crit font-semibold">{label}</span>}
+      {body}
+    </p>
+  )
+  return (
+    <>
+      {line(0, null, <>{firstRoll} &minus; {battle.playerBlocked} = <span className={first > 0 ? 'text-stat-def font-semibold' : ''}>{first}</span></>)}
+      {extras.map((hit, i) =>
+        line(
+          i + 1,
+          hit.pack ? 'pack' : hit.action ? hit.action.name : null,
+          hit.dodged ? (
+            <span className="text-hue-purple">dodged</span>
+          ) : (
+            <>{hit.action && hit.action.rolls.length > 1 ? `( ${hit.action.rolls.join(' + ')} )` : hit.raw} &minus; {hit.block} = <span className={hit.damage > 0 ? 'text-stat-def font-semibold' : ''}>{hit.damage}</span></>
+          ),
+        ),
+      )}
+    </>
+  )
+}
 
 function EnemyIcon({ iconName, isDead }: { iconName: string; isDead: boolean }) {
   return (
@@ -684,6 +704,8 @@ export default function BattlePanel({
     ? `( ${enemyAction.rolls.join(' + ')} )`
     : String(battle.enemyRaw)
   const enemyIsDead = battle.enemyCurrentHp <= 0
+  // How many times the enemy swung this turn: its hit, plus its extra hits.
+  const enemyHits = 1 + (battle.extraHits?.length ?? 0)
 
   // The number beside the vitals is the item's full amount, the same "+100"
   // its button wears; the ghost on the bar is the part that lands.
@@ -707,6 +729,11 @@ export default function BattlePanel({
   const playerHit = battle.lastPlayerDamage ?? 0
   const hasHelpers = !!battle.extraShot || !!battle.companion
   const totalHit = playerHit + (battle.extraShot?.damage ?? 0) + (battle.companion?.damage ?? 0)
+  // With helpers, the big number is the total and your own part rides the
+  // sentence after the weapon's name, so it is not said twice.
+  const ownHit = hasHelpers ? (
+    <span className={`ml-1 font-bold tabular-nums ${playerHit > 0 ? 'text-fg-bright' : 'text-fg-disabled'}`}>{playerHit}</span>
+  ) : null
   const companionLine = companion ? (
     <div className="flex min-w-0 items-center gap-1 text-[10px] tabular-nums text-fg-muted" title={`${companion.name} swings ${rangeText(companion.min, companion.max)} beside every attack you make`}>
       <Icon name={companion.iconName} className="h-3.5 w-3.5 shrink-0 text-combat-victory opacity-90" />
@@ -881,8 +908,14 @@ export default function BattlePanel({
                 {previewDef > 0 && <span className="text-combat-heal tabular-nums animate-pulse"> +{previewDef}</span>}
               </span>
             </div>
+            {/* The companion beside the stats, where the wide card has the room. */}
+            {companionLine && (
+              <>
+                <div className="w-px h-5 bg-surface-hover/60" />
+                <div className="min-w-0">{companionLine}</div>
+              </>
+            )}
           </div>
-          {companionLine}
         </div>
 
         {/* VS divider carries the turn count */}
@@ -1001,6 +1034,7 @@ export default function BattlePanel({
               <p className="text-xs text-fg-secondary">
                 You <span className={`font-semibold ${skillUseTone.text}`}>{skillUse.name}</span> with your{' '}
                 <span className={`font-semibold ${isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{weaponName ?? 'fists'}</span>
+                {ownHit}
                 {battle.immuneToMagic ? (
                   <span className="ml-1 text-fg-muted italic">— the {battle.enemyName} shrugs off the magic, no MP spent</span>
                 ) : (
@@ -1033,6 +1067,7 @@ export default function BattlePanel({
                 </p>
                 <p className="text-xs text-fg-secondary">
                   You cast <span className={`font-semibold ${spellCastTone.text}`}>{spellCast.name}</span>
+                  {ownHit}
                   <span className="ml-1 text-resource-mp tabular-nums">(−{spellCast.cost} MP)</span>
                 </p>
                 <p
@@ -1076,6 +1111,7 @@ export default function BattlePanel({
               </p>
               <p className="text-xs text-fg-secondary">
                 You attack with your <span className={`font-semibold ${isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{weaponName ?? 'fists'}</span>
+                {ownHit}
                 {battle.melted && <span className="ml-1 text-fg-muted italic">— the magma takes half</span>}
               </p>
               <p
@@ -1090,14 +1126,8 @@ export default function BattlePanel({
           ) : (
             <p className="text-xs text-fg-disabled italic">Waiting for first strike…</p>
           )}
-          {/* The parts of the big number, when there is more than one: your
-              own hit first, then each swing beside it. They add up to it. */}
-          {hasHelpers && hasPlayerFormula && (
-            <p className="text-[10px] text-fg-muted tabular-nums">
-              <span className={`font-semibold ${spellCast && spellCastTone ? spellCastTone.text : isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{spellCast ? spellCast.name : (weaponName ?? 'fists')}</span>
-              {' '}<span className={playerHit > 0 ? 'font-semibold text-fg-secondary' : 'text-fg-disabled'}>{playerHit}</span>
-            </p>
-          )}
+          {/* The rest of the big number: each swing beside yours. With the
+              number in the sentence above, they add up to it. */}
           {battle.extraShot && (
             <p className="text-[10px] text-fg-muted tabular-nums">
               <span className="font-semibold text-combat-victory">Second arrow</span>
@@ -1135,6 +1165,7 @@ export default function BattlePanel({
               <p className="text-xl @min-[600px]:text-2xl font-black text-hue-purple leading-none tabular-nums italic text-right">
                 DODGE
               </p>
+              <EnemyHitList battle={battle} firstRoll={enemyRollText} />
               <EnemyHitExtras battle={battle} />
             </>
           ) : hasEnemyFormula ? (
@@ -1149,18 +1180,28 @@ export default function BattlePanel({
               )}
               <p className="text-[10px] text-fg-disabled text-right tabular-nums">
                 <span className="mr-1">(max {battle.enemyStrMax})</span>
-                {enemyRollText} &minus; {battle.playerBlocked} = {battle.lastEnemyDamage ?? 0}
+                {enemyHits > 1 ? (
+                  `${enemyHits} swings`
+                ) : (
+                  <>{enemyRollText} &minus; {battle.playerBlocked} = {battle.lastEnemyDamage ?? 0}</>
+                )}
               </p>
               <p className="text-xs text-fg-secondary text-right">
                 The <span className="text-resource-gold font-semibold">{battle.enemyName}</span>{' '}
                 {enemyAction ? 'unleashes it for' : 'attacks you for'}
               </p>
-              <p
-                className={`text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums text-right ${enemyAction ? 'text-combat-crit' : 'text-stat-def'}`}
-                style={{ textShadow: enemyAction ? '0 0 16px color-mix(in srgb, var(--combat-crit) 50%, transparent)' : '0 0 16px color-mix(in srgb, var(--resource-gold) 38%, transparent)' }}
-              >
-                {battle.lastEnemyDamage ?? 0}
-              </p>
+              <div className="flex items-baseline justify-end gap-1.5">
+                {enemyHits > 1 && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-combat-crit">{enemyHits} hits</span>
+                )}
+                <p
+                  className={`text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums text-right ${enemyAction ? 'text-combat-crit' : 'text-stat-def'}`}
+                  style={{ textShadow: enemyAction ? '0 0 16px color-mix(in srgb, var(--combat-crit) 50%, transparent)' : '0 0 16px color-mix(in srgb, var(--resource-gold) 38%, transparent)' }}
+                >
+                  {battle.lastEnemyDamage ?? 0}
+                </p>
+              </div>
+              <EnemyHitList battle={battle} firstRoll={enemyRollText} />
               {/* What the hit did besides damage: what Magic Armor ate,
                   whether poison took hold. */}
               {battle.absorbed > 0 && (

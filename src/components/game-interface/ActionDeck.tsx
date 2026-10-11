@@ -13,7 +13,7 @@ const { defeatedBossTeleports } = require('@/lib/game-data/teleport-destinations
 }
 import { getCastableSpells } from '@/lib/spellbook'
 import { skillTone } from '@/lib/skillbook'
-import { ammoFor, attackBlockedBy, buildStrikeRow, companionInHand, rangeText, weaponInHand, type DeckContext } from '@/lib/action-deck'
+import { ammoFor, attackBlockedBy, buildStrikeRow, rangeText, weaponInHand, type DeckContext } from '@/lib/action-deck'
 import { startingActionTab, type ActionTab } from '@/lib/use-action-tab'
 import EntryRow, { EntryVerb } from '@/components/EntryRow'
 import { ABILITY_GRID, LevelTag, ROW_FRAME, SpellRow, useConsumableDeck } from './AbilityRows'
@@ -102,10 +102,6 @@ export default function ActionDeck({
 }: ActionDeckProps) {
   const { situation, target, isRanged, swingMax, groupScale } = context
   const { weapon, iconName: weaponIconName, name: weaponName } = weaponInHand(inventory)
-  // The companion swings on every attack turn, so its range rides on Attack
-  // and the strikes: a swing is worth what both of you roll.
-  const companion = companionInHand(inventory)
-  const companionText = companion ? ` + ${companion.name} ${rangeText(companion.min, companion.max)}` : ''
 
   // Where the switch starts is decided fresh each time, never remembered: a
   // fight opens on Attack (Spells for a caster), and the Action button out of
@@ -215,7 +211,7 @@ export default function ActionDeck({
               iconClass={`${isRanged ? 'text-stat-dex' : 'text-stat-str'} opacity-90`}
               name="Attack"
               nameTags={<span className="truncate text-[10px] font-medium text-fg-muted">{weaponName ?? 'Fists'}</span>}
-              subline={<span className="text-[10px] text-fg-muted tabular-nums truncate">Hits {rangeText(0, swingMax)} dmg{companionText}</span>}
+              subline={<span className="text-[10px] text-fg-muted tabular-nums truncate">Hits {rangeText(0, swingMax)} dmg</span>}
               meta={
                 ammo ? (
                   <span
@@ -254,7 +250,7 @@ export default function ActionDeck({
                   name={entry.def.name}
                   nameTags={<LevelTag level={entry.level} maxLevel={entry.maxLevel} />}
                   subline={
-                    <span className="text-[10px] text-fg-muted tabular-nums truncate">{range ? `Hits ${rangeText(range.lo, range.hi)} dmg${companionText}` : entry.def.formula}</span>
+                    <span className="text-[10px] text-fg-muted tabular-nums truncate">{range ? `Hits ${rangeText(range.lo, range.hi)} dmg` : entry.def.formula}</span>
                   }
                   meta={<span className="text-xs font-bold text-resource-mp tabular-nums whitespace-nowrap">{cost} MP</span>}
                   reason={reason}
