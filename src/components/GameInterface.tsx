@@ -396,6 +396,8 @@ export default function GameInterface() {
     previousRoom: Room | null
     previousPlayers: Player[]
     previousEnemy: RoomEnemy | null
+    /** A teleport rather than a step: when it lands, the tabs go home (tab-rules). */
+    isTeleport?: boolean
   } | null>(null)
   // Which room's gather countdowns arrived with the room itself (socket move
   // payload or HTTP room load), so the per-room hydrate effect can skip its
@@ -1129,13 +1131,14 @@ export default function GameInterface() {
       const previousRoom = currentRoom
 
       // Set pending move with previous state - will be cleared when action:feedback arrives
-      pendingMoveRef.current = { 
-        moveSeq, 
+      pendingMoveRef.current = {
+        moveSeq,
         toRoomId: targetRoomId,
         fromRoomId: currentRoom.roomId,
         previousRoom: previousRoom,
         previousPlayers: useGameStore.getState().roomPlayers,
         previousEnemy: roomEnemy,
+        isTeleport: true,
       }
 
       // Set move-in-progress flag
@@ -1737,6 +1740,14 @@ export default function GameInterface() {
             pendingMoveRef.current = null
           }
           setIsMoveInProgress(false)
+
+          // A teleport that landed takes the tabs home: the page it was cast
+          // from (World, or the death card's Rise) has done its job, and the
+          // room is what matters now. Only on confirmation — a refusal above
+          // rolls the room back and leaves the page open with its reason.
+          if (pendingMove?.isTeleport) {
+            applyTabEvent({ type: 'teleported' })
+          }
           
           if (currentPlayer && currentPlayer.currentRoom !== payload.data.toRoom) {
             console.log('[GameInterface] Updating player room to:', payload.data.toRoom)

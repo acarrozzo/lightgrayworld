@@ -15,6 +15,11 @@
  * | Select a tab            | Opens it; the open tab's own tile goes home     |
  * |                         | to Explore                                      |
  * | You change room         | Stay as they are                                |
+ * | You teleport            | Go to Explore (the teleport lands you in the    |
+ * |                         | room; the page you cast it from has done its    |
+ * |                         | job). Applied when the server confirms the      |
+ * |                         | move, so a refused teleport leaves the page     |
+ * |                         | open with its reason.                           |
  * | A fight starts, wide    | Stay as they are                                |
  * | A fight starts, phone   | Go to Explore (the battle card carries the deck |
  * |                         | and Retreat; Actions would be its twin)         |
@@ -32,6 +37,7 @@ export interface TabState {
 export type TabEvent =
   | { type: 'select'; tab: TabId }
   | { type: 'roomChanged' }
+  | { type: 'teleported' }
   | { type: 'fightStarted'; phone: boolean }
   | { type: 'died' }
   | { type: 'escape' }
@@ -46,6 +52,8 @@ export function reduceTabs(state: TabState, event: TabEvent): TabState {
       return { tab: event.tab }
     case 'roomChanged':
       return state
+    case 'teleported':
+      return HOME
     case 'fightStarted':
       return event.phone ? HOME : state
     case 'died':

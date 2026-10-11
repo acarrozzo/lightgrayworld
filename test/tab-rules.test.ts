@@ -20,6 +20,11 @@ test('changing room leaves every tab open, Actions included', () => {
   assert.deepEqual(reduceTabs(HOME, { type: 'roomChanged' }), HOME)
 })
 
+test('a confirmed teleport returns to Explore from every tab', () => {
+  for (const tab of EVERY_TAB) assert.deepEqual(reduceTabs(on(tab), { type: 'teleported' }), HOME)
+  assert.deepEqual(reduceTabs(HOME, { type: 'teleported' }), HOME)
+})
+
 test('a fight starting changes nothing on a wide screen', () => {
   for (const tab of EVERY_TAB) assert.deepEqual(reduceTabs(on(tab), { type: 'fightStarted', phone: false }), on(tab))
 })
