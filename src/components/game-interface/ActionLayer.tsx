@@ -88,7 +88,9 @@ export default function ActionLayer({
         onOpenBook={battle.isInBattle ? undefined : onOpenBook}
         onOpenItem={battle.isInBattle ? undefined : (playerItemId) => onOpenInventory('consumables', playerItemId)}
         travel={travel}
-        listClassName={presentation === 'sheet' ? 'max-h-[42dvh]' : ''}
+        // The layer's own body scrolls, on a phone page and in the column alike.
+        listClassName=""
+
         idPrefix={presentation}
       />
     </LayerShell>

@@ -10,6 +10,9 @@ import GameHeader from './GameHeader'
 import { type InputMode } from './game-interface/panels/FeedPanel'
 import RoomBox, { type RoomEnemy } from './RoomBox'
 import BattlePanel from './game-interface/panels/BattlePanel'
+import BattleVitalsLine from './game-interface/BattleVitalsLine'
+import RoomSheet from './game-interface/RoomSheet'
+import { useFightFrame } from './game-interface/useFightFrame'
 import NotificationBadge from './NotificationBadge'
 import TabBar, { tabDef, type TabBadges } from './game-interface/TabBar'
 import { escapeCloses, reduceTabs, type TabEvent, type TabId } from '@/lib/tab-rules'
@@ -2524,6 +2527,8 @@ export default function GameInterface() {
           melted: lt?.melted ?? false,
           enemyHealed: lt?.enemyHealed ?? 0,
           enemyEffects: lt?.enemyEffects ?? {},
+          companion: lt?.companion ?? null,
+          extraShot: lt?.extraShot ?? null,
         })
         updateBattleTurn(buildUpdate(0))
       }, 0)
@@ -2591,6 +2596,8 @@ export default function GameInterface() {
           melted: lt?.melted ?? false,
           enemyHealed: lt?.enemyHealed ?? 0,
           enemyEffects: lt?.enemyEffects ?? {},
+          companion: lt?.companion ?? null,
+          extraShot: lt?.extraShot ?? null,
         })
       }, 0)
       scheduleBattleTimer(applyDefeat, 900)
@@ -3318,6 +3325,30 @@ export default function GameInterface() {
     setIsBattleDpadOpen(false)
   }, [battle.isInBattle])
 
+  // The fight screen. While a fight is on, the room area stops scrolling and
+  // the battle card is pinned with its list taking the rest of the height —
+  // unless the area is too short for that, when it scrolls as before with a
+  // vitals line pinned to its top (useFightFrame measures, never guesses).
+  // Pinned, the room card has no place under the deck, so the strip's Room
+  // chip opens it as a sheet; scrolling, the chip just scrolls down to it.
+  const fightAreaRef = useRef<HTMLDivElement>(null)
+  const fightPanelRef = useRef<HTMLDivElement>(null)
+  const fightListRef = useRef<HTMLDivElement>(null)
+  const roomCardRef = useRef<HTMLDivElement>(null)
+  const fightFrame = useFightFrame(battle.isInBattle, fightAreaRef, fightPanelRef, fightListRef)
+  const fightLocked = battle.isInBattle && fightFrame === 'fight'
+  const [roomSheetOpen, setRoomSheetOpen] = useState(false)
+  const closeRoomSheet = useCallback(() => setRoomSheetOpen(false), [])
+  const openRoomFromFight = useCallback(() => {
+    if (fightLocked) setRoomSheetOpen(true)
+    else roomCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [fightLocked])
+  // The fight ending, the room changing, or the frame giving the room card
+  // its place back all close the sheet: what it showed is on the page again.
+  useEffect(() => {
+    setRoomSheetOpen(false)
+  }, [fightLocked, currentRoom?.roomId])
+
   // Every "open the inventory" link in the game lands here: the Inv tab of
   // the deck, optionally filtered and with one item's drawer open.
   const handleSwitchToInventory = useCallback((filter?: FilterTab, openItemId?: string) => {
@@ -3742,6 +3773,30 @@ export default function GameInterface() {
       </DeckProvider>
     )
   }
+  const roomBoxEl = currentRoom ? (
+    <RoomBox
+      room={currentRoom}
+      roomPlayers={roomPlayers}
+      currentPlayerId={player.id}
+      onAction={handleAction}
+      isPartyMember={isPartyMember}
+      onOpenPlayerProfile={handleOpenPlayerProfile}
+      party={party}
+      pendingFollowIds={pendingFollowIds}
+      onFollow={handleFollowPlayer}
+      gatherCooldowns={gatherCooldowns}
+      supplies={supplies}
+      worldTick={worldTick}
+      actionResult={actionResult}
+      isLoadingRoom={isLoadingRoom}
+      currentAction={action}
+      roomEnemy={roomEnemy}
+      isInBattle={battle.isInBattle}
+      quests={quests}
+      killList={killList}
+    />
+  ) : null
+
   const deckContent: DeckContentProps = {
     player,
     inventory,
@@ -3969,6 +4024,7 @@ export default function GameInterface() {
         itemPreview={itemPreview}
         regenGain={regenGain}
         regenGainKey={regenGainKey}
+        enemy={battle.isInBattle ? { name: battle.enemyName, hp: battle.enemyCurrentHp, hpMax: battle.enemyMaxHp } : null}
         xp={player?.xp}
         xpGain={xpGain}
         xpGainKey={xpGainKey}
@@ -4049,7 +4105,10 @@ export default function GameInterface() {
 
         {/* Right (desktop) / Main (mobile): Explore area — always visible on desktop, only when explore tab active on mobile */}
         <div className={`relative flex flex-col flex-1 min-w-0 min-h-0 h-full overflow-hidden ${centerActiveTab !== 'explore' ? 'hidden lg:flex' : 'flex'}`}>
-          {/* Feed toggle button — desktop only, top-right of explore area */}
+          {/* Feed toggle button — desktop only, top-right of explore area.
+              Only while the feed is closed: open, its own header has the X,
+              and this one would sit on the battle card's Room chip. */}
+          {!isFeedPanelOpen && (
           <button
             type="button"
             onClick={() => setIsFeedPanelOpen(v => !v)}
@@ -4064,6 +4123,7 @@ export default function GameInterface() {
               </span>
             )}
           </button>
+          )}
           {currentRoom && (
             <div className="bg-surface-panel/50 flex-1 overflow-hidden min-h-0 h-full flex flex-col">
               {/* Who you are travelling with, above the room rather than in it,
@@ -4086,12 +4146,17 @@ export default function GameInterface() {
                 onSendChat={(message) => socketHandlers.sendPartyChatMessage(message)}
                 onMessage={handleProfileMessage}
                 onInspect={handleOpenPlayerProfile}
+                dense={battle.isInBattle}
               />
               {/* The room column is a container: with two resizable side
                   panels it can be far narrower than the viewport, so what
                   renders inside sizes against it, not the window. */}
-              <div className="@container flex-1 min-h-0 overflow-y-auto h-full">
-                <div className="max-w-4xl mx-auto w-full">
+              <div
+                ref={fightAreaRef}
+                className={`@container flex-1 min-h-0 h-full ${fightLocked ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'}`}
+              >
+                {battle.isInBattle && fightFrame === 'fallback' && <BattleVitalsLine battle={battle} />}
+                <div className={`max-w-4xl mx-auto w-full ${fightLocked ? 'flex min-h-0 flex-1 flex-col' : ''}`}>
                   {!socket?.connected && (
                     <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-line-subtle/30 bg-surface-panel/60">
                       <div className="flex items-center gap-2 text-xs text-fg-secondary">
@@ -4131,16 +4196,23 @@ export default function GameInterface() {
                       className={
                         battleResult?.outcome === 'LOSS'
                           ? 'fixed inset-0 z-[60] flex items-center justify-center p-4 bg-surface-canvas/85 backdrop-blur-sm'
-                          : 'px-4 pt-4'
+                          : fightLocked
+                            ? 'flex min-h-0 flex-1 flex-col px-4 pt-4 pb-3'
+                            : 'px-4 pt-4'
                       }
                       role={battleResult?.outcome === 'LOSS' ? 'dialog' : undefined}
                       aria-modal={battleResult?.outcome === 'LOSS' ? true : undefined}
                       aria-label={battleResult?.outcome === 'LOSS' ? 'You died' : undefined}
                     >
-                      <div className={battleResult?.outcome === 'LOSS' ? 'w-full max-w-xl max-h-full overflow-y-auto' : ''}>
+                      <div className={battleResult?.outcome === 'LOSS' ? 'w-full max-w-xl max-h-full overflow-y-auto' : fightLocked ? 'flex min-h-0 flex-1 flex-col' : ''}>
                       <BattlePanel
                         battle={battle}
                         battleResult={battleResult}
+                        frame={fightFrame}
+                        panelRef={fightPanelRef}
+                        listRef={fightListRef}
+                        roomLabel={currentRoom?.roomId ? String(currentRoom.roomId) : undefined}
+                        onOpenRoom={openRoomFromFight}
                         onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
                         onFlee={handleFlee}
                         fleeNeedsConfirm={escapeWarning !== null}
@@ -4185,27 +4257,9 @@ export default function GameInterface() {
                       </div>
                     </div>
                   )}
-                  <RoomBox
-                    room={currentRoom}
-                    roomPlayers={roomPlayers}
-                    currentPlayerId={player.id}
-                    onAction={handleAction}
-                    isPartyMember={isPartyMember}
-                    onOpenPlayerProfile={handleOpenPlayerProfile}
-                    party={party}
-                    pendingFollowIds={pendingFollowIds}
-                    onFollow={handleFollowPlayer}
-                    gatherCooldowns={gatherCooldowns}
-                    supplies={supplies}
-                    worldTick={worldTick}
-                    actionResult={actionResult}
-                    isLoadingRoom={isLoadingRoom}
-                    currentAction={action}
-                    roomEnemy={roomEnemy}
-                    isInBattle={battle.isInBattle}
-                    quests={quests}
-                    killList={killList}
-                  />
+                  {/* The room card sits under the fight as always, except while
+                      the card is pinned over it: then the Room chip opens it. */}
+                  {!fightLocked && <div ref={roomCardRef}>{roomBoxEl}</div>}
                 </div>
               </div>
 
@@ -4253,6 +4307,11 @@ export default function GameInterface() {
                 )}
               </div>
             </div>
+          )}
+          {currentRoom && fightLocked && (
+            <RoomSheet open={roomSheetOpen} onClose={closeRoomSheet} title={`${currentRoom.name ?? 'The room'} · #${currentRoom.roomId}`}>
+              {roomBoxEl}
+            </RoomSheet>
           )}
         </div>
 

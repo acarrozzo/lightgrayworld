@@ -55,6 +55,12 @@ interface PartyRailProps {
   onSendChat?: (message: string) => boolean
   onMessage?: (target: { id: string; username: string }) => void
   onInspect?: (target: { id: string; username: string; level: number; uIcon?: string; uIconColor?: string }) => void
+  /**
+   * One line instead of four, for a fight: name, level and the HP hairline
+   * per member, and "⚔ 52%" for a fighter. The battle card wants the height,
+   * and the sheets behind every tap still hold the whole readout.
+   */
+  dense?: boolean
 }
 
 /* ───────────────────────── sheet ───────────────────────── */
@@ -512,12 +518,15 @@ function vitalText(cur?: number, max?: number): string {
 function Chip({
   member,
   pulse,
+  dense = false,
   onOpen,
   onPeek,
   onPeekEnd,
 }: {
   member: SquadMember
   pulse: boolean
+  /** One line: the rail in a fight. */
+  dense?: boolean
   onOpen: () => void
   /** Hovering or focusing the chip shows the read-only card under it. */
   onPeek: (id: string, el: HTMLElement) => void
@@ -544,6 +553,45 @@ function Chip({
       : member.isSelf
         ? 'text-fg-bright'
         : 'text-fg-secondary'
+  if (dense) {
+    const glance = member.battle
+    const enemyPct =
+      glance?.enemyHp != null && glance?.enemyHpMax ? Math.round((glance.enemyHp / glance.enemyHpMax) * 100) : null
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={label}
+        onPointerEnter={(event) => {
+          if (event.pointerType === 'mouse') onPeek(member.id, event.currentTarget)
+        }}
+        onPointerLeave={(event) => {
+          if (event.pointerType === 'mouse') onPeekEnd()
+        }}
+        onFocus={(event) => onPeek(member.id, event.currentTarget)}
+        onBlur={onPeekEnd}
+        className={`flex h-7 shrink-0 items-center gap-1.5 rounded-md px-1 transition-colors hover:bg-surface-hover/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+          member.state === 'offline' ? 'opacity-50' : ''
+        }`}
+      >
+        <MemberAvatar member={member} />
+        <span className={`flex items-center gap-1 text-[10px] leading-none ${nameTone}`}>
+          <span className="max-w-[72px] truncate">{member.isSelf ? 'You' : member.username}</span>
+          {member.isLeader && <Crown size={8} className="shrink-0 text-status-warning" aria-hidden="true" />}
+          <span className="shrink-0 tabular-nums text-fg-muted">Lv{member.level}</span>
+        </span>
+        <span className={`flex items-center gap-1 ${pulse ? 'motion-safe:animate-pulse' : ''}`}>
+          <span className="block w-11"><HairBar pct={member.hpPct} fill={CHIP_HP_FILL[member.state]} height="h-[4px]" /></span>
+          <span className="shrink-0 text-[8px] leading-none tabular-nums text-fg-secondary">{vitalText(member.hp, member.hpMax)}</span>
+        </span>
+        {member.state === 'fighting' && (
+          <span className="shrink-0 whitespace-nowrap text-[8px] font-semibold leading-none tabular-nums text-status-error">
+            ⚔ {enemyPct != null ? `${enemyPct}%` : (member.battleEnemyName ?? glance?.enemyName ?? '')}
+          </span>
+        )}
+      </button>
+    )
+  }
   return (
     <button
       type="button"
@@ -613,6 +661,7 @@ export default function PartyRail({
   onSendChat,
   onMessage,
   onInspect,
+  dense = false,
 }: PartyRailProps) {
   const [open, setOpen] = useState<null | { kind: 'member'; id: string } | { kind: 'party' } | { kind: 'chat' }>(null)
   const presenceById = usePresenceStore((s) => s.byUserId)
@@ -733,7 +782,7 @@ export default function PartyRail({
       <div className="shrink-0 border-b border-line-subtle/60 bg-surface-panel/95 shadow-[0_6px_14px_-12px_var(--shadow)]">
         {party && (
           <div
-            className="flex h-16 items-center gap-1 overflow-x-auto overflow-y-hidden px-2 lg:pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className={`flex ${dense ? 'h-8' : 'h-16'} items-center gap-1 overflow-x-auto overflow-y-hidden px-2 lg:pr-14 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
             role="group"
             aria-label="Party"
             onScroll={followPeek}
@@ -744,7 +793,9 @@ export default function PartyRail({
               aria-haspopup="dialog"
               aria-label={`${party.name ?? 'Party'} options`}
               title={party.name ?? 'Party'}
-              className="mr-1.5 flex shrink-0 flex-col justify-center gap-[3px] rounded-md px-1.5 py-1 text-left transition-colors hover:bg-surface-hover/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+              className={`mr-1.5 flex shrink-0 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-surface-hover/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                dense ? 'flex-row items-center gap-1.5' : 'flex-col justify-center gap-[3px]'
+              }`}
             >
               <span className="flex max-w-[92px] items-center gap-1">
                 <Users size={10} className="shrink-0 text-resource-mp" aria-hidden="true" />
@@ -773,6 +824,7 @@ export default function PartyRail({
                 key={member.id}
                 member={member}
                 pulse={pulsing.has(member.id)}
+                dense={dense}
                 onOpen={() => setOpen({ kind: 'member', id: member.id })}
                 onPeek={showPeek}
                 onPeekEnd={endPeek}

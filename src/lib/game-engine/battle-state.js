@@ -64,6 +64,9 @@ class BattleState {
     this.totalDamageDealt = 0
     this.totalDamageReceived = 0
     this.maxSingleHit = 0
+    // Of totalDamageDealt, what the companion's swings were: the victory
+    // card says "Ogre dealt 31 of it".
+    this.companionDamageDealt = 0
     this.multiplayerBonusUsed = false
     this.lastTurnResult = null
   }
@@ -142,6 +145,7 @@ class BattleState {
     this.totalDamageDealt += playerDealt
     this.totalDamageReceived += enemyDealt
     if (playerDealt > this.maxSingleHit) this.maxSingleHit = playerDealt
+    if (fullTurnResult?.companion) this.companionDamageDealt += fullTurnResult.companion.damage || 0
     if (hadMultiplayerBonus) this.multiplayerBonusUsed = true
     if (fullTurnResult) this.lastTurnResult = fullTurnResult
   }

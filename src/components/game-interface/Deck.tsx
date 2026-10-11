@@ -125,23 +125,20 @@ interface ActionSheetProps {
 }
 
 /**
- * Action on a phone: a sheet rising over the room, only as tall as it needs.
- * It fills the page area it is placed in (GameInterface puts it between the
- * header and the bottom bar, so the bar stays in reach while the sheet is up).
+ * Action on a phone: a page over the room, the whole height of the area it
+ * is placed in (GameInterface puts it between the header and the bottom bar,
+ * so the bar stays in reach while it is up), as every tab's page is. It was
+ * a half-height sheet; the lists need the room.
  */
 export function ActionSheet({ onClose, content }: ActionSheetProps) {
   const context = useMemo<DeckContextValue>(() => ({ presentation: 'sheet', onClose }), [onClose])
   return (
-    <div className="absolute inset-0 z-40 flex flex-col justify-end" role="dialog" aria-label="Action — attack, strikes, spells and items">
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-surface-canvas/60 backdrop-blur-[2px]" />
-      <div className="relative flex max-h-[88%] min-h-0 flex-col rounded-t-2xl border-t border-line-strong bg-surface-overlay shadow-2xl shadow-black/50">
-        <div className="mx-auto mt-2 h-1 w-9 flex-shrink-0 rounded-full bg-line-strong" aria-hidden="true" />
-        <DeckProvider value={context}>
-          <div className="flex min-h-0 flex-1 flex-col">
-            <DeckContent tab="action" {...content} />
-          </div>
-        </DeckProvider>
-      </div>
+    <div className="absolute inset-0 z-40 flex min-h-0 flex-col bg-surface-panel" role="dialog" aria-label="Action — attack, strikes, spells and items">
+      <DeckProvider value={context}>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <DeckContent tab="action" {...content} />
+        </div>
+      </DeckProvider>
     </div>
   )
 }

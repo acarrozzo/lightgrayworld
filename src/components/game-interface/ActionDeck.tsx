@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type Ref } from 'react'
 import Icon from '@/components/Icon'
 import { LogOut, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
-import WorldGrid, { foundMapIdsFor, type BossTeleportTile } from './WorldGrid'
+import type { BossTeleportTile } from './WorldGrid'
+import TravelRows from './TravelRows'
 import { useGameStore, type InventoryItem, type Player } from '@/lib/game-state'
 
 const { defeatedBossTeleports } = require('@/lib/game-data/teleport-destinations') as {
@@ -12,7 +13,7 @@ const { defeatedBossTeleports } = require('@/lib/game-data/teleport-destinations
 }
 import { getCastableSpells } from '@/lib/spellbook'
 import { skillTone } from '@/lib/skillbook'
-import { ammoFor, attackBlockedBy, buildStrikeRow, rangeText, weaponInHand, type DeckContext } from '@/lib/action-deck'
+import { ammoFor, attackBlockedBy, buildStrikeRow, companionInHand, rangeText, weaponInHand, type DeckContext } from '@/lib/action-deck'
 import { startingActionTab, type ActionTab } from '@/lib/use-action-tab'
 import EntryRow, { EntryVerb } from '@/components/EntryRow'
 import { ABILITY_GRID, LevelTag, ROW_FRAME, SpellRow, useConsumableDeck } from './AbilityRows'
@@ -21,9 +22,14 @@ import ConsumableDeck from './ConsumableDeck'
 /** What the Travel tab needs. Absent, the deck has three tabs. */
 export interface TravelDeckProps {
   currentRoomId?: string
-  onTeleport: (roomId: string) => void
+  onTeleport?: (roomId: string) => void
   /** Why no teleport can go right now (party, MP), or null. */
   teleportBlockedReason: string | null
+  /**
+   * Draw the teleport rows. Off for a fighter who has not found the World
+   * yet: the tab then holds Retreat alone, so a fight always has its way out.
+   */
+  grid?: boolean
   /** In a fight: leave it where you stand. Two taps, as the header pill asks. */
   onRetreat?: () => void
   /** Retreat opens its own dialog, so the row fires on the first tap. */
@@ -55,6 +61,10 @@ export interface ActionDeckProps {
    * instead of passing it up.
    */
   listClassName?: string
+  /** The list element, for whoever needs to measure what height it got. */
+  listRef?: Ref<HTMLDivElement>
+  /** On the deck's root: `flex-1` lets it fill a column its holder has pinned. */
+  className?: string
   idPrefix?: string
 }
 
@@ -86,10 +96,16 @@ export default function ActionDeck({
   onOpenItem,
   travel,
   listClassName = '',
+  listRef,
+  className = '',
   idPrefix = 'action',
 }: ActionDeckProps) {
   const { situation, target, isRanged, swingMax, groupScale } = context
   const { weapon, iconName: weaponIconName, name: weaponName } = weaponInHand(inventory)
+  // The companion swings on every attack turn, so its range rides on Attack
+  // and the strikes: a swing is worth what both of you roll.
+  const companion = companionInHand(inventory)
+  const companionText = companion ? ` + ${companion.name} ${rangeText(companion.min, companion.max)}` : ''
 
   // Where the switch starts is decided fresh each time, never remembered: a
   // fight opens on Attack (Spells for a caster), and the Action button out of
@@ -142,7 +158,7 @@ export default function ActionDeck({
   const shownTab: ActionTab = tabs.some((tab) => tab.id === activeTab) ? activeTab : 'attack'
 
   return (
-    <div className="@container flex flex-col gap-2 min-h-0">
+    <div className={`@container flex flex-col gap-2 min-h-0 ${className}`}>
       {/* The switch: one filled segment of three, counts on the two lists. */}
       <div role="tablist" aria-label={travel ? 'Attack, Spells, Items or Travel' : 'Attack, Spells or Items'} className={`grid gap-1 p-1 rounded-xl bg-surface-sunken border border-line-subtle ${travel ? 'grid-cols-4' : 'grid-cols-3'}`}>
         {tabs.map((tab) => {
@@ -176,6 +192,7 @@ export default function ActionDeck({
       {/* The list. The deck caps it so a deep bag scrolls inside the card
           instead of pushing the room off the screen; the layer lets it fill. */}
       <div
+        ref={listRef}
         role="tabpanel"
         id={`${idPrefix}-deck-${shownTab}`}
         aria-labelledby={`${idPrefix}-tab-${shownTab}`}
@@ -198,7 +215,7 @@ export default function ActionDeck({
               iconClass={`${isRanged ? 'text-stat-dex' : 'text-stat-str'} opacity-90`}
               name="Attack"
               nameTags={<span className="truncate text-[10px] font-medium text-fg-muted">{weaponName ?? 'Fists'}</span>}
-              subline={<span className="text-[10px] text-fg-muted tabular-nums truncate">Hits {rangeText(0, swingMax)} dmg</span>}
+              subline={<span className="text-[10px] text-fg-muted tabular-nums truncate">Hits {rangeText(0, swingMax)} dmg{companionText}</span>}
               meta={
                 ammo ? (
                   <span
@@ -237,7 +254,7 @@ export default function ActionDeck({
                   name={entry.def.name}
                   nameTags={<LevelTag level={entry.level} maxLevel={entry.maxLevel} />}
                   subline={
-                    <span className="text-[10px] text-fg-muted tabular-nums truncate">{range ? `Hits ${rangeText(range.lo, range.hi)} dmg` : entry.def.formula}</span>
+                    <span className="text-[10px] text-fg-muted tabular-nums truncate">{range ? `Hits ${rangeText(range.lo, range.hi)} dmg${companionText}` : entry.def.formula}</span>
                   }
                   meta={<span className="text-xs font-bold text-resource-mp tabular-nums whitespace-nowrap">{cost} MP</span>}
                   reason={reason}
@@ -294,27 +311,23 @@ export default function ActionDeck({
         )}
 
         {shownTab === 'travel' && travel && (
-          <>
-            {travel.onRetreat && (
-              <RetreatRow onRetreat={travel.onRetreat} needsConfirm={travel.retreatNeedsConfirm ?? false} disabled={isActing} />
-            )}
-            {travel.teleportBlockedReason && (
-              <p className="rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-[11px] leading-relaxed text-status-error/90">{travel.teleportBlockedReason}</p>
-            )}
-            {/* The original's teleport grid, the picture players know. The VIP
-                row sits past the end-of-page mark, as it does on every panel. */}
-            <WorldGrid
-              mode="teleport"
-              dense
-              currentRoomId={travel.currentRoomId}
-              discoveredTeleports={player.discoveredTeleports ?? []}
-              foundMapIds={foundMapIdsFor(player, travel.currentRoomId)}
-              blockedReason={travel.teleportBlockedReason}
-              onTeleport={travel.onTeleport}
-              bosses={defeatedBosses}
-              playerMp={player.mp ?? 0}
-            />
-          </>
+          // The original's teleport page as rows: Retreat first in a fight,
+          // then the regions, the bosses beaten, and the VIP rooms. A fighter
+          // who has not found the World yet gets Retreat alone.
+          <TravelRows
+            currentRoomId={travel.currentRoomId}
+            discoveredTeleports={player.discoveredTeleports ?? []}
+            blockedReason={travel.teleportBlockedReason}
+            bosses={defeatedBosses}
+            playerMp={player.mp ?? 0}
+            onTeleport={travel.onTeleport ?? (() => {})}
+            rows={travel.grid !== false && !!travel.onTeleport}
+            retreat={
+              travel.onRetreat ? (
+                <RetreatRow onRetreat={travel.onRetreat} needsConfirm={travel.retreatNeedsConfirm ?? false} disabled={isActing} />
+              ) : undefined
+            }
+          />
         )}
       </div>
     </div>
@@ -351,6 +364,7 @@ function RetreatRow({ onRetreat, needsConfirm, disabled }: { onRetreat: () => vo
     <EntryRow
       density="deck"
       icon="x"
+      iconSize={16}
       iconClass="text-status-error opacity-90"
       name="Retreat"
       subline={<span className="text-[10px] text-fg-muted truncate">Leave the fight where you stand. The enemy keeps its HP.</span>}

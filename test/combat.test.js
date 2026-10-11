@@ -325,3 +325,13 @@ test('Multi Arrow looses a second plain shot at 100%, never without the skill, a
   const turn = resolveTurn(bow({ enemyCurrentHp: 100, enemyMaxHp: 100 }), 0)
   assert.equal(totalDamageToEnemy(turn), turn.playerDealtDamage + turn.extraShot.damage)
 })
+
+test("the companion's share of the fight is kept for the victory card", () => {
+  const enemy = { att: 10, def: 0, damageType: 'MELEE' }
+  const stats = { level: 1, str: 1, dex: 1, mag: 1, def: 1, hp: 10, hpMax: 10 }
+  const b = new BattleState({ playerId: 'p', roomId: '001', enemy, playerStats: stats, gear: { weaponCategory: 'MELEE' }, companion: { name: 'Ogre', damageMin: 5, damageMax: 25 } })
+  b.recordTurn(20, 0, false, { playerDealtDamage: 12, companion: { name: 'Ogre', roll: 9, block: 1, damage: 8 } })
+  b.recordTurn(7, 0, false, { playerDealtDamage: 7, companion: null })
+  assert.equal(b.totalDamageDealt, 27)
+  assert.equal(b.companionDamageDealt, 8)
+})

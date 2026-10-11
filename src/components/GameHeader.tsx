@@ -34,6 +34,8 @@ interface GameHeaderProps {
   /** What the last click's regen restored; floats "+3" over the HP and MP bars the way XP does. */
   regenGain?: { hp: number; mp: number } | null
   regenGainKey?: number
+  /** The enemy being fought: its HP as a red bar, so every tab shows the fight. On a phone it takes the XP bar's slot, which does not move mid-fight. */
+  enemy?: { name: string | null; hp: number; hpMax: number } | null
 }
 
 /** The "+3" that floats up off a bar when regen lands, in the bar's own colour. */
@@ -57,9 +59,11 @@ function previewPct(current: number, max: number, amount: number): number {
   return ((Math.min(max, current + amount) - current) / max) * 100
 }
 
-function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, value, over, className }: {
+function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, value, over, className, rtl = false }: {
   pct: number
   fillClass: string
+  /** Fill from the right: the enemy's side. */
+  rtl?: boolean
   /** Fill for the ghosted preview segment. */
   ghostClass?: string
   /** Extra width, past `pct`, a hovered heal would add. */
@@ -76,7 +80,7 @@ function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, value, ove
       title={`${label} ${value}`}
     >
       <div
-        className={`h-full rounded-full transition-[width] duration-500 ease-out ${fillClass}`}
+        className={`h-full rounded-full transition-[width] duration-500 ease-out ${fillClass} ${rtl ? 'ml-auto' : ''}`}
         style={{ width: `${fillPct}%` }}
       />
       {previewPct > 0 && (
@@ -112,7 +116,18 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey, enemy = null }: GameHeaderProps) {
+  const enemyBar = (className: string) =>
+    enemy ? (
+      <StatBar
+        className={className}
+        rtl
+        pct={enemy.hpMax > 0 ? (enemy.hp / enemy.hpMax) * 100 : 0}
+        fillClass="bg-enemy-boss"
+        label={`${enemy.name ?? 'Enemy'} HP`}
+        value={`${Math.max(0, enemy.hp)}/${enemy.hpMax}`}
+      />
+    ) : null
   let xpInLevel = 0
   let xpNeeded = 1
   let xpPct = 0
@@ -178,7 +193,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                 {level !== undefined && (
                   <span className="text-stat-def shrink-0">Lv. {level}</span>
                 )}
-                {xp !== undefined && level !== undefined && (
+                {enemy ? enemyBar('w-12 shrink-0') : xp !== undefined && level !== undefined && (
                   <StatBar
                     className="w-10 shrink-0"
                     pct={xpPct}
@@ -285,6 +300,12 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                       label="XP"
                       value={`${xpPct}%`}
                     />
+                  )}
+                  {enemy && (
+                    <>
+                      <span className="text-enemy-hostile font-semibold">vs</span>
+                      {enemyBar('w-16')}
+                    </>
                   )}
                   {xpGain != null && xpGain > 0 && (
                     <span

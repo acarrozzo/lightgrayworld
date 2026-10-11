@@ -121,6 +121,24 @@ export function weaponInHand(inventory: InventoryItem[]): { weapon: InventoryIte
   }
 }
 
+/**
+ * The companion in the slot, as the deck and the battle card name it: its
+ * icon, its name and the swing it adds to every attack turn. Null with the
+ * slot empty. Read from the bag, which stays the truth through a mid-fight
+ * swap.
+ */
+export function companionInHand(inventory: InventoryItem[]): { name: string; iconName: string; min: number; max: number } | null {
+  const item = inventory.find((entry) => entry.isEquipped && entry.slot === 'COMPANION') ?? null
+  const meta = (item?.template.metadata ?? null) as { icon?: string; companion?: { damageMin?: number; damageMax?: number } } | null
+  if (!item || !meta?.companion) return null
+  return {
+    name: item.template.name,
+    iconName: resolveItemIcon(meta, item.template.slug ?? ''),
+    min: meta.companion.damageMin ?? 0,
+    max: meta.companion.damageMax ?? 0,
+  }
+}
+
 /** The enemy in a running fight, from the traits the server sends. */
 export function targetFromBattle(battle: BattleState): DeckTarget {
   const has = (id: string) => battle.enemyTraits.some((trait) => trait.id === id)

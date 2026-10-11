@@ -7,7 +7,7 @@ import NotificationBadge from '@/components/NotificationBadge'
 import { DeckContent, type DeckContentProps } from './Deck'
 import { DeckProvider, type DeckContextValue } from './LayerShell'
 import BasicActionButtons from '@/components/BasicActionButtons'
-import StatusStrip from '@/components/StatusStrip'
+import EffectsButton from './EffectsButton'
 import TrackedQuests, { TrackedQuestsButton } from './TrackedQuestCard'
 import type { TrackedQuestView } from '@/lib/tracked-quest'
 import { statusChips } from '@/lib/status-effects'
@@ -15,16 +15,24 @@ import type { InventoryItem, Player } from '@/lib/game-state'
 
 
 /**
- * The Explore panel is where you act. The D-pad, with each exit named under
- * it once you have been through; the four verbs beneath — Attack, Search,
- * Rest, and All actions, which opens the strike, spell and item block over
- * the compass; what is running on you as chips; and above it all the quests
- * you are following, each with its next step. The room card keeps the
- * room's own hand-authored actions; these are the ones you can always do.
+ * The Explore panel is where you act. The D-pad, Up and Down in a column on
+ * its left as the original had them; the four verbs — Attack, Search, Rest,
+ * and All actions, which opens the strike, spell and item block over the
+ * compass — under the ring in the column and to its right on a phone; what
+ * is running on you behind one small Effects button in the corner; and above
+ * it all the quests you are following, each with its next step. The room
+ * card keeps the room's own hand-authored actions; these are the ones you
+ * can always do.
  *
- * Action closes from the X in its header, Escape, travelling or dying. The
- * mobile strip has no height for that layer, so there it opens as a sheet
- * that GameInterface draws.
+ * The phone strip has one height, always: the ring's, plus its padding.
+ * Nothing in it is added or removed as things happen — Up and Down are
+ * drawn faint when the room has neither, the corners are absolute, the
+ * chips are behind a button — so the room above never jumps. The one
+ * deliberate change is the fold to a bar during a fight, which GameInterface
+ * draws instead of this.
+ *
+ * Action closes from the X in its header, Escape, travelling or dying. On a
+ * phone it opens as a page over the room that GameInterface draws.
  */
 interface ExplorePanelProps {
   room: any
@@ -76,17 +84,6 @@ interface ExplorePanelProps {
 
 const NO_QUESTS: TrackedQuestView[] = []
 
-/** "In Battle" at the bottom of the panel: the compass is live in a fight, so the badge keeps off the controls. */
-function BattleBadge() {
-  return (
-    <div className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 z-10">
-      <span className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-status-error/90 bg-surface-canvas/70 border border-status-error/25 rounded-lg backdrop-blur-sm">
-        In Battle
-      </span>
-    </div>
-  )
-}
-
 export default function ExplorePanel({
   room,
   player,
@@ -121,6 +118,8 @@ export default function ExplorePanel({
   const chips = useMemo(() => statusChips(player, inventory), [player, inventory])
 
   const dimmedClasses = isDimmed ? 'opacity-20 pointer-events-none' : showBattleBadge ? 'opacity-70' : ''
+  // Blue, the Explore tab's own accent, not the attack red: it opens a
+  // block, it does not swing. "Actions" on a phone, where the column is narrow.
   const actionButton = actionUnlocked && (
     <button
       type="button"
@@ -129,18 +128,18 @@ export default function ExplorePanel({
       aria-label="All actions — attack, strikes, spells and items"
       title="All actions — attack, strikes, spells and items"
       className={`relative flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border font-medium transition-all duration-200 active:scale-[0.96] focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-        isSidebar ? 'h-10 px-4 text-sm' : 'h-11 flex-1 px-2 text-sm'
+        isSidebar ? 'h-10 px-4 text-sm' : 'h-9 w-20 px-1 text-xs'
       } ${
         actionOpen
-          ? 'fill-action-attack border-fg-bright/20 ring-2 ring-line-focus'
+          ? 'fill-hue-blue border-fg-bright/20 ring-2 ring-line-focus'
           : actionFresh
-          ? 'tab-fresh border-action-attack bg-action-attack/25 text-action-attack'
-          : 'border-action-attack/60 bg-action-attack/15 text-action-attack hover:bg-action-attack/25 hover:border-action-attack'
+          ? 'tab-fresh border-hue-blue bg-hue-blue/25 text-hue-blue'
+          : 'border-hue-blue/60 bg-hue-blue/15 text-hue-blue hover:bg-hue-blue/25 hover:border-hue-blue'
       }`}
     >
       <NotificationBadge value={enemyHere} className="absolute -right-1 -top-1 z-10" />
-      <Icon name="hand" size={16} color="current" />
-      <span>All actions</span>
+      <Icon name="hand" size={isSidebar ? 16 : 14} color="current" />
+      <span>{isSidebar ? 'All actions' : 'Actions'}</span>
     </button>
   )
 
@@ -153,36 +152,45 @@ export default function ExplorePanel({
       actionResult={actionResult}
       isLoadingRoom={isLoadingRoom}
       currentAction={currentAction}
-      containerClassName={isSidebar ? 'flex items-center justify-center gap-2' : 'flex flex-1 items-center gap-2'}
-      fill={!isSidebar}
-      sizeClassName={isSidebar ? 'h-10 px-4 text-sm' : 'h-11 px-2 text-sm'}
+      containerClassName={isSidebar ? 'flex items-center justify-center gap-2' : 'flex flex-col items-stretch gap-1.5'}
+      sizeClassName={isSidebar ? 'h-10 px-4 text-sm' : 'h-9 w-20 px-1 text-xs'}
     />
   )
 
   if (!isSidebar) {
-    // The phone strip: the pin for followed quests at the corner, the ring,
-    // then the four verbs sharing the width as thumb targets.
+    // The phone strip: the pin and the Effects button in the corners, the
+    // ring with Up and Down on its left and the four verbs stacked on its
+    // right. One height, the ring's plus padding, whatever the room has.
     return (
-      <div className="relative flex flex-col items-center gap-2.5 px-2 py-3">
+      <div className="relative px-1 py-2.5">
         {onOpenTrackedQuest && <TrackedQuestsButton quests={trackedQuests} onOpen={onOpenTrackedQuest} roomId={room?.roomId} />}
-        <div className={`flex w-full flex-col items-center gap-2.5 transition-opacity duration-300 ${dimmedClasses}`}>
-          <Compass room={room} onAction={onAction} onNavigateToMap={onOpenMap} isMoveInProgress={isMoveInProgress} isLocked={isPartyMember} className="w-full" />
-          <div className="flex w-full items-center gap-2">
-            {basicVerbs}
-            {actionButton}
-          </div>
-          <StatusStrip chips={chips} className="justify-center" />
+        <EffectsButton chips={chips} className="absolute right-2 top-2" />
+        <div className={`transition-opacity duration-300 ${dimmedClasses}`}>
+          <Compass
+            room={room}
+            onAction={onAction}
+            onNavigateToMap={onOpenMap}
+            isMoveInProgress={isMoveInProgress}
+            isLocked={isPartyMember}
+            className="w-full"
+            side={
+              <div className="flex flex-col items-stretch gap-1.5">
+                {basicVerbs}
+                {actionButton}
+              </div>
+            }
+          />
         </div>
-        {showBattleBadge && <BattleBadge />}
       </div>
     )
   }
 
-  // The column: the ring in the middle, the followed quests centred in the
-  // space above it, the verbs (All actions on its own line) and the status
-  // chips centred in the space below.
+  // The column: the ring in the middle, Up and Down on its left, the followed
+  // quests centred in the space above it, the verbs (All actions on its own
+  // line) centred in the space below, the Effects button in the corner.
   const home = (
     <div className="relative flex min-h-0 flex-1 flex-col items-center p-4">
+      <EffectsButton chips={chips} className="absolute right-3 top-3" />
       <div className={`flex min-h-0 w-full flex-1 flex-col items-center justify-center py-2 transition-opacity duration-300 ${dimmedClasses}`}>
         {onOpenTrackedQuest && <TrackedQuests quests={trackedQuests} onOpen={onOpenTrackedQuest} />}
       </div>
@@ -192,10 +200,8 @@ export default function ExplorePanel({
       <div className={`flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-3 py-2 transition-opacity duration-300 ${dimmedClasses}`}>
         {basicVerbs}
         {actionButton}
-        <StatusStrip chips={chips} className="justify-center" />
       </div>
       {isPartyMember && !isDimmed && <p className="text-[11px] text-status-info/70">Following your party — leave to move freely.</p>}
-      {showBattleBadge && <BattleBadge />}
     </div>
   )
 

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lg-dev",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["PORT=3100", "npm", "run", "dev"],
+      "port": 3100
+    }
+  ]
+}

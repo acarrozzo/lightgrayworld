@@ -3,13 +3,15 @@
 import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player, useGameStore } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, type Ref } from 'react'
 import type { LevelUpPayload } from '@/lib/socket'
-import { LogOut } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
+import HpBar from '@/components/game-interface/HpBar'
+import type { FightFrame } from '@/components/game-interface/useFightFrame'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { spellTone } from '@/lib/spellbook'
 import ActionDeck, { type TravelDeckProps } from '@/components/game-interface/ActionDeck'
-import { deckContextFromBattle } from '@/lib/action-deck'
+import { companionInHand, deckContextFromBattle, rangeText } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
 
 /** What the victory card needs to announce a level gained by the win. */
@@ -30,10 +32,22 @@ interface BattlePanelProps {
   onFlee: () => void
   /**
    * True when Retreat opens its own confirmation — leaving a fight also leaves
-   * the player's party behind, and that gets a dialog. The pill then fires on
+   * the player's party behind, and that gets a dialog. The row then fires on
    * the first tap rather than arming, so the player is not asked twice.
    */
   fleeNeedsConfirm?: boolean
+  /**
+   * `fight`: the card fills a pinned column and its list takes the rest of
+   * the height. `fallback` (the default): the card is as tall as its content
+   * and the list is a fixed box, for a holder that scrolls. See useFightFrame.
+   */
+  frame?: FightFrame
+  /** The card and its list, for the holder to measure. */
+  panelRef?: Ref<HTMLDivElement>
+  listRef?: Ref<HTMLDivElement>
+  /** The strip's Room chip: the room's number, and what pressing it opens. Neither, no chip. */
+  roomLabel?: string
+  onOpenRoom?: () => void
   onUseItem: (itemId: string, action: string) => void
   onCastSpell: (spellId: string) => void
   /** Strike with a skill — Slice, Smash, Aim, Magic Strike — on this turn's swing. */
@@ -54,61 +68,6 @@ interface BattlePanelProps {
   inventory: InventoryItem[]
   /** Spell levels, teachers and MAG — everything the Spells list derives from. */
   player: Player
-}
-
-/** How much of `amount` would actually land, with the bar's ceiling in the way. */
-function healThatLands(current: number, max: number, amount: number): number {
-  if (amount <= 0 || current >= max) return 0
-  return Math.min(max, current + amount) - current
-}
-
-function HpBar({ current, max, color, rtl = false, initialPct, preview = 0 }: { current: number; max: number; color: string; rtl?: boolean; initialPct?: number; preview?: number }) {
-  const pct = max > 0 ? Math.max(0, Math.min(100, (current / max) * 100)) : 0
-  // A hovered restorer ghosts its heal onto the bar, capped at the ceiling.
-  const previewPct = max > 0 ? (healThatLands(current, max, preview) / max) * 100 : 0
-  // initialPct lets the caller seed the "previous" percentage so the drain
-  // animation fires on the first render even when current is already 0 at mount
-  // (e.g. 1-turn kills where the server sends post-damage state).
-  const prevPct = useRef(initialPct ?? pct)
-  const [damagePct, setDamagePct] = useState<number>(() => {
-    const init = initialPct ?? pct
-    return init > pct ? init - pct : 0
-  })
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    if (pct < prevPct.current) {
-      setDamagePct(prevPct.current - pct)
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => setDamagePct(0), 700)
-    }
-    prevPct.current = pct
-    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [pct])
-
-  return (
-    <div className="relative w-full bg-surface-raised/80 rounded-full h-2 shadow-[inset_0_1px_2px_var(--shadow)]">
-      {damagePct > 0 && (
-        <div
-          className="bg-resource-xp h-2 rounded-full absolute top-0 transition-all duration-500"
-          style={rtl
-            ? { right: `${pct}%`, width: `${damagePct}%` }
-            : { left: `${pct}%`, width: `${damagePct}%` }}
-        />
-      )}
-      <div
-        className={`${color} h-2 rounded-full absolute top-0 transition-all duration-300 ${rtl ? 'right-0' : 'left-0'}`}
-        style={{ width: `${pct}%` }}
-      />
-      {previewPct > 0 && (
-        <div
-          className={`${color} h-2 rounded-r-full absolute top-0 opacity-50 animate-pulse`}
-          style={{ left: `${pct}%`, width: `${Math.min(100 - pct, previewPct)}%` }}
-          aria-hidden="true"
-        />
-      )}
-    </div>
-  )
 }
 
 function LevelBadge({ level }: { level: number }) {
@@ -200,17 +159,23 @@ function EnemyHitExtras({ battle }: { battle: BattleState }) {
   )
 }
 
+// The readout's icons, by the card's width: small in a narrow card so the
+// pinned fight screen leaves the deck its rows, full size with room to spare.
+const BIG_ICON = 'h-10 w-10 @min-[600px]:h-[76px] @min-[600px]:w-[76px]'
+const DEAD_ICON = 'h-12 w-12 @min-[600px]:h-[88px] @min-[600px]:w-[88px]'
+const MID_ICON = 'h-5 w-5 @min-[600px]:h-8 @min-[600px]:w-8'
+const ARROW_ICON = 'h-4 w-4 @min-[600px]:h-7 @min-[600px]:w-7'
+
 function EnemyIcon({ iconName, isDead }: { iconName: string; isDead: boolean }) {
-  const size = isDead ? 88 : 76
   return (
     <div className="flex flex-col items-center gap-1">
       <img
         src={`/icons/enemy/${encodeURIComponent(iconName)}.svg`}
         alt={iconName}
-        width={size}
-        height={size}
+        width={isDead ? 88 : 76}
+        height={isDead ? 88 : 76}
         style={{ transform: isDead ? 'scaleX(-1) scaleY(-1)' : 'scaleX(-1)' }}
-        className={`object-contain brightness-0 invert${isDead ? ' opacity-50' : ' opacity-75'}`}
+        className={`${isDead ? DEAD_ICON : BIG_ICON} object-contain brightness-0 invert${isDead ? ' opacity-50' : ' opacity-75'}`}
       />
       {isDead && (
         <span className="text-enemy-hostile font-bold text-xs tracking-widest uppercase">DEAD</span>
@@ -227,28 +192,28 @@ function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking
         // The original drew a casting hand where the weapon goes, and the
         // spell's own strike icon in the spell's colour where the arrow goes.
         <>
-          <Icon name="spellhand" size={76} className="text-fg-bright opacity-75" />
-          <Icon name={spell.attackIcon} size={32} className={`${spellTone(spell.hue).text} opacity-80`} />
+          <Icon name="spellhand" className={`${BIG_ICON} text-fg-bright opacity-75`} />
+          <Icon name={spell.attackIcon} className={`${MID_ICON} ${spellTone(spell.hue).text} opacity-80`} />
         </>
       ) : isPlayerAttacking && skill ? (
         // A skill strike is still the weapon's swing; the skill's own icon, in
         // its hue, takes the arrow's place — the original's Slice/Smash/Aim tiles.
         <>
-          <Icon name={weaponIconName ?? 'equipment-fists'} size={76} className="text-fg-bright opacity-75" />
-          <Icon name={skill.attackIcon} size={32} className={`${skillTone(skill.hue).text} opacity-85`} />
+          <Icon name={weaponIconName ?? 'equipment-fists'} className={`${BIG_ICON} text-fg-bright opacity-75`} />
+          <Icon name={skill.attackIcon} className={`${MID_ICON} ${skillTone(skill.hue).text} opacity-85`} />
         </>
       ) : isPlayerAttacking && (
         <>
-          <Icon name={weaponIconName ?? 'equipment-fists'} size={76} className="text-fg-bright opacity-75" />
-          <Icon name="attack" size={28} className={playerArrowColor} />
+          <Icon name={weaponIconName ?? 'equipment-fists'} className={`${BIG_ICON} text-fg-bright opacity-75`} />
+          <Icon name="attack" className={`${ARROW_ICON} ${playerArrowColor}`} />
         </>
       )}
       {!enemyIsDead && (
         <div style={{ transform: 'scaleX(-1)' }}>
-          <Icon name="attack" size={28} className="text-combat-damage/60" />
+          <Icon name="attack" className={`${ARROW_ICON} text-combat-damage/60`} />
         </div>
       )}
-      <div style={{ minWidth: 88 }} className="flex justify-center">
+      <div className="flex justify-center min-w-[48px] @min-[600px]:min-w-[88px]">
         {enemyIcon && <EnemyIcon iconName={enemyIcon} isDead={enemyIsDead} />}
       </div>
     </div>
@@ -485,8 +450,11 @@ function BattleResultCard({ result, weaponName, levelUp, onDismiss }: { result: 
               )}
             </p>
             <p className="text-[10px] tabular-nums text-fg-muted">
-              dealt <span className="font-semibold text-fg-secondary">{result.totalDamageDealt}</span> · took{' '}
-              <span className="font-semibold text-fg-secondary">{result.totalDamageReceived}</span> · best hit{' '}
+              dealt <span className="font-semibold text-fg-secondary">{result.totalDamageDealt}</span>
+              {(result.companionDamageDealt ?? 0) > 0 && result.companionName && (
+                <> (<span className="font-semibold text-combat-victory">{result.companionName}</span> {result.companionDamageDealt} of it)</>
+              )}
+              {' '}· took <span className="font-semibold text-fg-secondary">{result.totalDamageReceived}</span> · best hit{' '}
               <span className="font-semibold text-fg-secondary">{result.maxSingleHit}</span>
             </p>
             {lt && (
@@ -643,12 +611,14 @@ function BattleResultCard({ result, weaponName, levelUp, onDismiss }: { result: 
 // anything) as power-attack buttons. Every one of them wears its damage range
 // — the raw roll before the enemy's block, the original's "(max N)" made
 // honest: a swing rolls 0–STR (or DEX), a strike adds its bonus roll on top.
-// A filled two-way switch under the row picks the list — Items, Spells — and
-// every row in the list is one tap. Retreat lives in the In Battle strip's
-// corner (the original's spot) and takes two taps.
-
-/** How long a first Retreat tap stays armed before it quietly disarms. */
-const RETREAT_CONFIRM_MS = 2500
+// A filled switch under the row picks the list — Spells, Items, Travel — and
+// every row in the list is one tap. Retreat is a row of the Travel tab, which
+// a fight always has, found World or not.
+//
+// Two drawings of the vitals, by the card's width: under 600px you are on
+// the left and the enemy on the right with the numbers inside fat bars and
+// the readout at two thirds size, so a phone's pinned fight screen leaves
+// the deck its rows; wider, the full-size overview and readout as before.
 
 export default function BattlePanel({
   battle,
@@ -656,6 +626,11 @@ export default function BattlePanel({
   onAttack,
   onFlee,
   fleeNeedsConfirm = false,
+  frame = 'fallback',
+  panelRef,
+  listRef,
+  roomLabel,
+  onOpenRoom,
   onUseItem,
   onCastSpell,
   onUseSkill,
@@ -673,9 +648,6 @@ export default function BattlePanel({
   inventory,
   player,
 }: BattlePanelProps) {
-  const [retreatArmed, setRetreatArmed] = useState(false)
-  const retreatTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   // The item under the pointer: a restorer ghosts onto the HP/MP bars here
   // and in the header, a buff puts its "+20" beside the stat it lifts.
   // Cleared when the pointer leaves, when the item is used (the tile may
@@ -683,16 +655,6 @@ export default function BattlePanel({
   // The deck itself (ConsumableDeck) sets and clears the preview; the bars
   // here only read it.
   const itemPreview = useGameStore((s) => s.itemPreview)
-
-  const disarmRetreat = useCallback(() => {
-    if (retreatTimer.current) clearTimeout(retreatTimer.current)
-    retreatTimer.current = null
-    setRetreatArmed(false)
-  }, [])
-
-  // A new fight, or the end of one, drops a half-pressed Retreat.
-  useEffect(() => { disarmRetreat() }, [battle.isInBattle, battle.enemySlug, disarmRetreat])
-  useEffect(() => () => { if (retreatTimer.current) clearTimeout(retreatTimer.current) }, [])
 
   const isRanged = weaponCategory === 'RANGED'
   const hasPlayerFormula = battle.playerRaw !== null
@@ -732,22 +694,34 @@ export default function BattlePanel({
   const previewDef = itemPreview?.stats?.def ?? 0
   // What the command deck needs to draw: target, reach, the top of the swing.
   const deckContext = deckContextFromBattle(battle, player, inventory)
-
-  const handleRetreat = () => {
-    if (isActing) return
-    if (fleeNeedsConfirm || retreatArmed) {
-      disarmRetreat()
-      onFlee()
-      return
-    }
-    setRetreatArmed(true)
-    retreatTimer.current = setTimeout(() => setRetreatArmed(false), RETREAT_CONFIRM_MS)
-  }
+  // The stat the last strike rolled: MAG for a spell, else the weapon's.
+  const offenseLabel = spellCast ? 'MAG' : isRanged ? 'DEX' : 'STR'
+  const offenseTone = spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'
+  // Pinned: the card fills its column and the list takes what is left.
+  const fill = frame === 'fight'
+  // The companion at your side, from the bag: named under your vitals with
+  // its range, from the first turn, before it has swung.
+  const companion = companionInHand(inventory)
+  // What the enemy lost this turn: your hit, and what swung beside it. The
+  // big number is the total; under it, each part, so they add up in sight.
+  const playerHit = battle.lastPlayerDamage ?? 0
+  const hasHelpers = !!battle.extraShot || !!battle.companion
+  const totalHit = playerHit + (battle.extraShot?.damage ?? 0) + (battle.companion?.damage ?? 0)
+  const companionLine = companion ? (
+    <div className="flex min-w-0 items-center gap-1 text-[10px] tabular-nums text-fg-muted" title={`${companion.name} swings ${rangeText(companion.min, companion.max)} beside every attack you make`}>
+      <Icon name={companion.iconName} className="h-3.5 w-3.5 shrink-0 text-combat-victory opacity-90" />
+      <span className="truncate font-semibold text-fg-secondary">{companion.name}</span>
+      <span className="shrink-0">{rangeText(companion.min, companion.max)}</span>
+    </div>
+  ) : null
 
   return (
-    <div className="border border-combat-defeat/60 bg-surface-panel/90 rounded-lg overflow-hidden shadow-lg">
+    <div
+      ref={panelRef}
+      className={`@container flex min-h-0 flex-col border border-combat-defeat/60 bg-surface-panel/90 rounded-lg overflow-hidden shadow-lg ${fill ? 'flex-1' : ''}`}
+    >
 
-      {/* ── In Battle strip, Retreat in its corner ── */}
+      {/* ── In Battle strip, the room in its corner ── */}
       <div className="relative flex items-center justify-center px-4 py-1.5 border-b border-combat-defeat/40"
         style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-defeat) 19%, transparent), color-mix(in srgb, var(--combat-defeat) 19%, transparent), color-mix(in srgb, var(--combat-defeat) 19%, transparent), transparent)' }}
       >
@@ -756,30 +730,107 @@ export default function BattlePanel({
         >
           In Battle
         </p>
-        {/* Two taps: the first arms "Leave the fight?" for a moment, the second
-            retreats. Open from the first turn — the enemy stays in the room at
-            full HP, so there is nothing to farm by running. */}
-        <button
-          type="button"
-          onClick={handleRetreat}
-          disabled={isActing}
-          aria-live="polite"
-          aria-label={retreatArmed ? 'Tap again to leave the fight' : 'Retreat from battle'}
-          title="Retreat to the room you came from"
-          className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-7 px-2 rounded-md border text-[10px] font-semibold tracking-wide normal-case inline-flex items-center gap-1 transition-colors duration-150 disabled:opacity-45 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-            retreatArmed
-              ? 'fill-status-error border-status-error'
-              : 'border-line-strong/70 bg-surface-canvas/70 text-fg-muted hover:text-fg-primary hover:border-fg-muted'
-          }`}
-          style={{ textShadow: 'none' }}
-        >
-          <LogOut size={11} aria-hidden="true" />
-          {retreatArmed ? 'Leave the fight?' : 'Retreat'}
-        </button>
+        {/* The room, one tap away while the card is pinned over it: its
+            actions, its supplies, who is standing here. Retreat is not here
+            any more; the Travel tab holds it. */}
+        {roomLabel && onOpenRoom && (
+          <button
+            type="button"
+            onClick={onOpenRoom}
+            title="The room: its actions, supplies and who is here"
+            className="absolute right-1.5 @min-[600px]:right-12 top-1/2 -translate-y-1/2 h-6 px-2.5 rounded-full border border-hue-blue/50 bg-hue-blue/10 text-hue-blue text-[9px] font-bold tracking-wider inline-flex items-center gap-1 transition-colors duration-150 hover:bg-hue-blue/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+            style={{ textShadow: 'none' }}
+          >
+            <ChevronRight size={11} aria-hidden="true" />
+            Room
+            <span className="font-mono font-medium tracking-normal normal-case text-fg-secondary tabular-nums">{roomLabel}</span>
+          </button>
+        )}
       </div>
 
-      {/* ── Overview header ── */}
-      <div className="flex items-stretch px-3 pt-2.5 pb-2.5 gap-2.5 border-b border-line-subtle/60">
+      {/* ── Overview, compact: a narrow card. You left, the enemy right, the
+          numbers inside the bars, the stats as one line each. ── */}
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-2 px-2.5 py-2 border-b border-line-subtle/60 @min-[600px]:hidden">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <LevelBadge level={playerLevel} />
+            <span className="truncate text-xs font-black tracking-tight text-fg-bright">{playerName}</span>
+          </div>
+          <HpBar
+            size="fat"
+            current={battle.playerHp}
+            max={battle.playerHpMax}
+            color="bg-resource-hp"
+            preview={itemPreview?.hp ?? 0}
+            label={
+              <>
+                {Math.min(battle.playerHp, battle.playerHpMax)} / {battle.playerHpMax}
+                {battle.playerHp > battle.playerHpMax && <span className="text-stat-def">+{battle.playerHp - battle.playerHpMax}</span>}
+                {previewHp > 0 && <span className="text-combat-heal animate-pulse">+{previewHp}</span>}
+              </>
+            }
+          />
+          <HpBar
+            size="mid"
+            current={playerMp}
+            max={playerMpMax}
+            color="bg-resource-mp"
+            preview={itemPreview?.mp ?? 0}
+            label={
+              <>
+                {Math.min(playerMp, playerMpMax)} / {playerMpMax}
+                {playerMp > playerMpMax && <span className="text-stat-def">+{playerMp - playerMpMax}</span>}
+                {previewMp > 0 && <span className="text-combat-heal animate-pulse">+{previewMp}</span>}
+              </>
+            }
+          />
+          <div className="flex items-baseline gap-2 tabular-nums">
+            <span className={`text-[8px] uppercase tracking-widest ${offenseTone}`}>{offenseLabel}</span>
+            <span className={`text-xs font-black leading-none ${offenseTone}`}>
+              {battle.playerStrMax ?? '—'}
+              {previewOffense > 0 && <span className="text-combat-heal animate-pulse"> +{previewOffense}</span>}
+            </span>
+            <span className="text-[8px] uppercase tracking-widest text-fg-disabled">DEF</span>
+            <span className="text-xs font-black leading-none text-stat-def">
+              {battle.playerDefMax ?? '—'}
+              {previewDef > 0 && <span className="text-combat-heal animate-pulse"> +{previewDef}</span>}
+            </span>
+          </div>
+          {companionLine}
+        </div>
+        <div className="flex flex-col items-center justify-center gap-0.5 px-0.5">
+          <span className="text-[10px] font-black tracking-widest text-fg-disabled">VS</span>
+          <span className="whitespace-nowrap text-[8px] uppercase tracking-widest text-fg-muted">
+            Turn <span className="text-[10px] font-semibold tracking-normal text-fg-secondary">{battle.turnCount}</span>
+          </span>
+        </div>
+        <div className="flex min-w-0 flex-col items-end gap-1 text-right">
+          <div className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
+            <span className="truncate text-xs font-black tracking-tight text-fg-bright">{battle.enemyName}</span>
+            {battle.enemyLevel !== null && <LevelBadge level={battle.enemyLevel} />}
+            {battle.enemyRank && <RankBadge rank={battle.enemyRank} />}
+          </div>
+          <HpBar
+            size="fat"
+            current={battle.enemyCurrentHp}
+            max={battle.enemyMaxHp}
+            color="bg-resource-hp"
+            rtl
+            initialPct={100}
+            label={<>{battle.enemyCurrentHp} / {battle.enemyMaxHp}</>}
+          />
+          <EnemyTraitTags traits={battle.enemyTraits} activeId={enemyAction?.id} align="end" className="justify-end" />
+          <div className="flex items-baseline gap-2 tabular-nums">
+            <span className="text-[8px] uppercase tracking-widest text-fg-disabled">ATT</span>
+            <span className="text-xs font-black leading-none text-stat-def">{battle.enemyAtt ?? '—'}</span>
+            <span className="text-[8px] uppercase tracking-widest text-fg-disabled">DEF</span>
+            <span className="text-xs font-black leading-none text-stat-def">{battle.enemyDef ?? '—'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Overview header, full size: a wide card ── */}
+      <div className="hidden @min-[600px]:flex items-stretch px-3 pt-2.5 pb-2.5 gap-2.5 border-b border-line-subtle/60">
 
         {/* Player column */}
         <div className="flex-1 flex flex-col gap-1.5 min-w-0">
@@ -816,8 +867,8 @@ export default function BattlePanel({
           <div className="flex items-center gap-3">
             <div className="flex flex-col items-center">
               {/* The stat the last strike rolled: MAG for a spell, else the weapon's. */}
-              <span className={`text-[9px] uppercase tracking-widest leading-none ${spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{spellCast ? 'MAG' : isRanged ? 'DEX' : 'STR'}</span>
-              <span className={`text-xs font-black leading-none mt-0.5 ${spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>
+              <span className={`text-[9px] uppercase tracking-widest leading-none ${offenseTone}`}>{offenseLabel}</span>
+              <span className={`text-xs font-black leading-none mt-0.5 ${offenseTone}`}>
                 {battle.playerStrMax ?? '—'}
                 {previewOffense > 0 && <span className="text-combat-heal tabular-nums animate-pulse"> +{previewOffense}</span>}
               </span>
@@ -831,6 +882,7 @@ export default function BattlePanel({
               </span>
             </div>
           </div>
+          {companionLine}
         </div>
 
         {/* VS divider carries the turn count */}
@@ -875,7 +927,7 @@ export default function BattlePanel({
       </div>
 
       {/* ── Combat visualization row ── */}
-      <div className="flex items-center px-3 pt-3 pb-3 gap-2">
+      <div className="flex items-center px-3 py-2 gap-1.5 @min-[600px]:py-3 @min-[600px]:gap-2">
 
         {/* Player side */}
         <div className="flex-1 flex flex-col gap-1 min-w-0">
@@ -907,7 +959,7 @@ export default function BattlePanel({
                 )}
                 {supportAction.effectText && (
                   <p
-                    className="text-2xl font-black text-accent-hover leading-none tabular-nums"
+                    className="text-xl @min-[600px]:text-2xl font-black text-accent-hover leading-none tabular-nums"
                     style={{ textShadow: '0 0 16px color-mix(in srgb, var(--accent) 38%, transparent)' }}
                   >
                     {supportAction.effectText}
@@ -923,7 +975,7 @@ export default function BattlePanel({
                 You are <span className="font-semibold text-fg-bright">STONE</span>
                 {battle.petrifiedTurns > 0 ? ` — ${battle.petrifiedTurns} more turn${battle.petrifiedTurns === 1 ? '' : 's'}` : ' — it is wearing off'}
               </p>
-              <p className="text-2xl font-black text-fg-muted leading-none tabular-nums italic">
+              <p className="text-xl @min-[600px]:text-2xl font-black text-fg-muted leading-none tabular-nums italic">
                 STONE
               </p>
             </>
@@ -936,7 +988,7 @@ export default function BattlePanel({
                 <span className={`font-semibold ${spellCast && spellCastTone ? spellCastTone.text : isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{spellCast ? spellCast.name : (weaponName ?? 'fists')}</span>
                 {spellCast ? ' — no MP spent' : ''}
               </p>
-              <p className="text-2xl font-black text-hue-purple leading-none tabular-nums italic">
+              <p className="text-xl @min-[600px]:text-2xl font-black text-hue-purple leading-none tabular-nums italic">
                 {battle.enemyEffects?.blocked ? 'BLOCKED' : 'MISS'}
               </p>
             </>
@@ -956,10 +1008,10 @@ export default function BattlePanel({
                 )}
               </p>
               <p
-                className={`text-4xl font-black leading-none tabular-nums ${skillUseTone.text}`}
+                className={`text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums ${skillUseTone.text}`}
                 style={{ textShadow: `0 0 16px color-mix(in srgb, ${skillUseTone.glow} 38%, transparent)` }}
               >
-                {battle.lastPlayerDamage ?? 0}
+                {totalHit}
               </p>
             </>
           ) : spellCast && spellCastTone ? (
@@ -969,7 +1021,7 @@ export default function BattlePanel({
                 <p className="text-xs text-fg-secondary">
                   Your <span className={`font-semibold ${spellCastTone.text}`}>{spellCast.name}</span> fizzles — the {battle.enemyName} shrugs off magic!
                 </p>
-                <p className="text-2xl font-black text-fg-muted leading-none tabular-nums italic">
+                <p className="text-xl @min-[600px]:text-2xl font-black text-fg-muted leading-none tabular-nums italic">
                   IMMUNE
                 </p>
               </>
@@ -984,10 +1036,10 @@ export default function BattlePanel({
                   <span className="ml-1 text-resource-mp tabular-nums">(−{spellCast.cost} MP)</span>
                 </p>
                 <p
-                  className={`text-4xl font-black leading-none tabular-nums ${spellCastTone.text}`}
+                  className={`text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums ${spellCastTone.text}`}
                   style={{ textShadow: `0 0 16px color-mix(in srgb, ${spellCastTone.glow} 38%, transparent)` }}
                 >
-                  {battle.lastPlayerDamage ?? 0}
+                  {totalHit}
                 </p>
               </>
             )
@@ -997,7 +1049,7 @@ export default function BattlePanel({
               <p className="text-xs text-fg-secondary">
                 Your <span className={`font-semibold ${isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{weaponName ?? 'fists'}</span> swing through empty air — the {battle.enemyName} is airborne!
               </p>
-              <p className="text-2xl font-black text-fg-muted leading-none tabular-nums italic">
+              <p className="text-xl @min-[600px]:text-2xl font-black text-fg-muted leading-none tabular-nums italic">
                 MISS
               </p>
             </>
@@ -1012,7 +1064,7 @@ export default function BattlePanel({
                 {battle.enemyName}
                 {battle.immuneToWeapon === 'RANGED' ? ' cannot be hit at range!' : ' cannot be cut!'}
               </p>
-              <p className="text-2xl font-black text-fg-muted leading-none tabular-nums italic">
+              <p className="text-xl @min-[600px]:text-2xl font-black text-fg-muted leading-none tabular-nums italic">
                 IMMUNE
               </p>
             </>
@@ -1027,10 +1079,10 @@ export default function BattlePanel({
                 {battle.melted && <span className="ml-1 text-fg-muted italic">— the magma takes half</span>}
               </p>
               <p
-                className={`text-4xl font-black leading-none tabular-nums ${isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}
+                className={`text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums ${isRanged ? 'text-combat-heal' : 'text-combat-damage'}`}
                 style={{ textShadow: isRanged ? '0 0 16px color-mix(in srgb, var(--combat-victory) 38%, transparent)' : '0 0 16px color-mix(in srgb, var(--combat-damage) 38%, transparent)' }}
               >
-                {battle.lastPlayerDamage ?? 0}
+                {totalHit}
               </p>
             </>
           ) : battle.isAdvantageTurn ? (
@@ -1038,18 +1090,26 @@ export default function BattlePanel({
           ) : (
             <p className="text-xs text-fg-disabled italic">Waiting for first strike…</p>
           )}
+          {/* The parts of the big number, when there is more than one: your
+              own hit first, then each swing beside it. They add up to it. */}
+          {hasHelpers && hasPlayerFormula && (
+            <p className="text-[10px] text-fg-muted tabular-nums">
+              <span className={`font-semibold ${spellCast && spellCastTone ? spellCastTone.text : isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{spellCast ? spellCast.name : (weaponName ?? 'fists')}</span>
+              {' '}<span className={playerHit > 0 ? 'font-semibold text-fg-secondary' : 'text-fg-disabled'}>{playerHit}</span>
+            </p>
+          )}
           {battle.extraShot && (
             <p className="text-[10px] text-fg-muted tabular-nums">
               <span className="font-semibold text-combat-victory">Second arrow</span>
-              {' '}{battle.extraShot.roll} &minus; {battle.extraShot.block} ={' '}
-              <span className={battle.extraShot.damage > 0 ? 'text-combat-victory font-semibold' : 'text-fg-disabled'}>{battle.extraShot.damage}</span>
+              {' '}<span className={battle.extraShot.damage > 0 ? 'text-combat-victory font-semibold' : 'text-fg-disabled'}>{battle.extraShot.damage}</span>
+              <span className="ml-1 text-fg-disabled">({battle.extraShot.roll} &minus; {battle.extraShot.block})</span>
             </p>
           )}
           {battle.companion && (
             <p className="text-[10px] text-fg-muted tabular-nums">
               <span className="font-semibold text-combat-victory">{battle.companion.name}</span>
-              {' '}{battle.companion.roll} &minus; {battle.companion.block} ={' '}
-              <span className={battle.companion.damage > 0 ? 'text-combat-victory font-semibold' : 'text-fg-disabled'}>{battle.companion.damage}</span>
+              {' '}<span className={battle.companion.damage > 0 ? 'text-combat-victory font-semibold' : 'text-fg-disabled'}>{battle.companion.damage}</span>
+              <span className="ml-1 text-fg-disabled">({battle.companion.roll} &minus; {battle.companion.block})</span>
             </p>
           )}
         </div>
@@ -1072,7 +1132,7 @@ export default function BattlePanel({
                 You <span className="font-semibold text-hue-purple">DODGE</span> the{' '}
                 <span className="text-resource-gold font-semibold">{battle.enemyName}</span>&rsquo;s {enemyAction ? enemyAction.name.toLowerCase() : 'attack'}!
               </p>
-              <p className="text-2xl font-black text-hue-purple leading-none tabular-nums italic text-right">
+              <p className="text-xl @min-[600px]:text-2xl font-black text-hue-purple leading-none tabular-nums italic text-right">
                 DODGE
               </p>
               <EnemyHitExtras battle={battle} />
@@ -1096,7 +1156,7 @@ export default function BattlePanel({
                 {enemyAction ? 'unleashes it for' : 'attacks you for'}
               </p>
               <p
-                className={`text-4xl font-black leading-none tabular-nums text-right ${enemyAction ? 'text-combat-crit' : 'text-stat-def'}`}
+                className={`text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums text-right ${enemyAction ? 'text-combat-crit' : 'text-stat-def'}`}
                 style={{ textShadow: enemyAction ? '0 0 16px color-mix(in srgb, var(--combat-crit) 50%, transparent)' : '0 0 16px color-mix(in srgb, var(--resource-gold) 38%, transparent)' }}
               >
                 {battle.lastEnemyDamage ?? 0}
@@ -1126,7 +1186,7 @@ export default function BattlePanel({
       )}
 
       {/* ── Command deck ── */}
-      <div className="border-t border-line-subtle/50 px-3 pt-3 pb-3">
+      <div className={`flex min-h-0 flex-col border-t border-line-subtle/50 px-3 pt-3 pb-3 ${fill ? 'flex-1' : ''}`}>
         <ActionDeck
           player={player}
           inventory={inventory}
@@ -1137,10 +1197,20 @@ export default function BattlePanel({
           onUseSkill={onUseSkill}
           onCastSpell={onCastSpell}
           onUseItem={onUseItem}
-          travel={travel ? { ...travel, onRetreat: onFlee, retreatNeedsConfirm: fleeNeedsConfirm } : undefined}
-          // A fixed height, not a cap: the box stays the same size whichever tab
-          // is open and however much is in it.
-          listClassName="h-60"
+          // A fight always has its Travel tab: Retreat lives there, so a
+          // fighter who has not found the World yet gets the tab with Retreat
+          // alone rather than no way out.
+          travel={
+            travel
+              ? { ...travel, onRetreat: onFlee, retreatNeedsConfirm: fleeNeedsConfirm }
+              : { grid: false, teleportBlockedReason: null, onRetreat: onFlee, retreatNeedsConfirm: fleeNeedsConfirm }
+          }
+          // Pinned, the list takes whatever height the column leaves. Scrolling,
+          // it is a fixed box: the same size whichever tab is open and however
+          // much is in it.
+          className={fill ? 'flex-1' : ''}
+          listRef={listRef}
+          listClassName={fill ? 'flex-1' : 'h-60'}
           idPrefix="battle"
         />
       </div>

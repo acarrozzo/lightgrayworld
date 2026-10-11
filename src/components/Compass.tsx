@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, type ReactNode } from 'react'
 import { ArrowBigUp, ArrowBigUpDash } from 'lucide-react'
 import { getRoomMapPosition } from './game-interface/room-map-positions'
 import { getRoomMapView } from './game-interface/utils'
@@ -26,11 +26,17 @@ interface CompassProps {
    */
   large?: boolean
   /**
-   * Classes for the outer box. The D-pad centres itself inside it, and the
-   * ring wrapper's own margins reserve room for the two side columns, so the
-   * box needs no inset of its own; give it a width and the rest follows.
+   * Classes for the outer box. The D-pad centres itself inside it: Up and
+   * Down in a column on its left, and on its right either `side` or a blank
+   * of the same width, so the ring sits in the middle of the box.
    */
   className?: string
+  /**
+   * What stands to the right of the ring, in the column that mirrors Up and
+   * Down: the phone strip puts its verbs there. Absent, a blank the width of
+   * the left column keeps the ring centred.
+   */
+  side?: ReactNode
 }
 
 interface Direction {
@@ -103,6 +109,7 @@ export default function Compass({
   lockedHint = 'Following your party — leave to move freely',
   large = false,
   className = 'w-full',
+  side,
 }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
   const [currentPosition, setCurrentPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
@@ -186,18 +193,21 @@ export default function Compass({
     { key: 'down', label: 'DOWN', rotation: 180 },
   ]
 
-  // Written out literally so Tailwind generates them.
-  const ringWidth = large ? 'w-64' : 'w-56 @sm:w-64'
-  const ringHeight = large ? 'h-64' : 'h-56 @sm:h-64'
+  // Written out literally so Tailwind generates them. The ring keeps its full
+  // size wherever the box, less its two side columns, has room for it, and
+  // gives up one step only on the narrowest phones; the map in its centre
+  // stays the same size through that step.
+  const ringWidth = large ? 'w-64' : 'w-52 @min-[360px]:w-56 @min-[400px]:w-64'
+  const ringHeight = large ? 'h-64' : 'h-52 @min-[360px]:h-56 @min-[400px]:h-64'
   const mapSize = large
     ? 'w-[150px] h-[150px] border-[25px]'
-    : 'w-[120px] @sm:w-[150px] h-[120px] @sm:h-[150px] border-[10px] @sm:border-[25px]'
+    : 'w-[120px] @min-[400px]:w-[150px] h-[120px] @min-[400px]:h-[150px] border-[10px] @min-[400px]:border-[25px]'
 
   const isDisabled = isNavigating || isMoveInProgress || isLocked
-  // Open Up and Down exits: rarer, so they sit as labelled pills under the
-  // ring rather than taking a column beside it.
+  // Up and Down stand in a column to the left of the ring, as the original
+  // placed them, and are always drawn: a room without them shows them faint,
+  // so the column never comes and goes and the ring never moves.
   const hidden: string[] = HIDDEN_EXITS[room.roomId] ?? []
-  const verticals = verticalDirections.filter((dir) => !!room[dir.key] && !hidden.includes(dir.key))
 
   const directionTitle = (label: string, isAvailable: boolean) => {
     if (isLocked) return lockedHint
@@ -206,19 +216,44 @@ export default function Compass({
 
   return (
     <div
-      className={`compass @container flex flex-col items-center gap-2 ${className}`}
+      className={`compass @container flex items-center justify-center ${className}`}
       title={isLocked ? lockedHint : undefined}
       // The breathing room between the ring and its two side columns. Scales
       // with the compass's own width (a phone strip or a resizable desktop
-      // panel) between 12px and 24px, and the ring wrapper's horizontal margin
-      // reserves column + gap on both sides, so centring the wrapper centres
-      // the ring and nothing overflows. The ring itself steps up from the
-      // compact size once the container is 24rem wide, the point where the
-      // large ring plus both columns fit.
-      style={{ '--compass-side-gap': 'clamp(0.75rem, 4cqw, 1.5rem)' } as React.CSSProperties}
+      // panel) between 6px and 24px.
+      style={{ '--compass-side-gap': 'clamp(0.375rem, 3cqw, 1.5rem)' } as React.CSSProperties}
     >
+      {/* Up and Down: the left column. */}
+      <div className="flex w-11 flex-shrink-0 flex-col gap-2" style={{ marginRight: 'var(--compass-side-gap)' }}>
+        {verticalDirections.map((dir) => {
+          const isAvailable = !!room[dir.key] && !hidden.includes(dir.key)
+          const directionStyle = getDirectionStyle(dir.key, room.directionColors, room.region, isAvailable)
+          return (
+            <button
+              key={dir.key}
+              type="button"
+              onClick={() => handleNavigate(dir.key)}
+              disabled={isDisabled || !isAvailable}
+              title={directionTitle(dir.label, isAvailable)}
+              aria-label={directionTitle(dir.label, isAvailable)}
+              className={`flex h-11 w-11 flex-col items-center justify-center rounded-full border text-[9px] font-bold uppercase tracking-wider transition-all duration-200 ${directionStyle.className} ${
+                isAvailable ? 'text-fg-bright' : 'text-fg-secondary'
+              } ${isLocked ? 'cursor-not-allowed opacity-40' : isDisabled ? 'cursor-wait opacity-60' : ''}`}
+              style={directionStyle.style}
+            >
+              {isMoveInProgress && isAvailable ? (
+                <div className="h-3.5 w-3.5 rounded-full border-2 border-fg-bright/70 border-t-transparent animate-spin" />
+              ) : (
+                <ArrowBigUp className="h-4 w-4" strokeWidth={1.75} style={{ transform: `rotate(${dir.rotation}deg)` }} aria-hidden="true" />
+              )}
+              <span className="leading-none">{dir.label === 'UP' ? 'Up' : 'Down'}</span>
+            </button>
+          )
+        })}
+      </div>
+
       {/* Main D-pad */}
-      <div className={`relative ${ringWidth} mx-[calc(2.5rem+var(--compass-side-gap))]`}>
+      <div className={`relative flex-shrink-0 ${ringWidth}`}>
         <div className={`relative ${ringWidth} ${ringHeight}`}>
           {/* Map circle in center. Also opens the map; the World tab is
               the labelled way in. */}
@@ -281,42 +316,17 @@ export default function Compass({
 
         </div>
 
-        {/* Vertical directions (up/down) */}
         {/* No spinner over the map while it pans: the exit buttons already show
             one while the server is confirming a move, and a second spinner
             appearing after the room had changed made arrival read as slower
             than it was. */}
       </div>
 
-      {/* Up and Down, as labelled pills under the ring. Nothing shows for a
-          room without them. */}
-      {verticals.length > 0 && (
-        <div className="flex flex-wrap justify-center gap-2">
-          {verticals.map((dir) => {
-            const directionStyle = getDirectionStyle(dir.key, room.directionColors, room.region, true)
-            return (
-              <button
-                key={dir.key}
-                type="button"
-                onClick={() => handleNavigate(dir.key)}
-                disabled={isDisabled}
-                title={directionTitle(dir.label, true)}
-                className={`flex h-8 items-center gap-1.5 rounded-full border pl-2 pr-3 text-xs font-semibold text-fg-bright transition-all duration-200 ${directionStyle.className} ${
-                  isLocked ? 'cursor-not-allowed opacity-40' : isDisabled ? 'cursor-wait opacity-60' : ''
-                }`}
-                style={directionStyle.style}
-              >
-                {isMoveInProgress ? (
-                  <div className="h-3.5 w-3.5 rounded-full border-2 border-fg-bright/70 border-t-transparent animate-spin" />
-                ) : (
-                  <ArrowBigUp className="h-4 w-4" strokeWidth={1.75} style={{ transform: `rotate(${dir.rotation}deg)` }} aria-hidden="true" />
-                )}
-                <span>{dir.label === 'UP' ? 'Up' : 'Down'}</span>
-              </button>
-            )
-          })}
-        </div>
-      )}
+      {/* The right column: the holder's verbs, or a blank the left column's
+          width so the ring stays centred. */}
+      <div className="flex flex-shrink-0 flex-col items-stretch justify-center" style={{ marginLeft: 'var(--compass-side-gap)' }}>
+        {side ?? <div className="w-11" aria-hidden="true" />}
+      </div>
     </div>
   )
 }

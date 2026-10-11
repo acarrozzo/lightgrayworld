@@ -1,6 +1,6 @@
 'use client'
 
-import React, { type ReactNode } from 'react'
+import React, { type CSSProperties, type ReactNode } from 'react'
 import Icon from './Icon'
 
 /**
@@ -49,6 +49,8 @@ export interface EntryRowProps {
   icon: string
   /** Colour (and any opacity) for the icon; the bag's rows inherit fg-primary. */
   iconClass?: string
+  /** The glyph's size inside the well, when it should sit smaller than the well (a star in a coloured square). */
+  iconSize?: number
   /** Pinned to the icon's corner — the bag's "picked this up just now" dot. */
   iconBadge?: ReactNode
   name: string
@@ -77,6 +79,8 @@ export interface EntryRowProps {
   onHoverChange?: (hovering: boolean) => void
   /** Frame classes: border, background, corners. Owned by the caller. */
   className?: string
+  /** On the frame, for a colour the classes cannot name (a region's rail). */
+  style?: CSSProperties
   title?: string
 }
 
@@ -84,6 +88,7 @@ export default function EntryRow({
   density = 'bag',
   icon,
   iconClass,
+  iconSize,
   iconBadge,
   name,
   nameTags,
@@ -97,6 +102,7 @@ export default function EntryRow({
   bodyAriaLabel,
   onHoverChange,
   className = '',
+  style,
   title,
 }: EntryRowProps) {
   const d = DENSITY[density]
@@ -105,7 +111,7 @@ export default function EntryRow({
     <>
       <span className={`relative flex items-center justify-center flex-shrink-0 ${d.well} ${iconClass ?? 'text-fg-primary'}`}>
         {iconBadge}
-        <Icon name={icon} size={d.iconSize} color="current" />
+        <Icon name={icon} size={iconSize ?? d.iconSize} color="current" />
       </span>
       <span className="min-w-0 flex flex-col gap-px">
         <span className="flex items-baseline gap-1.5 min-w-0">
@@ -123,6 +129,7 @@ export default function EntryRow({
   return (
     <div
       className={`flex items-center border transition-colors duration-150 ${d.frame} ${className}`}
+      style={style}
       title={title}
       // On the frame, not the body: with an inert body the verb button is the
       // only focusable thing on the row, and React's focus events bubble, so

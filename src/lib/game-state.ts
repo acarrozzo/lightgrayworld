@@ -416,6 +416,9 @@ export interface BattleResult {
   totalDamageDealt: number
   totalDamageReceived: number
   maxSingleHit: number
+  /** Of totalDamageDealt, the companion's swings; 0 with nothing in the slot. */
+  companionDamageDealt?: number
+  companionName?: string | null
   xpEarned: number
   goldEarned: number
   itemsDropped: string[]
