@@ -1,7 +1,7 @@
 const { prisma } = require('../db-client')
 const { rand } = require('./battle-calculator')
 const { checkAndApplyLevelUp } = require('./services/leveling-service')
-const { grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
+const { grantItemOnce, getPlayerInventory, getUnseenSlugs } = require('./services/inventory-service')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 const { grantTeleport } = require('./teleport-grants')
 const partyStore = require('../services/party-store')
@@ -129,8 +129,29 @@ function calcBattleWinRewards(battleState, ownedFirstKillSlugs = new Set()) {
   // configured as a first-kill reward — these dropped only because the player didn't own it,
   // so the UI can give them extra emphasis.
   const firstKillSet = new Set((enemy.drops && enemy.drops.firstKill) || [])
-  const dropDetails = drops.map((d) => ({ slug: d.slug, qty: d.qty, firstKill: firstKillSet.has(d.slug) }))
+  const dropDetails = drops.map((d) => ({ slug: d.slug, qty: d.qty, firstKill: firstKillSet.has(d.slug), isNew: false }))
   return { xpAwarded, goldAwarded, drops, droppedSlugs, dropDetails }
+}
+
+/**
+ * Roll a win's rewards with everything the victory card needs to say about
+ * them: which drops are the enemy's first-kill rewards, and which the player
+ * has never held before (`isNew`). The reads happen here, before the card is
+ * emitted, because the grant itself lands in the background after it.
+ */
+async function prepareBattleWinRewards(playerId, battleState) {
+  const ownedFirstKillSlugs = await getOwnedFirstKillSlugs(playerId, battleState.enemy)
+  const rewards = calcBattleWinRewards(battleState, ownedFirstKillSlugs)
+  if (rewards.drops.length > 0) {
+    try {
+      const unseen = await getUnseenSlugs(playerId, rewards.drops.map((d) => d.slug))
+      for (const detail of rewards.dropDetails) detail.isNew = unseen.has(detail.slug)
+    } catch (error) {
+      // Presentation only: a failed read costs the NEW mark, never the drop.
+      console.error('prepareBattleWinRewards: unseen-item read failed:', error)
+    }
+  }
+  return rewards
 }
 
 /**
@@ -281,8 +302,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
 }
 
 async function handleBattleWin(playerId, battleState) {
-  const ownedFirstKillSlugs = await getOwnedFirstKillSlugs(playerId, battleState.enemy)
-  const rewards = calcBattleWinRewards(battleState, ownedFirstKillSlugs)
+  const rewards = await prepareBattleWinRewards(playerId, battleState)
   const { droppedItems, levelUp, inventory } = await persistBattleWin(playerId, battleState, rewards)
   return { xpAwarded: rewards.xpAwarded, goldAwarded: rewards.goldAwarded, droppedItems, levelUp, inventory }
 }
@@ -337,4 +357,4 @@ async function handleBattleDefeat(playerId, battleState) {
   return { buffs }
 }
 
-module.exports = { calcBattleWinRewards, resolveDrops, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat }
+module.exports = { calcBattleWinRewards, prepareBattleWinRewards, resolveDrops, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat }

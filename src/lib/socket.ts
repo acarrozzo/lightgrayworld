@@ -308,6 +308,8 @@ export interface BattleDropDetail {
   slug: string
   qty: number
   firstKill: boolean
+  /** Never held by this character before this drop, by any route. */
+  isNew?: boolean
 }
 
 // The enemy present in a room, as sent to the client for the room display.

@@ -250,50 +250,96 @@ function RewardTile({ icon, value, label, color, glow }: { icon: string; value: 
   )
 }
 
-// Rewards showcase: dropped loot plus XP/Gold, all in one centered row. firstKill drops lead
-// the row and get extra emphasis.
-function DropsShowcase({ result }: { result: BattleResult }) {
+// What a drop is to this player, for the card: the enemy's first-kill-only
+// reward (`firstKill`) and an item they have never held before (`isNew`).
+type DropView = { slug: string; qty: number; firstKill: boolean; isNew: boolean }
+
+function dropsOf(result: BattleResult): DropView[] {
   // Prefer the rich dropDetails payload; fall back to plain slug strings from older events.
-  const rawDrops = result.dropDetails && result.dropDetails.length > 0
-    ? result.dropDetails
+  const raw: DropView[] = result.dropDetails && result.dropDetails.length > 0
+    ? result.dropDetails.map((d) => ({ slug: d.slug, qty: d.qty, firstKill: d.firstKill, isNew: d.isNew === true }))
     : result.itemsDropped.map((s) => {
         const m = s.match(/^(.*?)\s*x(\d+)$/)
-        return { slug: m ? m[1] : s, qty: m ? Number(m[2]) : 1, firstKill: false }
+        return { slug: m ? m[1] : s, qty: m ? Number(m[2]) : 1, firstKill: false, isNew: false }
       })
-  // Show "First only" drops first so the rarest reward leads the row.
-  const drops = [...rawDrops].sort((a, b) => Number(b.firstKill) - Number(a.firstKill))
+  // The rarest reward leads the row: new, then first-kill, then the rest.
+  const rank = (d: DropView) => (d.isNew ? 2 : 0) + (d.firstKill ? 1 : 0)
+  return [...raw].sort((a, b) => rank(b) - rank(a))
+}
 
+function dropLabel(d: DropView): string {
+  return `${prettifyDropName(d.slug)}${d.qty > 1 ? ` ×${d.qty}` : ''}`
+}
+
+// One dropped item as a tile the size of the XP and gold tiles beside it. A
+// new item's tile turns gold, wears NEW on its corner and settles in once; a
+// first-kill-only drop wears FIRST on the other corner. An item can be both.
+function DropTile({ drop }: { drop: DropView }) {
+  const tone = drop.isNew ? 'text-loot-legendary' : 'text-loot-epic'
+  const title = drop.isNew && drop.firstKill
+    ? 'New to you, and dropped only on a first kill'
+    : drop.isNew
+      ? 'New: the first time you have held one'
+      : drop.firstKill
+        ? 'Dropped only on a first kill'
+        : undefined
   return (
-    <div className="px-3 pt-3 pb-1 flex flex-col items-center @min-[560px]:px-4">
-      <span className="text-[10px] tracking-[0.2em] uppercase text-loot-epic/70 mb-2">Rewards</span>
+    <div
+      className="relative flex min-w-[74px] flex-col items-center justify-center rounded-lg border px-2.5 py-2"
+      title={title}
+      style={drop.isNew
+        ? {
+            background: 'linear-gradient(135deg, color-mix(in srgb, var(--resource-gold) 18%, var(--surface-canvas)), color-mix(in srgb, var(--resource-gold) 28%, var(--surface-canvas)))',
+            borderColor: 'color-mix(in srgb, var(--resource-gold) 70%, transparent)',
+            boxShadow: '0 0 18px color-mix(in srgb, var(--resource-gold) 32%, transparent), inset 0 1px 0 color-mix(in srgb, var(--combat-crit) 20%, transparent)',
+            animation: 'victory-settle 1.4s ease-out 1',
+          }
+        : {
+            background: 'linear-gradient(135deg, color-mix(in srgb, var(--loot-epic) 14%, var(--surface-canvas)), color-mix(in srgb, var(--loot-epic) 22%, var(--surface-canvas)))',
+            borderColor: drop.firstKill ? 'color-mix(in srgb, var(--combat-crit) 40%, transparent)' : 'color-mix(in srgb, var(--loot-epic) 28%, transparent)',
+            boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--loot-epic) 13%, transparent)',
+          }}
+    >
+      {drop.isNew && (
+        <span
+          className="absolute -right-1 -top-2 rounded-full px-1.5 py-px text-[8px] font-black uppercase tracking-wider text-fg-on-accent whitespace-nowrap"
+          style={{ background: 'linear-gradient(90deg, var(--resource-gold), var(--combat-crit), var(--resource-gold))', boxShadow: '0 0 8px color-mix(in srgb, var(--resource-gold) 55%, transparent)' }}
+        >
+          New
+        </span>
+      )}
+      {drop.firstKill && (
+        <span className="absolute -left-1 -top-2 rounded-sm border border-combat-crit/60 bg-surface-panel px-1 py-px text-[8px] font-black uppercase tracking-wider text-combat-crit whitespace-nowrap">
+          First
+        </span>
+      )}
+      <Icon name={resolveItemIcon(null, drop.slug)} size={32} className={tone} />
+      <span className={`mt-1 text-center text-[10px] font-semibold leading-tight ${tone}`}>{dropLabel(drop)}</span>
+    </div>
+  )
+}
+
+// Rewards: the drops first, then XP and gold, as one row of same-size tiles.
+function DropsShowcase({ result, drops }: { result: BattleResult; drops: DropView[] }) {
+  return (
+    <div className="flex flex-col items-center px-3 pt-3 pb-1 @min-[560px]:px-4">
+      <span className="mb-2 text-[10px] uppercase tracking-[0.2em] text-loot-epic/70">Rewards</span>
       <div className="flex flex-wrap items-stretch justify-center gap-2">
-        {drops.map((d, i) => {
-          const icon = resolveItemIcon(null, d.slug)
-          return (
-            <div
-              key={`${d.slug}-${i}`}
-              className={`relative flex flex-col items-center justify-center rounded-lg border px-3 py-2 min-w-[72px] ${d.firstKill ? 'animate-pulse' : ''}`}
-              style={d.firstKill
-                ? { background: 'linear-gradient(135deg, color-mix(in srgb, var(--resource-gold) 18%, var(--surface-canvas)), color-mix(in srgb, var(--resource-gold) 26%, var(--surface-canvas)))', borderColor: 'color-mix(in srgb, var(--combat-crit) 50%, transparent)', boxShadow: '0 0 16px color-mix(in srgb, var(--resource-gold) 31%, transparent), inset 0 1px 0 color-mix(in srgb, var(--combat-crit) 19%, transparent)' }
-                : { background: 'linear-gradient(135deg, color-mix(in srgb, var(--loot-epic) 14%, var(--surface-canvas)), color-mix(in srgb, var(--loot-epic) 22%, var(--surface-canvas)))', borderColor: 'color-mix(in srgb, var(--loot-epic) 25%, transparent)', boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--loot-epic) 13%, transparent)' }}
-            >
-              {d.firstKill && (
-                <span className="opacity-0 absolute -top-2 px-1.5 py-px rounded-full text-[8px] font-black tracking-wider uppercase text-fg-on-accent whitespace-nowrap"
-                  style={{ background: 'linear-gradient(90deg, var(--resource-gold), var(--combat-crit), var(--resource-gold))', boxShadow: '0 0 8px color-mix(in srgb, var(--resource-gold) 50%, transparent)' }}>
-                  New
-                </span>
-              )}
-              <Icon name={icon} size={d.firstKill ? 40 : 32} className={d.firstKill ? 'text-loot-legendary' : 'text-loot-epic'} />
-              <span className={`mt-1 text-[10px] font-semibold leading-tight text-center ${d.firstKill ? 'text-loot-legendary' : 'text-loot-epic'}`}>
-                {prettifyDropName(d.slug)}{d.qty > 1 ? ` ×${d.qty}` : ''}
-              </span>
-            </div>
-          )
-        })}
+        {drops.map((d, i) => <DropTile key={`${d.slug}-${i}`} drop={d} />)}
         <RewardTile icon="trophy" value={`+${result.xpEarned}`} label="XP" color="var(--combat-victory)" glow="var(--combat-victory)" />
         <RewardTile icon="coin" value={`+${result.goldEarned}`} label="Gold" color="var(--combat-crit)" glow="var(--resource-gold)" />
       </div>
     </div>
+  )
+}
+
+// The enemy's own first kill, as a tag beside Victory! — in the battle box's
+// strip when the card is embedded, in the card's banner otherwise.
+function FirstKillTag() {
+  return (
+    <span className="rounded-sm border border-combat-crit/60 px-1 text-[9px] font-black uppercase tracking-wider text-combat-crit" style={{ textShadow: 'none' }}>
+      First kill
+    </span>
   )
 }
 
@@ -330,19 +376,14 @@ function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: {
 
   if (isWin) {
     // Two sizes, by how much the win is worth looking at. An enemy beaten
-    // many times, dropping nothing you have not seen, is one line; everything
-    // else is the full card.
+    // many times, dropping nothing new to you and nothing first-kill-only, is
+    // one line; everything else is the full card. The frozen battle box above
+    // already tells the fight, so the card is the rewards and nothing else.
     const kills = killList.find((entry) => entry.monster === result.enemySlug || entry.monster === result.enemyName)?.kills ?? 0
-    const firstKillDrop = (result.dropDetails ?? []).some((drop) => drop.firstKill)
+    const drops = dropsOf(result)
+    const marked = drops.some((drop) => drop.isNew || drop.firstKill)
     const firstKill = kills <= 1
-    const routine = kills >= ROUTINE_KILLS && !firstKillDrop
-    const drops = result.dropDetails && result.dropDetails.length > 0
-      ? result.dropDetails
-      : result.itemsDropped.map((entry) => {
-          const match = entry.match(/^(.*?)\s*x(\d+)$/)
-          return { slug: match ? match[1] : entry, qty: match ? Number(match[2]) : 1, firstKill: false }
-        })
-    const finalBlowName = lastBlowSpell ? lastBlowSpell.name : lastBlowSkill ? `${lastBlowSkill.name} · ${weaponName ?? 'fists'}` : (weaponName ?? 'fists')
+    const routine = kills >= ROUTINE_KILLS && !marked
 
     if (routine) {
       return (
@@ -351,10 +392,14 @@ function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: {
           style={{ background: 'linear-gradient(90deg, color-mix(in srgb, var(--combat-victory) 16%, var(--surface-canvas)), color-mix(in srgb, var(--combat-victory) 8%, var(--surface-canvas)))' }}
           role="status"
         >
-          <p className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--combat-victory)' }}>Victory</p>
-          <p className="text-[11px] text-fg-muted">
-            <span className="font-semibold text-enemy-hostile">{result.enemyName}</span> · {result.turnsCount} {result.turnsCount === 1 ? 'turn' : 'turns'}
-          </p>
+          {!embedded && (
+            <>
+              <p className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--combat-victory)' }}>Victory</p>
+              <p className="text-[11px] text-fg-muted">
+                <span className="font-semibold text-enemy-hostile">{result.enemyName}</span> · {result.turnsCount} {result.turnsCount === 1 ? 'turn' : 'turns'}
+              </p>
+            </>
+          )}
           <p className="flex items-baseline gap-1 text-xs tabular-nums">
             <span className="font-black" style={{ color: 'var(--combat-victory)' }}>+{result.xpEarned}</span>
             <span className="text-fg-muted">XP</span>
@@ -366,7 +411,7 @@ function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: {
           {drops.map((drop, index) => (
             <span key={`${drop.slug}-${index}`} className="flex items-center gap-1 text-xs font-semibold text-loot-epic">
               <Icon name={resolveItemIcon(null, drop.slug)} size={16} />
-              {prettifyDropName(drop.slug)}{drop.qty > 1 ? ` ×${drop.qty}` : ''}
+              {dropLabel(drop)}
             </span>
           ))}
           <button
@@ -384,7 +429,8 @@ function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: {
       <div className={`@container overflow-hidden ${embedded ? '' : 'rounded-xl shadow-2xl border border-combat-victory/70'}`}
         style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--combat-victory) 10%, var(--surface-canvas)) 0%, color-mix(in srgb, var(--combat-victory) 18%, var(--surface-canvas)) 40%, color-mix(in srgb, var(--combat-victory) 10%, var(--surface-canvas)) 100%)' }}
       >
-        {/* Header: the battle box's strip when embedded, this banner otherwise. */}
+        {/* Header: the battle box's strip when embedded (which also carries
+            the enemy's own First kill tag), this banner otherwise. */}
         {!embedded && (
           <div className="relative flex items-center justify-center px-4 py-2.5 border-b border-combat-victory/40"
             style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--combat-victory) 19%, transparent), transparent)' }}
@@ -397,6 +443,7 @@ function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: {
                 Victory!
               </p>
               <span className="text-base" style={{ filter: 'drop-shadow(0 0 6px var(--combat-victory))' }}>⚔</span>
+              {firstKill && <FirstKillTag />}
             </div>
             <button onClick={onDismiss} className="absolute right-3 text-fg-disabled hover:text-combat-victory transition-colors p-1 rounded" aria-label="Dismiss">
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -406,61 +453,16 @@ function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: {
           </div>
         )}
 
-        {/* Rewards first: what was won is why the fight was fought. */}
-        <div className="pb-2 border-b border-combat-victory/40">
-          <DropsShowcase result={result} />
+        {/* The rewards: what was won is why the fight was fought. */}
+        <div className="pb-2">
+          <DropsShowcase result={result} drops={drops} />
           {result.multiplayerBonus && (
-            <p className="text-[10px] text-resource-mp text-center mt-1">Group bonus active</p>
+            <p className="mt-1 text-center text-[10px] text-resource-mp">Group bonus active</p>
           )}
-        </div>
-
-        {/* The fight, in two small lines beside the thing that lost it. */}
-        <div className="flex items-center gap-3 border-b border-combat-victory/40 px-3 py-2 @min-[560px]:px-4">
-          {result.enemyIcon && (
-            <img
-              src={`/icons/enemy/${encodeURIComponent(result.enemyIcon)}.svg`}
-              alt=""
-              width={44}
-              height={44}
-              style={{ transform: 'scaleX(-1) scaleY(-1)' }}
-              className="h-11 w-11 flex-shrink-0 object-contain brightness-0 invert opacity-50"
-            />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-baseline gap-x-1.5 text-xs">
-              <span className="font-bold text-enemy-hostile">{result.enemyName}</span>
-              <span className="text-fg-muted">defeated in {result.turnsCount} {result.turnsCount === 1 ? 'turn' : 'turns'}</span>
-              {firstKill && (
-                <span className="rounded-sm border border-combat-crit/60 px-1 text-[9px] font-black uppercase tracking-wider text-combat-crit">First kill</span>
-              )}
-            </p>
-            <p className="text-[10px] tabular-nums text-fg-muted">
-              dealt <span className="font-semibold text-fg-secondary">{result.totalDamageDealt}</span>
-              {(result.companionDamageDealt ?? 0) > 0 && result.companionName && (
-                <> (<span className="font-semibold text-combat-victory">{result.companionName}</span> {result.companionDamageDealt} of it)</>
-              )}
-              {' '}· took <span className="font-semibold text-fg-secondary">{result.totalDamageReceived}</span> · best hit{' '}
-              <span className="font-semibold text-fg-secondary">{result.maxSingleHit}</span>
-            </p>
-            {lt && (
-              <p className="truncate text-[10px] tabular-nums text-fg-muted">
-                {wasAdvantageTurn ? (
-                  'Ambush entry'
-                ) : (
-                  <>
-                    final blow{' '}
-                    <span className={`font-semibold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{finalBlowName}</span>{' '}
-                    {lastBlowSpell?.text ? `[ ${lastBlowSpell.text} ]` : lastBlowSkill?.text ? `( ${lastBlowSkill.text} )` : lt.playerRaw} − {lt.enemyBlocked} ={' '}
-                    <span className={`font-bold ${lastBlowSpell ? spellTone(lastBlowSpell.hue).text : lastBlowRanged ? 'text-combat-heal' : 'text-combat-damage'}`}>{lt.playerDealtDamage}</span>
-                  </>
-                )}
-              </p>
-            )}
-          </div>
         </div>
 
         {/* Close */}
-        <div className="px-4 py-2.5">
+        <div className="px-4 pb-2.5 pt-1">
           <button
             onClick={onDismiss}
             className="w-full py-2 rounded-lg text-xs font-black tracking-widest uppercase transition-all duration-150 text-fg-on-accent"
@@ -648,6 +650,11 @@ export default function BattlePanel({
   const lastFrame = useGameStore((s) => s.battleLastFrame)
   const result = !live.isInBattle ? battleResult : null
   const won = result?.outcome === 'WIN' && lastFrame !== null
+  // The enemy's first kill is said in the strip, beside Victory!, since the
+  // card below it is rewards only.
+  const killList = useGameStore((s) => s.killList)
+  const wonFirstKill = won && result !== null
+    && (killList.find((entry) => entry.monster === result.enemySlug || entry.monster === result.enemyName)?.kills ?? 0) <= 1
   const battle = won ? lastFrame : live
 
   // Retreat is two taps: the first arms "Leave the fight?" for a moment, the
@@ -760,6 +767,7 @@ export default function BattlePanel({
         >
           {won ? 'Victory!' : 'In Battle'}
         </p>
+        {wonFirstKill && <span className="ml-2"><FirstKillTag /></span>}
         {won && (
           <button onClick={onDismissResult} className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-fg-disabled transition-colors hover:text-combat-victory" aria-label="Dismiss">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

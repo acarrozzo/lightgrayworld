@@ -146,6 +146,16 @@ body.font-mono {
   }
 }
 
+/* A never-held item landing on the victory card: its gold tile settles from
+   slightly large once. Reduced-motion skips the move; the gold stays. */
+@keyframes victory-settle {
+  from { transform: scale(1.08); }
+  to { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="victory-settle"] { animation: none !important; }
+}
+
 @keyframes slideInRight {
   from {
     opacity: 0;

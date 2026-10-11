@@ -1,5 +1,5 @@
 const { prisma } = require('../../db-client')
-const { getPlayerInventory } = require('./inventory-service')
+const { getPlayerInventory, noteItemsSeen } = require('./inventory-service')
 const { normalizeRoomItems, ROOM_ITEMS_INCLUDE } = require('./room-normalization.js')
 const { countedName } = require('./item-names')
 
@@ -109,6 +109,7 @@ async function pickupRoomItem(playerId, roomItemId, quantity, playerCurrentRoom)
       },
       update: { quantity: { increment: quantity } },
     })
+    await noteItemsSeen(playerId, [template.slug], tx)
 
     return { conflict: false }
   })

@@ -2,7 +2,7 @@ const { prisma } = require('../db-client')
 const { BattleState, playerIsFlying } = require('./battle-state')
 const { resolveTurn, resolveEnemyAttack, rollEnemyDodge, getOtherCombatantCount, totalDamageToEnemy, pickPlayerOffensiveStat } = require('./battle-calculator')
 const { getEnemyBehaviours } = require('../game-data/enemy-specials')
-const { calcBattleWinRewards, getOwnedFirstKillSlugs, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
+const { prepareBattleWinRewards, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
 const { getEnemy } = require('../game-data/enemies')
 const { getEnemyTraits } = require('../game-data/enemy-traits')
 const { isProbabilistic } = require('../game-data/room-enemies')
@@ -851,8 +851,7 @@ async function executeStartBattle(action, playerId, roomState) {
     const slainTraveler = getTravelerByEnemySlug(enemySlug)
     if (slainTraveler) travelerState.onTravelerKilled(slainTraveler.id, roomState.roomId)
 
-    const ownedFirstKillSlugs = await getOwnedFirstKillSlugs(playerId, enemy)
-    const rewards = calcBattleWinRewards(battleState, ownedFirstKillSlugs)
+    const rewards = await prepareBattleWinRewards(playerId, battleState)
     const { xpAwarded, goldAwarded, droppedSlugs, dropDetails } = rewards
 
     const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]
@@ -1016,10 +1015,9 @@ async function executePlayerAttack(action, playerId, roomState) {
     const slainTraveler = getTravelerByEnemySlug(battleState.enemySlug)
     if (slainTraveler) travelerState.onTravelerKilled(slainTraveler.id, roomState.roomId)
 
-    // Compute rewards synchronously — no DB — so we can emit victory immediately.
-    // firstKill drops are gated on current ownership, so read what the player already holds first.
-    const ownedFirstKillSlugs = await getOwnedFirstKillSlugs(playerId, battleState.enemy)
-    const rewards = calcBattleWinRewards(battleState, ownedFirstKillSlugs)
+    // Roll the rewards (and what the card says about them) before the victory
+    // event, so it can be emitted now; the grant lands in the background.
+    const rewards = await prepareBattleWinRewards(playerId, battleState)
     const { xpAwarded, goldAwarded, droppedSlugs, dropDetails } = rewards
 
     const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]

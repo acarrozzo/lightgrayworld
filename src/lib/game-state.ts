@@ -431,6 +431,8 @@ export interface BattleDropDetail {
   slug: string
   qty: number
   firstKill: boolean
+  /** Never held by this character before this drop, by any route. */
+  isNew?: boolean
 }
 
 export interface KillEntry {

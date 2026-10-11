@@ -183,6 +183,7 @@ model User {
   worldFeedEvents           WorldFeedEvent[]
   equipment                 Equipment?
   killList                  KillList[]
+  itemsSeen                 PlayerItemSeen[]
   playerRoomEnemies         PlayerRoomEnemy[]
   PlayerItem                PlayerItem[]
   quests                    QuestProgress[]
@@ -224,6 +225,20 @@ model KillList {
   user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, monster])
+}
+
+// Every item slug a player has ever obtained, by any route (drop, pickup,
+// purchase, craft, quest, supply). A battle drop whose slug has no row here
+// is "new" on the victory card. Rows are never deleted: selling or using up
+// an item does not make it new again. Written beside each grant; backfilled
+// from the bags that existed when it was introduced.
+model PlayerItemSeen {
+  userId      String
+  slug        String
+  firstSeenAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, slug])
 }
 
 // Persists the one enemy present for a player in a room so it survives a page

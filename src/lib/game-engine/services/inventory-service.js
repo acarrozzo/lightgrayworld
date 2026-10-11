@@ -80,6 +80,41 @@ async function getHeldQuantity(playerId, itemSlug) {
 }
 
 /**
+ * Record that the player has now held these slugs, by whatever route they
+ * arrived. Idempotent: an existing row is left alone, so the first time stays
+ * the first time. Call inside the grant's own transaction where there is one,
+ * so a rolled-back grant is not remembered as held.
+ */
+async function noteItemsSeen(playerId, slugs, tx = null) {
+  const client = tx || prisma
+  const unique = [...new Set(slugs)].filter(Boolean)
+  if (unique.length === 0) return
+  await client.playerItemSeen.createMany({
+    data: unique.map((slug) => ({ userId: playerId, slug })),
+    skipDuplicates: true,
+  })
+}
+
+/**
+ * Of `slugs`, the ones this player has never held: no seen row and nothing in
+ * the bag either. The bag check is a failsafe for a grant path that did not
+ * record a seen row, so an item they are holding is never called new.
+ */
+async function getUnseenSlugs(playerId, slugs) {
+  const unique = [...new Set(slugs)].filter(Boolean)
+  if (unique.length === 0) return new Set()
+  const [seen, held] = await Promise.all([
+    prisma.playerItemSeen.findMany({ where: { userId: playerId, slug: { in: unique } }, select: { slug: true } }),
+    prisma.playerItem.findMany({
+      where: { playerId, quantity: { gt: 0 }, ItemTemplate: { slug: { in: unique } } },
+      select: { ItemTemplate: { select: { slug: true } } },
+    }),
+  ])
+  const known = new Set([...seen.map((row) => row.slug), ...held.map((row) => row.ItemTemplate.slug)])
+  return new Set(unique.filter((slug) => !known.has(slug)))
+}
+
+/**
  * Grant an item respecting the item's max and stacking rules.
  */
 async function grantItemOnce(playerId, itemSlug, quantity = 1, tx = null) {
@@ -132,6 +167,7 @@ async function grantItemOnce(playerId, itemSlug, quantity = 1, tx = null) {
       updatedAt: new Date(),
     },
   })
+  await noteItemsSeen(playerId, [itemSlug], client)
 
   return {
     granted: true,
@@ -194,6 +230,8 @@ module.exports = {
   playerHasItem,
   getHeldQuantity,
   grantItemOnce,
+  noteItemsSeen,
+  getUnseenSlugs,
   removeItemBySlug,
 }
 

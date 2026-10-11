@@ -171,6 +171,11 @@ async function handleBuy(request: AuthenticatedRequest) {
             updatedAt: new Date(),
           },
         })
+        // Bought counts as held: a later drop of the same item is not "new".
+        await tx.playerItemSeen.createMany({
+          data: [{ userId: request.user.id, slug: template.slug }],
+          skipDuplicates: true,
+        })
       })
     } catch (error) {
       if (error instanceof Error && error.message === INSUFFICIENT_FUNDS) {
