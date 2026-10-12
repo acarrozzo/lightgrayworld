@@ -30,6 +30,7 @@ import {
   Swords,
   Users,
   Waypoints,
+  Shapes,
   type LucideIcon, Footprints } from 'lucide-react'
 
 export type WorldToolPageKey =
@@ -48,6 +49,7 @@ export type WorldToolPageKey =
   | 'players'
   | 'room-desc'
   | 'themes'
+  | 'icons'
 
 export type WorldToolPage = {
   key: WorldToolPageKey
@@ -128,6 +130,8 @@ export const WORLD_TOOL_GROUPS: WorldToolGroup[] = [
         description: "Every room in the original game beside the recreation, field by field, with the differences flagged." },
       { key: 'themes', href: '/themes', label: 'Themes', unit: 'themes', icon: Palette,
         description: 'Every semantic colour role across every terminal theme, with what each role means and where it is used.' },
+      { key: 'icons', href: '/icons', label: 'Icons', unit: 'icons', icon: Shapes,
+        description: 'Every icon in the game beside its proposed replacement — who draws it, at full size, with approve and reject.' },
     ],
   },
 ]

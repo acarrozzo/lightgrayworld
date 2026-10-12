@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<path fill-rule="evenodd" d="M30,12 L34,4 L38,12 L42,4 L46,12 L50,4 L54,12 L58,4 L62,12 L62,58 L68,68 C78,72 86,76 86,86 L30,86 Z M32,83 L84,83 L84,81 L32,81 Z M32,27 L60,27 L60,25 L32,25 Z M52,23 h4 v6 h-4 Z M32,41 L60,41 L60,39 L32,39 Z M52,37 h4 v6 h-4 Z M32,55 L60,55 L60,53 L32,53 Z M52,51 h4 v6 h-4 Z"/>
+</svg>

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<path fill-rule="evenodd" d="M12,62 C12,50 30,42 50,42 C70,42 88,50 88,64 L88,74 L12,74 Z M27,54 a11,6 0 1,0 22,0 a11,6 0 1,0 -22,0 Z M20,66 h2 v6 h-2 Z M28,66 h2 v6 h-2 Z M36,66 h2 v6 h-2 Z M44,66 h2 v6 h-2 Z M52,66 h2 v6 h-2 Z M60,66 h2 v6 h-2 Z M68,66 h2 v6 h-2 Z M76,66 h2 v6 h-2 Z M60.36,60.05 C62.1,54.31 66.61,52.67 71.64,55.95 C69.9,61.69 65.39,63.33 60.36,60.05 Z"/>
+</svg>

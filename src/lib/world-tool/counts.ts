@@ -13,6 +13,7 @@ import { SPELLS } from '@/lib/spellbook'
 import { THEMES } from '@/lib/theme/themes'
 import legacyData from '@/lib/game-data/legacy-rooms.json'
 import { ATLAS_EXCLUDED_ROOMS } from './atlas'
+import { countIconFiles } from './icons'
 import type { WorldToolPageKey } from './pages'
 
 const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: unknown[] }
@@ -61,5 +62,6 @@ export const loadWorldToolCounts = cachedWorldToolData('counts', async (): Promi
     players,
     'room-desc': compared,
     themes: THEMES.length,
+    icons: countIconFiles(),
   }
 })

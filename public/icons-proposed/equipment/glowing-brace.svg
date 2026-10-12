@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<path fill-rule="evenodd" d="M41,14 h18 a11,11 0 0,1 11,11 v50 a11,11 0 0,1 -11,11 h-18 a11,11 0 0,1 -11,-11 v-50 a11,11 0 0,1 11,-11 Z M50,44 L54,50 L50,56 L46,50 Z"/>
+<path fill-rule="evenodd" d="M80,51.5 L86,51.5 L86,48.5 L80,48.5 Z"/>
+<path fill-rule="evenodd" d="M70.01,80.6 L74.26,86.26 L76.66,84.46 L72.41,78.8 Z"/>
+<path fill-rule="evenodd" d="M48.5,92 L48.5,100 L51.5,100 L51.5,92 Z"/>
+<path fill-rule="evenodd" d="M27.59,78.8 L23.34,84.46 L25.74,86.26 L29.99,80.6 Z"/>
+<path fill-rule="evenodd" d="M20,48.5 L14,48.5 L14,51.5 L20,51.5 Z"/>
+<path fill-rule="evenodd" d="M29.99,19.4 L25.74,13.74 L23.34,15.54 L27.59,21.2 Z"/>
+<path fill-rule="evenodd" d="M51.5,8 L51.5,0 L48.5,0 L48.5,8 Z"/>
+<path fill-rule="evenodd" d="M72.41,21.2 L76.66,15.54 L74.26,13.74 L70.01,19.4 Z"/>
+</svg>

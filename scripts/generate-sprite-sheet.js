@@ -110,6 +110,13 @@ function generateSpriteSheet() {
       symbolId = `environment-${symbolId}`;
     }
     
+    // A slot subfolder under equipment/ is organisational only: the symbol id
+    // ignores it, so equipment/head/horned-helmet.svg -> equipment-horned-helmet
+    // and the item resolver's `equipment-<slug>` lookup still finds it.
+    if (baseDir.includes('public/icons') && /^equipment\/[^/]+\/[^/]+\.svg$/.test(relativePath)) {
+      symbolId = path.basename(relativePath, '.svg').replace(/[^a-zA-Z0-9-]/g, '');
+    }
+
     // For files from public/icons/equipment, prefix with 'equipment-'
     if (baseDir.includes('public/icons') && relativePath.startsWith('equipment/')) {
       // Remove 'equipment-' if it's already in the path, then add it
