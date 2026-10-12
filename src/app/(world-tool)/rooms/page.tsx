@@ -11,6 +11,7 @@ import RoomAtlas, {
   type RoomEdge,
   type ExitInfo,
   type EnemySpawn,
+  type SpawnRung,
   type RoomActionInfo,
   type SecretInfo,
 } from './RoomAtlas'
@@ -285,42 +286,46 @@ export default async function RoomsPage() {
           if (rung.killed) parts.push(`after ${rung.killed.map(prettifySlug).join(' and ')}`)
           if (rung.anyKilled) parts.push(`after ${rung.anyKilled.map(prettifySlug).join(' or ')}`)
           if (rung.notKilled) parts.push(`until ${rung.notKilled.map(prettifySlug).join(' or ')}`)
-          return parts.length ? parts.join(', ') : 'until any of the above'
+          return parts.length ? parts.join(', ') : 'otherwise'
         }
-        const spawns: EnemySpawn[] = entries.flatMap((e): EnemySpawn[] => {
-          // A kill-gated slot: every enemy any rung can produce, each tagged
-          // with what has to be dead for its rung to be the live one. The
-          // slot's share is the whole ladder's, not each rung's.
+        const spawns: EnemySpawn[] = entries.map((e, index): EnemySpawn => {
+          // A kill-gated slot: one entry whose share is the whole ladder's,
+          // with its rungs underneath in order. A player rolls the first rung
+          // whose conditions they meet, so the rungs are alternatives, not
+          // additions, and an empty rung means the slot hands out nothing.
           if ('ladder' in e) {
-            const seen = new Set<string>()
-            return e.ladder.flatMap((rung) =>
-              rung.enemies
-                .filter((pool) => !seen.has(pool.slug) && seen.add(pool.slug))
-                .map((pool) => {
-                  const def = enemyBySlug.get(pool.slug)
-                  return {
-                    slug: pool.slug,
-                    name: def?.name ?? prettifySlug(pool.slug),
-                    level: def?.level,
-                    icon: def?.icon ?? null,
-                    weight: e.weight,
-                    chancePct: pct(e.weight),
-                    note: describeRung(rung),
-                  }
-                })
-            )
-          }
-          const def = enemyBySlug.get(e.slug)
-          return [
-            {
-              slug: e.slug,
-              name: def?.name ?? prettifySlug(e.slug),
-              level: def?.level,
-              icon: def?.icon ?? null,
+            return {
+              slug: `ladder-${index}`,
+              name: 'Boss ladder',
               weight: e.weight,
               chancePct: pct(e.weight),
-            },
-          ]
+              rungs: e.ladder.map((rung): SpawnRung => {
+                const rungTotal = rung.enemies.reduce((s, pool) => s + pool.weight, 0)
+                return {
+                  note: describeRung(rung),
+                  enemies: rung.enemies.map((pool) => {
+                    const def = enemyBySlug.get(pool.slug)
+                    return {
+                      slug: pool.slug,
+                      name: def?.name ?? prettifySlug(pool.slug),
+                      level: def?.level,
+                      icon: def?.icon ?? null,
+                      sharePct: rung.enemies.length > 1 && rungTotal > 0 ? Math.round((pool.weight / rungTotal) * 100) : undefined,
+                    }
+                  }),
+                }
+              }),
+            }
+          }
+          const def = enemyBySlug.get(e.slug)
+          return {
+            slug: e.slug,
+            name: def?.name ?? prettifySlug(e.slug),
+            level: def?.level,
+            icon: def?.icon ?? null,
+            weight: e.weight,
+            chancePct: pct(e.weight),
+          }
         })
         // A slug can hold more than one slot of a table — the Mountain Alcove
         // rolls its rare trio before the ordinary set, so the Yeti is in both.
@@ -328,9 +333,8 @@ export default async function RoomsPage() {
         // two different odds.
         const merged = new Map<string, EnemySpawn>()
         for (const spawn of spawns) {
-          const key = spawn.note ? `${spawn.slug}|${spawn.note}` : spawn.slug
-          const seen = merged.get(key)
-          if (!seen) merged.set(key, spawn)
+          const seen = merged.get(spawn.slug)
+          if (!seen) merged.set(spawn.slug, spawn)
           else {
             seen.weight = (seen.weight ?? 0) + (spawn.weight ?? 0)
             seen.chancePct = pct(seen.weight ?? 0)

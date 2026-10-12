@@ -508,9 +508,9 @@ function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: {
           HP &lt; 0 = Dead!
         </h2>
         <p className="mt-2 text-sm text-fg-secondary text-center">Well it happens to the best of us.</p>
-        <p className="mt-1 text-sm text-fg-secondary text-center">When your health gets low make sure to heal yourself by drinking a red potion, eating some cooked meat, casting a heal spell, etc.</p>
+        <p className="mt-1 text-sm text-fg-secondary text-center">When your health gets low make sure to heal yourself by drinking a red potion, eating some cooked meat, casting a heal spell, you know the drill.</p>
         <p className="mt-2 text-sm text-center font-semibold" style={{ color: 'var(--combat-crit)', textShadow: '0 0 10px color-mix(in srgb, var(--resource-gold) 38%, transparent)' }}>
-          You will be teleported back to the Plane of Rebirth.
+          You will be teleported to the Plane of Rebirth.
         </p>
         <p className="mt-2 text-sm text-fg-secondary text-center">Godspeed.</p>
       </div>

@@ -25,7 +25,7 @@
 // enemies: [{ slug, weight }] }`, read top to bottom against the player's kill
 // list — the first rung whose conditions hold is the pool that slot rolls from
 // (an empty `enemies` means the slot yields nothing). It is the original's
-// "boss slot": the Mountains' 1-in-50 that gave a Flying Dung Beetle until you
+// "boss slot": the Mountains' rare roll that gave a Flying Dung Beetle until you
 // had killed the Giant Mountain Giant or the Gatekeeper, then Jikay or Jiemji,
 // then King Blade. `rollRoomEnemy(roomId, { kills })` takes the kill set; with
 // none, only a rung with no conditions can match.
@@ -48,86 +48,66 @@
 // Room 028g: Goblin Tracks — 50% spawn, goblin 80% / goblin-bandit 20%
 // Room 028h: Goblin Dead End — 50% spawn, goblin-bandit 80% / goblin 20%
 // Room 028i: Goblin Hideout — 100% spawn, goblin-chief 100%
-/**
- * The Mountains' ordinary set, in units of 1/1050 (see the MOUNTAINS block):
- * seven slots of 70. Two of the slots are sub-rolls of seven.
- */
 /** The Despair's one set: eleven, one slot each, as the original rolled it. */
 const DESPAIR_SET = [
   'hydra', 'brownie', 'harpy', 'gorgon', 'banshee', 'succubus',
   'magma-goblin', 'magma-kobold', 'magma-orc', 'magma-ogre', 'magma-troll',
 ].map((slug) => ({ slug, weight: 1 }))
 
+/**
+ * The Mountains' ordinary set: eight equal slots (retuned 12 Oct 2026 from the
+ * original's seven of fifteen plus a 1-in-50). One slot is shared seven ways by
+ * the road's rarities, one four ways by the snow rarities, and the Yeti has a
+ * slot of his own. `MOUNTAIN_SLOT` is the unit — 28, so every share is a whole
+ * number: a road rarity is 4, a snow rarity 7.
+ */
+const MOUNTAIN_SLOT = 28
+
 const MOUNTAIN_SET = [
   // The road's rarities, one slot shared seven ways.
-  { slug: 'bowman', weight: 10 },
-  { slug: 'highwayman', weight: 10 },
-  { slug: 'imp', weight: 10 },
-  { slug: 'wisp', weight: 10 },
-  { slug: 'falcon', weight: 10 },
-  { slug: 'dark-ranger', weight: 10 },
-  { slug: 'ent', weight: 10 },
-  { slug: 'mountain-giant', weight: 70 },
-  { slug: 'ice-troll', weight: 70 },
-  { slug: 'giant-brute', weight: 70 },
-  { slug: 'wyvern', weight: 70 },
-  { slug: 'stone-dwarf', weight: 70 },
-  // The snow rarities, one slot shared seven ways — the Yeti three of them.
-  { slug: 'yeti', weight: 30 },
-  { slug: 'snow-ogre', weight: 10 },
-  { slug: 'snow-ninja', weight: 10 },
-  { slug: 'snow-owl', weight: 10 },
-  { slug: 'dragon', weight: 10 },
+  { slug: 'bowman', weight: 4 },
+  { slug: 'highwayman', weight: 4 },
+  { slug: 'imp', weight: 4 },
+  { slug: 'wisp', weight: 4 },
+  { slug: 'falcon', weight: 4 },
+  { slug: 'dark-ranger', weight: 4 },
+  { slug: 'ent', weight: 4 },
+  { slug: 'mountain-giant', weight: MOUNTAIN_SLOT },
+  { slug: 'ice-troll', weight: MOUNTAIN_SLOT },
+  { slug: 'giant-brute', weight: MOUNTAIN_SLOT },
+  { slug: 'wyvern', weight: MOUNTAIN_SLOT },
+  { slug: 'stone-dwarf', weight: MOUNTAIN_SLOT },
+  // The snow rarities, one slot shared four ways.
+  { slug: 'snow-ogre', weight: 7 },
+  { slug: 'snow-ninja', weight: 7 },
+  { slug: 'snow-owl', weight: 7 },
+  { slug: 'dragon', weight: 7 },
+  { slug: 'yeti', weight: MOUNTAIN_SLOT },
 ]
 
 /** The same set at a fraction of its weight, for rooms that roll something rarer first. */
 const MOUNTAIN_SET_SCALED = (factor) => MOUNTAIN_SET.map((entry) => ({ ...entry, weight: entry.weight * factor }))
 
 /**
- * The Mountains' boss slot, exactly the original's chain of ifs: once every
- * king is dead the three share it; with both lieutenants dead King Blade takes
- * three fifths of it; a dead Jikay summons Jiemji and vice versa; the first
+ * The Mountains' boss slot, the original's chain of ifs with one change: once
+ * every king is dead the three share it; with both lieutenants dead it is King
+ * Blade and only him; a dead Jikay summons Jiemji and vice versa; the first
  * fall of the Giant Mountain Giant or the Gatekeeper opens it to both; and
- * until then it is a Flying Dung Beetle, which is the original's joke.
+ * until then it is a Flying Dung Beetle, which is the original's joke. The
+ * Cathedral's own two slots (a Rat, and a Jikay who never stopped coming) were
+ * a copy-paste in the original and are gone: the Nave and the Altar roll this.
  */
 const MOUNTAIN_BOSS_SLOT = (weight) => ({
   weight,
   ladder: [
     { killed: ['jikay', 'jiemji', 'king-blade'], enemies: [{ slug: 'jikay', weight: 1 }, { slug: 'jiemji', weight: 1 }, { slug: 'king-blade', weight: 1 }] },
-    { killed: ['jikay', 'jiemji'], enemies: [{ slug: 'jikay', weight: 1 }, { slug: 'jiemji', weight: 1 }, { slug: 'king-blade', weight: 3 }] },
+    { killed: ['jikay', 'jiemji'], enemies: [{ slug: 'king-blade', weight: 1 }] },
     { killed: ['jikay'], enemies: [{ slug: 'jiemji', weight: 1 }] },
     { killed: ['jiemji'], enemies: [{ slug: 'jikay', weight: 1 }] },
     { anyKilled: ['giant-mountain-giant', 'gatekeeper'], enemies: [{ slug: 'jikay', weight: 1 }, { slug: 'jiemji', weight: 1 }] },
     { enemies: [{ slug: 'flying-dung-beetle', weight: 1 }] },
   ],
 })
-
-/**
- * The Cathedral's two 1-in-50 slots (the Nave and the Altar), as the original
- * wrote them: the first hands out a Rat until one of the mountain's guardians
- * is down, then whichever lieutenant that guardian unlocks, then King Blade
- * once both guardians are dead — and nothing at all once he is; the second is
- * a Giant Rat "for funsies" until the Gatekeeper falls, after which it is Jikay.
- */
-const CATHEDRAL_BOSS_SLOTS = [
-  {
-    weight: 21,
-    ladder: [
-      { killed: ['giant-mountain-giant', 'gatekeeper'], notKilled: ['king-blade'], enemies: [{ slug: 'king-blade', weight: 1 }] },
-      { killed: ['giant-mountain-giant', 'gatekeeper'], enemies: [] },
-      { killed: ['giant-mountain-giant'], enemies: [{ slug: 'jikay', weight: 1 }] },
-      { killed: ['gatekeeper'], enemies: [{ slug: 'jiemji', weight: 1 }] },
-      { enemies: [{ slug: 'rat', weight: 1 }] },
-    ],
-  },
-  {
-    weight: 21,
-    ladder: [
-      { killed: ['gatekeeper'], enemies: [{ slug: 'jikay', weight: 1 }] },
-      { enemies: [{ slug: 'giant-rat', weight: 1 }] },
-    ],
-  },
-]
 
 const ROOM_ENEMIES = {
   '013': {
@@ -2801,88 +2781,81 @@ const ROOM_ENEMIES = {
   },
 
   // ==================== MOUNTAINS ====================
-  // The original's `battle-sets/mountains.php`, a 7-in-15 roll plus a 1-in-50
-  // boss slot. Written in units of 1/1050 so every slot is a whole number:
-  // each of the seven 1-in-15 slots is 70, the boss slot is 21. The road's
-  // rarities (bowman, highwayman, imp, wisp, falcon, dark ranger, ent) share
-  // one slot, as do the snow rarities (the Yeti three times, the trio and the
-  // Dragon once each). The boss slot is the ladder described at the top of
-  // this file — a Flying Dung Beetle until the mountain's kings start falling.
+  // The original's `battle-sets/mountains.php` was a 7-in-15 roll plus a
+  // 1-in-50 boss slot; retuned 12 Oct 2026 (Mountain Spawn Lab) to eight set
+  // slots and one boss slot, a fight one turn in two. Weights are in
+  // MOUNTAIN_SLOT units so a whole slot is 28 and the set is 224.
   ...Object.fromEntries(
     ['601', '602', '603', '605', '606', '612', '613', '614', '615', '618'].map((roomId) => [
       roomId,
       {
         probabilistic: true,
-        spawnChance: 511 / 1050,
-        enemies: [...MOUNTAIN_SET, MOUNTAIN_BOSS_SLOT(21)],
+        spawnChance: 1 / 2,
+        enemies: [...MOUNTAIN_SET, MOUNTAIN_BOSS_SLOT(MOUNTAIN_SLOT)],
       },
     ])
   ),
-  // The Mountain Alcove: "EXTRA RARES FOR ALCOVE!!!!" — two 1-in-4 rolls over
-  // the snow trio before the ordinary set even runs, one of them with the
-  // Dragon at the end and the other with the Yeti. P(anything) ≈ 0.74.
+  // The Mountain Alcove: "EXTRA RARES FOR ALCOVE!!!!" — the snow trio, the
+  // Dragon and the Yeti a slot each, the set at half, the boss slot whole.
+  // A fight one turn in two; half of those a rarity.
   '604': {
     probabilistic: true,
-    spawnChance: 780.5 / 1050,
+    spawnChance: 1 / 2,
     enemies: [
-      { slug: 'snow-ogre', weight: 150 },
-      { slug: 'snow-ninja', weight: 150 },
-      { slug: 'snow-owl', weight: 150 },
-      { slug: 'dragon', weight: 37.5 },
-      { slug: 'yeti', weight: 37.5 },
+      { slug: 'snow-ogre', weight: MOUNTAIN_SLOT },
+      { slug: 'snow-ninja', weight: MOUNTAIN_SLOT },
+      { slug: 'snow-owl', weight: MOUNTAIN_SLOT },
+      { slug: 'dragon', weight: MOUNTAIN_SLOT },
+      { slug: 'yeti', weight: MOUNTAIN_SLOT },
       ...MOUNTAIN_SET_SCALED(0.5),
-      MOUNTAIN_BOSS_SLOT(10.5),
+      MOUNTAIN_BOSS_SLOT(MOUNTAIN_SLOT),
     ],
   },
-  // The Peak: the Giant Mountain Giant one time in two, and nothing else
-  // wanders this high.
+  // The Peak: the Giant Mountain Giant, every turn.
   '617': {
     probabilistic: true,
-    spawnChance: 0.5,
-    enemies: [{ slug: 'giant-mountain-giant', weight: 100 }],
+    spawnChance: 1,
+    enemies: [{ slug: 'giant-mountain-giant', weight: 1 }],
   },
   // The Mountain Bridge: the Gatekeeper, always — `rand(1, 1)` in the original.
   '619': { enemies: ['gatekeeper'] },
-  // Dragon's Ledge: a Dragon one time in four before the ordinary set.
+  // Dragon's Ledge: a Dragon four slots in seven, the set a quarter, the boss
+  // slot whole; a fight seven turns in ten.
   '620': {
     probabilistic: true,
-    spawnChance: 645.75 / 1050,
-    enemies: [{ slug: 'dragon', weight: 262.5 }, ...MOUNTAIN_SET_SCALED(0.75), MOUNTAIN_BOSS_SLOT(15.75)],
+    spawnChance: 7 / 10,
+    enemies: [{ slug: 'dragon', weight: 4 * MOUNTAIN_SLOT }, ...MOUNTAIN_SET_SCALED(0.25), MOUNTAIN_BOSS_SLOT(MOUNTAIN_SLOT)],
   },
-  // The Cathedral Courtyard: "most of them are not statues" — a Grey
-  // Gargoyle one time in four and a White one time in four, then the set.
+  // The Cathedral Courtyard: "most of them are not statues" — twelve slots of
+  // Grey Gargoyle, twelve of White, the set at half, the boss slot doubled;
+  // a fight three turns in four.
   '621': {
     probabilistic: true,
-    spawnChance: 780.5 / 1050,
+    spawnChance: 3 / 4,
     enemies: [
-      { slug: 'grey-gargoyle', weight: 262.5 },
-      { slug: 'white-gargoyle', weight: 262.5 },
+      { slug: 'grey-gargoyle', weight: 12 * MOUNTAIN_SLOT },
+      { slug: 'white-gargoyle', weight: 12 * MOUNTAIN_SLOT },
       ...MOUNTAIN_SET_SCALED(0.5),
-      MOUNTAIN_BOSS_SLOT(10.5),
+      MOUNTAIN_BOSS_SLOT(2 * MOUNTAIN_SLOT),
     ],
   },
-  // The Nave: vampires five slots in fifteen, the Fallen Priest two, a 1-in-7
-  // sub-roll of gargoyles and the snow trio one — and the Cathedral's own two
-  // 1-in-50 boss slots (see CATHEDRAL_BOSS_SLOTS).
+  // The Nave: vampires ten slots, the Fallen Priest six, the mountain's boss
+  // slot one; a fight seventeen turns in twenty. The gargoyles stay in the
+  // Courtyard now.
   '622': {
     probabilistic: true,
-    spawnChance: 602 / 1050,
+    spawnChance: 17 / 20,
     enemies: [
-      { slug: 'vampire', weight: 350 },
-      { slug: 'fallen-priest', weight: 140 },
-      { slug: 'grey-gargoyle', weight: 20 },
-      { slug: 'white-gargoyle', weight: 20 },
-      { slug: 'snow-ogre', weight: 10 },
-      { slug: 'snow-ninja', weight: 10 },
-      { slug: 'snow-owl', weight: 10 },
-      ...CATHEDRAL_BOSS_SLOTS,
+      { slug: 'vampire', weight: 10 * MOUNTAIN_SLOT },
+      { slug: 'fallen-priest', weight: 6 * MOUNTAIN_SLOT },
+      MOUNTAIN_BOSS_SLOT(MOUNTAIN_SLOT),
     ],
   },
-  // The Altar: the Fallen Angel seven slots in fifteen, the Priest three.
+  // The Altar: the Fallen Angel, every turn, and nothing else.
   '623': {
     probabilistic: true,
-    spawnChance: 742 / 1050,
-    enemies: [{ slug: 'fallen-angel', weight: 490 }, { slug: 'fallen-priest', weight: 210 }, ...CATHEDRAL_BOSS_SLOTS],
+    spawnChance: 1,
+    enemies: [{ slug: 'fallen-angel', weight: 1 }],
   },
   // The Graveyard: a Risen Skeleton one time in four. Nothing else finds it.
   '616': {
@@ -2890,13 +2863,10 @@ const ROOM_ENEMIES = {
     spawnChance: 0.25,
     enemies: [{ slug: 'risen-skeleton', weight: 100 }],
   },
-  // The Silver Temple: a Silver Titan steps into the arena one time in four,
-  // or the moment you challenge one (room-action-handlers).
-  '625': {
-    probabilistic: true,
-    spawnChance: 0.25,
-    enemies: [{ slug: 'silver-titan', weight: 100 }],
-  },
+  // The Silver Temple: a Silver Titan stands in the arena, as the Forest
+  // Princess stands in her glade — always there, never the one to start it.
+  // The "challenge silver titan" button (room-action-handlers) begins the fight.
+  '625': { enemies: ['silver-titan'] },
 
   // ==================== THE DESPAIR ====================
   // The original's the-despair-1.php: rand(1, 11), one of eleven, every

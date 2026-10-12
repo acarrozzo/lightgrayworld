@@ -39,6 +39,19 @@ export type ExitInfo = {
   lever?: boolean
   oneWay?: boolean
 }
+/** One rung of a kill-gated slot: what has to be dead for it to be live, and what it then rolls. */
+export type SpawnRung = {
+  note: string
+  /** Empty when the rung hands out nothing (the Cathedral once King Blade is dead). */
+  enemies: {
+    slug: string
+    name: string
+    level?: number
+    icon?: string | null
+    /** This enemy's share within the rung, only when the rung rolls between several. */
+    sharePct?: number
+  }[]
+}
 export type EnemySpawn = {
   slug: string
   name: string
@@ -46,8 +59,11 @@ export type EnemySpawn = {
   icon?: string | null
   weight?: number
   chancePct?: number
-  /** A kill-gated slot (the Mountains' boss ladder): what has to be dead first. */
-  note?: string
+  /**
+   * A kill-gated slot (the Mountains' boss ladder): the share is the slot's,
+   * and a player rolls the first rung whose conditions they meet.
+   */
+  rungs?: SpawnRung[]
 }
 export type RoomActionInfo = {
   name: string
@@ -998,20 +1014,53 @@ function RoomDetail({
               )}
             </p>
             <ul className="space-y-1">
-              {room.enemies.enemies.map((en) => (
-                <li key={en.slug} className="flex items-center gap-2 text-sm">
-                  {en.icon && <Icon name={en.icon} size={18} />}
-                  <EntityLink href={enemyHref(en.slug)} title={`${en.name} on the Enemies page`}>
-                    {en.name}
-                  </EntityLink>
-                  {en.level != null && <span className="text-xs text-fg-muted">Lv {en.level}</span>}
-                  {en.note && <span className="text-[10px] italic text-fg-muted">{en.note}</span>}
-                  {en.chancePct != null && <span className="ml-auto text-xs font-semibold text-resource-gold">{en.chancePct}%</span>}
-                </li>
-              ))}
+              {room.enemies.enemies.map((en) =>
+                en.rungs ? (
+                  <li key={en.slug} className="text-sm">
+                    <div className="flex items-center gap-2">
+                      <Icon name="skull" size={18} />
+                      <span className="text-fg-secondary">{en.name}</span>
+                      {en.chancePct != null && <span className="ml-auto text-xs font-semibold text-resource-gold">{en.chancePct}%</span>}
+                    </div>
+                    <ul className="ml-2 mt-1 space-y-1 border-l border-line-subtle pl-3">
+                      {en.rungs.map((rung, i) => (
+                        <li key={i} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                          <span className="italic text-fg-muted">{rung.note}</span>
+                          {rung.enemies.length === 0 ? (
+                            <span className="text-fg-muted">nothing</span>
+                          ) : (
+                            rung.enemies.map((re) => (
+                              <span key={re.slug} className="inline-flex items-center gap-1">
+                                {re.icon && <Icon name={re.icon} size={14} />}
+                                <EntityLink href={enemyHref(re.slug)} title={`${re.name} on the Enemies page`}>
+                                  {re.name}
+                                </EntityLink>
+                                {re.level != null && <span className="text-[10px] text-fg-muted">Lv {re.level}</span>}
+                                {re.sharePct != null && <span className="text-[10px] text-fg-muted">{re.sharePct}%</span>}
+                              </span>
+                            ))
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ) : (
+                  <li key={en.slug} className="flex items-center gap-2 text-sm">
+                    {en.icon && <Icon name={en.icon} size={18} />}
+                    <EntityLink href={enemyHref(en.slug)} title={`${en.name} on the Enemies page`}>
+                      {en.name}
+                    </EntityLink>
+                    {en.level != null && <span className="text-xs text-fg-muted">Lv {en.level}</span>}
+                    {en.chancePct != null && <span className="ml-auto text-xs font-semibold text-resource-gold">{en.chancePct}%</span>}
+                  </li>
+                )
+              )}
             </ul>
             {room.enemies.mode === 'probabilistic' && room.enemies.enemies.length > 1 && (
-              <p className="text-[10px] text-fg-muted">Percentages are weighted shares of a successful spawn.</p>
+              <p className="text-[10px] text-fg-muted">
+                Percentages are weighted shares of a successful spawn. A boss ladder rolls one rung: the first whose conditions the player
+                meets.
+              </p>
             )}
           </div>
         )}
