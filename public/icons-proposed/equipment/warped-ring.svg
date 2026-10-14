@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-<g transform="skewX(-14) translate(12 0)"><path fill-rule="evenodd" d="M23,64 a27,22 0 1,0 54,0 a27,22 0 1,0 -54,0 Z M31,62 a19,14 0 1,0 38,0 a19,14 0 1,0 -38,0 Z M40,80 a10,4 0 0,0 20,0 a10,2.5 0 0,1 -20,0 Z"/>
-<path fill-rule="evenodd" d="M32.9,32 C43.16,18.32 56.84,18.32 67.1,32 C56.84,45.68 43.16,45.68 32.9,32 Z M45.44,32 a4.56,4.56 0 1,0 9.12,0 a4.56,4.56 0 1,0 -9.12,0 Z"/>
-<path fill-rule="evenodd" d="M34.7,42.45 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z M61.3,42.45 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0 Z"/></g>
-</svg>

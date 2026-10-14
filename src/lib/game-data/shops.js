@@ -181,10 +181,11 @@ const SHOPS = {
   },
 
   // The Shady Shop, hidden behind the alley banners: ammunition by the sack,
-  // the four stat capsules, and one very expensive necklace. No questions either way.
+  // the four stat capsules, and a very expensive vapor necklace and ring. No
+  // questions either way.
   '236': {
     name: 'Shady Shop',
-    stock: ['arrow', 'crossbow-bolt', 'reds', 'greens', 'blues', 'yellows', 'vapor-necklace'],
+    stock: ['arrow', 'crossbow-bolt', 'reds', 'greens', 'blues', 'yellows', 'vapor-ring', 'vapor-necklace'],
   },
 
   // ==================== ROCKY FLATS ====================

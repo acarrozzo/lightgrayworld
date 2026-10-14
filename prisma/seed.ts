@@ -10170,7 +10170,7 @@ async function main() {
       max: 999,
       value: 100,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 1 } },
+      metadata: { statMods: { str: 1 } },
     },
     {
       id: 'ring-of-dex_001',
@@ -10181,7 +10181,7 @@ async function main() {
       max: 999,
       value: 100,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { dex: 1 } },
+      metadata: { statMods: { dex: 1 } },
     },
     {
       id: 'ring-of-mag_001',
@@ -10192,7 +10192,7 @@ async function main() {
       max: 999,
       value: 100,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 1 } },
+      metadata: { statMods: { mag: 1 } },
     },
     {
       id: 'ring-of-def_001',
@@ -10203,7 +10203,7 @@ async function main() {
       max: 999,
       value: 100,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { def: 1 } },
+      metadata: { statMods: { def: 1 } },
     },
     {
       id: 'soldiers-ring_001',
@@ -10214,7 +10214,20 @@ async function main() {
       max: 999,
       value: 400,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 2, def: 2 } },
+      metadata: { statMods: { str: 2, def: 2 } },
+    },
+    {
+      // The Coyote's drop (game-data/enemies.js), in the slot the Ring of
+      // Dexterity used to fill there.
+      id: 'coyote-ring_001',
+      slug: 'coyote-ring',
+      name: 'Coyote Ring',
+      description: 'A rough band the coyote was carrying around for reasons of its own. A little of everything it had: muscle, nerve and cunning.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 10000,
+      equipSlot: EquipSlot.RING,
+      metadata: { statMods: { str: 2, dex: 2, mag: 2 } },
     },
     {
       id: 'wooden-necklace_001',
@@ -10225,7 +10238,7 @@ async function main() {
       max: 999,
       value: 150,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { def: 5 } },
+      metadata: { statMods: { def: 5 } },
     },
     {
       id: 'bone-necklace_001',
@@ -10236,7 +10249,7 @@ async function main() {
       max: 999,
       value: 300,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { def: 10 } },
+      metadata: { statMods: { def: 10 } },
     },
     {
       id: 'stone-necklace_001',
@@ -10247,7 +10260,7 @@ async function main() {
       max: 999,
       value: 500,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { def: 15 } },
+      metadata: { statMods: { def: 15 } },
     },
     {
       id: 'red-hood_001',
@@ -10599,7 +10612,7 @@ async function main() {
       max: 999,
       value: 5000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 3, dex: 3 } },
+      metadata: { statMods: { str: 3, dex: 3 } },
     },
     {
       id: 'hunter-gloves_001',
@@ -11470,7 +11483,7 @@ async function main() {
       max: 999,
       value: 20000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { str: 10, def: 10 } },
+      metadata: { statMods: { str: 10, def: 10 } },
     },
 
     // ---- Food and potions ----
@@ -11729,7 +11742,7 @@ async function main() {
       max: 999,
       value: 16000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 5 } },
+      metadata: { icon: 'ring-of-str', statMods: { str: 5 } },
     },
     {
       id: 'ring-of-health-regen-v_001',
@@ -11740,7 +11753,7 @@ async function main() {
       max: 999,
       value: 32000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { hp: 5 } },
+      metadata: { icon: 'ring-of-health-regen', regen: { hp: 5 } },
     },
     {
       id: 'ring-of-health-regen-iii_001',
@@ -11751,7 +11764,7 @@ async function main() {
       max: 999,
       value: 12000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { hp: 3 } },
+      metadata: { icon: 'ring-of-health-regen', regen: { hp: 3 } },
     },
     {
       id: 'ring-of-mana-regen-iii_001',
@@ -11762,7 +11775,7 @@ async function main() {
       max: 999,
       value: 12000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { mp: 3 } },
+      metadata: { icon: 'ring-of-mana-regen', regen: { mp: 3 } },
     },
 
     // ---- Tier III stat rings ----
@@ -11779,7 +11792,7 @@ async function main() {
       max: 999,
       value: 6000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 3 } },
+      metadata: { icon: 'ring-of-str', statMods: { str: 3 } },
     },
     {
       id: 'ring-of-dexterity-iii_001',
@@ -11790,7 +11803,7 @@ async function main() {
       max: 999,
       value: 6000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { dex: 3 } },
+      metadata: { icon: 'ring-of-dex', statMods: { dex: 3 } },
     },
     {
       id: 'ring-of-magic-iii_001',
@@ -11801,7 +11814,7 @@ async function main() {
       max: 999,
       value: 6000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 3 } },
+      metadata: { icon: 'ring-of-mag', statMods: { mag: 3 } },
     },
     {
       id: 'ring-of-defense-iii_001',
@@ -11812,7 +11825,7 @@ async function main() {
       max: 999,
       value: 6000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { def: 3 } },
+      metadata: { icon: 'ring-of-def', statMods: { def: 3 } },
     },
 
     // ---- Forest Underground boss-chest gear ----
@@ -11925,7 +11938,18 @@ async function main() {
       max: 999,
       value: 50000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { str: 10, dex: 10, mag: 10, def: 10 } },
+      metadata: { statMods: { str: 10, dex: 10, mag: 10, def: 10 } },
+    },
+    {
+      id: 'vapor-ring_001',
+      slug: 'vapor-ring',
+      name: 'Vapor Ring',
+      description: 'You can feel it on your finger. You can mostly see it. The shady man says that is more than most of his stock can claim.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 25000,
+      equipSlot: EquipSlot.RING,
+      metadata: { statMods: { str: 5, dex: 5, mag: 5, def: 5 } },
     },
 
     // ---- Quest rewards from Warrior Pete and Wizard Morty ----
@@ -12080,7 +12104,7 @@ async function main() {
       max: 999,
       value: 30000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 10, dex: 10, mag: 10, def: 10 } },
+      metadata: { statMods: { str: 10, dex: 10, mag: 10, def: 10 } },
     },
     {
       id: 'silver-necklace_001',
@@ -12091,7 +12115,7 @@ async function main() {
       max: 999,
       value: 50000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { str: 20, dex: 20, mag: 20, def: 20 } },
+      metadata: { statMods: { str: 20, dex: 20, mag: 20, def: 20 } },
     },
 
     // ---- Thieve's Den treasure chest ----
@@ -12150,7 +12174,7 @@ async function main() {
       max: 999,
       value: 16000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { dex: 5 } },
+      metadata: { icon: 'ring-of-dex', statMods: { dex: 5 } },
     },
     {
       id: 'ring-of-magic-v_001',
@@ -12161,7 +12185,7 @@ async function main() {
       max: 999,
       value: 16000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 5 } },
+      metadata: { icon: 'ring-of-mag', statMods: { mag: 5 } },
     },
     {
       id: 'ring-of-defense-v_001',
@@ -12172,7 +12196,7 @@ async function main() {
       max: 999,
       value: 16000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { def: 5 } },
+      metadata: { icon: 'ring-of-def', statMods: { def: 5 } },
     },
     {
       id: 'ring-of-health-regen_001',
@@ -12183,7 +12207,7 @@ async function main() {
       max: 999,
       value: 4000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { hp: 1 } },
+      metadata: { regen: { hp: 1 } },
     },
     {
       id: 'ring-of-mana-regen_001',
@@ -12194,7 +12218,7 @@ async function main() {
       max: 999,
       value: 4000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { mp: 1 } },
+      metadata: { regen: { mp: 1 } },
     },
 
     // ---- Red Town Stables ----
@@ -12654,7 +12678,7 @@ async function main() {
       max: 999,
       value: 2000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 5, dex: 5, def: 5 } },
+      metadata: { statMods: { str: 5, dex: 5, def: 5 } },
     },
     {
       id: 'red-wizard-ring_001',
@@ -12665,7 +12689,7 @@ async function main() {
       max: 999,
       value: 3000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 5, str: 5 } },
+      metadata: { statMods: { mag: 5, str: 5 } },
     },
     {
       id: 'yellow-wizard-ring_001',
@@ -12676,7 +12700,7 @@ async function main() {
       max: 999,
       value: 3000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 5, def: 5 } },
+      metadata: { statMods: { mag: 5, def: 5 } },
     },
     {
       id: 'ring-of-strength-ii_001',
@@ -12687,7 +12711,7 @@ async function main() {
       max: 999,
       value: 200,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 2 } },
+      metadata: { icon: 'ring-of-str', statMods: { str: 2 } },
     },
     {
       id: 'ring-of-dexterity-ii_001',
@@ -12698,7 +12722,7 @@ async function main() {
       max: 999,
       value: 200,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { dex: 2 } },
+      metadata: { icon: 'ring-of-dex', statMods: { dex: 2 } },
     },
     {
       id: 'ring-of-magic-ii_001',
@@ -12709,7 +12733,7 @@ async function main() {
       max: 999,
       value: 200,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 2 } },
+      metadata: { icon: 'ring-of-mag', statMods: { mag: 2 } },
     },
     {
       id: 'ring-of-defense-ii_001',
@@ -12720,7 +12744,7 @@ async function main() {
       max: 999,
       value: 200,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { def: 2 } },
+      metadata: { icon: 'ring-of-def', statMods: { def: 2 } },
     },
     {
       id: 'ring-of-strength-vii_001',
@@ -12731,7 +12755,7 @@ async function main() {
       max: 999,
       value: 30000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 7 } },
+      metadata: { icon: 'ring-of-str', statMods: { str: 7 } },
     },
     {
       id: 'ring-of-dexterity-vii_001',
@@ -12742,7 +12766,7 @@ async function main() {
       max: 999,
       value: 30000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { dex: 7 } },
+      metadata: { icon: 'ring-of-dex', statMods: { dex: 7 } },
     },
     {
       id: 'ring-of-magic-vii_001',
@@ -12753,7 +12777,7 @@ async function main() {
       max: 999,
       value: 30000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 7 } },
+      metadata: { icon: 'ring-of-mag', statMods: { mag: 7 } },
     },
     {
       id: 'ring-of-defense-vii_001',
@@ -12764,7 +12788,7 @@ async function main() {
       max: 999,
       value: 30000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { def: 7 } },
+      metadata: { icon: 'ring-of-def', statMods: { def: 7 } },
     },
 
     // ==================== THE NEVERENDING MINE ====================
@@ -12877,7 +12901,7 @@ async function main() {
       max: 999,
       value: 4000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { def: 25 } },
+      metadata: { statMods: { def: 25 } },
     },
     {
       id: 'iron-ring_001',
@@ -12888,7 +12912,7 @@ async function main() {
       max: 999,
       value: 4000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 5, dex: 5, mag: 5, def: 5 } },
+      metadata: { statMods: { str: 5, dex: 5, mag: 5, def: 5 } },
     },
     {
       id: 'steel-cape_001',
@@ -12910,7 +12934,7 @@ async function main() {
       max: 999,
       value: 12000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { def: 50 } },
+      metadata: { statMods: { def: 50 } },
     },
     {
       id: 'steel-ring_001',
@@ -12921,7 +12945,7 @@ async function main() {
       max: 999,
       value: 12000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 12, dex: 12, mag: 12, def: 12 } },
+      metadata: { statMods: { str: 12, dex: 12, mag: 12, def: 12 } },
     },
     {
       id: 'mithril-cape_001',
@@ -12943,7 +12967,7 @@ async function main() {
       max: 999,
       value: 40000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { def: 100 } },
+      metadata: { statMods: { def: 100 } },
     },
     {
       id: 'mithril-ring_001',
@@ -12954,7 +12978,7 @@ async function main() {
       max: 999,
       value: 40000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 25, dex: 25, mag: 25, def: 25 } },
+      metadata: { statMods: { str: 25, dex: 25, mag: 25, def: 25 } },
     },
 
     // --- The Earth Golem's set and the Gamma Monk's, whole rather than in pieces:
@@ -13002,6 +13026,18 @@ async function main() {
       value: 6000,
       equipSlot: EquipSlot.FEET,
       metadata: { statMods: { str: 8, def: 15 } },
+    },
+    {
+      // Bigfoot's first-kill drop (game-data/enemies.js).
+      id: 'bigfoot-boots_001',
+      slug: 'bigfoot-boots',
+      name: 'Bigfoot Boots',
+      description: 'Boots cut from Bigfoot\'s own hide, fur still on. Nobody believes the prints you leave.',
+      type: ItemType.EQUIPMENT,
+      max: 999,
+      value: 5000,
+      equipSlot: EquipSlot.FEET,
+      metadata: { statMods: { str: 10, def: 20 } },
     },
     {
       id: 'gamma-hood_001',
@@ -13146,7 +13182,7 @@ async function main() {
       max: 999,
       value: 3000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { dex: 10 } },
+      metadata: { statMods: { dex: 10 } },
     },
     {
       id: 'warrior-pendant_001',
@@ -13157,7 +13193,7 @@ async function main() {
       max: 999,
       value: 15000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { str: 25, def: 25 } },
+      metadata: { statMods: { str: 25, def: 25 } },
     },
     {
       id: 'ranger-amulet_001',
@@ -13168,7 +13204,7 @@ async function main() {
       max: 999,
       value: 15000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { dex: 25, mag: 5 } },
+      metadata: { statMods: { dex: 25, mag: 5 } },
     },
     {
       id: 'ring-of-the-magi_001',
@@ -13179,7 +13215,7 @@ async function main() {
       max: 999,
       value: 50000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 50 } },
+      metadata: { statMods: { mag: 50 } },
     },
     {
       id: 'ring-of-defense-x_001',
@@ -13190,7 +13226,7 @@ async function main() {
       max: 999,
       value: 45000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { def: 10 } },
+      metadata: { icon: 'ring-of-def', statMods: { def: 10 } },
     },
     {
       id: 'ring-of-defense-xx_001',
@@ -13201,7 +13237,7 @@ async function main() {
       max: 999,
       value: 150000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { def: 20 } },
+      metadata: { icon: 'ring-of-def', statMods: { def: 20 } },
     },
     {
       id: 'ring-of-dexterity-xiii_001',
@@ -13212,7 +13248,7 @@ async function main() {
       max: 999,
       value: 80000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { dex: 13 } },
+      metadata: { icon: 'ring-of-dex', statMods: { dex: 13 } },
     },
 
     // --- Deep-mine weapons. ---
@@ -13605,7 +13641,7 @@ async function main() {
       max: 999,
       value: 10000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 5, dex: 5 } },
+      metadata: { statMods: { mag: 5, dex: 5 } },
     },
     // The ocean's artifacts. A tenth equipment slot in the original, worn
     // beside the mount; the ARTIFACT slot here is the same idea.
@@ -14103,7 +14139,7 @@ async function main() {
       max: 999,
       value: 15000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { mag: 5 }, regen: { mp: 5 } },
+      metadata: { statMods: { mag: 5 }, regen: { mp: 5 } },
     },
     {
       id: 'forest-cloak_001',
@@ -14191,7 +14227,7 @@ async function main() {
       max: 999,
       value: 200000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { str: 25, dex: 25, mag: 25, def: 25 } },
+      metadata: { statMods: { str: 25, dex: 25, mag: 25, def: 25 } },
     },
     {
       id: 'onyx-cross_001',
@@ -14201,8 +14237,8 @@ async function main() {
       type: ItemType.EQUIPMENT,
       max: 999,
       value: 100000,
-      equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'necklace', statMods: { mag: 40, def: 20 } },
+      equipSlot: EquipSlot.ARTIFACT,
+      metadata: { statMods: { mag: 40, def: 20 } },
     },
     {
       id: 'warped-ring_001',
@@ -14213,7 +14249,7 @@ async function main() {
       max: 999,
       value: 30000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 20, def: -20 } },
+      metadata: { statMods: { mag: 20, def: -20 } },
     },
     {
       id: 'ring-of-strength-x_001',
@@ -14224,7 +14260,7 @@ async function main() {
       max: 999,
       value: 45000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 10 } },
+      metadata: { icon: 'ring-of-str', statMods: { str: 10 } },
     },
     {
       id: 'ring-of-dexterity-x_001',
@@ -14235,7 +14271,7 @@ async function main() {
       max: 999,
       value: 45000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { dex: 10 } },
+      metadata: { icon: 'ring-of-dex', statMods: { dex: 10 } },
     },
     {
       id: 'ring-of-magic-x_001',
@@ -14246,7 +14282,7 @@ async function main() {
       max: 999,
       value: 45000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 10 } },
+      metadata: { icon: 'ring-of-mag', statMods: { mag: 10 } },
     },
     {
       id: 'ring-of-mana-regen-v_001',
@@ -14257,7 +14293,7 @@ async function main() {
       max: 999,
       value: 32000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { mp: 5 } },
+      metadata: { icon: 'ring-of-mana-regen', regen: { mp: 5 } },
     },
     // The rest of the regen ring ladder. The original had ten tiers of each,
     // reached by hammering two of a tier into one of the next at a crafting
@@ -14272,7 +14308,7 @@ async function main() {
       max: 999,
       value: 8000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { hp: 2 } },
+      metadata: { icon: 'ring-of-health-regen', regen: { hp: 2 } },
     },
     {
       id: 'ring-of-health-regen-iv_001',
@@ -14283,7 +14319,7 @@ async function main() {
       max: 999,
       value: 20000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { hp: 4 } },
+      metadata: { icon: 'ring-of-health-regen', regen: { hp: 4 } },
     },
     {
       id: 'ring-of-health-regen-vi_001',
@@ -14294,7 +14330,7 @@ async function main() {
       max: 999,
       value: 48000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { hp: 6 } },
+      metadata: { icon: 'ring-of-health-regen', regen: { hp: 6 } },
     },
     {
       id: 'ring-of-health-regen-vii_001',
@@ -14305,7 +14341,7 @@ async function main() {
       max: 999,
       value: 64000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { hp: 7 } },
+      metadata: { icon: 'ring-of-health-regen', regen: { hp: 7 } },
     },
     {
       id: 'ring-of-health-regen-viii_001',
@@ -14316,7 +14352,7 @@ async function main() {
       max: 999,
       value: 90000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { hp: 8 } },
+      metadata: { icon: 'ring-of-health-regen', regen: { hp: 8 } },
     },
     {
       id: 'ring-of-health-regen-ix_001',
@@ -14327,7 +14363,7 @@ async function main() {
       max: 999,
       value: 120000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { hp: 9 } },
+      metadata: { icon: 'ring-of-health-regen', regen: { hp: 9 } },
     },
     {
       id: 'ring-of-health-regen-x_001',
@@ -14338,7 +14374,7 @@ async function main() {
       max: 999,
       value: 160000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { hp: 10 } },
+      metadata: { icon: 'ring-of-health-regen', regen: { hp: 10 } },
     },
     {
       id: 'ring-of-mana-regen-ii_001',
@@ -14349,7 +14385,7 @@ async function main() {
       max: 999,
       value: 8000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { mp: 2 } },
+      metadata: { icon: 'ring-of-mana-regen', regen: { mp: 2 } },
     },
     {
       id: 'ring-of-mana-regen-iv_001',
@@ -14360,7 +14396,7 @@ async function main() {
       max: 999,
       value: 20000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { mp: 4 } },
+      metadata: { icon: 'ring-of-mana-regen', regen: { mp: 4 } },
     },
     {
       id: 'ring-of-mana-regen-vi_001',
@@ -14371,7 +14407,7 @@ async function main() {
       max: 999,
       value: 48000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { mp: 6 } },
+      metadata: { icon: 'ring-of-mana-regen', regen: { mp: 6 } },
     },
     {
       id: 'ring-of-mana-regen-vii_001',
@@ -14382,7 +14418,7 @@ async function main() {
       max: 999,
       value: 64000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { mp: 7 } },
+      metadata: { icon: 'ring-of-mana-regen', regen: { mp: 7 } },
     },
     {
       id: 'ring-of-mana-regen-viii_001',
@@ -14393,7 +14429,7 @@ async function main() {
       max: 999,
       value: 90000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { mp: 8 } },
+      metadata: { icon: 'ring-of-mana-regen', regen: { mp: 8 } },
     },
     {
       id: 'ring-of-mana-regen-ix_001',
@@ -14404,7 +14440,7 @@ async function main() {
       max: 999,
       value: 120000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { mp: 9 } },
+      metadata: { icon: 'ring-of-mana-regen', regen: { mp: 9 } },
     },
     {
       id: 'ring-of-mana-regen-x_001',
@@ -14415,7 +14451,7 @@ async function main() {
       max: 999,
       value: 160000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', regen: { mp: 10 } },
+      metadata: { icon: 'ring-of-mana-regen', regen: { mp: 10 } },
     },
     {
       id: 'cursed-skull_001',
@@ -14425,7 +14461,7 @@ async function main() {
       type: ItemType.EQUIPMENT,
       max: 999,
       value: 100000,
-      equipSlot: EquipSlot.ARTIFACT,
+      equipSlot: EquipSlot.OFF_HAND,
       metadata: { icon: 'skull', statMods: { str: 30, mag: 30, def: -30 } },
     },
     // Mounts. The sky hawk and the green griffin fly, as they did in the
@@ -14555,7 +14591,7 @@ async function main() {
       max: 999,
       value: 100000,
       equipSlot: EquipSlot.HANDS,
-      metadata: { icon: 'hand', statMods: { mag: 10 } },
+      metadata: { statMods: { mag: 10 } },
     },
     {
       id: 'steel-master-helm_001',
@@ -14660,7 +14696,7 @@ async function main() {
       max: 999,
       value: 80000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { str: 13 } },
+      metadata: { icon: 'ring-of-str', statMods: { str: 13 } },
     },
     {
       id: 'ring-of-magic-xiii_001',
@@ -14671,7 +14707,7 @@ async function main() {
       max: 999,
       value: 80000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { mag: 13 } },
+      metadata: { icon: 'ring-of-mag', statMods: { mag: 13 } },
     },
     {
       id: 'ring-of-defense-xiii_001',
@@ -14682,7 +14718,7 @@ async function main() {
       max: 999,
       value: 80000,
       equipSlot: EquipSlot.RING,
-      metadata: { icon: 'ring', statMods: { def: 13 } },
+      metadata: { icon: 'ring-of-def', statMods: { def: 13 } },
     },
     // --- The mountain's drops.
     {
@@ -14706,7 +14742,7 @@ async function main() {
       max: 999,
       value: 200000,
       equipSlot: EquipSlot.NECK,
-      metadata: { icon: 'magic', statMods: { mag: 25, def: 25 } },
+      metadata: { statMods: { mag: 25, def: 25 } },
     },
     {
       id: 'heater-shield_001',
@@ -14932,7 +14968,7 @@ async function main() {
       max: 999,
       value: 50000,
       equipSlot: EquipSlot.ARTIFACT,
-      metadata: { icon: 'skull', statMods: { str: 10, dex: 10, mag: 10, def: 10 } },
+      metadata: { statMods: { str: 10, dex: 10, mag: 10, def: 10 } },
     },
     // ==================== STAR CITY ====================
     // The thirteenth roll of Camp Hero's silver chest, the one silver piece
