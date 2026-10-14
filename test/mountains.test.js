@@ -81,23 +81,20 @@ test('the mountain boss slot climbs with the kill list, from a dung beetle to Ki
   assert.deepEqual(pool(['giant-mountain-giant', 'jikay']), ['jiemji'])
   assert.deepEqual(pool(['gatekeeper', 'jiemji']), ['jikay'])
   const ready = roomEnemies.resolveLadder(ladder, new Set(['jikay', 'jiemji']))
-  assert.deepEqual(ready.map((e) => [e.slug, e.weight]), [['jikay', 1], ['jiemji', 1], ['king-blade', 3]])
+  assert.deepEqual(ready.map((e) => [e.slug, e.weight]), [['king-blade', 1]])
   assert.deepEqual(pool(['jikay', 'jiemji', 'king-blade']), ['jikay', 'jiemji', 'king-blade'])
 })
 
-test("the Cathedral's rare slots hand out rats until a guardian falls, and nothing once King Blade is dead", () => {
-  const [first, second] = roomEnemies.ROOM_ENEMIES['622'].enemies.filter((e) => Array.isArray(e.ladder))
-  const pool = (ladder, kills) => roomEnemies.resolveLadder(ladder, new Set(kills)).map((e) => e.slug)
+test('the Nave rolls the mountain boss slot, and the Altar is the Fallen Angel and nothing else', () => {
+  const ladders = (roomId) => roomEnemies.ROOM_ENEMIES[roomId].enemies.filter((e) => Array.isArray(e.ladder))
 
-  assert.deepEqual(pool(first.ladder, []), ['rat'])
-  assert.deepEqual(pool(first.ladder, ['giant-mountain-giant']), ['jikay'])
-  assert.deepEqual(pool(first.ladder, ['gatekeeper']), ['jiemji'])
-  assert.deepEqual(pool(first.ladder, ['giant-mountain-giant', 'gatekeeper']), ['king-blade'])
-  assert.deepEqual(pool(first.ladder, ['giant-mountain-giant', 'gatekeeper', 'king-blade']), [])
-  assert.deepEqual(pool(second.ladder, []), ['giant-rat'])
-  assert.deepEqual(pool(second.ladder, ['gatekeeper']), ['jikay'])
-  // The Altar shares both slots.
-  assert.equal(roomEnemies.ROOM_ENEMIES['623'].enemies.filter((e) => Array.isArray(e.ladder)).length, 2)
+  // The Cathedral's own Rat / Jikay slots were a copy-paste in the original;
+  // the Nave shares the mountain's one ladder instead.
+  assert.equal(ladders('622').length, 1)
+  assert.deepEqual(ladders('622')[0].ladder, bossSlot('601').ladder)
+  assert.equal(ladders('623').length, 0)
+  assert.equal(roomEnemies.ROOM_ENEMIES['623'].spawnChance, 1)
+  assert.deepEqual(roomEnemies.listRoomEnemySlugs(roomEnemies.ROOM_ENEMIES['623']), ['fallen-angel'])
 })
 
 test('a roll with no kill set only ever reaches the unconditional rung', () => {
