@@ -50,13 +50,13 @@ import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/ava
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import { TELEPORT_MP_COST } from './game-interface/constants'
 import { filterTabToView, getItemCategory, type FilterTab, type ItemFilterView } from '@/lib/inventory-categories'
-import { findTravelDirection, checkIfExitHasGate, normalizeCommand, getMapIdForRoom, getUnlockedMaps, formatDirectionPhrase } from './game-interface/utils'
+import { findTravelDirection, checkIfExitHasGate, normalizeCommand, formatDirectionPhrase } from './game-interface/utils'
 import { useGameSocketBindings } from './game-interface/useGameSocketBindings'
 import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
 import QuestsPanel, { QUEST_SUB_TABS, type QuestsTab } from './game-interface/panels/QuestsPanel'
 import { countReadyQuests } from '@/lib/quest-journal'
-import type { WorldTab } from './game-interface/WorldLayer'
+import type { WorldEntry, WorldTab } from './game-interface/WorldLayer'
 import PanelResizeHandle from './game-interface/PanelResizeHandle'
 import { useResizablePanel, useViewportWidth } from './game-interface/useResizablePanel'
 
@@ -84,6 +84,16 @@ import type { SquadMember } from '@/lib/party/squad'
 import CraftingSheet, { type RecipeTemplates } from './CraftingSheet'
 import { isCraftingRoom, formatRecipeList } from '@/lib/game-data/crafting-recipes'
 const { RESPAWN_ROOM_ID } = require('@/lib/game-data/constants') as { RESPAWN_ROOM_ID: string }
+
+/** Whether the World tab was last left full screen on this device. */
+const WORLD_FULLSCREEN_KEY = 'lg:world-fullscreen'
+function readWorldFullScreen(): boolean {
+  try {
+    return window.localStorage.getItem(WORLD_FULLSCREEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 import QuestCompleteRewards, { type QuestCompleteData } from './QuestCompleteRewards'
 import PlayerProfileModal from './PlayerProfileModal'
 import { useDMStore } from '@/store/dmStore'
@@ -192,6 +202,21 @@ export default function GameInterface() {
     { title: string; message: string; confirmLabel: string; run: () => void } | null
   >(null)
   const [worldTab, setWorldTab] = useState<WorldTab>('map')
+  // How the World tab last opened — on the whole world (the tab bar, a feed
+  // link) or on your room (the compass's mini-map) — and whether it is over
+  // the whole window. Full screen is remembered per device when the player
+  // chooses it; the mini-map always opens it, and a fight always ends it,
+  // without changing what is remembered.
+  const [worldEntry, setWorldEntry] = useState<WorldEntry>({ view: 'world', seq: 0 })
+  const [worldFullScreen, setWorldFullScreen] = useState(false)
+  const setWorldFullScreenRemembered = useCallback((on: boolean) => {
+    setWorldFullScreen(on)
+    try {
+      window.localStorage.setItem(WORLD_FULLSCREEN_KEY, on ? '1' : '0')
+    } catch {
+      // Storage unavailable: the choice holds for this page load.
+    }
+  }, [])
   // Desktop world feed starts open; the toggle only affects this session.
   const [isFeedPanelOpen, setIsFeedPanelOpen] = useState(true)
 
@@ -244,7 +269,6 @@ export default function GameInterface() {
     playerCurrency: number
     playerInventory: typeof inventory
   } | null>(null)
-  const [currentMapId, setCurrentMapId] = useState<string>('grassy-field')
   const [actionModal, setActionModal] = useState<{ 
     isOpen: boolean
     title: string
@@ -639,6 +663,11 @@ export default function GameInterface() {
         setIsCraftingOpen(false)
         return true
       }
+      // Full screen steps back to the docked World tab before the tab closes.
+      if (tabStateRef.current.tab === 'world' && worldFullScreen) {
+        setWorldFullScreenRemembered(false)
+        return true
+      }
       if (escapeCloses(tabStateRef.current)) {
         applyTabEvent({ type: 'escape' })
         return true
@@ -666,6 +695,8 @@ export default function GameInterface() {
     actionModal.isOpen,
     isCraftingOpen,
     levelUpData,
+    worldFullScreen,
+    setWorldFullScreenRemembered,
   ])
 
   const loadRoomData = useCallback(async (options?: { isTransition?: boolean; travel?: { toRoomId?: string }; requireAuth?: boolean; roomData?: any }) => {
@@ -907,14 +938,6 @@ export default function GameInterface() {
   useEffect(() => {
     currentRoomRef.current = currentRoom
   }, [currentRoom])
-
-  // Initialize map based on current room
-  useEffect(() => {
-    if (currentRoom?.roomId) {
-      const mapId = getMapIdForRoom(currentRoom.roomId)
-      setCurrentMapId(mapId)
-    }
-  }, [currentRoom?.roomId])
 
   useEffect(() => {
     loadRoomDataRef.current = loadRoomData
@@ -3183,34 +3206,26 @@ export default function GameInterface() {
     }
   }, [attemptSocketLogin, socket, player, isLoggedIn])
   
-  const handleMapChange = useCallback((mapId: string) => {
-    setCurrentMapId(mapId)
-  }, [])
-
-  const syncMapToCurrentRoom = useCallback(() => {
-    if (currentRoomRef.current?.roomId) {
-      setCurrentMapId(getMapIdForRoom(currentRoomRef.current.roomId))
-    }
-  }, [])
-
   // Phones draw a tab as a page and Action as a sheet; a wide screen docks
   // both in the left column.
   const isWide = viewportWidth >= 1024
 
   // Opening a tab always lands on its main page: Char on the character, Quests
-  // on the journal, World on the Map of the sheet under your feet. Players
+  // on the journal, World on the Map zoomed out to the whole world (full
+  // screen if that is how it was last left). Players
   // is the one exception, opening on DM when a message is waiting. Inv's
   // filter is reset when it is left, so a link can set it before opening.
   const openTab = useCallback((tab: TabId) => {
     if (tab === 'char') setCharTab('char')
     if (tab === 'quests') setQuestsTab('quests')
     if (tab === 'world') {
-      syncMapToCurrentRoom()
       setWorldTab('map')
+      setWorldEntry((prev) => ({ view: 'world', seq: prev.seq + 1 }))
+      setWorldFullScreen(readWorldFullScreen())
     }
     if (tab === 'players') setPlayersSubTab(useDMStore.getState().getTotalUnreadCount() > 0 ? 'dm' : 'roster')
     setCenterActiveTab(tab)
-  }, [syncMapToCurrentRoom])
+  }, [])
 
   // A tile in the bar: open its tab, or go home if it is the one open.
   const selectTab = useCallback((tab: TabId) => {
@@ -3219,10 +3234,11 @@ export default function GameInterface() {
     else openTab(next.tab)
   }, [goToExplore, openTab])
 
-  // The centre of the compass ring: the World tab, on its Map.
+  // The centre of the compass ring: the World tab's Map, full screen, on your room.
   const openMap = useCallback(() => {
     openTab('world')
-    setWorldTab('map')
+    setWorldEntry((prev) => ({ view: 'here', seq: prev.seq + 1 }))
+    setWorldFullScreen(true)
   }, [openTab])
 
   // The Actions tab's controls send the same actions the deck and the room
@@ -3319,6 +3335,8 @@ export default function GameInterface() {
   useEffect(() => {
     if (!battle.isInBattle) return
     applyTabEvent({ type: 'fightStarted', phone: !window.matchMedia('(min-width: 1024px)').matches })
+    // A full-screen map would hide the fight: back to the docked tab.
+    setWorldFullScreen(false)
   }, [battle.isInBattle, applyTabEvent])
 
   const isDead = !!player && player.hp <= 0
@@ -3521,7 +3539,7 @@ export default function GameInterface() {
         return
       case 'world':
         openTab('world')
-        if (link.sub === 'map' || link.sub === 'teleport') setWorldTab(link.sub)
+        if (link.sub === 'teleport') setWorldTab('teleport')
         return
       case 'explore':
         goToExplore()
@@ -3629,7 +3647,7 @@ export default function GameInterface() {
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, charTab, questsTab, trackedQuestStore.ids, trackedQuestStore.toggle, bookHighlight, spBookTab, handlePointsSpent, handleOpenBook, battle.isInBattle, roomEnemy, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentMapId, currentRoom, handleMapChange, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
+  }, [goToExplore, centerActiveTab, charTab, questsTab, trackedQuestStore.ids, trackedQuestStore.toggle, bookHighlight, spBookTab, handlePointsSpent, handleOpenBook, battle.isInBattle, roomEnemy, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentRoom, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
 
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
@@ -3645,8 +3663,6 @@ export default function GameInterface() {
       </div>
     )
   }
-
-  const availableMaps = getUnlockedMaps(player, currentRoom?.roomId)
 
   // Unspent Core/Training Points: the original's nav badges. Skill Points are
   // left out — the spellbook button in the Character panel already pulses when
@@ -3812,9 +3828,10 @@ export default function GameInterface() {
     onSeenUnlocks: unlocks.markSeen,
     worldTab,
     onWorldTabChange: setWorldTab,
-    currentMapId,
-    availableMaps,
-    onMapChange: handleMapChange,
+    worldEntry,
+    worldFullScreen,
+    onWorldFullScreenChange: setWorldFullScreenRemembered,
+    visitedNames,
     onTeleport: handleTeleport,
     teleportBlockedReason,
     invView: inventoryView,

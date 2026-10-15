@@ -653,9 +653,15 @@ const CHEST_LOOT = {
  * The feed line always closes with the original's tally: "[ +5 redberries = 12 ]".
  * `collectMessage(collected, tier)` supplies the prose in front of it.
  */
-function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantity = 5, toolRequired = null, toolTiers = null, emptyVerb = 'appear', missingToolMessage = null, readyLabel = null, collectMessage = null }) {
+function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantity = 5, quantityRange = null, heldCap = null, heldCapMessage = null, toolRequired = null, toolTiers = null, emptyVerb = 'appear', missingToolMessage = null, readyLabel = null, collectMessage = null }) {
   const tiers = Array.isArray(toolTiers) && toolTiers.length > 0 ? toolTiers : null
-  const baseQuantity = tiers ? tiers[tiers.length - 1].quantity : quantity
+  // `quantityRange` ([min, max]) rolls each batch instead of granting a fixed
+  // one; the tiers then only gate and name the tool, they do not set the yield.
+  const range = Array.isArray(quantityRange) ? quantityRange : null
+  const baseQuantity = range ? range[0] : tiers ? tiers[tiers.length - 1].quantity : quantity
+  const rollQuantity = (tier) => (range
+    ? range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1))
+    : (tier?.quantity ?? baseQuantity))
 
   return {
     // Explicit marker so the room panel and the World Tool can find every
@@ -673,36 +679,44 @@ function makeGatherAction({ itemSlug, itemNamePlural, cooldownMs = null, quantit
     // themselves show that name; the rest fall back to a plain "Ready" plus the
     // batch size on the client.
     ...(readyLabel ? { readyLabel } : {}),
+    ...(range ? { quantityRange: range } : {}),
+    // The room's own limit, separate from the bag's: the node stops once the
+    // player holds this many (the original's "10 wood here, more in the forest").
+    ...(heldCap != null ? { heldCap } : {}),
     // A full bag refuses up front, before the timer is consumed, so a player
     // at the template's max does not burn a regrow on nothing.
     precondition: async (playerId) => {
       const template = await getItemBySlug(itemSlug)
       const bagMax = template?.max ?? Infinity
-      if (!Number.isFinite(bagMax)) return { allowed: true }
+      if (!Number.isFinite(bagMax) && heldCap == null) return { allowed: true }
       const held = await getHeldQuantity(playerId, itemSlug)
+      if (heldCap != null && held >= heldCap) return { allowed: false, capInfo: { heldCapReached: true, heldCap } }
       return held >= bagMax ? { allowed: false, capInfo: { bagFull: true, bagMax } } : { allowed: true }
     },
     effects: [{ type: 'grantItem', itemSlug, quantity: baseQuantity }],
-    ...(tiers
+    ...(tiers || range
       ? {
           resolve: async (playerId) => {
-            for (const tier of tiers) {
+            for (const tier of tiers ?? []) {
               if (await playerHasItem(playerId, tier.slug)) {
                 return {
-                  effects: [{ type: 'grantItem', itemSlug, quantity: tier.quantity }],
+                  effects: [{ type: 'grantItem', itemSlug, quantity: rollQuantity(tier) }],
                   context: { tier },
                 }
               }
             }
-            // Unreachable in practice — the tool gate already rejected the
-            // player — but fall back to the baseline rather than granting extra.
-            return { effects: [{ type: 'grantItem', itemSlug, quantity: baseQuantity }], context: null }
+            // No tiers, or (unreachable in practice, the tool gate already
+            // rejected the player) none held: the baseline, never extra.
+            return { effects: [{ type: 'grantItem', itemSlug, quantity: range ? rollQuantity(null) : baseQuantity }], context: null }
           },
         }
       : {}),
     generateMessage: (effects, capInfo, context) => {
       if (capInfo?.missingTool) {
         return missingToolMessage || `You need a ${capInfo.missingTool} to do that.`
+      }
+      if (capInfo?.heldCapReached) {
+        return heldCapMessage || `You cannot gather more than ${capInfo.heldCap} ${itemNamePlural} here.`
       }
       if (capInfo?.bagFull) {
         return `Your bag cannot hold any more ${itemNamePlural} (it holds ${capInfo.bagMax}).`
@@ -762,8 +776,8 @@ function makeBlueberryAction(quantity = 5) {
 }
 
 /**
- * Chop wood: the tool-gated gather shared by Jack's tree farm (025) and every
- * tree-bearing Forest and Dark Forest room. Yields match the original game's
+ * Chop wood: the tool-gated gather shared by every tree-bearing Forest and
+ * Dark Forest room (Jack's trees in 025 keep the original's own rules). Yields match the original game's
  * per-swing amounts — 1 wood with a plain hatchet, 2 with an iron one, 6 with
  * the Dark Elf's mithril one — so wood is earned by walking the forest tree to
  * tree, and a better hatchet shortens that walk.
@@ -2290,24 +2304,26 @@ const ROOM_ACTIONS = {
     'examine grand pillar': npcTalk('grand_quest_pillar'),
   },
   '025': {
-    // Jack's tree farm is the starter tree: planted for it, so a chop is worth
-    // 3 wood whatever hatchet you swing (the original rolled 2–4), on the same
-    // 15-minute regrow every other tree keeps. That is a Wooden Bow's worth
-    // per visit, enough to learn crafting without the Forest walk, and there is
-    // no held cap here or anywhere else — a tree can be farmed at its own pace.
+    // Jack's trees in Goblin Woods, on the original's rules rather than every
+    // other tree's: no regrow, 2–4 wood a chop whatever hatchet you swing, and
+    // Jack stops you once you hold 10, pointing you on to the Forest. Kept for
+    // this room alone because it is the first wood a player meets, and with
+    // goblins about, every chop is a turn they can answer.
     'chop wood': makeGatherAction({
       itemSlug: 'wood',
       itemNamePlural: 'wood',
-      cooldownMs: 15 * 60 * 1000,
-      emptyVerb: 'grow',
+      quantityRange: [2, 4],
+      heldCap: 10,
+      heldCapMessage: 'Jack will only let you chop down 10 wood here. You can chop down more in the Forest.',
       readyLabel: "Jack's tree",
       toolTiers: [
-        { slug: 'mithril-hatchet', quantity: 3, label: 'mithril hatchet' },
-        { slug: 'iron-hatchet', quantity: 3, label: 'iron hatchet' },
-        { slug: 'hatchet', quantity: 3, label: 'hatchet' },
+        // No per-tier yield: the range above is the yield for every hatchet.
+        { slug: 'mithril-hatchet', label: 'mithril hatchet' },
+        { slug: 'iron-hatchet', label: 'iron hatchet' },
+        { slug: 'hatchet', label: 'hatchet' },
       ],
       missingToolMessage: 'You need a hatchet to chop wood here. There should be one at Jack\'s cabin to the south.',
-      collectMessage: (n, tier) => `You chop down some wood from Jack's farm with your ${tier?.label ?? 'hatchet'}.`,
+      collectMessage: (n, tier) => `You chop down some of Jack's trees with your ${tier?.label ?? 'hatchet'}.`,
     }),
   },
   '020': {
@@ -4508,7 +4524,7 @@ function getGatherActionForRoom(roomId) {
  *
  * @returns {Array<{ action: string, cooldownMs: number, quantity: number|null,
  *                   itemSlug: string|null, itemNamePlural: string|null, toolRequired: string|null, toolTiers: Array<{slug,quantity,label}>|null,
- *                   readyLabel: string|null }>}
+ *                   readyLabel: string|null, quantityRange: [number, number]|null, heldCap: number|null }>}
  */
 function getGatherActionsForRoom(roomId) {
   const actions = ROOM_ACTIONS[roomId]
@@ -4528,6 +4544,8 @@ function getGatherActionsForRoom(roomId) {
         toolRequired: def.toolRequired ?? null,
         toolTiers: Array.isArray(def.toolTiers) ? def.toolTiers : null,
         readyLabel: def.readyLabel ?? null,
+        quantityRange: Array.isArray(def.quantityRange) ? def.quantityRange : null,
+        heldCap: def.heldCap ?? null,
       })
     }
   }

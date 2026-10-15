@@ -113,6 +113,21 @@ body.font-mono {
   background-clip: padding-box;
 }
 
+/* The World map's pins divide by the zoom so they keep their size; registered
+   as a number so it glides with the zoom instead of jumping at the start. */
+@property --atlas-inv {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+/* The World map stepping to a neighbouring region with an arrow key: the new
+   sheet slides in from the side it lies on. */
+@keyframes atlas-from-up { from { transform: translateY(-8%); opacity: 0.35; } }
+@keyframes atlas-from-down { from { transform: translateY(8%); opacity: 0.35; } }
+@keyframes atlas-from-left { from { transform: translateX(-8%); opacity: 0.35; } }
+@keyframes atlas-from-right { from { transform: translateX(8%); opacity: 0.35; } }
+
 /* Slow, subtle ping for TP button */
 @keyframes ping-slow {
   0% { transform: scale(1); opacity: 0.6; }

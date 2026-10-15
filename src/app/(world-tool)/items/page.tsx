@@ -130,8 +130,8 @@ type SearchTable = { entries: { effect?: SearchEffect }[] }
 // handler function. Only the structured form (a cooldown + grantItem effect) is
 // a gatherable resource; the rest are narrowed out at runtime.
 type GatherEffect = { type: string; itemSlug?: string; quantity?: number }
-type GatherTier = { slug: string; quantity: number; label: string }
-type GatherActionDef = { isGather?: boolean; cooldownMs?: number; toolRequired?: string; toolRequiredAny?: string[]; toolTiers?: GatherTier[]; effects?: GatherEffect[] }
+type GatherTier = { slug: string; quantity?: number; label: string }
+type GatherActionDef = { isGather?: boolean; cooldownMs?: number; quantityRange?: [number, number]; heldCap?: number; toolRequired?: string; toolRequiredAny?: string[]; toolTiers?: GatherTier[]; effects?: GatherEffect[] }
 type RoomActionEntry = string | GatherActionDef | ((...args: never[]) => unknown)
 
 // Render a cooldown interval as a compact label ("5m", "30m", "1h", "1h30m").
@@ -278,15 +278,21 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
       // A gate is either one named tool or a set of tiers whose yield climbs
       // with the tool (hatchet 1 / iron 2 / mithril 6); say each tool's take.
       const tiers = def.toolTiers ?? []
-      const yieldLabel = tiers.length > 0
-        ? ` ×${[...tiers].reverse().map((t) => t.quantity).join('/')}`
-        : fixedQty(grant.quantity)
+      const yieldLabel = def.quantityRange
+        ? ` ×${def.quantityRange[0]}-${def.quantityRange[1]}`
+        : tiers.length > 0
+          ? ` ×${[...tiers].reverse().map((t) => t.quantity).join('/')}`
+          : fixedQty(grant.quantity)
       const tool = tiers.length > 0
         ? ` · ${[...tiers].reverse().map((t) => t.label).join(' / ')}`
         : def.toolRequired
           ? ` · ${def.toolRequired}`
           : ''
-      const limit = def.cooldownMs ? ` · ${formatCooldown(def.cooldownMs)}` : ''
+      const limit = def.cooldownMs
+        ? ` · ${formatCooldown(def.cooldownMs)}`
+        : def.heldCap != null
+          ? ` · up to ${def.heldCap} held`
+          : ''
       const suffix = `${yieldLabel}${limit}${tool}`
       const key = `${grant.itemSlug}|${suffix}`
       const existing = nodes.get(key)

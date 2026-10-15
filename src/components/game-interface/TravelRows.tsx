@@ -1,11 +1,42 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { Map as MapIcon } from 'lucide-react'
 import EntryRow, { EntryVerb } from '@/components/EntryRow'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
 import { getEnemyTraits } from '@/lib/game-data/enemy-traits'
 import { ABILITY_GRID, ROW_FRAME, ROW_FRAME_MUTED } from './AbilityRows'
-import type { BossTeleportTile, WorldRegion } from './WorldGrid'
+
+export interface WorldRegion {
+  id: string
+  name: string
+  color?: string
+  hub?: { roomId: string; name: string }
+  subHubs?: Array<{ id: string; roomId: string; name: string }>
+  alwaysOpen?: boolean
+}
+
+/**
+ * A boss landing the player has opened — one entry of `BOSS_TELEPORTS`: the
+ * boss's record from bosses.generated.js (stats and the perk flags
+ * getEnemyTraits reads) plus where it lands and what it costs.
+ */
+export interface BossTeleportTile {
+  slug: string
+  roomId: string
+  name: string
+  level: number
+  icon: string
+  hp: number
+  att: number
+  def: number
+  /** MP, the boss's level. */
+  cost: number
+  specials?: string[]
+  isFlying?: boolean
+  damageType?: 'MELEE' | 'RANGED' | 'MAGIC'
+  [perk: string]: unknown
+}
 
 /** A region's extra landing: found by standing in it, or — a guild hall — open to the guild's members. */
 interface SubHub {
@@ -63,6 +94,10 @@ export interface TravelRowsProps {
   onTeleport: (roomId: string) => void
   /** A row to draw above the ladders, if a holder has one. */
   retreat?: ReactNode
+  /** Open the map on a landing, its card open. Rows whose sheet is not found get no map button. */
+  onShowOnMap?: (roomId: string) => void
+  /** Sheet ids the player has found. */
+  foundMapIds?: string[]
   /** Off, only `retreat` is drawn. */
   rows?: boolean
 }
@@ -79,6 +114,21 @@ function TeleportVerb({ name, paired = false }: { name: string; paired?: boolean
       <span className={paired ? 'hidden @min-[1000px]:inline' : 'hidden @min-[600px]:inline'}>Teleport to {name}</span>
       <span className={paired ? '@min-[1000px]:hidden' : '@min-[600px]:hidden'}>Teleport</span>
     </span>
+  )
+}
+
+/** The map button at a row's end: the landing on its sheet, card open. */
+function ShowOnMap({ name, onClick }: { name: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`Show ${name} on the map`}
+      title={`Show ${name} on the map`}
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-line-strong/80 text-hue-sky transition-colors hover:border-hue-sky hover:bg-surface-raised/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+    >
+      <MapIcon size={15} aria-hidden="true" />
+    </button>
   )
 }
 
@@ -115,7 +165,14 @@ function Ladder({ label, note, tone }: { label: string; note?: string; tone: str
  * a chip, and each row keeps its own sheet's colour. VIP is the row the
  * original kept past the end of the page.
  */
-export default function TravelRows({ currentRoomId, discoveredTeleports, memberships = [], blockedReason, bosses, playerMp, onTeleport, retreat, rows = true }: TravelRowsProps) {
+export default function TravelRows({ currentRoomId, discoveredTeleports, memberships = [], blockedReason, bosses, playerMp, onTeleport, retreat, rows = true, onShowOnMap, foundMapIds = [] }: TravelRowsProps) {
+  /** The map button for a landing whose sheet has been found, else nothing. */
+  const mapButton = (roomId: string, name: string) => {
+    const sheetId = getMapIdForRoom(roomId)
+    if (!onShowOnMap || !sheetId || !foundMapIds.includes(sheetId)) return null
+    return <ShowOnMap name={name} onClick={() => onShowOnMap(roomId)} />
+  }
+
   /** A sub-hub is open by membership when it is a guild hall, by discovery otherwise. */
   const subOpen = (sub: SubHub) =>
     sub.unlockedByMembership ? memberships.includes(sub.unlockedByMembership) : discoveredTeleports.includes(sub.discoveryId)
@@ -155,15 +212,18 @@ export default function TravelRows({ currentRoomId, discoveredTeleports, members
         reason={reason}
         action={
           open ? (
-            <EntryVerb
-              onClick={() => onTeleport(roomId)}
-              disabled={Boolean(reason)}
-              fillClass={`fill-world-${region.id}`}
-              title={reason ?? `Teleport to ${label} · ${TELEPORT_MP_COST} MP`}
-              ariaLabel={reason ? `Teleport to ${label}. ${reason}` : `Teleport to ${label}, ${TELEPORT_MP_COST} MP`}
-            >
-              <TeleportVerb name={name} paired={!!opts.sub} />
-            </EntryVerb>
+            <>
+              {mapButton(roomId, name)}
+              <EntryVerb
+                onClick={() => onTeleport(roomId)}
+                disabled={Boolean(reason)}
+                fillClass={`fill-world-${region.id}`}
+                title={reason ?? `Teleport to ${label} · ${TELEPORT_MP_COST} MP`}
+                ariaLabel={reason ? `Teleport to ${label}. ${reason}` : `Teleport to ${label}, ${TELEPORT_MP_COST} MP`}
+              >
+                <TeleportVerb name={name} paired={!!opts.sub} />
+              </EntryVerb>
+            </>
           ) : undefined
         }
         className={`${open ? ROW_FRAME : ROW_FRAME_MUTED} ${opts.sub ? 'ml-4' : ''}`}
@@ -210,15 +270,18 @@ export default function TravelRows({ currentRoomId, discoveredTeleports, members
         meta={<span className="text-xs font-bold text-resource-mp tabular-nums whitespace-nowrap">{boss.cost} MP</span>}
         reason={reason}
         action={
-          <EntryVerb
-            onClick={() => onTeleport(boss.roomId)}
-            disabled={Boolean(reason)}
-            fillClass={`fill-world-${world}`}
-            title={reason === 'Not enough MP' ? `You need ${boss.cost} MP to teleport to ${boss.name}. Rest first.` : reason ?? `Teleport to ${boss.name} · ${boss.cost} MP`}
-            ariaLabel={reason ? `Teleport to ${boss.name}. ${reason}` : `Teleport to ${boss.name}, ${boss.cost} MP`}
-          >
-            <TeleportVerb name={boss.name} />
-          </EntryVerb>
+          <>
+            {mapButton(boss.roomId, boss.name)}
+            <EntryVerb
+              onClick={() => onTeleport(boss.roomId)}
+              disabled={Boolean(reason)}
+              fillClass={`fill-world-${world}`}
+              title={reason === 'Not enough MP' ? `You need ${boss.cost} MP to teleport to ${boss.name}. Rest first.` : reason ?? `Teleport to ${boss.name} · ${boss.cost} MP`}
+              ariaLabel={reason ? `Teleport to ${boss.name}. ${reason}` : `Teleport to ${boss.name}, ${boss.cost} MP`}
+            >
+              <TeleportVerb name={boss.name} />
+            </EntryVerb>
+          </>
         }
         className={ROW_FRAME}
         style={{ borderLeftColor: `var(--world-${world})` }}

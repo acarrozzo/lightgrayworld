@@ -1,6 +1,6 @@
-import type { Room, Player } from '@/lib/game-state'
-import { TRAVEL_DIRECTION_KEYS, COMMAND_SHORTHAND, MAP_CONFIG, type TravelDirectionKey, type MapConfigEntry } from './constants'
-import { getRoomMapMarker, getRoomMapPosition } from './room-map-positions'
+import type { Room } from '@/lib/game-state'
+import { TRAVEL_DIRECTION_KEYS, COMMAND_SHORTHAND, MAP_CONFIG, type TravelDirectionKey } from './constants'
+import { getRoomMapPosition } from './room-map-positions'
 
 const worldMap = require('@/lib/game-data/world-map')
 
@@ -48,47 +48,12 @@ export const getMapIdForRoom = (roomId: string): string => worldMap.getMapIdForR
 
 /**
  * The map artwork, title and mini-map background-position for the sheet a room
- * sits on. Shared by the compass mini-map and the full map view so the two
- * cannot drift.
+ * sits on, for the compass mini-map.
  */
 export const getRoomMapView = (roomId: string | undefined) => {
   const mapId = roomId ? getMapIdForRoom(roomId) : 'grassy-field'
   const entry = MAP_CONFIG.find((m) => m.id === mapId) ?? MAP_CONFIG[0]
   return { mapId, src: entry.src, title: entry.title, position: getRoomMapPosition(roomId) }
-}
-
-/**
- * The sheets a player may open: every one whose "found" flag is set on their
- * row, plus the sheet under their feet. The original only showed you maps you
- * had found; the modern game had been showing all of them to everyone.
- *
- * The current sheet is always included because the arrival unlock is written
- * a beat after the move and the compass already shows that artwork anyway.
- */
-export const getUnlockedMaps = (player: Player | null, currentRoomId: string | undefined): MapConfigEntry[] => {
-  const hereId = currentRoomId ? getMapIdForRoom(currentRoomId) : null
-  return MAP_CONFIG.filter((map) => map.id === hereId || (player ? player[map.flag] === true : false))
-}
-
-// Resolve the image + marker for a map id, for the World tab's Map page.
-export const resolveMapView = (
-  currentMapId: string,
-  availableMaps: MapConfigEntry[],
-  currentRoomId?: string,
-) => {
-  const selected = MAP_CONFIG.find((m) => m.id === currentMapId)
-  // Only mark the player's position while they are looking at the map they are
-  // actually standing on — switching maps should not fake a location.
-  const marker =
-    currentRoomId && getMapIdForRoom(currentRoomId) === currentMapId
-      ? getRoomMapMarker(currentRoomId)
-      : null
-  return {
-    src: selected?.src || '',
-    title: selected?.title || 'Map',
-    options: availableMaps.map((map) => ({ id: map.id, src: map.src, title: map.title })),
-    marker,
-  }
 }
 
 // Helper function to format direction phrases for feed messages

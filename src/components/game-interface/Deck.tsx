@@ -5,8 +5,7 @@ import type { targetFromRoomEnemy } from '@/lib/action-deck'
 import type { FilterTab, ItemFilterView } from '@/lib/inventory-categories'
 import ActionLayer from './ActionLayer'
 import InvLayer from './InvLayer'
-import WorldLayer, { type WorldTab } from './WorldLayer'
-import type { MapConfigEntry } from './constants'
+import WorldLayer, { type WorldEntry, type WorldTab } from './WorldLayer'
 import type { DeckTab } from './deck-tabs'
 import type { UnlockId } from '@/lib/unlocks'
 
@@ -28,9 +27,12 @@ export interface DeckContentProps {
   /* World */
   worldTab: WorldTab
   onWorldTabChange: (tab: WorldTab) => void
-  currentMapId: string
-  availableMaps: MapConfigEntry[]
-  onMapChange: (mapId: string) => void
+  /** How the World tab was last opened: on the whole world, or on your room. */
+  worldEntry: WorldEntry
+  worldFullScreen: boolean
+  onWorldFullScreenChange: (on: boolean) => void
+  /** Rooms this character has stood in, with their names. */
+  visitedNames: Record<string, string>
   onTeleport: (roomId: string) => void
   teleportBlockedReason?: string | null
   /* Inv */
@@ -64,9 +66,10 @@ export function DeckContent({ tab, ...props }: DeckContentProps & { tab: DeckTab
         onTabChange={props.onWorldTabChange}
         player={props.player}
         currentRoomId={props.currentRoomId}
-        currentMapId={props.currentMapId}
-        foundMaps={props.availableMaps}
-        onMapChange={props.onMapChange}
+        entry={props.worldEntry}
+        fullScreen={props.worldFullScreen}
+        onFullScreenChange={props.onWorldFullScreenChange}
+        visitedNames={props.visitedNames}
         onTeleport={props.onTeleport}
         teleportBlockedReason={props.teleportBlockedReason}
       />

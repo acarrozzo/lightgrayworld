@@ -26,7 +26,9 @@
  *   itemNamePlural: string | null,
  *   readyLabel: string | null,
  *   toolRequired: string | null,
- *   toolTiers: Array<{ slug: string, quantity: number, label: string }> | null,
+ *   toolTiers: Array<{ slug: string, quantity?: number, label: string }> | null,
+ *   quantityRange: [number, number] | null,
+ *   heldCap: number | null,
  * }>>}
  */
 async function buildGatherCooldowns(playerId, roomId) {
@@ -55,6 +57,10 @@ async function buildGatherCooldowns(playerId, roomId) {
       // player will actually swing and label the button with it.
       toolRequired: gather.toolRequired ?? null,
       toolTiers: gather.toolTiers ?? null,
+      // A rolled batch ([min, max]) and the room's own held limit, for a node
+      // like Jack's trees that has no timer.
+      quantityRange: gather.quantityRange ?? null,
+      heldCap: gather.heldCap ?? null,
     }))
   )
 }

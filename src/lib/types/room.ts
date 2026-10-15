@@ -37,7 +37,11 @@ export interface GatherCooldownView {
   itemNamePlural?: string | null
   readyLabel?: string | null
   toolRequired?: string | null
-  toolTiers?: Array<{ slug: string; quantity: number; label: string }> | null
+  toolTiers?: Array<{ slug: string; quantity?: number; label: string }> | null
+  /** A rolled batch, [min, max]; when set, the tiers do not change the yield. */
+  quantityRange?: [number, number] | null
+  /** The room stops this gather once the player holds this many. */
+  heldCap?: number | null
 }
 
 /**

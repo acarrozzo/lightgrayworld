@@ -40,6 +40,7 @@
 // Room 012f: Wide Antechamber — Mammoth Scorpion 60% spawn chance
 // Room 012g: Scorpion Queen Chamber — Scorpion Queen 60% spawn chance
 // Room 012h: Scorpion King Throne — Scorpion King 60% spawn chance
+// Room 025: Goblin Woods — 25% spawn, goblin; goblin 70% / goblin-bandit 30% once the Goblin Chief is dead (not in the original)
 // Room 028b: Bat Cave EXIT — 50% spawn, bat 100%
 // Room 028c: Abandoned Workshop — 50% spawn, bat 100%
 // Room 028d: Bat Cave — 50% spawn, bat 90% / golden-bat 10%
@@ -238,6 +239,24 @@ const ROOM_ENEMIES = {
     spawnChance: 0.6,
     enemies: [
       { slug: 'scorpion-king', weight: 100 },
+    ],
+  },
+  // Goblin Woods: not in the original, whose 025 was Jack's peaceful tree
+  // farm. The goblins of the Bat Cave hideout (028g–i) have spilled out into
+  // it. Plain goblins only at first, so the first wood room stays survivable
+  // for a player on Jack's woodworking lesson; once the Goblin Chief is dead
+  // his bandits come looking for whoever did it.
+  '025': {
+    probabilistic: true,
+    spawnChance: 0.25,
+    enemies: [
+      {
+        weight: 100,
+        ladder: [
+          { killed: ['goblin-chief'], enemies: [{ slug: 'goblin', weight: 70 }, { slug: 'goblin-bandit', weight: 30 }] },
+          { enemies: [{ slug: 'goblin', weight: 100 }] },
+        ],
+      },
     ],
   },
   '028b': {

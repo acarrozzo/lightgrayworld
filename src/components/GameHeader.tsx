@@ -59,7 +59,8 @@ function previewPct(current: number, max: number, amount: number): number {
   return ((Math.min(max, current + amount) - current) / max) * 100
 }
 
-function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, value, over, className, rtl = false }: {
+/** A vitals bar with its number inside: the header's HP and MP, and the full-screen map's. */
+export function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, value, over, className, rtl = false }: {
   pct: number
   fillClass: string
   /** Fill from the right: the enemy's side. */

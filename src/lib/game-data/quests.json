@@ -292,7 +292,7 @@
     "title": "Jack's Woodworking Lesson",
     "summary": "Jack offers to teach you the basics of woodworking. Chop some wood and craft a Wooden Bow at his workshop.",
     "objective": "Craft a Wooden Bow at Jack's workshop.",
-    "nextStep": "Pick up the hatchet at Jack's cabin and head north to the Tree Farm to chop five wood. A bow needs a length of string too: there is one lying in the Abandoned Workshop in the Bat Cave. Then come back to Jack's cabin and use the crafting table to craft a Wooden Bow.",
+    "nextStep": "Pick up the hatchet at Jack's cabin and head north into Goblin Woods to chop five wood, keeping an eye out for goblins. A bow needs a length of string too: there is one lying in the Abandoned Workshop in the Bat Cave. Then come back to Jack's cabin and use the crafting table to craft a Wooden Bow.",
     "reminderDialog": "Still working on that bow? Grab the hatchet here if you haven't, chop five wood up north at the farm, and fetch a string from that old workshop in the Bat Cave. Then use my crafting table to put a bow together. Easy!",
     "completionDialog": "Now THAT is a proper bow! You've got the basics of woodworking down. Keep the bow — it'll serve you well against those flying critters. Here's some materials to get you started on your next project.",
     "requirements": [

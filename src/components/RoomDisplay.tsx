@@ -77,7 +77,7 @@ export default function RoomDisplay({
     goldChestFlag ? Boolean(state.player?.[goldChestFlag]) : false
   )
   // Live inventory, used to tell whether a capped gather node (e.g. Jack's
-  // starter tree, which stops at 5 wood) is currently tapped out. Reading the
+  // trees, which stop at 10 wood) is currently tapped out. Reading the
   // store means the button flips the instant the cap is hit or spent back down,
   // with no refetch.
   const inventory = useGameStore((state) => state.inventory)
@@ -359,7 +359,11 @@ export default function RoomDisplay({
               ? heldSlugs.has(gatherInfo.toolRequired)
               : true
           // What a click is worth with what you are holding: "Tree · iron hatchet · 2 wood".
-          const gatherYield = gatherTier?.quantity ?? gatherQuantity
+          // A rolled batch reads as its range ("2–4 wood") whatever the tool.
+          const gatherRange = gatherInfo?.quantityRange ?? null
+          const gatherYield = gatherRange
+            ? `${gatherRange[0]}–${gatherRange[1]}`
+            : (gatherTier?.quantity ?? gatherQuantity)
           const gatherReadyLabel = [
             gatherInfo?.readyLabel ?? 'Ready',
             gatherTier?.label ?? null,
@@ -370,9 +374,17 @@ export default function RoomDisplay({
           const gatherCooldownTotal = gatherInfo?.cooldownSeconds ?? 0
           const gatherFraction =
             gatherCooldownTotal > 0 ? Math.min(1, Math.max(0, gatherSecondsLeft / gatherCooldownTotal)) : 0
-          // Amber while regrowing or without the tool. The button itself stays
-          // clickable without a tool so the server can say where to find one.
-          const isGatherLocked = isGather && (gatherSecondsLeft > 0 || !gatherHasTool)
+          // The room's own limit (Jack's 10 wood): reached when the bag holds it.
+          const gatherHeldCap = gatherInfo?.heldCap ?? null
+          const gatherHeld = gatherInfo?.itemSlug
+            ? inventory
+                .filter((i) => i.template.slug === gatherInfo.itemSlug)
+                .reduce((sum, i) => sum + (i.quantity ?? 0), 0)
+            : 0
+          const gatherAtHeldCap = gatherHeldCap != null && gatherHeld >= gatherHeldCap
+          // Amber while regrowing, without the tool, or at the room's limit. The
+          // button itself stays clickable so the server can say why.
+          const isGatherLocked = isGather && (gatherSecondsLeft > 0 || !gatherHasTool || gatherAtHeldCap)
           const gatherButton = (
             <button
               data-action-button
@@ -433,6 +445,8 @@ export default function RoomDisplay({
                       </>
                     ) : !gatherHasTool ? (
                       `needs a ${gatherToolName ?? 'tool'}`
+                    ) : gatherAtHeldCap ? (
+                      `limit ${gatherHeldCap} ${gatherPlural}`.trim()
                     ) : (
                       gatherReadyLabel
                     )}
