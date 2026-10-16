@@ -11,8 +11,10 @@ const { describeRegen } = require('@/lib/game-data/regen') as { describeRegen: (
 // the column tracks any change to room loot or enemy drop tables.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { ROOM_SUPPLIES } = require('@/lib/game-engine/config/room-supplies') as {
-  ROOM_SUPPLIES: { roomId: string; slug: string; mode: 'take' | 'topUp'; cap?: number }[]
+  ROOM_SUPPLIES: { roomId: string; slug: string; mode: 'take' | 'topUp'; cap?: number; requiresMembership?: string }[]
 }
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { getFaction } = require('@/lib/game-data/factions') as { getFaction: (id: string) => { name: string } | undefined }
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: EnemySource[] }
 // Chest loot tables (keyed by roomId → action) and the room-search loot tables
@@ -189,7 +191,8 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
   for (const entry of ROOM_SUPPLIES) {
     const name = roomNames.get(entry.roomId) ?? `Room ${entry.roomId}`
     const rule = entry.mode === 'take' ? 'one each' : `up to ${entry.cap ?? 1}`
-    ensure(entry.slug).rooms.push({ roomId: entry.roomId, label: `${name} · ${rule}` })
+    const badge = entry.requiresMembership ? ` · ${getFaction(entry.requiresMembership)?.name ?? entry.requiresMembership} members` : ''
+    ensure(entry.slug).rooms.push({ roomId: entry.roomId, label: `${name} · ${rule}${badge}` })
   }
 
   // Enemies — firstKill, always, then weighted main rolls (as a percentage).

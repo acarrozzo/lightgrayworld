@@ -68,6 +68,11 @@ export interface SupplyView {
   bagMax: number | null
   takeLabel: string
   plural: string
+  /** A guild id when this is a guild pack's item: members only. */
+  requiresMembership: string | null
+  /** True for a non-member of `requiresMembership`; a take is refused with `lockedMessage`. */
+  locked: boolean
+  lockedMessage: string | null
 }
 
 export interface RoomViewNavigation {

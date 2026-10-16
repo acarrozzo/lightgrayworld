@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ChevronDown, Users } from 'lucide-react'
+import { Check, ChevronDown, Lock, Users } from 'lucide-react'
 import Icon from './Icon'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { formatTimeAgo } from '@/components/player/PlayerRow'
 import { useGameStore } from '@/lib/game-state'
+import { getFaction } from '@/lib/game-data/factions'
 import type { RoomItemView, SupplyView } from '@/lib/types/room'
 
 /**
@@ -29,15 +30,20 @@ import type { RoomItemView, SupplyView } from '@/lib/types/room'
  * A supply you have already taken is not deleted. The original's promise is
  * "come back here for another one if you lose it", so it stays as a ghost you
  * can still click (the refusal is `noTurn`, and it is the line that makes the
- * promise). It just stops shouting: taken on this visit it sits where it was,
- * and from the next visit on it folds into one "N taken" chip.
+ * promise). Every ghost keeps its authored place, so the strip never
+ * reshuffles under the cursor and a stocked guild member sees exactly what
+ * the hall holds for them.
+ *
+ * A guild pack's items are members only. A non-member sees them locked — the
+ * grey ring with a lock, no count — and a click replays the hall's join line,
+ * free. Locked is derived from the store's quests the way the hidden member
+ * buttons are, so turning the initiation in while standing in the hall turns
+ * the pills green at once; the server's flag stands until the quests hydrate.
  */
 
 interface SupplyShelfProps {
   supplies: SupplyView[]
   items: RoomItemView[]
-  /** Resets the taken-on-this-visit ghosts when the player walks somewhere else. */
-  roomId?: string
   currentUsername?: string | null
   /** The row currently mid-action, by key ("supply:<id>" / "pickup-<id>" / "examine-<id>"). */
   busyKey: string | null
@@ -56,7 +62,6 @@ function isSettled(supply: SupplyView): boolean {
 export default function SupplyShelf({
   supplies,
   items,
-  roomId,
   currentUsername,
   busyKey,
   onTake,
@@ -64,20 +69,23 @@ export default function SupplyShelf({
   onExamine,
   registerRow,
 }: SupplyShelfProps) {
-  // Taken since walking in. Seeing the pill you just clicked go grey in place
-  // is the confirmation; folding it away immediately would look like a bug.
-  const [takenHere, setTakenHere] = useState<ReadonlySet<string>>(() => new Set())
-  const [showTaken, setShowTaken] = useState(false)
-
-  useEffect(() => {
-    setTakenHere(new Set())
-    setShowTaken(false)
-  }, [roomId])
-
   // What the player is holding right now, by slug. The bag updates on every
   // mutation — drinking, dropping, selling, crafting — while `supplies` only
   // refreshes on arrival and on a take, so this is what keeps a pill honest.
   const inventory = useGameStore((state) => state.inventory)
+  const quests = useGameStore((state) => state.quests)
+
+  // Same rule as RoomDisplay's `requiresMembership` buttons: a guild's
+  // initiation turned in. An empty quest list is more likely unhydrated than
+  // a player who has never taken a quest, so the server's answer stands then.
+  const isMemberOf = useMemo(() => {
+    if (quests.length === 0) return null
+    const done = new Set(quests.filter((q) => q.completed).map((q) => q.questId))
+    return (guildId: string) => {
+      const membershipQuest = getFaction(guildId)?.membershipQuest
+      return !!membershipQuest && done.has(membershipQuest)
+    }
+  }, [quests])
   const heldBySlug = useMemo(() => {
     const held = new Map<string, number>()
     for (const item of inventory) {
@@ -96,68 +104,30 @@ export default function SupplyShelf({
     // than a player carrying nothing, so the server's snapshot stands until it
     // fills. Past that, absent from the bag means none held — which is the
     // whole point: drop your last hatchet and the room offers one again.
-    if (inventory.length === 0) return supplies
     return supplies.map((supply) => {
-      const held = heldBySlug.get(supply.slug) ?? 0
-      if (held === supply.held) return supply
+      const locked =
+        supply.requiresMembership && isMemberOf ? !isMemberOf(supply.requiresMembership) : supply.locked
+      const held = inventory.length === 0 ? supply.held : (heldBySlug.get(supply.slug) ?? 0)
+      if (held === supply.held && locked === supply.locked) return supply
       const bagMax = supply.bagMax ?? Infinity
       return {
         ...supply,
+        locked,
         held,
         available: Math.max(0, Math.min(supply.cap - held, bagMax - held)),
       }
     })
-  }, [supplies, heldBySlug, inventory.length])
-
-  // Settled before this visit — the ones that fold behind the chip.
-  const foldedIds = useMemo(() => {
-    const ids = new Set<string>()
-    for (const supply of liveSupplies) {
-      if (isSettled(supply) && !takenHere.has(supply.id)) ids.add(supply.id)
-    }
-    return ids
-  }, [liveSupplies, takenHere])
+  }, [supplies, heldBySlug, inventory.length, isMemberOf])
 
   if (supplies.length === 0 && items.length === 0) return null
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {liveSupplies.map((supply) =>
-        !showTaken && foldedIds.has(supply.id) ? null : (
-          <span key={supply.id} ref={(el) => registerRow(supply.id, el)} className="inline-flex">
-            <SupplyPill
-              supply={supply}
-              busy={busyKey === `supply:${supply.id}`}
-              onTake={() => {
-                // Only a real take earns a ghost. Clicking one that is already
-                // settled just replays its line.
-                if (!isSettled(supply)) {
-                  setTakenHere((prev) => new Set(prev).add(supply.id))
-                }
-                onTake(supply)
-              }}
-            />
-          </span>
-        )
-      )}
-
-      {foldedIds.size > 0 && (
-        <button
-          type="button"
-          onClick={() => setShowTaken((open) => !open)}
-          aria-expanded={showTaken}
-          title={
-            showTaken
-              ? 'Hide what you already have'
-              : 'You already have these. The room still offers them if you lose one.'
-          }
-          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-fg-disabled ring-1 ring-inset ring-line-strong/50 transition-colors hover:text-fg-secondary hover:ring-line-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-line-focus"
-        >
-          <Check size={12} className="shrink-0" />
-          {foldedIds.size} taken
-          <ChevronDown size={11} className={`shrink-0 transition-transform ${showTaken ? 'rotate-180' : ''}`} />
-        </button>
-      )}
+      {liveSupplies.map((supply) => (
+        <span key={supply.id} ref={(el) => registerRow(supply.id, el)} className="inline-flex">
+          <SupplyPill supply={supply} busy={busyKey === `supply:${supply.id}`} onTake={() => onTake(supply)} />
+        </span>
+      ))}
 
       {items.map((item) => (
         <span key={item.id} ref={(el) => registerRow(item.id, el)} className="inline-flex">
@@ -197,20 +167,27 @@ function ruleText(supply: SupplyView): string {
 }
 
 function SupplyPill({ supply, busy, onTake }: { supply: SupplyView; busy: boolean; onTake: () => void }) {
-  const settled = isSettled(supply)
+  // Members only and this player is not one: the hall's line, not the room's.
+  // Locked wins over settled so a non-member never sees a check for what they
+  // happen to be carrying from elsewhere.
+  const locked = supply.locked
+  const settled = !locked && isSettled(supply)
   // Below the room's line but nothing would fit: it is the bag that refuses,
   // not the room, and the two want different words.
-  const bagFull = !settled && supply.available <= 0
+  const bagFull = !locked && !settled && supply.available <= 0
 
   // A count only earns its place on a stack. "Hatchet 1/1" says nothing the
-  // check mark does not.
-  const count = supply.cap > 1 ? `${Math.min(supply.held, supply.cap)}/${supply.cap}` : null
+  // check mark does not. A locked pill shows none: the floors are the guild's
+  // to reveal, not the pill's.
+  const count = !locked && supply.cap > 1 ? `${Math.min(supply.held, supply.cap)}/${supply.cap}` : null
   // Rooms with a verb of their own ("Fish") say it here rather than on the face,
   // which keeps every pill reading as the thing rather than the sentence.
   const verb = supply.takeLabel && supply.takeLabel !== 'Take' ? `${supply.takeLabel}. ` : ''
   const description = supply.description?.trim()
 
-  const title = settled
+  const title = locked
+    ? (supply.lockedMessage ?? 'Members only.')
+    : settled
     ? settledText(supply)
     : bagFull
       ? `Your bag holds ${supply.bagMax}.`
@@ -218,14 +195,16 @@ function SupplyPill({ supply, busy, onTake }: { supply: SupplyView; busy: boolea
 
   // Outlines are rings, not borders: a border would make these pills a pixel
   // taller than the filled ones they wrap beside.
-  const tone = settled
+  const tone = locked || settled
     ? 'ring-1 ring-inset ring-line-strong/50 text-fg-disabled hover:ring-line-strong hover:text-fg-secondary'
     : bagFull
       ? 'ring-1 ring-inset ring-status-warning/50 text-status-warning'
       : 'fill-status-success shadow-sm'
 
   // The name still leads so voice control can still say "click Training Sword".
-  const stateLabel = settled
+  const stateLabel = locked
+    ? `${supply.name}, members only`
+    : settled
     ? `${supply.name}, you already have this`
     : bagFull
       ? `${supply.name}, your bag is full`
@@ -241,7 +220,9 @@ function SupplyPill({ supply, busy, onTake }: { supply: SupplyView; busy: boolea
       aria-label={stateLabel}
       className={`${PILL} rounded-lg active:scale-[0.97] ${tone} ${busy ? 'cursor-wait opacity-60' : ''}`}
     >
-      {settled ? (
+      {locked ? (
+        <Lock size={12} className="shrink-0" />
+      ) : settled ? (
         <Check size={13} className="shrink-0" />
       ) : (
         <Icon

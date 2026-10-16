@@ -274,7 +274,6 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'talk to wizard morty', label: 'Wizard Morty', icon: 'npc-wizard2', className: 'fill-mood-arcane', questIds: questIdsForNpc('wizard_morty'), requiresMembership: 'wizards-guild' },
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'fill-mood-treasure' },
-    { action: 'grab pack', label: "Grab Wizard's Pack", icon: 'npc-wizard', className: 'fill-mood-arcane' },
     { action: 'rest at wizard fire', label: "Rest at Wizard's Fire", icon: 'heal', className: 'fill-hue-blue' },
     { action: 'teleport to kobold lair', label: 'Teleport to Kobold Lair', icon: 'world', className: 'fill-accent', requiresMembership: 'wizards-guild' },
   ],
@@ -283,7 +282,6 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'talk to warrior pete', label: 'Warrior Pete', icon: 'npc-warrior2', className: 'fill-hue-blue', questIds: questIdsForNpc('warrior_pete'), requiresMembership: 'warriors-guild' },
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'fill-mood-treasure' },
-    { action: 'grab pack', label: "Grab Warrior's Pack", icon: 'npc-warrior', className: 'fill-hue-blue' },
     { action: 'rest at warrior fire', label: "Rest at Warrior's Fire", icon: 'heal', className: 'fill-hue-blue' },
     { action: 'teleport to ogre lair', label: 'Teleport to Ogre Lair', icon: 'world', className: 'fill-accent', requiresMembership: 'warriors-guild' },
   ],
@@ -333,7 +331,6 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'talk to mining recruiter', label: 'Mining Guild Recruiter', icon: 'npc-miner2', className: 'fill-hue-gold', questIds: questIdsForNpc('mining_guild_recruiter') },
     { action: 'talk to guild leader', label: 'Guild Leader', icon: 'npc-miner', className: 'fill-hue-gold', questIds: questIdsForNpc('mining_guild_leader'), requiresMembership: 'mining-guild' },
     { action: 'view shop', label: 'Supply Shop', icon: 'shop', className: 'fill-mood-treasure' },
-    { action: 'grab pack', label: 'Grab Mining Pack', icon: 'inv', className: 'fill-hue-blue' },
     { action: 'rest at the forge', label: 'Rest at the Forge', icon: 'fire', className: 'fill-hue-green' },
     craftingAction('308'),
     { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
@@ -366,12 +363,10 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '424': [
     { action: 'talk to jungle jim', label: 'Jungle Jim', icon: 'npc-surfer', className: 'fill-hue-gold', questIds: questIdsForNpc('jungle_jim') },
-    { action: 'grab colors', label: 'Grab Colours', icon: 'pill', className: 'fill-hue-green' },
   ],
   '425': [
     { action: 'talk to water temple guardian', label: 'Water Temple Guardian', icon: 'npc-guardian', className: 'fill-hue-gold', questIds: questIdsForNpc('water_temple_guardian') },
     { action: 'bathe in glory', label: 'Bathe in Glory', icon: 'heal', className: 'fill-hue-sky' },
-    { action: 'grab master pack', label: 'Grab Master Pack', icon: 'inv', className: 'fill-hue-blue' },
     { action: 'evolve', label: 'Evolve', icon: 'pillar3', className: 'fill-mood-arcane' },
   ],
 
@@ -432,7 +427,6 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '515a': [
-    { action: 'grab ranger pack', label: "Grab Ranger's Pack", icon: 'npc-ranger', className: 'fill-hue-green' },
     { action: 'rest at the ranger fire', label: 'Rest at the Fire', icon: 'heal', className: 'fill-hue-blue' },
     craftingAction('515a'),
   ],

@@ -28,6 +28,12 @@
  *   message  (collected, total) => the sentence for a successful take. The
  *            feed appends the tally "[ +N x = total ]" itself.
  *   full     (held) => the refusal when already at the line.
+ *   requiresMembership
+ *            a guild id (factions.js). Members only: anyone else sees the
+ *            entry locked and is refused with `joinMessage` — the original's
+ *            "Join the Warrior's Guild to get the Warrior's Pack".
+ *   joinMessage
+ *            the refusal (and the locked pill's hint) for a non-member.
  *
  * @typedef {{
  *   roomId: string,
@@ -38,6 +44,8 @@
  *   plural?: string,
  *   message?: (collected: number, total: number) => string,
  *   full?: (held: number) => string,
+ *   requiresMembership?: string,
+ *   joinMessage?: string,
  * }} RoomSupplyEntry
  * @type {RoomSupplyEntry[]}
  */
@@ -269,6 +277,124 @@ ROOM_SUPPLIES.push({
   message: (n) => `You pick up ${n} cup${n === 1 ? '' : 's'} o' tea from Chilly Pete's table!`,
   full: () => 'You already have tea! Come back if you run out.',
 })
+
+// ==================== PACKS ====================
+// The original's "grab pack" buttons: one click topped each of the pack's
+// items up to a floor, with a line per item ("You now have 3 reds." / "You
+// have 5 meatballs."). The pack is now laid out on the floor, one top-up
+// entry per item with the floor as its cap. The floors are the original's.
+// A guild's pack carries the guild's badge on every entry, so the Warrior's
+// Pack is still the warriors' alone — there is just no button in front of it.
+
+/**
+ * @param {{ roomId: string, label: string, requiresMembership?: string, joinMessage?: string,
+ *   items: Array<{ slug: string, floor: number, name: string, plural?: string }> }} pack
+ * @returns {RoomSupplyEntry[]}
+ */
+function packEntries({ roomId, label, requiresMembership, joinMessage, items }) {
+  return items.map(({ slug, floor, name, plural }) => {
+    // A floor of one is the one-each rule, and reads better in its words
+    // ("come back for another if you lose it") than as a top-up to 1.
+    const single = floor === 1
+    return {
+      roomId,
+      slug,
+      mode: single ? 'take' : 'topUp',
+      ...(single ? {} : { cap: floor }),
+      plural: plural ?? `${name}s`,
+      message: single ? () => `You take a ${name} from the ${label}.` : () => `You restock ${plural ?? `${name}s`} from the ${label}.`,
+      ...(requiresMembership ? { requiresMembership, joinMessage } : {}),
+    }
+  })
+}
+
+const RED_TOWN_GUILD_HALLS = [
+  // Wizard's Guild (225): the four slots in blue.
+  packEntries({
+    roomId: '225',
+    label: "Wizard's Pack",
+    requiresMembership: 'wizards-guild',
+    joinMessage: 'Join the Wizard’s Guild to claim a Wizard’s Pack. Speak to the recruiter.',
+    items: [
+      { slug: 'blues', floor: 3, name: 'blue', plural: 'blues' },
+      { slug: 'bluefish', floor: 5, name: 'bluefish', plural: 'bluefish' },
+      { slug: 'blue-potion', floor: 5, name: 'blue potion' },
+      { slug: 'blue-balm', floor: 1, name: 'blue balm' },
+    ],
+  }),
+  // Warrior's Guild (226): the same four slots in red.
+  packEntries({
+    roomId: '226',
+    label: "Warrior's Pack",
+    requiresMembership: 'warriors-guild',
+    joinMessage: 'Join the Warrior’s Guild to claim a Warrior’s Pack. Speak to the recruiter.',
+    items: [
+      { slug: 'reds', floor: 3, name: 'red', plural: 'reds' },
+      { slug: 'meatball', floor: 5, name: 'meatball' },
+      { slug: 'red-potion', floor: 5, name: 'red potion' },
+      { slug: 'red-balm', floor: 1, name: 'red balm' },
+    ],
+  }),
+]
+
+const MINING_GUILD_HALL = packEntries({
+  // Mining Guild (308): potions, food, and a pickaxe to break.
+  roomId: '308',
+  label: 'Mining Pack',
+  requiresMembership: 'mining-guild',
+  joinMessage: 'Join the Mining Guild to claim a Mining Pack. Speak to the recruiter.',
+  items: [
+    { slug: 'red-potion', floor: 5, name: 'red potion' },
+    { slug: 'blue-potion', floor: 5, name: 'blue potion' },
+    { slug: 'bluefish', floor: 5, name: 'bluefish', plural: 'bluefish' },
+    { slug: 'meatball', floor: 5, name: 'meatball' },
+    { slug: 'pickaxe', floor: 1, name: 'pickaxe' },
+  ],
+})
+
+const OCEAN_PACKS = [
+  // Crocodile Island (424): Jungle Jim's colours, no badge needed.
+  packEntries({
+    roomId: '424',
+    label: "Jungle Jim's colours",
+    items: [
+      { slug: 'reds', floor: 5, name: 'red', plural: 'reds' },
+      { slug: 'greens', floor: 5, name: 'green', plural: 'greens' },
+      { slug: 'blues', floor: 5, name: 'blue', plural: 'blues' },
+      { slug: 'yellows', floor: 5, name: 'yellow', plural: 'yellows' },
+    ],
+  }),
+  // The Master Temple (425): three of each colour and each balm. The original
+  // also refilled this from "bathe in glory"; here the floor is the only source.
+  packEntries({
+    roomId: '425',
+    label: 'Master Pack',
+    items: [
+      { slug: 'reds', floor: 3, name: 'red', plural: 'reds' },
+      { slug: 'greens', floor: 3, name: 'green', plural: 'greens' },
+      { slug: 'blues', floor: 3, name: 'blue', plural: 'blues' },
+      { slug: 'yellows', floor: 3, name: 'yellow', plural: 'yellows' },
+      { slug: 'red-balm', floor: 3, name: 'red balm' },
+      { slug: 'blue-balm', floor: 3, name: 'blue balm' },
+    ],
+  }),
+]
+
+const RANGERS_GUILD_LOBBY = packEntries({
+  // Ranger's Guild Lobby (515a): a hundred arrows and the field kit.
+  roomId: '515a',
+  label: "Ranger's Pack",
+  requiresMembership: 'rangers-guild',
+  joinMessage: "Join the Ranger's Guild to claim a Ranger's Pack. Defeat a Dark Ranger and speak to the guard at the ladder.",
+  items: [
+    { slug: 'arrow', floor: 100, name: 'arrow' },
+    { slug: 'greens', floor: 3, name: 'green', plural: 'greens' },
+    { slug: 'red-balm', floor: 3, name: 'red balm' },
+    { slug: 'blue-balm', floor: 3, name: 'blue balm' },
+  ],
+})
+
+ROOM_SUPPLIES.push(...RED_TOWN_GUILD_HALLS.flat(), ...MINING_GUILD_HALL, ...OCEAN_PACKS.flat(), ...RANGERS_GUILD_LOBBY)
 
 /** Every supply a room provides, in authored order. */
 function getRoomSupplies(roomId) {

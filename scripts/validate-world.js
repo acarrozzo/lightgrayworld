@@ -402,6 +402,9 @@ for (const entry of ROOM_SUPPLIES) {
   if (!itemSlugs.has(entry.slug)) err('room-supplies', `${entry.roomId} offers unknown item "${entry.slug}"`)
   if (!SUPPLY_MODES.has(entry.mode)) err('room-supplies', `${entry.roomId} ${entry.slug} has unknown mode "${entry.mode}"`)
   if (entry.cap != null && (!Number.isInteger(entry.cap) || entry.cap < 1)) err('room-supplies', `${entry.roomId} ${entry.slug} has a cap of ${entry.cap}`)
+  if (entry.requiresMembership != null && !GUILD_IDS.has(entry.requiresMembership)) {
+    err('room-supplies', `${entry.roomId} ${entry.slug} requires membership of "${entry.requiresMembership}", which is not a guild`)
+  }
   const key = `${entry.roomId}|${entry.slug}`
   if (supplyKeys.has(key)) err('room-supplies', `${entry.roomId} offers ${entry.slug} twice`)
   supplyKeys.add(key)

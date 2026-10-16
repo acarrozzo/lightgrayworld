@@ -39,7 +39,10 @@ const { ROOM_ENEMIES } = require('@/lib/game-data/room-enemies') as {
   ROOM_ENEMIES: Record<string, RoomEnemyConfig>
 }
 const { ROOM_SUPPLIES } = require('@/lib/game-engine/config/room-supplies') as {
-  ROOM_SUPPLIES: { roomId: string; slug: string; mode: 'take' | 'topUp'; cap?: number }[]
+  ROOM_SUPPLIES: { roomId: string; slug: string; mode: 'take' | 'topUp'; cap?: number; requiresMembership?: string }[]
+}
+const { getFaction } = require('@/lib/game-data/factions') as {
+  getFaction: (id: string) => { name: string } | undefined
 }
 const { ROOM_GATES } = require('@/lib/game-engine/room-gates') as {
   ROOM_GATES: Record<string, Record<string, GateDef>>
@@ -371,7 +374,9 @@ export default async function RoomsPage() {
         slug: l.slug,
         name: t?.name ?? prettifySlug(l.slug),
         icon: resolveItemIcon(meta, l.slug),
-        rule: l.mode === 'take' ? 'one each' : `up to ${cap}`,
+        rule:
+          (l.mode === 'take' ? 'one each' : `up to ${cap}`) +
+          (l.requiresMembership ? ` · ${getFaction(l.requiresMembership)?.name ?? l.requiresMembership} members` : ''),
       }
     })
 

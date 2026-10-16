@@ -296,7 +296,6 @@ export default function RoomDisplay({
       // change yet: only this room's pills are ever shown.
       supplies={supplies.filter((s) => s.roomId === room.roomId)}
       items={room.items ?? []}
-      roomId={room.roomId}
       currentUsername={currentUsername}
       busyKey={isPerformingAction}
       onTake={handleTakeSupply}

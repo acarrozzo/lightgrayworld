@@ -12,11 +12,17 @@
  *
  * Nothing here is shared between players. A take never changes what the next
  * visitor sees, which is what makes "come back if you lose it" safe to say.
+ *
+ * A guild's pack is members only (`requiresMembership`). Membership is the
+ * one definition in faction-service: the status reports the entry locked and
+ * the take refuses, both with the room's own join line, and both free.
  */
 const { prisma } = require('../../db-client')
 const { getRoomSupplies, supplyCap } = require('../config/room-supplies')
 const { getPlayerInventory, grantItemOnce } = require('./inventory-service')
 const { pluralizeItemName } = require('./item-names')
+const { isMember } = require('./faction-service')
+const { getFaction } = require('../../game-data/factions')
 
 /**
  * The feed's tally, in the original's bracket shape: "[ +38 arrows = 50 ]" for
@@ -38,6 +44,28 @@ function pluralFor(entry, template) {
   const name = template.name
   const plain = /^[A-Z][a-z]+( [A-Z][a-z]+)?$/.test(name)
   return pluralizeItemName(plain ? name.toLowerCase() : name)
+}
+
+/** The refusal for a non-member: the entry's own line, else a plain one. */
+function joinMessageFor(entry) {
+  if (entry.joinMessage) return entry.joinMessage
+  const name = getFaction(entry.requiresMembership)?.name ?? 'the guild'
+  return `Join ${name} to claim these supplies. Speak to the recruiter.`
+}
+
+/**
+ * Which of the guilds named by a room's supplies this player belongs to —
+ * one read per guild, not per entry.
+ */
+async function memberOfGuilds(playerId, entries) {
+  const guildIds = Array.from(new Set(entries.map((e) => e.requiresMembership).filter(Boolean)))
+  const member = new Set()
+  await Promise.all(
+    guildIds.map(async (guildId) => {
+      if (await isMember(playerId, guildId)) member.add(guildId)
+    })
+  )
+  return member
 }
 
 /**
@@ -81,11 +109,13 @@ function availableFor(entry, template, held) {
  *   type: string, equipSlot: string | null, metadata: unknown,
  *   mode: 'take' | 'topUp', cap: number, held: number, available: number,
  *   bagMax: number | null, takeLabel: string, plural: string,
+ *   requiresMembership: string | null, locked: boolean, lockedMessage: string | null,
  * }>>}
  */
 async function buildSupplyStatus(playerId, roomId) {
   if (!playerId || !roomId) return []
   const { entries, templateBySlug, heldByTemplateId } = await loadSupplyContext(playerId, roomId)
+  const guilds = await memberOfGuilds(playerId, entries)
   const rows = []
   for (const entry of entries) {
     const template = templateBySlug.get(entry.slug)
@@ -94,6 +124,7 @@ async function buildSupplyStatus(playerId, roomId) {
       continue
     }
     const held = heldByTemplateId.get(template.id) ?? 0
+    const locked = Boolean(entry.requiresMembership) && !guilds.has(entry.requiresMembership)
     rows.push({
       id: `${roomId}:${entry.slug}`,
       roomId,
@@ -110,6 +141,9 @@ async function buildSupplyStatus(playerId, roomId) {
       bagMax: typeof template.max === 'number' ? template.max : null,
       takeLabel: entry.take ?? 'Take',
       plural: pluralFor(entry, template),
+      requiresMembership: entry.requiresMembership ?? null,
+      locked,
+      lockedMessage: locked ? joinMessageFor(entry) : null,
     })
   }
   return rows
@@ -124,6 +158,12 @@ async function takeSupply(playerId, roomId, slug) {
   const entry = getRoomSupplies(roomId).find((e) => e.slug === slug)
   if (!entry) {
     return { success: false, outcome: 'failure', message: 'There is nothing like that to take here.' }
+  }
+
+  // The guild's badge, checked here and not only on the pill: a forged take
+  // gets the same polite line a click on the locked pill does.
+  if (entry.requiresMembership && !(await isMember(playerId, entry.requiresMembership))) {
+    return { success: false, outcome: 'info', message: joinMessageFor(entry), held: 0 }
   }
 
   const template = await prisma.itemTemplate.findUnique({

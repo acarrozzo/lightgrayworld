@@ -409,7 +409,7 @@ function withMerchantNotice(roomId, handler) {
  */
 function makeGuildMemberCheck(factionId) {
   // "Member" means the guild's initiation is turned in — defined once, in
-  // factions.js, so a door, a pack and a trainer can never disagree about it.
+  // factions.js, so a door, a shop and a trainer can never disagree about it.
   return (playerId) => isMember(playerId, factionId)
 }
 
@@ -1474,144 +1474,12 @@ function makeRepeatableChestHandler({
 }
 
 /**
- * A guild supply pack: the guild tops your consumables back up to a floor rather
- * than handing out a fixed batch. Legacy behaviour exactly — it sets each of the
- * four supplies to its minimum if you are below it, and tells you it did nothing
- * if you are already stocked. That makes it a safety net rather than a farm.
- *
- * Both guilds run the same pack with their own colour of supplies: the warriors
- * stock red (HP), the wizards blue (MP).
- */
-function makeGuildPackHandler({ factionId, label, icon, iconColor, joinMessage, pack }) {
-  return async (playerId, roomState) => {
-    const { getHeldQuantity, grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
-
-    roomState.touchActivity()
-
-    const member = await makeGuildMemberCheck(factionId)(playerId)
-    if (!member) {
-      return {
-        success: true,
-        noTurn: true,
-        action: 'grab pack',
-        playerEvents: [
-          {
-            event: 'action:feedback',
-            payload: createActionFeedbackPayload('grab pack', 'info', joinMessage, {
-              roomId: roomState.roomId,
-              showModal: true,
-              modalContent: { type: 'icon', icon, iconColor, title: label, message: joinMessage },
-            }),
-          },
-        ],
-      }
-    }
-
-    const lines = []
-    const granted = []
-    for (const entry of pack) {
-      const held = await getHeldQuantity(playerId, entry.slug)
-      const shortfall = entry.floor - held
-      if (shortfall <= 0) {
-        lines.push(`You already have ${held} ${entry.label}.`)
-        continue
-      }
-      const result = await grantItemOnce(playerId, entry.slug, shortfall)
-      if (result.granted) {
-        lines.push(`You top up to ${entry.floor} ${entry.label}.`)
-        granted.push({ itemSlug: entry.slug, quantity: shortfall })
-      } else {
-        lines.push(`You could not carry any more ${entry.label}.`)
-      }
-    }
-
-    const inventory = await getPlayerInventory(playerId)
-    const message = granted.length
-      ? `You replenish your ${label}.`
-      : `Your ${label} is already full.`
-
-    return {
-      success: true,
-      // Already full: nothing was handed over, so nothing is spent.
-      noTurn: granted.length === 0,
-      action: 'grab pack',
-      playerEvents: [
-        {
-          event: 'action:feedback',
-          payload: createActionFeedbackPayload('grab pack', 'success', message, {
-            roomId: roomState.roomId,
-            inventory,
-            showModal: true,
-            modalContent: {
-              type: 'icon',
-              icon,
-              iconColor,
-              title: label,
-              message: lines.join('\n'),
-            },
-          }),
-        },
-      ],
-    }
-  }
-}
-
-/** The Warrior's Guild pack: reds, meatballs, red potions, red balm. */
-const makeWarriorPackHandler = () =>
-  makeGuildPackHandler({
-    factionId: 'warriors-guild',
-    label: "Warrior's Pack",
-    icon: 'npc-warrior',
-    iconColor: 'blue-400',
-    joinMessage: 'Join the Warrior’s Guild to claim a Warrior’s Pack. Speak to the recruiter.',
-    pack: [
-      { slug: 'reds', floor: 3, label: 'reds' },
-      { slug: 'meatball', floor: 5, label: 'meatballs' },
-      { slug: 'red-potion', floor: 5, label: 'red potions' },
-      { slug: 'red-balm', floor: 1, label: 'red balm' },
-    ],
-  })
-
-/** The Wizard's Guild pack: the same four slots in blue. */
-const makeWizardPackHandler = () =>
-  makeGuildPackHandler({
-    factionId: 'wizards-guild',
-    label: "Wizard's Pack",
-    icon: 'npc-wizard',
-    iconColor: 'purple-400',
-    joinMessage: 'Join the Wizard’s Guild to claim a Wizard’s Pack. Speak to the recruiter.',
-    pack: [
-      { slug: 'blues', floor: 3, label: 'blues' },
-      { slug: 'bluefish', floor: 5, label: 'bluefish' },
-      { slug: 'blue-potion', floor: 5, label: 'blue potions' },
-      { slug: 'blue-balm', floor: 1, label: 'blue balm' },
-    ],
-  })
-
-/**
  * A guild's lair teleport: the standing perk of membership, and the reason the
  * hall is worth walking back to. Members only, refused in battle, and — like the
  * flee and respawn paths — the move itself runs through the client's normal
  * teleport dispatch so party pulls, room events and persistence all behave. The
  * server decides *whether*; `teleportRoomId` only says *where*.
  */
-/** The Mining Guild's pack: potions, food, and a pickaxe to break. */
-const makeMiningPackHandler = () =>
-  makeGuildPackHandler({
-    factionId: 'mining-guild',
-    label: 'Mining Pack',
-    icon: 'npc-miner2',
-    iconColor: 'yellow-600',
-    joinMessage: 'Join the Mining Guild to claim a Mining Pack. Speak to the recruiter.',
-    pack: [
-      { slug: 'red-potion', floor: 5, label: 'red potions' },
-      { slug: 'blue-potion', floor: 5, label: 'blue potions' },
-      { slug: 'bluefish', floor: 5, label: 'bluefish' },
-      { slug: 'meatball', floor: 5, label: 'meatballs' },
-      { slug: 'pickaxe', floor: 1, label: 'pickaxe' },
-    ],
-  })
-
 function makeGuildTeleportHandler({ action, factionId, toRoomId, label, icon, iconColor, joinMessage, message }) {
   return free(async (playerId, roomState) => {
     roomState.touchActivity()
@@ -1700,65 +1568,6 @@ async function pickGardenFlower(playerId, roomState) {
 }
 
 /**
- * A pack that tops up to a floor with no membership check — Jungle Jim's
- * colours and the Master Temple's pack. Same shape as the guild packs, minus
- * the badge at the door.
- */
-function makeTopUpPackHandler({ action, label, icon, iconColor, pack, fullMessage, message }) {
-  return async (playerId, roomState) => {
-    const { getHeldQuantity, grantItemOnce, getPlayerInventory } = require('./services/inventory-service')
-    roomState.touchActivity()
-
-    const lines = []
-    let grantedAny = false
-    for (const entry of pack) {
-      const held = await getHeldQuantity(playerId, entry.slug)
-      const shortfall = entry.floor - held
-      if (shortfall <= 0) {
-        lines.push(`You have ${held} ${entry.label}.`)
-        continue
-      }
-      const result = await grantItemOnce(playerId, entry.slug, shortfall)
-      if (result.granted) {
-        lines.push(`You now have ${entry.floor} ${entry.label}.`)
-        grantedAny = true
-      } else {
-        lines.push(`You could not carry any more ${entry.label}.`)
-      }
-    }
-
-    const inventory = await getPlayerInventory(playerId)
-    return {
-      success: true,
-      // Already stocked to the floor: nothing was handed over, so nothing is spent.
-      noTurn: !grantedAny,
-      action,
-      playerEvents: [
-        {
-          event: 'action:feedback',
-          payload: createActionFeedbackPayload(action, grantedAny ? 'success' : 'info', grantedAny ? message : fullMessage, {
-            roomId: roomState.roomId,
-            inventory,
-            showModal: true,
-            modalContent: { type: 'icon', icon, iconColor, title: label, message: lines.join('\n') },
-          }),
-        },
-      ],
-    }
-  }
-}
-
-/** The Master Temple's pack: three of each colour and each balm. */
-const MASTER_PACK = [
-  { slug: 'reds', floor: 3, label: 'reds' },
-  { slug: 'greens', floor: 3, label: 'greens' },
-  { slug: 'blues', floor: 3, label: 'blues' },
-  { slug: 'yellows', floor: 3, label: 'yellows' },
-  { slug: 'red-balm', floor: 3, label: 'red balms' },
-  { slug: 'blue-balm', floor: 3, label: 'blue balms' },
-]
-
-/**
  * The third flower, under the ocean. The original's rule, insult included: you
  * can only pick it if you are already carrying the first two, and you can only
  * ever hold three here. (The fourth is in the Mountains, with the Dark Forest.)
@@ -1806,8 +1615,9 @@ async function pickUnderwaterFlower(playerId, roomState) {
 
 /**
  * Bathing in the Master Water Temple's glory: a full rest with +100 over the
- * top, +20 to everything for 100 clicks, and the Master Pack topped up — the
- * original did all three on one button and so does this.
+ * top and +20 to everything for 100 clicks. The original also topped the
+ * Master Pack up on this button; here the pack is on the temple floor as
+ * supplies (config/room-supplies.js) and is only ever taken from there.
  */
 async function batheInGlory(playerId, roomState) {
   const { prisma } = require('../db-client')
@@ -1821,28 +1631,14 @@ async function batheInGlory(playerId, roomState) {
   if (!rest.success) return rest
 
   const glory = await applyBuff(prisma, playerId, 'buffGloryClicks', 100)
-  const pack = await makeTopUpPackHandler({
-    action: 'bathe in glory',
-    label: 'Master Pack',
-    icon: 'inv',
-    iconColor: 'blue-300',
-    pack: MASTER_PACK,
-    message: 'You replenish your Master Pack.',
-    fullMessage: 'Your Master Pack is already full.',
-  })(playerId, roomState)
-
-  const packPayload = pack.playerEvents?.[0]?.payload
-  const packLines = packPayload?.data?.modalContent?.message ?? ''
-
   return mergeActionResultsForGlory(rest, {
     success: true,
     action: 'bathe in glory',
     playerEvents: [
       {
         event: 'action:feedback',
-        payload: createActionFeedbackPayload('bathe in glory', 'success', `You bathe in the Master Temple's glory! BUFF: +20 STR, DEX, MAG and DEF for 100 clicks. Your Master Pack is replenished.`, {
+        payload: createActionFeedbackPayload('bathe in glory', 'success', `You bathe in the Master Temple's glory! BUFF: +20 STR, DEX, MAG and DEF for 100 clicks.`, {
           roomId: roomState.roomId,
-          inventory: packPayload?.data?.inventory,
           buffs: { buffGloryClicks: glory },
           showModal: true,
           modalContent: {
@@ -1850,7 +1646,7 @@ async function batheInGlory(playerId, roomState) {
             icon: 'npc-guardian',
             iconColor: 'blue-300',
             title: "You bathe in the Master Temple's glory",
-            message: `REST: +100 HP, +100 MP\nBUFF: +20 STR, +20 DEX, +20 MAG, +20 DEF for 100 clicks\nREPLENISH: Master Pack\n\n${packLines}`,
+            message: 'REST: +100 HP, +100 MP\nBUFF: +20 STR, +20 DEX, +20 MAG, +20 DEF for 100 clicks',
           },
         }),
       },
@@ -2739,7 +2535,6 @@ const ROOM_ACTIONS = {
         overchargeMessage: 'You rest at the Wizard’s Fire. Your HP and MP are fully restored, plus an extra +100 to each.',
       })
     },
-    'grab pack': makeWizardPackHandler(),
     'teleport to kobold lair': makeGuildTeleportHandler({
       action: 'teleport to kobold lair',
       factionId: 'wizards-guild',
@@ -2752,7 +2547,7 @@ const ROOM_ACTIONS = {
     }),
   },
 
-  // --- Warrior's Guild (226): two quest givers, a stall, a fire and the Warrior's Pack ---
+  // --- Warrior's Guild (226): two quest givers, a stall and a fire; the Warrior's Pack is on the floor as supplies ---
   '226': {
     'talk to warrior recruiter': npcTalk('warriors_guild_recruiter'),
     'talk to warrior pete': npcTalk('warrior_pete'),
@@ -2803,7 +2598,6 @@ const ROOM_ACTIONS = {
         overchargeMessage: 'You rest at the Warrior’s Fire and supercharge yourself. Your HP and MP are fully restored, plus an extra +100 to each.',
       })
     },
-    'grab pack': makeWarriorPackHandler(),
     'teleport to ogre lair': makeGuildTeleportHandler({
       action: 'teleport to ogre lair',
       factionId: 'warriors-guild',
@@ -3105,7 +2899,6 @@ const ROOM_ACTIONS = {
       icon: 'npc-miner2',
       iconColor: 'yellow-600',
     }),
-    'grab pack': makeMiningPackHandler(),
     'rest at the forge': async (playerId, roomState) => {
       const isMember = await makeGuildMemberCheck('mining-guild')(playerId)
       if (!isMember) {
@@ -3291,35 +3084,12 @@ const ROOM_ACTIONS = {
   // --- Crocodile Island: Jungle Jim's tree hut ---
   '424': {
     'talk to jungle jim': npcTalk('jungle_jim'),
-    'grab colors': makeTopUpPackHandler({
-      action: 'grab colors',
-      label: "Jungle Jim's Colours",
-      icon: 'pill',
-      iconColor: 'green-400',
-      pack: [
-        { slug: 'reds', floor: 5, label: 'reds' },
-        { slug: 'greens', floor: 5, label: 'greens' },
-        { slug: 'blues', floor: 5, label: 'blues' },
-        { slug: 'yellows', floor: 5, label: 'yellows' },
-      ],
-      message: 'You grab a pack of colours. [ +reds, greens, blues, yellows ]',
-      fullMessage: 'You already have some colours! Come back if you run low.',
-    }),
   },
 
-  // --- The Master Temple: the Guardian, the glory, the pack, the altar ---
+  // --- The Master Temple: the Guardian, the glory, the altar; the Master Pack is on the floor as supplies ---
   '425': {
     'talk to water temple guardian': npcTalk('water_temple_guardian'),
     'bathe in glory': batheInGlory,
-    'grab master pack': makeTopUpPackHandler({
-      action: 'grab master pack',
-      label: 'Master Pack',
-      icon: 'inv',
-      iconColor: 'blue-300',
-      pack: MASTER_PACK,
-      message: 'You replenish your Master Pack.',
-      fullMessage: 'Your Master Pack is already full.',
-    }),
     // The original's evolve ritual — reset your stats, skills and spells for
     // an evolve level — is not built yet. The altar stands; it is dormant.
     'evolve': {
@@ -3694,21 +3464,8 @@ const ROOM_ACTIONS = {
     },
   },
 
-  // --- The Ranger's Guild Lobby: the fire, the pack, and a rest ---
+  // --- The Ranger's Guild Lobby: the fire and a rest; the Ranger's Pack is on the floor as supplies ---
   '515a': {
-    'grab ranger pack': makeGuildPackHandler({
-      factionId: 'rangers-guild',
-      label: "Ranger's Pack",
-      icon: 'npc-ranger',
-      iconColor: 'green-400',
-      joinMessage: "Join the Ranger's Guild to claim a Ranger's Pack. Defeat a Dark Ranger and speak to the guard at the ladder.",
-      pack: [
-        { slug: 'arrow', floor: 100, label: 'arrows' },
-        { slug: 'greens', floor: 3, label: 'greens' },
-        { slug: 'red-balm', floor: 3, label: 'red balms' },
-        { slug: 'blue-balm', floor: 3, label: 'blue balms' },
-      ],
-    }),
     'rest at the ranger fire': async (playerId, roomState) =>
       roomState.applyRest(playerId, {
         action: 'rest at the ranger fire',
