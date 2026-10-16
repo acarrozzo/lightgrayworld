@@ -74,6 +74,10 @@ interface WorldAtlasProps {
   onTeleport: (roomId: string) => void
   /** The full-screen rail carries the levels itself; no second copy floats on the map. */
   hideLevels?: boolean
+  /** Draw the ✦ landing and ♛ lair pins. Off, rooms still open their cards, Teleport and all. */
+  showPins?: boolean
+  /** Draw the trail, the level stack, VIP, Here and zoom over the map. */
+  showControls?: boolean
 }
 
 interface AtlasState {
@@ -100,6 +104,8 @@ const ICON_TAP =
   'grid place-items-center text-fg-secondary transition-colors hover:bg-surface-raised/70 hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent'
 /** A pin keeps its size as the art grows under it. */
 const PIN_TRANSFORM = 'translate(-50%, -50%) scale(var(--atlas-inv, 1))'
+/** Zoomed in, the art fills the frame and the controls sit on it: they go faint until the pointer or focus comes to them. */
+const FAINT = 'opacity-40 hover:opacity-100 focus-within:opacity-100'
 const ARROW_DIRECTIONS: Record<string, AtlasDirection> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
 
 function usePrefersReducedMotion(): boolean {
@@ -142,6 +148,8 @@ export default function WorldAtlas({
   blockedReason,
   onTeleport,
   hideLevels = false,
+  showPins = true,
+  showControls = true,
 }: WorldAtlasProps) {
   const hereSheet = currentRoomId ? sheetForRoom(currentRoomId) : null
   const hereLevel: AtlasLevel = hereSheet && !isVipRegion(regionOfSheet(hereSheet)) ? levelOfSheet(hereSheet) : 'surface'
@@ -665,7 +673,7 @@ export default function WorldAtlas({
     ATLAS_GRID.forEach((r, index) => {
       const tile = regionTile(r.id, level, foundMapIds, preferFor(r.id))
       if (tile.state !== 'open') return
-      for (const landing of landingsOnSheet(tile.sheetId, teleport)) {
+      for (const landing of showPins ? landingsOnSheet(tile.sheetId, teleport) : []) {
         if (landing.kind !== 'landing') continue
         const cell = roomCell(tile.sheetId, landing.roomId)
         if (!cell) continue
@@ -709,7 +717,7 @@ export default function WorldAtlas({
           aria-hidden="true"
         />
       )}
-      {sheetLandings.map((landing) => {
+      {showPins && sheetLandings.map((landing) => {
         const cell = roomCell(sheetId, landing.roomId)
         if (!cell) return null
         const c = cellCentre(cell)
@@ -773,7 +781,7 @@ export default function WorldAtlas({
 
   let tipNode: ReactNode = null
   const tipCardOpen = !!tip && (depth === 'sheet' ? s.selected === tip.roomId : s.pin?.roomId === tip.roomId)
-  if (tip && S > 0 && !tipCardOpen) {
+  if (tip && showPins && S > 0 && !tipCardOpen) {
     const landing = openLandingAt(tip.roomId, teleport)
     const cell = roomCell(tip.sheetId, tip.roomId)
     const tipSheet = getAtlasSheet(tip.sheetId)
@@ -816,7 +824,8 @@ export default function WorldAtlas({
             go: () => openSheet(id, id === hereSheet ? currentRoomId : null),
           }))
         : []
-  const showLevels = !hideLevels && (depth === 'world' || levelItems.length > 1)
+  const showLevels = showControls && !hideLevels && (depth === 'world' || levelItems.length > 1)
+  const fade = `transition-opacity duration-200 ${depth === 'sheet' && cam.z > 1.001 ? FAINT : ''}`
 
   return (
     <div
@@ -842,33 +851,35 @@ export default function WorldAtlas({
       )}
 
       {/* Where you are in the world: World › Red Town › Sewers. */}
-      <div data-atlas-ui className={`${GLASS} absolute left-2 top-2 z-[4] flex max-w-[calc(100%-1rem)] items-center gap-0.5 rounded-lg p-0.5 text-xs`}>
-        {depth === 'world' ? (
-          <>
-            <span className="flex h-7 items-center gap-1.5 px-2 font-semibold text-fg-bright">
-              <Globe size={13} aria-hidden="true" />
-              World
-            </span>
-            <span className="text-fg-disabled" aria-hidden="true">·</span>
-            <span className="px-1.5 text-fg-secondary">{level === 'below' ? 'Below' : 'Surface'}</span>
-          </>
-        ) : (
-          <>
-            <button type="button" onClick={() => zoomOutToWorld()} className="flex h-7 items-center gap-1.5 rounded-md px-2 text-hue-sky transition-colors hover:bg-surface-raised/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus" title="Zoom out to the world">
-              <Globe size={13} aria-hidden="true" />
-              World
-            </button>
-            <ChevronRight size={12} className="text-fg-disabled" aria-hidden="true" />
-            <span className="truncate px-1 font-semibold text-fg-bright">{region?.name ?? sheet?.title}</span>
-            {sheet && sheet.level !== 'Surface' && (
-              <>
-                <ChevronRight size={12} className="text-fg-disabled" aria-hidden="true" />
-                <span className="whitespace-nowrap px-1 pr-2 text-fg-secondary">{sheet.level}</span>
-              </>
-            )}
-          </>
-        )}
-      </div>
+      {showControls && (
+        <div data-atlas-ui className={`${GLASS} ${fade} absolute left-2 top-2 z-[4] flex max-w-[calc(100%-1rem)] items-center gap-0.5 rounded-lg p-0.5 text-xs`}>
+          {depth === 'world' ? (
+            <>
+              <span className="flex h-7 items-center gap-1.5 px-2 font-semibold text-fg-bright">
+                <Globe size={13} aria-hidden="true" />
+                World
+              </span>
+              <span className="text-fg-disabled" aria-hidden="true">·</span>
+              <span className="px-1.5 text-fg-secondary">{level === 'below' ? 'Below' : 'Surface'}</span>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => zoomOutToWorld()} className="flex h-7 items-center gap-1.5 rounded-md px-2 text-hue-sky transition-colors hover:bg-surface-raised/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus" title="Zoom out to the world">
+                <Globe size={13} aria-hidden="true" />
+                World
+              </button>
+              <ChevronRight size={12} className="text-fg-disabled" aria-hidden="true" />
+              <span className="truncate px-1 font-semibold text-fg-bright">{region?.name ?? sheet?.title}</span>
+              {sheet && sheet.level !== 'Surface' && (
+                <>
+                  <ChevronRight size={12} className="text-fg-disabled" aria-hidden="true" />
+                  <span className="whitespace-nowrap px-1 pr-2 text-fg-secondary">{sheet.level}</span>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* The level stack: Surface / Below on the world, the region's found sheets on a sheet. */}
       {showLevels && (
@@ -876,7 +887,7 @@ export default function WorldAtlas({
           data-atlas-ui
           role="group"
           aria-label="Level"
-          className={`${GLASS} absolute left-2 z-[4] flex rounded-xl p-0.5 ${levelsInBand ? 'top-11 flex-row items-center' : 'top-1/2 -translate-y-1/2 flex-col'}`}
+          className={`${GLASS} ${fade} absolute left-2 z-[4] flex rounded-xl p-0.5 ${levelsInBand ? 'top-11 flex-row items-center' : 'top-1/2 -translate-y-1/2 flex-col'}`}
         >
           <span className="px-1.5 py-0.5 text-center font-mono text-[9px] uppercase tracking-widest text-fg-muted">Level</span>
           {levelItems.map((item) => (
@@ -897,7 +908,7 @@ export default function WorldAtlas({
       )}
 
       {/* VIP rooms are no region of the world; they sit behind a button. */}
-      {depth === 'world' && vipSheets.length > 0 && (
+      {showControls && depth === 'world' && vipSheets.length > 0 && (
         <div data-atlas-ui className="absolute right-2 top-2 z-[5]">
           <button
             type="button"
@@ -928,19 +939,21 @@ export default function WorldAtlas({
       )}
 
       {/* Here, and zoom. */}
-      <div data-atlas-ui className={`absolute right-2 z-[4] flex gap-1.5 ${zoomInBand ? 'bottom-2 flex-row' : 'top-1/2 -translate-y-1/2 flex-col'}`}>
-        <button type="button" onClick={goHere} disabled={!hereSheet} aria-label="Show where you are" title="Where you are (again: the whole sheet)" className={`${GLASS} grid h-9 w-9 place-items-center rounded-lg text-resource-gold transition-colors hover:bg-surface-raised/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:opacity-35`}>
-          <LocateFixed size={17} aria-hidden="true" />
-        </button>
-        <div className={`${GLASS} flex overflow-hidden rounded-lg ${zoomInBand ? 'flex-row divide-x' : 'flex-col divide-y'} divide-line-strong/80`}>
-          <button type="button" onClick={() => zoomStep(1)} disabled={depth === 'sheet' && cam.z >= 3.199} aria-label="Zoom in" className={`${ICON_TAP} h-9 w-9`}>
-            <Plus size={16} aria-hidden="true" />
+      {showControls && (
+        <div data-atlas-ui className={`${fade} absolute right-2 z-[4] flex gap-1.5 ${zoomInBand ? 'bottom-2 flex-row' : 'top-1/2 -translate-y-1/2 flex-col'}`}>
+          <button type="button" onClick={goHere} disabled={!hereSheet} aria-label="Show where you are" title="Where you are (again: the whole sheet)" className={`${GLASS} grid h-9 w-9 place-items-center rounded-lg text-resource-gold transition-colors hover:bg-surface-raised/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:opacity-35`}>
+            <LocateFixed size={17} aria-hidden="true" />
           </button>
-          <button type="button" onClick={() => zoomStep(-1)} disabled={depth === 'world'} aria-label={depth === 'sheet' && cam.z <= 1.001 ? 'Zoom out to the world' : 'Zoom out'} className={`${ICON_TAP} h-9 w-9`}>
-            <Minus size={16} aria-hidden="true" />
-          </button>
+          <div className={`${GLASS} flex overflow-hidden rounded-lg ${zoomInBand ? 'flex-row divide-x' : 'flex-col divide-y'} divide-line-strong/80`}>
+            <button type="button" onClick={() => zoomStep(1)} disabled={depth === 'sheet' && cam.z >= 3.199} aria-label="Zoom in" className={`${ICON_TAP} h-9 w-9`}>
+              <Plus size={16} aria-hidden="true" />
+            </button>
+            <button type="button" onClick={() => zoomStep(-1)} disabled={depth === 'world'} aria-label={depth === 'sheet' && cam.z <= 1.001 ? 'Zoom out to the world' : 'Zoom out'} className={`${ICON_TAP} h-9 w-9`}>
+              <Minus size={16} aria-hidden="true" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {note && (
         <div role="status" className="pointer-events-none absolute bottom-3 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-lg border border-line-strong bg-surface-raised px-3 py-1.5 text-xs text-fg-primary shadow-lg shadow-shadow">

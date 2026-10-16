@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import FontPreferenceApplier from "@/components/FontPreferenceApplier";
+import InstantTooltips from "@/components/InstantTooltips";
 import ThemeApplier from "@/components/ThemeApplier";
 import { DEFAULT_THEME_ID, THEME_IDS } from "@/lib/theme/themes";
 
@@ -64,6 +65,7 @@ export default function RootLayout({
         <ThemeApplier />
         <FontPreferenceApplier />
         {children}
+        <InstantTooltips />
       </body>
     </html>
   );

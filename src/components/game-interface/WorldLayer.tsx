@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Globe, LocateFixed, Map as MapIcon, Maximize2, Minimize2, Sparkles, X } from 'lucide-react'
+import { Eye, EyeOff, Globe, Map as MapIcon, Maximize2, Minimize2, Sparkles, X } from 'lucide-react'
 import { useGameStore, type Player } from '@/lib/game-state'
 import { StatBar } from '@/components/GameHeader'
 import { foundSheetIds, type TeleportContext } from '@/lib/world-atlas'
+import { useWorldMapPref } from '@/lib/world-map-prefs'
 import LayerShell, { HeaderTabs, ICON_BUTTON, useDeck } from './LayerShell'
 import TravelRows, { type BossTeleportTile } from './TravelRows'
 import WorldAtlas, { type AtlasCommand, type AtlasView } from './WorldAtlas'
@@ -94,6 +95,8 @@ export default function WorldLayer({
   // cover the window, or a phone would get two full screens stacked.
   const isDesktop = useWideScreen(1024)
   const isShownCopy = (presentation === 'docked') === isDesktop
+  const [showPins, setShowPins] = useWorldMapPref('pins')
+  const [showControls, setShowControls] = useWorldMapPref('controls')
 
   // What the map can show and where it can send you, from the same facts the
   // server checks: found-sheet flags, discovered landings, guild memberships
@@ -145,10 +148,6 @@ export default function WorldLayer({
     if (next === 'map') send({ type: 'world' })
     onTabChange(next)
   }
-  const goHere = () => {
-    send({ type: 'here' })
-    if (tab !== 'map') onTabChange('map')
-  }
   const showOnMap = (roomId: string) => {
     send({ type: 'show', roomId })
     onTabChange('map')
@@ -180,8 +179,39 @@ export default function WorldLayer({
       blockedReason={teleportBlockedReason}
       onTeleport={onTeleport}
       hideLevels={rail}
+      showPins={showPins}
+      showControls={showControls}
     />
   )
+
+  // The map's two switches, in the header beside full screen: the teleport
+  // pins, and the controls over the art. Only while the map is showing.
+  const toggles = (buttonClass: string) =>
+    tab === 'map' ? (
+      <>
+        <button
+          type="button"
+          onClick={() => setShowPins(!showPins)}
+          aria-pressed={showPins}
+          aria-label="Teleport pins"
+          title={showPins ? 'Hide the teleport pins' : 'Show the teleport pins'}
+          className={`${buttonClass} relative`}
+        >
+          <Sparkles size={15} aria-hidden="true" className={showPins ? 'text-resource-mp' : 'text-fg-disabled'} />
+          {!showPins && <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-[1.5px] w-[18px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-full bg-fg-disabled" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowControls(!showControls)}
+          aria-pressed={showControls}
+          aria-label="Map controls"
+          title={showControls ? 'Hide the controls over the map' : 'Show the controls over the map'}
+          className={`${buttonClass} ${showControls ? '' : 'text-hue-sky'}`}
+        >
+          {showControls ? <Eye size={16} aria-hidden="true" /> : <EyeOff size={16} aria-hidden="true" />}
+        </button>
+      </>
+    ) : null
 
   // The original's teleport page as rows: regions with their sub-hubs, the
   // bosses beaten, the VIP rooms. The list is its own scroller; `@container`
@@ -210,7 +240,7 @@ export default function WorldLayer({
       <WorldFullScreen
         tabs={tabs}
         player={player}
-        onHere={goHere}
+        toggles={toggles(FULL_ICON)}
         onLeave={() => onFullScreenChange(false)}
         onClose={onClose}
       >
@@ -243,9 +273,7 @@ export default function WorldLayer({
     <>
       {tabs}
       <span className="ml-auto flex flex-shrink-0 items-center gap-0.5">
-        <button type="button" onClick={goHere} aria-label="Show where you are" title="Show where you are" className={`${ICON_BUTTON} text-resource-gold`}>
-          <LocateFixed size={16} aria-hidden="true" />
-        </button>
+        {toggles(ICON_BUTTON)}
         <button type="button" onClick={() => onFullScreenChange(true)} aria-label="Full screen" title="Full screen" className={ICON_BUTTON}>
           <Maximize2 size={15} aria-hidden="true" />
         </button>
@@ -261,20 +289,22 @@ export default function WorldLayer({
 }
 
 /**
- * The World tab over the whole window: its sub-tabs, a slim HP/MP line, Here,
- * back to the docked tab, close. On a phone the vitals take a second line.
+ * The World tab over the whole window: its sub-tabs, a slim HP/MP line, the
+ * map's switches, back to the docked tab, close. On a phone the vitals take a
+ * second line. Here lives on the map itself.
  */
 function WorldFullScreen({
   tabs,
   player,
-  onHere,
+  toggles,
   onLeave,
   onClose,
   children,
 }: {
   tabs: ReactNode
   player: Player | null
-  onHere: () => void
+  /** The map's pin and controls switches, when the map is showing. */
+  toggles: ReactNode
   onLeave: () => void
   onClose: () => void
   children: ReactNode
@@ -316,9 +346,7 @@ function WorldFullScreen({
         <div className="flex min-w-0 items-center">{tabs}</div>
         <div className="order-last flex w-full justify-center sm:order-none sm:ml-auto sm:w-auto">{vitals}</div>
         <div className="ml-auto flex flex-shrink-0 items-center gap-0.5 sm:ml-0">
-          <button type="button" onClick={onHere} aria-label="Show where you are" title="Show where you are" className={`${FULL_ICON} text-resource-gold`}>
-            <LocateFixed size={17} aria-hidden="true" />
-          </button>
+          {toggles}
           <button type="button" onClick={onLeave} aria-label="Leave full screen" title="Leave full screen (Esc)" className={FULL_ICON}>
             <Minimize2 size={16} aria-hidden="true" />
           </button>
