@@ -12340,6 +12340,18 @@ async function main() {
       metadata: { crafting: { kind: 'material' } },
     },
     {
+      // Made, not dug: one iron and one coal in the Mining Guild forge. The
+      // original kept a `steel` column on the player row and never filled it.
+      id: 'steel_001',
+      slug: 'steel',
+      name: 'Steel',
+      description: 'A bar of forge steel, smelted from iron and coal. Every piece of the steel tier is priced in it.',
+      type: ItemType.MISC,
+      max: 999,
+      value: 50,
+      metadata: { crafting: { kind: 'material' } },
+    },
+    {
       id: 'mithril_001',
       slug: 'mithril',
       name: 'Mithril',

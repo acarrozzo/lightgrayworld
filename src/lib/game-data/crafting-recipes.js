@@ -38,7 +38,7 @@
  *                            not enough — it must be turned in.
  * @property {string} hint     One line telling the player where to unlock it.
  *
- * @typedef {'cook' | 'potions' | 'wood' | 'leather' | 'iron' | 'tools' | 'rings'} CraftingFamilyId
+ * @typedef {'cook' | 'potions' | 'wood' | 'leather' | 'iron' | 'steel' | 'mithril' | 'tools' | 'rings'} CraftingFamilyId
  *
  * @typedef {Object} Recipe
  * @property {string} id          Stable recipe id (sent from client → server).
@@ -94,7 +94,7 @@ const CRAFTING_STATIONS = {
   '021': { label: 'Potion Table', button: 'Mix Potions', icon: 'red-potion', where: "the Pajama Shaman's tent", made: 'mixed', stations: ['crafting-table'], families: ['potions'] },
   '024': { label: 'Wood Workshop', button: 'Woodwork', icon: 'axelog', where: "Jack Lumber's workshop", made: 'made', stations: ['crafting-table'], families: ['wood', 'tools', 'rings'] },
   '103': { label: 'Leather Bench', button: 'Work Leather', icon: 'craft', where: "Freddie's Cow Farm", made: 'worked', stations: ['crafting-table'], families: ['leather'] },
-  '308': { label: 'Forge', button: 'Forge', icon: 'craft', where: 'the Mining Guild forge', made: 'forged', stations: ['forge', 'crafting-table'], families: ['iron', 'tools', 'rings'] },
+  '308': { label: 'Forge', button: 'Forge', icon: 'craft', where: 'the Mining Guild forge', made: 'forged', stations: ['forge', 'crafting-table'], families: ['iron', 'steel', 'mithril', 'tools', 'rings'] },
   '210': { label: 'Crafting Table', button: 'Open Crafting', icon: 'craft', where: "Red Town's Grand Square", made: 'made', stations: ['fire', 'crafting-table'], families: ['cook', 'potions', 'wood', 'leather', 'tools', 'rings'] },
   // The Ranger's Guild lobby fire: the original's "cook all meat" button.
   '515a': { label: "Ranger's Fire", button: 'Cook', icon: 'fire', where: "the Ranger's Guild lobby", made: 'cooked', stations: ['fire'], families: ['cook'] },
@@ -119,6 +119,11 @@ const CRAFTING_FAMILIES = [
   { id: 'wood', label: 'Wood' },
   { id: 'leather', label: 'Leather' },
   { id: 'iron', label: 'Iron' },
+  // The two tiers the original stored materials and sold hammers for but never
+  // wrote a recipe against. Steel is smelted from iron and coal; mithril ore is
+  // worked as it comes out of the seam, as the original's `mithril` column was.
+  { id: 'steel', label: 'Steel' },
+  { id: 'mithril', label: 'Mithril' },
   { id: 'tools', label: 'Tools' },
   // The original's "auto combine": two regen rings of a tier hammered into
   // one of the next, at any crafting table, once Jack has shown you the ropes.
@@ -167,6 +172,27 @@ const IRON_UNLOCK = {
 }
 
 /**
+ * The next two rungs of the same ladder. The original's `crafting` counter went
+ * to 3 after the Cyclops and 4 after the Minotaur and handed out the steel and
+ * mithril hammers with them, but no recipe ever read those levels. Here the
+ * Guild Leader's quests are the unlocks, turned in like iron's, and the hammer
+ * rule steps up one rung: a mithril hammer works steel, nothing stands in for
+ * the mithril hammer.
+ */
+const STEEL_HAMMER = { slug: 'steel-hammer', name: 'Steel Hammer', anyOf: ['mithril-hammer'] }
+const STEEL_UNLOCK = {
+  questId: 'quest_miningguild_002',
+  requireCompleted: true,
+  hint: 'To craft with steel, defeat the Cyclops at Mine Level 20 for the Mining Guild.',
+}
+const MITHRIL_HAMMER = { slug: 'mithril-hammer', name: 'Mithril Hammer' }
+const MITHRIL_UNLOCK = {
+  questId: 'quest_miningguild_003',
+  requireCompleted: true,
+  hint: 'To craft with mithril, defeat the Minotaur at Mine Level 30 for the Mining Guild.',
+}
+
+/**
  * The snowy shaman at the Stone Mountain Base Camp: "he will teach you how to
  * make potent balms if you bring the correct ingredients". The lesson is his
  * quest turned in, and it holds at every crafting table after that.
@@ -180,6 +206,9 @@ const BALM_UNLOCK = {
 const WOOD = (qty) => ({ slug: 'wood', qty, name: 'Wood' })
 const STONE = (qty) => ({ slug: 'stone', qty, name: 'Stone' })
 const IRON = (qty) => ({ slug: 'iron', qty, name: 'Iron' })
+const COAL = (qty) => ({ slug: 'coal', qty, name: 'Coal' })
+const STEEL = (qty) => ({ slug: 'steel', qty, name: 'Steel' })
+const MITHRIL = (qty) => ({ slug: 'mithril', qty, name: 'Mithril' })
 const LEATHER = (qty) => ({ slug: 'leather', qty, name: 'Leather' })
 const GRAY_MATTER = { slug: 'gray-matter', qty: 1, name: 'Gray Matter' }
 
@@ -667,6 +696,448 @@ const CRAFTING_RECIPES = [
     output: { slug: 'iron-boots', qty: 1, name: 'Iron Boots' },
   },
 
+  // ==================== STEEL ====================
+  // The Cyclops's tier. Steel is the one material in the game that is made, not
+  // dug: the Guild Leader's own words are "coal and iron make steel", so the
+  // family opens with the smelt and every piece after it is priced in steel at
+  // the iron tier's unit counts — a steel sword is seven steel the way an iron
+  // sword is seven iron. No steel maul: neither game has the template.
+  {
+    id: 'smelt-steel',
+    label: 'Steel',
+    family: 'steel',
+    batch: 'all',
+    station: 'forge',
+    effect: 'Forge material for the steel tier',
+    blurb: 'Iron and coal in the forge fire come out as steel. One of each makes one.',
+    unlock: STEEL_UNLOCK,
+    inputs: [IRON(1), COAL(1)],
+    output: { slug: 'steel', qty: 1, name: 'Steel' },
+  },
+  {
+    id: 'steel-dagger',
+    label: 'Steel Dagger',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(1), WOOD(1)],
+    output: { slug: 'steel-dagger', qty: 1, name: 'Steel Dagger' },
+  },
+  {
+    id: 'steel-sword',
+    label: 'Steel Sword',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(7), WOOD(1)],
+    output: { slug: 'steel-sword', qty: 1, name: 'Steel Sword' },
+  },
+  {
+    id: 'steel-staff',
+    label: 'Steel Staff',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(7), WOOD(1)],
+    output: { slug: 'steel-staff', qty: 1, name: 'Steel Staff' },
+  },
+  {
+    id: 'steel-2h-sword',
+    label: 'Steel 2H Sword',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(15), WOOD(1)],
+    output: { slug: 'steel-2h-sword', qty: 1, name: 'Steel 2H Sword' },
+  },
+  {
+    id: 'steel-battle-staff',
+    label: 'Steel Battle Staff',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(15), WOOD(1)],
+    output: { slug: 'steel-battle-staff', qty: 1, name: 'Steel Battle Staff' },
+  },
+  {
+    id: 'steel-nunchaku',
+    label: 'Steel Nunchaku',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(10), GRAY_MATTER],
+    output: { slug: 'steel-nunchaku', qty: 1, name: 'Steel Nunchaku' },
+  },
+  {
+    id: 'steel-boomerang',
+    label: 'Steel Boomerang',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(5), WOOD(1)],
+    output: { slug: 'steel-boomerang', qty: 1, name: 'Steel Boomerang' },
+  },
+  {
+    id: 'steel-bow',
+    label: 'Steel Bow',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(7), WOOD(1)],
+    output: { slug: 'steel-bow', qty: 1, name: 'Steel Bow' },
+  },
+  {
+    id: 'steel-crossbow',
+    label: 'Steel Crossbow',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(10), WOOD(1)],
+    output: { slug: 'steel-crossbow', qty: 1, name: 'Steel Crossbow' },
+  },
+  {
+    id: 'steel-chakram',
+    label: 'Steel Chakram',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(7), GRAY_MATTER],
+    output: { slug: 'steel-chakram', qty: 1, name: 'Steel Chakram' },
+  },
+  {
+    id: 'steel-shield',
+    label: 'Steel Shield',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(10)],
+    output: { slug: 'steel-shield', qty: 1, name: 'Steel Shield' },
+  },
+  {
+    id: 'steel-kite-shield',
+    label: 'Steel Kite Shield',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(15)],
+    output: { slug: 'steel-kite-shield', qty: 1, name: 'Steel Kite Shield' },
+  },
+  {
+    id: 'steel-helmet',
+    label: 'Steel Helmet',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(5)],
+    output: { slug: 'steel-helmet', qty: 1, name: 'Steel Helmet' },
+  },
+  {
+    id: 'steel-hood',
+    label: 'Steel Hood',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(3)],
+    output: { slug: 'steel-hood', qty: 1, name: 'Steel Hood' },
+  },
+  {
+    id: 'steel-armor',
+    label: 'Steel Armor',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(10)],
+    output: { slug: 'steel-armor', qty: 1, name: 'Steel Armor' },
+  },
+  {
+    id: 'steel-cape',
+    label: 'Steel Cape',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(7)],
+    output: { slug: 'steel-cape', qty: 1, name: 'Steel Cape' },
+  },
+  {
+    id: 'steel-gauntlets',
+    label: 'Steel Gauntlets',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(5)],
+    output: { slug: 'steel-gauntlets', qty: 1, name: 'Steel Gauntlets' },
+  },
+  {
+    id: 'steel-gloves',
+    label: 'Steel Gloves',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(3)],
+    output: { slug: 'steel-gloves', qty: 1, name: 'Steel Gloves' },
+  },
+  {
+    id: 'steel-boots',
+    label: 'Steel Boots',
+    family: 'steel',
+    batch: 'one',
+    station: 'forge',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(3)],
+    output: { slug: 'steel-boots', qty: 1, name: 'Steel Boots' },
+  },
+
+  // ==================== MITHRIL ====================
+  // The Minotaur's tier, and the bottom of the mine. Mithril needs no smelting —
+  // the original's `mithril` column was the material itself — so the ore goes
+  // straight under the hammer at the same unit counts as iron and steel.
+  {
+    id: 'mithril-dagger',
+    label: 'Mithril Dagger',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(1), WOOD(1)],
+    output: { slug: 'mithril-dagger', qty: 1, name: 'Mithril Dagger' },
+  },
+  {
+    id: 'mithril-sword',
+    label: 'Mithril Sword',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(7), WOOD(1)],
+    output: { slug: 'mithril-sword', qty: 1, name: 'Mithril Sword' },
+  },
+  {
+    id: 'mithril-staff',
+    label: 'Mithril Staff',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(7), WOOD(1)],
+    output: { slug: 'mithril-staff', qty: 1, name: 'Mithril Staff' },
+  },
+  {
+    id: 'mithril-2h-sword',
+    label: 'Mithril 2H Sword',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(15), WOOD(1)],
+    output: { slug: 'mithril-2h-sword', qty: 1, name: 'Mithril 2H Sword' },
+  },
+  {
+    id: 'mithril-battle-staff',
+    label: 'Mithril Battle Staff',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(15), WOOD(1)],
+    output: { slug: 'mithril-battle-staff', qty: 1, name: 'Mithril Battle Staff' },
+  },
+  {
+    id: 'mithril-nunchaku',
+    label: 'Mithril Nunchaku',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(10), GRAY_MATTER],
+    output: { slug: 'mithril-nunchaku', qty: 1, name: 'Mithril Nunchaku' },
+  },
+  {
+    id: 'mithril-boomerang',
+    label: 'Mithril Boomerang',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(5), WOOD(1)],
+    output: { slug: 'mithril-boomerang', qty: 1, name: 'Mithril Boomerang' },
+  },
+  {
+    id: 'mithril-bow',
+    label: 'Mithril Bow',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(7), WOOD(1)],
+    output: { slug: 'mithril-bow', qty: 1, name: 'Mithril Bow' },
+  },
+  {
+    id: 'mithril-crossbow',
+    label: 'Mithril Crossbow',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(10), WOOD(1)],
+    output: { slug: 'mithril-crossbow', qty: 1, name: 'Mithril Crossbow' },
+  },
+  {
+    id: 'mithril-chakram',
+    label: 'Mithril Chakram',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(7), GRAY_MATTER],
+    output: { slug: 'mithril-chakram', qty: 1, name: 'Mithril Chakram' },
+  },
+  {
+    id: 'mithril-shield',
+    label: 'Mithril Shield',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(10)],
+    output: { slug: 'mithril-shield', qty: 1, name: 'Mithril Shield' },
+  },
+  {
+    id: 'mithril-kite-shield',
+    label: 'Mithril Kite Shield',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(15)],
+    output: { slug: 'mithril-kite-shield', qty: 1, name: 'Mithril Kite Shield' },
+  },
+  {
+    id: 'mithril-helmet',
+    label: 'Mithril Helmet',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(5)],
+    output: { slug: 'mithril-helmet', qty: 1, name: 'Mithril Helmet' },
+  },
+  {
+    id: 'mithril-hood',
+    label: 'Mithril Hood',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(3)],
+    output: { slug: 'mithril-hood', qty: 1, name: 'Mithril Hood' },
+  },
+  {
+    id: 'mithril-armor',
+    label: 'Mithril Armor',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(10)],
+    output: { slug: 'mithril-armor', qty: 1, name: 'Mithril Armor' },
+  },
+  {
+    id: 'mithril-cape',
+    label: 'Mithril Cape',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(7)],
+    output: { slug: 'mithril-cape', qty: 1, name: 'Mithril Cape' },
+  },
+  {
+    id: 'mithril-gauntlets',
+    label: 'Mithril Gauntlets',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(5)],
+    output: { slug: 'mithril-gauntlets', qty: 1, name: 'Mithril Gauntlets' },
+  },
+  {
+    id: 'mithril-gloves',
+    label: 'Mithril Gloves',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(3)],
+    output: { slug: 'mithril-gloves', qty: 1, name: 'Mithril Gloves' },
+  },
+  {
+    id: 'mithril-boots',
+    label: 'Mithril Boots',
+    family: 'mithril',
+    batch: 'one',
+    station: 'forge',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(3)],
+    output: { slug: 'mithril-boots', qty: 1, name: 'Mithril Boots' },
+  },
+
   // ==================== TOOLS ====================
   // Three stone and a length of wood, once Jack has shown you how — they matter
   // more now that the Neverending Mine breaks a pickaxe roughly every fifty
@@ -746,6 +1217,59 @@ const CRAFTING_RECIPES = [
     unlock: IRON_UNLOCK,
     inputs: [IRON(3), WOOD(1)],
     output: { slug: 'iron-hammer', qty: 1, name: 'Iron Hammer' },
+  },
+
+  {
+    id: 'steel-pickaxe',
+    label: 'Steel Pickaxe',
+    family: 'tools',
+    batch: 'one',
+    station: 'forge',
+    effect: 'Mines coal, iron and stone',
+    blurb: 'Hard enough for the coal seams below Mine Level 10.',
+    tool: STEEL_HAMMER,
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(3), WOOD(1)],
+    output: { slug: 'steel-pickaxe', qty: 1, name: 'Steel Pickaxe' },
+  },
+  {
+    // No hammer asked for, like the iron hammer: a lost tool must not lock a
+    // player out of a tier they have earned.
+    id: 'steel-hammer',
+    label: 'Steel Hammer',
+    family: 'tools',
+    batch: 'one',
+    station: 'forge',
+    effect: 'Works steel at a forge',
+    blurb: 'A replacement steel forge hammer. Works iron too.',
+    unlock: STEEL_UNLOCK,
+    inputs: [STEEL(3), WOOD(1)],
+    output: { slug: 'steel-hammer', qty: 1, name: 'Steel Hammer' },
+  },
+  {
+    id: 'mithril-pickaxe',
+    label: 'Mithril Pickaxe',
+    family: 'tools',
+    batch: 'one',
+    station: 'forge',
+    effect: 'Mines mithril and everything above it',
+    blurb: 'The last pick. Nothing in the mine is too hard for it.',
+    tool: MITHRIL_HAMMER,
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(3), WOOD(1)],
+    output: { slug: 'mithril-pickaxe', qty: 1, name: 'Mithril Pickaxe' },
+  },
+  {
+    id: 'mithril-hammer',
+    label: 'Mithril Hammer',
+    family: 'tools',
+    batch: 'one',
+    station: 'forge',
+    effect: 'Works mithril at a forge',
+    blurb: 'A replacement mithril forge hammer. Works every softer metal as well.',
+    unlock: MITHRIL_UNLOCK,
+    inputs: [MITHRIL(3), WOOD(1)],
+    output: { slug: 'mithril-hammer', qty: 1, name: 'Mithril Hammer' },
   },
 
   // ==================== RINGS ====================
