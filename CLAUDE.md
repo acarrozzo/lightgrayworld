@@ -90,7 +90,7 @@ Before changing a system, name its authoritative owner and decide what reconnect
 - `src/lib/game-engine/room-state.js`: room actions, the player-scoped present enemy (one per room, as in the original), movement rules, battle integration, ambient updates.
 - `src/lib/game-engine/battle-*.js`: battle state, formulas, action resolution, rewards, defeat.
 - `src/lib/game-engine/services/`: inventory, equipment, quests, leveling, room items, cooldowns, present-enemy persistence.
-- `src/lib/game-data/regen.js`, `services/regen-service.js`, `services/buff-service.js`, `src/lib/status-effects.ts`: the per-click status tick. Every temporary effect is a click countdown column on `User` registered in `buff-service` (`BUFF_FIELDS`, plus `AMOUNT_FIELDS` for the amounts Regenerate and Iron Skin lock at cast and Magic Armor's absorb; Iron Skin's amount is DEF via `getStatBuffBonuses`); `engine.applyClickTick` decrements them, lands regen (gear `metadata.regen` + tea + Regenerate) then poison in one statement, and death clears them all. Only one buff from the consumable slot (`CONSUMABLE_SLOT_FIELDS`: the four capsules, coffee, tea) runs at a time — `startBuff` ends the others in the statement that starts the new one; wings, gills, wards, spells and Glory sit outside it. Enemy poison is a special in `enemy-specials.js` applied by `battle-action-handlers.applyEnemyHit`, which also spends Magic Armor before HP. The client reads the same modules for the header status strip and item labels, so a chip says what the next click does.
+- `src/lib/game-data/regen.js`, `services/regen-service.js`, `services/buff-service.js`, `src/lib/status-effects.ts`: the per-click status tick. Every temporary effect is a click countdown column on `User` registered in `buff-service`; `engine.applyClickTick` decrements them and lands regen then poison in one statement. Only one consumable-slot buff runs at a time. The header comment in `buff-service.js` is the full contract; the client reads the same modules for the status strip and item labels.
 - `src/lib/game-engine/config/room-supplies.js`, `services/room-supply-service.js`: what a room hands a player for free, per player, as in the original — `take` (one each while held) or `topUp` (refill to N). The room's line is separate from `ItemTemplate.max`, which is only the bag's cap. Shared `RoomItem` rows are only what players drop. Harvests (trees, berries, sand, stone) stay room actions built by `makeGatherAction`: a batch on a rolling cooldown, no held cap.
 - `src/lib/game-engine/room-action-handlers.js`: hand-authored room interactions, gathering, chests, crafting, and environmental actions.
 - `src/lib/game-engine/room-gates.js`, `lever-state.js`, `search-reveal-state.js`: access and discovery logic.
@@ -103,7 +103,7 @@ Before changing a system, name its authoritative owner and decide what reconnect
 - `prisma/schema.prisma`, `prisma/seed.ts`, `prisma/migrations/`: durable schema and authored world/item data.
 - `src/lib/socket-server-handlers.js`, `src/lib/socket.ts`, `src/lib/socket-utils.js`, `src/lib/socket-handlers.ts`: realtime transport and contracts.
 - `src/lib/game-state.ts`: central client gameplay store.
-- `src/lib/theme/`: terminal colour themes. Themes are typed recipes in `themes/`, derived by `factory.ts`, flattened to CSS variables by `tokens.ts`, and emitted to the committed `src/app/generated-themes.css` by `npm run generate-themes`. Components use semantic roles (`text-status-error`, `bg-surface-panel`, `.fill-action-attack`, `roomColor(...)`), never raw Tailwind colours or hex. Room colour overrides in the seed are tokens from `room-colors.ts`. `npm run validate-themes` checks contrast and distinctness.
+- `src/lib/theme/`: terminal color themes. Themes are typed recipes in `themes/`, derived by `factory.ts`, flattened to CSS variables by `tokens.ts`, and emitted to the committed `src/app/generated-themes.css` by `npm run generate-themes`. Components use semantic roles (`text-status-error`, `bg-surface-panel`, `.fill-action-attack`, `roomColor(...)`), never raw Tailwind colors or hex. Room color overrides in the seed are tokens from `room-colors.ts`. `npm run validate-themes` checks contrast and distinctness.
 - `src/components/GameInterface.tsx`: current top-level gameplay coordinator and layout.
 - `src/components/game-interface/panels/`: focused character, inventory, quest, battle, map, party, player, feed, chat, crafting, and settings views.
 - `src/app/(world-tool)/`: the World Tool's read-oriented reference pages (`/enemies`, `/items`, `/rooms`, `/quests`, `/players`, …) under one layout that supplies the left rail and the scroll container. `src/lib/world-tool/pages.ts` is the page registry the rail and the home launcher share; `search-index.ts` is what the rail's search can find. Add a page to the registry, not to a nav.
@@ -202,7 +202,7 @@ Modernization should improve reliability, clarity, accessibility, responsiveness
 Prefer:
 
 - structured events over parsing feed strings;
-- semantic colour roles over raw colours: a meaning (`resource.hp`, `status.error`, `mood.danger`) rather than a hue, so every theme can place it; decorative `hue.*` only where colour distinguishes without meaning;
+- semantic color roles over raw colors: a meaning (`resource.hp`, `status.error`, `mood.danger`) rather than a hue, so every theme can place it; decorative `hue.*` only where color distinguishes without meaning;
 - declarative definitions over huge conditional files;
 - stable identifiers over display-name coupling;
 - transactions and idempotency over ordered side effects;
@@ -243,6 +243,7 @@ While editing:
 
 After editing:
 
+- Verify with code, tests, a build, and static screenshots of a rendered screen at most. Do not move the character, fight, or spend resources to check something; the account is the owner's.
 - Verify success, failure, retry, refresh/reconnect, and concurrency-sensitive paths.
 - Confirm server, client types, socket constants, payload handlers, and UI projections agree.
 - Confirm room/item/quest/enemy definitions and World Tool views agree.
@@ -254,10 +255,14 @@ After editing:
 Use the commands relevant to the change:
 
 ```bash
-npm run validate-quests
-npm run validate-themes
+npm run validate-quests   # quests.json, givers, factions
+npm run validate-world    # cross-file ids: rooms, spawns, drops, gates, supplies, maps
+npm run validate-themes   # contrast and distinctness
+npm run typecheck
 npm run lint
-npm run build
+npm test                  # test/*.test.{js,ts} on the node test runner
+npm run check             # all of the above
+npm run build             # runs the validators first
 ```
 
 After editing anything under `src/lib/theme/themes/`, run `npm run generate-themes` and commit the regenerated stylesheet.
@@ -272,7 +277,7 @@ npx prisma migrate status
 
 Do not reset, drop, or reseed a database without explicit confirmation. Local and production environments may point to shared Supabase data.
 
-There is currently no comprehensive automated gameplay test suite. For mechanic changes, add focused tests where practical and perform an explicit manual scenario check. A build alone does not validate socket ordering, persistence, balance, or multiplayer behavior.
+`test/` holds focused engine and client tests (queue, combat, parties, supplies, spells, skills, travelers, status effects, theme, tab rules). Add one beside the mechanic you change. A build alone does not validate socket ordering, persistence, balance, or multiplayer behavior, so also reason through the scenario explicitly.
 
 ## Definition of done
 

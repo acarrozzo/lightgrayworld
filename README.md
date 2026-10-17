@@ -1,159 +1,56 @@
-# Light Gray RPG - Modern Multiplayer Version
+# Light Gray
 
-A modern, real-time multiplayer text-based RPG built with Next.js, TypeScript, and Socket.io.
+A multiplayer recreation of Light Gray RPG, a browser RPG I hand-coded in the early 2000s. The rooms, items, enemies and quests are ported from the original. The implementation is new: a server-authoritative Next.js app that brings a true shared multiplayer world experience while keeping the original's single-player, casual, turn-based progression.
 
-## 🚀 Features
+It is a room-based, click-driven game. You travel, look, search, rest, attack, talk, equip, use, gather and craft. The numbers are shown, preparation matters, and dying has a cost.
 
-- **Real-time Multiplayer**: Live chat and player presence
-- **Room-based Navigation**: Explore different game areas
-- **Character Progression**: Level up, gain stats, learn skills
-- **Modern UI**: Responsive design with Tailwind CSS
-- **Type Safety**: Full TypeScript support
-- **Database**: PostgreSQL via Supabase with Prisma ORM
+## Stack
 
-## 🛠️ Tech Stack
+Next.js 15 and React 19 in TypeScript, with the game engine in CommonJS JavaScript. Prisma 7 on PostgreSQL (Supabase). Socket.IO for every gameplay command and live presence. Zustand for the client store. Tailwind 4 with a generated, theme-aware color system.
 
-- **Frontend**: Next.js 14, React 19, TypeScript
-- **Styling**: Tailwind CSS
-- **Database**: PostgreSQL via Supabase with Prisma ORM
-- **Real-time**: Socket.io
-- **State Management**: Zustand
-- **Authentication**: Custom auth system
+One Node process serves the Next.js app and the realtime server together. The server decides every result; the client only draws.
 
-## 🎮 Getting Started
+## Run it locally
 
-### Prerequisites
+Needs Node 20+ and a Supabase (or any PostgreSQL) database.
 
-- Node.js 18+
-- npm or yarn
-- A Supabase account with a PostgreSQL database
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Copy the local environment template and configure your Supabase credentials:
-   ```bash
-   cp env.local.template .env.local
-   ```
-   Edit `.env.local` and add your Supabase database URLs:
-   - `DATABASE_URL`: Your Supabase pooler connection (port 6543 with `?pgbouncer=true`)
-   - `DIRECT_URL`: Your Supabase direct connection (port 5432, used for migrations)
-
-4. Set up the database schema:
-   ```bash
-   npx prisma migrate dev
-   npx prisma db seed
-   ```
-
-5. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-6. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-### Test Account
-
-- **Username**: testuser
-- **Password**: password123
-
-## 🏗️ Project Structure
-
-```
-src/
-├── app/                 # Next.js app directory
-│   ├── api/            # API routes
-│   └── page.tsx        # Main page
-├── components/         # React components
-│   ├── GameInterface.tsx
-│   ├── GameHeader.tsx
-│   ├── GameContent.tsx
-│   ├── GameSidebar.tsx
-│   ├── GameChat.tsx
-│   └── LoginForm.tsx
-├── lib/               # Utilities
-│   ├── prisma.ts      # Database client
-│   └── game-state.ts  # Zustand store
-└── hooks/             # Custom hooks
-    └── useSocket.ts   # Socket.io hook
-```
-
-## 🎯 Game Features
-
-### Current Implementation
-- ✅ User authentication (login/register)
-- ✅ Room navigation system
-- ✅ Real-time chat
-- ✅ Player presence tracking
-- ✅ Character stats display
-- ✅ Responsive UI
-
-### Planned Features
-- 🔄 Combat system
-- 🔄 Inventory management
-- 🔄 Quest system
-- 🔄 Equipment system
-- 🔄 Magic spells
-- 🔄 Guild/party system
-
-## 🗄️ Database Schema
-
-The game uses a comprehensive database schema with:
-- **Users**: Player accounts and character data
-- **Rooms**: Game locations with connections
-- **Equipment**: Character gear and items
-- **Inventory**: Player items
-- **Chat**: Message history
-- **Quests**: Quest progress tracking
-
-## 🔧 Development
-
-### Database Commands
 ```bash
-# Generate Prisma client
-npx prisma generate
-
-# Run migrations (uses DIRECT_URL for Supabase)
+npm install
+cp env.local.template .env.local   # fill in DATABASE_URL and DIRECT_URL
 npx prisma migrate dev
-
-# Seed database with initial data
 npx prisma db seed
-
-# Deploy migrations to production
-npx prisma migrate deploy
-
-# Open Prisma Studio to view/edit database
-npx prisma studio
+npm run dev
 ```
 
-### Socket.io Events
+Open http://localhost:3000. The seed creates a test account, `testuser` / `password123`.
 
-**Client → Server:**
-- `player-login`: Player connects
-- `player-move`: Player changes rooms
-- `chat-message`: Send chat message
-- `game-action`: Perform game action
+The dev and production databases may be the same Supabase project. Do not reset or reseed without checking which one `.env.local` points at.
 
-**Server → Client:**
-- `player-joined`: Another player joined room
-- `player-left`: Player left room
-- `player-entered`: Player entered room
-- `chat-message`: New chat message
-- `player-action`: Player performed action
+## Commands
 
-## 📝 License
+| Command | What it does |
+|---|---|
+| `npm run dev` | Generate icons, themes and bosses, then start the unified dev server |
+| `npm run dev:clean` | Same, after clearing `.next` |
+| `npm run dev:engine` | Dev server that restarts when engine or game-data files change |
+| `npm run check` | Validators, typecheck, lint and tests in one go |
+| `npm test` | The `test/` suite (node test runner) |
+| `npm run validate` | Quest, world-data and theme integrity checks |
+| `npm run generate-themes` | Rebuild `src/app/generated-themes.css` after editing a theme |
+| `npm run build` | Production build, validators included |
 
-This project is for educational purposes.
+## Where things are
 
-## 🤝 Contributing
+- `src/lib/game-engine/` is the server-side game: the action queue, room state, battles, services.
+- `src/lib/game-data/` is the authored world: enemies, quests, spells, skills, recipes, maps, travelers.
+- `prisma/seed.ts` holds the rooms and item templates.
+- `src/components/` is the React client; `GameInterface.tsx` is the top-level coordinator.
+- `src/app/(world-tool)/` is a read-only reference site for the world's data, built from the same definitions the game uses.
 
-This is a personal project, but suggestions and improvements are welcome!
+`CLAUDE.md` is the full working brief: architecture, invariants, and how to port a slice of the original. `DEPLOYMENT.md` covers Fly.io and migrations. `docs/DECISIONS.md` records the design calls that shaped the recreation. `ICON_BUILD_PROCESS.md` explains the sprite sheet.
 
----
+The original game sits beside this repo for reference only and is never edited or committed.
 
-**Note**: This is a modern rebuild of the original Light Gray RPG, designed to be truly multiplayer with real-time features and a modern tech stack.# Database connection test
+## Status
+
+The whole original map is ported except the Swamp. Combat, inventory, equipment, quests, factions, skills, spells, crafting, teleports, parties, chat, death and rebirth, and traveling NPCs are all in. Balance of the late game is still being tuned. One player at a time is the normal case today; the multiplayer model is there and tested, but has had little live traffic.

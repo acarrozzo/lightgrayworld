@@ -72,18 +72,6 @@ After deployment, verify everything is working:
    - Open browser console and verify Socket.IO connects to `wss://<app>.fly.dev/socket.io` (not `ws://localhost:3000`)
    - Check for any authentication errors in the console
 
-## Optional: Vercel Deployment (Frontend Only)
-
-If you prefer to keep the frontend on Vercel for CDN benefits, you can:
-
-1. Set the following environment variables in Vercel:
-   - `NEXT_PUBLIC_SOCKET_URL=https://your-app.fly.dev` (your Fly.io domain)
-   - `NEXT_PUBLIC_SOCKET_PATH=/socket.io` (only if you changed the path)
-2. Configure Vercel to build only the frontend (this requires custom build configuration).
-3. Note: API routes will not work on Vercel in this setup - they must be accessed via the Fly.io domain.
-
-**Recommended:** Use the unified Fly.io deployment for simplicity and to ensure all features work correctly.
-
 ## Public Endpoints
 
 - `GET /api/game/room/current`
@@ -96,11 +84,11 @@ All other game endpoints continue to require Bearer token authentication.
 
 ## Prisma Migrations & Baseline Reset
 
-The schema is now tracked by a single baseline migration (`prisma/migrations/20251222024922_baseline_init`). Previous migrations have been archived in `prisma/migrations_archive/` for reference only.
+The first folder in `prisma/migrations/` (`20260103151212_add_solar_office_map`) creates the whole schema and is the baseline every environment was reset to. Everything before it lives in `prisma/migrations_archive/` for reference only and is never applied.
 
 1. **Develop schema changes**
    - Update [`prisma/schema.prisma`](prisma/schema.prisma).
-   - Run `npx prisma migrate dev --name <change>` locally (this creates a new dated folder next to the baseline).
+   - Run `npx prisma migrate dev --name <change>` locally (this creates a new dated folder after the baseline).
 2. **Deploy migrations**
    - Commit the new migration folder(s).
    - In every environment (local dev DB, staging, production, Fly.io), run `npx prisma migrate deploy`.
@@ -108,7 +96,7 @@ The schema is now tracked by a single baseline migration (`prisma/migrations/202
    - Drop the `public` schema (e.g. `psql "$DATABASE_URL" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'`) or run `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION="<user confirmation>" npx prisma migrate reset`.
    - Run `npx prisma migrate deploy`.
    - Seed with `npx prisma db seed` (uses [`prisma/seed.ts`](prisma/seed.ts)).
-   - For Fly.io, you can add a release command in `fly.toml` to run migrations before deployment.
+   - For Fly.io, `fly.toml` has a commented-out `release_command` that would run `prisma migrate deploy` before each deploy; it is off, so migrations are run by hand.
 4. **Verification**
    - `npx prisma migrate status` should report "Database schema is up to date".
    - Fly.io deployment logs should show the build process completing successfully.

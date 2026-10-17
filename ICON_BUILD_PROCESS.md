@@ -1,106 +1,31 @@
-# 🎨 Icon Build Process
+# Icons
 
-This project uses an automated SVG sprite sheet generation system that processes all 525+ icons from your original game assets.
+Every icon in the game is one `<symbol>` in a single sprite sheet. The page loads it once and draws icons with `<use href="#name">`.
 
-## 📁 Generated Files
+## Generated files
 
-- `public/sprite-sheet.svg` - Single sprite sheet containing all icons
-- `src/lib/icon-mappings.ts` - TypeScript mappings for all icon names
+Both are gitignored and rebuilt by `npm run dev` and `npm run build`:
 
-## 🚀 Available Scripts
+- `public/sprite-sheet.svg`, the sheet.
+- `src/lib/icon-mappings.ts`, the type-safe list of icon names.
 
-### Development
-```bash
-# Generate icons and start dev server
-npm run dev
+## Sources
 
-# Generate icons, watch for changes, and start dev server
-npm run dev:watch
-```
+`scripts/generate-sprite-sheet.js` scans two trees for `.svg` files:
 
-### Build
-```bash
-# Generate icons and build for production
-npm run build
+- `public/icons/`, recursively. Loose files at the top level are UI and item glyphs; `equipment/`, `enemy/`, `npc/` and `environment/` hold the categories. Files under `environment/` get an `environment-` prefix.
+- `public/img/svg/environment/`, also prefixed `environment-`.
 
-# Generate icons only
-npm run generate-icons
+Each SVG is converted to a symbol with `currentColor` fills so it takes the color of the text around it. The Illustrator sources the SVGs are exported from live in `design/` and are not read by the build.
 
-# Watch for SVG changes and auto-regenerate
-npm run watch-icons
-```
+## Adding or replacing an icon
 
-## 🔄 How It Works
+1. Put the `.svg` in the right folder under `public/icons/`. The filename, without extension, is the icon's name.
+2. Run `npm run generate-icons`, or `npm run watch-icons` to regenerate on every save while you work.
+3. Use it: `<Icon name="your-icon" size={20} />`. `Icon` takes `name`, `size`, `color` and `className`; a `text-*` class in `className` overrides `color`.
 
-1. **Icon Discovery**: Scans `public/icons/` directory recursively for all `.svg` files
-2. **Processing**: Converts each SVG to a `<symbol>` element with proper `currentColor` attributes
-3. **Sprite Generation**: Combines all symbols into a single sprite sheet
-4. **TypeScript Mappings**: Generates type-safe icon name mappings
-5. **Integration**: Icons are used via `<use href="#icon-name">` elements
+Equipment icons are matched to items by slot and id; the World Tool's `/icons` page shows every slot's glyphs side by side and keeps a Backups tab of earlier picks.
 
-## 📝 Adding New Icons
+## If an icon does not show
 
-1. Add your new SVG file to `public/icons/` (or any subdirectory)
-2. Run `npm run generate-icons` to update the sprite sheet
-3. Use the icon with `<Icon name="your-icon-name" />`
-
-## 🎯 Icon Usage
-
-```tsx
-import Icon from '@/components/Icon'
-
-// Basic usage
-<Icon name="attack" size={24} />
-
-// With color
-<Icon name="heal" size={32} color="green" />
-
-// With custom styling
-<Icon name="magic" size={16} color="blue" className="animate-pulse" />
-```
-
-## 🔧 Build Integration
-
-The icon generation is automatically integrated into:
-
-- **Development**: Icons are generated before starting the dev server
-- **Production Build**: Icons are generated before building
-- **Pre-commit Hook**: Icons are regenerated and added to commits
-- **File Watching**: Icons auto-regenerate when SVG files change
-
-## 📊 Performance Benefits
-
-- **Single HTTP Request**: All icons load with one request
-- **Instant Rendering**: No loading states or delays
-- **Browser Caching**: Sprite sheet cached once, used everywhere
-- **Type Safety**: Full TypeScript support with autocomplete
-- **Tree Shaking**: Only used icons are included in builds
-
-## 🛠️ Troubleshooting
-
-### Icons Not Showing
-1. Check if the sprite sheet exists: `public/sprite-sheet.svg`
-2. Verify icon name in mappings: `src/lib/icon-mappings.ts`
-3. Ensure SVG file is in `public/icons/` directory
-
-### Build Failures
-1. Check for SVG syntax errors in source files
-2. Ensure all dependencies are installed: `npm install`
-3. Try regenerating icons: `npm run generate-icons`
-
-### Performance Issues
-1. Use the watch mode for development: `npm run dev:watch`
-2. Check if sprite sheet is being cached properly
-3. Verify icons are using the sprite sheet, not individual files
-
-## 📈 Icon Statistics
-
-- **Total Icons**: 525+ SVG files processed
-- **Categories**: 
-  - Equipment (131 icons)
-  - Enemies (182 icons)
-  - NPCs (42 icons)
-  - Environment (14 icons)
-  - UI Elements (156+ icons)
-- **File Size**: Optimized sprite sheet with minimal overhead
-- **Load Time**: Instant (single cached request)
+Check that `public/sprite-sheet.svg` exists and that the name is in `src/lib/icon-mappings.ts`. If not, the file is in the wrong folder or has an SVG syntax error; `npm run generate-icons` prints what it processed.

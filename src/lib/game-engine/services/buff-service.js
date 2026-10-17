@@ -15,6 +15,22 @@
  *     (BattleState), NOT by writing into `strMod` — that column is derived
  *     purely from equipped items and is recomputed on every equip change,
  *     which would silently wipe a buff.
+ *
+ * The registry below is the contract for the whole system:
+ *   - `BUFF_FIELDS` lists every countdown column, plus `AMOUNT_FIELDS` for the
+ *     amounts Regenerate and Iron Skin lock at cast and Magic Armor's absorb
+ *     (Iron Skin's amount is DEF via `getStatBuffBonuses`).
+ *   - `engine.applyClickTick` decrements them, lands regen (gear
+ *     `metadata.regen` + tea + Regenerate) then poison in one statement, and
+ *     death clears them all.
+ *   - Only one buff from the consumable slot (`CONSUMABLE_SLOT_FIELDS`: the four
+ *     capsules, coffee, tea) runs at a time; `startBuff` ends the others in the
+ *     statement that starts the new one. Wings, gills, wards, spells and Glory
+ *     sit outside it.
+ *   - Enemy poison is a special in `game-data/enemy-specials.js`, applied by
+ *     `battle-action-handlers.applyEnemyHit`, which spends Magic Armor before HP.
+ *   - The client reads these same modules for the header status strip and item
+ *     labels, so a chip says what the next click does.
  */
 
 /**
