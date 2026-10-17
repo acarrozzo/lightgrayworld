@@ -44,6 +44,12 @@ interface BattlePanelProps {
   /** Strike with a skill — Slice, Smash, Aim, Magic Strike — on this turn's swing. */
   onUseSkill: (skillId: string) => void
   onDismissResult: () => void
+  /**
+   * Pressing a dropped item on the victory card: opens the bag to it. Given
+   * the item's slug; the holder finds the row it now sits in. Left out, the
+   * tiles are plain.
+   */
+  onOpenItem?: (slug: string) => void
   isActing: boolean
   playerName: string
   playerLevel: number
@@ -274,18 +280,25 @@ function dropLabel(d: DropView): string {
 // One dropped item as a tile the size of the XP and gold tiles beside it. A
 // new item's tile turns gold, wears NEW on its corner and settles in once; a
 // first-kill-only drop wears FIRST on the other corner. An item can be both.
-function DropTile({ drop }: { drop: DropView }) {
+function DropTile({ drop, onOpen }: { drop: DropView; onOpen?: (slug: string) => void }) {
   const tone = drop.isNew ? 'text-loot-legendary' : 'text-loot-epic'
-  const title = drop.isNew && drop.firstKill
+  const mark = drop.isNew && drop.firstKill
     ? 'New to you, and dropped only on a first kill'
     : drop.isNew
       ? 'New: the first time you have held one'
       : drop.firstKill
         ? 'Dropped only on a first kill'
         : undefined
+  const title = onOpen ? [mark, 'Open in your bag'].filter(Boolean).join(' · ') : mark
+  // The tile is a button only when it leads somewhere; otherwise a plain box.
+  const Tile: 'button' | 'div' = onOpen ? 'button' : 'div'
   return (
-    <div
-      className="relative flex min-w-[74px] flex-col items-center justify-center rounded-lg border px-2.5 py-2"
+    <Tile
+      type={onOpen ? 'button' : undefined}
+      onClick={onOpen ? () => onOpen(drop.slug) : undefined}
+      className={`relative flex min-w-[74px] flex-col items-center justify-center rounded-lg border px-2.5 py-2 ${
+        onOpen ? 'cursor-pointer transition-[filter,transform] duration-150 hover:brightness-110 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus' : ''
+      }`}
       title={title}
       style={drop.isNew
         ? {
@@ -315,17 +328,17 @@ function DropTile({ drop }: { drop: DropView }) {
       )}
       <Icon name={resolveItemIcon(null, drop.slug)} size={32} className={tone} />
       <span className={`mt-1 text-center text-[10px] font-semibold leading-tight ${tone}`}>{dropLabel(drop)}</span>
-    </div>
+    </Tile>
   )
 }
 
 // Rewards: the drops first, then XP and gold, as one row of same-size tiles.
-function DropsShowcase({ result, drops }: { result: BattleResult; drops: DropView[] }) {
+function DropsShowcase({ result, drops, onOpenItem }: { result: BattleResult; drops: DropView[]; onOpenItem?: (slug: string) => void }) {
   return (
     <div className="flex flex-col items-center px-3 pt-3 pb-1 @min-[560px]:px-4">
       <span className="mb-2 text-[10px] uppercase tracking-[0.2em] text-loot-epic/70">Rewards</span>
       <div className="flex flex-wrap items-stretch justify-center gap-2">
-        {drops.map((d, i) => <DropTile key={`${d.slug}-${i}`} drop={d} />)}
+        {drops.map((d, i) => <DropTile key={`${d.slug}-${i}`} drop={d} onOpen={onOpenItem} />)}
         <RewardTile icon="trophy" value={`+${result.xpEarned}`} label="XP" color="var(--combat-victory)" glow="var(--combat-victory)" />
         <RewardTile icon="coin" value={`+${result.goldEarned}`} label="Gold" color="var(--combat-crit)" glow="var(--resource-gold)" />
       </div>
@@ -349,7 +362,20 @@ function FirstKillTag() {
  * no frame or banner of its own. Standalone it is the whole thing, as a
  * defeat always is.
  */
-function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: { result: BattleResult; weaponName: string | null; embedded?: boolean; onDismiss: () => void }) {
+function BattleResultCard({
+  result,
+  weaponName,
+  embedded = false,
+  onDismiss,
+  onOpenItem,
+}: {
+  result: BattleResult
+  weaponName: string | null
+  embedded?: boolean
+  onDismiss: () => void
+  /** Pressing a dropped item opens the bag to it. */
+  onOpenItem?: (slug: string) => void
+}) {
   const isWin = result.outcome === 'WIN'
   const lt = result.lastTurn
   const wasAdvantageTurn = lt?.playerRaw === null
@@ -408,12 +434,25 @@ function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: {
             <span className="font-black" style={{ color: 'var(--combat-crit)' }}>+{result.goldEarned}</span>
             <span className="text-fg-muted">gold</span>
           </p>
-          {drops.map((drop, index) => (
-            <span key={`${drop.slug}-${index}`} className="flex items-center gap-1 text-xs font-semibold text-loot-epic">
-              <Icon name={resolveItemIcon(null, drop.slug)} size={16} />
-              {dropLabel(drop)}
-            </span>
-          ))}
+          {drops.map((drop, index) =>
+            onOpenItem ? (
+              <button
+                key={`${drop.slug}-${index}`}
+                type="button"
+                onClick={() => onOpenItem(drop.slug)}
+                title="Open in your bag"
+                className="flex items-center gap-1 rounded px-1 -mx-1 text-xs font-semibold text-loot-epic transition-colors hover:bg-loot-epic/10 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+              >
+                <Icon name={resolveItemIcon(null, drop.slug)} size={16} />
+                {dropLabel(drop)}
+              </button>
+            ) : (
+              <span key={`${drop.slug}-${index}`} className="flex items-center gap-1 text-xs font-semibold text-loot-epic">
+                <Icon name={resolveItemIcon(null, drop.slug)} size={16} />
+                {dropLabel(drop)}
+              </span>
+            )
+          )}
           <button
             onClick={onDismiss}
             className="ml-auto h-8 flex-shrink-0 rounded-lg px-3 text-[11px] font-black uppercase tracking-widest text-fg-on-accent transition-all duration-150 hover:brightness-110"
@@ -455,7 +494,7 @@ function BattleResultCard({ result, weaponName, embedded = false, onDismiss }: {
 
         {/* The rewards: what was won is why the fight was fought. */}
         <div className="pb-2">
-          <DropsShowcase result={result} drops={drops} />
+          <DropsShowcase result={result} drops={drops} onOpenItem={onOpenItem} />
           {result.multiplayerBonus && (
             <p className="mt-1 text-center text-[10px] text-resource-mp">Group bonus active</p>
           )}
@@ -635,6 +674,7 @@ export default function BattlePanel({
   weaponCategory,
   inventory,
   player,
+  onOpenItem,
 }: BattlePanelProps) {
   // The item under the pointer: a restorer ghosts onto the HP/MP bars here
   // and in the header, a buff puts its "+20" beside the stat it lifts.
@@ -694,7 +734,7 @@ export default function BattlePanel({
 
   // A defeat, or a win with no frame kept to stand it in: the card alone.
   if (result && !won) {
-    return <BattleResultCard result={result} weaponName={weaponName} onDismiss={onDismissResult} />
+    return <BattleResultCard result={result} weaponName={weaponName} onDismiss={onDismissResult} onOpenItem={onOpenItem} />
   }
 
   if (!live.isInBattle && !won) return null
@@ -1266,7 +1306,7 @@ export default function BattlePanel({
       {/* ── Command deck — or, the fight won, the victory card in its place ── */}
       {won && result ? (
         <div className="border-t border-combat-victory/40">
-          <BattleResultCard result={result} weaponName={weaponName} embedded onDismiss={onDismissResult} />
+          <BattleResultCard result={result} weaponName={weaponName} embedded onDismiss={onDismissResult} onOpenItem={onOpenItem} />
         </div>
       ) : (
       <div className={`flex min-h-0 flex-col border-t border-line-subtle/50 px-3 pt-3 pb-3 ${fill ? 'flex-1' : ''}`}>

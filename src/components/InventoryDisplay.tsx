@@ -144,12 +144,25 @@ export default function InventoryDisplay({
   const [query, setQuery] = useState('')
   const words = useMemo(() => query.toLowerCase().split(/\s+/).filter(Boolean), [query])
   const searching = words.length > 0
-  const searchCount = useMemo(
-    () => (words.length === 0 ? 0 : inventory.filter((item) => words.every((word) => matchesWord(item, word))).length),
-    [inventory, words]
-  )
   const [dropOpen, setDropOpen] = useState(false)
   const [compareEnabled, setCompareEnabled] = useGearCompareSetting()
+  // "New": list only what has arrived since the bag was last opened, from
+  // every group at once. Offered only while there is something new; it
+  // switches itself off when the marks go (the player left the tab).
+  const [onlyNew, setOnlyNew] = useState(false)
+  const newInBag = useMemo(
+    () => (!showNewItems || newItemIds.size === 0 ? 0 : inventory.filter((item) => newItemIds.has(item.id)).length),
+    [inventory, newItemIds, showNewItems]
+  )
+  useEffect(() => {
+    if (newInBag === 0) setOnlyNew(false)
+  }, [newInBag])
+  const showingNew = onlyNew && newInBag > 0
+  // Searching looks through the whole bag; so does New, and the two narrow together.
+  const filtering = searching || showingNew
+  const matches = (item: InventoryItem) =>
+    (!showingNew || newItemIds.has(item.id)) && words.every((word) => matchesWord(item, word))
+  const searchCount = searching ? inventory.filter(matches).length : 0
 
   // The character panel's slot buttons deep-link into Equipment › slot.
   useEffect(() => {
@@ -161,12 +174,17 @@ export default function InventoryDisplay({
   useEffect(() => {
     if (!initialOpenId) return
     setOpenId(initialOpenId)
+    // A link to something that is not new would land on an empty list.
+    if (!newItemIds.has(initialOpenId)) setOnlyNew(false)
     const frame = requestAnimationFrame(() => {
       document
         .querySelector(`[data-bag-item="${CSS.escape(initialOpenId)}"]`)
         ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     })
     return () => cancelAnimationFrame(frame)
+    // Only the link's arrival should open and scroll; a new mark landing
+    // later is not a reason to do it again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialOpenId])
 
   useEffect(() => {
@@ -250,13 +268,16 @@ export default function InventoryDisplay({
     return filtered
   }, [byCategory, showMainHandFilters, weaponTypeFilter, handednessFilter])
 
+  // Opening a row takes its mark off — except while the list is the new
+  // things themselves, where that would make the row vanish under the finger.
+  // The marks go together when the tab is left.
   const toggleOpen = (item: InventoryItem) => {
-    onClearNewItem?.(item.id)
+    if (!showingNew) onClearNewItem?.(item.id)
     setOpenId((prev) => (prev === item.id ? null : item.id))
   }
 
   const act = (item: InventoryItem, payload: { type: string; data?: any }) => {
-    onClearNewItem?.(item.id)
+    if (!showingNew) onClearNewItem?.(item.id)
     onAction?.(payload)
   }
 
@@ -361,10 +382,10 @@ export default function InventoryDisplay({
       return <p className="text-sm text-fg-secondary">Your inventory is empty.</p>
     }
     let sections
-    if (searching) {
+    if (filtering) {
       const found = new Map<ItemCategory, InventoryItem[]>()
       for (const [category, list] of byCategory) {
-        found.set(category, list.filter((item) => words.every((word) => matchesWord(item, word))))
+        found.set(category, list.filter(matches))
       }
       sections = FILTER_GROUPS.flatMap((group) =>
         buildSections(found, { group: group.id, slot: 'all' }).map((section) => ({ ...section, title: section.title ?? group.label }))
@@ -373,9 +394,13 @@ export default function InventoryDisplay({
       sections = buildSections(groupsForView, effectiveView)
     }
     if (sections.length === 0) {
-      return <p className="text-sm text-fg-secondary">{searching ? `Nothing in your bag matches “${query.trim()}”.` : 'Nothing here yet.'}</p>
+      return (
+        <p className="text-sm text-fg-secondary">
+          {searching ? `Nothing ${showingNew ? 'new' : 'in your bag'} matches “${query.trim()}”.` : 'Nothing here yet.'}
+        </p>
+      )
     }
-    const craftingHere = !searching && effectiveView.group === 'crafting' && onOpenCrafting
+    const craftingHere = !filtering && effectiveView.group === 'crafting' && onOpenCrafting
     return sections.map((section, sectionIndex) => (
       <div key={section.key} className="flex flex-col gap-1.5">
         {section.title && (
@@ -443,14 +468,32 @@ export default function InventoryDisplay({
           )}
         </div>
         )}
+        {newInBag > 0 && (
+          <button
+            type="button"
+            aria-pressed={showingNew}
+            onClick={() => setOnlyNew((prev) => !prev)}
+            title={showingNew ? 'Show everything again' : 'Show only what is new since you last opened the bag'}
+            className={`flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded border px-2.5 py-1 text-[11px] font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+              showingNew
+                ? 'fill-status-error border-transparent'
+                : 'border-line-subtle/50 bg-surface-raised/50 text-fg-secondary hover:border-line-strong/50 hover:bg-surface-raised/70'
+            }`}
+          >
+            <span className={`h-2 w-2 rounded-full ${showingNew ? 'bg-current' : 'bg-status-error shadow-lg shadow-status-error/50'}`} aria-hidden="true" />
+            <span>New</span>
+            <span className="tabular-nums opacity-70">{newInBag}</span>
+          </button>
+        )}
         {effectiveView.group !== 'crafting' && (
           <StatSortControl value={sortStat} onChange={setSortStat} compareEnabled={compareEnabled} onCompareChange={setCompareEnabled} className="flex-shrink-0" />
         )}
       </div>
 
-      {searching ? (
+      {filtering ? (
         <p className="text-[11px] text-fg-muted">
-          Looking through everything you carry · <span className="tabular-nums text-fg-secondary">{searchCount}</span> found
+          {showingNew ? 'New since you last opened the bag' : 'Looking through everything you carry'} ·{' '}
+          <span className="tabular-nums text-fg-secondary">{searching ? searchCount : newInBag}</span> {searching ? 'found' : newInBag === 1 ? 'item' : 'items'}
         </p>
       ) : (
         <ItemFilterBar counts={counts} newCounts={newCounts} view={effectiveView} onChange={setView} hideGroups={hideGroups} hideSlots={hideSlots}>

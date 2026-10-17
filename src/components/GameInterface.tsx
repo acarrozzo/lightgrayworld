@@ -3383,6 +3383,15 @@ export default function GameInterface() {
     openTab('inv')
   }, [openTab])
 
+  // A dropped item on the victory card leads to its row in the bag. The bag
+  // has caught up with the win by the time the card can be pressed; if the
+  // drop is somehow not there (used up already), the bag opens on its own.
+  const openDroppedItem = useCallback((slug: string) => {
+    const item = inventory.find((entry) => entry.template.slug === slug)
+    if (item) handleSwitchToInventory(getItemCategory(item), item.id)
+    else handleSwitchToInventory()
+  }, [inventory, handleSwitchToInventory])
+
   const handleOpenPlayerProfile = useCallback(
     (targetPlayer: {
       id: string
@@ -4255,6 +4264,7 @@ export default function GameInterface() {
                         weaponName={weaponName}
                         weaponCategory={(equippedWeapon?.template.weaponCategory as 'MELEE' | 'RANGED' | null | undefined) ?? null}
                         inventory={inventory}
+                        onOpenItem={openDroppedItem}
                       />
                       </div>
                     </div>
