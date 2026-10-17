@@ -177,9 +177,11 @@ function SupplyPill({ supply, busy, onTake }: { supply: SupplyView; busy: boolea
   const bagFull = !locked && !settled && supply.available <= 0
 
   // A count only earns its place on a stack. "Hatchet 1/1" says nothing the
-  // check mark does not. A locked pill shows none: the floors are the guild's
-  // to reveal, not the pill's.
-  const count = !locked && supply.cap > 1 ? `${Math.min(supply.held, supply.cap)}/${supply.cap}` : null
+  // check mark does not. It is what you hold over the room's line — "7/3"
+  // when you came in carrying more than the room would give — never clamped,
+  // so the number is your bag and the line is the room's. A locked pill
+  // shows none: the floors are the guild's to reveal, not the pill's.
+  const count = !locked && supply.cap > 1 ? `${supply.held}/${supply.cap}` : null
   // Rooms with a verb of their own ("Fish") say it here rather than on the face,
   // which keeps every pill reading as the thing rather than the sentence.
   const verb = supply.takeLabel && supply.takeLabel !== 'Take' ? `${supply.takeLabel}. ` : ''

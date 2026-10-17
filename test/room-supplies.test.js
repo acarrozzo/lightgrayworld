@@ -53,14 +53,27 @@ test('a room never offers the same item both as a supply and as a harvest', () =
   }
 })
 
+// The one harvest allowed to have no timer: Jack's trees in Goblin Woods (025)
+// keep the original's chop-until-you-hold-10 rule (Oct 14 2026), because it is
+// the first wood a player meets and the goblins there answer every chop. Any
+// other instant harvest is the old shape creeping back.
+const INSTANT_HARVESTS = new Set(['025|chop wood'])
+
 test('no room action is still a take or a top-up in disguise', () => {
   for (const [roomId, actions] of Object.entries(ROOM_ACTIONS)) {
     for (const [name, def] of Object.entries(actions)) {
       if (!def || typeof def !== 'object') continue
       assert.equal(def.maxHeld, undefined, `${roomId} "${name}" still carries a held cap`)
       assert.equal(def.topUpTo, undefined, `${roomId} "${name}" is still a top-up`)
-      // Every harvest is on a timer; nothing is free and instant any more.
-      if (def.isGather) assert.ok(def.cooldownMs > 0, `${roomId} "${name}" is a harvest with no timer`)
+      if (!def.isGather) continue
+      // Every harvest is on a timer, bar the one room that chops to a cap instead.
+      if (INSTANT_HARVESTS.has(`${roomId}|${name}`)) {
+        assert.equal(def.cooldownMs, undefined, `${roomId} "${name}" is the instant harvest, yet has a timer`)
+        assert.ok(def.heldCap > 0, `${roomId} "${name}" is instant and uncapped`)
+      } else {
+        assert.ok(def.cooldownMs > 0, `${roomId} "${name}" is a harvest with no timer`)
+        assert.equal(def.heldCap, undefined, `${roomId} "${name}" carries a held cap; only 025 may`)
+      }
     }
   }
 })
@@ -74,10 +87,15 @@ test('the converted rooms have no leftover grab buttons', () => {
 })
 
 test('harvests expose their tool tiers for the room badge', () => {
+  // Jack's trees: the original's rule — no regrow, 2–4 wood a chop with any
+  // hatchet, stop at 10 — so the badge reads "2–4 wood" and "limit 10 wood".
   const jack = getGatherActionsForRoom('025').find((g) => g.action === 'chop wood')
   assert.ok(jack, "Jack's tree is a harvest")
-  assert.equal(jack.cooldownMs, 15 * 60 * 1000)
-  assert.ok(Array.isArray(jack.toolTiers) && jack.toolTiers.every((t) => t.quantity === 3))
+  assert.equal(jack.cooldownMs, null)
+  assert.deepEqual(jack.quantityRange, [2, 4])
+  assert.equal(jack.heldCap, 10)
+  assert.deepEqual(jack.toolTiers.map((t) => t.slug), ['mithril-hatchet', 'iron-hatchet', 'hatchet'])
+  assert.ok(jack.toolTiers.every((t) => t.quantity === undefined), 'the range is the yield for every hatchet')
   const forest = getGatherActionsForRoom('117').filter((g) => g.itemSlug === 'wood')
   assert.equal(forest.length, 2, 'Under the Massive Tree has two trees')
   assert.deepEqual(forest[0].toolTiers.map((t) => t.quantity), [6, 2, 1])
