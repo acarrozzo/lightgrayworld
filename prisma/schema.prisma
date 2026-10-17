@@ -22,6 +22,9 @@ model User {
   // never moved.
   previousRoom              String?
   recallRoom                String          @default("001")
+  // The pet along with the player: the slug of a pet item they hold, or null.
+  // Pets are collectibles with no numbers (src/lib/game-data/pets.js).
+  activePet                 String?
   lastActive                DateTime        @default(now())
   isActive                  Boolean         @default(true)
   clicks                    Int             @default(0)

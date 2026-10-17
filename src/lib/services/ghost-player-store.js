@@ -25,6 +25,7 @@ function addGhost(roomId, playerData, status) {
     currentRoom: roomId,
     uIcon: playerData.uIcon ?? null,
     uIconColor: playerData.uIconColor ?? null,
+    pet: playerData.activePet ?? playerData.pet ?? null,
     isActive: false,
     status, // 'idle' | 'disconnected'
     lastSeen: Date.now(),

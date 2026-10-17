@@ -227,6 +227,11 @@ export class SocketEventHandlers {
     return this.on(SOCKET_EVENTS.PLAYER_VITALS, handler)
   }
 
+  /** One player in the room took a pet along or left it home. */
+  onPlayerPet(handler: (payload: { id: string; roomId: string; pet: string | null }) => void): () => void {
+    return this.on(SOCKET_EVENTS.PLAYER_PET, handler)
+  }
+
   // ─── Party ───────────────────────────────────────────────────────────────
   followPlayer(targetId: string): boolean {
     return this.emit(SOCKET_EVENTS.PARTY_FOLLOW, { targetId })

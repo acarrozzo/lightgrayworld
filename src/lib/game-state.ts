@@ -32,6 +32,10 @@ export interface Player {
   uIcon?: string
   uIconColor?: string
   presenceStatus?: 'active' | 'idle' | 'disconnected'
+  /** Your own pet along with you: the slug of a pet item you hold (game-data/pets.js), or null. */
+  activePet?: string | null
+  /** Another player's pet, as the room and world rosters carry it. */
+  pet?: string | null
   /** True while this player is in an active battle (mirrors the server `inFight` flag). */
   inBattle?: boolean
   /** What they are fighting, while `inBattle`. Null/absent otherwise. */

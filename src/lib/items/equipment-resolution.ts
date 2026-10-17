@@ -73,6 +73,12 @@ export interface EquipmentSource {
     slot: string | null
     ItemTemplate: { name: string; slug?: string; metadata?: unknown } | null
   }> | null
+  /**
+   * The pet along with the player (`User.activePet` resolved to its template),
+   * which fills the Pet row. Pets are not equipped, so they never appear in
+   * `PlayerItem` above; the caller looks the template up by slug.
+   */
+  pet?: { name: string; slug?: string; icon?: string } | null
 }
 
 /**
@@ -97,6 +103,10 @@ export function resolveEquipment(user: EquipmentSource): Record<string, Resolved
       slug: equipped.ItemTemplate.slug,
       icon: metadata?.icon,
     }
+  }
+
+  if (user.pet) {
+    resolved.pet = { name: user.pet.name, slug: user.pet.slug, icon: user.pet.icon }
   }
 
   return resolved

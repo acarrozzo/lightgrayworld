@@ -80,6 +80,8 @@ const SOCKET_EVENTS = {
   BATTLE_FLED: 'battle:fled',
   PLAYER_BATTLE_STATUS: 'player-battle-status',
   PLAYER_VITALS: 'player-vitals',
+  // One player's pet changed (taken along or left home): the room's cards update.
+  PLAYER_PET: 'player-pet',
   PLAYER_LEVEL_UP: 'player:level-up',
   PLAYER_CLICKS_UPDATE: 'player:clicks-update',
   INVENTORY_UPDATE: 'inventory:update',

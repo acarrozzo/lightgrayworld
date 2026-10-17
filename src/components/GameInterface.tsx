@@ -66,6 +66,7 @@ import { useResizablePanel, useViewportWidth } from './game-interface/useResizab
 // explore column room for the room card no matter how wide either panel is
 // dragged.
 const { MAP_SHEETS } = require('@/lib/game-data/world-map')
+const { getPet } = require('@/lib/game-data/pets') as { getPet: (slug: string | null | undefined) => { slug: string; name: string; icon: string } | null }
 const LEFT_PANEL_DEFAULT = 420
 const LEFT_PANEL_MIN = LEFT_PANEL_DEFAULT
 const FEED_PANEL_DEFAULT = 360
@@ -1845,6 +1846,7 @@ export default function GameInterface() {
       else if (action === 'equip_item') eventType = 'equip'
       else if (action === 'auto_equip') eventType = 'equip'
       else if (action === 'enemy_spawn') eventType = 'enemy-spawn'
+      else if (action === 'pet') eventType = 'pet'
       else if (action) eventType = 'action-feedback'
 
       appendWorldFeed({
@@ -2879,6 +2881,16 @@ export default function GameInterface() {
       )
     })
 
+    // Someone in the room took a pet along or left it home: their card follows.
+    const cleanupPlayerPet = socketHandlers.onPlayerPet((data) => {
+      const activeRoom = currentRoomRef.current
+      if (!activeRoom || data.roomId !== activeRoom.roomId) return
+      const currentRoomPlayers = useGameStore.getState().roomPlayers
+      const target = currentRoomPlayers.find((p) => p.id === data.id)
+      if (!target || (target.pet ?? null) === (data.pet ?? null)) return
+      setRoomPlayers(currentRoomPlayers.map((p) => (p.id === data.id ? { ...p, pet: data.pet ?? null } : p)))
+    })
+
     return () => {
       cleanupPlayerJoined()
       cleanupPlayerLeft()
@@ -2886,6 +2898,7 @@ export default function GameInterface() {
       cleanupPlayerReturned()
       cleanupPlayerBattleStatus()
       cleanupPlayerVitals()
+      cleanupPlayerPet()
     }
   }, [socket, socketHandlers, appendWorldFeed])
 
@@ -3462,16 +3475,27 @@ export default function GameInterface() {
   // What of the interface this character has earned (lib/unlocks). Every fact
   // is one the server already sent; nothing here gates an action.
   const others = useMemo(() => roomPlayers.some((other) => other.id !== player?.id), [roomPlayers, player?.id])
+  // The pet along, for the header's glyph beside the name: named from the
+  // registry, drawn with the bag item's icon. Null with none along.
+  const headerPet = useMemo(() => {
+    const pet = getPet(player?.activePet)
+    if (!pet) return null
+    const held = inventory.find((item) => item.template.slug === pet.slug)
+    return { name: pet.name, iconName: resolveItemIcon((held?.template.metadata ?? { icon: pet.icon }) as { icon?: string } | null, pet.slug) }
+  }, [player?.activePet, inventory])
+
   const unlockFacts = useMemo<UnlockFacts | null>(() => {
     if (!player) return null
     let consumableCount = 0
     let craftingCount = 0
     let miscCount = 0
+    let petCount = 0
     for (const item of inventory) {
       const category = getItemCategory(item)
       if (category === 'consumables') consumableCount += 1
       else if (category === 'crafting') craftingCount += 1
       else if (category === 'misc') miscCount += 1
+      else if (category === 'pets') petCount += 1
     }
     const skills = buildSkillbook(player)
     const spells = buildSpellbook(player)
@@ -3482,6 +3506,7 @@ export default function GameInterface() {
       consumableCount,
       craftingCount,
       miscCount,
+      petCount,
       questCount: quests.length,
       giversMet: giversMet.length,
       hasMapOrTeleport: hasMap || (player.discoveredTeleports?.length ?? 0) > 0,
@@ -4057,6 +4082,7 @@ export default function GameInterface() {
       />
       <GameHeader
         playerName={player?.username}
+        pet={headerPet}
         level={player?.level}
         hp={player?.hp}
         hpMax={player?.hpMax}

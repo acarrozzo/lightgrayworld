@@ -1,6 +1,7 @@
 'use client'
 
 import { Player, useGameStore } from '@/lib/game-state'
+import Icon from '@/components/Icon'
 import { earnedTitles } from '@/lib/game-data/quest-registry'
 import React, { useMemo, useState } from 'react'
 import AvatarSelectionModal from '@/components/AvatarSelectionModal'
@@ -32,6 +33,8 @@ interface CharPanelProps {
   onPointsSpent: (updatedPlayer: Player, summary: AllocationSummary) => void
 }
 
+// Pets are named from the shared registry; the player carries only the slug.
+const { getPet } = require('@/lib/game-data/pets') as { getPet: (slug: string | null | undefined) => { slug: string; name: string; icon: string } | null }
 
 export default function CharPanel({ player, onSwitchToInventory, onOpenBook, bookTab = null, onPointsSpent }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
@@ -169,6 +172,33 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
                       </p>
                     )}
                     <p className="text-sm text-fg-secondary">Room: {player.currentRoom || '???'}</p>
+                    {/* The pet along, or the pets at home: company, no numbers. Switch opens the bag's Pets group. */}
+                    {(() => {
+                      const along = getPet(player.activePet)
+                      const heldPets = inventory.filter((item) => Boolean((item.template.metadata as { pet?: unknown } | null)?.pet))
+                      if (!along && heldPets.length === 0) return null
+                      return (
+                        <p className="flex items-center gap-1.5 text-sm text-fg-secondary">
+                          {along ? (
+                            <>
+                              <Icon name={along.icon} size={14} color="current" />
+                              <span>Pet: <span className="text-fg-bright">{along.name}</span></span>
+                            </>
+                          ) : (
+                            <span>Pet: <span className="text-fg-muted">none along</span></span>
+                          )}
+                          {onSwitchToInventory && (
+                            <button
+                              type="button"
+                              onClick={() => onSwitchToInventory('pets')}
+                              className="text-xs text-accent-hover underline-offset-2 hover:underline"
+                            >
+                              {along ? 'Switch' : 'Choose'}
+                            </button>
+                          )}
+                        </p>
+                      )
+                    })()}
                   </div>
 
                   <div className="space-y-3">

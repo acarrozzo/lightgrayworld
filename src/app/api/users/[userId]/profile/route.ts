@@ -37,6 +37,7 @@ async function handleGetPublicProfile(request: AuthenticatedRequest) {
         currency: true,
         uIcon: true,
         uIconColor: true,
+        activePet: true,
         equipment: {
           select: {
             rightHand: true,
@@ -76,7 +77,17 @@ async function handleGetPublicProfile(request: AuthenticatedRequest) {
       return NextResponse.json(COMMON_ERRORS.NOT_FOUND('User'), { status: 404 })
     }
 
-    const equipment = resolveEquipment(user)
+    // The pet along is not equipped, so it is not among the PlayerItem rows
+    // above: resolve its template by slug for the profile's Pet row.
+    const petTemplate = user.activePet
+      ? await prisma.itemTemplate.findUnique({ where: { slug: user.activePet }, select: { name: true, slug: true, metadata: true } })
+      : null
+    const equipment = resolveEquipment({
+      ...user,
+      pet: petTemplate
+        ? { name: petTemplate.name, slug: petTemplate.slug, icon: (petTemplate.metadata as { icon?: string } | null)?.icon }
+        : null,
+    })
 
     return NextResponse.json({
       success: true,

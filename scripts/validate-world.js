@@ -361,6 +361,24 @@ for (const enemy of ENEMIES) {
 }
 // A traveler that can be fought (the field's bunny) is placed by its own
 // movement, not by a room table; it counts as spawned, and must exist.
+// Pets are bag items with lines placed on rooms and map sheets; every id they
+// name must exist, or the pet would be granted (or speak) about nothing.
+const { PETS } = load('src/lib/game-data/pets.js')
+const { MAP_SHEETS } = load('src/lib/game-data/world-map.js')
+const sheetIds = new Set(MAP_SHEETS.map((sheet) => sheet.id))
+for (const pet of PETS) {
+  if (!itemSlugs.has(pet.slug)) err('pets', `${pet.slug} has no item template in the seed`)
+  if (pet.source?.roomId && !isRoom(pet.source.roomId)) err('pets', `${pet.slug} comes from unknown room "${pet.source.roomId}"`)
+  if (pet.source?.questId && !QUESTS[pet.source.questId]) err('pets', `${pet.slug} comes from unknown quest "${pet.source.questId}"`)
+  if (!Array.isArray(pet.lines?.any) || pet.lines.any.length === 0) err('pets', `${pet.slug} has no lines for anywhere`)
+  for (const roomId of Object.keys(pet.lines?.rooms || {})) {
+    if (!isRoom(roomId)) err('pets', `${pet.slug} has a line placed in unknown room "${roomId}"`)
+  }
+  for (const sheetId of Object.keys(pet.lines?.sheets || {})) {
+    if (!sheetIds.has(sheetId)) err('pets', `${pet.slug} has a line placed on unknown map sheet "${sheetId}"`)
+  }
+}
+
 const { TRAVELERS } = load('src/lib/game-data/travelers.js')
 for (const traveler of TRAVELERS) {
   if (!traveler.enemySlug) continue

@@ -40,6 +40,7 @@ export const INV_TWO_COLUMN_WIDTH = 700
  */
 const GROUP_TABS: Array<{ id: FilterGroup; label: string; unlock?: UnlockId }> = [
   { id: 'gear', label: 'Gear' },
+  { id: 'pets', label: 'Pets', unlock: 'inv:pets' },
   { id: 'consumables', label: 'Items', unlock: 'inv:consumables' },
   { id: 'crafting', label: 'Craft', unlock: 'inv:crafting' },
   { id: 'misc', label: 'Misc', unlock: 'inv:misc' },

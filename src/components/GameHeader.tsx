@@ -2,6 +2,7 @@
 
 import { Settings as SettingsIcon } from 'lucide-react'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
+import Icon from '@/components/Icon'
 import type { ItemPreview } from '@/lib/game-state'
 
 interface GameHeaderProps {
@@ -36,6 +37,8 @@ interface GameHeaderProps {
   regenGainKey?: number
   /** The enemy being fought: its HP as a red bar right after the level, at every width, so every tab shows the fight. */
   enemy?: { name: string | null; hp: number; hpMax: number } | null
+  /** The pet along with the player, as a small icon beside the name; null with none along. */
+  pet?: { name: string; iconName: string } | null
 }
 
 /*
@@ -165,7 +168,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey, enemy = null }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey, enemy = null }: GameHeaderProps) {
   let xpPct = 0
   if (xp !== undefined && level !== undefined) {
     const xpFromLevel = (level ** 3) * 2
@@ -203,6 +206,12 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                   {playerName.charAt(0).toUpperCase()}
                 </span>
                 <span className="hidden @min-[360px]:inline text-fg-primary truncate min-w-0 max-w-[7rem] @min-[768px]:max-w-none">{playerName}</span>
+                {/* The pet along: a small glyph after the name, named on hover. Company, no numbers. */}
+                {pet && (
+                  <span className="inline-flex shrink-0 items-center text-fg-secondary" title={`${pet.name} is along`} aria-label={`${pet.name} is along`}>
+                    <Icon name={pet.iconName} size={14} color="current" />
+                  </span>
+                )}
                 <UnspentPill count={unspentPoints} />
 
                 {(hp !== undefined && hpMax !== undefined) || (mp !== undefined && mpMax !== undefined) ? (

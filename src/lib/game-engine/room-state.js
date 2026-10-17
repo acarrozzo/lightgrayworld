@@ -2315,6 +2315,36 @@ class RoomState {
     const itemName = item.template.name
     const itemMetadata = item.template.metadata || null
 
+    // A pet is company, not a consumable: taking it along or leaving it home
+    // is free, costs no turn and provokes nothing (game-data/pets.js). The
+    // socket layer reads `petChange` off the result to update presence.
+    if (itemMetadata && itemMetadata.pet) {
+      const { setActivePet } = require('./services/pet-service')
+      const verb = String(itemAction).toLowerCase().trim()
+      if (verb !== 'take along' && verb !== 'leave home') {
+        return this.createErrorResult('use_item', `Action "${itemAction}" is not available for this item`)
+      }
+      const taking = verb === 'take along'
+      const change = await setActivePet(playerId, taking ? itemSlug : null)
+      if (!change.success) return this.createErrorResult('use_item', change.message)
+      const message = taking ? `${itemName} comes along.` : `${itemName} stays home.`
+      return {
+        success: true,
+        action: 'use_item',
+        petChange: { activePet: change.activePet },
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload('use_item', 'success', message, {
+              player: { activePet: change.activePet },
+              itemSlug,
+              itemName,
+            }),
+          },
+        ],
+      }
+    }
+
     // Execute the item-specific action
     const itemActionResult = await executeItemAction(
       itemSlug,

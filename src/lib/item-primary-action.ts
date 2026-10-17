@@ -20,10 +20,20 @@ export type PrimaryItemAction =
 
 export function getPrimaryItemAction(
   item: InventoryItem,
-  compare: EquipCompare | null
+  compare: EquipCompare | null,
+  context: { activePet?: string | null } = {}
 ): PrimaryItemAction | null {
   if (item.isEquipped) {
     return { kind: 'unequip', label: 'Unequip' }
+  }
+
+  // A pet is company, not gear: along or at home, free either way. The
+  // server's use_item path answers the same two verbs (room-state.js).
+  if ((item.template.metadata as { pet?: unknown } | null)?.pet) {
+    const along = context.activePet != null && context.activePet === item.template.slug
+    return along
+      ? { kind: 'use', label: 'Leave home', action: 'leave home', title: `${item.template.name} stays behind`, className: 'border border-line-strong/60 bg-transparent text-fg-secondary hover:bg-surface-hover shadow-none' }
+      : { kind: 'use', label: 'Take along', action: 'take along', title: `${item.template.name} comes with you`, className: 'fill-accent' }
   }
 
   if (item.template.equipSlot) {

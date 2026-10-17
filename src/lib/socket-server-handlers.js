@@ -29,6 +29,7 @@ const {
 const { getEnemy } = require('./game-data/enemies.js')
 const { loadPresentEnemy } = require('./game-engine/services/present-enemy-service.js')
 const { listTravelersInRoom } = require('./game-engine/traveler-state.js')
+const { petLineOnArrival } = require('./game-engine/services/pet-service.js')
 const { buildGatherCooldowns } = require('./game-engine/services/gather-status.js')
 const { buildSupplyStatus } = require('./game-engine/services/room-supply-service.js')
 const { SPELL_SELECT, projectSpellState, unlockSpellTeacher } = require('./game-engine/services/spell-service.js')
@@ -333,6 +334,7 @@ function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlaye
       magMod: player.magMod ?? null,
       defMod: player.defMod ?? null,
       partyLeaderId: partyStore.getLeaderId(player.id),
+      pet: player.activePet ?? null,
       entryDirection: entryDirection || null,
       isTeleport: isTeleport || false,
     })
@@ -634,6 +636,39 @@ async function announceSkillTeacher(prisma, socket, player, toRoom) {
     })
   } catch (error) {
     console.error('[Socket] Error unlocking skill teacher:', error)
+  }
+}
+
+/**
+ * The pet's line on arriving somewhere, if it has one this time: rare, and
+ * more likely where the registry gives it something to say (game-data/pets.js).
+ * Feed only, after the arrival has settled, and never over an ambush: a pet
+ * does not chatter while something is swinging at its owner.
+ */
+function announcePetLine({ socket, player, toRoom, gameEngine }) {
+  if (!player?.activePet || !toRoom) return
+  const battle = gameEngine?.rooms?.get?.(toRoom)?.activeBattles?.get(player.id)
+  if (battle?.isActive) return
+  const line = petLineOnArrival(player.id, player.activePet, toRoom)
+  if (!line) return
+  emitActionFeedback(socket, { action: 'pet', message: line, outcome: 'info', data: { roomId: toRoom } })
+}
+
+/**
+ * A pet taken along or left home (the engine's `use_item` result carries
+ * `petChange`): the live record, the world roster and the room's cards all
+ * learn the new pet. The player's own header follows `data.player.activePet`
+ * on the action's feedback, so nothing is sent to them twice.
+ */
+function applyPetChange({ io, player, activePet }) {
+  player.activePet = activePet ?? null
+  updatePresence(io, player.id, { pet: player.activePet })
+  if (player.currentRoom) {
+    io.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_PET, {
+      id: player.id,
+      roomId: player.currentRoom,
+      pet: player.activePet,
+    })
   }
 }
 
@@ -950,6 +985,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             announceSpellTeacher(prisma, memberSocket, memberPlayer, toRoom),
             announceSkillTeacher(prisma, memberSocket, memberPlayer, toRoom),
           ])
+          announcePetLine({ socket: memberSocket, player: memberPlayer, toRoom, gameEngine })
         }
       } catch (err) {
         console.error(`[Party] Failed to pull member ${memberId} from ${fromRoom} to ${toRoom}:`, err)
@@ -1007,6 +1043,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         inBattle: Boolean(battle && battle.isActive),
         battleEnemyName: battle && battle.isActive ? battle.enemyName ?? null : null,
         partyLeaderId: partyStore.getLeaderId(p.id),
+        pet: p.activePet ?? null,
         presenceStatus: isIdle ? 'idle' : 'active',
         ...(isIdle ? { lastSeen: idleGhost.lastSeen } : {}),
       })
@@ -1254,6 +1291,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             defMod: true,
             physicalTraining: true,
             mentalTraining: true,
+            activePet: true,
             ...MAP_STATE_SELECT,
             ...SPELL_SELECT,
             ...SKILL_SELECT,
@@ -1306,6 +1344,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           defMod: dbPlayer.defMod,
           physicalTraining: dbPlayer.physicalTraining,
           mentalTraining: dbPlayer.mentalTraining,
+          // The pet along with them, for the header, the room's cards and
+          // the lines it says on arrival (game-data/pets.js).
+          activePet: dbPlayer.activePet ?? null,
           // Map sheets found and fast-travel hubs discovered, so the Map view
           // and the Fast travel grid open in the right state on reconnect.
           ...projectMapState(dbPlayer),
@@ -1375,6 +1416,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             magMod: playerData.magMod ?? null,
             defMod: playerData.defMod ?? null,
             partyLeaderId: partyStore.getLeaderId(playerData.id),
+            pet: playerData.activePet ?? null,
             entryDirection: null, // No direction info on initial login
             isTeleport: false, // Login is not a teleport
           })
@@ -1773,6 +1815,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             announceSpellTeacher(prisma, socket, player, landedRoom),
             announceSkillTeacher(prisma, socket, player, landedRoom),
           ])
+          announcePetLine({ socket, player, toRoom: landedRoom, gameEngine })
 
           if (escapingBattle) {
             // Broke off and went alone; nobody is pulled along behind it.
@@ -2123,6 +2166,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               announceSpellTeacher(prisma, socket, player, toRoomId),
               announceSkillTeacher(prisma, socket, player, toRoomId),
             ])
+            announcePetLine({ socket, player, toRoom: toRoomId, gameEngine })
 
             if (escapingBattle) {
               settleEscapeFromParty(socket, player.id)
@@ -2185,6 +2229,12 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             data: Object.keys(actionData).length > 0 ? actionData : undefined,
           },
         })
+
+        // A pet taken along or left home: the live record and everyone's
+        // view of this player follow the engine's word.
+        if (result?.petChange) {
+          applyPetChange({ io, player, activePet: result.petChange.activePet })
+        }
 
         socket.emit('action:confirmed', {
           action: actionType,

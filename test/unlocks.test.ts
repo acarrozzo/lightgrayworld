@@ -8,6 +8,7 @@ const NEW_CHARACTER: UnlockFacts = {
   consumableCount: 0,
   craftingCount: 0,
   miscCount: 0,
+  petCount: 0,
   questCount: 0,
   giversMet: 0,
   hasMapOrTeleport: false,
@@ -37,6 +38,7 @@ test('each tab arrives with the first thing that gives it a purpose', () => {
   assert.ok(earnedUnlocks(facts({ othersSeen: true })).includes('tab:players'))
   assert.ok(earnedUnlocks(facts({ kills: 1 })).includes('quests:kill-list'))
   assert.ok(earnedUnlocks(facts({ deaths: 1 })).includes('quests:battle-log'))
+  assert.ok(earnedUnlocks(facts({ petCount: 1 })).includes('inv:pets'))
 })
 
 test('a book waits for a skill point and a teacher to spend it with', () => {

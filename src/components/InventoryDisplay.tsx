@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Search, X } from 'lucide-react'
-import type { InventoryItem } from '@/lib/game-state'
+import { useGameStore, type InventoryItem } from '@/lib/game-state'
 import { WeaponCategory } from '@prisma/client'
 import { getItemDisplayOrder } from '@/lib/inventory-utils'
 import { getSellValue } from '@/lib/shop-pricing'
@@ -132,6 +132,8 @@ export default function InventoryDisplay({
   onOpenItemChange,
   onOpenCrafting,
 }: InventoryDisplayProps) {
+  // Which pet is along, so a pet row offers "Leave home" instead of "Take along".
+  const activePet = useGameStore((state) => state.player?.activePet ?? null)
   const [ownView, setOwnView] = useState<ItemFilterView>(() => filterTabToView(initialFilter))
   const view = controlledView ?? ownView
   const setView = onViewChange ?? setOwnView
@@ -326,7 +328,7 @@ export default function InventoryDisplay({
     // refuse); whether it is shown is the player's setting.
     const compare = compareToEquipped(item, inventory)
     const shownCompare = compareEnabled ? compare : null
-    const primary = getPrimaryItemAction(item, compare)
+    const primary = getPrimaryItemAction(item, compare, { activePet })
     const open = openId === item.id
     const canDrop = item.template.canDrop !== false
     const sellValue = getSellValue(item.template.value ?? 0)

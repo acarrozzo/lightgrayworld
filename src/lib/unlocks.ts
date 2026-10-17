@@ -27,6 +27,7 @@ export type UnlockId =
   | 'inv:consumables'
   | 'inv:crafting'
   | 'inv:misc'
+  | 'inv:pets'
   | 'quests:kill-list'
   | 'quests:battle-log'
 
@@ -38,6 +39,8 @@ export interface UnlockFacts {
   consumableCount: number
   craftingCount: number
   miscCount: number
+  /** Pets collected (game-data/pets.js). The first opens the bag's Pets group. */
+  petCount: number
   /** Quests ever given, and givers ever met. */
   questCount: number
   giversMet: number
@@ -146,6 +149,13 @@ export const UNLOCKS: readonly UnlockDef[] = [
     sub: 'misc',
     earned: (f) => f.miscCount > 0,
     announce: 'Something that fits nowhere else. Misc is open in your inventory.',
+  },
+  {
+    id: 'inv:pets',
+    tab: 'inv',
+    sub: 'pets',
+    earned: (f) => f.petCount > 0,
+    announce: 'Something small has decided to come with you. Pets is open in your inventory.',
   },
   {
     id: 'quests:kill-list',

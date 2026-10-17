@@ -212,10 +212,18 @@ function buildConsumableAction(itemSlug: string, summary: ConsumableSummary): It
  * Get available actions for a specific item. Pass the item's template metadata
  * so consumable actions can be derived from `metadata.consumable`.
  */
-export function getItemActions(itemSlug: string, metadata?: { consumable?: ConsumableMeta } | null): ItemAction[] {
+export function getItemActions(itemSlug: string, metadata?: { consumable?: ConsumableMeta; pet?: unknown } | null): ItemAction[] {
   const summary = summarizeConsumable(metadata)
   if (summary) {
     return [buildConsumableAction(itemSlug, summary)]
+  }
+  // A pet's two verbs; which one the bag offers depends on whether it is
+  // along (lib/item-primary-action.ts). Both are free and cost no turn.
+  if (metadata?.pet) {
+    return [
+      { action: 'take along', label: 'Take along' },
+      { action: 'leave home', label: 'Leave home' },
+    ]
   }
   return ITEM_ACTIONS[itemSlug] || []
 }

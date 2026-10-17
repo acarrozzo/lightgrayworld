@@ -22,6 +22,7 @@ export type FilterTab =
   | 'neck'
   | 'mount'
   | 'artifact'
+  | 'pets'
   | 'consumables'
   | 'crafting'
   | 'misc'
@@ -30,7 +31,7 @@ export type ItemCategory = Exclude<FilterTab, 'all'>
 export type SlotCategory = 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'ring' | 'neck' | 'mount' | 'artifact'
 
 /** Top-level filter groups. The ten equipment slots collapse into "gear" (shown as Equipment). */
-export type FilterGroup = 'gear' | 'consumables' | 'crafting' | 'misc'
+export type FilterGroup = 'gear' | 'pets' | 'consumables' | 'crafting' | 'misc'
 export type SlotFilter = 'all' | SlotCategory
 
 /** What the filter bar is showing: a group, and within gear, one slot or all. */
@@ -56,6 +57,8 @@ export function getCraftingKind(item: InventoryItem): CraftingKind | null {
  * for category grouping, counts, and new-item indicators.
  */
 export function getItemCategory(item: InventoryItem): ItemCategory {
+  // A pet is company, not gear: its own group, however the template is typed.
+  if ((item.template.metadata as { pet?: unknown } | null)?.pet) return 'pets'
   switch (item.template.equipSlot) {
     case EquipSlot.MAIN_HAND: return 'main'
     case EquipSlot.OFF_HAND: return 'off'
@@ -86,6 +89,7 @@ export const INVENTORY_TABS: Array<{ id: FilterTab; label: string }> = [
   { id: 'neck', label: 'neck' },
   { id: 'mount', label: 'mount' },
   { id: 'artifact', label: 'artifact' },
+  { id: 'pets', label: 'pets' },
   { id: 'consumables', label: 'consumables' },
   { id: 'crafting', label: 'crafting' },
   { id: 'misc', label: 'misc' },
@@ -113,6 +117,7 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   neck: 'Neck',
   mount: 'Mount',
   artifact: 'Artifact',
+  pets: 'Pets',
   consumables: 'Items',
   crafting: 'Crafting',
   misc: 'Misc',
@@ -134,6 +139,7 @@ export const SLOT_CHIP_LABELS: Record<SlotCategory, string> = {
 
 export const FILTER_GROUPS: Array<{ id: FilterGroup; label: string }> = [
   { id: 'gear', label: 'Gear' },
+  { id: 'pets', label: 'Pets' },
   { id: 'consumables', label: 'Items' },
   { id: 'crafting', label: 'Crafting' },
   { id: 'misc', label: 'Misc' },

@@ -16,6 +16,7 @@ export type SearchEntityType =
   | 'recipe'
   | 'shop'
   | 'traveler'
+  | 'pet'
 
 export type SearchEntry = {
   type: SearchEntityType
@@ -40,9 +41,10 @@ export const SEARCH_TYPE_LABEL: Record<SearchEntityType, string> = {
   recipe: 'Recipe',
   shop: 'Shop',
   traveler: 'Traveler',
+  pet: 'Pet',
 }
 
 /** Tie-break order when two hits match equally well. */
 export const SEARCH_TYPE_ORDER: SearchEntityType[] = [
-  'enemy', 'perk', 'item', 'room', 'quest', 'giver', 'skill', 'spell', 'recipe', 'shop', 'traveler',
+  'enemy', 'perk', 'item', 'room', 'quest', 'giver', 'skill', 'spell', 'recipe', 'shop', 'traveler', 'pet',
 ]

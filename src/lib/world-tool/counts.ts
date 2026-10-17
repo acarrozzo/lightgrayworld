@@ -21,6 +21,7 @@ const { getEnemyPerkCatalog } = require('@/lib/game-data/enemy-traits') as { get
 const { QUEST_ORDER } = require('@/lib/game-data/quest-registry') as { QUEST_ORDER: string[] }
 const { CRAFTING_RECIPES } = require('@/lib/game-data/crafting-recipes') as { CRAFTING_RECIPES: unknown[] }
 const { SHOPS } = require('@/lib/game-data/shops') as { SHOPS: Record<string, unknown> }
+const { PETS } = require('@/lib/game-data/pets') as { PETS: unknown[] }
 const { CHEST_LOOT, REPEATABLE_CHEST_LOOT } = require('@/lib/game-engine/room-action-handlers') as {
   CHEST_LOOT: Record<string, Record<string, unknown>>
   REPEATABLE_CHEST_LOOT: unknown[]
@@ -59,6 +60,7 @@ export const loadWorldToolCounts = cachedWorldToolData('counts', async (): Promi
     chests: oneTimeChests + REPEATABLE_CHEST_LOOT.length,
     rooms: atlasRooms,
     teleport: TELEPORT_LOCATIONS.length + BOSS_TELEPORTS.length,
+    pets: PETS.length,
     players,
     'room-desc': compared,
     themes: THEMES.length,

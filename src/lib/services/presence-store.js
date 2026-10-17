@@ -48,6 +48,8 @@ function setPresence(playerData, overrides = {}) {
     inBattle: existing?.inBattle ?? false,
     battleEnemyName: existing?.battleEnemyName ?? null,
     partyLeaderId: playerData.partyLeaderId ?? existing?.partyLeaderId ?? null,
+    // The pet along with them (a pet slug), carried so the world roster can show it.
+    pet: playerData.activePet ?? playerData.pet ?? existing?.pet ?? null,
     lastSeen: Date.now(),
     ...overrides,
   }

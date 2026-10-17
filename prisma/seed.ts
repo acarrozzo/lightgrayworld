@@ -14689,6 +14689,38 @@ async function main() {
       equipSlot: EquipSlot.OFF_HAND,
       metadata: { icon: 'magic', statMods: { str: 20, dex: 20, mag: 20 } },
     },
+
+    // ==================== PETS ====================
+    // Collectibles with no numbers (src/lib/game-data/pets.js). A pet is an
+    // ordinary bag item marked by `metadata.pet`; the one along at a time is
+    // `User.activePet`. Never sold, never dropped, one each. The original's
+    // hamster (Little Suzie) and bat (the Dwarf Treasury chest) are back at
+    // their sources beside the gear those sources now give; the Baby Owl
+    // waits for a later pass.
+    {
+      id: 'pet-hampster_001',
+      slug: 'pet-hampster',
+      name: 'Pet Hampster',
+      description: 'Little Suzie\'s hamster, spelled the way she spells it. It decided it liked your pocket better than her shoebox. A PET: company, nothing more.',
+      type: ItemType.MISC,
+      max: 1,
+      value: 0,
+      canSell: false,
+      canDrop: false,
+      metadata: { icon: 'enemy-Rat', pet: true },
+    },
+    {
+      id: 'pet-bat_001',
+      slug: 'pet-bat',
+      name: 'Pet Bat',
+      description: 'It was living in the Dwarf Treasury gold chest, which explains the state of the gold. It hangs off your pack and resents the daytime. A PET: company, nothing more.',
+      type: ItemType.MISC,
+      max: 1,
+      value: 0,
+      canSell: false,
+      canDrop: false,
+      metadata: { icon: 'enemy-Bat', pet: true },
+    },
     // --- The chest's XIII rings (the Dexterity one already came out of a mithril golem).
     {
       id: 'ring-of-strength-xiii_001',

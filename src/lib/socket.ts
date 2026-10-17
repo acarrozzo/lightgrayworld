@@ -512,6 +512,7 @@ export interface SocketEvents {
   // Server to client events
   'player-joined': (player: PlayerInfo) => void
   'player-left': (player: { id: string; username: string; exitDirection?: string | null; isTeleport?: boolean }) => void
+  'player-pet': (payload: { id: string; roomId: string; pet: string | null }) => void
   'chat-message': (message: ChatMessage) => void
   'room-chat-message': (message: ChatMessage) => void
   'action-completed': (actionData: ActionData) => void
@@ -567,6 +568,8 @@ export interface PlayerInfo {
   inBattle?: boolean
   battleEnemyName?: string | null
   partyLeaderId?: string | null
+  /** The pet along with them (a pet slug, game-data/pets.js), or null. */
+  pet?: string | null
   entryDirection?: string | null
   isTeleport?: boolean
 }
@@ -596,6 +599,8 @@ export interface PresencePlayer {
   /** What they are fighting, while they are fighting. Null otherwise. */
   battleEnemyName?: string | null
   partyLeaderId?: string | null
+  /** The pet along with them (a pet slug, game-data/pets.js), or null. */
+  pet?: string | null
   lastSeen: number
 }
 

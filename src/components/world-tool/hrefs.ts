@@ -57,6 +57,10 @@ export function perkHref(perkId: string) {
 export function travelerHref(travelerId: string) {
   return `/travelers#${encodeURIComponent(travelerId)}`
 }
+
+export function petHref(petSlug: string) {
+  return `/pets#${encodeURIComponent(petSlug)}`
+}
 /** A shop is keyed by the room it stands in. */
 export function shopHref(roomId: string) {
   return `/shops#${encodeURIComponent(roomId)}`

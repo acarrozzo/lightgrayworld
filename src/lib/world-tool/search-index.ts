@@ -25,6 +25,7 @@ import {
   recipeHref,
   shopHref,
   travelerHref,
+  petHref,
 } from '@/components/world-tool/hrefs'
 import { ATLAS_EXCLUDED_ROOMS } from './atlas'
 import type { SearchEntry } from './search-types'
@@ -52,6 +53,9 @@ const { SHOPS } = require('@/lib/game-data/shops') as {
 }
 const { TRAVELERS } = require('@/lib/game-data/travelers') as {
   TRAVELERS: { id: string; name: string; title?: string; kind: string; movement: { type: string } }[]
+}
+const { PETS } = require('@/lib/game-data/pets') as {
+  PETS: { slug: string; name: string; source: { text: string } }[]
 }
 
 const words = (s: string) => s.toLowerCase().replace(/_/g, ' ')
@@ -123,6 +127,9 @@ export const buildSearchIndex = cachedWorldToolData('search-index', async (): Pr
     const name = t.title ? `${t.name} ${t.title}` : t.name
     const sub = t.movement.type === 'route' ? 'walks a loop' : `${t.kind} · roams`
     entries.push({ type: 'traveler', id: t.id, name, sub, href: travelerHref(t.id) })
+  }
+  for (const pet of PETS) {
+    entries.push({ type: 'pet', id: pet.slug, name: pet.name, sub: pet.source.text, href: petHref(pet.slug) })
   }
 
   return entries

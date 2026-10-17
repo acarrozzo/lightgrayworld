@@ -60,6 +60,7 @@ async function handleGetUsers(request: AuthenticatedRequest) {
         characterClass: true,
         characterRace: true,
         createdAt: true,
+        activePet: true,
         room: {
           select: {
             roomId: true,
@@ -137,6 +138,8 @@ async function handleGetUsers(request: AuthenticatedRequest) {
       characterRace: user.characterRace,
       createdAt: user.createdAt.toISOString(),
       equipment: resolveEquipmentNames(user),
+      // The pet along (a pet slug, game-data/pets.js); the client names it.
+      pet: user.activePet ?? null,
     }))
 
     return NextResponse.json({

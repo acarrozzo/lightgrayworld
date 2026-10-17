@@ -13,6 +13,9 @@ import { Hourglass, UserPlus } from 'lucide-react'
 import SupplyShelf from './SupplyShelf'
 import type { GatherCooldownView, SupplyView } from '@/lib/types/room'
 import Icon from './Icon'
+
+// Pets are named from the shared registry; the room payload carries only the slug.
+const { getPet } = require('@/lib/game-data/pets') as { getPet: (slug: string | null | undefined) => { slug: string; name: string; icon: string } | null }
 import NpcQuestCard from './NpcQuestCard'
 import { getFaction } from '@/lib/game-data/factions'
 import ActionFlyout from './ActionFlyout'
@@ -602,6 +605,16 @@ function PlayerCard({ player, onInspect, disabled, onFollow, followPending = fal
             <span className="truncate max-w-[100px]">{player.battleEnemyName ?? 'In battle'}</span>
           </div>
         )}
+        {/* The pet along with them: company, no numbers (game-data/pets.js). */}
+        {(() => {
+          const pet = getPet(player.pet)
+          return pet ? (
+            <div className="mt-0.5 flex items-center gap-1 text-[9px] text-fg-muted" title={`${pet.name} is along`}>
+              <Icon name={pet.icon} size={9} color="current" />
+              <span className="truncate max-w-[100px]">with a {pet.name}</span>
+            </div>
+          ) : null
+        })()}
         {isIdle && player.lastSeen && (
           <div className="text-[9px] text-resource-gold/80 mt-0.5">Idle {formatTimeAgo(player.lastSeen)}</div>
         )}

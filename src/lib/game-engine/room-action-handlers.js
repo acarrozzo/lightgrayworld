@@ -485,12 +485,8 @@ const CHEST_LOOT = {
   // The Dwarf Treasury's Gold Chest (309), behind the Dwarf Captain's key. The
   // original rolled TWO items on top of its fixed haul — one Ring of X VII and
   // one of the twelve silver pieces — which is the case `randomItems` takes a
-  // list of pools for.
-  //
-  // Its third headline reward was a Pet Bat, and there is no pet slot in the
-  // game yet (EquipSlot has MOUNT and nothing else). A Ring of Defense X stands
-  // in for it: permanent, notable, and of the same tier. If pets land, this is
-  // where the bat goes back.
+  // list of pools for. Its third headline reward was a Pet Bat; while there
+  // were no pets a Ring of Defense X stood in, and both are in the haul now.
   '485': {
     'open gold chest': {
       label: 'Blue Ocean Gold Chest',
@@ -607,6 +603,10 @@ const CHEST_LOOT = {
       items: [
         { itemSlug: 'meatball', quantity: 5 },
         { itemSlug: 'ring-of-defense-x', quantity: 1, highlighted: true },
+        // The original's third headline: a Pet Bat living in the chest. Back
+        // as a collectible (game-data/pets.js), beside the ring that stood in
+        // for it while there were no pets.
+        { itemSlug: 'pet-bat', quantity: 1, highlighted: true },
       ],
       randomItems: [
         [

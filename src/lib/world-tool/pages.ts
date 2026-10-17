@@ -31,7 +31,7 @@ import {
   Users,
   Waypoints,
   Shapes,
-  type LucideIcon, Footprints } from 'lucide-react'
+  type LucideIcon, Footprints, PawPrint } from 'lucide-react'
 
 export type WorldToolPageKey =
   | 'enemies'
@@ -46,6 +46,7 @@ export type WorldToolPageKey =
   | 'rooms'
   | 'teleport'
   | 'travelers'
+  | 'pets'
   | 'players'
   | 'room-desc'
   | 'themes'
@@ -100,6 +101,8 @@ export const WORLD_TOOL_GROUPS: WorldToolGroup[] = [
         description: 'Every shop, with the room it stands in, its stock and prices, and any membership it requires.' },
       { key: 'chests', href: '/chests', label: 'Chests', unit: 'chests', icon: Package,
         description: 'The one-time gold chests and the repeatable ones, with their loot tables, odds and rooms.' },
+      { key: 'pets', href: '/pets', label: 'Pets', unit: 'pets', icon: PawPrint,
+        description: 'The collectible creatures a player carries for the company: where each comes from, and every line it says and where.' },
     ],
   },
   {
