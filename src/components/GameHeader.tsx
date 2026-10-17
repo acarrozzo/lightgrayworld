@@ -91,7 +91,7 @@ function previewPct(current: number, max: number, amount: number): number {
 }
 
 /** A vitals bar with its number inside: the header's HP and MP, and the full-screen map's. */
-export function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, value, over, className, rtl = false, height = 'h-4', valueClassName = 'flex' }: {
+export function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, value, over, className, rtl = false, height = 'h-4', valueClassName = 'flex', valueAlign = 'center' }: {
   pct: number
   fillClass: string
   /** Fill from the right: the enemy's side. */
@@ -108,6 +108,8 @@ export function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, val
   height?: string
   /** Display class(es) for the number over the fill: `flex`, or `hidden` for a bar too thin to carry it. */
   valueClassName?: string
+  /** Where the number sits: centered, or at the start of the bar, clear of its rounded end. */
+  valueAlign?: 'center' | 'start'
 }) {
   const fillPct = Math.min(100, Math.max(0, pct))
   return (
@@ -126,7 +128,7 @@ export function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, val
           aria-hidden="true"
         />
       )}
-      <span className={`absolute inset-0 items-center justify-center text-[10px] leading-none font-semibold label-over-fill tabular-nums ${valueClassName}`}>
+      <span className={`absolute inset-0 items-center ${valueAlign === 'start' ? 'justify-start pl-2' : 'justify-center'} text-[10px] leading-none font-semibold label-over-fill tabular-nums ${valueClassName}`}>
         <span className={over ? 'font-bold' : ''}>{value}</span>
       </span>
     </div>
@@ -222,6 +224,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                           className={BAR_WIDTH}
                           height={VITALS_BAR_HEIGHT}
                           valueClassName={VITALS_BAR_VALUE}
+                          valueAlign="start"
                           pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
                           fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp"
                           ghostClass="bg-resource-hp"
@@ -239,6 +242,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                           className={BAR_WIDTH}
                           height={VITALS_BAR_HEIGHT}
                           valueClassName={VITALS_BAR_VALUE}
+                          valueAlign="start"
                           pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
                           fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp"
                           ghostClass="bg-resource-mp"

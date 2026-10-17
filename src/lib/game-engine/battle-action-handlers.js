@@ -1234,7 +1234,9 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     enemyRaw: enemyAtk.enemyRaw,
     enemyBlocked: 0,
     playerBlocked: enemyAtk.playerBlock,
-    playerStrMax: null,
+    // Nothing was swung, but the stats were just re-read: a swap or a MAX
+    // shows its new top of swing now, not after the next attack.
+    playerStrMax: Math.floor(pickPlayerOffensiveStat(battleState) * (1 + otherCombatants * 0.1)),
     playerDefMax: enemyAtk.effectiveDef,
     enemyStrMax: battleState.enemy.att,
     multiplayerBonus: otherCombatants > 0,
@@ -1323,7 +1325,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
           enemyRaw: enemyAtk.enemyRaw,
           playerBlocked: enemyAtk.playerBlock,
           enemyBlocked: 0,
-          playerStrMax: null,
+          playerStrMax: turnRecord.playerStrMax,
           playerDefMax: enemyAtk.effectiveDef,
           enemyStrMax: battleState.enemy.att,
           multiplayerBonus: otherCombatants > 0,

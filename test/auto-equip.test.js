@@ -17,6 +17,7 @@ const path = require('node:path')
 
 const ROOT = path.join(__dirname, '..')
 const { planAutoEquip, describePlan } = require(path.join(ROOT, 'src/lib/game-engine/services/auto-equip-service.js'))
+const { BattleState } = require(path.join(ROOT, 'src/lib/game-engine/battle-state.js'))
 
 let nextId = 1
 /** An inventory row as getPlayerInventory shapes it. */
@@ -199,6 +200,64 @@ test('skill passives count for the weapon kind in hand', () => {
   assert.equal(twoHand.after, 20 + 2)
   const inv2 = [ranged('long-bow', { dex: 11 }, { twoHanded: true })]
   assert.equal(planAutoEquip(inv2, { mode: 'dex', skillLevels: levels }).after, 11 + 4 + 2)
+})
+
+test('the totals are the stat as combat rolls it: core and buffs as base, and the Pro multiplier on the gear side', () => {
+  const inv = [
+    melee('iron-sword', { str: 18 }, { worn: true }),
+    melee('steel-sword', { str: 27 }),
+    row('black-hood', 'HEAD', { str: 20 }),
+  ]
+  const levels = { oneHanded: 3, oneHandedPro: 2 }
+  // 300 core, +30 from a running STR capsule.
+  const plan = planAutoEquip(inv, { mode: 'str1h', skillLevels: levels, base: 330 })
+  // 330 + 18 gear + 3 One-Handed + round((18 + 3) × 0.05 × 2) Pro.
+  assert.equal(plan.before, 330 + 18 + 3 + 2)
+  // 330 + 47 gear + 3 One-Handed + round((47 + 3) × 0.05 × 2) Pro.
+  assert.equal(plan.after, 330 + 47 + 3 + 5)
+  // The base never changes what is picked.
+  assert.deepEqual(
+    plan.changes.map((c) => [c.slot, slugOf(c.to)]),
+    planAutoEquip(inv, { mode: 'str1h', skillLevels: levels }).changes.map((c) => [c.slot, slugOf(c.to)])
+  )
+  assert.match(describePlan(plan), /STR 353 → 385 \(\+32\)/)
+
+  // And it is the number BattleState swings with once the loadout is on.
+  const battle = new BattleState({
+    playerId: 'p',
+    roomId: '1',
+    enemy: { slug: 'rat', name: 'Rat', hp: 10 },
+    playerStats: { str: 300, strMod: 47, buffStrClicks: 5, ...levels },
+    gear: { weaponCategory: 'MELEE', isTwoHanded: false, hasShield: false },
+  })
+  assert.equal(battle.baseStr, plan.after)
+})
+
+test('deltas cover every stat: a STR pick that takes the shield off costs its DEF, and Block with it', () => {
+  const inv = [
+    melee('iron-sword', { str: 18 }, { worn: true }),
+    off('basic-shield', { def: 13 }, { worn: true }),
+    off('off-hand-mace', { str: 25, mag: 5 }),
+  ]
+  const plan = planAutoEquip(inv, { mode: 'str1h', skillLevels: { block: 2 } })
+  assert.deepEqual(plan.deltas, { str: 25, dex: 0, mag: 5, def: -13 - 6 })
+  assert.equal(plan.after - plan.before, plan.deltas.str)
+})
+
+test('DEF totals match BattleState too: core, Toughness, and Block behind the shield', () => {
+  const levels = { toughness: 4, block: 2 }
+  const inv = [off('basic-shield', { def: 7 }), row('padded-armor', 'BODY', { def: 13 }, { worn: true })]
+  const plan = planAutoEquip(inv, { mode: 'def', skillLevels: levels, base: 95 })
+  assert.equal(plan.before, 95 + 13 + 8)
+  assert.equal(plan.after, 95 + 20 + 8 + 6)
+  const battle = new BattleState({
+    playerId: 'p',
+    roomId: '1',
+    enemy: { slug: 'rat', name: 'Rat', hp: 10 },
+    playerStats: { def: 95, defMod: 20, ...levels },
+    gear: { weaponCategory: null, isTwoHanded: false, hasShield: true },
+  })
+  assert.equal(battle.baseDef, plan.after)
 })
 
 test('empty stacks and non-gear are ignored; the ring slot is a single slot', () => {

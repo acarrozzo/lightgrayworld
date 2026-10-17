@@ -12,6 +12,7 @@ import { spellTone } from '@/lib/spellbook'
 import ActionDeck from '@/components/game-interface/ActionDeck'
 import { deckContextFromBattle } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
+import { effectiveStats, type StatKey } from '@/lib/effective-stats'
 
 /** How many times an enemy must already have been beaten before a win with nothing new is shown as one line. */
 const ROUTINE_KILLS = 10
@@ -63,6 +64,12 @@ interface BattlePanelProps {
   inventory: InventoryItem[]
   /** Spell levels, teachers and MAG — everything the Spells list derives from. */
   player: Player
+}
+
+/** The "+30" a hovered capsule would add to a stat box. */
+function StatPreviewBump({ amount }: { amount: number }) {
+  if (amount <= 0) return null
+  return <span className="text-combat-heal tabular-nums animate-pulse"> +{amount}</span>
 }
 
 function LevelBadge({ level }: { level: number }) {
@@ -791,8 +798,34 @@ export default function BattlePanel({
   const previewHp = Math.max(0, itemPreview?.hp ?? 0)
   const previewMp = Math.max(0, itemPreview?.mp ?? 0)
   // The stat the card shows beside DEF is whichever the weapon rolls.
-  const previewOffense = itemPreview?.stats?.[spellCast ? 'mag' : isRanged ? 'dex' : 'str'] ?? 0
-  const previewDef = itemPreview?.stats?.def ?? 0
+  const offenseKey: StatKey = spellCast ? 'mag' : isRanged ? 'dex' : 'str'
+  // The stat that met the enemy's last blow — DEF against melee, DEX against
+  // arrows, MAG against spells (pickPlayerDefensiveStat) — is the number in
+  // the defense box, so the label names it.
+  const defenseKey: StatKey = battle.enemyDamageType === 'RANGED' ? 'dex' : battle.enemyDamageType === 'MAGIC' ? 'mag' : 'def'
+  const defenseLabel = defenseKey.toUpperCase()
+  const defenseTone = defenseKey === 'dex' ? 'text-stat-dex' : defenseKey === 'mag' ? 'text-stat-mag' : 'text-stat-def'
+  // The group bonus: every other fighter here adds 10% to both rolls, and the
+  // two boxes show the stat with it applied (battle-calculator's `bonus`), so
+  // they read higher than the header and the MAX feed line. The tag beside
+  // them, and each box's tooltip, say by how much.
+  const groupPct = battle.multiplayerBonus ? Math.max(0, battle.bonusPercent ?? 0) : 0
+  const groupScale = 1 + groupPct / 100
+  const myStats = effectiveStats(player, inventory)
+  const groupTitle = (label: string, key: StatKey, shown: number | null) =>
+    groupPct > 0 && shown !== null ? `${label} ${myStats[key].total} + ${groupPct}% group bonus = ${shown}` : undefined
+  const groupOthers = Math.round(groupPct / 10)
+  const groupTagTitle = `Group bonus: ${groupOthers} other${groupOthers === 1 ? '' : 's'} fighting here, +10% each to your attack and defense rolls`
+  // A hovered capsule raises the stat underneath; the box moves by that
+  // much with the group bonus on top of it.
+  const boxBump = (key: StatKey) => {
+    const change = itemPreview?.stats?.[key] ?? 0
+    if (change === 0) return 0
+    const raw = myStats[key].total
+    return Math.floor((raw + change) * groupScale) - Math.floor(raw * groupScale)
+  }
+  const previewOffense = boxBump(offenseKey)
+  const previewDef = boxBump(defenseKey)
   // What the command deck needs to draw: target, reach, the top of the swing.
   const deckContext = deckContextFromBattle(battle, player, inventory)
   // The stat the last strike rolled: MAG for a spell, else the weapon's.
@@ -915,15 +948,18 @@ export default function BattlePanel({
           />
           <div className="flex items-baseline gap-2 tabular-nums">
             <span className={`text-[8px] uppercase tracking-widest ${offenseTone}`}>{offenseLabel}</span>
-            <span className={`text-xs font-black leading-none ${offenseTone}`}>
+            <span className={`text-xs font-black leading-none ${offenseTone}`} title={groupTitle(offenseLabel, offenseKey, battle.playerStrMax)}>
               {battle.playerStrMax ?? '—'}
-              {previewOffense > 0 && <span className="text-combat-heal animate-pulse"> +{previewOffense}</span>}
+              <StatPreviewBump amount={previewOffense} />
             </span>
-            <span className="text-[8px] uppercase tracking-widest text-fg-disabled">DEF</span>
-            <span className="text-xs font-black leading-none text-stat-def">
+            <span className="text-[8px] uppercase tracking-widest text-fg-disabled">{defenseLabel}</span>
+            <span className={`text-xs font-black leading-none ${defenseTone}`} title={groupTitle(defenseLabel, defenseKey, battle.playerDefMax)}>
               {battle.playerDefMax ?? '—'}
-              {previewDef > 0 && <span className="text-combat-heal animate-pulse"> +{previewDef}</span>}
+              <StatPreviewBump amount={previewDef} />
             </span>
+            {groupPct > 0 && (
+              <span className="text-[8px] font-bold tracking-wider text-resource-mp" title={groupTagTitle}>+{groupPct}%</span>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-center justify-center gap-0.5 px-0.5">
@@ -991,22 +1027,31 @@ export default function BattlePanel({
             <HpBar current={playerMp} max={playerMpMax} color="bg-resource-mp" preview={itemPreview?.mp ?? 0} />
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center" title={groupTitle(offenseLabel, offenseKey, battle.playerStrMax)}>
               {/* The stat the last strike rolled: MAG for a spell, else the weapon's. */}
               <span className={`text-[9px] uppercase tracking-widest leading-none ${offenseTone}`}>{offenseLabel}</span>
               <span className={`text-xs font-black leading-none mt-0.5 ${offenseTone}`}>
                 {battle.playerStrMax ?? '—'}
-                {previewOffense > 0 && <span className="text-combat-heal tabular-nums animate-pulse"> +{previewOffense}</span>}
+                <StatPreviewBump amount={previewOffense} />
               </span>
             </div>
             <div className="w-px h-5 bg-surface-hover/60" />
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">DEF</span>
-              <span className="text-xs font-black text-stat-def leading-none mt-0.5">
+            <div className="flex flex-col items-center" title={groupTitle(defenseLabel, defenseKey, battle.playerDefMax)}>
+              <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">{defenseLabel}</span>
+              <span className={`text-xs font-black leading-none mt-0.5 ${defenseTone}`}>
                 {battle.playerDefMax ?? '—'}
-                {previewDef > 0 && <span className="text-combat-heal tabular-nums animate-pulse"> +{previewDef}</span>}
+                <StatPreviewBump amount={previewDef} />
               </span>
             </div>
+            {groupPct > 0 && (
+              <>
+                <div className="w-px h-5 bg-surface-hover/60" />
+                <div className="flex flex-col items-center" title={groupTagTitle}>
+                  <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">Group</span>
+                  <span className="text-xs font-black leading-none mt-0.5 text-resource-mp tabular-nums">+{groupPct}%</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

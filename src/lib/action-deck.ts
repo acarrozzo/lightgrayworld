@@ -165,8 +165,10 @@ export function deckContextFromBattle(battle: BattleState, player: Player, inven
   const { isRanged } = weaponInHand(inventory)
   const groupScale = 1 + (battle.bonusPercent ?? 0) / 100
   // The server sends the top of the swing at battle start and after every
-  // turn; the client formula covers the gap on a fresh hydration.
-  const swingMax = battle.playerStrMax ?? Math.floor(effectiveStats(player, inventory)[isRanged ? 'dex' : 'str'].total * groupScale)
+  // turn; the client formula covers the gap on a fresh hydration. After a
+  // spell that number is the MAG the spell rolled, not the weapon's.
+  const serverSwing = battle.spell ? null : battle.playerStrMax
+  const swingMax = serverSwing ?? Math.floor(effectiveStats(player, inventory)[isRanged ? 'dex' : 'str'].total * groupScale)
   return {
     situation: { inBattle: true, hasTarget: true, mp: player.mp ?? 0, hp: battle.playerHp, hpMax: battle.playerHpMax, buffs: player.buffs },
     target: targetFromBattle(battle),

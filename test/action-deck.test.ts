@@ -6,7 +6,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { attackBlockedBy, buildStrikeRow, deckContextFromRoom, targetFromRoomEnemy, type DeckTarget } from '../src/lib/action-deck'
+import { attackBlockedBy, buildStrikeRow, deckContextFromBattle, deckContextFromRoom, targetFromRoomEnemy, type DeckTarget } from '../src/lib/action-deck'
 import { SKILLS } from '../src/lib/skillbook'
 
 const smash = (SKILLS as Array<{ id: string; column: string; weapon?: string }>).find((s) => s.id === 'smash')!
@@ -111,4 +111,16 @@ test("the room's enemy becomes the deck's target with its flags", () => {
   assert.equal(c.situation.hasTarget, true)
   assert.equal(c.groupScale, 1)
   assert.ok(c.swingMax > 0)
+})
+
+test("in a fight, Attack's range is the weapon's stat, even after a spell turn sent MAG", () => {
+  const battle = (over: Record<string, unknown>) =>
+    ({ enemyName: 'Squid', enemyDef: 25, enemyTraits: [], playerHp: 663, playerHpMax: 663, bonusPercent: 0, playerStrMax: null, spell: null, ...over }) as any
+  const p = player({ mag: 900, strMod: 50 })
+  const inv = [twoHander()]
+  // A swing or a support turn: the server's top of swing is the weapon's.
+  assert.equal(deckContextFromBattle(battle({ playerStrMax: 210 }), p, inv).swingMax, 210)
+  // A spell turn: that number is the MAG the spell rolled, so the deck works the weapon's out itself.
+  const afterSpell = deckContextFromBattle(battle({ playerStrMax: 900, spell: { id: 'fireball', name: 'Fireball' } }), p, inv)
+  assert.equal(afterSpell.swingMax, 143 + 50)
 })
