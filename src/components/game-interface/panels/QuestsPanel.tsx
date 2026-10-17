@@ -33,6 +33,8 @@ import QuestRequirements from '@/components/QuestRequirements'
 import QuestTypeTag from '@/components/QuestTypeTag'
 import Icon from '@/components/Icon'
 import { ScrollEnd } from '../LayerShell'
+import FightLedger from '@/components/FightLedger'
+import { asLedgerTurns, type LedgerTurn } from '@/lib/fight-ledger'
 
 interface BattleLogEntry {
   id: string
@@ -98,17 +100,42 @@ function rewardText(rewards: { type: string; amount?: number; itemSlug?: string;
     .join(' · ')
 }
 
+type BattleOutcome = 'WIN' | 'LOSS' | 'FLED'
+
+const OUTCOME_STYLE: Record<BattleOutcome, { card: string; tag: string; label: string }> = {
+  WIN: { card: 'border-status-success/40 bg-status-success/20', tag: 'bg-status-success/60 text-status-success', label: 'WIN' },
+  LOSS: { card: 'border-status-error/40 bg-status-error/10', tag: 'bg-status-error/60 text-status-error', label: 'LOSS' },
+  FLED: { card: 'border-status-warning/40 bg-status-warning/10', tag: 'bg-status-warning/50 text-status-warning', label: 'FLED' },
+}
+
+const outcomeOf = (value: string): BattleOutcome => (value === 'WIN' || value === 'FLED' ? value : 'LOSS')
+
+/**
+ * Every fight this character has had, newest first, paged all the way back.
+ * A card is the summary row the fight wrote when it ended — a win, a death or
+ * a retreat; tapping it fetches that fight's ledger and opens it under the
+ * numbers, turn by turn, in the same table the Turn chip shows mid-fight.
+ */
 function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string, string> }) {
   const [logs, setLogs] = useState<BattleLogEntry[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [openId, setOpenId] = useState<string | null>(null)
+  // Ledgers fetched so far, by record id; null while one is on its way.
+  const [ledgers, setLedgers] = useState<Record<string, LedgerTurn[] | null>>({})
 
-  const fetchLogs = useCallback(async () => {
+  const fetchPage = useCallback(async (cursor: string | null) => {
     setIsLoading(true)
     try {
-      const res = await fetch('/api/player/battle-log', { headers: getAuthHeaders() })
+      const query = new URLSearchParams({ limit: '25' })
+      if (cursor) query.set('cursor', cursor)
+      const res = await fetch(`/api/player/battle-log?${query.toString()}`, { headers: getAuthHeaders() })
       const data = await res.json()
-      if (data.success) setLogs(data.logs)
+      if (data.success) {
+        setLogs((prev) => (cursor ? [...prev, ...data.logs] : data.logs))
+        setNextCursor(data.nextCursor ?? null)
+      }
     } catch {
       // silently fail
     } finally {
@@ -118,64 +145,109 @@ function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string,
   }, [getAuthHeaders])
 
   useEffect(() => {
-    if (!loaded) fetchLogs()
-  }, [loaded, fetchLogs])
+    if (!loaded) fetchPage(null)
+  }, [loaded, fetchPage])
 
-  if (isLoading) return <p className="text-fg-muted text-sm">Loading battle log...</p>
+  const toggle = useCallback(async (id: string) => {
+    setOpenId((current) => (current === id ? null : id))
+    if (id in ledgers) return
+    setLedgers((prev) => ({ ...prev, [id]: null }))
+    try {
+      const res = await fetch(`/api/player/battle-log?id=${encodeURIComponent(id)}`, { headers: getAuthHeaders() })
+      const data = await res.json()
+      setLedgers((prev) => ({ ...prev, [id]: data.success ? asLedgerTurns(data.log?.turns) : [] }))
+    } catch {
+      setLedgers((prev) => ({ ...prev, [id]: [] }))
+    }
+  }, [getAuthHeaders, ledgers])
+
+  if (!loaded && isLoading) return <p className="text-fg-muted text-sm">Loading battle log...</p>
   if (loaded && logs.length === 0) return <p className="text-fg-muted text-sm">No battles recorded yet.</p>
 
   return (
     <div className="space-y-2">
       {logs.map((log) => {
-        const isWin = log.outcome === 'WIN'
+        const outcome = outcomeOf(log.outcome)
+        const style = OUTCOME_STYLE[outcome]
+        const isOpen = openId === log.id
+        const ledger = ledgers[log.id]
         const date = new Date(log.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
         return (
-          <div
-            key={log.id}
-            className={`rounded-lg border p-3 space-y-2 ${isWin ? 'border-status-success/40 bg-status-success/20' : 'border-status-error/40 bg-status-error/10'}`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isWin ? 'bg-status-success/60 text-status-success' : 'bg-status-error/60 text-status-error'}`}>
-                  {isWin ? 'WIN' : 'LOSS'}
+          <div key={log.id} className={`rounded-lg border ${style.card}`}>
+            <button
+              type="button"
+              onClick={() => toggle(log.id)}
+              aria-expanded={isOpen}
+              aria-controls={`battle-ledger-${log.id}`}
+              title={isOpen ? 'Hide the turns' : 'Show the fight turn by turn'}
+              className="w-full space-y-2 rounded-lg p-3 text-left transition-colors hover:bg-surface-raised/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${style.tag}`}>{style.label}</span>
+                  <span className="text-sm font-semibold text-fg-bright">{log.enemyName}</span>
+                  {log.multiplayerBonus && (
+                    <span className="text-[10px] text-resource-mp bg-resource-mp/30 px-1 rounded">group</span>
+                  )}
+                </div>
+                <span className="flex items-center gap-2 text-[10px] text-fg-disabled">
+                  {date}
+                  <span aria-hidden="true" className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}>▾</span>
                 </span>
-                <span className="text-sm font-semibold text-fg-bright">{log.enemyName}</span>
-                {log.multiplayerBonus && (
-                  <span className="text-[10px] text-resource-mp bg-resource-mp/30 px-1 rounded">group</span>
-                )}
               </div>
-              <span className="text-[10px] text-fg-disabled">{date}</span>
-            </div>
-            <div className="grid grid-cols-4 gap-1 text-center">
-              <div>
-                <p className="text-[10px] text-fg-muted uppercase tracking-wide">Turns</p>
-                <p className="text-xs font-semibold text-fg-bright">{log.turnsCount}</p>
+              <div className="grid grid-cols-4 gap-1 text-center">
+                <div>
+                  <p className="text-[10px] text-fg-muted uppercase tracking-wide">Turns</p>
+                  <p className="text-xs font-semibold text-fg-bright">{log.turnsCount}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-fg-muted uppercase tracking-wide">Dealt</p>
+                  <p className="text-xs font-semibold text-fg-bright">{log.totalDamageDealt}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-fg-muted uppercase tracking-wide">Received</p>
+                  <p className="text-xs font-semibold text-fg-bright">{log.totalDamageReceived}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-status-warning uppercase tracking-wide">Best Hit</p>
+                  <p className="text-xs font-semibold text-status-warning">{log.maxSingleHit}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] text-fg-muted uppercase tracking-wide">Dealt</p>
-                <p className="text-xs font-semibold text-fg-bright">{log.totalDamageDealt}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-fg-muted uppercase tracking-wide">Received</p>
-                <p className="text-xs font-semibold text-fg-bright">{log.totalDamageReceived}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-status-warning uppercase tracking-wide">Best Hit</p>
-                <p className="text-xs font-semibold text-status-warning">{log.maxSingleHit}</p>
-              </div>
-            </div>
-            {isWin && (
-              <div className="flex items-center gap-3 text-[11px] text-fg-secondary pt-0.5 border-t border-line-subtle/40">
-                <span className="text-status-success">+{log.xpEarned} XP</span>
-                <span className="text-status-warning">+{log.goldEarned} Gold</span>
-                {log.itemsDropped.length > 0 && (
-                  <span className="text-stat-mag">+{log.itemsDropped.join(', ')}</span>
+              {outcome === 'WIN' && (
+                <div className="flex items-center gap-3 text-[11px] text-fg-secondary pt-0.5 border-t border-line-subtle/40">
+                  <span className="text-status-success">+{log.xpEarned} XP</span>
+                  <span className="text-status-warning">+{log.goldEarned} Gold</span>
+                  {log.itemsDropped.length > 0 && (
+                    <span className="text-stat-mag">+{log.itemsDropped.join(', ')}</span>
+                  )}
+                </div>
+              )}
+              {outcome === 'FLED' && (
+                <p className="text-[11px] text-fg-muted pt-0.5 border-t border-line-subtle/40">You broke off. The {log.enemyName} kept its HP.</p>
+              )}
+            </button>
+            {isOpen && (
+              <div id={`battle-ledger-${log.id}`} className="border-t border-line-subtle/40 bg-surface-panel/60 rounded-b-lg">
+                {ledger === null || ledger === undefined ? (
+                  <p className="px-3 py-3 text-xs text-fg-muted">Loading the turns...</p>
+                ) : (
+                  <FightLedger turns={ledger} enemyName={log.enemyName} className="py-1" />
                 )}
               </div>
             )}
           </div>
         )
       })}
+      {nextCursor && (
+        <button
+          type="button"
+          onClick={() => fetchPage(nextCursor)}
+          disabled={isLoading}
+          className="w-full rounded-lg border border-line-subtle/60 px-3 py-2 text-xs font-medium text-fg-secondary transition-colors hover:bg-surface-raised/40 hover:text-fg-bright disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isLoading ? 'Loading...' : 'Earlier fights'}
+        </button>
+      )}
     </div>
   )
 }

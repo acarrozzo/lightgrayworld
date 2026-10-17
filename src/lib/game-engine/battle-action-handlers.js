@@ -1,5 +1,7 @@
 const { prisma } = require('../db-client')
 const { BattleState, playerIsFlying } = require('./battle-state')
+const { compactTurn } = require('./fight-ledger')
+const { recordBattleFled } = require('./services/battle-log-service')
 const { resolveTurn, resolveEnemyAttack, rollEnemyDodge, getOtherCombatantCount, totalDamageToEnemy, pickPlayerOffensiveStat } = require('./battle-calculator')
 const { getEnemyBehaviours } = require('../game-data/enemy-specials')
 const { prepareBattleWinRewards, persistBattleWin, handleBattleWin, handleBattleDefeat } = require('./battle-win-handler')
@@ -114,6 +116,8 @@ async function resolveBattleDefeat(playerId, roomState, battleState, enemyName, 
       respawnRoomId: RESPAWN_ROOM_ID,
       playerHp: 0,
       buffs,
+      // The whole fight, for the frozen box and the death card's record.
+      turns: battleState.turns ?? [],
       message: `The ${enemyName} overwhelms you. You black out...`,
       summary: {
         outcome: 'LOSS',
@@ -525,6 +529,21 @@ function theftFields(theft) {
   return { playerMp: theft.mp, playerMpMax: theft.mpMax, playerCurrency: theft.currency }
 }
 
+/**
+ * File this turn's ledger row on the fight and return it for the payload.
+ * Every path that resolves a turn calls this once, after the enemy's answer
+ * has landed, so the row's HP is what the player sees. A bare test double
+ * without the method still gets its row back.
+ * @param {BattleState} battleState
+ * @param {Object} turn  The resolved turn record.
+ * @param {{ playerHp: number, playerMp?: number|null, absorbed?: number, actionMeta?: Object|null, enemyActed?: boolean }} extras
+ */
+function recordLedger(battleState, turn, extras) {
+  const row = compactTurn(turn, { turn: battleState.turnCount, enemyHp: battleState.enemyCurrentHp, ...extras })
+  if (typeof battleState.recordLedgerTurn === 'function') battleState.recordLedgerTurn(row)
+  return row
+}
+
 // ─── start_battle ───────────────────────────────────────────────────────────
 
 /**
@@ -801,6 +820,14 @@ async function executeStartBattle(action, playerId, roomState) {
     ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
     message: [attackDesc, defenseDesc].join(' '),
   }
+  // The opening turn's ledger row. The enemy only answered if it survived
+  // the player's opening blow (it always acts on an ambush).
+  turnPayload.ledgerTurn = recordLedger(battleState, firstTurn, {
+    playerHp: newPlayerHp,
+    playerMp: turnPayload.playerMp ?? null,
+    absorbed: updatedPlayer.absorbed,
+    enemyActed: isAdvantageTurn || !battleState.isEnemyDead(),
+  })
 
   const playerEvents = [
     { event: 'battle:started', payload: startPayload },
@@ -839,6 +866,7 @@ async function executeStartBattle(action, playerId, roomState) {
         goldAwarded,
         droppedItems: droppedSlugs,
         lastTurnResult: firstTurn,
+        turns: battleState.turns,
         ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
         message: `You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
@@ -997,6 +1025,12 @@ async function executePlayerAttack(action, playerId, roomState) {
         ? `Your ${turnResult.skill.name} finishes it. `
         : ''
     const winMsg = `${finalBlow}You defeated the ${battleState.enemyName}! ${rewardParts.join('  ')}`
+    // The killing turn's row: the enemy fell before it could answer.
+    recordLedger(battleState, turnResult, {
+      playerHp: player.hp,
+      playerMp: spellMp?.mp ?? skillMp?.mp ?? null,
+      enemyActed: false,
+    })
 
     // Fire DB persistence in the background; level-up event emitted via backgroundWork
     const backgroundWork = settleBattleWinPersistence(playerId, battleState, rewards)
@@ -1014,6 +1048,7 @@ async function executePlayerAttack(action, playerId, roomState) {
             goldAwarded,
             droppedItems: droppedSlugs,
             lastTurnResult: turnResult,
+            turns: battleState.turns,
             ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
             message: winMsg,
@@ -1059,6 +1094,13 @@ async function executePlayerAttack(action, playerId, roomState) {
   // Mirror the new HP into the in-memory room state so non-battle reads (e.g. rest)
   // don't operate on a stale, pre-damage value.
   roomState.updatePlayer(playerId, (state) => ({ ...state, hp: newHp }))
+
+  // The turn's ledger row, with HP as it stands after the enemy's answer.
+  const ledgerTurn = recordLedger(battleState, turnResult, {
+    playerHp: newHp,
+    playerMp: spellMp?.mp ?? skillMp?.mp ?? theft?.mp ?? null,
+    absorbed: updatedPlayer.absorbed,
+  })
 
   // Death check
   if (newHp <= 0) {
@@ -1154,6 +1196,7 @@ async function executePlayerAttack(action, playerId, roomState) {
           ...theftFields(theft),
           ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
           message: parts.join(' '),
+          ledgerTurn,
         },
       },
       // Spending a round changes inventory — keep the panel's count live.
@@ -1235,6 +1278,14 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     describeEnemyAttack(battleState.enemyName, enemyAtk.enemyFinal, enemyAtk.enemyAction, '', enemyAtk.dodged, turnRecord) +
     describeHitExtras(updatedPlayer)
 
+  // The turn's ledger row: what was used or done, and the enemy's answer.
+  const ledgerTurn = recordLedger(battleState, turnRecord, {
+    playerHp: newHp,
+    playerMp: theft?.mp ?? null,
+    absorbed: updatedPlayer.absorbed,
+    actionMeta,
+  })
+
   // Defeat path: enemy counterattack killed the player
   if (newHp <= 0) {
     return {
@@ -1290,6 +1341,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
           ...theftFields(theft),
           actionMeta,
           message: [actionDesc, defenseDesc].join(' '),
+          ledgerTurn,
         },
       },
     ],
@@ -1326,6 +1378,9 @@ async function executePlayerFlee(action, playerId, roomState) {
 
   battleState.end()
   roomState.activeBattles.delete(playerId)
+  // A retreat is a fight that ended too: it gets its Battle Log row, with
+  // the ledger of how far it got. Never awaited; the escape does not wait.
+  void recordBattleFled(playerId, battleState)
   // The enemy is not killed by being run from: it stays in the room's slot,
   // still standing where you left it. The retreat itself is a teleport, and a
   // teleport is never held back by a hostile, so nothing has to be cleared to

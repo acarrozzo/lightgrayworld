@@ -8,6 +8,8 @@ interface RoomSheetProps {
   open: boolean
   onClose: () => void
   title: string
+  /** The title's color class; the room's blue unless the sheet holds something else. */
+  toneClass?: string
   children: ReactNode
 }
 
@@ -19,7 +21,7 @@ interface RoomSheetProps {
  * `RoomBox` as always sits inside, so its actions, supplies and the people
  * standing here are all a tap away without leaving the fight.
  */
-export default function RoomSheet({ open, onClose, title, children }: RoomSheetProps) {
+export default function RoomSheet({ open, onClose, title, toneClass = 'text-hue-blue', children }: RoomSheetProps) {
   const bodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export default function RoomSheet({ open, onClose, title, children }: RoomSheetP
       >
         <div className="mx-auto mt-2 h-1 w-9 flex-shrink-0 rounded-full bg-line-strong lg:hidden" aria-hidden="true" />
         <div className="flex flex-shrink-0 items-center gap-2 border-b border-line-subtle/50 py-2 pl-3 pr-2">
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-hue-blue">{title}</span>
+          <span className={`min-w-0 flex-1 truncate text-sm font-semibold ${toneClass}`}>{title}</span>
           <button type="button" onClick={onClose} aria-label="Close" title="Close (Esc)" className={ICON_BUTTON}>
             <X size={18} aria-hidden="true" />
           </button>

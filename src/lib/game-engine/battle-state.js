@@ -1,6 +1,7 @@
 const { getStatBuffBonuses } = require('./services/buff-service')
 const { getPassiveSkillBonuses } = require('../game-data/skills')
 const { getEnemyTraits } = require('../game-data/enemy-traits')
+const { pushLedgerTurn } = require('./fight-ledger')
 
 /**
  * What the player is holding, as the skills read it: the weapon's category,
@@ -63,6 +64,11 @@ class BattleState {
     this.maxSingleHit = 0
     this.multiplayerBonusUsed = false
     this.lastTurnResult = null
+    // The fight's ledger: one compact row per resolved turn (fight-ledger.js),
+    // in order, capped. Sent whole on reconnect and with the terminal event,
+    // and written beside the summary on BattleLog when the fight ends.
+    /** @type {import('./fight-ledger').LedgerTurn[]} */
+    this.turns = []
   }
 
   /**
@@ -137,6 +143,11 @@ class BattleState {
     if (playerDealt > this.maxSingleHit) this.maxSingleHit = playerDealt
     if (hadMultiplayerBonus) this.multiplayerBonusUsed = true
     if (fullTurnResult) this.lastTurnResult = fullTurnResult
+  }
+
+  /** Keep a resolved turn's ledger row. The handlers build the row; this only files it. */
+  recordLedgerTurn(row) {
+    if (row) pushLedgerTurn(this.turns, row)
   }
 
   applyDamageToEnemy(amount) {
@@ -216,6 +227,8 @@ class BattleState {
       playerHpMax,
       playerStr: this.equippedWeaponCategory === 'RANGED' ? this.baseDex : this.baseStr,
       playerDef: this.baseDef,
+      // The fight so far, so a refresh gets the ledger back along with the HP.
+      turns: this.turns,
     }
   }
 }

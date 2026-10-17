@@ -528,6 +528,8 @@ model BattleLog {
   goldEarned          Int
   itemsDropped        Json     @default("[]")
   multiplayerBonus    Boolean  @default(false)
+  /// The fight's ledger: one compact row per turn (game-engine/fight-ledger.js). Empty on rows older than it.
+  turns               Json     @default("[]")
   createdAt           DateTime @default(now())
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

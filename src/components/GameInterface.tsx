@@ -12,6 +12,7 @@ import RoomBox, { type RoomEnemy } from './RoomBox'
 import BattlePanel from './game-interface/panels/BattlePanel'
 import BattleVitalsLine from './game-interface/BattleVitalsLine'
 import RoomSheet from './game-interface/RoomSheet'
+import FightLedgerSheet from './game-interface/FightLedgerSheet'
 import { useFightFrame } from './game-interface/useFightFrame'
 import NotificationBadge from './NotificationBadge'
 import TabBar, { tabDef, type TabBadges } from './game-interface/TabBar'
@@ -2481,6 +2482,7 @@ export default function GameInterface() {
           playerMp: payload.playerMp,
           playerMpMax: payload.playerMpMax,
           playerCurrency: payload.playerCurrency,
+          ledgerTurn: payload.ledgerTurn ?? null,
         })
       } else if (typeof payload.playerMp === 'number') {
         // A one-turn kill or a fatal counter after a cast: the terminal handler
@@ -2565,6 +2567,8 @@ export default function GameInterface() {
           enemyHealed: lt?.enemyHealed ?? 0,
           enemyEffects: lt?.enemyEffects ?? {},
           extraShot: lt?.extraShot ?? null,
+          // The whole fight, killing turn included, for the frozen box's ledger.
+          turns: payload.turns ?? b.turns,
         })
         updateBattleTurn(buildUpdate(0))
       }, 0)
@@ -2633,6 +2637,7 @@ export default function GameInterface() {
           enemyHealed: lt?.enemyHealed ?? 0,
           enemyEffects: lt?.enemyEffects ?? {},
           extraShot: lt?.extraShot ?? null,
+          turns: payload.turns ?? b.turns,
         })
       }, 0)
       scheduleBattleTimer(applyDefeat, 900)
@@ -3385,6 +3390,14 @@ export default function GameInterface() {
   const fightLocked = battle.isInBattle && fightFrame === 'fight'
   const [roomSheetOpen, setRoomSheetOpen] = useState(false)
   const closeRoomSheet = useCallback(() => setRoomSheetOpen(false), [])
+  // The fight's ledger, from the strip's Turn chip. Open during the fight and
+  // over the frozen victory box; gone with the box.
+  const [ledgerOpen, setLedgerOpen] = useState(false)
+  const openLedger = useCallback(() => setLedgerOpen(true), [])
+  const closeLedger = useCallback(() => setLedgerOpen(false), [])
+  useEffect(() => {
+    if (!battle.isInBattle && !battleResult) setLedgerOpen(false)
+  }, [battle.isInBattle, battleResult])
   const openRoomFromFight = useCallback(() => {
     if (fightLocked) setRoomSheetOpen(true)
     else roomCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -4273,6 +4286,7 @@ export default function GameInterface() {
                         listRef={fightListRef}
                         roomLabel={currentRoom?.roomId ? String(currentRoom.roomId) : undefined}
                         onOpenRoom={openRoomFromFight}
+                        onOpenLedger={openLedger}
                         onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
                         onFlee={handleFlee}
                         fleeNeedsConfirm={escapeWarning !== null}
@@ -4354,6 +4368,7 @@ export default function GameInterface() {
               {roomBoxEl}
             </RoomSheet>
           )}
+          <FightLedgerSheet open={ledgerOpen} onClose={closeLedger} />
         </div>
 
         {/* Right: Feed panel — desktop only */}

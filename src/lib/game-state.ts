@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { RoomView, RoomItemView } from '@/lib/types/room'
 import { EquipSlot, WeaponCategory } from '@prisma/client'
 import { EnemyTrait, PartySnapshot } from '@/lib/socket'
+import type { LedgerTurn } from '@/lib/fight-ledger'
 
 export interface Player {
   id: string
@@ -263,6 +264,8 @@ export interface BattleState {
   enemyHealed: number
   /** Heal, theft, drains, Resurrect and Block on the last turn. */
   enemyEffects: BattleEnemyEffects
+  /** Every turn of this fight so far, as the server recorded it (the Turn chip's ledger). */
+  turns: LedgerTurn[]
 }
 
 /** Client mirror of the server's extra hit (see lib/socket.ts). */
@@ -356,6 +359,7 @@ const INITIAL_BATTLE_STATE: BattleState = {
   melted: false,
   enemyHealed: 0,
   enemyEffects: {},
+  turns: [],
 }
 
 /**
@@ -507,8 +511,8 @@ export interface GameState {
   cacheRoom: (room: Room) => void
   getCachedRoom: (roomId: string) => Room | null
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
-  setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyRank?: 'boss' | 'miniboss' | null; enemyAtt: number; enemyDef: number; enemyTraits?: EnemyTrait[]; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number }) => void
-  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; extraShot?: BattleExtraShot | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number; absorbed?: number; magicArmorLeft?: number; poisonApplied?: { clicks: number } | null; petrifyApplied?: number; petrifiedTurns?: number; extraHits?: BattleExtraHit[]; enemyDodged?: boolean; petrified?: boolean; melted?: boolean; enemyHealed?: number; enemyEffects?: BattleEnemyEffects; playerCurrency?: number }) => void
+  setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyRank?: 'boss' | 'miniboss' | null; enemyAtt: number; enemyDef: number; enemyTraits?: EnemyTrait[]; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number; turns?: LedgerTurn[] }) => void
+  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; extraShot?: BattleExtraShot | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number; absorbed?: number; magicArmorLeft?: number; poisonApplied?: { clicks: number } | null; petrifyApplied?: number; petrifiedTurns?: number; extraHits?: BattleExtraHit[]; enemyDodged?: boolean; petrified?: boolean; melted?: boolean; enemyHealed?: number; enemyEffects?: BattleEnemyEffects; playerCurrency?: number; ledgerTurn?: LedgerTurn | null; turns?: LedgerTurn[] }) => void
   /** A click tick moved the vitals mid-fight (regen, poison): keep the battle card's bars honest. */
   syncBattleVitals: (vitals: { hp?: number }) => void
   clearBattle: () => void
@@ -653,6 +657,8 @@ export const useGameStore = create<GameState>()(
             playerHpMax: payload.playerHpMax,
             playerStrMax: payload.playerStr,
             playerDefMax: payload.playerDef,
+            // A resume carries the fight so far; a fresh start has nothing yet.
+            turns: payload.turns ?? [],
           },
           player: state.player ? { ...state.player, hp: payload.playerHp, hpMax: payload.playerHpMax } : state.player,
         })),
@@ -701,6 +707,14 @@ export const useGameStore = create<GameState>()(
             melted: payload.melted ?? false,
             enemyHealed: payload.enemyHealed ?? 0,
             enemyEffects: payload.enemyEffects ?? {},
+            // The ledger: a terminal event hands over the whole list; a turn
+            // appends its row, replacing a row of the same turn number so a
+            // repeated delivery cannot double it.
+            turns: payload.turns
+              ? payload.turns
+              : payload.ledgerTurn
+                ? [...state.battle.turns.filter((row) => row.t !== payload.ledgerTurn!.t), payload.ledgerTurn]
+                : state.battle.turns,
           },
           // A spell turn also reports the MP it spent; a weapon turn leaves MP alone.
           player: state.player
@@ -785,6 +799,7 @@ export const useGameStore = create<GameState>()(
                   playerHpMax: payload.battle.playerHpMax,
                   playerStrMax: payload.battle.playerStr,
                   playerDefMax: payload.battle.playerDef,
+                  turns: payload.battle.turns ?? [],
                 }
               : { ...INITIAL_BATTLE_STATE }
           }

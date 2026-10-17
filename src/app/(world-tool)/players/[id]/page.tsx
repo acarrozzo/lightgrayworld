@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Icon from '@/components/Icon'
+import FightLedger from '@/components/FightLedger'
+import { asLedgerTurns } from '@/lib/fight-ledger'
 
 // Resolve every equipment slot the way the public-profile route does:
 // legacy `Equipment` string slots as the fallback, equipped `PlayerItem` rows override.
@@ -70,7 +72,7 @@ function dateWithRelative(d: Date) {
 export default async function PlayerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
-  const [user, kills, lastBattle, completedQuestCount, questCount] = await Promise.all([
+  const [user, kills, battles, completedQuestCount, questCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id },
       include: {
@@ -83,12 +85,14 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
       },
     }),
     prisma.killList.findMany({ where: { userId: id }, orderBy: { kills: 'desc' } }),
-    prisma.battleLog.findFirst({ where: { userId: id }, orderBy: { createdAt: 'desc' } }),
+    // The fights, newest first, each with its ledger (one compact row per turn).
+    prisma.battleLog.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 20 }),
     prisma.questProgress.count({ where: { userId: id, completed: true } }),
     prisma.questProgress.count({ where: { userId: id } }),
   ])
 
   if (!user) notFound()
+  const lastBattle = battles[0] ?? null
 
   // Resolve equipment (PlayerItem overrides Equipment string fallback).
   const equip: Record<string, string> = {}
@@ -171,7 +175,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           <Stat
             label="Last Enemy Fought"
             value={lastBattle ? `${lastBattle.enemyName} (${lastBattle.outcome})` : '—'}
-            color={lastBattle?.outcome === 'victory' ? 'text-status-success' : lastBattle ? 'text-status-error' : undefined}
+            color={outcomeColor(lastBattle?.outcome)}
           />
           {lastBattle && (
             <Stat label="Last Battle" value={fmtDate(lastBattle.createdAt)} />
@@ -191,9 +195,57 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
             kills.map((k) => <Stat key={k.id} label={k.monster} value={k.kills} color="text-fg-bright" />)
           )}
         </Section>
+
+        <div className="md:col-span-2">
+          <Section title={`Fights (last ${battles.length})`}>
+            {battles.length === 0 ? (
+              <p className="text-sm text-fg-muted">No fights recorded.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {battles.map((b) => {
+                  const turns = asLedgerTurns(b.turns)
+                  return (
+                    <details key={b.id} className="group rounded border border-line-subtle/60 bg-surface-panel/40 open:bg-surface-panel/70">
+                      <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm hover:bg-surface-raised/30 [&::-webkit-details-marker]:hidden">
+                        <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${outcomeTag(b.outcome)}`}>{b.outcome}</span>
+                        <span className="font-semibold text-fg-bright">{b.enemyName}</span>
+                        <span className="text-xs text-fg-muted">{fmtDate(b.createdAt)}</span>
+                        <span className="ml-auto flex items-center gap-3 text-xs text-fg-secondary tabular-nums">
+                          <span>{b.turnsCount} turns</span>
+                          <span>dealt {b.totalDamageDealt}</span>
+                          <span>took {b.totalDamageReceived}</span>
+                          <span className="text-status-warning">best {b.maxSingleHit}</span>
+                          {b.outcome === 'WIN' && <span className="text-status-success">+{b.xpEarned} XP · +{b.goldEarned} gold</span>}
+                          <span aria-hidden="true" className="text-fg-disabled transition-transform group-open:rotate-180">▾</span>
+                        </span>
+                      </summary>
+                      <div className="border-t border-line-subtle/60">
+                        <FightLedger turns={turns} enemyName={b.enemyName} className="py-1" emptyText="No turn record for this fight (it predates the ledger)." />
+                      </div>
+                    </details>
+                  )
+                })}
+              </div>
+            )}
+          </Section>
+        </div>
       </div>
     </div>
   )
+}
+
+// WIN green, FLED amber, LOSS red: the Battle Log tab's own palette.
+function outcomeColor(outcome?: string | null) {
+  if (!outcome) return undefined
+  if (outcome === 'WIN') return 'text-status-success'
+  if (outcome === 'FLED') return 'text-status-warning'
+  return 'text-status-error'
+}
+
+function outcomeTag(outcome: string) {
+  if (outcome === 'WIN') return 'border-status-success/60 text-status-success'
+  if (outcome === 'FLED') return 'border-status-warning/60 text-status-warning'
+  return 'border-status-error/60 text-status-error'
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

@@ -32,6 +32,7 @@ const { getKillSet, ensureKillSet } = require('./services/kill-list-service')
 const { getEnemy } = require('../game-data/enemies')
 const { getRevealDefinition, getNextRevealStage, markRevealed, clearRevealed } = require('./search-reveal-state')
 const { savePresentEnemy } = require('./services/present-enemy-service')
+const { recordBattleFled } = require('./services/battle-log-service')
 const { executeTravelerAction } = require('./traveler-action-handlers')
 
 const EXIT_DIRECTIONS = [
@@ -1426,6 +1427,8 @@ class RoomState {
     // showing an enemy in a room they are no longer standing in.
     const abandonedBattle = this.activeBattles.get(playerId)
     const abandonedEnemyName = abandonedBattle?.isActive ? abandonedBattle.enemyName : null
+    // Leaving by teleport is a retreat: the fight gets its Battle Log row.
+    if (abandonedBattle?.isActive) void recordBattleFled(playerId, abandonedBattle)
     // Read the live record back rather than reusing the one captured at the top
     // of this method: a slip has just written HP through `updatePlayer`, which
     // replaces the stored object, and the old one would carry pre-fall HP into

@@ -1,4 +1,5 @@
 import { Server } from 'socket.io'
+import type { LedgerTurn } from './fight-ledger'
 
 // Socket event types
 export type ActionFeedbackOutcome = 'success' | 'failure' | 'info'
@@ -55,6 +56,8 @@ export interface BattleStartedPayload extends BattleSnapshot {
   playerStr: number
   playerDef: number
   isAggressive?: boolean
+  /** On a reconnect snapshot only: the fight so far, as ledger rows. */
+  turns?: LedgerTurn[]
 }
 
 /**
@@ -198,6 +201,8 @@ export interface BattleTurnPayload extends BattleSnapshot {
   /** The player's gold after a theft; only sent when gold or MP was taken. */
   playerCurrency?: number
   message: string
+  /** This turn's ledger row (lib/fight-ledger): the server's reading of the turn, kept for the fight's history. */
+  ledgerTurn?: LedgerTurn
 }
 
 /** One of the enemy's hits after the first: its own roll, block and Dodge. */
@@ -341,6 +346,8 @@ export interface BattleVictoryPayload {
   // True when the room is empty again after this kill (a probabilistic room's
   // one enemy is gone). False for static rooms, whose enemy is always there.
   clearRoomEnemies?: boolean
+  /** The whole fight as ledger rows, the killing turn included. */
+  turns?: LedgerTurn[]
 }
 
 export interface BattleDefeatPayload {
@@ -352,6 +359,8 @@ export interface BattleDefeatPayload {
   buffs?: Record<string, number> | null
   message: string
   summary?: BattleSummary
+  /** The whole fight as ledger rows, the fatal turn included. */
+  turns?: LedgerTurn[]
 }
 
 export interface BattleFledPayload {

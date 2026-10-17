@@ -248,6 +248,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
               goldEarned: goldAwarded,
               itemsDropped: granted,
               multiplayerBonus: battleState.multiplayerBonusUsed,
+      turns: battleState.turns ?? [],
             },
           })
 
@@ -338,6 +339,7 @@ async function handleBattleDefeat(playerId, battleState) {
       goldEarned: 0,
       itemsDropped: [],
       multiplayerBonus: battleState.multiplayerBonusUsed,
+      turns: battleState.turns ?? [],
     },
   })
 

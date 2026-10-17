@@ -39,6 +39,8 @@ interface BattlePanelProps {
   /** The strip's Room chip, in its left corner: the room's number, and what pressing it opens. Neither, no chip. */
   roomLabel?: string
   onOpenRoom?: () => void
+  /** The Turn chip: opens the fight's ledger, every turn so far. Without it the count is plain text. */
+  onOpenLedger?: () => void
   onUseItem: (itemId: string, action: string) => void
   onCastSpell: (spellId: string) => void
   /** Strike with a skill — Slice, Smash, Aim, Magic Strike — on this turn's swing. */
@@ -69,6 +71,38 @@ function LevelBadge({ level }: { level: number }) {
       <span className="text-[9px] font-semibold text-fg-muted uppercase tracking-wide leading-none">Lv</span>
       <span className="text-sm font-black text-fg-bright leading-none tabular-nums">{level}</span>
     </span>
+  )
+}
+
+/**
+ * "Turn N" between the two sides. With `onOpen` it is a chip that opens the
+ * fight's ledger — the Room chip's idea, applied to time: the fight so far,
+ * a tap away without moving anything on the pinned card.
+ */
+function TurnChip({ turn, onOpen, size }: { turn: number; onOpen?: () => void; size: 'sm' | 'md' }) {
+  const label = size === 'sm' ? 'text-[8px]' : 'text-[9px]'
+  const number = size === 'sm' ? 'text-[10px]' : 'text-[11px]'
+  const inner = (
+    <>
+      Turn <span className={`${number} font-semibold tracking-normal text-fg-secondary tabular-nums`}>{turn}</span>
+    </>
+  )
+  if (!onOpen) {
+    return <span className={`whitespace-nowrap ${label} uppercase tracking-widest text-fg-muted`}>{inner}</span>
+  }
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      title="The fight so far, turn by turn"
+      aria-label={`Turn ${turn}. Open the fight's turn-by-turn ledger`}
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-line-strong/50 bg-surface-raised/40 px-2 py-0.5 ${label} uppercase tracking-widest text-fg-muted transition-colors hover:border-combat-damage/50 hover:text-fg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus`}
+    >
+      {inner}
+      <svg className="h-2.5 w-2.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h10" />
+      </svg>
+    </button>
   )
 }
 
@@ -660,6 +694,7 @@ export default function BattlePanel({
   listRef,
   roomLabel,
   onOpenRoom,
+  onOpenLedger,
   onUseItem,
   onCastSpell,
   onUseSkill,
@@ -893,9 +928,7 @@ export default function BattlePanel({
         </div>
         <div className="flex flex-col items-center justify-center gap-0.5 px-0.5">
           <span className="text-[10px] font-black tracking-widest text-fg-disabled">VS</span>
-          <span className="whitespace-nowrap text-[8px] uppercase tracking-widest text-fg-muted">
-            Turn <span className="text-[10px] font-semibold tracking-normal text-fg-secondary">{battle.turnCount}</span>
-          </span>
+          <TurnChip turn={battle.turnCount} onOpen={onOpenLedger} size="sm" />
         </div>
         <div className="flex min-w-0 flex-col items-end gap-1 text-right">
           <div className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
@@ -981,9 +1014,7 @@ export default function BattlePanel({
         <div className="flex-shrink-0 flex flex-col items-center justify-center gap-1 px-1">
           <div className="flex-1 w-px bg-surface-raised" />
           <span className="text-[11px] font-black text-fg-disabled tracking-widest">VS</span>
-          <span className="text-[9px] text-fg-muted uppercase tracking-widest whitespace-nowrap">
-            Turn <span className="text-[11px] text-fg-secondary font-semibold tracking-normal">{battle.turnCount}</span>
-          </span>
+          <TurnChip turn={battle.turnCount} onOpen={onOpenLedger} size="md" />
           <div className="flex-1 w-px bg-surface-raised" />
         </div>
 
