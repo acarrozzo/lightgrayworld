@@ -53,7 +53,6 @@ const SLOT_LABELS: Record<string, string> = {
   NECK: 'Neck',
   MOUNT: 'Mount',
   ARTIFACT: 'Artifact',
-  COMPANION: 'Companion',
 }
 
 // Display order for groups. Any group not listed here is appended afterward,
@@ -72,7 +71,6 @@ const GROUP_ORDER = [
   'Neck',
   'Mount',
   'Artifact',
-  'Companion',
   'Consumable',
   'Crafting',
   'Misc',

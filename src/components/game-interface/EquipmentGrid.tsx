@@ -9,7 +9,7 @@ import { resolveItemIcon } from '@/lib/item-actions'
 import { SLOT_CHIP_LABELS, renderRegen, type FilterTab, type SlotCategory } from '@/lib/inventory-categories'
 
 /**
- * The eleven equipped slots — the original's Equipped list on the Char tab —
+ * The ten equipped slots — the original's Equipped list on the Char tab —
  * as a two-column grid with each item's name and stats, or as a strip of icon
  * squares where the bag below needs the height. Drawn by the Inv tab, where a
  * slot is the bag's filter: tapping one shows what fits it, and the selected
@@ -62,12 +62,11 @@ export function filterForSlot(slot: EquipSlot): FilterTab {
     case EquipSlot.NECK: return 'neck'
     case EquipSlot.MOUNT: return 'mount'
     case EquipSlot.ARTIFACT: return 'artifact'
-    case EquipSlot.COMPANION: return 'companion'
     default: return 'all'
   }
 }
 
-/** The grid's order: hands first, then armour, then jewellery and companions. */
+/** The grid's order: hands first, then armour, then jewellery, mount and artifact. */
 const GRID_SLOTS: EquipSlot[] = [
   EquipSlot.MAIN_HAND,
   EquipSlot.OFF_HAND,
@@ -79,7 +78,6 @@ const GRID_SLOTS: EquipSlot[] = [
   EquipSlot.NECK,
   EquipSlot.MOUNT,
   EquipSlot.ARTIFACT,
-  EquipSlot.COMPANION,
 ]
 
 interface EquipmentGridProps {

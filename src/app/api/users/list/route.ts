@@ -79,7 +79,6 @@ async function handleGetUsers(request: AuthenticatedRequest) {
             neck: true,
             artifact: true,
             tech: true,
-            companion: true,
             pet: true,
             mount: true,
             robot: true,

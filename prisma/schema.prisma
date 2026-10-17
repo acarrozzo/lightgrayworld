@@ -207,7 +207,6 @@ model Equipment {
   neck      String @default("- - -")
   artifact  String @default("- - -")
   tech      String @default("- - -")
-  companion String @default("- - -")
   pet       String @default("- - -")
   mount     String @default("- - -")
   robot     String @default("- - -")
@@ -566,7 +565,6 @@ enum EquipSlot {
   NECK
   MOUNT
   ARTIFACT
-  COMPANION
 }
 
 enum WeaponCategory {

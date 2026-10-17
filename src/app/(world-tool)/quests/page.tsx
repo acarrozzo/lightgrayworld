@@ -93,7 +93,6 @@ const SLOT_LABELS: Record<string, string> = {
   NECK: 'Neck',
   MOUNT: 'Mount',
   ARTIFACT: 'Artifact',
-  COMPANION: 'Companion',
 }
 
 // Turn a slug like "yellow-flower" into "Yellow Flower" — only used as a fallback

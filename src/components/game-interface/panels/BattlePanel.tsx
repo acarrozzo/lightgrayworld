@@ -10,7 +10,7 @@ import type { FightFrame } from '@/components/game-interface/useFightFrame'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { spellTone } from '@/lib/spellbook'
 import ActionDeck from '@/components/game-interface/ActionDeck'
-import { companionInHand, deckContextFromBattle, rangeText } from '@/lib/action-deck'
+import { deckContextFromBattle } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
 
 /** How many times an enemy must already have been beaten before a win with nothing new is shown as one line. */
@@ -766,25 +766,15 @@ export default function BattlePanel({
   // Pinned: the card fills its column and the list takes what is left. Won,
   // there is no list and the area scrolls again, so the box is its own height.
   const fill = frame === 'fight' && !won
-  // The companion at your side, from the bag: named under your vitals with
-  // its range, from the first turn, before it has swung.
-  const companion = companionInHand(inventory)
-  // What the enemy lost this turn: your hit, and what swung beside it. The
-  // big number is the total; under it, each part, so they add up in sight.
+  // What the enemy lost this turn: your hit, and a second arrow when one flew.
+  // The big number is the total; under it, each part, so they add up in sight.
   const playerHit = battle.lastPlayerDamage ?? 0
-  const hasHelpers = !!battle.extraShot || !!battle.companion
-  const totalHit = playerHit + (battle.extraShot?.damage ?? 0) + (battle.companion?.damage ?? 0)
-  // With helpers, the big number is the total and your own part rides the
-  // sentence after the weapon's name, so it is not said twice.
+  const hasHelpers = !!battle.extraShot
+  const totalHit = playerHit + (battle.extraShot?.damage ?? 0)
+  // With a second arrow, the big number is the total and your own part rides
+  // the sentence after the weapon's name, so it is not said twice.
   const ownHit = hasHelpers ? (
     <span className={`ml-1 font-bold tabular-nums ${playerHit > 0 ? 'text-fg-bright' : 'text-fg-disabled'}`}>{playerHit}</span>
-  ) : null
-  const companionLine = companion ? (
-    <div className="flex min-w-0 items-center gap-1 text-[10px] tabular-nums text-fg-muted" title={`${companion.name} swings ${rangeText(companion.min, companion.max)} beside every attack you make`}>
-      <Icon name={companion.iconName} className="h-3.5 w-3.5 shrink-0 text-combat-victory opacity-90" />
-      <span className="truncate font-semibold text-fg-secondary">{companion.name}</span>
-      <span className="shrink-0">{rangeText(companion.min, companion.max)}</span>
-    </div>
   ) : null
 
   return (
@@ -900,7 +890,6 @@ export default function BattlePanel({
               {previewDef > 0 && <span className="text-combat-heal animate-pulse"> +{previewDef}</span>}
             </span>
           </div>
-          {companionLine}
         </div>
         <div className="flex flex-col items-center justify-center gap-0.5 px-0.5">
           <span className="text-[10px] font-black tracking-widest text-fg-disabled">VS</span>
@@ -985,13 +974,6 @@ export default function BattlePanel({
                 {previewDef > 0 && <span className="text-combat-heal tabular-nums animate-pulse"> +{previewDef}</span>}
               </span>
             </div>
-            {/* The companion beside the stats, where the wide card has the room. */}
-            {companionLine && (
-              <>
-                <div className="w-px h-5 bg-surface-hover/60" />
-                <div className="min-w-0">{companionLine}</div>
-              </>
-            )}
           </div>
         </div>
 
@@ -1210,13 +1192,6 @@ export default function BattlePanel({
               <span className="font-semibold text-combat-victory">Second arrow</span>
               {' '}<span className={battle.extraShot.damage > 0 ? 'text-combat-victory font-semibold' : 'text-fg-disabled'}>{battle.extraShot.damage}</span>
               <span className="ml-1 text-fg-disabled">({battle.extraShot.roll} &minus; {battle.extraShot.block})</span>
-            </p>
-          )}
-          {battle.companion && (
-            <p className="text-[10px] text-fg-muted tabular-nums">
-              <span className="font-semibold text-combat-victory">{battle.companion.name}</span>
-              {' '}<span className={battle.companion.damage > 0 ? 'text-combat-victory font-semibold' : 'text-fg-disabled'}>{battle.companion.damage}</span>
-              <span className="ml-1 text-fg-disabled">({battle.companion.roll} &minus; {battle.companion.block})</span>
             </p>
           )}
         </div>

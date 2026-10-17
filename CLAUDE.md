@@ -40,7 +40,7 @@ The original is a compact, action-driven browser RPG rather than a cinematic or 
 - Low-level beginnings, tangible preparation, and meaningful danger. Avoid accelerating the opening until rooms, gear, rest, and early quests become disposable.
 - Hand-authored oddity and humor. Names, item combinations, NPC tone, unusual routes, hidden rooms, and surprising rewards are part of the game's identity.
 - Character growth through core stats, physical/mental training, equipment, weapon styles, skills, spells, quest unlocks, and eventually evolution/reset systems.
-- Broad long-term content: Grassy Field and its underground areas, Forest, Red Town, Rocky Flats, mines, ocean and underwater areas, Dark Forest/Keep, Mountains, Star City, The Despair, guilds, shops, temples, bosses, companions, pets, mounts, crafting, maps, teleport discoveries, chests, and long quest chains.
+- Broad long-term content: Grassy Field and its underground areas, Forest, Red Town, Rocky Flats, mines, ocean and underwater areas, Dark Forest/Keep, Mountains, Star City, The Despair, guilds, shops, temples, bosses, pets (as collectibles, never combat helpers; the original's companions were removed by design), mounts, crafting, maps, teleport discoveries, chests, and long quest chains.
 
 Preserve the function and feeling of these systems. Do not reproduce legacy bugs, insecure SQL/session patterns, giant conditional files, duplicated formulas, or accidental balance exploits for the sake of literal fidelity.
 

@@ -4342,7 +4342,10 @@ const ENEMIES = [
         { itemSlug: 'gray-matter', chance: 0.25 },
         { itemSlug: 'owl-eye-pendant', chance: 0.25 },
         { itemSlug: 'snow-vest', chance: 0.25 },
-        { itemSlug: 'baby-owl', chance: 0.25 },
+        // The original rolled a Baby Owl here (its pet code was never finished).
+        // Companions are out and pets are not back yet, so the owl's share is a
+        // pair of Mithril Gloves. If pets land as collectibles, the owl returns here.
+        { itemSlug: 'mithril-gloves', chance: 0.25 },
       ],
     },
   },

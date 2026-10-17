@@ -22,15 +22,14 @@ export type FilterTab =
   | 'neck'
   | 'mount'
   | 'artifact'
-  | 'companion'
   | 'consumables'
   | 'crafting'
   | 'misc'
 
 export type ItemCategory = Exclude<FilterTab, 'all'>
-export type SlotCategory = 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'ring' | 'neck' | 'mount' | 'artifact' | 'companion'
+export type SlotCategory = 'main' | 'off' | 'head' | 'body' | 'hands' | 'feet' | 'ring' | 'neck' | 'mount' | 'artifact'
 
-/** Top-level filter groups. The eleven equipment slots collapse into "gear" (shown as Equipment). */
+/** Top-level filter groups. The ten equipment slots collapse into "gear" (shown as Equipment). */
 export type FilterGroup = 'gear' | 'consumables' | 'crafting' | 'misc'
 export type SlotFilter = 'all' | SlotCategory
 
@@ -68,7 +67,6 @@ export function getItemCategory(item: InventoryItem): ItemCategory {
     case EquipSlot.NECK: return 'neck'
     case EquipSlot.MOUNT: return 'mount'
     case EquipSlot.ARTIFACT: return 'artifact'
-    case EquipSlot.COMPANION: return 'companion'
   }
   if (item.template.type === ItemType.CONSUMABLE) return 'consumables'
   if (getCraftingKind(item)) return 'crafting'
@@ -88,7 +86,6 @@ export const INVENTORY_TABS: Array<{ id: FilterTab; label: string }> = [
   { id: 'neck', label: 'neck' },
   { id: 'mount', label: 'mount' },
   { id: 'artifact', label: 'artifact' },
-  { id: 'companion', label: 'companion' },
   { id: 'consumables', label: 'consumables' },
   { id: 'crafting', label: 'crafting' },
   { id: 'misc', label: 'misc' },
@@ -101,7 +98,7 @@ export const CATEGORY_DISPLAY_ORDER: ItemCategory[] = INVENTORY_TABS.slice(1).ma
 
 /** Equipment slots in the order the character panel lays them out. */
 export const SLOT_CATEGORIES: SlotCategory[] = [
-  'main', 'off', 'head', 'body', 'hands', 'feet', 'ring', 'neck', 'mount', 'artifact', 'companion',
+  'main', 'off', 'head', 'body', 'hands', 'feet', 'ring', 'neck', 'mount', 'artifact',
 ]
 
 /** Section headers for grouped views. */
@@ -116,7 +113,6 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   neck: 'Neck',
   mount: 'Mount',
   artifact: 'Artifact',
-  companion: 'Companion',
   consumables: 'Items',
   crafting: 'Crafting',
   misc: 'Misc',
@@ -134,7 +130,6 @@ export const SLOT_CHIP_LABELS: Record<SlotCategory, string> = {
   neck: 'Neck',
   mount: 'Mount',
   artifact: 'Artifact',
-  companion: 'Companion',
 }
 
 export const FILTER_GROUPS: Array<{ id: FilterGroup; label: string }> = [

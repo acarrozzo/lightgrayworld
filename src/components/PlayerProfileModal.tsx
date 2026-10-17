@@ -52,7 +52,6 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   neck: 'Neck',
   artifact: 'Artifact',
   tech: 'Tech',
-  companion: 'Companion',
   pet: 'Pet',
   mount: 'Mount',
   robot: 'Robot',

@@ -124,8 +124,6 @@ async function resolveBattleDefeat(playerId, roomState, battleState, enemyName, 
         totalDamageDealt: battleState.totalDamageDealt,
         totalDamageReceived: battleState.totalDamageReceived,
         maxSingleHit: battleState.maxSingleHit,
-        companionDamageDealt: battleState.companionDamageDealt,
-        companionName: battleState.companion?.name ?? null,
         xpEarned: 0,
         goldEarned: 0,
         itemsDropped: [],
@@ -318,20 +316,6 @@ function skillCanLand(skill, enemy, weaponCategory, playerFlying) {
   return true
 }
 
-// The equipped COMPANION, if any, as the shape the calculator swings with:
-// `{ name, damageMin, damageMax }` from the template's `metadata.companion`.
-// Null when the slot is empty or the template declares no roll.
-async function fetchEquippedCompanion(playerId) {
-  const item = await prisma.playerItem.findFirst({
-    where: { playerId, isEquipped: true, slot: 'COMPANION' },
-    select: { ItemTemplate: { select: { name: true, metadata: true } } },
-  })
-  const metadata = item?.ItemTemplate?.metadata
-  const roll = metadata && typeof metadata === 'object' ? metadata.companion : null
-  if (!roll || typeof roll.damageMin !== 'number' || typeof roll.damageMax !== 'number') return null
-  return { name: item.ItemTemplate.name, damageMin: roll.damageMin, damageMax: roll.damageMax }
-}
-
 // The player's ammo stack for a slug: its row id, count, and display name in a
 // single query. Returns null when they hold none. Combat runs this on every
 // ranged swing, so it stays one round trip.
@@ -428,8 +412,8 @@ function describeMelt(turn) {
 
 // Player-side line of a battle:turn message for a weapon strike, covering the
 // three ways a swing can come to nothing: an airborne enemy, an enemy the
-// weapon cannot hurt, and an ordinary hit. The companion's swing, when there
-// is one, is reported on its own line so the two numbers stay separate.
+// weapon cannot hurt, and an ordinary hit. A second arrow, when one flew, is
+// reported on its own line so the two numbers stay separate.
 function describeWeaponStrike(enemyName, turn, extra = '') {
   if (turn.missedFlyingMelee) {
     return `Your swing passes through empty air — the ${enemyName} is out of reach!`
@@ -449,13 +433,6 @@ function describeExtraShot(enemyName, extraShot) {
   return extraShot.damage === 0
     ? ` A second arrow follows and is blocked.`
     : ` A second arrow hits the ${enemyName} for ${extraShot.damage} damage.`
-}
-
-function describeCompanionStrike(enemyName, companion) {
-  if (!companion) return ''
-  return companion.damage === 0
-    ? ` Your ${companion.name} swings at the ${enemyName} but is blocked.`
-    : ` Your ${companion.name} hits the ${enemyName} for ${companion.damage} damage.`
 }
 
 // Player-side line of a battle:turn message for a spell strike.
@@ -623,7 +600,7 @@ async function executeStartBattle(action, playerId, roomState) {
   // Bug fix #5: prevent dead players from initiating combat
   if (playerStats.hp <= 0) return errorResult('start_battle', 'You cannot fight while dead.')
 
-  const [equippedWeapon, companion] = await Promise.all([fetchEquippedWeapon(playerId), fetchEquippedCompanion(playerId)])
+  const equippedWeapon = await fetchEquippedWeapon(playerId)
   const { weaponCategory: equippedWeaponCategory, ammoSlug } = equippedWeapon
 
   // Engaging with an empty quiver: refuse before the battle exists rather than
@@ -668,7 +645,7 @@ async function executeStartBattle(action, playerId, roomState) {
     roomState.updatePlayer(playerId, (state) => ({ ...state, mp: skillMp.mp }))
   }
 
-  const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats, equippedWeaponCategory, companion, gear: equippedWeapon })
+  const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats, equippedWeaponCategory, gear: equippedWeapon })
   roomState.activeBattles.set(playerId, battleState)
   travelerState.onBattleStarted(roomState.roomId)
 
@@ -705,7 +682,6 @@ async function executeStartBattle(action, playerId, roomState) {
       skill: null,
       immuneToMagic: false,
       immuneToWeapon: null,
-      companion: null,
       playerDodged: enemyAtk.dodged,
       enemyEffects: enemyAtk.effects,
       poisonApplied: enemyAtk.poisonApplied,
@@ -718,7 +694,7 @@ async function executeStartBattle(action, playerId, roomState) {
     battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, firstTurn)
   } else {
     // Player-initiated — normal full turn, or the spell or skill that opened
-    // the fight. The companion's swing lands beside the player's own.
+    // the fight.
     firstTurn = resolveTurn(battleState, otherCombatants, { spell, skill: strike, enemyDodged, canMultiShot: !ammo || ammo.remaining >= 2 })
     battleState.applyDamageToEnemy(totalDamageToEnemy(firstTurn))
     battleState.recordTurn(totalDamageToEnemy(firstTurn), firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
@@ -780,11 +756,11 @@ async function executeStartBattle(action, playerId, roomState) {
   } else if (describeNoAttack(enemy.name, firstTurn)) {
     attackDesc = describeNoAttack(enemy.name, firstTurn)
   } else if (firstTurn.spell) {
-    attackDesc = describeSpellStrike(enemy.name, firstTurn) + describeCompanionStrike(enemy.name, firstTurn.companion)
+    attackDesc = describeSpellStrike(enemy.name, firstTurn)
   } else if (firstTurn.skill) {
-    attackDesc = describeSkillStrike(enemy.name, firstTurn) + describeExtraShot(enemy.name, firstTurn.extraShot) + describeCompanionStrike(enemy.name, firstTurn.companion)
+    attackDesc = describeSkillStrike(enemy.name, firstTurn) + describeExtraShot(enemy.name, firstTurn.extraShot)
   } else {
-    attackDesc = describeWeaponStrike(enemy.name, firstTurn) + describeExtraShot(enemy.name, firstTurn.extraShot) + describeCompanionStrike(enemy.name, firstTurn.companion)
+    attackDesc = describeWeaponStrike(enemy.name, firstTurn) + describeExtraShot(enemy.name, firstTurn.extraShot)
   }
   const defenseDesc =
     describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction, '', firstTurn.playerDodged, firstTurn) +
@@ -813,7 +789,6 @@ async function executeStartBattle(action, playerId, roomState) {
     skill: firstTurn.skill ?? null,
     immuneToMagic: firstTurn.immuneToMagic ?? false,
     immuneToWeapon: firstTurn.immuneToWeapon ?? null,
-    companion: firstTurn.companion ?? null,
     extraShot: firstTurn.extraShot ?? null,
     playerDodged: firstTurn.playerDodged ?? false,
     absorbed: updatedPlayer.absorbed,
@@ -877,8 +852,6 @@ async function executeStartBattle(action, playerId, roomState) {
           totalDamageDealt: battleState.totalDamageDealt,
           totalDamageReceived: battleState.totalDamageReceived,
           maxSingleHit: battleState.maxSingleHit,
-          companionDamageDealt: battleState.companionDamageDealt,
-          companionName: battleState.companion?.name ?? null,
           xpEarned: xpAwarded,
           goldEarned: goldAwarded,
           itemsDropped: droppedSlugs,
@@ -935,13 +908,9 @@ async function executePlayerAttack(action, playerId, roomState) {
   const spell = action?.spell ?? null
   const skill = action?.skill ?? null
 
-  const [liveStats, liveWeapon, liveCompanion] = await Promise.all([
-    fetchPlayerStats(playerId),
-    fetchEquippedWeapon(playerId),
-    fetchEquippedCompanion(playerId),
-  ])
+  const [liveStats, liveWeapon] = await Promise.all([fetchPlayerStats(playerId), fetchEquippedWeapon(playerId)])
   if (!liveStats) return errorResult('player_attack', 'Could not load your stats.')
-  battleState.updateStats(liveStats, liveWeapon, liveCompanion)
+  battleState.updateStats(liveStats, liveWeapon)
 
   // Out of ammo: reject the shot without advancing the battle. The enemy does
   // NOT get a free counterattack — matching the original, and leaving the player
@@ -1058,8 +1027,6 @@ async function executePlayerAttack(action, playerId, roomState) {
               totalDamageDealt: battleState.totalDamageDealt,
               totalDamageReceived: battleState.totalDamageReceived,
               maxSingleHit: battleState.maxSingleHit,
-              companionDamageDealt: battleState.companionDamageDealt,
-              companionName: battleState.companion?.name ?? null,
               xpEarned: xpAwarded,
               goldEarned: goldAwarded,
               itemsDropped: droppedSlugs,
@@ -1136,7 +1103,6 @@ async function executePlayerAttack(action, playerId, roomState) {
     )
   }
   if (turnResult.extraShot) parts.push(describeExtraShot(battleState.enemyName, turnResult.extraShot).trim())
-  if (turnResult.companion) parts.push(describeCompanionStrike(battleState.enemyName, turnResult.companion).trim())
   parts.push(
     describeEnemyAttack(
       battleState.enemyName,
@@ -1177,7 +1143,6 @@ async function executePlayerAttack(action, playerId, roomState) {
           skill: turnResult.skill ?? null,
           immuneToMagic: turnResult.immuneToMagic ?? false,
           immuneToWeapon: turnResult.immuneToWeapon ?? null,
-          companion: turnResult.companion ?? null,
           extraShot: turnResult.extraShot ?? null,
           playerDodged: turnResult.playerDodged ?? false,
           absorbed: updatedPlayer.absorbed,
@@ -1210,15 +1175,10 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
   const player = roomState.players.get(playerId)
   const playerName = player?.username || 'Player'
 
-  const [liveStats, liveWeapon, liveCompanion] = await Promise.all([
-    fetchPlayerStats(playerId),
-    fetchEquippedWeapon(playerId),
-    fetchEquippedCompanion(playerId),
-  ])
+  const [liveStats, liveWeapon] = await Promise.all([fetchPlayerStats(playerId), fetchEquippedWeapon(playerId)])
   if (!liveStats) return { playerEvents: [] }
-  // A support turn (potion, weapon swap) fires no shot, so it spends no ammo —
-  // and the companion waits with you rather than swinging on its own.
-  battleState.updateStats(liveStats, liveWeapon, liveCompanion)
+  // A support turn (potion, weapon swap) fires no shot, so it spends no ammo.
+  battleState.updateStats(liveStats, liveWeapon)
 
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
   const enemyAtk = resolveEnemyAttack(battleState, otherCombatants)
@@ -1246,7 +1206,6 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     skill: null,
     immuneToMagic: false,
     immuneToWeapon: null,
-    companion: null,
     playerDodged: enemyAtk.dodged,
     enemyEffects: enemyAtk.effects,
     poisonApplied: enemyAtk.poisonApplied,

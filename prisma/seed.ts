@@ -13859,13 +13859,13 @@ async function main() {
       id: 'greenhorn-bow_001',
       slug: 'greenhorn-bow',
       name: 'Greenhorn Bow',
-      description: 'The Ranger\'s Guild\'s initiation bow, sleek and powerful, and every new Ranger\'s first.',
+      description: 'The Ranger\'s Guild\'s initiation bow, sleek and powerful, and every new Ranger\'s first. +50 DEX, +10 MAG.',
       type: ItemType.WEAPON,
       max: 999,
       value: 100000,
       equipSlot: EquipSlot.MAIN_HAND,
       weaponCategory: WeaponCategory.RANGED,
-      metadata: { icon: 'equipment-greenhornbow', ammo: 'arrow', isTwoHanded: true, statMods: { dex: 50, def: 25 } },
+      metadata: { icon: 'equipment-greenhornbow', ammo: 'arrow', isTwoHanded: true, statMods: { dex: 50, mag: 10 } },
     },
     {
       id: 'ranger-crossbow_001',
@@ -14501,20 +14501,20 @@ async function main() {
       equipSlot: EquipSlot.MOUNT,
       metadata: { icon: 'tent', grantsFlight: true, statMods: { dex: 50 } },
     },
-    // The first companion. `metadata.companion` is what the battle calculator
-    // swings with: its own 1-10 roll on every attack turn you take, blocked by
-    // a tenth of the enemy's DEF, on top of your own hit.
+    // Lego's reward for the War Turtle. The original handed over the Elf Ranger
+    // companion here; companions are out of the game (Oct 2026), so Lego hands
+    // over his own bow instead.
     {
-      id: 'elf-ranger_001',
-      slug: 'elf-ranger',
-      name: 'Elf Ranger',
-      description: 'Ranger Lego, who joins you in battle once the War Turtle is dealt with. Every swing you take, he takes a shot: 1-10 damage.',
-      type: ItemType.EQUIPMENT,
-      max: 1,
+      id: 'hardwood-bow_001',
+      slug: 'hardwood-bow',
+      name: 'Hardwood Bow',
+      description: 'Lego\'s own bow, cut from a Dark Forest hardwood and strung tight. Heavy for a bow, and the stave takes a blow. +60 DEX, +30 DEF.',
+      type: ItemType.WEAPON,
+      max: 999,
       value: 100000,
-      canSell: false,
-      equipSlot: EquipSlot.COMPANION,
-      metadata: { icon: 'npc-ranger2', companion: { damageMin: 1, damageMax: 10 } },
+      equipSlot: EquipSlot.MAIN_HAND,
+      weaponCategory: WeaponCategory.RANGED,
+      metadata: { icon: 'equipment-longbow', ammo: 'arrow', isTwoHanded: true, statMods: { dex: 60, def: 30 } },
     },
     {
       id: 'mithril-hatchet_001',
@@ -14531,10 +14531,13 @@ async function main() {
     // The Base Camp's, Hector's, Chilly Pete's and the chest's rewards, and the
     // mountain's drops. Stats are the original's buff-*.php numbers where it
     // had them; the pieces it dropped with no buff at all (dragon orb, vampiric
-    // dagger, the two companions, magic talisman, ranger orb and moccasins,
-    // baby owl, dragon shield, mithril kite shield and gauntlets, mithril
-    // javelin, lucky bone, silk moccasins, heater shield) are given
-    // tier-consistent stats here, as the Dark Forest's stat-less pieces were.
+    // dagger, magic talisman, ranger orb and moccasins, dragon shield, mithril
+    // kite shield and gauntlets, mithril javelin, lucky bone, silk moccasins,
+    // heater shield) are given tier-consistent stats here, as the Dark Forest's
+    // stat-less pieces were. The original's Ogre Shieldmate and Snow Berserker
+    // companions and the Baby Owl pet are not here: companions are out of the
+    // game (Oct 2026), and the Hardwood Shield and Steel Orb stand in for the
+    // two quest rewards.
     // --- The steel set Hector's "Steel Warrior" wants, the four pieces that
     // did not exist yet (the rest are Stone Dwarf, Winged Demon and mine drops).
     {
@@ -14662,29 +14665,29 @@ async function main() {
       weaponCategory: WeaponCategory.RANGED,
       metadata: { icon: 'equipment-snowbow', ammo: 'arrow', isTwoHanded: true, statMods: { dex: 45, mag: 15, def: 15 } },
     },
+    // The Base Camp's bounty on Ulfberht, and Chilly Pete's prize for the
+    // snowy trio. Both quests paid out companions in the original.
     {
-      id: 'ogre-shieldmate_001',
-      slug: 'ogre-shieldmate',
-      name: 'Ogre Shieldmate',
-      description: 'The Base Camp leader whistles and an ogre comes running to your side. A COMPANION: every swing you take, it swings too, 5-25 damage.',
+      id: 'hardwood-shield_001',
+      slug: 'hardwood-shield',
+      name: 'Hardwood Shield',
+      description: 'The shield off the Base Camp mess tent wall, mountain hardwood banded in iron. +80 DEF, +10 MAG.',
       type: ItemType.EQUIPMENT,
-      max: 1,
-      value: 100000,
-      canSell: false,
-      equipSlot: EquipSlot.COMPANION,
-      metadata: { icon: 'enemy-Ogre', companion: { damageMin: 5, damageMax: 25 } },
+      max: 999,
+      value: 50000,
+      equipSlot: EquipSlot.OFF_HAND,
+      metadata: { icon: 'kite-shield', statMods: { def: 80, mag: 10 } },
     },
     {
-      id: 'snow-berserker_001',
-      slug: 'snow-berserker',
-      name: 'Snow Berserker',
-      description: 'Chilly Pete calls out and a Snow Berserker bounds out of nowhere, ready to fight at your side. A COMPANION: 10-50 damage on every swing you take.',
+      id: 'steel-orb_001',
+      slug: 'steel-orb',
+      name: 'Steel Orb',
+      description: 'A polished steel sphere out of Chilly Pete\'s coat, cold enough to sting. Held in the off hand: +20 STR, +20 DEX, +20 MAG.',
       type: ItemType.EQUIPMENT,
-      max: 1,
-      value: 200000,
-      canSell: false,
-      equipSlot: EquipSlot.COMPANION,
-      metadata: { icon: 'enemy-SnowOgre', companion: { damageMin: 10, damageMax: 50 } },
+      max: 999,
+      value: 50000,
+      equipSlot: EquipSlot.OFF_HAND,
+      metadata: { icon: 'magic', statMods: { str: 20, dex: 20, mag: 20 } },
     },
     // --- The chest's XIII rings (the Dexterity one already came out of a mithril golem).
     {
@@ -14820,18 +14823,6 @@ async function main() {
       value: 30000,
       equipSlot: EquipSlot.BODY,
       metadata: { statMods: { dex: 20, mag: 5, def: 50 } },
-    },
-    {
-      id: 'baby-owl_001',
-      slug: 'baby-owl',
-      name: 'Baby Owl',
-      description: 'It was in the Snow Owl\'s feathers. It has decided you are its mother. A COMPANION: 1-8 damage on every swing you take.',
-      type: ItemType.EQUIPMENT,
-      max: 1,
-      value: 100000,
-      canSell: false,
-      equipSlot: EquipSlot.COMPANION,
-      metadata: { icon: 'enemy-SnowOwl', companion: { damageMin: 1, damageMax: 8 } },
     },
     {
       id: 'dragon-shield_001',

@@ -310,27 +310,6 @@ function weaponImmunity(enemy, weaponCategory) {
 }
 
 /**
- * The companion's swing, on every attack turn the player takes. The original's
- * companion attack exactly: its own small roll, blocked by a tenth of the
- * enemy's DEF, floored at zero, and subtracted from the enemy on top of the
- * player's own hit. Returns null when nothing is equipped in the slot.
- */
-function resolveCompanionAttack(battleState) {
-  const companion = battleState.companion
-  if (!companion) return null
-  const roll = rand(companion.damageMin, companion.damageMax)
-  const tenth = Math.floor(battleState.enemy.def / 10)
-  // Pure Defense holds against the companion too: the original's `enemydef/10`.
-  const block = getEnemyBehaviours(battleState.enemy).pureDefense ? tenth : rand(0, tenth)
-  return {
-    name: companion.name,
-    roll,
-    block,
-    damage: Math.max(0, roll - block),
-  }
-}
-
-/**
  * The client-facing record of a cast: what was cast, at what level and cost,
  * and the roll behind the number. `roll` is null when the cast fizzled against
  * a magic-immune enemy (nothing was rolled, nothing was charged).
@@ -556,24 +535,18 @@ function resolveEnemyAttack(battleState, otherCombatants, { pendingDamage = 0 } 
 
 function resolveTurn(battleState, otherCombatants, { spell = null, skill = null, enemyDodged = false, canMultiShot = true } = {}) {
   const player = resolvePlayerAttack(battleState, otherCombatants, { spell, skill, enemyDodged, canMultiShot })
-  // The companion waits when there is nothing to swing at: its owner is stone,
-  // or the enemy is already out of the way.
-  const companion = player.petrified || player.enemyDodged ? null : resolveCompanionAttack(battleState)
   const enemyAtk = resolveEnemyAttack(battleState, otherCombatants, {
-    pendingDamage: player.playerFinal + (player.extraShot?.damage || 0) + (companion?.damage || 0),
+    pendingDamage: player.playerFinal + (player.extraShot?.damage || 0),
   })
 
   return {
     // What the enemy's standing behaviours did this turn (see the handlers'
     // settleEnemyAftermath, which fills in what actually took hold).
     enemyEffects: { ...enemyAtk.effects, ...(player.enemyBlockedAttack ? { blocked: true } : {}) },
-    // The player's own hit. The companion's is reported beside it, never
+    // The player's own hit. A second arrow is reported beside it, never
     // folded in, so the `raw − block = total` line the panel prints stays true.
     playerDealtDamage: player.playerFinal,
-    // null with nothing in the slot; { name, roll, block, damage } otherwise.
-    companion,
-    // Multi Arrow's second arrow, reported beside the first like the
-    // companion's swing: { roll, block, damage }, or null when none flew.
+    // Multi Arrow's second arrow: { roll, block, damage }, or null when none flew.
     extraShot: player.extraShot || null,
     enemyDealtDamage: enemyAtk.enemyFinal,
     playerRaw: player.playerRaw,
@@ -614,9 +587,9 @@ function resolveTurn(battleState, otherCombatants, { spell = null, skill = null,
   }
 }
 
-/** Everything the enemy lost this turn: the player's hit, a second arrow, and the companion's. */
+/** Everything the enemy lost this turn: the player's hit and a second arrow. */
 function totalDamageToEnemy(turn) {
-  return (turn.playerDealtDamage || 0) + (turn.extraShot?.damage || 0) + (turn.companion?.damage || 0)
+  return (turn.playerDealtDamage || 0) + (turn.extraShot?.damage || 0)
 }
 
 module.exports = {
@@ -625,7 +598,6 @@ module.exports = {
   describeSpellCast,
   describeSkillUse,
   resolveTurn,
-  resolveCompanionAttack,
   totalDamageToEnemy,
   weaponImmunity,
   reachesFlyingEnemy,

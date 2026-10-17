@@ -254,8 +254,6 @@ test('an enemy dodge makes the attack nothing and still leaves the enemy its swi
   assert.equal(turn.enemyDodged, true)
   assert.equal(turn.playerDealtDamage, 0)
   assert.equal(turn.playerRaw, 0)
-  // The companion waits too.
-  assert.equal(turn.companion, null)
   assert.equal(turn.enemyEffects.blocked, undefined)
   // A block is the same nothing, and the turn record says it was a block.
   const blocked = resolveTurn(s, 0, { enemyDodged: 'block' })
@@ -284,7 +282,6 @@ test('stone: the player swings at nothing, and the gaze is only offered while th
   const stone = resolveTurn(battleState({ enemy, baseStr: 50, petrifiedTurns: 1 }), 0)
   assert.equal(stone.petrified, true)
   assert.equal(stone.playerDealtDamage, 0)
-  assert.equal(stone.companion, null)
   // rand(1, 5) === 1 procs it; already stone, it is never offered.
   const always = () => 1
   assert.equal(selectEnemySpecial(enemy, always, { canPetrify: true })?.id, 'petrify')
@@ -326,12 +323,15 @@ test('Multi Arrow looses a second plain shot at 100%, never without the skill, a
   assert.equal(totalDamageToEnemy(turn), turn.playerDealtDamage + turn.extraShot.damage)
 })
 
-test("the companion's share of the fight is kept for the victory card", () => {
+test('a turn with nothing in the slot beside the player adds up to the player alone', () => {
+  const { totalDamageToEnemy } = require(path.join(ROOT, 'src/lib/game-engine/battle-calculator.js'))
   const enemy = { att: 10, def: 0, damageType: 'MELEE' }
   const stats = { level: 1, str: 1, dex: 1, mag: 1, def: 1, hp: 10, hpMax: 10 }
-  const b = new BattleState({ playerId: 'p', roomId: '001', enemy, playerStats: stats, gear: { weaponCategory: 'MELEE' }, companion: { name: 'Ogre', damageMin: 5, damageMax: 25 } })
-  b.recordTurn(20, 0, false, { playerDealtDamage: 12, companion: { name: 'Ogre', roll: 9, block: 1, damage: 8 } })
-  b.recordTurn(7, 0, false, { playerDealtDamage: 7, companion: null })
-  assert.equal(b.totalDamageDealt, 27)
-  assert.equal(b.companionDamageDealt, 8)
+  const b = new BattleState({ playerId: 'p', roomId: '001', enemy, playerStats: stats, gear: { weaponCategory: 'MELEE' } })
+  b.recordTurn(12, 0, false, { playerDealtDamage: 12, extraShot: null })
+  b.recordTurn(7, 0, false, { playerDealtDamage: 7, extraShot: null })
+  assert.equal(b.totalDamageDealt, 19)
+  assert.equal(totalDamageToEnemy({ playerDealtDamage: 12, extraShot: null }), 12)
+  // Nothing else swings beside the player: no companion field on a turn.
+  assert.equal('companion' in resolveTurn(battleState({ enemy, baseStr: 50 }), 0), false)
 })

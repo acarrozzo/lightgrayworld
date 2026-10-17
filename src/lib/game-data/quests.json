@@ -2544,7 +2544,7 @@
     "objective": "Defeat the War Turtle.",
     "nextStep": "The War Turtle fills the shaft at Mine Level 5 in the Neverending Mine, under the Rocky Flats. It blocks ranged attacks, so put away your bow.",
     "reminderDialog": "\"That turtle is still down there at level 5 in the Mine. He blocks ranged attacks so put away your bow.\"",
-    "completionDialog": "\"You have indeed defeated a War Turtle!\" Lego shoulders his own bow. \"I can join you in battle now. Every swing you take, I take a shot.\"",
+    "completionDialog": "\"You have indeed defeated a War Turtle!\" Lego unstrings the bow off his own back and holds it out. \"Hardwood. It will not let you down the way that turtle did.\"",
     "requirements": [
       {
         "type": "killCount",
@@ -2565,7 +2565,7 @@
       },
       {
         "type": "item",
-        "itemSlug": "elf-ranger",
+        "itemSlug": "hardwood-bow",
         "quantity": 1
       }
     ]
@@ -2741,8 +2741,8 @@
     "summary": "Ulfberht the undead viking warrior has been a menace for centuries. The Base Camp leader has a bounty out for his defeat. Find him in the Neverending Mine, but be wary of his powerful ancient sword.",
     "objective": "Defeat Ulfberht.",
     "nextStep": "Ulfberht stands at Mine Level 15 of the Neverending Mine, under the Rocky Flats. He winds up for the big swing; bring defence.",
-    "reminderDialog": "\"Ulfberht still walks Mine Level 15.\" The camp leader taps the bounty. \"Loyal company for whoever puts him down.\"",
-    "completionDialog": "The entire camp applauds. The leader gives a quick whistle and an Ogre Shieldmate comes running up to your side. \"He's yours. Try to keep up with him.\"",
+    "reminderDialog": "\"Ulfberht still walks Mine Level 15.\" The camp leader taps the bounty. \"The shield off my wall for whoever puts him down.\"",
+    "completionDialog": "The entire camp applauds. The leader lifts a hardwood shield down off the mess tent wall and hands it over. \"It has turned worse than a viking. It's yours.\"",
     "requirements": [
       {
         "type": "killCount",
@@ -2763,7 +2763,7 @@
       },
       {
         "type": "item",
-        "itemSlug": "ogre-shieldmate",
+        "itemSlug": "hardwood-shield",
         "quantity": 1
       }
     ]
@@ -3049,7 +3049,7 @@
     "objective": "Defeat a Snow Ogre, a Snow Ninja and a Snow Owl.",
     "nextStep": "All three are rare on the open mountain and far less rare in the Mountain Alcove, south of the wooded path. The Owl flies and fights with magic.",
     "reminderDialog": "\"{progress} of {count} of the trio. The alcove, if you want to see them more than once a season.\"",
-    "completionDialog": "\"You did it! You somehow found the super rare trio!\" Chilly Pete, most impressed, calls out quickly and a Snow Berserker bounds out of nowhere, ready to fight at your side.",
+    "completionDialog": "\"You did it! You somehow found the super rare trio!\" Chilly Pete, most impressed, digs a steel orb out of his coat and presses it into your hands. \"Nobody will believe you. Now they'll have to.\"",
     "requirements": [
       {
         "type": "killCount",
@@ -3082,7 +3082,7 @@
       },
       {
         "type": "item",
-        "itemSlug": "snow-berserker",
+        "itemSlug": "steel-orb",
         "quantity": 1
       }
     ]

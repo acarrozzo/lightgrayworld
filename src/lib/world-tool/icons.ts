@@ -103,11 +103,11 @@ export type IconsData = {
 /** EquipSlot → the folder its slug-named files live in under `equipment/`. */
 export const SLOT_FOLDER: Record<string, string> = {
   MAIN_HAND: 'main-hand', OFF_HAND: 'off-hand', HEAD: 'head', BODY: 'body', HANDS: 'hands', FEET: 'feet',
-  RING: 'ring', NECK: 'neck', MOUNT: 'mount', ARTIFACT: 'artifact', COMPANION: 'companion',
+  RING: 'ring', NECK: 'neck', MOUNT: 'mount', ARTIFACT: 'artifact',
 }
 const SLOT_LABEL: Record<string, string> = {
   MAIN_HAND: 'Main hand', OFF_HAND: 'Off hand', HEAD: 'Head', BODY: 'Body', HANDS: 'Hands', FEET: 'Feet',
-  RING: 'Ring', NECK: 'Neck', MOUNT: 'Mount', ARTIFACT: 'Artifact', COMPANION: 'Companion',
+  RING: 'Ring', NECK: 'Neck', MOUNT: 'Mount', ARTIFACT: 'Artifact',
 }
 
 // ---- symbol ids, exactly as the generator derives them ---------------------------

@@ -38,7 +38,7 @@ const { ENEMIES } = require(path.join(ROOT, 'src/lib/game-data/enemies.js'))
 const { ALL_REGIONS } = require(path.join(ROOT, 'src/lib/game-data/world-map.js'))
 
 // EquipSlot enum from prisma/schema.prisma — kept in sync manually (small, rarely changes).
-const EQUIP_SLOTS = new Set(['MAIN_HAND', 'OFF_HAND', 'HEAD', 'BODY', 'HANDS', 'FEET', 'RING', 'NECK', 'MOUNT', 'ARTIFACT', 'COMPANION'])
+const EQUIP_SLOTS = new Set(['MAIN_HAND', 'OFF_HAND', 'HEAD', 'BODY', 'HANDS', 'FEET', 'RING', 'NECK', 'MOUNT', 'ARTIFACT'])
 const QUEST_TYPES = new Set(['main', 'side'])
 const REWARD_TYPES = new Set(['currency', 'xp', 'item'])
 const REQUIREMENT_TYPES = new Set([

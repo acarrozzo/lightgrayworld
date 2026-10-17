@@ -50,7 +50,6 @@ async function handleGetPublicProfile(request: AuthenticatedRequest) {
             neck: true,
             artifact: true,
             tech: true,
-            companion: true,
             pet: true,
             mount: true,
             robot: true,

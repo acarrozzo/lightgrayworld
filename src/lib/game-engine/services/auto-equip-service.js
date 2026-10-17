@@ -88,7 +88,7 @@ const MODES = /** @type {const} */ ({
 const MODE_IDS = Object.keys(MODES)
 
 /** Every slot but the hands, in the order the character panel lays them out. */
-const WORN_SLOTS = ['HEAD', 'BODY', 'HANDS', 'FEET', 'RING', 'NECK', 'MOUNT', 'ARTIFACT', 'COMPANION']
+const WORN_SLOTS = ['HEAD', 'BODY', 'HANDS', 'FEET', 'RING', 'NECK', 'MOUNT', 'ARTIFACT']
 const ALL_SLOTS = ['MAIN_HAND', 'OFF_HAND', ...WORN_SLOTS]
 
 const SLOT_LABELS = {
@@ -102,7 +102,6 @@ const SLOT_LABELS = {
   NECK: 'Neck',
   MOUNT: 'Mount',
   ARTIFACT: 'Artifact',
-  COMPANION: 'Companion',
 }
 
 /** Stand-in for an empty main hand while the weapon candidates are scored. */

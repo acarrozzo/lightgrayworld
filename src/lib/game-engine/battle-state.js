@@ -22,7 +22,7 @@ function playerIsFlying(playerStats, gear) {
 }
 
 class BattleState {
-  constructor({ playerId, roomId, enemy, playerStats, equippedWeaponCategory = null, companion = null, gear = null }) {
+  constructor({ playerId, roomId, enemy, playerStats, equippedWeaponCategory = null, gear = null }) {
     this.playerId = playerId
     this.roomId = roomId
     this.enemySlug = enemy.slug
@@ -39,9 +39,6 @@ class BattleState {
     // equipment on every equip and would drop them.
     this.setGear(gear, equippedWeaponCategory)
     this.applyStats(playerStats)
-    // The equipped COMPANION, if any: { name, damageMin, damageMax }. It swings
-    // on every attack turn the player takes (battle-calculator).
-    this.companion = companion || null
 
     this.turnCount = 0
     // Turns the player is stone for (a Gorgon's or Medusa's gaze). While it
@@ -64,9 +61,6 @@ class BattleState {
     this.totalDamageDealt = 0
     this.totalDamageReceived = 0
     this.maxSingleHit = 0
-    // Of totalDamageDealt, what the companion's swings were: the victory
-    // card says "Ogre dealt 31 of it".
-    this.companionDamageDealt = 0
     this.multiplayerBonusUsed = false
     this.lastTurnResult = null
   }
@@ -124,17 +118,13 @@ class BattleState {
    * full context, or a bare weapon category for older callers.
    * @param {Object} playerStats
    * @param {GearContext|'MELEE'|'RANGED'|null} [gear]
-   * @param {Object|null} [companion]
    */
-  updateStats(playerStats, gear, companion) {
+  updateStats(playerStats, gear) {
     if (gear !== undefined) {
       if (gear === null || typeof gear === 'string') this.setGear(null, gear)
       else this.setGear(gear)
     }
     this.applyStats(playerStats)
-    if (companion !== undefined) {
-      this.companion = companion || null
-    }
   }
 
   incrementTurn() {
@@ -145,7 +135,6 @@ class BattleState {
     this.totalDamageDealt += playerDealt
     this.totalDamageReceived += enemyDealt
     if (playerDealt > this.maxSingleHit) this.maxSingleHit = playerDealt
-    if (fullTurnResult?.companion) this.companionDamageDealt += fullTurnResult.companion.damage || 0
     if (hadMultiplayerBonus) this.multiplayerBonusUsed = true
     if (fullTurnResult) this.lastTurnResult = fullTurnResult
   }
