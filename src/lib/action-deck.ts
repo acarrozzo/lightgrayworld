@@ -35,6 +35,11 @@ export interface StrikeRowContext {
   inBattle: boolean
   /** null when there is nothing in the room to hit. */
   target: DeckTarget | null
+  /**
+   * The room rolls encounters: with nothing to hit, Attack and the strikes
+   * hunt — spend the turn drawing something out — instead of being refused.
+   */
+  canHunt?: boolean
 }
 
 export interface StrikeRowEntry {
@@ -46,8 +51,8 @@ export interface StrikeRowEntry {
 }
 
 /** Why a plain Attack has no range against this target, or null when it does. */
-export function attackBlockedBy(ctx: Pick<StrikeRowContext, 'player' | 'inventory' | 'isRanged' | 'target'>): string | null {
-  if (!ctx.target) return 'Nothing to hit'
+export function attackBlockedBy(ctx: Pick<StrikeRowContext, 'player' | 'inventory' | 'isRanged' | 'target' | 'canHunt'>): string | null {
+  if (!ctx.target) return ctx.canHunt ? null : 'Nothing to hit'
   const immuneToWeapon = ctx.isRanged ? ctx.target.immuneRanged : ctx.target.immuneMelee
   if (immuneToWeapon) return "Can't hurt it"
   // A bare melee swing cannot reach something airborne unless the player is
@@ -189,12 +194,21 @@ export function deckContextFromBattle(battle: BattleState, player: Player, inven
   }
 }
 
-/** The deck as the compass sees it: the present enemy, if any, and your own stats. */
-export function deckContextFromRoom(enemy: Parameters<typeof targetFromRoomEnemy>[0], player: Player, inventory: InventoryItem[]): DeckContext {
+/**
+ * The deck as the compass sees it: the present enemy, if any, and your own
+ * stats. `canHunt` is the room's word that it rolls encounters, so an empty
+ * room keeps Attack live as a hunt.
+ */
+export function deckContextFromRoom(
+  enemy: Parameters<typeof targetFromRoomEnemy>[0],
+  player: Player,
+  inventory: InventoryItem[],
+  { canHunt = false }: { canHunt?: boolean } = {}
+): DeckContext {
   const { isRanged } = weaponInHand(inventory)
   const target = targetFromRoomEnemy(enemy)
   return {
-    situation: { inBattle: false, hasTarget: target !== null, mp: player.mp ?? 0, hp: player.hp ?? 0, hpMax: player.hpMax ?? 0, buffs: player.buffs },
+    situation: { inBattle: false, hasTarget: target !== null, canHunt, mp: player.mp ?? 0, hp: player.hp ?? 0, hpMax: player.hpMax ?? 0, buffs: player.buffs },
     target,
     isRanged,
     swingMax: effectiveStats(player, inventory)[isRanged ? 'dex' : 'str'].total,

@@ -189,6 +189,8 @@ export function passiveSkillBonuses(player: Player | null | undefined, gear: Gea
 export interface StrikeSituation {
   inBattle: boolean
   hasTarget: boolean
+  /** The room rolls encounters: a strike with nothing present hunts for one. */
+  canHunt?: boolean
   mp: number
   gear: GearContext
 }
@@ -201,7 +203,7 @@ export interface StrikeSituation {
  */
 export function strikeBlockedReason(entry: SkillbookEntry, at: StrikeSituation): string | null {
   if (!entry.usable) return null
-  if (!at.inBattle && !at.hasTarget) return 'Nothing to hit'
+  if (!at.inBattle && !at.hasTarget && !at.canHunt) return 'Nothing to hit'
   const fit = weaponFitReason(entry.def, at.gear)
   if (fit) return fit
   if (entry.castCost !== null && at.mp < entry.castCost) return 'Not enough MP'

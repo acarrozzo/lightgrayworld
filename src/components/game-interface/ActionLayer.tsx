@@ -19,6 +19,8 @@ interface ActionLayerProps {
   /** A running fight makes this the deck's twin; otherwise the room's enemy is the target. */
   battle: BattleState
   roomEnemy: RoomEnemyLike
+  /** The room rolls encounters, so Attack with nothing present hunts for one. */
+  canHunt?: boolean
   /** Held while an action resolves. */
   isActing?: boolean
   onAttack: () => void
@@ -36,7 +38,8 @@ interface ActionLayerProps {
  * are its sub-tabs, in the header like every other tab's (the battle card
  * keeps its own filled switch under the vitals). With an enemy in the room,
  * Attack and the strikes open the fight; heals and buffs cast in place; with
- * nothing to hit the attack controls say so and the rest still works. During
+ * nothing to hit they hunt in a room that rolls and say so anywhere else, and
+ * the rest still works. During
  * a fight on desktop it is the deck's twin beside it. The bag link switches
  * to the Inv tab, so nothing here leaves the deck.
  */
@@ -45,6 +48,7 @@ export default function ActionLayer({
   inventory,
   battle,
   roomEnemy,
+  canHunt = false,
   isActing = false,
   onAttack,
   onUseSkill,
@@ -55,8 +59,8 @@ export default function ActionLayer({
 }: ActionLayerProps) {
   const { presentation } = useDeck()
   const context = useMemo(
-    () => (battle.isInBattle ? deckContextFromBattle(battle, player, inventory) : deckContextFromRoom(roomEnemy, player, inventory)),
-    [battle, player, inventory, roomEnemy]
+    () => (battle.isInBattle ? deckContextFromBattle(battle, player, inventory) : deckContextFromRoom(roomEnemy, player, inventory, { canHunt })),
+    [battle, player, inventory, roomEnemy, canHunt]
   )
   // Where the sub-tabs start is the deck's rule: a fight opens on Attack
   // (Spells for a caster), out of one the tab opens on Items. Only the fight

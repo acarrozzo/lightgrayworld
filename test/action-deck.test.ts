@@ -50,6 +50,22 @@ test('with nothing in the room, Attack and every strike say so', () => {
   }
 })
 
+test('in a room that rolls, nothing present is a hunt: Attack and the strikes stay live', () => {
+  const c = ctx({ target: null, canHunt: true })
+  assert.equal(attackBlockedBy(c), null)
+  const row = buildStrikeRow(c)
+  assert.ok(row.length >= 1)
+  for (const strike of row) {
+    assert.equal(strike.reason, null)
+    assert.ok(strike.range, 'the range prints against whatever comes out')
+  }
+  const hunting = deckContextFromRoom(null, player(), [twoHander()], { canHunt: true })
+  assert.equal(hunting.situation.hasTarget, false)
+  assert.equal(hunting.situation.canHunt, true)
+  // A room with no table still has nothing to hit.
+  assert.equal(deckContextFromRoom(null, player(), [twoHander()]).situation.canHunt, false)
+})
+
 test('a strike adds its bonus on top of the swing, and prints the total', () => {
   const row = buildStrikeRow(ctx())
   const entry = row.find((s) => s.entry.def.id === 'smash')!

@@ -47,6 +47,8 @@ export interface DeckContentProps {
   /* Actions. Each control is the same action the battle deck or the room card sends. */
   battle: BattleState
   roomEnemy: RoomEnemyLike
+  /** The room rolls encounters, so Attack with nothing present hunts for one. */
+  canHunt?: boolean
   isActing?: boolean
   onAttack: () => void
   onUseSkill: (skillId: string) => void
@@ -101,6 +103,7 @@ export function DeckContent({ tab, ...props }: DeckContentProps & { tab: DeckTab
       inventory={props.inventory}
       battle={props.battle}
       roomEnemy={props.roomEnemy}
+      canHunt={props.canHunt}
       isActing={props.isActing}
       onAttack={props.onAttack}
       onUseSkill={props.onUseSkill}

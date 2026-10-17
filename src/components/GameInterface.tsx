@@ -3259,13 +3259,23 @@ export default function GameInterface() {
   isInBattleRef.current = battle.isInBattle
   const roomEnemyRef = useRef<RoomEnemy | null>(null)
   roomEnemyRef.current = roomEnemy
+  // A room that rolls encounters can be hunted: Attack with nothing present
+  // spends a turn drawing something out. The seed sets `isSafe` false on
+  // exactly the rooms with a spawn table; the server is the judge either way.
+  const canHunt = currentRoom?.isSafe === false
   const handleAttackFromLayer = useCallback(() => {
     if (isInBattleRef.current) {
       handleActionRef.current({ type: 'player_attack' })
       return
     }
     const enemy = roomEnemyRef.current
-    if (enemy) handleActionRef.current({ type: 'start_battle', data: { enemySlug: enemy.slug } })
+    if (enemy) {
+      handleActionRef.current({ type: 'start_battle', data: { enemySlug: enemy.slug } })
+      return
+    }
+    // Nothing here: a hunt. The server rolls the room, or — in a room that
+    // never rolls — says there is nothing to attack, for free.
+    handleActionRef.current({ type: 'attack' })
   }, [])
 
   const handleOpenPartyTab = useCallback(() => {
@@ -3573,6 +3583,7 @@ export default function GameInterface() {
               player={player}
               inBattle={battle.isInBattle}
               hasTarget={roomEnemy !== null}
+              canHunt={canHunt}
               tab={charTab}
               highlightId={bookHighlight}
               onLearned={(updatedPlayer) => {
@@ -3656,7 +3667,7 @@ export default function GameInterface() {
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, charTab, questsTab, trackedQuestStore.ids, trackedQuestStore.toggle, bookHighlight, spBookTab, handlePointsSpent, handleOpenBook, battle.isInBattle, roomEnemy, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentRoom, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
+  }, [goToExplore, centerActiveTab, charTab, questsTab, trackedQuestStore.ids, trackedQuestStore.toggle, bookHighlight, spBookTab, handlePointsSpent, handleOpenBook, battle.isInBattle, roomEnemy, canHunt, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentRoom, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
 
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
@@ -3860,6 +3871,7 @@ export default function GameInterface() {
     isLoggedIn,
     battle,
     roomEnemy,
+    canHunt,
     isActing: isLoadingRoom,
     onAttack: handleAttackFromLayer,
     onUseSkill: handleSkillFromLayer,

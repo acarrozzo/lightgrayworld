@@ -100,10 +100,11 @@ export default function ActionDeck({
   const setActiveTab = onTabChange ?? setOwnTab
   const ownsSwitch = controlledTab === undefined
 
-  const blocked = attackBlockedBy({ player, inventory, isRanged, target })
+  const canHunt = situation.canHunt ?? false
+  const blocked = attackBlockedBy({ player, inventory, isRanged, target, canHunt })
   const strikes = useMemo(
-    () => buildStrikeRow({ player, inventory, isRanged, swingMax, groupScale, playerMp: situation.mp, inBattle: situation.inBattle, target }),
-    [player, inventory, isRanged, swingMax, groupScale, situation.mp, situation.inBattle, target]
+    () => buildStrikeRow({ player, inventory, isRanged, swingMax, groupScale, playerMp: situation.mp, inBattle: situation.inBattle, target, canHunt }),
+    [player, inventory, isRanged, swingMax, groupScale, situation.mp, situation.inBattle, target, canHunt]
   )
   const castableSpells = getCastableSpells(player)
   const consumables = useConsumableDeck(inventory)
@@ -120,7 +121,9 @@ export default function ActionDeck({
     ? `No ${ammo.label} left — equip another weapon from your bag`
     : blocked === 'Nothing to hit'
       ? 'Nothing here to attack'
-      : `Rolls 0–${Math.max(0, swingMax)} ${isRanged ? 'DEX' : 'STR'}${target ? `; the ${target.name} blocks 0–${target.def ?? '?'}` : ''}`
+      : !target && !situation.inBattle
+        ? 'Nothing here yet. Attack to draw something out.'
+        : `Rolls 0–${Math.max(0, swingMax)} ${isRanged ? 'DEX' : 'STR'}${target ? `; the ${target.name} blocks 0–${target.def ?? '?'}` : ''}`
 
   const tabs: { id: ActionTab; label: string; icon: ReactNode; count?: number; fill: string }[] = [
     { id: 'attack', label: 'Attack', icon: <Icon name={weaponIconName} size={18} className="flex-shrink-0 opacity-90" />, fill: isRanged ? 'fill-stat-dex' : 'fill-stat-str' },
@@ -179,7 +182,8 @@ export default function ActionDeck({
           <div className={ABILITY_GRID}>
             {/* Attack: ranged strikes are DEX, melee are STR — the same split
                 the combat formulas use, so the verb wears the stat it rolls
-                against. Out of a fight it opens one with the enemy in the room.
+                against. Out of a fight it opens one with the enemy in the room,
+                or hunts for one in a room that rolls (the server's executeHunt).
                 Ammo-spending weapons show what is left where a cost would be. */}
             <EntryRow
               density="deck"

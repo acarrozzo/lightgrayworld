@@ -163,6 +163,12 @@ export function hasLearnableSpell(player: Player | null | undefined): boolean {
 export interface CastSituation {
   inBattle: boolean
   hasTarget: boolean
+  /**
+   * The room rolls encounters, so an attack spell with nothing present is a
+   * hunt (room-state.executeHunt) rather than a refusal. The seed sets a room's
+   * `isSafe` false on exactly the rooms with a spawn table.
+   */
+  canHunt?: boolean
   mp: number
   hp: number
   hpMax: number
@@ -178,7 +184,7 @@ export interface CastSituation {
 export function castBlockedReason(entry: SpellbookEntry, at: CastSituation): string | null {
   if (!entry.castable) return null
   const { def } = entry
-  if (def.kind === 'attack' && !at.inBattle && !at.hasTarget) return 'Nothing to hit'
+  if (def.kind === 'attack' && !at.inBattle && !at.hasTarget && !at.canHunt) return 'Nothing to hit'
   if (def.kind === 'heal' && at.hp >= at.hpMax) return 'Full HP'
   // Iron Skin and Magic Armor lock an amount at cast; the server refuses a
   // second one while the first still stands.

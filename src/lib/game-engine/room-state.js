@@ -26,7 +26,7 @@ const { getSpellState, castHealSpell, castBuffSpell } = require('./services/spel
 const { getSkill, findSkillByCommand, isStrikeSkill, weaponFits, weaponFitReason } = require('../game-data/skills')
 const { getSkillState } = require('./services/skill-service')
 const { rand } = require('./battle-calculator')
-const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn, fetchEquippedWeapon } = require('./battle-action-handlers')
+const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn, fetchEquippedWeapon, readAmmo, ammoDisplayName } = require('./battle-action-handlers')
 const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('../game-data/room-enemies')
 const { getKillSet, ensureKillSet } = require('./services/kill-list-service')
 const { getEnemy } = require('../game-data/enemies')
@@ -588,7 +588,8 @@ const ROOM_TRAVEL_HAZARDS = {
 // The standard (non-room-specific) actions that cost a turn — see resolveTurn.
 // Free ones (chat, look, examine_*, accept_quest, complete_quest) do not; room
 // actions are classified by isTurnCostingRoomAction in room-action-handlers.
-// attack and move are their own thing: an attack is the turn, and a move's
+// attack and move are their own thing: an attack is the turn (and with nothing
+// to hit it is a hunt — executeHunt — which rolls the room itself), and a move's
 // danger is rolled by the arrival, not by leaving.
 const TURN_ACTIONS = new Set([
   'rest',
@@ -1593,6 +1594,12 @@ class RoomState {
     }
 
     if (!target) {
+      // Nothing standing here. In a room that rolls, the swing is a hunt: it
+      // spends the turn and rolls the room's own table. Anywhere else there is
+      // nothing to roll for, and saying so costs nothing.
+      if (isProbabilistic(this.roomId)) {
+        return await this.executeHunt(playerId, { spell, skill })
+      }
       this.touchActivity()
       return {
         success: true,
@@ -1611,6 +1618,106 @@ class RoomState {
     }
 
     return await executeStartBattle({ type: 'start_battle', spell, skill, data: { enemySlug: target.slug } }, playerId, this)
+  }
+
+  /**
+   * Attack with nothing in the room: a hunt.
+   *
+   * The original split three ways. Its shared encounter includes — the mines,
+   * the Forest, the Mountains, the oceans, the Despair — rolled on every input,
+   * so a bare `attack` rolled exactly like a search; the Grassy Field's
+   * underground and the Red Town basements made it a guaranteed summon; the
+   * Gator marsh and a few others left it out of the roll ("REST or SEARCH to
+   * RESET THE DANGER"). The modern game had ported only the refusal, everywhere,
+   * so the one verb that means "I want a fight" was the one that could never
+   * start one.
+   *
+   * Chosen 16 Oct 2026: a hunt is a turn. It bites the room's hazard and rolls
+   * the room's table at the room's own odds — not boosted, not guaranteed, so
+   * Attack is not a new farming dial — and whatever answers is engaged as the
+   * player's own swing, spell or strike. They were ready for it, so there is no
+   * ambush hit of the kind a search's fresh spawn gets. A neutral that turns up
+   * is attacked too: Attack is what was pressed. The grace turn after a win is
+   * ignored and spent — it protects a rest or a re-gear, and pressing Attack is
+   * asking for the next fight.
+   *
+   * An empty quiver is refused before anything rolls, where a swing at a
+   * present enemy is refused, so the refusal costs nothing and never draws out
+   * something the player cannot shoot. Rooms with no table never get here:
+   * "Nothing to attack here." stays free.
+   */
+  async executeHunt(playerId, { spell = null, skill = null } = {}) {
+    this.touchActivity()
+
+    // A spell fires no shot; a swing or a strike behind a bow needs a round.
+    if (!spell) {
+      const gear = await fetchEquippedWeapon(playerId)
+      if (gear?.ammoSlug) {
+        const ammo = await readAmmo(playerId, gear.ammoSlug)
+        if (!ammo || ammo.remaining <= 0) {
+          const name = ammo?.name || (await ammoDisplayName(gear.ammoSlug))
+          return this.createErrorResult('attack', `You're out of ${name}s! Equip another weapon.`)
+        }
+      }
+    }
+
+    let result = await this.appendHazardEvents({ success: true, action: 'attack', playerEvents: [] }, playerId)
+
+    // Grace is spent, not honoured: see the method comment.
+    const enemyState = this.playerEnemyState.get(playerId)
+    if (enemyState?.grace) enemyState.grace = false
+
+    // The Mountains' boss slot reads the kill list; make sure it is loaded
+    // before the synchronous roll. A no-op once cached.
+    await ensureKillSet(playerId).catch(() => null)
+    const slug = this.maybeSpawnEnemy(playerId)
+    const enemy = slug ? getEnemy(slug) : null
+
+    if (!enemy) {
+      const readied = spell
+        ? `raise a hand to cast ${spell.def.name}`
+        : skill
+          ? `ready a ${skill.def.name}`
+          : 'look for something to fight'
+      return {
+        ...result,
+        turnResolved: true,
+        playerEvents: [
+          ...result.playerEvents,
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload('attack', 'info', `You ${readied}, but nothing shows itself.`),
+          },
+        ],
+      }
+    }
+
+    // The same `enemy_spawn` line a turn's roll sends, so the client learns what
+    // is standing here even if the fight below fails to open.
+    result = {
+      ...result,
+      playerEvents: [
+        ...result.playerEvents,
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload(
+            'enemy_spawn',
+            'danger',
+            `A ${enemy.name} comes out to meet you!`,
+            { enemySlug: slug, enemyName: enemy.name, enemy }
+          ),
+        },
+      ],
+    }
+
+    // Player-initiated — no `isAutoInitiated`, so the opening blow is theirs,
+    // and the spell or strike they led with rides into it. MP is charged in
+    // there, only now that there is something to spend it on.
+    // Should the fight fail to open (a stats read failed, say), the merge
+    // still carries its refusal line: the enemy stands here like any other
+    // present one, and the player hears why.
+    const battleResult = await executeStartBattle({ type: 'start_battle', spell, skill, data: { enemySlug: slug } }, playerId, this)
+    return { ...mergeActionResults(result, battleResult), turnResolved: true }
   }
 
   /**

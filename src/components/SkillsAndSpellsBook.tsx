@@ -31,6 +31,8 @@ interface SkillsAndSpellsBookProps {
   inBattle: boolean
   /** An enemy stands in the room, so an attack spell or strike can open the fight. */
   hasTarget: boolean
+  /** The room rolls encounters: an attack spell or strike with nothing present hunts for one. */
+  canHunt?: boolean
   tab: BookTab
   /**
    * One entry to scroll to and ring on open — the character panel's rows and
@@ -54,6 +56,7 @@ export default function SkillsAndSpellsBook({
   player,
   inBattle,
   hasTarget,
+  canHunt = false,
   tab,
   highlightId = null,
   onLearned,
@@ -119,8 +122,9 @@ export default function SkillsAndSpellsBook({
 
   // The same refusals the server makes, shared with the battle deck and the
   // character panel. An attack spell or strike only needs something to hit —
-  // out of a fight the engine opens one, as the original let you do.
-  const situation = { inBattle, hasTarget, mp }
+  // out of a fight the engine opens one, as the original let you do — or a
+  // room that rolls, where it hunts for one.
+  const situation = { inBattle, hasTarget, canHunt, mp }
   const castDisabledReason = (entry: SpellbookEntry): string | null =>
     castBlockedReason(entry, { ...situation, hp, hpMax, buffs: player.buffs })
 

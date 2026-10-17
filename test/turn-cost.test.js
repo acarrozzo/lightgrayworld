@@ -61,8 +61,8 @@ require.cache[battlePath] = {
   loaded: true,
   exports: {
     executeStartBattle: async (action, playerId) => {
-      // `isAutoInitiated` rides on the action itself, not in its client-fillable `data`.
-      battleCalls.startBattle.push({ playerId, data: action.data, isAutoInitiated: action.isAutoInitiated })
+      // `isAutoInitiated`, `spell` and `skill` ride on the action itself, not in its client-fillable `data`.
+      battleCalls.startBattle.push({ playerId, data: action.data, isAutoInitiated: action.isAutoInitiated, spell: action.spell ?? null, skill: action.skill ?? null })
       return { success: true, action: 'start_battle', playerEvents: [{ event: 'battle:start', payload: {} }] }
     },
     resolveSupportTurn: async (playerId, roomState, meta) => {
@@ -71,7 +71,10 @@ require.cache[battlePath] = {
     },
     executePlayerAttack: async () => ({ success: true }),
     executePlayerFlee: async () => ({ success: true }),
-    fetchEquippedWeapon: async () => null,
+    // A hunt reads the quiver before it rolls; a test sets these to hand it a bow.
+    fetchEquippedWeapon: async () => battleCalls.gear ?? null,
+    readAmmo: async () => battleCalls.ammo ?? null,
+    ammoDisplayName: async (slug) => slug,
   },
 }
 
@@ -99,6 +102,8 @@ const ok = (extra = {}) => ({ success: true, action: 'mine here', playerEvents: 
 test.beforeEach(() => {
   battleCalls.startBattle.length = 0
   battleCalls.supportTurn.length = 0
+  battleCalls.gear = null
+  battleCalls.ammo = null
 })
 
 // ── classification ───────────────────────────────────────────────────────────
@@ -372,4 +377,100 @@ test('a retreat grant is single-use, room-specific, and carries its safe arrival
   // A guild lair or a respawn is a grant too, but it says nothing about arriving.
   grants.grantTeleport('p2', '225')
   assert.deepEqual(grants.consumeTeleportGrant('p2', '225'), { roomId: '225', safeArrival: false })
+})
+
+// ── hunting ─────────────────────────────────────────────────────────────────
+//
+// Attack with nothing in the room (16 Oct 2026). In a room that rolls it is a
+// hunt: a turn, at the room's own odds, and what answers is met with the
+// player's own swing — no ambush hit, they went looking for it. Anywhere else
+// "Nothing to attack here." stays free.
+
+test('attack with nothing present hunts: the room rolls, and a find is your own swing', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+
+  const result = await withRandom(0, () => room.executeAttack('p1'))
+
+  assert.equal(result.success, true)
+  assert.equal(result.turnResolved, true)
+  assert.equal(battleCalls.startBattle.length, 1)
+  // Not an ambush: the player was ready for it.
+  assert.equal(battleCalls.startBattle[0].isAutoInitiated, undefined)
+  assert.equal(battleCalls.startBattle[0].data.enemySlug, room.getPresentEnemy('p1'))
+  // The client is told what came out before the fight's own events.
+  assert.equal(result.playerEvents[0].payload.action, 'enemy_spawn')
+  assert.equal(result.playerEvents[1].event, 'battle:start')
+})
+
+test('a hunt that finds nothing says so, and the turn is spent', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+
+  const result = await withRandom(0.99, () => room.executeAttack('p1'))
+
+  assert.equal(result.success, true)
+  assert.equal(result.turnResolved, true)
+  assert.equal(battleCalls.startBattle.length, 0)
+  assert.equal(room.getPresentEnemy('p1'), null)
+  assert.match(result.playerEvents[0].payload.message, /nothing shows itself/)
+})
+
+test('a hunt ignores the grace turn after a win, and spends it', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+
+  room.setPresentEnemy('p1', null, { grace: true })
+  await withRandom(0, () => room.executeAttack('p1'))
+  assert.equal(battleCalls.startBattle.length, 1, 'pressing Attack is asking for the next fight')
+
+  const quiet = new RoomState(MINE)
+  quiet.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  quiet.setPresentEnemy('p1', null, { grace: true })
+  await withRandom(0.99, () => quiet.executeAttack('p1'))
+  assert.equal(quiet.playerEnemyState.get('p1').grace, false, 'a miss still spends the grace')
+})
+
+test('a strike or an attack spell hunts too, and rides into the fight it finds', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  const skill = { def: { name: 'Smash' }, level: 2, cost: 4 }
+
+  await withRandom(0, () => room.executeAttack('p1', { skill }))
+  assert.equal(battleCalls.startBattle.length, 1)
+  assert.equal(battleCalls.startBattle[0].skill, skill)
+
+  // A miss opens nothing and names what was readied.
+  const empty = new RoomState(MINE)
+  empty.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  const miss = await withRandom(0.99, () => empty.executeAttack('p1', { spell: { def: { name: 'Fireball' }, level: 1, cost: 3 } }))
+  assert.equal(battleCalls.startBattle.length, 1)
+  assert.match(miss.playerEvents[0].payload.message, /Fireball/)
+})
+
+test('an empty quiver refuses the hunt before anything rolls', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  battleCalls.gear = { weaponCategory: 'RANGED', ammoSlug: 'arrow' }
+  battleCalls.ammo = { id: 'a1', remaining: 0, name: 'Arrow' }
+
+  const result = await withRandom(0, () => room.executeAttack('p1'))
+
+  assert.equal(result.success, false)
+  assert.match(result.message, /out of Arrows/)
+  assert.equal(battleCalls.startBattle.length, 0)
+  assert.equal(room.getPresentEnemy('p1'), null, 'nothing was drawn out')
+  assert.equal(result.turnResolved, undefined)
+})
+
+test('in a room that never rolls, attack with nothing present is free', async () => {
+  const room = new RoomState('001')
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+
+  const result = await withRandom(0, () => room.executeAttack('p1'))
+
+  assert.equal(result.success, true)
+  assert.equal(result.turnResolved, undefined)
+  assert.equal(battleCalls.startBattle.length, 0)
+  assert.equal(result.playerEvents[0].payload.message, 'Nothing to attack here.')
 })

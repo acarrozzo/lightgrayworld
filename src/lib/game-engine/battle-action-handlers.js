@@ -1435,6 +1435,9 @@ module.exports = {
   // What is in the player's hands, for use_skill's weapon-fit check before a
   // strike is even attempted.
   fetchEquippedWeapon,
+  // The quiver readers, for a hunt's refusal before it rolls (room-state.executeHunt).
+  readAmmo,
+  ammoDisplayName,
   // Exported so the shared defeat teardown can be exercised directly: the bug it
   // fixes (an enemy left behind, blocking the respawn move) is invisible from
   // the outside until a player is already stuck.
