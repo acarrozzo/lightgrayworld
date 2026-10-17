@@ -154,9 +154,12 @@ function errorResult(action, message) {
 
 // Enemy-side line of a battle:turn message. When a special fired it names itself,
 // so the feed states what happened instead of leaving the player to infer it from
-// a suspiciously large number.
+// a suspiciously large number. A magic attacker's ordinary hit is a spell, as
+// the original's "casts a spell at you for" had it, and MAG is what turns it
+// aside; a ranged one reads like a melee one, as it did in the original.
 function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodged = false, extras = {}) {
-  const { extraHits = [], petrifyApplied = 0, enemyHealed = 0, enemyEffects = {} } = extras
+  const { extraHits = [], petrifyApplied = 0, enemyHealed = 0, enemyEffects = {}, enemyDamageType = null } = extras
+  const isSpell = enemyDamageType === 'MAGIC'
   // A wind-up: no attack this turn, and the warning is the whole line.
   if (enemyEffects.windUp) {
     return `The ${enemyName} ${enemyEffects.windUp.line}. ${enemyEffects.windUp.name.toUpperCase()} is coming next turn!${hpSuffix}`
@@ -172,13 +175,17 @@ function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodg
   let line
   // The Dodge skill: the whole swing, special or not, came to nothing.
   if (dodged) {
-    const what = enemyAction ? enemyAction.name.toUpperCase() : 'attack'
+    const what = enemyAction ? enemyAction.name.toUpperCase() : isSpell ? 'spell' : 'attack'
     line = `You DODGE the ${enemyName}'s ${what}!`
   } else if (enemyAction) {
     const label = enemyAction.name.toUpperCase()
     line = mainDamage === 0
       ? `The ${enemyName} unleashes a ${label} but you block it!`
       : `The ${enemyName} unleashes a ${label} for ${mainDamage} damage!`
+  } else if (isSpell) {
+    line = mainDamage === 0
+      ? `The ${enemyName} casts a spell, but your MAG wards it off!`
+      : `The ${enemyName} casts a spell at you for ${mainDamage} damage.`
   } else {
     line = mainDamage === 0
       ? `The ${enemyName} attacks but you block it!`
@@ -186,11 +193,13 @@ function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodg
   }
   for (const hit of extraHits) {
     // A special can fire on any hit of the turn, and names itself when it does.
-    const again = hit.action ? `follows with a ${hit.action.name.toUpperCase()}` : 'strikes again'
+    // A pack's hit is another animal's bite, never a spell.
+    const spellHit = isSpell && !hit.action && !hit.pack
+    const again = hit.action ? `follows with a ${hit.action.name.toUpperCase()}` : spellHit ? 'casts again' : 'strikes again'
     line += hit.dodged
       ? ` You DODGE as it ${again}!`
       : hit.damage === 0
-        ? ` It ${again} but you block it!`
+        ? spellHit ? ` It ${again}, but your MAG wards it off!` : ` It ${again} but you block it!`
         : ` It ${again} for ${hit.damage}!`
   }
   if (extraHits.length > 0 && damage > 0) line += ` (${damage} total)`
@@ -1459,4 +1468,6 @@ module.exports = {
   // the outside until a player is already stuck.
   resolveBattleDefeat,
   applyEnemyHit,
+  // The feed's enemy line, pure, so its wording per attack type can be pinned.
+  describeEnemyAttack,
 }

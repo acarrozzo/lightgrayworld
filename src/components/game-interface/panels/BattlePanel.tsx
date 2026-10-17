@@ -13,6 +13,7 @@ import ActionDeck from '@/components/game-interface/ActionDeck'
 import { deckContextFromBattle } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
 import { effectiveStats, type StatKey } from '@/lib/effective-stats'
+import { perkIcon } from '@/lib/game-data/enemy-traits'
 
 /** How many times an enemy must already have been beaten before a win with nothing new is shown as one line. */
 const ROUTINE_KILLS = 10
@@ -135,12 +136,12 @@ function Swoosh() {
  * What the enemy's standing behaviours did on the last turn, under its hit:
  * each hit after the first with its own roll and block (so the total adds up
  * the way the main formula does), the stone its gaze left, and the HP it
- * took back. Nothing is drawn on an ordinary turn.
+ * took back. Nothing is drawn on an ordinary turn. A Heal or a wind-up is the
+ * whole turn, so the enemy side draws those itself, in place of a hit.
  */
 function EnemyHitExtras({ battle }: { battle: BattleState }) {
   const fx = battle.enemyEffects ?? {}
-  const hasEffects =
-    fx.healCast !== undefined || !!fx.stolen || !!fx.hpDrained || !!fx.mpDrained || !!fx.resurrected || !!fx.windUp
+  const hasEffects = !!fx.stolen || !!fx.hpDrained || !!fx.mpDrained || !!fx.resurrected
   if (!battle.petrifyApplied && !battle.enemyHealed && !hasEffects) return null
   return (
     <>
@@ -152,16 +153,8 @@ function EnemyHitExtras({ battle }: { battle: BattleState }) {
       {battle.enemyHealed > 0 && (
         <p className="text-[10px] text-hue-green text-right tabular-nums">absorbs {battle.enemyHealed} HP</p>
       )}
-      {fx.windUp && (
-        <p className="text-[11px] font-black tracking-[0.12em] uppercase text-right text-combat-crit">
-          {fx.windUp.name} next turn
-        </p>
-      )}
       {fx.resurrected && (
         <p className="text-[11px] font-black tracking-[0.15em] uppercase text-right text-fg-bright">Rises again</p>
-      )}
-      {fx.healCast !== undefined && (
-        <p className="text-[10px] text-hue-green text-right tabular-nums">casts Heal +{fx.healCast} HP instead of attacking</p>
       )}
       {!!fx.hpDrained && (
         <p className="text-[10px] text-resource-hp text-right tabular-nums">drains {fx.hpDrained} HP</p>
@@ -184,13 +177,58 @@ const MID_ICON = 'h-5 w-5 @min-[600px]:h-8 @min-[600px]:w-8'
 const ARROW_ICON = 'h-4 w-4 @min-[600px]:h-7 @min-[600px]:w-7'
 
 /**
+ * The colour of an enemy's ordinary hit, by what it was: blue for a spell,
+ * green for a shot, as the original painted them, and the card's own gold
+ * for a blow. MAG, DEX and DEF are also what blocked each one. A special
+ * wears the crit tone instead, whatever the enemy's type.
+ */
+function enemyHitTone(type: BattleState['enemyDamageType'] | undefined): { text: string; glow: string } {
+  if (type === 'MAGIC') return { text: 'text-stat-mag', glow: 'var(--stat-mag)' }
+  if (type === 'RANGED') return { text: 'text-stat-dex', glow: 'var(--stat-dex)' }
+  return { text: 'text-stat-def', glow: 'var(--resource-gold)' }
+}
+
+interface EnemyStrikeIcon {
+  name: string
+  tone: string
+  /** A wind-up: the blow is still coming. */
+  pending?: boolean
+}
+
+/**
+ * What goes where the enemy's arrow goes: the original's icon for what it
+ * just did, in that act's colour. The original's order: a Heal, your Dodge,
+ * a special, then the attack type. A wind-up shows the special it is holding,
+ * faded. Null keeps the plain red arrow: a melee blow, or a special the
+ * original drew no icon for.
+ */
+function enemyStrikeIcon(battle: BattleState): EnemyStrikeIcon | null {
+  const fx = battle.enemyEffects ?? {}
+  if (fx.healCast !== undefined) return { name: 'eHeal', tone: 'text-combat-heal' }
+  if (fx.windUp) {
+    const icon = perkIcon(fx.windUp.id)
+    return icon ? { name: icon, tone: 'text-combat-crit', pending: true } : null
+  }
+  if (battle.enemyRaw === null) return null
+  if (battle.playerDodged) return { name: 'eDodge', tone: 'text-hue-purple' }
+  if (battle.enemyAction) {
+    const icon = perkIcon(battle.enemyAction.id)
+    return icon ? { name: icon, tone: 'text-combat-crit' } : null
+  }
+  const typeIcon = battle.enemyDamageType === 'MAGIC' ? perkIcon('magic') : battle.enemyDamageType === 'RANGED' ? perkIcon('ranged') : null
+  return typeIcon ? { name: typeIcon, tone: enemyHitTone(battle.enemyDamageType).text } : null
+}
+
+/**
  * A multi-hit turn, hit by hit, under the big number: Hit 1 is the swing the
  * formula line would have shown alone, the rest are the enemy's extra hits —
  * each its roll, its block and what landed, a pack's second bite or a named
  * special where it was one, "dodged" where it came to nothing. They add up to
  * the big number, which wears the count beside it. Nothing on a one-hit turn.
+ * `tone` colours the first hit and every ordinary one after it (enemyHitTone);
+ * a special's hit is the crit tone and a pack's bite the card's gold.
  */
-function EnemyHitList({ battle, firstRoll }: { battle: BattleState; firstRoll: string }) {
+function EnemyHitList({ battle, firstRoll, tone }: { battle: BattleState; firstRoll: string; tone: string }) {
   const extras = battle.extraHits ?? []
   if (extras.length === 0) return null
   const extraTotal = extras.reduce((sum, hit) => sum + hit.damage, 0)
@@ -204,7 +242,7 @@ function EnemyHitList({ battle, firstRoll }: { battle: BattleState; firstRoll: s
   )
   return (
     <>
-      {line(0, null, <>{firstRoll} &minus; {battle.playerBlocked} = <span className={first > 0 ? 'text-stat-def font-semibold' : ''}>{first}</span></>)}
+      {line(0, null, <>{firstRoll} &minus; {battle.playerBlocked} = <span className={first > 0 ? `${tone} font-semibold` : ''}>{first}</span></>)}
       {extras.map((hit, i) =>
         line(
           i + 1,
@@ -212,7 +250,7 @@ function EnemyHitList({ battle, firstRoll }: { battle: BattleState; firstRoll: s
           hit.dodged ? (
             <span className="text-hue-purple">dodged</span>
           ) : (
-            <>{hit.action && hit.action.rolls.length > 1 ? `( ${hit.action.rolls.join(' + ')} )` : hit.raw} &minus; {hit.block} = <span className={hit.damage > 0 ? 'text-stat-def font-semibold' : ''}>{hit.damage}</span></>
+            <>{hit.action && hit.action.rolls.length > 1 ? `( ${hit.action.rolls.join(' + ')} )` : hit.raw} &minus; {hit.block} = <span className={hit.damage > 0 ? `${hit.action ? 'text-combat-crit' : hit.pack ? 'text-stat-def' : tone} font-semibold` : ''}>{hit.damage}</span></>
           ),
         ),
       )}
@@ -238,7 +276,7 @@ function EnemyIcon({ iconName, isDead }: { iconName: string; isDead: boolean }) 
   )
 }
 
-function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking, isRanged = false, spell = null, skill = null }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean; isPlayerAttacking: boolean; isRanged?: boolean; spell?: BattleSpellCast | null; skill?: BattleSkillUse | null }) {
+function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking, isRanged = false, spell = null, skill = null, enemyStrike = null }: { weaponIconName: string | null; enemyIcon?: string | null; enemyIsDead: boolean; isPlayerAttacking: boolean; isRanged?: boolean; spell?: BattleSpellCast | null; skill?: BattleSkillUse | null; enemyStrike?: EnemyStrikeIcon | null }) {
   const playerArrowColor = isRanged ? 'text-combat-heal/60' : 'text-combat-damage/60'
   return (
     <div className="flex-shrink-0 flex items-center gap-1">
@@ -262,9 +300,18 @@ function CombatIcons({ weaponIconName, enemyIcon, enemyIsDead, isPlayerAttacking
           <Icon name="attack" className={`${ARROW_ICON} ${playerArrowColor}`} />
         </>
       )}
+      {/* The enemy's side mirrors yours: its act's own icon where its arrow
+          goes, as your spells and strikes put theirs. */}
       {!enemyIsDead && (
         <div style={{ transform: 'scaleX(-1)' }}>
-          <Icon name="attack" className={`${ARROW_ICON} text-combat-damage/60`} />
+          {enemyStrike ? (
+            <Icon
+              name={enemyStrike.name}
+              className={`${MID_ICON} ${enemyStrike.tone} ${enemyStrike.pending ? 'opacity-50 motion-safe:animate-pulse' : 'opacity-85'}`}
+            />
+          ) : (
+            <Icon name="attack" className={`${ARROW_ICON} text-combat-damage/60`} />
+          )}
         </div>
       )}
       <div className="flex justify-center min-w-[48px] @min-[600px]:min-w-[88px]">
@@ -620,7 +667,7 @@ function BattleResultCard({
           </div>
           {lt && (
             <div className="flex-shrink-0 text-right">
-              <p className={`text-2xl font-black leading-none tabular-nums ${lt.enemyAction ? 'text-combat-crit' : 'text-stat-def'}`}>{lt.enemyDealtDamage}</p>
+              <p className={`text-2xl font-black leading-none tabular-nums ${lt.enemyAction ? 'text-combat-crit' : enemyHitTone(lt.enemyDamageType).text}`}>{lt.enemyDealtDamage}</p>
               <p className="mt-0.5 text-[10px] tabular-nums text-fg-disabled">
                 {lt.enemyAction && lt.enemyAction.rolls.length > 1 ? `( ${lt.enemyAction.rolls.join(' + ')} )` : lt.enemyRaw} − {lt.playerBlocked} = {lt.enemyDealtDamage}
               </p>
@@ -792,6 +839,11 @@ export default function BattlePanel({
   const enemyIsDead = battle.enemyCurrentHp <= 0
   // How many times the enemy swung this turn: its hit, plus its extra hits.
   const enemyHits = 1 + (battle.extraHits?.length ?? 0)
+  // A caster's ordinary hit is a spell, in MAG blue; an archer's is green.
+  // A special keeps its own name and the crit tone over either.
+  const enemyCasts = battle.enemyDamageType === 'MAGIC'
+  const enemyHit = enemyHitTone(battle.enemyDamageType)
+  const enemyFx = battle.enemyEffects ?? {}
 
   // The number beside the vitals is the item's full amount, the same "+100"
   // its button wears; the ghost on the bar is the part that lands.
@@ -1272,12 +1324,40 @@ export default function BattlePanel({
           )}
         </div>
 
-        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} isPlayerAttacking={hasPlayerFormula} isRanged={isRanged} spell={spellCast} skill={skillUse} />
+        <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} isPlayerAttacking={hasPlayerFormula} isRanged={isRanged} spell={spellCast} skill={skillUse} enemyStrike={enemyStrikeIcon(battle)} />
 
         {/* Enemy side */}
         <div className="flex-1 flex flex-col items-end gap-1 min-w-0">
           {enemyIsDead ? (
             <p className="text-sm font-bold text-enemy-hostile text-right">{battle.enemyName}</p>
+          ) : enemyFx.healCast !== undefined ? (
+            // A healer's turn: it mended instead of attacking, so nothing hit
+            // you. The original's "casts HEAL", in the heal tone.
+            <>
+              <p className="text-[10px] text-fg-disabled text-right tabular-nums">(max {battle.enemyStrMax})</p>
+              <p className="text-xs text-fg-secondary text-right">
+                The <span className="text-resource-gold font-semibold">{battle.enemyName}</span> casts{' '}
+                <span className="font-semibold text-combat-heal">Heal</span> for
+              </p>
+              <p
+                className="text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums text-right text-combat-heal"
+                style={{ textShadow: '0 0 16px color-mix(in srgb, var(--combat-heal) 38%, transparent)' }}
+              >
+                +{enemyFx.healCast}
+              </p>
+              <EnemyHitExtras battle={battle} />
+            </>
+          ) : enemyFx.windUp ? (
+            // A wind-up: the turn was the warning, and the blow lands next turn.
+            <>
+              <p className="text-xs text-fg-secondary text-right">
+                The <span className="text-resource-gold font-semibold">{battle.enemyName}</span> {enemyFx.windUp.line}
+              </p>
+              <p className="text-[11px] font-black tracking-[0.12em] uppercase text-right text-combat-crit">
+                {enemyFx.windUp.name} next turn
+              </p>
+              <EnemyHitExtras battle={battle} />
+            </>
           ) : hasEnemyFormula && battle.playerDodged ? (
             // The Dodge skill: the whole swing came to nothing. The original's
             // purple "You DODGE", with what you sidestepped for the record.
@@ -1288,12 +1368,12 @@ export default function BattlePanel({
               </p>
               <p className="text-xs text-fg-secondary text-right">
                 You <span className="font-semibold text-hue-purple">DODGE</span> the{' '}
-                <span className="text-resource-gold font-semibold">{battle.enemyName}</span>&rsquo;s {enemyAction ? enemyAction.name.toLowerCase() : 'attack'}!
+                <span className="text-resource-gold font-semibold">{battle.enemyName}</span>&rsquo;s {enemyAction ? enemyAction.name.toLowerCase() : enemyCasts ? 'spell' : 'attack'}!
               </p>
               <p className="text-xl @min-[600px]:text-2xl font-black text-hue-purple leading-none tabular-nums italic text-right">
                 DODGE
               </p>
-              <EnemyHitList battle={battle} firstRoll={enemyRollText} />
+              <EnemyHitList battle={battle} firstRoll={enemyRollText} tone={enemyAction ? 'text-combat-crit' : enemyHit.text} />
               <EnemyHitExtras battle={battle} />
             </>
           ) : hasEnemyFormula ? (
@@ -1301,35 +1381,37 @@ export default function BattlePanel({
               {enemyAction && (
                 <p
                   className="text-[11px] font-black tracking-[0.18em] uppercase text-right leading-tight"
-                  style={{ color: 'var(--combat-crit)', textShadow: '0 0 14px color-mix(in srgb, var(--combat-crit) 50%, transparent)80' }}
+                  style={{ color: 'var(--combat-crit)', textShadow: '0 0 14px color-mix(in srgb, var(--combat-crit) 50%, transparent)' }}
                 >
                   {enemyAction.name}
                 </p>
               )}
-              <p className="text-[10px] text-fg-disabled text-right tabular-nums">
+              {/* A spell's or a shot's math wears its colour, as the
+                  original's did; a blow's and a special's stay grey. */}
+              <p className={`text-[10px] text-right tabular-nums ${!enemyAction && battle.enemyDamageType && battle.enemyDamageType !== 'MELEE' ? enemyHit.text : 'text-fg-disabled'}`}>
                 <span className="mr-1">(max {battle.enemyStrMax})</span>
                 {enemyHits > 1 ? (
-                  `${enemyHits} swings`
+                  `${enemyHits} ${enemyCasts ? 'casts' : 'swings'}`
                 ) : (
                   <>{enemyRollText} &minus; {battle.playerBlocked} = {battle.lastEnemyDamage ?? 0}</>
                 )}
               </p>
               <p className="text-xs text-fg-secondary text-right">
                 The <span className="text-resource-gold font-semibold">{battle.enemyName}</span>{' '}
-                {enemyAction ? 'unleashes it for' : 'attacks you for'}
+                {enemyAction ? 'unleashes it for' : enemyCasts ? 'casts a spell at you for' : 'attacks you for'}
               </p>
               <div className="flex items-baseline justify-end gap-1.5">
                 {enemyHits > 1 && (
                   <span className="text-[10px] font-bold uppercase tracking-wider text-combat-crit">{enemyHits} hits</span>
                 )}
                 <p
-                  className={`text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums text-right ${enemyAction ? 'text-combat-crit' : 'text-stat-def'}`}
-                  style={{ textShadow: enemyAction ? '0 0 16px color-mix(in srgb, var(--combat-crit) 50%, transparent)' : '0 0 16px color-mix(in srgb, var(--resource-gold) 38%, transparent)' }}
+                  className={`text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums text-right ${enemyAction ? 'text-combat-crit' : enemyHit.text}`}
+                  style={{ textShadow: enemyAction ? '0 0 16px color-mix(in srgb, var(--combat-crit) 50%, transparent)' : `0 0 16px color-mix(in srgb, ${enemyHit.glow} 38%, transparent)` }}
                 >
                   {battle.lastEnemyDamage ?? 0}
                 </p>
               </div>
-              <EnemyHitList battle={battle} firstRoll={enemyRollText} />
+              <EnemyHitList battle={battle} firstRoll={enemyRollText} tone={enemyAction ? 'text-combat-crit' : enemyHit.text} />
               {/* What the hit did besides damage: what Magic Armor ate,
                   whether poison took hold. */}
               {battle.absorbed > 0 && (

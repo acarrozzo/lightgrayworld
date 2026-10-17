@@ -41,6 +41,8 @@ export interface LedgerFoe {
   hits: { dmg: number; name: string | null; dodged: boolean; pack: boolean }[]
   dodged: boolean
   fx: LedgerFx[]
+  /** A magic or ranged hit's type; absent for melee and on rows saved before it existed. */
+  type?: 'MAGIC' | 'RANGED'
 }
 
 export interface LedgerTurn {

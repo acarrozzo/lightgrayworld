@@ -158,7 +158,13 @@ function FoeCell({ foe }: { foe: LedgerTurn['foe'] }) {
       </>
     )
   }
-  const tone = foe.kind === 'special' ? 'text-combat-crit' : 'text-combat-defeat'
+  // A special names itself in the crit tone. An ordinary hit wears its type,
+  // as the card does: a caster's is a Spell in MAG blue, an archer's a Hit in
+  // DEX green, anything else a Hit in red.
+  const tone = foe.kind === 'special'
+    ? 'text-combat-crit'
+    : foe.type === 'MAGIC' ? 'text-stat-mag' : foe.type === 'RANGED' ? 'text-stat-dex' : 'text-combat-defeat'
+  const label = foe.name ?? (foe.type === 'MAGIC' ? 'Spell' : 'Hit')
   const extras: ReactNode[] = []
   const calc = foeCalc(foe)
   if (foe.dodged) extras.push(<span key="dodge" className="text-hue-purple">you dodged</span>)
@@ -175,7 +181,7 @@ function FoeCell({ foe }: { foe: LedgerTurn['foe'] }) {
   const nothing = foe.dmg === 0
   return (
     <>
-      <span className={`font-semibold ${tone}`}>{foe.name ?? 'Hit'}</span>
+      <span className={`font-semibold ${tone}`}>{label}</span>
       <span className={`ml-1 font-bold ${nothing ? 'text-fg-disabled' : 'text-fg-bright'}`}>{nothing && !foe.dodged ? 'blocked' : foe.dmg}</span>
       {extras.length > 0 && <Sub>{joinNodes(extras)}</Sub>}
     </>

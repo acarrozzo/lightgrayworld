@@ -284,4 +284,16 @@ function getEnemyPerkCatalog() {
   return [...attack, ...STANDING_PERKS.map((p) => ({ grade: null, chance: null, icon: PERK_ICONS[p.id] || null, ...p }))]
 }
 
-module.exports = { getEnemyTraits, getEnemyPerkCatalog, PERK_GROUPS }
+/**
+ * The original's icon for one perk or attack type, by trait id — a special's
+ * id (`power`, `crit`…), `magic`, `ranged`, `heal`. The battle card puts it
+ * where the enemy's arrow goes, as the original's icon box did. Null when the
+ * original drew none.
+ * @param {string | null | undefined} id
+ * @returns {string | null}
+ */
+function perkIcon(id) {
+  return (id && PERK_ICONS[id]) || null
+}
+
+module.exports = { getEnemyTraits, getEnemyPerkCatalog, perkIcon, PERK_GROUPS }

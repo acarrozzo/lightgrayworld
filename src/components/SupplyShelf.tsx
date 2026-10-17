@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ChevronDown, Lock, Users } from 'lucide-react'
+import { Check, ChevronDown, Lock } from 'lucide-react'
 import Icon from './Icon'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { formatTimeAgo } from '@/components/player/PlayerRow'
@@ -321,7 +321,6 @@ function DroppedPill({
           title={title}
           className={`${PILL} rounded-l-lg fill-status-info shadow-sm ${busy ? 'cursor-wait opacity-60' : ''}`}
         >
-          <Users size={11} className="shrink-0 opacity-90" />
           <Icon
             name={resolveItemIcon(item.template.metadata as { icon?: string } | null, item.template.slug)}
             size={14}

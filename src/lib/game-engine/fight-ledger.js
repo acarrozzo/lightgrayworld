@@ -58,6 +58,8 @@ const LEDGER_CAP = 400
  * @property {{ dmg: number, name: string|null, dodged: boolean, pack: boolean }[]} foe.hits  Its hits after the first.
  * @property {boolean} foe.dodged  You dodged its first swing.
  * @property {LedgerFx[]} foe.fx  Poison, stone, absorb, drains, theft, Magic Armor, heal, resurrect.
+ * @property {'MAGIC'|'RANGED'} [foe.type]  What its hit was, on a hit or special turn; absent for
+ *   melee, and on every row saved before the field existed (those read as melee).
  * @property {{ you: number, foe: number }} hp  Both sides after the turn.
  * @property {number|null} mp  Your MP after the turn, when the turn reported it.
  */
@@ -167,6 +169,9 @@ function compactTurn(turn, extras) {
     addFx('drainMp', effects.mpDrained)
     addFx('steal', effects.stolen)
     addFx('armor', extras.absorbed)
+    // Only a magic or ranged hit carries its type, so a melee row stays the
+    // size it was and an old row needs no reading-in.
+    const type = acted && (t.enemyDamageType === 'MAGIC' || t.enemyDamageType === 'RANGED') ? t.enemyDamageType : null
     foe = {
       kind: !acted ? 'none' : action ? 'special' : 'hit',
       name: action ? action.name || null : null,
@@ -182,6 +187,7 @@ function compactTurn(turn, extras) {
       })),
       dodged: Boolean(t.playerDodged),
       fx,
+      ...(type ? { type } : {}),
     }
   }
 
