@@ -232,6 +232,11 @@ export class SocketEventHandlers {
     return this.on(SOCKET_EVENTS.PLAYER_PET, handler)
   }
 
+  /** One player in the room put on a title or set it aside. */
+  onPlayerTitle(handler: (payload: { id: string; roomId: string; title: string | null }) => void): () => void {
+    return this.on(SOCKET_EVENTS.PLAYER_TITLE, handler)
+  }
+
   // ─── Party ───────────────────────────────────────────────────────────────
   followPlayer(targetId: string): boolean {
     return this.emit(SOCKET_EVENTS.PARTY_FOLLOW, { targetId })

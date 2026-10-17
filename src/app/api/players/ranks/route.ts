@@ -47,6 +47,7 @@ async function handleGetRanks() {
           clicks: true,
           uIcon: true,
           uIconColor: true,
+          title: true,
           lastActive: true,
           chest1: true, chest2: true, chest3: true, chest4: true, chest5: true,
           chest6: true, chest7: true, chest8: true, chest9: true, chest10: true,
@@ -79,6 +80,7 @@ async function handleGetRanks() {
       kills: killsByUser.get(u.id) ?? 0,
       deaths: u.deaths,
       completedQuests: (completedByUser.get(u.id) ?? []).length,
+      title: u.title ?? null,
       titles: earnedTitles(completedByUser.get(u.id) ?? []),
       chestsOpened: [
         u.chest1, u.chest2, u.chest3, u.chest4, u.chest5,

@@ -363,8 +363,12 @@ async function completeQuest(playerId, questId) {
     const updateData = {}
     if (currencyIncrement > 0) updateData.currency = { increment: currencyIncrement }
     if (xpIncrement > 0) updateData.xp = { increment: xpIncrement }
+    // A grand quest carves a name into the Pillar and the player wears it at
+    // once: one growing name, each step replacing the last. They can set it
+    // aside or pick a guild's on the Char page afterwards.
+    if (questDef.grantsTitle) updateData.title = questDef.grantsTitle
 
-    const select = { id: true, currency: true, xp: true }
+    const select = { id: true, currency: true, xp: true, title: true }
     const updatedUser = Object.keys(updateData).length > 0
       ? await tx.user.update({ where: { id: playerId }, data: updateData, select })
       : await tx.user.findUnique({ where: { id: playerId }, select })
@@ -375,6 +379,9 @@ async function completeQuest(playerId, questId) {
   if (result.alreadyCompleted) {
     return { success: false, error: 'Quest already completed' }
   }
+
+  // A name carved into the Pillar: the monument's cached holders are stale.
+  if (questDef.grantsTitle) require('./pillar-service').invalidatePillarHolders()
 
   // Now that the completion is committed, the giver's dependents may be open.
   const giverId = giverIdForQuest(questId)
@@ -409,11 +416,15 @@ async function completeQuest(playerId, questId) {
     : result.updatedUser
 
   // Standing with the quest's faction after this turn-in, for the popup and
-  // the feed. The Pillar's capstones have no faction and report nothing.
+  // the feed. The Guardian Angel's grand quests have no faction and report
+  // the name they carved instead.
   const factionId = giverId ? getGiver(giverId)?.faction : null
   const standing = factionId ? registry.factionStanding(factionId, state.quests) : null
   const faction = factionId ? getFaction(factionId) : null
   const becameMember = !!(faction && faction.membershipQuest === questId)
+  const grand = questDef.grantsTitle
+    ? { title: questDef.grantsTitle, colorToken: questDef.titleColorToken ?? null }
+    : null
 
   return {
     success: true,
@@ -426,6 +437,7 @@ async function completeQuest(playerId, questId) {
     teachersMet,
     standing,
     becameMember,
+    grand,
   }
 }
 

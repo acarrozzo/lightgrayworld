@@ -34,6 +34,7 @@ const ROOT = path.join(__dirname, '..')
 const QUESTS = require(path.join(ROOT, 'src/lib/game-data/quests.json'))
 const GIVERS = require(path.join(ROOT, 'src/lib/game-data/quest-givers.json'))
 const { FACTIONS } = require(path.join(ROOT, 'src/lib/game-data/factions.js'))
+const { PILLAR_GIVER_ID } = require(path.join(ROOT, 'src/lib/game-data/quest-registry.js'))
 const { ENEMIES } = require(path.join(ROOT, 'src/lib/game-data/enemies.js'))
 const { ALL_REGIONS } = require(path.join(ROOT, 'src/lib/game-data/world-map.js'))
 
@@ -113,7 +114,9 @@ for (const f of FACTIONS) {
     else if (GIVERS[QUESTS[f.membershipQuest].giverId]?.faction !== f.id) err(`faction ${f.id}`, `membershipQuest "${f.membershipQuest}" is not given by one of its own givers`)
   }
   if (f.hubRoomId && !roomIds.has(f.hubRoomId)) err(`faction ${f.id}`, `hubRoomId "${f.hubRoomId}" is not a seeded room`)
-  if (!f.placeholder && !f.title) warn(`faction ${f.id}`, 'no title to earn at max standing')
+  // A guild's title is its own to earn; a region's name is the Guardian Angel's to carve (grantsTitle).
+  if (f.kind === 'guild' && !f.title) warn(`faction ${f.id}`, 'a guild has no title to earn at max standing')
+  if (f.kind === 'region' && !f.placeholder && f.title) err(`faction ${f.id}`, "a region does not grant a title: the lands' names are the grand quests' grantsTitle")
 }
 
 // ---- givers
@@ -160,6 +163,15 @@ for (const [id, q] of Object.entries(QUESTS)) {
   if (!QUEST_TYPES.has(q.questType)) err(id, `unknown questType "${q.questType}"`)
   if (!q.title) err(id, 'missing title')
   if (!q.completionDialog) warn(id, 'no completionDialog')
+  // A name carved into the Pillar is the Guardian Angel's to give, and only hers.
+  if ('grantsTitle' in q) {
+    if (typeof q.grantsTitle !== 'string' || !q.grantsTitle) err(id, 'grantsTitle must be a non-empty string')
+    if (q.giverId !== PILLAR_GIVER_ID) err(id, `grantsTitle belongs to the "${PILLAR_GIVER_ID}" giver's quests only`)
+    if (!(q.requirements ?? []).some((r) => r.type === 'factionsComplete')) err(id, 'a grantsTitle quest must require factionsComplete')
+  } else if (q.giverId === PILLAR_GIVER_ID) {
+    err(id, `every quest of "${PILLAR_GIVER_ID}" carves a name: missing grantsTitle`)
+  }
+  if ('titleColorToken' in q && (typeof q.titleColorToken !== 'string' || !('grantsTitle' in q))) err(id, 'titleColorToken is a string and goes with grantsTitle')
   const list = GIVERS[q.giverId]?.quests ?? []
   for (const prev of q.after ?? []) {
     if (!questIds.has(prev)) { err(id, `after references unknown quest "${prev}"`); continue }

@@ -3,7 +3,7 @@
  * over quests.json + quest-givers.json + factions.js.
  *
  * The shape:
- *  - A **giver** (quest-givers.json) is an NPC (or the Grand Quest Pillar): who
+ *  - A **giver** (quest-givers.json) is an NPC: who
  *    they are, where they stand, which faction they speak for, how the player
  *    hears of them (`revealedBy`), what must be true before they will talk
  *    (`meetRequirements` / `lockedDialog`), what they say on first meeting
@@ -88,8 +88,8 @@ function completedSet(progressRows) {
 
 /**
  * Standing with one faction: quests done out of quests it has. `complete` is
- * the title moment. A placeholder faction (no givers yet) is never complete —
- * the Pillar's Mountain capstone waits for the Mountains, as it did originally.
+ * the trophy moment in the journal and, for a guild, its title. A placeholder
+ * faction (no givers yet) is never complete.
  */
 function factionStanding(factionId, progressRows) {
   const faction = getFaction(factionId)
@@ -107,7 +107,7 @@ function factionStanding(factionId, progressRows) {
     done: completed,
     total,
     complete,
-    title: complete ? faction.title : null,
+    title: complete ? faction.title ?? null : null,
   }
 }
 
@@ -116,11 +116,55 @@ function allStandings(progressRows) {
   return listLiveFactions().map((f) => factionStanding(f.id, progressRows))
 }
 
-/** The titles a player has earned: one per faction at max standing. */
+/** The giver whose quests carve names into the Grand Quest Pillar. */
+const PILLAR_GIVER_ID = 'guardian_angel'
+
+/**
+ * The names carved into the Pillar, in the order they are earned: one per
+ * grand quest (its `grantsTitle`, painted in `titleColorToken`), then the
+ * fifth, dark name a placeholder faction reserves (Star City's "Eternal
+ * Mage"), which has no quest yet and so cannot be earned.
+ *
+ * @returns {{ questId: string | null, title: string, colorToken: string | null, waitsFor: string | null }[]}
+ */
+function listPillarNames() {
+  const names = listGiverQuestIds(PILLAR_GIVER_ID)
+    .filter((id) => QUESTS[id]?.grantsTitle)
+    .map((id) => ({ questId: id, title: QUESTS[id].grantsTitle, colorToken: QUESTS[id].titleColorToken ?? null, waitsFor: null }))
+  for (const faction of FACTIONS) {
+    if (faction.placeholder && faction.title) {
+      names.push({ questId: null, title: faction.title, colorToken: faction.colorToken ?? null, waitsFor: faction.name })
+    }
+  }
+  return names
+}
+
+/**
+ * The Pillar's name for a player: the last grand quest they have turned in.
+ * One growing name — each step replaces the one before, so a player is never
+ * both Savior of the Grassy Field and Savior of the Lowlands. Null until the
+ * first is earned.
+ */
+function pillarTitle(progressRows) {
+  const done = completedSet(progressRows)
+  let title = null
+  for (const name of listPillarNames()) {
+    if (name.questId && done.has(name.questId)) title = name.title
+  }
+  return title
+}
+
+/**
+ * The titles a player may wear: the Pillar's current name first, then one per
+ * guild at max standing. This is what the server checks a chosen `User.title`
+ * against, and what the Char page offers.
+ */
 function earnedTitles(progressRows) {
-  return allStandings(progressRows)
-    .filter((s) => s.complete)
+  const guild = allStandings(progressRows)
+    .filter((s) => s.complete && s.title)
     .map((s) => s.title)
+  const pillar = pillarTitle(progressRows)
+  return pillar ? [pillar, ...guild] : guild
 }
 
 /** A quest is open once every quest in its `after` list is complete. */
@@ -177,6 +221,9 @@ module.exports = {
   factionStanding,
   allStandings,
   earnedTitles,
+  PILLAR_GIVER_ID,
+  listPillarNames,
+  pillarTitle,
   isQuestOpen,
   isGiverRevealed,
 }

@@ -522,6 +522,7 @@ export interface SocketEvents {
   'player-joined': (player: PlayerInfo) => void
   'player-left': (player: { id: string; username: string; exitDirection?: string | null; isTeleport?: boolean }) => void
   'player-pet': (payload: { id: string; roomId: string; pet: string | null }) => void
+  'player-title': (payload: { id: string; roomId: string; title: string | null }) => void
   'chat-message': (message: ChatMessage) => void
   'room-chat-message': (message: ChatMessage) => void
   'action-completed': (actionData: ActionData) => void
@@ -579,6 +580,8 @@ export interface PlayerInfo {
   partyLeaderId?: string | null
   /** The pet along with them (a pet slug, game-data/pets.js), or null. */
   pet?: string | null
+  /** The title they wear (User.title): the Pillar's name or a guild's, or null. */
+  title?: string | null
   entryDirection?: string | null
   isTeleport?: boolean
 }
@@ -610,6 +613,8 @@ export interface PresencePlayer {
   partyLeaderId?: string | null
   /** The pet along with them (a pet slug, game-data/pets.js), or null. */
   pet?: string | null
+  /** The title they wear (User.title): the Pillar's name or a guild's, or null. */
+  title?: string | null
   lastSeen: number
 }
 

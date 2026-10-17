@@ -34,6 +34,8 @@ export interface AuthUser {
   uIconColor: string
   /** The pet along with the player (a pet slug, game-data/pets.js), or null. */
   activePet?: string | null
+  /** The title worn (User.title), or null. */
+  title?: string | null
   clicks?: number
   deaths?: number
   /** Gold chests opened, keyed by User column (game-data/gold-chests.js). */

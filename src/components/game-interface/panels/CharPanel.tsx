@@ -31,15 +31,19 @@ interface CharPanelProps {
   bookTab?: 'skills' | 'spells' | null
   /** The server applied a spend: merge the player and write the feed line. GameInterface owns both. */
   onPointsSpent: (updatedPlayer: Player, summary: AllocationSummary) => void
+  /** Wear one of the earned titles, or none (null). The server validates and the header follows. */
+  onSetTitle?: (title: string | null) => void
 }
 
 // Pets are named from the shared registry; the player carries only the slug.
 const { getPet } = require('@/lib/game-data/pets') as { getPet: (slug: string | null | undefined) => { slug: string; name: string; icon: string } | null }
 
-export default function CharPanel({ player, onSwitchToInventory, onOpenBook, bookTab = null, onPointsSpent }: CharPanelProps) {
+export default function CharPanel({ player, onSwitchToInventory, onOpenBook, bookTab = null, onPointsSpent, onSetTitle }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
   const questRows = useGameStore((state) => state.quests)
+  // The titles the player may wear: the Pillar's growing name, then the guilds'.
   const titles = earnedTitles(questRows)
+  const [isTitlePickerOpen, setTitlePickerOpen] = useState(false)
   const setPlayer = useGameStore((state) => state.setPlayer)
   const getAuthHeaders = useGameStore((state) => state.getAuthHeaders)
   const isLoggedIn = useGameStore((state) => state.isLoggedIn)
@@ -166,10 +170,50 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
                   <div className="space-y-0 text-left">
                     <div className="text-xs uppercase tracking-[0.3em] text-accent-hover/80">lvl {player.level}</div>
                     <h3 className="text-2xl font-semibold text-fg-bright">{player.username}</h3>
-                    {titles.length > 0 && (
-                      <p className="text-xs text-resource-gold" title="Faction titles: every quest for that faction is done">
-                        {titles.join(' · ')}
-                      </p>
+                    {/* The title worn, and the picker for the ones earned: the
+                        Pillar's name (every quest of a land, claimed from the
+                        Guardian Angel) and each guild's at max standing. */}
+                    {(player.title || titles.length > 0) && (
+                      <div className="text-xs">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          <span className={player.title ? 'font-semibold text-resource-gold' : 'text-fg-muted'} title={player.title ? 'The title you wear' : 'No title worn'}>
+                            {player.title ?? 'No title'}
+                          </span>
+                          {onSetTitle && titles.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setTitlePickerOpen((open) => !open)}
+                              aria-expanded={isTitlePickerOpen}
+                              className="text-[10px] uppercase tracking-wide text-fg-muted hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus rounded"
+                            >
+                              {isTitlePickerOpen ? 'Done' : 'Change'}
+                            </button>
+                          )}
+                        </div>
+                        {isTitlePickerOpen && onSetTitle && (
+                          <div className="mt-1.5 flex flex-wrap gap-1" role="radiogroup" aria-label="Title to wear">
+                            {[null, ...titles].map((option) => {
+                              const worn = (player.title ?? null) === option
+                              return (
+                                <button
+                                  key={option ?? '__none'}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={worn}
+                                  onClick={() => { if (!worn) onSetTitle(option) }}
+                                  className={`rounded-md border px-2 py-0.5 text-[11px] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                                    worn
+                                      ? 'border-resource-gold bg-resource-gold/15 text-resource-gold font-semibold'
+                                      : 'border-line-subtle text-fg-secondary hover:border-resource-gold/60 hover:text-fg-bright'
+                                  }`}
+                                >
+                                  {option ?? 'No title'}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
                     )}
                     <p className="text-sm text-fg-secondary">Room: {player.currentRoom || '???'}</p>
                     {/* The pet along, or the pets at home: company, no numbers. Switch opens the bag's Pets group. */}

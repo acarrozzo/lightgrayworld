@@ -312,7 +312,7 @@ export default async function QuestsPage() {
         <h1 className="text-2xl font-bold text-fg-bright">Quests</h1>
         <p className="mt-1 text-sm text-fg-secondary">
           {questCount} quests from {giverCount} quest givers across {groups.length - (pillarGivers.length ? 1 : 0)} factions — pulled live from the game data.
-          Standing with a faction is its quests done out of its total; every quest done earns its title.
+          Standing with a faction is its quests done out of its total. A guild at max standing earns its title; a land at max is a mark in the journal, and the lands' names are the Guardian Angel's grand quests, one growing name carved into the Pillar.
         </p>
       </header>
       <QuestsList groups={groups} />

@@ -25,6 +25,10 @@ model User {
   // The pet along with the player: the slug of a pet item they hold, or null.
   // Pets are collectibles with no numbers (src/lib/game-data/pets.js).
   activePet                 String?
+  // The title the player wears, chosen on the Char page from the ones they have
+  // earned (quest-registry earnedTitles: the Pillar's growing name, or a guild's
+  // title). Null wears none. Checked against earned titles on every set.
+  title                     String?
   lastActive                DateTime        @default(now())
   isActive                  Boolean         @default(true)
   clicks                    Int             @default(0)
@@ -419,6 +423,9 @@ model WorldFeedEvent {
   userId    String
   username  String
   eventType String
+  // What the event is about, when the type alone does not say: the title a
+  // savior earned. Null for the login/logout kinds.
+  detail    String?
   timestamp DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

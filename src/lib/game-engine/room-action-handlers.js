@@ -89,7 +89,9 @@ function formatTimeRemaining(seconds) {
 
 /**
  * Fill {progress} / {count} placeholders in a reminder dialog using the
- * requirement-check details (kill counts, item quantities, etc.).
+ * requirement-check details (kill counts, item quantities, etc.), and
+ * {standings} with a count per land for a grand quest ("Grassy Field: 7 of
+ * 11. Forest: done."), so the Guardian Angel counts rather than describes.
  */
 function renderReminderDialog(quest, requirements) {
   const text = quest.reminderDialog || ''
@@ -99,8 +101,55 @@ function renderReminderDialog(quest, requirements) {
   const progress = details.currentKills ?? details.currentQuantity ?? 0
   const count =
     details.requiredKills ?? details.requiredQuantity ?? firstReq.count ?? firstReq.quantity ?? 0
-  return text.replace(/\{progress\}/g, progress).replace(/\{count\}/g, count)
+  const standings = Array.isArray(details.standings)
+    ? details.standings
+        .filter(Boolean)
+        .map((s) => (s.complete ? `${s.name}: done.` : `${s.name}: ${s.done} of ${s.total}.`))
+        .join(' ')
+    : ''
+  return text
+    .replace(/\{progress\}/g, progress)
+    .replace(/\{count\}/g, count)
+    .replace(/\{standings\}/g, standings)
+    .trim()
 }
+
+/**
+ * The Grand Quest Pillar: five carved names, which of them are yours, and
+ * who else holds each. A monument beside the Guardian Angel, not a giver —
+ * free, and it starts nothing.
+ */
+const examinePillar = free(async (playerId, roomState) => {
+  const action = 'examine grand pillar'
+  const qs = require('./services/quest-service')
+  const { getPillarView } = require('./services/pillar-service')
+  roomState.touchActivity()
+  const state = await qs.getQuestState(playerId)
+  const names = await getPillarView(state.quests)
+  const lines = names.map((name) => {
+    if (name.waitsFor) return `${name.title} — still dark. The gates of ${name.waitsFor} are closed.`
+    const carved = name.holders.length ? `Carved: ${name.holders.join(', ')}.` : 'No name is carved here yet.'
+    return `${name.title} — ${name.yours ? 'yours.' : 'not yet earned.'} ${carved}`
+  })
+  const yours = names.filter((n) => n.yours).length
+  const summary = yours
+    ? `${yours} of the ${names.length} names on the Pillar ${yours === 1 ? 'is' : 'are'} yours.`
+    : 'None of the names on the Pillar are yours yet.'
+  return {
+    success: true,
+    action,
+    playerEvents: [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(action, 'success', `You lay a hand on the Grand Quest Pillar. ${summary}`, {
+          roomId: roomState.roomId,
+          showModal: true,
+          modalContent: { type: 'icon', icon: 'pillar3', iconColor: 'yellow-400', title: 'Grand Quest Pillar', message: lines },
+        }),
+      },
+    ],
+  }
+})
 
 /**
  * Resolve an NPC's idle dialog (no active quest) from an ordered, priority list.
@@ -2135,10 +2184,12 @@ const ROOM_ACTIONS = {
     'craft': executeCraft,
   },
   '029': {
-    // The Grand Quest Pillar, in the ruins of the Destroyed Academy: the
-    // original's room 029, where the four regional "Savior" grand quests were
-    // started and claimed. Now a quest giver like any other.
-    'examine grand pillar': npcTalk('grand_quest_pillar'),
+    // The Destroyed Academy: the original's room 029, where the four regional
+    // "Savior" grand quests were started and claimed. The Guardian Angel the
+    // original planned for it gives them now, and the Pillar beside her is
+    // the monument that carries the names — yours lit, everyone's beneath.
+    'talk to guardian angel': npcTalk('guardian_angel'),
+    'examine grand pillar': examinePillar,
   },
   '025': {
     // Jack's trees in Goblin Woods, on the original's rules rather than every

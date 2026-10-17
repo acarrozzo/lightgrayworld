@@ -19,6 +19,7 @@ import Icon from './Icon'
 // Pets are named from the shared registry; the room payload carries only the slug.
 const { getPet } = require('@/lib/game-data/pets') as { getPet: (slug: string | null | undefined) => { slug: string; name: string; icon: string } | null }
 import NpcQuestCard from './NpcQuestCard'
+import PillarCard from './PillarCard'
 import { getFaction } from '@/lib/game-data/factions'
 import ActionFlyout from './ActionFlyout'
 import { useActionFlyout } from '@/hooks/useActionFlyout'
@@ -343,6 +344,9 @@ export default function RoomDisplay({
         <div className="mt-2 text-xs text-resource-gold/80 italic">{room.stateNote}</div>
       )}
 
+      {/* The Grand Quest Pillar's carved names, in the one room that has it. */}
+      {room.roomId === '029' && <PillarCard quests={quests} />}
+
       {(() => {
         const npcActions = roomActions.filter((a) => a.questIds?.length)
         const regularActions = roomActions.filter((a) => !a.questIds?.length)
@@ -631,6 +635,10 @@ function PlayerCard({ player, onInspect, disabled, onFollow, followPending = fal
       </div>
       <div className="leading-tight min-w-0">
         <div className="text-xs font-semibold text-fg-bright/90 truncate max-w-[110px]">{player.username}</div>
+        {/* The title they wear: the Pillar's name or a guild's. */}
+        {player.title && (
+          <div className="truncate max-w-[110px] text-[9px] font-semibold text-resource-gold" title={player.title}>{player.title}</div>
+        )}
         <div className="text-[10px] uppercase tracking-[0.15em] text-stat-mag/80">Lvl {player.level}</div>
         {/* Who is fighting, and what. The room payload has always carried this
             flag; the card used to throw it away, so a battle happening beside

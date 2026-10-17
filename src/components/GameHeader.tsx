@@ -39,6 +39,8 @@ interface GameHeaderProps {
   enemy?: { name: string | null; hp: number; hpMax: number } | null
   /** The pet along with the player, as a small icon beside the name; null with none along. */
   pet?: { name: string; iconName: string } | null
+  /** The title the player wears, after the name in gold; null wears none. */
+  title?: string | null
 }
 
 /*
@@ -170,7 +172,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey, enemy = null }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, title = null, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey, enemy = null }: GameHeaderProps) {
   let xpPct = 0
   if (xp !== undefined && level !== undefined) {
     const xpFromLevel = (level ** 3) * 2
@@ -208,6 +210,12 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                   {playerName.charAt(0).toUpperCase()}
                 </span>
                 <span className="hidden @min-[360px]:inline text-fg-primary truncate min-w-0 max-w-[7rem] @min-[768px]:max-w-none">{playerName}</span>
+                {/* The title worn: the Pillar's name or a guild's, in gold after the name. Hidden where the bar is too narrow to carry it. */}
+                {title && (
+                  <span className="hidden @min-[560px]:inline shrink truncate min-w-0 max-w-[11rem] text-[11px] font-semibold text-resource-gold" title={`Title: ${title}`}>
+                    {title}
+                  </span>
+                )}
                 {/* The pet along: a small glyph after the name, named on hover. Company, no numbers. */}
                 {pet && (
                   <span className="inline-flex shrink-0 items-center text-fg-secondary" title={`${pet.name} is along`} aria-label={`${pet.name} is along`}>

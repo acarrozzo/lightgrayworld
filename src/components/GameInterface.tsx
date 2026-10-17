@@ -454,6 +454,13 @@ export default function GameInterface() {
   // server's row wins but it is only a projection, so client-only fields —
   // buffs, presence, party, in-battle — must survive the merge. The feed gets
   // the original's "You spend N CP…" line.
+  // Wear a title or none. The server checks it against what has been earned
+  // and the feedback's `player.title` updates the header; the room learns
+  // through player-title.
+  const handleSetTitle = useCallback((title: string | null) => {
+    socketHandlers.sendGameAction({ type: 'set_title', data: { title } })
+  }, [socketHandlers])
+
   const handlePointsSpent = useCallback((updatedPlayer: Player, summary: AllocationSummary) => {
     const { player: current, setPlayer: sp } = useGameStore.getState()
     sp(current ? { ...current, ...updatedPlayer } : updatedPlayer)
@@ -2898,6 +2905,16 @@ export default function GameInterface() {
       setRoomPlayers(currentRoomPlayers.map((p) => (p.id === data.id ? { ...p, pet: data.pet ?? null } : p)))
     })
 
+    // Someone in the room put on a title or set it aside: their card follows.
+    const cleanupPlayerTitle = socketHandlers.onPlayerTitle((data) => {
+      const activeRoom = currentRoomRef.current
+      if (!activeRoom || data.roomId !== activeRoom.roomId) return
+      const currentRoomPlayers = useGameStore.getState().roomPlayers
+      const target = currentRoomPlayers.find((p) => p.id === data.id)
+      if (!target || (target.title ?? null) === (data.title ?? null)) return
+      setRoomPlayers(currentRoomPlayers.map((p) => (p.id === data.id ? { ...p, title: data.title ?? null } : p)))
+    })
+
     return () => {
       cleanupPlayerJoined()
       cleanupPlayerLeft()
@@ -2906,6 +2923,7 @@ export default function GameInterface() {
       cleanupPlayerBattleStatus()
       cleanupPlayerVitals()
       cleanupPlayerPet()
+      cleanupPlayerTitle()
     }
   }, [socket, socketHandlers, appendWorldFeed])
 
@@ -3640,6 +3658,7 @@ export default function GameInterface() {
             onOpenBook={handleOpenBook}
             bookTab={spBookTab}
             onPointsSpent={handlePointsSpent}
+            onSetTitle={handleSetTitle}
           />
         )
       case 'quests':
@@ -4098,6 +4117,7 @@ export default function GameInterface() {
       <GameHeader
         playerName={player?.username}
         pet={headerPet}
+        title={player?.title ?? null}
         level={player?.level}
         hp={player?.hp}
         hpMax={player?.hpMax}

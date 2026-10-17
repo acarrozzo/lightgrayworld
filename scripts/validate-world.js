@@ -130,7 +130,7 @@ const ACCEPTED = {
 
   // 029 ("Guardian Angel", the Destroyed Academy) holds the Grand Quest
   // Pillar again — the original's four regional "Savior" grand quests, now
-  // quests from the `grand_quest_pillar` giver. The original also gated
+  // quests from the `guardian_angel` giver. The original also gated
   // 005-north on the Goblin Chief kill; that gate is deliberately not
   // restored, so the room stays reachable as a teaser until the Pillar's
   // giver is revealed by that same kill.

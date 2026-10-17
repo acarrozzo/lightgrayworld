@@ -3,20 +3,23 @@
  *
  * A faction is a place to belong to, not a rank ladder. Standing with one is
  * simply how many of its quests you have finished out of how many it has,
- * derived from QuestProgress whenever it is read — nothing is stored. The one
- * thing a faction earns you is its title, at max standing.
+ * derived from QuestProgress whenever it is read — nothing is stored.
  *
  * Two kinds:
  *  - `region`: a town or land (Grassy Field, Red Town, the Blue Ocean). Its
- *    givers are the people who live there. The original paid a "Savior" title
- *    per region at the Grand Quest Pillar, which is where these titles come from.
+ *    givers are the people who live there. A region at max standing is a mark
+ *    in the journal, not a title: the lands' titles are the Guardian Angel's
+ *    to give, one growing name carved into the Grand Quest Pillar (the
+ *    `grantsTitle` of the grand quests in quests.json), as the original paid
+ *    its "Savior" titles at the Pillar and nowhere else.
  *  - `guild`: a membership. `membershipQuest` is the initiation; turning it in
  *    is what "being a member" means everywhere — guild doors, shops, trainers,
  *    and the NPCs who only talk to members ask `isMember`, never a quest id.
+ *    A guild at max standing does earn its `title`: that is a different deed.
  *
  * Regions and guilds are separate: a guild quest does not raise its town.
- * Star City is declared so the Pillar's capstone can name it; it has no
- * givers until its map is ported.
+ * Star City is declared so the Pillar's fifth name can be carved (dark until
+ * its map is ported); it has no givers.
  *
  * `colorToken` is the room-colour token (theme/room-colors.ts) the faction's
  * standing bar is painted with: a region takes its world colour, a guild
@@ -28,17 +31,17 @@
  * grouping, titles), like world-map.js.
  */
 const FACTIONS = [
-  { id: 'grassy-field', name: 'Grassy Field', kind: 'region', colorToken: 'world.grassyField', hubRoomId: '001', title: 'Grassy Field Savior' },
-  { id: 'forest', name: 'Forest', kind: 'region', colorToken: 'world.forest', hubRoomId: '104', title: 'Forest Savior' },
-  { id: 'red-town', name: 'Red Town', kind: 'region', colorToken: 'world.redTown', hubRoomId: '210', title: 'Red Town Savior' },
+  { id: 'grassy-field', name: 'Grassy Field', kind: 'region', colorToken: 'world.grassyField', hubRoomId: '001' },
+  { id: 'forest', name: 'Forest', kind: 'region', colorToken: 'world.forest', hubRoomId: '104' },
+  { id: 'red-town', name: 'Red Town', kind: 'region', colorToken: 'world.redTown', hubRoomId: '210' },
   { id: 'warriors-guild', name: "Warrior's Guild", kind: 'guild', colorToken: 'mood.calm', hubRoomId: '226', membershipQuest: 'quest_warriorsguild_000', memberTitle: 'Warrior', title: 'True Warrior' },
   { id: 'wizards-guild', name: "Wizard's Guild", kind: 'guild', colorToken: 'mood.arcane', hubRoomId: '225', membershipQuest: 'quest_wizardsguild_000', memberTitle: 'Wizard', title: 'Powerful Wizard' },
-  { id: 'dwarf-village', name: 'Dwarf Village', kind: 'region', colorToken: 'world.rockyFlats', hubRoomId: '303', title: 'Rocky Flats Savior' },
+  { id: 'dwarf-village', name: 'Dwarf Village', kind: 'region', colorToken: 'world.rockyFlats', hubRoomId: '303' },
   { id: 'mining-guild', name: 'Mining Guild', kind: 'guild', colorToken: 'mood.treasure', hubRoomId: '308', membershipQuest: 'quest_miningguild_000', memberTitle: 'Miner', title: 'Master Miner' },
-  { id: 'ocean', name: 'Blue Ocean', kind: 'region', colorToken: 'world.ocean', hubRoomId: '413', title: 'Blue Ocean Savior' },
-  { id: 'dark-forest', name: 'Dark Forest', kind: 'region', colorToken: 'world.darkForest', hubRoomId: '507', title: 'Dark Forest Savior' },
+  { id: 'ocean', name: 'Blue Ocean', kind: 'region', colorToken: 'world.ocean', hubRoomId: '413' },
+  { id: 'dark-forest', name: 'Dark Forest', kind: 'region', colorToken: 'world.darkForest', hubRoomId: '507' },
   { id: 'rangers-guild', name: "Ranger's Guild", kind: 'guild', colorToken: 'world.rangersGuild', hubRoomId: '515', membershipQuest: 'quest_rangersguild_000', memberTitle: 'Ranger', title: 'Elite Ranger' },
-  { id: 'mountains', name: 'Mountains', kind: 'region', colorToken: 'world.mountains', hubRoomId: '605', title: 'Mountain Savior' },
+  { id: 'mountains', name: 'Mountains', kind: 'region', colorToken: 'world.mountains', hubRoomId: '605' },
   { id: 'star-city', name: 'Star City', kind: 'region', colorToken: null, placeholder: true, title: 'Eternal Mage' },
 ]
 

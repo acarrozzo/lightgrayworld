@@ -159,9 +159,11 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'shovel sand', label: 'Shovel Sand', icon: 'shovel', className: 'fill-hue-gold' },
   ],
   '029': [
-    // The Grand Quest Pillar: the original room 029's four regional "Savior"
-    // grand quests, now a quest giver in the Destroyed Academy.
-    { action: 'examine grand pillar', label: 'Grand Quest Pillar', icon: 'pillar3', className: 'fill-hue-gold', questIds: questIdsForNpc('grand_quest_pillar') },
+    // The Destroyed Academy: the Guardian Angel gives the grand quests (the
+    // original room 029's four regional "Savior" quests, one growing name
+    // now), and the Pillar beside her carries the names.
+    { action: 'talk to guardian angel', label: 'Guardian Angel', icon: 'npc-guardianangel', className: 'fill-hue-sky', questIds: questIdsForNpc('guardian_angel') },
+    { action: 'examine grand pillar', label: 'Grand Quest Pillar', icon: 'pillar3', className: 'fill-hue-gold' },
   ],
   '028h': [
     { action: 'search', label: 'Search', icon: 'eye', className: 'fill-hue-gold' },

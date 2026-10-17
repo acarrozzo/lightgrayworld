@@ -18,6 +18,8 @@ type RankRow = {
   kills: number
   deaths: number
   completedQuests: number
+  /** The title they wear, or null. */
+  title: string | null
   titles: string[]
   chestsOpened: number
   clicks: number
@@ -184,8 +186,12 @@ export default function RanksPanel({ onOpenProfile }: RanksPanelProps) {
                       )}
                     </div>
                     <div className="text-[9px] text-fg-muted">{active.describe(row)}</div>
-                    {row.titles?.length > 0 && (
-                      <div className="truncate text-[9px] text-resource-gold">{row.titles.join(' · ')}</div>
+                    {/* The title they wear, then the rest they have earned. */}
+                    {row.title && (
+                      <div className="truncate text-[10px] font-semibold text-resource-gold">{row.title}</div>
+                    )}
+                    {row.titles?.filter((t) => t !== row.title).length > 0 && (
+                      <div className="truncate text-[9px] text-resource-gold/70">{row.titles.filter((t) => t !== row.title).join(' · ')}</div>
                     )}
                   </div>
                   <span className="shrink-0 text-xs font-semibold tabular-nums text-fg-primary">

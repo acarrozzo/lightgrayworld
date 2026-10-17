@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Crown, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import FeedLinkButton from '@/components/feed/FeedLinkButton'
@@ -111,6 +111,13 @@ const INFO_STYLE: CategoryStyle = {
 }
 
 const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
+  // A name carved into the Grand Quest Pillar: the one world-scale deed.
+  savior: {
+    label: 'SAVIOR',
+    icon: Crown,
+    barClass: 'bg-resource-gold',
+    iconClass: 'text-resource-gold',
+  },
   login: {
     label: 'LOGIN',
     icon: Globe,
@@ -168,6 +175,7 @@ const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
 }
 
 const ACTIVITY_LABELS: Record<string, string> = {
+  savior: 'Savior',
   unlock: 'New',
   login: 'Login',
   logout: 'Logout',
@@ -181,6 +189,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
 }
 
 const ACTIVITY_TEXT_CLASSES: Record<string, string> = {
+  savior: 'text-resource-gold',
   login: 'text-fg-secondary',
   register: 'text-channel-room',
   return: 'text-channel-room',

@@ -35,6 +35,8 @@ export interface Player {
   presenceStatus?: 'active' | 'idle' | 'disconnected'
   /** Your own pet along with you: the slug of a pet item you hold (game-data/pets.js), or null. */
   activePet?: string | null
+  /** The title worn (User.title): the Pillar's growing name or a guild's; null wears none. */
+  title?: string | null
   /** Another player's pet, as the room and world rosters carry it. */
   pet?: string | null
   /** True while this player is in an active battle (mirrors the server `inFight` flag). */

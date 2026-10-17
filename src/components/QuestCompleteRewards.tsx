@@ -33,6 +33,12 @@ export interface QuestStanding {
   title: string | null
 }
 
+/** A grand quest turned in: the name now carved into the Pillar, painted in its land's color. */
+export interface GrandQuestResult {
+  title: string
+  colorToken?: string | null
+}
+
 export interface QuestCompleteData {
   /** Null when meeting a giver: meeting someone is not a completed piece of work. */
   questTitle: string | null
@@ -43,6 +49,8 @@ export interface QuestCompleteData {
   standing?: QuestStanding | null
   /** This turn-in was a guild's initiation. */
   becameMember?: boolean
+  /** This turn-in was a grand quest: the Pillar carries a new name. */
+  grand?: GrandQuestResult | null
 }
 
 interface Props {
@@ -50,8 +58,9 @@ interface Props {
 }
 
 export default function QuestCompleteRewards({ data }: Props) {
-  const { rewards, levelUp, newQuestTitles, standing, becameMember } = data
+  const { rewards, levelUp, newQuestTitles, standing, becameMember, grand } = data
   const standingBarVar = standing?.colorToken ? ROOM_COLOR_TOKENS[standing.colorToken] ?? null : null
+  const grandBandVar = grand?.colorToken ? ROOM_COLOR_TOKENS[grand.colorToken] ?? null : null
 
   const xpReward = rewards.find(r => r.type === 'xp')
   const currencyReward = rewards.find(r => r.type === 'currency')
@@ -63,12 +72,34 @@ export default function QuestCompleteRewards({ data }: Props) {
   // An intro quest pays nothing and only opens the giver's set, so the trophy
   // heading stays out of the way and the New Quests list carries the moment.
   const hasRewards = !!xpReward || !!currencyReward || itemRewards.length > 0 || !!levelUp
-  const hasContent = hasRewards || newQuestTitles.length > 0 || !!standing
+  const hasContent = hasRewards || newQuestTitles.length > 0 || !!standing || !!grand
 
   if (!hasContent) return null
 
   return (
     <div className="mt-2 border-t border-line-subtle/60 pt-4 pb-2">
+      {/* A grand quest: the name is the moment, drawn like the level-up medal
+          with the land's color for a band, before the ledger beneath. */}
+      {grand && (
+        <div
+          className="mb-4 overflow-hidden rounded-xl border border-status-warning/80 text-center"
+          style={{ background: 'linear-gradient(160deg, color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas)) 0%, color-mix(in srgb, var(--resource-gold) 18%, var(--surface-canvas)) 40%, color-mix(in srgb, var(--resource-gold) 10%, var(--surface-canvas)) 100%)' }}
+          role="status"
+          aria-label={`Your name is carved into the Pillar: ${grand.title}.`}
+        >
+          <div className="h-1.5 w-full" style={{ background: grandBandVar ? `var(${grandBandVar})` : 'var(--resource-gold)' }} aria-hidden="true" />
+          <div className="px-4 pb-4 pt-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-status-warning/80">Carved into the Pillar</p>
+            <p
+              className="mt-1.5 text-2xl font-black leading-tight"
+              style={{ color: 'var(--combat-crit)', textShadow: '0 0 20px color-mix(in srgb, var(--combat-crit) 50%, transparent), 0 2px 0 var(--surface-canvas)' }}
+            >
+              {grand.title}
+            </p>
+            <p className="mt-1.5 text-xs text-fg-secondary">You wear this name now. Change it on the Char page.</p>
+          </div>
+        </div>
+      )}
       {data.questTitle && (
         <div className="mb-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-status-success mb-0.5">Quest Completed</p>

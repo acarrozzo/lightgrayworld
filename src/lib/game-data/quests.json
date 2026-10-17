@@ -3135,15 +3135,17 @@
     ]
   },
   "quest_grand_grassy_field": {
-    "giverId": "grand_quest_pillar",
+    "giverId": "guardian_angel",
     "questType": "main",
     "level": 10,
-    "title": "Grassy Field Savior",
-    "summary": "Help everyone in the Grassy Field and the Pillar will name you Grassy Field Savior.",
-    "objective": "Complete every quest in the Grassy Field, then return to the Grand Quest Pillar.",
-    "nextStep": "Finish every quest given in the Grassy Field. The Pillar keeps count.",
-    "reminderDialog": "Grassy Field Savior is not earned yet. To earn it you need to help the good people of the Grassy Field.",
-    "completionDialog": "Congratulations! You have saved the Grassy Field from certain doom!",
+    "title": "Savior of the Grassy Field",
+    "grantsTitle": "Savior of the Grassy Field",
+    "titleColorToken": "world.grassyField",
+    "summary": "Help everyone in the Grassy Field and the Guardian Angel will carve your first name into the Pillar: Savior of the Grassy Field.",
+    "objective": "Complete every quest in the Grassy Field, then return to the Guardian Angel at the Destroyed Academy.",
+    "nextStep": "Finish every quest given in the Grassy Field. The Angel keeps count.",
+    "reminderDialog": "The first name is not yours yet. The Grassy Field still has people who need you. {standings}",
+    "completionDialog": "The Grassy Field is safe because of you. Your first name is carved into the Pillar: Savior of the Grassy Field.",
     "requirements": [
       {
         "type": "factionsComplete",
@@ -3165,15 +3167,20 @@
     ]
   },
   "quest_grand_red_town": {
-    "giverId": "grand_quest_pillar",
+    "giverId": "guardian_angel",
     "questType": "main",
     "level": 20,
-    "title": "Red Town Savior",
-    "summary": "Help everyone in the Forest and Red Town and the Pillar will name you Red Town Savior.",
-    "objective": "Complete every quest in the Forest and Red Town, then return to the Grand Quest Pillar.",
-    "nextStep": "Finish every quest given in the Forest and Red Town. The Pillar keeps count.",
-    "reminderDialog": "Red Town Savior is not earned yet. To earn it you need to help the good people of the Forest and Red Town.",
-    "completionDialog": "Congratulations! You have saved Red Town and the Forest from certain doom!",
+    "title": "Savior of the Lowlands",
+    "grantsTitle": "Savior of the Lowlands",
+    "titleColorToken": "world.redTown",
+    "after": [
+      "quest_grand_grassy_field"
+    ],
+    "summary": "Help everyone in the Forest and Red Town, and both of its guilds, and your name grows: Savior of the Lowlands.",
+    "objective": "Complete every quest in the Forest and Red Town, including the Warrior's and Wizard's guilds, then return to the Guardian Angel.",
+    "nextStep": "Finish every quest in the Forest, Red Town, the Warrior's Guild and the Wizard's Guild.",
+    "reminderDialog": "The Lowlands are not yours yet. The Forest and Red Town still have work for you. {standings}",
+    "completionDialog": "From the field to the red walls of the town, the Lowlands stand because of you. The Pillar now carries a greater name: Savior of the Lowlands.",
     "requirements": [
       {
         "type": "factionsComplete",
@@ -3198,15 +3205,20 @@
     ]
   },
   "quest_grand_rocky_flats": {
-    "giverId": "grand_quest_pillar",
+    "giverId": "guardian_angel",
     "questType": "main",
     "level": 35,
-    "title": "Rocky Flats Savior",
-    "summary": "Help everyone in the Rocky Flats and the Blue Ocean and the Pillar will name you Rocky Flats Savior.",
-    "objective": "Complete every quest in the Rocky Flats and the Blue Ocean, then return to the Grand Quest Pillar.",
-    "nextStep": "Finish every quest given in the Rocky Flats and the Blue Ocean. The Pillar keeps count.",
-    "reminderDialog": "Rocky Flats Savior is not earned yet. To earn it you need to help the good people of the Rocky Flats and the Blue Ocean.",
-    "completionDialog": "Congratulations! You have saved the Rocky Flats and the Blue Ocean from certain doom!",
+    "title": "Savior of Land and Sea",
+    "grantsTitle": "Savior of Land and Sea",
+    "titleColorToken": "world.ocean",
+    "after": [
+      "quest_grand_red_town"
+    ],
+    "summary": "Help the dwarves of the Rocky Flats, the Mining Guild and everyone on the Blue Ocean, and your name grows again: Savior of Land and Sea.",
+    "objective": "Complete every quest in the Rocky Flats, the Mining Guild and the Blue Ocean, then return to the Guardian Angel.",
+    "nextStep": "Finish every quest in the Rocky Flats, the Mining Guild and the Blue Ocean.",
+    "reminderDialog": "Land and sea are not yours yet. The dwarves and the ocean still wait. {standings}",
+    "completionDialog": "The stone and the water both know your name now. The Pillar carries it: Savior of Land and Sea.",
     "requirements": [
       {
         "type": "factionsComplete",
@@ -3230,15 +3242,20 @@
     ]
   },
   "quest_grand_mountain": {
-    "giverId": "grand_quest_pillar",
+    "giverId": "guardian_angel",
     "questType": "main",
     "level": 50,
-    "title": "Mountain Savior",
-    "summary": "Help everyone in the Mountains and the Dark Forest and the Pillar will name you Mountain Savior.",
-    "objective": "Complete every quest in the Mountains and the Dark Forest, then return to the Grand Quest Pillar.",
-    "nextStep": "Finish every quest given in the Mountains and the Dark Forest. The Pillar keeps count.",
-    "reminderDialog": "Mountain Savior is not earned yet. To earn it you need to help the good people of the Mountains and the Dark Forest.",
-    "completionDialog": "Congratulations! You have saved the Mountains and the Dark Forest from certain doom!",
+    "title": "Savior of Vega",
+    "grantsTitle": "Savior of Vega",
+    "titleColorToken": "world.mountains",
+    "after": [
+      "quest_grand_rocky_flats"
+    ],
+    "summary": "Help everyone in the Dark Forest, the Ranger's Guild and the Mountains, and the Pillar will carry the name every land knows: Savior of Vega.",
+    "objective": "Complete every quest in the Dark Forest, the Ranger's Guild and the Mountains, then return to the Guardian Angel.",
+    "nextStep": "Finish every quest in the Dark Forest, the Ranger's Guild and the Mountains.",
+    "reminderDialog": "Vega is not yours yet. The dark trees and the high peaks still have need of you. {standings}",
+    "completionDialog": "Four lands, and every one of them saved by you. The Pillar carries the name all of Vega knows: Savior of Vega. One name is still dark. When the gates of Star City open, come back to me.",
     "requirements": [
       {
         "type": "factionsComplete",

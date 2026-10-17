@@ -1,7 +1,9 @@
 const { prisma } = require('../db-client.js')
 const { getSocketIO, SOCKET_EVENTS } = require('../socket-utils.js')
 
-const WORLD_FEED_EVENT_TYPES = ['login', 'logout', 'disconnect', 'register', 'idle', 'return']
+// `savior` is the one world-scale deed: a name carved into the Grand Quest
+// Pillar. Its `detail` is the title earned, so the line can say it.
+const WORLD_FEED_EVENT_TYPES = ['login', 'logout', 'disconnect', 'register', 'idle', 'return', 'savior']
 const DEFAULT_LIMIT = 50
 
 const EVENT_MESSAGE_BUILDERS = {
@@ -11,6 +13,7 @@ const EVENT_MESSAGE_BUILDERS = {
   disconnect: (username) => `${username} has disconnected`,
   idle: (username) => `${username} is now idle`,
   return: (username) => `${username} has returned`,
+  savior: (username, detail) => (detail ? `${username} is now the ${detail}` : `${username} saved a land of Vega`),
 }
 
 function normalizeEventType(eventType) {
@@ -26,11 +29,11 @@ function normalizeEventType(eventType) {
   return normalized
 }
 
-function formatWorldFeedEventMessage(eventType, username) {
+function formatWorldFeedEventMessage(eventType, username, detail = null) {
   const safeName = username || 'Unknown'
   const builder = EVENT_MESSAGE_BUILDERS[eventType]
   if (builder) {
-    return builder(safeName)
+    return builder(safeName, detail)
   }
   return `${safeName} performed ${eventType}`
 }
@@ -46,8 +49,9 @@ function eventToFeedEntry(record) {
     type: 'world',
     level: 'info',
     actor: record.username,
-    message: formatWorldFeedEventMessage(record.eventType, record.username),
+    message: formatWorldFeedEventMessage(record.eventType, record.username, record.detail ?? null),
     eventType: record.eventType,
+    detail: record.detail ?? null,
   }
 }
 
@@ -75,7 +79,7 @@ function broadcastWorldFeedEntry(entry) {
   return true
 }
 
-async function createWorldFeedEvent({ userId, username, eventType }) {
+async function createWorldFeedEvent({ userId, username, eventType, detail = null }) {
   if (!userId) {
     throw new Error('userId is required to create world feed events')
   }
@@ -88,6 +92,7 @@ async function createWorldFeedEvent({ userId, username, eventType }) {
       userId,
       username: resolvedUsername,
       eventType: normalizedType,
+      detail: typeof detail === 'string' && detail ? detail : null,
     },
   })
 

@@ -335,6 +335,7 @@ function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlaye
       defMod: player.defMod ?? null,
       partyLeaderId: partyStore.getLeaderId(player.id),
       pet: player.activePet ?? null,
+      title: player.title ?? null,
       entryDirection: entryDirection || null,
       isTeleport: isTeleport || false,
     })
@@ -668,6 +669,24 @@ function applyPetChange({ io, player, activePet }) {
       id: player.id,
       roomId: player.currentRoom,
       pet: player.activePet,
+    })
+  }
+}
+
+/**
+ * A title put on or set aside (the engine's `set_title` result, or a grand
+ * quest turned in, carries `titleChange`): the live record, the world roster
+ * and the room's cards follow. The player's own header follows
+ * `data.player.title` on the action's feedback.
+ */
+function applyTitleChange({ io, player, title }) {
+  player.title = title ?? null
+  updatePresence(io, player.id, { title: player.title })
+  if (player.currentRoom) {
+    io.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_TITLE, {
+      id: player.id,
+      roomId: player.currentRoom,
+      title: player.title,
     })
   }
 }
@@ -1044,6 +1063,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         battleEnemyName: battle && battle.isActive ? battle.enemyName ?? null : null,
         partyLeaderId: partyStore.getLeaderId(p.id),
         pet: p.activePet ?? null,
+        title: p.title ?? null,
         presenceStatus: isIdle ? 'idle' : 'active',
         ...(isIdle ? { lastSeen: idleGhost.lastSeen } : {}),
       })
@@ -1292,6 +1312,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             physicalTraining: true,
             mentalTraining: true,
             activePet: true,
+            title: true,
             ...MAP_STATE_SELECT,
             ...SPELL_SELECT,
             ...SKILL_SELECT,
@@ -1347,6 +1368,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // The pet along with them, for the header, the room's cards and
           // the lines it says on arrival (game-data/pets.js).
           activePet: dbPlayer.activePet ?? null,
+          // The title they wear, for the header and the room's cards.
+          title: dbPlayer.title ?? null,
           // Map sheets found and fast-travel hubs discovered, so the Map view
           // and the Fast travel grid open in the right state on reconnect.
           ...projectMapState(dbPlayer),
@@ -1417,6 +1440,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             defMod: playerData.defMod ?? null,
             partyLeaderId: partyStore.getLeaderId(playerData.id),
             pet: playerData.activePet ?? null,
+            title: playerData.title ?? null,
             entryDirection: null, // No direction info on initial login
             isTeleport: false, // Login is not a teleport
           })
@@ -2234,6 +2258,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // view of this player follow the engine's word.
         if (result?.petChange) {
           applyPetChange({ io, player, activePet: result.petChange.activePet })
+        }
+        if (result?.titleChange) {
+          applyTitleChange({ io, player, title: result.titleChange.title })
         }
 
         socket.emit('action:confirmed', {

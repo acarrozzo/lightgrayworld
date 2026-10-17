@@ -968,6 +968,8 @@ class RoomState {
         return await this.executeAcceptQuest(action, playerId)
       case 'complete_quest':
         return await this.executeCompleteQuest(action, playerId)
+      case 'set_title':
+        return await this.executeSetTitle(action, playerId)
       default:
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
     }
@@ -2667,6 +2669,18 @@ class RoomState {
       toastMessage = formattedMessage
     }
 
+    // A grand quest: the name carved into the Pillar is the moment, and the
+    // world hears it. The feed line is written durably so it is in the
+    // recent-activity history on login, not only on the sockets open now.
+    const grand = result.grand || null
+    const grandText = grand ? ` Your name is carved into the Pillar: ${grand.title}.` : ''
+    if (grand) {
+      const { createWorldFeedEvent } = require('../services/world-feed-event-service')
+      createWorldFeedEvent({ userId: playerId, username: player.username, eventType: 'savior', detail: grand.title }).catch((err) => {
+        console.error(`[Quest] Failed to announce ${grand.title} for ${playerId}:`, err)
+      })
+    }
+
     const data = {
       roomId: this.roomId,
       quests: result.quests,
@@ -2677,9 +2691,9 @@ class RoomState {
       modalContent: {
         type: 'icon',
         icon: giver.icon || 'scroll',
-        iconColor: 'yellow-400',
+        iconColor: grand ? (giver.iconColor || 'yellow-400') : 'yellow-400',
         title: giver.name || 'Quest Complete',
-        header: 'Quest Complete!',
+        header: grand ? 'Grand Quest Complete!' : 'Quest Complete!',
         message: questDef.completionDialog || null,
       },
       questComplete: {
@@ -2689,6 +2703,7 @@ class RoomState {
         newQuestTitles,
         standing,
         becameMember: !!result.becameMember,
+        grand,
       },
     }
 
@@ -2703,7 +2718,7 @@ class RoomState {
         payload: this.createFeedbackPayload(
           'complete_quest',
           'success',
-          `Quest completed: ${questTitle}.${rewardText}${standingText}`,
+          `Quest completed: ${questTitle}.${rewardText}${standingText}${grandText}`,
           data
         ),
       },
@@ -2730,6 +2745,47 @@ class RoomState {
       success: true,
       action: 'complete_quest',
       playerEvents,
+      // The socket layer reads `titleChange` to update presence and the
+      // room's cards, as it does `petChange`.
+      ...(grand ? { titleChange: { title: grand.title } } : {}),
+    }
+  }
+
+  /**
+   * Wear one of the titles you have earned, or none. Free: no turn, nothing
+   * provoked. The choice is checked against quest-registry `earnedTitles`
+   * here, never trusted from the client, and the live record follows through
+   * `titleChange` the way a pet change does.
+   */
+  async executeSetTitle(action, playerId) {
+    const player = this.players.get(playerId)
+    if (!player) {
+      return this.createErrorResult('set_title', 'Player not found in this room')
+    }
+    const raw = action.data?.title
+    const title = raw === null || raw === undefined || raw === '' ? null : raw
+    if (title !== null && typeof title !== 'string') {
+      return this.createErrorResult('set_title', 'That is not a title.')
+    }
+    if (title !== null) {
+      const { getPlayerTitles } = require('./services/faction-service')
+      const earned = await getPlayerTitles(playerId)
+      if (!earned.includes(title)) {
+        return this.createErrorResult('set_title', 'You have not earned that title.')
+      }
+    }
+    await prisma.user.update({ where: { id: playerId }, data: { title }, select: { id: true } })
+    const message = title ? `You now go by ${title}.` : 'You set your title aside.'
+    return {
+      success: true,
+      action: 'set_title',
+      titleChange: { title },
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('set_title', 'success', message, { player: { title } }),
+        },
+      ],
     }
   }
 

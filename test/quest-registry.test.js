@@ -39,7 +39,7 @@ test('every quest belongs to exactly one giver, and every giver to a live factio
   assert.equal(seen.size, Object.keys(registry.QUESTS).length)
 })
 
-test('standing is quests done out of quests the faction has, with the title only at max', () => {
+test('standing is quests done out of quests the faction has; a region at max is a mark, not a title', () => {
   const grassy = registry.listFactionQuestIds('grassy-field')
   assert.ok(grassy.includes('quest_oldman_001') && grassy.includes('quest_freddie_001'))
 
@@ -50,7 +50,11 @@ test('standing is quests done out of quests the faction has, with the title only
   assert.deepEqual([one.done, one.complete, one.title], [1, false, null])
 
   const all = registry.factionStanding('grassy-field', done(...grassy))
-  assert.deepEqual([all.done, all.complete, all.title], [grassy.length, true, 'Grassy Field Savior'])
+  assert.deepEqual([all.done, all.complete, all.title], [grassy.length, true, null])
+
+  // A guild at max standing does earn its title.
+  const wizards = registry.listFactionQuestIds('wizards-guild')
+  assert.equal(registry.factionStanding('wizards-guild', done(...wizards)).title, 'Powerful Wizard')
 
   // A guild quest does not move its town.
   const townAfterGuild = registry.factionStanding('red-town', done('quest_warriorsguild_000'))
@@ -65,11 +69,34 @@ test('standing is quests done out of quests the faction has, with the title only
   assert.deepEqual([mountains.total, mountains.complete], [10, false])
 })
 
-test('titles are earned one per completed faction, in world order', () => {
+test('titles are the Pillar\'s one growing name, then one per guild at max standing', () => {
   const forest = registry.listFactionQuestIds('forest')
   const wizards = registry.listFactionQuestIds('wizards-guild')
-  assert.deepEqual(registry.earnedTitles(done(...wizards, ...forest)), ['Forest Savior', 'Powerful Wizard'])
+  // A region's quests earn no title; a guild's do.
+  assert.deepEqual(registry.earnedTitles(done(...wizards, ...forest)), ['Powerful Wizard'])
   assert.deepEqual(registry.earnedTitles([]), [])
+
+  // The Pillar's name grows and replaces: never two of its names at once, and
+  // it comes before the guild titles.
+  assert.equal(registry.pillarTitle([]), null)
+  assert.equal(registry.pillarTitle(done('quest_grand_grassy_field')), 'Savior of the Grassy Field')
+  assert.equal(registry.pillarTitle(done('quest_grand_grassy_field', 'quest_grand_red_town')), 'Savior of the Lowlands')
+  assert.deepEqual(
+    registry.earnedTitles(done('quest_grand_grassy_field', 'quest_grand_red_town', ...wizards)),
+    ['Savior of the Lowlands', 'Powerful Wizard']
+  )
+})
+
+test('the Pillar carries five names in the order they are earned, the fifth dark until Star City', () => {
+  const names = registry.listPillarNames()
+  assert.deepEqual(names.map((n) => n.title), [
+    'Savior of the Grassy Field', 'Savior of the Lowlands', 'Savior of Land and Sea', 'Savior of Vega', 'Eternal Mage',
+  ])
+  assert.equal(names[4].questId, null)
+  assert.equal(names[4].waitsFor, 'Star City')
+  // Each step opens after the one before, so the name is cumulative.
+  const grand = registry.listGiverQuestIds(registry.PILLAR_GIVER_ID)
+  for (let i = 1; i < grand.length; i++) assert.deepEqual(registry.getQuestDef(grand[i]).after, [grand[i - 1]])
 })
 
 test('a guild is its membership quest, given by one of its own givers', () => {
@@ -100,12 +127,12 @@ test('reveal rules read completed quests, met givers, discovered regions and fla
   assert.equal(registry.isGiverRevealed(registry.getGiver('freddie'), ctx({ done: new Set(['quest_jacklumber_000']) })), true)
   assert.equal(registry.isGiverRevealed(registry.getGiver('red_guard_captain'), ctx({ discoveredTeleports: ['forest'] })), true)
   assert.equal(registry.isGiverRevealed(registry.getGiver('red_guard_captain'), ctx({ discoveredTeleports: ['ocean'] })), false)
-  assert.equal(registry.isGiverRevealed(registry.getGiver('grand_quest_pillar'), ctx({ done: new Set(['quest_jacklumber_000']) })), true)
+  assert.equal(registry.isGiverRevealed(registry.getGiver('guardian_angel'), ctx({ done: new Set(['quest_jacklumber_000']) })), true)
 })
 
 test('the Pillar capstones name every live faction between them and reward the original amounts', () => {
-  const pillar = registry.getGiver('grand_quest_pillar')
-  assert.equal(pillar.faction, null, 'the Pillar counts toward nothing')
+  const pillar = registry.getGiver('guardian_angel')
+  assert.equal(pillar.faction, null, 'the Guardian Angel counts toward nothing')
   const named = new Set()
   for (const questId of pillar.quests) {
     const quest = registry.getQuestDef(questId)

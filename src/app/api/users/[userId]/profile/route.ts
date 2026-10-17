@@ -38,6 +38,7 @@ async function handleGetPublicProfile(request: AuthenticatedRequest) {
         uIcon: true,
         uIconColor: true,
         activePet: true,
+        title: true,
         equipment: {
           select: {
             rightHand: true,
@@ -97,6 +98,7 @@ async function handleGetPublicProfile(request: AuthenticatedRequest) {
           uIconColor: user.uIconColor,
         },
         username: user.username,
+        title: user.title ?? null,
         level: user.level,
         characterClass: user.characterClass,
         characterRace: user.characterRace,

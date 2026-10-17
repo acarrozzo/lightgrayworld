@@ -884,26 +884,26 @@
       "quest_rigel_001"
     ]
   },
-  "grand_quest_pillar": {
-    "name": "Grand Quest Pillar",
-    "spokenName": "the Grand Quest Pillar",
+  "guardian_angel": {
+    "name": "Guardian Angel",
+    "spokenName": "the Guardian Angel",
     "roomId": "029",
-    "action": "examine grand pillar",
-    "icon": "pillar3",
-    "iconColor": "yellow-400",
+    "action": "talk to guardian angel",
+    "icon": "npc-guardianangel",
+    "iconColor": "blue-300",
     "colorToken": "world.lobby",
     "faction": null,
     "revealedBy": {
       "type": "questCompleted",
       "questId": "quest_jacklumber_000"
     },
-    "hint": "The Grand Quest Pillar stands among the ruins of the Destroyed Academy, north of the Grassy Field.",
-    "metLine": "You find the Grand Quest Pillar.",
-    "greeting": "You lay a hand on the Grand Quest Pillar. Four names are carved into it, one for each land of Vega that still waits for a savior. Help everyone in a land and return here to claim its title.",
+    "hint": "A Guardian Angel waits among the ruins of the Destroyed Academy, north of the Grassy Field.",
+    "metLine": "The Guardian Angel turns to you.",
+    "greeting": "You have been called. The academy that trained the mages of Vega fell when magic left this land, and five names were carved into the Pillar for whoever would stand for it. Help every soul in a land and come back to me. Each name you earn replaces the last, until all of Vega knows you by one.",
     "idleDialogs": [
       {
         "ifCompleted": "quest_grand_mountain",
-        "message": "The Pillar hums quietly. Every name carved into it is yours."
+        "message": "Four names are yours and the Pillar hums with them. The fifth is still dark. When the gates of Star City open, come back to me."
       },
       {
         "ifCompleted": null,

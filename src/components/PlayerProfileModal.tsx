@@ -17,6 +17,8 @@ type PlayerProfileSummary = {
 type PublicProfile = {
   avatar: { uIcon?: string | null; uIconColor?: string | null }
   username: string
+  /** The title they wear, or null. */
+  title?: string | null
   level: number
   characterClass: string
   characterRace: string
@@ -149,6 +151,7 @@ export default function PlayerProfileModal({
           </div>
           <div className="min-w-0">
             <div className="truncate text-base font-semibold text-fg-bright">{profile.username}</div>
+            {profile.title && <div className="truncate text-xs font-semibold text-resource-gold">{profile.title}</div>}
             <div className="text-xs uppercase tracking-[0.15em] text-stat-mag/80">
               Lvl {profile.level} {profile.characterRace} {profile.characterClass}
             </div>

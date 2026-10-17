@@ -1205,7 +1205,7 @@ async function main() {
       subtitleColor: 'mood.danger',
       icon: 'environment-destroyed-academy',
       iconColor: 'terrain.stone',
-      description: 'The shattered remains of a once majestic academy now stand, its crumbling walls revealing a labyrinth of broken archways, tattered banners, and fallen stone.',
+      description: 'The shattered remains of a once majestic academy now stand, its crumbling walls revealing a labyrinth of broken archways, tattered banners, and fallen stone. In the one courtyard still standing, a tall pillar carries five carved names, and a figure in pale robes waits beside it.',
       dangerLevel: 0,      north: null,
       south: '005',
       east: null,

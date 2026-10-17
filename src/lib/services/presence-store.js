@@ -50,6 +50,8 @@ function setPresence(playerData, overrides = {}) {
     partyLeaderId: playerData.partyLeaderId ?? existing?.partyLeaderId ?? null,
     // The pet along with them (a pet slug), carried so the world roster can show it.
     pet: playerData.activePet ?? playerData.pet ?? existing?.pet ?? null,
+    // The title they wear (User.title), for the room's cards and the roster.
+    title: playerData.title ?? existing?.title ?? null,
     lastSeen: Date.now(),
     ...overrides,
   }

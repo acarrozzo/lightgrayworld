@@ -134,6 +134,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               </span>
             )}
           </h1>
+          {user.title && <p className="text-sm font-semibold text-resource-gold">{user.title}</p>}
           <p className="text-sm text-fg-secondary">
             Level {user.level} · {user.characterRace} {user.characterClass}
           </p>
