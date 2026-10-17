@@ -144,6 +144,14 @@ export default function SupplyShelf({
   )
 }
 
+/**
+ * The grey ring of something with nothing left to give you — a supply you
+ * hold, a rest you are already past. Outlines are rings, not borders: a
+ * border would make these a pixel taller than the filled buttons they wrap
+ * beside. Exported so the room's rest buttons settle in the same clothes.
+ */
+export const SETTLED_TONE = 'ring-1 ring-inset ring-line-strong/50 text-fg-disabled hover:ring-line-strong hover:text-fg-secondary'
+
 /** Kept in step with the pick-up menu's `min-w`, which is what has to fit. */
 const MENU_WIDTH_PX = 178
 
@@ -195,10 +203,8 @@ function SupplyPill({ supply, busy, onTake }: { supply: SupplyView; busy: boolea
       ? `Your bag holds ${supply.bagMax}.`
       : [`${verb}${ruleText(supply)}`, description].filter(Boolean).join('\n\n')
 
-  // Outlines are rings, not borders: a border would make these pills a pixel
-  // taller than the filled ones they wrap beside.
   const tone = locked || settled
-    ? 'ring-1 ring-inset ring-line-strong/50 text-fg-disabled hover:ring-line-strong hover:text-fg-secondary'
+    ? SETTLED_TONE
     : bagFull
       ? 'ring-1 ring-inset ring-status-warning/50 text-status-warning'
       : 'fill-status-success shadow-sm'

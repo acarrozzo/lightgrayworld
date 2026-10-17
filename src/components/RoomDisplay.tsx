@@ -9,8 +9,10 @@ import { goldChestFlagForRoom } from '@/lib/game-data/gold-chests'
 import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
 import type { PartySnapshot } from '@/lib/socket'
 import { followableHere } from '@/lib/party/squad'
-import { Hourglass, UserPlus } from 'lucide-react'
-import SupplyShelf from './SupplyShelf'
+import { Check, Hourglass, Lock, UserPlus } from 'lucide-react'
+import SupplyShelf, { SETTLED_TONE } from './SupplyShelf'
+import { getRoomRest } from '@/lib/game-data/room-rests'
+import { restLook } from '@/lib/rest-look'
 import type { GatherCooldownView, SupplyView } from '@/lib/types/room'
 import Icon from './Icon'
 
@@ -85,6 +87,20 @@ export default function RoomDisplay({
   // with no refetch.
   const inventory = useGameStore((state) => state.inventory)
   const currentUsername = useGameStore((state) => state.player?.username ?? null)
+  // Live vitals and buffs: a rest button goes grey once resting would raise
+  // nothing, and comes back the moment a hit lands.
+  const player = useGameStore((state) => state.player)
+  // Guild membership for the members-only fires, read the way SupplyShelf reads
+  // it: an empty quest list is more likely unhydrated than a player with none,
+  // so the fire stays open until the quests arrive.
+  const isMemberOf = useMemo(() => {
+    if (quests.length === 0) return null
+    const done = new Set(quests.filter((q) => q.completed).map((q) => q.questId))
+    return (guildId: string) => {
+      const membershipQuest = getFaction(guildId)?.membershipQuest
+      return !!membershipQuest && done.has(membershipQuest)
+    }
+  }, [quests])
 
   const [isPerformingAction, setIsPerformingAction] = useState<string | null>(null)
   const [loadingQuestId, setLoadingQuestId] = useState<string | null>(null)
@@ -340,6 +356,12 @@ export default function RoomDisplay({
           const resolvedIcon = isOpenedGoldChest ? 'chest2' : (override?.icon ?? actionItem.icon)
           const resolvedLabel = isOpenedGoldChest ? 'Gold Chest (Opened)' : actionItem.label
           const openedClassName = 'fill-status-success'
+          // A special rest with nothing to raise, or a guild fire for a
+          // non-member: the supply pill's grey ring, still clickable so the
+          // server can say why (free, like the pill's refusal).
+          const roomRest = getRoomRest(room.roomId, actionItem.action)
+          const restState = roomRest ? restLook(player, roomRest, isMemberOf) : null
+          const restGhost = restState && restState.kind !== 'open' ? restState : null
           const showFlyout = flyoutActionForButton(actionItem.action)
           // Rolling gather action (sand / berries): disable while on cooldown and
           // show a live countdown beneath the button.
@@ -392,6 +414,12 @@ export default function RoomDisplay({
               data-action-button
               onClick={() => handleAction(actionItem.action)}
               disabled={isPerformingAction === actionItem.action || (isGather && gatherSecondsLeft > 0)}
+              title={restGhost?.title}
+              aria-label={
+                restGhost
+                  ? `${resolvedLabel}, ${restGhost.kind === 'locked' ? 'members only' : 'nothing to gain'}`
+                  : undefined
+              }
               className={`${
                 isViewShop
                   ? 'px-4 py-3 rounded-lg text-base font-semibold transition-all flex items-center gap-2 border-2 border-resource-gold/40 shadow-lg shadow-resource-gold/20 hover:shadow-xl hover:border-resource-gold/60'
@@ -399,17 +427,25 @@ export default function RoomDisplay({
               } ${
                 isPerformingAction === actionItem.action
                   ? 'fill-surface-hover cursor-wait'
+                  : restGhost
+                    ? SETTLED_TONE
                   : isOpenedGoldChest
                     ? openedClassName
                     : override?.className || actionItem.className || 'fill-accent shadow-sm'
               } ${isGatherLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {resolvedIcon && (
-                <Icon
-                  name={resolvedIcon}
-                  size={isViewShop ? 20 : 16}
-                  color="current"
-                />
+              {restGhost?.kind === 'locked' ? (
+                <Lock size={14} className="shrink-0" />
+              ) : restGhost ? (
+                <Check size={16} className="shrink-0" />
+              ) : (
+                resolvedIcon && (
+                  <Icon
+                    name={resolvedIcon}
+                    size={isViewShop ? 20 : 16}
+                    color="current"
+                  />
+                )
               )}
               <span>{resolvedLabel}</span>
             </button>

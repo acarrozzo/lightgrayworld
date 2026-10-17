@@ -1,7 +1,11 @@
 'use client'
 
+import { Check } from 'lucide-react'
 import ActionFlyout from './ActionFlyout'
 import { useActionFlyout } from '@/hooks/useActionFlyout'
+import { useGameStore } from '@/lib/game-state'
+import { restLook } from '@/lib/rest-look'
+import { SETTLED_TONE } from './SupplyShelf'
 
 /**
  * The three persistent actions, each on the role that names it.
@@ -56,11 +60,17 @@ export default function BasicActionButtons({
   fill = false,
 }: BasicActionButtonsProps) {
   const { activeFlyoutAction, flyoutRootRef, dismissFlyout } = useActionFlyout(actionResult)
+  // Rest at full HP and MP raises nothing, so it settles grey with a check like
+  // a special rest does. Still clickable: the server answers why, free.
+  const player = useGameStore((state) => state.player)
+  const rest = restLook(player, null, null)
+  const restSettled = rest.kind === 'settled' ? rest : null
 
   return (
     <div className={containerClassName}>
       {BASIC_ACTIONS.map(({ action, label, className }) => {
         const showFlyout = activeFlyoutAction === action
+        const settled = action === 'rest' ? restSettled : null
         return (
           <div key={action} ref={showFlyout ? flyoutRootRef : undefined} className={fill ? 'relative flex-1' : 'relative'}>
             {showFlyout && actionResult && (
@@ -73,8 +83,11 @@ export default function BasicActionButtons({
                 onAction(action)
               }}
               disabled={isLoadingRoom}
-              className={`${sizeClassName} ${className} ${fill ? 'w-full' : ''} disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
+              title={settled?.title}
+              aria-label={settled ? `${label}, nothing to gain` : undefined}
+              className={`${sizeClassName} ${settled ? SETTLED_TONE : className} ${fill ? 'w-full' : ''} inline-flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg font-medium whitespace-nowrap transition-all duration-200 hover:shadow-md active:scale-[0.97]`}
             >
+              {settled && !(isLoadingRoom && currentAction === action) && <Check size={14} className="shrink-0" />}
               {isLoadingRoom && currentAction === action ? '...' : label}
             </button>
           </div>

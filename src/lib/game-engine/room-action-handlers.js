@@ -10,6 +10,7 @@ const { grantTeleport } = require('./teleport-grants')
 const { getRecipeById, isRecipeAvailableInRoom, whereToCraft, describeCraft } = require('../game-data/crafting-recipes')
 const { getShop } = require('../game-data/shops')
 const { goldChestFlagForRoom } = require('../game-data/gold-chests')
+const { getRoomRest, restBuffWouldGain } = require('../game-data/room-rests')
 const { isMember } = require('./services/faction-service')
 
 /**
@@ -411,6 +412,37 @@ function makeGuildMemberCheck(factionId) {
   // "Member" means the guild's initiation is turned in — defined once, in
   // factions.js, so a door, a shop and a trainer can never disagree about it.
   return (playerId) => isMember(playerId, factionId)
+}
+
+/**
+ * A room's special rest, as game-data/room-rests.js defines it — what it gives
+ * is read from there by the room's button too. A members-only fire turns a
+ * non-member away with the guild's line, free, in the modal `lockedModal`
+ * describes.
+ */
+function makeRestHandler(roomId, action, { lockedModal } = {}) {
+  const rest = getRoomRest(roomId, action)
+  if (!rest) throw new Error(`makeRestHandler: room ${roomId} has no rest "${action}" in game-data/room-rests.js`)
+  return async (playerId, roomState) => {
+    if (rest.requiresMembership && !(await isMember(playerId, rest.requiresMembership))) {
+      return {
+        success: true,
+        noTurn: true,
+        action,
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: createActionFeedbackPayload(action, 'info', rest.lockedMessage, {
+              roomId: roomState.roomId,
+              showModal: true,
+              modalContent: { type: 'icon', ...lockedModal, message: rest.lockedMessage },
+            }),
+          },
+        ],
+      }
+    }
+    return roomState.applyRest(playerId, action, rest)
+  }
 }
 
 /**
@@ -1618,40 +1650,49 @@ async function pickUnderwaterFlower(playerId, roomState) {
  * top and +20 to everything for 100 clicks. The original also topped the
  * Master Pack up on this button; here the pack is on the temple floor as
  * supplies (config/room-supplies.js) and is only ever taken from there.
+ *
+ * Already charged past +100, the bath is the buff alone, and still a turn;
+ * charged and with a full 100 clicks of glory left, it is the rest's free
+ * refusal, and the button is already grey.
  */
 async function batheInGlory(playerId, roomState) {
   const { prisma } = require('../db-client')
   const { applyBuff } = require('./services/buff-service')
+  const action = 'bathe in glory'
+  const restDef = getRoomRest('425', action)
+  const { field, clicks } = restDef.buff
 
-  const rest = await roomState.applyRest(playerId, {
-    action: 'bathe in glory',
-    overchargeBonus: 100,
-    overchargeMessage: "You bathe in the Master Temple's glory. Your HP and MP are fully restored, plus an extra +100 to each.",
-  })
+  const rest = await roomState.applyRest(playerId, action, restDef)
   if (!rest.success) return rest
+  if (rest.noTurn) {
+    const row = await prisma.user.findUnique({ where: { id: playerId }, select: { [field]: true } })
+    if (!restBuffWouldGain(restDef, row)) return rest
+  }
 
-  const glory = await applyBuff(prisma, playerId, 'buffGloryClicks', 100)
-  return mergeActionResultsForGlory(rest, {
+  const glory = await applyBuff(prisma, playerId, field, clicks)
+  const buffLine = `BUFF: +20 STR, +20 DEX, +20 MAG, +20 DEF for ${clicks} clicks`
+  const gloryResult = {
     success: true,
-    action: 'bathe in glory',
+    action,
     playerEvents: [
       {
         event: 'action:feedback',
-        payload: createActionFeedbackPayload('bathe in glory', 'success', `You bathe in the Master Temple's glory! BUFF: +20 STR, DEX, MAG and DEF for 100 clicks.`, {
+        payload: createActionFeedbackPayload(action, 'success', `You bathe in the Master Temple's glory! BUFF: +20 STR, DEX, MAG and DEF for ${clicks} clicks.`, {
           roomId: roomState.roomId,
-          buffs: { buffGloryClicks: glory },
+          buffs: { [field]: glory },
           showModal: true,
           modalContent: {
             type: 'icon',
             icon: 'npc-guardian',
             iconColor: 'blue-300',
             title: "You bathe in the Master Temple's glory",
-            message: 'REST: +100 HP, +100 MP\nBUFF: +20 STR, +20 DEX, +20 MAG, +20 DEF for 100 clicks',
+            message: rest.noTurn ? buffLine : `REST: +${restDef.bonus} HP, +${restDef.bonus} MP\n${buffLine}`,
           },
         }),
       },
     ],
-  })
+  }
+  return rest.noTurn ? gloryResult : mergeActionResultsForGlory(rest, gloryResult)
 }
 
 /** Rest's own feedback first (it carries the vitals), then the glory's. */
@@ -2123,7 +2164,7 @@ const ROOM_ACTIONS = {
     }),
   },
   '020': {
-    'rest at waterfall': async (playerId, roomState) => roomState.executeWaterfallRest(playerId),
+    'rest at waterfall': makeRestHandler('020', 'rest at waterfall'),
     'pick wheat': makeWheatAction(),
   },
   '021': {
@@ -2441,14 +2482,7 @@ const ROOM_ACTIONS = {
     'pick blueberry': makeBlueberryAction(15),
   },
   '118': {
-    // Bill's fire supercharges rather than merely restoring — the original set
-    // hp/mp to max + 10 here, which is why hunters stage out of this camp.
-    'rest at camp': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest at camp',
-        overchargeBonus: 10,
-        overchargeMessage: "You rest at Hunter Bill's camp and supercharge yourself. Your HP and MP are fully restored, plus an extra +10 to each.",
-      }),
+    'rest at camp': makeRestHandler('118', 'rest at camp'),
     'talk to hunter bill': npcTalk('hunter_bill'),
   },
   '119': {
@@ -2505,36 +2539,9 @@ const ROOM_ACTIONS = {
           'Do you want to bend fire and lightning to your will? To heal what should not heal, and unmake what should not be unmade? Then the Wizard’s Guild wants you.\n\nProve yourself by defeating the Kobold Master. Earn your place and you unlock stronger spells, elite gear and exclusive Wizard Quests.\n\nInitiation bonus: a Wizard Staff and a Wizard Hat. You will look the part immediately.',
       },
     },
-    'rest at wizard fire': async (playerId, roomState) => {
-      const isMember = await makeGuildMemberCheck('wizards-guild')(playerId)
-      if (!isMember) {
-        return {
-          success: true,
-          action: 'rest at wizard fire',
-          playerEvents: [
-            {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload('rest at wizard fire', 'info', 'Join the Wizard’s Guild to rest at its fire.', {
-                roomId: roomState.roomId,
-                showModal: true,
-                modalContent: {
-                  type: 'icon',
-                  icon: 'npc-wizard',
-                  iconColor: 'purple-400',
-                  title: "Wizard's Guild",
-                  message: 'Join the Wizard’s Guild to rest at its fire. Speak to the recruiter.',
-                },
-              }),
-            },
-          ],
-        }
-      }
-      return roomState.applyRest(playerId, {
-        action: 'rest at wizard fire',
-        overchargeBonus: 100,
-        overchargeMessage: 'You rest at the Wizard’s Fire. Your HP and MP are fully restored, plus an extra +100 to each.',
-      })
-    },
+    'rest at wizard fire': makeRestHandler('225', 'rest at wizard fire', {
+      lockedModal: { icon: 'npc-wizard', iconColor: 'purple-400', title: "Wizard's Guild" },
+    }),
     'teleport to kobold lair': makeGuildTeleportHandler({
       action: 'teleport to kobold lair',
       factionId: 'wizards-guild',
@@ -2568,36 +2575,9 @@ const ROOM_ACTIONS = {
           'Do you love crushing enemies with massive warhammers and razor-sharp swords? Want to block devastating blows with an unbreakable shield? Dream of becoming the strongest warrior the world has ever known? Then the Warrior’s Guild wants you.\n\nProve your strength by defeating the Ogre Lieutenant. Earn your place, and you’ll unlock powerful skills, elite gear, and exclusive Warrior Quests.\n\nInitiation Bonus: TWO FREE SWORDS. Because one just isn’t enough.',
       },
     },
-    'rest at warrior fire': async (playerId, roomState) => {
-      const isMember = await makeGuildMemberCheck('warriors-guild')(playerId)
-      if (!isMember) {
-        return {
-          success: true,
-          action: 'rest at warrior fire',
-          playerEvents: [
-            {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload('rest at warrior fire', 'info', 'Join the Warrior’s Guild to rest at its fire.', {
-                roomId: roomState.roomId,
-                showModal: true,
-                modalContent: {
-                  type: 'icon',
-                  icon: 'npc-warrior',
-                  iconColor: 'blue-400',
-                  title: "Warrior's Guild",
-                  message: 'Join the Warrior’s Guild to rest at its fire. Speak to the recruiter.',
-                },
-              }),
-            },
-          ],
-        }
-      }
-      return roomState.applyRest(playerId, {
-        action: 'rest at warrior fire',
-        overchargeBonus: 100,
-        overchargeMessage: 'You rest at the Warrior’s Fire and supercharge yourself. Your HP and MP are fully restored, plus an extra +100 to each.',
-      })
-    },
+    'rest at warrior fire': makeRestHandler('226', 'rest at warrior fire', {
+      lockedModal: { icon: 'npc-warrior', iconColor: 'blue-400', title: "Warrior's Guild" },
+    }),
     'teleport to ogre lair': makeGuildTeleportHandler({
       action: 'teleport to ogre lair',
       factionId: 'warriors-guild',
@@ -2621,12 +2601,7 @@ const ROOM_ACTIONS = {
 
   // --- Grand Square: the fountain, the crafting fire, and the town directory ---
   '210': {
-    'rest at fountain': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest at fountain',
-        overchargeBonus: 25,
-        overchargeMessage: 'You rest at the fountain and supercharge yourself. Your HP and MP are fully restored, plus an extra +25 to each.',
-      }),
+    'rest at fountain': makeRestHandler('210', 'rest at fountain'),
     'craft': executeCraft,
     'read sign': withMerchantNotice('210', {
       showModal: true,
@@ -2715,12 +2690,7 @@ const ROOM_ACTIONS = {
   // The one safe room down here, exactly as the original had it: danger level 0,
   // no battle set, and a full restore rather than an overcharge.
   '232x': {
-    'rest at oasis': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest at oasis',
-        fullRestore: true,
-        fullRestoreMessage: 'You rest at the Sewer Oasis. Clean water, dry stone, and air you can stand — your HP and MP are fully replenished.',
-      }),
+    'rest at oasis': makeRestHandler('232x', 'rest at oasis'),
   },
 
   // The gray chest across the sewer river, and the potions stacked beside it.
@@ -2847,23 +2817,13 @@ const ROOM_ACTIONS = {
 
   // --- The Ledge: the Dwarf Guard's supply crate, and a place to rest ---
   '306': {
-    'rest on the ledge': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest on the ledge',
-        overchargeBonus: 50,
-        overchargeMessage: 'You sit on the ledge and watch the road for a while. Your HP and MP are fully restored, plus an extra +50 to each.',
-      }),
+    'rest on the ledge': makeRestHandler('306', 'rest on the ledge'),
   },
 
   // --- The Dwarf Village Square: the Bounty Board, the coal fire, the directory ---
   '307': {
     'read bounty board': npcTalk('dwarf_bounty_board'),
-    'rest at the coal fire': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest at the coal fire',
-        overchargeBonus: 50,
-        overchargeMessage: 'You warm up at the coal fire in the middle of the square. Your HP and MP are fully restored, plus an extra +50 to each.',
-      }),
+    'rest at the coal fire': makeRestHandler('307', 'rest at the coal fire'),
     'read sign': {
       showModal: true,
       message: 'You read the Dwarf Village Directory.',
@@ -2899,36 +2859,9 @@ const ROOM_ACTIONS = {
       icon: 'npc-miner2',
       iconColor: 'yellow-600',
     }),
-    'rest at the forge': async (playerId, roomState) => {
-      const isMember = await makeGuildMemberCheck('mining-guild')(playerId)
-      if (!isMember) {
-        return {
-          success: true,
-          action: 'rest at the forge',
-          playerEvents: [
-            {
-              event: 'action:feedback',
-              payload: createActionFeedbackPayload('rest at the forge', 'info', 'Join the Mining Guild to rest at the forge.', {
-                roomId: roomState.roomId,
-                showModal: true,
-                modalContent: {
-                  type: 'icon',
-                  icon: 'npc-miner2',
-                  iconColor: 'yellow-600',
-                  title: 'Mining Guild',
-                  message: 'Join the Mining Guild to rest at the forge. Speak to the recruiter.',
-                },
-              }),
-            },
-          ],
-        }
-      }
-      return roomState.applyRest(playerId, {
-        action: 'rest at the forge',
-        overchargeBonus: 50,
-        overchargeMessage: 'You rest at the Guild Forge. Your HP and MP are fully restored, plus an extra +50 to each.',
-      })
-    },
+    'rest at the forge': makeRestHandler('308', 'rest at the forge', {
+      lockedModal: { icon: 'npc-miner2', iconColor: 'yellow-600', title: 'Mining Guild' },
+    }),
     'craft': executeCraft,
     'read sign': {
       showModal: true,
@@ -3073,12 +3006,7 @@ const ROOM_ACTIONS = {
     'talk to friendly pirate': npcTalk('friendly_pirate'),
     'pick redberry': makeRedberryAction(20),
     'pick blueberry': makeBlueberryAction(20),
-    'rest at the oasis': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest at the oasis',
-        overchargeBonus: 50,
-        overchargeMessage: 'You rest by the fresh water spring at the Blue Oasis. Your HP and MP are fully restored, plus an extra +50 to each.',
-      }),
+    'rest at the oasis': makeRestHandler('413', 'rest at the oasis'),
   },
 
   // --- Crocodile Island: Jungle Jim's tree hut ---
@@ -3237,12 +3165,7 @@ const ROOM_ACTIONS = {
 
   // --- The Secret Underwater Cave: the green pillar ---
   '497': {
-    'rest at the green pillar': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest at the green pillar',
-        overchargeBonus: 100,
-        overchargeMessage: 'You rest at the glowing green pillar. Your HP and MP are fully restored, plus an extra +100 to each.',
-      }),
+    'rest at the green pillar': makeRestHandler('497', 'rest at the green pillar'),
   },
 
   // --- Mine Level 0: the tutorial sign, and no ore whatsoever ---
@@ -3301,12 +3224,7 @@ const ROOM_ACTIONS = {
   // --- The Dark Forest Outpost: the Ranger Guard, and a real bed ---
   '502': {
     'talk to ranger guard': npcTalk('ranger_guard'),
-    'rest at the outpost': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest at the outpost',
-        fullRestore: true,
-        fullRestoreMessage: 'You rest at the Outpost and heal all your HP and MP!',
-      }),
+    'rest at the outpost': makeRestHandler('502', 'rest at the outpost'),
   },
 
   // --- The Highway Toll: the sign, the toll, and the man collecting it ---
@@ -3353,12 +3271,7 @@ const ROOM_ACTIONS = {
   // --- The Dark Elf's Tree Hut: quests, a fire, and the tea ---
   '506': {
     'talk to dark elf': npcTalk('dark_elf'),
-    'rest at the tree hut': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest at the tree hut',
-        overchargeBonus: 75,
-        overchargeMessage: 'You rest at the Tree Hut fireplace and super charge your health and mana. (+75 HP, +75 MP)',
-      }),
+    'rest at the tree hut': makeRestHandler('506', 'rest at the tree hut'),
   },
 
   // --- The Dark Forest Teleport: the directory, and a spare axe ---
@@ -3466,12 +3379,7 @@ const ROOM_ACTIONS = {
 
   // --- The Ranger's Guild Lobby: the fire and a rest; the Ranger's Pack is on the floor as supplies ---
   '515a': {
-    'rest at the ranger fire': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest at the ranger fire',
-        overchargeBonus: 75,
-        overchargeMessage: "You rest at the Ranger's Guild fire. (+75 HP, +75 MP)",
-      }),
+    'rest at the ranger fire': makeRestHandler('515a', 'rest at the ranger fire'),
   },
 
   // --- Lego's Quests ---
@@ -3607,12 +3515,7 @@ const ROOM_ACTIONS = {
 
   // --- The Test of Light: the Forest Princess ---
   '525': {
-    'rest by the princess': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest by the princess',
-        overchargeBonus: 100,
-        overchargeMessage: 'You rest near the Forest Princess and feel great! (+100 HP, +100 MP)',
-      }),
+    'rest by the princess': makeRestHandler('525', 'rest by the princess'),
     'battle forest princess': makeSummonHandler({
       action: 'battle forest princess',
       enemySlug: 'forest-princess',
@@ -3743,12 +3646,7 @@ const ROOM_ACTIONS = {
   // --- Camp Hero: the fountain, the silver chest, and the teachers (the two
   // Star City flags are the teacher-room tables', set on arrival) ---
   '701': {
-    'rest at the fountain': async (playerId, roomState) =>
-      roomState.applyRest(playerId, {
-        action: 'rest at the fountain',
-        overchargeBonus: 250,
-        overchargeMessage: 'You rest at the fountain and feel rejuvenated! (+250 HP, +250 MP)',
-      }),
+    'rest at the fountain': makeRestHandler('701', 'rest at the fountain'),
     // The original's function-silverchest.php: a Silver Key and a hundred
     // clicks between opens; here the same rolling cooldown as every other
     // silver chest. Its thirteenth roll — the Silver Whip — only ever came
@@ -3788,7 +3686,7 @@ const ROOM_ACTIONS = {
   },
 
   '999': {
-    'rest in lobby': async (playerId, roomState) => roomState.executeLobbyRest(playerId),
+    'rest in lobby': makeRestHandler('999', 'rest in lobby'),
   },
 }
 

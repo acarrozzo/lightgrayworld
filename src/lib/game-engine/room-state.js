@@ -22,6 +22,7 @@ const { autoEquip, isAutoEquipMode } = require('./services/auto-equip-service')
 const { checkRoomGate } = require('./room-gates')
 const { prisma } = require('../db-client')
 const { getSpell, findSpellByCommand, isCastable } = require('../game-data/spells')
+const { restOutcome, restSettledMessage } = require('../game-data/room-rests')
 const { getSpellState, castHealSpell, castBuffSpell } = require('./services/spell-service')
 const { getSkill, findSkillByCommand, isStrikeSkill, weaponFits, weaponFitReason } = require('../game-data/skills')
 const { getSkillState } = require('./services/skill-service')
@@ -2062,10 +2063,11 @@ class RoomState {
     }
   }
 
-  // Shared rest implementation.
-  //   - Standard rest (overchargeBonus 0): recovers physical/mental training amounts, capped at max.
-  //   - Overcharge rest (overchargeBonus > 0): sets HP/MP to max + bonus.
-  async applyRest(playerId, { action, overchargeBonus = 0, overchargeMessage, fullRestore = false, fullRestoreMessage } = {}) {
+  // Every rest: the plain one (`rest` null) and a room's special ones, whose
+  // lines live in game-data/room-rests.js beside the button that reads them.
+  // A rest only ever raises HP and MP. One with nothing to raise is a free
+  // refusal (`noTurn`) — the room's button is already showing it grey.
+  async applyRest(playerId, action, rest = null) {
     const player = this.players.get(playerId)
     if (!player) {
       return this.createErrorResult(action, 'Player not found in this room')
@@ -2090,58 +2092,41 @@ class RoomState {
       return this.createErrorResult(action, 'Could not load your stats.')
     }
 
-    const hpMax = liveStats.hpMax ?? player.hpMax ?? 10
-    const mpMax = liveStats.mpMax ?? player.mpMax ?? 2
+    const vitals = {
+      hp: liveStats.hp,
+      mp: liveStats.mp,
+      hpMax: liveStats.hpMax ?? player.hpMax,
+      mpMax: liveStats.mpMax ?? player.mpMax,
+      physicalTraining: liveStats.physicalTraining ?? player.physicalTraining,
+      mentalTraining: liveStats.mentalTraining ?? player.mentalTraining,
+    }
+    const { hp: newHp, mp: newMp, hpGain, mpGain } = restOutcome(vitals, rest)
 
-    let newHp
-    let newMp
-    let message
+    // Keep the in-memory map aligned with the live DB values we just read.
+    this.updatePlayer(playerId, (state) => ({ ...state, hp: newHp, mp: newMp }))
 
-    if (overchargeBonus > 0) {
-      newHp = hpMax + overchargeBonus
-      newMp = mpMax + overchargeBonus
-      message = overchargeMessage ?? `Your HP and MP are fully restored, plus an extra +${overchargeBonus} to each.`
-    } else if (fullRestore) {
-      // Restore to full without overcharging. An already-overcharged player
-      // keeps the overcharge — resting is never allowed to take vitals away.
-      newHp = Math.max(liveStats.hp ?? 0, hpMax)
-      newMp = Math.max(liveStats.mp ?? 0, mpMax)
-      message = fullRestoreMessage ?? 'Your HP and MP are fully restored.'
-    } else {
-      const pt = liveStats.physicalTraining ?? player.physicalTraining ?? 1
-      const mt = liveStats.mentalTraining ?? player.mentalTraining ?? 0
-      const curHp = liveStats.hp ?? 0
-      const curMp = liveStats.mp ?? 0
-
-      // Recovery only ever increases vitals. If the player is overcharged
-      // (hp/mp above max), preserve the overcharge instead of capping it away.
-      newHp = Math.max(curHp, Math.min(hpMax, curHp + pt))
-      newMp = Math.max(curMp, Math.min(mpMax, curMp + mt))
-      const hpGained = Math.max(0, newHp - curHp)
-      const mpGained = Math.max(0, newMp - curMp)
-
-      if (hpGained === 0 && mpGained === 0) {
-        // Keep the in-memory map aligned with the live DB values we just read.
-        this.updatePlayer(playerId, (state) => ({ ...state, hp: newHp, mp: newMp }))
-        return {
-          success: true,
-          action,
-          playerEvents: [
-            {
-              event: 'action:feedback',
-              payload: this.createFeedbackPayload(action, 'success', 'You already have full HP and MP.', { hp: newHp, mp: newMp }),
-            },
-          ],
-        }
+    if (hpGain === 0 && mpGain === 0) {
+      return {
+        success: true,
+        noTurn: true,
+        action,
+        playerEvents: [
+          {
+            event: 'action:feedback',
+            payload: this.createFeedbackPayload(action, 'info', restSettledMessage(vitals, rest), { hp: newHp, mp: newMp }),
+          },
+        ],
       }
+    }
 
+    let message = rest?.message
+    if (!message) {
       const parts = []
-      if (hpGained > 0) parts.push(`${hpGained} HP`)
-      if (mpGained > 0) parts.push(`${mpGained} MP`)
+      if (hpGain > 0) parts.push(`${hpGain} HP`)
+      if (mpGain > 0) parts.push(`${mpGain} MP`)
       message = `You recover ${parts.join(' and ')}.`
     }
 
-    this.updatePlayer(playerId, (state) => ({ ...state, hp: newHp, mp: newMp }))
     await prisma.user.update({ where: { id: playerId }, data: { hp: newHp, mp: newMp } })
 
     return {
@@ -2157,25 +2142,7 @@ class RoomState {
   }
 
   async executeRest(playerId) {
-    return this.applyRest(playerId, { action: 'rest' })
-  }
-
-  // Lobby (room 999) rest: overcharges HP and MP to 10 above their max.
-  async executeLobbyRest(playerId) {
-    return this.applyRest(playerId, {
-      action: 'rest in lobby',
-      overchargeBonus: 10,
-      overchargeMessage: 'You rest near the fountain. Your HP and MP are fully restored, plus an extra +10 to each.',
-    })
-  }
-
-  // Waterfall (room 020) rest: overcharges HP and MP to 10 above their max.
-  async executeWaterfallRest(playerId) {
-    return this.applyRest(playerId, {
-      action: 'rest at waterfall',
-      overchargeBonus: 10,
-      overchargeMessage: 'You rest beneath the waterfall. Your HP and MP are fully restored, plus an extra +10 to each.',
-    })
+    return this.applyRest(playerId, 'rest')
   }
 
   executeLook(action, playerId) {
