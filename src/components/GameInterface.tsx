@@ -265,6 +265,8 @@ export default function GameInterface() {
 
   const [shopModalData, setShopModalData] = useState<{
     shopName?: string
+    /** What the keeper said when the shop opened, if the shop has one. */
+    keeperLine?: string
     /** Set when the shop is a traveler's cart; the modal closes when they leave. */
     travelerId?: string
     shopItems: Array<{ id: string; slug: string; name: string; description: string; value: number; type: string }>
@@ -1879,6 +1881,7 @@ export default function GameInterface() {
           setIsShopModalOpen(true)
           setShopModalData({
             shopName: modalContent.shopName,
+            keeperLine: typeof modalContent.keeperLine === 'string' && modalContent.keeperLine ? modalContent.keeperLine : undefined,
             travelerId: typeof modalContent.travelerId === 'string' ? modalContent.travelerId : undefined,
             shopItems: modalContent.shopItems || [],
             playerCurrency: modalContent.playerCurrency || 0,
@@ -3993,6 +3996,7 @@ export default function GameInterface() {
           setShopModalData(null)
         }}
         shopName={shopModalData?.shopName}
+        keeperLine={shopModalData?.keeperLine}
         shopItems={shopModalData?.shopItems || []}
         playerCurrency={shopModalData?.playerCurrency || player?.currency || 0}
         playerInventory={shopModalData?.playerInventory || inventory}

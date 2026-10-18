@@ -796,7 +796,7 @@
     "objective": "Bring 2 Flowers to the Town Hall Plaza.",
     "nextStep": "Pick one in the Grassy Field flower patch, then pick the second from the Babylon Gardens — west of the Mayor's office, up from the Plaza.",
     "reminderDialog": "\"Only {progress} of {count} flowers. One grows out in the Grassy Field, and you can pick the other right here in the Babylon Gardens.\"",
-    "completionDialog": "\"Two! A matched pair!\" The gardener is far more pleased than two flowers warrant, and presses a crate of potions on you — wings and gills both. \"For the places flowers don't grow.\"",
+    "completionDialog": "\"Two. A matched pair.\" The gardener holds them a moment longer than she needs to. \"These go on the shelf at home. For them.\"",
     "requirements": [
       {
         "type": "hasItem",
@@ -871,7 +871,7 @@
     "objective": "Defeat the Master Thief.",
     "nextStep": "The Master Thief holds the Thieve's Den treasure room. Get into the sewers, find the false wall at the dead end — or the secret entrance off the back alley — and work your way in.",
     "reminderDialog": "\"The Master Thief still has it. He's down in the Den, past the training room. Please — she hasn't slept.\"",
-    "completionDialog": "Little Suzie cheers when you hand over the stuffed animal, and will not let go of it again. She decides she loves her Teddy Bear more than her new pet hamster, so she gives the hamster to you. Her parents press what they have on you too — a ring off the father's hand and two jars of good balm. \"It isn't much. She hasn't slept in a week.\"",
+    "completionDialog": "Little Suzie cheers and will not let go of it again. \"It was her brother's,\" her mother says, and does not say more. Suzie decides she loves the bear more than her new hamster, so she gives the hamster to you.",
     "requirements": [
       {
         "type": "killCount",

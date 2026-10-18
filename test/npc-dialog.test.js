@@ -56,3 +56,24 @@ test('asides: a gate on a quest the giver does not own never opens', () => {
   const asides = [{ ifCompleted: 'someone_elses_quest', lines: ['never'] }, { ifCompleted: null, lines: ['default'] }]
   assert.equal(pickAside(asides, done('own_quest'), () => 0), 'default')
 })
+
+// ── shopkeepers and overheard lines ──────────────────────────────────────────
+
+const { pickKeeperLine } = require(path.join(ROOT, 'src/lib/game-data/shops.js'))
+const overheard = require(path.join(ROOT, 'src/lib/game-data/overheard.js'))
+
+test('keeper line: a shop without a keeper says nothing, one with lines rotates', () => {
+  assert.equal(pickKeeperLine({ name: 'x', stock: [] }), '')
+  const shop = { name: 'x', stock: [], keeper: { lines: ['one', 'two'] } }
+  assert.equal(pickKeeperLine(shop, () => 0), 'one')
+  assert.equal(pickKeeperLine(shop, () => 0.99), 'two')
+})
+
+test('overheard: only rooms with lines are listed, and a room without lines picks nothing', () => {
+  for (const roomId of overheard.listOverheardRooms()) {
+    assert.ok(overheard.OVERHEARD[roomId].lines.length > 0)
+    assert.ok(overheard.pickOverheard(roomId, () => 0))
+  }
+  assert.equal(overheard.pickOverheard('no-such-room'), '')
+  assert.equal(overheard.getOverheard('no-such-room'), null)
+})

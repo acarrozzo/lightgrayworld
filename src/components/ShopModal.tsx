@@ -41,6 +41,8 @@ interface ShopModalProps {
   onClose: () => void
   /** The shop's own name, from the shop registry. Falls back to "Shop". */
   shopName?: string
+  /** One line from the keeper, picked by the server when the shop opened. */
+  keeperLine?: string
   shopItems: ShopItem[]
   playerCurrency: number
   playerInventory: InventoryItem[]
@@ -106,6 +108,7 @@ export default function ShopModal({
   isOpen,
   onClose,
   shopName,
+  keeperLine,
   shopItems,
   playerCurrency,
   playerInventory,
@@ -489,6 +492,10 @@ export default function ShopModal({
             </button>
           </div>
         </div>
+
+        {keeperLine && (
+          <p className="px-4 py-2 text-sm italic text-fg-secondary border-b border-line-subtle/50 leading-snug">{keeperLine}</p>
+        )}
 
         <div className="flex border-b border-line-subtle/50">
           <button type="button" onClick={() => setActiveTab('buy')} className={tabClass('buy')}>

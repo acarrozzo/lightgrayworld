@@ -8,7 +8,8 @@ const { checkAndConsumeCooldown } = require('./services/action-cap-service')
 const { feedTally } = require('./services/room-supply-service')
 const { grantTeleport } = require('./teleport-grants')
 const { getRecipeById, isRecipeAvailableInRoom, whereToCraft, describeCraft } = require('../game-data/crafting-recipes')
-const { getShop } = require('../game-data/shops')
+const { getShop, pickKeeperLine } = require('../game-data/shops')
+const { OVERHEARD, listOverheardRooms, pickOverheard } = require('../game-data/overheard')
 const { goldChestFlagForRoom } = require('../game-data/gold-chests')
 const { getRoomRest, restBuffWouldGain } = require('../game-data/room-rests')
 const { isMember } = require('./services/faction-service')
@@ -456,6 +457,8 @@ async function buildShopModalResult({ shop, playerId, roomState, action = 'view 
           modalContent: {
             type: 'shop',
             shopName: shop.name,
+            // One line from whoever is behind the counter, when the shop has one.
+            keeperLine: pickKeeperLine(shop),
             shopItems,
             playerCurrency: player.currency,
             playerInventory: inventory,
@@ -3889,6 +3892,35 @@ for (const roomId of MOUNTAIN_CHOP_WOOD_ROOMS) {
   ROOM_ACTIONS[roomId] = {
     ...(ROOM_ACTIONS[roomId] || {}),
     'chop wood': makeChopWoodAction({ missingToolMessage: MOUNTAIN_CHOP_WOOD_MISSING_TOOL }),
+  }
+}
+
+/**
+ * "Listen in": one overheard line at random from game-data/overheard.js, free,
+ * as a modal like a sign. Registered only for rooms that have lines, so the
+ * button the client draws from the same table never lands on nothing.
+ */
+function makeListenHandler(roomId) {
+  const entry = OVERHEARD[roomId]
+  return free(async (playerId, roomState) =>
+    executeBasicDisplay(entry.action, entry.feed, playerId, roomState, true, {
+      showModal: true,
+      message: entry.feed,
+      modalContent: {
+        title: entry.title,
+        type: 'icon',
+        icon: entry.icon,
+        iconColor: entry.iconColor,
+        message: pickOverheard(roomId),
+      },
+    })
+  )
+}
+
+for (const roomId of listOverheardRooms()) {
+  ROOM_ACTIONS[roomId] = {
+    ...(ROOM_ACTIONS[roomId] || {}),
+    [OVERHEARD[roomId].action]: makeListenHandler(roomId),
   }
 }
 

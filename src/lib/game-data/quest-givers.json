@@ -244,6 +244,17 @@
       "quest_redguardcaptain_001",
       "quest_redguardcaptain_002",
       "quest_redguardcaptain_003"
+    ],
+    "asides": [
+      {
+        "ifCompleted": null,
+        "lines": [
+          "\"Half my company was at Sports Day. I was up here. I'm still up here.\"",
+          "\"Rudolf and I came up together. He signs things. I protect. Somebody has to.\"",
+          "\"You Wanderers do the work. I'll say that for you. I'll say it to anyone.\"",
+          "\"Fair and square. That's the whole job.\""
+        ]
+      }
     ]
   },
   "town_hall_plaza": {
@@ -269,13 +280,25 @@
       },
       {
         "ifCompleted": null,
-        "message": "The Plaza is as busy as ever. Flowers, meat, and one very upset little girl — take them in any order."
+        "message": "The Plaza is as busy as ever."
       }
     ],
     "quests": [
       "quest_townhallplaza_001",
       "quest_townhallplaza_002",
       "quest_townhallplaza_003"
+    ],
+    "asides": [
+      {
+        "ifCompleted": null,
+        "lines": [
+          "The chef, to nobody: \"Fables had it worse. Eat.\"",
+          "The gardener: \"Half of this is from seeds I carried in my pockets. The other half is Vega's. They get on fine.\"",
+          "Suzie's father, low: \"She was born on the boat over. The bear is all we brought.\"",
+          "The chef: \"Of course Sol.\"",
+          "Suzie's mother, watching you: \"Wanderers. They say you don't stay dead. I'd keep that to yourself around here.\""
+        ]
+      }
     ]
   },
   "mayor_rudolf": {
@@ -293,7 +316,7 @@
     },
     "hint": "The Mayor's office (Room 222) is north of the Town Hall Plaza.",
     "metLine": "You meet the Mayor.",
-    "greeting": "The Mayor puts down his pen. \"The Scorpion King has brought fear to this town for far too long.\" He slides a bounty notice across the desk. \"Name your price when it's done.\"",
+    "greeting": "The Mayor puts down his pen. \"A Wanderer. Good, you lot get things done.\" He slides a bounty notice across the desk. \"The Scorpion King has brought fear to this town for far too long.\"",
     "idleDialogs": [
       {
         "ifCompleted": "quest_mayorrudolf_000",
@@ -306,6 +329,17 @@
     ],
     "quests": [
       "quest_mayorrudolf_000"
+    ],
+    "asides": [
+      {
+        "ifCompleted": null,
+        "lines": [
+          "\"I was a clerk. I was filing something that morning. I must continue in my father's footsteps.\"",
+          "\"It says New Babylon on the gate because the people who rebuilt the gate wanted it to. Fair's fair.\"",
+          "\"Sal and I grew up on the same street.\"",
+          "\"Sol willing, this town gets through.\""
+        ]
+      }
     ]
   },
   "warriors_guild_recruiter": {
@@ -336,6 +370,16 @@
     ],
     "quests": [
       "quest_warriorsguild_000"
+    ],
+    "asides": [
+      {
+        "ifCompleted": null,
+        "lines": [
+          "\"I was out on a forest job that day. Everyone who was here has their name on the wall over there.\"",
+          "\"Wanderers are the best thing that's walked through that door in years.\"",
+          "\"Be strong.\""
+        ]
+      }
     ]
   },
   "warrior_pete": {
@@ -364,7 +408,7 @@
     "idleDialogs": [
       {
         "ifCompleted": "quest_warriorpete_003",
-        "message": "\"Knights, sharks and three Champions.\" Pete grins for the first time. \"Fine. You’re a warrior. I’ll say it out loud and everything.\""
+        "message": "\"Knights, sharks and three Champions.\" Pete does not grin. \"Fine. You're a warrior. Doesn't mean I like you.\""
       },
       {
         "ifCompleted": null,
@@ -375,6 +419,17 @@
       "quest_warriorpete_001",
       "quest_warriorpete_002",
       "quest_warriorpete_003"
+    ],
+    "asides": [
+      {
+        "ifCompleted": null,
+        "lines": [
+          "\"Wanderers. You die, you get up, you come back for more. Must be nice.\"",
+          "\"I'd do it myself but somebody has to protect the guild.\"",
+          "\"Sol, Ill, whatever. Nobody up there stopped it.\"",
+          "\"I don't leave the guild much. Why would I. Everything I need's in here.\""
+        ]
+      }
     ]
   },
   "wizards_guild_recruiter": {
@@ -405,6 +460,17 @@
     ],
     "quests": [
       "quest_wizardsguild_000"
+    ],
+    "asides": [
+      {
+        "ifCompleted": null,
+        "lines": [
+          "\"I kept Ill. I did not keep the oath. Those are different things, whatever they say up the mountain.\"",
+          "\"They made it a crime to say Sol's name in the city. That's when I left. Not before. I'm not proud of the order.\"",
+          "\"Wanderers make excellent guild members.\"",
+          "\"Ill is truth and not knowing. A city that bans a word has stopped believing in either!\""
+        ]
+      }
     ]
   },
   "wizard_morty": {
@@ -444,6 +510,17 @@
       "quest_wizardmorty_001",
       "quest_wizardmorty_002",
       "quest_wizardmorty_003"
+    ],
+    "asides": [
+      {
+        "ifCompleted": null,
+        "lines": [
+          "\"Magic\"",
+          "\"Everyone here thinks a star fell. Where I'm from we had many other theories, each a song. \"",
+          "\"Wanderer, non-Wanderer, I don't care, as long as you can hold a wand the right way round.\"",
+          "\"The Chef says Fables had it worse. The Chef is correct. Don't tell him I said so.\""
+        ]
+      }
     ]
   },
   "mining_guild_recruiter": {

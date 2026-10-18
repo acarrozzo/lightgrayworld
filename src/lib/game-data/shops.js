@@ -27,7 +27,12 @@
  *
  * `stock` is ordered for display: weapons, then armour, then consumables.
  *
- * @typedef {{ name: string, stock: string[], requiresMembership?: string }} Shop
+ * `keeper`, where present, is the person behind the counter: `lines` is a set
+ * the shop modal shows one of under its title, at random, each time the shop
+ * is opened. It is the only place a shopkeeper speaks, so it carries who they
+ * are (docs/STORY.md) without a talk action per shop.
+ *
+ * @typedef {{ name: string, stock: string[], requiresMembership?: string, keeper?: { lines: string[] } }} Shop
  * @type {Record<string, Shop>}
  */
 const SHOPS = {
@@ -55,6 +60,14 @@ const SHOPS = {
   // Broccoli Rob's Veggie Stand — the farm stall on the road in.
   '207': {
     name: "Broccoli Rob's Veggie Stand",
+    keeper: {
+      lines: [
+        "\"The farm feeds half this town. The town doesn't come here much. I prefer it.\"",
+        "\"Veggies are good for you.\"",
+        "\"Wanderers. Hm. Buy something or don't.\"",
+        "\"If you don't want to buy something you don't have to stay.\"",
+      ],
+    },
     stock: ['veggies', 'redberry', 'blueberry'],
   },
 
@@ -63,6 +76,14 @@ const SHOPS = {
   // rather than sold as a no-op.
   '216': {
     name: "Adam's General Store",
+    keeper: {
+      lines: [
+        "\"I had a bigger shop once.\"",
+        "\"Prices are in chalk because I keep changing my mind.\"",
+        "\"Wanderers. Best customers I've got.\"",
+        "\"I got long swords if you need 'em\"",
+      ],
+    },
     stock: [
       'dagger',
       'long-sword',
@@ -87,6 +108,14 @@ const SHOPS = {
   // Todd's Pub & Inn — drinks only, no gear.
   '220': {
     name: "Todd's Pub & Inn",
+    keeper: {
+      lines: [
+        "\"I ran a tavern at Star City. The crowd got worse. So I left.\"",
+        "\"Potions behind the bar. Beds upstairs.\"",
+        "\"Don't care what you are.\"",
+        "\"You'll hear a lot in here. Half of it's true. The question is which half.\"",
+      ],
+    },
     stock: [
       'red-potion',
       'blue-potion',
@@ -139,6 +168,15 @@ const SHOPS = {
   // Michael's Weapon Shop — blades floor to ceiling, and the high end of them.
   '227': {
     name: "Michael's Weapon Shop",
+    keeper: {
+      lines: [
+        "\"My father made blades for the Red Guard. I make blades for the Red Guard. Time to upgrade.\"",
+        "\"Floor to ceiling weapons. I don't sleep much.\"",
+        "\"You wanderers really love swords.\"",
+        "\"Time to upgrade. I say that to everybody. Still true.\"",
+        "\"Time to upgrade.\"",
+      ],
+    },
     stock: [
       'gladius',
       'three-chained-flail',
@@ -160,6 +198,14 @@ const SHOPS = {
   // Vincenzo's Meat & Produce Stand.
   '229': {
     name: "Vincenzo's Meat & Produce Stand",
+    keeper: {
+      lines: [
+        "\"Welcome friend!\"",
+        "\"Chickens! You want one? No? Why doesn't anyone want my chickens.\"",
+        "\"A Wanderer! I love you guys!\"",
+        "\"Sol keeps the sun up. That's all I know and all I need.\"",
+      ],
+    },
     stock: ['cooked-meat', 'meatball', 'bluefish', 'veggies'],
   },
 
@@ -168,6 +214,13 @@ const SHOPS = {
   // Ordered cheapest first — this is a ladder you climb over a very long time.
   '237': {
     name: 'Red Town Stables',
+    keeper: {
+      lines: [
+        "\"Came over on a boat with nothing. The horses were here. Red Guard stock, bred down from the cavalry.\"",
+        "\"Want a horse?\"",
+        "\"Horses don't like you Wanderers. I don't know why, but I trust the horses.\"",
+      ],
+    },
     stock: [
       'pony',
       'stallion',
@@ -185,6 +238,15 @@ const SHOPS = {
   // questions either way.
   '236': {
     name: 'Shady Shop',
+    keeper: {
+      lines: [
+        "\"Where's it from? How'd it get here? Don't ask.\"",
+        "\"No questions. That goes both ways, friend.\"",
+        "\"You're one of those Wanderers. Great. You buying?\"",
+        "\"Ammo's cheap. Don't ask why it's cheap.\"",
+        "\"Shady, I know.\"",
+      ],
+    },
     stock: ['arrow', 'crossbow-bolt', 'reds', 'greens', 'blues', 'yellows', 'vapor-ring', 'vapor-necklace'],
   },
 
@@ -297,4 +359,11 @@ function getShopsAt(roomId, now = Date.now()) {
   return shops
 }
 
-module.exports = { SHOPS, getShop, shopSellsItem, shopRequiresMembership, getShopsAt }
+/** What the keeper says this time the shop opens, or '' for a shop with nobody to say anything. */
+function pickKeeperLine(shop, rand = Math.random) {
+  const lines = shop && shop.keeper && Array.isArray(shop.keeper.lines) ? shop.keeper.lines : []
+  if (lines.length === 0) return ''
+  return lines[Math.floor(rand() * lines.length)] ?? ''
+}
+
+module.exports = { SHOPS, getShop, shopSellsItem, shopRequiresMembership, getShopsAt, pickKeeperLine }

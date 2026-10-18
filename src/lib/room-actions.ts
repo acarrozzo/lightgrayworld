@@ -1,5 +1,6 @@
 import { getCraftingStation } from './game-data/crafting-recipes'
 import { listGiverQuestIds } from './game-data/quest-registry'
+import { getOverheard } from './game-data/overheard'
 
 export interface RoomAction {
   action: string
@@ -581,7 +582,12 @@ for (const roomId of FOREST_CHOP_WOOD_ROOMS) {
  * Get available actions for a specific room
  */
 export function getRoomActions(roomId: string): RoomAction[] {
-  return ROOM_ACTIONS[roomId] || []
+  const base = ROOM_ACTIONS[roomId] || []
+  // A room with overheard lines (game-data/overheard.js) gets its "listen in"
+  // button from the same table the server registers the handler from.
+  const overheard = getOverheard(roomId) as { action: string; label: string; icon: string } | null
+  if (!overheard) return base
+  return [...base, { action: overheard.action, label: overheard.label, icon: overheard.icon, className: 'fill-surface-selected' }]
 }
 
 /**
