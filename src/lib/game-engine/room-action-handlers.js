@@ -152,16 +152,52 @@ const examinePillar = free(async (playerId, roomState) => {
 })
 
 /**
- * Resolve an NPC's idle dialog (no active quest) from an ordered, priority list.
- * Each entry is { ifCompleted: questId | null, message }. The first entry whose
- * quest is completed wins; an entry with ifCompleted === null is the default.
+ * The first entry of a priority list whose gate is open. Each entry is
+ * { ifCompleted: questId | null, ... }: the first whose quest is completed
+ * wins, and an entry with ifCompleted === null is the default. Shared by the
+ * idle dialogs and the asides below so both read a giver's state the same way.
+ * Gates can only name the giver's own quests: that is all `progressById` holds.
  */
-function resolveIdleDialog(idleDialogs, progressById) {
-  for (const entry of idleDialogs || []) {
-    if (entry.ifCompleted === null || entry.ifCompleted === undefined) return entry.message
-    if (progressById[entry.ifCompleted]?.completed) return entry.message
+function firstOpenEntry(entries, progressById) {
+  for (const entry of entries || []) {
+    if (entry.ifCompleted === null || entry.ifCompleted === undefined) return entry
+    if (progressById[entry.ifCompleted]?.completed) return entry
   }
-  return ''
+  return null
+}
+
+/** One of a set, so a giver can rotate lines instead of repeating one. */
+function pickLine(lines, rand = Math.random) {
+  if (!Array.isArray(lines)) return typeof lines === 'string' ? lines : ''
+  if (lines.length === 0) return ''
+  return lines[Math.floor(rand() * lines.length)] ?? ''
+}
+
+/**
+ * Resolve an NPC's idle dialog (no active quest). `message` may be one string
+ * or a set of them; a set rotates, one per talk.
+ */
+function resolveIdleDialog(idleDialogs, progressById, rand = Math.random) {
+  const entry = firstOpenEntry(idleDialogs, progressById)
+  return entry ? pickLine(entry.message, rand) : ''
+}
+
+/**
+ * An aside: a line a giver adds under whatever else they say, reminder or
+ * idle, drawn from a rotating set that changes as their quests complete.
+ * `asides` is [{ ifCompleted, lines: [...] }] with the same priority rule as
+ * idleDialogs. It is how a character has a life beside their quest list (the
+ * chained Angel's moods) without the quest text carrying it. Returns '' when
+ * the giver has none.
+ */
+function pickAside(asides, progressById, rand = Math.random) {
+  const entry = firstOpenEntry(asides, progressById)
+  return entry ? pickLine(entry.lines, rand) : ''
+}
+
+/** The giver's message with its aside beneath, as the modal shows it. */
+function withAside(message, aside) {
+  return aside ? `${message}\n\n${aside}` : message
 }
 
 /**
@@ -289,7 +325,9 @@ function createNpcTalkHandler({ giverId, action }) {
 
       return result(
         feedback(`You talk to ${spoken}.`, {
-          modalContent: npcModal({ message: renderReminderDialog(activeQuest, requirements) }),
+          modalContent: npcModal({
+            message: withAside(renderReminderDialog(activeQuest, requirements), pickAside(giver.asides, progressById)),
+          }),
         })
       )
     }
@@ -297,7 +335,11 @@ function createNpcTalkHandler({ giverId, action }) {
     // No active quest — show the giver's idle dialog.
     const idle =
       resolveIdleDialog(giver.idleDialogs, progressById) || `${giver.name} has nothing more for you right now.`
-    return result(feedback(`You talk to ${spoken}.`, { modalContent: npcModal({ message: idle }) }))
+    return result(
+      feedback(`You talk to ${spoken}.`, {
+        modalContent: npcModal({ message: withAside(idle, pickAside(giver.asides, progressById)) }),
+      })
+    )
   })
 }
 
@@ -4270,6 +4312,9 @@ function getGatherActionsForRoom(roomId) {
 }
 
 module.exports = {
+  resolveIdleDialog,
+  pickAside,
+  withAside,
   executeRoomAction,
   isTurnCostingRoomAction,
   ROOM_ACTIONS,

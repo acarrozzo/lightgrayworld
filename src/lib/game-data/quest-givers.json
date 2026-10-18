@@ -17,15 +17,15 @@
     "idleDialogs": [
       {
         "ifCompleted": "quest_oldman_004",
-        "message": "The Old Man rocks contentedly in his chair. \"The gator's gone, the rats are gone, and my wife's got her jam. You've been a true blessing to this old man, traveler.\""
+        "message": "The gator's gone, the rats are gone, and there's jam in the cupboard. You've been a blessing to this old man."
       },
       {
         "ifCompleted": "quest_oldman_003",
-        "message": "The Old Man rocks contentedly in his chair. \"The rats are gone, the gator is dealt with, and my wife got her flower. You've been a true blessing, traveler.\""
+        "message": "The rats are gone, the gator is dealt with, and my wife got her flower. You've been a true blessing, traveler."
       },
       {
         "ifCompleted": "quest_oldman_001",
-        "message": "The Old Man smiles warmly. \"Thank you again for your help, traveler! That flower made the perfect addition to my recipe. If you need anything else, feel free to ask.\""
+        "message": "Thanks again for that flower. She would have loved it."
       }
     ],
     "quests": [
@@ -61,7 +61,14 @@
     "idleDialogs": [
       {
         "ifCompleted": "quest_youngsoldier_002",
-        "message": "You proved yourself, Wanderer. If you're looking for more work, head northwest to Jack Lumber's cabin. He's got quests that'll open the way to the Forest."
+        "message": [
+          "You proved yourself, Wanderer. Head east then north to Jack Lumber's cabin. He's got quests that'll open the way to the Forest.",
+          "I was Blue Guard. Was. Don't ask.",
+          "Star City is a long way up.",
+          "Born on Domus. Don't remember it. Star City I remember all of.",
+          "You are the only ones who can get in there. I don't love it either.",
+          "My family. No. Go talk to Jack."
+        ]
       },
       {
         "ifCompleted": "quest_youngsoldier_001",
@@ -899,15 +906,15 @@
     },
     "hint": "A Guardian Angel waits among the ruins of the Destroyed Academy, north of the Grassy Field.",
     "metLine": "The Guardian Angel turns to you.",
-    "greeting": "You have been called. The academy that trained the mages of Vega fell when magic left this land, and five names were carved into the Pillar for whoever would stand for it. Help every soul in a land and come back to me. Each name you earn replaces the last, until all of Vega knows you by one.",
+    "greeting": "You might be the wanderer I'm looking for. What I need lies deep under Star City. You are not ready, first help the people of this field.",
     "idleDialogs": [
       {
         "ifCompleted": "quest_grand_mountain",
-        "message": "Four names are yours and the Pillar hums with them. The fifth is still dark. When the gates of Star City open, come back to me."
+        "message": "Pax is at Camp Hero. I have nothing more for you here."
       },
       {
         "ifCompleted": null,
-        "message": "The Pillar hums quietly. There are names still waiting to be earned."
+        "message": "Help who you can. Come back when you have."
       }
     ],
     "quests": [
@@ -915,6 +922,47 @@
       "quest_grand_red_town",
       "quest_grand_rocky_flats",
       "quest_grand_mountain"
+    ],
+    "asides": [
+      {
+        "ifCompleted": "quest_grand_mountain",
+        "lines": [
+          "The ones in Star City brought the dark. The dark brought the scorpions. Remember that when you get there.",
+          "When the gates open, don't come back here first. Go."
+        ]
+      },
+      {
+        "ifCompleted": "quest_grand_rocky_flats",
+        "lines": [
+          "The dwarves say Frederick is with them. I can't go and look.",
+          "The beasts are still out there. Pax and his friends did most of it. You do the rest."
+        ]
+      },
+      {
+        "ifCompleted": "quest_grand_red_town",
+        "lines": [
+          "Red Town argues. That is what living people do.",
+          "The guilds will take you now. Use them."
+        ]
+      },
+      {
+        "ifCompleted": "quest_grand_grassy_field",
+        "lines": [
+          "The Field is quiet. Good. Red Town is not.",
+          "The Old Man still goes to that grave. Someone should."
+        ]
+      },
+      {
+        "ifCompleted": null,
+        "lines": [
+          "The chain is the gods' business. Yours is the Field.",
+          "Why i'm here? I only half know.",
+          "Ask me about the city. Not the chain.",
+          "Don't be sorry for me. I'm not.",
+          "I got here when you did. Don't ask me how.",
+          "They know what you are out there. Some will like it. Some won't."
+        ]
+      }
     ]
   }
 }

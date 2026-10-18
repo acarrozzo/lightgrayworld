@@ -141,9 +141,22 @@ for (const [giverId, g] of Object.entries(GIVERS)) {
   }
   for (const req of g.meetRequirements ?? []) checkRequirement(id, req, 'meetRequirements')
   if ((g.meetRequirements ?? []).length > 0 && !g.lockedDialog) err(id, 'meetRequirements without a lockedDialog')
+  const ownQuests = new Set(g.quests ?? [])
+  const checkGate = (field, entry) => {
+    if (entry.ifCompleted === null || entry.ifCompleted === undefined) return
+    if (!questIds.has(entry.ifCompleted)) err(id, `${field} references unknown quest "${entry.ifCompleted}"`)
+    // The talk handler only loads the giver's own progress, so a gate on
+    // another giver's quest would never open.
+    else if (!ownQuests.has(entry.ifCompleted)) err(id, `${field} gates on "${entry.ifCompleted}", which is not one of this giver's quests`)
+  }
+  const nonEmptyLines = (v) => (Array.isArray(v) ? v.length > 0 && v.every((l) => typeof l === 'string' && l.trim()) : typeof v === 'string' && v.trim())
+  for (const entry of g.asides ?? []) {
+    checkGate('asides', entry)
+    if (!Array.isArray(entry.lines) || !nonEmptyLines(entry.lines)) err(id, 'asides entry needs a non-empty "lines" array')
+  }
   for (const entry of g.idleDialogs ?? []) {
-    if (entry.ifCompleted !== null && entry.ifCompleted !== undefined && !questIds.has(entry.ifCompleted)) err(id, `idleDialogs references unknown quest "${entry.ifCompleted}"`)
-    if (!entry.message) err(id, 'idleDialogs entry without a message')
+    checkGate('idleDialogs', entry)
+    if (!nonEmptyLines(entry.message)) err(id, 'idleDialogs entry without a message (a string or a non-empty array of strings)')
   }
   if (!Array.isArray(g.quests) || g.quests.length === 0) err(id, 'a giver needs at least one quest')
   for (const questId of g.quests ?? []) {
