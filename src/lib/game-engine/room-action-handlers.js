@@ -2039,6 +2039,17 @@ const ROOM_ACTIONS = {
         message: 'The bright blue light emanating from the pillar seems to be a button. Press it to teleport to the grassy field.',
       },
     },
+    'read paper': {
+      showModal: true,
+      message: 'You pick up the piece of paper and read it.',
+      modalContent: {
+        title: 'You pick up the piece of paper and read it',
+        type: 'icon',
+        icon: 'paper',
+        iconColor: 'gray-300',
+        message: 'It looks like a map of Room Zero. A gray square with a star in the center.',
+      },
+    },
   },
   '001': {
     'read sign': withMerchantNotice('001', {

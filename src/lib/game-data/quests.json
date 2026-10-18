@@ -142,7 +142,7 @@
     "objective": "Defeat the Gator in the Marsh behind the cabin.",
     "nextStep": "Head southwest into the Marsh and defeat the Gator, then return to the Old Man.",
     "reminderDialog": "That gator is still out there in the swamp. Head southwest into the marsh and deal with it when you're ready.",
-    "completionDialog": "Nice work Wanderer! NEXT QUEST INFO GOES HERE",
+    "completionDialog": "Nice work Wanderer! That gator had it comin'!",
     "after": [
       "quest_oldman_002"
     ],

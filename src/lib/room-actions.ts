@@ -82,6 +82,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   '000': [
     { action: 'read sign', label: 'Read Sign', icon: '', className: 'fill-terrain-wood' },
     { action: 'examine pillar', label: 'Examine Pillar', icon: '', className: 'fill-hue-blue' },
+    { action: 'read paper', label: 'Read Paper', icon: '', className: 'fill-terrain-wood' },
     { action: 'teleport to grassy field', label: 'Press Button (Teleports to Grassy Field)', icon: '', className: 'fill-hue-green' },
   ],
   '001': [
