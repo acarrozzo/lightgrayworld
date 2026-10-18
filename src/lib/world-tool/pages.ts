@@ -31,7 +31,7 @@ import {
   Users,
   Waypoints,
   Shapes,
-  type LucideIcon, Footprints, PawPrint } from 'lucide-react'
+  type LucideIcon, Footprints, PawPrint, MessageSquareText } from 'lucide-react'
 
 export type WorldToolPageKey =
   | 'enemies'
@@ -47,6 +47,7 @@ export type WorldToolPageKey =
   | 'teleport'
   | 'travelers'
   | 'pets'
+  | 'lines'
   | 'players'
   | 'room-desc'
   | 'themes'
@@ -103,6 +104,8 @@ export const WORLD_TOOL_GROUPS: WorldToolGroup[] = [
         description: 'The one-time gold chests and the repeatable ones, with their loot tables, odds and rooms.' },
       { key: 'pets', href: '/pets', label: 'Pets', unit: 'pets', icon: PawPrint,
         description: 'The collectible creatures a player carries for the company: where each comes from, and every line it says and where.' },
+      { key: 'lines', href: '/lines', label: 'Lines', unit: 'lines', icon: MessageSquareText,
+        description: 'Everything the world says outside the quest flow: shopkeepers, crowds, and each quest giver\'s idle lines and asides, by room, with the gate each set opens on.' },
     ],
   },
   {

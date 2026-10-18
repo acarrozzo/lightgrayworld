@@ -8,8 +8,18 @@ const { checkAndConsumeCooldown } = require('./services/action-cap-service')
 const { feedTally } = require('./services/room-supply-service')
 const { grantTeleport } = require('./teleport-grants')
 const { getRecipeById, isRecipeAvailableInRoom, whereToCraft, describeCraft } = require('../game-data/crafting-recipes')
-const { getShop, pickKeeperLine, listKeeperShops } = require('../game-data/shops')
-const { OVERHEARD, listOverheardRooms, pickOverheard } = require('../game-data/overheard')
+const { getShop, listKeeperShops } = require('../game-data/shops')
+const { OVERHEARD, listOverheardRooms } = require('../game-data/overheard')
+const { chatActionForGiver } = require('../game-data/lines')
+const { nextLineIndex } = require('./line-cursor-state')
+const { GIVERS: GIVERS_FOR_CHAT } = require('../game-data/quest-registry')
+
+/** The next line in a set for this player, in order, wrapping. Null for an empty set. */
+function cycleLine(playerId, setKey, lines) {
+  const list = Array.isArray(lines) ? lines : typeof lines === 'string' && lines ? [lines] : []
+  const index = nextLineIndex(playerId, setKey, list.length)
+  return index < 0 ? null : { text: list[index], index }
+}
 const { goldChestFlagForRoom } = require('../game-data/gold-chests')
 const { getRoomRest, restBuffWouldGain } = require('../game-data/room-rests')
 const { isMember } = require('./services/faction-service')
@@ -457,8 +467,8 @@ async function buildShopModalResult({ shop, playerId, roomState, action = 'view 
           modalContent: {
             type: 'shop',
             shopName: shop.name,
-            // One line from whoever is behind the counter, when the shop has one.
-            keeperLine: pickKeeperLine(shop),
+            // The keeper's next line, on the same cycle as their talk button.
+            keeperLine: shop.keeper ? (cycleLine(playerId, `${roomState.roomId}|keeper`, shop.keeper.lines)?.text ?? '') : '',
             shopItems,
             playerCurrency: player.currency,
             playerInventory: inventory,
@@ -3896,28 +3906,32 @@ for (const roomId of MOUNTAIN_CHOP_WOOD_ROOMS) {
 }
 
 /**
- * A room line: a free button that answers with one spoken line, pinned in the
- * room box (yellow italic, where a traveler's departure shows) until the next
- * line or the player leaves. No modal. The line is also the feed entry. Used
- * by "listen in" (game-data/overheard.js) and by a shopkeeper's talk button
- * (shops.js `keeper`). Registered only where lines exist, so the button the
- * client draws from the same tables never lands on nothing.
+ * Lines (game-data/lines.js): a free button that answers with one spoken line,
+ * pinned in the room box (yellow italic, where a traveler's departure shows)
+ * until the next line or the player leaves. No modal. The feed gets a `line`
+ * event with the speaker and a source tag naming the data row. Each press
+ * serves the set's next line in order (line-cursor-state.js), so every line
+ * is heard before any repeats. `pick` is async and returns
+ * { text, speaker, source } or null for nothing to say. Registered only
+ * where lines exist, so the button the client draws from the same tables
+ * never lands on nothing.
  */
 function makeRoomLineHandler(action, pick) {
   return free(async (playerId, roomState) => {
     const player = roomState.players.get(playerId)
     if (!player) return createErrorResult(action, 'Player not found in this room')
     roomState.touchActivity()
-    const line = pick()
+    const picked = await pick(playerId)
+    if (!picked) return createErrorResult(action, 'Nothing to hear right now.')
     return {
       success: true,
       action,
       playerEvents: [
         {
           event: 'action:feedback',
-          payload: createActionFeedbackPayload(action, 'success', line, {
+          payload: createActionFeedbackPayload(action, 'success', picked.text, {
             roomId: roomState.roomId,
-            roomLine: { message: line, ts: Date.now() },
+            roomLine: { message: picked.text, speaker: picked.speaker, source: picked.source, ts: Date.now() },
           }),
         },
       ],
@@ -3926,16 +3940,67 @@ function makeRoomLineHandler(action, pick) {
 }
 
 for (const roomId of listOverheardRooms()) {
+  const o = OVERHEARD[roomId]
   ROOM_ACTIONS[roomId] = {
     ...(ROOM_ACTIONS[roomId] || {}),
-    [OVERHEARD[roomId].action]: makeRoomLineHandler(OVERHEARD[roomId].action, () => pickOverheard(roomId)),
+    [o.action]: makeRoomLineHandler(o.action, async (playerId) => {
+      const p = cycleLine(playerId, `${roomId}|listen`, o.lines)
+      return p && { text: p.text, speaker: o.label, source: { roomId, speaker: 'crowd', set: 'listen', index: p.index } }
+    }),
   }
 }
 
 for (const [roomId, keeper] of listKeeperShops()) {
+  const speakerId = keeper.label.toLowerCase()
   ROOM_ACTIONS[roomId] = {
     ...(ROOM_ACTIONS[roomId] || {}),
-    [keeper.action]: makeRoomLineHandler(keeper.action, () => pickKeeperLine(getShop(roomId))),
+    [keeper.action]: makeRoomLineHandler(keeper.action, async (playerId) => {
+      const p = cycleLine(playerId, `${roomId}|keeper`, keeper.lines)
+      return p && { text: p.text, speaker: keeper.label, source: { roomId, speaker: speakerId, set: 'keeper', index: p.index } }
+    }),
+  }
+}
+
+/**
+ * A quest giver's Chat button: one idle line or aside, from the sets Talk
+ * draws on at the giver's current quest state, said as a room line. Talk keeps
+ * the quest flow; Chat is how flavor is heard again. A giver not yet met says
+ * nothing (the meeting is Talk's job).
+ */
+function makeGiverChatHandler(giverId, action) {
+  return makeRoomLineHandler(action, async (playerId) => {
+    const qs = require('./services/quest-service')
+    const giver = qs.getGiver(giverId)
+    if (!giver) return null
+    const met = await qs.getGiverMet(playerId, giverId)
+    if (!met) return null
+    const progressById = {}
+    for (const quest of qs.listQuestsByGiver(giverId)) {
+      progressById[quest.id] = await qs.getQuestProgress(playerId, quest.id)
+    }
+    const pool = []
+    const idle = firstOpenEntry(giver.idleDialogs, progressById)
+    if (idle) {
+      const lines = Array.isArray(idle.message) ? idle.message : [idle.message]
+      lines.forEach((text, index) => pool.push({ text, set: 'idle', index }))
+    }
+    const aside = firstOpenEntry(giver.asides, progressById)
+    if (aside) (aside.lines || []).forEach((text, index) => pool.push({ text, set: 'aside', index }))
+    // Walk the pool in order: idle lines first, then asides, then round again.
+    const p = cycleLine(playerId, `${giver.roomId}|${giverId}|chat`, pool)
+    if (!p) return null
+    const entry = p.text
+    return { text: entry.text, speaker: giver.name, source: { roomId: giver.roomId, speaker: giverId, set: entry.set, index: entry.index } }
+  })
+}
+
+for (const giverId of Object.keys(GIVERS_FOR_CHAT)) {
+  const giver = GIVERS_FOR_CHAT[giverId]
+  if (!giver.roomId) continue
+  const action = chatActionForGiver(giver)
+  ROOM_ACTIONS[giver.roomId] = {
+    ...(ROOM_ACTIONS[giver.roomId] || {}),
+    [action]: makeGiverChatHandler(giverId, action),
   }
 }
 

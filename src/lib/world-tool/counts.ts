@@ -22,6 +22,7 @@ const { QUEST_ORDER } = require('@/lib/game-data/quest-registry') as { QUEST_ORD
 const { CRAFTING_RECIPES } = require('@/lib/game-data/crafting-recipes') as { CRAFTING_RECIPES: unknown[] }
 const { SHOPS } = require('@/lib/game-data/shops') as { SHOPS: Record<string, unknown> }
 const { PETS } = require('@/lib/game-data/pets') as { PETS: unknown[] }
+const { listLineSets } = require('@/lib/game-data/lines') as { listLineSets: () => { lines: string[] }[] }
 const { CHEST_LOOT, REPEATABLE_CHEST_LOOT } = require('@/lib/game-engine/room-action-handlers') as {
   CHEST_LOOT: Record<string, Record<string, unknown>>
   REPEATABLE_CHEST_LOOT: unknown[]
@@ -61,6 +62,7 @@ export const loadWorldToolCounts = cachedWorldToolData('counts', async (): Promi
     rooms: atlasRooms,
     teleport: TELEPORT_LOCATIONS.length + BOSS_TELEPORTS.length,
     pets: PETS.length,
+    lines: listLineSets().reduce((n, set) => n + set.lines.length, 0),
     players,
     'room-desc': compared,
     themes: THEMES.length,

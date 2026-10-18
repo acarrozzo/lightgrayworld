@@ -41,6 +41,8 @@ interface NpcQuestCardProps {
   killList: KillEntry[]
   onTurnIn: (questId: string) => void
   onTalk: (questId: string) => void
+  /** Chat: hear one of the giver's idle lines or asides again, as a room line. Shown once the giver is met. */
+  onChat?: () => void
   loadingQuestId?: string
 }
 
@@ -70,6 +72,7 @@ export default function NpcQuestCard({
   killList,
   onTurnIn,
   onTalk,
+  onChat,
   loadingQuestId,
 }: NpcQuestCardProps) {
   const inventory = useGameStore((s) => s.inventory)
@@ -109,13 +112,26 @@ export default function NpcQuestCard({
   if (visibleQuests.length === 0) return null
 
   const showTypeLabels = visibleQuests.length > 1
+  const isMet = visibleQuests.some(({ progress }) => progress.questId !== PRE_QUEST_TALK_ID)
 
   return (
     <div className="w-full max-w-[600px] rounded-md border border-fg-bright/10 bg-surface-panel/60 overflow-hidden">
       {/* NPC header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-fg-bright/10 bg-surface-raised/40">
         {npcIcon && <Icon name={npcIcon} size={20} color="current" />}
-        <span className="text-sm font-semibold text-fg-bright/80">{npcName}</span>
+        <span className="text-sm font-semibold text-fg-bright/80 flex-1 min-w-0 truncate">{npcName}</span>
+        {onChat && isMet && (
+          // Flavor again, outside the quest flow: answered as a yellow line in the room.
+          <button
+            type="button"
+            onClick={onChat}
+            title={`Chat with ${npcName}`}
+            className="shrink-0 flex items-center gap-1 px-2 py-1 rounded text-xs text-fg-secondary hover:text-resource-gold hover:bg-surface-hover transition-colors"
+          >
+            <MessageCircle size={13} />
+            Chat
+          </button>
+        )}
       </div>
 
       {/* Quest rows */}

@@ -155,6 +155,6 @@ Not part of the real game; they stay only while the game is not public. The Secr
 
 ## How the story is told
 
-Through the game's own grammar only: signs and examine actions, giver dialog that changes with the giver's own quests, rotating asides, rare placed arrival lines, item and enemy descriptions, the world feed. No cutscenes, no lore tab, no journal paragraphs. The zoomed-out truth is never spoken.
+Through the game's own grammar only: signs and examine actions, and **Lines**, the one system by which the world speaks outside the quest flow (a shopkeeper's talk button, a room's Listen In, a quest giver's idle lines and asides through Talk and Chat), plus rare placed arrival lines, item and enemy descriptions and the world feed. Every line lands in the feed as a `line` event with its speaker and a source tag, so what was heard in play can be found and edited. No cutscenes, no lore tab, no journal paragraphs. The zoomed-out truth is never spoken.
 
 Every player-facing line matches how Anthony writes: short sentences, often fragments; second person, present tense; the instruction inside the flavor; a narrator a little bored of the player; one tic per NPC; sincerity in one sentence, never explained; dread in one line. Lines are drafted for him to rewrite before they ship.

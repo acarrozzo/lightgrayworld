@@ -3,13 +3,14 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
 import { AlertTriangle, Crown, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
+import { useLineSourcesStore } from '@/store/lineSourcesStore'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import FeedLinkButton from '@/components/feed/FeedLinkButton'
 
 type FilterType = 'all' | 'chat' | 'events' | 'actions'
 type ChatSubFilter = 'room-chat' | 'world-chat' | 'party-chat' | 'all-chat'
 type EventsSubFilter = 'world-activity' | 'all-events'
-type ActionsSubFilter = 'action-feedback' | 'movement' | 'all-actions'
+type ActionsSubFilter = 'action-feedback' | 'movement' | 'lines' | 'all-actions'
 
 export type InputMode = 'action' | 'room' | 'world' | 'party'
 
@@ -111,6 +112,13 @@ const INFO_STYLE: CategoryStyle = {
 }
 
 const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
+  // A spoken line (game-data/lines.js): a keeper, a crowd, a giver's flavor.
+  line: {
+    label: 'LINE',
+    icon: MessageSquareText,
+    barClass: 'bg-resource-gold',
+    iconClass: 'text-resource-gold',
+  },
   // A name carved into the Grand Quest Pillar: the one world-scale deed.
   savior: {
     label: 'SAVIOR',
@@ -175,6 +183,7 @@ const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
 }
 
 const ACTIVITY_LABELS: Record<string, string> = {
+  line: 'Line',
   savior: 'Savior',
   unlock: 'New',
   login: 'Login',
@@ -189,6 +198,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
 }
 
 const ACTIVITY_TEXT_CLASSES: Record<string, string> = {
+  line: 'text-resource-gold/90 italic',
   savior: 'text-resource-gold',
   login: 'text-fg-secondary',
   register: 'text-channel-room',
@@ -363,6 +373,7 @@ export default function FeedPanel({
   const [chatSubFilter, setChatSubFilter] = useState<ChatSubFilter>('all-chat')
   const [eventsSubFilter, setEventsSubFilter] = useState<EventsSubFilter>('all-events')
   const [actionsSubFilter, setActionsSubFilter] = useState<ActionsSubFilter>('all-actions')
+  const showLineSources = useLineSourcesStore((s) => s.showSources)
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE)
   const [isNearBottom, setIsNearBottom] = useState(true)
   const [isScrollable, setIsScrollable] = useState(false)
@@ -554,6 +565,9 @@ export default function FeedPanel({
         }
         if (actionsSubFilter === 'movement') {
           return isMovement
+        }
+        if (actionsSubFilter === 'lines') {
+          return entry.eventType === 'line'
         }
         return false
       }
@@ -856,12 +870,13 @@ export default function FeedPanel({
 
         {filter === 'actions' && (
           <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-channel-action/30">
-            {(['all-actions', 'action-feedback', 'movement'] as ActionsSubFilter[]).map((subKey) => {
+            {(['all-actions', 'action-feedback', 'movement', 'lines'] as ActionsSubFilter[]).map((subKey) => {
               const isActive = actionsSubFilter === subKey
               const labelMap: Record<ActionsSubFilter, string> = {
                 'all-actions': 'All Actions',
                 'action-feedback': 'Feedback',
                 'movement': 'Movement',
+                'lines': 'Lines',
               }
               return (
                 <button
@@ -1053,6 +1068,15 @@ export default function FeedPanel({
                   <div className={`flex flex-wrap items-baseline gap-1 flex-1 break-words leading-tight font-mono ${contentSize}`}>
                     {isRoomTravel ? (
                       <span className={`${messageColorClass} font-mono`}>{messageText}</span>
+                    ) : entry.eventType === 'line' ? (
+                      // A spoken line: the speaker, the words, and (for review) the data row.
+                      <>
+                        <span className="text-fg-bright font-mono">{actorLabel}:</span>
+                        <span className={`${messageColorClass} font-mono`}>{messageText}</span>
+                        {showLineSources && entry.source && (
+                          <span className="text-[10px] font-mono text-fg-muted/70 whitespace-nowrap">[{entry.source}]</span>
+                        )}
+                      </>
                     ) : isActivity ? (
                       <>
                         {activityLabel && (

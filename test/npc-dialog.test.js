@@ -77,3 +77,51 @@ test('overheard: only rooms with lines are listed, and a room without lines pick
   assert.equal(overheard.pickOverheard('no-such-room'), '')
   assert.equal(overheard.getOverheard('no-such-room'), null)
 })
+
+// ── the lines registry ───────────────────────────────────────────────────────
+
+const lines = require(path.join(ROOT, 'src/lib/game-data/lines.js'))
+
+test('lines: chat action derives from the talk action unless authored', () => {
+  assert.equal(lines.chatActionForGiver({ action: 'talk to old man' }), 'chat with old man')
+  assert.equal(lines.chatActionForGiver({ action: 'talk to old man', chatAction: 'pester old man' }), 'pester old man')
+  assert.equal(lines.chatActionForGiver(null), null)
+})
+
+test('lines: pickIndexed names the row, and the source tag reads room · speaker · set #n', () => {
+  assert.deepEqual(lines.pickIndexed(['a', 'b', 'c'], () => 0.5), { text: 'b', index: 1 })
+  assert.deepEqual(lines.pickIndexed('solo', () => 0.9), { text: 'solo', index: 0 })
+  assert.equal(lines.pickIndexed([], () => 0), null)
+  assert.equal(lines.sourceTag({ roomId: '220', speaker: 'todd', set: 'keeper', index: 2 }), '220 · todd · keeper #3')
+})
+
+test('lines: every authored set has a room, a speaker, a kind and non-empty strings', () => {
+  const sets = lines.listLineSets()
+  assert.ok(sets.length > 0)
+  for (const s of sets) {
+    assert.ok(/^\d{3}[a-z]*$/.test(s.roomId), `room id ${s.roomId}`)
+    assert.ok(s.speaker && s.speakerId, `speaker on ${s.roomId}`)
+    assert.ok(['keeper', 'listen', 'idle', 'aside'].includes(s.set))
+    assert.ok(s.lines.length > 0, `${s.roomId} ${s.speakerId} ${s.set} has lines`)
+    for (const l of s.lines) assert.ok(typeof l === 'string' && l.trim(), `${s.roomId} ${s.speakerId} ${s.set}: empty line`)
+  }
+  // Every keeper and listen set has a button; giver sets share the giver's chat action.
+  for (const s of sets) assert.ok(s.action, `${s.roomId} ${s.speakerId} ${s.set} has an action`)
+})
+
+// ── cycling ──────────────────────────────────────────────────────────────────
+
+const { nextLineIndex, clearLineCursors } = require(path.join(ROOT, 'src/lib/game-engine/line-cursor-state.js'))
+
+test('line cursor: each press serves the next line in order and wraps', () => {
+  clearLineCursors('p1')
+  assert.deepEqual([0, 1, 2, 0, 1].map(() => nextLineIndex('p1', '220|keeper', 3)), [0, 1, 2, 0, 1])
+  // Another set and another player each keep their own place.
+  assert.equal(nextLineIndex('p1', '220|listen', 5), 0)
+  assert.equal(nextLineIndex('p2', '220|keeper', 3), 0)
+  // A set that shrank since the last press wraps into range instead of overflowing.
+  clearLineCursors('p3')
+  nextLineIndex('p3', 'x', 4); nextLineIndex('p3', 'x', 4); nextLineIndex('p3', 'x', 4) // next is 3
+  assert.equal(nextLineIndex('p3', 'x', 2), 1)
+  assert.equal(nextLineIndex('p3', 'x', 0), -1)
+})

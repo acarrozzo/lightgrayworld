@@ -19,6 +19,12 @@ export type WorldFeedEntry = {
   /** Where this line leads, if it is about a place in the interface: shown as a small link on the line. */
   link?: FeedLink
   /**
+   * For `eventType: 'line'` (game-data/lines.js): the data row the spoken
+   * line came from, as "roomId · speaker · set #n". Shown only while the
+   * line-sources setting is on; the speaker is `actor`.
+   */
+  source?: string
+  /**
    * Deprecated: kept temporarily for compatibility with older persisted entries.
    * Prefer using `message` for all rendering.
    */

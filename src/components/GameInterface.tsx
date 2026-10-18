@@ -1850,8 +1850,17 @@ export default function GameInterface() {
       const isMoveAction = action === 'move'
       const travelDirection = isMoveAction && payload?.data?.direction ? payload.data.direction : undefined
 
+      // A spoken line (game-data/lines.js): the feed names the speaker and,
+      // while the setting is on, the data row it came from.
+      const spokenLine = payload?.data?.roomLine
+      const isLine = Boolean(spokenLine && typeof spokenLine.message === 'string' && spokenLine.message)
+      const lineSource = isLine && spokenLine.source
+        ? `${spokenLine.source.roomId} · ${spokenLine.source.speaker} · ${spokenLine.source.set} #${(spokenLine.source.index ?? 0) + 1}`
+        : undefined
+
       let eventType: string | undefined
-      if (isMoveAction) eventType = 'room-travel'
+      if (isLine) eventType = 'line'
+      else if (isMoveAction) eventType = 'room-travel'
       else if (action === 'teleport') eventType = 'teleport'
       else if (action === 'equip_item') eventType = 'equip'
       else if (action === 'auto_equip') eventType = 'equip'
@@ -1868,15 +1877,15 @@ export default function GameInterface() {
         outcome,
         eventType,
         direction: travelDirection,
-        actor: action,
+        actor: isLine && typeof spokenLine.speaker === 'string' ? spokenLine.speaker : action,
+        source: lineSource,
       })
 
-      // A spoken line (keeper talk, listen in): pin it in the room box.
-      const roomLine = payload?.data?.roomLine
-      if (roomLine && typeof roomLine.message === 'string' && roomLine.message) {
+      // A spoken line: pin it in the room box until the next line or room.
+      if (isLine) {
         const room = currentRoomRef.current
         if (room && (!payload?.data?.roomId || room.roomId === payload.data.roomId)) {
-          setCurrentRoom({ ...room, roomLine: { message: roomLine.message, ts: typeof roomLine.ts === 'number' ? roomLine.ts : timestampMs } })
+          setCurrentRoom({ ...room, roomLine: { message: spokenLine.message, ts: typeof spokenLine.ts === 'number' ? spokenLine.ts : timestampMs } })
         }
       }
 

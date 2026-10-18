@@ -1,6 +1,7 @@
 'use client'
 
 import { useTickerStore } from '@/store/tickerStore'
+import { useLineSourcesStore } from '@/store/lineSourcesStore'
 import { useFontPreferenceStore } from '@/store/fontPreferenceStore'
 import ThemeSelector from '@/components/ThemeSelector'
 
@@ -13,6 +14,8 @@ export default function SettingsContent({ onLogout }: SettingsContentProps) {
   const setEnabled = useTickerStore((state) => state.setEnabled)
   const fontFamily = useFontPreferenceStore((state) => state.fontFamily)
   const setFontFamily = useFontPreferenceStore((state) => state.setFontFamily)
+  const showSources = useLineSourcesStore((state) => state.showSources)
+  const setShowSources = useLineSourcesStore((state) => state.setShowSources)
 
   const handleToggleTicker = () => {
     setEnabled(!enabled)
@@ -59,6 +62,34 @@ export default function SettingsContent({ onLogout }: SettingsContentProps) {
         </div>
         <p className="mt-2 text-xs text-fg-muted">
           When enabled, recent actions (battles, quests, pickups, equip, messages) appear in a slim bar at the bottom of the screen. Click the bar to view recent history.
+        </p>
+      </section>
+
+      <section className="mb-8">
+        <h3 className="text-lg font-semibold text-fg-bright">Lines</h3>
+        <p className="text-sm text-fg-secondary">Show where each spoken line in the feed came from.</p>
+
+        <div className="mt-4 flex items-center gap-4">
+          <label htmlFor="line-sources-toggle" className="flex items-center gap-3 cursor-pointer">
+            <div className="relative">
+              <input
+                id="line-sources-toggle"
+                type="checkbox"
+                checked={showSources}
+                onChange={() => setShowSources(!showSources)}
+                className="sr-only"
+              />
+              <div className={`w-11 h-6 rounded-full transition-colors duration-200 ease-in-out ${showSources ? 'bg-stat-mag' : 'bg-surface-hover'}`}>
+                <div
+                  className={`w-5 h-5 bg-fg-bright rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${showSources ? 'translate-x-5' : 'translate-x-0.5'} mt-0.5`}
+                />
+              </div>
+            </div>
+            <span className="text-sm text-fg-bright">{showSources ? 'Line sources shown' : 'Line sources hidden'}</span>
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-fg-muted">
+          When enabled, every line an NPC, a shopkeeper or a crowd says carries a small tag in the feed naming the room, the speaker and the line&apos;s number in its set, so it can be found and edited.
         </p>
       </section>
 

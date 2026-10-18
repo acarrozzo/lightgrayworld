@@ -591,11 +591,11 @@ export function getRoomActions(roomId: string): RoomAction[] {
   // with one line pinned in the room box.
   const shop = getShop(roomId) as { keeper?: { action: string; label: string; lines: string[] } } | null
   if (shop?.keeper?.action && shop.keeper.lines.length > 0) {
-    extra.push({ action: shop.keeper.action, label: shop.keeper.label, icon: 'npc-merchant', className: 'fill-hue-gold' })
+    extra.push({ action: shop.keeper.action, label: shop.keeper.label, icon: 'chat', className: 'fill-hue-gold' })
   }
-  const overheard = getOverheard(roomId) as { action: string; label: string; icon: string } | null
+  const overheard = getOverheard(roomId) as { action: string; label: string } | null
   if (overheard) {
-    extra.push({ action: overheard.action, label: overheard.label, icon: overheard.icon, className: 'fill-surface-selected' })
+    extra.push({ action: overheard.action, label: overheard.label, icon: 'chat', className: 'fill-surface-selected' })
   }
   return extra.length ? [...base, ...extra] : base
 }

@@ -20,6 +20,7 @@ import Icon from './Icon'
 const { getPet } = require('@/lib/game-data/pets') as { getPet: (slug: string | null | undefined) => { slug: string; name: string; icon: string } | null }
 import NpcQuestCard from './NpcQuestCard'
 import PillarCard from './PillarCard'
+import { chatActionForGiver } from '@/lib/game-data/lines'
 import { getFaction } from '@/lib/game-data/factions'
 import ActionFlyout from './ActionFlyout'
 import { useActionFlyout } from '@/hooks/useActionFlyout'
@@ -512,6 +513,7 @@ export default function RoomDisplay({
                 quests={quests}
                 killList={killList}
                 onTalk={(questId) => handleQuestTalk(questId, actionItem.action)}
+                onChat={() => { void onAction?.({ type: chatActionForGiver({ action: actionItem.action }) }) }}
                 onTurnIn={(questId) => handleQuestTurnIn(questId)}
                 loadingQuestId={loadingQuestId ?? undefined}
               />
