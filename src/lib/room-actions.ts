@@ -1,6 +1,7 @@
 import { getCraftingStation } from './game-data/crafting-recipes'
 import { listGiverQuestIds } from './game-data/quest-registry'
 import { getOverheard } from './game-data/overheard'
+import { getShop } from './game-data/shops'
 
 export interface RoomAction {
   action: string
@@ -583,11 +584,20 @@ for (const roomId of FOREST_CHOP_WOOD_ROOMS) {
  */
 export function getRoomActions(roomId: string): RoomAction[] {
   const base = ROOM_ACTIONS[roomId] || []
-  // A room with overheard lines (game-data/overheard.js) gets its "listen in"
-  // button from the same table the server registers the handler from.
+  const extra: RoomAction[] = []
+  // A shop whose keeper has lines (game-data/shops.js) gets a talk button, and
+  // a room with overheard lines (game-data/overheard.js) gets "listen in", both
+  // from the same tables the server registers the handlers from. Each answers
+  // with one line pinned in the room box.
+  const shop = getShop(roomId) as { keeper?: { action: string; label: string; lines: string[] } } | null
+  if (shop?.keeper?.action && shop.keeper.lines.length > 0) {
+    extra.push({ action: shop.keeper.action, label: shop.keeper.label, icon: 'npc-merchant', className: 'fill-hue-gold' })
+  }
   const overheard = getOverheard(roomId) as { action: string; label: string; icon: string } | null
-  if (!overheard) return base
-  return [...base, { action: overheard.action, label: overheard.label, icon: overheard.icon, className: 'fill-surface-selected' }]
+  if (overheard) {
+    extra.push({ action: overheard.action, label: overheard.label, icon: overheard.icon, className: 'fill-surface-selected' })
+  }
+  return extra.length ? [...base, ...extra] : base
 }
 
 /**

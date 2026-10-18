@@ -1871,6 +1871,15 @@ export default function GameInterface() {
         actor: action,
       })
 
+      // A spoken line (keeper talk, listen in): pin it in the room box.
+      const roomLine = payload?.data?.roomLine
+      if (roomLine && typeof roomLine.message === 'string' && roomLine.message) {
+        const room = currentRoomRef.current
+        if (room && (!payload?.data?.roomId || room.roomId === payload.data.roomId)) {
+          setCurrentRoom({ ...room, roomLine: { message: roomLine.message, ts: typeof roomLine.ts === 'number' ? roomLine.ts : timestampMs } })
+        }
+      }
+
       // Check if action should open a modal
       if (payload?.data?.showModal === true) {
         const modalContent = payload?.data?.modalContent

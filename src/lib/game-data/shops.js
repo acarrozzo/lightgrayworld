@@ -27,12 +27,14 @@
  *
  * `stock` is ordered for display: weapons, then armour, then consumables.
  *
- * `keeper`, where present, is the person behind the counter: `lines` is a set
- * the shop modal shows one of under its title, at random, each time the shop
- * is opened. It is the only place a shopkeeper speaks, so it carries who they
- * are (docs/STORY.md) without a talk action per shop.
+ * `keeper`, where present, is the person behind the counter. `lines` is a
+ * rotating set: the room's `action` button ("talk to vinny") answers with one,
+ * pinned in the room box, and the shop window shows one under its title each
+ * time it opens. It is the only place a shopkeeper speaks, so it carries who
+ * they are (docs/STORY.md).
  *
- * @typedef {{ name: string, stock: string[], requiresMembership?: string, keeper?: { lines: string[] } }} Shop
+ * @typedef {{ name: string, stock: string[], requiresMembership?: string,
+ *   keeper?: { action: string, label: string, lines: string[] } }} Shop
  * @type {Record<string, Shop>}
  */
 const SHOPS = {
@@ -61,6 +63,8 @@ const SHOPS = {
   '207': {
     name: "Broccoli Rob's Veggie Stand",
     keeper: {
+      action: 'talk to rob',
+      label: 'Rob',
       lines: [
         "\"The farm feeds half this town. The town doesn't come here much. I prefer it.\"",
         "\"Veggies are good for you.\"",
@@ -77,6 +81,8 @@ const SHOPS = {
   '216': {
     name: "Adam's General Store",
     keeper: {
+      action: 'talk to adam',
+      label: 'Adam',
       lines: [
         "\"I had a bigger shop once.\"",
         "\"Prices are in chalk because I keep changing my mind.\"",
@@ -109,6 +115,8 @@ const SHOPS = {
   '220': {
     name: "Todd's Pub & Inn",
     keeper: {
+      action: 'talk to todd',
+      label: 'Todd',
       lines: [
         "\"I ran a tavern at Star City. The crowd got worse. So I left.\"",
         "\"Potions behind the bar. Beds upstairs.\"",
@@ -169,6 +177,8 @@ const SHOPS = {
   '227': {
     name: "Michael's Weapon Shop",
     keeper: {
+      action: 'talk to michael',
+      label: 'Michael',
       lines: [
         "\"My father made blades for the Red Guard. I make blades for the Red Guard. Time to upgrade.\"",
         "\"Floor to ceiling weapons. I don't sleep much.\"",
@@ -199,6 +209,8 @@ const SHOPS = {
   '229': {
     name: "Vincenzo's Meat & Produce Stand",
     keeper: {
+      action: 'talk to vinny',
+      label: 'Vinny',
       lines: [
         "\"Welcome friend!\"",
         "\"Chickens! You want one? No? Why doesn't anyone want my chickens.\"",
@@ -215,6 +227,8 @@ const SHOPS = {
   '237': {
     name: 'Red Town Stables',
     keeper: {
+      action: 'talk to stablehand',
+      label: 'Stablehand',
       lines: [
         "\"Came over on a boat with nothing. The horses were here. Red Guard stock, bred down from the cavalry.\"",
         "\"Want a horse?\"",
@@ -239,6 +253,8 @@ const SHOPS = {
   '236': {
     name: 'Shady Shop',
     keeper: {
+      action: 'talk to shady',
+      label: 'Shady',
       lines: [
         "\"Where's it from? How'd it get here? Don't ask.\"",
         "\"No questions. That goes both ways, friend.\"",
@@ -366,4 +382,11 @@ function pickKeeperLine(shop, rand = Math.random) {
   return lines[Math.floor(rand() * lines.length)] ?? ''
 }
 
-module.exports = { SHOPS, getShop, shopSellsItem, shopRequiresMembership, getShopsAt, pickKeeperLine }
+/** Shops whose keeper has a talk button: [roomId, keeper] pairs. */
+function listKeeperShops() {
+  return Object.entries(SHOPS)
+    .filter(([, shop]) => shop.keeper && shop.keeper.action && Array.isArray(shop.keeper.lines) && shop.keeper.lines.length > 0)
+    .map(([roomId, shop]) => [roomId, shop.keeper])
+}
+
+module.exports = { SHOPS, getShop, shopSellsItem, shopRequiresMembership, getShopsAt, pickKeeperLine, listKeeperShops }

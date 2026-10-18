@@ -249,6 +249,11 @@ export default function RoomBox({
         <p className="text-xs text-resource-gold/80 italic">{room.travelerNote.message}</p>
       )}
 
+      {/* The last spoken line here (a keeper, the crowd) — stays until the next line or the next room */}
+      {room.roomLine?.message && (
+        <p className="text-xs text-resource-gold/80 italic" aria-live="polite">{room.roomLine.message}</p>
+      )}
+
       {/* Travelers passing through — shared by everyone here */}
       {Array.isArray(room.travelers) && room.travelers.length > 0 && (
         <div className="space-y-2">

@@ -165,6 +165,12 @@ export interface RoomView extends RoomViewNavigation {
    * the traveler went. Replaced by the next room.
    */
   travelerNote?: { message: string; ts: number } | null
+  /**
+   * Client-only: the last spoken line in this room (a keeper's talk button,
+   * "listen in"), pinned in the room panel until the next line or the next
+   * room. Set from `action:feedback` payloads that carry `roomLine`.
+   */
+  roomLine?: { message: string; ts: number } | null
 }
 
 

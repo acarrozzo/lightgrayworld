@@ -8,7 +8,7 @@ const { checkAndConsumeCooldown } = require('./services/action-cap-service')
 const { feedTally } = require('./services/room-supply-service')
 const { grantTeleport } = require('./teleport-grants')
 const { getRecipeById, isRecipeAvailableInRoom, whereToCraft, describeCraft } = require('../game-data/crafting-recipes')
-const { getShop, pickKeeperLine } = require('../game-data/shops')
+const { getShop, pickKeeperLine, listKeeperShops } = require('../game-data/shops')
 const { OVERHEARD, listOverheardRooms, pickOverheard } = require('../game-data/overheard')
 const { goldChestFlagForRoom } = require('../game-data/gold-chests')
 const { getRoomRest, restBuffWouldGain } = require('../game-data/room-rests')
@@ -3896,31 +3896,46 @@ for (const roomId of MOUNTAIN_CHOP_WOOD_ROOMS) {
 }
 
 /**
- * "Listen in": one overheard line at random from game-data/overheard.js, free,
- * as a modal like a sign. Registered only for rooms that have lines, so the
- * button the client draws from the same table never lands on nothing.
+ * A room line: a free button that answers with one spoken line, pinned in the
+ * room box (yellow italic, where a traveler's departure shows) until the next
+ * line or the player leaves. No modal. The line is also the feed entry. Used
+ * by "listen in" (game-data/overheard.js) and by a shopkeeper's talk button
+ * (shops.js `keeper`). Registered only where lines exist, so the button the
+ * client draws from the same tables never lands on nothing.
  */
-function makeListenHandler(roomId) {
-  const entry = OVERHEARD[roomId]
-  return free(async (playerId, roomState) =>
-    executeBasicDisplay(entry.action, entry.feed, playerId, roomState, true, {
-      showModal: true,
-      message: entry.feed,
-      modalContent: {
-        title: entry.title,
-        type: 'icon',
-        icon: entry.icon,
-        iconColor: entry.iconColor,
-        message: pickOverheard(roomId),
-      },
-    })
-  )
+function makeRoomLineHandler(action, pick) {
+  return free(async (playerId, roomState) => {
+    const player = roomState.players.get(playerId)
+    if (!player) return createErrorResult(action, 'Player not found in this room')
+    roomState.touchActivity()
+    const line = pick()
+    return {
+      success: true,
+      action,
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload(action, 'success', line, {
+            roomId: roomState.roomId,
+            roomLine: { message: line, ts: Date.now() },
+          }),
+        },
+      ],
+    }
+  })
 }
 
 for (const roomId of listOverheardRooms()) {
   ROOM_ACTIONS[roomId] = {
     ...(ROOM_ACTIONS[roomId] || {}),
-    [OVERHEARD[roomId].action]: makeListenHandler(roomId),
+    [OVERHEARD[roomId].action]: makeRoomLineHandler(OVERHEARD[roomId].action, () => pickOverheard(roomId)),
+  }
+}
+
+for (const [roomId, keeper] of listKeeperShops()) {
+  ROOM_ACTIONS[roomId] = {
+    ...(ROOM_ACTIONS[roomId] || {}),
+    [keeper.action]: makeRoomLineHandler(keeper.action, () => pickKeeperLine(getShop(roomId))),
   }
 }
 
