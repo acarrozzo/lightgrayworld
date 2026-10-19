@@ -114,8 +114,8 @@ test("a quest opens only when every quest in its `after` list is done", () => {
   assert.equal(registry.isQuestOpen('quest_oldman_001', new Set()), true, 'first quest opens on meeting')
   assert.equal(registry.isQuestOpen('quest_oldman_002', new Set()), false, 'Rat Problem waits for the flower')
   assert.equal(registry.isQuestOpen('quest_oldman_002', new Set(['quest_oldman_001'])), true)
-  assert.equal(registry.isQuestOpen('quest_oldman_004', new Set(['quest_oldman_001'])), false, 'Blueberry Jam waits for the rats')
-  assert.equal(registry.isQuestOpen('quest_oldman_004', new Set(['quest_oldman_001', 'quest_oldman_002'])), true)
+  assert.equal(registry.isQuestOpen('quest_oldman_003', new Set(['quest_oldman_001'])), false, 'The Gator waits for the rats')
+  assert.equal(registry.isQuestOpen('quest_oldman_003', new Set(['quest_oldman_001', 'quest_oldman_002'])), true)
   assert.equal(registry.isQuestOpen('no_such_quest', new Set()), false)
 })
 
@@ -205,7 +205,7 @@ test('completing a quest opens its dependents on the next pass, and only those',
   const db = fakeDb({ quests: [{ questId: 'quest_oldman_001', completed: true }], met: ['old_man'] })
   assert.deepEqual(await questService.openQuestsForGiver('p1', 'old_man', db), ['quest_oldman_002'])
   db.rows.find((r) => r.questId === 'quest_oldman_002').completed = true
-  assert.deepEqual(await questService.openQuestsForGiver('p1', 'old_man', db), ['quest_oldman_003', 'quest_oldman_004'])
+  assert.deepEqual(await questService.openQuestsForGiver('p1', 'old_man', db), ['quest_oldman_003'])
   assert.deepEqual(await questService.openQuestsForGiver('p1', 'old_man', db), [], 'idempotent')
 })
 
@@ -214,5 +214,5 @@ test('reconcile infers a met giver from a row of their quests and opens what the
   const db = fakeDb({ quests: [{ questId: 'quest_oldman_001', completed: true }, { questId: 'quest_oldman_002', completed: true }] })
   const opened = await questService.reconcileQuestState('p1', db)
   assert.deepEqual(db.metRows.map((r) => r.giverId), ['old_man'])
-  assert.deepEqual(opened.sort(), ['quest_oldman_003', 'quest_oldman_004'])
+  assert.deepEqual(opened.sort(), ['quest_oldman_003'])
 })

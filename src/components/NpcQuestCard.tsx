@@ -119,14 +119,14 @@ export default function NpcQuestCard({
       {/* NPC header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-fg-bright/10 bg-surface-raised/40">
         {npcIcon && <Icon name={npcIcon} size={20} color="current" />}
-        <span className="text-sm font-semibold text-fg-bright/80 flex-1 min-w-0 truncate">{npcName}</span>
+        <span className="text-sm font-semibold text-fg-bright/80 min-w-0 truncate">{npcName}</span>
         {onChat && isMet && (
           // Flavor again, outside the quest flow: answered as a yellow line in the room.
           <button
             type="button"
             onClick={onChat}
             title={`Chat with ${npcName}`}
-            className="shrink-0 flex items-center gap-1 px-2 py-1 rounded text-xs text-fg-secondary hover:text-resource-gold hover:bg-surface-hover transition-colors"
+            className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium fill-hue-gold hover:brightness-110 transition-all"
           >
             <MessageCircle size={13} />
             Chat

@@ -9,6 +9,7 @@
  *
  *   keeper   shops.js `keeper.lines`        — a shopkeeper's talk button
  *   listen   overheard.js `lines`           — a room's "listen in" button
+ *   talker   talkers.js `sets`              — an NPC with no quest and no shop
  *   idle /   quest-givers.json `idleDialogs` — a quest giver's Chat button,
  *   aside    and `asides`                     the same sets Talk draws on
  *
@@ -22,6 +23,7 @@
  */
 const { SHOPS, listKeeperShops } = require('./shops')
 const { OVERHEARD, listOverheardRooms } = require('./overheard')
+const { listTalkers } = require('./talkers')
 const { GIVERS } = require('./quest-registry')
 
 /** The action a giver's Chat button sends: `chatAction` if authored, else "chat with …". */
@@ -58,6 +60,13 @@ function listLineSets() {
   for (const roomId of listOverheardRooms()) {
     const o = OVERHEARD[roomId]
     sets.push({ roomId, speaker: o.label, speakerId: 'crowd', set: 'listen', action: o.action, lines: o.lines, gate: null, shop: null })
+  }
+  for (const [roomId, t] of listTalkers()) {
+    for (const s of t.sets) {
+      if (s.lines.length === 0) continue
+      const member = s.ifMember ? (Array.isArray(s.ifMember) ? s.ifMember : [s.ifMember]) : null
+      sets.push({ roomId, speaker: t.name, speakerId: t.id, set: 'talker', action: t.action, lines: s.lines, gate: null, memberOf: member, shop: null })
+    }
   }
   for (const [giverId, g] of Object.entries(GIVERS)) {
     const action = chatActionForGiver(g)

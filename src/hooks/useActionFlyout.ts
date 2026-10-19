@@ -15,7 +15,7 @@ export function useActionFlyout(actionResult?: {
   action?: string
   source?: string
   timestamp?: string
-  data?: { showModal?: boolean } | null
+  data?: { showModal?: boolean; roomLine?: unknown } | null
 }) {
   const [activeFlyoutAction, setActiveFlyoutAction] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -30,10 +30,12 @@ export function useActionFlyout(actionResult?: {
   }
 
   // Show the flyout whenever a fresh socket-sourced action result arrives.
-  // Skip actions that open a modal — the modal already surfaces the result.
+  // Skip actions that open a modal (the modal already surfaces the result) and
+  // spoken lines (the room pins them in yellow right above the button).
   useEffect(() => {
     if (actionResult?.source !== 'socket' || !actionResult?.action) return
     if (actionResult?.data?.showModal === true) return
+    if (actionResult?.data?.roomLine) return
     setActiveFlyoutAction(actionResult.action)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {

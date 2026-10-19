@@ -36,7 +36,7 @@ async function handleResetQuests(request: AuthenticatedRequest) {
       })
 
       const completedQuests = [
-        'quest_oldman_001', 'quest_oldman_002', 'quest_oldman_003', 'quest_oldman_004',
+        'quest_oldman_001', 'quest_oldman_002', 'quest_oldman_003',
         'quest_youngsoldier_001', 'quest_youngsoldier_002', 'quest_youngsoldier_003',
       ]
       await prisma.questProgress.createMany({

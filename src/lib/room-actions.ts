@@ -2,6 +2,7 @@ import { getCraftingStation } from './game-data/crafting-recipes'
 import { listGiverQuestIds } from './game-data/quest-registry'
 import { getOverheard } from './game-data/overheard'
 import { getShop } from './game-data/shops'
+import { getTalker } from './game-data/talkers'
 
 export interface RoomAction {
   action: string
@@ -593,11 +594,17 @@ export function getRoomActions(roomId: string): RoomAction[] {
   if (shop?.keeper?.action && shop.keeper.lines.length > 0) {
     extra.push({ action: shop.keeper.action, label: shop.keeper.label, icon: 'chat', className: 'fill-hue-gold' })
   }
+  const talker = getTalker(roomId) as { action: string; label: string } | null
+  if (talker) {
+    extra.push({ action: talker.action, label: talker.label, icon: 'chat', className: 'fill-hue-gold' })
+  }
   const overheard = getOverheard(roomId) as { action: string; label: string } | null
   if (overheard) {
     extra.push({ action: overheard.action, label: overheard.label, icon: 'chat', className: 'fill-surface-selected' })
   }
-  return extra.length ? [...base, ...extra] : base
+  // People first: a keeper or talker's button leads the row, so whoever is
+  // in the room to talk to is the first thing in it.
+  return extra.length ? [...extra, ...base] : base
 }
 
 /**

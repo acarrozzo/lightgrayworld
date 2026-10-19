@@ -269,7 +269,26 @@ export default function RoomBox({
         </div>
       )}
 
-      {/* Direction Buttons */}
+      <RoomDisplay
+        room={room}
+        roomPlayers={roomPlayers}
+        currentPlayerId={currentPlayerId}
+        onAction={onAction}
+        onOpenPlayerProfile={onOpenPlayerProfile}
+        party={party}
+        pendingFollowIds={pendingFollowIds}
+        onFollow={onFollow}
+        gatherCooldowns={gatherCooldowns}
+        supplies={supplies}
+        showHeader={false}
+        className="mt-2"
+        worldTick={worldTick}
+        actionResult={actionResult}
+        quests={quests}
+        killList={killList}
+      />
+
+      {/* Direction Buttons: the exits, at the foot of the card, after everything the room holds */}
       {availableDirections.length > 0 && (
         <div className="space-y-1">
           <div className="flex flex-wrap gap-2">
@@ -290,25 +309,6 @@ export default function RoomBox({
           )}
         </div>
       )}
-
-      <RoomDisplay
-        room={room}
-        roomPlayers={roomPlayers}
-        currentPlayerId={currentPlayerId}
-        onAction={onAction}
-        onOpenPlayerProfile={onOpenPlayerProfile}
-        party={party}
-        pendingFollowIds={pendingFollowIds}
-        onFollow={onFollow}
-        gatherCooldowns={gatherCooldowns}
-        supplies={supplies}
-        showHeader={false}
-        className="mt-2"
-        worldTick={worldTick}
-        actionResult={actionResult}
-        quests={quests}
-        killList={killList}
-      />
 
     </div>
   )

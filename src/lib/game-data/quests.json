@@ -138,7 +138,7 @@
     "questType": "main",
     "level": 5,
     "title": "The Gator",
-    "summary": "With the rats cleared out, the Old Man turns his attention to a bigger problem — a massive gator lurking in the marsh behind his cabin.",
+    "summary": "With the rats cleared out, the Old Man turns his attention to a bigger problem, a massive gator lurking in the marsh behind his cabin.",
     "objective": "Defeat the Gator in the Marsh behind the cabin.",
     "nextStep": "Head southwest into the Marsh and defeat the Gator, then return to the Old Man.",
     "reminderDialog": "That gator is still out there in the swamp. Head southwest into the marsh and deal with it when you're ready.",
@@ -163,38 +163,6 @@
       {
         "type": "xp",
         "amount": 20
-      }
-    ]
-  },
-  "quest_oldman_004": {
-    "giverId": "old_man",
-    "questType": "side",
-    "level": 1,
-    "title": "Blueberry Jam",
-    "summary": "The Old Man wants blueberry jam the way his wife made it. He needs berries.",
-    "objective": "Bring 10 Blueberries to the Old Man.",
-    "nextStep": "Gather 10 Blueberries from the blueberry patch, then return to the Old Man.",
-    "reminderDialog": "My wife made the best blueberry jam. I've got her recipe and no berries. Bring me ten from the patch.",
-    "completionDialog": "Well I'll be. You got 'em. I'll make a batch tonight. Won't be as good as hers.",
-    "after": [
-      "quest_oldman_002"
-    ],
-    "requirements": [
-      {
-        "type": "hasItem",
-        "itemSlug": "blueberry",
-        "quantity": 10
-      }
-    ],
-    "consumeRequirementsOnComplete": true,
-    "rewards": [
-      {
-        "type": "currency",
-        "amount": 12
-      },
-      {
-        "type": "xp",
-        "amount": 8
       }
     ]
   },
@@ -258,8 +226,8 @@
     "summary": "Jack says the Bat Cave is crawling with bats. Bring him their wings and he'll make it worth your while.",
     "objective": "Collect 5 Bat Wings from the Bat Cave.",
     "nextStep": "Head into the Bat Cave south of the Stone Path and hunt bats for their wings. Bats fly, so you'll need a ranged weapon like a boomerang or bow to hit them. Bring 5 Bat Wings back to Jack.",
-    "reminderDialog": "Only got {progress} of {count} wings so far? Remember, bats fly — you need a ranged weapon to hit them. Equip your boomerang or craft a bow and get back in there!",
-    "completionDialog": "Five wings, nice haul! Here's a little something for your feet. And remember — any enemy that flies is out of reach of a sword. Always keep a ranged weapon handy for those.",
+    "reminderDialog": "Only got {progress} of {count} wings so far? Remember, bats fly, you need a ranged weapon to hit them. Equip your boomerang or craft a bow and get back in there!",
+    "completionDialog": "Five wings, nice haul! Here's a little something for your feet. And remember, any enemy that flies is out of reach of a sword. Always keep a ranged weapon handy for those.",
     "requirements": [
       {
         "type": "hasItem",
@@ -294,7 +262,7 @@
     "objective": "Craft a Wooden Bow at Jack's workshop.",
     "nextStep": "Pick up the hatchet at Jack's cabin and head north into Goblin Woods to chop five wood, keeping an eye out for goblins. A bow needs a length of string too: there is one lying in the Abandoned Workshop in the Bat Cave. Then come back to Jack's cabin and use the crafting table to craft a Wooden Bow.",
     "reminderDialog": "Still working on that bow? Grab the hatchet here if you haven't, chop five wood up north at the farm, and fetch a string from that old workshop in the Bat Cave. Then use my crafting table to put a bow together. Easy!",
-    "completionDialog": "Now THAT is a proper bow! You've got the basics of woodworking down. Keep the bow — it'll serve you well against those flying critters. Here's some materials to get you started on your next project.",
+    "completionDialog": "Now THAT is a proper bow! You've got the basics of woodworking down. Keep the bow, it'll serve you well against those flying critters. Here's some materials to get you started on your next project.",
     "requirements": [
       {
         "type": "hasItem",
@@ -372,9 +340,9 @@
     "title": "Craft with Leather",
     "summary": "Freddie's hides are the first material you can turn into real armour. He wants to see you make something out of one.",
     "objective": "Craft any piece of leather equipment.",
-    "nextStep": "Take a free hammer from Freddie, pay his 50 gold toll and gather leather from the cows to the north (5 a trip). Then use the leather bench right here at the farm — or the crafting table in Red Town's Grand Square — and craft a leather hood, gloves or boots for 3 leather apiece.",
+    "nextStep": "Take a free hammer from Freddie, pay his 50 gold toll and gather leather from the cows to the north (5 a trip). Then use the leather bench right here at the farm, or the crafting table in Red Town's Grand Square, and craft a leather hood, gloves or boots for 3 leather apiece.",
     "reminderDialog": "\"Still nothing to show me? Hammer's in the crate, hides are through the gate, and the bench is right here. Three leather makes a hood.\"",
-    "completionDialog": "Freddie turns the piece over twice and hands it back. \"That'll hold. Come get hides whenever you like — and if you want more than five at a go, hunt them in the forest.\" He loads you up with supplies on the way out.",
+    "completionDialog": "Freddie turns the piece over twice and hands it back. \"That'll hold. Come get hides whenever you like, and if you want more than five at a go, hunt them in the forest.\" He loads you up with supplies on the way out.",
     "requirements": [
       {
         "type": "hasAnyItem",
@@ -439,10 +407,10 @@
     "questType": "side",
     "level": 13,
     "title": "Gnome Needs Berries",
-    "summary": "The Forest Gnome wants berries — twenty red and twenty blue. He is not saying what for.",
+    "summary": "The Forest Gnome wants berries, twenty red and twenty blue. He is not saying what for.",
     "objective": "Bring 20 Redberries and 20 Blueberries to the Forest Gnome.",
-    "nextStep": "Pick berries from the bushes scattered around the Forest — redberries by the river, the small graveyard and the abandoned campsite; blueberries at the forest dead end and atop the hill. Plenty of enemies drop them too.",
-    "reminderDialog": "\"Still short on berries? They grow all over this forest — red ones down by the river and the graveyard, blue ones at the dead end and up on the hill. Twenty of each, that's all I ask.\"",
+    "nextStep": "Pick berries from the bushes scattered around the Forest, redberries by the river, the small graveyard and the abandoned campsite; blueberries at the forest dead end and atop the hill. Plenty of enemies drop them too.",
+    "reminderDialog": "\"Still short on berries? They grow all over this forest, red ones down by the river and the graveyard, blue ones at the dead end and up on the hill. Twenty of each, that's all I ask.\"",
     "completionDialog": "\"Twenty and twenty, just like I asked!\" The gnome takes the whole lot, smashes it together on the spot, and hands you back an armful of potions. \"Waste not!\"",
     "requirements": [
       {
@@ -487,9 +455,9 @@
     "title": "New Tree Hut Door",
     "summary": "The Forest Gnome's tree hut needs a new door. Twenty pieces of wood should cover it.",
     "objective": "Bring 20 Wood to the Forest Gnome.",
-    "nextStep": "Chop trees anywhere in the Forest with a hatchet — there's a spare one here at the tree hut if you need one — then bring 20 wood back.",
-    "reminderDialog": "\"Only {progress} of {count} wood so far? Take a hatchet — there's a spare one right here — and chop the trees around this forest. Twenty pieces and I can finally build that door.\"",
-    "completionDialog": "\"Twenty pieces! That's a door and then some.\" The gnome passes you a coil of leather and an iron hatchet. \"Keep that one. It bites deeper than yours — you'll bring back twice the wood from every tree.\"",
+    "nextStep": "Chop trees anywhere in the Forest with a hatchet, there's a spare one here at the tree hut if you need one, then bring 20 wood back.",
+    "reminderDialog": "\"Only {progress} of {count} wood so far? Take a hatchet, there's a spare one right here, and chop the trees around this forest. Twenty pieces and I can finally build that door.\"",
+    "completionDialog": "\"Twenty pieces! That's a door and then some.\" The gnome passes you a coil of leather and an iron hatchet. \"Keep that one. It bites deeper than yours, you'll bring back twice the wood from every tree.\"",
     "requirements": [
       {
         "type": "hasItem",
@@ -529,7 +497,7 @@
     "objective": "Defeat 3 Trolls.",
     "nextStep": "The Troll Base Camp lies at the far north of the Forest. Defeat 3 Trolls there, then return to the tree hut.",
     "reminderDialog": "\"Only {progress} of {count} trolls down? They're camped up north, guarding the gate to the Dark Forest. Three of them, then come see me.\"",
-    "completionDialog": "\"Three trolls! Ha!\" The gnome tosses you a fresh pair of gloves. \"Made these myself. Troll hide — still warm.\"",
+    "completionDialog": "\"Three trolls! Ha!\" The gnome tosses you a fresh pair of gloves. \"Made these myself. Troll hide, still warm.\"",
     "requirements": [
       {
         "type": "killCount",
@@ -560,10 +528,10 @@
     "questType": "side",
     "level": 13,
     "title": "Bigfoot Sighting",
-    "summary": "Bigfoot is rarely seen — some say he doesn't exist at all. Bill says otherwise, and he wants proof.",
+    "summary": "Bigfoot is rarely seen, some say he doesn't exist at all. Bill says otherwise, and he wants proof.",
     "objective": "Defeat Bigfoot.",
     "nextStep": "Bigfoot turns up anywhere in the Forest, but only rarely. Keep hunting until he shows himself, then return to Bill's camp.",
-    "reminderDialog": "\"No Bigfoot yet? He's out there. Doesn't matter which part of the forest — keep walking it and he'll turn up eventually.\"",
+    "reminderDialog": "\"No Bigfoot yet? He's out there. Doesn't matter which part of the forest, keep walking it and he'll turn up eventually.\"",
     "completionDialog": "Bill lets out a low whistle. \"You actually found him.\" He drags a heavy fur cloak out of his tent. \"Made this from the last one. Been waiting for somebody who'd earned it.\"",
     "requirements": [
       {
@@ -595,10 +563,10 @@
     "questType": "main",
     "level": 13,
     "title": "Forest Hunter",
-    "summary": "The forest animals are running rampant. Bill wants one of each taken down — and he'll part with a Gold Key for it.",
+    "summary": "The forest animals are running rampant. Bill wants one of each taken down, and he'll part with a Gold Key for it.",
     "objective": "Hunt a Wild Boar, Wolf, Coyote, Buck, Bear and Stag.",
     "nextStep": "All six roam the Forest. Travel it until each one crosses your path, then return to Bill's camp.",
-    "reminderDialog": "\"Still got some hunting left. Wild Boar, Wolf, Coyote, Buck, Bear, Stag — one of each, and they're all in this forest somewhere.\"",
+    "reminderDialog": "\"Still got some hunting left. Wild Boar, Wolf, Coyote, Buck, Bear, Stag, one of each, and they're all in this forest somewhere.\"",
     "completionDialog": "\"All six.\" Bill hands over a light, worn shield, then a heavy gold key. \"That key opens the gold chest northeast of here. Best gear in the forest is sitting in it.\"",
     "requirements": [
       {
@@ -667,8 +635,8 @@
     "title": "Bring 3 Thieves to Justice",
     "summary": "Thieves work the roads and back alleys around Red Town. The Captain wants three of them dealt with.",
     "objective": "Defeat 3 Thieves.",
-    "nextStep": "Thieves turn up anywhere in Red Town and along the stone paths — more often in the back alleys and the sewers. Take down three, then return to the Lookout Tower.",
-    "reminderDialog": "\"{progress} of {count} so far. They're out there — walk the roads and the alleys and they'll find you soon enough.\"",
+    "nextStep": "Thieves turn up anywhere in Red Town and along the stone paths, more often in the back alleys and the sewers. Take down three, then return to the Lookout Tower.",
+    "reminderDialog": "\"{progress} of {count} so far. They're out there, walk the roads and the alleys and they'll find you soon enough.\"",
     "completionDialog": "\"Three fewer.\" The Captain finally turns round and hands you a crossbow, then two heavy quivers. \"Take these. You'll want the reach.\"",
     "requirements": [
       {
@@ -713,7 +681,7 @@
     "summary": "The Red Guard is short on blades. Five long swords will do.",
     "objective": "Bring 5 Long Swords to the Red Guard Captain.",
     "nextStep": "Alpha Scorpions, Orcs, Kobolds and Tarantulas drop Long Swords. Adam's General Store and Michael's Weapon Shop both sell them if you'd rather save the time.",
-    "reminderDialog": "\"{progress} of {count} swords. Buy them from Adam or Michael, or take them off an Alpha Scorpion, Orc, Kobold or Tarantula — I don't much mind which.\"",
+    "reminderDialog": "\"{progress} of {count} swords. Buy them from Adam or Michael, or take them off an Alpha Scorpion, Orc, Kobold or Tarantula. I don't much mind which.\"",
     "completionDialog": "\"Five. That'll arm the night watch.\" He pulls an officer's helm off the rack and puts it in your hands. \"Elite issue. Don't lose it.\"",
     "requirements": [
       {
@@ -748,7 +716,7 @@
     "summary": "The sewers under town are infested with mutated vermin. The Captain wants a sample of each exterminated.",
     "objective": "Defeat a Tarantula, a Sewer Rat and a Red Gator.",
     "nextStep": "The sewer entrances are in the Red Town Courtyard and in the back alley east of Wizards Way. All three live down there.",
-    "reminderDialog": "\"Still crawling down there. A Tarantula, a Sewer Rat and a Red Gator — one of each and I'll call it done.\"",
+    "reminderDialog": "\"Still crawling down there. A Tarantula, a Sewer Rat and a Red Gator, one of each and I'll call it done.\"",
     "completionDialog": "\"One of each. The sewers are a slightly less awful place.\" He hands over a flail with three spiked heads. \"Found it down there years ago. It suits you better than it ever suited me.\"",
     "requirements": [
       {
@@ -794,7 +762,7 @@
     "title": "Twice as Nice",
     "summary": "The Plaza gardener wants a matched pair of flowers, and is oddly particular about where the second one comes from.",
     "objective": "Bring 2 Flowers to the Town Hall Plaza.",
-    "nextStep": "Pick one in the Grassy Field flower patch, then pick the second from the Babylon Gardens — west of the Mayor's office, up from the Plaza.",
+    "nextStep": "Pick one in the Grassy Field flower patch, then pick the second from the Babylon Gardens, west of the Mayor's office, up from the Plaza.",
     "reminderDialog": "\"Only {progress} of {count} flowers. One grows out in the Grassy Field, and you can pick the other right here in the Babylon Gardens.\"",
     "completionDialog": "\"Two. A matched pair.\" The gardener holds them a moment longer than she needs to. \"These go on the shelf at home. For them.\"",
     "requirements": [
@@ -834,7 +802,7 @@
     "title": "Cookin up some Meat-a-balls",
     "summary": "The Plaza chef needs cooked meat, and will teach you what he does with it.",
     "objective": "Bring 5 Cooked Meat to the Town Hall Plaza.",
-    "nextStep": "Many creatures drop raw meat. Cook it over a fire — there's one right in the Grand Square, and the Old Man keeps one burning in his cabin — and bring five cooked pieces back.",
+    "nextStep": "Many creatures drop raw meat. Cook it over a fire, there's one right in the Grand Square, and the Old Man keeps one burning in his cabin, and bring five cooked pieces back.",
     "reminderDialog": "\"{progress} of {count} pieces! Cook the raw meat over a fire, eh? There's a good one in the Grand Square.\"",
     "completionDialog": "\"Bellissimo!\" The chef takes the meat and walks you through it start to finish. You leave with five meatballs and the recipe in your head. They restore 400 HP a piece.",
     "requirements": [
@@ -869,8 +837,8 @@
     "title": "Stolen Teddy Bear",
     "summary": "A little girl is crying in her parents' arms. Thieves took her teddy bear down into the sewers.",
     "objective": "Defeat the Master Thief.",
-    "nextStep": "The Master Thief holds the Thieve's Den treasure room. Get into the sewers, find the false wall at the dead end — or the secret entrance off the back alley — and work your way in.",
-    "reminderDialog": "\"The Master Thief still has it. He's down in the Den, past the training room. Please — she hasn't slept.\"",
+    "nextStep": "The Master Thief holds the Thieve's Den treasure room. Get into the sewers, find the false wall at the dead end, or the secret entrance off the back alley, and work your way in.",
+    "reminderDialog": "\"The Master Thief still has it. He's down in the Den, past the training room. Please, she hasn't slept.\"",
     "completionDialog": "Little Suzie cheers and will not let go of it again. \"It was her brother's,\" her mother says, and does not say more. Suzie decides she loves the bear more than her new hamster, so she gives the hamster to you.",
     "requirements": [
       {
@@ -956,7 +924,7 @@
     "objective": "Defeat the Ogre Lieutenant.",
     "nextStep": "The Ogre Lair is in the southwest of the Forest. Follow the path out of town north, then head west when you reach the Forest.",
     "reminderDialog": "\"The Ogre Lieutenant is still breathing. His lair is southwest in the Forest. Come back when that's no longer true.\"",
-    "completionDialog": "\"Then you're one of us.\" The recruiter hauls two blades off the display rack — a bastard sword and a great sword — and hands them over. \"Signing bonus. The guild's skills and its quests are open to you now.\"",
+    "completionDialog": "\"Then you're one of us.\" The recruiter hauls two blades off the display rack, a bastard sword and a great sword, and hands them over. \"Signing bonus. The guild's skills and its quests are open to you now.\"",
     "requirements": [
       {
         "type": "killCount",
@@ -995,7 +963,7 @@
     "summary": "Skeleton Knights hold the Catacombs beneath Red Town. Pete wants three of them put back down.",
     "objective": "Defeat 3 Skeleton Knights.",
     "nextStep": "The Catacombs run west off the sewers. Head down into the sewers and northwest to the great stone wall, then search it for the door.",
-    "reminderDialog": "\"{progress} of {count}. They're in the Catacombs under town — through the sewers, northwest, past the stone door.\"",
+    "reminderDialog": "\"{progress} of {count}. They're in the Catacombs under town, through the sewers, northwest, past the stone door.\"",
     "completionDialog": "\"Three back to hell.\" Pete tosses you a pair of knuckles carved out of something that used to walk. \"Bone Knuckles. Suits you.\"",
     "requirements": [
       {
@@ -1029,7 +997,7 @@
     "title": "Shark Hunter",
     "summary": "Sharks infest the water below the Blue Ocean. Pete is holding two of the best swords in the guild for whoever hunts them.",
     "objective": "Defeat a Great White and a Hammerhead.",
-    "nextStep": "The Blue Ocean lies west of the Grassy Field. Get beneath it with a Gills Potion or a Gills spell — both sharks are down there. Neither can be shot: a shark closes far too fast for arrows, so carry a blade or a spell.",
+    "nextStep": "The Blue Ocean lies west of the Grassy Field. Get beneath it with a Gills Potion or a Gills spell, both sharks are down there. Neither can be shot: a shark closes far too fast for arrows, so carry a blade or a spell.",
     "reminderDialog": "\"Still dry, I see. A Great White and a Hammerhead, both under the Blue Ocean. You'll need gills to get to them.\"",
     "completionDialog": "\"Both of them.\" Pete brings out two swords he's clearly been sitting on for a while. \"Great White Sword and the Hammerhead Hammer. Best steel in the building.\"",
     "requirements": [
@@ -1076,7 +1044,7 @@
     "summary": "The Troll Champion is one of the strongest beasts in the Dark Forest. Pete wants three of them.",
     "objective": "Defeat 3 Troll Champions.",
     "nextStep": "Troll Champions hold the Dark Forest, north of the regular Forest.",
-    "reminderDialog": "\"{progress} of {count} Champions. They're in the Dark Forest, north of the regular one. Take your time — or don't, and see how that goes.\"",
+    "reminderDialog": "\"{progress} of {count} Champions. They're in the Dark Forest, north of the regular one. Take your time, or don't, and see how that goes.\"",
     "completionDialog": "\"Three Champions.\" Pete drags a suit of reforged plate out from under a bench. \"Made from the last lot. Wear it with some pride.\"",
     "requirements": [
       {
@@ -1150,7 +1118,7 @@
     "title": "Rare Gray Matter",
     "summary": "Morty needs a piece of gray matter. Only rare creatures carry it.",
     "objective": "Bring 1 Gray Matter to Wizard Morty.",
-    "nextStep": "Gray matter comes off rare enemies — the named dead in the Catacombs carry it, and so do the rarer things you'll meet as you travel.",
+    "nextStep": "Gray matter comes off rare enemies, the named dead in the Catacombs carry it, and so do the rarer things you'll meet as you travel.",
     "reminderDialog": "\"No gray matter yet? Rare creatures drop it. Keep travelling and something unusual will cross your path eventually.\"",
     "completionDialog": "Morty takes the lump, turns it over twice and does something to it you do not follow at all. What he hands back is a wand. \"Gray Wand. Try not to point it at anything you like.\"",
     "requirements": [
@@ -1190,8 +1158,8 @@
     "title": "Omar & Victoria the Dead",
     "summary": "Two named dead keep the deepest rooms of the Catacombs. Morty wants them both gone.",
     "objective": "Defeat Omar the Dead and Victoria the Dead.",
-    "nextStep": "Both are deep in the Catacombs below Red Town — Victoria keeps the Sacred Altar, Omar the Sacrificial Chamber. Omar hits like a falling headstone; Victoria attacks with magic, so your MAG is what stands between you and her.",
-    "reminderDialog": "\"Still standing, are they. Victoria keeps the altar, Omar the chamber below it. Mind her casting — steel won't help you there.\"",
+    "nextStep": "Both are deep in the Catacombs below Red Town. Victoria keeps the Sacred Altar, Omar the Sacrificial Chamber. Omar hits like a falling headstone; Victoria attacks with magic, so your MAG is what stands between you and her.",
+    "reminderDialog": "\"Still standing, are they. Victoria keeps the altar, Omar the chamber below it. Mind her casting, steel won't help you there.\"",
     "completionDialog": "\"Both of them. Quietly, too.\" Morty passes you a pair of boots that are not entirely leather. \"Bone Boots. They were hers, before.\"",
     "requirements": [
       {
@@ -1231,9 +1199,9 @@
     "title": "Magic and the Troll Queen",
     "summary": "The Troll Queen holds the deep Dark Forest, and she is not the sort of thing you hit.",
     "objective": "Defeat the Troll Queen.",
-    "nextStep": "Her nest is deep in the Dark Forest, far to the north. She fights with magic and shrugs off ordinary weapons — bring spells.",
+    "nextStep": "Her nest is deep in the Dark Forest, far to the north. She fights with magic and shrugs off ordinary weapons, bring spells.",
     "reminderDialog": "\"The Troll Queen still holds her nest. Far north, deep in the Dark Forest. Use magic on her. I cannot stress that enough.\"",
-    "completionDialog": "\"You actually did it.\" Morty produces a staff that is far too heavy for him to be holding so casually. \"Solomon Staff. It'll cost you some strength to carry — worth every point.\"",
+    "completionDialog": "\"You actually did it.\" Morty produces a staff that is far too heavy for him to be holding so casually. \"Solomon Staff. It'll cost you some strength to carry, worth every point.\"",
     "requirements": [
       {
         "type": "killCount",
@@ -1306,9 +1274,9 @@
     "title": "Iron Boss: The Phoenix",
     "summary": "Something is circling at Mine Level 10 and it never comes down. Kill it and the guild will teach you to work iron.",
     "objective": "Defeat the Phoenix at Mine Level 10.",
-    "nextStep": "Dig down from the mine head. The Phoenix flies — melee cannot reach it, so bring a bow or a crossbow and the ammunition for it.",
+    "nextStep": "Dig down from the mine head. The Phoenix flies, melee cannot reach it, so bring a bow or a crossbow and the ammunition for it.",
     "reminderDialog": "“The Phoenix is still up there. And you still can’t hit it with a sword, before you ask again.”",
-    "completionDialog": "“Good. Iron’s yours.” He pushes a hammer across the bench. “Any forge fire will do — ours is the best of them, but Red Town’s will serve.”",
+    "completionDialog": "“Good. Iron’s yours.” He pushes a hammer across the bench. “Any forge fire will do, ours is the best of them, but Red Town’s will serve.”",
     "requirements": [
       {
         "type": "killCount",
@@ -1351,7 +1319,7 @@
     "title": "Steel Boss: The Cyclops",
     "summary": "A cyclops has taken Mine Level 20, which is also where the coal is. The guild would like both back.",
     "objective": "Defeat the Cyclops at Mine Level 20.",
-    "nextStep": "Mine Level 20. Do not count on your armour — its attacks are pure, so your DEF never enters the arithmetic.",
+    "nextStep": "Mine Level 20. Do not count on your armour, its attacks are pure, so your DEF never enters the arithmetic.",
     "reminderDialog": "“Still down there, is it. Your shield won’t help. Bring more health than you think you need.”",
     "completionDialog": "“Steel next, then.” He hands you a steel hammer and a pick to match. “Coal and iron make steel. You’ll work the rest out.”",
     "requirements": [
@@ -1436,7 +1404,7 @@
     "title": "Clear out the Abandoned Mine",
     "summary": "The condemned mine west of the Crossroads has been overrun by three things that were not there when it was condemned.",
     "objective": "Defeat a Rabid Skeever, a Bleeding Dartwing and a Mongolian Death Worm.",
-    "nextStep": "The Abandoned Mine is northeast off the muddy path west of the Crossroads. Down the shaft, then southwest, west, northeast — one of them in each room.",
+    "nextStep": "The Abandoned Mine is northeast off the muddy path west of the Crossroads. Down the shaft, then southwest, west, northeast, one of them in each room.",
     "reminderDialog": "“{progress} of {count}. Skeevers on the tracks, dartwings in the nests, and the worm at the far end. All three.”",
     "completionDialog": "“That’s the mine, then.” The Captain hands you a heavy gold key. “There’s a chest in the Treasury north of here that this opens. Consider it settled.”",
     "requirements": [
@@ -1483,7 +1451,7 @@
     "title": "Glowing Sea Monster",
     "summary": "A glowing monster has been reported under the sea, and the Captain wants it confirmed by someone who came back.",
     "objective": "Find and defeat the Glowing Octopus.",
-    "nextStep": "Under the Blue Ocean, a long way down. You will want gills before you go looking — and something other than a bow, because arrows will not find it.",
+    "nextStep": "Under the Blue Ocean, a long way down. You will want gills before you go looking, and something other than a bow, because arrows will not find it.",
     "reminderDialog": "“Still nobody has seen it up close and come back to say so.”",
     "completionDialog": "“So it is real.” The Captain unwraps a bow with a charge laid into the limbs, and two heavy quivers with it. “You’ll want the reach out there.”",
     "requirements": [
@@ -1524,7 +1492,7 @@
     "summary": "A dwarven guard has gone missing. He was last seen on patrol around the Stone Grotto and has not reported in since.",
     "objective": "Find the missing axeman at the Stone Grotto.",
     "nextStep": "The Stone Grotto is behind a carved stone door southwest of the grass path. A switch in the Red Fort Kitchen opens it.",
-    "reminderDialog": "“No word yet. The Grotto is where he was headed — if you can get the door open.”",
+    "reminderDialog": "“No word yet. The Grotto is where he was headed, if you can get the door open.”",
     "completionDialog": "“You found him.” The Captain looks genuinely relieved for about a second. “Whatever had hold of him has let go. He owes you, and dwarves are unbearable about owing people.”",
     "requirements": [
       {
@@ -1564,7 +1532,7 @@
     "summary": "Vicious things roam the roads, the forests and the dungeons, and the Guard pays by the head. Ten of each of six kinds.",
     "objective": "Defeat 10 each of Goblins, Ogres, Kobolds, Skeletons, Bandits and Trolls.",
     "nextStep": "Anywhere. Goblins and ogres in the Forest and its lairs, kobolds under it, skeletons in the Catacombs, bandits in the Red Fort and Red Town’s alleys, trolls in the north of the Forest.",
-    "reminderDialog": "“The posting is still up. Ten each — goblins, ogres, kobolds, skeletons, bandits, trolls. Every kind counts, not just the big ones.”",
+    "reminderDialog": "“The posting is still up. Ten each, goblins, ogres, kobolds, skeletons, bandits, trolls. Every kind counts, not just the big ones.”",
     "completionDialog": "The Guard tallies your count twice, then hands over a very large axe and a very heavy purse. “The roads are quieter. That was the point.”",
     "requirements": [
       {
@@ -1767,7 +1735,7 @@
     "summary": "Aggressive squid have inundated the Ocean. Hunt down 3 of them.",
     "objective": "Defeat 3 Squid.",
     "nextStep": "Squid turn up anywhere on the open ocean and under it. Keep sailing and they will find you.",
-    "reminderDialog": "“{progress} of {count}. Squid, matey. They’re everywhere out there — that’s rather the problem.”",
+    "reminderDialog": "“{progress} of {count}. Squid, matey. They’re everywhere out there, that’s rather the problem.”",
     "completionDialog": "“Three squid!” The Pirate smiles and, while humming ‘Like a Squid’, hands you a perfectly balanced Calamari Cap.",
     "requirements": [
       {
@@ -1801,7 +1769,7 @@
     "title": "Mud Crab Extermination",
     "summary": "Mud Island has been overrun by crabs! Exterminate 20 of them.",
     "objective": "Defeat 20 Mud Crabs.",
-    "nextStep": "Mud Island is southeast of the Blue Ocean Crossing. The crabs are on the island and, in far greater numbers, in the cave beneath it — the nest at the back never empties.",
+    "nextStep": "Mud Island is southeast of the Blue Ocean Crossing. The crabs are on the island and, in far greater numbers, in the cave beneath it, the nest at the back never empties.",
     "reminderDialog": "“{progress} of {count}. Twenty, matey. The cave under the island is where they come from.”",
     "completionDialog": "“NICE! Twenty mud crabs!” The Pirate rummages through his bag of loot and hands you a surprisingly strong pair of Mud Boots.",
     "requirements": [
@@ -1905,7 +1873,7 @@
     "title": "Third Times a Charm",
     "summary": "Find a third flower in a secret compartment under the ocean. REMEMBER: collect the first two flowers before you attempt to collect the third, or you will waste a trip underwater.",
     "objective": "Bring Jungle Jim 3 flowers.",
-    "nextStep": "The first flower is in the Grassy Field and the second in the Red Town Babylon Gardens. The third grows on the ocean floor behind a coral door, under the whirlpool by the Green Temple — the lever that opens the door is in the reef, south of the wide underwater floor.",
+    "nextStep": "The first flower is in the Grassy Field and the second in the Red Town Babylon Gardens. The third grows on the ocean floor behind a coral door, under the whirlpool by the Green Temple, the lever that opens the door is in the reef, south of the wide underwater floor.",
     "reminderDialog": "“{progress} of {count} flowers, bro. The third one’s under the sea, and it won’t let you pick it without the other two.”",
     "completionDialog": "“Three flowers!” Jim takes them reverently and hands you a vicious bo and a bow to match, each laced with a toxic poison. “Jim Bo and Jim Bow. Don’t ask.”",
     "requirements": [
@@ -1999,7 +1967,7 @@
     "objective": "Hold an iron weapon, an iron helmet or hood, iron armor or cape, iron gloves or gauntlets, and iron boots.",
     "nextStep": "The Mining Guild in the Rocky Flats forges iron, the Warrior’s Guild in Red Town sells some, and barracudas drop the odd hood. Any iron weapon will do for the hand.",
     "reminderDialog": "“Full iron, bro. Head, body, hands, feet, and something to swing. I’ll know it when I see it.”",
-    "completionDialog": "“JUNGLE JIM IS IMPRESSED!” He walks a circle around you. “That is some nice iron. Here — finish the set.” He hands you a pair of devastating Iron Knuckles.",
+    "completionDialog": "“JUNGLE JIM IS IMPRESSED!” He walks a circle around you. “That is some nice iron. Here, finish the set.” He hands you a pair of devastating Iron Knuckles.",
     "requirements": [
       {
         "type": "hasAnyItem",
@@ -2269,7 +2237,7 @@
     "summary": "The Bowmen and Highwaymen are thieves who prey on those who travel the Mountain Path! Protect the path by removing these outlaws.",
     "objective": "Defeat 5 Bowmen and 5 Highwaymen.",
     "nextStep": "They patrol the stone path west of the Outpost, between the bridge and the Highway Toll. The Highwayman at the toll gate will fight anyone who asks.",
-    "reminderDialog": "\"{progress} of {count} so far. They can be found patrolling the stone path to the mountains — and one of them is standing right at the toll.\"",
+    "reminderDialog": "\"{progress} of {count} so far. They can be found patrolling the stone path to the mountains, and one of them is standing right at the toll.\"",
     "completionDialog": "\"You have indeed defeated 5 Bowmen and 5 Highwaymen.\" The Ranger Guard pulls a wrapped blade from behind the palisade. \"A deadly Black Blade. It's yours.\"",
     "requirements": [
       {
@@ -2309,7 +2277,7 @@
     "title": "Elder Slayer",
     "summary": "Make the Dark Forest a safer place by defeating vicious Troll Elders.",
     "objective": "Defeat 3 Troll Elders.",
-    "nextStep": "Troll Elders roam the whole Dark Forest, north of the teleport pillar — the trolls' most common rank after the plain Troll.",
+    "nextStep": "Troll Elders roam the whole Dark Forest, north of the teleport pillar, the trolls' most common rank after the plain Troll.",
     "reminderDialog": "\"{progress} of {count} elders down. They can be found anywhere in the Dark Forest. Mind the power swings.\"",
     "completionDialog": "\"You have indeed defeated 3 Troll Elders.\" The Ranger Guard whistles, and a Dire Wolf comes running in out of the trees. \"The wolf is now yours.\"",
     "requirements": [
@@ -2345,7 +2313,7 @@
     "summary": "Clear out the First Floor of the Dark Keep. The evil creatures in the Keep are a serious threat that should be taken care of.",
     "objective": "Defeat a Lurker, a Winged Demon and an Undead Orc.",
     "nextStep": "The Dark Keep is west of the Gold Chest, past the courtyard. The three haunt its ground floor: the Main Hall, the Storeroom and the Burial Chamber. The demon flies, so bring a bow.",
-    "reminderDialog": "\"{progress} of {count}. The Dark Keep can be reached by heading west in the Dark Forest — the courtyard is past the gold chest. Lurker, Winged Demon, Undead Orc.\"",
+    "reminderDialog": "\"{progress} of {count}. The Dark Keep can be reached by heading west in the Dark Forest, the courtyard is past the gold chest. Lurker, Winged Demon, Undead Orc.\"",
     "completionDialog": "\"You have indeed defeated a Lurker, a Winged Demon and an Undead Orc.\" The Ranger Guard hands you a mean looking Demon Cape. \"Try not to become one.\"",
     "requirements": [
       {
@@ -2392,7 +2360,7 @@
     "summary": "The Dark Elf could always use more wood for his toasty fire. Collect and bring him 50 wood.",
     "objective": "Bring the Dark Elf 50 wood.",
     "nextStep": "Every tree in the Dark Forest can be chopped, and there is an iron hatchet leaning on the sign at the teleport pillar. The Forest to the south has trees too.",
-    "reminderDialog": "\"You ready for a big order, traveler? Return here with 50 wood. {progress} of {count} so far — pick up a hatchet and go into the Forest and chop.\"",
+    "reminderDialog": "\"You ready for a big order, traveler? Return here with 50 wood. {progress} of {count} so far, pick up a hatchet and go into the Forest and chop.\"",
     "completionDialog": "\"That's a lot of wood!\" The Dark Elf stacks it by the fire and hands you a freshly crafted Mithril Hatchet, and two rings off his own fingers. \"Six a swing with that. Don't lose it.\"",
     "requirements": [
       {
@@ -2437,7 +2405,7 @@
     "summary": "Defeat a Troll Shaman and a Troll Sorcerer in the Dark Forest before they corrupt it even more with their dark magic.",
     "objective": "Defeat a Troll Shaman and a Troll Sorcerer.",
     "nextStep": "Both can be found anywhere in the Dark Forest. Both attack with magic, so your MAG is what defends you.",
-    "reminderDialog": "\"I have a shiny gold key with your name on it. {progress} of {count} — return here after you slay a Troll Shaman and a Troll Sorcerer and it's all yours.\"",
+    "reminderDialog": "\"I have a shiny gold key with your name on it. {progress} of {count}, return here after you slay a Troll Shaman and a Troll Sorcerer and it's all yours.\"",
     "completionDialog": "\"I present to you this marvelous Gold Key.\" The Dark Elf drops it in your palm. \"Use it to open the Dark Forest Gold Chest north of the pillar, or any other Gold Chest you like.\"",
     "requirements": [
       {
@@ -2478,7 +2446,7 @@
     "summary": "Trees have been coming to life and attacking the wildlife. They are difficult to spot but when you do, send it back into the ground.",
     "objective": "Defeat an Ent.",
     "nextStep": "Ents are rare anywhere in the Dark Forest and commonest in the Dark Grove, east of the teleport pillar. Magic does nothing to wood; bring a blade or a bow.",
-    "reminderDialog": "\"Still no tree? They are rare creatures found in the Dark Forest. Try the grove east of the pillar — and don't bother with spells.\"",
+    "reminderDialog": "\"Still no tree? They are rare creatures found in the Dark Forest. Try the grove east of the pillar, and don't bother with spells.\"",
     "completionDialog": "\"You have indeed beat up a tree!\" A marvelous sky hawk drops out of the canopy and lands on the Dark Elf's chair. Its feathers look like tempered mithril. \"This bird is ready to go.\"",
     "requirements": [
       {
@@ -2512,8 +2480,8 @@
     "title": "Ranger's Initiation",
     "summary": "Dark Rangers are increasingly becoming a nuisance in the Dark Forest. To join the Ranger's Guild you must locate and defeat one of these Dark Rangers.",
     "objective": "Defeat a Dark Ranger.",
-    "nextStep": "Dark Rangers hide anywhere in the Dark Forest and are commonest when you are Lost in the Trees. Arrows never find them — use a blade or a spell.",
-    "reminderDialog": "\"Still no Dark Ranger? They rarely spawn in the Dark Forest. Lost in the Trees is where most of them are caught — with a blade, not a bow.\"",
+    "nextStep": "Dark Rangers hide anywhere in the Dark Forest and are commonest when you are Lost in the Trees. Arrows never find them, use a blade or a spell.",
+    "reminderDialog": "\"Still no Dark Ranger? They rarely spawn in the Dark Forest. Lost in the Trees is where most of them are caught, with a blade, not a bow.\"",
     "completionDialog": "\"You have indeed defeated a Dark Ranger! You are now an official member of the Rangers Guild.\" You are handed a sleek and powerful Greenhorn Bow. \"Up the ladder with you.\"",
     "requirements": [
       {
@@ -2583,7 +2551,7 @@
     "summary": "Gargoyles are so cool, and evil! Go defeat a white and grey one in the Cathedral.",
     "objective": "Defeat a Grey Gargoyle and a White Gargoyle.",
     "nextStep": "Both roost in the Cathedral Courtyard in the Stone Mountains: west through the Highway Toll, up to the Snowy Clearing, northwest past Chilly Pete's cabin and northeast along the ridge.",
-    "reminderDialog": "\"{progress} of {count}. Find both of them in the Cathedral Courtyard in the Stone Mountains — past the Highway Toll, then up the ridge from Chilly Pete's cabin.\"",
+    "reminderDialog": "\"{progress} of {count}. Find both of them in the Cathedral Courtyard in the Stone Mountains, past the Highway Toll, then up the ridge from Chilly Pete's cabin.\"",
     "completionDialog": "\"You have indeed defeated a white and grey gargoyle!\" Lego hands you a perfectly balanced Ranger Shield.",
     "requirements": [
       {
@@ -2658,7 +2626,7 @@
     "title": "Frozen Fourth Flower",
     "summary": "An elderly woman at the camp is looking for flowers. One for each of her children she lost. You can find a fourth flower on Dragon's Ledge across the Mountain Bridge.",
     "objective": "Bring the elderly woman 4 flowers.",
-    "nextStep": "The first is in the Grassy Field flower patch, the second in Red Town's Babylon Gardens, the third under the Ocean, and the fourth on Dragon's Ledge — west over the Mountain Bridge, past the Gatekeeper. Each patch only lets you pick once you carry the ones before it.",
+    "nextStep": "The first is in the Grassy Field flower patch, the second in Red Town's Babylon Gardens, the third under the Ocean, and the fourth on Dragon's Ledge, west over the Mountain Bridge, past the Gatekeeper. Each patch only lets you pick once you carry the ones before it.",
     "reminderDialog": "\"{progress} of {count}, dear.\" The elderly woman counts them twice. \"Start with the one in the Grassy Field, then Red Town, then the ocean, and then the one here in the mountains over the stone bridge.\"",
     "completionDialog": "You hand her four flowers and she holds them a long time. Then she presses a pair of Glowing Gloves into your hands, pulsing with magical energy. \"One for each of them. Thank you.\"",
     "requirements": [
@@ -2695,7 +2663,7 @@
     "objective": "Bring the snowy shaman 5 Red Potions, 5 Blue Potions and 10 Mud.",
     "nextStep": "Potions are crushed berries at any crafting table. Mud comes up with everything else in the Neverending Mine.",
     "reminderDialog": "\"Five red, five blue, ten mud.\" The shaman does not look up from his mortar. \"Then I show you.\"",
-    "completionDialog": "You hand the shaman the ingredients and he shows you how to make healing balms — five potions and a handful of mud to a balm, and a red and a blue together make a purple. He gives you ten of each to start.",
+    "completionDialog": "You hand the shaman the ingredients and he shows you how to make healing balms, five potions and a handful of mud to a balm, and a red and a blue together make a purple. He gives you ten of each to start.",
     "requirements": [
       {
         "type": "hasItem",
@@ -2909,7 +2877,7 @@
     "objective": "Find and slay a Yeti.",
     "nextStep": "The Yeti roams the whole mountain and is rarest where the road is busiest. The Mountain Alcove, south of the wooded path, is where the rare things gather.",
     "reminderDialog": "\"No Yeti yet? It's out there. Walk the mountain and keep your eyes open.\"",
-    "completionDialog": "\"You have indeed found and defeated the illusive Yeti!\" Hector takes the cloak off his back — made from a Yeti he hunted down long ago — and hands it to you.",
+    "completionDialog": "\"You have indeed found and defeated the illusive Yeti!\" Hector takes the cloak off his back, made from a Yeti he hunted down long ago, and hands it to you.",
     "requirements": [
       {
         "type": "killCount",
@@ -2942,9 +2910,9 @@
     "title": "Dragon Slayer",
     "summary": "Ferocious dragons have been spotted soaring among the mountains. There is a big reward for taking one down. Find and slay a Dragon.",
     "objective": "Slay a Dragon.",
-    "nextStep": "Dragons can turn up anywhere on the mountain but haunt Dragon's Ledge, west over the Mountain Bridge. They fly — bring a bow or magic — and their firebreath ignores armour. The Gold Key opens the chest in the Cathedral Courtyard, and that chest opens the door to the Master Trainer.",
+    "nextStep": "Dragons can turn up anywhere on the mountain but haunt Dragon's Ledge, west over the Mountain Bridge. They fly, bring a bow or magic, and their firebreath ignores armour. The Gold Key opens the chest in the Cathedral Courtyard, and that chest opens the door to the Master Trainer.",
     "reminderDialog": "\"Still no Dragon? They fly, so a sword is no use. Dragon's Ledge, past the Gatekeeper, is where they roost.\"",
-    "completionDialog": "\"You have indeed slain a Dragon!\" Hector, most impressed, hands you a Dragon Orb pulsing with raw power — and a Gold Key. \"The chest in the Cathedral Courtyard. Open it and the Blue Guard will let you through to the Master Trainer.\"",
+    "completionDialog": "\"You have indeed slain a Dragon!\" Hector, most impressed, hands you a Dragon Orb pulsing with raw power, and a Gold Key. \"The chest in the Cathedral Courtyard. Open it and the Blue Guard will let you through to the Master Trainer.\"",
     "requirements": [
       {
         "type": "killCount",
@@ -3017,7 +2985,7 @@
     "title": "Dark Paladin Cleanse",
     "summary": "Chilly Pete wants you to remove some evil from this world. Visit the Dark Keep and defeat 3 Dark Paladins.",
     "objective": "Defeat 3 Dark Paladins.",
-    "nextStep": "The Dark Paladins patrol the top of the Dark Keep, in the Dark Forest — up the Dark Stairwell past the Stone Sphinx.",
+    "nextStep": "The Dark Paladins patrol the top of the Dark Keep, in the Dark Forest, up the Dark Stairwell past the Stone Sphinx.",
     "reminderDialog": "\"{progress} of {count}. The top of the Dark Keep, where the paladins patrol. Go on.\"",
     "completionDialog": "\"Three Dark Paladins.\" Chilly Pete fishes around his weapons cache and hands you a spear blessed by the gods.",
     "requirements": [
@@ -3107,19 +3075,19 @@
         "type": "killCount",
         "enemySlug": "kraken",
         "count": 1,
-        "displayName": "Key of Greed — the Kraken"
+        "displayName": "Key of Greed: the Kraken"
       },
       {
         "type": "killCount",
         "enemySlug": "troll-king",
         "count": 1,
-        "displayName": "Key of Wrath — the Troll King"
+        "displayName": "Key of Wrath: the Troll King"
       },
       {
         "type": "killCount",
         "enemySlug": "giant-mountain-giant",
         "count": 1,
-        "displayName": "Key of Pride — the Giant Mountain Giant"
+        "displayName": "Key of Pride: the Giant Mountain Giant"
       }
     ],
     "consumeRequirementsOnComplete": false,

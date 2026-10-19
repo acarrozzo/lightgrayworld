@@ -101,7 +101,7 @@ test('lines: every authored set has a room, a speaker, a kind and non-empty stri
   for (const s of sets) {
     assert.ok(/^\d{3}[a-z]*$/.test(s.roomId), `room id ${s.roomId}`)
     assert.ok(s.speaker && s.speakerId, `speaker on ${s.roomId}`)
-    assert.ok(['keeper', 'listen', 'idle', 'aside'].includes(s.set))
+    assert.ok(['keeper', 'listen', 'talker', 'idle', 'aside'].includes(s.set))
     assert.ok(s.lines.length > 0, `${s.roomId} ${s.speakerId} ${s.set} has lines`)
     for (const l of s.lines) assert.ok(typeof l === 'string' && l.trim(), `${s.roomId} ${s.speakerId} ${s.set}: empty line`)
   }
@@ -124,4 +124,18 @@ test('line cursor: each press serves the next line in order and wraps', () => {
   nextLineIndex('p3', 'x', 4); nextLineIndex('p3', 'x', 4); nextLineIndex('p3', 'x', 4) // next is 3
   assert.equal(nextLineIndex('p3', 'x', 2), 1)
   assert.equal(nextLineIndex('p3', 'x', 0), -1)
+})
+
+// ── talkers ──────────────────────────────────────────────────────────────────
+
+const talkers = require(path.join(ROOT, 'src/lib/game-data/talkers.js'))
+
+test('talkers: the first set whose guild gate is open is served, the default otherwise', async () => {
+  const t = { id: 'x', name: 'X', action: 'talk to x', label: 'X', sets: [{ ifMember: ['a', 'b'], lines: ['member'] }, { lines: ['anyone'] }] }
+  assert.equal((await talkers.openTalkerSet(t, async () => false)).lines[0], 'anyone')
+  assert.equal((await talkers.openTalkerSet(t, async (id) => id === 'b')).lines[0], 'member')
+  assert.equal(await talkers.openTalkerSet({ ...t, sets: [{ ifMember: 'a', lines: ['m'] }] }, async () => false), null)
+  for (const [roomId, talker] of talkers.listTalkers()) {
+    assert.ok(/^\d{3}/.test(roomId) && talker.action && talker.label && talker.sets.length > 0)
+  }
 })

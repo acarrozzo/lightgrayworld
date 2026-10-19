@@ -255,6 +255,9 @@ const TRAVELERS = [
         default: [
           '"Everything on the cart\'s for sale. Everything on ME is not, so don\'t ask about the hat."',
           '"You buy, I sell. You sell, I buy. Simplest arrangement in the world and people still find ways to complicate it."',
+          '"Howdy"',
+          '"I was a merchant in Fables too."',
+          '"The hat is not for sale."',
         ],
       },
     },

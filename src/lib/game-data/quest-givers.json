@@ -16,10 +16,6 @@
     "greeting": "Hey! Another Wanderer! I love having you guys around. An old man like me could always use a hand. First, can you bring me a flower.",
     "idleDialogs": [
       {
-        "ifCompleted": "quest_oldman_004",
-        "message": "The gator's gone, the rats are gone, and there's jam in the cupboard. You've been a blessing to this old man."
-      },
-      {
         "ifCompleted": "quest_oldman_003",
         "message": "The rats are gone, the gator is dealt with, and my wife got her flower. You've been a true blessing, traveler."
       },
@@ -31,8 +27,20 @@
     "quests": [
       "quest_oldman_001",
       "quest_oldman_002",
-      "quest_oldman_003",
-      "quest_oldman_004"
+      "quest_oldman_003"
+    ],
+    "asides": [
+      {
+        "ifCompleted": null,
+        "lines": [
+          "\"I'm not THAT old\"",
+          "\"See if you can get the Young Soldier to smile.\"",
+          "\"I lost her before the scorpions.\"",
+          "\"I was lucky enough to be in Pax's shield. Almost everyone else I knew, wasn't.\"",
+          "\"Wanderers don't stay dead. Good. Somebody around here shouldn't.\"",
+          "\"Man, what's with these rats\""
+        ]
+      }
     ]
   },
   "young_soldier": {
@@ -79,6 +87,19 @@
       "quest_youngsoldier_001",
       "quest_youngsoldier_002",
       "quest_youngsoldier_003"
+    ],
+    "asides": [
+      {
+        "ifCompleted": null,
+        "lines": [
+          "\"What\"",
+          "\"The city has to fall. You're the only ones who can do it. Don't make me say it twice.\"",
+          "\"Trust me, it's bad\"",
+          "\"I mean, battle is pretty much required\"",
+          "\"These are the worst weapons in the game, go find better ones\"",
+          "Why are you talking to me so much. Go!"
+        ]
+      }
     ]
   },
   "jack_lumber": {
@@ -104,11 +125,11 @@
     ],
     "lockedDialog": "\"How'd you get here? Go back and open that gold chest at the Crossroads first. Then we'll talk.\"",
     "metLine": "You meet Jack Lumber.",
-    "greeting": "Ha! You cracked the chest! I knew you had it in you. I'm Jack Lumber — get it? Like Lumberjack! Listen, I've got some work that needs doing around here, and you look like just the Wanderer for the job.",
+    "greeting": "Ha! You cracked the chest! I knew you had it in you. I'm Jack Lumber, get it? Like Lumberjack! Listen, I've got some work that needs doing around here, and you look like just the Wanderer for the job.",
     "idleDialogs": [
       {
         "ifCompleted": "quest_jacklumber_000",
-        "message": "\"The Forest Path is open! Get out there and see what's beyond the Grassy Field. And remember — keep that hatchet sharp and your bow ready!\""
+        "message": "\"The Forest Path is open! Get out there and see what's beyond the Grassy Field. And remember, keep that hatchet sharp and your bow ready!\""
       },
       {
         "ifCompleted": null,
@@ -119,6 +140,18 @@
       "quest_jacklumber_001",
       "quest_jacklumber_002",
       "quest_jacklumber_000"
+    ],
+    "asides": [
+      {
+        "ifCompleted": null,
+        "lines": [
+          "\"I had a cabin in the Forest.\"",
+          "\"Beast Wars pushed me down here. Wanderers push the beasts back. That's the deal I want.\"",
+          "\"Gnome's my best friend. Don't tell him. He'd be insufferable.\"",
+          "\"Get it? Lumberjack. \"",
+          "\"I'll keep saying it till somebody laughs.\""
+        ]
+      }
     ]
   },
   "freddie": {
@@ -136,11 +169,11 @@
     },
     "hint": "Take the Forest Path east from the Grassy Field, then north at the cow farm sign (Room 103), and introduce yourself to Freddie.",
     "metLine": "You meet Freddie.",
-    "greeting": "Freddie wipes his hands on his apron. \"Let's craft with some leather. You can use my cows to gather some — but you have to pay!\" He nudges a crate of hammers toward you with his boot. \"Those are free, at least.\"",
+    "greeting": "Freddie wipes his hands on his apron. \"Let's craft with some leather. You can use my cows to gather some, but you have to pay!\" He nudges a crate of hammers toward you with his boot. \"Those are free, at least.\"",
     "idleDialogs": [
       {
         "ifCompleted": "quest_freddie_001",
-        "message": "\"Look at that — proper leatherwork.\" Freddie slaps the workbench. \"Hides are still fifty gold a trip, mind. Hammer's free, though. Always is.\""
+        "message": "\"Look at that, proper leatherwork.\" Freddie slaps the workbench. \"Hides are still fifty gold a trip, mind. Hammer's free, though. Always is.\""
       },
       {
         "ifCompleted": null,
@@ -164,9 +197,9 @@
       "type": "questCompleted",
       "questId": "quest_jacklumber_000"
     },
-    "hint": "Find the Forest Gnome's tree hut (Room 128), deep in the Forest — northwest of the Forest by a Cliff — and introduce yourself.",
+    "hint": "Find the Forest Gnome's tree hut (Room 128), deep in the Forest, northwest of the Forest by a Cliff, and introduce yourself.",
     "metLine": "You meet the Forest Gnome.",
-    "greeting": "The gnome peers down at you from the branches with a lazy grin. \"Welcome to my tree hut. Pretty nice right?\" He hops down. \"Since you're here — I've got a few things that need doing, and you look like you've got the legs for it.\"",
+    "greeting": "The gnome peers down at you from the branches with a lazy grin. \"Welcome to my tree hut. Pretty nice right?\" He hops down. \"Since you're here. I've got a few things that need doing, and you look like you've got the legs for it.\"",
     "idleDialogs": [
       {
         "ifCompleted": "quest_forestgnome_000",
@@ -174,7 +207,7 @@
       },
       {
         "ifCompleted": null,
-        "message": "\"Berries, wood, trolls — take them in whatever order suits you. Grab the spare hatchet on your way out.\""
+        "message": "\"Berries, wood, trolls, take them in whatever order suits you. Grab the spare hatchet on your way out.\""
       }
     ],
     "quests": [
@@ -202,11 +235,11 @@
     "idleDialogs": [
       {
         "ifCompleted": "quest_hunterbill_000",
-        "message": "\"Bigfoot and the whole six — nobody's done that in a while.\" Bill leans back against a tree. \"Go crack that gold chest northeast of here. You earned what's in it.\""
+        "message": "\"Bigfoot and the whole six, nobody's done that in a while.\" Bill leans back against a tree. \"Go crack that gold chest northeast of here. You earned what's in it.\""
       },
       {
         "ifCompleted": null,
-        "message": "\"Still hunting? Good. The forest gives up what it owes eventually — just keep walking it.\""
+        "message": "\"Still hunting? Good. The forest gives up what it owes eventually, just keep walking it.\""
       }
     ],
     "quests": [
@@ -237,7 +270,7 @@
       },
       {
         "ifCompleted": null,
-        "message": "\"Still work on the board. Take them in whatever order suits you — the ladder opens the moment any one of them is done.\""
+        "message": "\"Still work on the board. Take them in whatever order suits you, the ladder opens the moment any one of them is done.\""
       }
     ],
     "quests": [
@@ -447,7 +480,7 @@
     },
     "hint": "The Wizard's Guild (Room 225) is southeast of the Grand Square.",
     "metLine": "You meet the Wizard's Guild Recruiter.",
-    "greeting": "The recruiter's attention settles on you all at once. \"Defeat the evil Kobold Master — at all costs. Then we can talk about what else you might learn here.\"",
+    "greeting": "The recruiter's attention settles on you all at once. \"Defeat the evil Kobold Master, at all costs. Then we can talk about what else you might learn here.\"",
     "idleDialogs": [
       {
         "ifCompleted": "quest_wizardsguild_000",
@@ -503,7 +536,7 @@
       },
       {
         "ifCompleted": null,
-        "message": "\"Three things, remember. Take them in whatever order you like — they are all equally unpleasant.\""
+        "message": "\"Three things, remember. Take them in whatever order you like, they are all equally unpleasant.\""
       }
     ],
     "quests": [
@@ -542,7 +575,7 @@
     "idleDialogs": [
       {
         "ifCompleted": null,
-        "message": "\"You are in. Talk to the Leader at the back — he is the one who decides what you are allowed to make.\""
+        "message": "\"You are in. Talk to the Leader at the back, he is the one who decides what you are allowed to make.\""
       }
     ],
     "quests": [
@@ -597,7 +630,7 @@
       "type": "regionDiscovered",
       "regionId": "rocky-flats"
     },
-    "hint": "The Rocky Flats Crossroads (Room 303) is the hub of the map — northwest of the stone path in from Red Town.",
+    "hint": "The Rocky Flats Crossroads (Room 303) is the hub of the map, northwest of the stone path in from Red Town.",
     "metLine": "You meet the Dwarf Captain.",
     "greeting": "“The Rocky Flats is full of danger,” he says, in the tone of a man who has said it a great many times. “Three things need doing. Pick one.”",
     "idleDialogs": [
@@ -653,13 +686,13 @@
       "type": "regionDiscovered",
       "regionId": "ocean"
     },
-    "hint": "The Blue Oasis (Room 413) is the island in the middle of the Blue Ocean — south of the jetty that runs around the storm, or east of the water near the tornadoes. You will need a Wooden Boat (20 wood and a hammer, built at Jack Lumber's workshop or the Grand Square's table) or wings to cross the water.",
+    "hint": "The Blue Oasis (Room 413) is the island in the middle of the Blue Ocean, south of the jetty that runs around the storm, or east of the water near the tornadoes. You will need a Wooden Boat (20 wood and a hammer, built at Jack Lumber's workshop or the Grand Square's table) or wings to cross the water.",
     "metLine": "You meet the Friendly Pirate.",
     "greeting": "“Aloha, matey! Welcome to my beautiful Oasis!” The pirate props himself up on one elbow. “Three things, if you’re the hunting kind. Squid, crabs, and the whole ocean’s worth of fish.”",
     "idleDialogs": [
       {
         "ifCompleted": "quest_friendlypirate_003",
-        "message": "\"Aloha, matey! Nothing left for you to hunt out here — but the berries are still fresh and the spring is still cold. Stay a while.\""
+        "message": "\"Aloha, matey! Nothing left for you to hunt out here, but the berries are still fresh and the spring is still cold. Stay a while.\""
       }
     ],
     "quests": [
@@ -709,7 +742,7 @@
       "type": "regionDiscovered",
       "regionId": "ocean"
     },
-    "hint": "The Master Temple (Room 425) opens off each of the four Water Temples, but only once that temple’s boss is beaten — defeat any one of them and walk through.",
+    "hint": "The Master Temple (Room 425) opens off each of the four Water Temples, but only once that temple’s boss is beaten, defeat any one of them and walk through.",
     "metLine": "You find the Water Temple Guardian.",
     "greeting": "“Defeat the Red, Green, Blue and Yellow guardians before you attempt to challenge me, the far superior Master Temple Guardian.”",
     "idleDialogs": [
@@ -772,7 +805,7 @@
     "idleDialogs": [
       {
         "ifCompleted": "quest_darkelf_003",
-        "message": "\"Man this tea is good.\" The Dark Elf rocks in his chair. \"Nothing left for you to do for me, friend — but the fire is warm and the tea is hot. Sit.\""
+        "message": "\"Man this tea is good.\" The Dark Elf rocks in his chair. \"Nothing left for you to do for me, friend, but the fire is warm and the tea is hot. Sit.\""
       }
     ],
     "quests": [
@@ -800,7 +833,7 @@
     "idleDialogs": [
       {
         "ifCompleted": "quest_rangersguild_000",
-        "message": "\"Welcome, Ranger.\" The guard on the bottom rung steps aside. \"Up you go. Flynn's shop is first on the left, Lego is straight on, and mind the Shaman — he floats.\""
+        "message": "\"Welcome, Ranger.\" The guard on the bottom rung steps aside. \"Up you go. Flynn's shop is first on the left, Lego is straight on, and mind the Shaman, he floats.\""
       }
     ],
     "quests": [
@@ -865,7 +898,7 @@
       },
       {
         "ifCompleted": null,
-        "message": "The camp is as chatty as ever. Flowers, balms and a viking — take them in any order."
+        "message": "The camp is as chatty as ever. Flowers, balms and a viking, take them in any order."
       }
     ],
     "quests": [
@@ -893,7 +926,7 @@
     "idleDialogs": [
       {
         "ifCompleted": "quest_hector_003",
-        "message": "\"Steel Warrior, Yeti Hunter, Dragon Slayer.\" Hector salutes. \"The Guard has nothing left to ask of you. The door west is open — the Master Trainer is waiting.\""
+        "message": "\"Steel Warrior, Yeti Hunter, Dragon Slayer.\" Hector salutes. \"The Guard has nothing left to ask of you. The door west is open, the Master Trainer is waiting.\""
       },
       {
         "ifCompleted": null,
@@ -951,13 +984,13 @@
       "type": "regionDiscovered",
       "regionId": "mountains"
     },
-    "hint": "Rigel stands at the Star City Blue Gate (Room 611), west of the Master Trainer — through the Blue Guard's locked door, or up the Grassy Field waterfall on wings.",
+    "hint": "Rigel stands at the Star City Blue Gate (Room 611), west of the Master Trainer, through the Blue Guard's locked door, or up the Grassy Field waterfall on wings.",
     "metLine": "You meet Rigel the Brave at the Blue Gate.",
     "greeting": "\"This is your greatest quest! Retrieve the three keys and unlock the Blue Gate!\" Rigel the Knight stands tall by the gate. \"Greed, Wrath, Pride. A king holds each.\"",
     "idleDialogs": [
       {
         "ifCompleted": "quest_rigel_001",
-        "message": "\"The gate is open.\" Rigel steps aside. \"Camp Hero is west of here — rest at the fountain, and the camp will teach you what the guilds could not.\""
+        "message": "\"The gate is open.\" Rigel steps aside. \"Camp Hero is west of here, rest at the fountain, and the camp will teach you what the guilds could not.\""
       },
       {
         "ifCompleted": null,

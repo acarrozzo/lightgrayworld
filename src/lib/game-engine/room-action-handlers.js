@@ -11,6 +11,7 @@ const { getRecipeById, isRecipeAvailableInRoom, whereToCraft, describeCraft } = 
 const { getShop, listKeeperShops } = require('../game-data/shops')
 const { OVERHEARD, listOverheardRooms } = require('../game-data/overheard')
 const { chatActionForGiver } = require('../game-data/lines')
+const { listTalkers, openTalkerSet } = require('../game-data/talkers')
 const { nextLineIndex } = require('./line-cursor-state')
 const { GIVERS: GIVERS_FOR_CHAT } = require('../game-data/quest-registry')
 
@@ -3957,6 +3958,21 @@ for (const [roomId, keeper] of listKeeperShops()) {
     [keeper.action]: makeRoomLineHandler(keeper.action, async (playerId) => {
       const p = cycleLine(playerId, `${roomId}|keeper`, keeper.lines)
       return p && { text: p.text, speaker: keeper.label, source: { roomId, speaker: speakerId, set: 'keeper', index: p.index } }
+    }),
+  }
+}
+
+// Talkers (game-data/talkers.js): NPCs with lines but no quest and no shop.
+// The set served depends on guild membership, and each set keeps its own cursor.
+for (const [roomId, talker] of listTalkers()) {
+  ROOM_ACTIONS[roomId] = {
+    ...(ROOM_ACTIONS[roomId] || {}),
+    [talker.action]: makeRoomLineHandler(talker.action, async (playerId) => {
+      const set = await openTalkerSet(talker, (factionId) => isMember(playerId, factionId))
+      if (!set) return null
+      const setIndex = talker.sets.indexOf(set)
+      const p = cycleLine(playerId, `${roomId}|talker|${talker.id}|${setIndex}`, set.lines)
+      return p && { text: p.text, speaker: talker.name, source: { roomId, speaker: talker.id, set: 'talker', index: p.index } }
     }),
   }
 }

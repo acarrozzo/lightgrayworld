@@ -12,21 +12,24 @@ export type LineSetRow = {
   roomName: string
   speaker: string
   speakerId: string
-  set: 'keeper' | 'listen' | 'idle' | 'aside'
+  set: 'keeper' | 'listen' | 'talker' | 'idle' | 'aside'
   action: string | null
   lines: string[]
   gate: string | null
   gateTitle: string | null
+  /** For a talker set that opens only to guild members: the faction ids, any of which qualifies. */
+  memberOf?: string[] | null
   shop: string | null
 }
 
-const SET_FILTERS = ['all', 'keeper', 'listen', 'idle', 'aside'] as const
+const SET_FILTERS = ['all', 'keeper', 'listen', 'talker', 'idle', 'aside'] as const
 type SetFilter = (typeof SET_FILTERS)[number]
 
-const SET_LABEL: Record<LineSetRow['set'], string> = { keeper: 'keeper', listen: 'listen in', idle: 'idle', aside: 'aside' }
+const SET_LABEL: Record<LineSetRow['set'], string> = { keeper: 'keeper', listen: 'listen in', talker: 'talker', idle: 'idle', aside: 'aside' }
 const SET_HOW: Record<LineSetRow['set'], string> = {
   keeper: "the talk button in the shop's room, and under the shop window's title",
   listen: 'the Listen In button',
+  talker: 'the talk button in their room',
   idle: 'Talk with no quest active, and Chat',
   aside: 'under every Talk, and Chat',
 }
@@ -173,7 +176,9 @@ export default function LinesBrowser({ sets }: { sets: LineSetRow[] }) {
                                 <span>
                                   · after <EntityLink href={questHref(s.gate)}><span>{s.gateTitle ?? s.gate}</span></EntityLink>
                                 </span>
-                              ) : s.set === 'idle' || s.set === 'aside' ? (
+                              ) : s.memberOf && s.memberOf.length > 0 ? (
+                                <span>· members of {s.memberOf.join(' or ')}</span>
+                              ) : s.set === 'idle' || s.set === 'aside' || s.set === 'talker' ? (
                                 <span>· always</span>
                               ) : null}
                             </div>

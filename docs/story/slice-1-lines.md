@@ -1,6 +1,6 @@
 # Slice 1 lines: the frame
 
-**Status: wired on October 18, 2026.** Every Proposed line below is in `quest-givers.json` / `quests.json`. Edit the data directly from here on; this file is the record of what was agreed.
+**Status: wired on October 18, 2026.** The Blueberry Jam quest (`quest_oldman_004`) was removed on October 19; its three lines below are gone with it. Every Proposed line below is in `quest-givers.json` / `quests.json`. Edit the data directly from here on; this file is the record of what was agreed.
 
 Room Zero, the Guardian Angel, the Old Man, the Young Soldier. Every line below is a draft for you to rewrite in place. Edit the **Proposed** column directly in this file; strike a row to drop it. Nothing ships until you have touched it.
 
