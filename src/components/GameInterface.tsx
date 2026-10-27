@@ -17,17 +17,18 @@ import { useFightFrame } from './game-interface/useFightFrame'
 import NotificationBadge from './NotificationBadge'
 import TabBar, { tabDef, type TabBadges } from './game-interface/TabBar'
 import { escapeCloses, reduceTabs, type TabEvent, type TabId } from '@/lib/tab-rules'
-import LayerShell, { DeckProvider, HeaderTabs, type DeckPresentation } from './game-interface/LayerShell'
+import LayerShell, { DeckProvider, HeaderTabs, ICON_BUTTON, type DeckPresentation } from './game-interface/LayerShell'
+import FullScreenFrame from './game-interface/FullScreenFrame'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
-import { MessageSquareText, ChevronUp, ChevronDown } from 'lucide-react'
+import { MessageSquareText, ChevronUp, ChevronDown, Maximize2 } from 'lucide-react'
 import ExplorePanel from './game-interface/ExplorePanel'
 import { DOCK_BAR, DeckContent, type DeckContentProps } from './game-interface/Deck'
 import ActionModal from './ActionModal'
 import ConfirmDialog from './ConfirmDialog'
 import { describePartyDeparture, partyDepartureWarning } from '@/lib/party-succession'
 import ShopModal from './ShopModal'
-import SkillsAndSpellsBook, { type BookTab } from './SkillsAndSpellsBook'
+import SkillsAndSpellsBook, { BookToggle, SpendLine, type BookTab } from './SkillsAndSpellsBook'
 import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { resolveItemIcon } from '@/lib/item-actions'
@@ -92,6 +93,15 @@ const WORLD_FULLSCREEN_KEY = 'lg:world-fullscreen'
 function readWorldFullScreen(): boolean {
   try {
     return window.localStorage.getItem(WORLD_FULLSCREEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+/** Whether the Skills and Spells book was last left full screen on this device. */
+const BOOK_FULLSCREEN_KEY = 'lg:book-fullscreen'
+function readBookFullScreen(): boolean {
+  try {
+    return window.localStorage.getItem(BOOK_FULLSCREEN_KEY) === '1'
   } catch {
     return false
   }
@@ -252,15 +262,31 @@ export default function GameInterface() {
 
   // The Char tab's pages: the character sheet, and the two books.
   const [charTab, setCharTab] = useState<'char' | BookTab>('char')
+  // Whether the book covers the whole window. Like the World map: remembered
+  // per device when the player chooses it with Maximize or Leave; a teacher's
+  // room button always opens it full screen, and a fight always ends it,
+  // without changing what is remembered. Every other way in reads the memory.
+  const [bookFullScreen, setBookFullScreen] = useState(false)
+  const setBookFullScreenRemembered = useCallback((on: boolean) => {
+    setBookFullScreen(on)
+    try {
+      window.localStorage.setItem(BOOK_FULLSCREEN_KEY, on ? '1' : '0')
+    } catch {
+      // Storage unavailable: the choice holds for this page load.
+    }
+  }, [])
 
   /**
    * Open the Skill book or the Spell book, optionally ringing one skill or
-   * spell. They are pages of the Char tab, so this goes there.
+   * spell. They are pages of the Char tab, so this goes there — docked, or
+   * full screen if that is how it was last left; `fullScreen` forces the
+   * window (the teacher's room button) without changing the memory.
    */
-  const handleOpenBook = useCallback((tab: BookTab, highlightId?: string) => {
+  const handleOpenBook = useCallback((tab: BookTab, highlightId?: string, options?: { fullScreen?: boolean }) => {
     setBookHighlight(highlightId ?? null)
     setCharTab(tab)
     setCenterActiveTab('char')
+    setBookFullScreen(options?.fullScreen ?? readBookFullScreen())
   }, [])
 
   const [shopModalData, setShopModalData] = useState<{
@@ -674,9 +700,13 @@ export default function GameInterface() {
         setIsCraftingOpen(false)
         return true
       }
-      // Full screen steps back to the docked World tab before the tab closes.
+      // Full screen steps back to the docked tab before the tab closes.
       if (tabStateRef.current.tab === 'world' && worldFullScreen) {
         setWorldFullScreenRemembered(false)
+        return true
+      }
+      if (tabStateRef.current.tab === 'char' && bookFullScreen) {
+        setBookFullScreenRemembered(false)
         return true
       }
       if (escapeCloses(tabStateRef.current)) {
@@ -708,6 +738,8 @@ export default function GameInterface() {
     levelUpData,
     worldFullScreen,
     setWorldFullScreenRemembered,
+    bookFullScreen,
+    setBookFullScreenRemembered,
   ])
 
   const loadRoomData = useCallback(async (options?: { isTransition?: boolean; travel?: { toRoomId?: string }; requireAuth?: boolean; roomData?: any }) => {
@@ -1111,11 +1143,12 @@ export default function GameInterface() {
       return
     }
 
-    // "Spells" at the Pajama Shaman's tent is the same client-side toggle: the
-    // book itself lives in the store, learning goes over HTTP, casting is a
-    // normal game action dispatched from inside it.
+    // "Skills" and "Spells" in a teacher's room are the same client-side
+    // toggle: the book itself lives in the store, learning goes over HTTP,
+    // casting is a normal game action dispatched from inside it. From a room
+    // the book opens over the whole window.
     if (normalizedAction === 'open spellbook' || normalizedAction === 'open skills' || normalizedAction === 'open skillbook') {
-      handleOpenBook(normalizedAction === 'open spellbook' ? 'spells' : 'skills')
+      handleOpenBook(normalizedAction === 'open spellbook' ? 'spells' : 'skills', undefined, { fullScreen: true })
       return
     }
 
@@ -3401,8 +3434,9 @@ export default function GameInterface() {
   useEffect(() => {
     if (!battle.isInBattle) return
     applyTabEvent({ type: 'fightStarted', phone: !window.matchMedia('(min-width: 1024px)').matches })
-    // A full-screen map would hide the fight: back to the docked tab.
+    // A full-screen map or book would hide the fight: back to the docked tab.
     setWorldFullScreen(false)
+    setBookFullScreen(false)
   }, [battle.isInBattle, applyTabEvent])
 
   const isDead = !!player && player.hp <= 0
@@ -3648,29 +3682,39 @@ export default function GameInterface() {
     return () => registerFeedLinkHandler(null)
   }, [])
 
+  // The open book, drawn once: in the Char tab's panel, or over the whole
+  // window. Both read the same store and send the same actions.
+  const renderBook = useCallback((options?: { showSpBar?: boolean }) => {
+    if (!player || charTab === 'char') return null
+    return (
+      <SkillsAndSpellsBook
+        player={player}
+        showSpBar={options?.showSpBar ?? true}
+        inBattle={battle.isInBattle}
+        hasTarget={roomEnemy !== null}
+        canHunt={canHunt}
+        tab={charTab}
+        highlightId={bookHighlight}
+        onLearned={(updatedPlayer) => {
+          // Merge: the server's row wins, client-only fields (buffs, presence) survive.
+          const current = useGameStore.getState().player
+          setPlayer(current ? { ...current, ...updatedPlayer } : updatedPlayer)
+        }}
+        onCast={(spellId) => handleAction({ type: 'cast_spell', data: { spellId } })}
+        onUseSkill={(skillId) => handleAction({ type: 'use_skill', data: { skillId } })}
+      />
+    )
+  }, [player, charTab, battle.isInBattle, roomEnemy, canHunt, bookHighlight, setPlayer, handleAction])
+
   const renderActivePanel = useCallback(() => {
     if (!player) return <div>Loading...</div>
 
     switch (centerActiveTab) {
       case 'char':
         if (charTab !== 'char') {
-          return (
-            <SkillsAndSpellsBook
-              player={player}
-              inBattle={battle.isInBattle}
-              hasTarget={roomEnemy !== null}
-              canHunt={canHunt}
-              tab={charTab}
-              highlightId={bookHighlight}
-              onLearned={(updatedPlayer) => {
-                // Merge: the server's row wins, client-only fields (buffs, presence) survive.
-                const current = useGameStore.getState().player
-                setPlayer(current ? { ...current, ...updatedPlayer } : updatedPlayer)
-              }}
-              onCast={(spellId) => handleAction({ type: 'cast_spell', data: { spellId } })}
-              onUseSkill={(skillId) => handleAction({ type: 'use_skill', data: { skillId } })}
-            />
-          )
+          // Full screen draws the book over the window instead; the column
+          // behind it stays empty, as the World tab's does.
+          return bookFullScreen ? null : renderBook()
         }
         return (
           <CharPanel
@@ -3744,7 +3788,7 @@ export default function GameInterface() {
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, charTab, questsTab, trackedQuestStore.ids, trackedQuestStore.toggle, bookHighlight, spBookTab, handlePointsSpent, handleOpenBook, battle.isInBattle, roomEnemy, canHunt, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentRoom, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
+  }, [goToExplore, centerActiveTab, charTab, questsTab, trackedQuestStore.ids, trackedQuestStore.toggle, bookFullScreen, renderBook, spBookTab, handlePointsSpent, handleOpenBook, battle.isInBattle, roomEnemy, canHunt, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentRoom, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
 
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
@@ -3821,19 +3865,31 @@ export default function GameInterface() {
     const panelLead =
       centerActiveTab === 'char' ? (
         charTabs.length > 1 ? (
-          <HeaderTabs
-            label="Character, Skills or Spells"
-            active={charTab}
-            home="char"
-            onChange={(next) => {
-              // Switching pages by hand leaves the ring behind: it belonged
-              // to the row that sent the player here.
-              setBookHighlight(null)
-              setCharTab(next)
-            }}
-            color="violet"
-            tabs={charTabs}
-          />
+          <>
+            <HeaderTabs
+              label="Character, Skills or Spells"
+              active={charTab}
+              home="char"
+              onChange={(next) => {
+                // Switching pages by hand leaves the ring behind: it belonged
+                // to the row that sent the player here.
+                setBookHighlight(null)
+                setCharTab(next)
+                // A book opened from its pill is docked, or full screen if
+                // that is how it was last left.
+                if (next !== 'char') setBookFullScreen(readBookFullScreen())
+              }}
+              color="violet"
+              tabs={charTabs}
+            />
+            {charTab !== 'char' && (
+              <span className="ml-auto flex flex-shrink-0 items-center">
+                <button type="button" onClick={() => setBookFullScreenRemembered(true)} aria-label="Full screen" title="Full screen" className={ICON_BUTTON}>
+                  <Maximize2 size={15} aria-hidden="true" />
+                </button>
+              </span>
+            )}
+          </>
         ) : undefined
       ) : centerActiveTab === 'quests' ? (
         questTabs.length > 1 ? (
@@ -3958,8 +4014,46 @@ export default function GameInterface() {
     onOpenInventory: handleSwitchToInventory,
   }
 
+  // The book over the whole window. The header is the SP to spend at the
+  // left, one large Skills | Spells switch centred, Leave full screen and
+  // Close at the right — all on one line from 768px up; narrower, the switch
+  // takes its own row under the count (no Char pill — the sheet is where
+  // Leave and Close go). Then the cards, with the width to spread into. The
+  // book's own SP bar stays off: the header carries the count.
+  const bookToggle = (tab: BookTab) => (
+    <BookToggle
+      active={tab}
+      onChange={(next) => {
+        setBookHighlight(null)
+        setCharTab(next)
+      }}
+      tabs={[
+        ...(unlocks.open.has('char:skills') ? ['skills' as const] : []),
+        ...(unlocks.open.has('char:spells') ? ['spells' as const] : []),
+      ]}
+    />
+  )
+  const bookFullScreenEl =
+    player && centerActiveTab === 'char' && charTab !== 'char' && bookFullScreen ? (
+      <FullScreenFrame
+        label="Skills and Spells, full screen"
+        tabs={
+          <div className="flex min-w-0 flex-1 items-center gap-x-4">
+            <SpendLine player={player} tab={charTab} />
+            <div className="hidden min-w-0 flex-1 justify-center md:flex">{bookToggle(charTab)}</div>
+          </div>
+        }
+        onLeave={() => setBookFullScreenRemembered(false)}
+        onClose={goToExplore}
+      >
+        <div className="flex flex-shrink-0 items-center justify-center border-b border-line-subtle/60 bg-surface-panel px-4 py-2 md:hidden">{bookToggle(charTab)}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto">{renderBook({ showSpBar: false })}</div>
+      </FullScreenFrame>
+    ) : null
+
   return (
     <div className="h-dvh fill-surface-canvas flex flex-col overflow-hidden">
+      {bookFullScreenEl}
       <ConfirmDialog
         isOpen={partyDepartureConfirm !== null}
         title={partyDepartureConfirm?.title ?? ''}

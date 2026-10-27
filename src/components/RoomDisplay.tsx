@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Swords } from 'lucide-react'
 import type { Player } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
-import { getRoomActions } from '@/lib/room-actions'
+import { getRoomActions, isRoomActionVisible } from '@/lib/room-actions'
 import { goldChestFlagForRoom } from '@/lib/game-data/gold-chests'
 import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
 import type { PartySnapshot } from '@/lib/socket'
@@ -189,12 +189,11 @@ export default function RoomDisplay({
 
   // Actions can declare `requiresMembership` to stay hidden until the player
   // has joined that guild — both guilds use it so only the recruiter shows
-  // until you have joined. Presentation only; the server gates the action too.
-  const roomActions = getRoomActions(room.roomId).filter((a) => {
-    if (!a.requiresMembership) return true
-    const membershipQuest = getFaction(a.requiresMembership)?.membershipQuest
-    return !!membershipQuest && quests.some((q) => q.questId === membershipQuest && q.completed)
-  })
+  // until you have joined — or `requiresTeacher` to wait for a teacher's
+  // lesson (the book doors). Presentation only; the server gates the action too.
+  const roomActions = getRoomActions(room.roomId).filter((a) =>
+    isRoomActionVisible(a, { skillTeachers: player?.skillTeachers, spellTeachers: player?.spellTeachers, quests }),
+  )
 
   const handleAction = async (action: string) => {
     if (!onAction || isPerformingAction) return

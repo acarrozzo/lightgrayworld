@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Player, useGameStore } from '@/lib/game-state'
 import Icon from './Icon'
 import { ScrollEnd } from './game-interface/LayerShell'
+import { getTabButtonColorClasses } from '@/lib/tabColors'
 import {
   buildSpellbook,
   castBlockedReason,
@@ -25,6 +26,45 @@ import {
 
 export type BookTab = 'skills' | 'spells'
 
+/**
+ * The number that decides what you can learn: SP to spend, in the open
+ * book's accent. MP and MAG are read off the cards and the page's own line;
+ * they are not repeated here.
+ */
+export function SpendLine({ player, tab }: { player: Player; tab: BookTab }) {
+  const sp = player.sp ?? 0
+  const accent = tab === 'skills' ? 'text-stat-str' : 'text-mood-arcane'
+  return (
+    <p className="flex items-baseline gap-1.5 whitespace-nowrap">
+      <span className={`text-2xl font-black leading-none tabular-nums ${sp > 0 ? accent : 'text-fg-muted'}`}>{sp}</span>
+      <span className={`text-xs font-bold uppercase tracking-wide ${sp > 0 ? accent : 'text-fg-muted'}`}>SP to spend</span>
+    </p>
+  )
+}
+
+/**
+ * The two books as one large switch, for the full-screen header: taller and
+ * louder than a panel's sub-tabs, since up there it is the only thing to
+ * choose. A book not yet unlocked is not offered.
+ */
+export function BookToggle({ tabs, active, onChange }: { tabs: BookTab[]; active: BookTab; onChange: (tab: BookTab) => void }) {
+  return (
+    <div role="group" aria-label="Skills or Spells" className="flex items-center gap-2">
+      {tabs.map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          aria-pressed={active === tab}
+          onClick={() => onChange(tab)}
+          className={`flex h-10 items-center justify-center rounded-lg px-6 text-sm font-bold uppercase tracking-wider shadow-sm transition-all duration-200 hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${getTabButtonColorClasses('violet', active === tab)}`}
+        >
+          {tab === 'skills' ? 'Skills' : 'Spells'}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 interface SkillsAndSpellsBookProps {
   player: Player | null
   /** Using from the book: heals and buffs work anywhere, attack spells and strikes need something to hit. */
@@ -34,6 +74,11 @@ interface SkillsAndSpellsBookProps {
   /** The room rolls encounters: an attack spell or strike with nothing present hunts for one. */
   canHunt?: boolean
   tab: BookTab
+  /**
+   * Draw the sticky "N Skill Points to spend" bar at the top. Off when the
+   * frame around the book carries that line itself (full screen).
+   */
+  showSpBar?: boolean
   /**
    * One entry to scroll to and ring on open — the character panel's rows and
    * the battle deck send the player here to read what they just tapped.
@@ -58,6 +103,7 @@ export default function SkillsAndSpellsBook({
   hasTarget,
   canHunt = false,
   tab,
+  showSpBar = true,
   highlightId = null,
   onLearned,
   onCast,
@@ -138,8 +184,9 @@ export default function SkillsAndSpellsBook({
     passives.dodgeChance > 0 ? `${passives.dodgeChance}% dodge` : null,
   ].filter(Boolean)
 
-  // In the Char tab the cards follow the panel's width, not the window's.
-  const cardGrid = 'grid grid-cols-1 @min-[640px]:grid-cols-2 gap-3'
+  // The cards follow their container's width — the Char tab's panel, or the
+  // window when the book is full screen, where a third column fits.
+  const cardGrid = 'grid grid-cols-1 @min-[640px]:grid-cols-2 @min-[1100px]:grid-cols-3 gap-3'
   const blurb =
     tab === 'skills'
       ? 'Proficiencies and defenses work on their own; special attacks cost MP in a fight. Better teachers raise the caps.'
@@ -218,25 +265,16 @@ export default function SkillsAndSpellsBook({
     </>
   )
 
-  const accent = tab === 'skills' ? 'text-stat-str' : 'text-mood-arcane'
-
   return (
     <div className="@container">
       {/* What there is to spend, kept in view: scroll as far down the page as
           you like and the number that decides what you can learn comes with
           you. Opaque, so the cards pass under it cleanly. */}
-      <div className="sticky top-0 z-10 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-line-subtle/60 bg-surface-panel px-4 py-2 shadow-[0_4px_8px_-6px_var(--shadow)]">
-        <p className="flex items-baseline gap-1.5">
-          <span className={`text-xl font-black leading-none tabular-nums ${sp > 0 ? accent : 'text-fg-muted'}`}>{sp}</span>
-          <span className={`text-[11px] font-bold uppercase tracking-wide ${sp > 0 ? accent : 'text-fg-muted'}`}>
-            {sp === 1 ? 'Skill Point' : 'Skill Points'} to spend
-          </span>
-        </p>
-        <p className="ml-auto flex items-baseline gap-2 text-[11px] tabular-nums text-fg-secondary">
-          {tab === 'spells' && <span className="font-semibold text-stat-mag">{mag} MAG</span>}
-          <span className="font-semibold text-resource-mp">{mp}/{player.mpMax ?? 0} MP</span>
-        </p>
-      </div>
+      {showSpBar && (
+        <div className="sticky top-0 z-10 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b border-line-subtle/60 bg-surface-panel px-4 py-2 shadow-[0_4px_8px_-6px_var(--shadow)]">
+          <SpendLine player={player} tab={tab} />
+        </div>
+      )}
 
       <div className="space-y-4 p-4">
         {/* One sentence on how the page works, then what it is doing for you now. */}
@@ -378,7 +416,7 @@ function SkillCard({ entry, highlighted = false, sp, gear, busy, anyBusy, skillU
     <div
       data-book-entry={def.id}
       className={`rounded-xl border px-4 py-3 flex gap-3 transition-shadow ${
-        locked ? 'border-line-subtle/60 bg-surface-panel/40 opacity-70' : `${tone.border}/40 bg-surface-panel/80`
+        locked ? 'border-line-subtle/60 bg-surface-panel/40 opacity-70' : `${tone.card} bg-surface-panel/80`
       } ${highlighted ? 'ring-2 ring-line-focus' : ''}`}
     >
       <div className="flex-shrink-0 flex flex-col items-center gap-1 pt-0.5">
@@ -487,7 +525,7 @@ function SpellCard({ entry, highlighted = false, sp, busy, anyBusy, castDisabled
     <div
       data-book-entry={def.id}
       className={`rounded-xl border px-4 py-3 flex gap-3 transition-shadow ${
-        locked ? 'border-line-subtle/60 bg-surface-panel/40 opacity-70' : `${tone.border}/40 bg-surface-panel/80`
+        locked ? 'border-line-subtle/60 bg-surface-panel/40 opacity-70' : `${tone.card} bg-surface-panel/80`
       } ${highlighted ? 'ring-2 ring-line-focus' : ''}`}
     >
       <div className="flex-shrink-0 flex flex-col items-center gap-1 pt-0.5">

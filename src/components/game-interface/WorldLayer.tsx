@@ -1,13 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
-import { Eye, EyeOff, Globe, Map as MapIcon, Maximize2, Minimize2, Sparkles, X } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Eye, EyeOff, Globe, Map as MapIcon, Maximize2, Sparkles } from 'lucide-react'
 import { useGameStore, type Player } from '@/lib/game-state'
-import { StatBar } from '@/components/GameHeader'
 import { foundSheetIds, type TeleportContext } from '@/lib/world-atlas'
 import { useWorldMapPref } from '@/lib/world-map-prefs'
 import LayerShell, { HeaderTabs, ICON_BUTTON, useDeck } from './LayerShell'
+import FullScreenFrame, { FULL_ICON } from './FullScreenFrame'
 import TravelRows, { type BossTeleportTile } from './TravelRows'
 import WorldAtlas, { type AtlasCommand, type AtlasView } from './WorldAtlas'
 import AtlasRail from './AtlasRail'
@@ -45,8 +44,6 @@ interface WorldLayerProps {
   onTeleport: (roomId: string) => void
   teleportBlockedReason?: string | null
 }
-
-const FULL_ICON = 'grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg text-fg-secondary transition-colors hover:bg-surface-raised/60 hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus'
 
 /** Wide enough, full screen, for the rail of places beside the map. */
 function useWideScreen(minWidth: number): boolean {
@@ -237,7 +234,8 @@ export default function WorldLayer({
   if (fullScreen) {
     if (!isShownCopy) return null
     return (
-      <WorldFullScreen
+      <FullScreenFrame
+        label="World, full screen"
         tabs={tabs}
         player={player}
         toggles={toggles(FULL_ICON)}
@@ -265,7 +263,7 @@ export default function WorldLayer({
         ) : (
           map(false)
         )}
-      </WorldFullScreen>
+      </FullScreenFrame>
     )
   }
 
@@ -285,78 +283,5 @@ export default function WorldLayer({
     <LayerShell title="World" icon={<Globe size={15} aria-hidden="true" />} toneClass="text-hue-sky" lead={lead} flush>
       {tab === 'teleport' ? rows(false) : <div className="flex min-h-0 flex-1 flex-col">{map(false)}</div>}
     </LayerShell>
-  )
-}
-
-/**
- * The World tab over the whole window: its sub-tabs, a slim HP/MP line, the
- * map's switches, back to the docked tab, close. On a phone the vitals take a
- * second line. Here lives on the map itself.
- */
-function WorldFullScreen({
-  tabs,
-  player,
-  toggles,
-  onLeave,
-  onClose,
-  children,
-}: {
-  tabs: ReactNode
-  player: Player | null
-  /** The map's pin and controls switches, when the map is showing. */
-  toggles: ReactNode
-  onLeave: () => void
-  onClose: () => void
-  children: ReactNode
-}) {
-  const rootRef = useRef<HTMLDivElement>(null)
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
-  // Keyboard focus moves into the full screen and back to whatever opened it.
-  useEffect(() => {
-    if (!mounted) return
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    rootRef.current?.focus({ preventScroll: true })
-    return () => {
-      if (opener?.isConnected) opener.focus({ preventScroll: true })
-    }
-  }, [mounted])
-
-  if (!mounted) return null
-
-  const vitals = player ? (
-    <div className="flex items-center gap-2" aria-label="Vitals">
-      <StatBar className="w-[104px]" pct={player.hpMax > 0 ? (player.hp / player.hpMax) * 100 : 0} fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp" label="HP" value={`HP ${player.hp}/${player.hpMax}`} />
-      <StatBar className="w-[104px]" pct={player.mpMax > 0 ? (player.mp / player.mpMax) * 100 : 0} fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp" label="MP" value={`MP ${player.mp}/${player.mpMax}`} />
-    </div>
-  ) : null
-
-  return createPortal(
-    <div
-      ref={rootRef}
-      tabIndex={-1}
-      role="dialog"
-      aria-modal="true"
-      aria-label="World, full screen"
-      className="fixed inset-0 z-40 flex flex-col bg-surface-canvas focus:outline-none"
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-    >
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-line-subtle/60 bg-surface-panel py-1.5 pl-3 pr-2">
-        <div className="flex min-w-0 items-center">{tabs}</div>
-        <div className="order-last flex w-full justify-center sm:order-none sm:ml-auto sm:w-auto">{vitals}</div>
-        <div className="ml-auto flex flex-shrink-0 items-center gap-0.5 sm:ml-0">
-          {toggles}
-          <button type="button" onClick={onLeave} aria-label="Leave full screen" title="Leave full screen (Esc)" className={FULL_ICON}>
-            <Minimize2 size={16} aria-hidden="true" />
-          </button>
-          <button type="button" onClick={onClose} aria-label="Close" title="Close" className={FULL_ICON}>
-            <X size={18} aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-    </div>,
-    document.body,
   )
 }

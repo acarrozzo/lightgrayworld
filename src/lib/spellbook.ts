@@ -73,16 +73,21 @@ export const getSpell = registry.getSpell
  * Hues distinguish spells without meaning anything (a Fireball is "the red
  * one"), which is exactly what the `hue.*` family is for.
  */
-export const SPELL_TONES: Record<string, { text: string; fill: string; border: string; rail: string; glow: string }> = {
-  blue: { text: 'text-hue-blue', fill: 'fill-hue-blue', border: 'border-hue-blue', rail: 'border-l-hue-blue', glow: 'var(--hue-blue)' },
-  red: { text: 'text-hue-red', fill: 'fill-hue-red', border: 'border-hue-red', rail: 'border-l-hue-red', glow: 'var(--hue-red)' },
-  green: { text: 'text-hue-green', fill: 'fill-hue-green', border: 'border-hue-green', rail: 'border-l-hue-green', glow: 'var(--hue-green)' },
-  gold: { text: 'text-hue-gold', fill: 'fill-hue-gold', border: 'border-hue-gold', rail: 'border-l-hue-gold', glow: 'var(--hue-gold)' },
-  sky: { text: 'text-hue-sky', fill: 'fill-hue-sky', border: 'border-hue-sky', rail: 'border-l-hue-sky', glow: 'var(--hue-sky)' },
-  pink: { text: 'text-hue-pink', fill: 'fill-hue-pink', border: 'border-hue-pink', rail: 'border-l-hue-pink', glow: 'var(--hue-pink)' },
-  purple: { text: 'text-hue-purple', fill: 'fill-hue-purple', border: 'border-hue-purple', rail: 'border-l-hue-purple', glow: 'var(--hue-purple)' },
-  violet: { text: 'text-hue-violet', fill: 'fill-hue-violet', border: 'border-hue-violet', rail: 'border-l-hue-violet', glow: 'var(--hue-violet)' },
-  gray: { text: 'text-hue-gray', fill: 'fill-hue-gray', border: 'border-hue-gray', rail: 'border-l-hue-gray', glow: 'var(--hue-gray)' },
+/**
+ * Every class is written out in full: Tailwind finds utilities by scanning
+ * source text, so a `${tone.border}/40` built at render time is never
+ * generated and the border falls back to the text colour.
+ */
+export const SPELL_TONES: Record<string, { text: string; fill: string; border: string; card: string; rail: string; glow: string }> = {
+  blue: { text: 'text-hue-blue', fill: 'fill-hue-blue', border: 'border-hue-blue', card: 'border-hue-blue/40', rail: 'border-l-hue-blue', glow: 'var(--hue-blue)' },
+  red: { text: 'text-hue-red', fill: 'fill-hue-red', border: 'border-hue-red', card: 'border-hue-red/40', rail: 'border-l-hue-red', glow: 'var(--hue-red)' },
+  green: { text: 'text-hue-green', fill: 'fill-hue-green', border: 'border-hue-green', card: 'border-hue-green/40', rail: 'border-l-hue-green', glow: 'var(--hue-green)' },
+  gold: { text: 'text-hue-gold', fill: 'fill-hue-gold', border: 'border-hue-gold', card: 'border-hue-gold/40', rail: 'border-l-hue-gold', glow: 'var(--hue-gold)' },
+  sky: { text: 'text-hue-sky', fill: 'fill-hue-sky', border: 'border-hue-sky', card: 'border-hue-sky/40', rail: 'border-l-hue-sky', glow: 'var(--hue-sky)' },
+  pink: { text: 'text-hue-pink', fill: 'fill-hue-pink', border: 'border-hue-pink', card: 'border-hue-pink/40', rail: 'border-l-hue-pink', glow: 'var(--hue-pink)' },
+  purple: { text: 'text-hue-purple', fill: 'fill-hue-purple', border: 'border-hue-purple', card: 'border-hue-purple/40', rail: 'border-l-hue-purple', glow: 'var(--hue-purple)' },
+  violet: { text: 'text-hue-violet', fill: 'fill-hue-violet', border: 'border-hue-violet', card: 'border-hue-violet/40', rail: 'border-l-hue-violet', glow: 'var(--hue-violet)' },
+  gray: { text: 'text-hue-gray', fill: 'fill-hue-gray', border: 'border-hue-gray', card: 'border-hue-gray/40', rail: 'border-l-hue-gray', glow: 'var(--hue-gray)' },
 }
 
 export function spellTone(hue: string) {

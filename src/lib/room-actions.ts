@@ -3,6 +3,14 @@ import { listGiverQuestIds } from './game-data/quest-registry'
 import { getOverheard } from './game-data/overheard'
 import { getShop } from './game-data/shops'
 import { getTalker } from './game-data/talkers'
+import { getFaction } from './game-data/factions'
+
+const { SKILL_TEACHER_ROOMS } = require('./game-data/skills') as {
+  SKILL_TEACHER_ROOMS: Record<string, { flag: string }>
+}
+const { SPELL_TEACHER_ROOMS } = require('./game-data/spells') as {
+  SPELL_TEACHER_ROOMS: Record<string, { flag: string }>
+}
 
 export interface RoomAction {
   action: string
@@ -21,6 +29,16 @@ export interface RoomAction {
    * recruiter until you have actually joined.
    */
   requiresMembership?: string
+  /**
+   * Hide this action until the named skill or spell teacher has been met
+   * (the `*Flag` columns skills.js and spells.js key their teachers by).
+   *
+   * Presentation only, like `requiresMembership`: the book itself is global
+   * and learning never needed the teacher present, in the original either.
+   * This is only the door they point at, drawn once they have said their
+   * piece.
+   */
+  requiresTeacher?: string
   /**
    * Whether this action also appears as a shortcut chip beside the D-pad.
    *
@@ -137,10 +155,8 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     // gladius, battle axe, warhammer, claymore, long bow, arrows, pajamas and
     // slippers. The button pointed at nothing and returned "Unknown action type".
     craftingAction('021'),
-    // The shaman's spell lessons. A client-side panel toggle like "open
-    // crafting": the spellbook itself is global (learning never required
-    // standing here in the original either), this is the door he points at.
-    { action: 'open spellbook', label: 'Spells', icon: 'magicmissile', className: 'fill-mood-arcane' },
+    // His spell lessons are the "Spells" door every teacher's room gets, from
+    // the teacher tables (`bookActions` below).
   ],
   '014': [
     { action: 'shovel dirt', label: 'Shovel Dirt', icon: 'shovel', className: 'fill-terrain-dirt' },
@@ -581,6 +597,48 @@ for (const roomId of FOREST_CHOP_WOOD_ROOMS) {
 }
 
 /**
+ * The book doors of a teacher's room: "Skills" where a skill teacher stands,
+ * "Spells" where a spell teacher does, both at Camp Hero. Client-side toggles
+ * like "open crafting" — the book opens full screen, learning goes over HTTP,
+ * casting is a normal game action from inside it. Each waits on its teacher's
+ * flag, so a room advertises the book only once the lesson has been given.
+ * Derived from the same tables the server unlocks teachers from, so a new
+ * teacher gets a door without a parallel list here.
+ */
+function bookActions(roomId: string): RoomAction[] {
+  const doors: RoomAction[] = []
+  const skills = SKILL_TEACHER_ROOMS[roomId]
+  if (skills) doors.push({ action: 'open skillbook', label: 'Skills', icon: 'sword1', className: 'fill-stat-str', requiresTeacher: skills.flag })
+  const spells = SPELL_TEACHER_ROOMS[roomId]
+  if (spells) doors.push({ action: 'open spellbook', label: 'Spells', icon: 'magicmissile', className: 'fill-mood-arcane', requiresTeacher: spells.flag })
+  return doors
+}
+
+/** What a room action's visibility can depend on: the player's teacher flags and quest rows. */
+export interface RoomActionViewer {
+  skillTeachers?: Record<string, boolean> | null
+  spellTeachers?: Record<string, boolean> | null
+  quests: ReadonlyArray<{ questId: string; completed: boolean }>
+}
+
+/**
+ * Whether a room action is drawn for this player. `requiresMembership` waits
+ * on the guild's membership quest being turned in; `requiresTeacher` on the
+ * teacher's flag. Presentation only: the server gates every action itself.
+ */
+export function isRoomActionVisible(action: RoomAction, viewer: RoomActionViewer): boolean {
+  if (action.requiresMembership) {
+    const membershipQuest = getFaction(action.requiresMembership)?.membershipQuest
+    if (!membershipQuest || !viewer.quests.some((q) => q.questId === membershipQuest && q.completed)) return false
+  }
+  if (action.requiresTeacher) {
+    const flag = action.requiresTeacher
+    if (!viewer.skillTeachers?.[flag] && !viewer.spellTeachers?.[flag]) return false
+  }
+  return true
+}
+
+/**
  * Get available actions for a specific room
  */
 export function getRoomActions(roomId: string): RoomAction[] {
@@ -603,8 +661,10 @@ export function getRoomActions(roomId: string): RoomAction[] {
     extra.push({ action: overheard.action, label: overheard.label, icon: 'chat', className: 'fill-surface-selected' })
   }
   // People first: a keeper or talker's button leads the row, so whoever is
-  // in the room to talk to is the first thing in it.
-  return extra.length ? [...extra, ...base] : base
+  // in the room to talk to is the first thing in it. The book doors come
+  // last: they lead out of the room, to a page of your own.
+  const doors = bookActions(roomId)
+  return extra.length || doors.length ? [...extra, ...base, ...doors] : base
 }
 
 /**
