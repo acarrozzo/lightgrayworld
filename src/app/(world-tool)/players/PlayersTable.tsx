@@ -240,7 +240,7 @@ function PlayerTr({ r, expanded, onToggle }: { r: PlayerRow; expanded: boolean; 
           </div>
         </td>
         <td className="px-3 py-2 text-right text-status-warning">{r.level}</td>
-        <td className="px-3 py-2 text-right text-status-error">{r.hpMax}</td>
+        <td className="px-3 py-2 text-right text-resource-hp">{r.hpMax}</td>
         <td className="px-3 py-2 text-right text-resource-mp">{r.mpMax}</td>
         <td className="px-3 py-2 text-right text-action-attack">{r.physicalTraining}</td>
         <td className="px-3 py-2 text-right text-stat-mag">{r.mentalTraining}</td>
@@ -281,7 +281,7 @@ function PlayerCard({ r, expanded, onToggle }: { r: PlayerRow; expanded: boolean
       <div className="mt-2 grid grid-cols-4 gap-1 text-center text-xs">
         {[
           { label: 'Lvl', value: r.level, color: 'text-status-warning' },
-          { label: 'HP', value: r.hpMax, color: 'text-status-error' },
+          { label: 'HP', value: r.hpMax, color: 'text-resource-hp' },
           { label: 'MP', value: r.mpMax, color: 'text-resource-mp' },
           { label: 'Kills', value: r.kills, color: 'text-fg-primary' },
           { label: 'PT', value: r.physicalTraining, color: 'text-action-attack' },

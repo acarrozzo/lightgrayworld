@@ -148,6 +148,10 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
       mp: t.brightBlue,
       xp: t.brightGreen,
       gold: t.brightYellow,
+      // Vermilion against your crimson: HP leans toward magenta, the enemy's
+      // bar toward orange, so the two bars of a fight are two reds. `separateFoe`
+      // pushes further in every theme that separates its reds at all.
+      foe: mix(t.red, t.yellow, 0.22),
     },
     // Red, green, blue, gold — see STAT_HUES. Starting from the palette's own
     // four means most themes land in band without needing a correction.
@@ -297,6 +301,7 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
   enforceLegibility(merged.ui, merged.game)
   enforceStatHues(merged.ui, merged.game)
   if (separateReds) separateRedFamily(merged.ui, merged.game, merged.regions, t)
+  if (separateReds) separateFoe(merged.ui, merged.game, t)
   separateRegions(merged.ui, merged.regions)
 
   return {
@@ -620,6 +625,51 @@ function separateRedFamily(
     // Nothing on this pair can move any further; the palette has given all it
     // has. Stop rather than spinning out the remaining passes.
     if (!moved) break
+  }
+}
+
+/**
+ * Hold the enemy's health bar apart from the player's.
+ *
+ * `resource.foe` and `resource.hp` face each other across every battle HUD,
+ * filling from opposite ends, so colour has to tell them apart before position
+ * does. Runs after the red family is settled and moves only `foe`, never `hp`:
+ * HP has already been placed relative to attack, error and Red Town, and that
+ * placement outranks this one. The escape runs toward orange and saturation:
+ * your bar is the crimson, the foe's the vermilion.
+ */
+function separateFoe(ui: Theme['ui'], game: Theme['game'], terminal: TerminalPalette): void {
+  const panel = ui.surfacePanel
+  const bright = ui.fgBright
+  const yellow =
+    chroma(terminal.brightYellow) >= chroma(terminal.yellow) ? terminal.brightYellow : terminal.yellow
+  const readable = (color: string) => ensureContrast(color, panel, MIN_ROLE_CONTRAST, bright)
+
+  game.resource.foe = readable(game.resource.foe)
+  for (let pass = 0; pass < 40; pass++) {
+    const current = game.resource.foe
+    const have = deltaE(current, game.resource.hp)
+    if (have >= MIN_RED_SEPARATION) break
+    // Darker is not available: the legibility floor lifts a dark red back
+    // toward the text colour and drains it grey on the way (Nord's red is
+    // half grey to begin with). So the escapes run along hue and chroma —
+    // toward orange, more saturated, or both — and the bar stays a red.
+    const candidates = [
+      readable(mix(current, yellow, 0.1)),
+      readable(adjustChroma(current, 1.2)),
+      readable(adjustChroma(mix(current, yellow, 0.1), 1.15)),
+    ]
+    let next = current
+    let best = have
+    for (const candidate of candidates) {
+      const d = deltaE(candidate, game.resource.hp)
+      if (d > best) {
+        best = d
+        next = candidate
+      }
+    }
+    if (best - have < 0.002) break
+    game.resource.foe = next
   }
 }
 

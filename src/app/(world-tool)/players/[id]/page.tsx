@@ -143,7 +143,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
       <div className="grid gap-6 md:grid-cols-2">
         <Section title="Vitals & Attributes">
-          <Stat label="Max HP" value={`${user.hp} / ${user.hpMax}`} color="text-status-error" />
+          <Stat label="Max HP" value={`${user.hp} / ${user.hpMax}`} color="text-resource-hp" />
           <Stat label="Max MP" value={`${user.mp} / ${user.mpMax}`} color="text-resource-mp" />
           <Stat label="STR" value={`${user.str}${user.strMod ? ` (+${user.strMod})` : ''}`} color="text-resource-hp" />
           <Stat label="DEX" value={`${user.dex}${user.dexMod ? ` (+${user.dexMod})` : ''}`} color="text-status-success" />

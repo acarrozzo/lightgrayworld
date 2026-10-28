@@ -2,17 +2,15 @@
 
 import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player, useGameStore } from '@/lib/game-state'
 import Icon from '@/components/Icon'
-import EnemyTraitTags from '@/components/EnemyTraitTags'
 import { useCallback, useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
-import { ChevronLeft, LogOut } from 'lucide-react'
-import HpBar from '@/components/game-interface/HpBar'
+import { Eye, LogOut } from 'lucide-react'
 import type { FightFrame } from '@/components/game-interface/useFightFrame'
+import BattleDuel from '@/components/game-interface/BattleDuel'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { spellTone } from '@/lib/spellbook'
 import ActionDeck from '@/components/game-interface/ActionDeck'
 import { deckContextFromBattle } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
-import { effectiveStats, type StatKey } from '@/lib/effective-stats'
 import { perkIcon } from '@/lib/game-data/enemy-traits'
 
 /** How many times an enemy must already have been beaten before a win with nothing new is shown as one line. */
@@ -55,9 +53,6 @@ interface BattlePanelProps {
    */
   onOpenItem?: (slug: string) => void
   isActing: boolean
-  playerName: string
-  playerLevel: number
-  playerMp: number
   playerMpMax: number
   weaponIconName: string | null
   weaponName: string | null
@@ -65,62 +60,6 @@ interface BattlePanelProps {
   inventory: InventoryItem[]
   /** Spell levels, teachers and MAG — everything the Spells list derives from. */
   player: Player
-}
-
-/** The "+30" a hovered capsule would add to a stat box. */
-function StatPreviewBump({ amount }: { amount: number }) {
-  if (amount <= 0) return null
-  return <span className="text-combat-heal tabular-nums animate-pulse"> +{amount}</span>
-}
-
-function LevelBadge({ level }: { level: number }) {
-  return (
-    <span className="inline-flex items-baseline gap-0.5 px-1.5 py-0.5 rounded border border-line-strong/50 bg-surface-raised/60 shrink-0">
-      <span className="text-[9px] font-semibold text-fg-muted uppercase tracking-wide leading-none">Lv</span>
-      <span className="text-sm font-black text-fg-bright leading-none tabular-nums">{level}</span>
-    </span>
-  )
-}
-
-/**
- * "Turn N" between the two sides. With `onOpen` it is a chip that opens the
- * fight's ledger — the Room chip's idea, applied to time: the fight so far,
- * a tap away without moving anything on the pinned card.
- */
-function TurnChip({ turn, onOpen, size }: { turn: number; onOpen?: () => void; size: 'sm' | 'md' }) {
-  const label = size === 'sm' ? 'text-[8px]' : 'text-[9px]'
-  const number = size === 'sm' ? 'text-[10px]' : 'text-[11px]'
-  const inner = (
-    <>
-      Turn <span className={`${number} font-semibold tracking-normal text-fg-secondary tabular-nums`}>{turn}</span>
-    </>
-  )
-  if (!onOpen) {
-    return <span className={`whitespace-nowrap ${label} uppercase tracking-widest text-fg-muted`}>{inner}</span>
-  }
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      title="The fight so far, turn by turn"
-      aria-label={`Turn ${turn}. Open the fight's turn-by-turn ledger`}
-      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-line-strong/50 bg-surface-raised/40 px-2 py-0.5 ${label} uppercase tracking-widest text-fg-muted transition-colors hover:border-combat-damage/50 hover:text-fg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus`}
-    >
-      {inner}
-      <svg className="h-2.5 w-2.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h10" />
-      </svg>
-    </button>
-  )
-}
-
-/** BOSS / MINI-BOSS beside the level: the same gold tag the room card wears. */
-function RankBadge({ rank }: { rank: 'boss' | 'miniboss' }) {
-  return (
-    <span className="shrink-0 rounded border border-resource-gold/40 bg-resource-gold/15 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider leading-none text-resource-gold">
-      {rank === 'boss' ? 'Boss' : 'Mini-boss'}
-    </span>
-  )
 }
 
 function Swoosh() {
@@ -729,10 +668,10 @@ function BattleResultCard({
 // every row in the list is one tap. Retreat is the pill in the In Battle
 // strip's right corner, open from the first turn; Teleport is the World tab's.
 //
-// Two drawings of the vitals, by the card's width: under 600px you are on
-// the left and the enemy on the right with the numbers inside fat bars and
-// the readout at two thirds size, so a phone's pinned fight screen leaves
-// the deck its rows; wider, the full-size overview and readout as before.
+// Under the strip, the duel (BattleDuel): both sides' vitals and stats, one
+// drawing at every width. Then the turn's readout, at two thirds size under
+// 600px so a phone's pinned fight screen leaves the deck its rows, and the
+// deck.
 
 /** How long a first Retreat tap stays armed before it quietly disarms. */
 const RETREAT_CONFIRM_MS = 2500
@@ -754,9 +693,6 @@ export default function BattlePanel({
   onUseSkill,
   onDismissResult,
   isActing,
-  playerName,
-  playerLevel,
-  playerMp,
   playerMpMax,
   weaponIconName,
   weaponName,
@@ -765,13 +701,6 @@ export default function BattlePanel({
   player,
   onOpenItem,
 }: BattlePanelProps) {
-  // The item under the pointer: a restorer ghosts onto the HP/MP bars here
-  // and in the header, a buff puts its "+20" beside the stat it lifts.
-  // Cleared when the pointer leaves, when the item is used (the tile may
-  // vanish without a leave event), and when the deck unmounts.
-  // The deck itself (ConsumableDeck) sets and clears the preview; the bars
-  // here only read it.
-  const itemPreview = useGameStore((s) => s.itemPreview)
   // The result, once the fight is over. A win keeps the box up as it stood
   // on the last turn — strip, vitals, the final blow — with the victory card
   // where the deck was; the live battle state is already reset by then, so
@@ -845,44 +774,8 @@ export default function BattlePanel({
   const enemyHit = enemyHitTone(battle.enemyDamageType)
   const enemyFx = battle.enemyEffects ?? {}
 
-  // The number beside the vitals is the item's full amount, the same "+100"
-  // its button wears; the ghost on the bar is the part that lands.
-  const previewHp = Math.max(0, itemPreview?.hp ?? 0)
-  const previewMp = Math.max(0, itemPreview?.mp ?? 0)
-  // The stat the card shows beside DEF is whichever the weapon rolls.
-  const offenseKey: StatKey = spellCast ? 'mag' : isRanged ? 'dex' : 'str'
-  // The stat that met the enemy's last blow — DEF against melee, DEX against
-  // arrows, MAG against spells (pickPlayerDefensiveStat) — is the number in
-  // the defense box, so the label names it.
-  const defenseKey: StatKey = battle.enemyDamageType === 'RANGED' ? 'dex' : battle.enemyDamageType === 'MAGIC' ? 'mag' : 'def'
-  const defenseLabel = defenseKey.toUpperCase()
-  const defenseTone = defenseKey === 'dex' ? 'text-stat-dex' : defenseKey === 'mag' ? 'text-stat-mag' : 'text-stat-def'
-  // The group bonus: every other fighter here adds 10% to both rolls, and the
-  // two boxes show the stat with it applied (battle-calculator's `bonus`), so
-  // they read higher than the header and the MAX feed line. The tag beside
-  // them, and each box's tooltip, say by how much.
-  const groupPct = battle.multiplayerBonus ? Math.max(0, battle.bonusPercent ?? 0) : 0
-  const groupScale = 1 + groupPct / 100
-  const myStats = effectiveStats(player, inventory)
-  const groupTitle = (label: string, key: StatKey, shown: number | null) =>
-    groupPct > 0 && shown !== null ? `${label} ${myStats[key].total} + ${groupPct}% group bonus = ${shown}` : undefined
-  const groupOthers = Math.round(groupPct / 10)
-  const groupTagTitle = `Group bonus: ${groupOthers} other${groupOthers === 1 ? '' : 's'} fighting here, +10% each to your attack and defense rolls`
-  // A hovered capsule raises the stat underneath; the box moves by that
-  // much with the group bonus on top of it.
-  const boxBump = (key: StatKey) => {
-    const change = itemPreview?.stats?.[key] ?? 0
-    if (change === 0) return 0
-    const raw = myStats[key].total
-    return Math.floor((raw + change) * groupScale) - Math.floor(raw * groupScale)
-  }
-  const previewOffense = boxBump(offenseKey)
-  const previewDef = boxBump(defenseKey)
   // What the command deck needs to draw: target, reach, the top of the swing.
   const deckContext = deckContextFromBattle(battle, player, inventory)
-  // The stat the last strike rolled: MAG for a spell, else the weapon's.
-  const offenseLabel = spellCast ? 'MAG' : isRanged ? 'DEX' : 'STR'
-  const offenseTone = spellCast ? 'text-stat-mag' : isRanged ? 'text-combat-heal' : 'text-combat-damage'
   // Pinned: the card fills its column and the list takes what is left. Won,
   // there is no list and the area scrolls again, so the box is its own height.
   const fill = frame === 'fight' && !won
@@ -935,7 +828,7 @@ export default function BattlePanel({
             className="absolute left-1.5 top-1/2 -translate-y-1/2 h-6 px-2.5 rounded-full border border-hue-blue/50 bg-hue-blue/10 text-hue-blue text-[9px] font-bold tracking-wider inline-flex items-center gap-1 transition-colors duration-150 hover:bg-hue-blue/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
             style={{ textShadow: 'none' }}
           >
-            <ChevronLeft size={11} aria-hidden="true" />
+            <Eye size={11} aria-hidden="true" />
             Room
             <span className="font-mono font-medium tracking-normal normal-case text-fg-secondary tabular-nums">{roomLabel}</span>
           </button>
@@ -962,189 +855,7 @@ export default function BattlePanel({
         </button>}
       </div>
 
-      {/* ── Overview, compact: a narrow card. You left, the enemy right, the
-          numbers inside the bars, the stats as one line each. ── */}
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-2 px-2.5 py-2 border-b border-line-subtle/60 @min-[600px]:hidden">
-        <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <LevelBadge level={playerLevel} />
-            <span className="truncate text-xs font-black tracking-tight text-fg-bright">{playerName}</span>
-          </div>
-          <HpBar
-            size="fat"
-            current={battle.playerHp}
-            max={battle.playerHpMax}
-            color="bg-resource-hp"
-            preview={itemPreview?.hp ?? 0}
-            label={
-              <>
-                {Math.min(battle.playerHp, battle.playerHpMax)} / {battle.playerHpMax}
-                {battle.playerHp > battle.playerHpMax && <span className="text-stat-def">+{battle.playerHp - battle.playerHpMax}</span>}
-                {previewHp > 0 && <span className="text-combat-heal animate-pulse">+{previewHp}</span>}
-              </>
-            }
-          />
-          <HpBar
-            size="mid"
-            current={playerMp}
-            max={playerMpMax}
-            color="bg-resource-mp"
-            preview={itemPreview?.mp ?? 0}
-            label={
-              <>
-                {Math.min(playerMp, playerMpMax)} / {playerMpMax}
-                {playerMp > playerMpMax && <span className="text-stat-def">+{playerMp - playerMpMax}</span>}
-                {previewMp > 0 && <span className="text-combat-heal animate-pulse">+{previewMp}</span>}
-              </>
-            }
-          />
-          <div className="flex items-baseline gap-2 tabular-nums">
-            <span className={`text-[8px] uppercase tracking-widest ${offenseTone}`}>{offenseLabel}</span>
-            <span className={`text-xs font-black leading-none ${offenseTone}`} title={groupTitle(offenseLabel, offenseKey, battle.playerStrMax)}>
-              {battle.playerStrMax ?? '—'}
-              <StatPreviewBump amount={previewOffense} />
-            </span>
-            <span className="text-[8px] uppercase tracking-widest text-fg-disabled">{defenseLabel}</span>
-            <span className={`text-xs font-black leading-none ${defenseTone}`} title={groupTitle(defenseLabel, defenseKey, battle.playerDefMax)}>
-              {battle.playerDefMax ?? '—'}
-              <StatPreviewBump amount={previewDef} />
-            </span>
-            {groupPct > 0 && (
-              <span className="text-[8px] font-bold tracking-wider text-resource-mp" title={groupTagTitle}>+{groupPct}%</span>
-            )}
-          </div>
-        </div>
-        <div className="flex flex-col items-center justify-center gap-0.5 px-0.5">
-          <span className="text-[10px] font-black tracking-widest text-fg-disabled">VS</span>
-          <TurnChip turn={battle.turnCount} onOpen={onOpenLedger} size="sm" />
-        </div>
-        <div className="flex min-w-0 flex-col items-end gap-1 text-right">
-          <div className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
-            <span className="truncate text-xs font-black tracking-tight text-fg-bright">{battle.enemyName}</span>
-            {battle.enemyLevel !== null && <LevelBadge level={battle.enemyLevel} />}
-            {battle.enemyRank && <RankBadge rank={battle.enemyRank} />}
-          </div>
-          <HpBar
-            size="fat"
-            current={battle.enemyCurrentHp}
-            max={battle.enemyMaxHp}
-            color="bg-resource-hp"
-            rtl
-            initialPct={100}
-            label={<>{battle.enemyCurrentHp} / {battle.enemyMaxHp}</>}
-          />
-          <EnemyTraitTags traits={battle.enemyTraits} activeId={enemyAction?.id} align="end" className="justify-end" />
-          <div className="flex items-baseline gap-2 tabular-nums">
-            <span className="text-[8px] uppercase tracking-widest text-fg-disabled">ATT</span>
-            <span className="text-xs font-black leading-none text-stat-def">{battle.enemyAtt ?? '—'}</span>
-            <span className="text-[8px] uppercase tracking-widest text-fg-disabled">DEF</span>
-            <span className="text-xs font-black leading-none text-stat-def">{battle.enemyDef ?? '—'}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Overview header, full size: a wide card ── */}
-      <div className="hidden @min-[600px]:flex items-stretch px-3 pt-2.5 pb-2.5 gap-2.5 border-b border-line-subtle/60">
-
-        {/* Player column */}
-        <div className="flex-1 flex flex-col gap-1.5 min-w-0">
-          <div className="flex items-center gap-2">
-            <LevelBadge level={playerLevel} />
-            <span className="text-sm font-black text-fg-bright truncate tracking-tight">{playerName}</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl font-black tabular-nums leading-none" style={{ color: 'var(--combat-damage)', textShadow: '0 0 12px color-mix(in srgb, var(--combat-damage) 31%, transparent)' }}>{Math.min(battle.playerHp, battle.playerHpMax)}</span>
-              <span className="text-[11px] text-fg-disabled font-semibold">/ {battle.playerHpMax} HP</span>
-              {battle.playerHp > battle.playerHpMax && (
-                <span className="text-[11px] font-bold text-stat-def tabular-nums">+{battle.playerHp - battle.playerHpMax}</span>
-              )}
-              {previewHp > 0 && (
-                <span className="text-[11px] font-bold text-combat-heal tabular-nums animate-pulse">+{previewHp}</span>
-              )}
-            </div>
-            <HpBar current={battle.playerHp} max={battle.playerHpMax} color="bg-resource-hp" preview={itemPreview?.hp ?? 0} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-baseline gap-1">
-              <span className="text-sm font-bold tabular-nums leading-none text-resource-mp">{Math.min(playerMp, playerMpMax)}</span>
-              <span className="text-[11px] text-fg-disabled font-semibold">/ {playerMpMax} MP</span>
-              {playerMp > playerMpMax && (
-                <span className="text-[11px] font-bold text-stat-def tabular-nums">+{playerMp - playerMpMax}</span>
-              )}
-              {previewMp > 0 && (
-                <span className="text-[11px] font-bold text-combat-heal tabular-nums animate-pulse">+{previewMp}</span>
-              )}
-            </div>
-            <HpBar current={playerMp} max={playerMpMax} color="bg-resource-mp" preview={itemPreview?.mp ?? 0} />
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center" title={groupTitle(offenseLabel, offenseKey, battle.playerStrMax)}>
-              {/* The stat the last strike rolled: MAG for a spell, else the weapon's. */}
-              <span className={`text-[9px] uppercase tracking-widest leading-none ${offenseTone}`}>{offenseLabel}</span>
-              <span className={`text-xs font-black leading-none mt-0.5 ${offenseTone}`}>
-                {battle.playerStrMax ?? '—'}
-                <StatPreviewBump amount={previewOffense} />
-              </span>
-            </div>
-            <div className="w-px h-5 bg-surface-hover/60" />
-            <div className="flex flex-col items-center" title={groupTitle(defenseLabel, defenseKey, battle.playerDefMax)}>
-              <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">{defenseLabel}</span>
-              <span className={`text-xs font-black leading-none mt-0.5 ${defenseTone}`}>
-                {battle.playerDefMax ?? '—'}
-                <StatPreviewBump amount={previewDef} />
-              </span>
-            </div>
-            {groupPct > 0 && (
-              <>
-                <div className="w-px h-5 bg-surface-hover/60" />
-                <div className="flex flex-col items-center" title={groupTagTitle}>
-                  <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">Group</span>
-                  <span className="text-xs font-black leading-none mt-0.5 text-resource-mp tabular-nums">+{groupPct}%</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* VS divider carries the turn count */}
-        <div className="flex-shrink-0 flex flex-col items-center justify-center gap-1 px-1">
-          <div className="flex-1 w-px bg-surface-raised" />
-          <span className="text-[11px] font-black text-fg-disabled tracking-widest">VS</span>
-          <TurnChip turn={battle.turnCount} onOpen={onOpenLedger} size="md" />
-          <div className="flex-1 w-px bg-surface-raised" />
-        </div>
-
-        {/* Enemy column */}
-        <div className="flex-1 flex flex-col items-end gap-1.5 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-black text-fg-bright truncate tracking-tight">{battle.enemyName}</span>
-            {battle.enemyLevel !== null && <LevelBadge level={battle.enemyLevel} />}
-            {battle.enemyRank && <RankBadge rank={battle.enemyRank} />}
-          </div>
-          <div className="flex flex-col gap-1 w-full">
-            <div className="flex items-baseline justify-end gap-1">
-              <span className="text-xl font-black tabular-nums leading-none" style={{ color: 'var(--combat-damage)', textShadow: '0 0 12px color-mix(in srgb, var(--combat-damage) 31%, transparent)' }}>{battle.enemyCurrentHp}</span>
-              <span className="text-[11px] text-fg-disabled font-semibold">/ {battle.enemyMaxHp} HP</span>
-            </div>
-            <HpBar current={battle.enemyCurrentHp} max={battle.enemyMaxHp} color="bg-resource-hp" rtl initialPct={100} />
-          </div>
-          {/* Trait row left of ATT/DEF, as the original HUD placed its buffBoxes.
-              The tag for the special that just fired glows with the damage number. */}
-          <div className="mt-auto flex items-center justify-end flex-wrap gap-x-3 gap-y-1">
-            <EnemyTraitTags traits={battle.enemyTraits} activeId={enemyAction?.id} align="end" className="justify-end" />
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">ATT</span>
-              <span className="text-xs font-black text-stat-def leading-none mt-0.5">{battle.enemyAtt ?? '—'}</span>
-            </div>
-            <div className="w-px h-5 bg-surface-hover/60" />
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] text-fg-disabled uppercase tracking-widest leading-none">DEF</span>
-              <span className="text-xs font-black text-stat-def leading-none mt-0.5">{battle.enemyDef ?? '—'}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <BattleDuel battle={battle} player={player} inventory={inventory} weaponCategory={weaponCategory} onOpenLedger={onOpenLedger} />
 
       {/* ── Combat visualization row ── */}
       <div className="flex items-center px-3 py-2 gap-1.5 @min-[600px]:py-3 @min-[600px]:gap-2">

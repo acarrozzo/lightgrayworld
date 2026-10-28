@@ -208,6 +208,19 @@ function checkDistinctness(theme: Theme) {
     }
   }
 
+  // The two bars of a fight face each other; a theme that separates its reds
+  // owes the enemy's bar its own red too.
+  if (theme.separateReds) {
+    const d = distance(game.resource.foe, game.resource.hp)
+    if (d < MIN_ROLE_DISTANCE) {
+      add(
+        theme.id,
+        'distinctness',
+        `resource.foe (${game.resource.foe}) and resource.hp (${game.resource.hp}) differ by only ${d.toFixed(3)} (need ${MIN_ROLE_DISTANCE})`
+      )
+    }
+  }
+
   // Regions must be tellable apart from one another, or the world stops
   // reading as a set of distinct places.
   const bases = REGIONS.map((r) => [r.name, regions[r.id].base] as [string, string])

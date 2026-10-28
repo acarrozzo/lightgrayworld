@@ -3,6 +3,7 @@
 import { Crown, Swords } from 'lucide-react'
 import type { SquadMember, SquadState } from '@/lib/party/squad'
 import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
+import VitalBar, { type VitalKind } from '@/components/game-interface/VitalBar'
 
 /**
  * One party member, drawn the same way everywhere the party is shown.
@@ -58,27 +59,41 @@ const HP_FILL: Record<SquadState, string> = {
 }
 
 /**
- * The enemy's health, wherever it is drawn beside somebody's own.
- *
- * Deliberately not `enemy-hostile`: in the default theme that role resolves to
- * the same hex as `resource-hp`, so a teammate's enemy and a teammate's health
- * drew an identical bar. The boss red is the one enemy tone that differs.
+ * The enemy's health, wherever it is drawn beside somebody's own: the one
+ * role every enemy bar in the game wears, held apart from `resource.hp` by
+ * every theme that separates its reds.
  */
-export const ENEMY_FILL = 'bg-enemy-boss'
+export const ENEMY_FILL = 'bg-gradient-to-r from-fill-resource-foe to-resource-foe'
 
+/**
+ * A member's bar, from a percentage. The shared VitalBar at its two smallest
+ * sizes, with the fill chosen here: the party colours a teammate's HP by
+ * their state (red when it is the thing that is wrong, green when nothing is),
+ * which is the one place a bar's colour is not simply its resource.
+ */
 export function HairBar({
   pct,
   fill,
   height = 'h-[3px]',
+  kind = 'hp',
 }: {
   pct: number | null
   fill: string
+  /** `h-[3px]` is a hairline; anything taller is the thin bar. */
   height?: string
+  kind?: VitalKind
 }) {
   return (
-    <span className={`block w-full overflow-hidden rounded-full bg-surface-raised/80 ${height}`}>
-      <span className={`block h-full rounded-full ${fill}`} style={{ width: `${pct ?? 0}%` }} />
-    </span>
+    <VitalBar
+      kind={kind}
+      size={height === 'h-[3px]' ? 'hair' : 'thin'}
+      current={pct ?? 0}
+      max={100}
+      fillClass={fill}
+      number="none"
+      title=""
+      className="w-full"
+    />
   )
 }
 
@@ -160,7 +175,7 @@ export function EnemyMini({ member }: { member: SquadMember }) {
         )}
       </span>
       <span className="flex items-center gap-1">
-        <HairBar pct={glance?.enemyHpPct ?? null} fill={ENEMY_FILL} height="h-[3px]" />
+        <HairBar pct={glance?.enemyHpPct ?? null} fill={ENEMY_FILL} height="h-[3px]" kind="foe" />
         <span className="shrink-0 text-[8px] leading-none tabular-nums text-fg-secondary">
           {typeof hp === 'number' && typeof hpMax === 'number' ? `${hp}/${hpMax}` : '—'}
         </span>
@@ -174,7 +189,7 @@ export function VitalHairs({ member, height }: { member: SquadMember; height?: s
   return (
     <span className="flex w-full flex-col gap-[2px]">
       <HairBar pct={member.hpPct} fill={HP_FILL[member.state]} height={height} />
-      <HairBar pct={member.mpPct} fill="bg-resource-mp" height={height} />
+      <HairBar pct={member.mpPct} fill="bg-resource-mp" height={height} kind="mp" />
     </span>
   )
 }
@@ -213,7 +228,7 @@ export function NowLine({ member }: { member: SquadMember }) {
           </div>
           {glance?.enemyHpPct != null ? (
             <>
-              <HairBar pct={glance.enemyHpPct} fill={ENEMY_FILL} height="h-[4px]" />
+              <HairBar pct={glance.enemyHpPct} fill={ENEMY_FILL} height="h-[4px]" kind="foe" />
               <div className="flex gap-3 text-[10px] tabular-nums text-fg-muted">
                 {glance.lastHit != null && (
                   <span>
@@ -358,7 +373,7 @@ export function MemberCard({
             {member.hp}/{member.hpMax}
           </span>
           <span>MP</span>
-          <HairBar pct={member.mpPct} fill="bg-resource-mp" height="h-[3px]" />
+          <HairBar pct={member.mpPct} fill="bg-resource-mp" height="h-[3px]" kind="mp" />
           <span className="text-right tabular-nums text-fg-secondary">
             {member.mp}/{member.mpMax}
           </span>

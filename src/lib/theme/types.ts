@@ -136,6 +136,12 @@ export interface ResourceRoles {
   mp: Color
   xp: Color
   gold: Color
+  /**
+   * An enemy's health, wherever an enemy has health: the room card, the battle
+   * HUD, a teammate's fight. Its own role so that a theme can hold it apart from
+   * `hp` — two red bars facing each other must never be the same red.
+   */
+  foe: Color
 }
 
 /**

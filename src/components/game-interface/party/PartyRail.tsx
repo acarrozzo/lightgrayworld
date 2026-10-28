@@ -627,7 +627,7 @@ function Chip({
           </span>
         </span>
         <span className="flex items-center gap-1">
-          <HairBar pct={member.mpPct} fill="bg-resource-mp" />
+          <HairBar pct={member.mpPct} fill="bg-resource-mp" kind="mp" />
           <span className="shrink-0 text-[8px] leading-none tabular-nums text-fg-secondary">
             {vitalText(member.mp, member.mpMax)}
           </span>

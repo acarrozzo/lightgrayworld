@@ -40,6 +40,7 @@
   --color-resource-mp: var(--resource-mp);
   --color-resource-xp: var(--resource-xp);
   --color-resource-gold: var(--resource-gold);
+  --color-resource-foe: var(--resource-foe);
   --color-stat-str: var(--stat-str);
   --color-stat-dex: var(--stat-dex);
   --color-stat-mag: var(--stat-mag);
@@ -346,6 +347,9 @@
   --color-fill-resource-gold: var(--fill-resource-gold);
   --color-hover-resource-gold: var(--hover-resource-gold);
   --color-on-resource-gold: var(--on-resource-gold);
+  --color-fill-resource-foe: var(--fill-resource-foe);
+  --color-hover-resource-foe: var(--hover-resource-foe);
+  --color-on-resource-foe: var(--on-resource-foe);
   --color-fill-stat-str: var(--fill-stat-str);
   --color-hover-stat-str: var(--hover-stat-str);
   --color-on-stat-str: var(--on-stat-str);
@@ -956,6 +960,7 @@
   --resource-mp: #569acf;
   --resource-xp: #6ebc75;
   --resource-gold: #efb045;
+  --resource-foe: #ca5657;
   --stat-str: #d66976;
   --stat-dex: #6ebc75;
   --stat-mag: #6695d4;
@@ -1262,6 +1267,9 @@
   --fill-resource-gold: #efb045;
   --hover-resource-gold: #ffc259;
   --on-resource-gold: #f6f7f9;
+  --fill-resource-foe: #ca5657;
+  --hover-resource-foe: #dd6767;
+  --on-resource-foe: #f6f7f9;
   --fill-stat-str: #d66976;
   --hover-stat-str: #e97a86;
   --on-stat-str: #f6f7f9;
@@ -1873,6 +1881,7 @@
   --resource-mp: #569acf;
   --resource-xp: #6ebc75;
   --resource-gold: #efb045;
+  --resource-foe: #ca5657;
   --stat-str: #d66976;
   --stat-dex: #6ebc75;
   --stat-mag: #6695d4;
@@ -2179,6 +2188,9 @@
   --fill-resource-gold: #efb045;
   --hover-resource-gold: #ffc259;
   --on-resource-gold: #f6f7f9;
+  --fill-resource-foe: #ca5657;
+  --hover-resource-foe: #dd6767;
+  --on-resource-foe: #f6f7f9;
   --fill-stat-str: #d66976;
   --hover-stat-str: #e97a86;
   --on-stat-str: #f6f7f9;
@@ -2790,6 +2802,7 @@
   --resource-mp: #0ea5e9;
   --resource-xp: #10b981;
   --resource-gold: #facc15;
+  --resource-foe: #ee5c37;
   --stat-str: #f87171;
   --stat-dex: #34d399;
   --stat-mag: #38bdf8;
@@ -3096,6 +3109,9 @@
   --fill-resource-gold: #8a5f00;
   --hover-resource-gold: #9a6f1e;
   --on-resource-gold: #ffffff;
+  --fill-resource-foe: #c13100;
+  --hover-resource-foe: #d04019;
+  --on-resource-foe: #ffffff;
   --fill-stat-str: #b93940;
   --hover-stat-str: #c8474c;
   --on-stat-str: #ffffff;
@@ -3707,6 +3723,7 @@
   --resource-mp: #5f8fd4;
   --resource-xp: #8fc46a;
   --resource-gold: #e8bf72;
+  --resource-foe: #cc6533;
   --stat-str: #d97a5a;
   --stat-dex: #8fbf7a;
   --stat-mag: #709dd8;
@@ -4013,6 +4030,9 @@
   --fill-resource-gold: #805c00;
   --hover-resource-gold: #8c6817;
   --on-resource-gold: #f5f5f5;
+  --fill-resource-foe: #ab450c;
+  --hover-resource-foe: #b54d19;
+  --on-resource-foe: #f5f5f5;
   --fill-stat-str: #a04429;
   --hover-stat-str: #b45439;
   --on-stat-str: #f5f5f5;
@@ -4624,6 +4644,7 @@
   --resource-mp: #83a598;
   --resource-xp: #b8bb26;
   --resource-gold: #fabd2f;
+  --resource-foe: #fe3b00;
   --stat-str: #fb4934;
   --stat-dex: #62ce77;
   --stat-mag: #8b9eb6;
@@ -4930,6 +4951,9 @@
   --fill-resource-gold: #7a4300;
   --hover-resource-gold: #8a5319;
   --on-resource-gold: #ebdbb2;
+  --fill-resource-foe: #ad0000;
+  --hover-resource-foe: #bc1e14;
+  --on-resource-foe: #ebdbb2;
   --fill-stat-str: #aa0000;
   --hover-stat-str: #b91d14;
   --on-stat-str: #ebdbb2;
@@ -5541,6 +5565,7 @@
   --resource-mp: #81a1c1;
   --resource-xp: #a3be8c;
   --resource-gold: #ebcb8b;
+  --resource-foe: #eb5b56;
   --stat-str: #d08770;
   --stat-dex: #a3be8c;
   --stat-mag: #839ec3;
@@ -5847,6 +5872,9 @@
   --fill-resource-gold: #755910;
   --hover-resource-gold: #856925;
   --on-resource-gold: #eceff4;
+  --fill-resource-foe: #b5272c;
+  --hover-resource-foe: #c43638;
+  --on-resource-foe: #eceff4;
   --fill-stat-str: #904d38;
   --hover-stat-str: #9c5944;
   --on-stat-str: #eceff4;
@@ -6458,6 +6486,7 @@
   --resource-mp: #7fbbb3;
   --resource-xp: #a7c080;
   --resource-gold: #dbbc7f;
+  --resource-foe: #f39965;
   --stat-str: #e99292;
   --stat-dex: #a7c080;
   --stat-mag: #8cb0e2;
@@ -6764,6 +6793,9 @@
   --fill-resource-gold: #6e530b;
   --hover-resource-gold: #7a5f1c;
   --on-resource-gold: #e8e0cc;
+  --fill-resource-foe: #913d00;
+  --hover-resource-foe: #9d4915;
+  --on-resource-foe: #e8e0cc;
   --fill-stat-str: #904043;
   --hover-stat-str: #98484b;
   --on-stat-str: #e8e0cc;
@@ -7375,6 +7407,7 @@
   --resource-mp: #d6acff;
   --resource-xp: #69ff94;
   --resource-gold: #f1fa8c;
+  --resource-foe: #fc7961;
   --stat-str: #ff6e6e;
   --stat-dex: #69ff94;
   --stat-mag: #8cc4ff;
@@ -7681,6 +7714,9 @@
   --fill-resource-gold: #676c00;
   --hover-resource-gold: #737818;
   --on-resource-gold: #ffffff;
+  --fill-resource-foe: #bd4129;
+  --hover-resource-foe: #c74931;
+  --on-resource-foe: #ffffff;
   --fill-stat-str: #c0343d;
   --hover-stat-str: #cf4349;
   --on-stat-str: #ffffff;
@@ -8292,6 +8328,7 @@
   --resource-mp: #268bd2;
   --resource-xp: #859900;
   --resource-gold: #b58900;
+  --resource-foe: #fe0000;
   --stat-str: #d2545b;
   --stat-dex: #859900;
   --stat-mag: #4e82c6;
@@ -8598,6 +8635,9 @@
   --fill-resource-gold: #855d00;
   --hover-resource-gold: #916918;
   --on-resource-gold: #fdf6e3;
+  --fill-resource-foe: #c80000;
+  --hover-resource-foe: #d72118;
+  --on-resource-foe: #fdf6e3;
   --fill-stat-str: #ae343f;
   --hover-stat-str: #c2454f;
   --on-stat-str: #fdf6e3;
@@ -9209,6 +9249,7 @@
   --resource-mp: #7aa2f7;
   --resource-xp: #9ece6a;
   --resource-gold: #e0af68;
+  --resource-foe: #fc7f7d;
   --stat-str: #ff9495;
   --stat-dex: #9ece6a;
   --stat-mag: #73b1ff;
@@ -9515,6 +9556,9 @@
   --fill-resource-gold: #784d00;
   --hover-resource-gold: #845914;
   --on-resource-gold: #d5dcff;
+  --fill-resource-foe: #9b2630;
+  --hover-resource-foe: #aa353c;
+  --on-resource-foe: #d5dcff;
   --fill-stat-str: #99343f;
   --hover-stat-str: #a33c47;
   --on-stat-str: #d5dcff;
@@ -10126,6 +10170,7 @@
   --resource-mp: #89b4fa;
   --resource-xp: #a6e3a1;
   --resource-gold: #f9e2af;
+  --resource-foe: #f49eaa;
   --stat-str: #ffabaa;
   --stat-dex: #a6e3a1;
   --stat-mag: #86bcff;
@@ -10432,6 +10477,9 @@
   --fill-resource-gold: #745f30;
   --hover-resource-gold: #806b3c;
   --on-resource-gold: #f5f5fa;
+  --fill-resource-foe: #9a4b59;
+  --hover-resource-foe: #a65765;
+  --on-resource-foe: #f5f5fa;
   --fill-stat-str: #94494a;
   --hover-stat-str: #a4595a;
   --on-stat-str: #f5f5fa;
@@ -11206,6 +11254,14 @@
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-resource-gold:hover {
   background-color: var(--hover-resource-gold);
+}
+.fill-resource-foe {
+  background-color: var(--fill-resource-foe);
+  color: var(--on-resource-foe);
+  text-shadow: var(--fill-label-shadow);
+}
+:where(button, a, [role='button'], summary, label, [tabindex]).fill-resource-foe:hover {
+  background-color: var(--hover-resource-foe);
 }
 .fill-stat-str {
   background-color: var(--fill-stat-str);

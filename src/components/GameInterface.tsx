@@ -4242,7 +4242,6 @@ export default function GameInterface() {
         itemPreview={itemPreview}
         regenGain={regenGain}
         regenGainKey={regenGainKey}
-        enemy={battle.isInBattle ? { name: battle.enemyName, hp: battle.enemyCurrentHp, hpMax: battle.enemyMaxHp } : null}
         xp={player?.xp}
         xpGain={xpGain}
         xpGainKey={xpGainKey}
@@ -4443,9 +4442,6 @@ export default function GameInterface() {
                           clearBattleResult()
                         }}
                         isActing={isLoadingRoom}
-                        playerName={player.username}
-                        playerLevel={player.level}
-                        playerMp={player.mp}
                         playerMpMax={player.mpMax}
                         weaponIconName={weaponIconName}
                         weaponName={weaponName}

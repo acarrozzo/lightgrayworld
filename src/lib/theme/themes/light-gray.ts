@@ -110,8 +110,11 @@ export const lightGray = makeTheme({
         gather: '#bd9486',
         use: '#0eb3f5',
       },
-      // `hud.php`: HP redBG, MP blueBG, XP greenBG.
-      resource: { hp: '#d66976', mp: '#569acf', xp: '#6ebc75', gold: '#efb045' },
+      // `hud.php`: HP redBG, MP blueBG, XP greenBG. The enemy's bar is the
+      // boss red, `$dead`'s darker cousin; the legibility floor lifts it to
+      // the same value `enemy.boss` lands on, so the two bars of a fight
+      // differ by lightness here, as this theme's one red allows.
+      resource: { hp: '#d66976', mp: '#569acf', xp: '#6ebc75', gold: '#efb045', foe: '#b20000' },
       stat: { str: '#d66976', dex: '#6ebc75', mag: '#6695d4', def: '#b18e40' },
       status: { success: '#6ebc75', error: '#ea4659', warning: '#efb045', info: '#569acf' },
       // `.rare` was gold on slate; enchanted items were pink.

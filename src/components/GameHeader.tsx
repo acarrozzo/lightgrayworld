@@ -3,7 +3,9 @@
 import { Settings as SettingsIcon } from 'lucide-react'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import Icon from '@/components/Icon'
+import VitalBar, { VitalBarKeyframes } from '@/components/game-interface/VitalBar'
 import type { ItemPreview } from '@/lib/game-state'
+import type { StatKey } from '@/lib/effective-stats'
 
 interface GameHeaderProps {
   playerName?: string
@@ -35,8 +37,6 @@ interface GameHeaderProps {
   /** What the last click's regen restored; floats "+3" over the HP and MP bars the way XP does. */
   regenGain?: { hp: number; mp: number } | null
   regenGainKey?: number
-  /** The enemy being fought: its HP as a red bar right after the level, at every width, so every tab shows the fight. */
-  enemy?: { name: string | null; hp: number; hpMax: number } | null
   /** The pet along with the player, as a small icon beside the name; null with none along. */
   pet?: { name: string; iconName: string } | null
   /** The title the player wears, after the name in gold; null wears none. */
@@ -56,86 +56,16 @@ interface GameHeaderProps {
  *
  * Never leaves: HP, MP, level + XP percent, the four stat numbers with their
  * 7px labels stacked above, Settings, the connection dot (its word is the
- * tooltip). In a fight the enemy bar is added, never swapped
- * in for something else.
+ * tooltip). The header does not change in a fight: the enemy's bar is the
+ * battle card's duel, and the pinned line's when the card scrolls.
  */
 
 /**
- * HP/MP/enemy bar width grows with the header. On phones (two thin stacked
- * bars) 14% of the bar, 56–80px; from 768px (one fat bar each) 11% of the
- * bar, 84–176px, so a wide screen gets long bars rather than an empty left
- * column. At 768px in a fight the three bars plus the title and stats just
- * fit; the name truncates first if they do not.
+ * HP/MP bar width grows with the header. On phones (two thin stacked bars)
+ * 14% of the bar, 56–80px; from 768px (one fat bar each) 11% of the bar,
+ * 84–176px, so a wide screen gets long bars rather than an empty left column.
  */
 const BAR_WIDTH = 'w-[clamp(3.5rem,14cqw,5rem)] @min-[768px]:w-[clamp(5.25rem,11cqw,11rem)]'
-const VITALS_BAR_HEIGHT = 'h-1.5 @min-[768px]:h-4'
-const VITALS_BAR_VALUE = 'hidden @min-[768px]:flex'
-
-/** The "+3" that floats up off a bar when regen lands, in the bar's own colour. */
-function BarFloat({ amount, colorClass, gainKey }: { amount?: number; colorClass: string; gainKey?: number }) {
-  if (!amount || amount <= 0) return null
-  return (
-    <span
-      key={gainKey}
-      className={`absolute -top-3 right-0 text-[10px] font-bold leading-none pointer-events-none tabular-nums ${colorClass}`}
-      style={{ animation: 'xpFloat 2.5s forwards' }}
-      aria-hidden="true"
-    >
-      +{amount}
-    </span>
-  )
-}
-
-/** How far a bar would fill if `amount` landed now, as a share of the bar past the current fill. */
-function previewPct(current: number, max: number, amount: number): number {
-  if (max <= 0 || amount <= 0 || current >= max) return 0
-  return ((Math.min(max, current + amount) - current) / max) * 100
-}
-
-/** A vitals bar with its number inside: the header's HP and MP, and the full-screen map's. */
-export function StatBar({ pct, fillClass, ghostClass, previewPct = 0, label, value, over, className, rtl = false, height = 'h-4', valueClassName = 'flex', valueAlign = 'center' }: {
-  pct: number
-  fillClass: string
-  /** Fill from the right: the enemy's side. */
-  rtl?: boolean
-  /** Fill for the ghosted preview segment. */
-  ghostClass?: string
-  /** Extra width, past `pct`, a hovered heal would add. */
-  previewPct?: number
-  label: string
-  value: string
-  over?: boolean
-  className?: string
-  /** The track's height class(es); a thin bar hides its value with `valueClassName`. */
-  height?: string
-  /** Display class(es) for the number over the fill: `flex`, or `hidden` for a bar too thin to carry it. */
-  valueClassName?: string
-  /** Where the number sits: centered, or at the start of the bar, clear of its rounded end. */
-  valueAlign?: 'center' | 'start'
-}) {
-  const fillPct = Math.min(100, Math.max(0, pct))
-  return (
-    <div
-      className={`relative rounded-full bg-surface-raised/90 overflow-hidden shadow-[inset_0_1px_3px_var(--shadow)] ${height} ${className ?? ''}`}
-      title={`${label} ${value}`}
-    >
-      <div
-        className={`h-full rounded-full transition-[width] duration-500 ease-out ${fillClass} ${rtl ? 'ml-auto' : ''}`}
-        style={{ width: `${fillPct}%` }}
-      />
-      {previewPct > 0 && (
-        <div
-          className={`absolute top-0 h-full rounded-r-full opacity-50 animate-pulse ${ghostClass ?? fillClass}`}
-          style={{ left: `${fillPct}%`, width: `${Math.min(100 - fillPct, previewPct)}%` }}
-          aria-hidden="true"
-        />
-      )}
-      <span className={`absolute inset-0 items-center ${valueAlign === 'start' ? 'justify-start pl-2' : 'justify-center'} text-[10px] leading-none font-semibold label-over-fill tabular-nums ${valueClassName}`}>
-        <span className={over ? 'font-bold' : ''}>{value}</span>
-      </span>
-    </div>
-  )
-}
 
 /** The "+20" a hovered buff would add to a stat, beside the number. */
 function StatBump({ amount }: { amount?: number }) {
@@ -143,16 +73,43 @@ function StatBump({ amount }: { amount?: number }) {
   return <span className="text-combat-heal font-bold tabular-nums animate-pulse">+{amount}</span>
 }
 
-/** One core stat: a 7px "STR" stacked over the coloured number, at every width. */
-function Stat({ label, value, colorClass, title, bump }: { label: string; value?: number; colorClass: string; title?: string; bump?: number }) {
+const STAT_VAR: Record<StatKey, string> = {
+  str: '--stat-str',
+  dex: '--stat-dex',
+  mag: '--stat-mag',
+  def: '--stat-def',
+}
+
+const STAT_TEXT: Record<StatKey, string> = {
+  str: 'text-stat-str',
+  dex: 'text-stat-dex',
+  mag: 'text-stat-mag',
+  def: 'text-stat-def',
+}
+
+/**
+ * One core stat: a 7px "STR" stacked over the coloured number, at every width.
+ *
+ * In a fight the HUD marks the one doing the damage (`emphasis="attack"`: a
+ * tinted box in the stat's own colour, the label lit) and the one meeting the
+ * enemy's blow (`emphasis="defend"`: an underline). Everywhere else the four
+ * stand plain.
+ */
+export function Stat({ stat, value, title, bump, emphasis }: { stat: StatKey; value?: number; title?: string; bump?: number; emphasis?: 'attack' | 'defend' }) {
   if (value === undefined) return null
+  const style =
+    emphasis === 'attack'
+      ? { background: `color-mix(in srgb, var(${STAT_VAR[stat]}) 18%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, var(${STAT_VAR[stat]}) 45%, transparent)` }
+      : emphasis === 'defend'
+        ? { boxShadow: `inset 0 -2px 0 color-mix(in srgb, var(${STAT_VAR[stat]}) 60%, transparent)` }
+        : undefined
   return (
-    <span className="inline-flex flex-col items-center leading-none" title={title}>
-      <span className="text-[7px] tracking-wider text-fg-muted" aria-hidden="true">
-        {label}
+    <span className={`inline-flex flex-col items-center leading-none rounded px-1 py-0.5 -my-0.5 ${emphasis ? '' : ''}`} title={title} style={style}>
+      <span className={`text-[7px] tracking-wider ${emphasis === 'attack' ? STAT_TEXT[stat] : 'text-fg-muted'}`} aria-hidden="true">
+        {stat.toUpperCase()}
       </span>
       <span className="inline-flex items-baseline gap-1">
-        <span className={`tabular-nums ${colorClass}`}>{value}</span>
+        <span className={`tabular-nums ${STAT_TEXT[stat]} ${emphasis === 'attack' ? 'font-bold' : ''}`}>{value}</span>
         <StatBump amount={bump} />
       </span>
     </span>
@@ -172,7 +129,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, title = null, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey, enemy = null }: GameHeaderProps) {
+export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, title = null, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey }: GameHeaderProps) {
   let xpPct = 0
   if (xp !== undefined && level !== undefined) {
     const xpFromLevel = (level ** 3) * 2
@@ -182,20 +139,23 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
     xpPct = Math.min(100, Math.floor((xpInLevel / xpNeeded) * 100))
   }
 
+  // One bar at two sizes: a thin one without its number under 768px, a fat
+  // one with the number inside from there. The container decides which shows.
+  const bar = (kind: 'hp' | 'mp', current: number, max: number, preview: number, gain?: number) => (
+    <>
+      <VitalBar kind={kind} size="thin" self current={current} max={max} preview={preview} number="none" gain={gain} gainKey={regenGainKey} className={`block @min-[768px]:hidden ${BAR_WIDTH}`} />
+      <VitalBar kind={kind} size="fat" self current={current} max={max} preview={preview} gain={gain} gainKey={regenGainKey} className={`hidden @min-[768px]:block ${BAR_WIDTH}`} />
+    </>
+  )
+
   return (
     <>
-      <style>{`
-        @keyframes xpFloat {
-          0%   { opacity: 1;  transform: translateY(0px); }
-          60%  { opacity: 1; transform: translateY(-6px); }
-          100% { opacity: 0; transform: translateY(-12px); }
-        }
-      `}</style>
+      <VitalBarKeyframes />
       <header className="@container bg-surface-panel/95 backdrop-blur-sm border-b border-line-subtle/30 shadow-lg shadow-black/20">
         {/* The header is the container and carries no padding of its own, so its queries measure the full bar. Below 768px a flex row with the two groups at the edges; from 768px a three-column grid so the title has its own column and nothing can run under it. */}
         <div className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-xs @min-[640px]:px-6 @min-[768px]:grid @min-[768px]:grid-cols-[1fr_auto_1fr]">
 
-          {/* Left: who, vitals, level, and the enemy in a fight */}
+          {/* Left: who, vitals, level */}
           <div className="flex items-center gap-2 min-w-0">
             {playerName && (
               <div
@@ -226,42 +186,8 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
 
                 {(hp !== undefined && hpMax !== undefined) || (mp !== undefined && mpMax !== undefined) ? (
                   <div className="flex flex-col gap-[3px] shrink-0 @min-[768px]:flex-row @min-[768px]:items-center @min-[768px]:gap-2">
-                    {hp !== undefined && hpMax !== undefined && (
-                      <span className="relative block">
-                        <StatBar
-                          className={BAR_WIDTH}
-                          height={VITALS_BAR_HEIGHT}
-                          valueClassName={VITALS_BAR_VALUE}
-                          valueAlign="start"
-                          pct={hpMax > 0 ? (hp / hpMax) * 100 : 0}
-                          fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp"
-                          ghostClass="bg-resource-hp"
-                          previewPct={previewPct(hp, hpMax, itemPreview?.hp ?? 0)}
-                          label="HP"
-                          value={`${hp}/${hpMax}`}
-                          over={hp > hpMax}
-                        />
-                        <BarFloat amount={regenGain?.hp} colorClass="text-resource-hp" gainKey={regenGainKey} />
-                      </span>
-                    )}
-                    {mp !== undefined && mpMax !== undefined && (
-                      <span className="relative block">
-                        <StatBar
-                          className={BAR_WIDTH}
-                          height={VITALS_BAR_HEIGHT}
-                          valueClassName={VITALS_BAR_VALUE}
-                          valueAlign="start"
-                          pct={mpMax > 0 ? (mp / mpMax) * 100 : 0}
-                          fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp"
-                          ghostClass="bg-resource-mp"
-                          previewPct={previewPct(mp, mpMax, itemPreview?.mp ?? 0)}
-                          label="MP"
-                          value={`${mp}/${mpMax}`}
-                          over={mp > mpMax}
-                        />
-                        <BarFloat amount={regenGain?.mp} colorClass="text-resource-mp" gainKey={regenGainKey} />
-                      </span>
-                    )}
+                    {hp !== undefined && hpMax !== undefined && bar('hp', hp, hpMax, itemPreview?.hp ?? 0, regenGain?.hp)}
+                    {mp !== undefined && mpMax !== undefined && bar('mp', mp, mpMax, itemPreview?.mp ?? 0, regenGain?.mp)}
                   </div>
                 ) : null}
 
@@ -278,7 +204,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                       <span
                         key={xpGainKey}
                         className="absolute -top-3 right-0 text-[10px] font-bold leading-none pointer-events-none text-resource-xp"
-                        style={{ animation: 'xpFloat 2.5s forwards' }}
+                        style={{ animation: 'vitalFloat 2.5s forwards' }}
                         aria-label={`+${xpGain} xp`}
                       >
                         +{xpGain}
@@ -287,19 +213,6 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
                   </span>
                 )}
 
-                {enemy && (
-                  <span className="inline-flex items-center gap-1.5 shrink-0">
-                    <span className="hidden @min-[1024px]:inline text-enemy-hostile font-semibold">vs</span>
-                    <StatBar
-                      className={BAR_WIDTH}
-                      rtl
-                      pct={enemy.hpMax > 0 ? (enemy.hp / enemy.hpMax) * 100 : 0}
-                      fillClass="bg-enemy-boss"
-                      label={`${enemy.name ?? 'Enemy'} HP`}
-                      value={`${Math.max(0, enemy.hp)}/${enemy.hpMax}`}
-                    />
-                  </span>
-                )}
               </div>
             )}
           </div>
@@ -316,10 +229,10 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
           {/* Right: core stats, Settings, connection dot, theme */}
           <div className="flex items-center gap-3 shrink-0 justify-self-end">
             <div className="flex items-center gap-2">
-              <Stat label="STR" value={str} colorClass="text-stat-str" title={statTitles?.str} bump={itemPreview?.stats?.str} />
-              <Stat label="DEX" value={dex} colorClass="text-stat-dex" title={statTitles?.dex} bump={itemPreview?.stats?.dex} />
-              <Stat label="MAG" value={mag} colorClass="text-stat-mag" title={statTitles?.mag} bump={itemPreview?.stats?.mag} />
-              <Stat label="DEF" value={def} colorClass="text-stat-def" title={statTitles?.def} bump={itemPreview?.stats?.def} />
+              <Stat stat="str" value={str} title={statTitles?.str} bump={itemPreview?.stats?.str} />
+              <Stat stat="dex" value={dex} title={statTitles?.dex} bump={itemPreview?.stats?.dex} />
+              <Stat stat="mag" value={mag} title={statTitles?.mag} bump={itemPreview?.stats?.mag} />
+              <Stat stat="def" value={def} title={statTitles?.def} bump={itemPreview?.stats?.def} />
             </div>
 
             {/* Settings sits right after DEF, before the connection dot and the theme dot. */}

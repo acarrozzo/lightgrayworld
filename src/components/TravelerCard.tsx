@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { TravelerView } from '@/lib/types/room'
+import VitalBar from './game-interface/VitalBar'
 
 interface TravelerCardProps {
   traveler: TravelerView
@@ -80,10 +81,10 @@ export default function TravelerCard({ traveler, onAction, isInBattle = false, i
                 role="menu"
                 className="absolute right-0 top-full z-20 mt-1 min-w-[13rem] rounded-md border border-line-subtle/40 bg-surface-panel p-2 shadow-lg"
               >
-                <div className="flex items-center gap-2.5 px-1 pb-2 text-xs">
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 px-1 pb-2 text-xs">
                   <span className="text-fg-bright font-bold text-sm">Lv. {enemy.level}</span>
                   <span className="text-fg-disabled">·</span>
-                  <span className="text-fg-muted">HP <span className="font-semibold text-terrain-grass">{enemy.hp}</span></span>
+                  <VitalBar kind="foe" size="thin" rtl current={enemy.hp} max={enemy.hp} label="HP" className="w-[8.5rem]" />
                   <span className="text-fg-muted">ATT <span className="font-semibold text-enemy-hostile">{enemy.att}</span></span>
                   <span className="text-fg-muted">DEF <span className="font-semibold text-resource-gold">{enemy.def}</span></span>
                 </div>

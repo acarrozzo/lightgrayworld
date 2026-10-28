@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Minimize2, X } from 'lucide-react'
 import type { Player } from '@/lib/game-state'
-import { StatBar } from '@/components/GameHeader'
+import VitalBar from './VitalBar'
 
 /** The icon buttons of a full-screen header: a touch-sized square. */
 export const FULL_ICON = 'grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg text-fg-secondary transition-colors hover:bg-surface-raised/60 hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus'
@@ -54,8 +54,8 @@ export default function FullScreenFrame({ label, tabs, player = null, toggles = 
 
   const vitals = player ? (
     <div className="flex items-center gap-2" aria-label="Vitals">
-      <StatBar className="w-[104px]" pct={player.hpMax > 0 ? (player.hp / player.hpMax) * 100 : 0} fillClass="bg-gradient-to-r from-fill-resource-hp to-resource-hp" label="HP" value={`HP ${player.hp}/${player.hpMax}`} />
-      <StatBar className="w-[104px]" pct={player.mpMax > 0 ? (player.mp / player.mpMax) * 100 : 0} fillClass="bg-gradient-to-r from-fill-resource-mp to-resource-mp" label="MP" value={`MP ${player.mp}/${player.mpMax}`} />
+      <VitalBar kind="hp" size="fat" self current={player.hp} max={player.hpMax} label="HP" className="w-[120px]" />
+      <VitalBar kind="mp" size="fat" current={player.mp} max={player.mpMax} label="MP" className="w-[120px]" />
     </div>
   ) : null
 

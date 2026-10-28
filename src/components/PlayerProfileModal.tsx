@@ -5,6 +5,7 @@ import ActionModal from './ActionModal'
 import { useGameStore } from '@/lib/game-state'
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
+import VitalBar from '@/components/game-interface/VitalBar'
 
 type PlayerProfileSummary = {
   id: string
@@ -61,11 +62,6 @@ const EQUIPMENT_LABELS: Record<string, string> = {
 }
 
 const DISPLAY_SLOT_ORDER = Object.keys(EQUIPMENT_LABELS)
-
-function toPercent(current: number, max: number) {
-  if (!max || max <= 0) return 0
-  return Math.max(0, Math.min(100, Math.round((current / max) * 100)))
-}
 
 export default function PlayerProfileModal({
   isOpen,
@@ -160,26 +156,12 @@ export default function PlayerProfileModal({
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="rounded border border-line-subtle/60 bg-surface-raised/50 p-3">
-            <div className="mb-1 flex items-center justify-between text-xs text-status-error">
-              <span>HP</span>
-              <span>
-                {profile.hp}/{profile.hpMax}
-              </span>
-            </div>
-            <div className="h-2 rounded bg-surface-hover">
-              <div className="h-2 rounded bg-status-error" style={{ width: `${toPercent(profile.hp, profile.hpMax)}%` }} />
-            </div>
+            <div className="mb-1.5 text-xs font-semibold text-resource-hp">HP</div>
+            <VitalBar kind="hp" size="mid" current={profile.hp} max={profile.hpMax} className="w-full" />
           </div>
           <div className="rounded border border-line-subtle/60 bg-surface-raised/50 p-3">
-            <div className="mb-1 flex items-center justify-between text-xs text-status-info">
-              <span>MP</span>
-              <span>
-                {profile.mp}/{profile.mpMax}
-              </span>
-            </div>
-            <div className="h-2 rounded bg-surface-hover">
-              <div className="h-2 rounded bg-status-info" style={{ width: `${toPercent(profile.mp, profile.mpMax)}%` }} />
-            </div>
+            <div className="mb-1.5 text-xs font-semibold text-resource-mp">MP</div>
+            <VitalBar kind="mp" size="mid" current={profile.mp} max={profile.mpMax} className="w-full" />
           </div>
         </div>
 

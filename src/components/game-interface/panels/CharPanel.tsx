@@ -13,6 +13,7 @@ import CoreStatsGrid from '@/components/game-interface/CoreStatsGrid'
 import { effectiveStats } from '@/lib/effective-stats'
 import { describeRegen, playerRegen, statusChips } from '@/lib/status-effects'
 import StatusStrip from '@/components/StatusStrip'
+import VitalBar from '@/components/game-interface/VitalBar'
 import StatAllocation from '@/components/StatAllocation'
 import TrainingAllocation from '@/components/TrainingAllocation'
 import type { AllocationSummary } from '@/components/PointAllocation'
@@ -50,15 +51,6 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
   const [isAvatarModalOpen, setAvatarModalOpen] = useState(false)
   const [isSavingAvatar, setIsSavingAvatar] = useState(false)
 
-  const hpPercent = useMemo(() => {
-    if (!player.hpMax) return 0
-    return Math.min(100, Math.max(0, (player.hp / Math.max(player.hpMax, 1)) * 100))
-  }, [player.hp, player.hpMax])
-
-  const mpPercent = useMemo(() => {
-    if (!player.mpMax) return 0
-    return Math.min(100, Math.max(0, (player.mp / Math.max(player.mpMax, 1)) * 100))
-  }, [player.mp, player.mpMax])
 
   const { xpInLevel, xpRange, xpPct, xpRemaining } = useMemo(() => {
     const level = player.level ?? 1
@@ -246,18 +238,12 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
                   </div>
 
                   <div className="space-y-3">
-                    <StatBar
-                      label="HP"
-                      value={<span className="text-fg-bright">{Math.min(player.hp, player.hpMax)}/{player.hpMax}{player.hp > player.hpMax && <span className="text-resource-gold"> +{player.hp - player.hpMax}</span>}</span>}
-                      percentage={hpPercent}
-                      gradient="from-fill-resource-hp via-resource-hp to-resource-hp"
-                    />
-                    <StatBar
-                      label="MP"
-                      value={<span className="text-fg-bright">{Math.min(player.mp, player.mpMax)}/{player.mpMax}{player.mp > player.mpMax && <span className="text-resource-gold"> +{player.mp - player.mpMax}</span>}</span>}
-                      percentage={mpPercent}
-                      gradient="from-fill-resource-mp via-resource-mp to-resource-mp"
-                    />
+                    <VitalRow label="HP">
+                      <VitalBar kind="hp" size="fat" self current={player.hp} max={player.hpMax} className="w-full" />
+                    </VitalRow>
+                    <VitalRow label="MP">
+                      <VitalBar kind="mp" size="fat" current={player.mp} max={player.mpMax} className="w-full" />
+                    </VitalRow>
                     {/* What every click restores: gear, tea and Regenerate summed —
                         the same formula the server ticks with. */}
                     {regen.any && (
@@ -270,12 +256,17 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
                       </p>
                     )}
                     <StatusStrip chips={chips} />
-                    <StatBar
-                      label="XP"
-                      value={<><span className="text-resource-xp">{xpPct}%</span> <span className="text-fg-secondary">need {xpRemaining}</span></>}
-                      percentage={xpPct}
-                      gradient="from-fill-resource-xp via-resource-xp to-resource-xp"
-                    />
+                    <VitalRow label="XP" aside={<span className="text-fg-secondary">need {xpRemaining.toLocaleString()}</span>}>
+                      <VitalBar
+                        kind="xp"
+                        size="fat"
+                        current={xpInLevel}
+                        max={xpRange}
+                        extra={<span className="text-resource-xp">· {xpPct}%</span>}
+                        title={`XP ${xpInLevel.toLocaleString()} of ${xpRange.toLocaleString()} this level · ${xpPct}%`}
+                        className="w-full"
+                      />
+                    </VitalRow>
                   </div>
                 </div>
               </div>
@@ -360,26 +351,13 @@ function BookLink({ nudge, disabled, onClick }: { nudge: boolean; disabled: bool
   )
 }
 
-interface StatBarProps {
-  label: string
-  value: React.ReactNode
-  percentage: number
-  gradient: string
-}
-
-function StatBar({ label, value, percentage, gradient }: StatBarProps) {
+/** A vital's row: the label in its column, the shared bar beside it, a note after. */
+function VitalRow({ label, aside, children }: { label: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div>
-      <div className="flex justify-between text-xs text-fg-secondary mb-1">
-        <span>{label}</span>
-        <span className="font-medium">{value}</span>
-      </div>
-      <div className="h-3 rounded-full bg-surface-raised/80 overflow-hidden shadow-[inset_0_1px_3px_var(--shadow)]">
-        <div
-          className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-[width] duration-500 ease-out`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
+    <div className="grid grid-cols-[1.75rem_1fr_auto] items-center gap-x-2 text-xs">
+      <span className="text-fg-secondary">{label}</span>
+      {children}
+      <span className="text-[11px] tabular-nums">{aside}</span>
     </div>
   )
 }

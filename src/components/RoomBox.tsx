@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { roomColor } from '@/lib/theme/room-colors'
 import { getEnemyTraits } from '@/lib/game-data/enemy-traits'
 import EnemyTraitTags from './EnemyTraitTags'
+import VitalBar from './game-interface/VitalBar'
 
 const DIRECTIONS = [
   'north',
@@ -222,10 +223,13 @@ export default function RoomBox({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2.5 text-xs mt-0.5">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs mt-0.5">
               <span className="text-fg-bright font-bold text-sm">Lv. {roomEnemy.level}</span>
               <span className="text-fg-disabled">·</span>
-              <span className="text-fg-muted">HP <span className="font-semibold text-terrain-grass">{roomEnemy.hp}</span></span>
+              {/* The enemy's health as a bar, the way it is drawn once the fight starts.
+                  An enemy you walked away from stands at full again (a fresh fight
+                  is built from its definition), so this bar is always full. */}
+              <VitalBar kind="foe" size="thin" rtl current={roomEnemy.hp} max={roomEnemy.hp} label="HP" className="w-[8.5rem]" />
               <span className="text-fg-muted">ATT <span className="font-semibold text-enemy-hostile">{roomEnemy.att}</span></span>
               <span className="text-fg-muted">DEF <span className="font-semibold text-resource-gold">{roomEnemy.def}</span></span>
             </div>

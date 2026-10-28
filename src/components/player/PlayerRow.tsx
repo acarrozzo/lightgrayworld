@@ -2,6 +2,7 @@
 
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
+import VitalBar from '@/components/game-interface/VitalBar'
 
 /**
  * The one player-row vocabulary, shared by the party list, the global roster, and
@@ -132,28 +133,8 @@ export function MiniBars({ stats }: { stats?: PlayerRowStats }) {
   }
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1">
-        <div className="h-1 w-10 rounded-full bg-surface-raised/80 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-fill-resource-hp to-resource-hp"
-            style={{ width: `${pct(stats.hp, stats.hpMax)}%` }}
-          />
-        </div>
-        <span className="text-[9px] text-fg-muted tabular-nums">
-          {stats.hp}/{stats.hpMax}
-        </span>
-      </div>
-      <div className="flex items-center gap-1">
-        <div className="h-1 w-10 rounded-full bg-surface-raised/80 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-status-info to-accent-hover"
-            style={{ width: `${pct(stats.mp, stats.mpMax)}%` }}
-          />
-        </div>
-        <span className="text-[9px] text-fg-muted tabular-nums">
-          {stats.mp}/{stats.mpMax}
-        </span>
-      </div>
+      <VitalBar kind="hp" size="hair" current={stats.hp} max={stats.hpMax ?? 0} className="w-[84px]" />
+      <VitalBar kind="mp" size="hair" current={stats.mp ?? 0} max={stats.mpMax ?? 0} className="w-[84px]" />
     </div>
   )
 }

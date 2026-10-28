@@ -113,6 +113,7 @@ export const ROLE_CATALOG: RoleGroup[] = [
       role('resource.mp', '--resource-mp', 'Magic points.', 'MP bars and spell costs.'),
       role('resource.xp', '--resource-xp', 'Experience and progress toward a level.', 'XP bar, progress readouts.'),
       role('resource.gold', '--resource-gold', 'Currency.', 'Gold counts, shop prices, reward tiles.'),
+      role('resource.foe', '--resource-foe', 'An enemy’s health. The duller red, held apart from HP in every theme that separates its reds.', 'The enemy’s bar in the battle HUD, the room card, a teammate’s fight.'),
     ],
   },
   {
