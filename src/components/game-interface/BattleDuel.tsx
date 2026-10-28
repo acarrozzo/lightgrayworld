@@ -33,6 +33,8 @@ interface BattleDuelProps {
   weaponCategory: 'MELEE' | 'RANGED' | null
   /** The Turn chip opens the fight's ledger. */
   onOpenLedger?: () => void
+  /** Pressing one of your four stats: opens the bag, where the gear behind them is. Left out, they are plain. */
+  onOpenStats?: () => void
 }
 
 const ENEMY_ATT_TONE: Record<NonNullable<BattleState['enemyDamageType']>, string> = {
@@ -66,7 +68,7 @@ function EnemyStat({ label, value, tone, cssVar, emphasis, title }: { label: str
   )
 }
 
-export default function BattleDuel({ battle, player, inventory, weaponCategory, onOpenLedger }: BattleDuelProps) {
+export default function BattleDuel({ battle, player, inventory, weaponCategory, onOpenLedger, onOpenStats }: BattleDuelProps) {
   // The item under the pointer in the deck: a restorer ghosts onto the bars,
   // a buff puts its "+20" beside the stat it lifts. The deck sets and clears
   // it; the duel only reads it.
@@ -133,6 +135,7 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
                   title={statTitles?.[key]}
                   bump={itemPreview?.stats?.[key]}
                   emphasis={key === attackKey ? 'attack' : key === defendKey ? 'defend' : undefined}
+                  onClick={onOpenStats}
                 />
               ))}
             </div>

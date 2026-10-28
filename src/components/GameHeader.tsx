@@ -8,6 +8,12 @@ import type { ItemPreview } from '@/lib/game-state'
 import type { StatKey } from '@/lib/effective-stats'
 
 interface GameHeaderProps {
+  /**
+   * Hide the bar below desktop width. A phone's fight screen draws the
+   * player's vitals and four stats in the battle card, so the bar would say
+   * it twice and take the deck's rows to do it. Desktop keeps it.
+   */
+  hiddenOnPhone?: boolean
   playerName?: string
   level?: number
   hp?: number
@@ -95,7 +101,7 @@ const STAT_TEXT: Record<StatKey, string> = {
  * enemy's blow (`emphasis="defend"`: an underline). Everywhere else the four
  * stand plain.
  */
-export function Stat({ stat, value, title, bump, emphasis }: { stat: StatKey; value?: number; title?: string; bump?: number; emphasis?: 'attack' | 'defend' }) {
+export function Stat({ stat, value, title, bump, emphasis, onClick }: { stat: StatKey; value?: number; title?: string; bump?: number; emphasis?: 'attack' | 'defend'; onClick?: () => void }) {
   if (value === undefined) return null
   const style =
     emphasis === 'attack'
@@ -103,8 +109,8 @@ export function Stat({ stat, value, title, bump, emphasis }: { stat: StatKey; va
       : emphasis === 'defend'
         ? { boxShadow: `inset 0 -2px 0 color-mix(in srgb, var(${STAT_VAR[stat]}) 60%, transparent)` }
         : undefined
-  return (
-    <span className={`inline-flex flex-col items-center leading-none rounded px-1 py-0.5 -my-0.5 ${emphasis ? '' : ''}`} title={title} style={style}>
+  const body = (
+    <>
       <span className={`text-[7px] tracking-wider ${emphasis === 'attack' ? STAT_TEXT[stat] : 'text-fg-muted'}`} aria-hidden="true">
         {stat.toUpperCase()}
       </span>
@@ -112,6 +118,28 @@ export function Stat({ stat, value, title, bump, emphasis }: { stat: StatKey; va
         <span className={`tabular-nums ${STAT_TEXT[stat]} ${emphasis === 'attack' ? 'font-bold' : ''}`}>{value}</span>
         <StatBump amount={bump} />
       </span>
+    </>
+  )
+  const className = 'inline-flex flex-col items-center leading-none rounded px-1 py-0.5 -my-0.5'
+  // Given something to open (the fight HUD's four lead to the bag, where the
+  // gear behind them is), the stat is a button and says so on hover.
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        title={title}
+        aria-label={`${stat.toUpperCase()} ${value}: open your inventory`}
+        className={`${className} transition-colors duration-150 hover:bg-surface-raised/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus`}
+        style={style}
+      >
+        {body}
+      </button>
+    )
+  }
+  return (
+    <span className={className} title={title} style={style}>
+      {body}
     </span>
   )
 }
@@ -129,7 +157,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, title = null, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey }: GameHeaderProps) {
+export default function GameHeader({ hiddenOnPhone = false, playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, title = null, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey }: GameHeaderProps) {
   let xpPct = 0
   if (xp !== undefined && level !== undefined) {
     const xpFromLevel = (level ** 3) * 2
@@ -151,7 +179,7 @@ export default function GameHeader({ playerName, level, hp, hpMax, mp, mpMax, xp
   return (
     <>
       <VitalBarKeyframes />
-      <header className="@container bg-surface-panel/95 backdrop-blur-sm border-b border-line-subtle/30 shadow-lg shadow-black/20">
+      <header className={`@container bg-surface-panel/95 backdrop-blur-sm border-b border-line-subtle/30 shadow-lg shadow-black/20 ${hiddenOnPhone ? 'hidden lg:block' : ''}`}>
         {/* The header is the container and carries no padding of its own, so its queries measure the full bar. Below 768px a flex row with the two groups at the edges; from 768px a three-column grid so the title has its own column and nothing can run under it. */}
         <div className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-xs @min-[640px]:px-6 @min-[768px]:grid @min-[768px]:grid-cols-[1fr_auto_1fr]">
 

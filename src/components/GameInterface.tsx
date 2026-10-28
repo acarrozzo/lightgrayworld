@@ -21,7 +21,7 @@ import LayerShell, { DeckProvider, HeaderTabs, ICON_BUTTON, type DeckPresentatio
 import FullScreenFrame from './game-interface/FullScreenFrame'
 import { useSocket } from '@/hooks/useSocket'
 import { useSocketHandlers } from '@/lib/socket-handlers'
-import { MessageSquareText, ChevronUp, ChevronDown, Maximize2 } from 'lucide-react'
+import { MessageSquareText, Maximize2 } from 'lucide-react'
 import ExplorePanel from './game-interface/ExplorePanel'
 import { DOCK_BAR, DeckContent, type DeckContentProps } from './game-interface/Deck'
 import ActionModal from './ActionModal'
@@ -4231,6 +4231,7 @@ export default function GameInterface() {
         }}
       />
       <GameHeader
+        hiddenOnPhone={battle.isInBattle && centerActiveTab === 'explore'}
         playerName={player?.username}
         pet={headerPet}
         title={player?.title ?? null}
@@ -4361,7 +4362,12 @@ export default function GameInterface() {
                 ref={fightAreaRef}
                 className={`@container flex-1 min-h-0 h-full ${fightLocked ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'}`}
               >
-                {battle.isInBattle && fightFrame === 'fallback' && <BattleVitalsLine battle={battle} />}
+                {/* The one-line vitals strip for a screen too short to pin the
+                    card. Not when the phone's compass is what shortened it:
+                    the player unfolded it to move, the card's own numbers are
+                    a scroll away, and a line appearing over the strip they
+                    just tapped would shove it down. */}
+                {battle.isInBattle && fightFrame === 'fallback' && !isBattleDpadOpen && <BattleVitalsLine battle={battle} />}
                 <div className={`max-w-4xl mx-auto w-full ${fightLocked ? 'flex min-h-0 flex-1 flex-col' : ''}`}>
                   {!socket?.connected && (
                     <div className="flex items-center justify-center gap-3 px-4 py-4 my-4 rounded-lg border border-line-subtle/30 bg-surface-panel/60">
@@ -4423,7 +4429,10 @@ export default function GameInterface() {
                         listRef={fightListRef}
                         roomLabel={currentRoom?.roomId ? String(currentRoom.roomId) : undefined}
                         onOpenRoom={openRoomFromFight}
+                        compassOpen={isBattleDpadOpen}
+                        onToggleCompass={battle.isInBattle ? () => setIsBattleDpadOpen((open) => !open) : undefined}
                         onOpenLedger={openLedger}
+                        onOpenStats={() => handleSwitchToInventory()}
                         onAttack={() => socketHandlers.sendGameAction({ type: 'player_attack' })}
                         onFlee={handleFlee}
                         fleeNeedsConfirm={escapeWarning !== null}
@@ -4459,25 +4468,16 @@ export default function GameInterface() {
               </div>
 
               {/* D-pad — mobile/tablet only (< lg). Crafting is a sheet over the
-                  whole screen, so it hides this; a battle folds it instead. The
-                  ring's centre opens the World tab, where Teleport is, so the
-                  strip stays reachable mid-fight as a second way out beside
-                  the card's Retreat pill. */}
+                  whole screen, so it hides this; a battle folds it away, and
+                  the compass icon in the battle card's In Battle strip (beside
+                  the Room chip) unfolds it. It stays folded through the
+                  victory card too, until that is dismissed: a win is not over
+                  while its rewards are still on the screen. The ring's centre
+                  opens the World tab, where Teleport is, so the strip stays
+                  reachable mid-fight as a second way out beside the card's
+                  Retreat pill. */}
+              {(!(battle.isInBattle || battleResult) || isBattleDpadOpen) && (
               <div className={`lg:hidden flex-shrink-0 flex flex-col border-t border-line-subtle/30 ${isCraftingOpen ? 'hidden' : ''}`}>
-                {/* In a fight the D-pad collapses to this bar. It names what is
-                    behind it rather than saying "expand". */}
-                {battle.isInBattle && (
-                  <button
-                    type="button"
-                    onClick={() => setIsBattleDpadOpen((open) => !open)}
-                    aria-expanded={isBattleDpadOpen}
-                    className="flex items-center justify-center gap-1.5 w-full py-2 text-[11px] font-semibold uppercase tracking-widest text-fg-muted bg-surface-canvas/60 hover:text-fg-primary transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-                  >
-                    {isBattleDpadOpen ? <ChevronDown size={13} aria-hidden="true" /> : <ChevronUp size={13} aria-hidden="true" />}
-                    {isBattleDpadOpen ? 'Hide compass' : 'Compass'}
-                  </button>
-                )}
-                {(!battle.isInBattle || isBattleDpadOpen) && (
                 <ExplorePanel
                   variant="strip"
                   room={currentRoom}
@@ -4493,8 +4493,8 @@ export default function GameInterface() {
                   currentAction={action}
                   actionResult={actionResult}
                 />
-                )}
               </div>
+              )}
             </div>
           )}
           {currentRoom && fightLocked && (

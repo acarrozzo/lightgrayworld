@@ -3,7 +3,7 @@
 import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player, useGameStore } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 import { useCallback, useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
-import { Eye, LogOut } from 'lucide-react'
+import { Compass as CompassIcon, Eye, LogOut } from 'lucide-react'
 import type { FightFrame } from '@/components/game-interface/useFightFrame'
 import BattleDuel from '@/components/game-interface/BattleDuel'
 import { resolveItemIcon } from '@/lib/item-actions'
@@ -39,8 +39,17 @@ interface BattlePanelProps {
   /** The strip's Room chip, in its left corner: the room's number, and what pressing it opens. Neither, no chip. */
   roomLabel?: string
   onOpenRoom?: () => void
+  /**
+   * The strip's Compass chip, beside Room on a phone: a fight folds the D-pad
+   * away under the card, and this icon unfolds it. `compassOpen` is whether
+   * it is unfolded now. Left out (desktop has the compass on screen), no chip.
+   */
+  compassOpen?: boolean
+  onToggleCompass?: () => void
   /** The Turn chip: opens the fight's ledger, every turn so far. Without it the count is plain text. */
   onOpenLedger?: () => void
+  /** The HUD's four stats: open the bag, where the gear behind them is. Without it they are plain. */
+  onOpenStats?: () => void
   onUseItem: (itemId: string, action: string) => void
   onCastSpell: (spellId: string) => void
   /** Strike with a skill — Slice, Smash, Aim, Magic Strike — on this turn's swing. */
@@ -687,7 +696,10 @@ export default function BattlePanel({
   listRef,
   roomLabel,
   onOpenRoom,
+  compassOpen = false,
+  onToggleCompass,
   onOpenLedger,
+  onOpenStats,
   onUseItem,
   onCastSpell,
   onUseSkill,
@@ -818,20 +830,43 @@ export default function BattlePanel({
             </svg>
           </button>
         )}
-        {/* The room, one tap away while the card is pinned over it: its
-            actions, its supplies, who is standing here. */}
-        {!won && roomLabel && onOpenRoom && (
-          <button
-            type="button"
-            onClick={onOpenRoom}
-            title="The room: its actions, supplies and who is here"
-            className="absolute left-1.5 top-1/2 -translate-y-1/2 h-6 px-2.5 rounded-full border border-hue-blue/50 bg-hue-blue/10 text-hue-blue text-[9px] font-bold tracking-wider inline-flex items-center gap-1 transition-colors duration-150 hover:bg-hue-blue/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-            style={{ textShadow: 'none' }}
-          >
-            <Eye size={11} aria-hidden="true" />
-            Room
-            <span className="font-mono font-medium tracking-normal normal-case text-fg-secondary tabular-nums">{roomLabel}</span>
-          </button>
+        {/* The left corner: the room, one tap away while the card is pinned
+            over it (its actions, its supplies, who is standing here), and on
+            a phone the compass, an icon that unfolds the D-pad the fight
+            folded away under the card. */}
+        {!won && ((roomLabel && onOpenRoom) || onToggleCompass) && (
+          <div className="absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {roomLabel && onOpenRoom && (
+              <button
+                type="button"
+                onClick={onOpenRoom}
+                title="The room: its actions, supplies and who is here"
+                className="h-6 px-2.5 rounded-full border border-hue-blue/50 bg-hue-blue/10 text-hue-blue text-[9px] font-bold tracking-wider inline-flex items-center gap-1 transition-colors duration-150 hover:bg-hue-blue/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+                style={{ textShadow: 'none' }}
+              >
+                <Eye size={11} aria-hidden="true" />
+                Room
+                <span className="font-mono font-medium tracking-normal normal-case text-fg-secondary tabular-nums">{roomLabel}</span>
+              </button>
+            )}
+            {onToggleCompass && (
+              <button
+                type="button"
+                onClick={onToggleCompass}
+                aria-expanded={compassOpen}
+                aria-label={compassOpen ? 'Hide the compass' : 'Show the compass'}
+                title={compassOpen ? 'Hide the compass' : 'Show the compass'}
+                className={`lg:hidden h-6 w-6 rounded-full border inline-flex items-center justify-center transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                  compassOpen
+                    ? 'border-hue-blue bg-hue-blue/25 text-hue-blue'
+                    : 'border-hue-blue/50 bg-hue-blue/10 text-hue-blue hover:bg-hue-blue/20'
+                }`}
+                style={{ textShadow: 'none' }}
+              >
+                <CompassIcon size={13} aria-hidden="true" />
+              </button>
+            )}
+          </div>
         )}
         {/* Retreat: free, but it leaves you where you stand and the enemy
             keeps its HP, so there is nothing to farm by running. Open from
@@ -855,7 +890,7 @@ export default function BattlePanel({
         </button>}
       </div>
 
-      <BattleDuel battle={battle} player={player} inventory={inventory} weaponCategory={weaponCategory} onOpenLedger={onOpenLedger} />
+      <BattleDuel battle={battle} player={player} inventory={inventory} weaponCategory={weaponCategory} onOpenLedger={onOpenLedger} onOpenStats={onOpenStats} />
 
       {/* ── Combat visualization row ── */}
       <div className="flex items-center px-3 py-2 gap-1.5 @min-[600px]:py-3 @min-[600px]:gap-2">
