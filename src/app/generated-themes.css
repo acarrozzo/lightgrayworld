@@ -59,6 +59,7 @@
   --color-enemy-boss: var(--enemy-boss);
   --color-channel-room: var(--channel-room);
   --color-channel-world: var(--channel-world);
+  --color-channel-party: var(--channel-party);
   --color-channel-action: var(--channel-action);
   --color-channel-dm: var(--channel-dm);
   --color-channel-system: var(--channel-system);
@@ -404,6 +405,9 @@
   --color-fill-channel-world: var(--fill-channel-world);
   --color-hover-channel-world: var(--hover-channel-world);
   --color-on-channel-world: var(--on-channel-world);
+  --color-fill-channel-party: var(--fill-channel-party);
+  --color-hover-channel-party: var(--hover-channel-party);
+  --color-on-channel-party: var(--on-channel-party);
   --color-fill-channel-action: var(--fill-channel-action);
   --color-hover-channel-action: var(--hover-channel-action);
   --color-on-channel-action: var(--on-channel-action);
@@ -979,6 +983,7 @@
   --enemy-boss: #ca5657;
   --channel-room: #6ebc75;
   --channel-world: #569acf;
+  --channel-party: #0eb3f5;
   --channel-action: #d66976;
   --channel-dm: #9287d0;
   --channel-system: #8c97ab;
@@ -1324,6 +1329,9 @@
   --fill-channel-world: #569acf;
   --hover-channel-world: #67abe1;
   --on-channel-world: #f6f7f9;
+  --fill-channel-party: #0eb3f5;
+  --hover-channel-party: #34c5ff;
+  --on-channel-party: #f6f7f9;
   --fill-channel-action: #d66976;
   --hover-channel-action: #e97a86;
   --on-channel-action: #f6f7f9;
@@ -1900,6 +1908,7 @@
   --enemy-boss: #ca5657;
   --channel-room: #6ebc75;
   --channel-world: #569acf;
+  --channel-party: #0eb3f5;
   --channel-action: #d66976;
   --channel-dm: #9287d0;
   --channel-system: #8c97ab;
@@ -2245,6 +2254,9 @@
   --fill-channel-world: #569acf;
   --hover-channel-world: #67abe1;
   --on-channel-world: #f6f7f9;
+  --fill-channel-party: #0eb3f5;
+  --hover-channel-party: #34c5ff;
+  --on-channel-party: #f6f7f9;
   --fill-channel-action: #d66976;
   --hover-channel-action: #e97a86;
   --on-channel-action: #f6f7f9;
@@ -2821,6 +2833,7 @@
   --enemy-boss: #a855f7;
   --channel-room: #6ee7b7;
   --channel-world: #60a5fa;
+  --channel-party: #22d3ee;
   --channel-action: #fbbf24;
   --channel-dm: #a5b4fc;
   --channel-system: #9ca3af;
@@ -3166,6 +3179,9 @@
   --fill-channel-world: #1f65b8;
   --hover-channel-world: #3175cc;
   --on-channel-world: #ffffff;
+  --fill-channel-party: #00748e;
+  --hover-channel-party: #1c809a;
+  --on-channel-party: #ffffff;
   --fill-channel-action: #935a00;
   --hover-channel-action: #a36a1e;
   --on-channel-action: #ffffff;
@@ -3742,6 +3758,7 @@
   --enemy-boss: #9b7096;
   --channel-room: #7a9557;
   --channel-world: #5f7f9e;
+  --channel-party: #6a9490;
   --channel-action: #c8994a;
   --channel-dm: #9b7096;
   --channel-system: #888888;
@@ -4087,6 +4104,9 @@
   --fill-channel-world: #43637e;
   --hover-channel-world: #53738e;
   --on-channel-world: #f5f5f5;
+  --fill-channel-party: #406865;
+  --hover-channel-party: #4c7471;
+  --on-channel-party: #f5f5f5;
   --fill-channel-action: #885d00;
   --hover-channel-action: #906511;
   --on-channel-action: #f5f5f5;
@@ -4663,6 +4683,7 @@
   --enemy-boss: #b16286;
   --channel-room: #98971a;
   --channel-world: #458588;
+  --channel-party: #689d6a;
   --channel-action: #d79921;
   --channel-dm: #b16286;
   --channel-system: #a79c82;
@@ -5008,6 +5029,9 @@
   --fill-channel-world: #125b5e;
   --hover-channel-world: #22676a;
   --on-channel-world: #ebdbb2;
+  --fill-channel-party: #295b2b;
+  --hover-channel-party: #396b3b;
+  --on-channel-party: #ebdbb2;
   --fill-channel-action: #7f4700;
   --hover-channel-action: #8b5314;
   --on-channel-action: #ebdbb2;
@@ -5584,6 +5608,7 @@
   --enemy-boss: #b48ead;
   --channel-room: #a3be8c;
   --channel-world: #81a1c1;
+  --channel-party: #88c0d0;
   --channel-action: #ebcb8b;
   --channel-dm: #b48ead;
   --channel-system: #9da3ae;
@@ -5929,6 +5954,9 @@
   --fill-channel-world: #425e7a;
   --hover-channel-world: #526e8a;
   --on-channel-world: #eceff4;
+  --fill-channel-party: #2e6473;
+  --hover-channel-party: #3e7483;
+  --on-channel-party: #eceff4;
   --fill-channel-action: #755910;
   --hover-channel-action: #856925;
   --on-channel-action: #eceff4;
@@ -6505,6 +6533,7 @@
   --enemy-boss: #d699b6;
   --channel-room: #a7c080;
   --channel-world: #7fbbb3;
+  --channel-party: #83c092;
   --channel-action: #dbbc7f;
   --channel-dm: #d699b6;
   --channel-system: #9da9a0;
@@ -6850,6 +6879,9 @@
   --fill-channel-world: #1f605a;
   --hover-channel-world: #2c6c66;
   --on-channel-world: #e8e0cc;
+  --fill-channel-party: #28643c;
+  --hover-channel-party: #306c44;
+  --on-channel-party: #e8e0cc;
   --fill-channel-action: #6e530b;
   --hover-channel-action: #7a5f1c;
   --on-channel-action: #e8e0cc;
@@ -7426,6 +7458,7 @@
   --enemy-boss: #ff79c6;
   --channel-room: #50fa7b;
   --channel-world: #bd93f9;
+  --channel-party: #8be9fd;
   --channel-action: #f1fa8c;
   --channel-dm: #ff79c6;
   --channel-system: #afb0b0;
@@ -7771,6 +7804,9 @@
   --fill-channel-world: #7f53b8;
   --hover-channel-world: #8b5fc7;
   --on-channel-world: #ffffff;
+  --fill-channel-party: #007385;
+  --hover-channel-party: #1b7f91;
+  --on-channel-party: #ffffff;
   --fill-channel-action: #676c00;
   --hover-channel-action: #737818;
   --on-channel-action: #ffffff;
@@ -8347,6 +8383,7 @@
   --enemy-boss: #d7498c;
   --channel-room: #859900;
   --channel-world: #268bd2;
+  --channel-party: #2aa198;
   --channel-action: #b58900;
   --channel-dm: #d7498c;
   --channel-system: #6d8188;
@@ -8692,6 +8729,9 @@
   --fill-channel-world: #0063aa;
   --hover-channel-world: #1f73ba;
   --on-channel-world: #fdf6e3;
+  --fill-channel-party: #00736c;
+  --hover-channel-party: #147b74;
+  --on-channel-party: #fdf6e3;
   --fill-channel-action: #855d00;
   --hover-channel-action: #916918;
   --on-channel-action: #fdf6e3;
@@ -9268,6 +9308,7 @@
   --enemy-boss: #bb9af7;
   --channel-room: #9ece6a;
   --channel-world: #7aa2f7;
+  --channel-party: #7dcfff;
   --channel-action: #e0af68;
   --channel-dm: #bb9af7;
   --channel-system: #868dad;
@@ -9613,6 +9654,9 @@
   --fill-channel-world: #2e4d9e;
   --hover-channel-world: #3e5dae;
   --on-channel-world: #d5dcff;
+  --fill-channel-party: #005b87;
+  --hover-channel-party: #176793;
+  --on-channel-party: #d5dcff;
   --fill-channel-action: #784d00;
   --hover-channel-action: #845914;
   --on-channel-action: #d5dcff;
@@ -10189,6 +10233,7 @@
   --enemy-boss: #cba6f7;
   --channel-room: #a6e3a1;
   --channel-world: #89b4fa;
+  --channel-party: #94e2d5;
   --channel-action: #f9e2af;
   --channel-dm: #f5c2e7;
   --channel-system: #9399b2;
@@ -10534,6 +10579,9 @@
   --fill-channel-world: #3a5fa1;
   --hover-channel-world: #4a6fb1;
   --on-channel-world: #f5f5fa;
+  --fill-channel-party: #186d63;
+  --hover-channel-party: #2d7d73;
+  --on-channel-party: #f5f5fa;
   --fill-channel-action: #745f30;
   --hover-channel-action: #806b3c;
   --on-channel-action: #f5f5fa;
@@ -11406,6 +11454,14 @@
 }
 :where(button, a, [role='button'], summary, label, [tabindex]).fill-channel-world:hover {
   background-color: var(--hover-channel-world);
+}
+.fill-channel-party {
+  background-color: var(--fill-channel-party);
+  color: var(--on-channel-party);
+  text-shadow: var(--fill-label-shadow);
+}
+:where(button, a, [role='button'], summary, label, [tabindex]).fill-channel-party:hover {
+  background-color: var(--hover-channel-party);
 }
 .fill-channel-action {
   background-color: var(--fill-channel-action);

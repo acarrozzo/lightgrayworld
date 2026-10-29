@@ -185,6 +185,7 @@ export interface EnemyRoles {
 export interface ChannelRoles {
   room: Color
   world: Color
+  party: Color
   action: Color
   dm: Color
   system: Color

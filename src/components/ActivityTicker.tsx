@@ -20,14 +20,14 @@ const renderEntry = (entry: WorldFeedEntry): React.ReactNode => {
   if (entry.type === 'world') {
     return (
       <>
-        {speaker} shouts: <span className="text-status-success">{entry.message}</span>
+        {speaker} shouts: <span className="text-channel-world">{entry.message}</span>
       </>
     )
   }
   if (entry.type === 'room') {
     return (
       <>
-        {speaker} says: <span className="text-stat-mag">{entry.message}</span>
+        {speaker} says: <span className="text-channel-room">{entry.message}</span>
       </>
     )
   }

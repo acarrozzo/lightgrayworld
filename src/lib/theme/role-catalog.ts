@@ -189,6 +189,7 @@ export const ROLE_CATALOG: RoleGroup[] = [
     roles: [
       role('channel.room', '--channel-room', 'Said in this room.', 'Room chat lines and the room chat tab.'),
       role('channel.world', '--channel-world', 'Said to the whole world.', 'World chat lines and the world tab.'),
+      role('channel.party', '--channel-party', 'Said to your party.', 'Party chat lines and the party mode.'),
       role('channel.action', '--channel-action', 'Something you did.', 'Action results in the feed and activity bar.'),
       role('channel.dm', '--channel-dm', 'A direct message.', 'DM threads and notification badges.'),
       role('channel.system', '--channel-system', 'The game speaking.', 'System notices and server messages.'),

@@ -182,6 +182,9 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     channel: {
       room: t.green,
       world: t.blue,
+      // Party talk sits beside world chat in the feed, so it takes the one
+      // cool hue that is not world blue.
+      party: t.cyan,
       action: t.yellow,
       dm: t.magenta,
       system: fade(0.35),

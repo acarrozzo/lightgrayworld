@@ -129,6 +129,7 @@ export const lightGray = makeTheme({
       channel: {
         room: '#6ebc75',
         world: '#569acf',
+        party: '#0eb3f5',
         action: '#d66976',
         dm: '#9287d0',
         system: '#8c97ab',

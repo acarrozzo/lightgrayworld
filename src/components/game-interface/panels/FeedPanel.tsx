@@ -1,19 +1,31 @@
 'use client'
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Crown, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Crown, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { useLineSourcesStore } from '@/store/lineSourcesStore'
-import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import FeedLinkButton from '@/components/feed/FeedLinkButton'
 import { decideFeedFollow, FOLLOW_THRESHOLD_PX } from '@/components/feed/feedFollow'
+import {
+  CHANNEL_STYLES,
+  EVENTS_ICON,
+  IDLE_CHIP,
+  NEUTRAL_CHIP,
+  channelOfEntry,
+  chatSubFilterForMode,
+  isInputMode,
+  modeForChatSubFilter,
+  type ChatSubFilter,
+  type InputMode,
+} from '@/components/feed/feedChannels'
+import FeedComposer from '@/components/feed/FeedComposer'
+import FeedOptionsMenu from '@/components/feed/FeedOptionsMenu'
 
 type FilterType = 'all' | 'chat' | 'events' | 'actions'
-type ChatSubFilter = 'room-chat' | 'world-chat' | 'party-chat' | 'all-chat'
 type EventsSubFilter = 'world-activity' | 'all-events'
 type ActionsSubFilter = 'action-feedback' | 'movement' | 'lines' | 'all-actions'
 
-export type InputMode = 'action' | 'room' | 'world' | 'party'
+export type { InputMode } from '@/components/feed/feedChannels'
 
 interface FeedPanelProps {
   currentRoomId?: string
@@ -50,9 +62,11 @@ type CategoryStyle = {
   iconClass: string
 }
 
+const IDLE_SUB_CHIP = 'border-line-subtle hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-muted hover:text-fg-secondary'
+
 const WORLD_FEED_TOGGLES: { key: keyof WorldFeedSettings; label: string }[] = [
-  { key: 'showTimestamps', label: 'Show timestamps' },
-  { key: 'compactMode', label: 'Compact mode' },
+  { key: 'showTimestamps', label: 'Timestamps' },
+  { key: 'compactMode', label: 'Compact rows' },
   { key: 'groupRepeats', label: 'Group repeats' },
 ]
 
@@ -60,14 +74,14 @@ const CATEGORY_STYLES: Record<'room' | 'world' | 'action' | 'dm' | 'party', Cate
   room: {
     label: 'ROOM',
     icon: MessageSquare,
-    barClass: 'bg-accent',
-    iconClass: 'text-accent-hover',
+    barClass: CHANNEL_STYLES.room.bar,
+    iconClass: CHANNEL_STYLES.room.text,
   },
   world: {
     label: 'WORLD',
-    icon: MessageSquare,
-    barClass: 'bg-channel-room',
-    iconClass: 'text-channel-room',
+    icon: Globe,
+    barClass: CHANNEL_STYLES.world.bar,
+    iconClass: CHANNEL_STYLES.world.text,
   },
   action: {
     label: 'ACT',
@@ -78,16 +92,16 @@ const CATEGORY_STYLES: Record<'room' | 'world' | 'action' | 'dm' | 'party', Cate
   dm: {
     label: 'DM',
     icon: Mail,
-    barClass: 'bg-stat-mag',
-    iconClass: 'text-channel-dm',
+    barClass: CHANNEL_STYLES.dm.bar,
+    iconClass: CHANNEL_STYLES.dm.text,
   },
   // The party's own channel: chat and the lines about each other (a kill, a
   // level, a fall) share it, because they are the same conversation.
   party: {
     label: 'PARTY',
     icon: Users,
-    barClass: 'bg-resource-mp',
-    iconClass: 'text-resource-mp',
+    barClass: CHANNEL_STYLES.party.bar,
+    iconClass: CHANNEL_STYLES.party.text,
   },
 }
 
@@ -130,20 +144,20 @@ const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
   login: {
     label: 'LOGIN',
     icon: Globe,
-    barClass: 'bg-channel-room',
-    iconClass: 'text-channel-room',
+    barClass: 'bg-status-success',
+    iconClass: 'text-status-success',
   },
   register: {
     label: 'NEW',
     icon: Globe,
-    barClass: 'bg-channel-room',
-    iconClass: 'text-channel-room',
+    barClass: 'bg-status-success',
+    iconClass: 'text-status-success',
   },
   return: {
     label: 'ACTIVE',
     icon: Globe,
-    barClass: 'bg-channel-room',
-    iconClass: 'text-channel-room',
+    barClass: 'bg-status-success',
+    iconClass: 'text-status-success',
   },
   logout: {
     label: 'LOGOUT',
@@ -202,8 +216,8 @@ const ACTIVITY_TEXT_CLASSES: Record<string, string> = {
   line: 'text-resource-gold/90 italic',
   savior: 'text-resource-gold',
   login: 'text-fg-secondary',
-  register: 'text-channel-room',
-  return: 'text-channel-room',
+  register: 'text-status-success',
+  return: 'text-status-success',
   logout: 'text-status-error',
   disconnect: 'text-fg-secondary',
   idle: 'text-fg-primary',
@@ -245,7 +259,6 @@ const createDefaultSettings = (): WorldFeedSettings => ({
 })
 
 const getSettingsKey = (userId?: string | null) => (userId ? `worldFeed-settings:${userId}` : null)
-const getDisplayOptionsCollapsedKey = (userId?: string | null) => (userId ? `worldFeed-displayOptionsCollapsed:${userId}` : null)
 const getInputModeKey = (userId?: string | null) => (userId ? `inputMode:${userId}` : null)
 
 const canGroupEntries = (a: WorldFeedEntry, b: WorldFeedEntry) => {
@@ -375,6 +388,7 @@ export default function FeedPanel({
   const [eventsSubFilter, setEventsSubFilter] = useState<EventsSubFilter>('all-events')
   const [actionsSubFilter, setActionsSubFilter] = useState<ActionsSubFilter>('all-actions')
   const showLineSources = useLineSourcesStore((s) => s.showSources)
+  const setShowLineSources = useLineSourcesStore((s) => s.setShowSources)
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE)
   const [isNearBottom, setIsNearBottom] = useState(true)
   const [isScrollable, setIsScrollable] = useState(false)
@@ -383,9 +397,6 @@ export default function FeedPanel({
   const [settings, setSettings] = useState<WorldFeedSettings>(() => createDefaultSettings())
   const [settingsHydrated, setSettingsHydrated] = useState(false)
   const settingsKey = useMemo(() => getSettingsKey(userId), [userId])
-  const [isDisplayOptionsCollapsed, setIsDisplayOptionsCollapsed] = useState(true)
-  const [displayOptionsHydrated, setDisplayOptionsHydrated] = useState(false)
-  const displayOptionsCollapsedKey = useMemo(() => getDisplayOptionsCollapsedKey(userId), [userId])
   const [inputMode, setInputMode] = useState<InputMode>('world')
   const [inputModeHydrated, setInputModeHydrated] = useState(false)
   const inputModeKey = useMemo(() => getInputModeKey(userId), [userId])
@@ -422,36 +433,6 @@ export default function FeedPanel({
   }, [settings, settingsKey, settingsHydrated])
 
   useEffect(() => {
-    if (!displayOptionsCollapsedKey) {
-      setIsDisplayOptionsCollapsed(true)
-      setDisplayOptionsHydrated(false)
-      return
-    }
-
-    try {
-      const stored = localStorage.getItem(displayOptionsCollapsedKey)
-      if (stored !== null) {
-        const parsed = JSON.parse(stored)
-        if (typeof parsed === 'boolean') {
-          setIsDisplayOptionsCollapsed(parsed)
-          setDisplayOptionsHydrated(true)
-          return
-        }
-      }
-    } catch {
-      // ignore parse errors and fall back to defaults
-    }
-
-    setIsDisplayOptionsCollapsed(true)
-    setDisplayOptionsHydrated(true)
-  }, [displayOptionsCollapsedKey])
-
-  useEffect(() => {
-    if (!displayOptionsCollapsedKey || !displayOptionsHydrated) return
-    localStorage.setItem(displayOptionsCollapsedKey, JSON.stringify(isDisplayOptionsCollapsed))
-  }, [isDisplayOptionsCollapsed, displayOptionsCollapsedKey, displayOptionsHydrated])
-
-  useEffect(() => {
     if (!inputModeKey) {
       setInputMode('world')
       setInputModeHydrated(false)
@@ -461,9 +442,8 @@ export default function FeedPanel({
     try {
       const stored = localStorage.getItem(inputModeKey)
       if (stored !== null) {
-        const parsed = stored as InputMode
-        if (parsed === 'action' || parsed === 'room' || parsed === 'world' || parsed === 'party') {
-          setInputMode(parsed)
+        if (isInputMode(stored)) {
+          setInputMode(stored)
           setInputModeHydrated(true)
           return
         }
@@ -483,13 +463,7 @@ export default function FeedPanel({
 
   // Handle forceInputMode prop - override stored value when provided
   useEffect(() => {
-    if (
-      forceInputMode &&
-      (forceInputMode === 'action' ||
-        forceInputMode === 'room' ||
-        forceInputMode === 'world' ||
-        forceInputMode === 'party')
-    ) {
+    if (isInputMode(forceInputMode)) {
       setInputMode(forceInputMode)
       if (inputModeKey) {
         localStorage.setItem(inputModeKey, forceInputMode)
@@ -606,14 +580,6 @@ export default function FeedPanel({
   }, [visibleEntries, settings.groupRepeats])
 
   const canLoadMore = visibleCount < filteredEntries.length
-  const trimmedCustomAction = customAction.trim()
-  const showUnreadNotice = !isNearBottom && unreadCount > 0 && isScrollable
-  
-  // Character count validation for chat modes
-  const isChatMode = inputMode === 'world' || inputMode === 'room' || inputMode === 'party'
-  const charCount = customAction.length
-  const isOverLimit = isChatMode && charCount > MESSAGE_MAX_LENGTH
-  const isSubmitDisabled = Boolean(isLoadingRoom) || trimmedCustomAction.length === 0 || isOverLimit
 
   // Scroll height as last measured; the follow decision reads it as the
   // height before new rows landed.
@@ -708,6 +674,22 @@ export default function FeedPanel({
     })
   }, [visibleEntries, handleScroll])
 
+  // The composer and the Chat filter shake hands: pick where you speak and
+  // the Chat view narrows to it; narrow the Chat view and the composer
+  // follows. A reply tap on a name does the same and focuses the input.
+  const selectMode = useCallback((mode: InputMode) => {
+    setInputMode(mode)
+    if (filter === 'chat') {
+      const sub = chatSubFilterForMode(mode)
+      if (sub) setChatSubFilter(sub)
+    }
+  }, [filter])
+
+  const replyIn = (mode: InputMode) => {
+    selectMode(mode)
+    customActionInputRef?.current?.focus()
+  }
+
   const handleFilterChange = (next: FilterType) => {
     setFilter(next)
     // Reset sub-filters to defaults when top-level filter changes
@@ -758,20 +740,25 @@ export default function FeedPanel({
               actions: 'Actions',
             }
             const iconMap: Record<FilterType, LucideIcon | null> = {
-              all: Globe,
+              all: null,
               chat: MessageSquare,
-              events: Globe,
+              events: EVENTS_ICON,
               actions: Sparkles,
+            }
+            const activeMap: Record<FilterType, string> = {
+              all: NEUTRAL_CHIP,
+              chat: 'border-accent bg-accent/10 hover:bg-accent/20 text-accent-hover',
+              events: CHANNEL_STYLES.events.chip,
+              actions: CHANNEL_STYLES.action.chip,
             }
             const IconComponent = iconMap[key]
             return (
               <button
                 key={key}
                 onClick={() => handleFilterChange(key)}
-                className={`px-2 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow ${
-                  isActive
-                    ? 'border-1 border-resource-mp/80 hover:border-resource-mp bg-resource-mp/10 hover:bg-resource-mp/20 text-channel-world'
-                    : 'border-1 border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary'
+                aria-pressed={isActive}
+                className={`px-2 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 ${
+                  isActive ? activeMap[key] : IDLE_CHIP
                 }`}
               >
                 {IconComponent && (
@@ -785,30 +772,33 @@ export default function FeedPanel({
               </button>
             )
           })}
-          <button
-            type="button"
-            onClick={() => setIsDisplayOptionsCollapsed((prev) => !prev)}
-            className={`ml-auto px-2 py-1.5 rounded-md border transition-colors ${
-              !isDisplayOptionsCollapsed
-                ? 'fill-accent border-accent hover:bg-accent-hover'
-                : 'fill-surface-panel text-fg-secondary border-line-subtle hover: hover:bg-surface-raised/60'
-            }`}
-            aria-expanded={!isDisplayOptionsCollapsed}
-            aria-label="Toggle display options"
-          >
-            {isDisplayOptionsCollapsed ? (
-              <ChevronDown size={14} />
-            ) : (
-              <ChevronUp size={14} />
-            )}
-          </button>
+          <FeedOptionsMenu
+            switches={[
+              ...WORLD_FEED_TOGGLES.map(({ key, label }) => ({
+                key,
+                label,
+                on: settings[key],
+                onToggle: () => handleToggleSetting(key),
+              })),
+              { key: 'lineSources', label: 'Line sources', on: showLineSources, onToggle: () => setShowLineSources(!showLineSources) },
+            ]}
+            onJumpToTop={scrollToTop}
+            lineCount={entries.length}
+            onClear={() => useWorldFeedStore.getState().clear()}
+          />
         </div>
 
         {/* Sub-filters */}
         {filter === 'chat' && (
-          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-accent/25">
+          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-accent/40">
             {(['all-chat', 'world-chat', 'room-chat', 'party-chat'] as ChatSubFilter[]).map((subKey) => {
               const isActive = chatSubFilter === subKey
+              const subChip: Record<ChatSubFilter, string> = {
+                'all-chat': NEUTRAL_CHIP,
+                'world-chat': CHANNEL_STYLES.world.chip,
+                'room-chat': CHANNEL_STYLES.room.chip,
+                'party-chat': CHANNEL_STYLES.party.chip,
+              }
               const labelMap: Record<ChatSubFilter, string> = {
                 'all-chat': 'All Chat',
                 'room-chat': 'Room',
@@ -820,13 +810,14 @@ export default function FeedPanel({
                   key={subKey}
                   onClick={() => {
                     setChatSubFilter(subKey)
+                    const mode = modeForChatSubFilter(subKey)
+                    if (mode) setInputMode(mode)
                     setVisibleCount(DEFAULT_VISIBLE)
                     requestAnimationFrame(scrollToBottom)
                   }}
-                  className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md ${
-                    isActive
-                      ? 'border-1 border-accent hover:border-accent-hover bg-accent/10 hover:bg-accent/20 text-accent-hover'
-                      : 'border-1 border-line-subtle hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-muted hover:text-fg-secondary'
+                  aria-pressed={isActive}
+                  className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md border-1 ${
+                    isActive ? subChip[subKey] : IDLE_SUB_CHIP
                   }`}
                 >
                   {labelMap[subKey]}
@@ -837,7 +828,7 @@ export default function FeedPanel({
         )}
 
         {filter === 'events' && (
-          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-channel-action/30">
+          <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-channel-system/40">
             {(['all-events', 'world-activity'] as EventsSubFilter[]).map((subKey) => {
               const isActive = eventsSubFilter === subKey
               const labelMap: Record<EventsSubFilter, string> = {
@@ -852,10 +843,9 @@ export default function FeedPanel({
                     setVisibleCount(DEFAULT_VISIBLE)
                     requestAnimationFrame(scrollToBottom)
                   }}
-                  className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md ${
-                    isActive
-                      ? 'border-1 border-channel-action/80 hover:border-channel-action bg-channel-action/10 hover:bg-channel-action/20 text-channel-action'
-                      : 'border-1 border-line-subtle hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-muted hover:text-fg-secondary'
+                  aria-pressed={isActive}
+                  className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md border-1 ${
+                    isActive ? CHANNEL_STYLES.events.chip : IDLE_SUB_CHIP
                   }`}
                 >
                   {labelMap[subKey]}
@@ -883,10 +873,9 @@ export default function FeedPanel({
                     setVisibleCount(DEFAULT_VISIBLE)
                     requestAnimationFrame(scrollToBottom)
                   }}
-                  className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md ${
-                    isActive
-                      ? 'border-1 border-channel-action/80 hover:border-channel-action bg-channel-action/10 hover:bg-channel-action/20 text-channel-action'
-                      : 'border-1 border-line-subtle hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-muted hover:text-fg-secondary'
+                  aria-pressed={isActive}
+                  className={`px-2 py-1 text-[10px] font-medium transition-all duration-200 flex items-center justify-center relative rounded-md border-1 ${
+                    isActive ? CHANNEL_STYLES.action.chip : IDLE_SUB_CHIP
                   }`}
                 >
                   {labelMap[subKey]}
@@ -896,62 +885,6 @@ export default function FeedPanel({
           </div>
         )}
 
-        {!isDisplayOptionsCollapsed && (
-          <>
-            <div className="flex flex-col gap-1.5">
-              <div className="text-[10px] text-fg-muted font-medium">Feed display options</div>
-              <div className="flex flex-wrap items-center gap-2">
-                {WORLD_FEED_TOGGLES.map(({ key, label }) => {
-                  const active = settings[key]
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => handleToggleSetting(key)}
-                      className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
-                        active
-                          ? 'fill-surface-raised border-accent-hover/70'
-                          : 'fill-surface-panel text-fg-secondary border-line-subtle hover:text-fg-bright'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="text-[10px] text-fg-muted font-medium">Feed actions</div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const { clear } = useWorldFeedStore.getState()
-                    clear()
-                  }}
-                  className="text-[10px] px-2 py-1 rounded-md border transition-colors fill-surface-panel text-fg-secondary border-line-subtle hover: hover:bg-surface-raised"
-                >
-                  Clear Feed
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="text-[10px] px-2 py-1 rounded-md border transition-colors fill-surface-panel text-fg-secondary border-line-subtle hover: hover:bg-surface-raised"
-                >
-                  Jump to Top
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToBottom}
-                  className="text-[10px] px-2 py-1 rounded-md border transition-colors fill-surface-panel text-fg-secondary border-line-subtle hover: hover:bg-surface-raised"
-                >
-                  Jump to Bottom
-                </button>
-              </div>
-            </div>
-          </>
-        )}
       </div>
 
       <div className="relative flex flex-col flex-1 min-h-0">
@@ -965,12 +898,6 @@ export default function FeedPanel({
               className="px-4 py-2 text-sm rounded-md border fill-surface-raised border-line-subtle hover:bg-surface-hover transition-colors"
             >
               Load previous 50
-            </button>
-            <button
-              onClick={scrollToBottom}
-              className="px-4 py-2 text-sm rounded-md transition-colors fill-accent hover:bg-accent-hover border-transparent shadow-sm hover:shadow"
-            >
-              Jump to bottom
             </button>
           </div>
         )}
@@ -1010,8 +937,10 @@ export default function FeedPanel({
               const speaker = entry.isSelf ? `${actorLabel} (you)` : actorLabel
               const verb = isWorldChat ? 'shouts' : 'says'
               const roomTag = !isWorldChat && entry.roomId ? ` (${entry.roomId})` : ''
-              const dotColor = isWorldChat ? 'bg-status-success' : 'bg-stat-mag'
-              const messageColor = isWorldChat ? 'text-status-success' : 'text-channel-dm'
+              const channel = channelOfEntry(entry)
+              const dotColor = CHANNEL_STYLES[channel].bar
+              const messageColor = CHANNEL_STYLES[channel].text
+              const replyMode = channel === 'world' || channel === 'room' ? channel : null
               const opacityClass = isOtherRoom ? 'opacity-70' : ''
 
               return (
@@ -1026,7 +955,19 @@ export default function FeedPanel({
                   <span
                     className={`flex-1 min-w-0 ${contentSize} font-mono text-fg-bright break-words leading-tight`}
                   >
-                    {speaker} {verb}
+                    {replyMode ? (
+                      <button
+                        type="button"
+                        onClick={() => replyIn(replyMode)}
+                        title={`Reply in ${replyMode === 'world' ? 'World Chat' : 'Room Chat'}`}
+                        className="font-mono text-fg-bright hover:underline decoration-dotted underline-offset-2"
+                      >
+                        {speaker}
+                      </button>
+                    ) : (
+                      speaker
+                    )}{' '}
+                    {verb}
                     {roomTag}: <span className={messageColor}>{messageText}</span>
                   </span>
                   {settings.showTimestamps && (
@@ -1057,10 +998,22 @@ export default function FeedPanel({
               <div key={`${entry.id}-${index}`} className={`relative ${terminalPadding} ${categoryBgClass} group mb-1`}>
                 <span className={`absolute left-0 top-0 bottom-0 w-0.5 ${style.barClass}`} aria-hidden />
                 <div className="flex flex-wrap items-baseline gap-1.5 text-[11px]">
-                  <span className={`flex items-center ${style.iconClass} shrink-0`}>
-                    {React.createElement(displayIcon, { size: iconSize, className: 'shrink-0', 'aria-hidden': 'true' })}
-                    <span className="sr-only">{style.label}</span>
-                  </span>
+                  {entry.type === 'party' && entry.actor && !entry.eventType ? (
+                    <button
+                      type="button"
+                      onClick={() => replyIn('party')}
+                      title="Reply in Party"
+                      className={`flex items-center ${style.iconClass} shrink-0 rounded hover:bg-surface-hover/60`}
+                    >
+                      {React.createElement(displayIcon, { size: iconSize, className: 'shrink-0', 'aria-hidden': 'true' })}
+                      <span className="sr-only">{style.label}</span>
+                    </button>
+                  ) : (
+                    <span className={`flex items-center ${style.iconClass} shrink-0`}>
+                      {React.createElement(displayIcon, { size: iconSize, className: 'shrink-0', 'aria-hidden': 'true' })}
+                      <span className="sr-only">{style.label}</span>
+                    </span>
+                  )}
 
                   <div className={`flex flex-wrap items-baseline gap-1 flex-1 break-words leading-tight font-mono ${contentSize}`}>
                     {isRoomTravel ? (
@@ -1122,115 +1075,16 @@ export default function FeedPanel({
         )}
       </div>
 
-      <div className="worldFeedFooter p-4 border-t border-line-subtle/60 bg-surface-canvas/95 space-y-3">
-        {showUnreadNotice && (
-          <div className="flex items-center justify-between text-xs fill-surface-panel px-3 py-2 rounded-md border border-line-subtle/80">
-            <button
-              onClick={scrollToBottom}
-              className="px-3 py-2 w-full text-xs rounded-md fill-accent hover:bg-accent-hover transition-colors"
-            >
-              <span>{unreadCount === 1 ? '1 new message' : `${unreadCount} new messages`} </span>
-              - Jump to latest
-            </button>
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-2">
-          {(['world', 'room', 'party', 'action'] as InputMode[]).map((mode) => {
-            const isActive = inputMode === mode
-            // Highlight input mode when corresponding filter is active
-            const isFilterActive = (filter === 'chat' && (mode === 'room' || mode === 'world' || mode === 'party')) ||
-                                  (filter === 'actions' && mode === 'action')
-            const labelMap: Record<InputMode, string> = {
-              action: 'Action',
-              room: 'Room Chat',
-              world: 'World Chat',
-              party: 'Party',
-            }
-            const iconMap: Record<InputMode, LucideIcon> = {
-              action: Sparkles,
-              room: MessageSquare,
-              world: Globe,
-              party: Users,
-            }
-            const IconComponent = iconMap[mode]
-            const colorMap: Record<InputMode, { active: string; inactive: string }> = {
-              action: {
-                active: 'border-channel-action/80 hover:border-channel-action bg-channel-action/10 hover:bg-channel-action/20 text-channel-action',
-                inactive: 'border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary',
-              },
-              room: {
-                active: 'border-accent/80 hover:border-accent bg-accent/10 hover:bg-accent/20 text-accent-hover',
-                inactive: 'border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary',
-              },
-              world: {
-                active: 'border-status-success/80 hover:border-status-success bg-channel-room/10 hover:bg-channel-room/20 text-channel-room',
-                inactive: 'border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary',
-              },
-              party: {
-                active: 'border-resource-mp/80 hover:border-resource-mp bg-resource-mp/10 hover:bg-resource-mp/20 text-resource-mp',
-                inactive: 'border-line-strong/80 hover:border-line-strong bg-transparent hover:bg-surface-raised/30 text-fg-secondary hover:text-fg-primary',
-              },
-            }
-            const colors = colorMap[mode]
-            return (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setInputMode(mode)}
-                className={`px-2 py-1 text-xs font-medium transition-all duration-200 flex items-center justify-center relative rounded-lg shadow-sm hover:shadow border-1 ${
-                  isActive ? colors.active : isFilterActive ? 'border-line-strong fill-surface-raised' : colors.inactive
-                }`}
-              >
-                <IconComponent 
-                  size={12} 
-                  className="mr-1 shrink-0 @max-[320px]:hidden" 
-                  aria-hidden="true"
-                />
-                {labelMap[mode]}
-              </button>
-            )
-          })}
-        </div>
-
-        <form onSubmit={(e) => onCustomActionSubmit(e, inputMode)} className="flex flex-col gap-2 w-full">
-          <div className="flex gap-2 w-full">
-            <input
-              ref={customActionInputRef ?? undefined}
-              type="text"
-              value={customAction}
-              onChange={(e) => onCustomActionChange(e.target.value)}
-              placeholder={
-                inputMode === 'action'
-                  ? 'Enter action...'
-                  : inputMode === 'room'
-                  ? 'Say something...'
-                  : inputMode === 'party'
-                  ? 'Tell the party...'
-                  : 'Shout something...'
-              }
-              disabled={Boolean(isLoadingRoom)}
-              className={`flex-1 min-w-0 px-3 py-2 fill-surface-panel font-mono text-sm border rounded focus:outline-none focus:ring-1 transition-all duration-200 disabled:bg-surface-panel/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-fg-muted ${
-                isOverLimit
-                  ? 'border-status-error/60 focus:border-status-error/80 focus:ring-status-error/40'
-                  : 'border-line-subtle/60 focus:border-accent/60 focus:ring-line-focus/40'
-              }`}
-              autoComplete="off"
-            />
-            <button
-              type="submit"
-              disabled={isSubmitDisabled}
-              className="px-4 py-2 fill-accent disabled:bg-surface-hover/50 disabled:cursor-not-allowed disabled:opacity-50 font-mono text-sm border border-accent/60 rounded whitespace-nowrap transition-all duration-200 hover:border-accent-hover/80"
-            >
-              Submit
-            </button>
-          </div>
-          {isOverLimit && (
-            <p className="text-xs text-status-error font-mono px-1">
-              Message cannot exceed {MESSAGE_MAX_LENGTH} characters. Current: {charCount} characters
-            </p>
-          )}
-        </form>
+      <div className="worldFeedFooter @container px-4 py-3 border-t border-line-subtle/60 bg-surface-canvas/95">
+        <FeedComposer
+          mode={inputMode}
+          onModeChange={selectMode}
+          value={customAction}
+          onValueChange={onCustomActionChange}
+          onSubmit={onCustomActionSubmit}
+          disabled={Boolean(isLoadingRoom)}
+          inputRef={customActionInputRef}
+        />
       </div>
     </div>
   )

@@ -134,6 +134,7 @@ export const lightGrayModern = makeTheme({
       channel: {
         room: '#6ee7b7', // emerald-300
         world: '#60a5fa', // blue-400
+        party: '#22d3ee', // cyan-400
         action: '#fbbf24', // amber-400
         dm: '#a5b4fc', // indigo-300
         system: '#9ca3af', // gray-400
