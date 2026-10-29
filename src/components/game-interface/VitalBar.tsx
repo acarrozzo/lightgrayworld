@@ -17,11 +17,11 @@ import { formatVital, previewPct, vitalOverflow, vitalPct, vitalState } from '@/
  *   fat   16px   desktop header, battle HUD, full screen      number inside
  *
  * What travels with the bar at every size from thin up: the damage drain
- * (the part just lost stays lit in a pale wash of the bar's own tone for a
- * moment, so a hit reads as a hit and never as a gain), the heal ghost (what a
- * hovered restorer would add), the gain float ("+3" rising off the bar when
- * regen lands) and the over-max "+8" in gold. Your own HP also wears its
- * state: amber from a quarter down, pulsing from a tenth.
+ * (the part just lost stays lit for a moment, gold on a health bar as the
+ * original's yellow was, so a hit reads as a hit and never as a gain), the
+ * heal ghost (what a hovered restorer would add), the gain float ("+3" rising
+ * off the bar when regen lands) and the over-max "+8" in gold. Your own HP
+ * pulses from a tenth.
  *
  * Colour is the kind's resource role and nothing else — `resource.hp`,
  * `resource.mp`, `resource.xp`, `resource.foe` — unless the caller is the
@@ -69,15 +69,19 @@ const TEXT: Record<VitalKind, string> = {
   foe: 'text-resource-foe',
 }
 
-const VAR: Record<VitalKind, string> = {
-  hp: '--resource-hp',
-  mp: '--resource-mp',
-  xp: '--resource-xp',
-  foe: '--resource-foe',
-}
-
 /** How long the lost part stays lit. */
 const DRAIN_MS = 700
+
+/**
+ * The lost part: gold on a health bar, yours or the enemy's, as the original's
+ * yellow was; a pale wash of the bar's own tone on MP and XP.
+ */
+const DRAIN: Record<VitalKind, string> = {
+  hp: 'var(--resource-gold)',
+  foe: 'var(--resource-gold)',
+  mp: 'color-mix(in srgb, var(--resource-mp) 45%, var(--fg-bright))',
+  xp: 'color-mix(in srgb, var(--resource-xp) 45%, var(--fg-bright))',
+}
 
 export interface VitalBarProps {
   current: number
@@ -87,9 +91,9 @@ export interface VitalBarProps {
   /** Fill from the right: the enemy's side of a fight. The number, if beside, sits on the left. */
   rtl?: boolean
   /**
-   * Your own bar: it wears the low and critical states. A teammate's or an
-   * enemy's does not — the party says "hurt" in its badge, and an enemy
-   * running low is good news.
+   * Your own bar: it pulses when critical. A teammate's or an enemy's does
+   * not — the party says "hurt" in its badge, and an enemy running low is
+   * good news.
    */
   self?: boolean
   /** The fill class, when the caller colours the bar itself (the party rail's state colouring). */
@@ -177,8 +181,7 @@ export default function VitalBar({
   }, [pct, showDrain])
 
   const placement: VitalNumber = number ?? (size === 'mid' || size === 'fat' ? 'inside' : 'beside')
-  const low = self && kind === 'hp' && (state === 'low' || state === 'critical')
-  const fill = fillClass ?? (low ? 'bg-status-warning' : FILL[kind])
+  const fill = fillClass ?? FILL[kind]
   const pulse = self && kind === 'hp' && state === 'critical' ? 'motion-safe:animate-pulse' : ''
   const value = formatVital(current, max)
   const name = label ?? (kind === 'foe' ? 'Enemy HP' : kind.toUpperCase())
@@ -223,7 +226,7 @@ export default function VitalBar({
           style={{
             ...(rtl ? { right: `${pct}%` } : { left: `${pct}%` }),
             width: `${drainPct}%`,
-            background: `color-mix(in srgb, var(${VAR[kind]}) 45%, var(--fg-bright))`,
+            background: DRAIN[kind],
           }}
           aria-hidden="true"
         />
