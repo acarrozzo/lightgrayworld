@@ -90,6 +90,28 @@ test('Heal rolls (lvl + 1) dice of rand(1, mag)', () => {
   assert.equal(spells.rollSpell(heal, 2, 6, minRand).amount, 3)
 })
 
+test('Wings and Gills are castable buffs: lvl × 20 clicks for lvl × 10 MP, previewed as such', () => {
+  for (const id of ['wings', 'gills']) {
+    const spell = spells.getSpell(id)
+    assert.equal(spell.implemented, true, id)
+    assert.equal(spells.isCastable(spell), true, id)
+    assert.equal(spell.castCost(3, 50), 30, id)
+    const effect = spells.castBuff(spell, 3, { mag: 50, magCore: 20 }, minRand)
+    assert.equal(effect.clicks, 60, id)
+    const preview = spells.previewSpell(spell, 5, 50)
+    assert.deepEqual([preview.min, preview.max, preview.unit], [100, 100, 'clicks'], id)
+  }
+  assert.match(spells.castBuff(spells.getSpell('wings'), 1, {}, minRand).text, /fly for 20 clicks/)
+  assert.match(spells.castBuff(spells.getSpell('gills'), 1, {}, minRand).text, /breathe water for 20 clicks/)
+  // Only the Wizard's Guild teaches them, to 5.
+  assert.equal(spells.getSpellMaxLevel(spells.getSpell('wings'), { starCitySpellsFlag: true }), 0)
+  assert.equal(spells.getSpellMaxLevel(spells.getSpell('wings'), { wizardSkillFlag: true }), 5)
+})
+
+test('every spell in the registry is implemented', () => {
+  for (const spell of spells.SPELLS) assert.equal(spells.isCastable(spell), true, spell.id)
+})
+
 test('typed commands resolve to spells, with and without "cast"', () => {
   assert.equal(spells.findSpellByCommand('cast fireball').id, 'fireball')
   assert.equal(spells.findSpellByCommand('Magic Missile').id, 'magic-missile')

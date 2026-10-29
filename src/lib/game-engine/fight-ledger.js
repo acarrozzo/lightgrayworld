@@ -46,7 +46,7 @@ const LEDGER_CAP = 400
  * @property {string|null} you.calc  A spell's own roll breakdown, as the server wrote it.
  * @property {'flying'|'immune-melee'|'immune-ranged'|'immune-magic'|'dodged'|'blocked'|null} you.miss  Why nothing landed.
  * @property {boolean} you.melted  A melee blow halved by magma.
- * @property {{ name: string, dmg: number }[]} you.helpers  A second arrow, a companion's swing.
+ * @property {{ name: string, dmg: number }[]} you.helpers  A second arrow, a companion's swing, the poison you left burning.
  * @property {string|null} you.effect  A support turn's effect text ("+20 HP").
  * @property {Object} foe
  * @property {'hit'|'special'|'heal'|'windup'|'none'} foe.kind
@@ -108,6 +108,9 @@ function compactTurn(turn, extras) {
   const helpers = []
   if (t.extraShot) helpers.push({ name: 'Second arrow', dmg: n(t.extraShot.damage) })
   if (t.companion) helpers.push({ name: String(t.companion.name || 'Companion'), dmg: n(t.companion.damage) })
+  // The poison you put on it burns on your side of the turn: it is your
+  // damage, past its DEF, and it adds to your total the way a second arrow does.
+  if (t.poisonTick && n(t.poisonTick.amount) > 0) helpers.push({ name: 'Poison', dmg: n(t.poisonTick.amount) })
 
   const magicFizzled = Boolean(t.immuneToMagic)
   const you = {

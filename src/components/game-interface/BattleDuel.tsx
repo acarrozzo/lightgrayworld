@@ -6,7 +6,7 @@ import { describeStat, effectiveStats, STAT_KEYS, type StatKey } from '@/lib/eff
 import { Stat } from '@/components/GameHeader'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
 import VitalBar from './VitalBar'
-import { EffectBadges, EffectsToggle, MagicArmorPill, OverflowPill } from './EffectBadges'
+import { EffectBadges, EffectsToggle, EnemyPoisonPill, MagicArmorPill, OverflowPill } from './EffectBadges'
 import { regenPerClick, statusChips } from '@/lib/status-effects'
 import { LevelBadge, RankBadge, TurnChip } from './battle-badges'
 
@@ -131,8 +131,10 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
   const mpSpent = noMpSpent ? 0 : (battle.spell?.cost ?? battle.skill?.cost ?? battle.actionMeta?.spell?.cost ?? 0)
   const hpOver = Math.max(0, hp - hpMax)
   const mpOver = Math.max(0, player.mp - player.mpMax)
-  // What the enemy lost to your last turn: your hit and a second arrow's.
-  const dealt = (battle.lastPlayerDamage ?? 0) + (battle.extraShot?.damage ?? 0)
+  // What the enemy lost to your last turn: your hit, a second arrow's, and
+  // the burn of the poison you have on it.
+  const poisonBurn = battle.poisonTick?.amount ?? 0
+  const dealt = (battle.lastPlayerDamage ?? 0) + (battle.extraShot?.damage ?? 0) + poisonBurn
 
   return (
     <div
@@ -208,6 +210,8 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
           {/* The enemy, drawn the same way, mirrored. */}
           <div className="mr-auto flex w-full max-w-[26rem] min-w-0 flex-col items-end gap-1 text-right">
             <div className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
+              {/* The poison you have on it, at the head of its line, mirroring your Magic Armor pill. */}
+              <EnemyPoisonPill poison={battle.enemyPoison} enemyName={battle.enemyName} />
               <span className="truncate text-xs font-black tracking-tight text-fg-bright @min-[600px]:text-sm">{battle.enemyName}</span>
               {battle.enemyLevel !== null && <LevelBadge level={battle.enemyLevel} />}
               {battle.enemyRank && <RankBadge rank={battle.enemyRank} />}
@@ -220,7 +224,7 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
               max={battle.enemyMaxHp}
               initialPct={100}
               label={battle.enemyName ? undefined : 'HP'}
-              delta={dealt > 0 ? { amount: -dealt, title: `Your last turn took ${dealt} HP${battle.enemyHealed > 0 ? `; it absorbed ${battle.enemyHealed} back` : ''}.` } : null}
+              delta={dealt > 0 ? { amount: -dealt, title: `Your last turn took ${dealt} HP${poisonBurn > 0 ? `, ${poisonBurn} of it poison` : ''}${battle.enemyHealed > 0 ? `; it absorbed ${battle.enemyHealed} back` : ''}.` } : null}
               className="w-full"
             />
             <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-x-2.5 gap-y-1 pt-0.5">

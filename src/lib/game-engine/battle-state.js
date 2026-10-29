@@ -49,6 +49,13 @@ class BattleState {
     // The id of a special the enemy is winding up (Firebreath's inhale); it
     // lands on the enemy's next turn. Null on an ordinary turn.
     this.enemyWindUp = null
+    // The poison the player put on the enemy (Poison Dart): what it takes
+    // each turn, past its DEF, and how many turns are left. Null when none.
+    // It lives on the fight, as the original's `$_SESSION['poison_amt']` did:
+    // a retreat, a death or a kill ends it with the fight, and a resurrected
+    // enemy stands up clean.
+    /** @type {{ perTurn: number, turnsLeft: number, source: string } | null} */
+    this.enemyPoison = null
     // Retreat is open from the first moment of the fight. It used to unlock
     // after three turns, which meant walking into something far above your
     // level was a death sentence rather than a mistake you could back out of —
@@ -165,9 +172,45 @@ class BattleState {
     return healed
   }
 
-  /** Resurrect: a dead enemy stands back up at full HP. */
+  /** Resurrect: a dead enemy stands back up at full HP, and clean of poison. */
   reviveEnemy() {
     this.enemyCurrentHp = this.enemyMaxHp
+    this.enemyPoison = null
+  }
+
+  /**
+   * Put poison on the enemy. Refused while one is already running: the
+   * original set its poison only when the old count was spent, so a second
+   * dart never refreshed or stacked. Returns whether it took.
+   * @param {number} perTurn
+   * @param {number} turns
+   * @param {string} source  The spell or weapon that left it, for the card.
+   */
+  poisonEnemy(perTurn, turns, source) {
+    const amount = Math.max(0, Math.floor(Number(perTurn) || 0))
+    const count = Math.max(0, Math.floor(Number(turns) || 0))
+    if (amount <= 0 || count <= 0) return false
+    if (this.enemyPoison || this.isEnemyDead()) return false
+    this.enemyPoison = { perTurn: amount, turnsLeft: count, source: String(source || 'Poison') }
+    return true
+  }
+
+  /**
+   * One turn of poison: the enemy takes what is running, past its DEF, and
+   * the count drops by one. Returns the tick — what it took, how many turns
+   * are left after it, whether it was the killing blow — or null when nothing
+   * is running or the enemy is already down.
+   * @returns {{ amount: number, left: number, killed: boolean, source: string } | null}
+   */
+  burnEnemyPoison() {
+    const poison = this.enemyPoison
+    if (!poison || this.isEnemyDead()) return null
+    const amount = Math.min(poison.perTurn, this.enemyCurrentHp)
+    this.enemyCurrentHp -= amount
+    poison.turnsLeft -= 1
+    const left = poison.turnsLeft
+    if (left <= 0) this.enemyPoison = null
+    return { amount, left: Math.max(0, left), killed: this.enemyCurrentHp <= 0, source: poison.source }
   }
 
   /** Stone for this many turns, from the next one. */
@@ -201,6 +244,8 @@ class BattleState {
       turnCount: this.turnCount,
       canFlee: this.canFlee,
       petrifiedTurns: this.petrifiedTurns,
+      // The poison on the enemy, so the card's pill survives a refresh.
+      enemyPoison: this.enemyPoison ? { perTurn: this.enemyPoison.perTurn, turnsLeft: this.enemyPoison.turnsLeft, source: this.enemyPoison.source } : null,
     }
   }
 

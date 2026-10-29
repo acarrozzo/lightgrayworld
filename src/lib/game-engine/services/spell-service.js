@@ -354,10 +354,10 @@ async function castHealSpell(playerId, spell, rand) {
 
 /**
  * Cast a buff spell against the live row: Regenerate, Iron Skin, Magic Armor,
- * Antidote. Each is one guarded UPDATE that only lands while the player still
- * has the MP (and, for the two the original refused to stack, while nothing
- * of it is already running), so a double click cannot spend twice or refresh
- * for free.
+ * Antidote, Wings, Gills. Each is one guarded UPDATE that only lands while the
+ * player still has the MP (and, for the two the original refused to stack,
+ * while nothing of it is already running), so a double click cannot spend
+ * twice or refresh for free.
  *
  * What a cast sets up is rolled by the registry (`castBuff`); this is only
  * where the columns are written:
@@ -365,7 +365,13 @@ async function castHealSpell(playerId, spell, rand) {
  *                 the original did);
  *   - Iron Skin:  sets the DEF amount and its countdown; refused while active;
  *   - Magic Armor: sets the absorb pool; refused while any remains;
- *   - Antidote:   clears poison and extends immunity to the longer of the two.
+ *   - Antidote:   clears poison and extends immunity to the longer of the two;
+ *   - Wings, Gills: start the same click countdown a potion does (`User.wings`,
+ *                 `User.gills`, which the room gates and the flying-melee rule
+ *                 read), taking the longer of the two so a recast never
+ *                 shortens what is running. The original overwrote the count
+ *                 and let you recast at will; the longer-of-two is the potion
+ *                 rule (buff-service.startBuff) applied to the spell.
  *
  * @param {string} playerId
  * @param {import('../../game-data/spells').SpellDef} spell
@@ -412,6 +418,14 @@ async function castBuffSpell(playerId, spell, rand) {
       sql = `UPDATE "User" SET mp = mp - $2, "poisonClicks" = 0, "poisonImmuneClicks" = GREATEST("poisonImmuneClicks", $3) WHERE id = $1 AND mp >= $2`
       params = [playerId, cost, Math.max(0, effect.clicks || 0)]
       break
+    case 'wings':
+      sql = `UPDATE "User" SET mp = mp - $2, "wings" = GREATEST("wings", $3) WHERE id = $1 AND mp >= $2`
+      params = [playerId, cost, Math.max(0, effect.clicks || 0)]
+      break
+    case 'gills':
+      sql = `UPDATE "User" SET mp = mp - $2, "gills" = GREATEST("gills", $3) WHERE id = $1 AND mp >= $2`
+      params = [playerId, cost, Math.max(0, effect.clicks || 0)]
+      break
     default:
       return { success: false, message: `${spell.name} cannot be cast yet.` }
   }
@@ -423,6 +437,10 @@ async function castBuffSpell(playerId, spell, rand) {
   }
 
   const after = await prisma.user.findUnique({ where: { id: playerId }, select: BUFF_SELECT })
+  const buffs = projectBuffState(after).buffs
+  // Wings and Gills report the count now running, which a longer potion
+  // already in effect can make larger than the cast's own.
+  if (spell.id === 'wings' || spell.id === 'gills') effect.clicks = Math.max(effect.clicks || 0, buffs[spell.id] || 0)
   const mp = Number(row.mp)
   return {
     success: true,
@@ -431,7 +449,7 @@ async function castBuffSpell(playerId, spell, rand) {
     effect,
     mp,
     mpChange: mp - state.mp,
-    buffs: projectBuffState(after).buffs,
+    buffs,
   }
 }
 

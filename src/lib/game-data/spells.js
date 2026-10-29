@@ -22,11 +22,12 @@
  *     like any strike, they reach flying enemies, and they do nothing to
  *     magic-immune enemies.
  *
- * `implemented` marks which spell kinds the engine can cast today. Unimplemented
- * spells are still listed — with their teachers — so the spellbook and World
- * Tool show what is coming, exactly as the original's Spells tab showed every
- * spell greyed out until you found its teacher. None of them is learnable until
- * its teacher room is wired up (see SPELL_TEACHER_ROOMS).
+ * `implemented` marks which spells the engine can cast today. An unimplemented
+ * spell is still listed — with its teachers — so the spellbook and World Tool
+ * show what is coming, exactly as the original's Spells tab showed every spell
+ * greyed out until you found its teacher, and the learn path refuses SP on it.
+ * Every spell in the registry is implemented as of October 2026; the flag
+ * stays for the next one that is authored before it is built.
  *
  * @typedef {'destruction'|'restoration'|'alteration'} SpellSchool
  * @typedef {'attack'|'heal'|'buff'} SpellKind
@@ -45,6 +46,7 @@
  * @property {number} max
  * @property {string} text  Readable formula with the player's numbers filled in.
  * @property {string} [label]  Lead word for the range ("Restores", "Absorbs"); attack and heal spells have a fixed one.
+ * @property {string} [unit]   Word after the range ("clicks"); attack and heal spells have a fixed one.
  *
  * @typedef {Object} SpellDef
  * @property {string} id            Stable slug (`magic-missile`).
@@ -65,6 +67,14 @@
  * @property {(level: number, mag: number, magCore?: number) => SpellPreview} [preview]
  * @property {(level: number, ctx: BuffCastContext, rand: (a: number, b: number) => number) => BuffCast} [cast]
  *   Buff spells only: what one cast sets up, rolled from the player's numbers.
+ * @property {(level: number, mag: number) => SpellDot} [dot]
+ *   Attack spells that leave something behind (Poison Dart): what a landed
+ *   hit puts on the enemy, from the same effective MAG the hit rolled.
+ *
+ * @typedef {Object} SpellDot
+ * @property {number} amount  Damage the enemy takes each turn, past its DEF.
+ * @property {number} turns   How many turns it burns, the cast's own turn included.
+ * @property {number} pct     The share of MAG behind `amount`, for the preview.
  *
  * @typedef {Object} BuffCastContext
  * @property {number} mag      Effective MAG (core + gear + buffs), the original's `magmod`.
@@ -155,6 +165,35 @@ function scaledBoltPreview(level, mag) {
   return { min, max, text: `${level} + (rand(1, ${mag}) × ${mod.toFixed(2)})` }
 }
 
+/**
+ * Poison Dart's poison: a share of effective MAG every turn for five turns,
+ * (5 + lvl) ÷ 2 percent — 3% at level 1, 10% at the cap of 15 — rounded up
+ * and never less than 1. Five turns at 10% is one average Fireball on top of
+ * the dart's own hit, which is the "Fireball plus" the spell was always meant
+ * to be. The ticks ignore DEF, so against a wall of a boss the poison is worth
+ * more than its face.
+ *
+ * The original's poison was a dwindling count drawn from the dart's level
+ * (rand(1, lvl × 2), then one less each turn to zero): it never grew with MAG
+ * and most of it landed after the fight was over. The share of MAG was the
+ * shape settled on in the October 2026 magic rebalance; the percentage ladder
+ * is this port's reading of its 4–12% over five ranks onto the live 15 levels.
+ * @param {number} level
+ * @param {number} mag  Effective MAG, group bonus included — what the hit rolled.
+ * @returns {SpellDot}
+ */
+const POISON_DART_TURNS = 5
+function poisonDartDot(level, mag) {
+  const pct = (5 + level) / 2
+  const amount = Math.max(1, Math.ceil((Math.max(0, mag) * pct) / 100))
+  return { amount, turns: POISON_DART_TURNS, pct }
+}
+
+/** Wings and Gills: the original's lvl × 20 clicks, for lvl × 10 MP. */
+function abilityClicks(level) {
+  return Math.max(1, level) * 20
+}
+
 /** @type {SpellDef[]} */
 const SPELLS = [
   // ==================== DESTRUCTION ====================
@@ -216,14 +255,18 @@ const SPELLS = [
     name: 'Poison Dart',
     school: 'destruction',
     kind: 'attack',
-    // The dart's damage is the Fireball family, but its poison-over-time is a
-    // status effect the engine does not have yet.
-    implemented: false,
+    // Fireball's hit, then a poison on the enemy: a share of MAG a turn for
+    // five turns, past its DEF (poisonDartDot). A dart thrown while the poison
+    // still runs is the hit alone at the dart's price — the poison is not
+    // refreshed, as the original's was not — so spamming it is a bad deal, not
+    // a stronger one. The enemy's poison lives on the fight (BattleState), so
+    // it ends with the fight: a retreat, a death, a kill.
+    implemented: true,
     icon: 'poisondart',
     attackIcon: 'poisondart2',
     hue: 'green',
     description: 'Launch a Poison Dart at your enemies to do damage over time.',
-    formula: 'lvl + (rand(1, mag) × (1 + 5% × lvl)), then poison rand(1, lvl × 2) per turn',
+    formula: 'lvl + (rand(1, mag) × (1 + 5% × lvl)), then poison (5 + lvl) ÷ 2 % of mag a turn for 5 turns, past DEF',
     teachers: [
       { flag: 'wizardSkillFlag', max: 10 },
       { flag: 'starCitySpellsFlag', max: 15 },
@@ -231,7 +274,12 @@ const SPELLS = [
     learnCost: nextLevelCost,
     castCost: (level) => 5 + level * 3,
     roll: scaledBoltRoll,
-    preview: scaledBoltPreview,
+    preview(level, mag) {
+      const bolt = scaledBoltPreview(level, mag)
+      const dot = poisonDartDot(level, mag)
+      return { ...bolt, text: `${bolt.text}, then poison ${dot.amount} a turn for ${dot.turns} turns` }
+    },
+    dot: poisonDartDot,
   },
   {
     id: 'atomic-blast',
@@ -431,14 +479,24 @@ const SPELLS = [
     name: 'Wings',
     school: 'alteration',
     kind: 'buff',
-    implemented: false,
+    implemented: true,
     icon: 'wings',
     hue: 'sky',
     description: 'Wings give you the ability to fly.',
+    // The same countdown a wings potion starts; a recast takes the longer of
+    // the two (buff-service), never shortening what is already running.
     formula: 'fly for lvl × 20 clicks',
     teachers: [{ flag: 'wizardSkillFlag', max: 5 }],
     learnCost: nextLevelCost,
     castCost: (level) => level * 10,
+    cast(level) {
+      const clicks = abilityClicks(level)
+      return { clicks, text: `fly for ${clicks} clicks` }
+    },
+    preview(level) {
+      const clicks = abilityClicks(level)
+      return { label: 'Fly for', min: clicks, max: clicks, unit: 'clicks', text: '' }
+    },
   },
   {
     id: 'gills',
@@ -447,7 +505,7 @@ const SPELLS = [
     name: 'Gills',
     school: 'alteration',
     kind: 'buff',
-    implemented: false,
+    implemented: true,
     icon: 'gills',
     hue: 'blue',
     description: 'Gills allow you to breathe underwater.',
@@ -455,6 +513,14 @@ const SPELLS = [
     teachers: [{ flag: 'wizardSkillFlag', max: 5 }],
     learnCost: nextLevelCost,
     castCost: (level) => level * 10,
+    cast(level) {
+      const clicks = abilityClicks(level)
+      return { clicks, text: `breathe water for ${clicks} clicks` }
+    },
+    preview(level) {
+      const clicks = abilityClicks(level)
+      return { label: 'Breathe water for', min: clicks, max: clicks, unit: 'clicks', text: '' }
+    },
   },
 ]
 
@@ -610,4 +676,6 @@ module.exports = {
   castBuff,
   previewSpell,
   describeTeachers,
+  poisonDartDot,
+  POISON_DART_TURNS,
 }

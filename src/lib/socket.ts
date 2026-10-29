@@ -27,6 +27,24 @@ export interface BattleSnapshot {
   enemyMaxHp: number
   turnCount: number
   canFlee: boolean
+  /** The poison the player has on the enemy (Poison Dart), or null. On every snapshot, so a refresh keeps the pill. */
+  enemyPoison?: EnemyPoison | null
+}
+
+/** Poison the player left on the enemy: what it burns a turn, past DEF, and the turns left. */
+export interface EnemyPoison {
+  perTurn: number
+  turnsLeft: number
+  /** The spell or weapon that left it. */
+  source: string
+}
+
+/** One turn of that poison: what it took, what is left after it, whether it killed. */
+export interface EnemyPoisonTick {
+  amount: number
+  left: number
+  killed: boolean
+  source: string
 }
 
 /**
@@ -134,6 +152,8 @@ export interface BattleSpellCast {
   amount: number
   rolls: number[]
   text: string | null
+  /** What the landed hit leaves on the enemy (Poison Dart); null for a spell that leaves nothing or a cast that never landed. */
+  dot?: { amount: number; turns: number; pct: number } | null
 }
 
 /**
@@ -217,6 +237,12 @@ export interface BattleTurnPayload extends BattleSnapshot {
   enemyHealed?: number
   /** Heal, theft, drains, Resurrect and Block, when any happened. */
   enemyEffects?: BattleEnemyEffects
+  /** This turn's dart put its poison on the enemy: what it burns a turn, for how many turns. */
+  enemyPoisoned?: { perTurn: number; turns: number } | null
+  /** This turn's dart found the enemy already poisoned: the hit landed, the poison was not refreshed. */
+  poisonRefused?: boolean
+  /** What the poison on the enemy burned this turn, or null when none is running. */
+  poisonTick?: EnemyPoisonTick | null
   /** The player's gold after a theft; only sent when gold or MP was taken. */
   playerCurrency?: number
   message: string
@@ -295,6 +321,9 @@ export interface BattleLastTurn {
   melted?: boolean
   enemyHealed?: number
   enemyEffects?: BattleEnemyEffects
+  enemyPoisoned?: { perTurn: number; turns: number } | null
+  poisonRefused?: boolean
+  poisonTick?: EnemyPoisonTick | null
 }
 
 export interface BattleSummary {

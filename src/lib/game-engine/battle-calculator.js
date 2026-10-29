@@ -181,7 +181,7 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
       missedFlyingMelee: false,
       immuneToMagic: false,
       immuneToWeapon: null,
-      spell: describeSpellCast(spell, roll),
+      spell: describeSpellCast(spell, roll, effectiveMag),
     }
   }
 
@@ -314,7 +314,7 @@ function weaponImmunity(enemy, weaponCategory) {
  * and the roll behind the number. `roll` is null when the cast fizzled against
  * a magic-immune enemy (nothing was rolled, nothing was charged).
  */
-function describeSpellCast(spell, roll) {
+function describeSpellCast(spell, roll, effectiveMag = 0) {
   return {
     id: spell.def.id,
     name: spell.def.name,
@@ -326,6 +326,10 @@ function describeSpellCast(spell, roll) {
     amount: roll ? roll.amount : 0,
     rolls: roll ? roll.rolls : [],
     text: roll ? roll.text : null,
+    // What a landed hit leaves on the enemy (Poison Dart's poison), from the
+    // same MAG the hit rolled. Null for a spell that leaves nothing, and for
+    // a cast that never landed (dodged, immune), which leaves nothing either.
+    dot: roll && typeof spell.def.dot === 'function' ? spell.def.dot(spell.level, effectiveMag) : null,
   }
 }
 

@@ -692,6 +692,13 @@ function describeBuffCast(spell, effect) {
   switch (spell.id) {
     case 'magic-armor':
       return `absorb the next ${effect.amount} damage${rollsNote(effect)}`
+    // The original's lines: "You cast wings and grow some! You can now fly
+    // for N clicks." The count is what is running after the cast, which a
+    // longer potion already in effect can make larger than the spell's own.
+    case 'wings':
+      return `grow some! You can fly for ${effect.clicks} clicks`
+    case 'gills':
+      return `grow some! You can breathe water for ${effect.clicks} clicks`
     default: {
       const text = effect.text || ''
       if (/^immune/i.test(text)) return `are ${text}`

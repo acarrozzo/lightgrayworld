@@ -2513,6 +2513,8 @@ export default function GameInterface() {
         playerHpMax: payload.playerHpMax,
         playerStr: payload.playerStr,
         playerDef: payload.playerDef,
+        // A fight picked up mid-way keeps the poison you had on the enemy.
+        enemyPoison: payload.enemyPoison ?? null,
       })
       // No feed row here: the battle card is this event's output, and the
       // first battle:turn writes the fight's one BATTLE row.
@@ -2568,6 +2570,12 @@ export default function GameInterface() {
           absorbed: payload.absorbed ?? 0,
           magicArmorLeft: payload.magicArmorLeft ?? 0,
           poisonApplied: payload.poisonApplied ?? null,
+          // The poison you have on the enemy: what is running, what this
+          // turn's dart did, and what the burn took.
+          enemyPoison: payload.enemyPoison ?? null,
+          enemyPoisoned: payload.enemyPoisoned ?? null,
+          poisonRefused: payload.poisonRefused ?? false,
+          poisonTick: payload.poisonTick ?? null,
           playerMp: payload.playerMp,
           playerMpMax: payload.playerMpMax,
           playerCurrency: payload.playerCurrency,
@@ -2667,6 +2675,11 @@ export default function GameInterface() {
           enemyHealed: lt?.enemyHealed ?? 0,
           enemyEffects: lt?.enemyEffects ?? {},
           extraShot: lt?.extraShot ?? null,
+          // The poison's part in the killing turn; the fight is over, so none runs.
+          enemyPoison: null,
+          enemyPoisoned: lt?.enemyPoisoned ?? null,
+          poisonRefused: lt?.poisonRefused ?? false,
+          poisonTick: lt?.poisonTick ?? null,
           // The whole fight, killing turn included, for the frozen box's ledger.
           turns: payload.turns ?? b.turns,
         })
@@ -2738,6 +2751,10 @@ export default function GameInterface() {
           enemyHealed: lt?.enemyHealed ?? 0,
           enemyEffects: lt?.enemyEffects ?? {},
           extraShot: lt?.extraShot ?? null,
+          enemyPoison: null,
+          enemyPoisoned: lt?.enemyPoisoned ?? null,
+          poisonRefused: lt?.poisonRefused ?? false,
+          poisonTick: lt?.poisonTick ?? null,
           turns: payload.turns ?? b.turns,
         })
       }, 0)

@@ -130,7 +130,7 @@ export interface SpellRowProps {
   onOpen?: (spellId: string) => void
 }
 
-/** A learned spell. Wings and Gills have no handler yet and carry no verb. */
+/** A learned spell. A spell the engine cannot cast (none today) carries no verb. */
 export function SpellRow({ entry, situation, disabled = false, onCast, onOpen }: SpellRowProps) {
   const { def, level, maxLevel, castCost, preview, castable } = entry
   const tone = spellTone(def.hue)
@@ -138,7 +138,7 @@ export function SpellRow({ entry, situation, disabled = false, onCast, onOpen }:
   const detail = preview
     ? `${preview.label ?? (def.kind === 'heal' ? 'Heals' : def.kind === 'attack' ? 'Hits' : '')} ${
         preview.min === preview.max ? preview.min : `${preview.min}–${preview.max}`
-      }${def.kind === 'attack' ? ' dmg' : ''}`.trim()
+      }${def.kind === 'attack' ? ' dmg' : preview.unit ? ` ${preview.unit}` : ''}`.trim()
     : def.formula
 
   return (

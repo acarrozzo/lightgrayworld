@@ -117,9 +117,13 @@ test('the four buff spells are castable and roll the original\'s numbers', () =>
   assert.equal(spells.castBuff(an, 4, ctx, maxRand).clicks, 80)
 })
 
-test('wings and gills stay uncastable until they have a handler', () => {
-  assert.equal(spells.isCastable(spells.getSpell('wings')), false)
-  assert.equal(spells.isCastable(spells.getSpell('gills')), false)
+test('wings and gills cast the ability countdown the potions start: lvl × 20 clicks for lvl × 10 MP', () => {
+  for (const id of ['wings', 'gills']) {
+    const spell = spells.getSpell(id)
+    assert.equal(spells.isCastable(spell), true, id)
+    assert.equal(spell.castCost(2), 20, id)
+    assert.equal(spells.castBuff(spell, 2, { mag: 12, magCore: 5 }, maxRand).clicks, 40, id)
+  }
 })
 
 // ─── poison ──────────────────────────────────────────────────────────────────

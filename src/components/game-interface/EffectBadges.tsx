@@ -122,6 +122,29 @@ export function MagicArmorPill({ amount, className = '' }: { amount: number; cla
 }
 
 /**
+ * The poison you have on the enemy, as a pill on its name line: the dart
+ * glyph, what it burns a turn and the turns left ("12 ×3"). Green, as the
+ * original painted poison and Poison Dart. Nothing when none is running. The
+ * burn ignores the enemy's DEF, which the tooltip says.
+ */
+export function EnemyPoisonPill({ poison, enemyName, className = '' }: { poison: { perTurn: number; turnsLeft: number; source?: string } | null | undefined; enemyName?: string | null; className?: string }) {
+  if (!poison || poison.perTurn <= 0 || poison.turnsLeft <= 0) return null
+  const turns = `${poison.turnsLeft} more turn${poison.turnsLeft === 1 ? '' : 's'}`
+  const title = `${poison.source ?? 'Poison'}: the ${enemyName ?? 'enemy'} takes ${poison.perTurn} a turn, past its DEF, for ${turns}. A second dart before it wears off adds nothing.`
+  return (
+    <span
+      title={title}
+      aria-label={title}
+      className={`inline-flex h-4 shrink-0 items-center gap-0.5 rounded border px-1 text-[10px] font-extrabold leading-none tabular-nums ${STATUS_TONE_CLASSES.poison} ${className}`}
+    >
+      <Icon name="poisondart" size={10} className="shrink-0" />
+      <span>{poison.perTurn}</span>
+      <span className="font-semibold opacity-80">×{poison.turnsLeft}</span>
+    </span>
+  )
+}
+
+/**
  * HP or MP over the max — a fountain's or a feast's overcharge — as a gold
  * pill beside the Magic Armor pill on the duel's name line. The two are the
  * same kind of thing, a buffer that goes before the bar does: a hit spends

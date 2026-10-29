@@ -512,6 +512,53 @@ function settleEnemyAftermath(battleState, turn) {
   if (turn.petrifyApplied > 0) battleState.petrify(turn.petrifyApplied)
 }
 
+/**
+ * The poison on the enemy, once the player's side of the turn has landed.
+ *
+ * A Poison Dart that hit puts its poison on — only while none is running; a
+ * second dart is the hit alone, and the turn says so — then whatever is
+ * running burns for the turn, the cast's own turn included, as the original
+ * ticked `$_SESSION['poison_amt']` on the same page load that set it. The
+ * burn ignores DEF and can be the blow that kills. It is written onto the
+ * turn (`enemyPoisoned`, `poisonRefused`, `poisonTick`) so the payload, the
+ * feed and the ledger all carry it. A support turn (a potion, a re-gear) has
+ * no dart on it and only burns.
+ */
+function settleEnemyPoison(battleState, turn) {
+  const dot = turn.spell?.dot
+  if (dot && !turn.immuneToMagic && !turn.enemyDodged && !turn.petrified) {
+    if (battleState.poisonEnemy(dot.amount, dot.turns, turn.spell.name)) {
+      turn.enemyPoisoned = { perTurn: dot.amount, turns: dot.turns }
+    } else if (!battleState.isEnemyDead()) {
+      turn.poisonRefused = true
+    }
+  }
+  turn.poisonTick = battleState.burnEnemyPoison()
+}
+
+/** What the poison burned this turn, counted into the player's damage like a second arrow. */
+function poisonDamage(turn) {
+  return turn?.poisonTick ? turn.poisonTick.amount || 0 : 0
+}
+
+/** The feed's account of the poison on the enemy this turn, after the strike's own line. */
+function describeEnemyPoison(enemyName, turn) {
+  const parts = []
+  if (turn.enemyPoisoned) {
+    parts.push(`The ${enemyName} is POISONED: ${turn.enemyPoisoned.perTurn} a turn for ${turn.enemyPoisoned.turns} turns.`)
+  }
+  if (turn.poisonRefused) {
+    parts.push(`The ${enemyName} is already poisoned; the dart adds nothing.`)
+  }
+  const tick = turn.poisonTick
+  if (tick && tick.amount > 0) {
+    if (tick.killed) parts.push(`The poison takes its last ${tick.amount} HP.`)
+    else if (tick.left > 0) parts.push(`The poison burns the ${enemyName} for ${tick.amount} (${tick.left} turn${tick.left === 1 ? '' : 's'} left).`)
+    else parts.push(`The poison burns the ${enemyName} for ${tick.amount} and wears off.`)
+  }
+  return parts.length > 0 ? ` ${parts.join(' ')}` : ''
+}
+
 /** The behaviour fields every battle:turn payload carries, with their defaults. */
 function behaviourTurnFields(turn) {
   return {
@@ -522,6 +569,101 @@ function behaviourTurnFields(turn) {
     melted: turn.melted ?? false,
     enemyHealed: turn.enemyHealed ?? 0,
     enemyEffects: turn.enemyEffects ?? {},
+    // The poison you put on it: what this turn's dart left, whether a dart
+    // found it already poisoned, and what the running poison burned.
+    enemyPoisoned: turn.enemyPoisoned ?? null,
+    poisonRefused: turn.poisonRefused ?? false,
+    poisonTick: turn.poisonTick ?? null,
+  }
+}
+
+/**
+ * The fight is won: close it, roll the rewards, file the killing turn's row
+ * and build the victory event. Shared by the strike that kills and the
+ * support turn whose poison burn does — the enemy fell before it could
+ * answer either way, so neither carries its swing.
+ * @param {Object} options
+ * @param {string} options.action  The action the result answers to.
+ * @param {number} options.playerHp  HP for the ledger row.
+ * @param {{ mp: number, mpMax: number } | null} [options.mpAfter]  MP left after a cast or strike, when one was charged.
+ * @param {string} [options.finalBlow]  The sentence before "You defeated …".
+ * @param {Object|null} [options.actionMeta]  A support turn's action, for its ledger row.
+ */
+async function resolveVictory(playerId, roomState, battleState, turnResult, { action, playerHp, mpAfter = null, finalBlow = '', actionMeta = null }) {
+  const player = roomState.players.get(playerId)
+  battleState.end()
+  roomState.activeBattles.delete(playerId)
+  // The defeated enemy is gone; the room is empty again for this player, and
+  // safe for exactly one more turn action — the original's `endfight`, which
+  // bought you a swing, a re-gear or a step out before the room rolled again.
+  if (isProbabilistic(roomState.roomId)) {
+    roomState.setPresentEnemy(playerId, null, { grace: true })
+  }
+  const slainTraveler = getTravelerByEnemySlug(battleState.enemySlug)
+  if (slainTraveler) travelerState.onTravelerKilled(slainTraveler.id, roomState.roomId)
+
+  // Roll the rewards (and what the card says about them) before the victory
+  // event, so it can be emitted now; the grant lands in the background.
+  const rewards = await prepareBattleWinRewards(playerId, battleState)
+  const { xpAwarded, goldAwarded, droppedSlugs, dropDetails } = rewards
+
+  const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]
+  if (droppedSlugs.length > 0) rewardParts.push(`+${droppedSlugs.join(', ')}`)
+  const winMsg = `${finalBlow}You defeated the ${battleState.enemyName}! ${rewardParts.join('  ')}`
+  // The killing turn's row: the enemy fell before it could answer.
+  recordLedger(battleState, turnResult, {
+    playerHp,
+    playerMp: mpAfter?.mp ?? null,
+    enemyActed: false,
+    actionMeta,
+  })
+
+  // Fire DB persistence in the background; level-up event emitted via backgroundWork
+  const backgroundWork = settleBattleWinPersistence(playerId, battleState, rewards)
+
+  return {
+    success: true,
+    action,
+    backgroundWork,
+    playerEvents: [
+      {
+        event: 'battle:victory',
+        payload: {
+          enemyName: battleState.enemyName,
+          xpAwarded,
+          goldAwarded,
+          droppedItems: droppedSlugs,
+          lastTurnResult: turnResult,
+          turns: battleState.turns,
+          ...(mpAfter ? { playerMp: mpAfter.mp, playerMpMax: mpAfter.mpMax } : {}),
+          message: winMsg,
+          clearRoomEnemies: isProbabilistic(roomState.roomId),
+          summary: {
+            outcome: 'WIN',
+            enemyName: battleState.enemyName,
+            enemyIcon: battleState.enemyName,
+            enemySlug: battleState.enemySlug,
+            turnsCount: battleState.turnCount,
+            totalDamageDealt: battleState.totalDamageDealt,
+            totalDamageReceived: battleState.totalDamageReceived,
+            maxSingleHit: battleState.maxSingleHit,
+            xpEarned: xpAwarded,
+            goldEarned: goldAwarded,
+            itemsDropped: droppedSlugs,
+            dropDetails,
+            multiplayerBonus: battleState.multiplayerBonusUsed,
+            lastTurn: battleState.lastTurnResult,
+          },
+        },
+      },
+    ],
+    broadcastEvents: [
+      {
+        event: 'action:feedback',
+        targetRoomId: roomState.roomId,
+        payload: roomBroadcast(player, makeFeedback(action, 'info', `${player?.username ?? 'Someone'} defeated the ${battleState.enemyName}!`)),
+      },
+    ],
   }
 }
 
@@ -750,6 +892,9 @@ async function executeStartBattle(action, playerId, roomState) {
     // the fight.
     firstTurn = resolveTurn(battleState, otherCombatants, { spell, skill: strike, enemyDodged, canMultiShot: !ammo || ammo.remaining >= 2 })
     battleState.applyDamageToEnemy(totalDamageToEnemy(firstTurn))
+    // A dart that opened the fight leaves its poison, and the poison burns
+    // once on the turn it is set.
+    settleEnemyPoison(battleState, firstTurn)
     // The opening blow killed it: it fell before it could answer, as on every
     // later turn (executePlayerAttack returns before the enemy's hit lands).
     // Its rolled swing is discarded, so neither the HP nor the line carry it.
@@ -757,7 +902,7 @@ async function executeStartBattle(action, playerId, roomState) {
       killedByOpening = true
       silenceEnemySide(firstTurn)
     }
-    battleState.recordTurn(totalDamageToEnemy(firstTurn), firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
+    battleState.recordTurn(totalDamageToEnemy(firstTurn) + poisonDamage(firstTurn), firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
   }
   settleEnemyAftermath(battleState, firstTurn)
 
@@ -827,6 +972,7 @@ async function executeStartBattle(action, playerId, roomState) {
       ? describeSkillStrike(enemy.name, firstTurn, extra) + describeExtraShot(enemy.name, firstTurn.extraShot)
       : describeWeaponStrike(enemy.name, firstTurn, extra) + describeExtraShot(enemy.name, firstTurn.extraShot)
   }
+  if (!isAdvantageTurn) attackDesc += describeEnemyPoison(enemy.name, firstTurn)
   // A dead enemy has no line: the victory card says what the blow did. Unless
   // it stood back up (Resurrect), in which case that is the whole of its turn.
   const defenseDesc = killedByOpening
@@ -918,7 +1064,7 @@ async function executeStartBattle(action, playerId, roomState) {
         turns: battleState.turns,
         ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
-        message: `You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
+        message: `${firstTurn.poisonTick?.killed ? 'The poison finishes it. ' : ''}You defeated the ${enemy.name}! ${rewardParts.join('  ')}`,
         clearRoomEnemies: isProbabilistic(roomState.roomId),
         summary: {
           outcome: 'WIN',
@@ -1044,91 +1190,28 @@ async function executePlayerAttack(action, playerId, roomState) {
   }
 
   battleState.applyDamageToEnemy(totalDamageToEnemy(turnResult))
+  // The dart's poison goes on, and whatever poison is running burns, before
+  // the enemy's behaviours settle and before its answer.
+  settleEnemyPoison(battleState, turnResult)
   settleEnemyAftermath(battleState, turnResult)
   battleState.incrementTurn()
-  battleState.recordTurn(totalDamageToEnemy(turnResult), turnResult.enemyDealtDamage, turnResult.multiplayerBonus, turnResult)
+  battleState.recordTurn(totalDamageToEnemy(turnResult) + poisonDamage(turnResult), turnResult.enemyDealtDamage, turnResult.multiplayerBonus, turnResult)
 
   // Victory check
   if (battleState.isEnemyDead()) {
-    battleState.end()
-    roomState.activeBattles.delete(playerId)
-    // The defeated enemy is gone; the room is empty again for this player, and
-    // safe for exactly one more turn action — the original's `endfight`, which
-    // bought you a swing, a re-gear or a step out before the room rolled again.
-    if (isProbabilistic(roomState.roomId)) {
-      roomState.setPresentEnemy(playerId, null, { grace: true })
-    }
-    const slainTraveler = getTravelerByEnemySlug(battleState.enemySlug)
-    if (slainTraveler) travelerState.onTravelerKilled(slainTraveler.id, roomState.roomId)
-
-    // Roll the rewards (and what the card says about them) before the victory
-    // event, so it can be emitted now; the grant lands in the background.
-    const rewards = await prepareBattleWinRewards(playerId, battleState)
-    const { xpAwarded, goldAwarded, droppedSlugs, dropDetails } = rewards
-
-    const rewardParts = [`+${xpAwarded} XP`, `+${goldAwarded} Gold`]
-    if (droppedSlugs.length > 0) rewardParts.push(`+${droppedSlugs.join(', ')}`)
-    const finalBlow = turnResult.spell
-      ? `Your ${turnResult.spell.name} finishes it. `
-      : turnResult.skill
-        ? `Your ${turnResult.skill.name} finishes it. `
-        : ''
-    const winMsg = `${finalBlow}You defeated the ${battleState.enemyName}! ${rewardParts.join('  ')}`
-    // The killing turn's row: the enemy fell before it could answer.
-    recordLedger(battleState, turnResult, {
-      playerHp: player.hp,
-      playerMp: spellMp?.mp ?? skillMp?.mp ?? null,
-      enemyActed: false,
-    })
-
-    // Fire DB persistence in the background; level-up event emitted via backgroundWork
-    const backgroundWork = settleBattleWinPersistence(playerId, battleState, rewards)
-
-    return {
-      success: true,
+    const finalBlow = turnResult.poisonTick?.killed
+      ? 'The poison finishes it. '
+      : turnResult.spell
+        ? `Your ${turnResult.spell.name} finishes it. `
+        : turnResult.skill
+          ? `Your ${turnResult.skill.name} finishes it. `
+          : ''
+    return await resolveVictory(playerId, roomState, battleState, turnResult, {
       action: 'player_attack',
-      backgroundWork,
-      playerEvents: [
-        {
-          event: 'battle:victory',
-          payload: {
-            enemyName: battleState.enemyName,
-            xpAwarded,
-            goldAwarded,
-            droppedItems: droppedSlugs,
-            lastTurnResult: turnResult,
-            turns: battleState.turns,
-            ...(spellMp ? { playerMp: spellMp.mp, playerMpMax: spellMp.mpMax } : {}),
-    ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
-            message: winMsg,
-            clearRoomEnemies: isProbabilistic(roomState.roomId),
-            summary: {
-              outcome: 'WIN',
-              enemyName: battleState.enemyName,
-              enemyIcon: battleState.enemyName,
-              enemySlug: battleState.enemySlug,
-              turnsCount: battleState.turnCount,
-              totalDamageDealt: battleState.totalDamageDealt,
-              totalDamageReceived: battleState.totalDamageReceived,
-              maxSingleHit: battleState.maxSingleHit,
-              xpEarned: xpAwarded,
-              goldEarned: goldAwarded,
-              itemsDropped: droppedSlugs,
-              dropDetails,
-              multiplayerBonus: battleState.multiplayerBonusUsed,
-              lastTurn: battleState.lastTurnResult,
-            },
-          },
-        },
-      ],
-      broadcastEvents: [
-        {
-          event: 'action:feedback',
-          targetRoomId: roomState.roomId,
-          payload: roomBroadcast(player, makeFeedback('player_attack', 'info', `${player.username} defeated the ${battleState.enemyName}!`)),
-        },
-      ],
-    }
+      playerHp: player.hp,
+      mpAfter: spellMp ?? skillMp ?? null,
+      finalBlow,
+    })
   }
 
   // One atomic statement for the hit — Magic Armor first, then HP, plus any
@@ -1194,6 +1277,8 @@ async function executePlayerAttack(action, playerId, roomState) {
     )
   }
   if (turnResult.extraShot) parts.push(describeExtraShot(battleState.enemyName, turnResult.extraShot).trim())
+  const poisonLine = describeEnemyPoison(battleState.enemyName, turnResult).trim()
+  if (poisonLine) parts.push(poisonLine)
   parts.push(
     describeEnemyAttack(
       battleState.enemyName,
@@ -1309,8 +1394,24 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
     petrified: false,
     melted: false,
   }
-  battleState.recordTurn(0, enemyAtk.enemyFinal, otherCombatants > 0, turnRecord)
+  // The poison you left on it burns on a turn you spend drinking or
+  // re-gearing too; the original ticked it on every input in a fight.
+  settleEnemyPoison(battleState, turnRecord)
   settleEnemyAftermath(battleState, turnRecord)
+
+  // The burn was the killing blow: the enemy fell before its answer, so its
+  // rolled swing is discarded and the turn is a win, exactly as a strike's.
+  if (battleState.isEnemyDead()) {
+    silenceEnemySide(turnRecord)
+    battleState.recordTurn(poisonDamage(turnRecord), 0, otherCombatants > 0, turnRecord)
+    return await resolveVictory(playerId, roomState, battleState, turnRecord, {
+      action: actionMeta?.kind || 'support_turn',
+      playerHp: player?.hp ?? 0,
+      finalBlow: 'The poison finishes it. ',
+      actionMeta,
+    })
+  }
+  battleState.recordTurn(poisonDamage(turnRecord), enemyAtk.enemyFinal, otherCombatants > 0, turnRecord)
 
   const updatedPlayer = await applyEnemyHit(playerId, {
     damage: enemyAtk.enemyFinal + (turnRecord.enemyEffects?.hpDrained || 0),
@@ -1324,7 +1425,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
   roomState.updatePlayer(playerId, (state) => ({ ...state, hp: newHp }))
 
   // Build the action description string for the battle:turn message.
-  const actionDesc = describeSupportAction(actionMeta)
+  const actionDesc = describeSupportAction(actionMeta) + describeEnemyPoison(battleState.enemyName, turnRecord)
   const defenseDesc =
     describeEnemyAttack(battleState.enemyName, enemyAtk.enemyFinal, enemyAtk.enemyAction, '', enemyAtk.dodged, turnRecord) +
     describeHitExtras(updatedPlayer)
@@ -1512,4 +1613,9 @@ module.exports = {
   applyEnemyHit,
   // The feed's enemy line, pure, so its wording per attack type can be pinned.
   describeEnemyAttack,
+  // The poison the player leaves on an enemy, pure over a BattleState, and
+  // the lines it writes — exercised directly by the tests.
+  settleEnemyPoison,
+  describeEnemyPoison,
+  poisonDamage,
 }

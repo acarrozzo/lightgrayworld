@@ -191,6 +191,23 @@ export interface BattleSpellCast {
   amount: number
   rolls: number[]
   text: string | null
+  /** What the landed hit leaves on the enemy (Poison Dart); null otherwise. */
+  dot?: { amount: number; turns: number; pct: number } | null
+}
+
+/** Poison the player left on the enemy (see lib/socket.ts): a turn's burn, past DEF, and the turns left. */
+export interface EnemyPoison {
+  perTurn: number
+  turnsLeft: number
+  source: string
+}
+
+/** One turn of that poison. */
+export interface EnemyPoisonTick {
+  amount: number
+  left: number
+  killed: boolean
+  source: string
 }
 
 /**
@@ -286,6 +303,14 @@ export interface BattleState {
   enemyHealed: number
   /** Heal, theft, drains, Resurrect and Block on the last turn. */
   enemyEffects: BattleEnemyEffects
+  /** The poison you have on the enemy right now, or null. */
+  enemyPoison: EnemyPoison | null
+  /** The last turn's dart put its poison on: what it burns a turn, for how many turns. */
+  enemyPoisoned: { perTurn: number; turns: number } | null
+  /** The last turn's dart found the enemy already poisoned. */
+  poisonRefused: boolean
+  /** What the poison burned on the last turn, or null. */
+  poisonTick: EnemyPoisonTick | null
   /** Every turn of this fight so far, as the server recorded it (the Turn chip's ledger). */
   turns: LedgerTurn[]
 }
@@ -381,6 +406,10 @@ const INITIAL_BATTLE_STATE: BattleState = {
   melted: false,
   enemyHealed: 0,
   enemyEffects: {},
+  enemyPoison: null,
+  enemyPoisoned: null,
+  poisonRefused: false,
+  poisonTick: null,
   turns: [],
 }
 
@@ -533,8 +562,8 @@ export interface GameState {
   cacheRoom: (room: Room) => void
   getCachedRoom: (roomId: string) => Room | null
   updateRoomItems: (roomId: string, items: RoomItemView[]) => void
-  setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyRank?: 'boss' | 'miniboss' | null; enemyAtt: number; enemyDef: number; enemyTraits?: EnemyTrait[]; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number; turns?: LedgerTurn[] }) => void
-  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; extraShot?: BattleExtraShot | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number; absorbed?: number; magicArmorLeft?: number; poisonApplied?: { clicks: number } | null; petrifyApplied?: number; petrifiedTurns?: number; extraHits?: BattleExtraHit[]; enemyDodged?: boolean; petrified?: boolean; melted?: boolean; enemyHealed?: number; enemyEffects?: BattleEnemyEffects; playerCurrency?: number; ledgerTurn?: LedgerTurn | null; turns?: LedgerTurn[] }) => void
+  setBattleStarted: (payload: { isAdvantageTurn: boolean; enemySlug: string; enemyName: string; enemyIcon: string; enemyLevel: number; enemyRank?: 'boss' | 'miniboss' | null; enemyAtt: number; enemyDef: number; enemyTraits?: EnemyTrait[]; enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerStr: number; playerDef: number; turns?: LedgerTurn[]; enemyPoison?: EnemyPoison | null }) => void
+  updateBattleTurn: (payload: { enemyCurrentHp: number; enemyMaxHp: number; turnCount: number; canFlee: boolean; playerHp: number; playerHpMax: number; playerDealtDamage: number; enemyDealtDamage: number; playerRaw: number | null; enemyRaw: number; playerStrMax: number | null; playerDefMax: number; enemyStrMax: number; playerBlocked: number; enemyBlocked: number; multiplayerBonus: boolean; bonusPercent: number; missedFlyingMelee?: boolean; weaponCategory?: 'MELEE' | 'RANGED' | null; enemyDamageType?: 'MELEE' | 'RANGED' | 'MAGIC' | null; enemyAction?: BattleEnemyAction | null; ammo?: { slug: string; remaining: number | null } | null; actionMeta?: BattleActionMeta | null; spell?: BattleSpellCast | null; immuneToMagic?: boolean; immuneToWeapon?: 'MELEE' | 'RANGED' | null; extraShot?: BattleExtraShot | null; skill?: BattleSkillUse | null; playerDodged?: boolean; playerMp?: number; playerMpMax?: number; absorbed?: number; magicArmorLeft?: number; poisonApplied?: { clicks: number } | null; petrifyApplied?: number; petrifiedTurns?: number; extraHits?: BattleExtraHit[]; enemyDodged?: boolean; petrified?: boolean; melted?: boolean; enemyHealed?: number; enemyEffects?: BattleEnemyEffects; enemyPoison?: EnemyPoison | null; enemyPoisoned?: { perTurn: number; turns: number } | null; poisonRefused?: boolean; poisonTick?: EnemyPoisonTick | null; playerCurrency?: number; ledgerTurn?: LedgerTurn | null; turns?: LedgerTurn[] }) => void
   /** A click tick moved the vitals mid-fight (regen, poison): keep the battle card's bars honest. */
   syncBattleVitals: (vitals: { hp?: number }) => void
   clearBattle: () => void
@@ -679,8 +708,10 @@ export const useGameStore = create<GameState>()(
             playerHpMax: payload.playerHpMax,
             playerStrMax: payload.playerStr,
             playerDefMax: payload.playerDef,
-            // A resume carries the fight so far; a fresh start has nothing yet.
+            // A resume carries the fight so far, and the poison still on the
+            // enemy; a fresh start has neither yet.
             turns: payload.turns ?? [],
+            enemyPoison: payload.enemyPoison ?? null,
           },
           player: state.player ? { ...state.player, hp: payload.playerHp, hpMax: payload.playerHpMax } : state.player,
         })),
@@ -729,6 +760,10 @@ export const useGameStore = create<GameState>()(
             melted: payload.melted ?? false,
             enemyHealed: payload.enemyHealed ?? 0,
             enemyEffects: payload.enemyEffects ?? {},
+            enemyPoison: payload.enemyPoison ?? null,
+            enemyPoisoned: payload.enemyPoisoned ?? null,
+            poisonRefused: payload.poisonRefused ?? false,
+            poisonTick: payload.poisonTick ?? null,
             // The ledger: a terminal event hands over the whole list; a turn
             // appends its row, replacing a row of the same turn number so a
             // repeated delivery cannot double it.
@@ -822,6 +857,7 @@ export const useGameStore = create<GameState>()(
                   playerStrMax: payload.battle.playerStr,
                   playerDefMax: payload.battle.playerDef,
                   turns: payload.battle.turns ?? [],
+                  enemyPoison: payload.battle.enemyPoison ?? null,
                 }
               : { ...INITIAL_BATTLE_STATE }
           }

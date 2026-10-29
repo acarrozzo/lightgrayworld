@@ -26,6 +26,8 @@ export interface SpellPreview {
   text: string
   /** Lead word for the range ("Restores", "Absorbs"); attack and heal spells have a fixed one. */
   label?: string
+  /** Word after the range ("clicks"); attack and heal spells have a fixed one. */
+  unit?: string
 }
 
 export interface SpellDef {
@@ -44,6 +46,8 @@ export interface SpellDef {
   learnCost: (level: number) => number
   castCost: (level: number, mag: number) => number
   preview?: (level: number, mag: number, magCore?: number) => SpellPreview
+  /** Attack spells that leave something on the enemy (Poison Dart): what a landed hit puts on it. */
+  dot?: (level: number, mag: number) => { amount: number; turns: number; pct: number }
 }
 
 export interface SpellSchoolDef {

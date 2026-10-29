@@ -1121,6 +1121,26 @@ export default function BattlePanel({
               <span className="ml-1 text-fg-disabled">({battle.extraShot.roll} &minus; {battle.extraShot.block})</span>
             </p>
           )}
+          {/* The poison you have on it: what this turn's dart left, a dart that
+              found it already poisoned, and the burn — your damage, past its
+              DEF, beside the hit the way a second arrow is. */}
+          {battle.enemyPoisoned && (
+            <p className="text-[10px] text-hue-green tabular-nums">
+              <span className="font-semibold">Poisoned</span> {battle.enemyPoisoned.perTurn} a turn for {battle.enemyPoisoned.turns} turns
+            </p>
+          )}
+          {battle.poisonRefused && (
+            <p className="text-[10px] text-fg-muted italic">Already poisoned — the dart adds nothing</p>
+          )}
+          {battle.poisonTick && battle.poisonTick.amount > 0 && (
+            <p className="text-[10px] text-fg-muted tabular-nums">
+              <span className="font-semibold text-hue-green">Poison</span>
+              {' '}<span className="text-hue-green font-semibold">{battle.poisonTick.amount}</span>
+              <span className="ml-1 text-fg-disabled">
+                {battle.poisonTick.killed ? 'finishes it' : battle.poisonTick.left > 0 ? `${battle.poisonTick.left} turn${battle.poisonTick.left === 1 ? '' : 's'} left` : 'wears off'}
+              </span>
+            </p>
+          )}
         </div>
 
         <CombatIcons weaponIconName={weaponIconName} enemyIcon={battle.enemyIcon} enemyIsDead={enemyIsDead} isPlayerAttacking={hasPlayerFormula} isRanged={isRanged} spell={spellCast} skill={skillUse} enemyStrike={enemyStrikeIcon(battle)} />
