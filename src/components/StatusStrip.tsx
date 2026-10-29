@@ -8,8 +8,11 @@ import type { StatusChip, StatusTone } from '@/lib/status-effects'
  * `vitals` is purple because it is neither HP nor MP alone: anything that moves
  * both — tea, a regen covering both bars — wears the same colour as the potions
  * that fill both, rather than picking a side.
+ *
+ * Shared with the mini badges (EffectBadges) so a chip and its badge are the
+ * same colour wherever they appear.
  */
-const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
+export const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
   hp: 'text-resource-hp border-resource-hp/40 bg-resource-hp/10',
   mp: 'text-resource-mp border-resource-mp/40 bg-resource-mp/10',
   vitals: 'text-hue-purple border-hue-purple/40 bg-hue-purple/10',
@@ -20,10 +23,14 @@ const STATUS_TONE_CLASSES: Record<StatusTone, string> = {
   aura: 'text-resource-gold border-resource-gold/40 bg-resource-gold/10',
 }
 
+/** The last-clicks warning: the chip or badge breathes until the effect goes. */
+export const EXPIRING_CLASS = 'motion-safe:animate-pulse'
+
 /**
  * The original's row of buffBox tags: `regen +3`, `tea / 87`, `ironskin +12`,
  * `[ poison ]`. One small chip per running effect, the countdown at its end.
  * Lives in the character panel; the header only floats the per-click gain.
+ * A chip in its last clicks pulses, the warning before the "ran out" line.
  */
 export default function StatusStrip({ chips, className }: { chips: StatusChip[]; className?: string }) {
   if (chips.length === 0) return null
@@ -33,7 +40,7 @@ export default function StatusStrip({ chips, className }: { chips: StatusChip[];
         <span
           key={chip.id}
           title={chip.title}
-          className={`inline-flex items-center gap-1 rounded border px-1.5 py-px text-[10px] leading-4 font-semibold whitespace-nowrap cursor-help ${STATUS_TONE_CLASSES[chip.tone]}`}
+          className={`inline-flex items-center gap-1 rounded border px-1.5 py-px text-[10px] leading-4 font-semibold whitespace-nowrap cursor-help ${STATUS_TONE_CLASSES[chip.tone]} ${chip.expiring ? EXPIRING_CLASS : ''}`}
         >
           <span>{chip.label}</span>
           {chip.detail && <span className="font-normal opacity-90 tabular-nums">{chip.detail}</span>}

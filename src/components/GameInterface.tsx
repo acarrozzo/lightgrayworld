@@ -33,6 +33,7 @@ import Icon from './Icon'
 import { normalizeRoom, normalizeRoomItems } from '@/lib/normalize/room'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { describeStat, effectiveStats } from '@/lib/effective-stats'
+import { regenPerClick } from '@/lib/status-effects'
 import { buildSpellbook, getCastableSpells, getSpell, hasLearnableSpell } from '@/lib/spellbook'
 import { buildSkillbook, hasLearnableSkill } from '@/lib/skillbook'
 import { freshTabs, hiddenTabs, unlockDef, type UnlockFacts, type UnlockId } from '@/lib/unlocks'
@@ -170,6 +171,7 @@ export default function GameInterface() {
   const weaponName = equippedWeapon?.template.name ?? null
   // The four stats as combat rolls them: core + gear + buffs + skill passives.
   const stats = useMemo(() => effectiveStats(player, inventory), [player, inventory])
+  const headerRegen = useMemo(() => regenPerClick(player, inventory), [player, inventory])
   const [action, setAction] = useState('')
   const [actionResult, setActionResult] = useState<any>(null)
   const [levelUpData, setLevelUpData] = useState<LevelUpPayload | null>(null)
@@ -4260,6 +4262,8 @@ export default function GameInterface() {
               }
             : undefined
         }
+        magicArmor={Number(player?.buffs?.magicArmorAmount ?? 0)}
+        regen={headerRegen}
         clicks={player?.clicks}
         unspentPoints={unspentPoints}
         onCharacterClick={() => selectTab('char')}

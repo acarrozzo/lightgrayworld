@@ -1865,6 +1865,21 @@ class RoomState {
         itemMetadata: { icon: spell.icon },
         actionVerb: 'cast',
         effectText,
+        // The cast itself, so the battle card draws it in the spell's own
+        // colour with its rolls, the way a strike is drawn.
+        spell: {
+          id: spell.id,
+          name: spell.name,
+          hue: spell.hue,
+          icon: spell.icon,
+          level: cast.level,
+          cost: cast.cost,
+          kind: 'buff',
+          amount: cast.effect.amount ?? 0,
+          clicks: cast.effect.clicks ?? 0,
+          rolls: cast.effect.rolls ?? [],
+          text: cast.effect.text,
+        },
       })
     }
 
@@ -1915,6 +1930,19 @@ class RoomState {
       itemMetadata: { icon: spell.icon },
       actionVerb: 'cast',
       effectText: `+${heal.hpChange} HP`,
+      spell: {
+        id: spell.id,
+        name: spell.name,
+        hue: spell.hue,
+        icon: spell.icon,
+        level: heal.level,
+        cost: heal.cost,
+        kind: 'heal',
+        amount: heal.hpChange,
+        clicks: 0,
+        rolls: heal.rolls ?? [],
+        text: heal.text,
+      },
     })
   }
 

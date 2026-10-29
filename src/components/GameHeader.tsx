@@ -4,6 +4,7 @@ import { Settings as SettingsIcon } from 'lucide-react'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import Icon from '@/components/Icon'
 import VitalBar, { VitalBarKeyframes } from '@/components/game-interface/VitalBar'
+import { MagicArmorPill } from '@/components/game-interface/EffectBadges'
 import type { ItemPreview } from '@/lib/game-state'
 import type { StatKey } from '@/lib/effective-stats'
 
@@ -47,6 +48,10 @@ interface GameHeaderProps {
   pet?: { name: string; iconName: string } | null
   /** The title the player wears, after the name in gold; null wears none. */
   title?: string | null
+  /** Magic Armor's remaining pool, as the shield pill after the HP bar; 0 or undefined wears none. */
+  magicArmor?: number
+  /** What a click restores, as the regen mark after the fat bars' numbers (regenPerClick). */
+  regen?: { hp: number; mp: number; hpTitle: string; mpTitle: string } | null
 }
 
 /*
@@ -157,7 +162,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ hiddenOnPhone = false, playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, title = null, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey }: GameHeaderProps) {
+export default function GameHeader({ hiddenOnPhone = false, playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, title = null, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey, magicArmor = 0, regen = null }: GameHeaderProps) {
   let xpPct = 0
   if (xp !== undefined && level !== undefined) {
     const xpFromLevel = (level ** 3) * 2
@@ -172,7 +177,7 @@ export default function GameHeader({ hiddenOnPhone = false, playerName, level, h
   const bar = (kind: 'hp' | 'mp', current: number, max: number, preview: number, gain?: number) => (
     <>
       <VitalBar kind={kind} size="thin" self current={current} max={max} preview={preview} number="none" gain={gain} gainKey={regenGainKey} className={`block @min-[768px]:hidden ${BAR_WIDTH}`} />
-      <VitalBar kind={kind} size="fat" self current={current} max={max} preview={preview} gain={gain} gainKey={regenGainKey} className={`hidden @min-[768px]:block ${BAR_WIDTH}`} />
+      <VitalBar kind={kind} size="fat" self current={current} max={max} preview={preview} gain={gain} gainKey={regenGainKey} regen={regen ? { amount: regen[kind], title: kind === 'hp' ? regen.hpTitle : regen.mpTitle } : null} className={`hidden @min-[768px]:block ${BAR_WIDTH}`} />
     </>
   )
 
@@ -218,6 +223,10 @@ export default function GameHeader({ hiddenOnPhone = false, playerName, level, h
                     {mp !== undefined && mpMax !== undefined && bar('mp', mp, mpMax, itemPreview?.mp ?? 0, regenGain?.mp)}
                   </div>
                 ) : null}
+                {/* Magic Armor's pool, the original's "+N" box beside the HP bar, as the duel's shield pill. Not on a narrow header: the duel carries it there. */}
+                <span className="hidden @min-[768px]:inline-flex">
+                  <MagicArmorPill amount={magicArmor} />
+                </span>
 
                 {level !== undefined && (
                   <span

@@ -1,6 +1,6 @@
 'use client'
 
-import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, InventoryItem, Player, useGameStore } from '@/lib/game-state'
+import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, BattleSupportSpell, InventoryItem, Player, useGameStore } from '@/lib/game-state'
 import Icon from '@/components/Icon'
 import { useCallback, useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Compass as CompassIcon, Eye, LogOut } from 'lucide-react'
@@ -12,6 +12,55 @@ import ActionDeck from '@/components/game-interface/ActionDeck'
 import { deckContextFromBattle } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
 import { perkIcon } from '@/lib/game-data/enemy-traits'
+
+/** What a cast's big number is counted in, by spell: the pool is bare, the rest name their stat. */
+const CAST_UNIT: Record<string, string> = { 'magic-armor': '', 'iron-skin': ' DEF', regenerate: ' HP', heal: ' HP' }
+
+/**
+ * Your half of a turn spent on a buff or a heal, drawn the way a strike is:
+ * the spell in its own colour, its rolls where the strike's formula goes,
+ * the result big. The original printed the rolls — `[ 7 + 9 + 8 = 24 ]` —
+ * and this keeps them. Under the number, what it set up: the pool it will
+ * absorb, the clicks it lasts.
+ */
+function CastTurn({ cast }: { cast: BattleSupportSpell }) {
+  const tone = spellTone(cast.hue)
+  const unit = CAST_UNIT[cast.id] ?? (cast.kind === 'heal' ? ' HP' : '')
+  const hasAmount = Number.isFinite(cast.amount) && cast.amount > 0
+  const rolls = cast.rolls.length > 1 ? `[ ${cast.rolls.join(' + ')} ]` : null
+  const standing =
+    cast.id === 'magic-armor' ? `absorbs the next ${cast.amount} damage`
+    : cast.kind === 'heal' ? null
+    : cast.id === 'regenerate' && cast.clicks > 0 ? `a click, for ${cast.clicks} clicks`
+    : cast.clicks > 0 ? `for ${cast.clicks} clicks`
+    : null
+  return (
+    <>
+      <p className="text-[10px] text-fg-disabled tabular-nums">
+        {rolls ? <span className="mr-1">{rolls}</span> : null}
+        <span>lvl {cast.level}</span>
+      </p>
+      <p className="text-xs text-fg-secondary">
+        You cast <span className={`font-semibold ${tone.text}`}>{cast.name}</span>
+        <span className="ml-1 text-resource-mp tabular-nums">(−{cast.cost} MP)</span>
+      </p>
+      <div className="flex items-center gap-2 mt-0.5">
+        <Icon name={cast.icon} size={36} className={`${tone.text} flex-shrink-0`} />
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <p
+            className={`text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums ${tone.text}`}
+            style={{ textShadow: `0 0 16px color-mix(in srgb, ${tone.glow} 38%, transparent)` }}
+          >
+            {hasAmount ? `+${cast.amount}${unit}` : cast.text}
+          </p>
+          {hasAmount && standing && (
+            <p className={`text-[10px] tabular-nums ${cast.id === 'magic-armor' || cast.id === 'iron-skin' ? 'text-stat-def' : 'text-fg-muted'}`}>{standing}</p>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
 
 /** How many times an enemy must already have been beaten before a win with nothing new is shown as one line. */
 const ROUTINE_KILLS = 10
@@ -898,6 +947,9 @@ export default function BattlePanel({
         {/* Player side */}
         <div className="flex-1 flex flex-col gap-1 min-w-0">
           {supportAction ? (
+            supportAction.kind === 'cast_spell' && supportAction.spell ? (
+              <CastTurn cast={supportAction.spell} />
+            ) : (
             <>
               <p className="text-[10px] text-fg-disabled uppercase tracking-widest">
                 {supportAction.label
@@ -933,6 +985,7 @@ export default function BattlePanel({
                 )}
               </div>
             </>
+            )
           ) : battle.petrified ? (
             // A Gorgon's or Medusa's gaze: the turn passed and nothing was swung.
             <>

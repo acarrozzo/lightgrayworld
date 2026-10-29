@@ -11,7 +11,7 @@ import { hasLearnableSpell } from '@/lib/spellbook'
 import { hasLearnableSkill } from '@/lib/skillbook'
 import CoreStatsGrid from '@/components/game-interface/CoreStatsGrid'
 import { effectiveStats } from '@/lib/effective-stats'
-import { describeRegen, playerRegen, statusChips } from '@/lib/status-effects'
+import { regenPerClick, statusChips } from '@/lib/status-effects'
 import StatusStrip from '@/components/StatusStrip'
 import VitalBar from '@/components/game-interface/VitalBar'
 import StatAllocation from '@/components/StatAllocation'
@@ -67,8 +67,8 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
   // What the passives add for what is in hand right now — shown on the stats.
   // The four stats as combat rolls them — the same numbers the header shows.
   const stats = useMemo(() => effectiveStats(player, inventory), [player, inventory])
-  // Everything regenerating per click, from the equipped set and running effects.
-  const regen = useMemo(() => playerRegen(player, inventory), [player, inventory])
+  // What a click restores, read after the HP and MP numbers as it is in the header and the duel.
+  const regen = useMemo(() => regenPerClick(player, inventory), [player, inventory])
   // Every running effect as a chip: regen, poison, buffs, wings — the original's buffBox row.
   const chips = useMemo(() => statusChips(player, inventory), [player, inventory])
   const pt = player.physicalTraining ?? 0
@@ -239,22 +239,11 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
 
                   <div className="space-y-3">
                     <VitalRow label="HP">
-                      <VitalBar kind="hp" size="fat" self current={player.hp} max={player.hpMax} className="w-full" />
+                      <VitalBar kind="hp" size="fat" self current={player.hp} max={player.hpMax} regen={{ amount: regen.hp, title: regen.hpTitle }} className="w-full" />
                     </VitalRow>
                     <VitalRow label="MP">
-                      <VitalBar kind="mp" size="fat" current={player.mp} max={player.mpMax} className="w-full" />
+                      <VitalBar kind="mp" size="fat" current={player.mp} max={player.mpMax} regen={{ amount: regen.mp, title: regen.mpTitle }} className="w-full" />
                     </VitalRow>
-                    {/* What every click restores: gear, tea and Regenerate summed —
-                        the same formula the server ticks with. */}
-                    {regen.any && (
-                      <p className="text-xs text-fg-secondary" title="Every counted action restores this much, up to your max. MP regen skips the click you cast a spell on.">
-                        <span className="uppercase tracking-wide text-fg-muted">Regen</span>{' '}
-                        <span className="text-fg-bright font-semibold">{describeRegen(regen)}</span>
-                        {regen.gear.hp + regen.gear.mp > 0 && <span className="text-fg-muted"> · gear {describeRegen(regen.gear).replace(' / click', '')}</span>}
-                        {regen.tea && <span className="text-fg-muted"> · tea</span>}
-                        {regen.regenerateAmount > 0 && <span className="text-fg-muted"> · Regenerate</span>}
-                      </p>
-                    )}
                     <StatusStrip chips={chips} />
                     <VitalRow label="XP" aside={<span className="text-fg-secondary">need {xpRemaining.toLocaleString()}</span>}>
                       <VitalBar

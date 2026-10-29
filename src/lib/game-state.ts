@@ -129,6 +129,20 @@ export interface InventoryItem {
   }
 }
 
+export interface BattleSupportSpell {
+  id: string
+  name: string
+  hue: string
+  icon: string
+  level: number
+  cost: number
+  kind: 'buff' | 'heal'
+  amount: number
+  clicks: number
+  rolls: number[]
+  text: string
+}
+
 export interface BattleActionMeta {
   kind:
     | 'use_item'
@@ -152,6 +166,12 @@ export interface BattleActionMeta {
   label?: string | null
   /** The whole line for a non-item turn — the action's own feed message. */
   text?: string | null
+  /**
+   * On a cast_spell turn, the cast itself: the spell, its level and cost,
+   * what it set up (`amount` is the pool, the DEF, the HP a click or the HP
+   * healed; `clicks` how long) and the rolls behind it.
+   */
+  spell?: BattleSupportSpell | null
 }
 
 /**

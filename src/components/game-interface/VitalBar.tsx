@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import Icon from '@/components/Icon'
 import { formatVital, previewPct, vitalOverflow, vitalPct, vitalState } from '@/lib/vitals'
 
 /**
@@ -101,6 +102,20 @@ export interface VitalBarProps {
   label?: string
   /** Something to say after the number: the heal preview's "+20", say. */
   extra?: ReactNode
+  /**
+   * What a click restores, as the regenerate glyph and the number after the
+   * value ("80 / 100 ⟳4"). One treatment for the header, the duel and the
+   * Char tab, so regen is read the same wherever the bar is.
+   */
+  regen?: { amount: number; title: string } | null
+  /**
+   * What the last turn took or gave: a signed amount after the regen mark,
+   * "−8" in the damage tone or "+12" in the heal tone. The duel's bars show
+   * the hit that just landed and the MP the cast just spent.
+   */
+  delta?: { amount: number; title?: string } | null
+  /** Draw the gold over-max "+8" after the number. The duel turns it off and wears the overflow as a pill instead. */
+  overflow?: boolean
   /** A gain that just landed, floated off the bar. A new `gainKey` replays it. */
   gain?: number | null
   gainKey?: number
@@ -125,6 +140,9 @@ export default function VitalBar({
   number,
   label,
   extra,
+  regen,
+  delta,
+  overflow = true,
   gain,
   gainKey,
   initialPct,
@@ -166,12 +184,31 @@ export default function VitalBar({
   const name = label ?? (kind === 'foe' ? 'Enemy HP' : kind.toUpperCase())
   const hint = title ?? `${name} ${value}${over > 0 ? ` +${over}` : ''}`
 
+  // The marks after the number — or before it on a right-to-left bar, so
+  // they sit on the open side and the value stays against the edge.
+  const marks = (
+    <>
+      {overflow && over > 0 && <span className="text-resource-gold">+{over}</span>}
+      {regen && regen.amount > 0 && (
+        <span className="inline-flex items-center gap-px opacity-75" title={regen.title}>
+          <Icon name="regenerate" size={size === 'fat' ? 9 : 8} className="shrink-0" />
+          {regen.amount}
+        </span>
+      )}
+      {delta && delta.amount !== 0 && (
+        <span className={delta.amount < 0 ? 'text-combat-damage' : 'text-combat-heal'} title={delta.title}>
+          {delta.amount < 0 ? '−' : '+'}{Math.abs(delta.amount)}
+        </span>
+      )}
+      {extra}
+    </>
+  )
   const numberNode = placement === 'none' ? null : (
     <span className={`inline-flex items-baseline gap-1 whitespace-nowrap leading-none font-semibold tabular-nums ${NUMBER_TEXT[size]}`}>
+      {rtl && marks}
       {label && <span className={placement === 'inside' ? '' : 'text-fg-muted'}>{label}</span>}
       <span>{value}</span>
-      {over > 0 && <span className="text-resource-gold">+{over}</span>}
-      {extra}
+      {!rtl && marks}
     </span>
   )
 
@@ -250,6 +287,11 @@ export function VitalBarKeyframes() {
         0%   { opacity: 1; transform: translateY(0px); }
         60%  { opacity: 1; transform: translateY(-6px); }
         100% { opacity: 0; transform: translateY(-12px); }
+      }
+      @keyframes wardShatter {
+        0%   { opacity: 1; transform: scale(1);    box-shadow: 0 0 0 0 color-mix(in srgb, var(--stat-def) 90%, transparent); }
+        35%  { opacity: 1; transform: scale(1.12); box-shadow: 0 0 0 7px transparent; }
+        100% { opacity: 0; transform: scale(0.85); box-shadow: 0 0 0 7px transparent; }
       }
     `}</style>
   )

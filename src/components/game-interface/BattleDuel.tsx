@@ -1,11 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useGameStore, type BattleState, type InventoryItem, type Player } from '@/lib/game-state'
 import { describeStat, effectiveStats, STAT_KEYS, type StatKey } from '@/lib/effective-stats'
 import { Stat } from '@/components/GameHeader'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
 import VitalBar from './VitalBar'
+import { EffectBadges, EffectsToggle, MagicArmorPill, OverflowPill } from './EffectBadges'
+import { regenPerClick, statusChips } from '@/lib/status-effects'
 import { LevelBadge, RankBadge, TurnChip } from './battle-badges'
 
 /**
@@ -36,6 +38,9 @@ interface BattleDuelProps {
   /** Pressing one of your four stats: opens the bag, where the gear behind them is. Left out, they are plain. */
   onOpenStats?: () => void
 }
+
+/** Whether the effects row under your stats is open. A device preference, remembered. */
+const EFFECTS_OPEN_KEY = 'lg:duel-effects-open'
 
 const ENEMY_ATT_TONE: Record<NonNullable<BattleState['enemyDamageType']>, string> = {
   MELEE: 'text-combat-damage',
@@ -74,6 +79,31 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
   // it; the duel only reads it.
   const itemPreview = useGameStore((s) => s.itemPreview)
   const effective = useMemo(() => effectiveStats(player, inventory), [player, inventory])
+  // What is running on you: Magic Armor's pool as its pill on the name line,
+  // the per-click regen beside the HP and MP numbers, and the rest as mini
+  // badges under your stats — a row the player can fold into a count chip.
+  const chips = useMemo(() => statusChips(player, inventory), [player, inventory])
+  const shownChips = useMemo(() => chips.filter((chip) => chip.id !== 'magic-armor'), [chips])
+  const regen = useMemo(() => regenPerClick(player, inventory), [player, inventory])
+  const magicArmor = Math.max(0, Number(player.buffs?.magicArmorAmount ?? 0))
+  const [effectsOpen, setEffectsOpen] = useState(true)
+  useEffect(() => {
+    try {
+      setEffectsOpen(window.localStorage.getItem(EFFECTS_OPEN_KEY) !== '0')
+    } catch {
+      /* no storage: the row stays open */
+    }
+  }, [])
+  const toggleEffects = () => {
+    setEffectsOpen((open) => {
+      try {
+        window.localStorage.setItem(EFFECTS_OPEN_KEY, open ? '0' : '1')
+      } catch {
+        /* a preference, nothing more */
+      }
+      return !open
+    })
+  }
   const statTitles = useMemo(
     () => ({ str: describeStat('STR', effective.str), dex: describeStat('DEX', effective.dex), mag: describeStat('MAG', effective.mag), def: describeStat('DEF', effective.def) }),
     [effective],
@@ -92,6 +122,17 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
   // live player's may already have moved on.
   const hp = battle.playerHp
   const hpMax = battle.playerHpMax || player.hpMax
+  // What the last turn did to the bars, read after the number: the HP the
+  // enemy's hit actually took (after Magic Armor ate its share, plus any
+  // drain), and the MP the last cast or skill spent — nothing when the
+  // enemy was immune or stepped out of it, since no MP went.
+  const hpLost = Math.max(0, (battle.lastEnemyDamage ?? 0) - (battle.absorbed ?? 0)) + (battle.enemyEffects?.hpDrained ?? 0)
+  const noMpSpent = battle.immuneToMagic || battle.enemyDodged
+  const mpSpent = noMpSpent ? 0 : (battle.spell?.cost ?? battle.skill?.cost ?? battle.actionMeta?.spell?.cost ?? 0)
+  const hpOver = Math.max(0, hp - hpMax)
+  const mpOver = Math.max(0, player.mp - player.mpMax)
+  // What the enemy lost to your last turn: your hit and a second arrow's.
+  const dealt = (battle.lastPlayerDamage ?? 0) + (battle.extraShot?.damage ?? 0)
 
   return (
     <div
@@ -106,6 +147,12 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
             <div className="flex min-w-0 items-center gap-1.5">
               <LevelBadge level={player.level} />
               <span className="truncate text-xs font-black tracking-tight text-fg-bright @min-[600px]:text-sm">{player.username}</span>
+              {/* The buffers: the HP and MP over the max, then Magic Armor at the end of the line. */}
+              <span className="ml-auto inline-flex items-center gap-1">
+                <OverflowPill kind="hp" amount={hpOver} />
+                <OverflowPill kind="mp" amount={mpOver} />
+                <MagicArmorPill amount={magicArmor} />
+              </span>
             </div>
             <VitalBar
               kind="hp"
@@ -114,6 +161,9 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
               current={hp}
               max={hpMax}
               preview={itemPreview?.hp ?? 0}
+              overflow={false}
+              regen={{ amount: regen.hp, title: regen.hpTitle }}
+              delta={hpLost > 0 ? { amount: -hpLost, title: `The last hit took ${hpLost} HP${battle.absorbed > 0 ? ` after Magic Armor absorbed ${battle.absorbed}` : ''}.` } : null}
               extra={itemPreview?.hp ? <span className="text-combat-heal animate-pulse">+{itemPreview.hp}</span> : null}
               className="w-full"
             />
@@ -123,6 +173,9 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
               current={player.mp}
               max={player.mpMax}
               preview={itemPreview?.mp ?? 0}
+              overflow={false}
+              regen={{ amount: regen.mp, title: regen.mpTitle }}
+              delta={mpSpent > 0 ? { amount: -mpSpent, title: `The last cast spent ${mpSpent} MP.` } : null}
               extra={itemPreview?.mp ? <span className="text-combat-heal animate-pulse">+{itemPreview.mp}</span> : null}
               className="w-full"
             />
@@ -138,7 +191,9 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
                   onClick={onOpenStats}
                 />
               ))}
+              <EffectsToggle chips={shownChips} open={effectsOpen} onToggle={toggleEffects} className="ml-auto" />
             </div>
+            {effectsOpen && <EffectBadges chips={shownChips} />}
           </div>
 
           {/* VS, the turn, and the group bonus when there is one */}
@@ -165,6 +220,7 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
               max={battle.enemyMaxHp}
               initialPct={100}
               label={battle.enemyName ? undefined : 'HP'}
+              delta={dealt > 0 ? { amount: -dealt, title: `Your last turn took ${dealt} HP${battle.enemyHealed > 0 ? `; it absorbed ${battle.enemyHealed} back` : ''}.` } : null}
               className="w-full"
             />
             <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-x-2.5 gap-y-1 pt-0.5">

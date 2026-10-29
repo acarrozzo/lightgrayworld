@@ -205,3 +205,25 @@ test('every countdown has an expiry line', () => {
   }
   assert.equal(buffs.expiryMessage('poisonClicks'), 'The poison has run its course.')
 })
+
+// ─── itemised stat buffs (tooltips, stat badges) ─────────────────────────────
+
+test('getStatBuffSources names each buff lifting a stat and sums to getStatBuffBonuses', () => {
+  const row = { buffStrClicks: 87, buffCoffeeClicks: 12, ironSkinClicks: 40, ironSkinAmount: 12, silverAura: true }
+  const sources = buffs.getStatBuffSources(row)
+  const totals = buffs.getStatBuffBonuses(row)
+  for (const stat of ['str', 'dex', 'mag', 'def']) {
+    const sum = sources[stat].reduce((acc, s) => acc + s.amount, 0)
+    assert.equal(sum, totals[stat], `${stat} itemised sum matches the flat bonus`)
+  }
+  assert.deepEqual(
+    sources.def.map((s) => [s.label, s.amount, s.clicks]),
+    [['Coffee', 10, 12], ['Iron Skin', 12, 40], ['Silver Aura', 20, null]],
+  )
+  assert.deepEqual(sources.str.map((s) => s.label), ['Strength', 'Coffee', 'Silver Aura'])
+})
+
+test('getStatBuffSources ignores a lapsed Iron Skin and an empty row', () => {
+  assert.deepEqual(buffs.getStatBuffSources({ ironSkinClicks: 0, ironSkinAmount: 12 }).def, [])
+  assert.deepEqual(buffs.getStatBuffSources(null), { str: [], dex: [], mag: [], def: [] })
+})

@@ -141,6 +141,35 @@ function getStatBuffBonuses(row) {
 }
 
 /**
+ * The same bonuses, itemised: which buff is lifting which stat, by how much,
+ * and for how many more clicks (null for a standing bonus). Sums to
+ * getStatBuffBonuses per stat; this is what a tooltip or a badge reads so a
+ * player can tell "+12 Iron Skin (40 clicks)" from a capsule.
+ * @param {Object} row
+ * @returns {{str: BuffSource[], dex: BuffSource[], mag: BuffSource[], def: BuffSource[]}}
+ * @typedef {{ field: string, label: string, amount: number, clicks: number|null }} BuffSource
+ */
+function getStatBuffSources(row) {
+  const sources = { str: [], dex: [], mag: [], def: [] }
+  if (!row) return sources
+  for (const [field, { stats, amount }] of Object.entries(STAT_BUFF_FIELDS)) {
+    const clicks = Number(row[field] || 0)
+    if (clicks <= 0) continue
+    for (const stat of stats) sources[stat].push({ field, label: BUFF_LABELS[field] || field, amount, clicks })
+  }
+  const ironSkinClicks = Number(row.ironSkinClicks || 0)
+  const ironSkinAmount = Math.max(0, Number(row.ironSkinAmount || 0))
+  if (ironSkinClicks > 0 && ironSkinAmount > 0) {
+    sources.def.push({ field: 'ironSkinClicks', label: BUFF_LABELS.ironSkinClicks, amount: ironSkinAmount, clicks: ironSkinClicks })
+  }
+  for (const [field, { stats, amount }] of Object.entries(STANDING_BONUS_FIELDS)) {
+    if (!row[field]) continue
+    for (const stat of stats) sources[stat].push({ field, label: BUFF_LABELS[field] || field, amount, clicks: null })
+  }
+  return sources
+}
+
+/**
  * The client-facing view of a User row's buffs: every countdown, plus each
  * standing bonus as 1/0, so getStatBuffBonuses reads the same shape on both
  * sides. `player.buffs` on the client is exactly this object — the header
@@ -283,6 +312,7 @@ const BUFF_LABELS = {
   ironSkinClicks: 'Iron Skin',
   poisonClicks: 'Poison',
   poisonImmuneClicks: 'Poison immunity',
+  silverAura: 'Silver Aura',
 }
 
 /**
@@ -344,6 +374,7 @@ module.exports = {
   BUFF_LABELS,
   expiryMessage,
   getStatBuffBonuses,
+  getStatBuffSources,
   projectBuffState,
   tickBuffs,
   startBuff,

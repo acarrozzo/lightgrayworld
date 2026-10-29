@@ -51,7 +51,45 @@ export interface StatusChip {
   tone: StatusTone
   /** The full sentence, for hover. */
   title: string
+  /** The sprite glyph the mini badge and the stat corner wear for it. */
+  icon: string
+  /** The one number a mini badge prints: the clicks left, or the pool, or the per-click. */
+  badge: string
+  /** True in the last clicks before it runs out, so the chip can pulse. */
+  expiring: boolean
 }
+
+/** A countdown at this many clicks or fewer is about to go, and says so. */
+export const EXPIRING_CLICKS = 3
+
+/**
+ * Sprite glyphs per buff column: the capsules' own bottles, the spells' own
+ * marks, the cup, the leaf. Unknown columns fall back to the generic pill.
+ */
+const BUFF_ICONS: Record<string, string> = {
+  buffStrClicks: 'red-potion',
+  buffDexClicks: 'potion2',
+  buffMagClicks: 'blue-potion',
+  buffDefClicks: 'potion2',
+  buffCoffeeClicks: 'coffee',
+  buffGloryClicks: 'sun',
+  buffTeaClicks: 'tea',
+  regenerateClicks: 'regenerate',
+  ironSkinClicks: 'ironskin',
+  poisonClicks: 'ePoison',
+  poisonImmuneClicks: 'ePoison',
+  magicArmorAmount: 'magicarmor',
+  wings: 'wings',
+  gills: 'gills',
+  silverAura: 'magicstar',
+}
+
+/** The glyph for a buff column. */
+export function buffIcon(field: string): string {
+  return BUFF_ICONS[field] ?? 'pill'
+}
+
+const expiring = (clicks: number | undefined) => typeof clicks === 'number' && clicks > 0 && clicks <= EXPIRING_CLICKS
 
 /** The regen declared by everything equipped, summed. */
 export function equippedRegen(inventory: InventoryItem[]): { hp: number; mp: number } {
@@ -90,13 +128,25 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
   const buffs = player.buffs ?? {}
   const clicksOf = (field: string) => Math.max(0, Number(buffs[field] ?? 0))
   const chips: StatusChip[] = []
+  // One shape for every chip: the glyph from its column, the badge number
+  // given or the clicks left, the pulse from the clicks.
+  const push = (chip: Omit<StatusChip, 'icon' | 'badge' | 'expiring'> & { field: string; icon?: string; badge?: string }) => {
+    const { field, ...rest } = chip
+    chips.push({
+      ...rest,
+      icon: chip.icon ?? buffIcon(field),
+      badge: chip.badge ?? (typeof chip.clicks === 'number' ? String(chip.clicks) : ''),
+      expiring: expiring(chip.clicks),
+    })
+  }
 
   const poison = clicksOf('poisonClicks')
   if (poison > 0) {
     // Each click the counter drops by one and burns for what is left.
     const next = poison - 1
-    chips.push({
+    push({
       id: 'poison',
+      field: 'poisonClicks',
       label: 'Poison',
       detail: next > 0 ? `burns ${next}` : 'fading',
       clicks: poison,
@@ -106,36 +156,24 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
   }
   const immune = clicksOf('poisonImmuneClicks')
   if (immune > 0) {
-    chips.push({ id: 'poison-immune', label: 'Immune', detail: 'to poison', clicks: immune, tone: 'ward', title: `Immune to poison for ${immune} more clicks.` })
+    push({ id: 'poison-immune', field: 'poisonImmuneClicks', label: 'Immune', detail: 'to poison', clicks: immune, tone: 'ward', title: `Immune to poison for ${immune} more clicks.` })
   }
 
   const armor = Math.max(0, Number(buffs.magicArmorAmount ?? 0))
   if (armor > 0) {
-    chips.push({ id: 'magic-armor', label: 'Magic Armor', detail: `absorbs ${armor}`, tone: 'ward', title: `Magic Armor: the next ${armor} damage is absorbed before it reaches your HP. It wears off as it is hit.` })
+    push({ id: 'magic-armor', field: 'magicArmorAmount', label: 'Magic Armor', detail: `absorbs ${armor}`, badge: String(armor), tone: 'ward', title: `Magic Armor: the next ${armor} damage is absorbed before it reaches your HP. It wears off as it is hit.` })
   }
   const ironSkinClicks = clicksOf('ironSkinClicks')
   const ironSkin = Math.max(0, Number(buffs.ironSkinAmount ?? 0))
   if (ironSkinClicks > 0 && ironSkin > 0) {
-    chips.push({ id: 'iron-skin', label: 'Iron Skin', detail: `+${ironSkin} DEF`, clicks: ironSkinClicks, tone: 'ward', title: `Iron Skin: +${ironSkin} DEF for ${ironSkinClicks} more clicks.` })
+    push({ id: 'iron-skin', field: 'ironSkinClicks', label: 'Iron Skin', detail: `+${ironSkin} DEF`, clicks: ironSkinClicks, tone: 'ward', title: `Iron Skin: +${ironSkin} DEF for ${ironSkinClicks} more clicks.` })
   }
 
+  // The per-click regen itself is not a chip: it is read beside the HP and
+  // MP numbers (regenPerClick). Only its countdowns — Regenerate, tea — are.
   const summary = playerRegen(player, inventory)
-  if (summary.any) {
-    const text = describeRegen(summary)
-    const parts: string[] = []
-    if (summary.gear.hp > 0 || summary.gear.mp > 0) parts.push(`gear ${describeRegen(summary.gear).replace(' / click', '')}`)
-    if (summary.tea) parts.push('tea +10 HP +10 MP')
-    if (summary.regenerateAmount > 0) parts.push(`Regenerate +${summary.regenerateAmount} HP`)
-    chips.push({
-      id: 'regen',
-      label: 'Regen',
-      detail: text.replace(' / click', ''),
-      tone: summary.hpMax > 0 && summary.mp > 0 ? 'vitals' : summary.hpMax > 0 ? 'hp' : 'mp',
-      title: `Every click restores ${text.replace(' / click', '')}, up to your max (${parts.join(', ')}). MP regen skips the click you cast a spell on.`,
-    })
-  }
   const regenerate = clicksOf('regenerateClicks')
-  if (regenerate > 0) chips.push({ id: 'regenerate', label: 'Regenerate', detail: `+${summary.regenerateAmount} HP`, clicks: regenerate, tone: 'hp', title: `Regenerate: +${summary.regenerateAmount} HP every click for ${regenerate} more clicks.` })
+  if (regenerate > 0) push({ id: 'regenerate', field: 'regenerateClicks', label: 'Regenerate', detail: `+${summary.regenerateAmount} HP`, clicks: regenerate, tone: 'hp', title: `Regenerate: +${summary.regenerateAmount} HP every click for ${regenerate} more clicks.` })
 
   // The consumables in the order they are listed everywhere: the capsules,
   // coffee, then tea; Glory, the temple's blessing, after them.
@@ -145,21 +183,50 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
     if (clicks > 0) {
       const label = BUFF_LABELS[field] ?? field
       const detail = stats.length === 4 ? `+${amount} all` : `+${amount} ${stats.map((s) => STAT_LABEL[s] ?? s).join(' ')}`
-      chips.push({ id: field, label, detail, clicks, tone: 'stat', title: `${label}: ${detail} stats for ${clicks} more clicks.` })
+      push({ id: field, field, label, detail, clicks, tone: 'stat', title: `${label}: ${detail} stats for ${clicks} more clicks.` })
     }
     if (field === 'buffCoffeeClicks' && tea > 0) {
-      chips.push({ id: 'tea', label: 'Tea', clicks: tea, tone: 'vitals', title: `Tea: +10 HP and +10 MP regen a click for ${tea} more clicks.` })
+      push({ id: 'tea', field: 'buffTeaClicks', label: 'Tea', clicks: tea, tone: 'vitals', title: `Tea: +10 HP and +10 MP regen a click for ${tea} more clicks.` })
     }
   }
 
   const wings = clicksOf('wings')
-  if (wings > 0) chips.push({ id: 'wings', label: 'Wings', clicks: wings, tone: 'ability', title: `Wings: you can fly for ${wings} more clicks.` })
+  if (wings > 0) push({ id: 'wings', field: 'wings', label: 'Wings', clicks: wings, tone: 'ability', title: `Wings: you can fly for ${wings} more clicks.` })
   const gills = clicksOf('gills')
-  if (gills > 0) chips.push({ id: 'gills', label: 'Gills', clicks: gills, tone: 'ability', title: `Gills: you can breathe water for ${gills} more clicks.` })
+  if (gills > 0) push({ id: 'gills', field: 'gills', label: 'Gills', clicks: gills, tone: 'ability', title: `Gills: you can breathe water for ${gills} more clicks.` })
 
   if (Number(buffs.silverAura ?? 0) > 0) {
-    chips.push({ id: 'silver-aura', label: 'Silver Aura', detail: '+20 all', tone: 'aura', title: 'Silver Aura: +20 to STR, DEX, MAG and DEF, always.' })
+    push({ id: 'silver-aura', field: 'silverAura', label: 'Silver Aura', detail: '+20 all', badge: '+20', tone: 'aura', title: 'Silver Aura: +20 to STR, DEX, MAG and DEF, always.' })
   }
 
   return chips
+}
+
+/** What a click restores, read beside each bar: the HP (its ceiling, when it is a range) and the MP, with the sentence behind each. */
+export interface RegenReading {
+  hp: number
+  mp: number
+  hpTitle: string
+  mpTitle: string
+}
+
+/**
+ * The standing per-click regen as the duel's bars wear it: "+4" after the HP
+ * number, "+2" after the MP number. One number each, the sum of gear, tea and
+ * Regenerate, so there is no separate regen chip to read against the countdowns.
+ */
+export function regenPerClick(player: Player | null | undefined, inventory: InventoryItem[]): RegenReading {
+  const summary = playerRegen(player, inventory)
+  const parts: string[] = []
+  if (summary.gear.hp > 0 || summary.gear.mp > 0) parts.push(`gear ${describeRegen(summary.gear).replace(' / click', '')}`)
+  if (summary.tea) parts.push('tea +10 HP +10 MP')
+  if (summary.regenerateAmount > 0) parts.push(`Regenerate +${summary.regenerateAmount} HP`)
+  const from = parts.length > 0 ? ` (${parts.join(', ')})` : ''
+  const hpText = summary.hpMin > 0 && summary.hpMin !== summary.hpMax ? `${summary.hpMin} to ${summary.hpMax}` : String(summary.hpMax)
+  return {
+    hp: summary.hpMax,
+    mp: summary.mp,
+    hpTitle: `Regen: +${hpText} HP every click, up to your max${from}.`,
+    mpTitle: `Regen: +${summary.mp} MP every click, up to your max${from}. MP regen skips the click you cast a spell on.`,
+  }
 }
