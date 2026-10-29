@@ -1912,6 +1912,7 @@ export default function GameInterface() {
         outcome,
         eventType,
         direction: travelDirection,
+        destination: isMoveAction && typeof payload?.data?.toRoomName === 'string' ? payload.data.toRoomName : undefined,
         actor: isLine && typeof spokenLine.speaker === 'string' ? spokenLine.speaker : action,
         source: lineSource,
       })

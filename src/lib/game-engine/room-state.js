@@ -1452,10 +1452,15 @@ class RoomState {
     const walkedDirection =
       direction ??
       (action.sourceExits?.roomId === fromRoom ? findExitDirection(action.sourceExits, toRoom) : null)
+    // The destination is named when the socket layer read it (it always does
+    // for a real move); a bare id is never printed as a place.
+    const destinationName = slipped ? travelHazard.toRoom : action.data?.toRoomName
     const message = slipped
       ? slipped.message
       : walkedDirection
-        ? `You travel ${walkedDirection}`
+        ? destinationName
+          ? `You travel ${walkedDirection}: ${destinationName}`
+          : `You travel ${walkedDirection}`
         : `You teleport to ${toRoomName}`
 
     return {

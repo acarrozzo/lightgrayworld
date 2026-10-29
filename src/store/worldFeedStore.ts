@@ -16,6 +16,8 @@ export type WorldFeedEntry = {
   roomId?: string
   eventType?: string
   direction?: string
+  /** For your own travel line: the room the step landed in, drawn after the direction. */
+  destination?: string
   /** Where this line leads, if it is about a place in the interface: shown as a small link on the line. */
   link?: FeedLink
   /**
@@ -101,7 +103,9 @@ const ensureEntry = (entry: WorldFeedEntryInput): WorldFeedEntry => {
     roomId: entry.roomId,
     eventType: entry.eventType,
     direction: entry.direction,
+    destination: entry.destination,
     link: entry.link,
+    source: entry.source,
     text: entry.text ?? message,
   }
 }

@@ -51,7 +51,7 @@ export const CHANNEL_STYLES: Record<FeedChannel, ChannelStyle> = {
   events: {
     text: 'text-channel-system',
     bar: 'bg-channel-system',
-    chip: 'border-channel-system bg-channel-system/10 hover:bg-channel-system/20 text-fg-primary',
+    chip: 'border-channel-system bg-channel-system/10 hover:bg-channel-system/20 text-channel-system',
     glyph: 'text-channel-system',
   },
   dm: {

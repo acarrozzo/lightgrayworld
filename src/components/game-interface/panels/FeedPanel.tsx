@@ -1016,7 +1016,18 @@ export default function FeedPanel({
                   )}
 
                   <div className={`flex flex-wrap items-baseline gap-1 flex-1 break-words leading-tight font-mono ${contentSize}`}>
-                    {isRoomTravel ? (
+                    {isRoomTravel && entry.isSelf && entry.direction && entry.destination ? (
+                      // Your own step: the direction is the news, the room is
+                      // where it put you.
+                      <>
+                        <span className="text-fg-secondary font-mono">You travel</span>
+                        <span className={`${messageColorClass} font-mono font-semibold capitalize`}>
+                          {entry.direction}
+                          <span className="text-fg-muted font-normal">:</span>
+                        </span>
+                        <span className="text-fg-muted font-mono">{entry.destination}</span>
+                      </>
+                    ) : isRoomTravel ? (
                       <span className={`${messageColorClass} font-mono`}>{messageText}</span>
                     ) : entry.eventType === 'line' ? (
                       // A spoken line: the speaker, the words, and (for review) the data row.

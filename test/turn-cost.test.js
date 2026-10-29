@@ -474,3 +474,27 @@ test('in a room that never rolls, attack with nothing present is free', async ()
   assert.equal(battleCalls.startBattle.length, 0)
   assert.equal(result.playerEvents[0].payload.message, 'Nothing to attack here.')
 })
+
+// The travel line names where you land: the socket layer reads the destination
+// before the engine runs and passes its name beside the id. A caller that
+// passes no name (nothing in the game does) still gets a line, never an id.
+test('a walked step names the room it lands in', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  const sourceExits = { roomId: MINE, west: '001' }
+
+  const named = await room.executeMove(
+    moveAction('001', { authorizedMove: true, sourceExits, data: { toRoom: '001', toRoomName: 'Grassy Field' } }),
+    'p1',
+  )
+  const feedbackOf = (result) => result.playerEvents.find((e) => e.event === 'action:feedback').payload
+  assert.equal(named.success, true)
+  assert.equal(feedbackOf(named).message, 'You travel west: Grassy Field')
+  assert.equal(feedbackOf(named).data.toRoomName, 'Grassy Field')
+
+  const room2 = new RoomState(MINE)
+  room2.addPlayer({ id: 'p2', username: 'b', hp: 50 })
+  const unnamed = await room2.executeMove(moveAction('001', { authorizedMove: true, sourceExits }), 'p2')
+  assert.equal(unnamed.success, true)
+  assert.equal(feedbackOf(unnamed).message, 'You travel west')
+})
