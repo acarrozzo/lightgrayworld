@@ -92,7 +92,7 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
   const statEffects = readConsumableStats(consumable)
   const buffEffects = readConsumableBuffs(consumable)
   const cure = readConsumableCure(consumable)
-  const displayName = (item.template.name || consumable.displayName || 'item').toLowerCase()
+  const displayName = item.template.name || consumable.displayName || 'item'
 
   roomState.touchActivity()
 

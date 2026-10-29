@@ -54,6 +54,21 @@ import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import { TELEPORT_MP_COST } from './game-interface/constants'
 import { filterTabToView, getItemCategory, type FilterTab, type ItemFilterView } from '@/lib/inventory-categories'
 import { findTravelDirection, checkIfExitHasGate, normalizeCommand, formatDirectionPhrase } from './game-interface/utils'
+import { prettifyDropName } from '@/lib/action-deck'
+/** The refusal for a direction with no exit: "to the north", "upward". */
+function noExitMessage(direction: string): string {
+  if (direction === 'up' || direction === 'down') return `You don't see a way ${direction} from here.`
+  return `You don't see an exit to the ${direction.replace(/_/g, ' ')}.`
+}
+
+/** ", Rat Tail x2, Iron Ore" for the victory row, from the card's own drop details, by name. */
+function victoryDropNames(payload: { dropDetails?: { slug: string; qty: number }[]; droppedItems?: string[] }): string {
+  const details = payload.dropDetails && payload.dropDetails.length > 0
+    ? payload.dropDetails.map((d) => `${prettifyDropName(d.slug)}${d.qty > 1 ? ` x${d.qty}` : ''}`)
+    : (payload.droppedItems ?? []).map((s) => prettifyDropName(s.replace(/ x\d+$/, '')) + (s.match(/ x\d+$/)?.[0] ?? ''))
+  return details.length > 0 ? `, ${details.join(', ')}` : ''
+}
+
 import { useGameSocketBindings } from './game-interface/useGameSocketBindings'
 import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
@@ -1261,7 +1276,7 @@ export default function GameInterface() {
         console.warn('No current room available for navigation action')
         setActionResult({
           action: 'move',
-          message: `You don't see an exit in that direction (${actionType})`,
+          message: noExitMessage(actionType),
           timestamp: new Date().toISOString(),
           success: false,
           source: 'local',
@@ -1269,7 +1284,7 @@ export default function GameInterface() {
         appendWorldFeed({
           type: 'action',
           level: 'error',
-          message: `You don't see an exit in that direction (${actionType})`,
+          message: noExitMessage(actionType),
           roomId: currentRoomRef.current?.roomId,
         })
         return
@@ -1282,7 +1297,7 @@ export default function GameInterface() {
         console.warn('Navigation target not available from current room')
         setActionResult({
           action: 'move',
-          message: `You don't see an exit in that direction (${actionType})`,
+          message: noExitMessage(actionType),
           timestamp: new Date().toISOString(),
           success: false,
           source: 'local',
@@ -1290,7 +1305,7 @@ export default function GameInterface() {
         appendWorldFeed({
           type: 'action',
           level: 'error',
-          message: `You don't see an exit in that direction (${actionType})`,
+          message: noExitMessage(actionType),
           roomId: currentRoomRef.current?.roomId,
         })
         return
@@ -1494,7 +1509,7 @@ export default function GameInterface() {
         appendWorldFeed({
           type: 'action',
           level: 'error',
-          message: 'Usage: dm username message',
+          message: 'To send a direct message, type dm, a name, then the message: dm Hopper hello',
         })
         return
       }
@@ -1591,7 +1606,7 @@ export default function GameInterface() {
         appendWorldFeed({
           type: 'action',
           level: 'error',
-          message: "To chat: say hello | 'hello | \"hello | shout hello | !hello | /p hello",
+          message: 'Pick a channel from the menu, or start with /r for the room, /w for the world, or /p for your party.',
         })
         return
       }
@@ -1900,6 +1915,7 @@ export default function GameInterface() {
       else if (action === 'equip_item') eventType = 'equip'
       else if (action === 'auto_equip') eventType = 'equip'
       else if (action === 'enemy_spawn') eventType = 'enemy-spawn'
+      else if (action === 'discovery') eventType = 'discovery'
       else if (action === 'pet') eventType = 'pet'
       else if (action) eventType = 'action-feedback'
 
@@ -1911,8 +1927,11 @@ export default function GameInterface() {
       const selfId = playerRef.current?.id
       const isOwnBroadcast = Boolean(payload?.actorId && selfId && payload.actorId === selfId)
       const spawnEngages = action === 'enemy_spawn' && payload?.data?.engages === true
+      // A support action in a fight: the BATTLE TURN row that follows carries
+      // this line in full, so it is not written twice.
+      const turnFollows = payload?.data?.turnFollows === true
 
-      if (!isOwnBroadcast && !spawnEngages) {
+      if (!isOwnBroadcast && !spawnEngages && !turnFollows) {
         appendWorldFeed({
           type: 'action',
           isSelf: true,
@@ -1925,6 +1944,8 @@ export default function GameInterface() {
           destination: isMoveAction && typeof payload?.data?.toRoomName === 'string' ? payload.data.toRoomName : undefined,
           actor: isLine && typeof spokenLine.speaker === 'string' ? spokenLine.speaker : action,
           source: lineSource,
+          // A map or teleport discovery leads to the World tab.
+          ...(eventType === 'discovery' ? { link: { tab: 'world', sub: 'map' } } : {}),
         })
       }
 
@@ -2604,7 +2625,7 @@ export default function GameInterface() {
           outcome: 'success',
           // What dropped is in the bag; a win with no drop is one for the log.
           link: payload.droppedItems.length > 0 ? { tab: 'inv' } : { tab: 'quests', sub: 'battle-log' },
-          message: `Victory! +${payload.xpAwarded} XP  +${payload.goldAwarded} Gold${payload.droppedItems.length > 0 ? `  +${payload.droppedItems.join(', ')}` : ''}`,
+          message: `Victory! +${payload.xpAwarded} XP, +${payload.goldAwarded} Gold${victoryDropNames(payload)}`,
           ts: Date.now(),
         })
         if (payload.xpAwarded > 0) triggerXpGain(payload.xpAwarded)

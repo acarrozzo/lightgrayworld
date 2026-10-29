@@ -8,12 +8,12 @@ const DEFAULT_LIMIT = 50
 
 const EVENT_MESSAGE_BUILDERS = {
   register: (username) => `Welcome ${username} to the world!`,
-  login: (username) => `${username} has logged in`,
-  logout: (username) => `${username} has logged out`,
-  disconnect: (username) => `${username} has disconnected`,
-  idle: (username) => `${username} is now idle`,
-  return: (username) => `${username} has returned`,
-  savior: (username, detail) => (detail ? `${username} is now the ${detail}` : `${username} saved a land of Vega`),
+  login: (username) => `${username} has logged in.`,
+  logout: (username) => `${username} has logged out.`,
+  disconnect: (username) => `${username} has disconnected.`,
+  idle: (username) => `${username} is now idle.`,
+  return: (username) => `${username} has returned.`,
+  savior: (username, detail) => (detail ? `${username} is now the ${detail}.` : `${username} saved a land of Vega.`),
 }
 
 function normalizeEventType(eventType) {

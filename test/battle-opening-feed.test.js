@@ -33,6 +33,7 @@ require.cache[servicePath] = {
   loaded: true,
   exports: { savePresentEnemy: async () => {}, loadPresentEnemy: async () => null },
 }
+const supportCalls = []
 const battlePath = require.resolve(path.join(ROOT, 'src/lib/game-engine/battle-action-handlers.js'))
 require.cache[battlePath] = {
   id: battlePath,
@@ -40,7 +41,7 @@ require.cache[battlePath] = {
   loaded: true,
   exports: {
     executeStartBattle: async () => ({ success: true, action: 'start_battle', playerEvents: [{ event: 'battle:started', payload: {} }] }),
-    resolveSupportTurn: async () => ({ playerEvents: [] }),
+    resolveSupportTurn: async (playerId, roomState, meta) => { supportCalls.push(meta); return { playerEvents: [{ event: 'battle:turn', payload: { actionMeta: meta } }] } },
     executePlayerAttack: async () => ({ success: true }),
     executePlayerFlee: async () => ({ success: true }),
     fetchEquippedWeapon: async () => null,
@@ -119,4 +120,34 @@ test('a hunt’s spawn always says a fight follows', async () => {
   assert.ok(spawn, 'the client is told what came out')
   assert.equal(spawn.payload.data.engages, true, 'the player swings at whatever answers, hostile or not')
   assert.equal(spawn.payload.data.enemy.slug, room.getPresentEnemy('p1'))
+})
+
+// --- A support turn writes one row ------------------------------------------
+//
+// A potion or a cast in a fight used to write its own feedback row and then a
+// turn row that paraphrased it. The feedback event still goes (it carries the
+// inventory and vitals) but is marked `turnFollows`, and the turn's meta gets
+// the action's own line as its text, so the BATTLE TURN row says it in full.
+
+test('in a fight, the action’s feedback is marked and its line rides on the turn', async () => {
+  const roomId = Object.keys(require(path.join(ROOT, 'src/lib/game-data/room-enemies.js')).ROOM_ENEMIES)[0]
+  const room = new RoomState(roomId)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  room.activeBattles.set('p1', { isActive: true })
+  supportCalls.length = 0
+
+  const line = 'You cast Heal for 8 MP and restore 168 HP.'
+  const base = {
+    success: true,
+    action: 'cast_spell',
+    playerEvents: [{ event: 'action:feedback', payload: { action: 'cast_spell', message: line, outcome: 'success', data: { hp: 200 } } }],
+  }
+  const result = await room.resolveTurn(base, 'p1', { kind: 'cast_spell', itemName: 'Heal', effectText: '+168 HP' })
+
+  const feedback = result.playerEvents.find((e) => e.event === 'action:feedback')
+  assert.equal(feedback.payload.data.turnFollows, true, 'the client skips the row but keeps the data')
+  assert.equal(feedback.payload.data.hp, 200, 'the rest of the data is untouched')
+  assert.equal(supportCalls.length, 1)
+  assert.equal(supportCalls[0].text, line, 'the turn row carries the action’s own line')
+  assert.equal(supportCalls[0].itemName, 'Heal', 'the ledger still knows what was cast')
 })

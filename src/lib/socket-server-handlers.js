@@ -140,7 +140,7 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
     // is the one BATTLE row.
     emitActionFeedback(socket, {
       action: 'enemy_spawn',
-      message: `${withArticle(enemy.name, { cap: true })} is here!`,
+      message: `${withArticle(enemy.name, { cap: true })} is here${enemy.isAggressive ? '!' : '.'}`,
       outcome: 'danger',
       data: { enemySlug: slug, enemyName: enemy.name, enemy, engages },
     })
@@ -1712,7 +1712,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           if (gateBlock) {
             emitActionFeedback(socket, {
               action: 'move',
-              message: `Your party can't go that way — ${gateBlock.memberName}: ${gateBlock.message}`,
+              message: `Your party can't go that way. ${gateBlock.memberName}: ${gateBlock.message}`,
               outcome: 'failure',
             })
             return

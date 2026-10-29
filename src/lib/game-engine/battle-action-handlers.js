@@ -1199,7 +1199,7 @@ async function executePlayerAttack(action, playerId, roomState) {
       battleState.enemyName,
       turnResult.enemyDealtDamage,
       turnResult.enemyAction,
-      ` (HP: ${newHp}/${updatedPlayer.hpMax})`,
+      '',
       turnResult.playerDodged,
       turnResult
     ) + describeHitExtras(updatedPlayer)

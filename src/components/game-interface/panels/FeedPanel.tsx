@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Crown, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Swords, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Compass, Crown, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Swords, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { useLineSourcesStore } from '@/store/lineSourcesStore'
 import FeedLinkButton from '@/components/feed/FeedLinkButton'
@@ -23,7 +23,7 @@ import FeedOptionsMenu from '@/components/feed/FeedOptionsMenu'
 
 type FilterType = 'all' | 'chat' | 'events' | 'actions'
 type EventsSubFilter = 'world-activity' | 'all-events'
-type ActionsSubFilter = 'action-feedback' | 'movement' | 'lines' | 'all-actions'
+type ActionsSubFilter = 'action-feedback' | 'movement' | 'battle' | 'lines' | 'all-actions'
 
 export type { InputMode } from '@/components/feed/feedChannels'
 
@@ -129,17 +129,43 @@ const INFO_STYLE: CategoryStyle = {
 const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
   // A fight's opening turn: the one row a battle's start writes.
   battle: {
-    label: 'BATTLE',
+    label: 'BATTLE START',
     icon: Swords,
     barClass: 'bg-action-attack',
     iconClass: 'text-action-attack',
   },
   // Every turn after it, tagged with the turn number the battle card shows.
   'battle-turn': {
-    label: 'TURN',
+    label: 'BATTLE TURN',
     icon: Swords,
     barClass: 'bg-action-attack/60',
     iconClass: 'text-action-attack/80',
+  },
+  // How the fight ended: the same swords in the outcome's color.
+  'battle-victory': {
+    label: 'VICTORY',
+    icon: Swords,
+    barClass: 'bg-status-success',
+    iconClass: 'text-status-success',
+  },
+  'battle-defeat': {
+    label: 'DEFEAT',
+    icon: Swords,
+    barClass: 'bg-status-error',
+    iconClass: 'text-status-error',
+  },
+  'battle-fled': {
+    label: 'RETREAT',
+    icon: Swords,
+    barClass: 'bg-surface-selected',
+    iconClass: 'text-fg-secondary',
+  },
+  // A map or teleport opened on arrival: leads to the World tab.
+  discovery: {
+    label: 'DISCOVERY',
+    icon: Compass,
+    barClass: 'bg-resource-gold',
+    iconClass: 'text-resource-gold',
   },
   // A spoken line (game-data/lines.js): a keeper, a crowd, a giver's flavor.
   line: {
@@ -212,8 +238,21 @@ const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
 }
 
 const ACTIVITY_LABELS: Record<string, string> = {
-  battle: 'Battle',
-  'battle-turn': 'Turn',
+  battle: 'Battle Start',
+  'battle-turn': 'Battle Turn',
+  'battle-victory': 'Victory',
+  'battle-defeat': 'Defeat',
+  'battle-fled': 'Retreat',
+  discovery: 'Discovery',
+  'action-feedback': 'Action',
+  'enemy-spawn': 'Enemy',
+  teleport: 'Teleport',
+  equip: 'Gear',
+  pet: 'Pet',
+  'quest-chain': 'Quest',
+  buy: 'Shop',
+  sell: 'Shop',
+  traveler: 'Traveler',
   line: 'Line',
   savior: 'Savior',
   unlock: 'New',
@@ -227,6 +266,10 @@ const ACTIVITY_LABELS: Record<string, string> = {
   'room-exit': 'Exit',
   'room-travel': 'Travel',
 }
+
+/** Your own fight's rows: the opening, each turn, and how it ended. */
+const BATTLE_EVENT_TYPES = new Set(['battle', 'battle-turn', 'battle-victory', 'battle-defeat', 'battle-fled'])
+const isBattleEntry = (entry: WorldFeedEntry) => entry.type === 'room' && Boolean(entry.eventType) && BATTLE_EVENT_TYPES.has(entry.eventType as string)
 
 const ACTIVITY_TEXT_CLASSES: Record<string, string> = {
   line: 'text-resource-gold/90 italic',
@@ -543,10 +586,12 @@ export default function FeedPanel({
       
       if (filter === 'actions') {
         // Actions: type === 'action' OR (type === 'room' AND eventType === room movement)
+        // OR a fight row (your own battle, typed as a room row with a battle tag).
         const isActionFeedback = entry.type === 'action'
         const isMovement = (entry.type === 'room' && (entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel')) ||
                           (entry.type === 'action' && entry.eventType === 'room-travel')
-        const isAction = isActionFeedback || isMovement
+        const isBattle = isBattleEntry(entry)
+        const isAction = isActionFeedback || isMovement || isBattle
         
         if (!isAction) return false
         
@@ -556,6 +601,9 @@ export default function FeedPanel({
         }
         if (actionsSubFilter === 'movement') {
           return isMovement
+        }
+        if (actionsSubFilter === 'battle') {
+          return isBattle
         }
         if (actionsSubFilter === 'lines') {
           return entry.eventType === 'line'
@@ -873,11 +921,12 @@ export default function FeedPanel({
 
         {filter === 'actions' && (
           <div className="flex flex-wrap items-center gap-2 pl-2 border-l-2 border-channel-action/30">
-            {(['all-actions', 'action-feedback', 'movement', 'lines'] as ActionsSubFilter[]).map((subKey) => {
+            {(['all-actions', 'action-feedback', 'movement', 'battle', 'lines'] as ActionsSubFilter[]).map((subKey) => {
               const isActive = actionsSubFilter === subKey
               const labelMap: Record<ActionsSubFilter, string> = {
                 'all-actions': 'All Actions',
                 'action-feedback': 'Feedback',
+                battle: 'Battle',
                 'movement': 'Movement',
                 'lines': 'Lines',
               }

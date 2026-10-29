@@ -616,6 +616,23 @@ function extractFeedbackMessage(result) {
   return typeof message === 'string' && message ? message : null
 }
 
+/**
+ * Flag the result's own feedback line as one a battle turn is about to
+ * restate: `data.turnFollows`. The client keeps the event's data and skips
+ * the feed row, the way an engaging spawn's row is skipped.
+ */
+function markTurnFollows(result) {
+  const events = result?.playerEvents
+  if (!Array.isArray(events)) return result
+  let done = false
+  const playerEvents = events.map((e) => {
+    if (done || e?.event !== 'action:feedback' || !e.payload?.message) return e
+    done = true
+    return { ...e, payload: { ...e.payload, data: { ...(e.payload.data || {}), turnFollows: true } } }
+  })
+  return { ...result, playerEvents }
+}
+
 /** The eyebrow the battle panel puts over a turn that was not about an item. */
 const TURN_LABELS = {
   search: 'Searched',
@@ -674,10 +691,22 @@ function buildTurnMeta(kind, result, label = null) {
 function describeBuffCast(spell, effect) {
   switch (spell.id) {
     case 'magic-armor':
-      return `absorbs the next ${effect.amount} damage [ ${effect.text} ]`
-    default:
-      return effect.text
+      return `absorb the next ${effect.amount} damage${rollsNote(effect)}`
+    default: {
+      const text = effect.text || ''
+      if (/^immune/i.test(text)) return `are ${text}`
+      if (/^[+\d]/.test(text)) return `gain ${text}`
+      return text
+    }
   }
+}
+
+/**
+ * The dice behind a number, as " [ 3 + 5 = 8 ]", but only when there were
+ * dice to add up: a single roll says nothing the number did not.
+ */
+function rollsNote(effect) {
+  return Array.isArray(effect?.rolls) && effect.rolls.length > 1 && effect.text ? ` [ ${effect.text} ]` : ''
 }
 
 class RoomState {
@@ -1011,8 +1040,16 @@ class RoomState {
     if (!result.success || result.noTurn) return result
 
     if (this.activeBattles.get(playerId)?.isActive) {
-      const supportTurn = await resolveSupportTurn(playerId, this, meta)
-      return { ...mergeSupportTurnIntoResult(result, supportTurn), turnResolved: true }
+      // One feed row for the turn. The action's own feedback line is what the
+      // player did, in full; the turn row carries it and adds the enemy's
+      // answer. The feedback event itself still goes (it carries inventory,
+      // vitals and the result card's data) but says a turn follows, so the
+      // client writes no row for it.
+      const marked = markTurnFollows(result)
+      const text = extractFeedbackMessage(result)
+      const turnMeta = meta && !meta.text && text ? { ...meta, text } : meta
+      const supportTurn = await resolveSupportTurn(playerId, this, turnMeta)
+      return { ...mergeSupportTurnIntoResult(marked, supportTurn), turnResolved: true }
     }
 
     let spent = await this.appendHazardEvents(result, playerId)
@@ -1090,7 +1127,7 @@ class RoomState {
             payload: this.createFeedbackPayload(
               'enemy_spawn',
               'danger',
-              `${withArticle(enemy.name, { cap: true })} emerges from the darkness!`,
+              `${withArticle(enemy.name, { cap: true })} emerges from the darkness${enemy.isAggressive ? '!' : '.'}`,
               { enemySlug: slug, enemyName: enemy.name, enemy, engages: Boolean(enemy.isAggressive) }
             ),
           },
@@ -1717,7 +1754,7 @@ class RoomState {
           payload: this.createFeedbackPayload(
             'enemy_spawn',
             'danger',
-            `${withArticle(enemy.name, { cap: true })} comes out to meet you!`,
+            `${withArticle(enemy.name, { cap: true })} comes out to meet you${enemy.isAggressive ? '!' : '.'}`,
             // A hunt always swings: the fight's opening turn is the feed row.
             { enemySlug: slug, enemyName: enemy.name, enemy, engages: true }
           ),
@@ -1834,7 +1871,7 @@ class RoomState {
       this.updatePlayer(playerId, (s) => ({ ...s, mp: cast.mp }))
 
       const effectText = describeBuffCast(spell, cast.effect)
-      const message = `You cast ${spell.name} for ${cast.cost} MP: ${effectText}.`
+      const message = `You cast ${spell.name} for ${cast.cost} MP and ${effectText}.`
       let result = {
         success: true,
         action: 'cast_spell',
@@ -1900,7 +1937,7 @@ class RoomState {
 
     this.updatePlayer(playerId, (s) => ({ ...s, hp: heal.hp, mp: heal.mp }))
 
-    const message = `You cast ${spell.name} for ${heal.cost} MP and restore ${heal.hpChange} HP. [ ${heal.text} ]`
+    const message = `You cast ${spell.name} for ${heal.cost} MP and restore ${heal.hpChange} HP.${rollsNote(heal)}`
     let result = {
       success: true,
       action: 'cast_spell',

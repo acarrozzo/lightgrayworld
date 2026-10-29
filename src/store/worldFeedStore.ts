@@ -106,6 +106,7 @@ const ensureEntry = (entry: WorldFeedEntryInput): WorldFeedEntry => {
     eventType: entry.eventType,
     direction: entry.direction,
     destination: entry.destination,
+    turn: entry.turn,
     link: entry.link,
     source: entry.source,
     text: entry.text ?? message,
