@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
 import { AlertTriangle, Crown, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { useLineSourcesStore } from '@/store/lineSourcesStore'
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import FeedLinkButton from '@/components/feed/FeedLinkButton'
+import { decideFeedFollow, FOLLOW_THRESHOLD_PX } from '@/components/feed/feedFollow'
 
 type FilterType = 'all' | 'chat' | 'events' | 'actions'
 type ChatSubFilter = 'room-chat' | 'world-chat' | 'party-chat' | 'all-chat'
@@ -614,15 +615,20 @@ export default function FeedPanel({
   const isOverLimit = isChatMode && charCount > MESSAGE_MAX_LENGTH
   const isSubmitDisabled = Boolean(isLoadingRoom) || trimmedCustomAction.length === 0 || isOverLimit
 
+  // Scroll height as last measured; the follow decision reads it as the
+  // height before new rows landed.
+  const lastScrollHeightRef = useRef<number | null>(null)
+
   const handleScroll = useCallback(() => {
     const container = listRef.current
     if (!container) return
+    lastScrollHeightRef.current = container.scrollHeight
 
     const hasOverflow = container.scrollHeight > container.clientHeight
     setIsScrollable(hasOverflow)
 
     const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight)
-    const nearBottom = distanceFromBottom < 120
+    const nearBottom = distanceFromBottom < FOLLOW_THRESHOLD_PX
     setIsNearBottom(nearBottom)
     if (nearBottom) {
       setUnreadCount(0)
@@ -661,42 +667,33 @@ export default function FeedPanel({
     return () => container.removeEventListener('scroll', handleScroll)
   }, [handleScroll])
 
-  // Scroll to bottom on initial mount
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      const container = listRef.current
-      if (container) {
-        container.scrollTop = container.scrollHeight
-      }
-    })
-  }, [])
-
-  // Auto-scroll when new entries arrive if user is near bottom
-  const prevLengthRef = useRef(entries.length)
-  useEffect(() => {
+  // Follow new entries. The store caps history and trims the oldest line on
+  // every append, so the length stops changing once full: new lines are
+  // found by id, not by count. The decision measures the container as it
+  // stood before the new rows landed (last scroll height against the current
+  // scroll position) rather than the near-bottom state, which goes stale
+  // mid-scroll. The snap is instant and runs before paint so a turn's burst
+  // of lines never leaves the list short of the bottom.
+  const prevEntriesRef = useRef<WorldFeedEntry[]>([])
+  useLayoutEffect(() => {
     const container = listRef.current
-    const prevLength = prevLengthRef.current
-    prevLengthRef.current = entries.length
+    const prev = prevEntriesRef.current
+    prevEntriesRef.current = entries
     if (!container) return
 
-    if (entries.length > prevLength) {
-      const newEntries = entries.slice(prevLength)
-      // Your own action always shows its result: the feed follows it to the
-      // bottom even if you had scrolled up to read. Other people's lines only
-      // pull the feed down when you are already near the bottom.
-      const ownAction = newEntries.some((entry) => entry.type === 'action')
-      if (isNearBottom || ownAction) {
-        scrollToBottom()
-      } else {
-        // Filter to only chat messages (world/room without eventType)
-        const chatMessages = newEntries.filter(
-          (entry) => entry.type === 'party' || ((entry.type === 'world' || entry.type === 'room') && !entry.eventType)
-        )
-        // Only increment badge for chat messages
-        setUnreadCount((count) => count + chatMessages.length)
-      }
+    const before = lastScrollHeightRef.current
+    const distanceFromBottom = before === null ? null : before - (container.scrollTop + container.clientHeight)
+    const decision = decideFeedFollow(prev, entries, distanceFromBottom)
+
+    if (decision.follow) {
+      container.scrollTop = container.scrollHeight
+      setUnreadCount(0)
+      setIsNearBottom(true)
+    } else if (decision.unreadChat > 0) {
+      setUnreadCount((count) => count + decision.unreadChat)
     }
-  }, [entries.length, isNearBottom, scrollToBottom])
+    lastScrollHeightRef.current = container.scrollHeight
+  }, [entries])
 
   // Notify parent of unread count changes
   useEffect(() => {
