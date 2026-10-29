@@ -20,7 +20,7 @@ const ROOT = path.join(__dirname, '..')
 const dbPath = require.resolve(path.join(ROOT, 'src/lib/db-client.js'))
 require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true, exports: { prisma: {} } }
 
-const { describeEnemyAttack } = require(path.join(ROOT, 'src/lib/game-engine/battle-action-handlers.js'))
+const { describeEnemyAttack, silenceEnemySide } = require(path.join(ROOT, 'src/lib/game-engine/battle-action-handlers.js'))
 const { compactTurn } = require(path.join(ROOT, 'src/lib/game-engine/fight-ledger.js'))
 const { perkIcon } = require(path.join(ROOT, 'src/lib/game-data/enemy-traits.js'))
 
@@ -36,7 +36,7 @@ test("a caster's hit is a spell, and MAG is what wards it off", () => {
   )
   assert.equal(
     describeEnemyAttack('Kobold Shaman', 0, null, '', false, magic()),
-    'The Kobold Shaman casts a spell, but your MAG wards it off!'
+    'The Kobold Shaman casts a spell at you for 0 damage.'
   )
   assert.equal(
     describeEnemyAttack('Kobold Shaman', 9, null, '', true, magic()),
@@ -53,7 +53,7 @@ test("a caster's extra hits are casts; a special keeps its own name", () => {
   }))
   assert.equal(
     line,
-    'The Phoenix casts a spell at you for 9 damage. It casts again for 6! It casts again, but your MAG wards it off! (15 total)'
+    'The Phoenix casts a spell at you for 9 damage. It casts again for 6! It casts again for 0! (15 total)'
   )
   // A special on a caster reads exactly as it does on anyone else.
   assert.equal(
@@ -70,7 +70,7 @@ test('melee and ranged hits keep their words, as the original had them', () => {
     )
     assert.equal(
       describeEnemyAttack('Bowman', 0, null, '', false, { enemyDamageType: type }),
-      'The Bowman attacks but you block it!'
+      'The Bowman attacks you for 0 damage.'
     )
   }
 })
@@ -115,4 +115,42 @@ test("the original's icons are found for the types and the specials", () => {
   assert.equal(perkIcon('heal'), 'eHeal')
   assert.equal(perkIcon('no-such-perk'), null)
   assert.equal(perkIcon(null), null)
+})
+
+// --- A killed enemy has no turn ----------------------------------------------
+//
+// On the opening turn the enemy's swing used to land even when the player's
+// blow had already killed it, while every later turn returned before the hit.
+// The swing is discarded, so the row reads as no enemy turn at all.
+
+test('an opening blow that kills leaves the enemy no swing, and the row says none', () => {
+  const turn = {
+    playerDealtDamage: 12, playerRaw: 14, enemyBlocked: 2,
+    enemyDealtDamage: 7, enemyRaw: 9, playerBlocked: 2,
+    enemyAction: POWER, extraHits: [{ raw: 3, block: 0, damage: 3, dodged: false }],
+    playerDodged: false, poisonApplied: { clicks: 10 }, petrifyApplied: 2,
+    enemyDamageType: 'MELEE',
+    enemyEffects: { blocked: true, windUp: { id: 'fire', name: 'Fire', line: 'inhales' }, stealRoll: 4 },
+  }
+  silenceEnemySide(turn)
+  assert.equal(turn.enemyDealtDamage, 0)
+  assert.equal(turn.enemyRaw, null)
+  assert.equal(turn.enemyAction, null)
+  assert.deepEqual(turn.extraHits, [])
+  assert.equal(turn.poisonApplied, null)
+  assert.equal(turn.petrifyApplied, 0)
+  assert.deepEqual(turn.enemyEffects, { blocked: true }, "the player's own Block mark stays; the swing's effects go")
+  assert.equal(turn.playerDealtDamage, 12, 'the blow that killed it is untouched')
+
+  const row = compactTurn(turn, { playerHp: 30, playerMp: null, absorbed: 0, enemyActed: false })
+  assert.equal(row.foe.kind, 'none')
+  assert.equal(row.foe.dmg, 0)
+})
+
+test('zero damage is a number, not a block', () => {
+  assert.equal(describeEnemyAttack('Ogre', 0, POWER, '', false, {}), 'The Ogre unleashes a POWER ATTACK for 0 damage.')
+  assert.equal(
+    describeEnemyAttack('Wolf', 4, null, '', false, { extraHits: [{ raw: 2, block: 5, damage: 0, dodged: false }] }),
+    'The Wolf hits you for 4 damage. It strikes again for 0! (4 total)'
+  )
 })

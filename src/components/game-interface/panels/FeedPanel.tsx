@@ -134,6 +134,13 @@ const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
     barClass: 'bg-action-attack',
     iconClass: 'text-action-attack',
   },
+  // Every turn after it, tagged with the turn number the battle card shows.
+  'battle-turn': {
+    label: 'TURN',
+    icon: Swords,
+    barClass: 'bg-action-attack/60',
+    iconClass: 'text-action-attack/80',
+  },
   // A spoken line (game-data/lines.js): a keeper, a crowd, a giver's flavor.
   line: {
     label: 'LINE',
@@ -206,6 +213,7 @@ const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
 
 const ACTIVITY_LABELS: Record<string, string> = {
   battle: 'Battle',
+  'battle-turn': 'Turn',
   line: 'Line',
   savior: 'Savior',
   unlock: 'New',
@@ -922,7 +930,10 @@ export default function FeedPanel({
             const actorLabel = entry.actor || 'Unknown'
             const contentSize = settings.compactMode ? 'text-[13px]' : 'text-sm'
             const rowPadding = settings.compactMode ? 'py-1 pr-3 pl-4' : 'py-1.5 pr-4 pl-5'
-            const activityLabel = entry.eventType ? (ACTIVITY_LABELS[entry.eventType] ?? entry.eventType).toUpperCase() : null
+            // A later battle turn carries its number, so "TURN 3" lines up with the card.
+            const activityLabel = entry.eventType
+              ? `${(ACTIVITY_LABELS[entry.eventType] ?? entry.eventType).toUpperCase()}${typeof entry.turn === 'number' ? ` ${entry.turn}` : ''}`
+              : null
             const messageColorClass = getMessageColorClass(entry)
             
             // Get direction icon for travel messages

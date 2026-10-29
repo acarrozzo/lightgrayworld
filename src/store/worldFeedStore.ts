@@ -18,6 +18,8 @@ export type WorldFeedEntry = {
   direction?: string
   /** For your own travel line: the room the step landed in, drawn after the direction. */
   destination?: string
+  /** For a `battle-turn` row: the fight's turn number, so the tag lines up with the battle card's counter. */
+  turn?: number
   /** Where this line leads, if it is about a place in the interface: shown as a small link on the line. */
   link?: FeedLink
   /**

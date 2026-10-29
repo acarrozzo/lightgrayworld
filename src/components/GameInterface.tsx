@@ -2572,6 +2572,7 @@ export default function GameInterface() {
         message: payload.message,
         ts: Date.now(),
         eventType: payload.turnCount === 1 ? 'battle' : 'battle-turn',
+        turn: payload.turnCount,
         actor: payload.enemyName,
       })
     })

@@ -182,7 +182,7 @@ function FoeCell({ foe }: { foe: LedgerTurn['foe'] }) {
   return (
     <>
       <span className={`font-semibold ${tone}`}>{label}</span>
-      <span className={`ml-1 font-bold ${nothing ? 'text-fg-disabled' : 'text-fg-bright'}`}>{nothing && !foe.dodged ? 'blocked' : foe.dmg}</span>
+      <span className={`ml-1 font-bold ${nothing ? 'text-fg-disabled' : 'text-fg-bright'}`}>{foe.dmg}</span>
       {extras.length > 0 && <Sub>{joinNodes(extras)}</Sub>}
     </>
   )

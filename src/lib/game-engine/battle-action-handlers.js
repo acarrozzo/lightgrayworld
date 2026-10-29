@@ -190,17 +190,15 @@ function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodg
     const what = enemyAction ? enemyAction.name.toUpperCase() : isSpell ? 'spell' : 'attack'
     line = `You DODGE the ${enemyName}'s ${what}!`
   } else if (enemyAction) {
-    const label = enemyAction.name.toUpperCase()
-    line = mainDamage === 0
-      ? `The ${enemyName} unleashes a ${label} but you block it!`
-      : `The ${enemyName} unleashes a ${label} for ${mainDamage} damage!`
+    // Zero damage is a number, not a block: the roll came up short, as the
+    // original's "attacks you for 0 damage" had it. The only real block is the
+    // Block skill, which describeNoAttack names.
+    line = `The ${enemyName} unleashes a ${enemyAction.name.toUpperCase()} for ${mainDamage} damage${mainDamage === 0 ? '.' : '!'}`
   } else if (isSpell) {
-    line = mainDamage === 0
-      ? `The ${enemyName} casts a spell, but your MAG wards it off!`
-      : `The ${enemyName} casts a spell at you for ${mainDamage} damage.`
+    line = `The ${enemyName} casts a spell at you for ${mainDamage} damage.`
   } else {
     line = mainDamage === 0
-      ? `The ${enemyName} attacks but you block it!`
+      ? `The ${enemyName} attacks you for 0 damage.`
       : `The ${enemyName} hits you for ${mainDamage} damage.`
   }
   for (const hit of extraHits) {
@@ -208,11 +206,7 @@ function describeEnemyAttack(enemyName, damage, enemyAction, hpSuffix = '', dodg
     // A pack's hit is another animal's bite, never a spell.
     const spellHit = isSpell && !hit.action && !hit.pack
     const again = hit.action ? `follows with a ${hit.action.name.toUpperCase()}` : spellHit ? 'casts again' : 'strikes again'
-    line += hit.dodged
-      ? ` You DODGE as it ${again}!`
-      : hit.damage === 0
-        ? spellHit ? ` It ${again}, but your MAG wards it off!` : ` It ${again} but you block it!`
-        : ` It ${again} for ${hit.damage}!`
+    line += hit.dodged ? ` You DODGE as it ${again}!` : ` It ${again} for ${hit.damage}!`
   }
   if (extraHits.length > 0 && damage > 0) line += ` (${damage} total)`
   if (petrifyApplied > 0) line += ` Its gaze turns you to STONE for ${petrifyApplied} turn${petrifyApplied === 1 ? '' : 's'}!`
@@ -296,6 +290,26 @@ function describeHitExtras(hit) {
   }
   if (hit.poisoned > 0) bits.push(`You are POISONED! (${hit.poisoned})`)
   return bits.length ? ` ${bits.join(' ')}` : ''
+}
+
+/**
+ * Strip the enemy's side off a resolved turn: the swing it rolled never came,
+ * because the player's blow in the same turn killed it. The ledger then reads
+ * the row as `foe.kind: 'none'` (no raw, no damage, no action, no dodge).
+ */
+function silenceEnemySide(turn) {
+  turn.enemyDealtDamage = 0
+  turn.enemyRaw = null
+  turn.playerBlocked = 0
+  turn.enemyAction = null
+  turn.extraHits = []
+  turn.playerDodged = false
+  turn.poisonApplied = null
+  turn.petrifyApplied = 0
+  // Keep what the player's side wrote on it (a Block skill mark); drop the swing's.
+  const { blocked } = turn.enemyEffects || {}
+  turn.enemyEffects = blocked ? { blocked } : {}
+  return turn
 }
 
 // Fetch what is in the player's hands, as combat and the skills read it.
@@ -408,7 +422,7 @@ function notEnoughMpMessage(spell, verb = 'cast') {
 function describeSkillStrike(enemyName, turn, extra = '') {
   const use = turn.skill
   const cost = turn.immuneToMagic ? 'no MP spent' : `${use.cost} MP`
-  const note = turn.immuneToMagic ? ` The ${enemyName} is immune to magic — the strike's magic fizzles.` : ''
+  const note = turn.immuneToMagic ? ` The ${enemyName} is immune to magic. The strike's magic fizzles.` : ''
   return `You ${use.name} the ${enemyName} for ${turn.playerDealtDamage} damage (${cost}).${extra}${note}${describeMelt(turn)}`
 }
 
@@ -432,7 +446,7 @@ function describeNoAttack(enemyName, turn) {
 }
 
 function describeMelt(turn) {
-  return turn.melted ? ' The magma takes the blow — and half of it with your blade.' : ''
+  return turn.melted ? ' The magma takes the blow, and half of it with your blade.' : ''
 }
 
 // Player-side line of a battle:turn message for a weapon strike, covering the
@@ -441,13 +455,13 @@ function describeMelt(turn) {
 // reported on its own line so the two numbers stay separate.
 function describeWeaponStrike(enemyName, turn, extra = '') {
   if (turn.missedFlyingMelee) {
-    return `Your swing passes through empty air — the ${enemyName} is out of reach!`
+    return `Your swing passes through empty air. The ${enemyName} is out of reach!`
   }
   if (turn.immuneToWeapon === 'RANGED') {
-    return `Your shot glances off the ${enemyName} — it cannot be hit at range!`
+    return `Your shot glances off the ${enemyName}. It cannot be hit at range!`
   }
   if (turn.immuneToWeapon === 'MELEE') {
-    return `Your blade bounces off the ${enemyName} — it cannot be cut!`
+    return `Your blade bounces off the ${enemyName}. It cannot be cut!`
   }
   return `You strike the ${enemyName} for ${turn.playerDealtDamage} damage.${extra}${describeMelt(turn)}`
 }
@@ -455,9 +469,7 @@ function describeWeaponStrike(enemyName, turn, extra = '') {
 // Multi Arrow's second arrow, on the same line as the shot it followed.
 function describeExtraShot(enemyName, extraShot) {
   if (!extraShot) return ''
-  return extraShot.damage === 0
-    ? ` A second arrow follows and is blocked.`
-    : ` A second arrow hits the ${enemyName} for ${extraShot.damage} damage.`
+  return ` A second arrow hits the ${enemyName} for ${extraShot.damage} damage.`
 }
 
 // Player-side line of a battle:turn message for a spell strike.
@@ -696,6 +708,7 @@ async function executeStartBattle(action, playerId, roomState) {
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
 
   let firstTurn
+  let killedByOpening = false
   if (isAdvantageTurn) {
     // Enemy gets a free hit — player was entering the room, no counter-attack
     const enemyAtk = resolveEnemyAttack(battleState, otherCombatants)
@@ -737,6 +750,13 @@ async function executeStartBattle(action, playerId, roomState) {
     // the fight.
     firstTurn = resolveTurn(battleState, otherCombatants, { spell, skill: strike, enemyDodged, canMultiShot: !ammo || ammo.remaining >= 2 })
     battleState.applyDamageToEnemy(totalDamageToEnemy(firstTurn))
+    // The opening blow killed it: it fell before it could answer, as on every
+    // later turn (executePlayerAttack returns before the enemy's hit lands).
+    // Its rolled swing is discarded, so neither the HP nor the line carry it.
+    if (battleState.isEnemyDead()) {
+      killedByOpening = true
+      silenceEnemySide(firstTurn)
+    }
     battleState.recordTurn(totalDamageToEnemy(firstTurn), firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
   }
   settleEnemyAftermath(battleState, firstTurn)
@@ -797,14 +817,22 @@ async function executeStartBattle(action, playerId, roomState) {
     attackDesc = describeNoAttack(enemy.name, firstTurn)
   } else if (firstTurn.spell) {
     attackDesc = describeSpellStrike(enemy.name, firstTurn)
-  } else if (firstTurn.skill) {
-    attackDesc = describeSkillStrike(enemy.name, firstTurn) + describeExtraShot(enemy.name, firstTurn.extraShot)
   } else {
-    attackDesc = describeWeaponStrike(enemy.name, firstTurn) + describeExtraShot(enemy.name, firstTurn.extraShot)
+    // The same notes a later turn's swing carries: the group bonus, and the
+    // quiver after the shot.
+    let extra = ''
+    if (firstTurn.multiplayerBonus) extra += ` (+${firstTurn.bonusPercent}% group bonus)`
+    if (ammoRemaining !== null) extra += ` (${ammoRemaining} left)`
+    attackDesc = firstTurn.skill
+      ? describeSkillStrike(enemy.name, firstTurn, extra) + describeExtraShot(enemy.name, firstTurn.extraShot)
+      : describeWeaponStrike(enemy.name, firstTurn, extra) + describeExtraShot(enemy.name, firstTurn.extraShot)
   }
-  const defenseDesc =
-    describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction, '', firstTurn.playerDodged, firstTurn) +
-    describeHitExtras(updatedPlayer)
+  // A dead enemy has no line: the victory card says what the blow did. Unless
+  // it stood back up (Resurrect), in which case that is the whole of its turn.
+  const defenseDesc = killedByOpening
+    ? firstTurn.enemyEffects?.resurrected ? `The ${enemy.name} RISES AGAIN!` : ''
+    : describeEnemyAttack(enemy.name, firstTurn.enemyDealtDamage, firstTurn.enemyAction, '', firstTurn.playerDodged, firstTurn) +
+      describeHitExtras(updatedPlayer)
 
   const turnPayload = {
     ...snapshot,
@@ -839,7 +867,7 @@ async function executeStartBattle(action, playerId, roomState) {
     ...(skillMp ? { playerMp: skillMp.mp, playerMpMax: skillMp.mpMax } : {}),
     ...theftFields(theft),
     ...(ammoSlug && !spell ? { ammo: { slug: ammoSlug, remaining: ammoRemaining } } : {}),
-    message: [attackDesc, defenseDesc].join(' '),
+    message: [attackDesc, defenseDesc].filter(Boolean).join(' '),
   }
   // The opening turn's ledger row. The enemy only answered if it survived
   // the player's opening blow (it always acts on an ambush).
@@ -1475,6 +1503,8 @@ module.exports = {
   // The quiver readers, for a hunt's refusal before it rolls (room-state.executeHunt).
   readAmmo,
   ammoDisplayName,
+  // An opening blow that kills: the enemy's rolled swing is discarded (tested directly).
+  silenceEnemySide,
   // Exported so the shared defeat teardown can be exercised directly: the bug it
   // fixes (an enemy left behind, blocking the respawn move) is invisible from
   // the outside until a player is already stuck.
