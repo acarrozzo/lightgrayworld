@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Crown, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Crown, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Swords, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { useLineSourcesStore } from '@/store/lineSourcesStore'
 import FeedLinkButton from '@/components/feed/FeedLinkButton'
@@ -127,6 +127,13 @@ const INFO_STYLE: CategoryStyle = {
 }
 
 const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
+  // A fight's opening turn: the one row a battle's start writes.
+  battle: {
+    label: 'BATTLE',
+    icon: Swords,
+    barClass: 'bg-action-attack',
+    iconClass: 'text-action-attack',
+  },
   // A spoken line (game-data/lines.js): a keeper, a crowd, a giver's flavor.
   line: {
     label: 'LINE',
@@ -198,6 +205,7 @@ const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
 }
 
 const ACTIVITY_LABELS: Record<string, string> = {
+  battle: 'Battle',
   line: 'Line',
   savior: 'Savior',
   unlock: 'New',

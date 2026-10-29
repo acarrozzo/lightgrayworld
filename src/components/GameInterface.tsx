@@ -1903,19 +1903,30 @@ export default function GameInterface() {
       else if (action === 'pet') eventType = 'pet'
       else if (action) eventType = 'action-feedback'
 
-      appendWorldFeed({
-        type: 'action',
-        isSelf: true,
-        message: messageText,
-        roomId: payload?.data?.roomId || payload?.roomId || currentRoomRef.current?.roomId,
-        ts: timestampMs,
-        outcome,
-        eventType,
-        direction: travelDirection,
-        destination: isMoveAction && typeof payload?.data?.toRoomName === 'string' ? payload.data.toRoomName : undefined,
-        actor: isLine && typeof spokenLine.speaker === 'string' ? spokenLine.speaker : action,
-        source: lineSource,
-      })
+      // A fight's opening writes one feed row, the BATTLE row the first turn
+      // makes. Two feedback lines about the same moment stay out of the feed:
+      // a spawn that is about to attack (the room card still gets the enemy
+      // from it below), and the room's third-person broadcast about the
+      // player's own fight, which the server signs with the actor's id.
+      const selfId = playerRef.current?.id
+      const isOwnBroadcast = Boolean(payload?.actorId && selfId && payload.actorId === selfId)
+      const spawnEngages = action === 'enemy_spawn' && payload?.data?.engages === true
+
+      if (!isOwnBroadcast && !spawnEngages) {
+        appendWorldFeed({
+          type: 'action',
+          isSelf: true,
+          message: messageText,
+          roomId: payload?.data?.roomId || payload?.roomId || currentRoomRef.current?.roomId,
+          ts: timestampMs,
+          outcome,
+          eventType,
+          direction: travelDirection,
+          destination: isMoveAction && typeof payload?.data?.toRoomName === 'string' ? payload.data.toRoomName : undefined,
+          actor: isLine && typeof spokenLine.speaker === 'string' ? spokenLine.speaker : action,
+          source: lineSource,
+        })
+      }
 
       // A spoken line: pin it in the room box until the next line or room.
       if (isLine) {
@@ -2482,15 +2493,8 @@ export default function GameInterface() {
         playerStr: payload.playerStr,
         playerDef: payload.playerDef,
       })
-      appendWorldFeed({
-        type: 'room',
-        isSelf: true,
-        eventType: 'battle-started',
-        outcome: payload.isAggressive ? 'failure' : 'info',
-        message: payload.isAggressive
-          ? `A ${payload.enemyName} attacks you!`
-          : `You engage the ${payload.enemyName}!`,
-      })
+      // No feed row here: the battle card is this event's output, and the
+      // first battle:turn writes the fight's one BATTLE row.
     })
 
     const cleanupTurn = socketHandlers.onBattleTurn((payload) => {
@@ -2560,7 +2564,16 @@ export default function GameInterface() {
           })
         }
       }
-      appendWorldFeed({ type: 'room', message: payload.message, ts: Date.now(), eventType: 'battle-turn' })
+      // The opening turn is the fight's one BATTLE row (the spawn line and the
+      // room's broadcast about it stay out of the feed); later turns are turns.
+      appendWorldFeed({
+        type: 'room',
+        isSelf: true,
+        message: payload.message,
+        ts: Date.now(),
+        eventType: payload.turnCount === 1 ? 'battle' : 'battle-turn',
+        actor: payload.enemyName,
+      })
     })
 
     const cleanupVictory = socketHandlers.onBattleVictory((payload) => {

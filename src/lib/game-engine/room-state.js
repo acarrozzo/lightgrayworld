@@ -1,6 +1,7 @@
 const { executeRoomAction, isTurnCostingRoomAction } = require('./room-action-handlers')
 const { executeItemAction } = require('./item-action-handlers')
 const { RESPAWN_ROOM_ID, CHAT_MESSAGE_MAX_LENGTH } = require('../game-data/constants')
+const { withArticle } = require('../game-data/grammar')
 
 /**
  * The few things a dead player (HP 0) may still do: rise — the one authorized
@@ -1084,11 +1085,13 @@ class RoomState {
           ...(result.playerEvents ?? []),
           {
             event: 'action:feedback',
+            // `engages`: a hostile one attacks below, and that opening turn is
+            // the feed's one row; the client keeps this for the room card only.
             payload: this.createFeedbackPayload(
               'enemy_spawn',
               'danger',
-              `A ${enemy.name} emerges from the darkness!`,
-              { enemySlug: slug, enemyName: enemy.name, enemy }
+              `${withArticle(enemy.name, { cap: true })} emerges from the darkness!`,
+              { enemySlug: slug, enemyName: enemy.name, enemy, engages: Boolean(enemy.isAggressive) }
             ),
           },
         ],
@@ -1714,8 +1717,9 @@ class RoomState {
           payload: this.createFeedbackPayload(
             'enemy_spawn',
             'danger',
-            `A ${enemy.name} comes out to meet you!`,
-            { enemySlug: slug, enemyName: enemy.name, enemy }
+            `${withArticle(enemy.name, { cap: true })} comes out to meet you!`,
+            // A hunt always swings: the fight's opening turn is the feed row.
+            { enemySlug: slug, enemyName: enemy.name, enemy, engages: true }
           ),
         },
       ],

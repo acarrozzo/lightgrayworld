@@ -55,7 +55,6 @@ export interface BattleStartedPayload extends BattleSnapshot {
   playerHpMax: number
   playerStr: number
   playerDef: number
-  isAggressive?: boolean
   /** On a reconnect snapshot only: the fight so far, as ledger rows. */
   turns?: LedgerTurn[]
 }

@@ -1,6 +1,7 @@
 // Shared socket handling logic for server.js and socket-server.js
 const { SOCKET_EVENTS, getSocketIdsForUser } = require('./socket-utils.js')
 const { RESPAWN_ROOM_ID } = require('./game-data/constants.js')
+const { withArticle } = require('./game-data/grammar.js')
 const { guardListener, readChatText } = require('./socket-guards.js')
 const partyStore = require('./services/party-store.js')
 const { checkRoomGate, getGatedDirections } = require('./game-engine/room-gates.js')
@@ -130,19 +131,22 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
     const enemy = getEnemy(slug)
     if (!enemy) return
 
-    // Tell the player what is here; out of battle they may attack it.
+    // A hostile enemy ambushes the player on entry; a neutral one waits.
+    const engages = enemy.isAggressive && !destRoomState.activeBattles.has(player.id)
+
+    // Tell the player what is here; out of battle they may attack it. `engages`
+    // says a fight's own events follow this one, so the client keeps the enemy
+    // for the room card but writes no feed line of its own: the opening turn
+    // is the one BATTLE row.
     emitActionFeedback(socket, {
       action: 'enemy_spawn',
-      message: `A ${enemy.name} is here!`,
+      message: `${withArticle(enemy.name, { cap: true })} is here!`,
       outcome: 'danger',
-      data: { enemySlug: slug, enemyName: enemy.name, enemy },
+      data: { enemySlug: slug, enemyName: enemy.name, enemy, engages },
     })
 
-    // A hostile enemy ambushes the player on entry; a neutral one waits.
-    if (!enemy.isAggressive) return
+    if (!engages) return
     const targetSlug = slug
-
-    if (destRoomState.activeBattles.has(player.id)) return
     try {
       await gameEngine.processUserAction({
         playerId: player.id,

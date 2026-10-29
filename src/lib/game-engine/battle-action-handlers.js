@@ -1,6 +1,7 @@
 const { prisma } = require('../db-client')
 const { BattleState, playerIsFlying } = require('./battle-state')
 const { compactTurn } = require('./fight-ledger')
+const { withArticle } = require('../game-data/grammar')
 const { recordBattleFled } = require('./services/battle-log-service')
 const { resolveTurn, resolveEnemyAttack, rollEnemyDodge, getOtherCombatantCount, totalDamageToEnemy, pickPlayerOffensiveStat } = require('./battle-calculator')
 const { getEnemyBehaviours } = require('../game-data/enemy-specials')
@@ -26,6 +27,17 @@ function makeFeedback(action, outcome, message, data = {}) {
     success: outcome === 'success',
     data,
   }
+}
+
+/**
+ * A room broadcast about one player's fight, signed by that player. The room
+ * channel includes the actor's own socket, so without the signature they read
+ * their own fight in the third person beside their first-person line. The
+ * client drops a signed broadcast from itself and keeps everyone else's.
+ */
+function roomBroadcast(player, payload) {
+  if (!player) return payload
+  return { ...payload, actorId: player.id, actorName: player.username }
 }
 
 /**
@@ -908,8 +920,8 @@ async function executeStartBattle(action, playerId, roomState) {
   }
 
   const broadcastMsg = isAdvantageTurn
-    ? `${player.username} is attacked by a ${enemy.name}!`
-    : `${player.username} engages a ${enemy.name}!`
+    ? `${player.username} is attacked by ${withArticle(enemy.name)}!`
+    : `${player.username} engages ${withArticle(enemy.name)}!`
 
   return {
     success: true,
@@ -920,7 +932,7 @@ async function executeStartBattle(action, playerId, roomState) {
       {
         event: 'action:feedback',
         targetRoomId: roomState.roomId,
-        payload: makeFeedback('start_battle', 'info', broadcastMsg),
+        payload: roomBroadcast(player, makeFeedback('start_battle', 'info', broadcastMsg)),
       },
     ],
   }
@@ -1085,7 +1097,7 @@ async function executePlayerAttack(action, playerId, roomState) {
         {
           event: 'action:feedback',
           targetRoomId: roomState.roomId,
-          payload: makeFeedback('player_attack', 'info', `${player.username} defeated the ${battleState.enemyName}!`),
+          payload: roomBroadcast(player, makeFeedback('player_attack', 'info', `${player.username} defeated the ${battleState.enemyName}!`)),
         },
       ],
     }
@@ -1130,7 +1142,7 @@ async function executePlayerAttack(action, playerId, roomState) {
         {
           event: 'action:feedback',
           targetRoomId: roomState.roomId,
-          payload: makeFeedback('player_attack', 'info', `${player.username} was defeated by the ${battleState.enemyName}...`),
+          payload: roomBroadcast(player, makeFeedback('player_attack', 'info', `${player.username} was defeated by the ${battleState.enemyName}...`)),
         },
       ],
     }
@@ -1313,7 +1325,7 @@ async function resolveSupportTurn(playerId, roomState, actionMeta) {
         {
           event: 'action:feedback',
           targetRoomId: roomState.roomId,
-          payload: makeFeedback(actionMeta.kind, 'info', `${playerName} was defeated by the ${battleState.enemyName}...`),
+          payload: roomBroadcast(player, makeFeedback(actionMeta.kind, 'info', `${playerName} was defeated by the ${battleState.enemyName}...`)),
         },
       ],
     }
