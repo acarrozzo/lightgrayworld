@@ -28,17 +28,24 @@ export function RankBadge({ rank }: { rank: 'boss' | 'miniboss' }) {
  * "Turn N" between the two sides. With `onOpen` it is a chip that opens the
  * fight's ledger — the Room chip's idea, applied to time: the fight so far,
  * a tap away without moving anything on the pinned card.
+ *
+ * On a card under 600px the word stands over the number, the stats' own
+ * stacked form, so the chip is no wider than a stat and the duel's two
+ * columns keep their width; from 600px it is the one-line pill with the
+ * ledger glyph.
  */
 export function TurnChip({ turn, onOpen, size }: { turn: number; onOpen?: () => void; size: 'sm' | 'md' }) {
-  const label = size === 'sm' ? 'text-[8px]' : 'text-[9px]'
+  const label = size === 'sm' ? 'text-[7px] @min-[600px]:text-[8px]' : 'text-[9px]'
   const number = size === 'sm' ? 'text-[10px]' : 'text-[11px]'
+  const layout = `inline-flex flex-col items-center gap-px leading-none whitespace-nowrap ${label} uppercase tracking-wider text-fg-muted @min-[600px]:flex-row @min-[600px]:gap-1 @min-[600px]:tracking-widest`
   const inner = (
     <>
-      Turn <span className={`${number} font-semibold tracking-normal text-fg-secondary tabular-nums`}>{turn}</span>
+      <span>Turn</span>
+      <span className={`${number} font-semibold tracking-normal text-fg-secondary tabular-nums`}>{turn}</span>
     </>
   )
   if (!onOpen) {
-    return <span className={`whitespace-nowrap ${label} uppercase tracking-widest text-fg-muted`}>{inner}</span>
+    return <span className={layout}>{inner}</span>
   }
   return (
     <button
@@ -46,10 +53,10 @@ export function TurnChip({ turn, onOpen, size }: { turn: number; onOpen?: () => 
       onClick={onOpen}
       title="The fight so far, turn by turn"
       aria-label={`Turn ${turn}. Open the fight's turn-by-turn ledger`}
-      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-line-strong/50 bg-surface-raised/40 px-2 py-0.5 ${label} uppercase tracking-widest text-fg-muted transition-colors hover:border-combat-damage/50 hover:text-fg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus`}
+      className={`${layout} rounded-md border border-line-strong/50 bg-surface-raised/40 px-1 py-0.5 transition-colors hover:border-combat-damage/50 hover:text-fg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus @min-[600px]:rounded-full @min-[600px]:px-2`}
     >
       {inner}
-      <svg className="h-2.5 w-2.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg className="hidden h-2.5 w-2.5 opacity-70 @min-[600px]:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h10" />
       </svg>
     </button>

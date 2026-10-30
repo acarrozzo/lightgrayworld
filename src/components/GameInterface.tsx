@@ -4342,8 +4342,9 @@ export default function GameInterface() {
         clicks={player?.clicks}
         unspentPoints={unspentPoints}
         onCharacterClick={() => selectTab('char')}
-        onSettingsClick={() => selectTab('settings')}
+        onSettingsClick={() => openTab('settings')}
         settingsOpen={centerActiveTab === 'settings'}
+        onLogout={handleLogoutFlow}
         isConnected={socket?.connected ?? false}
         onRefresh={() => window.location.reload()}
       />

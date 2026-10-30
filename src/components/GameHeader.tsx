@@ -1,7 +1,6 @@
 'use client'
 
-import { Settings as SettingsIcon } from 'lucide-react'
-import ThemeSwitcher from '@/components/ThemeSwitcher'
+import SettingsMenu from '@/components/SettingsMenu'
 import Icon from '@/components/Icon'
 import VitalBar, { VitalBarKeyframes } from '@/components/game-interface/VitalBar'
 import { MagicArmorPill } from '@/components/game-interface/EffectBadges'
@@ -34,9 +33,11 @@ interface GameHeaderProps {
   /** Unspent Core + Training Points, as a pulsing pill beside the name. The Char tab badge carries the same count. */
   unspentPoints?: number
   onCharacterClick?: () => void
-  /** The gear: Settings is opened from here, not from the tab bar. */
+  /** The gear's menu opens the Settings tab with this (All settings); the tab bar has no Settings tile. */
   onSettingsClick?: () => void
   settingsOpen?: boolean
+  /** The gear's menu: Log out. */
+  onLogout?: () => void
   isConnected?: boolean
   onRefresh?: () => void
   /** What the consumable under the pointer in the battle deck would do; ghosted onto the bars and stats. */
@@ -62,13 +63,13 @@ interface GameHeaderProps {
  *   < 1280  version number
  *   < 1100  click count
  *   <  768  the title; HP and MP become two thin stacked bars in one slot
- *   <  640  the theme dot (Settings has the full theme list)
  *   <  360  the name (truncated to 7rem on phones) becomes its initial
  *
  * Never leaves: HP, MP, level + XP percent, the four stat numbers with their
- * 7px labels stacked above, Settings, the connection dot (its word is the
- * tooltip). The header does not change in a fight: the enemy's bar is the
- * battle card's duel, and the pinned line's when the card scrolls.
+ * 7px labels stacked above, and the Settings gear, which wears the connection
+ * as a pip and opens the menu with the themes, All settings and Log out. The
+ * header does not change in a fight: the enemy's bar is the battle card's
+ * duel, and the pinned line's when the card scrolls.
  */
 
 /**
@@ -162,7 +163,7 @@ function UnspentPill({ count }: { count?: number }) {
   )
 }
 
-export default function GameHeader({ hiddenOnPhone = false, playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, title = null, onCharacterClick, onSettingsClick, settingsOpen = false, isConnected, onRefresh, itemPreview, regenGain, regenGainKey, magicArmor = 0, regen = null }: GameHeaderProps) {
+export default function GameHeader({ hiddenOnPhone = false, playerName, level, hp, hpMax, mp, mpMax, xp, xpGain, xpGainKey, str, dex, mag, def, statTitles, clicks, unspentPoints, pet = null, title = null, onCharacterClick, onSettingsClick, settingsOpen = false, onLogout, isConnected, onRefresh, itemPreview, regenGain, regenGainKey, magicArmor = 0, regen = null }: GameHeaderProps) {
   let xpPct = 0
   if (xp !== undefined && level !== undefined) {
     const xpFromLevel = (level ** 3) * 2
@@ -263,7 +264,7 @@ export default function GameHeader({ hiddenOnPhone = false, playerName, level, h
             <span className="hidden @min-[1280px]:inline text-[10px] text-fg-muted font-normal">v0.1.8</span>
           </div>
 
-          {/* Right: core stats, Settings, connection dot, theme */}
+          {/* Right: core stats, then the gear */}
           <div className="flex items-center gap-3 shrink-0 justify-self-end">
             <div className="flex items-center gap-2">
               <Stat stat="str" value={str} title={statTitles?.str} bump={itemPreview?.stats?.str} />
@@ -272,46 +273,15 @@ export default function GameHeader({ hiddenOnPhone = false, playerName, level, h
               <Stat stat="def" value={def} title={statTitles?.def} bump={itemPreview?.stats?.def} />
             </div>
 
-            {/* Settings sits right after DEF, before the connection dot and the theme dot. */}
-            {onSettingsClick && (
-              <button
-                type="button"
-                onClick={onSettingsClick}
-                aria-pressed={settingsOpen}
-                aria-label="Settings"
-                title="Settings"
-                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-                  settingsOpen ? 'bg-surface-raised text-fg-bright' : 'text-fg-secondary hover:bg-surface-raised/60 hover:text-fg-bright'
-                }`}
-              >
-                <SettingsIcon size={15} aria-hidden="true" />
-              </button>
-            )}
-            {/* The connection dot: green or red, the word only on hover. Refresh appears beside it when the socket is gone. */}
-            {isConnected !== undefined && (
-              <div className="flex items-center gap-2 text-fg-secondary" title={isConnected ? 'Connected' : 'Disconnected'}>
-                <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${isConnected ? 'bg-status-success shadow-[0_0_6px_color-mix(in_srgb,var(--status-success)_50%,transparent)]' : 'bg-status-error shadow-[0_0_6px_color-mix(in_srgb,var(--status-error)_50%,transparent)]'}`}
-                  role="img"
-                  aria-label={isConnected ? 'Connected' : 'Disconnected'}
-                />
-                {!isConnected && onRefresh && (
-                  <button
-                    onClick={onRefresh}
-                    className="px-2 py-1 text-xs font-medium rounded-md fill-accent transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.97]"
-                    aria-label="Refresh page"
-                    title="Refresh page"
-                  >
-                    Refresh
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* On phones the theme dot folds away; Settings carries the full theme list. */}
-            <span className="hidden @min-[640px]:block">
-              <ThemeSwitcher />
-            </span>
+            {/* A hairline ends the stats; then the gear, its menu, and the connection on its shoulder. */}
+            <span className="h-[22px] w-px shrink-0 bg-line-strong" aria-hidden="true" />
+            <SettingsMenu
+              isConnected={isConnected}
+              onRefresh={onRefresh}
+              onOpenSettings={onSettingsClick}
+              settingsOpen={settingsOpen}
+              onLogout={onLogout}
+            />
           </div>
         </div>
       </header>

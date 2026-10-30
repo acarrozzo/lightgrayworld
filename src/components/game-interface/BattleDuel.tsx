@@ -173,7 +173,8 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
               extra={itemPreview?.mp ? <span className="text-combat-heal animate-pulse">+{itemPreview.mp}</span> : null}
               className="w-full"
             />
-            <div className="flex items-center gap-1.5 pt-0.5 @min-[600px]:gap-2.5">
+            {/* Wraps rather than spills: with four wide stats on a phone the effects chip drops to its own line, at the right. */}
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 pt-0.5 @min-[600px]:gap-x-2.5">
               {STAT_KEYS.map((key) => (
                 <Stat
                   key={key}
