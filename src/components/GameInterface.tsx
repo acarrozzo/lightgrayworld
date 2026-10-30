@@ -42,6 +42,8 @@ import { useVisitedRooms } from '@/lib/visited-rooms'
 import { trackedQuestView, useTrackedQuests } from '@/lib/tracked-quest'
 import { buildJournal } from '@/lib/quest-journal'
 import { registerFeedLinkHandler, type FeedLink } from '@/lib/feed-links'
+import { ACTION_TABS, type ActionFocus, type ActionTab } from '@/lib/use-action-tab'
+import { expiredEffectLink } from '@/lib/effect-sources'
 import { useWorldFeedStore } from '@/store/worldFeedStore'
 import type { WorldFeedEntryInput } from '@/store/worldFeedStore'
 import type { PartyFollowRequestPayload } from '@/lib/socket'
@@ -231,6 +233,9 @@ export default function GameInterface() {
     { title: string; message: string; confirmLabel: string; run: () => void } | null
   >(null)
   const [worldTab, setWorldTab] = useState<WorldTab>('map')
+  // A link's request for the Actions tab: which sub-tab, and what on it to
+  // ring. Dropped once the player leaves the tab, so the tile opens it plain.
+  const [actionFocus, setActionFocus] = useState<ActionFocus | null>(null)
   // How the World tab last opened — on the whole world (the tab bar, a feed
   // link) or on your room (the compass's mini-map) — and whether it is over
   // the whole window. Full screen is remembered per device when the player
@@ -1931,6 +1936,11 @@ export default function GameInterface() {
       // this line in full, so it is not written twice.
       const turnFollows = payload?.data?.turnFollows === true
 
+      const expiredLink =
+        action === 'buff expired' && typeof payload?.data?.field === 'string'
+          ? expiredEffectLink(payload.data.field, playerRef.current, useGameStore.getState().inventory)
+          : null
+
       if (!isOwnBroadcast && !spawnEngages && !turnFollows) {
         appendWorldFeed({
           type: 'action',
@@ -1946,6 +1956,8 @@ export default function GameInterface() {
           source: lineSource,
           // A map or teleport discovery leads to the World tab.
           ...(eventType === 'discovery' ? { link: { tab: 'world', sub: 'map' } } : {}),
+          // An effect running out leads to what would put it back, if you have it.
+          ...(expiredLink ? { link: expiredLink } : {}),
         })
       }
 
@@ -3728,10 +3740,19 @@ export default function GameInterface() {
       case 'explore':
         goToExplore()
         return
+      case 'actions': {
+        const sub = ACTION_TABS.find((tab) => tab === link.sub)
+        if (sub) setActionFocus((prev) => ({ tab: sub as ActionTab, anchor: link.anchor, seq: (prev?.seq ?? 0) + 1 }))
+        openTab('actions')
+        return
+      }
       default:
         openTab(link.tab)
     }
   }
+  useEffect(() => {
+    if (centerActiveTab !== 'actions') setActionFocus(null)
+  }, [centerActiveTab])
   useEffect(() => {
     registerFeedLinkHandler((link) => followLinkRef.current(link))
     return () => registerFeedLinkHandler(null)
@@ -4067,6 +4088,7 @@ export default function GameInterface() {
     onUseItem: handleUseItemFromLayer,
     onOpenBook: handleOpenBook,
     onOpenInventory: handleSwitchToInventory,
+    actionFocus,
   }
 
   // The book over the whole window. The header is the SP to spend at the
@@ -4355,6 +4377,10 @@ export default function GameInterface() {
                 isDimmed={player.hp <= 0}
                 showBattleBadge={battle.isInBattle}
                 isLoadingRoom={isLoadingRoom}
+                battle={battle}
+                roomEnemy={roomEnemy}
+                canHunt={canHunt}
+                canOpenActions={unlocks.open.has('tab:actions')}
               />
             </div>
           )}
@@ -4549,6 +4575,10 @@ export default function GameInterface() {
                   isLoadingRoom={isLoadingRoom}
                   currentAction={action}
                   actionResult={actionResult}
+                  battle={battle}
+                  roomEnemy={roomEnemy}
+                  canHunt={canHunt}
+                  canOpenActions={unlocks.open.has('tab:actions')}
                 />
               </div>
               )}

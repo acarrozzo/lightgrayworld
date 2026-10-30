@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Icon from '@/components/Icon'
 import type { BattleState, InventoryItem, Player } from '@/lib/game-state'
 import type { FilterTab } from '@/lib/inventory-categories'
 import { deckContextFromBattle, deckContextFromRoom, weaponInHand, type targetFromRoomEnemy } from '@/lib/action-deck'
 import { getCastableSpells } from '@/lib/spellbook'
-import { startingActionTab, type ActionTab } from '@/lib/use-action-tab'
+import { startingActionTab, type ActionFocus, type ActionTab } from '@/lib/use-action-tab'
 import { useConsumableDeck } from './AbilityRows'
 import ActionDeck from './ActionDeck'
 import LayerShell, { HeaderTabs, LayerLink, useDeck } from './LayerShell'
@@ -30,6 +30,8 @@ interface ActionLayerProps {
   onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
   /** Switches to the Inv tab. */
   onOpenInventory: (filter?: FilterTab, openItemId?: string) => void
+  /** A link's request: open on this sub-tab, with this heading or row scrolled to and ringed. */
+  focus?: ActionFocus | null
 }
 
 /**
@@ -56,6 +58,7 @@ export default function ActionLayer({
   onUseItem,
   onOpenBook,
   onOpenInventory,
+  focus = null,
 }: ActionLayerProps) {
   const { presentation } = useDeck()
   const context = useMemo(
@@ -63,13 +66,43 @@ export default function ActionLayer({
     [battle, player, inventory, roomEnemy, canHunt]
   )
   // Where the sub-tabs start is the deck's rule: a fight opens on Attack
-  // (Spells for a caster), out of one the tab opens on Items. Only the fight
-  // starting or ending resets it.
-  const [tab, setTab] = useState<ActionTab>(() => startingActionTab(battle.isInBattle, player, inventory))
+  // (Spells for a caster), out of one the tab opens on Items — unless a link
+  // sent the player here, which names its own. Only the fight starting or
+  // ending resets it.
+  const [tab, setTab] = useState<ActionTab>(() => focus?.tab ?? startingActionTab(battle.isInBattle, player, inventory))
+  const lastInBattle = useRef(battle.isInBattle)
   useEffect(() => {
+    if (lastInBattle.current === battle.isInBattle) return
+    lastInBattle.current = battle.isInBattle
     setTab(startingActionTab(battle.isInBattle, player, inventory))
+    setHighlight(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battle.isInBattle])
+
+  // What the link pointed at: ringed until the player switches sub-tabs by
+  // hand, and scrolled into view one frame late, once its list has rendered.
+  const [highlight, setHighlight] = useState<string | null>(focus?.anchor ?? null)
+  useEffect(() => {
+    if (!focus) return
+    setTab(focus.tab)
+    setHighlight(focus.anchor ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.seq])
+  const listRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!highlight) return
+    const frame = requestAnimationFrame(() => {
+      listRef.current
+        ?.querySelector(`[data-deck-anchor="${CSS.escape(highlight)}"]`)
+        // A heading goes to the top, so the rows under it are in view; a row is centred.
+        ?.scrollIntoView({ block: highlight.includes(':') ? 'center' : 'start', behavior: 'smooth' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [highlight, tab, focus?.seq])
+  const switchTab = (next: ActionTab) => {
+    setHighlight(null)
+    setTab(next)
+  }
   const { iconName: weaponIconName } = weaponInHand(inventory)
   const spellCount = getCastableSpells(player).length
   const itemCount = useConsumableDeck(inventory).all.length
@@ -80,7 +113,7 @@ export default function ActionLayer({
       color="red"
       active={tab}
       home="attack"
-      onChange={setTab}
+      onChange={switchTab}
       tabs={[
         { id: 'attack', label: 'Attack', icon: <Icon name={weaponIconName} size={14} color="current" /> },
         { id: 'spells', label: 'Spells', icon: <Icon name="magic" size={14} color="current" />, extra: count(spellCount) },
@@ -110,7 +143,7 @@ export default function ActionLayer({
     >
       <ActionDeck
         tab={tab}
-        onTabChange={setTab}
+        onTabChange={switchTab}
         player={player}
         inventory={inventory}
         context={context}
@@ -124,7 +157,9 @@ export default function ActionLayer({
         onOpenItem={battle.isInBattle ? undefined : (playerItemId) => onOpenInventory('consumables', playerItemId)}
         // The layer's own body scrolls, on a phone page and in the column alike.
         listClassName=""
+        listRef={listRef}
         idPrefix={presentation}
+        highlight={highlight}
       />
     </LayerShell>
   )

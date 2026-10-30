@@ -1,6 +1,6 @@
 import type { BattleState, InventoryItem, Player } from '@/lib/game-state'
 import type { CastSituation } from '@/lib/spellbook'
-import { effectiveMag } from '@/lib/spellbook'
+import { castBlockedReason, effectiveMag, getCastableSpells } from '@/lib/spellbook'
 import { gearContextFromInventory, getStrikeSkills, previewSkillBonus, weaponFits, type SkillbookEntry } from '@/lib/skillbook'
 import { effectiveStats } from '@/lib/effective-stats'
 import { playerCanFly } from '@/lib/status-effects'
@@ -198,4 +198,89 @@ export function deckContextFromRoom(
     swingMax: effectiveStats(player, inventory)[isRanged ? 'dex' : 'str'].total,
     groupScale: 1,
   }
+}
+
+/** One line of the Explore Attack menu: the plain swing, a strike, or an attack spell. */
+export interface AttackMenuRow {
+  kind: 'attack' | 'strike' | 'spell'
+  /** `attack`, or the skill's or the spell's id. */
+  id: string
+  name: string
+  icon: string
+  /** The skill's or spell's decorative hue; null for the plain swing, which wears its stat. */
+  hue: string | null
+  level: number | null
+  maxLevel: number | null
+  /** What it rolls before the enemy blocks; null when it cannot land. */
+  range: { lo: number; hi: number } | null
+  /** The weapon in hand, on the plain swing's line. */
+  weapon?: string
+  /** Something a landed hit leaves behind: Poison Dart's poison. */
+  leaves?: string
+  /** MP, or null for the plain swing. */
+  cost: number | null
+  reason: string | null
+}
+
+/**
+ * Everything that hits, for the menu under Attack's chevron: the swing, the
+ * strikes the weapon in hand carries, then the attack spells. The rows are
+ * the Actions tab's — the same ranges and the same refusals, from
+ * buildStrikeRow and castBlockedReason — gathered into one list. A weapon out
+ * of ammo refuses the swing and the strikes, as the deck does.
+ */
+export function buildAttackMenu({ player, inventory, context }: { player: Player; inventory: InventoryItem[]; context: DeckContext }): AttackMenuRow[] {
+  const { situation, target, isRanged, swingMax, groupScale } = context
+  const canHunt = situation.canHunt ?? false
+  const { weapon, iconName, name: weaponName } = weaponInHand(inventory)
+  const ammo = ammoFor(weapon, inventory)
+  const noAmmo = ammo !== null && ammo.remaining <= 0 ? `No ${ammo.label}` : null
+  const blocked = attackBlockedBy({ player, inventory, isRanged, target, canHunt })
+
+  const swing: AttackMenuRow = {
+    kind: 'attack',
+    id: 'attack',
+    name: 'Attack',
+    icon: iconName,
+    hue: null,
+    level: null,
+    maxLevel: null,
+    range: blocked || noAmmo ? null : { lo: 0, hi: Math.max(0, swingMax) },
+    weapon: weaponName ?? 'Fists',
+    cost: null,
+    reason: noAmmo ?? blocked,
+  }
+
+  const strikes: AttackMenuRow[] = buildStrikeRow({
+    player, inventory, isRanged, swingMax, groupScale, playerMp: situation.mp, inBattle: situation.inBattle, target, canHunt,
+  }).map(({ entry, range, reason, cost }) => ({
+    kind: 'strike',
+    id: entry.def.id,
+    name: entry.def.name,
+    icon: entry.def.icon,
+    hue: entry.def.hue,
+    level: entry.level,
+    maxLevel: entry.maxLevel,
+    range,
+    cost,
+    reason: reason ?? noAmmo,
+  }))
+
+  const spells: AttackMenuRow[] = getCastableSpells(player)
+    .filter((entry) => entry.def.kind === 'attack')
+    .map((entry) => ({
+      kind: 'spell',
+      id: entry.def.id,
+      name: entry.def.name,
+      icon: entry.def.icon,
+      hue: entry.def.hue,
+      level: entry.level,
+      maxLevel: entry.maxLevel,
+      range: entry.preview ? { lo: entry.preview.min, hi: entry.preview.max } : null,
+      leaves: entry.def.dot ? 'poison' : undefined,
+      cost: entry.castCost,
+      reason: castBlockedReason(entry, situation),
+    }))
+
+  return [swing, ...strikes, ...spells]
 }

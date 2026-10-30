@@ -128,18 +128,25 @@ export interface SpellRowProps {
   onCast: (spellId: string) => void
   /** Tap the name to read it in the book. Omit in a fight. */
   onOpen?: (spellId: string) => void
+  /** Where a refusal leads, when it leads anywhere (lib/effect-sources `refusalLink`). */
+  fixFor?: (reason: string) => (() => void) | undefined
 }
 
-/** A learned spell. A spell the engine cannot cast (none today) carries no verb. */
-export function SpellRow({ entry, situation, disabled = false, onCast, onOpen }: SpellRowProps) {
-  const { def, level, maxLevel, castCost, preview, castable } = entry
-  const tone = spellTone(def.hue)
-  const blocked = castBlockedReason(entry, situation)
-  const detail = preview
+/** What a spell does at its level, as its row's second line: "Hits 12–20 dmg", "Fly for 40 clicks". */
+export function spellDetail({ def, preview }: Pick<SpellbookEntry, 'def' | 'preview'>): string {
+  return preview
     ? `${preview.label ?? (def.kind === 'heal' ? 'Heals' : def.kind === 'attack' ? 'Hits' : '')} ${
         preview.min === preview.max ? preview.min : `${preview.min}–${preview.max}`
       }${def.kind === 'attack' ? ' dmg' : preview.unit ? ` ${preview.unit}` : ''}`.trim()
     : def.formula
+}
+
+/** A learned spell. A spell the engine cannot cast (none today) carries no verb. */
+export function SpellRow({ entry, situation, disabled = false, onCast, onOpen, fixFor }: SpellRowProps) {
+  const { def, level, maxLevel, castCost, castable } = entry
+  const tone = spellTone(def.hue)
+  const blocked = castBlockedReason(entry, situation)
+  const detail = spellDetail(entry)
 
   return (
     <EntryRow
@@ -151,6 +158,7 @@ export function SpellRow({ entry, situation, disabled = false, onCast, onOpen }:
       subline={<span className="text-[10px] text-fg-muted tabular-nums truncate">{detail}</span>}
       meta={<span className="text-xs font-bold text-resource-mp tabular-nums whitespace-nowrap">{castCost} MP</span>}
       reason={blocked}
+      onReason={blocked ? fixFor?.(blocked) : undefined}
       action={castable ? (
         <EntryVerb
           onClick={() => onCast(def.id)}

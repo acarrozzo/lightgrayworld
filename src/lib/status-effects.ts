@@ -37,11 +37,16 @@ export interface RegenSummary {
  * A semantic role for the chip's colour; the strip maps it to theme classes.
  * `vitals` is for anything that moves HP *and* MP together — tea, a regen that
  * covers both — which gets its own colour rather than borrowing one vital's.
+ * A stat buff wears the stat it lifts (`str`, `dex`, `mag`, `def`, the colours
+ * of the header's four numbers and of the capsules themselves); one that lifts
+ * all four (Coffee, Glory) is `all`.
  */
-export type StatusTone = 'hp' | 'mp' | 'vitals' | 'stat' | 'ability' | 'poison' | 'ward' | 'aura'
+export type StatusTone = 'hp' | 'mp' | 'vitals' | 'str' | 'dex' | 'mag' | 'def' | 'all' | 'ability' | 'poison' | 'ward' | 'aura'
 
 export interface StatusChip {
   id: string
+  /** The User column behind it ("buffCoffeeClicks", "ironSkinClicks"): what renews it is looked up by this. */
+  field: string
   /** Short name: "Regen", "Tea", "Iron Skin", "Poison". */
   label: string
   /** The number beside it: "+3 HP · +5 MP / click", "+12 block", "burns 3". */
@@ -130,11 +135,10 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
   const chips: StatusChip[] = []
   // One shape for every chip: the glyph from its column, the badge number
   // given or the clicks left, the pulse from the clicks.
-  const push = (chip: Omit<StatusChip, 'icon' | 'badge' | 'expiring'> & { field: string; icon?: string; badge?: string }) => {
-    const { field, ...rest } = chip
+  const push = (chip: Omit<StatusChip, 'icon' | 'badge' | 'expiring'> & { icon?: string; badge?: string }) => {
     chips.push({
-      ...rest,
-      icon: chip.icon ?? buffIcon(field),
+      ...chip,
+      icon: chip.icon ?? buffIcon(chip.field),
       badge: chip.badge ?? (typeof chip.clicks === 'number' ? String(chip.clicks) : ''),
       expiring: expiring(chip.clicks),
     })
@@ -166,7 +170,7 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
   const ironSkinClicks = clicksOf('ironSkinClicks')
   const ironSkin = Math.max(0, Number(buffs.ironSkinAmount ?? 0))
   if (ironSkinClicks > 0 && ironSkin > 0) {
-    push({ id: 'iron-skin', field: 'ironSkinClicks', label: 'Iron Skin', detail: `+${ironSkin} DEF`, clicks: ironSkinClicks, tone: 'ward', title: `Iron Skin: +${ironSkin} DEF for ${ironSkinClicks} more clicks.` })
+    push({ id: 'iron-skin', field: 'ironSkinClicks', label: 'Iron Skin', detail: `+${ironSkin} DEF`, clicks: ironSkinClicks, tone: 'def', title: `Iron Skin: +${ironSkin} DEF for ${ironSkinClicks} more clicks.` })
   }
 
   // The per-click regen itself is not a chip: it is read beside the HP and
@@ -183,7 +187,8 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
     if (clicks > 0) {
       const label = BUFF_LABELS[field] ?? field
       const detail = stats.length === 4 ? `+${amount} all` : `+${amount} ${stats.map((s) => STAT_LABEL[s] ?? s).join(' ')}`
-      push({ id: field, field, label, detail, clicks, tone: 'stat', title: `${label}: ${detail} stats for ${clicks} more clicks.` })
+      const tone: StatusTone = stats.length === 4 ? 'all' : ((['str', 'dex', 'mag', 'def'] as const).find((stat) => stat === stats[0]) ?? 'all')
+      push({ id: field, field, label, detail, clicks, tone, title: `${label}: ${detail} stats for ${clicks} more clicks.` })
     }
     if (field === 'buffCoffeeClicks' && tea > 0) {
       push({ id: 'tea', field: 'buffTeaClicks', label: 'Tea', clicks: tea, tone: 'vitals', title: `Tea: +10 HP and +10 MP regen a click for ${tea} more clicks.` })

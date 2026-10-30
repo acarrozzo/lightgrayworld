@@ -1,14 +1,18 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import Compass from '@/components/Compass'
 import BasicActionButtons from '@/components/BasicActionButtons'
+import AttackMenu from './AttackMenu'
 import EffectsButton from './EffectsButton'
 import TrackedQuests, { TrackedQuestsButton } from './TrackedQuestCard'
 import type { TrackedQuestView } from '@/lib/tracked-quest'
 import { statusChips } from '@/lib/status-effects'
-import type { InventoryItem, Player } from '@/lib/game-state'
+import { ammoFor, buildAttackMenu, deckContextFromBattle, deckContextFromRoom, weaponInHand, type AttackMenuRow, type targetFromRoomEnemy } from '@/lib/action-deck'
+import type { BattleState, InventoryItem, Player } from '@/lib/game-state'
 
+
+type RoomEnemyLike = Parameters<typeof targetFromRoomEnemy>[0]
 
 /**
  * The Explore panel is where you move. The D-pad, Up and Down in a column on
@@ -18,7 +22,9 @@ import type { InventoryItem, Player } from '@/lib/game-state'
  * the corner; and above it all the quests you are following, each with its
  * next step. The room card keeps the room's own hand-authored actions; these
  * are the ones you can always do. Strikes, spells and items are the Actions
- * tab, one tile over.
+ * tab, one tile over — and one tap away: Attack's dots open every strike
+ * and attack spell, and each active buff behind the Effects button links to
+ * what renews it.
  *
  * The phone strip has one height, always: the ring's, plus its padding.
  * Nothing in it is added or removed as things happen — Up and Down are
@@ -57,6 +63,13 @@ interface ExplorePanelProps {
   currentAction?: string
   /** The last action's result, for the flyout that anchors to the verb that caused it. */
   actionResult?: any
+  /** For the Attack menu and the buff shelf: the fight, if one is on, else the room's enemy. */
+  battle?: BattleState
+  roomEnemy?: RoomEnemyLike
+  /** The room rolls encounters, so an attack with nothing present hunts. */
+  canHunt?: boolean
+  /** The Actions tab has been earned: the buff popover's link has somewhere to go. */
+  canOpenActions?: boolean
 }
 
 const NO_QUESTS: TrackedQuestView[] = []
@@ -77,11 +90,72 @@ export default function ExplorePanel({
   isLoadingRoom = false,
   currentAction,
   actionResult,
+  battle,
+  roomEnemy = null,
+  canHunt = false,
+  canOpenActions = false,
 }: ExplorePanelProps) {
   const isSidebar = variant === 'sidebar'
 
   // What is running on you, as the Char panel shows it: regen, tea, poison, wings.
   const chips = useMemo(() => statusChips(player, inventory), [player, inventory])
+
+  // The deck's view of this moment — the same one the Actions tab draws —
+  // for the Attack menu's ranges and refusals and the buffs' Again.
+  const inBattle = Boolean(battle?.isInBattle)
+  const context = useMemo(() => {
+    if (!player) return null
+    return inBattle && battle ? deckContextFromBattle(battle, player, inventory) : deckContextFromRoom(roomEnemy, player, inventory, { canHunt })
+  }, [player, inventory, battle, inBattle, roomEnemy, canHunt])
+  const attackRows = useMemo(
+    () => (player && context ? buildAttackMenu({ player, inventory, context }) : []),
+    [player, inventory, context]
+  )
+  const ammoLabel = ammoFor(weaponInHand(inventory).weapon, inventory)?.label ?? null
+
+  // A row sends what the Actions tab sends; the server rules on it.
+  const fireAttackRow = useCallback((row: AttackMenuRow) => {
+    if (row.kind === 'attack') onAction('attack')
+    else if (row.kind === 'strike') onAction({ type: 'use_skill', data: { skillId: row.id } })
+    else onAction({ type: 'cast_spell', data: { spellId: row.id } })
+  }, [onAction])
+  // The chevron only when there is more than the plain swing to offer.
+  const attackMenu = player && context && attackRows.length > 1
+    ? ({ close, fired }: { close: () => void; fired: (action: string) => void }) => (
+        <AttackMenu
+          rows={attackRows}
+          isRanged={context.isRanged}
+          inBattle={inBattle}
+          mp={context.situation.mp}
+          mpMax={player.mpMax ?? 0}
+          inventory={inventory}
+          ammoLabel={ammoLabel}
+          disabled={isLoadingRoom}
+          onFire={(row) => {
+            fired(row.kind === 'attack' ? 'attack' : row.kind === 'strike' ? 'use_skill' : 'cast_spell')
+            close()
+            fireAttackRow(row)
+          }}
+          onClose={close}
+          className={isSidebar ? 'left-0' : 'right-0'}
+        />
+      )
+    : undefined
+
+  const effectsButton = (placement: 'down' | 'up', className: string) =>
+    context ? (
+      <EffectsButton
+        chips={chips}
+        player={player}
+        inventory={inventory}
+        situation={context.situation}
+        isActing={isLoadingRoom}
+        onAction={onAction}
+        placement={placement}
+        canOpenActions={canOpenActions}
+        className={className}
+      />
+    ) : null
 
   const dimmedClasses = isDimmed ? 'opacity-20 pointer-events-none' : showBattleBadge ? 'opacity-70' : ''
   // The three verbs the original always showed. BasicActionButtons owns the
@@ -94,6 +168,9 @@ export default function ExplorePanel({
       currentAction={currentAction}
       containerClassName={isSidebar ? 'flex items-center justify-center gap-2' : 'flex flex-col items-stretch gap-1.5'}
       sizeClassName={isSidebar ? 'h-10 px-4 text-sm' : 'h-9 w-20 px-1 text-xs'}
+      attackMenu={attackMenu}
+      splitClassName={isSidebar ? 'h-10 text-sm' : 'h-9 w-20 text-xs'}
+      splitFaceClassName={isSidebar ? 'pl-4 pr-3' : 'px-1'}
     />
   )
 
@@ -104,7 +181,7 @@ export default function ExplorePanel({
     return (
       <div className="relative px-1 py-2.5">
         {onOpenTrackedQuest && <TrackedQuestsButton quests={trackedQuests} onOpen={onOpenTrackedQuest} roomId={room?.roomId} />}
-        <EffectsButton chips={chips} className="absolute right-2 top-2" />
+        {effectsButton('up', 'absolute right-2 top-2')}
         <div className={`transition-opacity duration-300 ${dimmedClasses}`}>
           <Compass
             room={room}
@@ -125,7 +202,7 @@ export default function ExplorePanel({
   // below, the Effects button in the corner.
   return (
     <div className="relative flex min-h-0 flex-1 flex-col items-center p-4">
-      <EffectsButton chips={chips} className="absolute right-3 top-3" />
+      {effectsButton('down', 'absolute right-3 top-3')}
       <div className={`flex min-h-0 w-full flex-1 flex-col items-center justify-center py-2 transition-opacity duration-300 ${dimmedClasses}`}>
         {onOpenTrackedQuest && <TrackedQuests quests={trackedQuests} onOpen={onOpenTrackedQuest} />}
       </div>

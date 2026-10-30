@@ -231,3 +231,12 @@ test('getStatBuffSources ignores a lapsed Iron Skin and an empty row', () => {
   assert.deepEqual(buffs.getStatBuffSources({ ironSkinClicks: 0, ironSkinAmount: 12 }).def, [])
   assert.deepEqual(buffs.getStatBuffSources(null), { str: [], dex: [], mag: [], def: [] })
 })
+
+test('a stat buff wears the stat it lifts; an all-stat one wears gold', () => {
+  const { statusChips } = require('../src/lib/status-effects')
+  const tones = (buffs) => statusChips({ buffs, spells: {} }, []).map((c) => [c.id, c.tone])
+  assert.deepEqual(tones({ buffMagClicks: 40 }), [['buffMagClicks', 'mag']])
+  assert.deepEqual(tones({ buffStrClicks: 40 }), [['buffStrClicks', 'str']])
+  assert.deepEqual(tones({ buffCoffeeClicks: 40 }), [['buffCoffeeClicks', 'all']])
+  assert.deepEqual(tones({ ironSkinClicks: 5, ironSkinAmount: 8 }), [['iron-skin', 'def']])
+})

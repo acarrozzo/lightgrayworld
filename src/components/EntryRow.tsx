@@ -1,6 +1,7 @@
 'use client'
 
 import React, { type CSSProperties, type ReactNode } from 'react'
+import { ChevronRight } from 'lucide-react'
 import Icon from './Icon'
 
 /**
@@ -64,6 +65,8 @@ export interface EntryRowProps {
   meta?: ReactNode
   /** Why the action is refused. Takes `meta`'s place, in the error tone. */
   reason?: string | null
+  /** The refusal is also a way to the fix ("Not enough MP ›" to the MP ladder): tapping it goes there. */
+  onReason?: () => void
   /** The control that acts, plus any trailing affordance (a disclosure chevron). */
   action?: ReactNode
   /**
@@ -96,6 +99,7 @@ export default function EntryRow({
   extra,
   meta,
   reason = null,
+  onReason,
   action,
   onOpen,
   ariaExpanded,
@@ -156,7 +160,9 @@ export default function EntryRow({
       <div className="flex items-center gap-1.5 flex-shrink-0">
         {/* A refusal is information, not an alarm: the row is already dimmed
             and the verb already dead, so this only has to say which. */}
-        {reason ? (
+        {reason && onReason ? (
+          <RefusalLink reason={reason} onClick={onReason} />
+        ) : reason ? (
           <span className="text-[10px] font-normal text-fg-muted whitespace-nowrap">{reason}</span>
         ) : meta}
         {action}
@@ -197,6 +203,24 @@ export function EntryVerb({
       }`}
     >
       {children}
+    </button>
+  )
+}
+
+/**
+ * A refusal that knows where the fix is: the same muted words, underlined,
+ * with a chevron, going there on tap. Never spends anything.
+ */
+export function RefusalLink({ reason, onClick, className = '' }: { reason: string; onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`${reason}: go to what fixes it`}
+      className={`inline-flex items-center gap-0.5 whitespace-nowrap rounded text-[10px] font-normal text-fg-muted underline decoration-line-strong underline-offset-2 hover:text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${className}`}
+    >
+      {reason}
+      <ChevronRight size={11} aria-hidden="true" className="flex-shrink-0" />
     </button>
   )
 }

@@ -29,3 +29,14 @@ export function battleStartTab(player: Player | null | undefined, inventory: Inv
 export function startingActionTab(inBattle: boolean, player: Player | null | undefined, inventory: InventoryItem[]): ActionTab {
   return inBattle ? battleStartTab(player, inventory) : 'items'
 }
+
+/**
+ * A request to show something in the Actions tab: which sub-tab, and what on
+ * it to scroll to and ring (a lib/feed-links `anchor`). `seq` grows with every
+ * request, so following the same link twice still lands.
+ */
+export interface ActionFocus {
+  tab: ActionTab
+  anchor?: string
+  seq: number
+}

@@ -8,9 +8,11 @@ import { getCastableSpells } from '@/lib/spellbook'
 import { skillTone } from '@/lib/skillbook'
 import { ammoFor, attackBlockedBy, buildStrikeRow, rangeText, weaponInHand, type DeckContext } from '@/lib/action-deck'
 import { startingActionTab, type ActionTab } from '@/lib/use-action-tab'
+import { refusalLink } from '@/lib/effect-sources'
+import { followFeedLink } from '@/lib/feed-links'
 import EntryRow, { EntryVerb } from '@/components/EntryRow'
 import { ABILITY_GRID, LevelTag, ROW_FRAME, SpellRow, useConsumableDeck } from './AbilityRows'
-import ConsumableDeck from './ConsumableDeck'
+import ConsumableDeck, { DECK_HIGHLIGHT } from './ConsumableDeck'
 
 export interface ActionDeckProps {
   /**
@@ -47,6 +49,8 @@ export interface ActionDeckProps {
   /** On the deck's root: `flex-1` lets it fill a column its holder has pinned. */
   className?: string
   idPrefix?: string
+  /** What a link sent the player here to see (lib/feed-links `anchor`), ringed. */
+  highlight?: string | null
 }
 
 /**
@@ -81,6 +85,7 @@ export default function ActionDeck({
   listRef,
   className = '',
   idPrefix = 'action',
+  highlight = null,
 }: ActionDeckProps) {
   const { situation, target, isRanged, swingMax, groupScale } = context
   const { weapon, iconName: weaponIconName, name: weaponName } = weaponInHand(inventory)
@@ -117,6 +122,12 @@ export default function ActionDeck({
   const ammo = ammoFor(weapon, inventory)
   const outOfAmmo = ammo !== null && ammo.remaining <= 0
   const attackDisabled = isActing || outOfAmmo || Boolean(blocked)
+  // Out of a fight a refusal can lead to its fix: "Not enough MP" to the MP
+  // ladder, an empty quiver to the weapons in the bag. In one, rows stay inert.
+  const fixFor = (reason: string | null | undefined) => {
+    const link = refusalLink(reason, { inBattle: situation.inBattle, inventory, ammoLabel: ammo?.label })
+    return link ? () => followFeedLink(link) : undefined
+  }
   const attackTitle = outOfAmmo && ammo
     ? `No ${ammo.label} left — equip another weapon from your bag`
     : blocked === 'Nothing to hit'
@@ -204,6 +215,7 @@ export default function ActionDeck({
                 ) : undefined
               }
               reason={outOfAmmo && ammo ? `No ${ammo.label}` : blocked}
+              onReason={fixFor(outOfAmmo && ammo ? `No ${ammo.label}` : blocked)}
               action={
                 <EntryVerb
                   onClick={onAttack}
@@ -234,6 +246,7 @@ export default function ActionDeck({
                   }
                   meta={<span className="text-xs font-bold text-resource-mp tabular-nums whitespace-nowrap">{cost} MP</span>}
                   reason={reason}
+                  onReason={fixFor(reason)}
                   action={
                     <EntryVerb
                       onClick={() => onUseSkill(entry.def.id)}
@@ -262,6 +275,7 @@ export default function ActionDeck({
             disabled={isActing}
             onUse={onUseItem}
             onOpen={onOpenItem}
+            highlight={highlight}
           />
         )}
 
@@ -272,16 +286,21 @@ export default function ActionDeck({
             // No `onOpen` in a fight: the row body is inert, so the only thing
             // on it that can spend MP is the Cast button itself.
             <div className={ABILITY_GRID}>
-              {castableSpells.map((entry) => (
-                <SpellRow
-                  key={entry.def.id}
-                  entry={entry}
-                  situation={situation}
-                  disabled={isActing}
-                  onCast={onCastSpell}
-                  onOpen={onOpenBook ? (spellId) => onOpenBook('spells', spellId) : undefined}
-                />
-              ))}
+              {castableSpells.map((entry) => {
+                const anchor = `spell:${entry.def.id}`
+                return (
+                  <div key={entry.def.id} data-deck-anchor={anchor} className={highlight === anchor ? DECK_HIGHLIGHT : undefined}>
+                    <SpellRow
+                      entry={entry}
+                      situation={situation}
+                      disabled={isActing}
+                      onCast={onCastSpell}
+                      onOpen={onOpenBook ? (spellId) => onOpenBook('spells', spellId) : undefined}
+                      fixFor={fixFor}
+                    />
+                  </div>
+                )
+              })}
             </div>
           )
         )}

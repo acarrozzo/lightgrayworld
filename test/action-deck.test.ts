@@ -6,7 +6,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { attackBlockedBy, buildStrikeRow, deckContextFromBattle, deckContextFromRoom, targetFromRoomEnemy, type DeckTarget } from '../src/lib/action-deck'
+import { attackBlockedBy, buildAttackMenu, buildStrikeRow, deckContextFromBattle, deckContextFromRoom, targetFromRoomEnemy, type DeckTarget } from '../src/lib/action-deck'
 import { SKILLS } from '../src/lib/skillbook'
 
 const smash = (SKILLS as Array<{ id: string; column: string; weapon?: string }>).find((s) => s.id === 'smash')!
@@ -123,4 +123,38 @@ test("in a fight, Attack's range is the weapon's stat, even after a spell turn s
   // A spell turn: that number is the MAG the spell rolled, so the deck works the weapon's out itself.
   const afterSpell = deckContextFromBattle(battle({ playerStrMax: 900, spell: { id: 'fireball', name: 'Fireball' } }), p, inv)
   assert.equal(afterSpell.swingMax, 143 + 50)
+})
+
+test("Explore's Attack menu: the swing, then the strikes, then the attack spells only", () => {
+  const p = player({ spells: { fireball: 2, magicMissile: 1, ironSkin: 3, heal: 1 } })
+  const inv = [twoHander()]
+  const rows = buildAttackMenu({ player: p, inventory: inv, context: deckContextFromRoom({ name: 'Squid', def: 25 }, p, inv) })
+  assert.equal(rows[0].kind, 'attack')
+  assert.equal(rows[0].weapon, 'Great Axe')
+  assert.equal(rows[0].reason, null)
+  assert.deepEqual(rows.filter((r) => r.kind === 'strike').map((r) => r.id).sort(), ['magic-strike', 'smash'])
+  // Buffs and heals are not attacks: Iron Skin and Heal stay out.
+  assert.deepEqual(rows.filter((r) => r.kind === 'spell').map((r) => r.id), ['magic-missile', 'fireball'])
+  const fireball = rows.find((r) => r.id === 'fireball')!
+  assert.ok(fireball.range && fireball.cost !== null && fireball.cost > 0)
+})
+
+test('the Attack menu refuses as the deck does: nothing to hit, and an empty quiver', () => {
+  const p = player({ spells: { fireball: 1 } })
+  const inv = [twoHander()]
+  const empty = buildAttackMenu({ player: p, inventory: inv, context: deckContextFromRoom(null, p, inv) })
+  assert.ok(empty.every((r) => r.reason === 'Nothing to hit'))
+  // In a room that rolls, everything hunts instead.
+  const hunt = buildAttackMenu({ player: p, inventory: inv, context: deckContextFromRoom(null, p, inv, { canHunt: true }) })
+  assert.ok(hunt.every((r) => r.reason === null))
+
+  const bow = {
+    id: 'b1', quantity: 1, isEquipped: true, slot: 'MAIN_HAND',
+    template: { slug: 'hunting-bow', name: 'Hunting Bow', type: 'WEAPON', weaponCategory: 'RANGED', metadata: { ammo: 'arrow' } },
+  } as any
+  const quiverless = buildAttackMenu({ player: p, inventory: [bow], context: deckContextFromRoom({ name: 'Squid', def: 25 }, p, [bow]) })
+  assert.equal(quiverless[0].reason, 'No arrow')
+  assert.equal(quiverless[0].range, null)
+  // A spell needs no arrows.
+  assert.equal(quiverless.find((r) => r.id === 'fireball')?.reason, null)
 })

@@ -353,7 +353,8 @@ class GameEngine {
     }
 
     // Tell the player the moment an effect runs out — a wings potion lapsing
-    // mid-sewer is the difference between crossing the river and not.
+    // mid-sewer is the difference between crossing the river and not. The
+    // column rides along so the feed line can link to what renews it.
     for (const field of expired) {
       this.emitToPlayer(playerId, 'action:feedback', {
         action: 'buff expired',
@@ -362,7 +363,7 @@ class GameEngine {
         ts: Date.now(),
         timestamp: new Date().toISOString(),
         success: true,
-        data: { buffs },
+        data: { buffs, field },
       })
     }
 

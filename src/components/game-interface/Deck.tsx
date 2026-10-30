@@ -8,6 +8,7 @@ import InvLayer from './InvLayer'
 import WorldLayer, { type WorldEntry, type WorldTab } from './WorldLayer'
 import type { DeckTab } from './deck-tabs'
 import type { UnlockId } from '@/lib/unlocks'
+import type { ActionFocus } from '@/lib/use-action-tab'
 
 type RoomEnemyLike = Parameters<typeof targetFromRoomEnemy>[0]
 
@@ -57,6 +58,8 @@ export interface DeckContentProps {
   onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
   /** Switch to the Inv tab, optionally filtered and with one item open. */
   onOpenInventory: (filter?: FilterTab, openItemId?: string) => void
+  /** A link's request for the Actions tab: a sub-tab, and what on it to ring. */
+  actionFocus?: ActionFocus | null
 }
 
 /** The World, Inv or Actions layer. Must be drawn inside a `DeckProvider`. */
@@ -111,6 +114,7 @@ export function DeckContent({ tab, ...props }: DeckContentProps & { tab: DeckTab
       onUseItem={props.onUseItem}
       onOpenBook={props.onOpenBook}
       onOpenInventory={props.onOpenInventory}
+      focus={props.actionFocus}
     />
   )
 }

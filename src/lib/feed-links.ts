@@ -14,6 +14,12 @@ export interface FeedLink {
   sub?: string
   /** Inv only: the item to open and ring. */
   itemId?: string
+  /**
+   * Actions only: what to scroll to and ring on that sub-tab — a heading
+   * (`buffs`, `hp`, `mp`), `item:<playerItemId>` or `spell:<spellId>`. The
+   * deck marks each with `data-deck-anchor`.
+   */
+  anchor?: string
 }
 
 const TAB_NAMES: Record<TabId, string> = {
@@ -39,6 +45,8 @@ const SUB_NAMES: Record<string, string> = {
   world: 'World Map',
   teleport: 'Teleport',
   consumables: 'Items',
+  attack: 'Attack',
+  items: 'Items',
   crafting: 'Craft',
   misc: 'Misc',
 }
