@@ -79,6 +79,7 @@ export const ROOM_COLOR_TOKENS: Record<string, string> = {
   'world.mountains': '--world-mountains',
   'world.starCity': '--world-star-city',
   'world.despair': '--world-despair',
+  'world.swamp': '--world-swamp',
   'world.solarOffice': '--world-solar-office',
   'world.lobby': '--world-lobby',
 }

@@ -191,6 +191,8 @@ export const lightGray = makeTheme({
       redTown: { base: '#d66976' },
       redTownSewers: { base: '#96a172' },
       rockyFlats: { base: '#b1bd62' },
+      // The swamp map's own olive, a shade muddier than the flats.
+      swamp: { base: '#9aa64f' },
       rockyFlatsUnderground: { base: '#8f7772' },
       neverendingMine: { base: '#e5a812' },
       // The original's `.ocean` blue, and the darker water beneath it.

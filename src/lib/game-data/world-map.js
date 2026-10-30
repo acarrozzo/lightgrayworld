@@ -54,6 +54,11 @@ const MAP_SHEETS = [
   // The Despair: the pit below the Dark Forest's Top of the Despair (524),
   // filed under the Dark Forest like its tree tops are.
   { id: 'the-despair', title: 'The Despair', src: '/img/lightgray_map_the_despair.jpg', flag: 'despairMap', region: 'dark-forest', level: 'The Despair' },
+  // The Swamp, west of the Rocky Flats and south of the Blue Ocean. The Swampy
+  // Shore, the Gnarly Ripcurl and the Swampy Quagmire (806, 807, 810) are drawn
+  // on the ocean sheet and the Undertow and Megalodon Cave (808, 809) under it,
+  // so a player finds this sheet on the path rooms, 801 first of all.
+  { id: 'swamp', title: 'Swamp', src: '/img/lightgray_map_swamp_main.jpg', flag: 'swampMap', region: 'swamp', level: 'Surface' },
   { id: 'room-zero', title: 'Room Zero', src: '/img/lightgray_map_roomzero.jpg', flag: 'roomZeroMap', region: 'room-zero', level: 'Surface' },
   { id: 'lobby', title: 'Plane of Rebirth', src: '/img/lightgray_map_the_lobby.jpg', flag: 'lobbyMap', region: 'lobby', level: 'Surface' },
   { id: 'solar-office', title: 'Solar Office', src: '/img/lightgray_map_solar_office.jpg', flag: 'solarOfficeMap', region: 'solar-office', level: 'Surface' },
@@ -142,7 +147,10 @@ const WORLD_REGIONS = [
   // yet left and come back. Standing in it at the start counts: always open.
   { id: 'grassy-field', name: 'Grassy Field', color: 'grassy-field', hub: { roomId: '001', name: 'Crossroads' }, alwaysOpen: true },
   { id: 'forest', name: 'Forest', color: 'forest', hub: { roomId: '104', name: 'Forest Crossroads' } },
-  { id: 'swamp', name: 'Swamp' },
+  // No hub yet: the Swamp Teleport is at the Crossroads (824), not built. The
+  // region has its sheet and colour, so the grid paints it, but fast travel
+  // stays shut until that room lands — Anthony's call (2026-10-30).
+  { id: 'swamp', name: 'Swamp', color: 'swamp' },
   {
     id: 'rocky-flats',
     name: 'Rocky Flats',
@@ -261,9 +269,20 @@ const OCEAN_UNDERWATER = new Set([
  */
 const DARK_FOREST_UPPER = new Set(['515a', '515b', '515c', '515d', '515e', '516e', '516f', '516g', '516h'])
 
+/**
+ * Swamp rooms drawn on the Blue Ocean's two sheets rather than the Swamp's own:
+ * the shore, the ripcurl and the quagmire on the surface, the undertow and the
+ * Megalodon Cave below it.
+ */
+const SWAMP_ON_OCEAN = new Set(['806', '807', '810'])
+const SWAMP_UNDER_OCEAN = new Set(['808', '809'])
+
 /** Which sheet a room is drawn on. */
 function getMapIdForRoom(roomId) {
   if (!roomId) return 'grassy-field'
+  if (SWAMP_ON_OCEAN.has(roomId)) return 'ocean'
+  if (SWAMP_UNDER_OCEAN.has(roomId)) return 'ocean-underwater'
+  if (roomId.startsWith('8')) return 'swamp'
   if (roomId === '000') return 'room-zero'
   if (roomId === '999') return 'lobby'
   if (roomId === '088') return 'solar-office'

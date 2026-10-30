@@ -148,6 +148,7 @@ model User {
   mountainsMap              Boolean         @default(false)
   starCityMap               Boolean         @default(false)
   despairMap                Boolean         @default(false)
+  swampMap                  Boolean         @default(false)
   worldMapV1                Boolean         @default(false)
   worldMapV2                Boolean         @default(false)
   worldMapV3                Boolean         @default(false)

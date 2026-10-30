@@ -68,6 +68,11 @@ const ACCEPTED = {
     '414:south', // south onto the calm water, which has no north
     '415:northeast', // the calm water's northeast current onto the crossing
     '415:south', // south to the swamp water, which drifts west and north only
+    // The Swamp's corner pieces: one-way diagonals on Anthony's sheets.
+    '806:northeast', // the shore onto the ripcurl, on wings
+    '807:southeast', // the ripcurl spits you onto the quagmire
+    '810:west', // wade from the quagmire onto Mud Island, not back
+    '811:southwest', // down from the Dragon Nest to Arcturus's tent
     '417:north', // the whirlpool's north current onto the Green temple
     '421:east', // off the massive wave; nothing sails west back onto it
     '480:northeast', // up out of the silver chest hollow

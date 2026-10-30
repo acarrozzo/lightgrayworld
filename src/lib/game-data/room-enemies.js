@@ -2887,6 +2887,36 @@ const ROOM_ENEMIES = {
   // The "challenge silver titan" button (room-action-handlers) begins the fight.
   '625': { enemies: ['silver-titan'] },
 
+  // ==================== SWAMP ====================
+  // Anthony's swamp enemies are not written yet (2026-10-30), so the path rooms
+  // roll the pool the original's unused swamp-path.php reached one time in ten:
+  // its "low rares", every one of which already exists. Equal odds, the
+  // original's 1-in-10 chance of anything at all. Arcturus's tent (802), the
+  // ripcurl and the undertow (807, 808), the Megalodon Cave (809) and Mage
+  // Ultima's room (812) stay empty until their own enemies land.
+  ...Object.fromEntries(
+    ['801', '803', '804', '805', '806', '810', '811'].map((roomId) => [
+      roomId,
+      {
+        probabilistic: true,
+        spawnChance: 0.1,
+        enemies: [
+          { slug: 'salamander', weight: 1 },
+          { slug: 'flying-dung-beetle', weight: 1 },
+          { slug: 'snake', weight: 1 },
+          { slug: 'imp', weight: 1 },
+          { slug: 'skeleton', weight: 1 },
+          { slug: 'kobold-champion', weight: 1 },
+          { slug: 'red-bandit', weight: 1 },
+          { slug: 'bandit-marauder', weight: 1 },
+          { slug: 'rabid-skeever', weight: 1 },
+          { slug: 'demon-wing', weight: 1 },
+          { slug: 'dragon', weight: 1 },
+        ],
+      },
+    ])
+  ),
+
   // ==================== THE DESPAIR ====================
   // The original's the-despair-1.php: rand(1, 11), one of eleven, every
   // turn — nothing down here is ever empty. The pit itself is the Hydra's

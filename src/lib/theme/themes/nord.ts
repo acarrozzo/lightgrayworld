@@ -83,6 +83,8 @@ export const nord = makeTheme({
       caves: { base: '#6c7a92' },
       scorpionPit: { base: '#d0a071' },
       rockyFlats: { base: '#a89a7d' },
+      // Darker than the flats' sand and greener than the lobby's sky.
+      swamp: { base: '#6f8a5a' },
       grassyFieldUnderground: { base: '#8a7561' },
       solarOffice: { base: '#ebcb8b' },
       lobby: { base: '#a3b8d0' },

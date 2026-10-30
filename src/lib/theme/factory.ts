@@ -285,6 +285,10 @@ export function makeTheme(recipe: ThemeRecipe): Theme {
     // theme's red with most of its light taken out, pulled toward the dark
     // grey so it is neither Red Town's brick nor the scorpion pit's blood.
     despair: { base: dim(mix(t.red, t.brightBlack, 0.45), 0.4) },
+    // The Swamp: the map's olive. The theme's green pulled toward its yellow
+    // and dimmed a stop, so it is muddier than the Rocky Flats' dry grass and
+    // never the Forest's green.
+    swamp: { base: dim(mix(t.green, t.yellow, 0.3), 0.4) },
     solarOffice: { base: t.brightYellow },
     lobby: { base: mix(t.blue, t.white, 0.3) },
   }

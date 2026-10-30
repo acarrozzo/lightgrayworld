@@ -1836,9 +1836,9 @@ function makeLeverHandler({ roomId, leverName, alreadyMessage, flipMessage, moda
       return {
         success: true,
         noTurn: true,
-        action: 'flip lever',
+        action: 'pull lever',
         playerEvents: [
-          { event: 'action:feedback', payload: createActionFeedbackPayload('flip lever', 'info', alreadyMessage, extra()) },
+          { event: 'action:feedback', payload: createActionFeedbackPayload('pull lever', 'info', alreadyMessage, extra()) },
         ],
       }
     }
@@ -1846,11 +1846,11 @@ function makeLeverHandler({ roomId, leverName, alreadyMessage, flipMessage, moda
     leverState.pullLever(playerId, leverId)
     return {
       success: true,
-      action: 'flip lever',
+      action: 'pull lever',
       playerEvents: [
         {
           event: 'action:feedback',
-          payload: createActionFeedbackPayload('flip lever', 'success', flipMessage, {
+          payload: createActionFeedbackPayload('pull lever', 'success', flipMessage, {
             ...extra(),
             showModal: true,
             modalContent: { type: 'icon', icon: 'lever-down', iconColor: 'yellow-500', title: modalTitle, message: modalMessage },
@@ -2547,16 +2547,16 @@ const ROOM_ACTIONS = {
   // One lever, one false wall. Session-scoped like the original's `koboldswitch`:
   // the chamber has to be re-opened every time you come back down.
   '115h': {
-    'flip lever': async (playerId, roomState) => {
+    'pull lever': async (playerId, roomState) => {
       const { pullLever, isLeverPulled, getRoomStateNote, getRoomActionOverrides, KOBOLD_SWITCH } = require('./lever-state')
-      const action = 'flip lever'
+      const action = 'pull lever'
 
       roomState.touchActivity()
 
       const already = isLeverPulled(playerId, KOBOLD_SWITCH)
       const message = already
-        ? 'You already flipped this switch. You have a feeling a doorway has opened up somewhere in this cave.'
-        : 'You flip the lever and hear grinding noises come from inside the west wall.'
+        ? 'You already pulled this lever. The west wall of the Bloody Path stands open, for one trip through.'
+        : 'You pull the lever and hear grinding noises come from inside the west wall. It will not stay open for a second trip.'
       if (!already) pullLever(playerId, KOBOLD_SWITCH)
 
       return {
@@ -3067,7 +3067,7 @@ const ROOM_ACTIONS = {
   // Session-scoped, and spent on the way through the door it opens, exactly as
   // the original spent `$_SESSION['grottoswitch']`. See lever-state.js.
   '325': {
-    'flip switch': async (playerId, roomState) => {
+    'pull lever': async (playerId, roomState) => {
       const { isLeverPulled, pullLever, GROTTO_SWITCH, getRoomStateNote, getRoomActionOverrides } =
         require('./lever-state')
       roomState.touchActivity()
@@ -3076,11 +3076,11 @@ const ROOM_ACTIONS = {
         return {
           success: true,
           noTurn: true,
-          action: 'flip switch',
+          action: 'pull lever',
           playerEvents: [
             {
               event: 'action:feedback',
-              payload: createActionFeedbackPayload('flip switch', 'info', 'You already flipped this switch. Something to the southeast is standing open.', {
+              payload: createActionFeedbackPayload('pull lever', 'info', 'You already pulled this lever. The Grotto door to the southeast stands open, for one trip through.', {
                 roomId: roomState.roomId,
                 stateNote: getRoomStateNote(playerId, '325'),
                 actionOverrides: getRoomActionOverrides(playerId, '325'),
@@ -3093,11 +3093,11 @@ const ROOM_ACTIONS = {
       pullLever(playerId, GROTTO_SWITCH)
       return {
         success: true,
-        action: 'flip switch',
+        action: 'pull lever',
         playerEvents: [
           {
             event: 'action:feedback',
-            payload: createActionFeedbackPayload('flip switch', 'success', 'You flip the switch and hear a long grinding noise a very long way to the southeast.', {
+            payload: createActionFeedbackPayload('pull lever', 'success', 'You pull the lever and hear a long grinding noise a very long way to the southeast. It will not stay open for a second trip.', {
               roomId: roomState.roomId,
               showModal: true,
               stateNote: getRoomStateNote(playerId, '325'),
@@ -3106,7 +3106,7 @@ const ROOM_ACTIONS = {
                 type: 'icon',
                 icon: 'lever-down',
                 iconColor: 'yellow-500',
-                title: 'You flip the switch',
+                title: 'You pull the lever',
                 message:
                   'Stone moves somewhere a long way off, and keeps moving for longer than seems reasonable. Whatever opened, it opened southeast of here — out past the fort, on the grass path by the Grotto.',
               },
@@ -3189,8 +3189,32 @@ const ROOM_ACTIONS = {
   // --- Surrounded by Coral: the lever that opens the Coral Door ---
   // Session-scoped and never spent, exactly as the original kept
   // `$_SESSION['underwaterswitch']`. See lever-state.js.
+  // ==================== SWAMP ====================
+  // The Megalodon Cave's lever opens the quagmire gate (810 ↔ 811); the Dragon
+  // Nest's opens Arcturus's gate (802 → 812). Session levers, spent on the
+  // crossing — see lever-state.js.
+  '809': {
+    'pull lever': makeLeverHandler({
+      roomId: '809',
+      leverName: 'MEGALODON_LEVER',
+      alreadyMessage: 'You already pulled this lever. The gate south of the quagmire is open, until someone walks through it.',
+      flipMessage: 'The lever goes over with a clank you feel in your teeth. Far off, through the water and the mud, a gate the size of a barn door swings open.',
+      modalTitle: 'You pull the lever',
+      modalMessage: 'The lever goes over with a clank you feel in your teeth. Far off, through the water and the mud, a gate the size of a barn door swings open. The quagmire, you think. South of it. It will not stay open for a second trip.',
+    }),
+  },
+  '811': {
+    'pull lever': makeLeverHandler({
+      roomId: '811',
+      leverName: 'DRAGON_NEST_LEVER',
+      alreadyMessage: "You already pulled this lever. Arcturus's gate north is open, for one walk through.",
+      flipMessage: "The lever is warm, which you decide not to think about. Somewhere southwest, by the wizard's tent, iron grinds on stone.",
+      modalTitle: 'You pull the lever',
+      modalMessage: "The lever is warm, which you decide not to think about. Somewhere southwest, by the wizard's tent, iron grinds on stone. Arcturus's gate is open. Once.",
+    }),
+  },
   '483': {
-    'flip lever': async (playerId, roomState) => {
+    'pull lever': async (playerId, roomState) => {
       const { isLeverPulled, pullLever, UNDERWATER_SWITCH, getRoomStateNote, getRoomActionOverrides } =
         require('./lever-state')
       roomState.touchActivity()
@@ -3198,11 +3222,11 @@ const ROOM_ACTIONS = {
       if (isLeverPulled(playerId, UNDERWATER_SWITCH)) {
         return {
           success: true,
-          action: 'flip lever',
+          action: 'pull lever',
           playerEvents: [
             {
               event: 'action:feedback',
-              payload: createActionFeedbackPayload('flip lever', 'info', 'You already flipped this switch. A secret door has opened somewhere to the south.', {
+              payload: createActionFeedbackPayload('pull lever', 'info', 'You already pulled this lever. The Coral Door to the south stands open, for one swim through.', {
                 roomId: roomState.roomId,
                 stateNote: getRoomStateNote(playerId, '483'),
                 actionOverrides: getRoomActionOverrides(playerId, '483'),
@@ -3215,11 +3239,11 @@ const ROOM_ACTIONS = {
       pullLever(playerId, UNDERWATER_SWITCH)
       return {
         success: true,
-        action: 'flip lever',
+        action: 'pull lever',
         playerEvents: [
           {
             event: 'action:feedback',
-            payload: createActionFeedbackPayload('flip lever', 'success', 'You flip the coral lever and hear a rumbling come from the south.', {
+            payload: createActionFeedbackPayload('pull lever', 'success', 'You pull the coral lever and hear a rumbling come from the south.', {
               roomId: roomState.roomId,
               showModal: true,
               stateNote: getRoomStateNote(playerId, '483'),
@@ -3228,9 +3252,9 @@ const ROOM_ACTIONS = {
                 type: 'icon',
                 icon: 'lever-down',
                 iconColor: 'yellow-500',
-                title: 'You flip the coral lever',
+                title: 'You pull the coral lever',
                 message:
-                  'The coral gives with a crack and a long rumble rolls through the water from the south — the far south, past the deep water and the silver chest, where the whirlpool comes down. Something heavy just opened there.',
+                  'The coral gives with a crack and a long rumble rolls through the water from the south — the far south, past the deep water and the silver chest, where the whirlpool comes down. Something heavy just opened there. It shuts again behind whoever swims through.',
               },
             }),
           },
@@ -3418,12 +3442,12 @@ const ROOM_ACTIONS = {
 
   // --- Champion's Camp: the lever that opens the silver chest door ---
   '511': {
-    'flip lever': makeLeverHandler({
+    'pull lever': makeLeverHandler({
       roomId: '511',
       leverName: 'DARK_FOREST_SILVER_SWITCH',
-      alreadyMessage: 'You already flipped this lever. A door to the south has opened up.',
-      flipMessage: 'You flip the lever and hear some grinding to the south.',
-      modalTitle: 'You flip the lever',
+      alreadyMessage: 'You already pulled this lever. The stone door to the south stands open, for one trip through.',
+      flipMessage: 'You pull the lever and hear some grinding to the south.',
+      modalTitle: 'You pull the lever',
       modalMessage:
         'The lever goes over with a clunk and a long grinding rolls up the hill from the south — from the clearing at the bottom of the wood, where the stone door is. It will not stay open forever: it shuts again behind whoever goes through.',
     }),
@@ -3564,42 +3588,42 @@ const ROOM_ACTIONS = {
 
   // --- The Dark Keep's levers ---
   '516b': {
-    'flip lever': makeLeverHandler({
+    'pull lever': makeLeverHandler({
       roomId: '516b',
       leverName: 'DARK_KEEP_STOREROOM_LEVER',
-      alreadyMessage: 'You already flipped this lever.',
-      flipMessage: 'You flip the lever and hear some grinding in the walls.',
-      modalTitle: 'You flip the lever',
+      alreadyMessage: 'You already pulled this lever.',
+      flipMessage: 'You pull the lever and hear some grinding in the walls.',
+      modalTitle: 'You pull the lever',
       modalMessage: 'The lever goes over and something grinds inside the walls. One of two: the steel door in the main hall wants the other as well.',
     }),
   },
   '516c': {
-    'flip lever': makeLeverHandler({
+    'pull lever': makeLeverHandler({
       roomId: '516c',
       leverName: 'DARK_KEEP_BURIAL_LEVER',
-      alreadyMessage: 'You already flipped this lever.',
-      flipMessage: 'You flip the lever and hear some grinding in the walls.',
-      modalTitle: 'You flip the lever',
+      alreadyMessage: 'You already pulled this lever.',
+      flipMessage: 'You pull the lever and hear some grinding in the walls.',
+      modalTitle: 'You pull the lever',
       modalMessage: 'The lever goes over and something grinds inside the walls. One of two: the steel door in the main hall wants the other as well.',
     }),
   },
   '516f': {
-    'flip lever': makeLeverHandler({
+    'pull lever': makeLeverHandler({
       roomId: '516f',
       leverName: 'DARK_KEEP_BARRACKS_LEVER',
-      alreadyMessage: 'You already flipped this switch.',
-      flipMessage: 'You flip the switch and hear some grinding in the walls.',
-      modalTitle: 'You flip the switch',
+      alreadyMessage: 'You already pulled this lever.',
+      flipMessage: 'You pull the lever and hear some grinding in the walls.',
+      modalTitle: 'You pull the lever',
       modalMessage: 'The switch goes over and something grinds inside the walls. One of two: the ornate door at the top of the stairwell wants the other as well.',
     }),
   },
   '516g': {
-    'flip lever': makeLeverHandler({
+    'pull lever': makeLeverHandler({
       roomId: '516g',
       leverName: 'DARK_KEEP_ALTAR_LEVER',
-      alreadyMessage: 'You already flipped this lever.',
-      flipMessage: 'You flip the lever and hear some grinding in the walls.',
-      modalTitle: 'You flip the lever',
+      alreadyMessage: 'You already pulled this lever.',
+      flipMessage: 'You pull the lever and hear some grinding in the walls.',
+      modalTitle: 'You pull the lever',
       modalMessage: 'The lever goes over and something grinds inside the walls. One of two: the ornate door at the top of the stairwell wants the other as well.',
     }),
   },

@@ -17,8 +17,9 @@ const activatedLevers = globalThis.__activatedLevers
 /**
  * The Kobold Lair's Control Room switch (115h), which grinds open the false west
  * wall of the Bloody Path (115e) onto the Hidden Chamber (115f). Session-scoped
- * exactly like the original's `koboldswitch` flag: flip it, walk the lair, and
- * it is gone again next session.
+ * like the original's `koboldswitch` flag, and — unlike the original, which
+ * left it thrown for the session — spent on the crossing, as every lever in
+ * the game is (Anthony, 2026-10-30: one rule, one label).
  */
 const KOBOLD_SWITCH = '115h-lever'
 
@@ -45,9 +46,9 @@ const GROTTO_SWITCH = '325-grottoswitch'
 /**
  * The coral lever in the reef under the ocean (483), which opens the Coral
  * Door out of the Underwater Alcove (493) onto the Flower Patch (494).
- * Session-scoped like the original's `$_SESSION['underwaterswitch']`, and —
- * unlike the Grotto — never spent: flip it once and the door stays open until
- * you next log in.
+ * Session-scoped like the original's `$_SESSION['underwaterswitch']`. The
+ * original never spent it; this one is spent on the swim through, like every
+ * lever in the game (Anthony, 2026-10-30: one rule, one label).
  */
 const UNDERWATER_SWITCH = '483-underwaterswitch'
 
@@ -78,6 +79,16 @@ const DARK_FOREST_SILVER_SWITCH = '511-silverswitch'
  * Highwayman you just defeated" — or on a thousand gold; both set this.
  */
 const HIGHWAY_TOLL = '504-highwaytoll'
+
+/**
+ * The Swamp's two levers, one pass each (Anthony, 2026-10-30). The Megalodon
+ * Cave's (809) opens the gate between the Swampy Quagmire (810) and the Dragon
+ * Nest (811); the Dragon Nest's opens Arcturus's gate (802) into Mage Ultima
+ * (812). Both are spent on the crossing, like the Grotto door and the Silver
+ * Chest ledge, so every trip through is another pull.
+ */
+const MEGALODON_LEVER = '809-lever'
+const DRAGON_NEST_LEVER = '811-lever'
 
 const DARK_KEEP_STOREROOM_LEVER = '516b-lever'
 const DARK_KEEP_BURIAL_LEVER = '516c-lever'
@@ -188,6 +199,30 @@ function getRoomStateNote(playerId, roomId) {
     if (thrown === 1) return 'One of the two levers has been thrown. The ornate door to the northeast has not moved yet.'
     return 'A massive ornate door seals the way northeast.'
   }
+  if (roomId === '809') {
+    return isLeverPulled(playerId, MEGALODON_LEVER)
+      ? 'The lever is DOWN. Something heavy swung open, a long way up and east of here.'
+      : 'A lever juts from the cave wall, UP. Nobody puts a lever at the bottom of the sea for no reason.'
+  }
+  if (roomId === '810') {
+    return isLeverPulled(playerId, MEGALODON_LEVER)
+      ? 'The gate of driftwood and rusted iron stands open to the south.'
+      : 'A gate of driftwood and rusted iron seals the way south.'
+  }
+  if (roomId === '811') {
+    const lever = isLeverPulled(playerId, DRAGON_NEST_LEVER)
+      ? 'The lever in the nest is DOWN. Iron ground on stone to the southwest.'
+      : 'A lever stands in the eggshells, UP.'
+    const gate = isLeverPulled(playerId, MEGALODON_LEVER)
+      ? 'The gate of driftwood and rusted iron stands open to the north.'
+      : 'The gate of driftwood and rusted iron is shut to the north.'
+    return `${lever} ${gate}`
+  }
+  if (roomId === '802') {
+    return isLeverPulled(playerId, DRAGON_NEST_LEVER)
+      ? "Arcturus's gate to the north stands open."
+      : "Arcturus's gate to the north is shut."
+  }
   if (roomId === '504') {
     return isLeverPulled(playerId, HIGHWAY_TOLL)
       ? 'The way west up the mountain road is open. The Highwayman is not arguing.'
@@ -231,7 +266,7 @@ function getRoomActionOverrides(playerId, roomId) {
   if (roomId === '115h') {
     const pulled = isLeverPulled(playerId, KOBOLD_SWITCH)
     return {
-      'flip lever': pulled
+      'pull lever': pulled
         ? { className: 'bg-status-success/80 hover:bg-status-success', icon: 'lever-down' }
         : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
     }
@@ -239,7 +274,7 @@ function getRoomActionOverrides(playerId, roomId) {
   if (roomId === '325') {
     const pulled = isLeverPulled(playerId, GROTTO_SWITCH)
     return {
-      'flip switch': pulled
+      'pull lever': pulled
         ? { className: 'bg-status-success/80 hover:bg-status-success', icon: 'lever-down' }
         : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
     }
@@ -247,7 +282,7 @@ function getRoomActionOverrides(playerId, roomId) {
   if (roomId === '483') {
     const pulled = isLeverPulled(playerId, UNDERWATER_SWITCH)
     return {
-      'flip lever': pulled
+      'pull lever': pulled
         ? { className: 'bg-status-success/80 hover:bg-status-success', icon: 'lever-down' }
         : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
     }
@@ -256,7 +291,7 @@ function getRoomActionOverrides(playerId, roomId) {
   if (darkForestLever) {
     const pulled = isLeverPulled(playerId, darkForestLever)
     return {
-      'flip lever': pulled
+      'pull lever': pulled
         ? { className: 'bg-status-success/80 hover:bg-status-success', icon: 'lever-down' }
         : { className: 'bg-status-warning/80 hover:bg-status-warning', icon: 'lever-up' },
     }
@@ -264,8 +299,10 @@ function getRoomActionOverrides(playerId, roomId) {
   return null
 }
 
-/** The Dark Forest's single-lever rooms, by the lever each one throws. */
+/** The single-lever rooms the overrides above share, by the lever each one throws. */
 const DARK_FOREST_LEVER_ROOMS = {
+  '809': MEGALODON_LEVER,
+  '811': DRAGON_NEST_LEVER,
   '511': DARK_FOREST_SILVER_SWITCH,
   '516b': DARK_KEEP_STOREROOM_LEVER,
   '516c': DARK_KEEP_BURIAL_LEVER,
@@ -286,6 +323,8 @@ module.exports = {
   HIGHWAY_TOLL,
   GROTTO_SWITCH,
   UNDERWATER_SWITCH,
+  MEGALODON_LEVER,
+  DRAGON_NEST_LEVER,
   DARK_FOREST_SILVER_SWITCH,
   DARK_KEEP_STOREROOM_LEVER,
   DARK_KEEP_BURIAL_LEVER,

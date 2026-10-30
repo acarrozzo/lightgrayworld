@@ -350,7 +350,7 @@ const ROOM_GATES = {
         return isLeverPulled(playerId, '012d-lever')
       },
       lever: true,
-      message: "The passage is sealed shut. You need to find a way to unlock it from below.",
+      message: 'The passage northeast is sealed. A lever somewhere opens it, and it seals again behind you.',
       modalContent: {
         title: 'The passage is sealed',
         type: 'icon',
@@ -439,6 +439,11 @@ const ROOM_GATES = {
       lever: true,
       message: "You don't see an exit to the west.",
       silent: true,
+      // Spent on the way through, like every lever: the wall closes behind you.
+      onPass: async (playerId) => {
+        const { resetLever, KOBOLD_SWITCH } = require('./lever-state')
+        resetLever(playerId, KOBOLD_SWITCH)
+      },
     },
   },
   // The two boss-room exit portals. Both are one-way shortcuts back to their
@@ -689,7 +694,7 @@ const ROOM_GATES = {
         const { isLeverPulled, GROTTO_SWITCH } = require('./lever-state')
         return isLeverPulled(playerId, GROTTO_SWITCH)
       },
-      message: 'A giant carved stone door blocks the way to the Grotto. There must be a switch somewhere that moves it.',
+      message: 'A giant carved stone door blocks the way southwest to the Grotto. A lever somewhere opens it, and it shuts again behind you.',
       hidden: true,
       lever: true,
       modalContent: {
@@ -788,6 +793,11 @@ const UNDERWATER_SWIM_EXITS = {
   '410': ['down'],
   '417': ['down'],
   '420': ['down'],
+  // The Swamp's water: down the Gnarly Ripcurl, and the swim between the
+  // Undertow and the Megalodon Cave.
+  '807': ['down'],
+  '808': ['southwest'],
+  '809': ['northeast'],
   '480': ['east', 'northeast'],
   '481': ['west', 'north'],
   '482': ['south', 'northeast'],
@@ -834,12 +844,101 @@ for (const door of MASTER_TEMPLE_DOORS) {
 }
 
 // The coral door in the Underwater Alcove, opened by the lever in the reef
-// (483). Session-scoped like the original's `$_SESSION['underwaterswitch']`,
-// and the original never spent it — once the door was open it stayed open
-// for the rest of the session, so there is no `onPass` here.
+// (483). Session-scoped like the original's `$_SESSION['underwaterswitch']`.
+// The original never spent it; here it is spent on the swim through, like
+// every lever in the game.
 // The original checked the switch first and gills second; a gate has one
 // message, so the door is the one reported and the swim rule still holds
 // behind it — an open door is still deep water.
+// ==================== SWAMP ====================
+
+/**
+ * The Blue Guard at both ways into the Swamp — the muddy path (316 west) and
+ * the rowboat (416 south) — wants the Rocky Flats gold chest (309, `chest4`)
+ * opened, as in the original.
+ */
+const BLUE_GUARD_MESSAGE = 'The Blue Guard prevents you from entering the Swamp. You need to unlock the Rocky Flats gold chest.'
+function blueGuardGate(title) {
+  return {
+    check: async (playerId) => hasOpenedChest(playerId, 'chest4'),
+    message: BLUE_GUARD_MESSAGE,
+    modalContent: {
+      title,
+      type: 'icon',
+      icon: 'npc-warrior',
+      iconColor: 'blue-400',
+      message: 'The Blue Guard does not move. "Open the Gold Chest in the Dwarf Mining Village. Then we talk."',
+    },
+  }
+}
+ROOM_GATES['316'] = { ...(ROOM_GATES['316'] || {}), west: blueGuardGate('A Blue Guard blocks the path into the Swamp') }
+ROOM_GATES['416'] = { ...(ROOM_GATES['416'] || {}), south: blueGuardGate('A Blue Guard in a rowboat blocks the way into the Swamp') }
+
+/**
+ * The Swamp's two levers, one pass each (lever-state's MEGALODON_LEVER and
+ * DRAGON_NEST_LEVER, Anthony's call 2026-10-30). The Megalodon Cave's (809)
+ * opens the gate between the Swampy Quagmire (810) and the Dragon Nest (811)
+ * from either side; the Dragon Nest's opens Arcturus's north gate into Mage
+ * Ultima (812). Each is spent on the crossing, like the Grotto door, so the
+ * next trip through is another pull. The way back out of 812 is never shut.
+ */
+function spentLeverGate({ leverName, message, title, icon, iconColor, modalMessage }) {
+  return {
+    check: async (playerId) => {
+      const leverState = require('./lever-state')
+      return leverState.isLeverPulled(playerId, leverState[leverName])
+    },
+    lever: true,
+    message,
+    modalContent: { title, type: 'icon', icon, iconColor, message: modalMessage },
+    onPass: async (playerId) => {
+      const leverState = require('./lever-state')
+      leverState.resetLever(playerId, leverState[leverName])
+    },
+  }
+}
+const QUAGMIRE_GATE = (direction) =>
+  spentLeverGate({
+    leverName: 'MEGALODON_LEVER',
+    message: `A gate of driftwood and rusted iron blocks the way ${direction}. A lever somewhere opens it, and it shuts again behind you.`,
+    title: 'The gate is shut',
+    icon: 'environment-gate2',
+    iconColor: 'amber-500',
+    modalMessage: 'Driftwood and rusted iron, and no handle on this side. Something under the ocean works it, and it swings shut again behind whoever goes through. Find the lever.',
+  })
+ROOM_GATES['810'] = { ...(ROOM_GATES['810'] || {}), south: QUAGMIRE_GATE('south') }
+ROOM_GATES['811'] = { ...(ROOM_GATES['811'] || {}), north: QUAGMIRE_GATE('north') }
+ROOM_GATES['802'] = {
+  ...(ROOM_GATES['802'] || {}),
+  north: spentLeverGate({
+    leverName: 'DRAGON_NEST_LEVER',
+    message: "Arcturus's gate blocks the way north. A lever somewhere opens it, and it shuts again behind you.",
+    title: "Arcturus's gate is shut",
+    icon: 'environment-gate2',
+    iconColor: 'blue-400',
+    modalMessage: 'Arcturus does not look up. "Not through there. Not yet. There is a lever in the Dragon Nest, if you want to go looking. It shuts again behind you, before you ask."',
+  }),
+}
+
+/**
+ * The Gnarly Ripcurl (807) is reached from the Swampy Shore on wings only —
+ * no boat survives it (Anthony, 2026-10-30).
+ */
+ROOM_GATES['806'] = {
+  ...(ROOM_GATES['806'] || {}),
+  northeast: {
+    check: async (playerId) => playerCanFly(playerId),
+    message: "You can't reach the ripcurl from the shore. You need to be flying.",
+    modalContent: {
+      title: 'The ripcurl',
+      type: 'icon',
+      icon: 'eWhirlwind',
+      iconColor: 'blue-400',
+      message: 'The water out there would fold a boat in half. Drink a Wings Potion, or cast Wings, and go over it.',
+    },
+  },
+}
+
 ROOM_GATES['493'].east = {
   check: async (playerId) => {
     const { isLeverPulled, UNDERWATER_SWITCH } = require('./lever-state')
@@ -847,13 +946,16 @@ ROOM_GATES['493'].east = {
     return playerCanBreatheWater(playerId)
   },
   lever: true,
-  message: 'A massive Coral Door blocks the way to the east — and it is deep water beyond it. Open the door from the reef, and breathe water to swim through.',
+  message: 'A massive Coral Door blocks the way east. A lever somewhere opens it, and it shuts again behind you. It is deep water beyond it, so breathe water too.',
   modalContent: {
     title: 'A massive Coral Door blocks the way east',
     type: 'icon',
     icon: 'gate',
     iconColor: 'purple-400',
     message: 'The coral door does not move. Somewhere in the reef to the north there is a piece of coral shaped like a lever, and this is what it opens. Beyond it is deep water: you will need gills to swim through even once it stands open.',
+  },  onPass: async (playerId) => {
+    const { resetLever, UNDERWATER_SWITCH } = require('./lever-state')
+    resetLever(playerId, UNDERWATER_SWITCH)
   },
 }
 
@@ -921,7 +1023,7 @@ ROOM_GATES['505'] = {
       return isLeverPulled(playerId, DARK_FOREST_SILVER_SWITCH)
     },
     lever: true,
-    message: "An immovable stone door blocks your way to the northeast. There's probably a switch nearby that will open it.",
+    message: 'A massive stone door blocks the way northeast. A lever somewhere opens it, and it shuts again behind you.',
     modalContent: {
       title: 'A massive stone door blocks the way northeast',
       type: 'icon',
@@ -1027,16 +1129,16 @@ const DARK_KEEP_DOORS = [
     direction: 'southwest',
     levers: ['DARK_KEEP_STOREROOM_LEVER', 'DARK_KEEP_BURIAL_LEVER'],
     title: 'A solid steel door blocks the way southwest',
-    shut: 'The way to the southwest is blocked by a steel door. There are 2 levers nearby that need to be flipped in order to open the door.',
-    half: 'You have flipped 1 out of 2 levers. Go flip the other lever to open this door.',
+    shut: 'A steel door blocks the way southwest. Two levers nearby open it, and it shuts again behind you.',
+    half: 'One of the two levers is down. Pull the other and the steel door opens.',
   },
   {
     roomId: '516e',
     direction: 'northeast',
     levers: ['DARK_KEEP_BARRACKS_LEVER', 'DARK_KEEP_ALTAR_LEVER'],
     title: 'A massive ornate door blocks the way northeast',
-    shut: 'The way to the northeast is blocked by a massive door. There are 2 levers nearby that need to be switched in order to open the door.',
-    half: 'You have switched 1 of 2 levers. Go flip the other lever to open this door.',
+    shut: 'A massive ornate door blocks the way northeast. Two levers nearby open it, and it shuts again behind you.',
+    half: 'One of the two levers is down. Pull the other and the ornate door opens.',
   },
 ]
 for (const door of DARK_KEEP_DOORS) {

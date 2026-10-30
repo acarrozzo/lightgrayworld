@@ -402,6 +402,23 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
   '927': { x: 350, y: 665 },  // Medusa
   '913': { x: 560, y: 665 },
   '914': { x: 665, y: 665 },  // Basilisk
+  // Swamp (lightgray_map_swamp_main.jpg): the path row along the top edge and
+  // Arcturus's tent under Mage Ultima. Three of its rooms are drawn on the
+  // Blue Ocean sheet and two under it, listed with those sheets' coordinates.
+  '804': { x: 350, y: 35 },  // Swamp Path near the Ocean
+  '805': { x: 455, y: 35 },  // Swampy Backroad
+  '812': { x: 560, y: 35 },  // Mage Ultima
+  '811': { x: 665, y: 35 },  // Swampy Dragon Nest
+  '803': { x: 455, y: 140 },  // Swamp Path
+  '802': { x: 560, y: 140 },  // Arcturus — Star City Wizard
+  '801': { x: 665, y: 140 },  // Swamp Path near the Rocky Flats
+  // On the Blue Ocean sheet, below Mud Island's row.
+  '806': { x: 455, y: 665 },  // Swampy Shore
+  '807': { x: 560, y: 560 },  // Gnarly Ripcurl
+  '810': { x: 665, y: 665 },  // Swampy Quagmire
+  // Under the Ocean, beside the mud caves.
+  '808': { x: 560, y: 560 },  // Under the Undertow
+  '809': { x: 455, y: 665 },  // Megalodon Cave
   // Star City (lightgray_map_starcity.jpg): Camp Hero, outside the east wall.
   '701': { x: 665, y: 350 },  // Camp Hero
 }

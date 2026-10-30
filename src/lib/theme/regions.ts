@@ -43,6 +43,7 @@ export const REGIONS: RegionMeta[] = [
   { id: 'mountains', name: 'Mountains' },
   { id: 'starCity', name: 'Star City' },
   { id: 'despair', name: 'The Despair' },
+  { id: 'swamp', name: 'Swamp' },
   { id: 'solarOffice', name: 'Solar Office' },
   { id: 'lobby', name: 'Plane of Rebirth' },
 ]
@@ -150,6 +151,11 @@ export function getRegionForRoom(roomId: string | null | undefined): RegionId {
   if (roomId.startsWith('7')) return 'starCity'
   // The Despair, the pit below the Dark Forest's Top of the Despair (524).
   if (roomId.startsWith('9') && roomId !== '999') return 'despair'
+  // The Swamp. Its ripcurl (807) is open ocean and the rooms under it (808,
+  // 809) are sea floor; the seed says so per room, this is only the fallback.
+  if (roomId === '807') return 'ocean'
+  if (roomId === '808' || roomId === '809') return 'underwater'
+  if (roomId.startsWith('8')) return 'swamp'
   if (roomId.startsWith('4')) return 'ocean'
   if (roomId.startsWith('3')) return 'rockyFlats'
   if (roomId.startsWith('2')) return 'redTown'

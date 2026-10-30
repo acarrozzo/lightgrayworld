@@ -128,7 +128,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'pick blueberry', label: 'Pick Blueberry', icon: 'blueberry', className: 'fill-hue-blue' },
   ],
   '012d': [
-    { action: 'pull lever', label: 'Pull Lever', icon: 'sign-metal2' },
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
   ],
   '006': [
     { action: 'view shop', label: 'View Shop', icon: 'basicshop', className: 'fill-mood-treasure' },
@@ -251,7 +251,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'open chest', label: 'Open Treasure Chest', icon: 'chest', className: 'fill-mood-treasure' },
   ],
   '115h': [
-    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
   ],
 
   // ==================== RED TOWN ====================
@@ -373,7 +373,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '325': [
-    { action: 'flip switch', label: 'Flip Switch', icon: 'lever-up', className: 'fill-hue-gold' },
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
   ],
 
   // ==================== BLUE OCEAN ====================
@@ -397,7 +397,14 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'open silver chest', label: 'Open Silver Chest', icon: 'chest2', className: 'fill-hue-sky' },
   ],
   '483': [
-    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+  ],
+  // ==================== SWAMP ====================
+  '809': [
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+  ],
+  '811': [
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
   ],
   '484': [
     { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
@@ -436,7 +443,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'read sign', label: 'Read Directory', icon: 'sign', className: 'fill-terrain-wood' },
   ],
   '511': [
-    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
   ],
   '512': [
     { action: 'open silver chest', label: 'Open Silver Chest', icon: 'chest2', className: 'fill-hue-sky' },
@@ -466,16 +473,16 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
     { action: 'view shop', label: 'View Shop', icon: 'bowarrow', className: 'fill-mood-treasure' },
   ],
   '516b': [
-    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
   ],
   '516c': [
-    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
   ],
   '516f': [
-    { action: 'flip lever', label: 'Flip Switch', icon: 'lever-up', className: 'fill-hue-gold' },
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
   ],
   '516g': [
-    { action: 'flip lever', label: 'Flip Lever', icon: 'lever-up', className: 'fill-hue-gold' },
+    { action: 'pull lever', label: 'Pull Lever', icon: 'lever-up', className: 'fill-hue-gold' },
   ],
   '516h': [
     { action: 'grab crown', label: 'Grab Crown', icon: 'skull', className: 'fill-mood-treasure' },

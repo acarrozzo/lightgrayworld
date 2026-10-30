@@ -303,6 +303,7 @@ export type RegionId =
   | 'mountains'
   | 'starCity'
   | 'despair'
+  | 'swamp'
   | 'solarOffice'
   | 'lobby'
 

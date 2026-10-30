@@ -64,6 +64,7 @@ export interface AuthUser {
   mountainsMap?: boolean
   starCityMap?: boolean
   despairMap?: boolean
+  swampMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean
   /** Fast-travel hubs stood in, by world region id (game-data/world-map.js). */

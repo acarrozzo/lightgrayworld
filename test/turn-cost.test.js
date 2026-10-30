@@ -113,7 +113,7 @@ test('a room action that changes the world costs a turn', () => {
   assert.equal(isTurnCostingRoomAction('117', 'chop wood'), true)
   assert.equal(isTurnCostingRoomAction('016', 'shovel sand'), true)
   assert.equal(isTurnCostingRoomAction('119', 'open gold chest'), true)
-  assert.equal(isTurnCostingRoomAction('511', 'flip lever'), true)
+  assert.equal(isTurnCostingRoomAction('511', 'pull lever'), true)
   assert.equal(isTurnCostingRoomAction('020', 'rest at waterfall'), true)
 })
 

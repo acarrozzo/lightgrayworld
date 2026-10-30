@@ -64,7 +64,7 @@ const { WORLD_REGIONS, VIP_REGIONS, MAP_SHEETS, getSubHubsForRegion, getMapIdFor
 const SHEET_FILL_ALIAS: Record<string, string> = { 'ocean-underwater': 'underwater', 'dark-forest-upper': 'dark-keep', 'the-despair': 'despair' }
 const SHEET_FILLS = new Set([
   'grassy-field', 'grassy-field-underground', 'forest', 'forest-underground', 'red-town', 'red-town-sewers', 'rocky-flats',
-  'rocky-flats-underground', 'neverending-mine', 'ocean', 'underwater', 'dark-forest', 'dark-keep', 'despair', 'mountains', 'star-city',
+  'rocky-flats-underground', 'neverending-mine', 'ocean', 'underwater', 'dark-forest', 'dark-keep', 'despair', 'swamp', 'mountains', 'star-city',
   'room-zero', 'lobby', 'solar-office',
 ])
 function worldFor(roomId: string): string {

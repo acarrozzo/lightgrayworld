@@ -98,6 +98,7 @@ export interface Player {
   mountainsMap?: boolean
   starCityMap?: boolean
   despairMap?: boolean
+  swampMap?: boolean
   roomZeroMap?: boolean
   lobbyMap?: boolean
   solarOfficeMap?: boolean
