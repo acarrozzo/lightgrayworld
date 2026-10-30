@@ -160,25 +160,31 @@ export default function VitalBar({
   const over = vitalOverflow(current, max)
   const showDrain = drain ?? size !== 'hair'
 
-  // The drain: when the fill drops, remember by how much and let it go after
-  // a moment. Seeded so an enemy's bar can show the opening blow.
+  // The drain: when the fill drops, remember where it fell from and let that
+  // go after a moment. Only a new drop restarts the moment: the regen tick
+  // that lands just after a hit nudges the fill up, and once that cancelled
+  // the fade the gold stayed for good. The lit part runs from the fill to
+  // where it fell from, so a gain eats into it rather than sliding it along.
+  // Seeded so an enemy's bar can show the opening blow.
   const prevPct = useRef(initialPct ?? pct)
-  const [drainPct, setDrainPct] = useState<number>(() => {
-    const seed = initialPct ?? pct
-    return seed > pct ? seed - pct : 0
-  })
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [drainState, setDrainState] = useState(() => ({
+    from: showDrain && initialPct != null && initialPct > pct ? initialPct : 0,
+    drop: 0,
+  }))
   useEffect(() => {
     if (showDrain && pct < prevPct.current) {
-      setDrainPct(prevPct.current - pct)
-      if (timer.current) clearTimeout(timer.current)
-      timer.current = setTimeout(() => setDrainPct(0), DRAIN_MS)
+      const from = prevPct.current
+      setDrainState((d) => ({ from: Math.max(d.from, from), drop: d.drop + 1 }))
     }
     prevPct.current = pct
-    return () => {
-      if (timer.current) clearTimeout(timer.current)
-    }
   }, [pct, showDrain])
+  const draining = drainState.from > 0
+  useEffect(() => {
+    if (!draining) return
+    const timer = setTimeout(() => setDrainState((d) => ({ ...d, from: 0 })), DRAIN_MS)
+    return () => clearTimeout(timer)
+  }, [drainState.drop, draining])
+  const drainPct = showDrain ? Math.max(0, drainState.from - pct) : 0
 
   const placement: VitalNumber = number ?? (size === 'mid' || size === 'fat' ? 'inside' : 'beside')
   const fill = fillClass ?? FILL[kind]
