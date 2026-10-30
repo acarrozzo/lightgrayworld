@@ -6,7 +6,7 @@ import { describeStat, effectiveStats, STAT_KEYS, type StatKey } from '@/lib/eff
 import { Stat } from '@/components/GameHeader'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
 import VitalBar from './VitalBar'
-import { EffectBadges, EffectsToggle, EnemyPoisonPill, MagicArmorPill, OverflowPill } from './EffectBadges'
+import { EffectBadges, EffectsToggle, EnemyPoisonPill, MagicArmorPill } from './EffectBadges'
 import { regenPerClick, statusChips } from '@/lib/status-effects'
 import { LevelBadge, RankBadge, TurnChip } from './battle-badges'
 
@@ -129,8 +129,6 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
   const hpLost = Math.max(0, (battle.lastEnemyDamage ?? 0) - (battle.absorbed ?? 0)) + (battle.enemyEffects?.hpDrained ?? 0)
   const noMpSpent = battle.immuneToMagic || battle.enemyDodged
   const mpSpent = noMpSpent ? 0 : (battle.spell?.cost ?? battle.skill?.cost ?? battle.actionMeta?.spell?.cost ?? 0)
-  const hpOver = Math.max(0, hp - hpMax)
-  const mpOver = Math.max(0, player.mp - player.mpMax)
   // What the enemy lost to your last turn: your hit, a second arrow's, and
   // the burn of the poison you have on it.
   const poisonBurn = battle.poisonTick?.amount ?? 0
@@ -149,12 +147,8 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
             <div className="flex min-w-0 items-center gap-1.5">
               <LevelBadge level={player.level} />
               <span className="truncate text-xs font-black tracking-tight text-fg-bright @min-[600px]:text-sm">{player.username}</span>
-              {/* The buffers: the HP and MP over the max, then Magic Armor at the end of the line. */}
-              <span className="ml-auto inline-flex items-center gap-1">
-                <OverflowPill kind="hp" amount={hpOver} />
-                <OverflowPill kind="mp" amount={mpOver} />
-                <MagicArmorPill amount={magicArmor} />
-              </span>
+              {/* Magic Armor at the end of the line. The HP and MP over the max ride their own bars' ends, so the name keeps the room. */}
+              <MagicArmorPill amount={magicArmor} className="ml-auto" />
             </div>
             <VitalBar
               kind="hp"
@@ -163,7 +157,6 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
               current={hp}
               max={hpMax}
               preview={itemPreview?.hp ?? 0}
-              overflow={false}
               regen={{ amount: regen.hp, title: regen.hpTitle }}
               delta={hpLost > 0 ? { amount: -hpLost, title: `The last hit took ${hpLost} HP${battle.absorbed > 0 ? ` after Magic Armor absorbed ${battle.absorbed}` : ''}.` } : null}
               extra={itemPreview?.hp ? <span className="text-combat-heal animate-pulse">+{itemPreview.hp}</span> : null}
@@ -175,7 +168,6 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
               current={player.mp}
               max={player.mpMax}
               preview={itemPreview?.mp ?? 0}
-              overflow={false}
               regen={{ amount: regen.mp, title: regen.mpTitle }}
               delta={mpSpent > 0 ? { amount: -mpSpent, title: `The last cast spent ${mpSpent} MP.` } : null}
               extra={itemPreview?.mp ? <span className="text-combat-heal animate-pulse">+{itemPreview.mp}</span> : null}

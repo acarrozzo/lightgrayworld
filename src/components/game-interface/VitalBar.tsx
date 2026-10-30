@@ -20,8 +20,8 @@ import { formatVital, previewPct, vitalOverflow, vitalPct, vitalState } from '@/
  * (the part just lost stays lit for a moment, gold on a health bar as the
  * original's yellow was, so a hit reads as a hit and never as a gain), the
  * heal ghost (what a hovered restorer would add), the gain float ("+3" rising
- * off the bar when regen lands) and the over-max "+8" in gold. Your own HP
- * pulses from a tenth.
+ * off the bar when regen lands) and the over-max "+8" in the bar's own colour,
+ * a cap on the bar's full end. Your own HP pulses from a tenth.
  *
  * Colour is the kind's resource role and nothing else — `resource.hp`,
  * `resource.mp`, `resource.xp`, `resource.foe` — unless the caller is the
@@ -67,6 +67,14 @@ const TEXT: Record<VitalKind, string> = {
   mp: 'text-resource-mp',
   xp: 'text-resource-xp',
   foe: 'text-resource-foe',
+}
+
+/** The over-max cap: the kind's colour on a dark plate, so it reads against the full fill it sits on. */
+const OVER_CAP: Record<VitalKind, string> = {
+  hp: 'text-resource-hp border-resource-hp/60',
+  mp: 'text-resource-mp border-resource-mp/60',
+  xp: 'text-resource-xp border-resource-xp/60',
+  foe: 'text-resource-foe border-resource-foe/60',
 }
 
 /** How long the lost part stays lit. */
@@ -118,7 +126,10 @@ export interface VitalBarProps {
    * the hit that just landed and the MP the cast just spent.
    */
   delta?: { amount: number; title?: string } | null
-  /** Draw the gold over-max "+8" after the number. The duel turns it off and wears the overflow as a pill instead. */
+  /**
+   * Draw the over-max "+8" in the bar's colour: a cap on the bar's full end
+   * when the number is inside, after the number when it is beside.
+   */
   overflow?: boolean
   /** A gain that just landed, floated off the bar. A new `gainKey` replays it. */
   gain?: number | null
@@ -192,12 +203,20 @@ export default function VitalBar({
   const value = formatVital(current, max)
   const name = label ?? (kind === 'foe' ? 'Enemy HP' : kind.toUpperCase())
   const hint = title ?? `${name} ${value}${over > 0 ? ` +${over}` : ''}`
+  // The overcharge is a buffer over the max: a hit spends Magic Armor, then
+  // this, then the HP under it; a cast spends MP over the max first. Regen
+  // never refills it.
+  const showOver = overflow && over > 0
+  const overTitle =
+    kind === 'mp' ? `${over} MP over the max. A cast spends it first; regen does not refill it.`
+    : kind === 'hp' ? `${over} HP over the max. A hit spends Magic Armor first, then this, then the HP under the max. Regen does not refill it.`
+    : `${over} over the max.`
 
   // The marks after the number — or before it on a right-to-left bar, so
   // they sit on the open side and the value stays against the edge.
   const marks = (
     <>
-      {overflow && over > 0 && <span className="text-resource-gold">+{over}</span>}
+      {showOver && placement !== 'inside' && <span className={TEXT[kind]} title={overTitle}>+{over}</span>}
       {regen && regen.amount > 0 && (
         <span className="inline-flex items-center gap-px opacity-75" title={regen.title}>
           <Icon name="regenerate" size={size === 'fat' ? 9 : 8} className="shrink-0" />
@@ -249,8 +268,17 @@ export default function VitalBar({
         />
       )}
       {placement === 'inside' && (
-        <span className={`absolute inset-0 flex items-center label-over-fill ${rtl ? 'justify-end pr-2' : 'justify-start pl-2'}`}>
-          {numberNode}
+        <span className={`absolute inset-0 flex items-center gap-1 label-over-fill ${rtl ? 'flex-row-reverse pr-2' : 'pl-2'}`}>
+          <span className="min-w-0 overflow-hidden">{numberNode}</span>
+          {/* Over the max, the "+8" rides the bar's full end, where the fill would go on if it could. */}
+          {showOver && (
+            <span
+              className={`flex shrink-0 self-stretch items-center rounded-full border bg-surface-canvas/90 px-1.5 font-extrabold leading-none tabular-nums [text-shadow:none] ${NUMBER_TEXT[size]} ${OVER_CAP[kind]} ${rtl ? 'mr-auto' : 'ml-auto'}`}
+              title={overTitle}
+            >
+              +{over}
+            </span>
+          )}
         </span>
       )}
       {gain != null && gain > 0 && (

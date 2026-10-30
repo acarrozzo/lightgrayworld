@@ -143,29 +143,3 @@ export function EnemyPoisonPill({ poison, enemyName, className = '' }: { poison:
     </span>
   )
 }
-
-/**
- * HP or MP over the max — a fountain's or a feast's overcharge — as a gold
- * pill beside the Magic Armor pill on the duel's name line. The two are the
- * same kind of thing, a buffer that goes before the bar does: a hit spends
- * Magic Armor first, then the overcharge (it is the top of the bar), then the
- * HP under the max. Regen never refills an overcharge.
- */
-export function OverflowPill({ kind, amount, className = '' }: { kind: 'hp' | 'mp'; amount: number; className?: string }) {
-  const value = Math.max(0, Math.floor(Number(amount) || 0))
-  if (value <= 0) return null
-  const title =
-    kind === 'hp'
-      ? `${value} HP over your max. A hit spends Magic Armor first, then this, then the HP under your max. Regen does not refill it.`
-      : `${value} MP over your max. Casting spends it first; regen does not refill it.`
-  return (
-    <span
-      title={title}
-      aria-label={title}
-      className={`inline-flex h-4 shrink-0 items-center gap-0.5 rounded border px-1 text-[10px] font-extrabold leading-none tabular-nums ${STATUS_TONE_CLASSES.aura} ${className}`}
-    >
-      <span>+{value}</span>
-      <span className="text-[8px] font-bold opacity-80">{kind.toUpperCase()}</span>
-    </span>
-  )
-}
