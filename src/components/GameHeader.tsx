@@ -1,6 +1,7 @@
 'use client'
 
 import SettingsMenu from '@/components/SettingsMenu'
+import { GAME_VERSION } from '@/lib/version'
 import Icon from '@/components/Icon'
 import VitalBar, { VitalBarKeyframes } from '@/components/game-interface/VitalBar'
 import { MagicArmorPill } from '@/components/game-interface/EffectBadges'
@@ -261,7 +262,7 @@ export default function GameHeader({ hiddenOnPhone = false, playerName, level, h
               <span className="hidden @min-[1100px]:inline text-[10px] text-fg-muted font-normal tabular-nums">{clicks.toLocaleString()}</span>
             )}
             <h1 className="text-sm font-semibold text-fg-bright tracking-wide">Light Gray</h1>
-            <span className="hidden @min-[1280px]:inline text-[10px] text-fg-muted font-normal">v0.1.8</span>
+            <span className="hidden @min-[1280px]:inline text-[10px] text-fg-muted font-normal">{GAME_VERSION}</span>
           </div>
 
           {/* Right: core stats, then the gear */}

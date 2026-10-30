@@ -7,8 +7,8 @@ import { nord } from './nord'
 import { gruvboxDark } from './gruvbox-dark'
 import { solarizedDark } from './solarized-dark'
 import { tokyoNight } from './tokyo-night'
-import { catppuccinMocha } from './catppuccin-mocha'
 import { everforestDark } from './everforest-dark'
+import { clearSignal } from './clear-signal'
 
 /**
  * Launch themes, in the order they are offered everywhere.
@@ -24,7 +24,9 @@ import { everforestDark } from './everforest-dark'
  * as it was. Modern is the Tailwind-era look of the rewrite; Dark is the house
  * palette on a neutral near-black ground. The rest run warm-and-muted to
  * cool-and-vivid — Gruvbox, Nord and Everforest are the restrained earthy end;
- * Dracula, Solarized, Tokyo Night and Catppuccin are the more saturated ones.
+ * Dracula, Solarized and Tokyo Night are the more saturated ones. Clear Signal
+ * closes the list: it is there for what it does, colorblind-safe roles, more
+ * than for a mood.
  */
 export const THEMES: Theme[] = [
   lightGray,
@@ -36,7 +38,7 @@ export const THEMES: Theme[] = [
   dracula,
   solarizedDark,
   tokyoNight,
-  catppuccinMocha,
+  clearSignal,
 ]
 
 export const DEFAULT_THEME_ID = lightGray.id
@@ -63,4 +65,4 @@ export function resolveTheme(id: string | null | undefined): Theme {
   return isThemeId(id) ? THEMES_BY_ID[id] : THEMES_BY_ID[DEFAULT_THEME_ID]
 }
 
-export { lightGray, lightGrayModern, lightGrayDark, dracula, nord, gruvboxDark, solarizedDark, tokyoNight, catppuccinMocha, everforestDark }
+export { lightGray, lightGrayModern, lightGrayDark, dracula, nord, gruvboxDark, solarizedDark, tokyoNight, everforestDark, clearSignal }

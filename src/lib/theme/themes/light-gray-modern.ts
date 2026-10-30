@@ -19,7 +19,7 @@ import { makeTheme } from '../factory'
 export const lightGrayModern = makeTheme({
   id: 'light-gray-modern',
   name: 'Light Gray Modern',
-  description: 'The Tailwind years. Cool gray surfaces, indigo chrome, palette-stop colours.',
+  description: 'The Tailwind years. Cool gray surfaces, indigo chrome, palette-stop colors.',
   // indigo-500: the primary-button colour that defined the period.
   swatch: '#6366f1',
   // The Tailwind-era client used red-500 for attack and HP and red-400 for

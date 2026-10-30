@@ -417,7 +417,7 @@ test('no gradient runs from a colour to itself', async () => {
 })
 
 test('every theme has a swatch, and no two are hard to tell apart', () => {
-  // The swatch's only job is to distinguish nine themes at 16px. Deriving it
+  // The swatch's only job is to distinguish the themes at 16px. Deriving it
   // from `ui.accent` would give six blues and two byte-identical Light Grays,
   // which is why it is authored.
   for (const theme of THEMES) {
@@ -433,4 +433,69 @@ test('every theme has a swatch, and no two are hard to tell apart', () => {
       )
     }
   }
+})
+
+/*
+ * Machado, Oliveira & Fernandes (2009), full severity, applied in linear RGB:
+ * how each of the three dichromacies sees a color.
+ */
+const DICHROMACY: Record<'protanopia' | 'deuteranopia' | 'tritanopia', number[][]> = {
+  protanopia: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+  deuteranopia: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.01182, 0.04294, 0.968881]],
+  tritanopia: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.3039]],
+}
+
+function seenWith(hex: string, matrix: number[][]): string {
+  const toLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  const toSrgb = (c: number) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055)
+  const n = parseInt(hex.slice(1, 7), 16)
+  const rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => toLinear(c / 255))
+  return (
+    '#' +
+    matrix
+      .map((row) => Math.min(1, Math.max(0, row[0] * rgb[0] + row[1] * rgb[1] + row[2] * rgb[2])))
+      .map((c) => Math.round(toSrgb(c) * 255).toString(16).padStart(2, '0'))
+      .join('')
+  )
+}
+
+test('Clear Signal keeps the pairs the game reads side by side apart under every dichromacy', () => {
+  // The name is a promise: a role pair that the game sets next to each other
+  // must still read as two colors to a protanope, a deuteranope and a
+  // tritanope. 0.1 in OKLab is "two different colors at a glance".
+  const theme = resolveTheme('clear-signal')
+  assert.equal(theme.id, 'clear-signal')
+  const { stat, resource, status, action, combat, loot } = theme.game
+  const pairs: [string, string, string][] = [
+    ['STR / DEX', stat.str, stat.dex],
+    ['STR / MAG', stat.str, stat.mag],
+    ['STR / DEF', stat.str, stat.def],
+    ['DEX / MAG', stat.dex, stat.mag],
+    ['DEX / DEF', stat.dex, stat.def],
+    ['MAG / DEF', stat.mag, stat.def],
+    ['HP / MP', resource.hp, resource.mp],
+    ['HP / XP', resource.hp, resource.xp],
+    ['MP / XP', resource.mp, resource.xp],
+    ['HP / enemy HP', resource.hp, resource.foe],
+    ['success / error', status.success, status.error],
+    ['success / warning', status.success, status.warning],
+    ['error / warning', status.error, status.warning],
+    ['attack / rest', action.attack, action.rest],
+    ['attack / search', action.attack, action.search],
+    ['attack / travel', action.attack, action.travel],
+    ['victory / defeat', combat.victory, combat.defeat],
+    ['damage / heal', combat.damage, combat.heal],
+    ['uncommon / rare', loot.uncommon, loot.rare],
+    ['rare / epic', loot.rare, loot.epic],
+    ['epic / legendary', loot.epic, loot.legendary],
+  ]
+
+  const failures: string[] = []
+  for (const [kind, matrix] of Object.entries(DICHROMACY)) {
+    for (const [name, a, b] of pairs) {
+      const d = deltaE(seenWith(a, matrix), seenWith(b, matrix))
+      if (d < 0.1) failures.push(`${kind}: ${name} (${a} / ${b}) differ by only ${d.toFixed(3)}`)
+    }
+  }
+  assert.deepEqual(failures, [], failures.join('\n'))
 })

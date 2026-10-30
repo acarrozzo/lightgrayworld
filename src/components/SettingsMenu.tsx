@@ -3,17 +3,15 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { LogOut, Settings as SettingsIcon } from 'lucide-react'
-import { THEMES, resolveTheme } from '@/lib/theme/themes'
-import { themeNameColor } from '@/lib/theme/swatch'
-import { useThemeStore } from '@/store/themeStore'
-import ThemeDot from '@/components/ThemeDot'
+import { THEMES } from '@/lib/theme/themes'
+import ThemeSelector from '@/components/ThemeSelector'
 
 /**
  * The header's corner: one gear, and a small menu when you press it.
  *
  * The gear wears the connection as a pip on its shoulder, green or red, with
- * Refresh before it when the socket is gone. The menu holds the nine theme
- * dots, the connection in words, the way into the Settings tab, and Log out.
+ * Refresh before it when the socket is gone. The menu holds the theme dots,
+ * the connection in words, the way into the Settings tab, and Log out.
  * It replaced a gear, a connection dot and a theme dot standing side by side,
  * three shapes that crowded the corner.
  *
@@ -25,8 +23,8 @@ import ThemeDot from '@/components/ThemeDot'
  */
 
 const GAP = 8
-/** Nine 28px dot targets, 4px apart, plus the menu's own padding. */
-const MENU_WIDTH = 312
+/** One 28px dot target per theme, 2px apart (ThemeSelector's row), plus the menu's own padding, so every dot sits on one line. */
+const MENU_WIDTH = THEMES.length * 28 + (THEMES.length - 1) * 2 + 24
 
 interface SettingsMenuProps {
   isConnected?: boolean
@@ -64,11 +62,7 @@ function RefreshButton({ onRefresh }: { onRefresh: () => void }) {
 }
 
 export default function SettingsMenu({ isConnected, onRefresh, onOpenSettings, settingsOpen = false, onLogout }: SettingsMenuProps) {
-  const themeId = useThemeStore((state) => state.themeId)
-  const setTheme = useThemeStore((state) => state.setTheme)
-
   const [isOpen, setIsOpen] = useState(false)
-  const [hovered, setHovered] = useState<string | null>(null)
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
   const [mounted, setMounted] = useState(false)
 
@@ -76,11 +70,6 @@ export default function SettingsMenu({ isConnected, onRefresh, onOpenSettings, s
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => setMounted(true), [])
-
-  const active = resolveTheme(themeId)
-  // The name shown is whatever the pointer is over, falling back to the
-  // selected one — so themes can be browsed by name without committing.
-  const named = hovered ? resolveTheme(hovered) : active
 
   const status = isConnected === undefined ? null : isConnected ? 'Connected' : 'Disconnected'
   const label = status ? `Settings · ${status}` : 'Settings'
@@ -134,15 +123,6 @@ export default function SettingsMenu({ isConnected, onRefresh, onOpenSettings, s
     }
   }, [isOpen])
 
-  /** Left/right step through the themes, as a radio group should. */
-  const onDotsKeyDown = (event: React.KeyboardEvent) => {
-    const delta = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
-    if (delta === 0) return
-    event.preventDefault()
-    const index = THEMES.findIndex((t) => t.id === themeId)
-    setTheme(THEMES[(index + delta + THEMES.length) % THEMES.length].id)
-  }
-
   /** A row's action, then the menu folds. */
   const run = (action?: () => void) => () => {
     setIsOpen(false)
@@ -188,32 +168,10 @@ export default function SettingsMenu({ isConnected, onRefresh, onOpenSettings, s
             style={{ top: position.top, left: position.left, width: MENU_WIDTH }}
             className="fixed z-[60] overflow-hidden rounded-lg border border-line-subtle bg-surface-overlay shadow-xl shadow-shadow"
           >
-            {/* Theme: the nine dots, the name of whichever is under the pointer */}
-            <div className="px-3 py-2.5" onMouseLeave={() => setHovered(null)}>
+            {/* Theme: the dots, the name of whichever is under the pointer */}
+            <div className="px-3 py-2.5">
               <p className="mb-1.5 text-[10px] uppercase tracking-wider text-fg-muted">Theme</p>
-              <div
-                role="radiogroup"
-                aria-label="Terminal theme"
-                onKeyDown={onDotsKeyDown}
-                className="flex items-center justify-center gap-1"
-              >
-                {THEMES.map((theme) => (
-                  <ThemeDot
-                    key={theme.id}
-                    theme={theme}
-                    isSelected={theme.id === themeId}
-                    autoFocus={theme.id === themeId}
-                    onSelect={setTheme}
-                    onHover={setHovered}
-                  />
-                ))}
-              </div>
-              <p
-                className="mt-2 text-center text-[11px] font-semibold leading-none"
-                style={{ color: themeNameColor(named, active) }}
-              >
-                {named.name}
-              </p>
+              <ThemeSelector variant="dots" autoFocus />
             </div>
 
             {/* Connection, in words */}
