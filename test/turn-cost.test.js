@@ -498,3 +498,119 @@ test('a walked step names the room it lands in', async () => {
   assert.equal(unnamed.success, true)
   assert.equal(feedbackOf(unnamed).message, 'You travel west')
 })
+
+// ── refusals in a fight (Oct 31 2026) ────────────────────────────────────────
+//
+// Out of a fight a refusal or a no-op is free. In one it costs the turn, as
+// every input did in the original: nothing happens and the enemy answers.
+// Reading, talking, quest buttons and pets stay free in a fight too.
+
+const fighting = (room, extra = {}) => room.activeBattles.set('p1', { isActive: true, enemyName: 'Iron Golem', end() {}, ...extra })
+const refusal = (message, extra = {}) => ({
+  success: false,
+  action: 'rest',
+  playerEvents: [{ event: 'action:feedback', payload: { message } }],
+  ...extra,
+})
+
+test('in a fight a refusal costs the turn, and the battle panel calls it refused', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  fighting(room)
+
+  const result = await room.resolveTurn(refusal('You cannot rest during combat.'), 'p1', { kind: 'rest', label: 'Rested' })
+
+  assert.equal(battleCalls.supportTurn.length, 1)
+  assert.equal(battleCalls.supportTurn[0].meta.label, 'Refused')
+  assert.equal(battleCalls.supportTurn[0].meta.text, 'You cannot rest during combat.')
+  assert.equal(result.turnResolved, true)
+  // Still a refusal: the client is told it did not go through.
+  assert.equal(result.success, false)
+  // One feed row: the turn's. The refusal's own line rides inside it.
+  assert.equal(result.playerEvents[0].payload.data.turnFollows, true)
+})
+
+test('in a fight a no-op costs the turn too; a pet never does', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  fighting(room)
+
+  await room.resolveTurn(ok({ noTurn: true }), 'p1', {})
+  assert.equal(battleCalls.supportTurn.length, 1)
+
+  const pet = await room.resolveTurn(ok({ freeAction: true }), 'p1', {})
+  assert.equal(battleCalls.supportTurn.length, 1)
+  assert.equal(pet.turnResolved, undefined)
+})
+
+test('a success is never charged as a refusal', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  fighting(room)
+
+  const swing = ok({ action: 'attack' })
+  assert.equal(await room.chargeFightRefusal(swing, 'p1'), swing)
+  assert.equal(battleCalls.supportTurn.length, 0)
+})
+
+test('resting in a fight is refused, and the enemy answers', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  fighting(room)
+
+  const result = await room.executeAction({ type: 'rest' }, 'p1')
+
+  assert.equal(result.success, false)
+  assert.equal(battleCalls.supportTurn.length, 1)
+  assert.equal(battleCalls.supportTurn[0].meta.text, 'You cannot rest during combat.')
+})
+
+test('walking out of a fight costs the turn; a teleport is the escape and costs nothing', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  fighting(room)
+
+  const walked = await room.executeAction(moveAction('311-06'), 'p1')
+  assert.equal(walked.success, false)
+  assert.equal(battleCalls.supportTurn.length, 1)
+
+  const teleported = await room.executeAction(moveAction('001', { authorizedMove: true }), 'p1')
+  assert.equal(teleported.success, true)
+  assert.equal(battleCalls.supportTurn.length, 1)
+})
+
+test('stone refuses a potion and passes the turn; a look is still free', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  fighting(room, { isPetrified: true })
+
+  const potion = await room.executeAction({ type: 'use_item', data: { playerItemId: 'x', action: 'drink' } }, 'p1')
+  assert.equal(potion.success, false)
+  assert.equal(battleCalls.supportTurn.length, 1)
+  assert.match(battleCalls.supportTurn[0].meta.text, /You are STONE/)
+
+  await room.executeAction({ type: 'look' }, 'p1')
+  assert.equal(battleCalls.supportTurn.length, 1)
+})
+
+test('a challenge button in a fight is refused and costs the turn', async () => {
+  const room = new RoomState('523')
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  fighting(room)
+
+  const result = await room.executeAction({ type: 'challenge the troll king' }, 'p1')
+  assert.equal(result.success, false)
+  assert.equal(battleCalls.startBattle.length, 0)
+  assert.equal(battleCalls.supportTurn.length, 1)
+})
+
+test('a quest turn-in waits for the fight to end, and asking is free', async () => {
+  const room = new RoomState(MINE)
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  fighting(room)
+
+  const result = await room.executeAction({ type: 'complete_quest', data: { questId: 'any' } }, 'p1')
+  assert.equal(result.success, false)
+  assert.match(result.playerEvents[0].payload.message, /Finish the fight first/)
+  assert.equal(battleCalls.supportTurn.length, 0)
+})

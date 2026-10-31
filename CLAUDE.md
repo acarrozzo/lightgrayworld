@@ -125,7 +125,7 @@ Before changing a system, name its authoritative owner and decide what reconnect
 - Player actions are serialized per player through `PlayerActionQueue`; preserve this protection against double clicks and races.
 - Do not tie every action to the world tick. The current tick is UTC-aligned and used for shared ambient/world timing; gather caps use rolling cooldowns and combat is action-driven.
 - Decide explicitly whether an action consumes a turn. In the current game, rest, search, use/equip/unequip, pickup/drop, and similar actions can provoke enemy behavior; free informational actions should not accidentally advance combat.
-- Count clicks consistently and exclude chat as the engine currently does unless the design is intentionally changed.
+- Count clicks consistently and exclude chat as the engine currently does unless the design is intentionally changed. In a fight a click counts only when the enemy answered it or the fight ended (`countsAsClick` in `engine.js`), and every refusal or no-op in a fight costs the turn (`RoomState.chargeFightRefusal`).
 - Time displayed by the UI should be derived from server timestamps, not trusted client clocks.
 
 ### Rooms, exploration, and gates

@@ -97,9 +97,9 @@ async function handleConsume(playerId, roomState, playerItemId, item, consumable
   roomState.touchActivity()
 
   // A restorer with nothing left to restore is refused before anything is
-  // spent — no item gone, and in battle no turn handed to the enemy (the
-  // caller only resolves the enemy's swing on success). The same rule heal
-  // spells follow. An item that restores two stats is refused only when both
+  // spent: no item gone. The deck greys it out; if it gets through anyway in
+  // a fight, the refusal costs the turn (RoomState.chargeFightRefusal). The
+  // same rule heal spells follow. An item that restores two stats is refused only when both
   // are full; anything that also grants a buff still has work to do.
   const restoring = statEffects.filter(({ amount }) => amount > 0)
   if (restoring.length > 0 && restoring.length === statEffects.length && buffEffects.length === 0) {

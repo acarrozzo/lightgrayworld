@@ -19,7 +19,8 @@
  * MP, up to the max, never taking an overcharge away.
  *
  * A rest with nothing to give is a free refusal (`noTurn`), the same as a
- * supply at its line: no turn spent, no room hazard, nothing written.
+ * supply at its line: no turn spent, no room hazard, nothing written. In a
+ * fight every rest is refused and costs the turn.
  */
 
 /**

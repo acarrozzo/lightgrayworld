@@ -6,6 +6,7 @@ import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { COMMON_ERRORS } from '@/lib/error-handling'
 import { SPELL_SELECT, projectSpellState } from '@/lib/game-engine/services/spell-service'
 import { SKILL_SELECT, projectSkillState } from '@/lib/game-engine/services/skill-service'
+const { spendFightTurn } = require('@/lib/game-engine/fight-bridge')
 
 const VALID_STATS = ['str', 'dex', 'mag', 'def'] as const
 type StatName = typeof VALID_STATS[number]
@@ -150,6 +151,16 @@ export const PUT = withAuth(async (request: AuthenticatedRequest) => {
         { status: 409 }
       )
     }
+
+    // Mid-fight the spend is the turn, and the enemy answers it. Before the
+    // player is read back, so the HP returned is the HP after the hit.
+    const gains = VALID_STATS.filter((stat) => statTotals[stat] > 0).map((stat) => `+${statTotals[stat]} ${stat.toUpperCase()}`)
+    await spendFightTurn(request.user.id, {
+      kind: 'spend_cp',
+      label: 'Trained',
+      text: `You spend ${totalCpNeeded} CP: ${gains.join(', ')}.`,
+      icon: 'trainingarea',
+    })
 
     const updatedPlayer = await prisma.user.findUnique({
       where: { id: request.user.id },

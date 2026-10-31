@@ -9,7 +9,8 @@ import { isRestSettled, restSettledMessage, type RoomRest } from '@/lib/game-dat
  * Read from the live store, so the button flips the moment a hit lands or a
  * spell is cast. The server re-derives the same answer from the database in
  * applyRest (room-state.js) and refuses the click for free, so a store that is
- * behind costs a polite line, never a turn or a lost overcharge.
+ * behind costs a polite line, never a turn or a lost overcharge. In a fight
+ * every rest is refused and the refusal costs the turn.
  */
 export type RestLook = { kind: 'open' } | { kind: 'settled' | 'locked'; title: string }
 

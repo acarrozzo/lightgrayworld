@@ -48,6 +48,25 @@ function free(handler) {
 }
 
 /**
+ * What stone says to anything but a swing, a look or a word. The turn passes
+ * anyway: RoomState charges it, the way every refusal in a fight is charged.
+ */
+const STONE_MESSAGE = 'You are STONE. You cannot move until it wears off. The turn passes anyway.'
+
+/**
+ * A room action that exists here and costs nothing: reading a sign, talking,
+ * opening a shop. Stone lets these through, since they never were a turn.
+ *
+ * @param {string} roomId
+ * @param {string} actionName
+ */
+function isFreeRoomAction(roomId, actionName) {
+  if (typeof actionName !== 'string') return false
+  if (!ROOM_ACTIONS[roomId]?.[actionName.toLowerCase().trim()]) return false
+  return !isTurnCostingRoomAction(roomId, actionName)
+}
+
+/**
  * Does this room action cost the player a turn?
  *
  * Asked by RoomState.executeAction, which owns what a turn costs; this owns
@@ -1598,10 +1617,14 @@ function makeRepeatableChestHandler({
 
 /**
  * A guild's lair teleport: the standing perk of membership, and the reason the
- * hall is worth walking back to. Members only, refused in battle, and — like the
- * flee and respawn paths — the move itself runs through the client's normal
- * teleport dispatch so party pulls, room events and persistence all behave. The
- * server decides *whether*; `teleportRoomId` only says *where*.
+ * hall is worth walking back to. Members only, and — like the flee and respawn
+ * paths — the move itself runs through the client's normal teleport dispatch so
+ * party pulls, room events and persistence all behave. The server decides
+ * *whether*; `teleportRoomId` only says *where*.
+ *
+ * Mid-fight it is an escape, the same as fast travel: the move is authorized,
+ * so it ends the battle on the way out and leaves the enemy standing. Stone
+ * holds you, though, and trying costs the turn (`fightRefusal`).
  */
 function makeGuildTeleportHandler({ action, factionId, toRoomId, label, icon, iconColor, joinMessage, message }) {
   return free(async (playerId, roomState) => {
@@ -1628,8 +1651,9 @@ function makeGuildTeleportHandler({ action, factionId, toRoomId, label, icon, ic
       })
     }
 
-    if (roomState.activeBattles.get(playerId)?.isActive) {
-      return respond('failure', 'You cannot leave the room in the middle of battle!')
+    const battle = roomState.activeBattles.get(playerId)
+    if (battle?.isActive && battle.isPetrified) {
+      return { ...respond('failure', STONE_MESSAGE), fightRefusal: true }
     }
 
     // Membership is confirmed, so authorize this one teleport. The client still
@@ -1892,8 +1916,10 @@ function makeFareHandler({ action, fare, brokeMessage, onPaid, modal }) {
       ],
     })
 
+    // Refused mid-fight, and the refusal costs the turn: free() covers the fare
+    // out of a fight, not the attempt in one.
     if (roomState.activeBattles.get(playerId)?.isActive) {
-      return say('failure', 'You cannot do that in the middle of battle!')
+      return { ...say('failure', 'You cannot do that in the middle of battle!'), fightRefusal: true }
     }
 
     let updated
@@ -1967,7 +1993,7 @@ function makeSummonHandler({ action, enemySlug, message, ambush = false }) {
     roomState.touchActivity()
 
     if (roomState.activeBattles.get(playerId)?.isActive) {
-      return createErrorResult(action, 'You are already in a battle.')
+      return { ...createErrorResult(action, 'You are already in a battle.'), fightRefusal: true }
     }
     if (isProbabilistic(roomState.roomId) && roomState.getPresentEnemy(playerId) !== enemySlug) {
       roomState.setPresentEnemy(playerId, enemySlug)
@@ -4454,6 +4480,8 @@ module.exports = {
   withAside,
   executeRoomAction,
   isTurnCostingRoomAction,
+  isFreeRoomAction,
+  STONE_MESSAGE,
   ROOM_ACTIONS,
   CHEST_LOOT,
   REPEATABLE_CHEST_LOOT,

@@ -30,6 +30,26 @@ function resultCastSpell(result) {
   return Array.isArray(result.playerEvents) && result.playerEvents.some((e) => Boolean(e?.payload?.spell))
 }
 
+/**
+ * Whether an action moves the click clock: the click counter, buff
+ * countdowns, regen and poison. Out of a fight every input does, chat aside,
+ * as it always has. In one, only an input the enemy got to answer — a swing, a
+ * cast, a potion, a refusal that cost the turn — or one that ended the fight
+ * or left the room. A free click mid-fight (look, examine, talk) used to land
+ * regen and count buffs down while the enemy waited, so a regen ring could
+ * heal you to full by typing `look`.
+ *
+ * @param {Object|null} result
+ * @param {boolean} wasFighting - the player was in a battle when the action began
+ * @returns {boolean}
+ */
+function countsAsClick(result, wasFighting) {
+  if (!wasFighting) return true
+  if (!result) return false
+  if (result.transfer) return true
+  return Array.isArray(result.playerEvents) && result.playerEvents.some((e) => typeof e?.event === 'string' && e.event.startsWith('battle:'))
+}
+
 class GameEngine {
   constructor(io, tickMs = WORLD_TICK_MS) {
     this.io = io
@@ -228,6 +248,7 @@ class GameEngine {
         }
         const currentTickNumber = this.tickClock.getCurrentTickId()
         const nextTickAt = this.tickClock.getNextTickTimestamp()
+        const wasFighting = Boolean(room.activeBattles.get(playerId)?.isActive)
 
         const result = await room.executeAction(
           action,
@@ -236,7 +257,7 @@ class GameEngine {
           nextTickAt
         )
 
-        if (!isChatAction) {
+        if (!isChatAction && countsAsClick(result, wasFighting)) {
           // A move's click tick belongs to the room the player is arriving in:
           // its regen broadcast and roster patch went to the room just left,
           // where nobody could see them any more.
@@ -253,6 +274,45 @@ class GameEngine {
         actionType: action?.type,
         roomId,
       }
+    )
+  }
+
+  /**
+   * The room this player is fighting in, or null.
+   * @param {string} playerId
+   */
+  findBattleRoom(playerId) {
+    for (const room of this.rooms.values()) {
+      if (room.activeBattles.get(playerId)?.isActive) return room
+    }
+    return null
+  }
+
+  /**
+   * Spend a fighting player's turn on something done outside the action
+   * queue: a CP, TP or SP spend, which arrives over HTTP. It goes through the
+   * player's queue like any action, and the enemy answers it the way it
+   * answers a potion. Out of a fight it does nothing; those spends are free.
+   * Checked again inside the queue, so a fight that ended while the spend
+   * was being written does not roll the room instead.
+   *
+   * @param {string} playerId
+   * @param {Object} meta - what the battle panel says the turn was spent on
+   */
+  async spendFightTurn(playerId, meta) {
+    return this.playerQueue.enqueueAction(
+      playerId,
+      async () => {
+        const room = this.findBattleRoom(playerId)
+        if (!room) return null
+        const result = await room.resolveTurn({ success: true, action: meta.kind, playerEvents: [] }, playerId, meta)
+        this.applyClickTick(playerId, room.roomId, { result }).catch((err) => {
+          console.error('[GameEngine] Failed to apply click tick for player', playerId, err)
+        })
+        this.handleActionResult({ roomId: room.roomId, playerId, result })
+        return result
+      },
+      { actionType: meta.kind }
     )
   }
 
@@ -676,4 +736,5 @@ class GameEngine {
 
 module.exports = {
   GameEngine,
+  countsAsClick,
 }

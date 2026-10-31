@@ -7,6 +7,7 @@ import { getPlayerInventory } from '@/lib/game-engine/services/inventory-service
 import { getBuyPrice } from '@/lib/shop-pricing'
 const { getShopsAt } = require('@/lib/game-data/shops')
 const { isMember } = require('@/lib/game-engine/services/faction-service')
+const { isInFight } = require('@/lib/game-engine/fight-bridge')
 
 // Raised inside the buy transaction when the guarded gold decrement matches no
 // row, i.e. the balance was spent by a concurrent request between the check and
@@ -28,6 +29,14 @@ async function handleBuy(request: AuthenticatedRequest) {
       return NextResponse.json(
         { success: false, message: 'Quantity must be a whole number of at least 1' },
         { status: 400 }
+      )
+    }
+
+    // No shopping between swings: the fight has to end first.
+    if (isInFight(request.user.id)) {
+      return NextResponse.json(
+        { success: false, message: "You can't shop in the middle of a fight." },
+        { status: 409 }
       )
     }
 

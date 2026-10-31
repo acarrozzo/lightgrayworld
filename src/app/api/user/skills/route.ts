@@ -7,6 +7,7 @@ import { COMMON_ERRORS } from '@/lib/error-handling'
 import { SPELL_SELECT, projectSpellState } from '@/lib/game-engine/services/spell-service'
 import { SKILL_SELECT, projectSkillState, learnSkill } from '@/lib/game-engine/services/skill-service'
 const { getSkill } = require('@/lib/game-data/skills') as { getSkill: (id: string) => { id: string } | null }
+const { spendFightTurn } = require('@/lib/game-engine/fight-bridge')
 
 // The same player shape the CP/TP/spell routes return, so the client can adopt
 // it with one setPlayer. Skill levels and teacher flags ride along because the
@@ -85,6 +86,11 @@ export const PUT = withAuth(async (request: AuthenticatedRequest) => {
     }
 
     const result = await learnSkill(request.user.id, skillId, { mode })
+    // Mid-fight a level learned is the turn, and the enemy answers it. Before
+    // the player is read back, so the HP returned is the HP after the hit.
+    if (result.success) {
+      await spendFightTurn(request.user.id, { kind: 'learn_skill', label: 'Learned', text: result.message, icon: 'trainingarea' })
+    }
     const player = await loadPlayer(request.user.id)
 
     if (!result.success) {

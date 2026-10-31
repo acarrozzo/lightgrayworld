@@ -1,4 +1,4 @@
-const { executeRoomAction, isTurnCostingRoomAction } = require('./room-action-handlers')
+const { executeRoomAction, isTurnCostingRoomAction, isFreeRoomAction, STONE_MESSAGE } = require('./room-action-handlers')
 const { executeItemAction } = require('./item-action-handlers')
 const { RESPAWN_ROOM_ID, CHAT_MESSAGE_MAX_LENGTH } = require('../game-data/constants')
 const { withArticle } = require('../game-data/grammar')
@@ -9,8 +9,15 @@ const { withArticle } = require('../game-data/grammar')
  */
 function isAllowedWhileStone(action) {
   const type = typeof action === 'object' ? action.type : action
-  return type === 'chat' || type === 'look' || type === 'attack' || type === 'player_attack' || type === 'examine_item' || type === 'examine_player_item'
+  if (typeof type === 'string' && type.startsWith('talk')) return true
+  return STONE_FREE_ACTIONS.has(type)
 }
+// A swing passes the turn; the rest were never turns. A quest turn-in is here
+// so it gets its own mid-fight refusal, which is free.
+const STONE_FREE_ACTIONS = new Set([
+  'chat', 'look', 'attack', 'player_attack', 'examine_item', 'examine_player_item',
+  'accept_quest', 'complete_quest', 'set_title',
+])
 function isAllowedWhileDead(action) {
   const type = typeof action === 'object' ? action.type : action
   if (type === 'chat' || type === 'look') return true
@@ -538,12 +545,13 @@ class RoomState {
     }
 
     // Stone. A Gorgon's or Medusa's gaze holds the player for a turn or two:
-    // the only thing they can do is let the turn pass (attack), and look and
-    // talk while it does. A potion, a swap, a cast, a retreat — refused, the
-    // way the stone would refuse them.
+    // the only thing they can do is let the turn pass (attack), and look,
+    // read and talk while it does. A potion, a swap, a cast, a retreat is
+    // refused, and the turn passes anyway: the enemy answers and the stone
+    // counts down, as it does on any refusal in a fight.
     const stoneBattle = this.activeBattles.get(playerId)
-    if (stoneBattle?.isActive && stoneBattle.isPetrified && !isAllowedWhileStone(action)) {
-      return this.createErrorResult(actionName, 'You are STONE. You cannot move until it wears off — pass the turn.')
+    if (stoneBattle?.isActive && stoneBattle.isPetrified && !isAllowedWhileStone(action) && !isFreeRoomAction(this.roomId, actionName)) {
+      return await this.chargeFightRefusal(this.createErrorResult(actionName, STONE_MESSAGE), playerId)
     }
     const roomSpecificResult = await executeRoomAction(
       this.roomId,
@@ -557,9 +565,13 @@ class RoomState {
 
     // If room-specific handler returned a result, use it. A room action that
     // changes the world — a swing of a pickaxe, a chest, a lever, a craft —
-    // costs a turn like any other; reading, talking and looking do not.
+    // costs a turn like any other; reading, talking and looking do not. A free
+    // one that refuses because of the fight (a toll, a challenge) says so with
+    // `fightRefusal`, and that refusal costs the turn too.
     if (roomSpecificResult !== null) {
-      if (!isTurnCostingRoomAction(this.roomId, actionName)) return roomSpecificResult
+      if (!isTurnCostingRoomAction(this.roomId, actionName)) {
+        return roomSpecificResult.fightRefusal ? await this.chargeFightRefusal(roomSpecificResult, playerId) : roomSpecificResult
+      }
       return await this.resolveTurn(
         roomSpecificResult,
         playerId,
@@ -578,7 +590,7 @@ class RoomState {
     if (typeof action.type === 'string' && action.type !== 'cast_spell') {
       const typedSpell = findSpellByCommand(action.type)
       if (typedSpell && (/^cast\s/i.test(action.type) || typedSpell.kind !== 'buff')) {
-        return await this.executeCastSpell({ type: 'cast_spell', data: { spellId: typedSpell.id } }, playerId)
+        return await this.chargeFightRefusal(await this.executeCastSpell({ type: 'cast_spell', data: { spellId: typedSpell.id } }, playerId), playerId)
       }
     }
 
@@ -587,23 +599,26 @@ class RoomState {
     if (typeof action.type === 'string' && action.type !== 'use_skill') {
       const typedSkill = findSkillByCommand(action.type)
       if (typedSkill) {
-        return await this.executeUseSkill({ type: 'use_skill', data: { skillId: typedSkill.id } }, playerId)
+        return await this.chargeFightRefusal(await this.executeUseSkill({ type: 'use_skill', data: { skillId: typedSkill.id } }, playerId), playerId)
       }
     }
 
-    // Otherwise, fall back to standard actions
+    // Otherwise, fall back to standard actions. A swing, a cast or a strike
+    // that is refused mid-fight (no MP, no ammo, the wrong weapon, a buff
+    // already up) costs the turn like any other refusal; the turn itself is
+    // already spent by the battle handlers when it goes through.
     let result
     switch (action.type) {
       case 'attack':
-        return await this.executeAttack(playerId)
+        return await this.chargeFightRefusal(await this.executeAttack(playerId), playerId)
       case 'cast_spell':
-        return await this.executeCastSpell(action, playerId)
+        return await this.chargeFightRefusal(await this.executeCastSpell(action, playerId), playerId)
       case 'use_skill':
-        return await this.executeUseSkill(action, playerId)
+        return await this.chargeFightRefusal(await this.executeUseSkill(action, playerId), playerId)
       case 'start_battle':
-        return await executeStartBattle(action, playerId, this)
+        return await this.chargeFightRefusal(await executeStartBattle(action, playerId, this), playerId)
       case 'player_attack':
-        return await executePlayerAttack(action, playerId, this)
+        return await this.chargeFightRefusal(await executePlayerAttack(action, playerId, this), playerId)
       case 'player_flee':
         return await executePlayerFlee(action, playerId, this)
       case 'pickup_item':
@@ -615,8 +630,12 @@ class RoomState {
       case 'take_supply':
         result = await this.executeTakeSupply(action, playerId)
         break
-      case 'move':
-        return await this.executeMove(action, playerId)
+      case 'move': {
+        // A step out of a fight is refused and costs the turn. An authorized
+        // move (a teleport, a retreat) is the escape and is never charged.
+        const moved = await this.executeMove(action, playerId)
+        return action.authorizedMove === true ? moved : await this.chargeFightRefusal(moved, playerId)
+      }
       case 'chat':
         return this.executeChat(action, playerId)
       case 'search':
@@ -675,35 +694,67 @@ class RoomState {
    *
    * In a fight the enemy answers, through the same `resolveSupportTurn` a
    * potion goes through. Out of one the room's hazard bites and then rolls.
-   * A failed action costs nothing, and neither does one that turned out to be
-   * a no-op (`noTurn`) — the MAX button with nothing to change, a supply
-   * already at its line. `turnResolved` keeps the call idempotent, so a handler
-   * that has already spent the turn is not charged again by the tail above.
+   * Out of a fight a failed action costs nothing, and neither does one that
+   * turned out to be a no-op (`noTurn`) — the MAX button with nothing to
+   * change, a supply already at its line. In a fight both cost the turn: see
+   * chargeFightRefusal. `freeAction` is never a turn (a pet). `turnResolved`
+   * keeps the call idempotent, so a handler that has already spent the turn
+   * is not charged again by the tail above.
    *
    * @param {object|null} result - the action's own result
    * @param {string} playerId
    * @param {object} meta - what the battle panel says the turn was spent on
    */
   async resolveTurn(result, playerId, meta) {
-    if (!result || result.turnResolved) return result
-    if (!result.success || result.noTurn) return result
+    if (!result || result.turnResolved || result.freeAction) return result
+    if (!result.success || result.noTurn) return await this.chargeFightRefusal(result, playerId, meta)
 
-    if (this.activeBattles.get(playerId)?.isActive) {
-      // One feed row for the turn. The action's own feedback line is what the
-      // player did, in full; the turn row carries it and adds the enemy's
-      // answer. The feedback event itself still goes (it carries inventory,
-      // vitals and the result card's data) but says a turn follows, so the
-      // client writes no row for it.
-      const marked = markTurnFollows(result)
-      const text = extractFeedbackMessage(result)
-      const turnMeta = meta && !meta.text && text ? { ...meta, text } : meta
-      const supportTurn = await resolveSupportTurn(playerId, this, turnMeta)
-      return { ...mergeSupportTurnIntoResult(marked, supportTurn), turnResolved: true }
-    }
+    if (this.activeBattles.get(playerId)?.isActive) return await this.spendFightTurn(result, playerId, meta)
 
     let spent = await this.appendHazardEvents(result, playerId)
     spent = await this.appendSpawnEvents(spent, playerId)
     return { ...spent, turnResolved: true }
+  }
+
+  /**
+   * A refusal or a no-op in a fight costs the turn: the enemy answers it the
+   * way it answers a potion. The original charged every input in a fight,
+   * because each one was a page load and `battle.php` ran its attack loop
+   * whatever you had typed, and that is the penalty here: resting, walking
+   * off, drinking at full HP, casting short of MP or re-opening a chest
+   * mid-fight gets you nothing and costs you a hit. Out of a fight it costs
+   * nothing, and a `freeAction` (a pet) never does.
+   *
+   * Callers pass every result through; a success is returned untouched, so a
+   * swing or a cast the battle handlers already spent is never charged twice.
+   *
+   * @param {object|null} result
+   * @param {string} playerId
+   * @param {object|null} [meta] - the turn's meta if the caller built one (an item's)
+   */
+  async chargeFightRefusal(result, playerId, meta = null) {
+    if (!result || result.turnResolved || result.freeAction) return result
+    if (result.success && !result.noTurn) return result
+    if (!this.activeBattles.get(playerId)?.isActive) return result
+    const base = meta || buildTurnMeta(result.action || 'refused', result)
+    return await this.spendFightTurn(result, playerId, { ...base, label: 'Refused', effectText: null })
+  }
+
+  /**
+   * The enemy's answer to whatever the turn was spent on.
+   *
+   * One feed row for the turn. The action's own feedback line is what the
+   * player did, in full; the turn row carries it and adds the enemy's answer.
+   * The feedback event itself still goes (it carries inventory, vitals and the
+   * result card's data) but says a turn follows, so the client writes no row
+   * for it.
+   */
+  async spendFightTurn(result, playerId, meta) {
+    const marked = markTurnFollows(result)
+    const text = extractFeedbackMessage(result)
+    const turnMeta = meta && !meta.text && text ? { ...meta, text } : meta
+    const supportTurn = await resolveSupportTurn(playerId, this, turnMeta)
+    return { ...mergeSupportTurnIntoResult(marked, supportTurn), turnResolved: true }
   }
 
   // The room's environmental hazard, rolled once per turn action. Damage is
@@ -2011,20 +2062,23 @@ class RoomState {
     const itemMetadata = item.template.metadata || null
 
     // A pet is company, not a consumable: taking it along or leaving it home
-    // is free, costs no turn and provokes nothing (game-data/pets.js). The
-    // socket layer reads `petChange` off the result to update presence.
+    // is free, costs no turn and provokes nothing (game-data/pets.js), in a
+    // fight or out of one. `freeAction` is what keeps the dispatcher's turn
+    // tail from charging it as a use. The socket layer reads `petChange` off
+    // the result to update presence.
     if (itemMetadata && itemMetadata.pet) {
       const { setActivePet } = require('./services/pet-service')
       const verb = String(itemAction).toLowerCase().trim()
       if (verb !== 'take along' && verb !== 'leave home') {
-        return this.createErrorResult('use_item', `Action "${itemAction}" is not available for this item`)
+        return { ...this.createErrorResult('use_item', `Action "${itemAction}" is not available for this item`), freeAction: true }
       }
       const taking = verb === 'take along'
       const change = await setActivePet(playerId, taking ? itemSlug : null)
-      if (!change.success) return this.createErrorResult('use_item', change.message)
+      if (!change.success) return { ...this.createErrorResult('use_item', change.message), freeAction: true }
       const message = taking ? `${itemName} comes along.` : `${itemName} stays home.`
       return {
         success: true,
+        freeAction: true,
         action: 'use_item',
         petChange: { activePet: change.activePet },
         playerEvents: [
@@ -2302,6 +2356,12 @@ class RoomState {
     const { questId } = action.data || {}
     if (!questId) {
       return this.createErrorResult('complete_quest', 'Quest ID is required')
+    }
+
+    // No turn-ins mid-fight: the rewards would land in the middle of it. The
+    // refusal is free; it is not an attempt at anything the enemy could punish.
+    if (this.activeBattles.get(playerId)?.isActive) {
+      return this.createErrorResult('complete_quest', 'Finish the fight first. Then turn it in.')
     }
 
     this.touchActivity()
