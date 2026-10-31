@@ -224,7 +224,7 @@ const TRAVELERS = [
     // every other shop (see shops.js); this only says what is on the cart.
     shop: {
       name: "Wendell's Cart",
-      stock: ['red-potion', 'blue-potion', 'arrow', 'bread', 'cooked-meat', 'string'],
+      stock: ['red-potion', 'blue-potion', 'arrow', 'cooked-meat', 'string'],
       extraByRegion: {
         grassyField: ['coffee'],
         forest: ['wood'],

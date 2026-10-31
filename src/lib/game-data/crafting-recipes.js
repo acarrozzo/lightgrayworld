@@ -226,16 +226,6 @@ const CRAFTING_RECIPES = [
     output: { slug: 'cooked-meat', qty: 1, name: 'Cooked Meat' },
   },
   {
-    id: 'bread',
-    label: 'Bread',
-    family: 'cook',
-    batch: 'all',
-    station: 'fire',
-    blurb: 'Grind wheat and bake it into bread.',
-    inputs: [{ slug: 'wheat', qty: 2, name: 'Wheat' }],
-    output: { slug: 'bread', qty: 1, name: 'Bread' },
-  },
-  {
     // The Town Hall Plaza chef's recipe. "Cookin up some Meat-a-balls" ends with
     // him walking you through it start to finish and the quest already says you
     // leave with the recipe in your head — this is that recipe. Five cooked meat
@@ -1606,7 +1596,7 @@ function getRecipeSlugs() {
 
 /** Item names that do not take a plural: "12 Wood", "4 Cooked Meat". */
 const MASS_NOUNS = new Set([
-  'wood', 'stone', 'leather', 'iron', 'wheat', 'bread', 'cooked meat', 'raw meat',
+  'wood', 'stone', 'leather', 'iron', 'cooked meat', 'raw meat',
   'gray matter', 'coal', 'sand', 'mud', 'water', 'mithril', 'steel', 'glass',
 ])
 

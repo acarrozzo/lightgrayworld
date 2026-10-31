@@ -146,7 +146,6 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '020': [
     { action: 'rest at waterfall', label: 'Rest at Waterfall', icon: 'heal', className: 'fill-hue-blue' },
-    { action: 'pick wheat', label: 'Pick Wheat', icon: 'flower', className: 'fill-mood-treasure' },
   ],
   '021': [
     { action: 'read sign', label: 'Read Sign', icon: 'sign', className: 'fill-terrain-wood' },

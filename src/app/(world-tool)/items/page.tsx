@@ -26,7 +26,7 @@ const { CHEST_LOOT, REPEATABLE_CHEST_LOOT, ROOM_ACTIONS } = require('@/lib/game-
   ROOM_ACTIONS: Record<string, Record<string, RoomActionEntry>>
 }
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { SEARCH_LOOT_TABLES } = require('@/lib/game-engine/room-state') as {
+const { SEARCH_LOOT_TABLES } = require('@/lib/game-data/search-loot') as {
   SEARCH_LOOT_TABLES: Record<string, SearchTable>
 }
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -260,7 +260,7 @@ function buildSourceMap(roomNames: Map<string, string>): Map<string, ItemRow['so
     }
   }
 
-  // Gather actions — room resource collection (sand, dirt, stone, wheat, wood…).
+  // Gather actions — room resource collection (sand, dirt, stone, wood…).
   // A gatherable resource is any structured room action flagged `isGather` with
   // a grantItem effect; the label notes quantity, then what limits the node —
   // a cooldown, or a held cap for nodes that have no timer (Jack's tree) — and

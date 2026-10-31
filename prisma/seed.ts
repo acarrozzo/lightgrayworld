@@ -2,6 +2,8 @@ import { PrismaClient, ItemType, EquipSlot, WeaponCategory } from '@prisma/clien
 import { PrismaPg } from '@prisma/adapter-pg'
 import { normalizeConnectionString } from '../src/lib/db-connection-string.js'
 import bcrypt from 'bcryptjs'
+import { SEARCH_LOOT_TABLES } from '../src/lib/game-data/search-loot.js'
+import { REVEAL_DEFINITIONS } from '../src/lib/game-engine/search-reveal-state.js'
 
 // Prisma 7 requires an explicit driver adapter. Seeding writes a lot of rows,
 // so prefer the direct (non-pooled) connection when one is configured.
@@ -114,7 +116,6 @@ async function main() {
       southwest: '013',
       hasFire: true,
       hasCraftingTable: true,
-      hasSearch: true,
       directionColors: { down: 'terrain.dirt', west: 'terrain.sand' }
     },
     {
@@ -140,7 +141,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { west: 'terrain.dirt' }
     },
     {
@@ -166,7 +166,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { east: 'terrain.dirt' }
     },
     {
@@ -1969,7 +1968,6 @@ async function main() {
       southwest: '125',
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { south: 'terrain.forest', west: 'terrain.forest', southwest: 'terrain.forest', north: 'mood.treasure' }
     },
     {
@@ -2020,7 +2018,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { north: 'terrain.forest' }
     },
     {
@@ -2046,7 +2043,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { west: 'terrain.forest' }
     },
     {
@@ -2099,7 +2095,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { north: 'terrain.forest', west: 'terrain.forest', south: 'mood.treasure' }
     },
     {
@@ -2330,7 +2325,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { north: 'terrain.ash', northwest: 'terrain.ash' }
     },
     {
@@ -2411,7 +2405,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { south: 'terrain.ash', east: 'terrain.ash', northwest: 'mood.treasure' }
     },
     {
@@ -2571,7 +2564,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { east: 'terrain.ash' }
     },
     {
@@ -3624,7 +3616,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { south: 'terrain.ash', east: 'mood.danger', west: 'mood.danger', down: 'mood.danger' }
     },
     {
@@ -3651,7 +3642,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { west: 'mood.danger', northwest: 'mood.danger', southeast: 'terrain.dirt' }
     },
     {
@@ -3785,7 +3775,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { down: 'terrain.dirt', northeast: 'mood.danger' }
     },
     {
@@ -3838,7 +3827,6 @@ async function main() {
       southwest: '232a',
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { east: 'terrain.ash', northwest: 'terrain.ash', southwest: 'terrain.ash' }
     },
     {
@@ -4047,7 +4035,6 @@ async function main() {
       southwest: '232k',
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { northeast: 'terrain.stone', southeast: 'terrain.ash', southwest: 'terrain.ash' }
     },
     {
@@ -4100,7 +4087,6 @@ async function main() {
       southwest: '232m',
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { northeast: 'terrain.ash', southwest: 'terrain.dirt' }
     },
     {
@@ -4413,7 +4399,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { north: 'terrain.ash', south: 'terrain.ash', east: 'terrain.ash', west: 'terrain.ash' }
     },
     {
@@ -5092,7 +5077,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { northeast: 'terrain.grass', down: 'mood.treasure' }
     },
     {
@@ -5171,7 +5155,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { north: 'terrain.ash', east: 'terrain.ash', south: 'terrain.ash' }
     },
     {
@@ -5419,7 +5402,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { up: 'mood.treasure' }
     },
 
@@ -6509,7 +6491,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { down: 'world.underwater' }
     },
     {
@@ -7168,7 +7149,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { northeast: 'terrain.water', northwest: 'terrain.water', southeast: 'terrain.dirt' }
     },
     {
@@ -7221,7 +7201,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { north: 'mood.danger', west: 'terrain.dirt' }
     },
     {
@@ -7300,7 +7279,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { west: 'terrain.water' }
     },
     {
@@ -7379,7 +7357,6 @@ async function main() {
       southwest: null,
       hasFire: false,
       hasCraftingTable: false,
-      hasSearch: true,
       directionColors: { up: 'world.ocean' }
     },
     {
@@ -10143,7 +10120,12 @@ async function main() {
     // isSafe is derived from dangerLevel — a room is safe iff it has no danger
     // (i.e. no enemies). dangerLevel is the single source of truth; do not set
     // isSafe by hand on the room literals above.
-    const data = { ...roomData, isSafe: (roomData.dangerLevel ?? 0) === 0 }
+    // hasSearch likewise: a room is searchable iff the engine has a loot table
+    // (game-data/search-loot) or a hidden passage (search-reveal-state) for
+    // it. The flag used to be set by hand and had drifted onto 25 rooms with
+    // no search while every real one went unflagged; it is never authored here.
+    const hasSearch = roomData.roomId in SEARCH_LOOT_TABLES || roomData.roomId in REVEAL_DEFINITIONS
+    const data = { ...roomData, isSafe: (roomData.dangerLevel ?? 0) === 0, hasSearch }
     await prisma.room.upsert({
       where: { roomId: data.roomId },
       update: data,
@@ -10310,16 +10292,6 @@ async function main() {
       slug: 'dirt',
       name: 'Dirt',
       description: 'A handful of common dirt, useful for crafting and building.',
-      type: ItemType.MISC,
-      max: 999,
-      value: 10,
-      metadata: { crafting: { kind: 'material' } },
-    },
-    {
-      id: 'wheat_001',
-      slug: 'wheat',
-      name: 'Wheat',
-      description: 'A bundle of golden wheat, useful for crafting and cooking.',
       type: ItemType.MISC,
       max: 999,
       value: 10,
@@ -11104,19 +11076,6 @@ async function main() {
       metadata: {
         icon: 'uncooked-meat',
         consumable: { stat: 'hp', amount: 25, verb: 'eat' },
-      },
-    },
-    {
-      id: 'bread_001',
-      slug: 'bread',
-      name: 'Bread',
-      description: 'A freshly baked loaf of bread. Restores 15 HP when eaten.',
-      type: ItemType.CONSUMABLE,
-      max: 999,
-      value: 4,
-      metadata: {
-        icon: 'meatball',
-        consumable: { stat: 'hp', amount: 15, verb: 'eat' },
       },
     },
     {

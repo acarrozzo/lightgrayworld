@@ -987,20 +987,6 @@ function makeStoneAction() {
 }
 
 /**
- * Pick wheat: an untooled gather action (room 020). 5 every 60 minutes.
- */
-function makeWheatAction() {
-  return makeGatherAction({
-    itemSlug: 'wheat',
-    itemNamePlural: 'wheat',
-    cooldownMs: 60 * 60 * 1000,
-    quantity: 5,
-    emptyVerb: 'grow',
-    collectMessage: () => `You pick some wheat.`,
-  })
-}
-
-/**
  * Server-authoritative crafting handler. Shared by every crafting room: reads
  * `actionData.recipeId` and an optional `actionData.quantity` (the number of
  * times to run the recipe — 1 for "Craft", the bag's worth for "Craft all", or
@@ -2283,7 +2269,6 @@ const ROOM_ACTIONS = {
   },
   '020': {
     'rest at waterfall': makeRestHandler('020', 'rest at waterfall'),
-    'pick wheat': makeWheatAction(),
   },
   '021': {
     // Ported from the original's Pajama Shaman sign, which is a skills primer
