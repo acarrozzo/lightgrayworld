@@ -18,8 +18,9 @@ model User {
   currentRoom               String          @default("001")
   // The room a retreat falls back to. Ephemeral until now — it lived only on
   // the in-memory socket record, so logging out lost it and the first fight
-  // after a login had nowhere to retreat to. Null only for a character who has
-  // never moved.
+  // after a login had nowhere to retreat to. Only a walked step writes it:
+  // a teleport, a rise from death or a retreat's own fall-back clears it, so
+  // a retreat never becomes a free teleport back to wherever you came from.
   previousRoom              String?
   recallRoom                String          @default("001")
   // The pet along with the player: the slug of a pet item they hold, or null.

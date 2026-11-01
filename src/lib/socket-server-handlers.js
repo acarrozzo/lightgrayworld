@@ -285,7 +285,16 @@ async function recordWorldFeedEventSafe({ userId, username, eventType }) {
  * promise settles when it has landed, for callers that need to know.
  */
 function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlayers, broadcastRoomPartyState) {
-  return ({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport = false }) => {
+  //
+  // `walked` says whether the player came here through an exit under their
+  // own power: a directional step, or a party member pulled behind a leader's
+  // step. A teleport, a rise from death and a retreat's own fall-back are not
+  // walks, and they leave `previousRoom` empty — that field is only ever the
+  // far end of a retreat, and a retreat only falls back through a walked
+  // exit. Before this, a teleport wrote it too, so retreating from an ambush
+  // in a lair you had just teleported into was a free teleport back across
+  // the world, which is what the original's `retreatroom` did by accident.
+  return ({ player, fromRoom, toRoom, exitDirection, entryDirection, isTeleport = false, walked = false }) => {
     if (!toRoom || fromRoom === toRoom) {
       return Promise.resolve()
     }
@@ -344,8 +353,11 @@ function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlaye
       isTeleport: isTeleport || false,
     })
 
-    // Remember where the player came from so a flee can retreat them back here.
-    player.previousRoom = fromRoom
+    // Remember where the player walked in from so a flee can retreat them back
+    // there. Arriving any other way forgets it: there is no way back to fall
+    // through.
+    const previousRoom = walked ? fromRoom : null
+    player.previousRoom = previousRoom
     player.currentRoom = toRoom
     // The room-scoped events above tell the two rooms involved; this tells everyone
     // else's roster where the player went.
@@ -359,7 +371,7 @@ function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlaye
         where: { id: player.id },
         // previousRoom rides along with currentRoom so a retreat still has
         // somewhere to fall back to after a logout or a server restart.
-        data: { currentRoom: toRoom, previousRoom: fromRoom },
+        data: { currentRoom: toRoom, previousRoom },
       })
       .then(() => undefined)
       .catch((error) => {
@@ -934,6 +946,9 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     exitDirection,
     entryDirection,
     isTeleport,
+    // Whether the leader walked: a pulled member walked too, and may retreat
+    // back the same way later.
+    walked = false,
     // Whether members may skip the adjacency requirement. Deliberately separate
     // from `isTeleport`, which only shapes the room enter/leave messaging: an
     // authorization decision must never ride on a presentation flag.
@@ -991,7 +1006,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           const memberSocket = io.sockets.sockets.get(sid)
           if (!memberSocket) continue
           const memberTransition = createTransitionPlayerRoom(io, prisma, memberSocket, activePlayers, roomPlayers, broadcastRoomPartyState)
-          await memberTransition({ player: memberPlayer, fromRoom, toRoom, exitDirection, entryDirection, isTeleport })
+          await memberTransition({ player: memberPlayer, fromRoom, toRoom, exitDirection, entryDirection, isTeleport, walked })
           // Dedicated event: the member didn't initiate this move, so the normal
           // action:confirmed/feedback path (which requires a pending move) would ignore it.
           memberSocket.emit(SOCKET_EVENTS.PARTY_PULLED, {
@@ -1703,6 +1718,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
         // retreat is authorized like a teleport but walked like a step, and the
         // rooms should say someone left to the west, not vanished.
         const isTeleportMove = !hasExit
+        // A walk is a step through an exit under the player's own power. A
+        // retreat's fall-back is next door too, but it is a grant, not a walk:
+        // it must not become the next retreat's fall-back, or two retreats in a
+        // row would bounce the player back into the first enemy's room.
+        const walked = hasExit && !grantedMove
 
         // A leader can't travel through a gate a party member can't pass — keep
         // the party together. Needs only the direction, so it is settled before
@@ -1804,7 +1824,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           const isTeleport = isTeleportMove
           // Socket rooms, presence and the live player record are moved before
           // this returns; only the database write is still in flight.
-          const persisted = transitionPlayerRoom({ player, fromRoom, toRoom: landedRoom, exitDirection, entryDirection: landedEntryDirection, isTeleport })
+          const persisted = transitionPlayerRoom({ player, fromRoom, toRoom: landedRoom, exitDirection, entryDirection: landedEntryDirection, isTeleport, walked })
 
           console.log(`[Socket] Emitting action:confirmed to player`)
           socket.emit('action:confirmed', {
@@ -1858,6 +1878,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
               exitDirection,
               entryDirection: landedEntryDirection,
               isTeleport,
+              walked,
               // Members skip adjacency exactly when the leader did. On a
               // directional move this stays false on purpose, so the engine
               // re-runs each member's own gate rather than inheriting the
@@ -2242,9 +2263,10 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
         }
 
-        // A successful flee retreats the player to the room they came from. Hand the
-        // engine the previous room so the battle:fled payload can tell the client
-        // where to navigate; the client then moves via the normal move pipeline.
+        // A successful flee retreats the player to the room they walked in from.
+        // Hand the engine that room (empty after a teleport, a rise or a retreat)
+        // so the battle:fled payload can tell the client where to navigate; the
+        // client then moves via the normal move pipeline.
         if (actionType === 'player_flee') {
           actionData = { ...actionData, returnRoomId: player.previousRoom ?? null }
         }
@@ -2542,6 +2564,8 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
 module.exports = {
   setupSocketHandlers,
+  // Exported for test/retreat-fallback.test.js: the one place `previousRoom` is written.
+  createTransitionPlayerRoom,
   ACTION_QUEUE_ERRORS,
   QUEUE_FULL_MESSAGE,
   ACTION_TIMEOUT_MESSAGE,

@@ -1541,9 +1541,11 @@ async function executePlayerFlee(action, playerId, roomState) {
   // is a way out of a fight, never a way to whittle something down for free.
   await prisma.user.update({ where: { id: playerId }, data: { inFight: false } })
 
-  // The player retreats to the room they came from. The socket layer tracks each
-  // player's previous room and passes it in; null when there's no prior room (the
-  // client then simply stays put after escaping).
+  // The player retreats to the room they walked in from. The socket layer
+  // tracks each player's previous walked room and passes it in; null when there
+  // is none — a character who has never moved, or one who arrived by teleport,
+  // by rising from death, or by an earlier retreat. The client then simply
+  // stays put after escaping.
   const returnRoomId = action?.data?.returnRoomId ?? null
 
   // The retreat itself is performed by the client moving to this room, so
@@ -1554,10 +1556,12 @@ async function executePlayerFlee(action, playerId, roomState) {
   if (returnRoomId) {
     grantTeleport(playerId, returnRoomId, { safeArrival: true })
   } else {
-    // Nowhere to fall back to — a character who has not moved since the world
-    // was made. The fight still ends and the room still goes quiet for a beat,
-    // which is enough to drink, re-gear or walk out; the original's retreat set
-    // the same flag whether or not the room actually changed.
+    // Nowhere to fall back to — the player did not walk in here. The fight
+    // still ends and the room still goes quiet for a beat, which is enough to
+    // drink, re-gear or teleport out; the original's retreat set the same flag
+    // whether or not the room actually changed. An aggressive enemy still
+    // holds the exits after that beat: a lair you teleported into is left the
+    // way you came, or by beating what lives there.
     roomState.grantGraceTurn(playerId)
   }
 
@@ -1577,7 +1581,7 @@ async function executePlayerFlee(action, playerId, roomState) {
         payload: {
           message: returnRoomId
             ? `You break off and retreat. The ${battleState.enemyName} is still there, and it will be waiting.`
-            : `You break off. There is nowhere to fall back to, but the ${battleState.enemyName} lets you be for a moment.`,
+            : `You break off. You did not walk in here, so there is nowhere to fall back to. The ${battleState.enemyName} lets you be for a moment.`,
           returnRoomId,
         },
       },

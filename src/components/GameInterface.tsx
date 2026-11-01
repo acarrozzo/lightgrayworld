@@ -2788,11 +2788,13 @@ export default function GameInterface() {
       const returnRoomId = payload.returnRoomId
       if (returnRoomId && returnRoomId !== currentRoomRef.current?.roomId) {
         handleActionRef.current({ type: 'teleport', data: { toRoomId: returnRoomId } })
-      } else {
-        // Fleeing in place: the server abandoned the room's enemy, so clear the
-        // local one to match (otherwise the fled-from enemy lingers on screen).
-        setRoomEnemy(null)
       }
+      // Otherwise the player broke off in place: there was no walked exit to
+      // fall back through (they teleported in, rose here, or retreated here).
+      // The server keeps the enemy in the room's slot, at full HP, and it
+      // engages again after the one grace action, so the room card keeps
+      // showing it. Clearing it here used to leave the player facing an
+      // enemy they could not see.
     })
 
     const cleanupLevelUp = socketHandlers.onPlayerLevelUp((payload) => {
@@ -3471,7 +3473,7 @@ export default function GameInterface() {
     if (escapeWarning) {
       setPartyDepartureConfirm({
         title: 'Retreat and leave your party?',
-        message: `${escapeWarning}\n\nYou fall back to the room you came from. The enemy stays where it is, at full health.`,
+        message: `${escapeWarning}\n\nYou fall back to the room you walked in from, if you walked in. The enemy stays where it is, at full health.`,
         confirmLabel: 'Retreat',
         run: go,
       })

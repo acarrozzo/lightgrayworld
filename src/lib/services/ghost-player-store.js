@@ -76,10 +76,12 @@ function cleanup() {
   }
 }
 
-// Hourly cleanup
+// Hourly cleanup. Unref'd: the server is kept alive by its sockets, not by
+// this sweep, and a test that loads the socket layer must still be able to
+// exit.
 if (!global.__ghostPlayerStoreCleanupStarted) {
   global.__ghostPlayerStoreCleanupStarted = true
-  setInterval(cleanup, 60 * 60 * 1000)
+  setInterval(cleanup, 60 * 60 * 1000).unref?.()
 }
 
 module.exports = { addGhost, removeGhost, getGhostsForRoom, cleanup }
