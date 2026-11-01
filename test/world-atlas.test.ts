@@ -19,6 +19,8 @@ import {
   regionTile,
   roomAt,
   roomCell,
+  seamOffset,
+  sheetSeam,
   stepZoom,
   tileCamera,
   tileIndexAt,
@@ -147,4 +149,27 @@ test('the arrows walk the 3×3: up from the Grassy Field is the Mountains', () =
   assert.equal(neighbourIndex(at('star-city'), 'up'), null)
   assert.equal(neighbourIndex(at('star-city'), 'left'), null)
   assert.equal(neighbourIndex(at('red-town'), 'right'), null)
+})
+
+test('a walk across a border is a step between two surface squares that touch', () => {
+  assert.deepEqual(sheetSeam('grassy-field', 'forest'), { dx: 1, dy: 0 })
+  assert.deepEqual(sheetSeam('rocky-flats', 'grassy-field'), { dx: 0, dy: -1 })
+  assert.deepEqual(sheetSeam('ocean', 'swamp'), { dx: 0, dy: 1 })
+  assert.deepEqual(sheetSeam('mountains', 'star-city'), { dx: -1, dy: 0 })
+  assert.equal(sheetSeam('grassy-field', 'grassy-field'), null)
+  // Down a ladder is not a seam, nor is a square that only touches at a corner.
+  assert.equal(sheetSeam('grassy-field', 'grassy-field-underground'), null)
+  assert.equal(sheetSeam('grassy-field', 'red-town'), null)
+  assert.equal(sheetSeam('lobby', 'grassy-field'), null)
+})
+
+test('the mini-map pans across a seam only when the step over it is short', () => {
+  // The Grassy Field's east road (023) into the Forest (101): the two cells
+  // sit either side of the seam, 170 art px apart once the sheets are laid out.
+  assert.deepEqual(seamOffset({ sheetId: 'grassy-field', x: 665, y: 350 }, { sheetId: 'forest', x: 35, y: 350 }), { ox: 800, oy: 0 })
+  assert.deepEqual(seamOffset({ sheetId: 'rocky-flats', x: 350, y: 35 }, { sheetId: 'grassy-field', x: 350, y: 665 }), { ox: 0, oy: -800 })
+  // The Healing Springs' path into the Mountains cuts the corner: too far to pan.
+  assert.equal(seamOffset({ sheetId: 'grassy-field', x: 245, y: 245 }, { sheetId: 'mountains', x: 140, y: 350 }), null)
+  // The cabin's cellar: a different sheet, no seam.
+  assert.equal(seamOffset({ sheetId: 'grassy-field', x: 245, y: 455 }, { sheetId: 'grassy-field-underground', x: 245, y: 455 }), null)
 })

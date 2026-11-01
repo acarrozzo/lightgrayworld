@@ -26,6 +26,7 @@ import {
   roomAt,
   roomCell,
   sheetForRoom,
+  sheetSeam,
   stepZoom,
   tileCamera,
   tileIndexAt,
@@ -357,6 +358,37 @@ export default function WorldAtlas({
     lastSeq.current = command.seq
     apply(command)
   }, [command, apply])
+
+  // Walking onto another sheet while the map shows the one under your feet:
+  // it turns the page with you, the new sheet sliding in from the side you
+  // walked towards (the arrow keys' move) — or cutting, down a ladder or on
+  // a teleport. Zoomed in, it stays zoomed and centres on you; at the whole
+  // sheet, it shows the whole new one. Browsing another sheet or the world,
+  // it leaves you alone and only the dot goes.
+  const prevHereSheet = useRef(hereSheet)
+  useEffect(() => {
+    const prev = prevHereSheet.current
+    prevHereSheet.current = hereSheet
+    if (!prev || !hereSheet || prev === hereSheet || !currentRoomId) return
+    const p = stateRef.current
+    if (p.depth !== 'sheet' || p.sheetId !== prev) return
+    const seam = sheetSeam(prev, hereSheet)
+    const from: AtlasDirection | null = !seam ? null : seam.dx > 0 ? 'right' : seam.dx < 0 ? 'left' : seam.dy > 0 ? 'down' : 'up'
+    const cell = roomCell(hereSheet, currentRoomId, currentRoomId)
+    busyRef.current = false
+    setS((q) => ({
+      ...q,
+      depth: 'sheet',
+      sheetId: hereSheet,
+      level: levelOfSheet(hereSheet),
+      cam: q.cam.z > 1.001 && cell ? centreOn(cellCentre(cell), q.cam.z) : FIT,
+      glide: 0,
+      selected: null,
+      pin: null,
+      vipOpen: false,
+      enter: from && !reduced ? { dir: from, n: (q.enter?.n ?? 0) + 1 } : null,
+    }))
+  }, [hereSheet, currentRoomId, reduced])
 
   const zoomStep = useCallback(
     (dir: 1 | -1) => {

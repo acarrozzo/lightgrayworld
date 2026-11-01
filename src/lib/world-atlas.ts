@@ -160,6 +160,48 @@ export function worldPointFor(index: number, sheetFx: number, sheetFy: number): 
   return { x: (col + sheetFx) / 3, y: (row + sheetFy) / 3 }
 }
 
+/**
+ * The step from one sheet's square to another's on the 3×3, when both are
+ * surface sheets of regions side by side: east from the Grassy Field is the
+ * Forest, so a walk across that border is `{ dx: 1, dy: 0 }`. Null for any
+ * other pair — the same sheet, a sheet below the surface, a VIP room, or two
+ * squares that only touch at a corner.
+ */
+export function sheetSeam(fromSheetId: string, toSheetId: string): { dx: number; dy: number } | null {
+  if (fromSheetId === toSheetId) return null
+  if (sheetDepth(fromSheetId) !== 0 || sheetDepth(toSheetId) !== 0) return null
+  const a = ATLAS_GRID.findIndex((r) => r.id === regionOfSheet(fromSheetId))
+  const b = ATLAS_GRID.findIndex((r) => r.id === regionOfSheet(toSheetId))
+  if (a < 0 || b < 0) return null
+  const dx = (b % 3) - (a % 3)
+  const dy = Math.floor(b / 3) - Math.floor(a / 3)
+  return Math.abs(dx) + Math.abs(dy) === 1 ? { dx, dy } : null
+}
+
+/** The longest step (art px) the compass mini-map pans across a seam; farther than this it cuts. */
+const SEAM_PAN_MAX = 400
+
+/**
+ * Where the sheet you are walking onto sits beside the one you are leaving,
+ * for the compass mini-map: the two sheets laid edge to edge along their
+ * seam, as the world grid lays them, so the pan from your old cell to your
+ * new one crosses the border the way you walked (about 170 art px from the
+ * Grassy Field's east road into the Forest). Null when the move is not a
+ * short step across a seam — down a ladder, a teleport, or the Healing
+ * Springs' path that cuts the corner into the Mountains — and the mini-map
+ * cuts to the new sheet instead.
+ */
+export function seamOffset(
+  from: { sheetId: string; x: number; y: number },
+  to: { sheetId: string; x: number; y: number },
+): { ox: number; oy: number } | null {
+  const seam = sheetSeam(from.sheetId, to.sheetId)
+  if (!seam) return null
+  const ox = seam.dx * MAP_IMAGE_SIZE
+  const oy = seam.dy * MAP_IMAGE_SIZE
+  return Math.hypot(ox + to.x - from.x, oy + to.y - from.y) <= SEAM_PAN_MAX ? { ox, oy } : null
+}
+
 // --- Rooms on a sheet ---------------------------------------------------------
 
 export interface AtlasRoom {

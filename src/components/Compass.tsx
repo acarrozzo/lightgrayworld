@@ -2,9 +2,10 @@
 
 import React, { useState, useRef, type ReactNode } from 'react'
 import { ArrowBigUp, ArrowBigUpDash } from 'lucide-react'
-import { getRoomMapPosition } from './game-interface/room-map-positions'
+import { MAP_IMAGE_SIZE, getRoomMapCell } from './game-interface/room-map-positions'
 import { getRoomMapView } from './game-interface/utils'
 import { roomColor } from '@/lib/theme/room-colors'
+import { seamOffset } from '@/lib/world-atlas'
 
 interface CompassProps {
   room: any
@@ -94,11 +95,55 @@ const getDirectionStyle = (
 }
 
 /**
- * How long the mini-map slides from the old room to the new one. Must match
- * the `duration-[...]` on the map button below. Short and eased out so the
- * slide reads as arriving, not as travelling.
+ * How long the mini-map slides from the old room to the new one. Short and
+ * eased out so the slide reads as arriving, not as travelling.
  */
 const MAP_PAN_MS = 350
+
+/**
+ * What the mini-map is drawing: one or two sheets of art laid on a canvas,
+ * and the canvas point that sits under your room's cell.
+ *
+ * Within a sheet the canvas just pans from cell to cell. Across a border it
+ * lays the sheet you are walking onto beside the one you are leaving, edge to
+ * edge along their seam as the world grid lays them (`seamOffset`), and pans
+ * across the seam — so stepping east out of the Grassy Field slides the
+ * Forest in from the east, a short step, instead of swapping the art and then
+ * scrubbing the whole new sheet the wrong way. Once the pan has landed the
+ * canvas settles to the new sheet alone at the origin, with no transition,
+ * so the settle cannot be seen. Any other change of sheet — down a ladder, a
+ * teleport, a crossing that is not a short step — is a cut.
+ */
+interface MapCanvas {
+  sheets: Array<{ id: string; src: string; ox: number; oy: number }>
+  x: number
+  y: number
+  animating: boolean
+}
+
+const restCanvas = (roomId: string): MapCanvas => {
+  const { mapId, src } = getRoomMapView(roomId)
+  const cell = getRoomMapCell(roomId)
+  return { sheets: [{ id: mapId, src, ox: 0, oy: 0 }], x: cell.x, y: cell.y, animating: false }
+}
+
+/** The canvas after a move to `roomId`, or null when the move should cut. */
+const panCanvas = (current: MapCanvas, roomId: string): MapCanvas | null => {
+  const { mapId, src } = getRoomMapView(roomId)
+  const cell = getRoomMapCell(roomId)
+  const onCanvas = current.sheets.find((sheet) => sheet.id === mapId)
+  if (onCanvas) return { ...current, x: onCanvas.ox + cell.x, y: onCanvas.oy + cell.y, animating: true }
+  if (current.sheets.length !== 1) return null
+  const from = current.sheets[0]
+  const seam = seamOffset({ sheetId: from.id, x: current.x, y: current.y }, { sheetId: mapId, x: cell.x, y: cell.y })
+  if (!seam) return null
+  return {
+    sheets: [from, { id: mapId, src, ox: seam.ox, oy: seam.oy }],
+    x: seam.ox + cell.x,
+    y: seam.oy + cell.y,
+    animating: true,
+  }
+}
 
 export default function Compass({
   room,
@@ -112,42 +157,29 @@ export default function Compass({
   side,
 }: CompassProps) {
   const [isNavigating, setIsNavigating] = useState(false)
-  const [currentPosition, setCurrentPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
-  const [targetPosition, setTargetPosition] = useState<string>(() => getRoomMapPosition(room?.roomId))
-  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [canvas, setCanvas] = useState<MapCanvas>(() => restCanvas(room?.roomId ?? ''))
+  const canvasRef = useRef(canvas)
+  canvasRef.current = canvas
   const prevRoomId = useRef<string | null>(null)
 
-  // Initialize position when room changes
+  // Pan (or cut) the mini-map when the room changes, then settle.
   React.useEffect(() => {
-    if (!room?.roomId) {
-      return
-    }
-
-    const newPosition = getRoomMapPosition(room.roomId)
+    const roomId: string | undefined = room?.roomId
+    if (!roomId) return
     const isFirstLoad = prevRoomId.current === null
-    const isSameRoom = prevRoomId.current === room.roomId
+    const isSameRoom = prevRoomId.current === roomId
+    prevRoomId.current = roomId
+    if (isSameRoom) return
 
-    if (isFirstLoad || isSameRoom || currentPosition === '') {
-      setCurrentPosition(newPosition)
-      setTargetPosition(newPosition)
-      setIsTransitioning(false)
-      prevRoomId.current = room.roomId
+    const next = isFirstLoad ? null : panCanvas(canvasRef.current, roomId)
+    if (!next) {
+      setCanvas(restCanvas(roomId))
       return
     }
-
-    setTargetPosition(newPosition)
-    setIsTransitioning(true)
-    prevRoomId.current = room.roomId
-
-    const timer = setTimeout(() => {
-      setCurrentPosition(newPosition)
-      setIsTransitioning(false)
-    }, MAP_PAN_MS)
-
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [room?.roomId, currentPosition])
+    setCanvas(next)
+    const timer = setTimeout(() => setCanvas(restCanvas(roomId)), MAP_PAN_MS)
+    return () => clearTimeout(timer)
+  }, [room?.roomId])
 
   const handleNavigate = async (direction: string) => {
     if (isNavigating || isMoveInProgress || isLocked || !onAction) {
@@ -171,11 +203,7 @@ export default function Compass({
   // Artwork + title come from the shared sheet table (world-map.js via
   // getRoomMapView), so the mini-map and the full map view always agree on which
   // sheet a room belongs to. Only the pan is local, because it animates between rooms.
-  const { src: mapBackground, title: mapTitle } = getRoomMapView(room.roomId)
-  const isSingleRoomMap = room.roomId === '000' || room.roomId === '999' || room.roomId === '088'
-  const mapPosition = isSingleRoomMap
-    ? 'center'
-    : (isTransitioning ? targetPosition : currentPosition)
+  const { title: mapTitle } = getRoomMapView(room.roomId)
 
   const directions: Direction[] = [
     { key: 'northwest', label: 'NW', position: 'top-left', rotation: 315 },
@@ -199,9 +227,11 @@ export default function Compass({
   // stays the same size through that step.
   const ringWidth = large ? 'w-64' : 'w-52 @min-[360px]:w-56 @min-[400px]:w-64'
   const ringHeight = large ? 'h-64' : 'h-52 @min-[360px]:h-56 @min-[400px]:h-64'
+  // The circle shows your room's cell with a margin of map around it:
+  // `--map-inset` is that margin, and the canvas hangs from it.
   const mapSize = large
-    ? 'w-[150px] h-[150px] border-[25px]'
-    : 'w-[120px] @min-[400px]:w-[150px] h-[120px] @min-[400px]:h-[150px] border-[10px] @min-[400px]:border-[25px]'
+    ? 'w-[150px] h-[150px] [--map-inset:25px]'
+    : 'w-[120px] @min-[400px]:w-[150px] h-[120px] @min-[400px]:h-[150px] [--map-inset:10px] @min-[400px]:[--map-inset:25px]'
 
   const isDisabled = isNavigating || isMoveInProgress || isLocked
   // Up and Down stand in a column to the left of the ring, as the original
@@ -261,14 +291,35 @@ export default function Compass({
             <button
               type="button"
               onClick={() => onNavigateToMap?.()}
-              className={`${mapSize} cursor-pointer rounded-full bg-no-repeat transition-[background-position] duration-[350ms] ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas border-solid border-transparent shadow-xl shadow-black/30 hover:shadow-2xl`}
-              style={{
-                backgroundImage: `url('${mapBackground}')`,
-                backgroundPosition: mapPosition
-              }}
+              className={`${mapSize} relative cursor-pointer overflow-hidden rounded-full bg-surface-sunken focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas shadow-xl shadow-black/30 hover:shadow-2xl motion-reduce:[--map-pan-ms:0ms]`}
               aria-label={`Open the map (${mapTitle})`}
               title={`Open the map — ${mapTitle}`}
-            />
+            >
+              {/* The canvas: its origin at the inset, panned so your cell sits there. */}
+              <div
+                className="absolute left-[var(--map-inset)] top-[var(--map-inset)] h-0 w-0 will-change-transform"
+                style={{
+                  transform: `translate(${-canvas.x}px, ${-canvas.y}px)`,
+                  transition: canvas.animating ? `transform var(--map-pan-ms, ${MAP_PAN_MS}ms) ease-out` : 'none',
+                }}
+                aria-hidden="true"
+              >
+                {canvas.sheets.map((sheet) => (
+                  <div
+                    key={sheet.id}
+                    className="absolute bg-no-repeat"
+                    style={{
+                      left: sheet.ox,
+                      top: sheet.oy,
+                      width: MAP_IMAGE_SIZE,
+                      height: MAP_IMAGE_SIZE,
+                      backgroundImage: `url('${sheet.src}')`,
+                      backgroundSize: `${MAP_IMAGE_SIZE}px ${MAP_IMAGE_SIZE}px`,
+                    }}
+                  />
+                ))}
+              </div>
+            </button>
           </div>
 
           {/* Direction buttons */}

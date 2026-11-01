@@ -424,6 +424,14 @@ export const ROOM_MAP_COORDS: Record<string, { x: number; y: number }> = {
 }
 
 /** CSS `background-position` for the compass mini-map window. */
+/**
+ * The room's cell on its sheet in art pixels, for the compass mini-map's
+ * canvas: its authored place, or the middle of the sheet for the single-tile
+ * sheets and for a room with no place drawn (which is what `center` is).
+ */
+export const getRoomMapCell = (roomId: string | undefined): { x: number; y: number } =>
+  (roomId && !CENTERED_ROOMS.has(roomId) ? ROOM_MAP_COORDS[roomId] : undefined) ?? DEFAULT_POSITION
+
 export const getRoomMapPosition = (roomId: string | undefined): string => {
   if (roomId && CENTERED_ROOMS.has(roomId)) return 'center'
   const coords = (roomId ? ROOM_MAP_COORDS[roomId] : undefined) ?? DEFAULT_POSITION
