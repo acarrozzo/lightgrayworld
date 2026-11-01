@@ -119,9 +119,9 @@ Born around the poisoning, teenagers at Sports Day, about twenty now.
 
 ### The dead and the missing
 
-- **Hopper.** Last surviving Ultra Mage of the Sixth Era, grumpy, wise, reluctant mentor to Pax. Lean, wiry, weather-tanned, scruffy white hair, tired sharp eyes. Killed at Sports Day.
-- **Alexis.** Ultra Mage of Fables, mother of Eve, legendary archer and warrior, respected across continents. Tall, elegant, warm olive skin, long dark-gold hair, radiant emerald eyes. Killed at Sports Day.
-- **Sir Frederick.** No one knows where he is. There are clues that he is in the Dwarf Village or the Mining Guild; at the village it is told that Frederick saved them all with his solar shield magic.
+- **Hopper.** Last surviving Ultra Mage of the Sixth Era, one of a larger elite group of mages from that prior era. Grumpy, wise, reluctant mentor to Pax. Lean, wiry, weather-tanned, scruffy white hair, tired sharp eyes. Killed at Sports Day.
+- **Alexis.** Ultra Mage of Fables, mother of Eve, legendary archer and warrior, respected across continents. Part of the same prior-era elite group as Hopper. She was at Sports Day as a special guest. Tall, elegant, warm olive skin, long dark-gold hair, radiant emerald eyes. Killed at Sports Day.
+- **Sir Frederick.** No one knows where he is. He is deep in the Neverending Mine, in the Dwarven Ruins or temple below it. Clues point at the Dwarf Village and the Mining Guild; at the village it is told that Frederick saved them all with his solar shield magic. Freddie the leatherworker (103) is not him.
 - **King Edward Lavelli**, the Queen, **Captain Eleanor Price**. Dead in the poisoning.
 
 ### Others
