@@ -108,20 +108,20 @@ Born around the poisoning, teenagers at Sports Day, about twenty now.
 - **Roman (Rom).** Ultra Mage of Force. Massive, muscular, olive skin, short thick dark hair, fun and aggressive deep brown eyes, red. Brash, aggressive, heroic; unmatched physical power.
 - **Lawrence (Law).** Ultra Mage of Elements. Short to medium height, slender, very dark skin, short black hair, bright optimistic blue eyes, blue. Brilliant, meta-aware, optimistic; master of arcane and elemental disciplines.
 - **Eve.** Ultra Mage of Nature. Tall, strong, agile, dark olive skin, dusty brown hair, striking green eyes, green. Stealthy, sarcastic, graceful. Daughter of Alexis.
-- **Judith.** Ultra Mage of Shadow. Tall, slim, ghostly, porcelain white skin, jet-black hair that turns white when enraged, icy dark eyes, black. Cunning, quiet, intimidating; deadly precision.
+- **Judith.** Ultra Mage of Shadow. Tall, slim, pale, porcelain white skin, jet-black hair that turns white when enraged, icy dark eyes, black. Cunning, quiet, intimidating; deadly precision.
 
 ### The enemy
 
 - **Radrick**, the Mage King. Nephew of Edward Lavelli, king by poison. Not an Academy mage and not a Wanderer. Class S Ultra Mage of Poison. Over seven feet tall, monstrous build, pale skin, long dark hair, bright green eyes, devilishly handsome, black light armor. Tyrant-king of Vega. The highest-level boss.
 - **Dar**, War General Warlock. Mastermind of the poisoning. Master Warlock of Dark and Temporal magic, Illarian extremist, architect of the Poisoning and the Beast Wars. Old, tall, thin, warped, sickly pale, stringy black hair, gray eyes, black. Carries Time Splitter; his fight will have multiple rounds where the player is frozen. Second highest.
-- **Volphina.** Teleportation magic. Elite Warlock Captain, commander of dark mage strike units, swift, ruthless, fiercely loyal to Dar. Medium height, sleek, tan skin, bright pink hair, bright violet eyes, thick pink armor. A main boss met before Radrick and Dar, third highest. She is Pax's sister, a Lavelli, and does not know it. Radrick and Dar know: they put her into the system as an infant instead of killing her, she excelled, became a general in the army as a teenager, and they brought her into their inner circle.
+- **Volphina.** Teleportation magic. Elite Warlock Captain, commander of dark mage strike units, swift, ruthless, fiercely loyal to Dar. Medium height, sleek, fair skin, bright pink hair (naturally blonde), bright violet eyes, thick pink paladin armor. A main boss met before Radrick and Dar, third highest. She is Pax's sister, a Lavelli, and does not know it. Radrick and Dar know: they put her into the system as an infant instead of killing her, she excelled, became a general in the army as a teenager, and they brought her into their inner circle.
 - **Nox and Tox**, Dar's mutated generals. **Nox**: a deranged lieutenant skilled in venom sorcery (emaciated, blotchy, patchy hair, sunken yellow eyes). **Tox**: brute force, massive, a war beast in humanoid form fueled by toxic magic (enormous, muddy green skin, bald, red feral eyes).
 
 ### The dead and the missing
 
 - **Hopper.** Last surviving Ultra Mage of the Sixth Era, one of a larger elite group of mages from that prior era. Grumpy, wise, reluctant mentor to Pax. Lean, wiry, weather-tanned, scruffy white hair, tired sharp eyes. Killed at Sports Day.
 - **Alexis.** Ultra Mage of Fables, mother of Eve, legendary archer and warrior, respected across continents. Part of the same prior-era elite group as Hopper. She was at Sports Day as a special guest. Tall, elegant, warm olive skin, long dark-gold hair, radiant emerald eyes. Killed at Sports Day.
-- **Sir Frederick.** No one knows where he is. He is deep in the Neverending Mine, in the Dwarven Ruins or temple below it. Clues point at the Dwarf Village and the Mining Guild; at the village it is told that Frederick saved them all with his solar shield magic. Freddie the leatherworker (103) is not him.
+- **Sir Frederick.** No one knows where he is. He is deep in the Neverending Mine, in the Dwarven Ruins or temple below it. Clues point at the Dwarf Village and the Mining Guild; at the village it is told that Frederick saved them all with his solar shield magic. he is very large and muscular, has a blonde handlebar mustache, is bald.
 - **King Edward Lavelli**, the Queen, **Captain Eleanor Price**. Dead in the poisoning.
 
 ### Others

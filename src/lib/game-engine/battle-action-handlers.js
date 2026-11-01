@@ -297,6 +297,21 @@ function describeHitExtras(hit) {
  * because the player's blow in the same turn killed it. The ledger then reads
  * the row as `foe.kind: 'none'` (no raw, no damage, no action, no dodge).
  */
+/**
+ * File a resolved player turn on the state: what the blow (and any poison
+ * burn) did, and what the enemy dealt back. A blow that killed the enemy
+ * discards its rolled answer first — it fell before the swing could land,
+ * exactly as the handlers return before applyEnemyHit — so the summary's
+ * "took" never counts a hit the ledger and your HP never saw.
+ * @returns {boolean} whether the turn killed the enemy
+ */
+function recordPlayerTurn(battleState, turn) {
+  const killed = battleState.isEnemyDead()
+  if (killed) silenceEnemySide(turn)
+  battleState.recordTurn(totalDamageToEnemy(turn) + poisonDamage(turn), turn.enemyDealtDamage, turn.multiplayerBonus, turn)
+  return killed
+}
+
 function silenceEnemySide(turn) {
   turn.enemyDealtDamage = 0
   turn.enemyRaw = null
@@ -898,11 +913,7 @@ async function executeStartBattle(action, playerId, roomState) {
     // The opening blow killed it: it fell before it could answer, as on every
     // later turn (executePlayerAttack returns before the enemy's hit lands).
     // Its rolled swing is discarded, so neither the HP nor the line carry it.
-    if (battleState.isEnemyDead()) {
-      killedByOpening = true
-      silenceEnemySide(firstTurn)
-    }
-    battleState.recordTurn(totalDamageToEnemy(firstTurn) + poisonDamage(firstTurn), firstTurn.enemyDealtDamage, firstTurn.multiplayerBonus, firstTurn)
+    killedByOpening = recordPlayerTurn(battleState, firstTurn)
   }
   settleEnemyAftermath(battleState, firstTurn)
 
@@ -1195,10 +1206,12 @@ async function executePlayerAttack(action, playerId, roomState) {
   settleEnemyPoison(battleState, turnResult)
   settleEnemyAftermath(battleState, turnResult)
   battleState.incrementTurn()
-  battleState.recordTurn(totalDamageToEnemy(turnResult) + poisonDamage(turnResult), turnResult.enemyDealtDamage, turnResult.multiplayerBonus, turnResult)
+  // A killing blow is filed without the enemy's answer (see recordPlayerTurn):
+  // the summary once counted that discarded swing as damage taken.
+  const killed = recordPlayerTurn(battleState, turnResult)
 
   // Victory check
-  if (battleState.isEnemyDead()) {
+  if (killed) {
     const finalBlow = turnResult.poisonTick?.killed
       ? 'The poison finishes it. '
       : turnResult.spell
@@ -1608,8 +1621,9 @@ module.exports = {
   // The quiver readers, for a hunt's refusal before it rolls (room-state.executeHunt).
   readAmmo,
   ammoDisplayName,
-  // An opening blow that kills: the enemy's rolled swing is discarded (tested directly).
+  // A blow that kills: the enemy's rolled swing is discarded (tested directly).
   silenceEnemySide,
+  recordPlayerTurn,
   // Exported so the shared defeat teardown can be exercised directly: the bug it
   // fixes (an enemy left behind, blocking the respawn move) is invisible from
   // the outside until a player is already stuck.

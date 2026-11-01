@@ -20,7 +20,8 @@ const ROOT = path.join(__dirname, '..')
 const dbPath = require.resolve(path.join(ROOT, 'src/lib/db-client.js'))
 require.cache[dbPath] = { id: dbPath, filename: dbPath, loaded: true, exports: { prisma: {} } }
 
-const { describeEnemyAttack, silenceEnemySide } = require(path.join(ROOT, 'src/lib/game-engine/battle-action-handlers.js'))
+const { describeEnemyAttack, silenceEnemySide, recordPlayerTurn } = require(path.join(ROOT, 'src/lib/game-engine/battle-action-handlers.js'))
+const { BattleState } = require(path.join(ROOT, 'src/lib/game-engine/battle-state.js'))
 const { compactTurn } = require(path.join(ROOT, 'src/lib/game-engine/fight-ledger.js'))
 const { perkIcon } = require(path.join(ROOT, 'src/lib/game-data/enemy-traits.js'))
 
@@ -145,6 +146,30 @@ test('an opening blow that kills leaves the enemy no swing, and the row says non
   const row = compactTurn(turn, { playerHp: 30, playerMp: null, absorbed: 0, enemyActed: false })
   assert.equal(row.foe.kind, 'none')
   assert.equal(row.foe.dmg, 0)
+})
+
+test('a killing blow records nothing taken — the discarded swing never reached the summary', () => {
+  // Found 1 Nov 2026: a Coral Wizard fight's "took 180" with a ledger that
+  // summed to 0. The normal turn filed the enemy's rolled answer on the
+  // running total before the victory check; the opening turn had always
+  // silenced it first.
+  const enemy = { slug: 'coral-wizard', name: 'Coral Wizard', hp: 500, att: 200, def: 100, damageType: 'MAGIC' }
+  const state = new BattleState({ playerId: 'p', roomId: '409', enemy, playerStats: { str: 10, def: 10, level: 1 } })
+  const swing = () => ({ playerDealtDamage: 480, enemyDealtDamage: 180, enemyRaw: 261, playerBlocked: 81, multiplayerBonus: false, enemyEffects: {} })
+
+  // The enemy survives: its answer counts.
+  state.applyDamageToEnemy(480)
+  assert.equal(recordPlayerTurn(state, swing()), false)
+  assert.equal(state.totalDamageReceived, 180)
+
+  // The blow that kills it: its rolled answer is discarded before anything files it.
+  state.applyDamageToEnemy(480)
+  const last = swing()
+  assert.equal(recordPlayerTurn(state, last), true)
+  assert.equal(last.enemyDealtDamage, 0, 'the turn itself is silenced for the ledger and the line')
+  assert.equal(state.totalDamageReceived, 180, 'the summary agrees with the ledger')
+  assert.equal(state.totalDamageDealt, 960)
+  assert.equal(state.maxSingleHit, 480)
 })
 
 test('zero damage is a number, not a block', () => {
