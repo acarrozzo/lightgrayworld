@@ -264,6 +264,28 @@ export const cellCentre = (cell: AtlasRoom) => ({
 export const CELL_FRACTION = MAP_CELL_SIZE / MAP_IMAGE_SIZE
 export const ART_SIZE = MAP_IMAGE_SIZE
 
+/** A rectangle on a stage, every side a 0..1 fraction of it. */
+export interface AtlasBox {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/** A cell's square on its sheet: what a lit landing outlines. */
+export const cellBox = (cell: AtlasRoom): AtlasBox => ({
+  x: cell.x / MAP_IMAGE_SIZE,
+  y: cell.y / MAP_IMAGE_SIZE,
+  w: CELL_FRACTION,
+  h: CELL_FRACTION,
+})
+
+/** The same cell's square on the 3×3 world, inside the region's square. */
+export function worldCellBox(index: number, cell: AtlasRoom): AtlasBox {
+  const corner = worldPointFor(index, cell.x / MAP_IMAGE_SIZE, cell.y / MAP_IMAGE_SIZE)
+  return { x: corner.x, y: corner.y, w: CELL_FRACTION / 3, h: CELL_FRACTION / 3 }
+}
+
 // --- Teleport landings --------------------------------------------------------
 
 export interface TeleportContext {

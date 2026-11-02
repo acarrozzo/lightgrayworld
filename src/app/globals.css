@@ -128,6 +128,42 @@ body.font-mono {
 @keyframes atlas-from-left { from { transform: translateX(-8%); opacity: 0.35; } }
 @keyframes atlas-from-right { from { transform: translateX(8%); opacity: 0.35; } }
 
+/* A landing on the World map is a lit cell: the room's square outlined in the
+   gutter, tinted and glowing in its color (`--lit`, set by the cell), the way
+   the original's teleport page lit the squares you could reach. Every size
+   divides by the zoom so the mark keeps its weight as the art grows. The
+   world's squares are a third the size and lean on the tint instead of a
+   badge. A sheet opening gives its landings one soft swell; reduced motion
+   skips it. */
+.atlas-lit {
+  inset: calc(-2px * var(--atlas-inv, 1));
+  border: calc(2.5px * var(--atlas-inv, 1)) solid var(--lit);
+  border-radius: calc(4px * var(--atlas-inv, 1));
+  background: color-mix(in srgb, var(--lit) 20%, transparent);
+  box-shadow:
+    0 0 0 calc(3px * var(--atlas-inv, 1)) color-mix(in srgb, var(--lit) 30%, transparent),
+    0 0 calc(14px * var(--atlas-inv, 1)) color-mix(in srgb, var(--lit) 60%, transparent);
+  transition: filter 150ms;
+}
+.atlas-lit-world {
+  inset: calc(-1px * var(--atlas-inv, 1));
+  border-width: calc(2px * var(--atlas-inv, 1));
+  border-radius: calc(2px * var(--atlas-inv, 1));
+  background: color-mix(in srgb, var(--lit) 35%, transparent);
+  box-shadow: 0 0 calc(6px * var(--atlas-inv, 1)) color-mix(in srgb, var(--lit) 70%, transparent);
+}
+button:hover > .atlas-lit,
+button:focus-visible > .atlas-lit {
+  filter: brightness(1.25);
+}
+@keyframes atlas-lit-swell {
+  0%, 100% { filter: none; transform: none; }
+  35% { filter: brightness(1.7) saturate(1.3); transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .atlas-lit { animation: atlas-lit-swell 1100ms cubic-bezier(.2,.7,.2,1) 1; }
+}
+
 /* Slow, subtle ping for TP button */
 @keyframes ping-slow {
   0% { transform: scale(1); opacity: 0.6; }

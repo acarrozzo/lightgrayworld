@@ -9,6 +9,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   ATLAS_GRID,
+  cellBox,
+  cellCentre,
   centreOn,
   clampCamera,
   foundLevels,
@@ -24,6 +26,7 @@ import {
   stepZoom,
   tileCamera,
   tileIndexAt,
+  worldCellBox,
   worldPointFor,
   zoomCamera,
   type TeleportContext,
@@ -172,4 +175,24 @@ test('the mini-map pans across a seam only when the step over it is short', () =
   assert.equal(seamOffset({ sheetId: 'grassy-field', x: 245, y: 245 }, { sheetId: 'mountains', x: 140, y: 350 }), null)
   // The cabin's cellar: a different sheet, no seam.
   assert.equal(seamOffset({ sheetId: 'grassy-field', x: 245, y: 455 }, { sheetId: 'grassy-field-underground', x: 245, y: 455 }), null)
+})
+
+// --- Lit cells ---------------------------------------------------------------
+
+test('a lit landing outlines the whole cell, on the sheet and on the world', () => {
+  const hub = roomCell('red-town', '210')
+  assert.ok(hub)
+  const onSheet = cellBox(hub)
+  assert.deepEqual(onSheet, { x: 350 / 800, y: 350 / 800, w: 0.125, h: 0.125 })
+  const centre = cellCentre(hub)
+  assert.ok(Math.abs(onSheet.x + onSheet.w / 2 - centre.x) < 1e-9)
+  assert.ok(Math.abs(onSheet.y + onSheet.h / 2 - centre.y) < 1e-9)
+  // Red Town's square is top-middle of the world; its cell is a third the size there.
+  const index = ATLAS_GRID.findIndex((r) => r.id === 'red-town')
+  const onWorld = worldCellBox(index, hub)
+  const worldCentre = worldPointFor(index, centre.x, centre.y)
+  assert.ok(Math.abs(onWorld.x + onWorld.w / 2 - worldCentre.x) < 1e-9)
+  assert.ok(Math.abs(onWorld.y + onWorld.h / 2 - worldCentre.y) < 1e-9)
+  assert.ok(Math.abs(onWorld.w - 0.125 / 3) < 1e-9)
+  assert.equal(tileIndexAt(onWorld.x, onWorld.y), index)
 })

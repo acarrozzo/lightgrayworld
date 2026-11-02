@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Eye, EyeOff, Globe, Map as MapIcon, Maximize2, Sparkles } from 'lucide-react'
 import { useGameStore, type Player } from '@/lib/game-state'
 import { foundSheetIds, type TeleportContext } from '@/lib/world-atlas'
 import { useWorldMapPref } from '@/lib/world-map-prefs'
 import LayerShell, { HeaderTabs, ICON_BUTTON, useDeck } from './LayerShell'
-import FullScreenFrame, { FULL_ICON } from './FullScreenFrame'
+import FullScreenFrame from './FullScreenFrame'
 import TravelRows, { type BossTeleportTile } from './TravelRows'
 import WorldAtlas, { type AtlasCommand, type AtlasView } from './WorldAtlas'
 import AtlasRail from './AtlasRail'
@@ -56,6 +56,64 @@ function useWideScreen(minWidth: number): boolean {
     return () => query.removeEventListener('change', update)
   }, [minWidth])
   return wide
+}
+
+/** The bar a switch sits in: the docked header (taller on a phone) or the full-screen bar. */
+type SwitchSize = 'docked' | 'full'
+
+/**
+ * One of the map's two switches: a small track whose knob carries the
+ * switch's own glyph (the ✦ the lit landings wear, the eye for the controls),
+ * so it says what it switches without a word, at every width. On, the track
+ * fills in the switch's color and the knob turns bright with the glyph in
+ * that color; off, track and knob go gray. The same switch the feed options
+ * menu and Settings draw, with a passenger. Full screen and close beside it
+ * stay plain icons: they do things, these two hold a state.
+ */
+function MapSwitch({
+  on,
+  onChange,
+  size,
+  tone,
+  label,
+  title,
+  icon,
+}: {
+  on: boolean
+  onChange: (next: boolean) => void
+  size: SwitchSize
+  tone: 'landings' | 'controls'
+  label: string
+  title: string
+  icon: ReactNode
+}) {
+  const full = size === 'full'
+  const trackOn = tone === 'landings' ? 'bg-resource-mp' : 'bg-hue-sky'
+  const glyphOn = tone === 'landings' ? 'text-resource-mp' : 'text-hue-sky'
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      title={title}
+      onClick={() => onChange(!on)}
+      className={`group grid shrink-0 place-items-center rounded-lg px-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${full ? 'h-8' : 'h-7 max-lg:h-9'}`}
+    >
+      <span
+        aria-hidden="true"
+        className={`relative block rounded-full transition-colors duration-150 group-hover:brightness-110 ${full ? 'h-[19px] w-9' : 'h-[17px] w-8'} ${on ? trackOn : 'bg-line-strong'}`}
+      >
+        <span
+          className={`absolute top-[2px] grid place-items-center rounded-full shadow-sm transition-[left,background-color,color] duration-150 motion-reduce:transition-none ${
+            full ? 'h-[15px] w-[15px]' : 'h-[13px] w-[13px]'
+          } ${on ? `${full ? 'left-[19px]' : 'left-[17px]'} bg-fg-bright ${glyphOn}` : 'left-[2px] bg-fg-secondary text-surface-canvas'}`}
+        >
+          {icon}
+        </span>
+      </span>
+    </button>
+  )
 }
 
 /**
@@ -182,31 +240,28 @@ export default function WorldLayer({
   )
 
   // The map's two switches, in the header beside full screen: the teleport
-  // pins, and the controls over the art. Only while the map is showing.
-  const toggles = (buttonClass: string) =>
+  // landings, and the controls over the art. Only while the map is showing.
+  const toggles = (size: SwitchSize) =>
     tab === 'map' ? (
       <>
-        <button
-          type="button"
-          onClick={() => setShowPins(!showPins)}
-          aria-pressed={showPins}
-          aria-label="Teleport pins"
-          title={showPins ? 'Hide the teleport pins' : 'Show the teleport pins'}
-          className={`${buttonClass} relative`}
-        >
-          <Sparkles size={15} aria-hidden="true" className={showPins ? 'text-resource-mp' : 'text-fg-disabled'} />
-          {!showPins && <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-[1.5px] w-[18px] -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-full bg-fg-disabled" />}
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowControls(!showControls)}
-          aria-pressed={showControls}
-          aria-label="Map controls"
+        <MapSwitch
+          on={showPins}
+          onChange={setShowPins}
+          size={size}
+          tone="landings"
+          label="Teleport landings"
+          title={showPins ? 'Hide the teleport landings' : 'Show the teleport landings'}
+          icon={<Sparkles size={size === 'full' ? 10 : 9} aria-hidden="true" />}
+        />
+        <MapSwitch
+          on={showControls}
+          onChange={setShowControls}
+          size={size}
+          tone="controls"
+          label="Map controls"
           title={showControls ? 'Hide the controls over the map' : 'Show the controls over the map'}
-          className={`${buttonClass} ${showControls ? '' : 'text-hue-sky'}`}
-        >
-          {showControls ? <Eye size={16} aria-hidden="true" /> : <EyeOff size={16} aria-hidden="true" />}
-        </button>
+          icon={showControls ? <Eye size={size === 'full' ? 10 : 9} aria-hidden="true" /> : <EyeOff size={size === 'full' ? 10 : 9} aria-hidden="true" />}
+        />
       </>
     ) : null
 
@@ -238,7 +293,7 @@ export default function WorldLayer({
         label="World, full screen"
         tabs={tabs}
         player={player}
-        toggles={toggles(FULL_ICON)}
+        toggles={toggles('full')}
         onLeave={() => onFullScreenChange(false)}
         onClose={onClose}
       >
@@ -271,7 +326,7 @@ export default function WorldLayer({
     <>
       {tabs}
       <span className="ml-auto flex flex-shrink-0 items-center gap-0.5">
-        {toggles(ICON_BUTTON)}
+        {toggles('docked')}
         <button type="button" onClick={() => onFullScreenChange(true)} aria-label="Full screen" title="Full screen" className={ICON_BUTTON}>
           <Maximize2 size={15} aria-hidden="true" />
         </button>

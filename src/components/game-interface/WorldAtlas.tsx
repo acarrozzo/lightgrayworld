@@ -10,6 +10,7 @@ import {
   FIT,
   HERE_ZOOM,
   artPointAt,
+  cellBox,
   cellCentre,
   centreOn,
   clampCamera,
@@ -30,8 +31,10 @@ import {
   stepZoom,
   tileCamera,
   tileIndexAt,
+  worldCellBox,
   worldPointFor,
   zoomCamera,
+  type AtlasBox,
   type AtlasCamera,
   type AtlasDepth,
   type AtlasDirection,
@@ -75,7 +78,7 @@ interface WorldAtlasProps {
   onTeleport: (roomId: string) => void
   /** The full-screen rail carries the levels itself; no second copy floats on the map. */
   hideLevels?: boolean
-  /** Draw the ✦ landing and ♛ lair pins. Off, rooms still open their cards, Teleport and all. */
+  /** Light the open landings and beaten lairs on the art. Off, rooms still open their cards, Teleport and all. */
   showPins?: boolean
   /** Draw the trail, the level stack, VIP, Here and zoom over the map. */
   showControls?: boolean
@@ -103,8 +106,11 @@ const EASE = 'cubic-bezier(.2,.7,.2,1)'
 const GLASS = 'border border-line-strong/80 bg-surface-canvas/85 shadow-lg shadow-shadow backdrop-blur-sm'
 const ICON_TAP =
   'grid place-items-center text-fg-secondary transition-colors hover:bg-surface-raised/70 hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:cursor-default disabled:opacity-35 disabled:hover:bg-transparent'
-/** A pin keeps its size as the art grows under it. */
+/** A badge or the gold dot keeps its size as the art grows under it. */
 const PIN_TRANSFORM = 'translate(-50%, -50%) scale(var(--atlas-inv, 1))'
+/** How far a lit cell's outline and glow reach past its cell, in screen px (`.atlas-lit` in globals.css): on a sheet, and on the world. */
+const LIT_REACH = 8
+const LIT_REACH_WORLD = 5
 /** Zoomed in, the art fills the frame and the controls sit on it: they go faint until the pointer or focus comes to them. */
 const FAINT = 'opacity-40 hover:opacity-100 focus-within:opacity-100'
 const ARROW_DIRECTIONS: Record<string, AtlasDirection> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
@@ -131,9 +137,12 @@ function usePrefersReducedMotion(): boolean {
  *
  * On a sheet every room can be tapped for a card at the room: its number, its
  * name once you have stood in it ("?" before), and Teleport when it is an open
- * landing or the lair of a boss you have beaten. Open landings wear a ✦ pin
- * where you would arrive, beaten lairs a crown, you a gold dot — on the world
- * too, so a square offers its map and its teleport in one place.
+ * landing or the lair of a boss you have beaten. An open landing is a lit
+ * cell: the room's square outlined and glowing in MP blue with a ✦ at its
+ * corner, a beaten lair the same in purple with a crown, as the original's
+ * teleport page lit the squares you could reach; you are a gold dot. The
+ * world lights the same cells on its squares, badge-less at that size, so a
+ * square offers its map and its teleport in one place.
  *
  * Nothing here decides a teleport: the card calls `onTeleport`, and the server
  * checks the landing, the MP and the party as it does for the Teleport rows.
@@ -461,7 +470,10 @@ export default function WorldAtlas({
 
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
-    if ((e.target as HTMLElement).closest('button, a, [data-atlas-ui]')) return
+    // A lit cell on a sheet is part of the art: a press on it taps or drags
+    // the map as anywhere else. Every other control keeps the pointer.
+    const control = (e.target as HTMLElement).closest('button, a, [data-atlas-ui]')
+    if (control && !control.hasAttribute('data-atlas-lit')) return
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -652,29 +664,61 @@ export default function WorldAtlas({
     </span>
   )
 
-  const landingPin = (landing: AtlasLanding, onSheet: string, x: number, y: number, onPress: () => void, index: number | null = null) => (
-    <button
-      key={landing.roomId}
-      type="button"
-      onClick={() => {
-        setTip(null)
-        onPress()
-      }}
-      onPointerEnter={(e) => {
-        if (e.pointerType !== 'touch') setTip({ roomId: landing.roomId, sheetId: onSheet, index })
-      }}
-      onPointerLeave={() => setTip((t) => (t?.roomId === landing.roomId ? null : t))}
-      onFocus={() => setTip({ roomId: landing.roomId, sheetId: onSheet, index })}
-      onBlur={() => setTip((t) => (t?.roomId === landing.roomId ? null : t))}
-      aria-label={landing.kind === 'boss' ? `${landing.name}'s lair, ${landing.cost} MP` : `${landing.name} landing, ${landing.cost} MP`}
-      className={`absolute z-[2] grid place-items-center rounded-full shadow-md shadow-shadow ring-1 ring-fg-bright/30 transition-[filter] hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-        landing.kind === 'boss' ? 'fill-hue-purple' : 'fill-resource-mp'
-      } ${index !== null ? 'h-[18px] w-[18px]' : 'h-[22px] w-[22px]'}`}
-      style={pinAt(x, y)}
-    >
-      {landing.kind === 'boss' ? <Crown size={index !== null ? 10 : 12} aria-hidden="true" /> : <Sparkles size={index !== null ? 10 : 12} aria-hidden="true" />}
-    </button>
-  )
+  /**
+   * A landing lit on the art: its cell outlined in the gutter, tinted and
+   * glowing in its colour, a ✦ or crown on the top-right corner (the world's
+   * cells are a third the size and go without). On a sheet the button is part
+   * of the art — a press taps or drags the map like any cell, so a tap selects
+   * the room through `tap` — and it keeps only the keyboard; on the world it
+   * is a real button, since a tap on the square around it zooms in instead.
+   */
+  const litCell = (landing: AtlasLanding, onSheet: string, box: AtlasBox, onPress: () => void, index: number | null = null) => {
+    const lair = landing.kind === 'boss'
+    const onWorld = index !== null
+    const show = () => setTip({ roomId: landing.roomId, sheetId: onSheet, index })
+    const hide = () => setTip((t) => (t?.roomId === landing.roomId ? null : t))
+    const press = () => {
+      setTip(null)
+      onPress()
+    }
+    return (
+      <button
+        key={landing.roomId}
+        type="button"
+        data-atlas-lit={onWorld ? undefined : ''}
+        onClick={onWorld ? press : undefined}
+        onKeyDown={
+          onWorld
+            ? undefined
+            : (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return
+                e.preventDefault()
+                press()
+              }
+        }
+        onPointerEnter={(e) => {
+          if (e.pointerType !== 'touch') show()
+        }}
+        onPointerLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+        aria-label={lair ? `${landing.name}'s lair, ${landing.cost} MP` : `${landing.name} landing, ${landing.cost} MP`}
+        className={`absolute z-[2] rounded-[4px] focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${onWorld ? "before:absolute before:-inset-2 before:content-['']" : ''}`}
+        style={{ left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.w * 100}%`, height: `${box.h * 100}%`, '--lit': lair ? 'var(--hue-purple)' : 'var(--resource-mp)' } as CSSProperties}
+      >
+        <span aria-hidden="true" className={`atlas-lit pointer-events-none absolute ${onWorld ? 'atlas-lit-world' : ''}`} />
+        {!onWorld && (
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute left-full top-0 grid h-4 w-4 place-items-center rounded-full shadow-md shadow-shadow ring-1 ring-fg-bright/30 ${lair ? 'fill-hue-purple' : 'fill-resource-mp'}`}
+            style={{ transform: PIN_TRANSFORM }}
+          >
+            {lair ? <Crown size={10} /> : <Sparkles size={10} />}
+          </span>
+        )}
+      </button>
+    )
+  }
 
   const worldContent = () => {
     const tiles = ATLAS_GRID.map((r, index) => {
@@ -709,10 +753,8 @@ export default function WorldAtlas({
         if (landing.kind !== 'landing') continue
         const cell = roomCell(tile.sheetId, landing.roomId)
         if (!cell) continue
-        const c = cellCentre(cell)
-        const at = worldPointFor(index, c.x, c.y)
         pins.push(
-          landingPin(landing, tile.sheetId, at.x, at.y, () => setS((q) => ({ ...q, pin: { index, roomId: landing.roomId, sheetId: tile.sheetId }, vipOpen: false })), index),
+          litCell(landing, tile.sheetId, worldCellBox(index, cell), () => setS((q) => ({ ...q, pin: { index, roomId: landing.roomId, sheetId: tile.sheetId }, vipOpen: false })), index),
         )
       }
       if (tile.sheetId === hereSheet && hereCell) {
@@ -730,6 +772,8 @@ export default function WorldAtlas({
   }
 
   const selectedCell = depth === 'sheet' && s.selected ? roomCell(sheetId, s.selected, currentRoomId) : null
+  // A tapped landing keeps its glow: the sky ring steps outside it.
+  const selectedLit = !!s.selected && showPins && sheetLandings.some((landing) => landing.roomId === s.selected)
 
   const sheetContent = () => (
     <>
@@ -742,18 +786,24 @@ export default function WorldAtlas({
             top: `${(selectedCell.y / ART_SIZE) * 100}%`,
             width: `${CELL_FRACTION * 100}%`,
             height: `${CELL_FRACTION * 100}%`,
-            border: 'calc(2.5px * var(--atlas-inv, 1)) solid var(--hue-sky)',
-            borderRadius: 'calc(6px * var(--atlas-inv, 1))',
-            boxShadow: '0 0 0 calc(3px * var(--atlas-inv, 1)) color-mix(in srgb, var(--hue-sky) 30%, transparent)',
           }}
           aria-hidden="true"
-        />
+        >
+          <span
+            className="absolute"
+            style={{
+              inset: `calc(${selectedLit ? -LIT_REACH : 0}px * var(--atlas-inv, 1))`,
+              border: 'calc(2.5px * var(--atlas-inv, 1)) solid var(--hue-sky)',
+              borderRadius: 'calc(6px * var(--atlas-inv, 1))',
+              boxShadow: '0 0 0 calc(3px * var(--atlas-inv, 1)) color-mix(in srgb, var(--hue-sky) 30%, transparent)',
+            }}
+          />
+        </span>
       )}
       {showPins && sheetLandings.map((landing) => {
         const cell = roomCell(sheetId, landing.roomId)
         if (!cell) return null
-        const c = cellCentre(cell)
-        return landingPin(landing, sheetId, c.x, c.y, () => setS((q) => ({ ...q, selected: q.selected === landing.roomId ? null : landing.roomId })))
+        return litCell(landing, sheetId, cellBox(cell), () => setS((q) => ({ ...q, selected: q.selected === landing.roomId ? null : landing.roomId })))
       })}
       {hereSheet === sheetId && hereCell && hereDot(cellCentre(hereCell).x, cellCentre(hereCell).y)}
     </>
@@ -765,7 +815,7 @@ export default function WorldAtlas({
   if (S > 0 && depth === 'sheet' && selectedCell && s.selected) {
     const c = cellCentre(selectedCell)
     const at = toScreen(c.x, c.y)
-    const half = (CELL_FRACTION / 2) * S * cam.z
+    const half = (CELL_FRACTION / 2) * S * cam.z + (selectedLit ? LIT_REACH : 0)
     card = (
       <AtlasCard
         key={s.selected}
@@ -789,12 +839,13 @@ export default function WorldAtlas({
       const c = cellCentre(cell)
       const world = worldPointFor(pin.index, c.x, c.y)
       const at = toScreen(world.x, world.y)
+      const half = (CELL_FRACTION / 6) * S * cam.z + LIT_REACH_WORLD
       card = (
         <AtlasCard
           key={`pin-${pin.roomId}`}
           roomId={pin.roomId}
           title={getAtlasSheet(pin.sheetId)?.title ?? ''}
-          anchor={{ x: at.x, top: at.y - 11, bottom: at.y + 11 }}
+          anchor={{ x: at.x, top: at.y - half, bottom: at.y + half }}
           box={size}
           landing={openLandingAt(pin.roomId, teleport)}
           isHere={pin.roomId === currentRoomId}
@@ -819,13 +870,16 @@ export default function WorldAtlas({
     const tipSheet = getAtlasSheet(tip.sheetId)
     if (landing && cell && tipSheet) {
       const c = cellCentre(cell)
+      const onWorld = tip.index !== null
       const point = tip.index !== null ? worldPointFor(tip.index, c.x, c.y) : c
       const at = toScreen(point.x, point.y)
+      // Half the lit cell on screen, glow included, so the label clears it.
+      const half = (CELL_FRACTION / (onWorld ? 6 : 2)) * S * cam.z + (onWorld ? LIT_REACH_WORLD : LIT_REACH)
       const isHere = tip.roomId === currentRoomId
       tipNode = (
         <PinTip
           key={tip.roomId}
-          anchor={{ x: at.x, y: at.y, r: tip.index !== null ? 9 : 11 }}
+          anchor={{ x: at.x, top: at.y - half, bottom: at.y + half }}
           box={size}
           landing={landing}
           place={`${getAtlasRegion(tipSheet.region)?.name ?? tipSheet.title}${tipSheet.level !== 'Surface' ? ` · ${tipSheet.level}` : ''}`}
@@ -1000,9 +1054,9 @@ export default function WorldAtlas({
 }
 
 /**
- * The label a teleport pin shows under the pointer or keyboard focus: where it
- * lands, which map it is on, and what it costs — or why it cannot go. Clicking
- * the pin still opens the full card.
+ * The label a lit landing shows under the pointer or keyboard focus: where it
+ * lands, which map it is on, and what it costs — or why it cannot go. Tapping
+ * the cell still opens the full card.
  */
 function PinTip({
   anchor,
@@ -1012,7 +1066,8 @@ function PinTip({
   isHere,
   reason,
 }: {
-  anchor: { x: number; y: number; r: number }
+  /** The lit cell on screen: its centre line, and its top and bottom edges with the glow. */
+  anchor: { x: number; top: number; bottom: number }
   box: { w: number; h: number }
   landing: AtlasLanding
   place: string
@@ -1027,8 +1082,8 @@ function PinTip({
   }, [landing.roomId, reason, isHere])
 
   const left = Math.max(8, Math.min(box.w - dims.w - 8, anchor.x - dims.w / 2))
-  const above = anchor.y - anchor.r - 8 - dims.h
-  const top = above >= 8 ? above : anchor.y + anchor.r + 8
+  const above = anchor.top - 8 - dims.h
+  const top = above >= 8 ? above : anchor.bottom + 8
   const boss = landing.kind === 'boss'
 
   return (

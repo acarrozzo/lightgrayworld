@@ -4,8 +4,8 @@ import { useCallback, useSyncExternalStore } from 'react'
 
 /**
  * Two switches for the World map, remembered per device: whether its teleport
- * pins are drawn, and whether its controls (the trail, the level stack, VIP,
- * Here and zoom) sit over it. Presentation only — hiding the pins never
+ * landings are lit, and whether its controls (the trail, the level stack, VIP,
+ * Here and zoom) sit over it. Presentation only — unlighting them never
  * hides a teleport; a room's card still offers it.
  *
  * Shared through one store rather than per-component state because the game
