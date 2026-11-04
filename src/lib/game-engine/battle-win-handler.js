@@ -6,6 +6,7 @@ const { RESPAWN_ROOM_ID } = require('../game-data/constants')
 const { grantTeleport } = require('./teleport-grants')
 const partyStore = require('../services/party-store')
 const { noteKill } = require('./services/kill-list-service')
+const { snapshotColumns } = require('./services/battle-log-service')
 const { getBossTeleport } = require('../game-data/teleport-destinations')
 const { getTeleportHubByKill } = require('../game-data/world-map')
 
@@ -248,7 +249,8 @@ async function persistBattleWin(playerId, battleState, rewards) {
               goldEarned: goldAwarded,
               itemsDropped: granted,
               multiplayerBonus: battleState.multiplayerBonusUsed,
-      turns: battleState.turns ?? [],
+              turns: battleState.turns ?? [],
+              ...snapshotColumns(battleState),
             },
           })
 
@@ -340,6 +342,7 @@ async function handleBattleDefeat(playerId, battleState) {
       itemsDropped: [],
       multiplayerBonus: battleState.multiplayerBonusUsed,
       turns: battleState.turns ?? [],
+      ...snapshotColumns(battleState),
     },
   })
 

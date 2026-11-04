@@ -20,6 +20,14 @@
 //            (the mountain ladder's Jikay and Jiemji, the Dragon) or shares someone else's lair
 //            (Victoria beside Omar). Ordinary enemies have no rank. Shown as a tag on the room
 //            card, in battle and in the World Tool.
+// area     — the Kill List box the enemy is listed in (game-data/kill-list-areas.js): the
+//            original's 27 boxes in world order, finer than `zone`. Every enemy has one,
+//            placed where the original listed it; the enemies the original never had
+//            (the bunny, the Despair's bosses) sit with their zone.
+// rare     — true for the enemies the original's Kill List chipped "R". A hand-written
+//            flag, kept as the original wrote it, never derived from spawn weights.
+// nameTone — the color the original's Kill List wrote the name in (kill-list-areas.js
+//            KL_TONES): the bosses and a few named oddities carry one, plain enemies none.
 // lair     — the boss's own room. Its first kill opens a Travel-tab teleport that lands there
 //            (teleport-destinations.js), costing the boss's level in MP. A boss with no lair
 //            (King Blade, who climbs the ladder across the whole mountain) has no teleport.
@@ -36,6 +44,7 @@ const ENEMIES = [
   {
     slug: 'rat',
     zone: 'Grassy Field',
+    area: 'grassy-field',
     name: 'Rat',
     description: 'A scraggly vermin with yellowed teeth.',
     icon: 'enemy-Rat',
@@ -67,6 +76,7 @@ const ENEMIES = [
   {
     slug: 'bunny',
     zone: 'Grassy Field',
+    area: 'grassy-field',
     name: 'Bunny',
     description: 'A small brown bunny, all ears and nerves. It would very much rather be eating.',
     icon: 'enemy-Bunny',
@@ -91,6 +101,7 @@ const ENEMIES = [
   {
     slug: 'sand-crab',
     zone: 'Grassy Field',
+    area: 'grassy-field',
     name: 'Sand Crab',
     description: 'A large crab with a hardened shell, scuttling sideways across the sand.',
     icon: 'enemy-SandCrab',
@@ -110,6 +121,7 @@ const ENEMIES = [
   {
     slug: 'giant-rat',
     zone: 'Grassy Field',
+    area: 'grassy-field',
     name: 'Giant Rat',
     description: 'A massive, foul-smelling rodent with red eyes.',
     icon: 'enemy-GiantRat',
@@ -137,6 +149,8 @@ const ENEMIES = [
   {
     slug: 'gator',
     zone: 'Grassy Field',
+    area: 'grassy-field',
+    nameTone: 'green',
     name: 'Gator',
     description: 'A massive reptile lurking in the marsh, coiled and ready to strike.',
     icon: 'enemy-Gator',
@@ -167,6 +181,7 @@ const ENEMIES = [
   {
     slug: 'spider',
     zone: 'Spider Cave',
+    area: 'spider-cave',
     name: 'Spider',
     description: 'A skittering cave spider with venom-tipped fangs.',
     icon: 'enemy-Spider',
@@ -195,6 +210,7 @@ const ENEMIES = [
   {
     slug: 'scorpion',
     zone: 'Spider Cave',
+    area: 'spider-cave',
     name: 'Scorpion',
     description: 'An armored scorpion with a barbed tail poised to strike.',
     icon: 'enemy-Scorpion',
@@ -223,6 +239,7 @@ const ENEMIES = [
   {
     slug: 'giant-spider',
     zone: 'Spider Cave',
+    area: 'spider-cave',
     name: 'Giant Spider',
     description: 'A massive spider that fills the tunnel with its sprawling legs.',
     icon: 'enemy-GiantSpider',
@@ -250,6 +267,7 @@ const ENEMIES = [
   {
     slug: 'alpha-scorpion',
     zone: 'Spider Cave',
+    area: 'spider-cave',
     name: 'Alpha Scorpion',
     description: 'A colossal scorpion, larger and more lethal than any of its kin.',
     icon: 'enemy-AlphaScorpion',
@@ -278,6 +296,7 @@ const ENEMIES = [
   {
     slug: 'scorpion-guard',
     zone: 'Scorpion Pit',
+    area: 'scorpion-pit',
     name: 'Scorpion Guard',
     description: 'A disciplined scorpion hardened by pit combat, standing watch at the dungeon\'s edge.',
     icon: 'enemy-ScorpionGuard',
@@ -305,6 +324,7 @@ const ENEMIES = [
   {
     slug: 'mammoth-scorpion',
     zone: 'Scorpion Pit',
+    area: 'scorpion-pit',
     name: 'Mammoth Scorpion',
     description: 'An enormous scorpion whose armored bulk fills the tunnel. Its tail strike shakes the walls.',
     icon: 'enemy-MammothScorpion',
@@ -332,6 +352,8 @@ const ENEMIES = [
   {
     slug: 'scorpion-queen',
     zone: 'Scorpion Pit',
+    area: 'scorpion-pit',
+    nameTone: 'blue',
     name: 'Scorpion Queen',
     description: 'The matriarch of the pit. Her venom dissolves stone and her rage is absolute.',
     icon: 'enemy-ScorpionQueen',
@@ -351,6 +373,8 @@ const ENEMIES = [
   {
     slug: 'scorpion-king',
     zone: 'Scorpion Pit',
+    area: 'scorpion-pit',
+    nameTone: 'lightred',
     name: 'Scorpion King',
     description: 'The apex predator of the dungeon. Ancient, enormous, and merciless — none who have faced him have returned.',
     icon: 'enemy-ScorpionKing',
@@ -372,6 +396,7 @@ const ENEMIES = [
   {
     slug: 'bat',
     zone: 'Bat Cave',
+    area: 'bat-cave',
     name: 'Bat',
     description: 'A leathery-winged bat that swoops from the cavern shadows with shrill, piercing cries.',
     icon: 'enemy-Bat',
@@ -399,6 +424,8 @@ const ENEMIES = [
   {
     slug: 'golden-bat',
     zone: 'Bat Cave',
+    area: 'bat-cave',
+    rare: true,
     name: 'Golden Bat',
     description: 'A rare bat with shimmering gold-flecked fur. Faster and far more vicious than its lesser kin.',
     icon: 'enemy-GoldenBat',
@@ -427,6 +454,7 @@ const ENEMIES = [
   {
     slug: 'salamander',
     zone: 'Bat Cave',
+    area: 'bat-cave',
     name: 'Salamander',
     description: 'A thick-bodied cave salamander with damp, mottled skin and a sluggish but punishing bite.',
     icon: 'enemy-Salamander',
@@ -454,6 +482,7 @@ const ENEMIES = [
   {
     slug: 'goblin',
     zone: 'Bat Cave',
+    area: 'bat-cave',
     name: 'Goblin',
     description: 'A wiry green-skinned goblin clutching a crude blade. Snarls and lunges without warning.',
     icon: 'enemy-Goblin',
@@ -480,6 +509,7 @@ const ENEMIES = [
   {
     slug: 'goblin-bandit',
     zone: 'Bat Cave',
+    area: 'bat-cave',
     name: 'Goblin Bandit',
     description: 'A scarred goblin wrapped in stolen leathers, wielding a notched short blade with practiced cruelty.',
     icon: 'enemy-GoblinBandit',
@@ -509,6 +539,8 @@ const ENEMIES = [
   {
     slug: 'goblin-chief',
     zone: 'Bat Cave',
+    area: 'bat-cave',
+    nameTone: 'lightbrown',
     name: 'Goblin Chief',
     description: 'The brutal warlord of the goblin tribe. Massive for his kind, draped in bone trophies and roaring for blood.',
     icon: 'enemy-GoblinChief',
@@ -539,6 +571,7 @@ const ENEMIES = [
   {
     slug: 'cow',
     zone: 'Forest Path',
+    area: 'forest-path',
     name: 'Cow',
     description: 'A docile cow grazing in the field. It moos at you disinterestedly.',
     icon: 'enemy-Cow',
@@ -565,6 +598,7 @@ const ENEMIES = [
   {
     slug: 'wild-boar',
     zone: 'Forest Path',
+    area: 'forest',
     name: 'Wild Boar',
     description: 'A tusked boar rooting through the underbrush. It charges without warning.',
     icon: 'enemy-WildBoar',
@@ -592,6 +626,7 @@ const ENEMIES = [
   {
     slug: 'snake',
     zone: 'Forest Path',
+    area: 'forest-path',
     name: 'Snake',
     description: 'A venomous snake coiled among the leaves. Fast and deadly.',
     icon: 'enemy-Snake',
@@ -619,6 +654,7 @@ const ENEMIES = [
   {
     slug: 'thief',
     zone: 'Forest Path',
+    area: 'thieves-den',
     name: 'Thief',
     description: 'A hooded figure lurking in the shadows, waiting to relieve you of your gold.',
     icon: 'enemy-Thief',
@@ -646,6 +682,7 @@ const ENEMIES = [
   {
     slug: 'hob-goblin',
     zone: 'Ogre Lair',
+    area: 'ogre-lair',
     name: 'Hob Goblin',
     description: 'A hulking goblin with crude armor and a vicious temper. Bigger and meaner than its lesser kin.',
     icon: 'enemy-HobGoblin',
@@ -672,6 +709,7 @@ const ENEMIES = [
   {
     slug: 'orc',
     zone: 'Ogre Lair',
+    area: 'ogre-lair',
     name: 'Orc',
     description: 'A muscular green-skinned warrior wielding a jagged blade. Fights with savage precision.',
     icon: 'enemy-Orc',
@@ -698,6 +736,7 @@ const ENEMIES = [
   {
     slug: 'ogre',
     zone: 'Ogre Lair',
+    area: 'ogre-lair',
     name: 'Ogre',
     description: 'A massive, lumbering brute with a club the size of a tree trunk.',
     icon: 'enemy-Ogre',
@@ -724,6 +763,7 @@ const ENEMIES = [
   {
     slug: 'kobold',
     zone: 'Kobold Lair',
+    area: 'kobold-lair',
     name: 'Kobold',
     description: 'A small reptilian creature crackling with magical energy. Deceptively dangerous.',
     icon: 'enemy-Kobold',
@@ -750,6 +790,7 @@ const ENEMIES = [
   {
     slug: 'skeleton',
     zone: 'Forest Path',
+    area: 'catacombs',
     name: 'Skeleton',
     description: 'An animated skeleton that rattles along the path, its empty eyes burning with pale light.',
     icon: 'enemy-Skeleton',
@@ -776,6 +817,8 @@ const ENEMIES = [
   {
     slug: 'imp',
     zone: 'Forest Path',
+    area: 'forest-path',
+    rare: true,
     name: 'Imp',
     description: 'A tiny, cackling demon that darts and dodges with unnatural speed. Hard to hit, harder to catch.',
     icon: 'enemy-Imp',
@@ -805,6 +848,7 @@ const ENEMIES = [
   {
     slug: 'wolf',
     zone: 'Forest',
+    area: 'forest',
     name: 'Wolf',
     description: 'A lean gray wolf stalking through the underbrush. Its eyes glow in the dim forest light.',
     icon: 'enemy-Wolf',
@@ -833,6 +877,7 @@ const ENEMIES = [
   {
     slug: 'coyote',
     zone: 'Forest',
+    area: 'forest',
     name: 'Coyote',
     description: 'A wiry coyote with matted fur and cunning eyes. It circles you, looking for an opening.',
     icon: 'enemy-Coyote',
@@ -861,6 +906,7 @@ const ENEMIES = [
   {
     slug: 'buck',
     zone: 'Forest',
+    area: 'forest',
     name: 'Buck',
     description: 'A powerful buck with a full rack of antlers. It lowers its head and charges.',
     icon: 'enemy-Buck',
@@ -888,6 +934,7 @@ const ENEMIES = [
   {
     slug: 'stag',
     zone: 'Forest',
+    area: 'forest',
     name: 'Stag',
     description: 'A majestic stag with silver-tipped antlers. An aura of ancient power surrounds it.',
     icon: 'enemy-Stag',
@@ -916,6 +963,7 @@ const ENEMIES = [
   {
     slug: 'bear',
     zone: 'Forest',
+    area: 'forest',
     name: 'Bear',
     description: 'A massive brown bear standing on its hind legs. Its roar shakes the trees.',
     icon: 'enemy-Bear',
@@ -943,6 +991,8 @@ const ENEMIES = [
   {
     slug: 'bigfoot',
     zone: 'Forest',
+    area: 'forest',
+    nameTone: 'lightbrown',
     name: 'Bigfoot',
     description: 'A towering, shaggy creature that smells of pine and fury. Few have seen one and lived.',
     icon: 'enemy-Bigfoot',
@@ -971,6 +1021,8 @@ const ENEMIES = [
   {
     slug: 'hawk',
     zone: 'Forest',
+    area: 'forest',
+    rare: true,
     name: 'Hawk',
     description: 'A massive bird of prey with razor talons. It dives from above with blinding speed.',
     icon: 'enemy-Hawk',
@@ -998,6 +1050,7 @@ const ENEMIES = [
   {
     slug: 'troll',
     zone: 'Forest',
+    area: 'dark-forest',
     name: 'Troll',
     description: 'A hulking forest troll with mossy green skin and enormous fists. It regenerates wounds with frightening speed.',
     icon: 'enemy-Troll',
@@ -1027,6 +1080,7 @@ const ENEMIES = [
   {
     slug: 'ogre-guard',
     zone: 'Ogre Lair',
+    area: 'ogre-lair',
     name: 'Ogre Guard',
     description: 'A disciplined ogre in crude iron armor. It stands watch with a massive pike.',
     icon: 'enemy-OgreGuard',
@@ -1053,6 +1107,7 @@ const ENEMIES = [
   {
     slug: 'fire-ogress',
     zone: 'Ogre Lair',
+    area: 'ogre-lair',
     name: 'Fire Ogress',
     description: 'A female ogre wreathed in flames. Her eyes glow with malice and dark magic.',
     icon: 'enemy-FireOgress',
@@ -1079,6 +1134,8 @@ const ENEMIES = [
   {
     slug: 'ogre-lieutenant',
     zone: 'Ogre Lair',
+    area: 'ogre-lair',
+    nameTone: 'blue',
     name: 'Ogre Lieutenant',
     description: 'The commander of the Ogre Lair. Massive and battle-scarred, trophies of defeated warriors adorn his armor.',
     icon: 'enemy-OgreLieutenant',
@@ -1107,6 +1164,8 @@ const ENEMIES = [
   {
     slug: 'ogre-priest',
     zone: 'Ogre Lair',
+    area: 'ogre-lair',
+    rare: true,
     name: 'Ogre Priest',
     description: 'A rare and terrifying ogre shaman draped in bone fetishes. Its dark magic can heal and destroy.',
     icon: 'enemy-OgrePriest',
@@ -1135,6 +1194,7 @@ const ENEMIES = [
   {
     slug: 'flying-kobold',
     zone: 'Kobold Lair',
+    area: 'kobold-lair',
     name: 'Flying Kobold',
     description: 'A winged kobold that swoops through the cavern darkness, striking from above.',
     icon: 'enemy-FlyingKobold',
@@ -1161,6 +1221,7 @@ const ENEMIES = [
   {
     slug: 'kobold-shaman',
     zone: 'Kobold Lair',
+    area: 'kobold-lair',
     name: 'Kobold Shaman',
     description: 'A kobold draped in fetishes and glowing runes. Its magic crackles through the air.',
     icon: 'enemy-KoboldShaman',
@@ -1188,6 +1249,7 @@ const ENEMIES = [
   {
     slug: 'kobold-ninja',
     zone: 'Kobold Lair',
+    area: 'kobold-lair',
     name: 'Kobold Ninja',
     description: 'A kobold cloaked in shadow, wielding twin blades with lethal precision.',
     icon: 'enemy-KoboldNinja',
@@ -1214,6 +1276,7 @@ const ENEMIES = [
   {
     slug: 'kobold-warlock',
     zone: 'Kobold Lair',
+    area: 'kobold-lair',
     name: 'Kobold Warlock',
     description: 'A kobold sorcerer wreathed in dark energy. Its spells strike with devastating force.',
     icon: 'enemy-KoboldWarlock',
@@ -1240,6 +1303,7 @@ const ENEMIES = [
   {
     slug: 'kobold-champion',
     zone: 'Kobold Lair',
+    area: 'kobold-lair',
     name: 'Kobold Champion',
     description: 'The strongest warrior of the kobold tribe. Battle-hardened and fearless.',
     icon: 'enemy-KoboldChampion',
@@ -1266,6 +1330,8 @@ const ENEMIES = [
   {
     slug: 'kobold-master',
     zone: 'Kobold Lair',
+    area: 'kobold-lair',
+    nameTone: 'medpurple',
     name: 'Kobold Master',
     description: 'The supreme leader of the Kobold Lair. Ancient and immensely powerful, arcane energy pours from its very being.',
     icon: 'enemy-KoboldMaster',
@@ -1294,6 +1360,8 @@ const ENEMIES = [
   {
     slug: 'kobold-monk',
     zone: 'Kobold Lair',
+    area: 'kobold-lair',
+    rare: true,
     name: 'Kobold Monk',
     description: 'A rare kobold ascetic of immense discipline. Its martial arts and healing magic make it a deadly foe.',
     icon: 'enemy-KoboldMonk',
@@ -1328,6 +1396,7 @@ const ENEMIES = [
   {
     slug: 'tarantula',
     zone: 'Red Town Sewers',
+    area: 'sewers',
     name: 'Tarantula',
     description: 'A hairy, dinner-plate-sized spider picking its way along the sewer wall.',
     icon: 'enemy-Tarantula',
@@ -1354,6 +1423,7 @@ const ENEMIES = [
   {
     slug: 'sewer-rat',
     zone: 'Red Town Sewers',
+    area: 'sewers',
     name: 'Sewer Rat',
     description: 'A bloated rat the size of a dog, slick with filth and entirely unafraid of you.',
     icon: 'enemy-SewerRat',
@@ -1381,6 +1451,7 @@ const ENEMIES = [
   {
     slug: 'red-gator',
     zone: 'Red Town Sewers',
+    area: 'sewers',
     name: 'Red Gator',
     description: 'An enormous rust-coloured gator that has made the storm drains its hunting ground. Slow, armoured in nothing, and very hard to put down.',
     icon: 'enemy-RedGator',
@@ -1408,6 +1479,8 @@ const ENEMIES = [
   {
     slug: 'flying-dung-beetle',
     zone: 'Red Town Sewers',
+    area: 'sewers',
+    rare: true,
     name: 'Flying Dung Beetle',
     description: 'An iridescent beetle the size of a shield, droning in lazy circles over the filth. Its shell is worth a small fortune to the right buyer.',
     icon: 'enemy-FlyingDungBeetle',
@@ -1435,6 +1508,7 @@ const ENEMIES = [
   {
     slug: 'thief-pickpocket',
     zone: "Thieve's Den",
+    area: 'thieves-den',
     name: 'Thief Pickpocket',
     description: 'A quick-fingered cutpurse who would rather empty your bag than fight you for it.',
     icon: 'enemy-ThiefPickpocket',
@@ -1462,6 +1536,7 @@ const ENEMIES = [
   {
     slug: 'thief-brute',
     zone: "Thieve's Den",
+    area: 'thieves-den',
     name: 'Thief Brute',
     description: 'The muscle of the Den. Twice your width, and he swings something heavy.',
     icon: 'enemy-ThiefBrute',
@@ -1488,6 +1563,8 @@ const ENEMIES = [
   {
     slug: 'master-thief',
     zone: "Thieve's Den",
+    area: 'thieves-den',
+    nameTone: 'gold',
     name: 'Master Thief',
     description: 'The one the rest of them answer to. He watches your hands, not your eyes.',
     icon: 'enemy-MasterThief',
@@ -1517,6 +1594,7 @@ const ENEMIES = [
   {
     slug: 'skeleton-archer',
     zone: 'The Catacombs',
+    area: 'catacombs',
     name: 'Skeleton Archer',
     description: 'A dry-boned archer that nocks and looses without ever needing to breathe.',
     icon: 'enemy-SkeletonArcher',
@@ -1543,6 +1621,7 @@ const ENEMIES = [
   {
     slug: 'skeleton-knight',
     zone: 'The Catacombs',
+    area: 'catacombs',
     name: 'Skeleton Knight',
     description: 'Rusted plate hangs off its frame, and it still remembers every guard it was ever taught.',
     icon: 'enemy-SkeletonKnight',
@@ -1569,6 +1648,7 @@ const ENEMIES = [
   {
     slug: 'skeleton-sorcerer',
     zone: 'The Catacombs',
+    area: 'catacombs',
     name: 'Skeleton Sorcerer',
     description: 'Green light burns in its sockets, and the air goes cold wherever it turns to look.',
     icon: 'enemy-SkeletonSorcerer',
@@ -1595,6 +1675,7 @@ const ENEMIES = [
   {
     slug: 'ancient-skeleton',
     zone: 'The Catacombs',
+    area: 'catacombs',
     name: 'Ancient Skeleton',
     description: 'Older than the town above it. The bone has gone hard as stone, and blows glance off it.',
     icon: 'enemy-AncientSkeleton',
@@ -1631,6 +1712,8 @@ const ENEMIES = [
   {
     slug: 'omar-the-dead',
     zone: 'The Catacombs',
+    area: 'catacombs',
+    nameTone: 'lightred',
     name: 'Omar the Dead',
     description: 'He was buried standing up, and has not sat down since. Every blow lands like a dropped headstone.',
     icon: 'enemy-OmartheDead',
@@ -1659,6 +1742,8 @@ const ENEMIES = [
   {
     slug: 'victoria-the-dead',
     zone: 'The Catacombs',
+    area: 'catacombs',
+    nameTone: 'blue',
     name: 'Victoria the Dead',
     description: 'She keeps the altar, and speaks the whole time she is killing you. None of it is to you.',
     icon: 'enemy-VictoriatheDead',
@@ -1694,6 +1779,8 @@ const ENEMIES = [
   {
     slug: 'hammerhead',
     zone: 'Under the Ocean',
+    area: 'under-the-ocean',
+    nameTone: 'lightblue',
     name: 'Hammerhead',
     description: 'It turns its whole head to look at you, which is somehow worse than the teeth.',
     icon: 'enemy-Hammerhead',
@@ -1722,6 +1809,8 @@ const ENEMIES = [
   {
     slug: 'great-white',
     zone: 'Under the Ocean',
+    area: 'under-the-ocean',
+    nameTone: 'lightblue',
     name: 'Great White',
     description: 'The biggest thing in the water that still bothers to hunt.',
     icon: 'enemy-GreatWhite',
@@ -1755,6 +1844,7 @@ const ENEMIES = [
   {
     slug: 'troll-champion',
     zone: 'Dark Forest',
+    area: 'dark-forest',
     name: 'Troll Champion',
     description: 'The one the rest of the camp steps aside for. It has no armour and does not appear to need any — when it loses its temper the hits come two, three, four at a time.',
     icon: 'enemy-TrollChampion',
@@ -1783,6 +1873,8 @@ const ENEMIES = [
   {
     slug: 'troll-queen',
     zone: 'Dark Forest',
+    area: 'dark-forest',
+    nameTone: 'blue',
     name: 'Troll Queen',
     description: 'She does not swing at you. The air does, and it is very cold. Steel and arrows alike stop short of her; only magic gets through.',
     icon: 'enemy-TrollQueen',
@@ -1830,6 +1922,7 @@ const ENEMIES = [
   {
     slug: 'red-bandit',
     zone: 'Rocky Flats',
+    area: 'red-beards-fort',
     name: 'Red Bandit',
     description: 'One of Red Beard’s. Red sash, bad manners, and a quick hand for your purse.',
     icon: 'enemy-RedBandit',
@@ -1857,6 +1950,7 @@ const ENEMIES = [
   {
     slug: 'bandit-marauder',
     zone: 'Rocky Flats',
+    area: 'red-beards-fort',
     name: 'Bandit Marauder',
     description: 'A bandit who has been at it long enough to own a crossbow and use it from the far side of the room.',
     icon: 'enemy-BanditMarauder',
@@ -1883,6 +1977,7 @@ const ENEMIES = [
   {
     slug: 'butcher',
     zone: 'Rocky Flats',
+    area: 'red-beards-fort',
     name: 'Butcher',
     description: 'The Red Fort’s cook. The reputation is not about the food.',
     icon: 'enemy-Butcher',
@@ -1911,6 +2006,8 @@ const ENEMIES = [
   {
     slug: 'red-beard',
     zone: 'Rocky Flats',
+    area: 'red-beards-fort',
+    nameTone: 'lightred',
     name: 'Red Beard',
     description: 'Captain Red Beard, late of the dwarven guard and currently of the Red Fort. The Mining Guild wants him and will not say why in writing.',
     icon: 'enemy-RedBeard',
@@ -1940,6 +2037,7 @@ const ENEMIES = [
   {
     slug: 'rabid-skeever',
     zone: 'Rocky Flats',
+    area: 'abandoned-mine',
     name: 'Rabid Skeever',
     description: 'A mine rat the size of a dog, frothing and entirely unafraid of you.',
     icon: 'enemy-RabidSkeever',
@@ -1967,6 +2065,7 @@ const ENEMIES = [
   {
     slug: 'bleeding-dartwing',
     zone: 'Rocky Flats',
+    area: 'abandoned-mine',
     name: 'Bleeding Dartwing',
     description: 'A hand-sized thing on four wet wings. There is never only one nest.',
     icon: 'enemy-BleedingDartwing',
@@ -1996,6 +2095,8 @@ const ENEMIES = [
   {
     slug: 'mongolian-death-worm',
     zone: 'Rocky Flats',
+    area: 'abandoned-mine',
+    nameTone: 'green',
     name: 'Mongolian Death Worm',
     description: 'It fills the far end of the chamber and the near end smells of it.',
     icon: 'enemy-MongolianDeathWorm',
@@ -2026,6 +2127,7 @@ const ENEMIES = [
   {
     slug: 'demon-wing',
     zone: 'Rocky Flats',
+    area: 'stone-grotto',
     name: 'Demon Wing',
     description: 'A small winged thing that keeps to the roof of the grotto and spits at what walks under it.',
     icon: 'enemy-DemonWing',
@@ -2053,6 +2155,8 @@ const ENEMIES = [
   {
     slug: 'possessed-axeman',
     zone: 'Rocky Flats',
+    area: 'stone-grotto',
+    nameTone: 'lightblue',
     name: 'Possessed Axeman',
     description: 'The missing dwarf guard, still in his own armour and not, at the moment, himself.',
     icon: 'enemy-PossessedAxeman',
@@ -2086,6 +2190,8 @@ const ENEMIES = [
   {
     slug: 'hill-ogre',
     zone: 'Forest',
+    area: 'forest-path',
+    nameTone: 'lightbrown',
     name: 'Hill Ogre',
     description: 'An ogre that has claimed the rocky outcrop behind the hill and does not share it.',
     icon: 'enemy-HillOgre',
@@ -2125,6 +2231,7 @@ const ENEMIES = [
   {
     slug: 'iron-rat',
     zone: 'Neverending Mine',
+    area: 'iron-mine',
     name: 'Iron Rat',
     description: 'A mine rat with a coat of rust-coloured plate that is not a coat.',
     icon: 'enemy-IronRat',
@@ -2155,6 +2262,7 @@ const ENEMIES = [
   {
     slug: 'iron-crab',
     zone: 'Neverending Mine',
+    area: 'iron-mine',
     name: 'Iron Crab',
     description: 'It has been eating the seam and the seam has started to show.',
     icon: 'enemy-IronCrab',
@@ -2183,6 +2291,7 @@ const ENEMIES = [
   {
     slug: 'iron-scorpion',
     zone: 'Neverending Mine',
+    area: 'iron-mine',
     name: 'Iron Scorpion',
     description: 'An iron-shelled scorpion that hits harder than its size explains.',
     icon: 'enemy-IronScorpion',
@@ -2214,6 +2323,7 @@ const ENEMIES = [
   {
     slug: 'slag-beast',
     zone: 'Neverending Mine',
+    area: 'iron-mine',
     name: 'Slag Beast',
     description: 'A heap of cooled forge waste that got up. It hits several times before you have finished noticing.',
     icon: 'enemy-SlagBeast',
@@ -2245,6 +2355,7 @@ const ENEMIES = [
   {
     slug: 'iron-gator',
     zone: 'Neverending Mine',
+    area: 'iron-mine',
     name: 'Iron Gator',
     description: 'All jaw and no armour. It does not expect the fight to last.',
     icon: 'enemy-IronGator',
@@ -2271,6 +2382,7 @@ const ENEMIES = [
   {
     slug: 'iron-golem',
     zone: 'Neverending Mine',
+    area: 'iron-mine',
     name: 'Iron Golem',
     description: 'A mining golem that stopped taking instructions. It still carries a pick.',
     icon: 'enemy-IronGolem',
@@ -2298,6 +2410,8 @@ const ENEMIES = [
   {
     slug: 'iron-cobra',
     zone: 'Neverending Mine',
+    area: 'iron-mine',
+    rare: true,
     name: 'Iron Cobra',
     description: 'It spits before it strikes, and the spit is the problem.',
     icon: 'enemy-IronCobra',
@@ -2326,6 +2440,8 @@ const ENEMIES = [
   {
     slug: 'earth-golem',
     zone: 'Neverending Mine',
+    area: 'iron-mine',
+    rare: true,
     name: 'Earth Golem',
     description: 'Packed soil and root in the shape of a very large person.',
     icon: 'enemy-EarthGolem',
@@ -2355,6 +2471,7 @@ const ENEMIES = [
   {
     slug: 'steel-rat',
     zone: 'Neverending Mine',
+    area: 'steel-mine',
     name: 'Steel Rat',
     description: 'The same rat, one metal down the ladder and considerably harder to hurt.',
     icon: 'enemy-SteelRat',
@@ -2385,6 +2502,7 @@ const ENEMIES = [
   {
     slug: 'steel-crab',
     zone: 'Neverending Mine',
+    area: 'steel-mine',
     name: 'Steel Crab',
     description: 'Its shell rings when you hit it, which is how you know how this is going.',
     icon: 'enemy-SteelCrab',
@@ -2414,6 +2532,7 @@ const ENEMIES = [
   {
     slug: 'steel-scorpion',
     zone: 'Neverending Mine',
+    area: 'steel-mine',
     name: 'Steel Scorpion',
     description: 'A steel-plated scorpion. The tail is the part with the edge on it.',
     icon: 'enemy-SteelScorpion',
@@ -2444,6 +2563,7 @@ const ENEMIES = [
   {
     slug: 'black-frog',
     zone: 'Neverending Mine',
+    area: 'steel-mine',
     name: 'Black Frog',
     description: 'A frog the colour of the seam it sits in. It is not small.',
     icon: 'enemy-BlackFrog',
@@ -2471,6 +2591,7 @@ const ENEMIES = [
   {
     slug: 'steel-gator',
     zone: 'Neverending Mine',
+    area: 'steel-mine',
     name: 'Steel Gator',
     description: 'Jaws, and this time the jaws are steel.',
     icon: 'enemy-SteelGator',
@@ -2497,6 +2618,7 @@ const ENEMIES = [
   {
     slug: 'steel-golem',
     zone: 'Neverending Mine',
+    area: 'steel-mine',
     name: 'Steel Golem',
     description: 'Guild-built and long overdue for recall. It is carrying the pick you want.',
     icon: 'enemy-SteelGolem',
@@ -2524,6 +2646,8 @@ const ENEMIES = [
   {
     slug: 'stone-assassin',
     zone: 'Neverending Mine',
+    area: 'steel-mine',
+    rare: true,
     name: 'Stone Assassin',
     description: 'You do not see it in the dark. You see the second hit.',
     icon: 'enemy-StoneAssassin',
@@ -2552,6 +2676,8 @@ const ENEMIES = [
   {
     slug: 'gamma-monk',
     zone: 'Neverending Mine',
+    area: 'steel-mine',
+    rare: true,
     name: 'Gamma Monk',
     description: 'He has been down here a very long time and is in no hurry at all.',
     icon: 'enemy-GammaMonk',
@@ -2582,6 +2708,7 @@ const ENEMIES = [
   {
     slug: 'mithril-rat',
     zone: 'Neverending Mine',
+    area: 'mithril-mine',
     name: 'Mithril Rat',
     description: 'Pale, light on its feet, and it still bites like the first one did.',
     icon: 'enemy-MithrilRat',
@@ -2612,6 +2739,7 @@ const ENEMIES = [
   {
     slug: 'mithril-crab',
     zone: 'Neverending Mine',
+    area: 'mithril-mine',
     name: 'Mithril Crab',
     description: 'A crab that has eaten its way into the mithril seam and is defending it.',
     icon: 'enemy-MithrilCrab',
@@ -2641,6 +2769,7 @@ const ENEMIES = [
   {
     slug: 'mithril-scorpion',
     zone: 'Neverending Mine',
+    area: 'mithril-mine',
     name: 'Mithril Scorpion',
     description: 'Almost weightless, and the tail moves faster than anything that heavy has a right to.',
     icon: 'enemy-MithrilScorpion',
@@ -2672,6 +2801,7 @@ const ENEMIES = [
   {
     slug: 'blue-frog',
     zone: 'Neverending Mine',
+    area: 'mithril-mine',
     name: 'Blue Frog',
     description: 'It glows faintly and it does not attack with its body.',
     icon: 'enemy-BlueFrog',
@@ -2698,6 +2828,7 @@ const ENEMIES = [
   {
     slug: 'mithril-gator',
     zone: 'Neverending Mine',
+    area: 'mithril-mine',
     name: 'Mithril Gator',
     description: 'The last of the gators and the fastest. No armour, again, and it does not need it.',
     icon: 'enemy-MithrilGator',
@@ -2724,6 +2855,7 @@ const ENEMIES = [
   {
     slug: 'mithril-golem',
     zone: 'Neverending Mine',
+    area: 'mithril-mine',
     name: 'Mithril Golem',
     description: 'The deepest golem the guild ever built, and the one it lost the plans for.',
     icon: 'enemy-MithrilGolem',
@@ -2751,6 +2883,8 @@ const ENEMIES = [
   {
     slug: 'cosmic-mage',
     zone: 'Neverending Mine',
+    area: 'mithril-mine',
+    rare: true,
     name: 'Cosmic Mage',
     description: 'Nobody knows how he got down here or what he is waiting for.',
     icon: 'enemy-CosmicMage',
@@ -2779,6 +2913,8 @@ const ENEMIES = [
   {
     slug: 'carbon-beast',
     zone: 'Neverending Mine',
+    area: 'mithril-mine',
+    rare: true,
     name: 'Carbon Beast',
     description: 'Black all the way through, and quicker than a thing that size should be.',
     icon: 'enemy-CarbonBeast',
@@ -2812,6 +2948,8 @@ const ENEMIES = [
   {
     slug: 'war-turtle',
     zone: 'Neverending Mine',
+    area: 'iron-mine',
+    nameTone: 'green',
     name: 'War Turtle',
     description: 'It fills the shaft at Mine Level 5 and has no intention of moving.',
     icon: 'enemy-WarTurtle',
@@ -2842,6 +2980,8 @@ const ENEMIES = [
   {
     slug: 'phoenix',
     zone: 'Neverending Mine',
+    area: 'iron-mine',
+    nameTone: 'lightred',
     name: 'Phoenix',
     description: 'It never lands. The Mining Guild wants it dealt with before it teaches you how to work iron.',
     icon: 'enemy-Phoenix',
@@ -2873,6 +3013,8 @@ const ENEMIES = [
   {
     slug: 'ulfberht',
     zone: 'Neverending Mine',
+    area: 'steel-mine',
+    nameTone: 'blue',
     name: 'Ulfberht',
     description: 'It carries the blade it is named after, and it knows how to stand behind it.',
     icon: 'enemy-Ulfberht',
@@ -2903,6 +3045,8 @@ const ENEMIES = [
   {
     slug: 'cyclops',
     zone: 'Neverending Mine',
+    area: 'steel-mine',
+    nameTone: 'lightblue',
     name: 'Cyclops',
     description: 'One eye, one arm’s reach, and armour is no help whatsoever.',
     icon: 'enemy-Cyclops',
@@ -2933,6 +3077,8 @@ const ENEMIES = [
   {
     slug: 'griffin',
     zone: 'Neverending Mine',
+    area: 'mithril-mine',
+    nameTone: 'blue',
     name: 'Griffin',
     description: 'How it got to Mine Level 25 is a question for later.',
     icon: 'enemy-Griffin',
@@ -2964,6 +3110,8 @@ const ENEMIES = [
   {
     slug: 'minotaur',
     zone: 'Neverending Mine',
+    area: 'mithril-mine',
+    nameTone: 'lightred',
     name: 'Minotaur',
     description: 'The bottom of the mine, as far as anyone has dug. It has been waiting.',
     icon: 'enemy-Minotaur',
@@ -3007,6 +3155,8 @@ const ENEMIES = [
   {
     slug: 'glowing-octopus',
     zone: 'Under the Ocean',
+    area: 'under-the-ocean',
+    rare: true,
     name: 'Glowing Octopus',
     description: 'A pale light moving under the sea, a long way down. The Dwarf Captain has heard about it and would like it confirmed.',
     icon: 'enemy-GlowingOctopus',
@@ -3035,6 +3185,8 @@ const ENEMIES = [
   {
     slug: 'king-squid',
     zone: 'Blue Ocean',
+    area: 'blue-ocean',
+    nameTone: 'blue',
     name: 'King Squid',
     description: 'Every arm of it is longer than the boat you came out in.',
     icon: 'enemy-KingSquid',
@@ -3070,6 +3222,8 @@ const ENEMIES = [
   {
     slug: 'stone-sphinx',
     zone: 'Dark Keep',
+    area: 'dark-keep',
+    nameTone: 'gold',
     name: 'Stone Sphinx',
     description: 'A beast made completely of stone, and it guards the Dark Keep\'s stairwell as well as the mountain pass. Arrows shatter on it and magic slides off; it does not answer questions.',
     icon: 'enemy-StoneSphinx',
@@ -3106,6 +3260,7 @@ const ENEMIES = [
   {
     slug: 'jellyfish',
     zone: 'Blue Ocean',
+    area: 'blue-ocean',
     name: 'Jellyfish',
     description: 'A drifting bell of stinging threads. It does not chase you; it does not have to.',
     icon: 'enemy-Jellyfish',
@@ -3133,6 +3288,7 @@ const ENEMIES = [
   {
     slug: 'electric-eel',
     zone: 'Blue Ocean',
+    area: 'blue-ocean',
     name: 'Electric Eel',
     description: 'A ribbon of muscle with a charge in it. The water around it hums.',
     icon: 'enemy-ElectricEel',
@@ -3162,6 +3318,7 @@ const ENEMIES = [
   {
     slug: 'piranha',
     zone: 'Blue Ocean',
+    area: 'blue-ocean',
     name: 'Piranha',
     description: 'Small, fast, and never alone for long.',
     icon: 'enemy-Piranha',
@@ -3190,6 +3347,7 @@ const ENEMIES = [
   {
     slug: 'barracuda',
     zone: 'Blue Ocean',
+    area: 'blue-ocean',
     name: 'Barracuda',
     description: 'A long silver fish that is mostly teeth and momentum.',
     icon: 'enemy-Barracuda',
@@ -3216,6 +3374,7 @@ const ENEMIES = [
   {
     slug: 'squid',
     zone: 'Blue Ocean',
+    area: 'blue-ocean',
     name: 'Squid',
     description: 'An aggressive squid, one of the many that have inundated the ocean. The Friendly Pirate wants three of them.',
     icon: 'enemy-Squid',
@@ -3242,6 +3401,7 @@ const ENEMIES = [
   {
     slug: 'albatross',
     zone: 'Blue Ocean',
+    area: 'blue-ocean',
     name: 'Albatross',
     description: 'An enormous seabird that dives at anything on the water. One of the angry birds Jungle Jim is afraid of.',
     icon: 'enemy-Albatross',
@@ -3267,6 +3427,8 @@ const ENEMIES = [
   {
     slug: 'crocodile',
     zone: 'Blue Ocean',
+    area: 'blue-ocean',
+    nameTone: 'green',
     name: 'Crocodile',
     description: 'A vicious crocodile out of the tornado currents around Crocodile Island. Its bite goes straight through armour.',
     icon: 'enemy-Crocodile',
@@ -3304,6 +3466,8 @@ const ENEMIES = [
   {
     slug: 'thunder-barbarian',
     zone: 'Blue Ocean',
+    area: 'water-temples',
+    nameTone: 'lightred',
     name: 'Thunder Barbarian',
     description: 'The Red Water Temple\'s boss. Hits hard with POWER and CRITICAL strikes, and does not miss often.',
     icon: 'enemy-ThunderBarbarian',
@@ -3334,6 +3498,8 @@ const ENEMIES = [
   {
     slug: 'smooth-ranger',
     zone: 'Blue Ocean',
+    area: 'water-temples',
+    nameTone: 'green',
     name: 'Smooth Ranger',
     description: 'The Green Water Temple\'s boss. A powerful bow, a long fight, and nothing about it in a hurry.',
     icon: 'enemy-SmoothRanger',
@@ -3363,6 +3529,8 @@ const ENEMIES = [
   {
     slug: 'coral-wizard',
     zone: 'Blue Ocean',
+    area: 'water-temples',
+    nameTone: 'blue',
     name: 'Coral Wizard',
     description: 'The Blue Water Temple\'s boss. Hits strong with magic and is immune to it — do not expect a spell to do anything.',
     // The art file is 'Coral Mage'; the boss has always been the Coral Wizard,
@@ -3394,6 +3562,8 @@ const ENEMIES = [
   {
     slug: 'heavy-walrus',
     zone: 'Blue Ocean',
+    area: 'water-temples',
+    nameTone: 'gold',
     name: 'Heavy Walrus',
     description: 'The Yellow Water Temple\'s boss. Insanely high defense; you will need some big hits.',
     icon: 'enemy-HeavyWalrus',
@@ -3427,6 +3597,8 @@ const ENEMIES = [
   {
     slug: 'water-temple-guardian',
     zone: 'Blue Ocean',
+    area: 'water-temples',
+    nameTone: 'lightblue',
     name: 'Water Temple Guardian',
     description: 'The far superior guardian of the Master Water Temple. It attacks pure — armour means nothing — and one swing in three is a Power Attack.',
     icon: 'enemy-WaterTempleGuardian',
@@ -3459,6 +3631,7 @@ const ENEMIES = [
   {
     slug: 'mud-crab',
     zone: 'Mud Cave',
+    area: 'blue-ocean',
     name: 'Mud Crab',
     description: 'A small, fast crab that comes out of the mud in numbers. The Friendly Pirate wants twenty of them gone.',
     icon: 'enemy-MudCrab',
@@ -3493,6 +3666,7 @@ const ENEMIES = [
   {
     slug: 'giant-sea-turtle',
     zone: 'Under the Ocean',
+    area: 'under-the-ocean',
     name: 'Giant Sea Turtle',
     description: 'A turtle the size of a cart, and about as easy to hurt. Slow, and in no way sorry about it.',
     icon: 'enemy-GiantSeaTurtle',
@@ -3522,6 +3696,7 @@ const ENEMIES = [
   {
     slug: 'colossal-squid',
     zone: 'Under the Ocean',
+    area: 'under-the-ocean',
     name: 'Colossal Squid',
     description: 'Bigger than the boat, with eyes like dinner plates. It takes a great deal of killing.',
     icon: 'enemy-ColossalSquid',
@@ -3551,6 +3726,8 @@ const ENEMIES = [
   {
     slug: 'kraken',
     zone: 'Under the Ocean',
+    area: 'under-the-ocean',
+    nameTone: 'green',
     name: 'Kraken',
     description: 'The thing at the end of the shark water. It launches spiked projectiles from a great many arms, and it has eaten a great many explorers.',
     icon: 'enemy-Kraken',
@@ -3589,6 +3766,8 @@ const ENEMIES = [
   {
     slug: 'falcon',
     zone: 'Dark Forest',
+    area: 'dark-forest',
+    rare: true,
     name: 'Falcon',
     description: 'A falcon out of the Dark Forest, fast enough that you hear it after it has hit you. The angriest of the angry birds.',
     icon: 'enemy-Falcon',
@@ -3617,6 +3796,8 @@ const ENEMIES = [
   {
     slug: 'wisp',
     zone: 'Dark Forest',
+    area: 'dark-forest',
+    rare: true,
     name: 'Wisp',
     description: 'A drifting light between the trunks that is not a light at all. One in two hundred travellers ever sees one, and it hits like a mountain.',
     icon: 'enemy-Wisp',
@@ -3642,6 +3823,7 @@ const ENEMIES = [
   {
     slug: 'bowman',
     zone: 'Dark Forest',
+    area: 'mountain-path',
     name: 'Bowman',
     description: 'A thief with a bow, working the stone path to the mountains. He shoots first and asks for your coin second.',
     icon: 'enemy-Bowman',
@@ -3674,6 +3856,7 @@ const ENEMIES = [
   {
     slug: 'highwayman',
     zone: 'Dark Forest',
+    area: 'mountain-path',
     name: 'Highwayman',
     description: '"Pay up or go back to where you came from!" Every hit he lands is a pure 60 — your armour is not part of the conversation.',
     icon: 'enemy-Highwayman',
@@ -3710,6 +3893,8 @@ const ENEMIES = [
   {
     slug: 'dark-ranger',
     zone: 'Dark Forest',
+    area: 'dark-forest',
+    rare: true,
     name: 'Dark Ranger',
     description: 'A fallen Ranger, hooded and quick, who shoots from the trees and cannot be shot back at. Beat one and the guild will take you.',
     icon: 'enemy-DarkRanger',
@@ -3739,6 +3924,8 @@ const ENEMIES = [
   {
     slug: 'ent',
     zone: 'Dark Forest',
+    area: 'dark-forest',
+    rare: true,
     name: 'Ent',
     description: 'A tree that has decided to be somewhere else. Difficult to spot until it is already swinging, and magic is wasted on wood.',
     icon: 'enemy-Ent',
@@ -3767,6 +3954,7 @@ const ENEMIES = [
   {
     slug: 'troll-shaman',
     zone: 'Dark Forest',
+    area: 'dark-forest',
     name: 'Troll Shaman',
     description: 'A troll with a bone rattle and a grudge. Its curses come at your MAG, and it knits its own wounds shut between them.',
     icon: 'enemy-TrollShaman',
@@ -3795,6 +3983,7 @@ const ENEMIES = [
   {
     slug: 'troll-sorcerer',
     zone: 'Dark Forest',
+    area: 'dark-forest',
     name: 'Troll Sorcerer',
     description: 'The Shaman\'s better-read cousin. Its magic corrupts the trees around it, and it does not stop at one casting.',
     icon: 'enemy-TrollSorcerer',
@@ -3825,6 +4014,7 @@ const ENEMIES = [
   {
     slug: 'troll-elder',
     zone: 'Dark Forest',
+    area: 'dark-forest',
     name: 'Troll Elder',
     description: 'Old, grey and enormous, and it hits as hard as it ever did. The Ranger Guard wants three of them gone.',
     icon: 'enemy-TrollElder',
@@ -3852,6 +4042,8 @@ const ENEMIES = [
   {
     slug: 'troll-king',
     zone: 'Dark Forest',
+    area: 'dark-forest',
+    nameTone: 'green',
     name: 'Troll King',
     description: 'The King does not have particularly high health or impressive stats, but attacks with such vicious blows you can be torn to shreds in seconds if you are not careful.',
     icon: 'enemy-TrollKing',
@@ -3886,6 +4078,8 @@ const ENEMIES = [
   {
     slug: 'forest-princess',
     zone: 'Dark Forest',
+    area: 'dark-forest',
+    nameTone: 'green',
     name: 'Forest Princess',
     description: 'The beautiful forest princess. Battle her if you wish to be tested: ten thousand HP, blows that ignore your armour, and nothing for your trouble but the weapons of kings.',
     icon: 'enemy-ForestPrincess',
@@ -3923,6 +4117,7 @@ const ENEMIES = [
   {
     slug: 'lurker',
     zone: 'Dark Keep',
+    area: 'dark-keep',
     name: 'Lurker',
     description: 'Something that lives in the corners of the Keep and would rather you did not see it first. Its bite festers.',
     icon: 'enemy-Lurker',
@@ -3951,6 +4146,7 @@ const ENEMIES = [
   {
     slug: 'winged-demon',
     zone: 'Dark Keep',
+    area: 'dark-keep',
     name: 'Winged Demon',
     description: 'It roosts in the rafters of the main hall and comes down on you from above. Bring something that shoots.',
     icon: 'enemy-WingedDemon',
@@ -3977,6 +4173,7 @@ const ENEMIES = [
   {
     slug: 'undead-orc',
     zone: 'Dark Keep',
+    area: 'dark-keep',
     name: 'Undead Orc',
     description: 'An orc the Keep buried and did not keep. It fights with a bow it was buried with, and it fights well.',
     icon: 'enemy-UndeadOrc',
@@ -4004,6 +4201,8 @@ const ENEMIES = [
   {
     slug: 'warped-priest',
     zone: 'Dark Keep',
+    area: 'dark-keep',
+    rare: true,
     name: 'Warped Priest',
     description: 'What the Keep\'s clergy became. It hangs in the air over the altar and every tenth blow lands ten times over.',
     icon: 'enemy-WarpedPriest',
@@ -4031,6 +4230,7 @@ const ENEMIES = [
   {
     slug: 'dark-paladin',
     zone: 'Dark Keep',
+    area: 'dark-keep',
     name: 'Dark Paladin',
     description: 'The disciplined guard of the prince\'s throne room, in full mithril. It will not allow you to desecrate the altar with your demonic presence any further.',
     icon: 'enemy-DarkPaladin',
@@ -4059,6 +4259,8 @@ const ENEMIES = [
   {
     slug: 'dark-prince',
     zone: 'Dark Keep',
+    area: 'dark-keep',
+    nameTone: 'lightpurple',
     name: 'Dark Prince',
     description: 'The dark figure that swoops in whenever anyone reaches for the crown. Three thousand HP, and every strike may be followed by another.',
     icon: 'enemy-DarkPrince',
@@ -4099,6 +4301,7 @@ const ENEMIES = [
   {
     slug: 'mountain-giant',
     zone: 'Mountains',
+    area: 'mountains',
     name: 'Mountain Giant',
     description: 'A giant of the ordinary mountain kind, which is still a giant. It throws what is nearest, and up here what is nearest is a boulder.',
     icon: 'enemy-MountainGiant',
@@ -4125,6 +4328,7 @@ const ENEMIES = [
   {
     slug: 'ice-troll',
     zone: 'Mountains',
+    area: 'mountains',
     name: 'Ice Troll',
     description: 'A troll gone white in the cold. It winds up for the big swing, and when it gets close enough it bites.',
     icon: 'enemy-IceTroll',
@@ -4154,6 +4358,7 @@ const ENEMIES = [
   {
     slug: 'giant-brute',
     zone: 'Mountains',
+    area: 'mountains',
     name: 'Giant Brute',
     description: 'All arm and no armour. It hits like a rockslide and folds like paper, and it will go through your purse while it is at it.',
     icon: 'enemy-GiantBrute',
@@ -4184,6 +4389,7 @@ const ENEMIES = [
   {
     slug: 'wyvern',
     zone: 'Mountains',
+    area: 'mountains',
     name: 'Wyvern',
     description: 'A small dragon with no fire and a great deal of opinion. It stays in the air, so bring a bow.',
     icon: 'enemy-Wyvern',
@@ -4209,6 +4415,7 @@ const ENEMIES = [
   {
     slug: 'stone-dwarf',
     zone: 'Mountains',
+    area: 'mountains',
     name: 'Stone Dwarf',
     description: 'A dwarf who stayed in the mountain long enough to become part of it. Two hundred DEF and a swing to match; steel comes off it in pieces.',
     icon: 'enemy-StoneDwarf',
@@ -4238,6 +4445,8 @@ const ENEMIES = [
   {
     slug: 'yeti',
     zone: 'Mountains',
+    area: 'mountains',
+    rare: true,
     name: 'Yeti',
     description: 'The illusive Yeti. Hector wants it dead, and it is in no hurry to be found: one roll in thirty-five on the open mountain.',
     icon: 'enemy-Yeti',
@@ -4265,6 +4474,8 @@ const ENEMIES = [
   {
     slug: 'snow-ogre',
     zone: 'Mountains',
+    area: 'mountains',
+    rare: true,
     name: 'Snow Ogre',
     description: 'One of Chilly Pete\'s super rare snowy trio. An ogre the colour of the drifts, and when it loses its temper it does not stop swinging.',
     icon: 'enemy-SnowOgre',
@@ -4292,6 +4503,8 @@ const ENEMIES = [
   {
     slug: 'snow-ninja',
     zone: 'Mountains',
+    area: 'mountains',
+    rare: true,
     name: 'Snow Ninja',
     description: 'One of the snowy trio. You will not see it until it is already cutting you, and the blade is poisoned.',
     icon: 'enemy-SnowNinja',
@@ -4321,6 +4534,8 @@ const ENEMIES = [
   {
     slug: 'snow-owl',
     zone: 'Mountains',
+    area: 'mountains',
+    rare: true,
     name: 'Snow Owl',
     description: 'One of the snowy trio. It is enormous, it is silent, it stays aloft, and what it does to you is magic.',
     icon: 'enemy-SnowOwl',
@@ -4352,6 +4567,9 @@ const ENEMIES = [
   {
     slug: 'dragon',
     zone: 'Mountains',
+    area: 'mountains',
+    rare: true,
+    nameTone: 'red',
     name: 'Dragon',
     description: 'Ferocious dragons have been seen soaring among the mountain tops. It flies, it breathes, and the breath does not care what you are wearing.',
     icon: 'enemy-Dragon',
@@ -4380,6 +4598,8 @@ const ENEMIES = [
   {
     slug: 'giant-mountain-giant',
     zone: 'Mountains',
+    area: 'mountains',
+    nameTone: 'gold',
     name: 'Giant Mountain Giant',
     description: 'The King of the Mountains, which is to say the largest thing on the peak. Six thousand HP. It carries the Key of Pride, if a giant can be said to carry a key.',
     icon: 'enemy-GiantMountainGiant',
@@ -4408,6 +4628,8 @@ const ENEMIES = [
   {
     slug: 'gatekeeper',
     zone: 'Mountains',
+    area: 'mountains',
+    nameTone: 'black',
     name: 'Gatekeeper',
     description: 'It holds the Mountain Bridge, which is all it has ever done, and it is extremely good at it. "Do not try to cross!" said the sign, before it broke.',
     icon: 'enemy-Gatekeeper',
@@ -4441,6 +4663,8 @@ const ENEMIES = [
   {
     slug: 'jikay',
     zone: 'Mountains',
+    area: 'mountains',
+    rare: true,
     name: 'Jikay',
     description: 'Not "the Jikay". Jikay. Four thousand HP and every blow lands for the full two hundred, armour or no armour.',
     icon: 'enemy-Jikay',
@@ -4466,6 +4690,8 @@ const ENEMIES = [
   {
     slug: 'jiemji',
     zone: 'Mountains',
+    area: 'mountains',
+    rare: true,
     name: 'Jiemji',
     description: 'Jikay\'s other half. Six thousand HP, a critical that will end you, and it fights with magic — your MAG is what stands between you and it.',
     icon: 'enemy-Jiemji',
@@ -4489,6 +4715,9 @@ const ENEMIES = [
   {
     slug: 'king-blade',
     zone: 'Mountains',
+    area: 'mountains',
+    rare: true,
+    nameTone: 'purple',
     name: 'King Blade',
     description: 'The last thing on the mountain. Ten thousand HP, twelve hundred ATT, a rage that does not stop and a whirlwind that does not miss. Bring everything.',
     icon: 'enemy-KingBlade',
@@ -4519,6 +4748,7 @@ const ENEMIES = [
   {
     slug: 'silver-titan',
     zone: 'Mountains',
+    area: 'silver-temple',
     name: 'Silver Titan',
     description: 'A champion of the Silver Temple, laden in silver, standing patiently in the arena for anyone who thinks they are ready. Nine thousand HP, nine hundred of everything, and nothing to loot but the win.',
     icon: 'enemy-SilverTitan',
@@ -4547,6 +4777,7 @@ const ENEMIES = [
   {
     slug: 'grey-gargoyle',
     zone: 'Cathedral',
+    area: 'cathedral',
     name: 'Grey Gargoyle',
     description: 'Stone that flies. It comes off the Cathedral roof at anyone who walks under it.',
     icon: 'enemy-GreyGargoyle',
@@ -4573,6 +4804,7 @@ const ENEMIES = [
   {
     slug: 'white-gargoyle',
     zone: 'Cathedral',
+    area: 'cathedral',
     name: 'White Gargoyle',
     description: 'The Cathedral\'s pale one. Faster than the grey, harder to hurt, and it mends itself in the air.',
     icon: 'enemy-WhiteGargoyle',
@@ -4601,6 +4833,7 @@ const ENEMIES = [
   {
     slug: 'vampire',
     zone: 'Cathedral',
+    area: 'cathedral',
     name: 'Vampire',
     description: 'The nave is full of them. Two hundred and fifty ATT behind a smile, and the bite leaves something in your blood.',
     icon: 'enemy-Vampire',
@@ -4630,6 +4863,7 @@ const ENEMIES = [
   {
     slug: 'fallen-priest',
     zone: 'Cathedral',
+    area: 'cathedral',
     name: 'Fallen Priest',
     description: 'Still in his vestments, still at his prayers, and the prayers are the problem. He fights with magic and tends his own wounds.',
     icon: 'enemy-FallenPriest',
@@ -4658,6 +4892,8 @@ const ENEMIES = [
   {
     slug: 'fallen-angel',
     zone: 'Cathedral',
+    area: 'cathedral',
+    nameTone: 'lightpurple',
     name: 'Fallen Angel',
     description: 'What waits at the altar. Four thousand HP, four hundred ATT, airborne, magic, and a touch that poisons. The uneasy feeling in that room is this.',
     icon: 'enemy-FallenAngel',
@@ -4688,6 +4924,7 @@ const ENEMIES = [
   {
     slug: 'risen-skeleton',
     zone: 'Cathedral',
+    area: 'cathedral',
     name: 'Risen Skeleton',
     description: 'The graveyard does not keep its dead down. It carries whatever it was buried with, which is sometimes mithril.',
     icon: 'enemy-RisenSkeleton',
@@ -4725,6 +4962,7 @@ const ENEMIES = [
   {
     slug: 'hydra',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Hydra',
     description: 'Three heads, and every one of them is looking at you. It lives in the pit at the bottom of the Despair and does not leave it.',
     icon: 'enemy-Hydra',
@@ -4752,6 +4990,7 @@ const ENEMIES = [
   {
     slug: 'brownie',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Brownie',
     description: 'Small, fast and all teeth. A blade does nothing to it; it has to be shot or burned.',
     icon: 'enemy-Brownie',
@@ -4778,6 +5017,7 @@ const ENEMIES = [
   {
     slug: 'harpy',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Harpy',
     description: 'It comes down out of the dark on wings, and what it leaves in you is poison. Magic slides off it.',
     icon: 'enemy-Harpy',
@@ -4804,6 +5044,7 @@ const ENEMIES = [
   {
     slug: 'gorgon',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Gorgon',
     description: 'Do not meet its eyes. Those who did are still down here, and they are not moving.',
     icon: 'enemy-Gorgon',
@@ -4829,6 +5070,7 @@ const ENEMIES = [
   {
     slug: 'banshee',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Banshee',
     description: 'A scream with a shape. It is hard to hit, harder to hit with magic, and its voice is what hurts.',
     icon: 'enemy-Banshee',
@@ -4855,6 +5097,7 @@ const ENEMIES = [
   {
     slug: 'succubus',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Succubus',
     description: 'It wants what is in you, and it takes it: every wound it gives, it drinks. Its touch poisons.',
     icon: 'enemy-Succubus',
@@ -4881,6 +5124,7 @@ const ENEMIES = [
   {
     slug: 'magma-goblin',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Magma Goblin',
     description: 'A goblin that walked into the fire and came out carrying it. Your blade softens on it, and it does not stop at one swing.',
     icon: 'enemy-MagmaGoblin',
@@ -4908,6 +5152,7 @@ const ENEMIES = [
   {
     slug: 'magma-kobold',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Magma Kobold',
     description: 'A kobold shaman of the deep fire. It throws magic and shrugs magic off, and a blade on it comes back half-melted.',
     icon: 'enemy-MagmaKobold',
@@ -4935,6 +5180,7 @@ const ENEMIES = [
   {
     slug: 'magma-orc',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Magma Orc',
     description: 'An orc archer whose arrows are still burning when they land. Every volley is two, and its hide melts steel.',
     icon: 'enemy-MagmaOrc',
@@ -4962,6 +5208,7 @@ const ENEMIES = [
   {
     slug: 'magma-ogre',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Magma Ogre',
     description: 'When it is angry it does not stop swinging, and it is always angry. Melee softens on it.',
     icon: 'enemy-MagmaOgre',
@@ -4989,6 +5236,7 @@ const ENEMIES = [
   {
     slug: 'magma-troll',
     zone: 'The Despair',
+    area: 'the-despair',
     name: 'Magma Troll',
     description: 'The biggest thing in the pit that is not a boss. Arrows burn up before they reach it, blades go soft on it, and its blows come in threes.',
     icon: 'enemy-MagmaTroll',
@@ -5017,6 +5265,8 @@ const ENEMIES = [
   {
     slug: 'chimera',
     zone: 'The Despair',
+    area: 'the-despair',
+    nameTone: 'lightred',
     name: 'Chimera',
     description: 'Lion, goat and serpent, and all three breathe. Only arrows reach it: blades bounce, spells fizzle.',
     icon: 'enemy-Chimera',
@@ -5040,6 +5290,8 @@ const ENEMIES = [
   {
     slug: 'basilisk',
     zone: 'The Despair',
+    area: 'the-despair',
+    nameTone: 'lightred',
     name: 'Basilisk',
     description: 'The king of serpents. Its bite is venom, it is quick for its size, and it does not miss much.',
     icon: 'enemy-Basilisk',
@@ -5063,6 +5315,8 @@ const ENEMIES = [
   {
     slug: 'medusa',
     zone: 'The Despair',
+    area: 'the-despair',
+    nameTone: 'lightred',
     name: 'Medusa',
     description: 'Her hair moves on its own and her eyes do the rest. She is hard to hit and harder to look at.',
     icon: 'enemy-Medusa',
@@ -5086,6 +5340,8 @@ const ENEMIES = [
   {
     slug: 'cerberus',
     zone: 'The Despair',
+    area: 'the-despair',
+    nameTone: 'lightred',
     name: 'Cerberus',
     description: 'Three heads, three bites a turn, and a howl that is magic. The door it guards is the Skeleton King\'s.',
     icon: 'enemy-Cerberus',
@@ -5108,6 +5364,8 @@ const ENEMIES = [
   {
     slug: 'manticore',
     zone: 'The Despair',
+    area: 'the-despair',
+    nameTone: 'lightred',
     name: 'Manticore',
     description: 'A lion with a man\'s face and a scorpion\'s tail, and the tail is the part to watch: when it lands clean, it lands ten times.',
     icon: 'enemy-Manticore',
@@ -5130,6 +5388,8 @@ const ENEMIES = [
   {
     slug: 'skeleton-king',
     zone: 'The Despair',
+    area: 'the-despair',
+    nameTone: 'purple',
     name: 'Skeleton King',
     description: 'The King of the Despair. Twenty thousand HP, a whirlwind and a rage. Five guard his gate; he needs none of them.',
     icon: 'enemy-SkeletonKing',

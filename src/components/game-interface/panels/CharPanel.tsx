@@ -18,6 +18,9 @@ import StatAllocation from '@/components/StatAllocation'
 import TrainingAllocation from '@/components/TrainingAllocation'
 import type { AllocationSummary } from '@/components/PointAllocation'
 import { ScrollEnd } from '@/components/game-interface/LayerShell'
+import RecentFights from '@/components/game-interface/panels/RecentFights'
+import { buildKillList, killRecordNote } from '@/lib/kill-list'
+import type { QuestsTab } from '@/components/game-interface/panels/QuestsPanel'
 
 import type { FilterTab } from '@/lib/inventory-categories'
 
@@ -34,14 +37,24 @@ interface CharPanelProps {
   onPointsSpent: (updatedPlayer: Player, summary: AllocationSummary) => void
   /** Wear one of the earned titles, or none (null). The server validates and the header follows. */
   onSetTitle?: (title: string | null) => void
+  /** Opens the Quests tab on a page: the Kill list from the Kills line, the Battle log from Recent fights. */
+  onOpenQuests?: (tab: QuestsTab) => void
 }
 
 // Pets are named from the shared registry; the player carries only the slug.
 const { getPet } = require('@/lib/game-data/pets') as { getPet: (slug: string | null | undefined) => { slug: string; name: string; icon: string } | null }
 
-export default function CharPanel({ player, onSwitchToInventory, onOpenBook, bookTab = null, onPointsSpent, onSetTitle }: CharPanelProps) {
+export default function CharPanel({ player, onSwitchToInventory, onOpenBook, bookTab = null, onPointsSpent, onSetTitle, onOpenQuests }: CharPanelProps) {
   const inventory = useGameStore((state) => state.inventory)
   const questRows = useGameStore((state) => state.quests)
+  const killList = useGameStore((state) => state.killList)
+  const killMarks = useGameStore((state) => state.killMarks)
+  // The Kill List's numbers, for the Kills line: every kill, how much of the
+  // roster is dead, how many areas are cleared.
+  const killModel = useMemo(
+    () => buildKillList({ kills: killList, marks: killMarks, flags: player, currentRoomId: player.currentRoom ?? null }),
+    [killList, killMarks, player]
+  )
   // The titles the player may wear: the Pillar's growing name, then the guilds'.
   const titles = earnedTitles(questRows)
   const [isTitlePickerOpen, setTitlePickerOpen] = useState(false)
@@ -90,6 +103,15 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
   if (pt > 0) records.push({ label: 'Physical Training', note: `+${pt} HP per rest · +${1 + pt * 2} max HP per level`, value: pt, tone: 'text-resource-hp' })
   if (mt > 0) records.push({ label: 'Mental Training', note: `+${mt} MP per rest · +${1 + mt * 2} max MP per level`, value: mt, tone: 'text-resource-mp' })
   if ((player.currency ?? 0) > 0) records.push({ label: 'Gold', value: (player.currency ?? 0).toLocaleString(), tone: 'text-resource-gold' })
+  if (killModel.total > 0) {
+    records.push({
+      label: 'Kills',
+      note: killRecordNote(killModel),
+      value: killModel.total.toLocaleString(),
+      tone: 'text-status-error',
+      action: onOpenQuests ? <RecordLink onClick={() => onOpenQuests('kill-list')}>Kill list</RecordLink> : undefined,
+    })
+  }
   if ((player.clicks ?? 0) > 0) records.push({ label: 'Clicks', note: 'Actions taken', value: (player.clicks ?? 0).toLocaleString() })
   if ((player.deaths ?? 0) > 0) records.push({ label: 'Deaths', value: (player.deaths ?? 0).toLocaleString(), tone: 'text-status-error' })
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
@@ -306,6 +328,9 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
                 </dl>
               </div>
             )}
+
+            {/* The last five fights, with their turns a tap away; the Battle Log has the rest. */}
+            {isLoggedIn && <RecentFights getAuthHeaders={getAuthHeaders} onOpenBattleLog={onOpenQuests ? () => onOpenQuests('battle-log') : undefined} />}
             <ScrollEnd />
           </div>
         </div>
@@ -337,6 +362,19 @@ function BookLink({ nudge, disabled, onClick }: { nudge: boolean; disabled: bool
         Open book
       </button>
     </span>
+  )
+}
+
+/** The way from a record line to the page that keeps it: "Kill list ›". */
+function RecordLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex-shrink-0 rounded-md border border-line-subtle/60 px-2 py-1 text-[10px] font-bold text-hue-sky transition-colors hover:border-line-strong hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+    >
+      {children} ›
+    </button>
   )
 }
 

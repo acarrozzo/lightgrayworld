@@ -265,6 +265,7 @@ const { coords: mapCoords, centered: centeredRooms } = loadMapCoords()
 
 const { ENEMIES } = load('src/lib/game-data/enemies.js')
 const { ROOM_ENEMIES, listRoomEnemySlugs } = load('src/lib/game-data/room-enemies.js')
+const { KL_AREAS, KL_TONES } = load('src/lib/game-data/kill-list-areas.js')
 const { ROOM_GATES } = load('src/lib/game-engine/room-gates.js')
 const { REVEAL_DEFINITIONS } = load('src/lib/game-engine/search-reveal-state.js')
 const { ROOM_SUPPLIES, SUPPLY_MODES } = load('src/lib/game-engine/config/room-supplies.js')
@@ -363,6 +364,14 @@ for (const enemy of ENEMIES) {
   else if (!listRoomEnemySlugs(ROOM_ENEMIES[enemy.lair]).includes(enemy.slug)) {
     err('bosses', `${enemy.slug} never spawns in its lair ${enemy.lair}`)
   }
+}
+// Kill List: every enemy sits in one of the 27 boxes, and a name tone is one
+// the original stylesheet had. (`rare` is hand-written and not checked.)
+const areaIds = new Set(KL_AREAS.map((area) => area.id))
+const toneIds = new Set(KL_TONES)
+for (const enemy of ENEMIES) {
+  if (!areaIds.has(enemy.area)) err('kill-list', `${enemy.slug} has area "${enemy.area}", which is not a Kill List box (kill-list-areas.js)`)
+  if (enemy.nameTone !== undefined && !toneIds.has(enemy.nameTone)) err('kill-list', `${enemy.slug} has nameTone "${enemy.nameTone}", which is not in KL_TONES`)
 }
 // A traveler that can be fought (the field's bunny) is placed by its own
 // movement, not by a room table; it counts as spawned, and must exist.

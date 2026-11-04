@@ -33,30 +33,9 @@ import QuestRequirements from '@/components/QuestRequirements'
 import QuestTypeTag from '@/components/QuestTypeTag'
 import Icon from '@/components/Icon'
 import { ScrollEnd } from '../LayerShell'
-import FightLedger from '@/components/FightLedger'
+import FightRow, { type FightSummary } from '@/components/game-interface/FightRow'
 import { asLedgerTurns, type LedgerTurn } from '@/lib/fight-ledger'
-
-interface BattleLogEntry {
-  id: string
-  enemySlug: string
-  enemyName: string
-  outcome: string
-  turnsCount: number
-  totalDamageDealt: number
-  totalDamageReceived: number
-  maxSingleHit: number
-  xpEarned: number
-  goldEarned: number
-  itemsDropped: string[]
-  multiplayerBonus: boolean
-  createdAt: string
-}
-
-interface KillEntry {
-  id: string
-  monster: string
-  kills: number
-}
+import KillListTab from './kill-list/KillListTab'
 
 export type QuestsTab = 'quests' | 'kill-list' | 'battle-log'
 
@@ -71,6 +50,8 @@ interface QuestsPanelProps {
   /** The quests being followed beside the compass, and the pin that changes them. */
   trackedQuestIds?: readonly string[]
   onTrackQuest?: (questId: string) => void
+  /** A fight replay's "their profile" button: the same modal the Players tab opens. */
+  onOpenPlayerProfile?: (player: { id: string; username: string; level: number; uIcon?: string | null; uIconColor?: string | null }) => void
 }
 
 const NO_IDS: readonly string[] = []
@@ -102,35 +83,69 @@ function rewardText(rewards: { type: string; amount?: number; itemSlug?: string;
 
 type BattleOutcome = 'WIN' | 'LOSS' | 'FLED'
 
-const OUTCOME_STYLE: Record<BattleOutcome, { card: string; tag: string; label: string }> = {
-  WIN: { card: 'border-status-success/40 bg-status-success/20', tag: 'bg-status-success/60 text-status-success', label: 'WIN' },
-  LOSS: { card: 'border-status-error/40 bg-status-error/10', tag: 'bg-status-error/60 text-status-error', label: 'LOSS' },
-  FLED: { card: 'border-status-warning/40 bg-status-warning/10', tag: 'bg-status-warning/50 text-status-warning', label: 'FLED' },
-}
-
-const outcomeOf = (value: string): BattleOutcome => (value === 'WIN' || value === 'FLED' ? value : 'LOSS')
-
 /**
  * Every fight this character has had, newest first, paged all the way back.
- * A card is the summary row the fight wrote when it ended — a win, a death or
- * a retreat; tapping it fetches that fight's ledger and opens it under the
- * numbers, turn by turn, in the same table the Turn chip shows mid-fight.
+ * A row is the summary the fight wrote when it ended — a win, a death or a
+ * retreat (`FightRow`, the same row the Char page's Recent fights uses);
+ * tapping it fetches that fight's ledger and opens it under the numbers,
+ * turn by turn, in the same table the Turn chip shows mid-fight.
  */
+type LogOutcomeFilter = 'all' | BattleOutcome
+
+const LOG_OUTCOME_FILTERS: { id: LogOutcomeFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'WIN', label: 'Wins' },
+  { id: 'LOSS', label: 'Deaths' },
+  { id: 'FLED', label: 'Retreats' },
+]
+
+/** The orders the log reads in; the ids are the route's `sort=` values. */
+const LOG_SORTS: { id: string; label: string }[] = [
+  { id: 'newest', label: 'Newest' },
+  { id: 'oldest', label: 'Oldest' },
+  { id: 'hit-desc', label: 'Biggest hit' },
+  { id: 'hit-asc', label: 'Smallest hit' },
+  { id: 'turns-desc', label: 'Most turns' },
+  { id: 'turns-asc', label: 'Fewest turns' },
+  { id: 'dealt-desc', label: 'Most dealt' },
+  { id: 'dealt-asc', label: 'Least dealt' },
+  { id: 'took-desc', label: 'Most taken' },
+  { id: 'took-asc', label: 'Least taken' },
+  { id: 'xp-desc', label: 'Most XP' },
+  { id: 'gold-desc', label: 'Most gold' },
+]
+
 function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string, string> }) {
-  const [logs, setLogs] = useState<BattleLogEntry[]>([])
+  const [logs, setLogs] = useState<FightSummary[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   // Ledgers fetched so far, by record id; null while one is on its way.
   const [ledgers, setLedgers] = useState<Record<string, LedgerTurn[] | null>>({})
+  // The filters go to the server, so a page is a page of the filtered list
+  // and "Earlier fights" keeps paging through it.
+  const [outcomeFilter, setOutcomeFilter] = useState<LogOutcomeFilter>('all')
+  const [bossesOnly, setBossesOnly] = useState(false)
+  const [sort, setSort] = useState('newest')
+  const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 250)
+    return () => window.clearTimeout(timer)
+  }, [search])
+  const isFiltered = outcomeFilter !== 'all' || bossesOnly || query !== '' || sort !== 'newest'
 
   const fetchPage = useCallback(async (cursor: string | null) => {
     setIsLoading(true)
     try {
-      const query = new URLSearchParams({ limit: '25' })
-      if (cursor) query.set('cursor', cursor)
-      const res = await fetch(`/api/player/battle-log?${query.toString()}`, { headers: getAuthHeaders() })
+      const params = new URLSearchParams({ limit: '25' })
+      if (cursor) params.set('cursor', cursor)
+      if (outcomeFilter !== 'all') params.set('outcome', outcomeFilter)
+      if (bossesOnly) params.set('bosses', '1')
+      if (query) params.set('q', query)
+      if (sort !== 'newest') params.set('sort', sort)
+      const res = await fetch(`/api/player/battle-log?${params.toString()}`, { headers: getAuthHeaders() })
       const data = await res.json()
       if (data.success) {
         setLogs((prev) => (cursor ? [...prev, ...data.logs] : data.logs))
@@ -142,11 +157,14 @@ function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string,
       setIsLoading(false)
       setLoaded(true)
     }
-  }, [getAuthHeaders])
+  }, [getAuthHeaders, outcomeFilter, bossesOnly, query, sort])
 
+  // The first page, and the first page again whenever a filter changes.
   useEffect(() => {
-    if (!loaded) fetchPage(null)
-  }, [loaded, fetchPage])
+    setLoaded(false)
+    setOpenId(null)
+    fetchPage(null)
+  }, [fetchPage])
 
   const toggle = useCallback(async (id: string) => {
     setOpenId((current) => (current === id ? null : id))
@@ -161,83 +179,73 @@ function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string,
     }
   }, [getAuthHeaders, ledgers])
 
-  if (!loaded && isLoading) return <p className="text-fg-muted text-sm">Loading battle log...</p>
-  if (loaded && logs.length === 0) return <p className="text-fg-muted text-sm">No battles recorded yet.</p>
+  const filters = (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {LOG_OUTCOME_FILTERS.map((f) => {
+          const active = outcomeFilter === f.id
+          return (
+            <button key={f.id} type="button" aria-pressed={active} onClick={() => setOutcomeFilter(f.id)} className={`${CHIP} ${active ? CHIP_GROUP_ON : CHIP_IDLE}`}>
+              {f.label}
+            </button>
+          )
+        })}
+        <button type="button" aria-pressed={bossesOnly} onClick={() => setBossesOnly((v) => !v)} className={`${CHIP} ${bossesOnly ? CHIP_SLOT_ON : CHIP_IDLE}`} title="Bosses and mini-bosses only">
+          Bosses
+        </button>
+        {isFiltered && (
+          <button
+            type="button"
+            onClick={() => { setOutcomeFilter('all'); setBossesOnly(false); setSearch(''); setSort('newest') }}
+            className="ml-auto text-[11px] text-status-warning underline-offset-2 hover:underline"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="relative min-w-0 flex-1">
+          <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-fg-muted" aria-hidden="true" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by enemy"
+            aria-label="Search fights by enemy"
+            className="w-full rounded border border-line-subtle/50 bg-surface-raised pl-7 pr-2 py-1 text-[12px] text-fg-primary placeholder:text-fg-disabled focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+          />
+        </label>
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          aria-label="Sort fights"
+          title="The order the fights read in"
+          className="shrink-0 rounded border border-line-subtle/50 bg-surface-raised px-1.5 py-1 text-[11px] text-fg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+        >
+          {LOG_SORTS.map((s) => (
+            <option key={s.id} value={s.id}>{s.label}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )
+
+  if (!loaded && isLoading && logs.length === 0 && !isFiltered) return <p className="text-fg-muted text-sm">Loading battle log...</p>
+  if (loaded && logs.length === 0 && !isFiltered) return <p className="text-fg-muted text-sm">No battles recorded yet.</p>
 
   return (
     <div className="space-y-2">
-      {logs.map((log) => {
-        const outcome = outcomeOf(log.outcome)
-        const style = OUTCOME_STYLE[outcome]
-        const isOpen = openId === log.id
-        const ledger = ledgers[log.id]
-        const date = new Date(log.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-        return (
-          <div key={log.id} className={`rounded-lg border ${style.card}`}>
-            <button
-              type="button"
-              onClick={() => toggle(log.id)}
-              aria-expanded={isOpen}
-              aria-controls={`battle-ledger-${log.id}`}
-              title={isOpen ? 'Hide the turns' : 'Show the fight turn by turn'}
-              className="w-full space-y-2 rounded-lg p-3 text-left transition-colors hover:bg-surface-raised/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${style.tag}`}>{style.label}</span>
-                  <span className="text-sm font-semibold text-fg-bright">{log.enemyName}</span>
-                  {log.multiplayerBonus && (
-                    <span className="text-[10px] text-resource-mp bg-resource-mp/30 px-1 rounded">group</span>
-                  )}
-                </div>
-                <span className="flex items-center gap-2 text-[10px] text-fg-disabled">
-                  {date}
-                  <span aria-hidden="true" className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}>▾</span>
-                </span>
-              </div>
-              <div className="grid grid-cols-4 gap-1 text-center">
-                <div>
-                  <p className="text-[10px] text-fg-muted uppercase tracking-wide">Turns</p>
-                  <p className="text-xs font-semibold text-fg-bright">{log.turnsCount}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-fg-muted uppercase tracking-wide">Dealt</p>
-                  <p className="text-xs font-semibold text-fg-bright">{log.totalDamageDealt}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-fg-muted uppercase tracking-wide">Received</p>
-                  <p className="text-xs font-semibold text-fg-bright">{log.totalDamageReceived}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-status-warning uppercase tracking-wide">Best Hit</p>
-                  <p className="text-xs font-semibold text-status-warning">{log.maxSingleHit}</p>
-                </div>
-              </div>
-              {outcome === 'WIN' && (
-                <div className="flex items-center gap-3 text-[11px] text-fg-secondary pt-0.5 border-t border-line-subtle/40">
-                  <span className="text-status-success">+{log.xpEarned} XP</span>
-                  <span className="text-status-warning">+{log.goldEarned} Gold</span>
-                  {log.itemsDropped.length > 0 && (
-                    <span className="text-stat-mag">+{log.itemsDropped.join(', ')}</span>
-                  )}
-                </div>
-              )}
-              {outcome === 'FLED' && (
-                <p className="text-[11px] text-fg-muted pt-0.5 border-t border-line-subtle/40">You broke off. The {log.enemyName} kept its HP.</p>
-              )}
-            </button>
-            {isOpen && (
-              <div id={`battle-ledger-${log.id}`} className="border-t border-line-subtle/40 bg-surface-panel/60 rounded-b-lg">
-                {ledger === null || ledger === undefined ? (
-                  <p className="px-3 py-3 text-xs text-fg-muted">Loading the turns...</p>
-                ) : (
-                  <FightLedger turns={ledger} enemyName={log.enemyName} className="py-1" />
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })}
+      {filters}
+      {loaded && logs.length === 0 && (
+        <p className="text-fg-muted text-sm">
+          {query ? `No fights with anything called "${query}"${outcomeFilter !== 'all' || bossesOnly ? ' under that filter' : ''}.` : outcomeFilter === 'WIN' ? 'No wins on record under that filter.' : outcomeFilter === 'LOSS' ? 'No deaths on record under that filter.' : outcomeFilter === 'FLED' ? 'No retreats on record under that filter.' : 'No boss fights on record.'}
+        </p>
+      )}
+      <div className="space-y-1.5">
+        {logs.map((log) => (
+          <FightRow key={log.id} fight={log} open={openId === log.id} onToggle={() => toggle(log.id)} ledger={ledgers[log.id]} when="date" />
+        ))}
+      </div>
       {nextCursor && (
         <button
           type="button"
@@ -248,47 +256,6 @@ function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string,
           {isLoading ? 'Loading...' : 'Earlier fights'}
         </button>
       )}
-    </div>
-  )
-}
-
-function KillListTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string, string> }) {
-  const [kills, setKills] = useState<KillEntry[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [loaded, setLoaded] = useState(false)
-
-  const fetchKills = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const res = await fetch('/api/player/kill-list', { headers: getAuthHeaders() })
-      const data = await res.json()
-      if (data.success) setKills(data.kills)
-    } catch {
-      // silently fail
-    } finally {
-      setIsLoading(false)
-      setLoaded(true)
-    }
-  }, [getAuthHeaders])
-
-  useEffect(() => {
-    if (!loaded) fetchKills()
-  }, [loaded, fetchKills])
-
-  if (isLoading) return <p className="text-fg-muted text-sm">Loading kill list...</p>
-  if (loaded && kills.length === 0) return <p className="text-fg-muted text-sm">No kills recorded yet.</p>
-
-  const total = kills.reduce((sum, k) => sum + k.kills, 0)
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-fg-muted">{total} total kills across {kills.length} creature{kills.length !== 1 ? 's' : ''}</p>
-      {kills.map((entry) => (
-        <div key={entry.id} className="flex items-center justify-between bg-surface-raised/40 border border-line-subtle/40 rounded-lg px-3 py-2">
-          <span className="text-sm text-fg-bright capitalize">{entry.monster.replace(/-/g, ' ')}</span>
-          <span className="text-sm font-bold text-status-error">{entry.kills} kill{entry.kills !== 1 ? 's' : ''}</span>
-        </div>
-      ))}
     </div>
   )
 }
@@ -581,6 +548,7 @@ export default function QuestsPanel({
   activeTab,
   trackedQuestIds = NO_IDS,
   onTrackQuest,
+  onOpenPlayerProfile,
   isLoadingQuests,
   isResettingQuests,
   isLoggedIn,
@@ -885,7 +853,7 @@ export default function QuestsPanel({
 
         {/* ── Kill List tab ── */}
         {activeTab === 'kill-list' && (
-          <KillListTab getAuthHeaders={getAuthHeaders} />
+          <KillListTab getAuthHeaders={getAuthHeaders} onOpenPlayerProfile={onOpenPlayerProfile} />
         )}
 
         {/* ── Battle Log tab ── */}

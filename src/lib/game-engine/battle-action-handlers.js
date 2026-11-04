@@ -228,7 +228,7 @@ const { weaponImmunity, reachesFlyingEnemy } = require('./battle-calculator')
 async function fetchPlayerStats(playerId) {
   return prisma.user.findUnique({
     where: { id: playerId },
-    select: { level: true, str: true, dex: true, mag: true, def: true, strMod: true, dexMod: true, magMod: true, defMod: true, hp: true, hpMax: true, ...BUFF_SELECT, ...SKILL_SELECT },
+    select: { level: true, xp: true, str: true, dex: true, mag: true, def: true, strMod: true, dexMod: true, magMod: true, defMod: true, hp: true, hpMax: true, ...BUFF_SELECT, ...SKILL_SELECT },
   })
 }
 
@@ -337,13 +337,15 @@ function silenceEnemySide(turn) {
 // `isTwoHanded` and `hasShield` are what the proficiencies, Block and the
 // Slice/Smash/Aim weapon fit key on.
 async function fetchEquippedWeapon(playerId) {
-  const hands = await prisma.playerItem.findMany({
-    where: { playerId, isEquipped: true, slot: { in: ['MAIN_HAND', 'OFF_HAND', 'MOUNT'] } },
-    select: { slot: true, ItemTemplate: { select: { slug: true, equipSlot: true, weaponCategory: true, metadata: true } } },
+  // Everything worn, in one query: the hands and the mount decide the fight,
+  // and the names of the lot are the snapshot's loadout line.
+  const worn = await prisma.playerItem.findMany({
+    where: { playerId, isEquipped: true },
+    select: { slot: true, ItemTemplate: { select: { slug: true, name: true, equipSlot: true, weaponCategory: true, metadata: true } } },
   })
-  const main = hands.find((row) => row.slot === 'MAIN_HAND')
-  const off = hands.find((row) => row.slot === 'OFF_HAND')
-  const mount = hands.find((row) => row.slot === 'MOUNT')
+  const main = worn.find((row) => row.slot === 'MAIN_HAND')
+  const off = worn.find((row) => row.slot === 'OFF_HAND')
+  const mount = worn.find((row) => row.slot === 'MOUNT')
   const template = main?.ItemTemplate
   const metadata = (template?.metadata && typeof template.metadata === 'object') ? template.metadata : null
   return {
@@ -354,6 +356,7 @@ async function fetchEquippedWeapon(playerId) {
     // The mount rides along in the same query: a flying one (Sky Hawk, Green
     // Griffin, Unicorn) lets a melee swing reach an airborne enemy.
     flyingMount: mount?.ItemTemplate?.metadata?.grantsFlight === true,
+    loadout: worn.map((row) => row.ItemTemplate?.name).filter((name) => typeof name === 'string'),
   }
 }
 

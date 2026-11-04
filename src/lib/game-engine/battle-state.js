@@ -76,6 +76,43 @@ class BattleState {
     // and written beside the summary on BattleLog when the fight ends.
     /** @type {import('./fight-ledger').LedgerTurn[]} */
     this.turns = []
+    // The player as the fight began, for the Battle Log row (`logSnapshot`):
+    // level and XP, which the bestiary's "First to fell" board ranks a win by;
+    // HP and the four stats as this fight rolls them; what was worn. Read once
+    // here and never on a mid-fight re-read, so a potion or a weapon swap
+    // during the fight cannot rewrite how it started.
+    this.playerSnapshot = {
+      level: this.level,
+      xp: typeof playerStats.xp === 'number' ? playerStats.xp : null,
+      hp: typeof playerStats.hp === 'number' ? playerStats.hp : null,
+      hpMax: typeof playerStats.hpMax === 'number' ? playerStats.hpMax : null,
+      str: this.baseStr,
+      def: this.baseDef,
+      dex: this.baseDex,
+      mag: this.baseMag,
+      loadout: this.loadout,
+    }
+  }
+
+  /**
+   * The Battle Log's snapshot columns for this fight: the player's level and
+   * XP as it began as columns (indexed; the "First to fell" order), the rest
+   * as one JSON value for the replay's header.
+   */
+  logSnapshot() {
+    const snap = this.playerSnapshot
+    if (!snap) return { playerLevel: null, playerXp: null, snapshot: null }
+    const { level, xp, ...rest } = snap
+    // Where the fight left the player's HP: the last ledger row's reading,
+    // which is what the fight row's bar draws against the opening HP. A fight
+    // with no turn kept (an opening-blow ambush before the ledger) has none.
+    const last = this.turns.length > 0 ? this.turns[this.turns.length - 1] : null
+    const hpEnd = last && last.hp && typeof last.hp.you === 'number' ? last.hp.you : null
+    return {
+      playerLevel: typeof level === 'number' ? level : null,
+      playerXp: typeof xp === 'number' ? xp : null,
+      snapshot: { ...rest, hpEnd },
+    }
   }
 
   /**
@@ -97,6 +134,10 @@ class BattleState {
       ammo: (gear && (gear.ammo || gear.ammoSlug)) || null,
     }
     this.equippedWeaponCategory = this.gear.weaponCategory || 'MELEE'
+    // What was worn, by name, for the snapshot. Only the opening read carries
+    // it; a bare weapon category mid-fight leaves the opening loadout alone.
+    if (gear && Array.isArray(gear.loadout)) this.loadout = gear.loadout.slice()
+    else if (!Array.isArray(this.loadout)) this.loadout = []
   }
 
   /** Airborne this turn: wings still ticking, or a flying mount. Melee reaches a flying enemy. */

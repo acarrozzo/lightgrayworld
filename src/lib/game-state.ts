@@ -485,6 +485,17 @@ export interface KillEntry {
   kills: number
 }
 
+/**
+ * What the Battle Log adds beside the Kill List for one enemy: fights it
+ * won (`losses`, "killed you ×N") and fights broken off (`fled`). An enemy
+ * with a mark but no kill is "met" on the list.
+ */
+export interface KillMark {
+  enemySlug: string
+  losses: number
+  fled: number
+}
+
 /** One QuestProgress row: a quest the player can see, `completed` once turned in. */
 export interface QuestProgressRow {
   id: string
@@ -511,6 +522,7 @@ export interface GameState {
   token: string | null
   inventory: InventoryItem[]
   killList: KillEntry[]
+  killMarks: KillMark[]
   /** Quest rows and the quest givers met — the journal's two inputs. */
   quests: QuestProgressRow[]
   giversMet: string[]
@@ -550,6 +562,9 @@ export interface GameState {
   setPlayer: (player: Player | null) => void
   setInventory: (inventory: InventoryItem[]) => void
   setKillList: (kills: KillEntry[]) => void
+  setKillMarks: (marks: KillMark[]) => void
+  /** A death to, or a retreat from, this enemy just happened: count it on the list. */
+  bumpKillMark: (enemySlug: string, kind: 'losses' | 'fled') => void
   setQuests: (quests: QuestProgressRow[]) => void
   setGiversMet: (giversMet: string[]) => void
   incrementKill: (monster: string) => void
@@ -590,6 +605,7 @@ export const useGameStore = create<GameState>()(
       token: null,
       inventory: [],
       killList: [],
+      killMarks: [],
       quests: [],
       giversMet: [],
       currentRoom: null,
@@ -607,6 +623,15 @@ export const useGameStore = create<GameState>()(
       setPlayer: (player) => set({ player }),
       setInventory: (inventory) => set({ inventory }),
       setKillList: (killList) => set({ killList }),
+      setKillMarks: (killMarks) => set({ killMarks }),
+      bumpKillMark: (enemySlug, kind) =>
+        set((state) => {
+          const existing = state.killMarks.find((m) => m.enemySlug === enemySlug)
+          if (existing) {
+            return { killMarks: state.killMarks.map((m) => (m.enemySlug === enemySlug ? { ...m, [kind]: m[kind] + 1 } : m)) }
+          }
+          return { killMarks: [...state.killMarks, { enemySlug, losses: kind === 'losses' ? 1 : 0, fled: kind === 'fled' ? 1 : 0 }] }
+        }),
       setQuests: (quests) => set({ quests }),
       setGiversMet: (giversMet) => set({ giversMet }),
       incrementKill: (monster) =>

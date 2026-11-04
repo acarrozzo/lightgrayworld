@@ -53,6 +53,8 @@ type Enemy = {
   isFriendly: boolean
   isFlying: boolean
   rank?: 'boss' | 'miniboss'
+  rare?: boolean
+  area: string
   specials?: string[]
   xpReward: number
   goldMin: number
@@ -159,6 +161,8 @@ export default async function EnemiesPage() {
       isFlying: e.isFlying,
       isFriendly: e.isFriendly,
       rank: e.rank,
+      rare: e.rare,
+      area: e.area,
       // Every perk and standing behaviour, as the battle HUD labels them.
       // Flying has its own tag on the row.
       specials: getEnemyTraits(e).filter((t) => t.id !== 'flying').map((t) => t.label),

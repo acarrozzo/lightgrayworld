@@ -18,6 +18,17 @@ const { prisma } = require('../../db-client')
  * @param {import('../battle-state').BattleState | { enemySlug?: string, enemyName?: string, turnCount?: number, totalDamageDealt?: number, totalDamageReceived?: number, maxSingleHit?: number, multiplayerBonusUsed?: boolean, turns?: unknown[] }} battleState
  * @returns {Promise<void>}
  */
+/**
+ * The player-as-the-fight-began columns for a Battle Log row, from the
+ * battle state's snapshot (battle-state.js `logSnapshot`). A bare-bones
+ * battle (the tests') has none and writes nulls.
+ * @param {{ logSnapshot?: () => { playerLevel: number|null, playerXp: number|null, snapshot: object|null } } | null | undefined} battleState
+ */
+function snapshotColumns(battleState) {
+  if (battleState && typeof battleState.logSnapshot === 'function') return battleState.logSnapshot()
+  return { playerLevel: null, playerXp: null, snapshot: null }
+}
+
 async function recordBattleFled(playerId, battleState) {
   // Tests stand in a bare-bones battle and a database stub without this
   // table; neither should turn a retreat into an error.
@@ -38,6 +49,7 @@ async function recordBattleFled(playerId, battleState) {
         itemsDropped: [],
         multiplayerBonus: Boolean(battleState.multiplayerBonusUsed),
         turns: Array.isArray(battleState.turns) ? battleState.turns : [],
+        ...snapshotColumns(battleState),
       },
     })
   } catch (error) {
@@ -45,4 +57,4 @@ async function recordBattleFled(playerId, battleState) {
   }
 }
 
-module.exports = { recordBattleFled }
+module.exports = { recordBattleFled, snapshotColumns }

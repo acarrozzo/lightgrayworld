@@ -166,6 +166,8 @@ export default function GameInterface() {
   const getCachedRoom = useGameStore((s) => s.getCachedRoom)
   const setInventory = useGameStore((s) => s.setInventory)
   const setKillList = useGameStore((s) => s.setKillList)
+  const setKillMarks = useGameStore((s) => s.setKillMarks)
+  const bumpKillMark = useGameStore((s) => s.bumpKillMark)
   const incrementKill = useGameStore((s) => s.incrementKill)
   const logout = useGameStore((s) => s.logout)
   const setBattleStarted = useGameStore((s) => s.setBattleStarted)
@@ -2227,7 +2229,11 @@ export default function GameInterface() {
       .catch(() => {})
     fetch('/api/player/kill-list', { headers: getAuthHeaders() })
       .then((res) => res.json())
-      .then((data) => { if (!cancelled && data.success) setKillList(data.kills || []) })
+      .then((data) => {
+        if (cancelled || !data.success) return
+        setKillList(data.kills || [])
+        setKillMarks(data.marks || [])
+      })
       .catch(() => {})
     return () => { cancelled = true }
   }, [isLoggedIn, player?.id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -2703,6 +2709,8 @@ export default function GameInterface() {
     const cleanupDefeat = socketHandlers.onBattleDefeat((payload) => {
       const applyDefeat = () => {
         if (payload.summary) setBattleResult(payload.summary)
+        // The Kill List marks the enemy met: "killed you ×N".
+        if (payload.summary?.enemySlug) bumpKillMark(payload.summary.enemySlug, 'losses')
         clearBattle()
         // Dead is HP 0, and death strips every running buff. The card stays up
         // over the room that did it until the player presses Rise; only then
@@ -2774,6 +2782,10 @@ export default function GameInterface() {
     })
 
     const cleanupFled = socketHandlers.onBattleFled((payload) => {
+      // The Kill List marks the enemy met: it got away. Read before the
+      // battle is cleared, since the payload names no enemy.
+      const fledSlug = useGameStore.getState().battle.enemySlug
+      if (fledSlug) bumpKillMark(fledSlug, 'fled')
       clearBattle()
       appendWorldFeed({
         type: 'room',
@@ -3385,6 +3397,12 @@ export default function GameInterface() {
     setCenterActiveTab(tab)
   }, [])
 
+  // The Char page's "Kill list ›" and "All fights ›": the Quests tab on that page.
+  const openQuestsPage = useCallback((tab: QuestsTab) => {
+    openTab('quests')
+    setQuestsTab(tab)
+  }, [openTab])
+
   // A tile in the bar: open its tab, or go home if it is the one open.
   const selectTab = useCallback((tab: TabId) => {
     const next = reduceTabs(tabStateRef.current, { type: 'select', tab })
@@ -3802,6 +3820,7 @@ export default function GameInterface() {
             bookTab={spBookTab}
             onPointsSpent={handlePointsSpent}
             onSetTitle={handleSetTitle}
+            onOpenQuests={openQuestsPage}
           />
         )
       case 'quests':
@@ -3810,6 +3829,7 @@ export default function GameInterface() {
             activeTab={questsTab}
             trackedQuestIds={trackedQuestStore.ids}
             onTrackQuest={trackedQuestStore.toggle}
+            onOpenPlayerProfile={handleOpenPlayerProfile}
             isLoadingQuests={isLoadingQuests}
             isResettingQuests={isResettingQuests}
             isLoggedIn={isLoggedIn}

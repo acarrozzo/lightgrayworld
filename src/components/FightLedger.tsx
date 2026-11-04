@@ -13,6 +13,12 @@ interface FightLedgerProps {
   emptyText?: string
   /** Scroll the newest row into view when the list first draws (the live sheet). */
   scrollToEnd?: boolean
+  /**
+   * One line per turn — your blow, its blow, both HP, the arithmetic small
+   * beside the number — for the side panel's width, where the table's four
+   * columns can only scroll sideways. A long turn wraps; nothing scrolls.
+   */
+  compact?: boolean
   className?: string
 }
 
@@ -29,9 +35,45 @@ interface FightLedgerProps {
  * its special in the crit tone — so a row reads like the readout did when the
  * turn happened. No hooks: a server page can draw it too.
  */
-export default function FightLedger({ turns, enemyName, highlightLast = false, emptyText = 'No turn record for this fight.', scrollToEnd = false, className = '' }: FightLedgerProps) {
+export default function FightLedger({ turns, enemyName, highlightLast = false, emptyText = 'No turn record for this fight.', scrollToEnd = false, compact = false, className = '' }: FightLedgerProps) {
   if (turns.length === 0) {
     return <p className={`px-3 py-4 text-sm text-fg-muted ${className}`}>{emptyText}</p>
+  }
+  if (compact) {
+    return (
+      <div className={`text-[10px] tabular-nums ${className}`}>
+        <div className="grid grid-cols-[18px_minmax(0,1fr)_minmax(0,1fr)_auto] gap-x-1.5 px-2.5 pb-0.5 pt-1 text-[8px] uppercase tracking-[0.06em] text-fg-disabled">
+          <span>#</span>
+          <span>You</span>
+          <span className="truncate">{enemyName}</span>
+          <span className="text-right">HP</span>
+        </div>
+        {turns.map((row, index) => {
+          const isLast = index === turns.length - 1
+          const now = highlightLast && isLast
+          return (
+            <div
+              key={`${row.t}-${index}`}
+              ref={scrollToEnd && isLast ? scrollIntoViewOnMount : undefined}
+              className={`grid grid-cols-[18px_minmax(0,1fr)_minmax(0,1fr)_auto] items-baseline gap-x-1.5 px-2.5 py-[3px] ${now ? 'bg-accent/10' : ''}`}
+              aria-current={now ? 'step' : undefined}
+            >
+              <span className="text-[9px] font-bold text-fg-disabled">{row.t}</span>
+              <span className="min-w-0 text-fg-secondary"><CompactYou you={row.you} /></span>
+              <span className="min-w-0 text-fg-secondary"><CompactFoe foe={row.foe} /></span>
+              {/* Sized to its numbers, never clipped: four-digit HP on both
+                  sides still fits, and the MP takes its own line under them. */}
+              <span className="whitespace-nowrap text-right text-[9px] text-fg-muted">
+                <b className={`font-semibold ${row.hp.you === 0 ? 'text-combat-defeat' : 'text-fg-secondary'}`}>{row.hp.you}</b>
+                ·
+                <b className={`font-semibold ${row.hp.foe === 0 ? 'text-combat-victory' : 'text-fg-secondary'}`}>{row.hp.foe}</b>
+                {row.mp !== null && <span className="block text-[8px] leading-tight text-resource-mp">{row.mp} MP</span>}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    )
   }
   return (
     <div className={`overflow-x-auto ${className}`}>
@@ -79,8 +121,91 @@ export default function FightLedger({ turns, enemyName, highlightLast = false, e
 
 // A ref callback, not an effect, so the component stays hook-free and
 // server-safe; it runs once when the last row mounts.
-function scrollIntoViewOnMount(node: HTMLTableRowElement | null) {
+function scrollIntoViewOnMount(node: HTMLElement | null) {
   if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ block: 'nearest' })
+}
+
+/** The small gray arithmetic beside a compact row's number. */
+function Small({ children }: { children: ReactNode }) {
+  return <span className="ml-1 text-[9px] text-fg-disabled">{children}</span>
+}
+
+/** Your side of a compact turn, on one line: what you did, the number, the arithmetic. */
+function CompactYou({ you }: { you: LedgerTurn['you'] }) {
+  if (you.kind === 'none') return <span className="italic text-fg-disabled">—</span>
+  if (you.kind === 'stone') return <span className="italic text-fg-muted">stone</span>
+  if (you.kind === 'support') {
+    return (
+      <>
+        <span className="font-semibold text-accent-hover">{you.name ?? 'something'}</span>
+        <Small>{supportLabel(you.verb).toLowerCase()}{you.effect ? ` · ${you.effect}` : ''}</Small>
+      </>
+    )
+  }
+  const tone = you.kind === 'spell' ? 'text-stat-mag' : 'text-combat-damage'
+  const bits: string[] = []
+  if (you.miss) bits.push(missLabel(you.miss))
+  else {
+    const calc = youCalc(you)
+    if (calc) bits.push(calc)
+  }
+  if (you.cost !== null) bits.push(`−${you.cost} MP`)
+  for (const helper of you.helpers) bits.push(`+${helper.dmg} ${helper.name}`)
+  return (
+    <>
+      <span className={`font-semibold ${you.miss ? 'text-hue-purple' : tone}`}>{you.miss ? 'Miss' : (you.name ?? 'Strike')}</span>
+      {!you.miss && <b className="ml-1 font-bold text-fg-bright">{you.dmg}</b>}
+      {bits.length > 0 && <Small>{bits.join(' · ')}</Small>}
+    </>
+  )
+}
+
+/** The enemy's side of a compact turn, on one line. */
+function CompactFoe({ foe }: { foe: LedgerTurn['foe'] }) {
+  const fx = foe.fx.map((f) => fxLabel(f))
+  if (foe.kind === 'none') {
+    return (
+      <>
+        <span className="italic text-fg-disabled">{foe.fx.length > 0 ? '' : '—'}</span>
+        {fx.length > 0 && <Small>{fx.join(' · ')}</Small>}
+      </>
+    )
+  }
+  if (foe.kind === 'heal') {
+    return (
+      <>
+        <span className="font-semibold text-combat-heal">Heals</span>
+        {fx.length > 0 && <Small>{fx.join(' · ')}</Small>}
+      </>
+    )
+  }
+  if (foe.kind === 'windup') {
+    return (
+      <>
+        <span className="font-semibold text-status-warning">Winds up</span>
+        <Small>{foe.name ?? 'something'} next turn</Small>
+      </>
+    )
+  }
+  const tone = foe.kind === 'special'
+    ? 'text-combat-crit'
+    : foe.type === 'MAGIC' ? 'text-stat-mag' : foe.type === 'RANGED' ? 'text-stat-dex' : 'text-combat-defeat'
+  const label = foe.name ?? (foe.type === 'MAGIC' ? 'Spell' : 'Hit')
+  const bits: string[] = []
+  if (foe.dodged) bits.push('dodged')
+  else {
+    const calc = foeCalc(foe)
+    if (calc) bits.push(calc)
+  }
+  for (const hit of foe.hits) bits.push(hit.dodged ? 'dodged' : `+${hit.dmg}${hit.name ? ` ${hit.name}` : hit.pack ? ' pack' : ''}`)
+  bits.push(...fx)
+  return (
+    <>
+      <span className={`font-semibold ${tone}`}>{label}</span>
+      <b className={`ml-1 font-bold ${foe.dmg === 0 ? 'text-fg-disabled' : 'text-fg-bright'}`}>{foe.dmg}</b>
+      {bits.length > 0 && <Small>{bits.join(' · ')}</Small>}
+    </>
+  )
 }
 
 function Sub({ children }: { children: ReactNode }) {
