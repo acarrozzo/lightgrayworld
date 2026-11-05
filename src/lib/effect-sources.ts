@@ -4,8 +4,8 @@
  * Each status chip names its User column. This maps a column to the spell
  * that starts it and the consumables that do, and picks the one to point at:
  * the spell when it is learned, since it costs MP rather than an item, else a
- * consumable in the bag. Glory (a place's blessing) and Silver Aura (always
- * on) have nothing that renews them, so they get no link.
+ * consumable in the bag. Silver Aura (always on) has nothing that renews it,
+ * so it gets no link.
  *
  * One lookup serves three surfaces: the "Running on you" chips link to their
  * source, an expiring chip offers Again, and a "wears off" feed line links to

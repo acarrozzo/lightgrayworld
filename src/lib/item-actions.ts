@@ -109,7 +109,6 @@ const BUFF_PRESENTATION: Record<string, { label: string; short: string; bonus: P
   buffMagClicks: { label: 'Magic', short: '+30 MAG', bonus: { mag: 30 } },
   buffDefClicks: { label: 'Defense', short: '+30 DEF', bonus: { def: 30 } },
   buffCoffeeClicks: { label: 'Coffee', short: '+10 all stats', bonus: ALL_STATS(10) },
-  buffGloryClicks: { label: 'Glory', short: '+20 all stats', bonus: ALL_STATS(20) },
   buffTeaClicks: { label: 'Tea', short: '+10 HP/MP regen', bonus: {} },
   regenerateClicks: { label: 'Regenerate', short: 'Regenerate', bonus: {} },
   ironSkinClicks: { label: 'Iron Skin', short: 'Iron Skin', bonus: {} },

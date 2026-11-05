@@ -29,7 +29,6 @@ const BUFF_TONE: Record<string, keyof typeof CONSUMABLE_TONES> = {
   buffMagClicks: 'mag',
   buffDefClicks: 'def',
   buffCoffeeClicks: 'all',
-  buffGloryClicks: 'all',
   // Tea restores HP *and* MP a click, so it belongs to the dual family with
   // the potions that fill both — purple, not one vital's colour.
   buffTeaClicks: 'both',
@@ -46,7 +45,7 @@ export function consumableTone(summary: ConsumableSummary): ConsumableTone {
   if (summary.group === 'mp') return CONSUMABLE_TONES.mp
   if (summary.group === 'both') return CONSUMABLE_TONES.both
   const buff = summary.buffs[0]
-  // Coffee and Glory lift everything; they read as an aura, not as one stat.
+  // Coffee lifts everything; it reads as an aura, not as one stat.
   if (buff && Object.keys(buff.bonus).length >= 3) return CONSUMABLE_TONES.all
   return CONSUMABLE_TONES[BUFF_TONE[buff?.field ?? ''] ?? 'neutral']
 }

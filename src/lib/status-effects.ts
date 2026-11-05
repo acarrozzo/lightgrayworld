@@ -39,7 +39,7 @@ export interface RegenSummary {
  * covers both — which gets its own colour rather than borrowing one vital's.
  * A stat buff wears the stat it lifts (`str`, `dex`, `mag`, `def`, the colours
  * of the header's four numbers and of the capsules themselves); one that lifts
- * all four (Coffee, Glory) is `all`.
+ * all four (Coffee) is `all`.
  */
 export type StatusTone = 'hp' | 'mp' | 'vitals' | 'str' | 'dex' | 'mag' | 'def' | 'all' | 'ability' | 'poison' | 'ward' | 'aura'
 
@@ -77,7 +77,6 @@ const BUFF_ICONS: Record<string, string> = {
   buffMagClicks: 'blue-potion',
   buffDefClicks: 'potion2',
   buffCoffeeClicks: 'coffee',
-  buffGloryClicks: 'sun',
   buffTeaClicks: 'tea',
   regenerateClicks: 'regenerate',
   ironSkinClicks: 'ironskin',
@@ -180,7 +179,7 @@ export function statusChips(player: Player | null | undefined, inventory: Invent
   if (regenerate > 0) push({ id: 'regenerate', field: 'regenerateClicks', label: 'Regenerate', detail: `+${summary.regenerateAmount} HP`, clicks: regenerate, tone: 'hp', title: `Regenerate: +${summary.regenerateAmount} HP every click for ${regenerate} more clicks.` })
 
   // The consumables in the order they are listed everywhere: the capsules,
-  // coffee, then tea; Glory, the temple's blessing, after them.
+  // coffee, then tea.
   const tea = clicksOf('buffTeaClicks')
   for (const [field, { stats, amount }] of Object.entries(STAT_BUFF_FIELDS)) {
     const clicks = clicksOf(field)

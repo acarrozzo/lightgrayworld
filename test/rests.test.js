@@ -16,7 +16,7 @@ const ROOT = path.join(__dirname, '..')
 
 // ── stubs, before anything that loads them ───────────────────────────────────
 
-const db = { row: null, updates: [], buffCalls: [], member: true, gloryClicks: 0 }
+const db = { row: null, updates: [], member: true }
 
 const stub = (rel, exports) => {
   const p = require.resolve(path.join(ROOT, rel))
@@ -26,19 +26,11 @@ const stub = (rel, exports) => {
 stub('src/lib/db-client.js', {
   prisma: {
     user: {
-      findUnique: async ({ select }) => {
-        if (select?.buffGloryClicks) return { buffGloryClicks: db.gloryClicks }
-        return db.row
-      },
+      findUnique: async () => db.row,
       update: async (args) => {
         db.updates.push(args)
         return {}
       },
-    },
-    $queryRawUnsafe: async (sql, playerId, clicks) => {
-      db.buffCalls.push({ sql, clicks })
-      db.gloryClicks = Math.max(db.gloryClicks, clicks)
-      return [{ value: db.gloryClicks }]
     },
   },
 })
@@ -92,9 +84,7 @@ const vitals = (hp, mp, extra = {}) => ({ hp, mp, hpMax: 100, mpMax: 50, physica
 test.beforeEach(() => {
   db.row = null
   db.updates.length = 0
-  db.buffCalls.length = 0
   db.member = true
-  db.gloryClicks = 0
   battleCalls.startBattle = 0
 })
 
@@ -162,13 +152,11 @@ test('with no Mental Training, a plain Rest at full HP has nothing to give', () 
   assert.match(restSettledMessage(v, null), /Mental Training/)
 })
 
-test('Bathe in Glory is settled only when the glory buff is also full', () => {
-  const glory = getRoomRest('425', 'bathe in glory')
-  const charged = vitals(200, 150)
-  assert.equal(isRestSettled(charged, glory, { buffGloryClicks: 100 }), true)
-  assert.equal(isRestSettled(charged, glory, { buffGloryClicks: 99 }), false)
-  assert.equal(isRestSettled(charged, glory, {}), false)
-  assert.equal(isRestSettled(vitals(40, 150), glory, { buffGloryClicks: 100 }), false)
+test('the Master Temple rest is a +100 overcharge and nothing more', () => {
+  const temple = getRoomRest('425', 'rest at the temple')
+  assert.equal(temple.bonus, 100)
+  assert.equal(isRestSettled(vitals(200, 150), temple), true)
+  assert.equal(isRestSettled(vitals(40, 150), temple), false)
 })
 
 // ── the button ───────────────────────────────────────────────────────────────
@@ -242,33 +230,17 @@ test('a non-member at a guild fire is turned away free, vitals untouched', async
   assert.match(result.playerEvents[0].payload.message, /Wizard’s Guild/)
 })
 
-test('Bathe in Glory: rest and buff, buff alone, or a free refusal', async () => {
-  const bathe = SERVER_ACTIONS['425']['bathe in glory']
+test('the Master Temple rest lands at +100 and is free once charged', async () => {
+  const rest = SERVER_ACTIONS['425']['rest at the temple']
 
-  // Both: the rest lands and the glory starts.
   db.row = vitals(40, 10)
-  let result = await bathe('p1', roomWithPlayer())
+  let result = await rest('p1', roomWithPlayer())
   assert.equal(result.noTurn, undefined)
   assert.deepEqual(db.updates[0].data, { hp: 200, mp: 150 })
-  assert.equal(db.buffCalls.length, 1)
-  assert.equal(result.playerEvents.length, 2)
 
-  // Already charged, glory running down: the bath is the buff alone, and a turn.
   db.updates.length = 0
-  db.buffCalls.length = 0
   db.row = vitals(200, 150)
-  db.gloryClicks = 40
-  result = await bathe('p1', roomWithPlayer())
-  assert.equal(result.noTurn, undefined)
-  assert.equal(db.updates.length, 0)
-  assert.equal(db.buffCalls.length, 1)
-  assert.equal(result.playerEvents.length, 1)
-  assert.doesNotMatch(result.playerEvents[0].payload.data.modalContent.message, /REST/)
-
-  // Charged and a full glory: nothing to raise, free.
-  db.buffCalls.length = 0
-  db.gloryClicks = 100
-  result = await bathe('p1', roomWithPlayer())
+  result = await rest('p1', roomWithPlayer())
   assert.equal(result.noTurn, true)
-  assert.equal(db.buffCalls.length, 0)
+  assert.equal(db.updates.length, 0)
 })

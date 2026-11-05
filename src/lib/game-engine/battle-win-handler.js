@@ -347,7 +347,7 @@ async function handleBattleDefeat(playerId, battleState) {
   })
 
   // Death strips every running effect, as the original did: wings, gills, the
-  // capsule buffs, coffee, glory. The zeros ride back on the defeat event so
+  // capsule buffs, coffee, tea. The zeros ride back on the defeat event so
   // the client's buff strip clears along with the HP bar.
   const buffs = await clearBuffs(prisma, playerId)
 

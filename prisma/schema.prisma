@@ -92,8 +92,6 @@ model User {
   buffMagClicks             Int             @default(0)
   buffDefClicks             Int             @default(0)
   buffCoffeeClicks          Int             @default(0)
-  /// Bathing in the Master Water Temple's glory: +30 to every core stat while it counts down.
-  buffGloryClicks           Int             @default(0)
   /// The Silver Shaman's aura, learned in a full Silver set: a standing +20 to every core stat.
   silverAura                Boolean         @default(false)
   /// A cup of tea: +5 HP and +5 MP regen per click while it counts down.

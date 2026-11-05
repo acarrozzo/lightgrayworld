@@ -39,10 +39,9 @@ test('a learned spell is the source before an item; otherwise the item in the ba
   assert.equal(byItem?.kind === 'item' && byItem.action, 'drink')
 })
 
-test('poison points at its cure; Glory and an empty bag point nowhere', () => {
+test('poison points at its cure; an empty bag points nowhere', () => {
   assert.equal(effectSource('poisonClicks', player(), [antidote])?.kind, 'item')
   assert.equal(effectSource('poisonClicks', player({ spells: { antidote: 1 } }), [antidote])?.kind, 'spell')
-  assert.equal(effectSource('buffGloryClicks', player(), [coffee, antidote]), null)
   assert.equal(effectSource('buffCoffeeClicks', player(), []), null)
 })
 

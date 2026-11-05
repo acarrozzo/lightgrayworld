@@ -1,6 +1,6 @@
 /**
  * The rests: the plain Rest every room has, and the special ones a room adds —
- * "Rest at the Fireplace", the guild fires, the fountains, Bathe in Glory.
+ * "Rest at the Fireplace", the guild fires, the fountains, the Master Temple.
  *
  * One CommonJS module so the server and the client agree on what a rest gives.
  * The handlers in game-engine/room-action-handlers.js apply it; the room's
@@ -29,7 +29,6 @@
  * @property {string} message The feed line when the rest lands.
  * @property {string} [requiresMembership] Faction id (factions.js) whose members may rest here.
  * @property {string} [lockedMessage] What a non-member is told, on the button and in the feed.
- * @property {{ field: string, clicks: number, label: string }} [buff] A click buff (buff-service) the rest also starts.
  */
 
 /** Room id → action → the rest it is. */
@@ -117,12 +116,13 @@ const ROOM_RESTS = /** @type {Record<string, Record<string, RoomRest>>} */ ({
       message: 'You rest by the fresh water spring at the Blue Oasis. Your HP and MP are fully restored, plus an extra +50 to each.',
     },
   },
-  // The Master Temple's glory: the rest and +20 to everything for 100 clicks.
+  // The Master Temple. The original's "Bathe in Glory" also started a stat
+  // buff and refilled the Master Pack; the buff is gone and the pack is on the
+  // floor as supplies, so this is the rest alone.
   '425': {
-    'bathe in glory': {
+    'rest at the temple': {
       bonus: 100,
-      message: "You bathe in the Master Temple's glory. Your HP and MP are fully restored, plus an extra +100 to each.",
-      buff: { field: 'buffGloryClicks', clicks: 100, label: 'Glory' },
+      message: 'You rest on the main platform of the Master Water Temple. Your HP and MP are fully restored, plus an extra +100 to each.',
     },
   },
   '497': {
@@ -224,26 +224,13 @@ function restOutcome(vitals, rest) {
 }
 
 /**
- * Whether the rest's buff would add clicks: it starts at `clicks` and never
- * shortens what is left (buff-service's GREATEST), so it adds nothing only
- * while a full countdown is still running.
- * @param {RoomRest | null} rest
- * @param {Record<string, number> | null | undefined} buffs Click countdowns by User column.
- */
-function restBuffWouldGain(rest, buffs) {
-  if (!rest?.buff) return false
-  return num(buffs?.[rest.buff.field], 0) < rest.buff.clicks
-}
-
-/**
- * True when resting would raise nothing: neither vital and no buff.
+ * True when resting would raise neither vital.
  * @param {Vitals} vitals
  * @param {RoomRest | null} rest
- * @param {Record<string, number> | null | undefined} [buffs]
  */
-function isRestSettled(vitals, rest, buffs) {
+function isRestSettled(vitals, rest) {
   const { hpGain, mpGain } = restOutcome(vitals, rest)
-  return hpGain === 0 && mpGain === 0 && !restBuffWouldGain(rest, buffs)
+  return hpGain === 0 && mpGain === 0
 }
 
 /**
@@ -255,9 +242,6 @@ function isRestSettled(vitals, rest, buffs) {
 function restSettledMessage(vitals, rest) {
   if (rest) {
     const bonus = num(rest.bonus, 0)
-    if (rest.buff) {
-      return `Your HP and MP are already at +${bonus} or more, and your ${rest.buff.label} buff still has all ${rest.buff.clicks} clicks.`
-    }
     return bonus > 0
       ? `Your HP and MP are already at +${bonus} or more. Resting here won't raise them.`
       : 'You already have full HP and MP.'
@@ -275,7 +259,6 @@ module.exports = {
   ROOM_RESTS,
   getRoomRest,
   restOutcome,
-  restBuffWouldGain,
   isRestSettled,
   restSettledMessage,
 }

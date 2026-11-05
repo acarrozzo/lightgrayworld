@@ -365,7 +365,7 @@ const OCEAN_PACKS = [
     ],
   }),
   // The Master Temple (425): three of each colour and each balm. The original
-  // also refilled this from "bathe in glory"; here the floor is the only source.
+  // refilled this from its "bathe in glory" rest; here the floor is the only source.
   packEntries({
     roomId: '425',
     label: 'Master Pack',

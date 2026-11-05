@@ -22,7 +22,7 @@ function cycleLine(playerId, setKey, lines) {
   return index < 0 ? null : { text: list[index], index }
 }
 const { goldChestFlagForRoom } = require('../game-data/gold-chests')
-const { getRoomRest, restBuffWouldGain } = require('../game-data/room-rests')
+const { getRoomRest } = require('../game-data/room-rests')
 const { isMember } = require('./services/faction-service')
 
 /**
@@ -1761,66 +1761,6 @@ async function pickUnderwaterFlower(playerId, roomState) {
 }
 
 /**
- * Bathing in the Master Water Temple's glory: a full rest with +100 over the
- * top and +20 to everything for 100 clicks. The original also topped the
- * Master Pack up on this button; here the pack is on the temple floor as
- * supplies (config/room-supplies.js) and is only ever taken from there.
- *
- * Already charged past +100, the bath is the buff alone, and still a turn;
- * charged and with a full 100 clicks of glory left, it is the rest's free
- * refusal, and the button is already grey.
- */
-async function batheInGlory(playerId, roomState) {
-  const { prisma } = require('../db-client')
-  const { applyBuff } = require('./services/buff-service')
-  const action = 'bathe in glory'
-  const restDef = getRoomRest('425', action)
-  const { field, clicks } = restDef.buff
-
-  const rest = await roomState.applyRest(playerId, action, restDef)
-  if (!rest.success) return rest
-  if (rest.noTurn) {
-    const row = await prisma.user.findUnique({ where: { id: playerId }, select: { [field]: true } })
-    if (!restBuffWouldGain(restDef, row)) return rest
-  }
-
-  const glory = await applyBuff(prisma, playerId, field, clicks)
-  const buffLine = `BUFF: +20 STR, +20 DEX, +20 MAG, +20 DEF for ${clicks} clicks`
-  const gloryResult = {
-    success: true,
-    action,
-    playerEvents: [
-      {
-        event: 'action:feedback',
-        payload: createActionFeedbackPayload(action, 'success', `You bathe in the Master Temple's glory! BUFF: +20 STR, DEX, MAG and DEF for ${clicks} clicks.`, {
-          roomId: roomState.roomId,
-          buffs: { [field]: glory },
-          showModal: true,
-          modalContent: {
-            type: 'icon',
-            icon: 'npc-guardian',
-            iconColor: 'blue-300',
-            title: "You bathe in the Master Temple's glory",
-            message: rest.noTurn ? buffLine : `REST: +${restDef.bonus} HP, +${restDef.bonus} MP\n${buffLine}`,
-          },
-        }),
-      },
-    ],
-  }
-  return rest.noTurn ? gloryResult : mergeActionResultsForGlory(rest, gloryResult)
-}
-
-/** Rest's own feedback first (it carries the vitals), then the glory's. */
-function mergeActionResultsForGlory(rest, glory) {
-  return {
-    ...rest,
-    success: true,
-    action: 'bathe in glory',
-    playerEvents: [...(rest.playerEvents ?? []), ...(glory.playerEvents ?? [])],
-  }
-}
-
-/**
  * Map of room IDs to room-specific actions. Each action entry can be either:
  * - A string message (handled by executeBasicDisplay)
  * - A custom function (playerId, roomState) => actionResult
@@ -3143,10 +3083,10 @@ const ROOM_ACTIONS = {
     'talk to jungle jim': npcTalk('jungle_jim'),
   },
 
-  // --- The Master Temple: the Guardian, the glory, the altar; the Master Pack is on the floor as supplies ---
+  // --- The Master Temple: the Guardian, the rest, the altar; the Master Pack is on the floor as supplies ---
   '425': {
     'talk to water temple guardian': npcTalk('water_temple_guardian'),
-    'bathe in glory': batheInGlory,
+    'rest at the temple': makeRestHandler('425', 'rest at the temple'),
     // The original's evolve ritual — reset your stats, skills and spells for
     // an evolve level — is not built yet. The altar stands; it is dormant.
     'evolve': {

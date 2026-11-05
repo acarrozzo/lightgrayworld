@@ -25,8 +25,8 @@
  *     death clears them all.
  *   - Only one buff from the consumable slot (`CONSUMABLE_SLOT_FIELDS`: the four
  *     capsules, coffee, tea) runs at a time; `startBuff` ends the others in the
- *     statement that starts the new one. Wings, gills, wards, spells and Glory
- *     sit outside it.
+ *     statement that starts the new one. Wings, gills, wards and spells sit
+ *     outside it.
  *   - Enemy poison is a special in `game-data/enemy-specials.js`, applied by
  *     `battle-action-handlers.applyEnemyHit`, which spends Magic Armor before HP.
  *   - The client reads these same modules for the header status strip and item
@@ -50,9 +50,6 @@ const STAT_BUFF_FIELDS = {
   buffMagClicks: { stats: ['mag'], amount: 30 },
   buffDefClicks: { stats: ['def'], amount: 30 },
   buffCoffeeClicks: { stats: ['str', 'dex', 'mag', 'def'], amount: 10 },
-  // Bathing in the Master Water Temple's glory: +20 to everything for 100
-  // clicks (the original's +30, lowered now that it stacks on one consumable).
-  buffGloryClicks: { stats: ['str', 'dex', 'mag', 'def'], amount: 20 },
 }
 
 /**
@@ -90,8 +87,7 @@ const BUFF_FIELDS = ['wings', 'gills', ...Object.keys(STAT_BUFF_FIELDS), ...STAT
  * deliberate departure from the original, where they all stacked.)
  *
  * Everything else stays outside it and runs alongside: wings and gills open
- * routes, poison immunity is a ward, the spells cost MP, and Glory is the
- * temple's blessing rather than something from the bag.
+ * routes, poison immunity is a ward, and the spells cost MP.
  */
 const CONSUMABLE_SLOT_FIELDS = ['buffStrClicks', 'buffDexClicks', 'buffMagClicks', 'buffDefClicks', 'buffCoffeeClicks', 'buffTeaClicks']
 
@@ -306,7 +302,6 @@ const BUFF_LABELS = {
   buffMagClicks: 'Magic',
   buffDefClicks: 'Defense',
   buffCoffeeClicks: 'Coffee',
-  buffGloryClicks: 'Glory',
   buffTeaClicks: 'Tea',
   regenerateClicks: 'Regenerate',
   ironSkinClicks: 'Iron Skin',

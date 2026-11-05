@@ -42,7 +42,7 @@ export function vitalState(current: number, max: number): VitalState {
   return 'ok'
 }
 
-/** How far past the ceiling the number is, or 0. The "+8" after a Glory HP. */
+/** How far past the ceiling the number is, or 0. The "+8" after an overcharged rest. */
 export function vitalOverflow(current: number, max: number): number {
   return current > max ? current - max : 0
 }

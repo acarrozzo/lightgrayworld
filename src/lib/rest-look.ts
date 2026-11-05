@@ -27,6 +27,6 @@ export function restLook(
   if (rest?.requiresMembership && isMemberOf && !isMemberOf(rest.requiresMembership)) {
     return { kind: 'locked', title: rest.lockedMessage ?? 'Members only.' }
   }
-  if (!player || !isRestSettled(player, rest, player.buffs)) return { kind: 'open' }
+  if (!player || !isRestSettled(player, rest)) return { kind: 'open' }
   return { kind: 'settled', title: restSettledMessage(player, rest) }
 }

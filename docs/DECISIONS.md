@@ -10,7 +10,7 @@ The design calls that shaped the recreation, newest last. Each is a choice that 
 
 **One enemy per room per player** (Sept 2026). Multi-enemy waves were removed for a single typed present-enemy slot. Neutral mobs persist. Future NPCs are shared; mobs are per player.
 
-**Buffs are counted in clicks** (Sept 2026). Every temporary effect is a click countdown on the player row, decremented once per counted action, chat excluded, exactly like the click counter. Only one consumable buff (capsules, coffee, tea) runs at a time; wings, gills, wards, spells and Glory sit outside that slot.
+**Buffs are counted in clicks** (Sept 2026). Every temporary effect is a click countdown on the player row, decremented once per counted action, chat excluded, exactly like the click counter. Only one consumable buff (capsules, coffee, tea) runs at a time; wings, gills, wards and spells sit outside that slot.
 
 **Which actions provoke an enemy** (Sept 2026). Rest, search, use, equip, pickup and drop can provoke. Refusals and no-ops are free out of a fight (in one they cost the turn; see Oct 31 2026). A directional step out of a fight is refused; a teleport is allowed and is the escape hatch, as in the original, leaving the enemy standing at full HP for next time. Grace after a fight applies on a win only.
 

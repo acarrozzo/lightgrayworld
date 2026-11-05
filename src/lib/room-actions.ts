@@ -387,7 +387,7 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '425': [
     { action: 'talk to water temple guardian', label: 'Water Temple Guardian', icon: 'npc-guardian', className: 'fill-hue-gold', questIds: questIdsForNpc('water_temple_guardian') },
-    { action: 'bathe in glory', label: 'Bathe in Glory', icon: 'heal', className: 'fill-hue-sky' },
+    { action: 'rest at the temple', label: 'Rest at the Temple', icon: 'heal', className: 'fill-hue-sky' },
     { action: 'evolve', label: 'Evolve', icon: 'pillar3', className: 'fill-mood-arcane' },
   ],
 
