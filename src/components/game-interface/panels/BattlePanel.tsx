@@ -1003,13 +1003,18 @@ export default function BattlePanel({
               </p>
             </>
           ) : battle.enemyDodged ? (
-            // The enemy's own Dodge: nothing was rolled and nothing was spent.
+            // The enemy's own Dodge or Block: nothing was rolled, but the cast
+            // or strike it stepped out of was still paid for.
             <>
               <p className="text-[10px] text-fg-disabled italic">{battle.enemyEffects?.blocked ? 'Blocked' : 'Dodged'}</p>
               <p className="text-xs text-fg-secondary">
                 The {battle.enemyName} {battle.enemyEffects?.blocked ? 'blocks your' : 'steps out of your'}{' '}
-                <span className={`font-semibold ${spellCast && spellCastTone ? spellCastTone.text : isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{spellCast ? spellCast.name : (weaponName ?? 'fists')}</span>
-                {spellCast ? ' — no MP spent' : ''}
+                <span className={`font-semibold ${spellCast && spellCastTone ? spellCastTone.text : skillUse && skillUseTone ? skillUseTone.text : isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{spellCast ? spellCast.name : skillUse ? skillUse.name : (weaponName ?? 'fists')}</span>
+                {spellCast ? (
+                  <span className="ml-1 text-resource-mp tabular-nums">(−{spellCast.cost} MP)</span>
+                ) : skillUse ? (
+                  <span className="ml-1 text-resource-mp tabular-nums">(−{skillUse.cost} MP)</span>
+                ) : null}
               </p>
               <p className="text-xl @min-[600px]:text-2xl font-black text-hue-purple leading-none tabular-nums italic">
                 {battle.enemyEffects?.blocked ? 'BLOCKED' : 'MISS'}
@@ -1025,11 +1030,10 @@ export default function BattlePanel({
                 You <span className={`font-semibold ${skillUseTone.text}`}>{skillUse.name}</span> with your{' '}
                 <span className={`font-semibold ${isRanged ? 'text-combat-victory' : 'text-combat-damage'}`}>{weaponName ?? 'fists'}</span>
                 {ownHit}
+                <span className="ml-1 text-resource-mp tabular-nums">(−{skillUse.cost} MP)</span>
                 {battle.immuneToMagic ? (
-                  <span className="ml-1 text-fg-muted italic">— the {battle.enemyName} shrugs off the magic, no MP spent</span>
-                ) : (
-                  <span className="ml-1 text-resource-mp tabular-nums">(−{skillUse.cost} MP)</span>
-                )}
+                  <span className="ml-1 text-fg-muted italic">— the {battle.enemyName} shrugs off the magic</span>
+                ) : null}
               </p>
               <p
                 className={`text-2xl @min-[600px]:text-4xl font-black leading-none tabular-nums ${skillUseTone.text}`}
@@ -1044,6 +1048,7 @@ export default function BattlePanel({
                 <p className="text-[10px] text-fg-disabled italic">Immune to magic</p>
                 <p className="text-xs text-fg-secondary">
                   Your <span className={`font-semibold ${spellCastTone.text}`}>{spellCast.name}</span> fizzles — the {battle.enemyName} shrugs off magic!
+                  <span className="ml-1 text-resource-mp tabular-nums">(−{spellCast.cost} MP)</span>
                 </p>
                 <p className="text-xl @min-[600px]:text-2xl font-black text-fg-muted leading-none tabular-nums italic">
                   IMMUNE

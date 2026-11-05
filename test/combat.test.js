@@ -264,6 +264,12 @@ test('an enemy dodge makes the attack nothing and still leaves the enemy its swi
   const cast = resolveTurn(s, 0, { enemyDodged: true, spell: { def: { id: 'fireball', name: 'Fireball', icon: 'f', hue: 'red' }, level: 1, cost: 7 } })
   assert.equal(cast.spell.name, 'Fireball')
   assert.equal(cast.spell.amount, 0)
+  // So does the strike record, with its cost: the MP went before the roll.
+  const struck = resolveTurn(s, 0, { enemyDodged: 'block', skill: { def: { id: 'slice', name: 'Slice', icon: 's', hue: 'red' }, level: 2, cost: 2 } })
+  assert.equal(struck.skill.name, 'Slice')
+  assert.equal(struck.skill.cost, 2)
+  assert.equal(struck.skill.bonus, 0)
+  assert.equal(struck.playerDealtDamage, 0)
 })
 
 test('Melt halves a melee blow and its strike, never a shot or a spell', () => {

@@ -436,10 +436,10 @@ function notEnoughMpMessage(spell, verb = 'cast') {
 
 // Player-side line of a battle:turn message for a skill strike — a swing with
 // a bonus on it. A Magic Strike on a magic-immune enemy still cuts, so the
-// number stands; only the magic (and its MP) came to nothing.
+// number stands; only the magic came to nothing, and the MP went either way.
 function describeSkillStrike(enemyName, turn, extra = '') {
   const use = turn.skill
-  const cost = turn.immuneToMagic ? 'no MP spent' : `${use.cost} MP`
+  const cost = `${use.cost} MP`
   const note = turn.immuneToMagic ? ` The ${enemyName} is immune to magic. The strike's magic fizzles.` : ''
   return `You ${use.name} the ${enemyName} for ${turn.playerDealtDamage} damage (${cost}).${extra}${note}${describeMelt(turn)}`
 }
@@ -450,15 +450,13 @@ function describeNoAttack(enemyName, turn) {
   if (turn.petrified) {
     return `You are STONE. You cannot move; the ${enemyName} circles.`
   }
-  if (turn.enemyDodged && turn.enemyEffects?.blocked) {
-    return turn.spell
-      ? `The ${enemyName} BLOCKS your ${turn.spell.name}! No MP spent.`
-      : `The ${enemyName} BLOCKS your attack!`
-  }
   if (turn.enemyDodged) {
-    return turn.spell
-      ? `The ${enemyName} DODGES your ${turn.spell.name}! No MP spent.`
-      : `The ${enemyName} DODGES your attack!`
+    const verb = turn.enemyEffects?.blocked ? 'BLOCKS' : 'DODGES'
+    // The cast or strike it stepped out of was paid for all the same.
+    const use = turn.spell ?? turn.skill
+    return use
+      ? `The ${enemyName} ${verb} your ${use.name}! (${use.cost} MP spent)`
+      : `The ${enemyName} ${verb} your attack!`
   }
   return null
 }
@@ -494,7 +492,7 @@ function describeExtraShot(enemyName, extraShot) {
 function describeSpellStrike(enemyName, turn) {
   const cast = turn.spell
   if (turn.immuneToMagic) {
-    return `The ${enemyName} is immune to magic! Your ${cast.name} fizzles.`
+    return `The ${enemyName} is immune to magic! Your ${cast.name} fizzles (${cast.cost} MP spent).`
   }
   return `You cast ${cast.name} for ${cast.cost} MP and hit the ${enemyName} for ${turn.playerDealtDamage} damage.`
 }
@@ -829,33 +827,34 @@ async function executeStartBattle(action, playerId, roomState) {
     }
   }
 
-  // The enemy may step out of the opening blow entirely. Rolled here, before
-  // anything is charged or spent, so a dodged cast or strike is a free one.
-  const enemyDodged = !isAdvantageTurn && rollEnemyDodge(enemy)
-
   // A spell is paid for before the fight exists, so a cast the player cannot
   // afford is refused outright rather than opening a battle they never struck
-  // in. A magic-immune enemy is never charged — the cast does nothing, and the
-  // original spent no MP on it either.
+  // in. It is paid whatever the enemy does with it: a dodge, a block or magic
+  // immunity wastes the cast, not the attempt (Nov 2026; the original spent
+  // no MP on any of the three).
   let spellMp = null
-  if (spell && !isAdvantageTurn && !enemy.isMagicImmune && !enemyDodged) {
+  if (spell && !isAdvantageTurn) {
     spellMp = await chargeSpellMp(playerId, spell)
     if (!spellMp) return errorResult('start_battle', notEnoughMpMessage(spell))
     roomState.updatePlayer(playerId, (state) => ({ ...state, mp: spellMp.mp }))
   }
 
-  // A skill strike is paid for the same way. The MP buys the bonus, so when the
-  // bonus cannot land the strike is dropped and nothing is charged: a Slice or
-  // Magic Strike at something airborne is a plain missed swing, and a Magic Strike on a
-  // magic-immune enemy keeps its record (the panel says it fizzled) but costs
-  // nothing, like a spell.
-  let strike = skill && !isAdvantageTurn && !enemyDodged && skillCanLand(skill, enemy, equippedWeaponCategory, playerIsFlying(playerStats, equippedWeapon)) ? skill : null
+  // A skill strike is paid for the same way, dodged, blocked or fizzled alike.
+  // The one strike dropped before anything is charged is one the weapon itself
+  // cannot make: a Slice or Magic Strike at something airborne, or behind a
+  // weapon the enemy shrugs off, goes in as a plain missed swing (the deck
+  // greys those rows; see skillCanLand).
+  let strike = skill && !isAdvantageTurn && skillCanLand(skill, enemy, equippedWeaponCategory, playerIsFlying(playerStats, equippedWeapon)) ? skill : null
   let skillMp = null
-  if (strike && !(strike.def.magic && enemy.isMagicImmune)) {
+  if (strike) {
     skillMp = await chargeSpellMp(playerId, strike)
     if (!skillMp) return errorResult('start_battle', notEnoughMpMessage(strike, 'use'))
     roomState.updatePlayer(playerId, (state) => ({ ...state, mp: skillMp.mp }))
   }
+
+  // The enemy may step out of the opening blow entirely. Rolled after the MP
+  // went, so a dodged cast or strike was still a cast or strike.
+  const enemyDodged = !isAdvantageTurn && rollEnemyDodge(enemy)
 
   const battleState = new BattleState({ playerId, roomId: roomState.roomId, enemy, playerStats, equippedWeaponCategory, gear: equippedWeapon })
   roomState.activeBattles.set(playerId, battleState)
@@ -923,11 +922,11 @@ async function executeStartBattle(action, playerId, roomState) {
   battleState.incrementTurn()
 
   // The opening shot spends a round. Only a player-initiated turn fires — an
-  // advantage turn is the enemy's swing, not yours, and a dodged shot never
-  // left the string.
+  // advantage turn is the enemy's swing, not yours. A dodged shot still left
+  // the string, so it is spent like any other.
   let ammoRemaining = null
   let ammoInventory = null
-  if (ammo && !enemyDodged) {
+  if (ammo) {
     ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo, firstTurn.extraShot ? 2 : 1))
   }
 
@@ -1167,39 +1166,41 @@ async function executePlayerAttack(action, playerId, roomState) {
     }
   }
 
-  // The enemy may step out of the whole attack. Rolled before anything is
-  // charged or spent, so a dodged cast, strike or shot costs nothing.
-  const enemyDodged = !petrified && rollEnemyDodge(battleState.enemy)
-
   // Not enough MP is treated like an empty quiver: the cast is refused and the
   // battle does not advance. (The original let the enemy swing anyway — a
   // mis-click cost you a turn — which is treated here as a defect, not canon.)
-  // A magic-immune enemy is never charged: nothing is rolled, nothing is spent.
+  // A cast that goes through is paid whatever the enemy does with it: a dodge,
+  // a block or magic immunity wastes the cast, not the attempt (Nov 2026; the
+  // original spent no MP on any of the three).
   let spellMp = null
-  if (spell && !petrified && !enemyDodged && !battleState.enemy.isMagicImmune) {
+  if (spell && !petrified) {
     spellMp = await chargeSpellMp(playerId, spell)
     if (!spellMp) return errorResult('player_attack', notEnoughMpMessage(spell))
     roomState.updatePlayer(playerId, (state) => ({ ...state, mp: spellMp.mp }))
   }
 
-  // A skill strike pays the same way, and only when its bonus can land (see
-  // skillCanLand). A Magic Strike on a magic-immune enemy keeps its record but
-  // is never charged.
-  const strike = skill && !petrified && !enemyDodged && skillCanLand(skill, battleState.enemy, liveWeapon.weaponCategory, battleState.isFlying) ? skill : null
+  // A skill strike pays the same way, dodged, blocked or fizzled alike. Only a
+  // strike the weapon itself cannot make is dropped unpaid (see skillCanLand).
+  const strike = skill && !petrified && skillCanLand(skill, battleState.enemy, liveWeapon.weaponCategory, battleState.isFlying) ? skill : null
   let skillMp = null
-  if (strike && !(strike.def.magic && battleState.enemy.isMagicImmune)) {
+  if (strike) {
     skillMp = await chargeSpellMp(playerId, strike)
     if (!skillMp) return errorResult('player_attack', notEnoughMpMessage(strike, 'use'))
     roomState.updatePlayer(playerId, (state) => ({ ...state, mp: skillMp.mp }))
   }
 
+  // The enemy may step out of the whole attack. Rolled after the MP went, so
+  // a dodged cast or strike was still a cast or strike; the arrow is spent
+  // below the same way.
+  const enemyDodged = !petrified && rollEnemyDodge(battleState.enemy)
+
   const otherCombatants = getOtherCombatantCount(roomState, playerId)
   const turnResult = resolveTurn(battleState, otherCombatants, { spell: petrified ? null : spell, skill: strike, enemyDodged, canMultiShot: !ammo || ammo.remaining >= 2 })
 
-  // The shot resolved — spend the round. A dodged shot never left the string.
+  // The shot resolved — spend the round, dodged or not: the arrow flew.
   let ammoRemaining = null
   let ammoInventory = null
-  if (ammo && !enemyDodged) {
+  if (ammo) {
     ;({ remaining: ammoRemaining, inventory: ammoInventory } = await consumeAmmo(playerId, ammo, turnResult.extraShot ? 2 : 1))
   }
 

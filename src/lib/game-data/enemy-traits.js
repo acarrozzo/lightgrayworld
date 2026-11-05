@@ -71,7 +71,7 @@ function getEnemyTraits(enemy) {
     traits.push({
       id: 'enemy-dodge',
       label: `Dodge ${pct(b.dodgeChance)}`,
-      title: `Dodge: a ${pct(b.dodgeChance)} chance your attack misses it entirely. A spell or strike it dodges costs no MP.`,
+      title: `Dodge: a ${pct(b.dodgeChance)} chance your attack misses it entirely. A spell or strike it dodges still costs its MP.`,
       tone: 'dex',
     })
   }
@@ -120,7 +120,7 @@ function getEnemyTraits(enemy) {
     traits.push({
       id: 'enemy-block',
       label: `Block ${pct(b.blockChance)}`,
-      title: `Block: a ${pct(b.blockChance)} chance it blocks your whole attack. A spell or strike it blocks costs no MP.`,
+      title: `Block: a ${pct(b.blockChance)} chance it blocks your whole attack. A spell or strike it blocks still costs its MP.`,
       tone: 'str',
     })
   }
@@ -163,7 +163,7 @@ function getEnemyTraits(enemy) {
     traits.push({ id: 'immune-ranged', label: 'No Ranged', title: 'Immune to ranged: arrows and bolts do nothing to it.', tone: 'dex' })
   }
   if (enemy.isMagicImmune) {
-    traits.push({ id: 'immune-magic', label: 'No Magic', title: 'Immune to magic: spells and magic strikes do nothing to it.', tone: 'mag' })
+    traits.push({ id: 'immune-magic', label: 'No Magic', title: 'Immune to magic: spells and magic strikes do nothing to it, and still cost their MP.', tone: 'mag' })
   }
 
   return traits
@@ -196,10 +196,10 @@ const STANDING_PERKS = [
     rule: 'Another of the pack joins in: one extra plain hit rolled at twice its ATT.',
     answer: 'DEF blocks the pack hit like any other; it never carries a perk.' },
   { id: 'enemy-dodge', group: 'defence', name: 'Dodge', when: 'chance per attack',
-    rule: 'Your whole attack misses. A spell or strike it dodges costs no MP, and a dodged shot spends no ammo.',
+    rule: 'Your whole attack misses. A spell or strike it dodges still costs its MP, and a dodged shot still spends its arrow.',
     answer: 'Nothing beats it; expect the fight to run 1 ÷ (1 − chance) times as long.' },
   { id: 'enemy-block', group: 'defence', name: 'Block', when: 'chance per attack',
-    rule: 'It blocks your whole attack. Nothing is spent, as with a dodge.',
+    rule: 'It blocks your whole attack. The MP or arrow is spent, as with a dodge.',
     answer: 'Nothing beats it; a 20% blocker takes a quarter longer to kill.' },
   { id: 'pure-defense', group: 'defence', name: 'Pure Defense', when: 'every attack',
     rule: 'It blocks with its full DEF every time instead of rolling. An attack that rolls under its DEF does nothing.',
@@ -218,7 +218,7 @@ const STANDING_PERKS = [
   { id: 'immune-ranged', group: 'defence', name: 'Immune to ranged', when: 'always',
     rule: 'Arrows, bolts and thrown weapons do nothing to it.', answer: 'A melee weapon or a spell.' },
   { id: 'immune-magic', group: 'defence', name: 'Immune to magic', when: 'always',
-    rule: 'Spells and the magic of a Magic Strike do nothing to it, and cost nothing.', answer: 'A weapon.' },
+    rule: 'Spells and the magic of a Magic Strike do nothing to it, and still cost their MP.', answer: 'A weapon.' },
   { id: 'heal', group: 'sustain', name: 'Heal', when: '1 in 4 turns while hurt',
     rule: 'It heals rand(1, ATT) instead of attacking that turn.',
     answer: 'Out-damage it: the heal averages an eighth of its ATT per turn, and each one is a turn it does not hit you.' },

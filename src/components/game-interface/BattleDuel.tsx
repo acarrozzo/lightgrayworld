@@ -124,11 +124,10 @@ export default function BattleDuel({ battle, player, inventory, weaponCategory, 
   const hpMax = battle.playerHpMax || player.hpMax
   // What the last turn did to the bars, read after the number: the HP the
   // enemy's hit actually took (after Magic Armor ate its share, plus any
-  // drain), and the MP the last cast or skill spent — nothing when the
-  // enemy was immune or stepped out of it, since no MP went.
+  // drain), and the MP the last cast or skill spent, which went whether or
+  // not it landed: a dodge, a block or magic immunity still cost it.
   const hpLost = Math.max(0, (battle.lastEnemyDamage ?? 0) - (battle.absorbed ?? 0)) + (battle.enemyEffects?.hpDrained ?? 0)
-  const noMpSpent = battle.immuneToMagic || battle.enemyDodged
-  const mpSpent = noMpSpent ? 0 : (battle.spell?.cost ?? battle.skill?.cost ?? battle.actionMeta?.spell?.cost ?? 0)
+  const mpSpent = battle.spell?.cost ?? battle.skill?.cost ?? battle.actionMeta?.spell?.cost ?? 0
   // What the enemy lost to your last turn: your hit, a second arrow's, and
   // the burn of the poison you have on it.
   const poisonBurn = battle.poisonTick?.amount ?? 0

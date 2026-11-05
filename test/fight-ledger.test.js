@@ -71,7 +71,7 @@ test('a skill strike keeps the weapon roll and the bonus apart, and charges its 
   assert.equal(row.mp, 18)
 })
 
-test('a spell keeps its own breakdown; a fizzle on a magic-immune enemy charges nothing', () => {
+test('a spell keeps its own breakdown; a fizzle on a magic-immune enemy still shows what it cost', () => {
   const cast = compactTurn(
     swing({ playerDealtDamage: 12, playerRaw: 12, spell: { name: 'Fireball', cost: 4, amount: 12, text: '2 + (9 × 1.10) = 12' } }),
     after()
@@ -87,7 +87,8 @@ test('a spell keeps its own breakdown; a fizzle on a magic-immune enemy charges 
     after()
   )
   assert.equal(fizzle.you.miss, 'immune-magic')
-  assert.equal(fizzle.you.cost, null)
+  // The MP went before the enemy shrugged it off, so the column shows it.
+  assert.equal(fizzle.you.cost, 4)
   assert.equal(fizzle.you.block, null)
 })
 
@@ -101,6 +102,15 @@ test('the three ways a swing comes to nothing are named, and no block is shown f
   assert.equal(dodged.you.block, null)
   const blocked = compactTurn(swing({ playerDealtDamage: 0, enemyDodged: true, enemyEffects: { blocked: true } }), after())
   assert.equal(blocked.you.miss, 'blocked')
+  // A dodged cast or strike keeps its kind and its cost: the MP went first.
+  const dodgedCast = compactTurn(swing({ playerDealtDamage: 0, playerRaw: null, enemyDodged: true, spell: { name: 'Fireball', cost: 4, amount: 0, text: null } }), after())
+  assert.equal(dodgedCast.you.kind, 'spell')
+  assert.equal(dodgedCast.you.miss, 'dodged')
+  assert.equal(dodgedCast.you.cost, 4)
+  const blockedStrike = compactTurn(swing({ playerDealtDamage: 0, playerRaw: null, enemyDodged: true, enemyEffects: { blocked: true }, skill: { name: 'Slice', cost: 2, weaponRaw: 0, bonus: 0, text: null } }), after())
+  assert.equal(blockedStrike.you.kind, 'skill')
+  assert.equal(blockedStrike.you.miss, 'blocked')
+  assert.equal(blockedStrike.you.cost, 2)
 })
 
 test('helpers are listed beside your own hit, never folded into it', () => {

@@ -138,8 +138,9 @@ export interface BattleSupportActionMeta {
 /**
  * A spell the player struck with this turn. Server-declared, like enemy
  * specials: the client never infers a cast from the numbers. `text` is the
- * roll breakdown behind `amount`; both are empty when the enemy is immune to
- * magic and nothing was rolled (or charged).
+ * roll breakdown behind `amount`; both are empty when the cast never landed
+ * (the enemy dodged or blocked it, or is immune to magic) and nothing was
+ * rolled. The MP was spent all the same.
  */
 export interface BattleSpellCast {
   id: string
@@ -159,8 +160,9 @@ export interface BattleSpellCast {
 /**
  * A skill the player struck with this turn — a weapon swing plus the skill's
  * bonus. Server-declared like a cast. `weaponRaw` and `bonus` are the split
- * behind the turn's `playerRaw`; `text` is "weapon + bonus", null when a
- * Magic Strike fizzled on a magic-immune enemy (no bonus rolled or charged).
+ * behind the turn's `playerRaw`; `text` is "weapon + bonus", null when no
+ * bonus was rolled: a Magic Strike fizzled on a magic-immune enemy, or the
+ * enemy dodged or blocked the strike. The MP was spent all the same.
  */
 export interface BattleSkillUse {
   id: string

@@ -258,8 +258,8 @@ const SPECIAL_PRIORITY = ['whirlwind', 'dragonfire', 'crit', 'rage', 'power', 'b
 //   extraHits       1|2   Hits that always follow the first — eDoubleHit is
 //                         one extra, eTripleHit two.
 //   dodgeChance     0–1   The enemy steps out of the player's attack entirely:
-//                         nothing lands, and a spell or strike that would have
-//                         cost MP costs nothing (eDodge N = N×10%).
+//                         nothing lands, though the cast, strike or arrow is
+//                         still spent (eDodge N = N×10%).
 //   absorbsHp       bool  Every point of damage it deals heals it, up to its
 //                         own full HP.
 //   meltsMelee      bool  A melee swing (and the strike riding it) does half

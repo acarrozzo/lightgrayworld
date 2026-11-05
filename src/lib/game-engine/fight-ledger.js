@@ -132,9 +132,11 @@ function compactTurn(turn, extras) {
       : null,
     bonus: kind === 'skill' && !magicFizzled ? orNull(skill.bonus) : null,
     block: (kind === 'strike' || kind === 'skill' || kind === 'spell') && miss === null ? orNull(t.enemyBlocked) : null,
+    // The MP went whether or not the cast landed: a dodge, a block or a
+    // fizzle on a magic-immune enemy still cost it (Nov 2026).
     cost:
-      kind === 'spell' && !magicFizzled ? orNull(spell.cost)
-      : kind === 'skill' && !magicFizzled ? orNull(skill.cost)
+      kind === 'spell' ? orNull(spell.cost)
+      : kind === 'skill' ? orNull(skill.cost)
       : null,
     calc: kind === 'spell' ? spell.text ?? null : null,
     miss,

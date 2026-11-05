@@ -84,13 +84,15 @@ const NOTHING_LANDED = Object.freeze({
 })
 
 /**
- * Does the enemy slip this attack? Rolled by the handlers before any MP is
- * charged, so a dodged spell or strike costs nothing — the original rolled
- * `eDodge` ahead of the whole attack block. Never while the player is stone
- * (there is nothing to dodge) and never on an ambush turn.
+ * Does the enemy slip this attack? The handlers charge the MP and spend the
+ * arrow before they roll this: you still cast, you still loosed, the enemy
+ * just was not there (Nov 2026; the original rolled `eDodge` ahead of the
+ * whole attack block and spent nothing, which read as a free cast). Never
+ * while the player is stone (there is nothing to dodge) and never on an
+ * ambush turn.
  *
- * Block is the same shape — the whole attack comes to nothing and nothing is
- * spent — so it is rolled here too. Returns 'dodge', 'block' or false; the
+ * Block is the same shape — the whole attack comes to nothing — so it is
+ * rolled here too. Returns 'dodge', 'block' or false; the
  * handlers only care that it is truthy, the turn record says which.
  * @returns {'dodge' | 'block' | false}
  */
@@ -141,9 +143,10 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
     }
   }
 
-  // The enemy stepped out of it — spell, strike or swing alike. The handlers
-  // roll this BEFORE charging MP (`rollEnemyDodge`), so a dodged cast is a
-  // free one, as in the original.
+  // The enemy stepped out of it — spell, strike or swing alike. The MP and
+  // the arrow are already spent (see `rollEnemyDodge`); the cast and strike
+  // records survive so the panel and the ledger can name what was dodged and
+  // what it cost.
   if (enemyDodged) {
     return {
       ...NOTHING_LANDED,
@@ -152,6 +155,7 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
       enemyDodged: true,
       enemyBlockedAttack: enemyDodged === 'block',
       spell: spell ? describeSpellCast(spell, null) : null,
+      skill: skill ? describeSkillUse(skill, null, 0) : null,
     }
   }
 
@@ -230,7 +234,7 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
   let immuneToMagic = false
   if (skill) {
     if (skill.def.magic && enemy.isMagicImmune) {
-      // The sword still bites; the magic fizzles and (see the handlers) costs nothing.
+      // The sword still bites; the magic fizzles, and its MP is spent all the same.
       immuneToMagic = true
       skillUse = describeSkillUse(skill, null, weaponRaw)
     } else {
@@ -277,7 +281,7 @@ function resolvePlayerAttack(battleState, otherCombatants, { spell = null, skill
  * The client-facing record of a skill strike: what was used, at what level
  * and cost, and the split behind the number — the weapon's own roll and the
  * bonus on top. `roll` is null when a Magic Strike fizzled on a magic-immune
- * enemy (no bonus rolled, nothing charged).
+ * enemy (no bonus rolled; the MP was still spent).
  */
 function describeSkillUse(skill, roll, weaponRaw) {
   return {
@@ -312,7 +316,7 @@ function weaponImmunity(enemy, weaponCategory) {
 /**
  * The client-facing record of a cast: what was cast, at what level and cost,
  * and the roll behind the number. `roll` is null when the cast fizzled against
- * a magic-immune enemy (nothing was rolled, nothing was charged).
+ * a magic-immune enemy (nothing was rolled; the MP was still spent).
  */
 function describeSpellCast(spell, roll, effectiveMag = 0) {
   return {

@@ -178,8 +178,8 @@ export interface BattleActionMeta {
 /**
  * Client mirror of the server's spell-cast record (see lib/socket.ts). Present
  * on a turn the player spent casting an attack spell; `text` is the roll
- * breakdown ("2 + (9 × 1.10) = 12"), null when the cast fizzled on a
- * magic-immune enemy.
+ * breakdown ("2 + (9 × 1.10) = 12"), null when the cast never landed (dodged,
+ * blocked, or fizzled on a magic-immune enemy). The MP was spent all the same.
  */
 export interface BattleSpellCast {
   id: string
@@ -214,8 +214,9 @@ export interface EnemyPoisonTick {
 /**
  * Client mirror of the server's skill-strike record (see lib/socket.ts).
  * Present on a turn the player struck with a skill; `weaponRaw` and `bonus`
- * are the split behind `playerRaw`, `text` is "weapon + bonus" (null when a
- * Magic Strike fizzled on a magic-immune enemy).
+ * are the split behind `playerRaw`, `text` is "weapon + bonus" (null when no
+ * bonus was rolled: a Magic Strike fizzled on a magic-immune enemy, or the
+ * enemy dodged or blocked the strike). The MP was spent all the same.
  */
 export interface BattleSkillUse {
   id: string
